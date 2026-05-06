@@ -9,6 +9,7 @@ import {
   Reservation,
   TableCustomer,
 } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const TOP_DISH_SAMPLE = 1000;
 
@@ -93,7 +94,9 @@ async function refreshRestaurantCategoryIndexes(timeSlot) {
 }
 
 export const CategoryQuery = {
-  categories: async (_, { restaurantId, timeSlot }) => {
+  categories: async (_, { restaurantId, timeSlot }, ctx) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     const restaurantObjectId =
       typeof restaurantId === "string"
         ? new mongoose.Types.ObjectId(restaurantId)
@@ -136,7 +139,9 @@ export const CategoryQuery = {
   topCategoriesByMenuItemCount: async (
     _,
     { restaurantId, timeSlot, limit = 6 }
-  ) => {
+  , ctx) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     const menu = await Menu.findOne({ restaurantId, timeSlot }).lean();
     if (!menu) return [];
 
@@ -263,14 +268,19 @@ export const CategoryQuery = {
       .filter(Boolean);
   },
 
-  categoryMenus: async (_, { restaurantId }) => {
-    if (!restaurantId) return [];
+  categoryMenus: async (_, { restaurantId }, ctx) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     return CategoryMenu.find({ restaurantId })
       .sort({ name: 1 })
       .lean({ virtuals: true });
   },
 
-  categoryMenu: async (_, { id }) => {
+  categoryMenu: async (_, { id }, ctx) => {
+    if (!mongoose.isValidObjectId(id)) return null;
+    const existing = await CategoryMenu.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return null;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return CategoryMenu.findById(id).lean({ virtuals: true });
   },
 };

@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { ModifierGroup } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const isValidId = (v) => mongoose.isValidObjectId(v);
 const toId = (v) => new mongoose.Types.ObjectId(v);
@@ -18,7 +19,7 @@ export const ModifierQuery = {
    * - groupType (optional)
    * - isActive (optional, default true in schema)
    */
-  modifierGroups: async (_, { filter }) => {
+  modifierGroups: async (_, { filter }, ctx) => {
     const { restaurantId, search, menuItemId, groupType, isActive } =
       filter || {};
 
@@ -27,6 +28,7 @@ export const ModifierQuery = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId: toId(restaurantId) };
 
@@ -70,12 +72,15 @@ export const ModifierQuery = {
     return ModifierGroup.find(q).sort({ name: 1 }).lean({ virtuals: true });
   },
 
-  modifierGroup: async (_, { id }) => {
+  modifierGroup: async (_, { id }, ctx) => {
     if (!isValidId(id)) {
       throw new GraphQLError("Invalid id", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const existing = await ModifierGroup.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return null;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return ModifierGroup.findById(id).lean({ virtuals: true });
   },
 };

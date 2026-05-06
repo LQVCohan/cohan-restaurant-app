@@ -8,6 +8,7 @@ import {
   Order,
 } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 // ===== helpers =====
 const isValidId = (v) => mongoose.isValidObjectId(v);
@@ -322,11 +323,13 @@ async function assertIngredientsExistFromOptions(options) {
 export const ModifierMutation = {
   // ============ Group CRUD ============
 
-  createModifierGroup: async (_, { input }, { user }) => {
+  createModifierGroup: async (_, { input }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin", "manager"]);
 
       const patch = normalizeAndValidateGroupInput(input, { isUpdate: false });
+      await requireRestaurantAccess(ctx, patch.restaurantId);
 
       // validate cross-collection
       if (patch.coverage === "ITEMS") {
@@ -350,7 +353,8 @@ export const ModifierMutation = {
     }
   },
 
-  updateModifierGroup: async (_, { input }, { user }) => {
+  updateModifierGroup: async (_, { input }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin", "manager"]);
 
@@ -359,6 +363,7 @@ export const ModifierMutation = {
 
       const doc = await ModifierGroup.findById(id);
       if (!doc) throw new GraphQLError("ModifierGroup not found");
+      await requireRestaurantAccess(ctx, doc.restaurantId);
 
       // merge current + patch để validate ràng buộc chéo chắc chắn
       const merged = {
@@ -375,6 +380,7 @@ export const ModifierMutation = {
         note: rest.note ?? doc.note,
         isActive: rest.isActive ?? doc.isActive,
       };
+      merged.restaurantId = doc.restaurantId;
 
       const patch = normalizeAndValidateGroupInput(merged, { isUpdate: true });
 
@@ -405,11 +411,15 @@ export const ModifierMutation = {
     }
   },
 
-  deleteModifierGroup: async (_, { id }, { user }) => {
+  deleteModifierGroup: async (_, { id }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin"]);
 
       if (!isValidId(id)) badRequest("Invalid id");
+      const existing = await ModifierGroup.findById(id).select({ restaurantId: 1 }).lean();
+      if (!existing) return true;
+      await requireRestaurantAccess(ctx, existing.restaurantId);
 
       // professional: chặn xoá nếu đã xuất hiện trong Order
       // (nếu bạn chưa có Order model trong index.js thì bỏ import Order ở trên)
@@ -436,13 +446,15 @@ export const ModifierMutation = {
 
   // ============ Option CRUD (clean, đúng model mới) ============
 
-  addModifierOption: async (_, { groupId, option }, { user }) => {
+  addModifierOption: async (_, { groupId, option }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin", "manager"]);
 
       if (!isValidId(groupId)) badRequest("Invalid groupId");
       const g = await ModifierGroup.findById(groupId);
       if (!g) throw new GraphQLError("ModifierGroup not found");
+      await requireRestaurantAccess(ctx, g.restaurantId);
 
       const normalizedOption = normalizeAndValidateOptionInput(option);
       await assertIngredientsExistFromOptions([normalizedOption]);
@@ -472,7 +484,8 @@ export const ModifierMutation = {
     }
   },
 
-  updateModifierOption: async (_, { groupId, optionId, option }, { user }) => {
+  updateModifierOption: async (_, { groupId, optionId, option }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin", "manager"]);
 
@@ -481,6 +494,7 @@ export const ModifierMutation = {
 
       const g = await ModifierGroup.findById(groupId);
       if (!g) throw new GraphQLError("ModifierGroup not found");
+      await requireRestaurantAccess(ctx, g.restaurantId);
 
       const idx = g.options.findIndex(
         (o) => String(o._id) === String(optionId)
@@ -531,7 +545,8 @@ export const ModifierMutation = {
     }
   },
 
-  removeModifierOption: async (_, { groupId, optionId }, { user }) => {
+  removeModifierOption: async (_, { groupId, optionId }, ctx) => {
+    const { user } = ctx || {};
     try {
       requireRole(user, ["admin", "manager"]);
 
@@ -540,6 +555,7 @@ export const ModifierMutation = {
 
       const g = await ModifierGroup.findById(groupId);
       if (!g) throw new GraphQLError("ModifierGroup not found");
+      await requireRestaurantAccess(ctx, g.restaurantId);
 
       g.options = (g.options || []).filter(
         (o) => String(o._id) !== String(optionId)
