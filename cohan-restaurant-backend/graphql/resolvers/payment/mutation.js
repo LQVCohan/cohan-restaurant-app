@@ -409,10 +409,18 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   const rawOrderIds = Array.isArray(orderIds) ? orderIds : [];
-  const normalizedOrderIds = rawOrderIds.map(toId);
-  if (!normalizedOrderIds.length || normalizedOrderIds.some((id) => !id)) {
+  if (
+    !rawOrderIds.length ||
+    rawOrderIds.some((id) => typeof id !== "string" || !id.trim())
+  ) {
     throw new Error("Invalid orderIds");
   }
+
+  const normalizedOrderIds = rawOrderIds.map((id) => toId(id.trim()));
+  if (normalizedOrderIds.some((id) => !id)) {
+    throw new Error("Invalid orderIds");
+  }
+
   const uniqueOrderIds = [
     ...new Map(normalizedOrderIds.map((id) => [String(id), id])).values(),
   ];

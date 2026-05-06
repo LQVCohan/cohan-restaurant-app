@@ -119,18 +119,7 @@ describe("payment request + confirm guards", () => {
 
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) }).mockResolvedValueOnce([paidOrder]);
 
-    await payOrdersByOrderIds(
-      null,
-      {
-        input: {
-          restaurantId: "65f000000000000000000099",
-          orderIds: ["65f000000000000000000001"],
-          method: "cash",
-          note: "test",
-        },
-      },
-      AUTH_CONTEXT,
-    );
+    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", restaurantId: "65f000000000000000000099" } });
 
     expect(modelMocks.Order.updateMany).toHaveBeenCalled();
     const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
@@ -157,18 +146,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([servedOrder]) }).mockResolvedValueOnce([servedOrder]);
 
     await expect(
-      payOrdersByTableId(
-        null,
-        {
-          input: {
-            restaurantId: "65f000000000000000000099",
-            tableId: "table-1",
-            method: "cash",
-            includeUnserved: true,
-          },
-        },
-        AUTH_CONTEXT,
-      ),
+      payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: true } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", restaurantId: "65f000000000000000000099" } }),
     ).resolves.toBeTruthy();
 
     const tableUpdatePayload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
