@@ -19,6 +19,7 @@ const modelMocks = vi.hoisted(() => ({
 
 const guardMocks = vi.hoisted(() => ({
   requireRestaurantAccess: vi.fn(),
+  requireRoles: vi.fn(),
 }));
 
 vi.mock("../../graphql/guards.js", () => guardMocks);
@@ -61,6 +62,7 @@ describe("OrderQuery restaurant access guard", () => {
     vi.resetModules();
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
+    guardMocks.requireRoles.mockImplementation(() => undefined);
   });
 
   it("order(id) returns null for invalid id without querying", async () => {
@@ -218,7 +220,7 @@ describe("OrderQuery restaurant access guard", () => {
     );
   });
 
-  it("orders(filter) enforces access only when filter.restaurantId exists", async () => {
+  it("orders(filter) enforces restaurant scope or ADMIN for global listing", async () => {
     const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
 
     modelMocks.Order.find.mockReturnValue(buildFindChain([]));
@@ -234,6 +236,7 @@ describe("OrderQuery restaurant access guard", () => {
       expect.anything(),
       expect.objectContaining({ value: "valid-r5" }),
     );
+    expect(guardMocks.requireRoles).not.toHaveBeenCalled();
 
     vi.clearAllMocks();
     modelMocks.Order.find.mockReturnValue(buildFindChain([]));
@@ -245,8 +248,54 @@ describe("OrderQuery restaurant access guard", () => {
       { user: { id: "manager-1" } },
     );
 
+    expect(guardMocks.requireRoles).toHaveBeenCalledWith(
+      expect.anything(),
+      ["ADMIN"],
+    );
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(modelMocks.Order.find).toHaveBeenCalled();
+  });
+
+  it("orders(filter: {}) rejects non-admin/global listing when requireRoles throws", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    guardMocks.requireRoles.mockImplementation(() => {
+      throw new Error("FORBIDDEN");
+    });
+
+    await expect(
+      OrderQuery.orders(
+        null,
+        { filter: { status: "pending" }, limit: 10, offset: 0 },
+        { user: { id: "staff-1" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN");
+
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
+    expect(modelMocks.Order.countDocuments).not.toHaveBeenCalled();
+  });
+
+  it("orders(filter) with valid restaurantId does not require ADMIN", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    guardMocks.requireRoles.mockImplementation(() => {
+      throw new Error("should not call requireRoles");
+    });
+    modelMocks.Order.find.mockReturnValue(buildFindChain([]));
+    modelMocks.Order.countDocuments.mockResolvedValue(0);
+
+    await OrderQuery.orders(
+      null,
+      { filter: { restaurantId: "valid-r5" }, limit: 10, offset: 0 },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ value: "valid-r5" }),
+    );
+    expect(guardMocks.requireRoles).not.toHaveBeenCalled();
+    expect(modelMocks.Order.find).toHaveBeenCalled();
+    expect(modelMocks.Order.countDocuments).toHaveBeenCalled();
   });
 
   it("orders(filter) throws on invalid restaurantId and skips query", async () => {

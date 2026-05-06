@@ -18,7 +18,7 @@ import TableCustomer from "../../../models/tableCustomer.model.js";
 import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -242,6 +242,8 @@ export const OrderQuery = {
         throw new Error("Invalid restaurantId");
       }
       await requireRestaurantAccess(ctx, q.restaurantId);
+    } else {
+      requireRoles(ctx, ["ADMIN"]);
     }
 
     const safeLimit = Math.max(1, Math.min(200, limit));
