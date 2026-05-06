@@ -51,6 +51,15 @@ vi.mock("mongoose", () => {
 });
 
 describe("payment request + confirm guards", () => {
+  const AUTH_CONTEXT = {
+    user: {
+      id: "65f000000000000000000777",
+      _id: "65f000000000000000000777",
+      roles: ["manager"],
+      refRestaurants: ["65f000000000000000000099"],
+    },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -96,7 +105,7 @@ describe("payment request + confirm guards", () => {
     expect(order.save).not.toHaveBeenCalled();
   });
 
-  it("payOrdersByOrderIds succeeds and sets paid status with actor fallback _id", async () => {
+  it("payOrdersByOrderIds succeeds and sets paid status with authenticated actor context", async () => {
     const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
     const paidOrder = {
       _id: "65f000000000000000000001",

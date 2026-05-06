@@ -529,8 +529,8 @@ export default function StaffSchedulePage() {
     fetchPolicy: "network-only",
   });
   const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
-  const [respondShiftAck, { loading: respondingShiftAck }] =
-    useMutation(RESPOND_SHIFT_ACK);
+  const [respondShiftAck] = useMutation(RESPOND_SHIFT_ACK);
+  const [respondingShiftId, setRespondingShiftId] = useState("");
   const [declineDraft, setDeclineDraft] = useState({});
 
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
@@ -1563,6 +1563,14 @@ export default function StaffSchedulePage() {
                 )}
               </div>
             ) : null}
+            {success ? (
+              <div className="staff-feedback staff-feedback--success">
+                {success}
+              </div>
+            ) : null}
+            {error ? (
+              <div className="staff-feedback staff-feedback--error">{error}</div>
+            ) : null}
             {loadingShifts ? (
               <div className="staff-loading-state staff-loading-state--small">
                 <Loader2 size={20} className="staff-spin" />
@@ -1642,10 +1650,17 @@ export default function StaffSchedulePage() {
                             <button
                               className="staff-primary-btn"
                               type="button"
-                              disabled={respondingShiftAck}
+                              disabled={respondingShiftId === shift.id}
                               onClick={async () => {
                                 setError("");
                                 setSuccess("");
+                                if (!ack || ack.status !== "pending") {
+                                  setError(
+                                    "Ca này không còn ở trạng thái chờ phản hồi.",
+                                  );
+                                  return;
+                                }
+                                setRespondingShiftId(shift.id);
                                 try {
                                   await respondShiftAck({
                                     variables: {
@@ -1665,6 +1680,8 @@ export default function StaffSchedulePage() {
                                       "Không thể nhận ca.",
                                     ),
                                   );
+                                } finally {
+                                  setRespondingShiftId("");
                                 }
                               }}
                             >
@@ -1739,22 +1756,40 @@ export default function StaffSchedulePage() {
                               className="staff-primary-btn"
                               type="button"
                               disabled={
-                                respondingShiftAck ||
+                                respondingShiftId === shift.id ||
                                 (declineDraft[shift.id].reason || "").trim()
                                   .length < 5
                               }
                               onClick={async () => {
                                 setError("");
                                 setSuccess("");
+                                if (!ack || ack.status !== "pending") {
+                                  setError(
+                                    "Ca này không còn ở trạng thái chờ phản hồi.",
+                                  );
+                                  return;
+                                }
+                                const reason = String(
+                                  declineDraft[shift.id]?.reason || "",
+                                ).trim();
+                                const reasonCategory = String(
+                                  declineDraft[shift.id]?.reasonCategory || "",
+                                ).trim();
+                                if (reason.length < 5) {
+                                  setError(
+                                    "Vui lòng nhập lý do tối thiểu 5 ký tự.",
+                                  );
+                                  return;
+                                }
+                                setRespondingShiftId(shift.id);
                                 try {
                                   await respondShiftAck({
                                     variables: {
                                       input: {
                                         shiftId: shift.id,
                                         response: "decline",
-                                        reason: declineDraft[shift.id].reason,
-                                        reasonCategory:
-                                          declineDraft[shift.id].reasonCategory,
+                                        reason,
+                                        reasonCategory,
                                       },
                                     },
                                   });
@@ -1770,10 +1805,14 @@ export default function StaffSchedulePage() {
                                       "Không thể gửi từ chối ca.",
                                     ),
                                   );
+                                } finally {
+                                  setRespondingShiftId("");
                                 }
                               }}
                             >
-                              Gửi từ chối
+                              {respondingShiftId === shift.id
+                                ? "Đang gửi..."
+                                : "Gửi từ chối"}
                             </button>
                           </div>
                         ) : null}
