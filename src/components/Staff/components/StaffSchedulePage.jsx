@@ -1688,54 +1688,6 @@ export default function StaffSchedulePage() {
                             >
                               Từ chối ca
                             </button>
-                            <button
-                              className="staff-primary-btn"
-                              type="button"
-                              onClick={async () => {
-                                setError("");
-                                setSuccess("");
-                                try {
-                                  await respondShiftAck({
-                                    variables: {
-                                      input: {
-                                        shiftId: shift.id,
-                                        response: "accept",
-                                      },
-                                    },
-                                  });
-                                  closeDeclinePanelForShift(shift.id);
-                                  await refetchShiftAcks();
-                                  setSuccess("Bạn đã nhận ca thành công.");
-                                } catch (submitError) {
-                                  setError(
-                                    getGraphQLErrorMessage(
-                                      submitError,
-                                      "Không thể nhận ca.",
-                                    ),
-                                  );
-                                }
-                              }}
-                            >
-                              Nhận ca
-                            </button>
-                            <button
-                              className="staff-primary-btn"
-                              type="button"
-                              onClick={() =>
-                                setDeclineDraft((p) => ({
-                                  ...p,
-                                  [shift.id]: p[shift.id]?.open
-                                    ? { open: false }
-                                    : {
-                                        open: true,
-                                        reason: "",
-                                        reasonCategory: "sick",
-                                      },
-                                }))
-                              }
-                            >
-                              Từ chối ca
-                            </button>
                           </div>
                         ) : null}
                         {ack?.status === "pending" &&
