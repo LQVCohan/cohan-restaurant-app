@@ -373,7 +373,7 @@ describe("StaffSchedulePage", () => {
     expect(await screen.findByText("1 ca đã công bố")).toBeInTheDocument();
   });
 
-  it("submits shift decline and shows success message", async () => {
+  it("real form submits shift decline and shows success message", async () => {
     const shiftId = "shift-pending-1";
     const reason = "Bị sốt cao nên không thể đi làm.";
     const reasonCategory = "sick";
@@ -458,6 +458,7 @@ describe("StaffSchedulePage", () => {
 
     renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
     fireEvent.click(await screen.findByRole("button", { name: "Từ chối ca" }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: reasonCategory } });
     fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), {
       target: { value: reason },
     });
@@ -467,9 +468,13 @@ describe("StaffSchedulePage", () => {
     expect(
       await screen.findByText("Bạn đã gửi từ chối ca. Chờ quản lý xem xét."),
     ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Gửi từ chối" })).not.toBeInTheDocument();
+    });
+    expect(await screen.findByText("Đã từ chối")).toBeInTheDocument();
   });
 
-  it("prevents shift decline submit when reason is too short", async () => {
+  it("keeps decline submit clickable and shows validation for short reason", async () => {
     const shiftId = "shift-pending-2";
     const mocks = [
       {
@@ -522,11 +527,57 @@ describe("StaffSchedulePage", () => {
     fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), {
       target: { value: "abc" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Gửi từ chối" }));
+    const submitBtn = screen.getByRole("button", { name: "Gửi từ chối" });
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
 
     expect(await screen.findByText("Vui lòng nhập lý do tối thiểu 5 ký tự.")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: "Đang gửi..." })).not.toBeInTheDocument();
     });
+  });
+
+  it("shows backend error and keeps decline form values", async () => {
+    const shiftId = "shift-pending-3";
+    const reason = "Bận việc gia đình đột xuất";
+    const mocks = [
+      {
+        request: { query: GET_STAFF_SHIFTS, variables: { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04T00:00:00.000Z", endDate: "2026-05-10T23:59:59.999Z" } },
+        result: { data: { staffShifts: [{ id: shiftId, employeeId: "e1", shiftType: "morning", startTime: "2026-05-05T06:00:00.000Z", endTime: "2026-05-05T12:00:00.000Z", status: "scheduled", notes: null, restaurantId: "r1" }] } },
+      },
+      {
+        request: { query: GET_MY_SHIFT_ACKS, variables: { periodStart: "2026-05-04T00:00:00.000Z", periodEnd: "2026-05-10T23:59:59.999Z" } },
+        result: { data: { myShiftAcknowledgements: [{ id: "ack-3", shiftId, status: "pending", declineClassification: null }] } },
+      },
+      {
+        request: { query: RESPOND_SHIFT_ACK, variables: { input: { shiftId, response: "decline", reason, reasonCategory: "personal" } } },
+        error: new Error("Backend down"),
+      },
+    ];
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    fireEvent.click(await screen.findByRole("button", { name: "Từ chối ca" }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "personal" } });
+    fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), { target: { value: reason } });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi từ chối" }));
+    expect(await screen.findByText("Backend down")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)")).toHaveValue(reason);
+    expect(screen.getByRole("combobox")).toHaveValue("personal");
+  });
+
+  it("shows stale ack error when decline is not pending", async () => {
+    const shiftId = "shift-stale-1";
+    const mocks = [
+      {
+        request: { query: GET_STAFF_SHIFTS, variables: { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04T00:00:00.000Z", endDate: "2026-05-10T23:59:59.999Z" } },
+        result: { data: { staffShifts: [{ id: shiftId, employeeId: "e1", shiftType: "morning", startTime: "2026-05-05T06:00:00.000Z", endTime: "2026-05-05T12:00:00.000Z", status: "scheduled", notes: null, restaurantId: "r1" }] } },
+      },
+      {
+        request: { query: GET_MY_SHIFT_ACKS, variables: { periodStart: "2026-05-04T00:00:00.000Z", periodEnd: "2026-05-10T23:59:59.999Z" } },
+        result: { data: { myShiftAcknowledgements: [{ id: "ack-4", shiftId, status: "accepted", declineClassification: null }] } },
+      },
+    ];
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    expect(await screen.findByText("Đã nhận ca")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Từ chối ca" })).not.toBeInTheDocument();
   });
 });

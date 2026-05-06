@@ -890,6 +890,88 @@ export default function StaffSchedulePage() {
       return next;
     });
   };
+  const openDeclinePanel = (shift, ack) => {
+    setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
+    if (!ack || ack.status !== "pending") {
+      setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Ca này không còn ở trạng thái chờ phản hồi." }));
+      return;
+    }
+    setDeclineDraft((prev) => ({
+      ...prev,
+      [shift.id]: {
+        open: true,
+        reason: prev[shift.id]?.reason || "",
+        reasonCategory: prev[shift.id]?.reasonCategory || "sick",
+      },
+    }));
+  };
+  const submitShiftAccept = async (shift, ack) => {
+    setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
+    setShiftAckFeedback(null);
+    if (!ack || ack.status !== "pending") {
+      setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Ca này không còn ở trạng thái chờ phản hồi." }));
+      return;
+    }
+    setRespondingShiftId(shift.id);
+    try {
+      const response = await respondShiftAck({
+        variables: { input: { shiftId: shift.id, response: "accept" } },
+      });
+      closeDeclinePanelForShift(shift.id);
+      await refetchShiftAcks();
+      setOptimisticShiftAcks((prev) => ({ ...prev, [String(shift.id)]: response?.data?.respondShiftAcknowledgement || { shiftId: shift.id, status: "accepted" } }));
+      setShiftAckFeedback({ type: "success", message: "Bạn đã nhận ca thành công." });
+    } catch (submitError) {
+      setShiftAckFeedback({ type: "error", message: getGraphQLErrorMessage(submitError, "Không thể nhận ca.") });
+    } finally {
+      setRespondingShiftId("");
+    }
+  };
+  const submitShiftDecline = async (event, shift, ack) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const reason = String(formData.get("reason") || "").trim();
+    const reasonCategory = String(formData.get("reasonCategory") || "").trim();
+    if (import.meta.env.DEV) {
+      console.info("[StaffSchedulePage] submit shift decline", { shiftId: shift.id, ackStatus: ack?.status, reasonLength: reason.length, reasonCategory });
+    }
+    setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
+    setShiftAckFeedback(null);
+    if (!ack || ack.status !== "pending") {
+      setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Ca này không còn ở trạng thái chờ phản hồi." }));
+      return;
+    }
+    if (reason.length < 5) {
+      setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Vui lòng nhập lý do tối thiểu 5 ký tự." }));
+      return;
+    }
+    setRespondingShiftId(shift.id);
+    setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
+    setShiftAckFeedback(null);
+    try {
+      if (import.meta.env.DEV) {
+        console.info("[StaffSchedulePage] calling respondShiftAcknowledgement", { shiftId: shift.id, response: "decline", reasonCategory });
+      }
+      const response = await respondShiftAck({
+        variables: { input: { shiftId: shift.id, response: "decline", reason, reasonCategory } },
+      });
+      const returnedAck = response?.data?.respondShiftAcknowledgement || {};
+      const nextAck = { ...returnedAck, shiftId: shift.id, status: returnedAck.status || "declined" };
+      setOptimisticShiftAcks((prev) => ({ ...prev, [String(shift.id)]: nextAck }));
+      closeDeclinePanelForShift(shift.id);
+      setShiftAckFeedback({ type: "success", message: "Bạn đã gửi từ chối ca. Chờ quản lý xem xét." });
+      try {
+        await refetchShiftAcks();
+      } catch (_refetchError) {}
+    } catch (submitError) {
+      if (import.meta.env.DEV) {
+        console.info("[StaffSchedulePage] submit shift decline error", { shiftId: shift.id, error: submitError });
+      }
+      setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: getGraphQLErrorMessage(submitError, "Không thể gửi từ chối ca.") }));
+    } finally {
+      setRespondingShiftId("");
+    }
+  };
   return (
     <main className="staff-schedule-page">
       <section className="staff-schedule-hero">
@@ -1667,33 +1749,7 @@ export default function StaffSchedulePage() {
                               className="staff-primary-btn"
                               type="button"
                               disabled={respondingShiftId === shift.id}
-                              onClick={async () => {
-                                setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
-                                setShiftAckFeedback(null);
-                                if (!ack || ack.status !== "pending") {
-                                  setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Ca này không còn ở trạng thái chờ phản hồi." }));
-                                  return;
-                                }
-                                setRespondingShiftId(shift.id);
-                                try {
-                                  const response = await respondShiftAck({
-                                    variables: {
-                                      input: {
-                                        shiftId: shift.id,
-                                        response: "accept",
-                                      },
-                                    },
-                                  });
-                                  closeDeclinePanelForShift(shift.id);
-                                  await refetchShiftAcks();
-                                  setOptimisticShiftAcks((prev) => ({ ...prev, [String(shift.id)]: response?.data?.respondShiftAcknowledgement || { shiftId: shift.id, status: "accepted" } }));
-                                  setShiftAckFeedback({ type: "success", message: "Bạn đã nhận ca thành công." });
-                                } catch (submitError) {
-                                  setShiftAckFeedback({ type: "error", message: getGraphQLErrorMessage(submitError, "Không thể nhận ca.") });
-                                } finally {
-                                  setRespondingShiftId("");
-                                }
-                              }}
+                              onClick={() => submitShiftAccept(shift, ack)}
                             >
                               Nhận ca
                             </button>
@@ -1701,18 +1757,7 @@ export default function StaffSchedulePage() {
                               className="staff-primary-btn"
                               type="button"
                               disabled={respondingShiftId === shift.id}
-                              onClick={() =>
-                                setDeclineDraft((p) => ({
-                                  ...p,
-                                  [shift.id]: p[shift.id]?.open
-                                    ? { open: false }
-                                    : {
-                                        open: true,
-                                        reason: "",
-                                        reasonCategory: "sick",
-                                      },
-                                }))
-                              }
+                              onClick={() => openDeclinePanel(shift, ack)}
                             >
                               Từ chối ca
                             </button>
@@ -1720,8 +1765,9 @@ export default function StaffSchedulePage() {
                         ) : null}
                         {ack?.status === "pending" &&
                         declineDraft[shift.id]?.open ? (
-                          <div className="staff-shift-decline-panel">
+                          <form className="staff-shift-decline-panel" onSubmit={(event) => submitShiftDecline(event, shift, ack)}>
                             <select
+                              name="reasonCategory"
                               value={declineDraft[shift.id].reasonCategory}
                               onChange={(e) =>
                                 setDeclineDraft((p) => ({
@@ -1745,6 +1791,7 @@ export default function StaffSchedulePage() {
                               <option value="other">Khác</option>
                             </select>
                             <textarea
+                              name="reason"
                               value={declineDraft[shift.id].reason}
                               onChange={(e) =>
                                 setDeclineDraft((p) => ({
@@ -1757,67 +1804,18 @@ export default function StaffSchedulePage() {
                               }
                               placeholder="Lý do từ chối (>= 5 ký tự)"
                             />
-                            {(declineDraft[shift.id].reason || "").trim()
-                              .length < 5 ? (
-                              <p className="staff-my-shift-card__note">Vui lòng nhập lý do tối thiểu 5 ký tự.</p>
-                            ) : null}
                             {declineErrorByShiftId[shift.id] ? <p className="staff-my-shift-card__note">{declineErrorByShiftId[shift.id]}</p> : null}
+                            {respondingShiftId === shift.id ? <p className="staff-my-shift-card__note">Đang gửi từ chối ca...</p> : null}
                             <button
                               className="staff-primary-btn"
-                              type="button"
-                              disabled={
-                                respondingShiftId === shift.id ||
-                                (declineDraft[shift.id].reason || "").trim()
-                                  .length < 5
-                              }
-                              onClick={async () => {
-                                setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "" }));
-                                setShiftAckFeedback(null);
-                                if (!ack || ack.status !== "pending") {
-                                  setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Ca này không còn ở trạng thái chờ phản hồi." }));
-                                  return;
-                                }
-                                const reason = String(
-                                  declineDraft[shift.id]?.reason || "",
-                                ).trim();
-                                const reasonCategory = String(
-                                  declineDraft[shift.id]?.reasonCategory || "",
-                                ).trim();
-                                if (reason.length < 5) {
-                                  setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: "Vui lòng nhập lý do tối thiểu 5 ký tự." }));
-                                  return;
-                                }
-                                setRespondingShiftId(shift.id);
-                                try {
-                                  const response = await respondShiftAck({
-                                    variables: {
-                                      input: {
-                                        shiftId: shift.id,
-                                        response: "decline",
-                                        reason,
-                                        reasonCategory,
-                                      },
-                                    },
-                                  });
-                                  const nextAck = response?.data?.respondShiftAcknowledgement || { shiftId: shift.id, status: "declined", declineClassification: "unknown" };
-                                  setOptimisticShiftAcks((prev) => ({ ...prev, [String(shift.id)]: nextAck }));
-                                  try {
-                                    await refetchShiftAcks();
-                                  } catch (_refetchError) {}
-                                  closeDeclinePanelForShift(shift.id);
-                                  setShiftAckFeedback({ type: "success", message: "Bạn đã gửi từ chối ca. Chờ quản lý xem xét." });
-                                } catch (submitError) {
-                                  setDeclineErrorByShiftId((prev) => ({ ...prev, [shift.id]: getGraphQLErrorMessage(submitError, "Không thể gửi từ chối ca.") }));
-                                } finally {
-                                  setRespondingShiftId("");
-                                }
-                              }}
+                              type="submit"
+                              disabled={respondingShiftId === shift.id}
                             >
                               {respondingShiftId === shift.id
                                 ? "Đang gửi..."
                                 : "Gửi từ chối"}
                             </button>
-                          </div>
+                          </form>
                         ) : null}
                       </div>
                     </article>
