@@ -18,6 +18,7 @@ import TableCustomer from "../../../models/tableCustomer.model.js";
 import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -79,6 +80,15 @@ function buildFilter(filter = {}) {
   }
 
   return q;
+}
+
+async function requireQueryRestaurantAccess(ctx, restaurantId) {
+  if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
+    throw new Error("Invalid restaurantId");
+  }
+  const rid = toId(restaurantId);
+  await requireRestaurantAccess(ctx, rid);
+  return rid;
 }
 
 /** Group orders by orderCode (no parentOrderCode usage) */
@@ -216,8 +226,11 @@ export const OrderQuery = {
   },
 
   /** List with offset pagination */
-  async orders(_, { filter = {}, limit = 50, offset = 0 }) {
+  async orders(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
     const q = buildFilter(filter);
+    if (filter.restaurantId && mongoose.isValidObjectId(filter.restaurantId)) {
+      await requireRestaurantAccess(ctx, q.restaurantId);
+    }
 
     const safeLimit = Math.max(1, Math.min(200, limit));
     const safeOffset = Math.max(0, offset);
@@ -246,12 +259,8 @@ export const OrderQuery = {
   /**
    * ACTIVE orders (exclude completed/cancelled) — cursor connection
    */
-  async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }) {
-    if (!restaurantId) throw new Error("restaurantId is required");
-    if (!mongoose.isValidObjectId(restaurantId))
-      throw new Error("Invalid restaurantId");
-
-    const rid = toId(restaurantId);
+  async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = {
       restaurantId: rid,
@@ -265,12 +274,8 @@ export const OrderQuery = {
    * ALL orders by restaurant — cursor connection
    * (schema có ordersByRestaurant nhưng file cũ chưa implement)
    */
-  async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }) {
-    if (!restaurantId) throw new Error("restaurantId is required");
-    if (!mongoose.isValidObjectId(restaurantId))
-      throw new Error("Invalid restaurantId");
-
-    const rid = toId(restaurantId);
+  async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = {
       restaurantId: rid,
@@ -285,13 +290,10 @@ export const OrderQuery = {
    */
   async ordersByTableCode(
     _,
-    { restaurantId, tableCode, limit = 50, offset = 0 }
+    { restaurantId, tableCode, limit = 50, offset = 0 },
+    ctx
   ) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-
-    const rid = toId(restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const safeTableCode = String(tableCode).trim().toUpperCase();
 
     const q = { restaurantId: rid, tableCode: safeTableCode };
@@ -316,12 +318,8 @@ export const OrderQuery = {
    * Group by table => group theo rootCode (parentOrderCode || orderCode)
    * - hỗ trợ tách đơn: các đơn con sẽ vào chung group của đơn cha
    */
-  async ordersGroupedByTable(_, { restaurantId, tableId, tableCode }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-
-    const rid = toId(restaurantId);
+  async ordersGroupedByTable(_, { restaurantId, tableId, tableCode }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     let t = null;
     if (tableId && mongoose.isValidObjectId(tableId)) {
       t = await Table.findOne({ _id: tableId, restaurantId: rid })
@@ -507,12 +505,8 @@ export const OrderQuery = {
 
 
 
-  async demandForecast(_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-
-    const rid = toId(restaurantId);
+  async demandForecast(_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildDemandForecast({
       restaurantId: rid,
       horizonDays,
@@ -520,12 +514,8 @@ export const OrderQuery = {
     });
   },
 
-  async menuEngineeringAssistant(_, { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-
-    const rid = toId(restaurantId);
+  async menuEngineeringAssistant(_, { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildMenuEngineeringAssistant({
       restaurantId: rid,
       lookbackDays,
@@ -535,12 +525,10 @@ export const OrderQuery = {
 
   async smartPromotionEngine(
     _,
-    { restaurantId, lookbackDays = 30, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }
+    { restaurantId, lookbackDays = 30, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
+    ctx
   ) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-    const rid = toId(restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildSmartPromotionEngine({
       restaurantId: rid,
       lookbackDays,
@@ -549,11 +537,8 @@ export const OrderQuery = {
     });
   },
 
-  async managerDashboard(_, { restaurantId, range = "week" }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-    const rid = toId(restaurantId);
+  async managerDashboard(_, { restaurantId, range = "week" }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const now = new Date();
     const days = String(range).toLowerCase() === "month" ? 30 : 7;
@@ -788,12 +773,8 @@ export const OrderQuery = {
     };
   },
 
-  async reportsOverview(_, { restaurantId, startAt, endAt, limit = 500 }) {
-    if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-
-    const rid = toId(restaurantId);
+  async reportsOverview(_, { restaurantId, startAt, endAt, limit = 500 }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const safeLimit = Math.max(1, Math.min(Number(limit || 500), 2000));
     const query = { restaurantId: rid };
     if (startAt || endAt) {
