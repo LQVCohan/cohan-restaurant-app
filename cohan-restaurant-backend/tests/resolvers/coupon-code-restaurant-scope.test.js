@@ -47,6 +47,32 @@ describe("coupon query restaurant scoping", () => {
     guardMocks.requireRoles.mockImplementation(() => undefined);
   });
 
+
+  it("requires restaurantId and does not fallback to global code lookup", async () => {
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+
+    await expect(
+      CouponQuery.couponByCode(null, { code: "FOOD10" }, { user: { roleName: "manager" } }),
+    ).rejects.toThrow("restaurantId is required for coupon lookup");
+
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Coupon.findOne).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed restaurantId and does not fallback to global code lookup", async () => {
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+
+    await expect(
+      CouponQuery.couponByCode(
+        null,
+        { code: "FOOD10", restaurantId: "bad-id" },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("restaurantId is required for coupon lookup");
+
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Coupon.findOne).not.toHaveBeenCalled();
+  });
   it("coupons with restaurantId calls requireRestaurantAccess and Coupon.find", async () => {
     modelMocks.Coupon.find.mockReturnValue(mockFindChain([]));
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
