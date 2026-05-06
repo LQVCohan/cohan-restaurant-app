@@ -131,6 +131,7 @@ const ShiftDetailModal = ({
   const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
   const [deleteGroupReason, setDeleteGroupReason] = useState("");
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [isChangeHistoryExpanded, setIsChangeHistoryExpanded] =
     useState(false);
   const [isRemovingStaff, setIsRemovingStaff] = useState(false);
@@ -167,6 +168,47 @@ const ShiftDetailModal = ({
   const hasPendingAdds = pendingAddStaffIds.length > 0;
   const hasNoteChanged = noteDraft !== (shift?.notes || "");
   const hasPendingChanges = hasPendingAdds || hasNoteChanged;
+  const hasUnsavedShiftDetailChanges = useMemo(() => {
+    const noteChanged = noteDraft !== (shift?.notes || "");
+    const hasPendingStaffAdds = pendingAddStaffIds.length > 0;
+
+    const timeDraftChanged =
+      timeChangeOpen &&
+      (timeChangeDraft.startTime !== (shift?.startTime || "") ||
+        timeChangeDraft.endTime !== (shift?.endTime || "") ||
+        Boolean(timeChangeDraft.reason?.trim()) ||
+        timeChangeDraft.allowOverride ||
+        Boolean(timeChangeDraft.overrideReason?.trim()));
+
+    const removeDraftChanged =
+      Boolean(removeConfirm) && Boolean(removeReason.trim());
+    const addDraftChanged = Boolean(addConfirm) && Boolean(addReason.trim());
+    const deleteDraftChanged =
+      deleteGroupOpen && Boolean(deleteGroupReason.trim());
+
+    return (
+      noteChanged ||
+      hasPendingStaffAdds ||
+      timeDraftChanged ||
+      removeDraftChanged ||
+      addDraftChanged ||
+      deleteDraftChanged
+    );
+  }, [
+    noteDraft,
+    shift?.notes,
+    shift?.startTime,
+    shift?.endTime,
+    pendingAddStaffIds.length,
+    timeChangeOpen,
+    timeChangeDraft,
+    removeConfirm,
+    removeReason,
+    addConfirm,
+    addReason,
+    deleteGroupOpen,
+    deleteGroupReason,
+  ]);
   const shiftEssentialJobs = useMemo(
     () => shift?.essentialJobs || [],
     [shift?.essentialJobs],
@@ -294,6 +336,7 @@ const ShiftDetailModal = ({
     setDeleteGroupOpen(false);
     setDeleteGroupReason("");
     setIsDeletingGroup(false);
+    setCloseConfirmOpen(false);
     setIsChangeHistoryExpanded(false);
   }, [shift]);
 
@@ -682,15 +725,51 @@ const ShiftDetailModal = ({
     }
   };
 
+  const requestCloseModal = () => {
+    if (
+      isSavingChanges ||
+      isSavingNotes ||
+      isAddingStaff ||
+      isAddingPublishedStaff ||
+      isRemovingStaff ||
+      isDeletingGroup ||
+      isDeletingPublishedShiftGroup ||
+      isSubmittingTimeChange ||
+      isChangingShiftTime
+    ) {
+      return;
+    }
+
+    if (hasUnsavedShiftDetailChanges) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+
+    onClose?.();
+  };
+
+  const confirmDiscardAndClose = () => {
+    setCloseConfirmOpen(false);
+    onClose?.();
+  };
+
+  const cancelDiscardAndClose = () => {
+    setCloseConfirmOpen(false);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={requestCloseModal}>
       <Modal.Header>
         <div className="shift-detail-title">
           <div>
             <span className="eyebrow">Quản lý lịch làm</span>
             <h2>Chi tiết ca làm việc</h2>
           </div>
-          <button type="button" className="header-close-btn" onClick={onClose}>
+          <button
+            type="button"
+            className="header-close-btn"
+            onClick={requestCloseModal}
+          >
             <X size={18} />
           </button>
         </div>
@@ -738,12 +817,6 @@ const ShiftDetailModal = ({
               </div>
             </div>
 
-            {shift.notes ? (
-              <div className="summary-note">
-                <span>Ghi chú hiện tại</span>
-                <p>{shift.notes}</p>
-              </div>
-            ) : null}
             {shift.notes ? (
               <div className="summary-note">
                 <span>Ghi chú hiện tại</span>
@@ -841,11 +914,11 @@ const ShiftDetailModal = ({
               <h4>Ghi chú ca</h4>
             </div>
             <textarea
+              className="note-textarea"
               value={noteDraft}
               onChange={(event) => setNoteDraft(event.target.value)}
               placeholder="Nhập ghi chú ca làm..."
               rows={2}
-              style={{ width: "100%" }}
               readOnly={readOnly}
               disabled={readOnly}
             />
@@ -1359,6 +1432,35 @@ const ShiftDetailModal = ({
               </div>
             </div>
           ) : null}
+          {closeConfirmOpen ? (
+            <div className="close-confirm-backdrop">
+              <div className="close-confirm-card">
+                <div className="close-confirm-content">
+                  <h4>Bạn có thay đổi chưa lưu</h4>
+                  <p>
+                    Nếu đóng cửa sổ này, các thay đổi tạm thời như ghi chú hoặc
+                    nhân viên chưa lưu sẽ bị mất.
+                  </p>
+                </div>
+                <div className="close-confirm-actions">
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={cancelDiscardAndClose}
+                  >
+                    Tiếp tục chỉnh sửa
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={confirmDiscardAndClose}
+                  >
+                    Đóng và bỏ thay đổi
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="section-block schedule-log-section">
             <div className="section-header schedule-log-header">
               <div>
@@ -1473,7 +1575,7 @@ const ShiftDetailModal = ({
                 </button>
               </>
             ) : null}
-            <button className="btn-close" onClick={onClose}>
+            <button className="btn-close" onClick={requestCloseModal}>
               Đóng
             </button>
           </div>
