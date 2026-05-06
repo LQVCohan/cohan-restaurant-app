@@ -2,6 +2,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Menu, MenuItem, Restaurant, Recipe } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
@@ -55,7 +56,7 @@ export const MenuMutation = {
   // ================================
   // ENSURE MENU (CREATE / UPDATE)
   // ================================
-  ensureMenu: async (_, { input }) => {
+  ensureMenu: async (_, { input }, ctx) => {
     const {
       restaurantId,
       timeSlot,
@@ -68,6 +69,7 @@ export const MenuMutation = {
 
     if (!isOid(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     assertTimeSlot(timeSlot);
+    await requireRestaurantAccess(ctx, restaurantId);
 
     // check restaurant tồn tại (nhẹ)
     const restExists = await Restaurant.exists({ _id: restaurantId });
@@ -108,7 +110,7 @@ export const MenuMutation = {
   // - Pricing is Recipe-based (servingVariants.price)
   // - basePrice in MenuItem is only cached/display (synced from recipe)
   // ================================
-  createMenuItem: async (_, { input }) => {
+  createMenuItem: async (_, { input }, ctx) => {
     const {
       restaurantId,
       timeSlot,
@@ -135,6 +137,7 @@ export const MenuMutation = {
       throw new GraphQLError("name is required");
     }
     if (status) assertStatus(status);
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const basePriceNum = toNumOrUndef(basePrice);
     if (basePriceNum !== undefined && basePriceNum < 0) {
@@ -243,9 +246,14 @@ export const MenuMutation = {
     }
   },
 
-  updateMenuItem: async (_, { input }) => {
+  updateMenuItem: async (_, { input }, ctx) => {
     const { id } = input || {};
     if (!isOid(id)) throw new GraphQLError("Invalid id");
+    const existing = await MenuItem.findById(id)
+      .select({ restaurantId: 1 })
+      .lean();
+    if (!existing) throw new GraphQLError("MenuItem not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
 
     // only allow basic fields here. Pricing must go to Recipe (but we support basePrice as shortcut)
     const session = await mongoose.startSession();
@@ -361,8 +369,13 @@ export const MenuMutation = {
     }
   },
 
-  deleteMenuItem: async (_, { id }) => {
+  deleteMenuItem: async (_, { id }, ctx) => {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
+    const existing = await MenuItem.findById(id)
+      .select({ restaurantId: 1 })
+      .lean();
+    if (!existing) return true;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
 
     const session = await mongoose.startSession();
     try {
@@ -386,7 +399,7 @@ export const MenuMutation = {
     }
   },
 
-  updateMenuItemBasic: async (_p, { input }) => {
+  updateMenuItemBasic: async (_p, { input }, ctx) => {
     const { restaurantId, menuItemId, name, description, categoryId, status } =
       input || {};
 
@@ -396,6 +409,7 @@ export const MenuMutation = {
     if (categoryId && !isOid(categoryId)) {
       throw new GraphQLError("Invalid categoryId");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const patch = {};
     if (typeof name === "string") patch.name = name;
@@ -437,9 +451,14 @@ export const MenuMutation = {
     return doc;
   },
 
-  toggleMenuItemStatus: async (_, { id, status }) => {
+  toggleMenuItemStatus: async (_, { id, status }, ctx) => {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
     assertStatus(status);
+    const existing = await MenuItem.findById(id)
+      .select({ restaurantId: 1 })
+      .lean();
+    if (!existing) throw new GraphQLError("MenuItem not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
 
     const item = await MenuItem.findByIdAndUpdate(
       id,
@@ -456,7 +475,7 @@ export const MenuMutation = {
   // - Update Recipe.servingVariants.price (all variants)
   // - Sync MenuItem.basePrice = min variant price
   // ================================
-  bulkUpdateMenuItemPrices: async (_, { input }) => {
+  bulkUpdateMenuItemPrices: async (_, { input }, ctx) => {
     try {
       const {
         restaurantId,
@@ -470,6 +489,7 @@ export const MenuMutation = {
 
       if (!isOid(restaurantId)) throw new GraphQLError("Invalid restaurantId");
       if (timeSlot) assertTimeSlot(timeSlot);
+      await requireRestaurantAccess(ctx, restaurantId);
 
       if (
         !target ||

@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Menu, MenuItem, Category } from "../../../models/index.js";
+import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 
 const toObjectIdOrNull = (id) => {
   try {
@@ -14,15 +15,17 @@ const toObjectIdOrNull = (id) => {
 };
 
 export const MenuQuery = {
-  menus: async (_p, { restaurantId }) => {
+  menus: async (_p, { restaurantId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     return Menu.find({ restaurantId })
       .sort({ timeSlot: 1 })
       .lean({ virtuals: true });
   },
 
-  menu: async (_p, { restaurantId, timeSlot }) => {
+  menu: async (_p, { restaurantId, timeSlot }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return null;
+    await requireRestaurantAccess(ctx, restaurantId);
     return Menu.findOne({ restaurantId, timeSlot }).lean({ virtuals: true });
   },
 
@@ -30,9 +33,11 @@ export const MenuQuery = {
   // Recipe/servingVariants should be fetched via inventory.menuItemsWithRecipes or type resolvers.
   menuItems: async (
     _p,
-    { restaurantId, timeSlot, categoryId, search, limit = 50 }
+    { restaurantId, timeSlot, categoryId, search, limit = 50 },
+    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId };
 
@@ -60,7 +65,7 @@ export const MenuQuery = {
       .lean({ virtuals: true });
   },
 
-  menuItemsConnection: async (_p, { limit = 20, cursor, filter }) => {
+  menuItemsConnection: async (_p, { limit = 20, cursor, filter }, ctx) => {
     if (!filter || !filter.restaurantId) {
       throw new GraphQLError("filter.restaurantId is required", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -72,6 +77,7 @@ export const MenuQuery = {
         pageInfo: { endCursor: null, hasNextPage: false },
       };
     }
+    await requireRestaurantAccess(ctx, filter.restaurantId);
 
     const q = { restaurantId: filter.restaurantId };
 
@@ -142,13 +148,18 @@ export const MenuQuery = {
 
   topMenuItems: async (
     _p,
-    { limit = 8, restaurantId, categoryId, categoryName, timeSlot }
+    { limit = 8, restaurantId, categoryId, categoryName, timeSlot },
+    ctx
   ) => {
     const LIM = Math.min(Math.max(limit, 1), 200);
 
     const q = {};
-    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+    if (restaurantId) {
+      if (!mongoose.isValidObjectId(restaurantId)) return [];
+      await requireRestaurantAccess(ctx, restaurantId);
       q.restaurantId = restaurantId;
+    } else {
+      requireRoles(ctx, ["ADMIN"]);
     }
 
     if (timeSlot) {
