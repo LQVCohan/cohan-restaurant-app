@@ -359,7 +359,12 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             method
             status
             paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
             paidAt
+            paidBy
           }
           shipping {
             fullName
@@ -491,7 +496,12 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             method
             status
             paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
             paidAt
+            paidBy
           }
           shipping {
             fullName
@@ -603,11 +613,16 @@ const GET_ORDER = gql`
         grandTotal
       }
       payment {
-        method
-        status
-        paidAmount
-        paidAt
-      }
+            method
+            status
+            paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
+            paidAt
+            paidBy
+          }
       shipping {
         fullName
         phone

@@ -302,6 +302,11 @@ const OrderCard = ({
           <User size={12} />
           <span className="name">{customerName}</span>
         </div>
+        {isPaymentRequested && (
+          <div className="oc-note-badge" style={{ marginBottom: 6, color: "#15803d" }}>
+            Khách gọi thanh toán
+          </div>
+        )}
         {hasPendingVoidRequest && (
             <div className="oc-note-badge" style={{ marginBottom: 6, color: "#b45309" }}>Có yêu cầu hủy món</div>
           )}
