@@ -8,6 +8,7 @@ let mockMeData;
 let mockRestaurantData;
 let mockStaffData;
 let mockShiftsData;
+let mockDeclinedShiftAcksData;
 let mutationSpy;
 let lazyQuerySpy;
 
@@ -38,6 +39,9 @@ vi.mock("@apollo/client", async () => {
           error: null,
           refetch: vi.fn().mockResolvedValue(undefined),
         };
+      }
+      if (body.includes("query ShiftAcknowledgements")) {
+        return { data: mockDeclinedShiftAcksData, loading: false, error: null, refetch: vi.fn() };
       }
 
       return { data: null, loading: false, error: null };
@@ -94,6 +98,18 @@ describe("ScheduleManagement", () => {
           endTime: "2026-04-20T14:00:00.000Z",
           status: "scheduled",
           notes: "Ca quản lý đầu tuần",
+        },
+      ],
+    };
+    mockDeclinedShiftAcksData = {
+      shiftAcknowledgements: [
+        {
+          id: "ack-1",
+          shiftId: "shift-row-1",
+          employeeId: "staff-1",
+          reasonCategory: "sick",
+          reason: "Bị ốm",
+          declineClassification: "unknown",
         },
       ],
     };
@@ -212,5 +228,18 @@ describe("ScheduleManagement", () => {
 
     fireEvent.click(screen.getByRole("checkbox"));
     expect(publishButton).not.toBeDisabled();
+  });
+
+  it("hides decline review action buttons in read-only mode", () => {
+    render(<ScheduleManagement readOnly />);
+    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Không duyệt lý do" })).not.toBeInTheDocument();
+    expect(screen.getByText("Chế độ chỉ xem: không thể duyệt lý do từ chối.")).toBeInTheDocument();
+  });
+
+  it("shows decline review action buttons when not read-only", () => {
+    render(<ScheduleManagement />);
+    expect(screen.getByRole("button", { name: "Chấp nhận lý do" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Không duyệt lý do" })).toBeInTheDocument();
   });
 });

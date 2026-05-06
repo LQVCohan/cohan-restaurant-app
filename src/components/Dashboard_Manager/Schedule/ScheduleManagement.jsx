@@ -133,6 +133,23 @@ const GET_SCHEDULE_ACK_SUMMARY = gql`
     }
   }
 `;
+const GET_DECLINED_SHIFT_ACKS = gql`
+  query ShiftAcknowledgements($restaurantId: ID!, $periodStart: DateTime, $periodEnd: DateTime, $status: ShiftAcknowledgementStatus) {
+    shiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd, status: $status) {
+      id
+      shiftId
+      employeeId
+      reasonCategory
+      reason
+      declineClassification
+    }
+  }
+`;
+const REVIEW_SHIFT_ACK = gql`
+  mutation ReviewShiftAcknowledgement($input: ReviewShiftAcknowledgementInput!) {
+    reviewShiftAcknowledgement(input: $input) { id declineClassification }
+  }
+`;
 
 const GET_SCHEDULE_CHANGE_LOGS = gql`
   query ScheduleChangeLogs(
@@ -1395,6 +1412,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId || viewMode !== "week",
   });
+  const { data: declinedShiftAcksData, refetch: refetchDeclinedShiftAcks } = useQuery(GET_DECLINED_SHIFT_ACKS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      periodStart: rangeStart.toISOString(),
+      periodEnd: rangeEnd.toISOString(),
+      status: "declined",
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || viewMode !== "week",
+  });
+  const [reviewShiftAck] = useMutation(REVIEW_SHIFT_ACK);
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
   const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), {
@@ -3922,6 +3950,30 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </div>
         </div>
       </header>
+      <section className="declined-shift-review-panel">
+        <h3>Ca bị từ chối ({(declinedShiftAcksData?.shiftAcknowledgements || []).length})</h3>
+        {(declinedShiftAcksData?.shiftAcknowledgements || []).map((ack) => (
+          <div key={ack.id} className="declined-shift-review-item">
+            <div>Nhân viên: {ack.employeeId}</div>
+            <div>Ca: {ack.shiftId}</div>
+            <div>Lý do: {ack.reasonCategory} - {ack.reason}</div>
+            <div>Phân loại: {ack.declineClassification || "unknown"}</div>
+            {!readOnly ? (
+              <>
+                <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "valid" } } }); await refetchDeclinedShiftAcks(); }}>
+                  Chấp nhận lý do
+                </button>
+                <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "invalid" } } }); await refetchDeclinedShiftAcks(); }}>
+                  Không duyệt lý do
+                </button>
+              </>
+            ) : (
+              <small>Chế độ chỉ xem: không thể duyệt lý do từ chối.</small>
+            )}
+            {ack.declineClassification === "valid" ? <small>Lý do hợp lệ. Quản lý cần chỉnh lại ca hoặc đổi nhân viên trong ShiftDetailModal.</small> : null}
+          </div>
+        ))}
+      </section>
 
       <div className="schedule-toolbar">
         <div className="toolbar-left">
