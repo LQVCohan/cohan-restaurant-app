@@ -22,7 +22,10 @@ const modelMocks = vi.hoisted(() => ({
   PaymentTransaction: { create: vi.fn().mockResolvedValue([{ _id: "trx-1" }]) },
   Cashflow: { create: vi.fn().mockResolvedValue([{ _id: "cf-1" }]) },
   EventLog: { log: vi.fn().mockResolvedValue(true) },
-  Table: { updateOne: vi.fn().mockResolvedValue(true) },
+  Table: {
+    findById: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "table-1", code: "T1", restaurantId: "65f000000000000000000099" }) }),
+    updateOne: vi.fn().mockResolvedValue(true),
+  },
   Restaurant: {},
   PaymentSession: {},
 }));
@@ -100,57 +103,43 @@ describe("payment request + confirm guards", () => {
       restaurantId: "65f000000000000000000099",
       orderCode: "ORD-001",
       currentStatus: "served",
-      items: [
-        {
-          status: "served",
-          quantity: 1,
-          lineSubtotal: 100000,
-          unitPrice: 100000,
-          dishId: "dish-1",
-          name: "Món test",
-          voidRequests: [],
-          returnRequests: [],
-        },
-      ],
+      items: [{ status: "served", quantity: 1, lineSubtotal: 100000, unitPrice: 100000, dishId: "dish-1", name: "Món test", voidRequests: [], returnRequests: [] }],
       totals: { subtotal: 100000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 100000 },
       payment: { status: "payment_requested" },
     };
 
-    modelMocks.Order.find
-      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) })
-      .mockResolvedValueOnce([paidOrder]);
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) }).mockResolvedValueOnce([paidOrder]);
 
-    await payOrdersByOrderIds(
-      null,
-      {
-        input: {
-          restaurantId: "65f000000000000000000099",
-          orderIds: ["65f000000000000000000001"],
-          method: "cash",
-          note: "test",
-        },
-      },
-      { user: { _id: "65f000000000000000000777" } },
-    );
+    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, { user: { _id: "65f000000000000000000777" } });
 
-    expect(modelMocks.Order.updateMany).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        $set: expect.objectContaining({
-          "payment.status": "paid",
-          "payment.paidBy": expect.anything(),
-          currentStatus: "completed",
-        }),
-        $push: expect.objectContaining({
-          statusTimeline: expect.objectContaining({
-            note: "Đã thanh toán và hoàn tất đơn.",
-          }),
-        }),
-      }),
-      expect.anything(),
-    );
-    const updatePayload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
-    expect(updatePayload.$set["payment.paidAt"]).toBeTruthy();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalled();
+    const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
+    expect(payload.$set["payment.status"]).toBe("paid");
+    expect(payload.$set["payment.paidBy"]).toBeTruthy();
+    expect(payload.$set["payment.paidAt"]).toBeTruthy();
+    expect(payload.$set.currentStatus).toBe("completed");
+    expect(payload.$push.statusTimeline.note).toBe("Đã thanh toán và hoàn tất đơn.");
+    expect(emitOrderEventMock).toHaveBeenCalled();
+  });
+
+  it("payOrdersByTableId does not reference undefined activeOrderIds", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const servedOrder = {
+      _id: "65f000000000000000000111",
+      restaurantId: "65f000000000000000000099",
+      tableId: "table-1",
+      orderCode: "ORD-T1",
+      currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 50000, unitPrice: 50000, dishId: "dish-1", name: "Món A", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 50000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 50000 },
+    };
+
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([servedOrder]) }).mockResolvedValueOnce([servedOrder]);
+
+    await expect(
+      payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: true } }, { user: { _id: "65f000000000000000000777" } }),
+    ).resolves.toBeTruthy();
+
     expect(emitOrderEventMock).toHaveBeenCalled();
   });
 });

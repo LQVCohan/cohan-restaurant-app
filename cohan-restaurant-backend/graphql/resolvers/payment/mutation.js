@@ -363,7 +363,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     await session.commitTransaction();
     session.endSession();
 
-    const paidOrders = await Order.find({ _id: { $in: activeOrderIds } });
+    const paidOrders = await Order.find({ _id: { $in: orderIds } });
     for (const paidOrder of paidOrders) {
       await emitOrderEvent(ctx, String(paidOrder.restaurantId), "ORDER_UPDATED", paidOrder);
     }

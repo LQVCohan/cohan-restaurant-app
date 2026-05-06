@@ -1646,6 +1646,7 @@ export const OrderMutation = {
       throw new Error("restaurantId and orderIds are required");
     }
     const rid = toId(restaurantId);
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
     const ids = orderIds.map((id) => toId(id)).filter(Boolean);
     const orders = await Order.find({ restaurantId: rid, _id: { $in: ids } });
     if (!orders.length) throw new Error("Không tìm thấy đơn để yêu cầu thanh toán.");
@@ -1655,13 +1656,13 @@ export const OrderMutation = {
       order.payment = order.payment || {};
       order.payment.status = "payment_requested";
       order.payment.requestedAt = new Date();
-      if (ctx?.user?._id) order.payment.requestedBy = toId(ctx.user._id);
+      if (actorId) order.payment.requestedBy = actorId;
       order.statusTimeline = [
         ...(order.statusTimeline || []),
         {
           status: order.currentStatus,
           at: new Date(),
-          byUserId: toId(ctx?.user?._id) || null,
+          byUserId: actorId || null,
           note: "Nhân viên yêu cầu thanh toán.",
         },
       ];
@@ -1676,6 +1677,7 @@ export const OrderMutation = {
     if (!restaurantId || !tableCode)
       throw new Error("restaurantId and tableCode are required");
     const rid = toId(restaurantId);
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
     const orders = await Order.find({
       restaurantId: rid,
       tableCode: String(tableCode),
@@ -1688,13 +1690,13 @@ export const OrderMutation = {
       order.payment = order.payment || {};
       order.payment.status = "payment_requested";
       order.payment.requestedAt = new Date();
-      if (ctx?.user?._id) order.payment.requestedBy = toId(ctx.user._id);
+      if (actorId) order.payment.requestedBy = actorId;
       order.statusTimeline = [
         ...(order.statusTimeline || []),
         {
           status: order.currentStatus,
           at: new Date(),
-          byUserId: toId(ctx?.user?._id) || null,
+          byUserId: actorId || null,
           note: "Nhân viên yêu cầu thanh toán.",
         },
       ];
