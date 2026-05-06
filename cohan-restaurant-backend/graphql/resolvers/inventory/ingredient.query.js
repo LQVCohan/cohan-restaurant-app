@@ -7,6 +7,7 @@ import {
   MenuItem,
   StockMovement,
 } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 const ACTIVE_MENU_ITEM_STATUSES = ["available"];
 
 async function purgeExpiredIngredientsByRestaurant(restaurantId) {
@@ -50,8 +51,9 @@ function buildIngredientSearchSortKey(item, normalizedQuery) {
 }
 
 export default {
-  ingredients: async (_p, { restaurantId, search, limit, includeDeleted = false }) => {
+  ingredients: async (_p, { restaurantId, search, limit, includeDeleted = false }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     await purgeExpiredIngredientsByRestaurant(restaurantId);
 
     const normalizedSearch = normalizeSearchText(search);
@@ -106,13 +108,17 @@ export default {
       .map((row) => row.item);
   },
 
-  ingredient: async (_p, { id }) => {
+  ingredient: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return null;
+    const existing = await Ingredient.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return null;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return Ingredient.findById(id).select({ __v: 0 }).lean({ virtuals: true });
   },
 
-  ingredientTrash: async (_p, { restaurantId, limit = 200 }) => {
+  ingredientTrash: async (_p, { restaurantId, limit = 200 }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     await purgeExpiredIngredientsByRestaurant(restaurantId);
     return Ingredient.find({
       restaurantId,
@@ -134,6 +140,8 @@ export default {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const rid = new mongoose.Types.ObjectId(String(restaurantId));
     const LIM = Math.min(Math.max(limit || 8, 1), 20);
@@ -242,7 +250,8 @@ export default {
 
   ingredientPriceSuggestions: async (
     _p,
-    { restaurantId, ingredientId, limit = 5 }
+    { restaurantId, ingredientId, limit = 5 },
+    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
@@ -250,6 +259,8 @@ export default {
     if (!mongoose.isValidObjectId(ingredientId)) {
       throw new GraphQLError("Invalid ingredientId");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const LIM = Math.min(Math.max(limit || 5, 1), 20);
 
@@ -295,10 +306,12 @@ export default {
    */
   menuItemsUsingIngredient: async (
     _p,
-    { restaurantId, ingredientId, limit = 100 }
+    { restaurantId, ingredientId, limit = 100 },
+    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     if (!mongoose.isValidObjectId(ingredientId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
 
     // Tìm các recipe có chứa ingredientId
     const recipes = await Recipe.find({

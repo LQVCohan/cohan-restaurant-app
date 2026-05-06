@@ -8,6 +8,7 @@ import {
   Recipe,
   MenuItem,
 } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function normalizeDupKeyError(err) {
   // Mongo duplicate key
@@ -243,10 +244,12 @@ async function resolveIngredientCategoryRef({
 }
 
 export default {
-  createIngredient: async (_p, { input }) => {
+  createIngredient: async (_p, { input }, ctx) => {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
+
+    await requireRestaurantAccess(ctx, input.restaurantId);
 
     try {
       const categoryRef = await resolveIngredientCategoryRef({
@@ -274,7 +277,7 @@ export default {
     }
   },
 
-  updateIngredient: async (_p, { input }) => {
+  updateIngredient: async (_p, { input }, ctx) => {
     const { id, ...patch } = input || {};
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
 
@@ -285,6 +288,8 @@ export default {
         .lean();
 
       if (!ing) throw new GraphQLError("Ingredient not found");
+      await requireRestaurantAccess(ctx, ing.restaurantId);
+      delete patch.restaurantId;
 
       // 2) Check ingredient đang được dùng trong order nào không (active orders)
       const usedOrder = await Order.findOne({
@@ -343,7 +348,7 @@ export default {
     }
   },
 
-  deleteIngredient: async (_p, { id }) => {
+  deleteIngredient: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return false;
 
     const ing = await Ingredient.findById(id)
@@ -352,6 +357,7 @@ export default {
     if (!ing) return false;
     if (ing.deletedAt) return true;
 
+    await requireRestaurantAccess(ctx, ing.restaurantId);
     await purgeExpiredIngredientsByRestaurant(ing.restaurantId);
 
     const activeMenuItems = await findBlockingActiveMenuItems({
@@ -393,9 +399,19 @@ export default {
     return res.modifiedCount > 0;
   },
 
-  restoreIngredient: async (_p, { id }) => {
+  restoreIngredient: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return null;
     const now = new Date();
+    const existing = await Ingredient.findById(id)
+      .select({ restaurantId: 1, deletedAt: 1, deleteExpiresAt: 1 })
+      .lean();
+    if (!existing) {
+      throw new GraphQLError(
+        "Không thể khôi phục nguyên liệu. Bản ghi đã bị xóa vĩnh viễn hoặc đã hết hạn khôi phục."
+      );
+    }
+
+    await requireRestaurantAccess(ctx, existing.restaurantId);
 
     const restored = await Ingredient.findOneAndUpdate(
       {
@@ -418,8 +434,15 @@ export default {
     return restored;
   },
 
-  deleteIngredientPermanently: async (_p, { id }) => {
+  deleteIngredientPermanently: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return false;
+    const existing = await Ingredient.findById(id)
+      .select({ restaurantId: 1, deletedAt: 1 })
+      .lean();
+    if (!existing) return false;
+
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+
     const res = await Ingredient.deleteOne({
       _id: id,
       deletedAt: { $ne: null },
@@ -445,6 +468,8 @@ export default {
         extensions: { code: "UNAUTHENTICATED" },
       });
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const rid = new mongoose.Types.ObjectId(String(restaurantId));
     const iid = new mongoose.Types.ObjectId(String(ingredientId));
