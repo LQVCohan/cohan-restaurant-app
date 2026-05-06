@@ -104,6 +104,7 @@ export const CouponMutation = {
     assertValidCouponPayload(payload);
     payload.restaurantId = existingRestaurantId;
     const updated = await Coupon.findByIdAndUpdate(id, payload, { new: true });
+    if (!updated) throw new GraphQLError("Coupon not found");
     return (await loadCouponForOutput(updated._id)) || updated;
   },
   async deleteCoupon(_, { id }, ctx) {
@@ -124,6 +125,7 @@ export const CouponMutation = {
     if (!existing) throw new GraphQLError("Coupon not found");
     await requireRestaurantAccess(ctx, existing.restaurantId);
     const updated = await Coupon.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true });
+    if (!updated) throw new GraphQLError("Coupon not found");
     return (await loadCouponForOutput(updated._id)) || updated;
   },
 
@@ -152,6 +154,7 @@ export const CouponMutation = {
     assertValidDateRange(payload);
     payload.restaurantId = toObjId(existing.restaurantId);
     const updated = await VoucherPackage.findByIdAndUpdate(id, payload, { new: true });
+    if (!updated) throw new GraphQLError("Voucher package not found");
     return (await loadPackageForOutput(updated._id)) || updated;
   },
   async deleteVoucherPackage(_, { id }, ctx) {
