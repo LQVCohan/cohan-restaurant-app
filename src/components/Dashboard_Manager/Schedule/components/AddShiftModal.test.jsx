@@ -57,12 +57,24 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
       />,
     );
 
-    expect(screen.getAllByText("Bắt buộc").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Nhân viên phục vụ").closest(".job-checkbox")).toHaveClass("checked", "locked");
-    expect(screen.getByText("Thu ngân").closest(".job-checkbox")).toHaveClass("checked", "locked");
+    const serverRoleCard = screen
+      .getByText("Nhân viên phục vụ")
+      .closest(".job-checkbox");
+    const cashierRoleCard = screen.getByText("Thu ngân").closest(".job-checkbox");
 
-    fireEvent.click(screen.getByText("Thu ngân"));
-    expect(screen.getByText("Thu ngân").closest(".job-checkbox")).toHaveClass("checked");
+    expect(serverRoleCard).toHaveClass("checked", "locked");
+    expect(cashierRoleCard).toHaveClass("checked", "locked");
+    expect(serverRoleCard).toHaveAttribute(
+      "title",
+      expect.stringContaining("không thể bỏ chọn"),
+    );
+    expect(cashierRoleCard).toHaveAttribute(
+      "title",
+      expect.stringContaining("không thể bỏ chọn"),
+    );
+
+    fireEvent.click(cashierRoleCard);
+    expect(cashierRoleCard).toHaveClass("checked", "locked");
 
     fireEvent.click(screen.getByText("Bếp trưởng"));
     expect(screen.getByText("Bếp trưởng").closest(".job-checkbox")).toHaveClass("checked");

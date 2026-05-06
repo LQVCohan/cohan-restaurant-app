@@ -458,9 +458,6 @@ const AddShiftModal = ({
                 >
                   <span className="emoji">{job.emoji}</span>
                   <span className="text">{job.label}</span>
-                  {isLocked ? (
-                    <span className="job-lock-badge">Bắt buộc</span>
-                  ) : null}
                   {isChecked && <Check size={16} className="check-icon" />}
                 </div>
               );

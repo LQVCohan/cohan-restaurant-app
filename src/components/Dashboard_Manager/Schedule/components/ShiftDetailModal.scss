@@ -1100,6 +1100,37 @@
 }
 
 .schedule-log-section {
+  .schedule-log-header {
+    align-items: center;
+  }
+
+  .history-toggle-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .history-toggle-btn:hover {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+    color: #4338ca;
+  }
+
+  .schedule-log-collapsed-hint {
+    padding: 0.75rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.85rem;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
   .schedule-log-list {
     display: flex;
     flex-direction: column;
