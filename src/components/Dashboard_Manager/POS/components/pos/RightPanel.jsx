@@ -203,7 +203,7 @@ export default function RightPanel() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
+  const activePaymentRequestRef = useRef(null);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isPrintModalOpen, setPrintModalOpen] = useState(false);
@@ -430,8 +430,17 @@ export default function RightPanel() {
 
   const handlePaymentComplete = useCallback(
     (payload) => {
-      const paidOrderId = payload?.server?.order?.id || payload?.server?.orderId;
-      if (paidOrderId) clearPaymentRequest?.(paidOrderId);
+      const paidOrderId =
+        payload?.orderId ||
+        payload?.server?.order?.id ||
+        payload?.server?.orderId ||
+        activePaymentRequestRef.current?.orderId;
+
+      if (paidOrderId) {
+        clearPaymentRequest?.(paidOrderId);
+      }
+
+      activePaymentRequestRef.current = null;
       showNotification("Thanh toán thành công.", "success");
       const inv =
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
@@ -460,12 +469,22 @@ export default function RightPanel() {
 
   const handleOpenPaymentRequest = useCallback(
     async (request) => {
+      activePaymentRequestRef.current = request;
+
       const res = await loadPaymentRequestToPOS?.(request);
+
       if (!res?.success) {
-        showNotification(res?.message || "Không thể mở yêu cầu thanh toán.", "error");
+        activePaymentRequestRef.current = null;
+        showNotification(
+          res?.message || "Không thể mở yêu cầu thanh toán.",
+          "error",
+        );
         return;
       }
-      setPaymentModalOpen(true);
+
+      setTimeout(() => {
+        setPaymentModalOpen(true);
+      }, 0);
     },
     [loadPaymentRequestToPOS, showNotification],
   );
@@ -928,7 +947,11 @@ export default function RightPanel() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
-        totalAmount={finalTotals?.total || 0}
+        totalAmount={
+          finalTotals?.total ||
+          activePaymentRequestRef.current?.totals?.grandTotal ||
+          0
+        }
         order={currentOrder}
         table={currentTable}
         onConfirm={() => {}}
@@ -996,7 +1019,7 @@ export default function RightPanel() {
               <div>
                 {paymentRequests.slice(0, 3).map((req) => (
                   <div key={req.orderId}>
-                    {(req.tableCode || req.orderCode || req.orderId)} ·{" "}
+                    {req.tableCode || req.orderCode || req.orderId} ·{" "}
                     {formatPrice(req?.totals?.grandTotal || 0)}
                     <button
                       type="button"

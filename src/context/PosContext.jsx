@@ -243,20 +243,25 @@ export default function PosProvider({
       refetchTables?.();
     },
     onUpdated: (order) => {
+      const orderId = order?.id || order?._id;
       const paymentStatus = order?.payment?.status;
       const requestedAt = order?.payment?.requestedAt;
-      const isPaymentRequested =
-        paymentStatus === "payment_requested" || Boolean(requestedAt);
+
       const isPaidOrCompleted =
         paymentStatus === "paid" || order?.currentStatus === "completed";
 
-      if (isPaidOrCompleted && order?.id) {
-        setPaymentRequests((prev) => prev.filter((r) => r.orderId !== order.id));
+      if (isPaidOrCompleted && orderId) {
+        setPaymentRequests((prev) =>
+          prev.filter((r) => String(r.orderId) !== String(orderId)),
+        );
+        return;
       }
 
-      if (isPaymentRequested && order?.id) {
+      const isPaymentRequested = paymentStatus === "payment_requested";
+
+      if (isPaymentRequested && orderId) {
         const nextRequest = {
-          orderId: order.id,
+          orderId,
           orderCode: order.orderCode || null,
           tableId: order.tableId || null,
           tableCode: order.tableCode || null,
@@ -267,27 +272,39 @@ export default function PosProvider({
           customer: order.customerInfo || order.user || null,
           shipping: order.shipping || null,
         };
+
         let shouldNotify = false;
+
         setPaymentRequests((prev) => {
-          const idx = prev.findIndex((r) => r.orderId === order.id);
+          const idx = prev.findIndex(
+            (r) => String(r.orderId) === String(orderId),
+          );
+
           if (idx === -1) {
             shouldNotify = true;
             return [nextRequest, ...prev];
           }
+
           const existing = prev[idx];
+
           if ((existing?.requestedAt || null) !== (requestedAt || null)) {
             shouldNotify = true;
           }
+
           const copy = [...prev];
           copy[idx] = { ...existing, ...nextRequest };
           return copy;
         });
+
         if (shouldNotify) {
           showNotification(
-            `💳 Khách gọi thanh toán: ${order?.tableCode || order?.orderCode || order?.id}`,
+            `💳 Khách gọi thanh toán: ${
+              order?.tableCode || order?.orderCode || orderId
+            }`,
             "warning",
           );
         }
+
         refetchTables?.();
         return;
       }
@@ -752,7 +769,8 @@ export default function PosProvider({
 
   const loadPaymentRequestToPOS = useCallback(
     async (request) => {
-      if (!request) return { success: false, message: "Thiếu request thanh toán." };
+      if (!request)
+        return { success: false, message: "Thiếu request thanh toán." };
       const tableCode = request?.tableCode || null;
       const isDineIn = (request?.orderType || "dine_in") === "dine_in";
 
@@ -764,10 +782,12 @@ export default function PosProvider({
       }
 
       const orderId = request?.orderId;
-      if (!orderId) return { success: false, message: "Thiếu orderId để tải đơn." };
+      if (!orderId)
+        return { success: false, message: "Thiếu orderId để tải đơn." };
       const fetched = await fetchOrderById?.({ id: orderId, restaurantId });
       const order = fetched?.order || fetched || null;
-      if (!order) return { success: false, message: "Không tải được đơn thanh toán." };
+      if (!order)
+        return { success: false, message: "Không tải được đơn thanh toán." };
 
       setCurrentOrderType(order.orderType || request?.orderType || "takeaway");
       setCurrentOrderCode(order.orderCode || request?.orderCode || null);
