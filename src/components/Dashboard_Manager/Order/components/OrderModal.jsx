@@ -223,15 +223,42 @@ const OrderItemRow = React.memo(
             </div>
           ))}
           {Number(item.returnedQuantity || 0) > 0 && <div className="itemCard__note">Đã trả lại: x{item.returnedQuantity}</div>}
-          {item.status === "served" && (
+          {item.status === "served" &&
+            !["completed", "cancelled"].includes(order?.currentStatus) &&
+            pendingReturnRequests.length === 0 && (
             <button onClick={async () => {
               const qtyRaw = window.prompt("Nhập số lượng muốn trả lại", "1");
               if (qtyRaw == null) return;
               const qty = Number(qtyRaw);
+              if (!Number.isInteger(qty) || qty <= 0) {
+                window.alert("Số lượng trả lại phải là số nguyên lớn hơn 0.");
+                return;
+              }
+              const baseline = Number(item.originalQuantity || 0) > 0
+                ? Number(item.originalQuantity)
+                : Number(item.quantity || 0) + Number(item.returnedQuantity || 0);
+              const remainingReturnable = Math.max(
+                0,
+                baseline - Number(item.returnedQuantity || 0),
+              );
+              if (qty > remainingReturnable) {
+                window.alert("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
+                return;
+              }
               const reason = window.prompt("Nhập lý do trả lại món", "");
               if (reason == null) return;
               const mode = window.prompt("Cách xử lý (none/remove_from_bill/refund_after_payment)", "none");
               if (!mode) return;
+              if (
+                !["none", "remove_from_bill", "refund_after_payment"].includes(
+                  mode,
+                )
+              ) {
+                window.alert(
+                  "Chế độ xử lý không hợp lệ. Chọn none, remove_from_bill hoặc refund_after_payment.",
+                );
+                return;
+              }
               await onRequestItemReturn?.({ orderId: order.id, orderItemId: item._id, quantity: qty, reason, refundMode: mode });
             }}>Trả lại món</button>
           )}
