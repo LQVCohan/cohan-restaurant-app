@@ -423,7 +423,7 @@ export default {
 
   myScheduleAcknowledgement: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
     requireAuth(ctx);
-    requireRestaurantScope(ctx, restaurantId);
+    await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
     const publication = await SchedulePublication.findOne({
       restaurantId: toObjectId(restaurantId) || restaurantId,
