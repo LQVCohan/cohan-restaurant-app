@@ -124,6 +124,9 @@ const OrderCard = ({
   const hasPendingVoidRequest = (order?.items || []).some((it) =>
     (it?.voidRequests || []).some((r) => r?.status === "pending"),
   );
+  const hasPendingReturnRequest = (order?.items || []).some((it) =>
+    (it?.returnRequests || []).some((r) => r?.status === "pending"),
+  );
   const orderLocationLabel =
     order?.orderType === "delivery"
       ? "Giao hàng"
@@ -300,6 +303,9 @@ const OrderCard = ({
         </div>
         {hasPendingVoidRequest && (
             <div className="oc-note-badge" style={{ marginBottom: 6, color: "#b45309" }}>Có yêu cầu hủy món</div>
+          )}
+          {hasPendingReturnRequest && (
+            <div className="oc-note-badge" style={{ marginBottom: 6, color: "#0369a1" }}>Có yêu cầu trả lại món</div>
           )}
           {hasNote && (
           <div className="oc-note-box">

@@ -542,6 +542,19 @@ const GET_ORDER = gql`
           reviewedAt
           reviewNote
         }
+        returnedQuantity
+        returnRequests {
+          requestId
+          quantity
+          reason
+          refundMode
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
         weightGrams
         status
         image
@@ -693,6 +706,19 @@ const UPDATE_ORDER_STATUS = gql`
           reviewedAt
           reviewNote
         }
+        returnedQuantity
+        returnRequests {
+          requestId
+          quantity
+          reason
+          refundMode
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
         weightGrams
         status
         image
@@ -831,6 +857,19 @@ const REVIEW_ORDER_ITEM_VOID = gql`
           reviewedAt
           reviewNote
         }
+        returnedQuantity
+        returnRequests {
+          requestId
+          quantity
+          reason
+          refundMode
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
         weightGrams
         status
         image
@@ -860,6 +899,16 @@ const REVIEW_ORDER_ITEM_VOID = gql`
       }
       updatedAt
     }
+  }
+`;
+const REQUEST_ORDER_ITEM_RETURN = gql`
+  mutation RequestOrderItemReturn($input: RequestOrderItemReturnInput!) {
+    requestOrderItemReturn(input: $input) { id restaurantId updatedAt }
+  }
+`;
+const REVIEW_ORDER_ITEM_RETURN = gql`
+  mutation ReviewOrderItemReturn($input: ReviewOrderItemReturnInput!) {
+    reviewOrderItemReturn(input: $input) { id restaurantId updatedAt }
   }
 `;
 
@@ -946,6 +995,8 @@ export default function useOrderManagement(pos = null) {
   const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
   const [mutUpdateOrderItemPriority] = useMutation(UPDATE_ORDER_ITEM_PRIORITY);
   const [mutReviewOrderItemVoid] = useMutation(REVIEW_ORDER_ITEM_VOID);
+  const [mutRequestOrderItemReturn] = useMutation(REQUEST_ORDER_ITEM_RETURN);
+  const [mutReviewOrderItemReturn] = useMutation(REVIEW_ORDER_ITEM_RETURN);
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
@@ -1805,6 +1856,34 @@ export default function useOrderManagement(pos = null) {
       return updatedOrder;
     },
     [mutReviewOrderItemVoid, writeOrderIntoCache, loadOrdersNow],
+  );
+  const requestOrderItemReturn = useCallback(
+    async ({ orderId, orderItemId, quantity, reason, refundMode }) => {
+      const { data } = await mutRequestOrderItemReturn({
+        variables: { input: { orderId, orderItemId, quantity, reason, refundMode } },
+      });
+      const updatedOrder = data?.requestOrderItemReturn || null;
+      if (updatedOrder) {
+        writeOrderIntoCache(updatedOrder);
+        if (updatedOrder.restaurantId) await loadOrdersNow({ variables: { restaurantId: updatedOrder.restaurantId, limit: 100 } });
+      }
+      return updatedOrder;
+    },
+    [mutRequestOrderItemReturn, writeOrderIntoCache, loadOrdersNow],
+  );
+  const reviewOrderItemReturn = useCallback(
+    async ({ orderId, orderItemId, requestId, approve, note }) => {
+      const { data } = await mutReviewOrderItemReturn({
+        variables: { input: { orderId, orderItemId, requestId, approve: Boolean(approve), note: note || undefined } },
+      });
+      const updatedOrder = data?.reviewOrderItemReturn || null;
+      if (updatedOrder) {
+        writeOrderIntoCache(updatedOrder);
+        if (updatedOrder.restaurantId) await loadOrdersNow({ variables: { restaurantId: updatedOrder.restaurantId, limit: 100 } });
+      }
+      return updatedOrder;
+    },
+    [mutReviewOrderItemReturn, writeOrderIntoCache, loadOrdersNow],
   );
 
   /* Back-compat: old updateItemStatus -> call ID-based mutation */
@@ -2701,6 +2780,8 @@ export default function useOrderManagement(pos = null) {
     checkoutOrder,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
     reviewOrderItemVoid,
+    requestOrderItemReturn,
+    reviewOrderItemReturn,
 
     // customer (dine-in, theo orderCode)
     updateOrderCustomerByCode,

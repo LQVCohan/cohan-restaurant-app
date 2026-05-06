@@ -128,7 +128,7 @@ const UPDATE_ORDER_STATUS = gql`
 `;
 
 const OrderItemRow = React.memo(
-  ({ item, index, order, orderStatus, onStatusChange, isSaving, onReviewItemVoid }) => {
+  ({ item, index, order, orderStatus, onStatusChange, isSaving, onReviewItemVoid, onRequestItemReturn, onReviewItemReturn }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -157,6 +157,7 @@ const OrderItemRow = React.memo(
       ["cancelled", "returned", "served"].includes(item.status) ||
       allowedNextStatuses.length === 0;
     const pendingVoidRequests = (item.voidRequests || []).filter((r) => r.status === "pending");
+    const pendingReturnRequests = (item.returnRequests || []).filter((r) => r.status === "pending");
     const [reviewingRequestId, setReviewingRequestId] = useState(null);
     const canReviewVoid =
       !["completed", "cancelled"].includes(orderStatus) &&
@@ -221,6 +222,26 @@ const OrderItemRow = React.memo(
               </div>
             </div>
           ))}
+          {Number(item.returnedQuantity || 0) > 0 && <div className="itemCard__note">Đã trả lại: x{item.returnedQuantity}</div>}
+          {item.status === "served" && (
+            <button onClick={async () => {
+              const qtyRaw = window.prompt("Nhập số lượng muốn trả lại", "1");
+              if (qtyRaw == null) return;
+              const qty = Number(qtyRaw);
+              const reason = window.prompt("Nhập lý do trả lại món", "");
+              if (reason == null) return;
+              const mode = window.prompt("Cách xử lý (none/remove_from_bill/refund_after_payment)", "none");
+              if (!mode) return;
+              await onRequestItemReturn?.({ orderId: order.id, orderItemId: item._id, quantity: qty, reason, refundMode: mode });
+            }}>Trả lại món</button>
+          )}
+          {pendingReturnRequests.map((req) => (
+            <div key={req.requestId} className="itemCard__note">
+              <div>Yêu cầu trả lại: {req.quantity} món</div><div>Lý do: {req.reason}</div><div>Cách xử lý: {req.refundMode}</div>
+              <button onClick={async () => { if (!window.confirm(`Duyệt trả lại ${req.quantity} món ${item.name}? Kho sẽ không được hoàn tự động.`)) return; await onReviewItemReturn?.({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: true }); }}>Duyệt trả lại</button>
+              <button onClick={async () => { const note = window.prompt("Lý do từ chối", ""); if (note == null) return; await onReviewItemReturn?.({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: false, note }); }}>Từ chối</button>
+            </div>
+          ))}
 
         </div>
         <div className="itemCard__actions">
@@ -271,6 +292,8 @@ const OrderModal = ({
   onUpdateItemStatus,
   onCreateTemporaryBill,
   onReviewItemVoid,
+  onRequestItemReturn,
+  onReviewItemReturn,
 }) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
@@ -554,6 +577,8 @@ const OrderModal = ({
                   isSaving={savingMap[item._lineId || index]}
                   onStatusChange={handleChangeStatus}
                   onReviewItemVoid={onReviewItemVoid}
+                  onRequestItemReturn={onRequestItemReturn}
+                  onReviewItemReturn={onReviewItemReturn}
                 />
               ))}
             </div>

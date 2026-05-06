@@ -216,7 +216,9 @@ type OrderItem {
   categoryId: ID
   originalQuantity: Float
   cancelledQuantity: Float
+  returnedQuantity: Float
   voidRequests: [OrderItemVoidRequest!]
+  returnRequests: [OrderItemReturnRequest!]
   name: String!
   unit: String
   image: String
@@ -240,6 +242,18 @@ type OrderItem {
   priority: OrderPriority
   status: ItemStatus
 }
+type OrderItemReturnRequest {
+  requestId: ID!
+  quantity: Float!
+  reason: String!
+  refundMode: String!
+  status: String!
+  requestedBy: ID
+  requestedAt: DateTime
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewNote: String
+}
 type OrderItemVoidRequest {
   requestId: ID!
   quantity: Float!
@@ -256,6 +270,20 @@ input RequestOrderItemVoidInput {
   orderItemId: ID!
   quantity: Int!
   reason: String!
+}
+input RequestOrderItemReturnInput {
+  orderId: ID!
+  orderItemId: ID!
+  quantity: Int!
+  reason: String!
+  refundMode: String!
+}
+input ReviewOrderItemReturnInput {
+  orderId: ID!
+  orderItemId: ID!
+  requestId: ID!
+  approve: Boolean!
+  note: String
 }
 
 input ReviewOrderItemVoidInput {
@@ -1033,6 +1061,8 @@ extend type Query {
 extend type Mutation {
   requestOrderItemVoid(input: RequestOrderItemVoidInput!): Order!
   reviewOrderItemVoid(input: ReviewOrderItemVoidInput!): Order!
+  requestOrderItemReturn(input: RequestOrderItemReturnInput!): Order!
+  reviewOrderItemReturn(input: ReviewOrderItemReturnInput!): Order!
   adjustOrderItemQuantity(input: AdjustOrderItemQuantityInput!): Order!
   createOrderForTable(
     input: CreateOrderForTableInput!

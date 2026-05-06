@@ -195,6 +195,11 @@ const OrderItemSchema = new Schema(
       min: 0,
       default: 0,
     },
+    returnedQuantity: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
 
     voidRequests: [
       {
@@ -240,6 +245,36 @@ const OrderItemSchema = new Schema(
           trim: true,
           default: "",
         },
+      },
+    ],
+    returnRequests: [
+      {
+        requestId: { type: String, required: true },
+        quantity: { type: Number, min: 1, required: true },
+        reason: { type: String, trim: true, required: true },
+        refundMode: {
+          type: String,
+          enum: ["none", "remove_from_bill", "refund_after_payment"],
+          default: "none",
+        },
+        status: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
+        },
+        requestedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        requestedAt: { type: Date, default: Date.now },
+        reviewedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        reviewedAt: { type: Date, default: null },
+        reviewNote: { type: String, trim: true, default: "" },
       },
     ],
   },
