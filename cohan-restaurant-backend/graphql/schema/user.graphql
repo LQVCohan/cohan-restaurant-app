@@ -2072,6 +2072,17 @@ type ShiftAcknowledgement {
   updatedAt: DateTime
   declineClassification: String
 }
+input RespondShiftAcknowledgementInput {
+  shiftId: ID!
+  response: String!
+  reason: String
+  reasonCategory: ShiftAcknowledgementReasonCategory
+}
+input ReviewShiftAcknowledgementInput {
+  acknowledgementId: ID!
+  classification: String!
+  reviewNote: String
+}
 
 enum ScheduleAcknowledgementStatus {
   acknowledged
@@ -2436,6 +2447,12 @@ type Mutation {
     id: ID!
     reasonCategory: ShiftAcknowledgementReasonCategory!
     reason: String!
+  ): ShiftAcknowledgement!
+  respondShiftAcknowledgement(
+    input: RespondShiftAcknowledgementInput!
+  ): ShiftAcknowledgement!
+  reviewShiftAcknowledgement(
+    input: ReviewShiftAcknowledgementInput!
   ): ShiftAcknowledgement!
   expirePendingShiftAcknowledgements: Int!
   acknowledgeMySchedule(
