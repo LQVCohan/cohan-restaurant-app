@@ -12,6 +12,7 @@ import {
   WalletTransaction,
 } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 import dayjs from "dayjs";
 
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
@@ -1048,14 +1049,18 @@ export const UserMutation = {
   async upsertCustomerRankSettings(
     _,
     { restaurantId, ranks },
-    { user: authUser },
+    ctx,
   ) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const normalizedRanks = (Array.isArray(ranks) ? ranks : [])
       .map((r) => ({
         name: String(r?.name || "").trim(),
@@ -1073,7 +1078,7 @@ export const UserMutation = {
     normalizedRanks.sort((a, b) => a.minPoints - b.minPoints);
 
     const saved = await CustomerRankSetting.findOneAndUpdate(
-      { restaurantId: new mongoose.Types.ObjectId(restaurantId) },
+      { restaurantId: rid },
       {
         $set: {
           ranks: normalizedRanks,

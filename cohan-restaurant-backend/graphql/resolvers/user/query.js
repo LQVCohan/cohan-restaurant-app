@@ -10,6 +10,7 @@ import {
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
@@ -206,7 +207,8 @@ export const UserQuery = {
     }
   },
 
-  async customerDetailAnalytics(_, { userId, restaurantId }, { user: authUser }) {
+  async customerDetailAnalytics(_, { userId, restaurantId }, ctx) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager", "staff"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
@@ -223,7 +225,16 @@ export const UserQuery = {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
-      cond.restaurantId = toObjectId(restaurantId);
+      const rid = toObjectId(restaurantId);
+      await requireRestaurantAccess(ctx, rid);
+      cond.restaurantId = rid;
+    } else {
+      const roleName = String(authUser?.roleName || "").toLowerCase();
+      if (roleName !== "admin") {
+        throw new GraphQLError("restaurantId is required", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
     }
 
     const orders = await Order.find(cond)
@@ -260,7 +271,8 @@ export const UserQuery = {
     };
   },
 
-  async customerAnalytics(_, { restaurantId }, { user: authUser }) {
+  async customerAnalytics(_, { restaurantId }, ctx) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager", "staff"]);
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId", {
@@ -268,6 +280,7 @@ export const UserQuery = {
       });
     }
     const rid = toObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
 
     const orders = await Order.find({ restaurantId: rid }).lean();
     const dishes = new Map();
@@ -320,7 +333,8 @@ export const UserQuery = {
     };
   },
 
-  async customerRankSettings(_, { restaurantId }, { user: authUser }) {
+  async customerRankSettings(_, { restaurantId }, ctx) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId", {
@@ -328,6 +342,7 @@ export const UserQuery = {
       });
     }
     const rid = toObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
     const doc = await CustomerRankSetting.findOne({ restaurantId: rid }).lean();
     return (
       doc || {
