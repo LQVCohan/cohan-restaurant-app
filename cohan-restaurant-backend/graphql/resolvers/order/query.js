@@ -220,9 +220,18 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 
 export const OrderQuery = {
   /** Single */
-  async order(_, { id }) {
+  async order(_, { id }, ctx) {
     if (!mongoose.isValidObjectId(id)) return null;
-    return Order.findById(id).lean({ virtuals: true });
+
+    const order = await Order.findById(id).lean({ virtuals: true });
+    if (!order) return null;
+
+    if (!order.restaurantId || !mongoose.isValidObjectId(order.restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    await requireRestaurantAccess(ctx, order.restaurantId);
+    return order;
   },
 
   /** List with offset pagination */
