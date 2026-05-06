@@ -350,7 +350,10 @@ type OrderPayment {
   paidAmount: Int
   changeAmount: Int
   currency: String
+  requestedAt: DateTime
+  requestedBy: ID
   paidAt: DateTime
+  paidBy: ID
 }
 
 # =========================================================
