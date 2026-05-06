@@ -323,7 +323,7 @@ describe("StaffSchedulePage", () => {
     renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
     expect(await screen.findByText("Yêu cầu giờ khả dụng")).toBeInTheDocument();
     fireEvent.click((await screen.findAllByRole("checkbox"))[0]);
-    expect(await screen.findByText(/cần đăng ký thêm 2 giờ/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Còn thiếu: 2 giờ/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Gửi đăng ký ca khả dụng/i })).toBeDisabled();
   });
 

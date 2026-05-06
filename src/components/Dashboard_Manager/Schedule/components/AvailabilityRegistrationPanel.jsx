@@ -257,12 +257,6 @@ export default function AvailabilityRegistrationPanel({
               <p>Hôm nay nên hoàn tất và công bố lịch tuần tới. Từ tuần sau, hãy vận hành theo chu kỳ đăng ký availability chuẩn.</p>
             </div>
           ) : null}
-          {shouldRemindNextWeekRegistration ? (
-            <div className="schedule-availability-panel__empty">
-              <button type="button" onClick={onCreateWindow} disabled={!canCreate && !canOpen}>Mở đăng ký tuần sau</button>
-            </div>
-          ) : null}
-
           {!hasWindow ? (
             <div className="schedule-availability-panel__empty">
               <h4>Chưa có kỳ đăng ký khả dụng</h4>
@@ -275,8 +269,13 @@ export default function AvailabilityRegistrationPanel({
                 onClick={onCreateWindow}
                 disabled={!canCreate}
               >
-                {loading ? "Đang xử lý..." : "Tạo kỳ đăng ký tuần kế tiếp"}
+                {loading ? "Đang xử lý..." : "Tạo kỳ đăng ký cho tuần kế tiếp"}
               </button>
+              {shouldRemindNextWeekRegistration ? (
+                <p className="schedule-availability-panel__hint">
+                  Nên tạo kỳ đăng ký cho tuần kế tiếp để nhân viên gửi availability đúng quy trình.
+                </p>
+              ) : null}
             </div>
           ) : (
             <>
