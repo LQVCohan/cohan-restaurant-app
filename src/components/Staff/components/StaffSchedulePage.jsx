@@ -529,8 +529,16 @@ export default function StaffSchedulePage() {
     fetchPolicy: "network-only",
   });
   const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
-  const [respondShiftAck] = useMutation(RESPOND_SHIFT_ACK);
+  const [respondShiftAck, { loading: respondingShiftAck }] =
+    useMutation(RESPOND_SHIFT_ACK);
   const [declineDraft, setDeclineDraft] = useState({});
+  const closeDeclinePanelForShift = (shiftId) => {
+    setDeclineDraft((prev) => {
+      const next = { ...prev };
+      delete next[shiftId];
+      return next;
+    });
+  };
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
     GET_MY_SHIFT_ACKS,
     {
@@ -1640,6 +1648,55 @@ export default function StaffSchedulePage() {
                             <button
                               className="staff-primary-btn"
                               type="button"
+                              disabled={respondingShiftAck}
+                              onClick={async () => {
+                                setError("");
+                                setSuccess("");
+                                try {
+                                  await respondShiftAck({
+                                    variables: {
+                                      input: {
+                                        shiftId: shift.id,
+                                        response: "accept",
+                                      },
+                                    },
+                                  });
+                                  closeDeclinePanelForShift(shift.id);
+                                  await refetchShiftAcks();
+                                  setSuccess("Bạn đã nhận ca thành công.");
+                                } catch (submitError) {
+                                  setError(
+                                    getGraphQLErrorMessage(
+                                      submitError,
+                                      "Không thể nhận ca.",
+                                    ),
+                                  );
+                                }
+                              }}
+                            >
+                              Nhận ca
+                            </button>
+                            <button
+                              className="staff-primary-btn"
+                              type="button"
+                              onClick={() =>
+                                setDeclineDraft((p) => ({
+                                  ...p,
+                                  [shift.id]: p[shift.id]?.open
+                                    ? { open: false }
+                                    : {
+                                        open: true,
+                                        reason: "",
+                                        reasonCategory: "sick",
+                                      },
+                                }))
+                              }
+                            >
+                              Từ chối ca
+                            </button>
+                            <button
+                              className="staff-primary-btn"
+                              type="button"
                               onClick={async () => {
                                 setError("");
                                 setSuccess("");
@@ -1726,10 +1783,17 @@ export default function StaffSchedulePage() {
                               }
                               placeholder="Lý do từ chối (>= 5 ký tự)"
                             />
+                            {(declineDraft[shift.id].reason || "").trim()
+                              .length < 5 ? (
+                              <p className="staff-my-shift-card__note">
+                                Vui lòng nhập lý do tối thiểu 5 ký tự.
+                              </p>
+                            ) : null}
                             <button
                               className="staff-primary-btn"
                               type="button"
                               disabled={
+                                respondingShiftAck ||
                                 (declineDraft[shift.id].reason || "").trim()
                                   .length < 5
                               }
