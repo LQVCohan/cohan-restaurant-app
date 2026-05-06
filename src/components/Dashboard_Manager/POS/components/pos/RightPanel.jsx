@@ -562,7 +562,7 @@ export default function RightPanel() {
     setDeleteModalOpen(true);
   };
 
-  const handleDeleteItem = (_action, _selectedReason) => {
+  const handleDeleteItem = () => {
     if (!itemToDelete) return;
     if (itemToDelete.isExisting && !itemToDelete.isNew) {
       showNotification("Không thể xóa món đã lưu.", "warning");
