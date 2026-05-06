@@ -131,6 +131,8 @@ const ShiftDetailModal = ({
   const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
   const [deleteGroupReason, setDeleteGroupReason] = useState("");
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [isChangeHistoryExpanded, setIsChangeHistoryExpanded] =
+    useState(false);
   const [isRemovingStaff, setIsRemovingStaff] = useState(false);
   const effectivePermissions = schedulePermissions || {
     canChangeShiftTime: scheduleLifecycleStatus === "published",
@@ -292,6 +294,7 @@ const ShiftDetailModal = ({
     setDeleteGroupOpen(false);
     setDeleteGroupReason("");
     setIsDeletingGroup(false);
+    setIsChangeHistoryExpanded(false);
   }, [shift]);
 
   if (!isOpen || !shift) return null;
@@ -1357,74 +1360,91 @@ const ShiftDetailModal = ({
             </div>
           ) : null}
           <div className="section-block schedule-log-section">
-            <div className="section-header">
+            <div className="section-header schedule-log-header">
               <div>
-                <h4>Lịch sử thay đổi ca</h4>
+                <h4>Lịch sử thay đổi</h4>
                 <p>
-                  Các thay đổi đã được ghi log sau khi công bố hoặc chỉnh sửa
-                  lịch.
+                  {scheduleChangeLogsLoading
+                    ? "Đang tải lịch sử..."
+                    : `${scheduleChangeLogs.length || 0} mục thay đổi`}
                 </p>
               </div>
+
+              <button
+                type="button"
+                className="history-toggle-btn"
+                onClick={() =>
+                  setIsChangeHistoryExpanded((prev) => !prev)
+                }
+              >
+                {isChangeHistoryExpanded ? "Ẩn" : "Hiện"}
+              </button>
             </div>
 
-            {scheduleChangeLogsLoading ? (
-              <div className="empty-placeholder">
-                Đang tải lịch sử thay đổi...
-              </div>
-            ) : scheduleChangeLogs.length <= 0 ? (
-              <div className="empty-placeholder">
-                Chưa có lịch sử thay đổi cho ca này.
-              </div>
-            ) : (
-              <div className="schedule-log-list">
-                {scheduleChangeLogs.map((log) => {
-                  const tone = getScheduleLogTone(log.verb);
-                  const hasTimeChange = log.oldStartTime && log.newStartTime;
+            {isChangeHistoryExpanded ? (
+              scheduleChangeLogsLoading ? (
+                <div className="empty-placeholder">
+                  Đang tải lịch sử thay đổi...
+                </div>
+              ) : scheduleChangeLogs.length <= 0 ? (
+                <div className="empty-placeholder">
+                  Chưa có lịch sử thay đổi cho ca này.
+                </div>
+              ) : (
+                <div className="schedule-log-list">
+                  {scheduleChangeLogs.map((log) => {
+                    const tone = getScheduleLogTone(log.verb);
+                    const hasTimeChange = log.oldStartTime && log.newStartTime;
 
-                  return (
-                    <div key={log.id} className={`schedule-log-item ${tone}`}>
-                      <div className="log-marker" />
+                    return (
+                      <div key={log.id} className={`schedule-log-item ${tone}`}>
+                        <div className="log-marker" />
 
-                      <div className="log-content">
-                        <div className="log-head">
-                          <strong>{getScheduleLogLabel(log.verb)}</strong>
-                          <span>
-                            {formatLogDateTime(log.at || log.createdAt)}
-                          </span>
-                        </div>
-
-                        {hasTimeChange ? (
-                          <div className="log-time-change">
-                            {formatTimeOnly(log.oldStartTime)} -{" "}
-                            {formatTimeOnly(log.oldEndTime)} →{" "}
-                            {formatTimeOnly(log.newStartTime)} -{" "}
-                            {formatTimeOnly(log.newEndTime)}
-                          </div>
-                        ) : null}
-
-                        {log.reason ? (
-                          <p className="log-reason">Lý do: {log.reason}</p>
-                        ) : null}
-
-                        <div className="log-meta-row">
-                          {Array.isArray(log.affectedEmployeeIds) &&
-                          log.affectedEmployeeIds.length > 0 ? (
+                        <div className="log-content">
+                          <div className="log-head">
+                            <strong>{getScheduleLogLabel(log.verb)}</strong>
                             <span>
-                              Ảnh hưởng {log.affectedEmployeeIds.length} nhân
-                              viên
+                              {formatLogDateTime(log.at || log.createdAt)}
                             </span>
+                          </div>
+
+                          {hasTimeChange ? (
+                            <div className="log-time-change">
+                              {formatTimeOnly(log.oldStartTime)} -{" "}
+                              {formatTimeOnly(log.oldEndTime)} →{" "}
+                              {formatTimeOnly(log.newStartTime)} -{" "}
+                              {formatTimeOnly(log.newEndTime)}
+                            </div>
                           ) : null}
 
-                          {log.notifyEmployees === true ? (
-                            <span>Đã gửi thông báo</span>
-                          ) : log.notifyEmployees === false ? (
-                            <span>Không gửi thông báo</span>
+                          {log.reason ? (
+                            <p className="log-reason">Lý do: {log.reason}</p>
                           ) : null}
+
+                          <div className="log-meta-row">
+                            {Array.isArray(log.affectedEmployeeIds) &&
+                            log.affectedEmployeeIds.length > 0 ? (
+                              <span>
+                                Ảnh hưởng {log.affectedEmployeeIds.length} nhân
+                                viên
+                              </span>
+                            ) : null}
+
+                            {log.notifyEmployees === true ? (
+                              <span>Đã gửi thông báo</span>
+                            ) : log.notifyEmployees === false ? (
+                              <span>Không gửi thông báo</span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <div className="schedule-log-collapsed-hint">
+                Nhấn Hiện để xem lịch sử thay đổi của ca này.
               </div>
             )}
           </div>
