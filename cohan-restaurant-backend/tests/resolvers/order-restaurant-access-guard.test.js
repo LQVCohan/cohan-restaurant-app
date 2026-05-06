@@ -20,6 +20,7 @@ vi.mock("mongoose", () => ({
     Types: {
       ObjectId: function ObjectId(value) {
         this.value = value;
+        this.toString = () => String(value);
       },
     },
   },
@@ -93,7 +94,7 @@ describe("order mutation restaurant access guards", () => {
 
   it("checks scoped order before creating a temporary bill print job", async () => {
     modelMocks.Order.findById.mockReturnValue(
-      leanResult({ _id: "valid-order-1", restaurantId: { value: "valid-restaurant-1" } }),
+      leanResult({ _id: "valid-order-1", restaurantId: "valid-restaurant-1" }),
     );
     const mutation = buildMutation();
     const { withOrderRestaurantAccessGuards } = await import(
@@ -133,6 +134,30 @@ describe("order mutation restaurant access guards", () => {
     ).rejects.toThrow("Order not found");
 
     expect(mutation.requestPaymentForOrder).not.toHaveBeenCalled();
+  });
+
+
+  it("allows requestPaymentForOrder when orderIds contain duplicates of valid scoped orders", async () => {
+    modelMocks.Order.countDocuments.mockResolvedValue(1);
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+
+    await guarded.requestPaymentForOrder(
+      null,
+      {
+        input: {
+          restaurantId: "valid-restaurant-1",
+          orderIds: ["valid-order-1", "valid-order-1"],
+        },
+      },
+      { user: { id: "cashier-1" } },
+    );
+
+    expect(modelMocks.Order.countDocuments).toHaveBeenCalledTimes(1);
+    expect(mutation.requestPaymentForOrder).toHaveBeenCalled();
   });
 
   it("checks order item ownership before sending a reminder", async () => {
