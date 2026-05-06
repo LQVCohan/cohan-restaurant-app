@@ -91,6 +91,7 @@ export default function PosProvider({
   const [searchTerm, setSearchTerm] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentRequests, setPaymentRequests] = useState([]);
   const [printers, setPrinters] = useState({});
   const [selectedPrintType, setSelectedPrintType] = useState("kitchen");
   const [printQueue, setPrintQueue] = useState([]);
@@ -242,6 +243,55 @@ export default function PosProvider({
       refetchTables?.();
     },
     onUpdated: (order) => {
+      const paymentStatus = order?.payment?.status;
+      const requestedAt = order?.payment?.requestedAt;
+      const isPaymentRequested =
+        paymentStatus === "payment_requested" || Boolean(requestedAt);
+      const isPaidOrCompleted =
+        paymentStatus === "paid" || order?.currentStatus === "completed";
+
+      if (isPaidOrCompleted && order?.id) {
+        setPaymentRequests((prev) => prev.filter((r) => r.orderId !== order.id));
+      }
+
+      if (isPaymentRequested && order?.id) {
+        const nextRequest = {
+          orderId: order.id,
+          orderCode: order.orderCode || null,
+          tableId: order.tableId || null,
+          tableCode: order.tableCode || null,
+          orderType: order.orderType || "dine_in",
+          payment: order.payment || null,
+          totals: order.totals || null,
+          requestedAt: requestedAt || null,
+          customer: order.customerInfo || order.user || null,
+          shipping: order.shipping || null,
+        };
+        let shouldNotify = false;
+        setPaymentRequests((prev) => {
+          const idx = prev.findIndex((r) => r.orderId === order.id);
+          if (idx === -1) {
+            shouldNotify = true;
+            return [nextRequest, ...prev];
+          }
+          const existing = prev[idx];
+          if ((existing?.requestedAt || null) !== (requestedAt || null)) {
+            shouldNotify = true;
+          }
+          const copy = [...prev];
+          copy[idx] = { ...existing, ...nextRequest };
+          return copy;
+        });
+        if (shouldNotify) {
+          showNotification(
+            `💳 Khách gọi thanh toán: ${order?.tableCode || order?.orderCode || order?.id}`,
+            "warning",
+          );
+        }
+        refetchTables?.();
+        return;
+      }
+
       showNotification(`♻️ Cập nhật đơn ${order.orderCode}`, "success");
     },
     onStatusChanged: (order) => {
@@ -255,6 +305,11 @@ export default function PosProvider({
       refetchTables?.();
     },
   });
+
+  const clearPaymentRequest = useCallback((orderId) => {
+    if (!orderId) return;
+    setPaymentRequests((prev) => prev.filter((r) => r.orderId !== orderId));
+  }, []);
 
   // --- TABLE FILTERS ---
   const [tableSearch, setTableSearch] = useState("");
@@ -695,6 +750,50 @@ export default function PosProvider({
     ],
   );
 
+  const loadPaymentRequestToPOS = useCallback(
+    async (request) => {
+      if (!request) return { success: false, message: "Thiếu request thanh toán." };
+      const tableCode = request?.tableCode || null;
+      const isDineIn = (request?.orderType || "dine_in") === "dine_in";
+
+      if (isDineIn && tableCode) {
+        await selectTableForOrder(tableCode, request?.table?.capacity || 0, {
+          preserveDraftItems: false,
+        });
+        return { success: true };
+      }
+
+      const orderId = request?.orderId;
+      if (!orderId) return { success: false, message: "Thiếu orderId để tải đơn." };
+      const fetched = await fetchOrderById?.({ id: orderId, restaurantId });
+      const order = fetched?.order || fetched || null;
+      if (!order) return { success: false, message: "Không tải được đơn thanh toán." };
+
+      setCurrentOrderType(order.orderType || request?.orderType || "takeaway");
+      setCurrentOrderCode(order.orderCode || request?.orderCode || null);
+      if (order.orderType === "delivery" || order.orderType === "takeaway") {
+        setCurrentTable({
+          id: null,
+          code: order.orderType === "delivery" ? "DELIVERY" : "TAKEAWAY",
+          name: order.orderType === "delivery" ? "Delivery" : "Takeaway",
+          status: "occupied",
+          type: order.orderType,
+          restaurantId,
+          isVirtual: true,
+        });
+      }
+      const mappedItems = (order.items || []).map((it, idx) => ({
+        ...it,
+        _lineId: it._id || `${it.dishId || "dish"}-${idx}`,
+        isExisting: true,
+        isNew: false,
+      }));
+      setCurrentOrder(mappedItems);
+      return { success: true, order };
+    },
+    [fetchOrderById, restaurantId, selectTableForOrder],
+  );
+
   const filteredMenu = useMemo(() => {
     const q = (searchTerm || "").toLowerCase().trim();
     const byCat = (i) =>
@@ -878,6 +977,9 @@ export default function PosProvider({
 
       preparePayment,
       checkoutOrder,
+      paymentRequests,
+      clearPaymentRequest,
+      loadPaymentRequestToPOS,
 
       // FE helpers
       hasNewDraftItems,
@@ -982,6 +1084,9 @@ export default function PosProvider({
 
       preparePayment,
       checkoutOrder,
+      paymentRequests,
+      clearPaymentRequest,
+      loadPaymentRequestToPOS,
 
       hasNewDraftItems,
       clearDraftStorage,

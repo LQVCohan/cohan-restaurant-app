@@ -234,7 +234,6 @@ const OrderManagement = () => {
     reviewOrderItemVoid,
     requestOrderItemReturn,
     reviewOrderItemReturn,
-    payOrderByIds,
   } = useOrderManagement();
 
   const orders = ordersNow || [];
@@ -611,21 +610,6 @@ const OrderManagement = () => {
     [requestOrderItemReturn],
   );
 
-  const handleConfirmPayment = useCallback(
-    async (order, method = "cash") => {
-      if (!selectedRestaurantId) return null;
-      const res = await payOrderByIds({
-        restaurantId: selectedRestaurantId,
-        orderIds: [order?.id],
-        method,
-        note: `Xác nhận thanh toán cho đơn ${order?.orderCode || order?.id || ""}`.trim(),
-      });
-      await loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
-      return res;
-    },
-    [payOrderByIds, loadOrders, selectedRestaurantId],
-  );
-
   const handleReviewItemReturn = useCallback(
     async (payload) => {
       const updatedOrder = await reviewOrderItemReturn(payload);
@@ -962,7 +946,6 @@ const OrderManagement = () => {
             onReviewItemVoid={handleReviewItemVoid}
             onRequestItemReturn={handleRequestItemReturn}
             onReviewItemReturn={handleReviewItemReturn}
-            onConfirmPayment={handleConfirmPayment}
           />
         )}
 
