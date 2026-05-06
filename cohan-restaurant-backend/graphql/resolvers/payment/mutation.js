@@ -13,6 +13,7 @@ import {
   PaymentSession,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
@@ -136,6 +137,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
+  await requireRestaurantAccess(ctx, rid);
 
   const normMethod = String(method || "").toLowerCase();
   if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
@@ -366,11 +368,16 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, rid);
 
-  const normalizedOrderIds = [...new Set((orderIds || []).map(String))]
-    .map(toId)
-    .filter(Boolean);
-  if (!normalizedOrderIds.length) throw new Error("Invalid orderIds");
+  const rawOrderIds = Array.isArray(orderIds) ? orderIds : [];
+  const normalizedOrderIds = rawOrderIds.map(toId);
+  if (!normalizedOrderIds.length || normalizedOrderIds.some((id) => !id)) {
+    throw new Error("Invalid orderIds");
+  }
+  const uniqueOrderIds = [
+    ...new Map(normalizedOrderIds.map((id) => [String(id), id])).values(),
+  ];
 
   const normMethod = String(method || "").toLowerCase();
   if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
@@ -378,7 +385,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 
   const orders = await Order.find({
-    _id: { $in: normalizedOrderIds },
+    _id: { $in: uniqueOrderIds },
     restaurantId: rid,
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
   }).lean();
@@ -599,6 +606,7 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
 
   const rid = toId(input?.restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, rid);
 
   const providers = Array.isArray(input?.providers) ? input.providers : [];
   const normalizedProviders = providers
