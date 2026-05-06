@@ -443,7 +443,7 @@ export default function RightPanel() {
   }, [
     hasItems,
     hasUnservedExistingItems,
-    currentTable.restaurantId,
+    currentTable?.restaurantId,
     preparePayment,
     showNotification,
   ]);
