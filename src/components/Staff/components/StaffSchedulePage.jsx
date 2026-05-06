@@ -655,10 +655,8 @@ export default function StaffSchedulePage() {
 
   const shifts = useMemo(() => {
     return (shiftsData?.staffShifts || [])
-      .filter((shift) =>
-        ["published", "active"].includes(
-          String(shift.status || "").toLowerCase(),
-        ),
+      .filter(
+        (shift) => String(shift.status || "").toLowerCase() !== "cancelled",
       )
       .sort(
         (left, right) =>
