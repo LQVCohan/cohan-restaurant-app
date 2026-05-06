@@ -232,6 +232,8 @@ const OrderManagement = () => {
     loadOrdersNow,
     updateItemStatus,
     reviewOrderItemVoid,
+    requestOrderItemReturn,
+    reviewOrderItemReturn,
   } = useOrderManagement();
 
   const orders = ordersNow || [];
@@ -599,6 +601,22 @@ const OrderManagement = () => {
     },
     [reviewOrderItemVoid],
   );
+  const handleRequestItemReturn = useCallback(
+    async (payload) => {
+      const updatedOrder = await requestOrderItemReturn(payload);
+      if (updatedOrder) setSelectedOrder(updatedOrder);
+      return updatedOrder;
+    },
+    [requestOrderItemReturn],
+  );
+  const handleReviewItemReturn = useCallback(
+    async (payload) => {
+      const updatedOrder = await reviewOrderItemReturn(payload);
+      if (updatedOrder) setSelectedOrder(updatedOrder);
+      return updatedOrder;
+    },
+    [reviewOrderItemReturn],
+  );
 
   // ---------------- RENDER ----------------
   return (
@@ -925,6 +943,8 @@ const OrderManagement = () => {
             onUpdateItemStatus={handleUpdateItemStatus}
             onCreateTemporaryBill={handleCreateTemporaryBill}
             onReviewItemVoid={handleReviewItemVoid}
+            onRequestItemReturn={handleRequestItemReturn}
+            onReviewItemReturn={handleReviewItemReturn}
           />
         )}
 

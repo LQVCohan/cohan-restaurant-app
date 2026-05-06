@@ -2292,6 +2292,109 @@ export const OrderMutation = {
       await session.endSession();
     }
   },
+  requestOrderItemReturn: async (_p, { input }, ctx) => {
+    const { orderId, orderItemId, quantity, reason, refundMode } = input || {};
+    const allowedRefundModes = ["none", "remove_from_bill", "refund_after_payment"];
+    if (!mongoose.isValidObjectId(orderId)) throw new Error("Invalid orderId");
+    if (!mongoose.isValidObjectId(orderItemId)) throw new Error("Invalid orderItemId");
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty <= 0) throw new Error("quantity must be a positive integer");
+    if (!String(reason || "").trim()) throw new Error("Vui lòng nhập lý do trả lại món.");
+    if (!allowedRefundModes.includes(refundMode)) throw new Error("refundMode không hợp lệ.");
+
+    const order = await Order.findById(orderId);
+    if (!order) throw new Error("Order not found");
+    if (["completed", "cancelled"].includes(order.currentStatus)) throw new Error("Đơn hiện không thể tạo yêu cầu trả lại món.");
+    const item = order.items.id(orderItemId);
+    if (!item) throw new Error("Order item not found");
+    if (item.status !== "served") throw new Error("Chỉ cho phép trả lại món đã phục vụ.");
+    if ((item.returnRequests || []).some((r) => r.status === "pending")) throw new Error("Món này đang có yêu cầu trả lại chờ duyệt.");
+
+    const activeServedQty = Number(item.quantity || 0) - Number(item.returnedQuantity || 0);
+    if (qty > activeServedQty) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
+
+    item.returnRequests = item.returnRequests || [];
+    item.returnRequests.push({
+      requestId: `return_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+      quantity: qty,
+      reason: reason.trim(),
+      refundMode,
+      status: "pending",
+      requestedBy: ctx?.user?.id || null,
+      requestedAt: new Date(),
+    });
+    order.statusTimeline = order.statusTimeline || [];
+    order.statusTimeline.push({
+      status: order.currentStatus,
+      at: new Date(),
+      note: `Yêu cầu trả lại ${qty} món "${item.name}": ${reason.trim()}`,
+    });
+    await order.save();
+    const updatedOrder = await Order.findById(order._id).lean({ virtuals: true });
+    emitOrderEvent("order:updated", updatedOrder);
+    return updatedOrder;
+  },
+  reviewOrderItemReturn: async (_p, { input }, ctx) => {
+    const { orderId, orderItemId, requestId, approve, note } = input || {};
+    const refundModeLabels = { none: "Không hoàn tiền", remove_from_bill: "Trừ khỏi hóa đơn", refund_after_payment: "Hoàn sau thanh toán" };
+    if (!mongoose.isValidObjectId(orderId)) throw new Error("Invalid orderId");
+    if (!mongoose.isValidObjectId(orderItemId)) throw new Error("Invalid orderItemId");
+    if (!String(requestId || "").trim()) throw new Error("Invalid requestId");
+
+    const session = await mongoose.startSession();
+    let updatedOrder = null;
+    try {
+      await session.withTransaction(async () => {
+        const order = await Order.findById(orderId).session(session);
+        if (!order) throw new Error("Order not found");
+        const item = order.items.id(orderItemId);
+        if (!item) throw new Error("Order item not found");
+        const req = (item.returnRequests || []).find((r) => String(r.requestId) === String(requestId));
+        if (!req) throw new Error("Return request not found");
+        if (req.status !== "pending") throw new Error("Yêu cầu này đã được xử lý.");
+
+        req.status = approve ? "approved" : "rejected";
+        req.reviewedBy = ctx?.user?.id || null;
+        req.reviewedAt = new Date();
+        req.reviewNote = note || "";
+
+        if (approve) {
+          const qty = Number(req.quantity || 0);
+          const maxReturnableQty = Number(item.quantity || 0) - Number(item.returnedQuantity || 0);
+          if (qty <= 0 || qty > maxReturnableQty) throw new Error("Số lượng trả lại không hợp lệ.");
+          item.returnedQuantity = Number(item.returnedQuantity || 0) + qty;
+          if (req.refundMode === "remove_from_bill") {
+            item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
+            if (item.quantity <= 0) item.status = "returned";
+            const plainItems = order.items.map((x) => (typeof x.toObject === "function" ? x.toObject() : x));
+            order.totals = computeTotalsFromHydratedItems(plainItems, {
+              serviceRate: order?.totals?.serviceRate || 0,
+              taxRate: order?.totals?.taxRate || 0,
+              promotionDiscount: order?.totals?.promotionDiscount || 0,
+              voucherDiscount: order?.totals?.voucherDiscount || 0,
+              shippingFee: order?.totals?.shippingFee || 0,
+              voucherCode: order?.totals?.voucherCode || undefined,
+            });
+          }
+        }
+
+        order.statusTimeline = order.statusTimeline || [];
+        order.statusTimeline.push({
+          status: order.currentStatus,
+          at: new Date(),
+          note: approve
+            ? `Duyệt trả lại ${req.quantity} món "${item.name}" (${refundModeLabels[req.refundMode] || req.refundMode}).`
+            : `Từ chối yêu cầu trả lại món "${item.name}".`,
+        });
+        await order.save({ session });
+        updatedOrder = await Order.findById(order._id).session(session).lean({ virtuals: true });
+      });
+      emitOrderEvent("order:updated", updatedOrder);
+      return updatedOrder;
+    } finally {
+      await session.endSession();
+    }
+  },
   /** =========================================
    * UPDATE ORDER STATUS
    * - inventory commit/cancel + order save in ONE transaction
