@@ -2547,7 +2547,7 @@ export default {
     const actorUserId = getActorUserId(ctx);
     const doc = await ShiftAcknowledgement.findById(input?.acknowledgementId);
     if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
-    await requireRestaurantScope(ctx, String(doc.restaurantId));
+    await requireRestaurantAccess(ctx, String(doc.restaurantId));
     if (doc.status !== "declined") throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_DECLINED");
     const classification = String(input?.classification || "").trim().toLowerCase();
     if (!["valid", "invalid"].includes(classification)) {
