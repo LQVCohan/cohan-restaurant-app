@@ -27,6 +27,18 @@ function normalizePhone(q) {
   return q.replace(/[^0-9]/g, "");
 }
 
+function isAdminUser(ctx) {
+  const user = ctx?.user;
+  const roleName = String(
+    user?.roleName || user?.role || user?.userType || "",
+  ).toUpperCase();
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((r) => String(r).toUpperCase())
+    : [];
+
+  return roleName === "ADMIN" || roles.includes("ADMIN");
+}
+
 // FE có thể truyền BREAKFAST, breakfast, BreakFast...
 function normalizeTimeSlot(ts) {
   if (!ts) return null;
@@ -37,7 +49,7 @@ function normalizeTimeSlot(ts) {
  * Suggestions helpers
  * ============================ */
 
-async function findRestaurantSuggestions(query, limit) {
+async function findRestaurantSuggestions(query, limit) { /* unchanged */
   const phoneDigits = normalizePhone(query);
   const regex = new RegExp(query, "i");
 
@@ -96,7 +108,7 @@ async function findMenuItemSuggestions(query, timeSlotDb, limit) {
     $or: [{ name: regex }, { description: regex }],
   };
 
-  const pipeline = [
+  const pipeline = [/* unchanged */
     {
       $lookup: {
         from: "menus",
@@ -188,7 +200,7 @@ async function findOwnerSuggestions(query, limit) {
   }));
 }
 
-async function findLocationSuggestions(query, limit) {
+async function findLocationSuggestions(query, limit) { /* unchanged */
   const trimmed = (query || "").trim();
   if (!trimmed || trimmed.length < 2) {
     return [];
@@ -248,21 +260,20 @@ async function findLocationSuggestions(query, limit) {
   });
 }
 
-/* ============================
- * FULL SEARCH
- * ============================ */
-
-async function fullSearch(query, filter, limit, offset) {
+async function fullSearch(query, filter, limit, offset, ctx) {
   const trimmed = (query || "").trim();
   if (!trimmed) {
     return { items: [], totalCount: 0 };
   }
 
+  const adminUser = isAdminUser(ctx);
+  const requestedTypes = filter?.types && filter.types.length
+    ? filter.types
+    : ["RESTAURANT", "MENU_ITEM", "LOCATION"];
   const types = new Set(
-    (filter?.types && filter.types.length
-      ? filter.types
-      : ["RESTAURANT", "MENU_ITEM", "OWNER", "LOCATION"]
-    ).map((t) => t.toString().toUpperCase())
+    requestedTypes
+      .map((t) => t.toString().toUpperCase())
+      .filter((t) => t !== "OWNER" || adminUser)
   );
 
   const timeSlotDb = filter?.timeSlot
@@ -272,262 +283,93 @@ async function fullSearch(query, filter, limit, offset) {
   const regex = new RegExp(trimmed, "i");
 
   const [restaurants, menuItems, owners, locations] = await Promise.all([
-    types.has("RESTAURANT")
-      ? (async () => {
-          const baseFilter = { status: "active" };
-
-          const phoneDigits = normalizePhone(trimmed);
-          const or = [
-            { name: regex },
-            { "address.line1": regex },
-            { "address.line2": regex },
-            { "address.ward": regex },
-            { "address.district": regex },
-            { "address.city": regex },
-            { "address.country": regex },
-            { "address.postalCode": regex },
-            { cuisineType: regex },
-          ];
-          if (phoneDigits.length >= 6) {
-            or.push({ phone: { $regex: phoneDigits, $options: "i" } });
-          }
-
-          if (filter?.city) {
-            baseFilter["address.city"] = new RegExp(filter.city, "i");
-          }
-          if (filter?.district) {
-            baseFilter["address.district"] = new RegExp(filter.district, "i");
-          }
-          if (filter?.minRating != null) {
-            baseFilter.avgRating = { $gte: filter.minRating };
-          }
-
-          return Restaurant.find(
-            {
-              ...baseFilter,
-              $or: or,
-            },
-            {
-              name: 1,
-              address: 1,
-              cuisineType: 1,
-              avgRating: 1,
-              coverImage: 1,
-              avatar: 1,
-            }
-          )
-            .limit(limit)
-            .skip(offset)
-            .sort({ avgRating: -1 })
-            .lean();
-        })()
-      : [],
-
-    types.has("MENU_ITEM")
-      ? (async () => {
-          const miMatch = {
-            status: "available",
-            $or: [{ name: regex }, { description: regex }],
-          };
-
-          const pipeline = [
-            {
-              $lookup: {
-                from: "menus",
-                localField: "menuId",
-                foreignField: "_id",
-                as: "menu",
-              },
-            },
-            { $unwind: { path: "$menu", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "restaurants",
-                localField: "restaurantId",
-                foreignField: "_id",
-                as: "restaurant",
-              },
-            },
-            {
-              $unwind: {
-                path: "$restaurant",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $match: {
-                ...miMatch,
-                ...(timeSlotDb ? { "menu.timeSlot": timeSlotDb } : {}),
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                name: 1,
-                thumbImage: 1,
-                basePrice: 1,
-                "menu.timeSlot": 1,
-                "restaurant._id": 1,
-                "restaurant.name": 1,
-                "restaurant.address": 1,
-              },
-            },
-            { $skip: offset },
-            { $limit: limit },
-          ];
-
-          return MenuItem.aggregate(pipeline);
-        })()
-      : [],
-
-    types.has("OWNER")
-      ? (async () => {
-          const phoneDigits = normalizePhone(trimmed);
-          const or = [{ fullName: regex }, { email: regex }];
-
-          if (phoneDigits.length >= 6) {
-            or.push({ phone: { $regex: phoneDigits, $options: "i" } });
-          }
-
-          return User.find(
-            {
-              userType: { $in: ["MANAGER", "ADMIN"] },
-              $or: or,
-            },
-            { fullName: 1, phone: 1, email: 1, refRestaurants: 1 }
-          )
-            .limit(limit)
-            .skip(offset)
-            .lean();
-        })()
-      : [],
-
-    types.has("LOCATION") ? await findLocationSuggestions(trimmed, limit) : [],
+    types.has("RESTAURANT") ? (async () => {
+      const baseFilter = { status: "active" };
+      const phoneDigits = normalizePhone(trimmed);
+      const or = [
+        { name: regex },
+        { "address.line1": regex },
+        { "address.line2": regex },
+        { "address.ward": regex },
+        { "address.district": regex },
+        { "address.city": regex },
+        { "address.country": regex },
+        { "address.postalCode": regex },
+        { cuisineType: regex },
+      ];
+      if (phoneDigits.length >= 6) {
+        or.push({ phone: { $regex: phoneDigits, $options: "i" } });
+      }
+      if (filter?.city) baseFilter["address.city"] = new RegExp(filter.city, "i");
+      if (filter?.district) baseFilter["address.district"] = new RegExp(filter.district, "i");
+      if (filter?.minRating != null) baseFilter.avgRating = { $gte: filter.minRating };
+      return Restaurant.find({ ...baseFilter, $or: or }, { name: 1, address: 1, cuisineType: 1, avgRating: 1, coverImage: 1, avatar: 1 })
+        .limit(limit).skip(offset).sort({ avgRating: -1 }).lean();
+    })() : [],
+    types.has("MENU_ITEM") ? (async () => {
+      const miMatch = { status: "available", $or: [{ name: regex }, { description: regex }] };
+      const pipeline = [
+        { $lookup: { from: "menus", localField: "menuId", foreignField: "_id", as: "menu" } },
+        { $unwind: { path: "$menu", preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: "restaurants", localField: "restaurantId", foreignField: "_id", as: "restaurant" } },
+        { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+        { $match: { ...miMatch, ...(timeSlotDb ? { "menu.timeSlot": timeSlotDb } : {}) } },
+        { $project: { _id: 1, name: 1, thumbImage: 1, basePrice: 1, "menu.timeSlot": 1, "restaurant._id": 1, "restaurant.name": 1, "restaurant.address": 1 } },
+        { $skip: offset },
+        { $limit: limit },
+      ];
+      return MenuItem.aggregate(pipeline);
+    })() : [],
+    adminUser && types.has("OWNER") ? (async () => {
+      const phoneDigits = normalizePhone(trimmed);
+      const or = [{ fullName: regex }, { email: regex }];
+      if (phoneDigits.length >= 6) {
+        or.push({ phone: { $regex: phoneDigits, $options: "i" } });
+      }
+      return User.find({ userType: { $in: ["MANAGER", "ADMIN"] }, $or: or }, { fullName: 1, phone: 1, email: 1, refRestaurants: 1 })
+        .limit(limit).skip(offset).lean();
+    })() : [],
+    types.has("LOCATION") ? findLocationSuggestions(trimmed, limit) : [],
   ]);
 
   const items = [];
-
-  for (const r of restaurants) {
-    items.push({
-      type: "RESTAURANT",
-      score: r.avgRating || 0,
-      restaurant: {
-        id: r._id.toString(),
-        name: r.name,
-        coverImage: r.coverImage || null,
-        avatar: r.avatar || null,
-        avgRating: r.avgRating ?? 0,
-        cuisineType: r.cuisineType || null,
-        address: r.address || null,
-      },
-    });
-  }
-
-  for (const m of menuItems) {
-    items.push({
-      type: "MENU_ITEM",
-      score: 1,
-      timeSlot: m.menu?.timeSlot || null,
-      menuItem: {
-        id: m._id.toString(),
-        name: m.name,
-        basePrice: m.basePrice ?? 0,
-        thumbImage: m.thumbImage || null,
-        restaurant: m.restaurant
-          ? {
-              id: m.restaurant._id.toString(),
-              name: m.restaurant.name,
-              address: m.restaurant.address || null,
-            }
-          : null,
-      },
-    });
-  }
-
-  for (const o of owners) {
-    items.push({
-      type: "OWNER",
-      score:
-        (Array.isArray(o.refRestaurants) ? o.refRestaurants.length : 0) + 1,
-      owner: {
-        id: o._id.toString(),
-        fullName: o.fullName || null,
-        phone: o.phone || null,
-        email: o.email || null,
-      },
-    });
-  }
-
-  for (const l of locations) {
-    items.push({
-      type: "LOCATION",
-      score: 1,
-      locationLabel: l.label,
-      locationCity: l.city,
-      locationDistrict: l.district,
-    });
-  }
+  restaurants.forEach((r) => items.push({ type: "RESTAURANT", score: r.avgRating || 0, restaurant: { id: r._id.toString(), name: r.name, coverImage: r.coverImage || null, avatar: r.avatar || null, avgRating: r.avgRating ?? 0, cuisineType: r.cuisineType || null, address: r.address || null } }));
+  menuItems.forEach((m) => items.push({ type: "MENU_ITEM", score: 1, timeSlot: m.menu?.timeSlot || null, menuItem: { id: m._id.toString(), name: m.name, basePrice: m.basePrice ?? 0, thumbImage: m.thumbImage || null, restaurant: m.restaurant ? { id: m.restaurant._id.toString(), name: m.restaurant.name, address: m.restaurant.address || null } : null } }));
+  owners.forEach((o) => items.push({ type: "OWNER", score: (Array.isArray(o.refRestaurants) ? o.refRestaurants.length : 0) + 1, owner: { id: o._id.toString(), fullName: o.fullName || null, phone: o.phone || null, email: o.email || null } }));
+  locations.forEach((l) => items.push({ type: "LOCATION", score: 1, locationLabel: l.label, locationCity: l.city, locationDistrict: l.district }));
 
   items.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-  return {
-    items,
-    totalCount: items.length,
-  };
+  return { items, totalCount: items.length };
 }
 
-/* ============================
- * ROOT RESOLVERS
- * ============================ */
-
 const searchQueryResolvers = {
-  async searchSuggestions(_, { query, timeSlot, limitPerType = 5 }) {
+  async searchSuggestions(_, { query, timeSlot, limitPerType = 5 }, ctx) {
     const trimmed = (query || "").trim();
-    if (!trimmed || trimmed.length < 2) {
-      return {
-        restaurants: [],
-        menuItems: [],
-        owners: [],
-        locations: [],
-      };
-    }
-
+    if (!trimmed || trimmed.length < 2) return { restaurants: [], menuItems: [], owners: [], locations: [] };
     const timeSlotDb = normalizeTimeSlot(timeSlot);
+    const adminUser = isAdminUser(ctx);
 
     try {
       const [restaurants, menuItems, owners, locations] = await Promise.all([
         findRestaurantSuggestions(trimmed, limitPerType),
         findMenuItemSuggestions(trimmed, timeSlotDb, limitPerType),
-        findOwnerSuggestions(trimmed, limitPerType),
+        adminUser ? findOwnerSuggestions(trimmed, limitPerType) : [],
         findLocationSuggestions(trimmed, limitPerType),
       ]);
 
-      return {
-        restaurants,
-        menuItems,
-        owners,
-        locations,
-      };
+      return { restaurants, menuItems, owners, locations };
     } catch (err) {
       console.error("searchSuggestions error:", err);
-      return {
-        restaurants: [],
-        menuItems: [],
-        owners: [],
-        locations: [],
-      };
+      return { restaurants: [], menuItems: [], owners: [], locations: [] };
     }
   },
 
-  async search(_, { query, filter, limit = 20, offset = 0 }) {
+  async search(_, { query, filter, limit = 20, offset = 0 }, ctx) {
     try {
-      return await fullSearch(query, filter, limit, offset);
+      return await fullSearch(query, filter, limit, offset, ctx);
     } catch (err) {
       console.error("search error:", err);
-      return {
-        items: [],
-        totalCount: 0,
-      };
+      return { items: [], totalCount: 0 };
     }
   },
 };
