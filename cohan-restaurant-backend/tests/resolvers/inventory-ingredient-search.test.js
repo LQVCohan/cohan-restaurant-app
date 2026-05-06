@@ -10,6 +10,9 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn(async () => true) }));
+
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -53,7 +56,7 @@ describe("Inventory ingredient search", () => {
         search: "S",
         limit: 50,
       },
-      {}
+      { user: { id: "u1" } }
     );
 
     expect(result.map((it) => it.name)).toEqual(["Sả"]);
@@ -81,7 +84,7 @@ describe("Inventory ingredient search", () => {
         search: "banh pho",
         limit: 50,
       },
-      {}
+      { user: { id: "u1" } }
     );
 
     expect(result.map((it) => it.name)).toEqual(["Bánh Phở"]);
@@ -109,7 +112,7 @@ describe("Inventory ingredient search", () => {
         search: "s",
         limit: 50,
       },
-      {}
+      { user: { id: "u1" } }
     );
 
     expect(result.map((it) => it._id)).toEqual(["1", "2"]);

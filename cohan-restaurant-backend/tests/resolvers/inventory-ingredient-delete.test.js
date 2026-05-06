@@ -26,6 +26,9 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn(async () => true) }));
+
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -71,7 +74,7 @@ describe("Inventory ingredient delete flow", () => {
     const mutation = (await import("../../graphql/resolvers/inventory/ingredient.mutation.js"))
       .default;
 
-    await expect(mutation.deleteIngredient(null, { id: "ing-1" })).rejects.toThrow(
+    await expect(mutation.deleteIngredient(null, { id: "ing-1" }, { user: { id: "u1" } })).rejects.toThrow(
       /Không thể xóa nguyên liệu/
     );
     expect(modelMocks.Ingredient.updateOne).not.toHaveBeenCalled();
@@ -100,7 +103,7 @@ describe("Inventory ingredient delete flow", () => {
     const mutation = (await import("../../graphql/resolvers/inventory/ingredient.mutation.js"))
       .default;
 
-    const result = await mutation.deleteIngredient(null, { id: "ing-2" });
+    const result = await mutation.deleteIngredient(null, { id: "ing-2" }, { user: { id: "u1" } });
     expect(result).toBe(true);
     expect(modelMocks.Ingredient.updateOne).toHaveBeenCalledTimes(1);
   });

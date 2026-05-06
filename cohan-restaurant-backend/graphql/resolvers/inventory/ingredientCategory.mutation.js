@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Ingredient, IngredientCategory, EventLog } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 import {
   classifyCategoryFromName,
@@ -215,10 +216,11 @@ async function runIngredientCategorySync(restaurantId, ctx) {
 }
 
 export default {
-  createIngredientCategory: async (_p, { input }) => {
+  createIngredientCategory: async (_p, { input }, ctx) => {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
+    await requireRestaurantAccess(ctx, input.restaurantId);
     const name = toEnglishCategoryName(input?.name);
     if (!name) throw new GraphQLError("Category name is required");
     const slug = slugify(name);
@@ -236,17 +238,19 @@ export default {
     return doc;
   },
 
-  updateIngredientCategory: async (_p, { input }) => {
+  updateIngredientCategory: async (_p, { input }, ctx) => {
     const { id, name, isActive } = input || {};
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
 
     const current = await IngredientCategory.findById(id);
     if (!current) throw new GraphQLError("Ingredient category not found");
+    await requireRestaurantAccess(ctx, current.restaurantId);
 
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
 
+      delete input?.restaurantId;
       let renamedName = null;
       if (typeof name === "string") {
         const nextName = toEnglishCategoryName(name);
@@ -281,10 +285,11 @@ export default {
     return current.toObject({ virtuals: true });
   },
 
-  deleteIngredientCategory: async (_p, { id }) => {
+  deleteIngredientCategory: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return false;
     const doc = await IngredientCategory.findById(id).lean();
     if (!doc) return false;
+    await requireRestaurantAccess(ctx, doc.restaurantId);
     await IngredientCategory.deleteOne({ _id: id });
     return true;
   },
@@ -294,6 +299,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
+    await requireRestaurantAccess(ctx, restaurantId);
     return runIngredientCategorySync(restaurantId, ctx);
   },
 
@@ -302,6 +308,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
+    await requireRestaurantAccess(ctx, restaurantId);
     const report = await runIngredientCategorySync(restaurantId, ctx);
     return report.categories;
   },

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { IngredientCategory, EventLog } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -9,8 +10,10 @@ export default {
   ingredientCategories: async (
     _p,
     { restaurantId, search, includeInactive = false, limit = 200 },
+    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId };
     if (!includeInactive) q.isActive = true;
@@ -24,8 +27,9 @@ export default {
       .lean({ virtuals: true });
   },
 
-  ingredientCategorySyncLogs: async (_p, { restaurantId, limit = 10 }) => {
+  ingredientCategorySyncLogs: async (_p, { restaurantId, limit = 10 }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const docs = await EventLog.find({
       restaurantId,
