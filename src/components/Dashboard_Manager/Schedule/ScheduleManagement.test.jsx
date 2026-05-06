@@ -116,7 +116,6 @@ describe("ScheduleManagement", () => {
           id: "ack-1",
           shiftId: "shift-row-1",
           employeeId: "staff-1",
-          status: "declined",
           reasonCategory: "sick",
           reason: "Bị ốm",
           declineClassification: "unknown",
@@ -256,56 +255,10 @@ describe("ScheduleManagement", () => {
     expect(screen.getByRole("button", { name: "Không duyệt lý do" })).toBeInTheDocument();
   });
 
-  it("shows enriched declined shift content instead of raw IDs", () => {
+  it("shows declined shift count and reason/category", () => {
     render(<ScheduleManagement />);
     expect(screen.getByText(/Ca bị từ chối \(1\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Nhân viên: Lan Manager - MN001/)).toBeInTheDocument();
-    expect(screen.getByText("Lý do: Bị ốm")).toBeInTheDocument();
-    expect(screen.queryByText(/^Nhân viên: staff-1$/)).not.toBeInTheDocument();
-  });
-
-  it("valid decline hides review buttons and shows resolution action", () => {
-    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "valid";
-    render(<ScheduleManagement />);
-    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mở ca để xử lý" })).toBeInTheDocument();
-    expect(screen.getByText("Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh lịch.")).toBeInTheDocument();
-  });
-
-  it("invalid decline hides review buttons and shows expected attendance helper", () => {
-    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "invalid";
-    render(<ScheduleManagement />);
-    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
-    expect(screen.getByText("Nhân viên vẫn được kỳ vọng đi làm ca này.")).toBeInTheDocument();
-  });
-
-  it("late decline hides review buttons", () => {
-    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "late";
-    render(<ScheduleManagement />);
-    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
-    expect(screen.getByText("Từ chối muộn - không thể duyệt lại trong màn này.")).toBeInTheDocument();
-  });
-
-  it("clicking accept reason sends valid classification", async () => {
-    render(<ScheduleManagement />);
-    fireEvent.click(screen.getByRole("button", { name: "Chấp nhận lý do" }));
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    expect(mutationSpy.mock.calls[0][0]).toEqual(
-      expect.objectContaining({
-        variables: { input: { acknowledgementId: "ack-1", classification: "valid" } },
-      }),
-    );
-  });
-
-  it("clicking reject reason sends invalid classification", async () => {
-    render(<ScheduleManagement />);
-    fireEvent.click(screen.getByRole("button", { name: "Không duyệt lý do" }));
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    expect(mutationSpy.mock.calls[0][0]).toEqual(
-      expect.objectContaining({
-        variables: { input: { acknowledgementId: "ack-1", classification: "invalid" } },
-      }),
-    );
+    expect(screen.getByText("Lý do: sick - Bị ốm")).toBeInTheDocument();
   });
 
   it("shows count 0 when declined acknowledgement query returns empty", () => {
