@@ -137,23 +137,14 @@ const GET_DECLINED_SHIFT_ACKS = gql`
   query ShiftAcknowledgements($restaurantId: ID!, $periodStart: DateTime, $periodEnd: DateTime, $status: ShiftAcknowledgementStatus) {
     shiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd, status: $status) {
       id
-      restaurantId
-      publicationId
       shiftId
       employeeId
-      periodStart
-      periodEnd
       status
       reasonCategory
       reason
       declineClassification
       respondedAt
       updatedAt
-      employeeName
-      employeeCode
-      shiftType
-      shiftStartTime
-      shiftEndTime
     }
   }
 `;
