@@ -105,7 +105,10 @@ export const PrivateRoute = ({
     authState || fallbackAuthState;
   const location = useLocation();
 
-  if (loading || (token && sessionState === "restoring")) return null;
+  const isRestoringSession = token && sessionState === "restoring";
+  const waitingForResolvedUser = Boolean(token) && (role == null || !isAuthenticated);
+
+  if (loading || isRestoringSession || waitingForResolvedUser) return null;
 
   if (token && sessionState === "network_unstable") {
     return (

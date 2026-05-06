@@ -165,12 +165,16 @@ const LoginPage = () => {
 
 
   useEffect(() => {
-    if (loading) return;
-    if (!isAuthenticated) return;
+    if (loading || !isAuthenticated || !user) return;
 
-    const redirectTo = safeRedirectPath(location?.state?.from?.pathname, getRoleHomeRoute(resolveRoleName(user)));
+    const redirectTo = safeRedirectPath(
+      location?.state?.from?.pathname,
+      getRoleHomeRoute(resolveRoleName(user)),
+    );
+
+    if (location.pathname === redirectTo) return;
     navigate(redirectTo, { replace: true });
-  }, [isAuthenticated, loading, location, navigate, user]);
+  }, [isAuthenticated, loading, location.pathname, location?.state?.from?.pathname, navigate, user]);
 
   useEffect(() => {
     if (!rememberedLoginIdentifier) return;
@@ -243,8 +247,6 @@ const LoginPage = () => {
           `Chào mừng ${user.fullName || user.username}!`,
           "success",
         );
-        const redirectTo = safeRedirectPath(location?.state?.from?.pathname, getRoleHomeRoute(resolveRoleName(user)));
-    navigate(redirectTo, { replace: true });
       },
     },
   );

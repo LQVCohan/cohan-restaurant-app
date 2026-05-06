@@ -414,11 +414,11 @@ export const AuthProvider = ({ children }) => {
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, user, avatar);
 
+      writeStoredAuth(newToken, newUser, options);
       setToken(newToken);
       setUser(newUser);
       setSessionState("authenticated");
       setSessionWarning("");
-      writeStoredAuth(newToken, newUser, options);
     },
     [user]
   );
