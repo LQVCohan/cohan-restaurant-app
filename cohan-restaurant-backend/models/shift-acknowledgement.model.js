@@ -24,7 +24,7 @@ const ShiftAcknowledgementSchema = new Schema(
     },
     declineClassification: {
       type: String,
-      enum: ["valid", "late", "unknown"],
+      enum: ["valid", "invalid", "late", "unknown"],
       default: "unknown",
     },
     respondedAt: { type: Date, default: null },

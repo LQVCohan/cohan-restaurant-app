@@ -19,6 +19,18 @@ import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
+
+function hasPendingItemWork(order) {
+  return (order?.items || []).some((item) => ["pending", "preparing", "ready"].includes(String(item?.status || "").toLowerCase()));
+}
+
+function hasPendingAdjustmentRequests(order) {
+  return (order?.items || []).some((item) =>
+    (item?.voidRequests || []).some((req) => req?.status === "pending") ||
+    (item?.returnRequests || []).some((req) => req?.status === "pending"),
+  );
+}
+
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
@@ -135,6 +147,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   const tid = toId(tableId);
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
@@ -164,6 +177,15 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       transaction: null,
       cashflow: null,
     };
+  }
+
+  for (const order of orders) {
+    if (hasPendingItemWork(order)) {
+      throw new Error("Không thể thanh toán khi còn món chưa phục vụ xong.");
+    }
+    if (hasPendingAdjustmentRequests(order)) {
+      throw new Error("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+    }
   }
 
   const served = [];
@@ -307,7 +329,16 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           "payment.status": "paid",
           "payment.paidAmount": amountToPay,
           "payment.paidAt": now,
+          "payment.paidBy": actorId,
           currentStatus: "completed",
+        },
+        $push: {
+          statusTimeline: {
+            status: "completed",
+            at: now,
+            byUserId: actorId || null,
+            note: "Đã thanh toán và hoàn tất đơn.",
+          },
         },
       },
       { session }
@@ -341,6 +372,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
     await session.commitTransaction();
     session.endSession();
+
+    const paidOrders = await Order.find({ _id: { $in: orderIds } });
+    for (const paidOrder of paidOrders) {
+      await emitOrderEvent(ctx, String(paidOrder.restaurantId), "ORDER_UPDATED", paidOrder);
+    }
 
     return {
       warning: pendingCodes.length > 0 && !includeUnserved,
@@ -400,6 +436,15 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
       transaction: null,
       cashflow: null,
     };
+  }
+
+  for (const order of orders) {
+    if (hasPendingItemWork(order)) {
+      throw new Error("Không thể thanh toán khi còn món chưa phục vụ xong.");
+    }
+    if (hasPendingAdjustmentRequests(order)) {
+      throw new Error("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+    }
   }
 
   const pendingCodes = [];
@@ -522,7 +567,16 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           "payment.status": "paid",
           "payment.paidAmount": amountToPay,
           "payment.paidAt": now,
+          "payment.paidBy": actorId,
           currentStatus: "completed",
+        },
+        $push: {
+          statusTimeline: {
+            status: "completed",
+            at: now,
+            byUserId: actorId || null,
+            note: "Đã thanh toán và hoàn tất đơn.",
+          },
         },
       },
       { session }
@@ -548,6 +602,11 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
     await session.commitTransaction();
     session.endSession();
+
+    const paidOrders = await Order.find({ _id: { $in: activeOrderIds } });
+    for (const paidOrder of paidOrders) {
+      await emitOrderEvent(ctx, String(paidOrder.restaurantId), "ORDER_UPDATED", paidOrder);
+    }
 
     return {
       warning: false,
