@@ -348,13 +348,16 @@ const OrderSchema = BaseSchemaModel({
 
     status: {
       type: String,
-      enum: ["paid", "pending", "failed", "refunded", "partially_refunded"],
+      enum: ["payment_requested", "paid", "pending", "failed", "refunded", "partially_refunded"],
       default: "pending",
     },
     paidAmount: { type: Number, default: 0, min: 0 },
     changeAmount: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: "VND" },
+    requestedAt: { type: Date },
+    requestedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     paidAt: { type: Date },
+    paidBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },
 
   printStatus: {

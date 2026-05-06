@@ -166,6 +166,7 @@ const OrderItemRow = React.memo(
       baseline - Number(item.returnedQuantity || 0),
     );
     const [reviewingRequestId, setReviewingRequestId] = useState(null);
+  const [paying, setPaying] = useState(false);
     const canReviewVoid =
       !["completed", "cancelled"].includes(orderStatus) &&
       !["served", "cancelled", "returned"].includes(item.status);
@@ -322,6 +323,7 @@ const OrderModal = ({
   onReviewItemVoid,
   onRequestItemReturn,
   onReviewItemReturn,
+  onConfirmPayment,
 }) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
@@ -431,6 +433,12 @@ const OrderModal = ({
         return <Users size={16} />;
     }
   };
+
+
+  const hasPendingItem = items.some((it) => ["pending", "preparing", "ready"].includes(it?.status));
+  const hasPendingAdjustments = items.some((it) => (it?.voidRequests || []).some((r) => r?.status === "pending") || (it?.returnRequests || []).some((r) => r?.status === "pending"));
+  const canConfirmPayment = !["completed", "cancelled"].includes(order?.currentStatus) && !hasPendingItem && !hasPendingAdjustments;
+  const hasRefundAfterPayment = items.some((it) => (it?.returnRequests || []).some((r) => r?.status === "approved" && r?.refundMode === "refund_after_payment"));
 
   const totals = order?.totals || { grandTotal: 0 };
 
@@ -542,6 +550,34 @@ const OrderModal = ({
                 </strong>
               </div>
             )}
+            {hasRefundAfterPayment && (
+              <div className="order-note-box" style={{ background: "#fff7ed", color: "#9a3412" }}>
+                Có món cần xử lý hoàn tiền sau thanh toán.
+              </div>
+            )}
+            <button
+              className="om-btn primary"
+              disabled={!canConfirmPayment || paying || !onConfirmPayment}
+              onClick={async () => {
+                const method = window.prompt("Chọn payment method: cash / bank_transfer / card / e_wallet", "cash");
+                if (!method) return;
+                if (!["cash", "bank_transfer", "card", "e_wallet"].includes(method)) {
+                  window.alert("Payment method không hợp lệ.");
+                  return;
+                }
+                setPaying(true);
+                try {
+                  await onConfirmPayment(order, method);
+                  window.alert("Đã thanh toán và hoàn tất đơn.");
+                } catch (e) {
+                  window.alert(e?.message || "Xác nhận thanh toán thất bại.");
+                } finally {
+                  setPaying(false);
+                }
+              }}
+            >
+              {paying ? "Đang xử lý..." : "Xác nhận thanh toán"}
+            </button>
             {order?.note && (
               <div className="order-note-box">
                 <Utensils size={16} />{" "}

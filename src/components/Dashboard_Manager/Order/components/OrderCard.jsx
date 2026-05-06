@@ -127,6 +127,7 @@ const OrderCard = ({
   const hasPendingReturnRequest = (order?.items || []).some((it) =>
     (it?.returnRequests || []).some((r) => r?.status === "pending"),
   );
+  const isPaymentRequested = order?.payment?.status === "payment_requested" || !!order?.payment?.requestedAt;
   const orderLocationLabel =
     order?.orderType === "delivery"
       ? "Giao hàng"
