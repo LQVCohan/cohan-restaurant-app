@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { StockItem, StockMovement, Ingredient } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 export default {
   receiveStock: async (
@@ -16,7 +17,8 @@ export default {
       lot,
       expiry,
       supplierNote,
-    }
+    },
+    ctx
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
@@ -32,6 +34,8 @@ export default {
     if (!Number.isFinite(nCost) || nCost <= 0) {
       throw new GraphQLError("costPerBaseUnit is required and must be > 0");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const session = await mongoose.startSession();
     try {
@@ -96,13 +100,16 @@ export default {
 
   upsertStockItem: async (
     _p,
-    { restaurantId, warehouseId, ingredientId, onHand, reserved, batches }
+    { restaurantId, warehouseId, ingredientId, onHand, reserved, batches },
+    ctx
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
     ) {
       throw new GraphQLError("Invalid ids");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const update = { $set: { restaurantId, warehouseId, ingredientId } };
     if (typeof onHand === "number" && Number.isFinite(onHand))
@@ -123,7 +130,8 @@ export default {
   // kiểm kê/điều chỉnh: onHand += qty, log movement adjustment (qty signed)
   adjustStock: async (
     _p,
-    { restaurantId, warehouseId, ingredientId, qty, reason }
+    { restaurantId, warehouseId, ingredientId, qty, reason },
+    ctx
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
@@ -135,6 +143,8 @@ export default {
     if (!Number.isFinite(nQty) || nQty === 0) {
       throw new GraphQLError("qty must be a non-zero number");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const session = await mongoose.startSession();
     try {
@@ -178,7 +188,8 @@ export default {
   // transfer: trừ kho nguồn, cộng kho đích, log movement 2 dòng
   transferStock: async (
     _p,
-    { restaurantId, fromWarehouseId, toWarehouseId, ingredientId, qty, reason }
+    { restaurantId, fromWarehouseId, toWarehouseId, ingredientId, qty, reason },
+    ctx
   ) => {
     if (
       ![restaurantId, fromWarehouseId, toWarehouseId, ingredientId].every(
@@ -192,6 +203,8 @@ export default {
     if (!Number.isFinite(nQty) || nQty <= 0) {
       throw new GraphQLError("qty must be > 0");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const session = await mongoose.startSession();
     try {

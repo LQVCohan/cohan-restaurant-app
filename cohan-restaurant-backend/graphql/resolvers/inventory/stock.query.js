@@ -1,13 +1,16 @@
 // src/graphql/resolvers/inventory/stockItem.query.js
 import mongoose from "mongoose";
 import { StockItem, Ingredient, Supply } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 export default {
   stockItems: async (
     _p,
     { restaurantId, warehouseId, ingredientIds, lowOnly, limit }
-  ) => {
+  , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId, ingredientId: { $exists: true, $ne: null } };
 
@@ -45,8 +48,10 @@ export default {
   },
 
   // StockItem cho Supply (theo schema supply.graphql)
-  supplyStockItems: async (_p, { restaurantId, supplyId }) => {
+  supplyStockItems: async (_p, { restaurantId, supplyId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId, supplyId: { $exists: true, $ne: null } };
     if (supplyId && mongoose.isValidObjectId(supplyId)) {
