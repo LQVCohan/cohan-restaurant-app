@@ -169,6 +169,9 @@ export default function RightPanel() {
     setTableStatus,
 
     preparePayment,
+    paymentRequests,
+    loadPaymentRequestToPOS,
+    clearPaymentRequest,
     printers,
     printStations,
     setPrintQueue,
@@ -427,6 +430,8 @@ export default function RightPanel() {
 
   const handlePaymentComplete = useCallback(
     (payload) => {
+      const paidOrderId = payload?.server?.order?.id || payload?.server?.orderId;
+      if (paidOrderId) clearPaymentRequest?.(paidOrderId);
       showNotification("Thanh toán thành công.", "success");
       const inv =
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
@@ -449,7 +454,20 @@ export default function RightPanel() {
       setCurrentTable,
       showNotification,
       clearDraft,
+      clearPaymentRequest,
     ],
+  );
+
+  const handleOpenPaymentRequest = useCallback(
+    async (request) => {
+      const res = await loadPaymentRequestToPOS?.(request);
+      if (!res?.success) {
+        showNotification(res?.message || "Không thể mở yêu cầu thanh toán.", "error");
+        return;
+      }
+      setPaymentModalOpen(true);
+    },
+    [loadPaymentRequestToPOS, showNotification],
   );
 
   const handleQtyChange = (e, item, change) => {
@@ -968,6 +986,28 @@ export default function RightPanel() {
                 <IconDraft />
               </span>
               <span className={cls.legendText}>Món mới (chưa lưu)</span>
+            </div>
+          )}
+          {Array.isArray(paymentRequests) && paymentRequests.length > 0 && (
+            <div className={cls.draftLegend}>
+              <span className={cls.legendText}>
+                Khách gọi thanh toán ({paymentRequests.length})
+              </span>
+              <div>
+                {paymentRequests.slice(0, 3).map((req) => (
+                  <div key={req.orderId}>
+                    {(req.tableCode || req.orderCode || req.orderId)} ·{" "}
+                    {formatPrice(req?.totals?.grandTotal || 0)}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPaymentRequest(req)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Mở thanh toán
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

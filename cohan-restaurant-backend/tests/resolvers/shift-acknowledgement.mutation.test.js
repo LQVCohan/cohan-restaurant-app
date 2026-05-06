@@ -5,7 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   findByIdMock: vi.fn(),
   Staff: {},
   Role: {},
-  EventLog: {},
+  EventLog: { create: vi.fn() },
   Shift: {},
   Timesheet: {},
   LeaveRequest: {},
@@ -154,7 +154,7 @@ describe("shift acknowledgement mutation resolvers", () => {
     expect(doc.save).toHaveBeenCalledTimes(1);
   });
 
-  it("declines pending acknowledgement before deadline as valid", async () => {
+  it("declines pending acknowledgement before deadline as pending manager review", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     const doc = buildAckDoc({ deadlineAt: "2099-01-01T00:00:00.000Z" });
     modelMocks.findByIdMock.mockResolvedValue(doc);
@@ -167,7 +167,7 @@ describe("shift acknowledgement mutation resolvers", () => {
 
     expect(result.status).toBe("declined");
     expect(result.reason).toBe("ill");
-    expect(result.declineClassification).toBe("valid");
+    expect(result.declineClassification).toBe("unknown");
     expect(result.respondedAt).toBeInstanceOf(Date);
   });
 
@@ -245,5 +245,72 @@ describe("shift acknowledgement mutation resolvers", () => {
         { user: { id: "staff-1", roles } },
       ),
     ).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("manager reviews declined acknowledgement as valid", async () => {
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const doc = {
+      _id: "ack-1",
+      restaurantId: oid("r1"),
+      shiftId: oid("s1"),
+      status: "declined",
+      declineClassification: "unknown",
+      save: vi.fn().mockResolvedValue(true),
+    };
+    modelMocks.findByIdMock.mockResolvedValue(doc);
+
+    const result = await mutation.reviewShiftAcknowledgement(
+      null,
+      { input: { acknowledgementId: "ack-1", classification: "valid" } },
+      { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+    );
+
+    expect(result.declineClassification).toBe("valid");
+    expect(doc.save).toHaveBeenCalledTimes(1);
+    expect(modelMocks.EventLog.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("manager reviews declined acknowledgement as invalid", async () => {
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const doc = {
+      _id: "ack-2",
+      restaurantId: oid("r1"),
+      shiftId: oid("s2"),
+      status: "declined",
+      declineClassification: "unknown",
+      save: vi.fn().mockResolvedValue(true),
+    };
+    modelMocks.findByIdMock.mockResolvedValue(doc);
+
+    const result = await mutation.reviewShiftAcknowledgement(
+      null,
+      { input: { acknowledgementId: "ack-2", classification: "invalid" } },
+      { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+    );
+
+    expect(result.declineClassification).toBe("invalid");
+    expect(doc.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks manager review when decline classification is late", async () => {
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const doc = {
+      _id: "ack-late",
+      restaurantId: oid("r1"),
+      shiftId: oid("s3"),
+      status: "declined",
+      declineClassification: "late",
+      save: vi.fn().mockResolvedValue(true),
+    };
+    modelMocks.findByIdMock.mockResolvedValue(doc);
+
+    await expect(
+      mutation.reviewShiftAcknowledgement(
+        null,
+        { input: { acknowledgementId: "ack-late", classification: "valid" } },
+        { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+      ),
+    ).rejects.toThrow("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
+    expect(doc.save).not.toHaveBeenCalled();
   });
 });

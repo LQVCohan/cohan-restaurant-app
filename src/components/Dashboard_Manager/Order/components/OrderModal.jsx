@@ -432,7 +432,7 @@ const OrderModal = ({
     }
   };
 
-  const totals = order?.totals || { grandTotal: 0 };
+
 
   return createPortal(
     <div className="om-overlay" onClick={handleClose}>

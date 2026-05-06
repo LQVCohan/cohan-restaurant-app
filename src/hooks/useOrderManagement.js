@@ -359,7 +359,12 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             method
             status
             paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
             paidAt
+            paidBy
           }
           shipping {
             fullName
@@ -491,7 +496,12 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             method
             status
             paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
             paidAt
+            paidBy
           }
           shipping {
             fullName
@@ -603,11 +613,16 @@ const GET_ORDER = gql`
         grandTotal
       }
       payment {
-        method
-        status
-        paidAmount
-        paidAt
-      }
+            method
+            status
+            paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
+            paidAt
+            paidBy
+          }
       shipping {
         fullName
         phone
@@ -2742,6 +2757,28 @@ export default function useOrderManagement(pos = null) {
     ],
   );
 
+
+  const payOrderByIds = useCallback(
+    async ({ restaurantId, orderIds = [], method = "cash", note = "" } = {}) => {
+      if (!restaurantId) throw new Error("Thiếu restaurantId.");
+      if (!Array.isArray(orderIds) || !orderIds.length) throw new Error("Thiếu orderIds để thanh toán.");
+      const { data } = await mutPayByOrderIds({
+        variables: {
+          input: {
+            restaurantId,
+            orderIds,
+            method,
+            note,
+          },
+        },
+      });
+      const res = data?.payOrdersByOrderIds;
+      if (!res?.invoice && !res?.transaction) throw new Error("Thanh toán theo order thất bại.");
+      return res;
+    },
+    [mutPayByOrderIds],
+  );
+
   const checkoutOrder = useCallback(
     async ({
       restaurantId,
@@ -2985,6 +3022,7 @@ export default function useOrderManagement(pos = null) {
     validatePayment,
     confirmPayment,
     checkoutOrder,
+    payOrderByIds,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
     reviewOrderItemVoid,
     requestOrderItemReturn,

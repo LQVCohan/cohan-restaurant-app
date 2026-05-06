@@ -169,6 +169,27 @@ const GET_STAFF_SHIFTS = gql`
     }
   }
 `;
+const GET_MY_SHIFT_ACKS = gql`
+  query MyShiftAcknowledgements($periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAcknowledgements(periodStart: $periodStart, periodEnd: $periodEnd) {
+      id
+      shiftId
+      status
+      declineClassification
+    }
+  }
+`;
+const RESPOND_SHIFT_ACK = gql`
+  mutation RespondShiftAcknowledgement(
+    $input: RespondShiftAcknowledgementInput!
+  ) {
+    respondShiftAcknowledgement(input: $input) {
+      id
+      status
+      declineClassification
+    }
+  }
+`;
 
 const SHIFT_TYPES = ["morning", "afternoon", "evening"];
 
@@ -206,8 +227,18 @@ const SHIFT_META = {
 };
 const FALLBACK_SHIFT_DURATIONS = { morning: 6, afternoon: 6, evening: 5 };
 const FALLBACK_EMPLOYMENT_POLICY = {
-  part_time: { minWeeklyHours: 8, weeklyHoursTarget: 20, weeklyHoursCap: 28, maxShiftsPerWeek: 4 },
-  seasonal: { minWeeklyHours: 0, weeklyHoursTarget: 24, weeklyHoursCap: 40, maxShiftsPerWeek: 5 },
+  part_time: {
+    minWeeklyHours: 8,
+    weeklyHoursTarget: 20,
+    weeklyHoursCap: 28,
+    maxShiftsPerWeek: 4,
+  },
+  seasonal: {
+    minWeeklyHours: 0,
+    weeklyHoursTarget: 24,
+    weeklyHoursCap: 40,
+    maxShiftsPerWeek: 5,
+  },
 };
 
 const WINDOW_STATUS_LABELS = {
@@ -355,7 +386,8 @@ const getShiftTemplateDurationHours = (template) => {
   if (start === null || end === null) return FALLBACK_SHIFT_DURATIONS[key] || 0;
   let duration = end - start;
   if (template?.allowCrossDay || end <= start) duration += 24 * 60;
-  if (!Number.isFinite(duration) || duration <= 0) return FALLBACK_SHIFT_DURATIONS[key] || 0;
+  if (!Number.isFinite(duration) || duration <= 0)
+    return FALLBACK_SHIFT_DURATIONS[key] || 0;
   return duration / 60;
 };
 const buildShiftDurationMap = (shiftTemplates = []) => {
@@ -477,7 +509,11 @@ export default function StaffSchedulePage() {
   const [submit, { loading: submitting }] = useMutation(SUBMIT);
   const { data: schedulingPolicyData, error: schedulingPolicyError } = useQuery(
     GET_SCHEDULING_POLICY,
-    { variables: { restaurantId }, skip: !restaurantId, fetchPolicy: "cache-first" },
+    {
+      variables: { restaurantId },
+      skip: !restaurantId,
+      fetchPolicy: "cache-first",
+    },
   );
   const {
     data: myAckData,
@@ -493,6 +529,18 @@ export default function StaffSchedulePage() {
     fetchPolicy: "network-only",
   });
   const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
+  const [respondShiftAck, { loading: respondingShiftAck }] =
+    useMutation(RESPOND_SHIFT_ACK);
+  const [declineDraft, setDeclineDraft] = useState({});
+
+  const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
+    GET_MY_SHIFT_ACKS,
+    {
+      variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
+      skip: !employeeId,
+      fetchPolicy: "network-only",
+    },
+  );
 
   useEffect(() => {
     if (!restaurantId || !availabilityQueryFromIso || !availabilityQueryToIso) {
@@ -652,7 +700,9 @@ export default function StaffSchedulePage() {
     FALLBACK_EMPLOYMENT_POLICY[employmentType] ||
     {};
   const minAvailabilityHours = Number(employmentPolicy?.minWeeklyHours || 0);
-  const targetAvailabilityHours = Number(employmentPolicy?.weeklyHoursTarget || 0);
+  const targetAvailabilityHours = Number(
+    employmentPolicy?.weeklyHoursTarget || 0,
+  );
   const capHours = Number(employmentPolicy?.weeklyHoursCap || 0);
   const maxShiftsPerWeek = Number(employmentPolicy?.maxShiftsPerWeek || 0);
   const selectedAvailabilityHours = useMemo(() => {
@@ -660,22 +710,33 @@ export default function StaffSchedulePage() {
     days.forEach((day) => {
       const dateKey = toDateKey(day);
       SHIFT_TYPES.forEach((shiftType) => {
-        if (checked(dateKey, shiftType)) total += Number(shiftDurationMap[shiftType] || 0);
+        if (checked(dateKey, shiftType))
+          total += Number(shiftDurationMap[shiftType] || 0);
       });
     });
     return total;
   }, [days, slotsState, submissionMap, shiftDurationMap, isPartTime]);
-  const remainingMinimumHours = Math.max(0, minAvailabilityHours - selectedAvailabilityHours);
+  const remainingMinimumHours = Math.max(
+    0,
+    minAvailabilityHours - selectedAvailabilityHours,
+  );
   const meetsMinimumAvailability =
-    !isPartTime || minAvailabilityHours <= 0 || selectedAvailabilityHours >= minAvailabilityHours;
-  const selectedShiftCountExceedsPolicy = maxShiftsPerWeek > 0 && selectedSlotCount > maxShiftsPerWeek;
+    !isPartTime ||
+    minAvailabilityHours <= 0 ||
+    selectedAvailabilityHours >= minAvailabilityHours;
+  const selectedShiftCountExceedsPolicy =
+    maxShiftsPerWeek > 0 && selectedSlotCount > maxShiftsPerWeek;
   const requirementProgress =
-    minAvailabilityHours > 0 ? Math.min(100, (selectedAvailabilityHours / minAvailabilityHours) * 100) : 100;
+    minAvailabilityHours > 0
+      ? Math.min(100, (selectedAvailabilityHours / minAvailabilityHours) * 100)
+      : 100;
   const officialAvailabilityHours = useMemo(
     () =>
       (submission?.slots || []).reduce(
         (total, slot) =>
-          slot?.status === "available" ? total + Number(shiftDurationMap[slot.shiftType] || 0) : total,
+          slot?.status === "available"
+            ? total + Number(shiftDurationMap[slot.shiftType] || 0)
+            : total,
         0,
       ),
     [submission, shiftDurationMap],
@@ -684,7 +745,9 @@ export default function StaffSchedulePage() {
     () =>
       (submission?.pendingSlots || []).reduce(
         (total, slot) =>
-          slot?.status === "available" ? total + Number(shiftDurationMap[slot.shiftType] || 0) : total,
+          slot?.status === "available"
+            ? total + Number(shiftDurationMap[slot.shiftType] || 0)
+            : total,
         0,
       ),
     [submission, shiftDurationMap],
@@ -710,7 +773,12 @@ export default function StaffSchedulePage() {
       setError("Không tìm thấy kỳ đăng ký lịch.");
       return;
     }
-    if (canShowAvailabilityForm && isPartTime && minAvailabilityHours > 0 && selectedAvailabilityHours < minAvailabilityHours) {
+    if (
+      canShowAvailabilityForm &&
+      isPartTime &&
+      minAvailabilityHours > 0 &&
+      selectedAvailabilityHours < minAvailabilityHours
+    ) {
       setError(
         `Bạn cần đăng ký ít nhất ${minAvailabilityHours} giờ khả dụng/tuần. Hiện tại bạn mới chọn ${selectedAvailabilityHours} giờ.`,
       );
@@ -781,10 +849,26 @@ export default function StaffSchedulePage() {
           new Date(right.startTime).getTime(),
       );
   }, [shiftsData]);
+  const shiftAckMap = useMemo(
+    () =>
+      new Map(
+        (myShiftAcksData?.myShiftAcknowledgements || []).map((ack) => [
+          String(ack.shiftId),
+          ack,
+        ]),
+      ),
+    [myShiftAcksData],
+  );
 
   const shiftCountText =
     shifts.length > 0 ? `${shifts.length} ca đã công bố` : "Chưa có ca công bố";
-
+  const closeDeclinePanelForShift = (shiftId) => {
+    setDeclineDraft((prev) => {
+      const next = { ...prev };
+      delete next[shiftId];
+      return next;
+    });
+  };
   return (
     <main className="staff-schedule-page">
       <section className="staff-schedule-hero">
@@ -1009,28 +1093,62 @@ export default function StaffSchedulePage() {
                 {canShowAvailabilityForm && isPartTime ? (
                   <div
                     className={`staff-availability-requirement ${
-                      meetsMinimumAvailability ? "staff-availability-requirement--ok" : "staff-availability-requirement--warning"
+                      meetsMinimumAvailability
+                        ? "staff-availability-requirement--ok"
+                        : "staff-availability-requirement--warning"
                     }`}
                   >
-                    <div className="staff-availability-requirement__header">Yêu cầu giờ khả dụng</div>
+                    <div className="staff-availability-requirement__header">
+                      Yêu cầu giờ khả dụng
+                    </div>
                     <div className="staff-availability-requirement__stats">
-                      <span>Đã chọn: {selectedAvailabilityHours} giờ / tối thiểu {minAvailabilityHours} giờ</span>
-                      {targetAvailabilityHours > 0 ? <span>Mục tiêu tham khảo: {targetAvailabilityHours} giờ/tuần</span> : null}
-                      {(capHours > 0 || maxShiftsPerWeek > 0) ? (
-                        <span>Giới hạn xếp lịch: {capHours > 0 ? `tối đa ${capHours} giờ` : ""}{capHours > 0 && maxShiftsPerWeek > 0 ? " hoặc " : ""}{maxShiftsPerWeek > 0 ? `${maxShiftsPerWeek} ca/tuần` : ""}</span>
+                      <span>
+                        Đã chọn: {selectedAvailabilityHours} giờ / tối thiểu{" "}
+                        {minAvailabilityHours} giờ
+                      </span>
+                      {targetAvailabilityHours > 0 ? (
+                        <span>
+                          Mục tiêu tham khảo: {targetAvailabilityHours} giờ/tuần
+                        </span>
+                      ) : null}
+                      {capHours > 0 || maxShiftsPerWeek > 0 ? (
+                        <span>
+                          Giới hạn xếp lịch:{" "}
+                          {capHours > 0 ? `tối đa ${capHours} giờ` : ""}
+                          {capHours > 0 && maxShiftsPerWeek > 0 ? " hoặc " : ""}
+                          {maxShiftsPerWeek > 0
+                            ? `${maxShiftsPerWeek} ca/tuần`
+                            : ""}
+                        </span>
                       ) : null}
                       {!meetsMinimumAvailability ? (
-                        <span>Bạn cần đăng ký thêm {remainingMinimumHours} giờ khả dụng để đạt yêu cầu tối thiểu.</span>
+                        <span>
+                          Bạn cần đăng ký thêm {remainingMinimumHours} giờ khả
+                          dụng để đạt yêu cầu tối thiểu.
+                        </span>
                       ) : (
-                        <span>Đã đạt yêu cầu tối thiểu để quản lý xếp lịch.</span>
+                        <span>
+                          Đã đạt yêu cầu tối thiểu để quản lý xếp lịch.
+                        </span>
                       )}
                       {selectedShiftCountExceedsPolicy ? (
-                        <span>Bạn đã chọn vượt quá số ca khuyến nghị ({maxShiftsPerWeek} ca/tuần).</span>
+                        <span>
+                          Bạn đã chọn vượt quá số ca khuyến nghị (
+                          {maxShiftsPerWeek} ca/tuần).
+                        </span>
                       ) : null}
-                      {schedulingPolicyError ? <span>Đang dùng chính sách mặc định do chưa tải được cấu hình.</span> : null}
+                      {schedulingPolicyError ? (
+                        <span>
+                          Đang dùng chính sách mặc định do chưa tải được cấu
+                          hình.
+                        </span>
+                      ) : null}
                     </div>
                     <div className="staff-availability-progress">
-                      <div className="staff-availability-progress__bar" style={{ width: `${requirementProgress}%` }} />
+                      <div
+                        className="staff-availability-progress__bar"
+                        style={{ width: `${requirementProgress}%` }}
+                      />
                     </div>
                   </div>
                 ) : null}
@@ -1091,20 +1209,37 @@ export default function StaffSchedulePage() {
                   </div>
                 ) : null}
 
-                {submission && ["submitted", "approved", "late_change_requested", "rejected"].includes(submissionStatus) ? (
+                {submission &&
+                [
+                  "submitted",
+                  "approved",
+                  "late_change_requested",
+                  "rejected",
+                ].includes(submissionStatus) ? (
                   <div className="staff-info-box">
-                    {(submissionStatus === "submitted" || submissionStatus === "approved") ? (
+                    {submissionStatus === "submitted" ||
+                    submissionStatus === "approved" ? (
                       <div>
                         <strong>Các ca đã đăng ký</strong>
-                        {submissionStatus === "approved" ? <p>Đã được quản lý duyệt</p> : null}
+                        {submissionStatus === "approved" ? (
+                          <p>Đã được quản lý duyệt</p>
+                        ) : null}
                         <ul>
                           {(submission.slots || []).map((slot, idx) => (
                             <li key={`official-${idx}`}>
-                              {fmtFullDate(slot.date)} - {(SHIFT_META[slot.shiftType]?.label || slot.shiftType)} - {slot.status === "available" ? "Có thể làm" : "Không khả dụng"}
+                              {fmtFullDate(slot.date)} -{" "}
+                              {SHIFT_META[slot.shiftType]?.label ||
+                                slot.shiftType}{" "}
+                              -{" "}
+                              {slot.status === "available"
+                                ? "Có thể làm"
+                                : "Không khả dụng"}
                             </li>
                           ))}
                         </ul>
-                        <p>Tổng giờ đã đăng ký: {officialAvailabilityHours} giờ</p>
+                        <p>
+                          Tổng giờ đã đăng ký: {officialAvailabilityHours} giờ
+                        </p>
                       </div>
                     ) : null}
 
@@ -1114,12 +1249,24 @@ export default function StaffSchedulePage() {
                         <ul>
                           {(submission.pendingSlots || []).map((slot, idx) => (
                             <li key={`pending-${idx}`}>
-                              {fmtFullDate(slot.date)} - {(SHIFT_META[slot.shiftType]?.label || slot.shiftType)} - {slot.status === "available" ? "Có thể làm" : "Không khả dụng"}
+                              {fmtFullDate(slot.date)} -{" "}
+                              {SHIFT_META[slot.shiftType]?.label ||
+                                slot.shiftType}{" "}
+                              -{" "}
+                              {slot.status === "available"
+                                ? "Có thể làm"
+                                : "Không khả dụng"}
                             </li>
                           ))}
                         </ul>
-                        <p>Tổng giờ trong yêu cầu thay đổi: {pendingAvailabilityHours} giờ</p>
-                        <p>Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt.</p>
+                        <p>
+                          Tổng giờ trong yêu cầu thay đổi:{" "}
+                          {pendingAvailabilityHours} giờ
+                        </p>
+                        <p>
+                          Các thay đổi này chỉ được dùng để xếp lịch sau khi
+                          quản lý duyệt.
+                        </p>
                       </div>
                     ) : null}
                   </div>
@@ -1275,7 +1422,10 @@ export default function StaffSchedulePage() {
                   isPartTime &&
                   minAvailabilityHours > 0 &&
                   selectedAvailabilityHours < minAvailabilityHours ? (
-                    <small>Chọn thêm ca để đạt tối thiểu {minAvailabilityHours} giờ khả dụng.</small>
+                    <small>
+                      Chọn thêm ca để đạt tối thiểu {minAvailabilityHours} giờ
+                      khả dụng.
+                    </small>
                   ) : null}
                 </div>
 
@@ -1389,6 +1539,10 @@ export default function StaffSchedulePage() {
                       Lịch tuần này đã được công bố. Vui lòng xác nhận đã nhận
                       lịch.
                     </p>
+                    <p>
+                      Xác nhận toàn bộ lịch chỉ xác nhận bạn đã xem lịch. Từng
+                      ca vẫn cần phản hồi nếu có yêu cầu nhận/từ chối ca.
+                    </p>
                     <button
                       className="staff-primary-btn"
                       disabled={acking || ackLoading}
@@ -1436,6 +1590,7 @@ export default function StaffSchedulePage() {
             ) : (
               <div className="staff-shift-list">
                 {shifts.map((shift) => {
+                  const ack = shiftAckMap.get(String(shift.id));
                   const shiftMeta = SHIFT_META[shift.shiftType] || {};
                   const Icon = shiftMeta.icon || Clock3;
 
@@ -1459,6 +1614,168 @@ export default function StaffSchedulePage() {
                           <p className="staff-my-shift-card__note">
                             {shift.notes}
                           </p>
+                        ) : null}
+                        <p className="staff-my-shift-card__note">
+                          {ack
+                            ? {
+                                pending: "Chưa phản hồi",
+                                accepted: "Đã nhận ca",
+                                declined: "Đã từ chối",
+                                cancelled: "Đã hủy",
+                              }[ack.status] || "Chưa phản hồi"
+                            : "Chưa tạo yêu cầu phản hồi ca"}
+                        </p>
+                        {ack?.status === "declined" ? (
+                          <p className="staff-my-shift-card__note">
+                            {
+                              {
+                                valid: "Lý do hợp lệ - chờ quản lý xếp lại",
+                                invalid: "Lý do không được duyệt",
+                                unknown: "Chờ quản lý xem xét",
+                                late: "Từ chối muộn",
+                              }[ack?.declineClassification || "unknown"]
+                            }
+                          </p>
+                        ) : null}
+                        {ack?.status === "pending" ? (
+                          <div className="staff-shift-ack-actions">
+                            <button
+                              className="staff-primary-btn"
+                              type="button"
+                              disabled={respondingShiftAck}
+                              onClick={async () => {
+                                setError("");
+                                setSuccess("");
+                                try {
+                                  await respondShiftAck({
+                                    variables: {
+                                      input: {
+                                        shiftId: shift.id,
+                                        response: "accept",
+                                      },
+                                    },
+                                  });
+                                  closeDeclinePanelForShift(shift.id);
+                                  await refetchShiftAcks();
+                                  setSuccess("Bạn đã nhận ca thành công.");
+                                } catch (submitError) {
+                                  setError(
+                                    getGraphQLErrorMessage(
+                                      submitError,
+                                      "Không thể nhận ca.",
+                                    ),
+                                  );
+                                }
+                              }}
+                            >
+                              Nhận ca
+                            </button>
+                            <button
+                              className="staff-primary-btn"
+                              type="button"
+                              onClick={() =>
+                                setDeclineDraft((p) => ({
+                                  ...p,
+                                  [shift.id]: p[shift.id]?.open
+                                    ? { open: false }
+                                    : {
+                                        open: true,
+                                        reason: "",
+                                        reasonCategory: "sick",
+                                      },
+                                }))
+                              }
+                            >
+                              Từ chối ca
+                            </button>
+                          </div>
+                        ) : null}
+                        {ack?.status === "pending" &&
+                        declineDraft[shift.id]?.open ? (
+                          <div className="staff-shift-decline-panel">
+                            <select
+                              value={declineDraft[shift.id].reasonCategory}
+                              onChange={(e) =>
+                                setDeclineDraft((p) => ({
+                                  ...p,
+                                  [shift.id]: {
+                                    ...p[shift.id],
+                                    reasonCategory: e.target.value,
+                                  },
+                                }))
+                              }
+                            >
+                              <option value="sick">Bị ốm</option>
+                              <option value="personal">Việc cá nhân</option>
+                              <option value="emergency">Khẩn cấp</option>
+                              <option value="schedule_conflict">
+                                Trùng lịch
+                              </option>
+                              <option value="transportation">
+                                Vấn đề di chuyển
+                              </option>
+                              <option value="other">Khác</option>
+                            </select>
+                            <textarea
+                              value={declineDraft[shift.id].reason}
+                              onChange={(e) =>
+                                setDeclineDraft((p) => ({
+                                  ...p,
+                                  [shift.id]: {
+                                    ...p[shift.id],
+                                    reason: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Lý do từ chối (>= 5 ký tự)"
+                            />
+                            {(declineDraft[shift.id].reason || "").trim()
+                              .length < 5 ? (
+                              <p className="staff-my-shift-card__note">
+                                Vui lòng nhập lý do tối thiểu 5 ký tự.
+                              </p>
+                            ) : null}
+                            <button
+                              className="staff-primary-btn"
+                              type="button"
+                              disabled={
+                                respondingShiftAck ||
+                                (declineDraft[shift.id].reason || "").trim()
+                                  .length < 5
+                              }
+                              onClick={async () => {
+                                setError("");
+                                setSuccess("");
+                                try {
+                                  await respondShiftAck({
+                                    variables: {
+                                      input: {
+                                        shiftId: shift.id,
+                                        response: "decline",
+                                        reason: declineDraft[shift.id].reason,
+                                        reasonCategory:
+                                          declineDraft[shift.id].reasonCategory,
+                                      },
+                                    },
+                                  });
+                                  closeDeclinePanelForShift(shift.id);
+                                  await refetchShiftAcks();
+                                  setSuccess(
+                                    "Bạn đã gửi từ chối ca. Chờ quản lý xem xét.",
+                                  );
+                                } catch (submitError) {
+                                  setError(
+                                    getGraphQLErrorMessage(
+                                      submitError,
+                                      "Không thể gửi từ chối ca.",
+                                    ),
+                                  );
+                                }
+                              }}
+                            >
+                              Gửi từ chối
+                            </button>
+                          </div>
                         ) : null}
                       </div>
                     </article>
