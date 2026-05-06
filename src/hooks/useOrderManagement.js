@@ -312,10 +312,23 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             quantity
             originalQuantity
             cancelledQuantity
+            returnedQuantity
             voidRequests {
               requestId
               quantity
               reason
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
+            returnRequests {
+              requestId
+              quantity
+              reason
+              refundMode
               status
               requestedBy
               requestedAt
@@ -431,10 +444,23 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             quantity
             originalQuantity
             cancelledQuantity
+            returnedQuantity
             voidRequests {
               requestId
               quantity
               reason
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
+            returnRequests {
+              requestId
+              quantity
+              reason
+              refundMode
               status
               requestedBy
               requestedAt
@@ -780,10 +806,23 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
           quantity
           originalQuantity
           cancelledQuantity
+          returnedQuantity
           voidRequests {
             requestId
             quantity
             reason
+            status
+            requestedBy
+            requestedAt
+            reviewedBy
+            reviewedAt
+            reviewNote
+          }
+          returnRequests {
+            requestId
+            quantity
+            reason
+            refundMode
             status
             requestedBy
             requestedAt
@@ -903,12 +942,180 @@ const REVIEW_ORDER_ITEM_VOID = gql`
 `;
 const REQUEST_ORDER_ITEM_RETURN = gql`
   mutation RequestOrderItemReturn($input: RequestOrderItemReturnInput!) {
-    requestOrderItemReturn(input: $input) { id restaurantId updatedAt }
+    requestOrderItemReturn(input: $input) {
+      id
+      orderCode
+      tableCode
+      currentStatus
+      restaurantId
+      priority
+      items {
+        _id
+        dishId
+        menuId
+        categoryId
+        name
+        unit
+        basePrice
+        servingKey
+        servingVariant {
+          key
+          name
+          mode
+          price
+          sellQty
+          sellUnit
+        }
+        modifiersPrice
+        unitPrice
+        lineSubtotal
+        note
+        priority
+        quantity
+        originalQuantity
+        cancelledQuantity
+        returnedQuantity
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        returnRequests {
+          requestId
+          quantity
+          reason
+          refundMode
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        weightGrams
+        status
+        image
+        proofImages
+        ingredientsSnapshot {
+          ingredientId
+          name
+          quantity
+          unit
+          baseUnitQuantity
+          costPerBaseUnit
+          totalCost
+        }
+      }
+      totals {
+        subtotal
+        discount
+        tax
+        service
+        grandTotal
+      }
+      statusTimeline {
+        status
+        at
+        note
+        byUserId
+      }
+      updatedAt
+    }
   }
 `;
 const REVIEW_ORDER_ITEM_RETURN = gql`
   mutation ReviewOrderItemReturn($input: ReviewOrderItemReturnInput!) {
-    reviewOrderItemReturn(input: $input) { id restaurantId updatedAt }
+    reviewOrderItemReturn(input: $input) {
+      id
+      orderCode
+      tableCode
+      currentStatus
+      restaurantId
+      priority
+      items {
+        _id
+        dishId
+        menuId
+        categoryId
+        name
+        unit
+        basePrice
+        servingKey
+        servingVariant {
+          key
+          name
+          mode
+          price
+          sellQty
+          sellUnit
+        }
+        modifiersPrice
+        unitPrice
+        lineSubtotal
+        note
+        priority
+        quantity
+        originalQuantity
+        cancelledQuantity
+        returnedQuantity
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        returnRequests {
+          requestId
+          quantity
+          reason
+          refundMode
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        weightGrams
+        status
+        image
+        proofImages
+        ingredientsSnapshot {
+          ingredientId
+          name
+          quantity
+          unit
+          baseUnitQuantity
+          costPerBaseUnit
+          totalCost
+        }
+      }
+      totals {
+        subtotal
+        discount
+        tax
+        service
+        grandTotal
+      }
+      statusTimeline {
+        status
+        at
+        note
+        byUserId
+      }
+      updatedAt
+    }
   }
 `;
 

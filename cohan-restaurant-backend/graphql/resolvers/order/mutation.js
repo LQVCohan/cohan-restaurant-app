@@ -229,6 +229,19 @@ function assertPositiveNumber(v, field = "quantity") {
   return n;
 }
 
+function getReturnBaselineQuantity(item) {
+  const original = Number(item?.originalQuantity || 0);
+  if (Number.isFinite(original) && original > 0) return original;
+
+  return Number(item?.quantity || 0) + Number(item?.returnedQuantity || 0);
+}
+
+function getRemainingReturnableQuantity(item) {
+  const baseline = getReturnBaselineQuantity(item);
+  const returned = Number(item?.returnedQuantity || 0);
+  return Math.max(0, baseline - returned);
+}
+
 /** =========================
  * Inventory line builders (NEW STANDARD)
  * - REQUIRED servingKey
@@ -2310,8 +2323,11 @@ export const OrderMutation = {
     if (item.status !== "served") throw new Error("Chỉ cho phép trả lại món đã phục vụ.");
     if ((item.returnRequests || []).some((r) => r.status === "pending")) throw new Error("Món này đang có yêu cầu trả lại chờ duyệt.");
 
-    const activeServedQty = Number(item.quantity || 0) - Number(item.returnedQuantity || 0);
-    if (qty > activeServedQty) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
+    if (Number(item.originalQuantity || 0) <= 0) {
+      item.originalQuantity = getReturnBaselineQuantity(item);
+    }
+    const maxReturnableQty = getRemainingReturnableQuantity(item);
+    if (qty > maxReturnableQty) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
 
     item.returnRequests = item.returnRequests || [];
     item.returnRequests.push({
@@ -2360,12 +2376,14 @@ export const OrderMutation = {
 
         if (approve) {
           const qty = Number(req.quantity || 0);
-          const maxReturnableQty = Number(item.quantity || 0) - Number(item.returnedQuantity || 0);
+          if (Number(item.originalQuantity || 0) <= 0) {
+            item.originalQuantity = getReturnBaselineQuantity(item);
+          }
+          const maxReturnableQty = getRemainingReturnableQuantity(item);
           if (qty <= 0 || qty > maxReturnableQty) throw new Error("Số lượng trả lại không hợp lệ.");
           item.returnedQuantity = Number(item.returnedQuantity || 0) + qty;
           if (req.refundMode === "remove_from_bill") {
             item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
-            if (item.quantity <= 0) item.status = "returned";
             const plainItems = order.items.map((x) => (typeof x.toObject === "function" ? x.toObject() : x));
             order.totals = computeTotalsFromHydratedItems(plainItems, {
               serviceRate: order?.totals?.serviceRate || 0,
@@ -2375,6 +2393,9 @@ export const OrderMutation = {
               shippingFee: order?.totals?.shippingFee || 0,
               voucherCode: order?.totals?.voucherCode || undefined,
             });
+          }
+          if (Number(item.returnedQuantity || 0) >= Number(item.originalQuantity || 0)) {
+            item.status = "returned";
           }
         }
 
