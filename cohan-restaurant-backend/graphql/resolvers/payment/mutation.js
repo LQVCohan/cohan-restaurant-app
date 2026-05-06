@@ -13,6 +13,7 @@ import {
   PaymentSession,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
@@ -150,6 +151,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
+  await requireRestaurantAccess(ctx, rid);
 
   const normMethod = String(method || "").toLowerCase();
   if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
@@ -403,12 +405,25 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, rid);
   const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
-  const normalizedOrderIds = [...new Set((orderIds || []).map(String))]
-    .map(toId)
-    .filter(Boolean);
-  if (!normalizedOrderIds.length) throw new Error("Invalid orderIds");
+  const rawOrderIds = Array.isArray(orderIds) ? orderIds : [];
+  if (
+    !rawOrderIds.length ||
+    rawOrderIds.some((id) => typeof id !== "string" || !id.trim())
+  ) {
+    throw new Error("Invalid orderIds");
+  }
+
+  const normalizedOrderIds = rawOrderIds.map((id) => toId(id.trim()));
+  if (normalizedOrderIds.some((id) => !id)) {
+    throw new Error("Invalid orderIds");
+  }
+
+  const uniqueOrderIds = [
+    ...new Map(normalizedOrderIds.map((id) => [String(id), id])).values(),
+  ];
 
   const normMethod = String(method || "").toLowerCase();
   if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
@@ -416,7 +431,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 
   const orders = await Order.find({
-    _id: { $in: normalizedOrderIds },
+    _id: { $in: uniqueOrderIds },
     restaurantId: rid,
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
   }).lean();
@@ -495,7 +510,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           paidAt: now,
           note,
           externalRef,
-          createdBy: ctx?.user?.id,
+          createdBy: actorId || ctx?.user?.id,
         },
       ],
       { session }
@@ -660,6 +675,7 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
 
   const rid = toId(input?.restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, rid);
 
   const providers = Array.isArray(input?.providers) ? input.providers : [];
   const normalizedProviders = providers
