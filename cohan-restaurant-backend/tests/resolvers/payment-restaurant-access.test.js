@@ -169,6 +169,26 @@ describe("payment resolvers restaurant access guards", () => {
     expect(modelMocks.Order.find).not.toHaveBeenCalled();
   });
 
+  it("payOrdersByOrderIds rejects non-string orderIds", async () => {
+    const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+
+    await expect(
+      payOrdersByOrderIds(
+        null,
+        {
+          input: {
+            restaurantId: "valid-r1",
+            orderIds: ["valid-order-1", 6],
+            method: "cash",
+          },
+        },
+        { user: { id: "u1" } },
+      ),
+    ).rejects.toThrow("Invalid orderIds");
+
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
+  });
+
   it("updateRestaurantPaymentSettings denied before Restaurant.findByIdAndUpdate", async () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     const { updateRestaurantPaymentSettings } = await import("../../graphql/resolvers/payment/mutation.js");
