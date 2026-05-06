@@ -17,7 +17,49 @@ import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import { PRINT_STATIONS } from "@/utils/printStations";
-
+const Q_POS_PAYMENT_REQUESTS = gql`
+  query PosPaymentRequests($restaurantId: ID!, $limit: Int) {
+    ordersByRestaurantNow(restaurantId: $restaurantId, limit: $limit) {
+      edges {
+        node {
+          id
+          orderCode
+          tableCode
+          restaurantId
+          orderType
+          currentStatus
+          payment {
+            status
+            requestedAt
+            requestedBy
+            paidAt
+            paidBy
+          }
+          totals {
+            grandTotal
+          }
+          customerInfo {
+            name
+            phone
+            email
+            note
+            partySize
+            timeTo
+          }
+          shipping {
+            fullName
+            phone
+            address
+            deliveryMethod
+            deliveryTime
+            scheduleDate
+            scheduleTime
+          }
+        }
+      }
+    }
+  }
+`;
 const Q_PRINT_SETTINGS = gql`
   query PrintSettings($restaurantId: ID!) {
     printSettings(restaurantId: $restaurantId) {
@@ -92,6 +134,22 @@ export default function PosProvider({
 
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentRequests, setPaymentRequests] = useState([]);
+  const mapOrderToPaymentRequest = useCallback((order) => {
+    const orderId = order?.id || order?._id;
+
+    return {
+      orderId,
+      orderCode: order?.orderCode || null,
+      tableId: order?.tableId || null,
+      tableCode: order?.tableCode || null,
+      orderType: order?.orderType || "dine_in",
+      payment: order?.payment || null,
+      totals: order?.totals || null,
+      requestedAt: order?.payment?.requestedAt || null,
+      customer: order?.customerInfo || order?.user || null,
+      shipping: order?.shipping || null,
+    };
+  }, []);
   const [printers, setPrinters] = useState({});
   const [selectedPrintType, setSelectedPrintType] = useState("kitchen");
   const [printQueue, setPrintQueue] = useState([]);
@@ -99,7 +157,31 @@ export default function PosProvider({
   const [printStations, setPrintStations] = useState({});
   const printSettingsHydratingRef = useRef(false);
   const printSettingsDebounceRef = useRef(null);
+  const [loadPosPaymentRequests] = useLazyQuery(Q_POS_PAYMENT_REQUESTS, {
+    fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      const orders = (data?.ordersByRestaurantNow?.edges || [])
+        .map((edge) => edge?.node)
+        .filter(Boolean);
 
+      const requests = orders
+        .filter((order) => order?.payment?.status === "payment_requested")
+        .map(mapOrderToPaymentRequest)
+        .filter((req) => req.orderId);
+
+      setPaymentRequests(requests);
+    },
+  });
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    loadPosPaymentRequests({
+      variables: {
+        restaurantId,
+        limit: 100,
+      },
+    }).catch(() => {});
+  }, [restaurantId, loadPosPaymentRequests]);
   const [loadPrintSettings] = useLazyQuery(Q_PRINT_SETTINGS, {
     fetchPolicy: "network-only",
     onCompleted: (data) => {
@@ -260,18 +342,7 @@ export default function PosProvider({
       const isPaymentRequested = paymentStatus === "payment_requested";
 
       if (isPaymentRequested && orderId) {
-        const nextRequest = {
-          orderId,
-          orderCode: order.orderCode || null,
-          tableId: order.tableId || null,
-          tableCode: order.tableCode || null,
-          orderType: order.orderType || "dine_in",
-          payment: order.payment || null,
-          totals: order.totals || null,
-          requestedAt: requestedAt || null,
-          customer: order.customerInfo || order.user || null,
-          shipping: order.shipping || null,
-        };
+        const nextRequest = mapOrderToPaymentRequest(order);
 
         let shouldNotify = false;
 
