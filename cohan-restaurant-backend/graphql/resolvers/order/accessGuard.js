@@ -37,17 +37,20 @@ async function loadScopedOrder({ orderId, restaurantId, ctx }) {
 }
 
 async function assertOrderIdsBelongToRestaurant({ restaurantId, orderIds }) {
-  const ids = objectIdStrings(orderIds);
-  if (!ids.length || ids.length !== orderIds.length) {
+  const rawIds = Array.isArray(orderIds) ? orderIds : [];
+  const ids = objectIdStrings(rawIds);
+  if (!ids.length || ids.length !== rawIds.length) {
     throw new Error("Invalid orderIds");
   }
 
+  const uniqueIds = [...new Set(ids)];
+
   const count = await Order.countDocuments({
     restaurantId,
-    _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
+    _id: { $in: uniqueIds.map((id) => new mongoose.Types.ObjectId(id)) },
   });
 
-  if (count !== ids.length) throw new Error("Order not found");
+  if (count !== uniqueIds.length) throw new Error("Order not found");
 }
 
 async function assertOrderItemBelongsToRestaurant({ restaurantId, orderId, orderItemId }) {

@@ -112,7 +112,7 @@ describe("order mutation restaurant access guards", () => {
   });
 
   it("blocks requestPaymentForOrder when an order is outside the requested restaurant", async () => {
-    modelMocks.Order.countDocuments.mockResolvedValue(1);
+    modelMocks.Order.countDocuments.mockResolvedValue(0);
     const mutation = buildMutation();
     const { withOrderRestaurantAccessGuards } = await import(
       "../../graphql/resolvers/order/accessGuard.js"
@@ -133,6 +133,30 @@ describe("order mutation restaurant access guards", () => {
     ).rejects.toThrow("Order not found");
 
     expect(mutation.requestPaymentForOrder).not.toHaveBeenCalled();
+  });
+
+
+  it("allows requestPaymentForOrder when orderIds contain duplicates of valid scoped orders", async () => {
+    modelMocks.Order.countDocuments.mockResolvedValue(1);
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+
+    await guarded.requestPaymentForOrder(
+      null,
+      {
+        input: {
+          restaurantId: "valid-restaurant-1",
+          orderIds: ["valid-order-1", "valid-order-1"],
+        },
+      },
+      { user: { id: "cashier-1" } },
+    );
+
+    expect(modelMocks.Order.countDocuments).toHaveBeenCalledTimes(1);
+    expect(mutation.requestPaymentForOrder).toHaveBeenCalled();
   });
 
   it("checks order item ownership before sending a reminder", async () => {
