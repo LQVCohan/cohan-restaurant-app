@@ -9,6 +9,7 @@ import {
 } from "../../../src/services/inventory.service.js";
 
 import { Warehouse } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   if (!mongoose.isValidObjectId(restaurantId)) {
@@ -86,9 +87,10 @@ function validateBaseInput(input) {
 
 export default {
   // reserved += need
-  reserveForOrder: async (_p, { input }) => {
+  reserveForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
+      await requireRestaurantAccess(ctx, restaurantId);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId
@@ -107,9 +109,10 @@ export default {
   },
 
   // reserved -= need, onHand -= need, FEFO movements
-  commitReservationForOrder: async (_p, { input }) => {
+  commitReservationForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
+      await requireRestaurantAccess(ctx, restaurantId);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId
@@ -128,9 +131,10 @@ export default {
   },
 
   // reserved -= need
-  cancelReservationForOrder: async (_p, { input }) => {
+  cancelReservationForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
+      await requireRestaurantAccess(ctx, restaurantId);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId

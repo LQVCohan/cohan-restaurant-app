@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Recipe, MenuItem, Menu } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function toObjectIdOrNull(v) {
   if (!v) return null;
@@ -83,17 +84,21 @@ function buildRecipeSearchSortKey({ menuItem, recipe }, normalizedQuery) {
 }
 
 export default {
-  recipe: async (_p, { restaurantId, menuItemId }) => {
+  recipe: async (_p, { restaurantId, menuItemId }, ctx) => {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
       return null;
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     return Recipe.findOne({ restaurantId, menuItemId })
       .select({ __v: 0 })
       .lean({ virtuals: true });
   },
 
-  recipesByMenuItems: async (_p, { restaurantId, menuItemIds }) => {
+  recipesByMenuItems: async (_p, { restaurantId, menuItemIds }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const ids = (menuItemIds || []).filter(mongoose.isValidObjectId);
     if (!ids.length) return [];
@@ -123,6 +128,8 @@ export default {
       first = 30,
       after = null,
     }
+  ,
+    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) {
       return {
@@ -131,6 +138,8 @@ export default {
         items: [],
       };
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     // 1) Lấy menu theo timeSlot hoặc tất cả
     let menus = [];

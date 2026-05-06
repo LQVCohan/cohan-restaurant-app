@@ -7,6 +7,9 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
+
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -36,6 +39,7 @@ function makeLeanChain(rows) {
 
 describe("Inventory recipe search", () => {
   beforeEach(() => {
+    guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
     vi.clearAllMocks();
 
     modelMocks.Menu.find.mockReturnValue({
@@ -83,7 +87,7 @@ describe("Inventory recipe search", () => {
       restaurantId: "67a1f8f6a2df3b17f0c12345",
       search: "banh pho",
       first: 30,
-    });
+    }, { user: { id: "u1" } });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].menuItem.name).toBe("Bánh Phở Bò");
@@ -100,7 +104,7 @@ describe("Inventory recipe search", () => {
       restaurantId: "67a1f8f6a2df3b17f0c12345",
       search: "sv_default",
       first: 30,
-    });
+    }, { user: { id: "u1" } });
 
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);

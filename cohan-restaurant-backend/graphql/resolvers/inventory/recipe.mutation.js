@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Recipe, MenuItem } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const SELL_UNITS = new Set(["portion", "g", "kg"]);
 const MODES = new Set(["PORTION", "BY_WEIGHT"]);
@@ -42,7 +43,7 @@ function computeHasByWeight(variants = []) {
 }
 
 export default {
-  upsertRecipe: async (_p, { input }) => {
+  upsertRecipe: async (_p, { input }, ctx) => {
     const {
       restaurantId,
       menuItemId,
@@ -53,6 +54,8 @@ export default {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) {
       throw new GraphQLError("Invalid ids");
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const patch = { ...rest };
     let normalizedVariants = [];
@@ -245,9 +248,12 @@ export default {
     return doc;
   },
 
-  deleteRecipe: async (_p, { restaurantId, menuItemId }) => {
+  deleteRecipe: async (_p, { restaurantId, menuItemId }, ctx) => {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
       return false;
+
+    await requireRestaurantAccess(ctx, restaurantId);
+
     const res = await Recipe.deleteOne({ restaurantId, menuItemId });
     if (res.deletedCount > 0) {
       try {
