@@ -613,16 +613,16 @@ const GET_ORDER = gql`
         grandTotal
       }
       payment {
-            method
-            status
-            paidAmount
-            changeAmount
-            currency
-            requestedAt
-            requestedBy
-            paidAt
-            paidBy
-          }
+        method
+        status
+        paidAmount
+        changeAmount
+        currency
+        requestedAt
+        requestedBy
+        paidAt
+        paidBy
+      }
       shipping {
         fullName
         phone
@@ -864,8 +864,6 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
     }
   }
 `;
-
-
 
 const REVIEW_ORDER_ITEM_VOID = gql`
   mutation ReviewOrderItemVoid($input: ReviewOrderItemVoidInput!) {
@@ -2050,7 +2048,9 @@ export default function useOrderManagement(pos = null) {
   const reviewOrderItemVoid = useCallback(
     async ({ orderId, orderItemId, requestId, approve, note }) => {
       if (!orderId || !orderItemId || !requestId) {
-        throw new Error("Thiếu orderId/orderItemId/requestId để duyệt yêu cầu hủy món.");
+        throw new Error(
+          "Thiếu orderId/orderItemId/requestId để duyệt yêu cầu hủy món.",
+        );
       }
 
       const { data } = await mutReviewOrderItemVoid({
@@ -2082,12 +2082,17 @@ export default function useOrderManagement(pos = null) {
   const requestOrderItemReturn = useCallback(
     async ({ orderId, orderItemId, quantity, reason, refundMode }) => {
       const { data } = await mutRequestOrderItemReturn({
-        variables: { input: { orderId, orderItemId, quantity, reason, refundMode } },
+        variables: {
+          input: { orderId, orderItemId, quantity, reason, refundMode },
+        },
       });
       const updatedOrder = data?.requestOrderItemReturn || null;
       if (updatedOrder) {
         writeOrderIntoCache(updatedOrder);
-        if (updatedOrder.restaurantId) await loadOrdersNow({ variables: { restaurantId: updatedOrder.restaurantId, limit: 100 } });
+        if (updatedOrder.restaurantId)
+          await loadOrdersNow({
+            variables: { restaurantId: updatedOrder.restaurantId, limit: 100 },
+          });
       }
       return updatedOrder;
     },
@@ -2096,12 +2101,23 @@ export default function useOrderManagement(pos = null) {
   const reviewOrderItemReturn = useCallback(
     async ({ orderId, orderItemId, requestId, approve, note }) => {
       const { data } = await mutReviewOrderItemReturn({
-        variables: { input: { orderId, orderItemId, requestId, approve: Boolean(approve), note: note || undefined } },
+        variables: {
+          input: {
+            orderId,
+            orderItemId,
+            requestId,
+            approve: Boolean(approve),
+            note: note || undefined,
+          },
+        },
       });
       const updatedOrder = data?.reviewOrderItemReturn || null;
       if (updatedOrder) {
         writeOrderIntoCache(updatedOrder);
-        if (updatedOrder.restaurantId) await loadOrdersNow({ variables: { restaurantId: updatedOrder.restaurantId, limit: 100 } });
+        if (updatedOrder.restaurantId)
+          await loadOrdersNow({
+            variables: { restaurantId: updatedOrder.restaurantId, limit: 100 },
+          });
       }
       return updatedOrder;
     },
@@ -2669,32 +2685,30 @@ export default function useOrderManagement(pos = null) {
             return { success: false, message: "Thiếu tableId để thanh toán." };
           }
 
-          const attemptPay = async (includeUnserved = false) => {
-            const { data } = await mutPayByTable({
-              variables: {
-                input: {
-                  restaurantId,
-                  tableId,
-                  paidAmount: paid,
-                  method,
-                  note,
-                  externalRef: idempotency,
-                  includeUnserved,
-                },
+          const { data } = await mutPayByTable({
+            variables: {
+              input: {
+                restaurantId,
+                tableId,
+                paidAmount: paid,
+                method,
+                note,
+                externalRef: idempotency,
+                includeUnserved: false,
               },
-            });
-            return data?.payOrdersByTableId;
-          };
+            },
+          });
 
-          let res = await attemptPay(false);
-          if (res?.warning && Array.isArray(res.pendingOrderCodes)) {
-            const msg = `Các order chưa phục vụ: ${res.pendingOrderCodes.join(
-              ", ",
-            )}. Thanh toán tất cả?`;
-            const confirmAll = window.confirm(msg);
-            if (confirmAll) {
-              res = await attemptPay(true);
-            }
+          const res = data?.payOrdersByTableId || null;
+
+          if (res?.warning || Array.isArray(res?.pendingOrderCodes)) {
+            return {
+              success: false,
+              message:
+                res?.pendingOrderCodes?.length > 0
+                  ? `Không thể thanh toán khi còn order chưa phục vụ xong: ${res.pendingOrderCodes.join(", ")}`
+                  : "Không thể thanh toán khi còn món chưa phục vụ xong.",
+            };
           }
 
           if (currentTable?.id) {
@@ -2738,9 +2752,14 @@ export default function useOrderManagement(pos = null) {
 
         return { success: true, data: res };
       } catch (err) {
+        const gqlMessage =
+          err?.graphQLErrors?.[0]?.message ||
+          err?.networkError?.result?.errors?.[0]?.message ||
+          err?.message;
+
         return {
           success: false,
-          message: err?.message || "Thanh toán thất bại.",
+          message: gqlMessage || "Thanh toán thất bại.",
         };
       }
     },
@@ -2757,11 +2776,16 @@ export default function useOrderManagement(pos = null) {
     ],
   );
 
-
   const payOrderByIds = useCallback(
-    async ({ restaurantId, orderIds = [], method = "cash", note = "" } = {}) => {
+    async ({
+      restaurantId,
+      orderIds = [],
+      method = "cash",
+      note = "",
+    } = {}) => {
       if (!restaurantId) throw new Error("Thiếu restaurantId.");
-      if (!Array.isArray(orderIds) || !orderIds.length) throw new Error("Thiếu orderIds để thanh toán.");
+      if (!Array.isArray(orderIds) || !orderIds.length)
+        throw new Error("Thiếu orderIds để thanh toán.");
       const { data } = await mutPayByOrderIds({
         variables: {
           input: {
@@ -2773,7 +2797,8 @@ export default function useOrderManagement(pos = null) {
         },
       });
       const res = data?.payOrdersByOrderIds;
-      if (!res?.invoice && !res?.transaction) throw new Error("Thanh toán theo order thất bại.");
+      if (!res?.invoice && !res?.transaction)
+        throw new Error("Thanh toán theo order thất bại.");
       return res;
     },
     [mutPayByOrderIds],

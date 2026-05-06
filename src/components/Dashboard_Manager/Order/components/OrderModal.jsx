@@ -128,7 +128,17 @@ const UPDATE_ORDER_STATUS = gql`
 `;
 
 const OrderItemRow = React.memo(
-  ({ item, index, order, orderStatus, onStatusChange, isSaving, onReviewItemVoid, onRequestItemReturn, onReviewItemReturn }) => {
+  ({
+    item,
+    index,
+    order,
+    orderStatus,
+    onStatusChange,
+    isSaving,
+    onReviewItemVoid,
+    onRequestItemReturn,
+    onReviewItemReturn,
+  }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -156,11 +166,16 @@ const OrderItemRow = React.memo(
       ["completed", "cancelled"].includes(orderStatus) ||
       ["cancelled", "returned", "served"].includes(item.status) ||
       allowedNextStatuses.length === 0;
-    const pendingVoidRequests = (item.voidRequests || []).filter((r) => r.status === "pending");
-    const pendingReturnRequests = (item.returnRequests || []).filter((r) => r.status === "pending");
-    const baseline = Number(item.originalQuantity || 0) > 0
-      ? Number(item.originalQuantity)
-      : Number(item.quantity || 0) + Number(item.returnedQuantity || 0);
+    const pendingVoidRequests = (item.voidRequests || []).filter(
+      (r) => r.status === "pending",
+    );
+    const pendingReturnRequests = (item.returnRequests || []).filter(
+      (r) => r.status === "pending",
+    );
+    const baseline =
+      Number(item.originalQuantity || 0) > 0
+        ? Number(item.originalQuantity)
+        : Number(item.quantity || 0) + Number(item.returnedQuantity || 0);
     const remainingReturnable = Math.max(
       0,
       baseline - Number(item.returnedQuantity || 0),
@@ -179,9 +194,15 @@ const OrderItemRow = React.memo(
       <div className={`itemCard ${item.status} ${isSaving ? "saving" : ""}`}>
         <div className="itemCard__info">
           <div className="itemCard__header">
-            <span className="qtyBadge">{Number(item.cancelledQuantity || 0) > 0 ? `Còn lại: x${item.quantity}` : `x${item.quantity}`}</span>
+            <span className="qtyBadge">
+              {Number(item.cancelledQuantity || 0) > 0
+                ? `Còn lại: x${item.quantity}`
+                : `x${item.quantity}`}
+            </span>
             <span className="itemName">{item.name}</span>
-            {Number(item.cancelledQuantity || 0) > 0 && <span className="metaTag">Đã hủy: x{item.cancelledQuantity}</span>}
+            {Number(item.cancelledQuantity || 0) > 0 && (
+              <span className="metaTag">Đã hủy: x{item.cancelledQuantity}</span>
+            )}
           </div>
           <div className="itemCard__meta">
             {item.modifiersPrice > 0 && (
@@ -204,73 +225,173 @@ const OrderItemRow = React.memo(
             <div key={req.requestId} className="itemCard__note">
               <div>Yêu cầu hủy: {req.quantity} món</div>
               <div>Lý do: {req.reason || "-"}</div>
-              <div>Thời gian: {req.requestedAt ? new Date(req.requestedAt).toLocaleString("vi-VN") : "-"}</div>
+              <div>
+                Thời gian:{" "}
+                {req.requestedAt
+                  ? new Date(req.requestedAt).toLocaleString("vi-VN")
+                  : "-"}
+              </div>
               <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                <button disabled={!canReviewVoid || reviewingRequestId === req.requestId || !onReviewItemVoid || req.status !== "pending"} onClick={async () => {
-                  const ok = window.confirm(`Duyệt hủy ${req.quantity} món ${item.name}? Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.`);
-                  if (!ok) return;
-                  setReviewingRequestId(req.requestId);
-                  try {
-                    await onReviewItemVoid({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
-                  } finally {
-                    setReviewingRequestId(null);
+                <button
+                  disabled={
+                    !canReviewVoid ||
+                    reviewingRequestId === req.requestId ||
+                    !onReviewItemVoid ||
+                    req.status !== "pending"
                   }
-                }}>Duyệt</button>
-                <button disabled={!canReviewVoid || reviewingRequestId === req.requestId || !onReviewItemVoid || req.status !== "pending"} onClick={async () => {
-                  const note = window.prompt("Nhập lý do từ chối", "Không phù hợp trạng thái xử lý");
-                  if (note == null) return;
-                  setReviewingRequestId(req.requestId);
-                  try {
-                    await onReviewItemVoid({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: false, note });
-                  } finally {
-                    setReviewingRequestId(null);
+                  onClick={async () => {
+                    const ok = window.confirm(
+                      `Duyệt hủy ${req.quantity} món ${item.name}? Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.`,
+                    );
+                    if (!ok) return;
+                    setReviewingRequestId(req.requestId);
+                    try {
+                      await onReviewItemVoid({
+                        orderId: order.id,
+                        orderItemId: item._id,
+                        requestId: req.requestId,
+                        approve: true,
+                        note: "POS duyệt yêu cầu hủy món",
+                      });
+                    } finally {
+                      setReviewingRequestId(null);
+                    }
+                  }}
+                >
+                  Duyệt
+                </button>
+                <button
+                  disabled={
+                    !canReviewVoid ||
+                    reviewingRequestId === req.requestId ||
+                    !onReviewItemVoid ||
+                    req.status !== "pending"
                   }
-                }}>Từ chối</button>
+                  onClick={async () => {
+                    const note = window.prompt(
+                      "Nhập lý do từ chối",
+                      "Không phù hợp trạng thái xử lý",
+                    );
+                    if (note == null) return;
+                    setReviewingRequestId(req.requestId);
+                    try {
+                      await onReviewItemVoid({
+                        orderId: order.id,
+                        orderItemId: item._id,
+                        requestId: req.requestId,
+                        approve: false,
+                        note,
+                      });
+                    } finally {
+                      setReviewingRequestId(null);
+                    }
+                  }}
+                >
+                  Từ chối
+                </button>
               </div>
             </div>
           ))}
-          {Number(item.returnedQuantity || 0) > 0 && <div className="itemCard__note">Đã trả lại: x{item.returnedQuantity}</div>}
+          {Number(item.returnedQuantity || 0) > 0 && (
+            <div className="itemCard__note">
+              Đã trả lại: x{item.returnedQuantity}
+            </div>
+          )}
           {item.status === "served" &&
             !["completed", "cancelled"].includes(order?.currentStatus) &&
             pendingReturnRequests.length === 0 &&
             remainingReturnable > 0 && (
-            <button onClick={async () => {
-              const qtyRaw = window.prompt("Nhập số lượng muốn trả lại", "1");
-              if (qtyRaw == null) return;
-              const qty = Number(qtyRaw);
-              if (!Number.isInteger(qty) || qty <= 0) {
-                window.alert("Số lượng trả lại phải là số nguyên lớn hơn 0.");
-                return;
-              }
-              if (qty > remainingReturnable) {
-                window.alert("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
-                return;
-              }
-              const reason = window.prompt("Nhập lý do trả lại món", "");
-              if (reason == null) return;
-              const mode = window.prompt("Cách xử lý (none/remove_from_bill/refund_after_payment)", "none");
-              if (!mode) return;
-              if (
-                !["none", "remove_from_bill", "refund_after_payment"].includes(
-                  mode,
-                )
-              ) {
-                window.alert(
-                  "Chế độ xử lý không hợp lệ. Chọn none, remove_from_bill hoặc refund_after_payment.",
-                );
-                return;
-              }
-              await onRequestItemReturn?.({ orderId: order.id, orderItemId: item._id, quantity: qty, reason, refundMode: mode });
-            }}>Trả lại món</button>
-          )}
+              <button
+                onClick={async () => {
+                  const qtyRaw = window.prompt(
+                    "Nhập số lượng muốn trả lại",
+                    "1",
+                  );
+                  if (qtyRaw == null) return;
+                  const qty = Number(qtyRaw);
+                  if (!Number.isInteger(qty) || qty <= 0) {
+                    window.alert(
+                      "Số lượng trả lại phải là số nguyên lớn hơn 0.",
+                    );
+                    return;
+                  }
+                  if (qty > remainingReturnable) {
+                    window.alert(
+                      "Số lượng trả lại lớn hơn số lượng còn có thể trả.",
+                    );
+                    return;
+                  }
+                  const reason = window.prompt("Nhập lý do trả lại món", "");
+                  if (reason == null) return;
+                  const mode = window.prompt(
+                    "Cách xử lý (none/remove_from_bill/refund_after_payment)",
+                    "none",
+                  );
+                  if (!mode) return;
+                  if (
+                    ![
+                      "none",
+                      "remove_from_bill",
+                      "refund_after_payment",
+                    ].includes(mode)
+                  ) {
+                    window.alert(
+                      "Chế độ xử lý không hợp lệ. Chọn none, remove_from_bill hoặc refund_after_payment.",
+                    );
+                    return;
+                  }
+                  await onRequestItemReturn?.({
+                    orderId: order.id,
+                    orderItemId: item._id,
+                    quantity: qty,
+                    reason,
+                    refundMode: mode,
+                  });
+                }}
+              >
+                Trả lại món
+              </button>
+            )}
           {pendingReturnRequests.map((req) => (
             <div key={req.requestId} className="itemCard__note">
-              <div>Yêu cầu trả lại: {req.quantity} món</div><div>Lý do: {req.reason}</div><div>Cách xử lý: {req.refundMode}</div>
-              <button onClick={async () => { if (!window.confirm(`Duyệt trả lại ${req.quantity} món ${item.name}? Kho sẽ không được hoàn tự động.`)) return; await onReviewItemReturn?.({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: true }); }}>Duyệt trả lại</button>
-              <button onClick={async () => { const note = window.prompt("Lý do từ chối", ""); if (note == null) return; await onReviewItemReturn?.({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: false, note }); }}>Từ chối</button>
+              <div>Yêu cầu trả lại: {req.quantity} món</div>
+              <div>Lý do: {req.reason}</div>
+              <div>Cách xử lý: {req.refundMode}</div>
+              <button
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      `Duyệt trả lại ${req.quantity} món ${item.name}? Kho sẽ không được hoàn tự động.`,
+                    )
+                  )
+                    return;
+                  await onReviewItemReturn?.({
+                    orderId: order.id,
+                    orderItemId: item._id,
+                    requestId: req.requestId,
+                    approve: true,
+                  });
+                }}
+              >
+                Duyệt trả lại
+              </button>
+              <button
+                onClick={async () => {
+                  const note = window.prompt("Lý do từ chối", "");
+                  if (note == null) return;
+                  await onReviewItemReturn?.({
+                    orderId: order.id,
+                    orderItemId: item._id,
+                    requestId: req.requestId,
+                    approve: false,
+                    note,
+                  });
+                }}
+              >
+                Từ chối
+              </button>
             </div>
           ))}
-
         </div>
         <div className="itemCard__actions">
           {isSaving ? (
@@ -363,7 +484,36 @@ const OrderModal = ({
     const servedCount = validItems.filter((i) => i.status === "served").length;
     return Math.round((servedCount / validItems.length) * 100);
   }, [items]);
+  const totals = useMemo(() => {
+    const fromOrder = order?.totals || {};
 
+    const fallbackSubtotal = items.reduce(
+      (sum, item) => sum + Number(item._lineTotal || 0),
+      0,
+    );
+
+    const subtotal =
+      fromOrder.subtotal != null
+        ? Number(fromOrder.subtotal)
+        : fallbackSubtotal;
+
+    const discount = Number(fromOrder.discount || 0);
+    const tax = Number(fromOrder.tax || 0);
+    const service = Number(fromOrder.service || 0);
+
+    const grandTotal =
+      fromOrder.grandTotal != null
+        ? Number(fromOrder.grandTotal)
+        : Math.max(0, subtotal - discount + tax + service);
+
+    return {
+      subtotal,
+      discount,
+      tax,
+      service,
+      grandTotal,
+    };
+  }, [order?.totals, items]);
   useEffect(() => {
     setElapsedMinutes(getMinutesElapsed(order?.createdAt));
     const interval = setInterval(() => {
@@ -431,8 +581,6 @@ const OrderModal = ({
         return <Users size={16} />;
     }
   };
-
-
 
   return createPortal(
     <div className="om-overlay" onClick={handleClose}>

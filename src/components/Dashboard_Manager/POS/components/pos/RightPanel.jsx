@@ -404,10 +404,24 @@ export default function RightPanel() {
     }));
 
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
+  const hasUnservedExistingItems = useMemo(() => {
+    return (currentOrder || []).some((item) => {
+      if (item?.isNew) return true;
 
+      const status = String(item?.status || "").toLowerCase();
+
+      return ["pending", "confirmed", "preparing", "ready"].includes(status);
+    });
+  }, [currentOrder]);
   const openPaymentModal = useCallback(async () => {
     if (!hasItems) return;
-
+    if (hasUnservedExistingItems) {
+      showNotification(
+        "Không thể thanh toán khi còn món chưa phục vụ xong.",
+        "error",
+      );
+      return;
+    }
     if (!currentTable?.restaurantId) {
       showNotification("Thiếu restaurantId.", "error");
       return;
@@ -426,18 +440,48 @@ export default function RightPanel() {
     }
 
     setPaymentModalOpen(true);
-  }, [hasItems, currentTable, preparePayment, showNotification]);
+  }, [
+    hasItems,
+    hasUnservedExistingItems,
+    currentTable.restaurantId,
+    preparePayment,
+    showNotification,
+  ]);
 
   const handlePaymentComplete = useCallback(
     (payload) => {
-      const paidOrderId =
-        payload?.orderId ||
-        payload?.server?.order?.id ||
-        payload?.server?.orderId ||
-        activePaymentRequestRef.current?.orderId;
+      const serverPayload = payload?.server || {};
+      const hasPaymentProof =
+        Boolean(serverPayload?.invoice) ||
+        Boolean(serverPayload?.transaction) ||
+        payload?.status === "COMPLETED";
 
-      if (paidOrderId) {
-        clearPaymentRequest?.(paidOrderId);
+      if (!hasPaymentProof) {
+        showNotification(
+          "Thanh toán chưa hoàn tất, giữ nguyên bàn và món.",
+          "error",
+        );
+        return;
+      }
+      const activeRequest = activePaymentRequestRef.current;
+
+      if (
+        Array.isArray(activeRequest?.orderIds) &&
+        activeRequest.orderIds.length
+      ) {
+        activeRequest.orderIds.forEach((orderId) => {
+          clearPaymentRequest?.(orderId);
+        });
+      } else {
+        const paidOrderId =
+          payload?.orderId ||
+          payload?.server?.order?.id ||
+          payload?.server?.orderId ||
+          activeRequest?.orderId;
+
+        if (paidOrderId) {
+          clearPaymentRequest?.(paidOrderId);
+        }
       }
 
       activePaymentRequestRef.current = null;
@@ -937,7 +981,52 @@ export default function RightPanel() {
     !hasItems ||
     newItems.length === 0 ||
     (isOffPremise && !currentOrderCode);
+  const groupedPaymentRequests = useMemo(() => {
+    const raw = Array.isArray(paymentRequests) ? paymentRequests : [];
+    const map = new Map();
 
+    raw.forEach((req) => {
+      const isDineIn = (req?.orderType || "dine_in") === "dine_in";
+
+      const groupKey =
+        isDineIn && req?.tableCode
+          ? `table:${req.tableCode}`
+          : `order:${req?.orderId || req?.orderCode}`;
+
+      if (!map.has(groupKey)) {
+        map.set(groupKey, {
+          ...req,
+          groupKey,
+          isTableGroup: isDineIn && Boolean(req?.tableCode),
+          orderIds: [],
+          orderCodes: [],
+          totals: {
+            ...(req?.totals || {}),
+            grandTotal: 0,
+          },
+        });
+      }
+
+      const group = map.get(groupKey);
+
+      if (req?.orderId) group.orderIds.push(req.orderId);
+      if (req?.orderCode) group.orderCodes.push(req.orderCode);
+
+      group.totals.grandTotal += Number(req?.totals?.grandTotal || 0);
+
+      const currentAt = group.requestedAt
+        ? new Date(group.requestedAt).getTime()
+        : 0;
+      const nextAt = req?.requestedAt ? new Date(req.requestedAt).getTime() : 0;
+
+      if (nextAt > currentAt) {
+        group.requestedAt = req.requestedAt;
+        group.payment = req.payment;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [paymentRequests]);
   return (
     <div
       className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
@@ -1011,16 +1100,27 @@ export default function RightPanel() {
               <span className={cls.legendText}>Món mới (chưa lưu)</span>
             </div>
           )}
-          {Array.isArray(paymentRequests) && paymentRequests.length > 0 && (
+          {groupedPaymentRequests.length > 0 && (
             <div className={cls.draftLegend}>
               <span className={cls.legendText}>
-                Khách gọi thanh toán ({paymentRequests.length})
+                Khách gọi thanh toán ({groupedPaymentRequests.length})
               </span>
+
               <div>
-                {paymentRequests.slice(0, 3).map((req) => (
-                  <div key={req.orderId}>
-                    {req.tableCode || req.orderCode || req.orderId} ·{" "}
+                {groupedPaymentRequests.slice(0, 3).map((req) => (
+                  <div key={req.groupKey}>
+                    {req.isTableGroup
+                      ? `Bàn ${req.tableCode}`
+                      : req.orderCode || req.orderId}
+                    {" · "}
                     {formatPrice(req?.totals?.grandTotal || 0)}
+
+                    {req.isTableGroup && req.orderCodes.length > 1 && (
+                      <span style={{ marginLeft: 6, color: "#64748b" }}>
+                        ({req.orderCodes.length} lượt gọi)
+                      </span>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handleOpenPaymentRequest(req)}

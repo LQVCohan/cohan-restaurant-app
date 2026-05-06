@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
-
+import useSocketOrder from "@/hooks/useSocketOrder";
 import "./StaffOrdering.scss";
 import NotificationBell from "./NotificationBell";
 
@@ -649,7 +649,97 @@ export default function StaffOrdering() {
       [selectedTable.id]: buildCartFromServerOrders(latest?.orders || []),
     }));
   };
+  useSocketOrder(restaurantId, {
+    onUpdated: (order) => {
+      const isPaid =
+        order?.payment?.status === "paid" ||
+        order?.currentStatus === "completed";
 
+      if (!isPaid) return;
+
+      const tableCode = order?.tableCode;
+      if (!tableCode) return;
+
+      const matchedTable = (tables || []).find(
+        (t) =>
+          String(t.tableCode || t.name || "").toLowerCase() ===
+          String(tableCode).toLowerCase(),
+      );
+
+      if (!matchedTable?.id) return;
+
+      setCartByTable((prev) => ({
+        ...prev,
+        [matchedTable.id]: [],
+      }));
+
+      setOrderCodeByTable((prev) => ({
+        ...prev,
+        [matchedTable.id]: null,
+      }));
+
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === matchedTable.id
+            ? {
+                ...t,
+                status: "empty",
+                customer: null,
+              }
+            : t,
+        ),
+      );
+
+      if (selectedTableId === matchedTable.id) {
+        setIsCartOpen(false);
+      }
+    },
+
+    onStatusChanged: (order) => {
+      const isPaid =
+        order?.payment?.status === "paid" ||
+        order?.currentStatus === "completed";
+
+      if (!isPaid) return;
+
+      const tableCode = order?.tableCode;
+      if (!tableCode) return;
+
+      const matchedTable = (tables || []).find(
+        (t) =>
+          String(t.tableCode || t.name || "").toLowerCase() ===
+          String(tableCode).toLowerCase(),
+      );
+
+      if (!matchedTable?.id) return;
+
+      setCartByTable((prev) => ({
+        ...prev,
+        [matchedTable.id]: [],
+      }));
+
+      setOrderCodeByTable((prev) => ({
+        ...prev,
+        [matchedTable.id]: null,
+      }));
+
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === matchedTable.id
+            ? {
+                ...t,
+                status: "empty",
+                customer: null,
+              }
+            : t,
+        ),
+      );
+
+      if (selectedTableId === matchedTable.id) {
+        setIsCartOpen(false);
+      }
+    },
+  });
   const handleAdjustPersistedItemQuantity = async (item, delta) => {
     if (!item?.orderId || !(item?.orderItemId || item?.id)) {
       alert("Thiếu thông tin món đã lưu để điều chỉnh.");
@@ -1127,9 +1217,7 @@ export default function StaffOrdering() {
         const { data } = await requestPaymentForOrder({
           variables: { input: { restaurantId, orderIds } },
         });
-        alert(
-          "Đã gửi yêu cầu thanh toán đến POS.",
-        );
+        alert("Đã gửi yêu cầu thanh toán đến POS.");
         return;
       }
       if (!selectedTable?.tableCode && !selectedTable?.name)
@@ -1142,9 +1230,7 @@ export default function StaffOrdering() {
           },
         },
       });
-      alert(
-        "Đã gửi yêu cầu thanh toán đến POS.",
-      );
+      alert("Đã gửi yêu cầu thanh toán đến POS.");
     } catch (e) {
       alert(e?.message || "Yêu cầu thanh toán thất bại.");
     }
