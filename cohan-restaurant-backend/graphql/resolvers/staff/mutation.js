@@ -2549,6 +2549,9 @@ export default {
     if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
     await requireRestaurantAccess(ctx, String(doc.restaurantId));
     if (doc.status !== "declined") throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_DECLINED");
+    if (doc.declineClassification === "late") {
+      throw new Error("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
+    }
     const classification = String(input?.classification || "").trim().toLowerCase();
     if (!["valid", "invalid"].includes(classification)) {
       throw new Error("SHIFT_ACKNOWLEDGEMENT_REVIEW_CLASSIFICATION_INVALID");

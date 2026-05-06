@@ -3958,12 +3958,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <div>Ca: {ack.shiftId}</div>
             <div>Lý do: {ack.reasonCategory} - {ack.reason}</div>
             <div>Phân loại: {ack.declineClassification || "unknown"}</div>
-            <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "valid" } } }); await refetchDeclinedShiftAcks(); }}>
-              Chấp nhận lý do
-            </button>
-            <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "invalid" } } }); await refetchDeclinedShiftAcks(); }}>
-              Không duyệt lý do
-            </button>
+            {!readOnly ? (
+              <>
+                <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "valid" } } }); await refetchDeclinedShiftAcks(); }}>
+                  Chấp nhận lý do
+                </button>
+                <button type="button" onClick={async () => { await reviewShiftAck({ variables: { input: { acknowledgementId: ack.id, classification: "invalid" } } }); await refetchDeclinedShiftAcks(); }}>
+                  Không duyệt lý do
+                </button>
+              </>
+            ) : (
+              <small>Chế độ chỉ xem: không thể duyệt lý do từ chối.</small>
+            )}
             {ack.declineClassification === "valid" ? <small>Lý do hợp lệ. Quản lý cần chỉnh lại ca hoặc đổi nhân viên trong ShiftDetailModal.</small> : null}
           </div>
         ))}

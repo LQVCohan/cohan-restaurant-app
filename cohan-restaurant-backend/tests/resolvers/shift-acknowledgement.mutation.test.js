@@ -291,4 +291,26 @@ describe("shift acknowledgement mutation resolvers", () => {
     expect(result.declineClassification).toBe("invalid");
     expect(doc.save).toHaveBeenCalledTimes(1);
   });
+
+  it("blocks manager review when decline classification is late", async () => {
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const doc = {
+      _id: "ack-late",
+      restaurantId: oid("r1"),
+      shiftId: oid("s3"),
+      status: "declined",
+      declineClassification: "late",
+      save: vi.fn().mockResolvedValue(true),
+    };
+    modelMocks.findByIdMock.mockResolvedValue(doc);
+
+    await expect(
+      mutation.reviewShiftAcknowledgement(
+        null,
+        { input: { acknowledgementId: "ack-late", classification: "valid" } },
+        { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+      ),
+    ).rejects.toThrow("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
+    expect(doc.save).not.toHaveBeenCalled();
+  });
 });
