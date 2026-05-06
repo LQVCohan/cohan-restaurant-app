@@ -951,8 +951,16 @@ export default {
     { restaurantId, employeeId, startDate, endDate, status, limit = 500 },
     ctx,
   ) => {
+    requireAuth(ctx);
     const filter = {};
     const authUser = ctx?.user || null;
+    const authUserId = String(authUser?.id || authUser?._id || "");
+    const requestedEmployeeId = String(employeeId || authUserId || "");
+    const userRoles = resolveUserRoles(authUser);
+    const isStaffSelfView =
+      userRoles.some((role) => ATTENDANCE_SELF_ROLES.includes(role)) &&
+      authUserId &&
+      requestedEmployeeId === authUserId;
     const fallbackRestaurantId =
       restaurantId ||
       authUser?.restaurantForStaff ||
@@ -969,6 +977,41 @@ export default {
       filter.startTime = {};
       if (startDate) filter.startTime.$gte = toStartOfDay(startDate);
       if (endDate) filter.startTime.$lte = toEndOfDay(endDate);
+    }
+
+    if (isStaffSelfView && rid) {
+      const periodStart = startDate ? toStartOfDay(startDate) : null;
+      const periodEnd = endDate ? toEndOfDay(endDate) : null;
+      const publicationFilter = {
+        restaurantId: rid,
+        status: { $in: ["published", "active"] },
+      };
+
+      if (periodStart || periodEnd) {
+        publicationFilter.$and = [];
+        if (periodStart) publicationFilter.$and.push({ periodEnd: { $gte: periodStart } });
+        if (periodEnd) publicationFilter.$and.push({ periodStart: { $lte: periodEnd } });
+      }
+
+      const publications = await SchedulePublication.find(publicationFilter)
+        .select({ periodStart: 1, periodEnd: 1 })
+        .lean();
+
+      if (!publications.length) return [];
+
+      const publicationRanges = publications
+        .map((publication) => ({
+          startTime: { $gte: publication.periodStart, $lte: publication.periodEnd },
+        }))
+        .filter((range) => range.startTime.$gte && range.startTime.$lte);
+
+      if (!publicationRanges.length) return [];
+
+      filter.$and = [...(filter.$and || []), { $or: publicationRanges }];
+
+      if (!status) {
+        filter.status = { $ne: "cancelled" };
+      }
     }
 
     const rows = await Shift.find(filter)

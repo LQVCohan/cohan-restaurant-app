@@ -268,4 +268,50 @@ describe("StaffSchedulePage", () => {
     expect(await screen.findByText(/Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt/)).toBeInTheDocument();
   });
 
+  it("shows non-cancelled shifts in weekly schedule", async () => {
+    const mocks = [
+      {
+        request: {
+          query: GET_STAFF_SHIFTS,
+          variables: {
+            restaurantId: "r1",
+            employeeId: "e1",
+            startDate: "2026-05-04T00:00:00.000Z",
+            endDate: "2026-05-10T23:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            staffShifts: [
+              {
+                id: "shift-1",
+                employeeId: "e1",
+                shiftType: "morning",
+                startTime: "2026-05-05T06:00:00.000Z",
+                endTime: "2026-05-05T12:00:00.000Z",
+                status: "scheduled",
+                notes: null,
+                restaurantId: "r1",
+              },
+              {
+                id: "shift-2",
+                employeeId: "e1",
+                shiftType: "evening",
+                startTime: "2026-05-06T18:00:00.000Z",
+                endTime: "2026-05-06T23:00:00.000Z",
+                status: "cancelled",
+                notes: null,
+                restaurantId: "r1",
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+
+    expect(await screen.findByText("1 ca đã công bố")).toBeInTheDocument();
+  });
+
 });
