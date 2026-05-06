@@ -9,7 +9,12 @@ const modelMocks = vi.hoisted(() => ({
   },
 }));
 
+const guardMocks = vi.hoisted(() => ({
+  requireRestaurantAccess: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -29,6 +34,7 @@ describe("PromotionMutation business rules", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
   });
 
   it("rejects BOGO promotions when the gifted item is missing", async () => {

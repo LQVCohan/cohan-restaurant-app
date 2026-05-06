@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Promotion } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function clamp(value, min, max) {
   const n = Number(value);
@@ -10,7 +11,8 @@ function clamp(value, min, max) {
 export const PromotionQuery = {
   async promotionsByRestaurant(
     _,
-    { restaurantId, activeOnly = true, limit = 20, offset = 0, now }
+    { restaurantId, activeOnly = true, limit = 20, offset = 0, now },
+    ctx
   ) {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new Error("Invalid restaurantId");
@@ -19,9 +21,10 @@ export const PromotionQuery = {
     const safeLimit = clamp(limit, 1, 100);
     const safeOffset = Math.max(0, Number(offset) || 0);
 
-    const query = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-    };
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
+    const query = { restaurantId: rid };
 
     if (activeOnly) {
       query.isActive = true;
