@@ -137,7 +137,7 @@ describe('User resolvers integration', () => {
     const result = await UserMutation.setUserStatus(
       null,
       { userId: updatedUser._id, status: 'blocked' },
-      { user: { roleName: 'manager' } },
+      { user: { roleName: 'admin' } },
     );
 
     expect(modelMocks.User.findByIdAndUpdate).toHaveBeenCalledWith(
