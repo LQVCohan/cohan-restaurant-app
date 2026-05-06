@@ -1352,6 +1352,17 @@ export default {
       { new: true, upsert: true },
     );
 
+    await Shift.updateMany(
+      {
+        restaurantId,
+        startTime: { $gte: periodStart, $lte: periodEnd },
+        status: { $nin: ["cancelled"] },
+      },
+      {
+        $set: { status: "published" },
+      },
+    );
+
     const shifts = await Shift.find({
       restaurantId,
       startTime: { $gte: periodStart, $lte: periodEnd },
