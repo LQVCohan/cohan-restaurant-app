@@ -169,6 +169,9 @@ export default function RightPanel() {
     setTableStatus,
 
     preparePayment,
+    paymentRequests,
+    loadPaymentRequestToPOS,
+    clearPaymentRequest,
     printers,
     printStations,
     setPrintQueue,
@@ -200,7 +203,7 @@ export default function RightPanel() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
+  const activePaymentRequestRef = useRef(null);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isPrintModalOpen, setPrintModalOpen] = useState(false);
@@ -427,6 +430,17 @@ export default function RightPanel() {
 
   const handlePaymentComplete = useCallback(
     (payload) => {
+      const paidOrderId =
+        payload?.orderId ||
+        payload?.server?.order?.id ||
+        payload?.server?.orderId ||
+        activePaymentRequestRef.current?.orderId;
+
+      if (paidOrderId) {
+        clearPaymentRequest?.(paidOrderId);
+      }
+
+      activePaymentRequestRef.current = null;
       showNotification("Thanh toán thành công.", "success");
       const inv =
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
@@ -449,7 +463,30 @@ export default function RightPanel() {
       setCurrentTable,
       showNotification,
       clearDraft,
+      clearPaymentRequest,
     ],
+  );
+
+  const handleOpenPaymentRequest = useCallback(
+    async (request) => {
+      activePaymentRequestRef.current = request;
+
+      const res = await loadPaymentRequestToPOS?.(request);
+
+      if (!res?.success) {
+        activePaymentRequestRef.current = null;
+        showNotification(
+          res?.message || "Không thể mở yêu cầu thanh toán.",
+          "error",
+        );
+        return;
+      }
+
+      setTimeout(() => {
+        setPaymentModalOpen(true);
+      }, 0);
+    },
+    [loadPaymentRequestToPOS, showNotification],
   );
 
   const handleQtyChange = (e, item, change) => {
@@ -910,7 +947,11 @@ export default function RightPanel() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
-        totalAmount={finalTotals?.total || 0}
+        totalAmount={
+          finalTotals?.total ||
+          activePaymentRequestRef.current?.totals?.grandTotal ||
+          0
+        }
         order={currentOrder}
         table={currentTable}
         onConfirm={() => {}}
@@ -968,6 +1009,28 @@ export default function RightPanel() {
                 <IconDraft />
               </span>
               <span className={cls.legendText}>Món mới (chưa lưu)</span>
+            </div>
+          )}
+          {Array.isArray(paymentRequests) && paymentRequests.length > 0 && (
+            <div className={cls.draftLegend}>
+              <span className={cls.legendText}>
+                Khách gọi thanh toán ({paymentRequests.length})
+              </span>
+              <div>
+                {paymentRequests.slice(0, 3).map((req) => (
+                  <div key={req.orderId}>
+                    {req.tableCode || req.orderCode || req.orderId} ·{" "}
+                    {formatPrice(req?.totals?.grandTotal || 0)}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPaymentRequest(req)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Mở thanh toán
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
