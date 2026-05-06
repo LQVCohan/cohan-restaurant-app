@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { StockMovement } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -37,8 +38,10 @@ export default {
       limit,
       sort,
     }
-  ) => {
+  , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const q = { restaurantId };
 
@@ -78,7 +81,7 @@ export default {
   stockMovementSummary: async (
     _,
     { restaurantId, warehouseId, ingredientId, dateFrom, dateTo }
-  ) => {
+  , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) {
       return {
         inbound: 0,
@@ -90,6 +93,8 @@ export default {
         count: 0,
       };
     }
+
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const match = { restaurantId };
     if (warehouseId && mongoose.isValidObjectId(warehouseId))
