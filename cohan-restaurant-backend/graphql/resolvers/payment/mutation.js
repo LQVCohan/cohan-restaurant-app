@@ -14,6 +14,7 @@ import {
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
@@ -369,6 +370,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
   await requireRestaurantAccess(ctx, rid);
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   const rawOrderIds = Array.isArray(orderIds) ? orderIds : [];
   const normalizedOrderIds = rawOrderIds.map(toId);
@@ -455,7 +457,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           paidAt: now,
           note,
           externalRef,
-          createdBy: ctx?.user?.id,
+          createdBy: actorId || ctx?.user?.id,
         },
       ],
       { session }

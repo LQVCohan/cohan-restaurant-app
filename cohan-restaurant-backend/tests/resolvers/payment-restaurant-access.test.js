@@ -22,6 +22,9 @@ vi.mock("../../src/services/payment/paymentSession.service.js", () => ({
   createReservationPayment: vi.fn(),
   getProviderPublicConfig: vi.fn(),
 }));
+vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => ({
+  emitOrderEvent: vi.fn(),
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((value) => String(value || "").startsWith("valid-")),
@@ -44,6 +47,15 @@ function leanResult(value) {
 }
 
 describe("payment resolvers restaurant access guards", () => {
+
+  it("payment mutation exports payment guard targets", async () => {
+    const { payOrdersByTableId, payOrdersByOrderIds } = await import(
+      "../../graphql/resolvers/payment/mutation.js"
+    );
+
+    expect(typeof payOrdersByTableId).toBe("function");
+    expect(typeof payOrdersByOrderIds).toBe("function");
+  });
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
