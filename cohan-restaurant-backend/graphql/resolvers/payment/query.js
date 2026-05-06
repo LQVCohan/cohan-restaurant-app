@@ -6,8 +6,10 @@ import {
   Cashflow,
   PaymentSession,
   Restaurant,
+  Order,
 } from "../../../models/index.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const toObjectId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -128,9 +130,14 @@ export const PaymentQuery = {
     if (!mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
     return getProviderPublicConfig(restaurantId);
   },
-  async paymentTransactionsByOrder(_, { orderId }) {
+  async paymentTransactionsByOrder(_, { orderId }, ctx) {
     if (!mongoose.isValidObjectId(orderId)) return [];
     const id = new mongoose.Types.ObjectId(orderId);
+    const order = await Order.findById(id).lean();
+    if (!order) return [];
+    const orderRestaurantId = toObjectId(order.restaurantId);
+    if (!orderRestaurantId) throw new Error("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, orderRestaurantId);
 
     return PaymentTransaction.find({
       $or: [{ orderId: id }, { orderIds: id }],
@@ -139,9 +146,14 @@ export const PaymentQuery = {
       .lean();
   },
 
-  async invoicesByOrder(_, { orderId }) {
+  async invoicesByOrder(_, { orderId }, ctx) {
     if (!mongoose.isValidObjectId(orderId)) return [];
     const id = new mongoose.Types.ObjectId(orderId);
+    const order = await Order.findById(id).lean();
+    if (!order) return [];
+    const orderRestaurantId = toObjectId(order.restaurantId);
+    if (!orderRestaurantId) throw new Error("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, orderRestaurantId);
 
     return Invoice.find({
       $or: [{ orderId: id }, { orderIds: id }],
@@ -150,10 +162,11 @@ export const PaymentQuery = {
       .lean();
   },
 
-  async financeDashboard(_, { input }) {
+  async financeDashboard(_, { input }, ctx) {
     const { restaurantId, range, dateFrom, dateTo } = input || {};
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, rid);
 
     const { from, to, mode, format } = resolveDateRange({ range, dateFrom, dateTo });
     const cashflowFilter = {
