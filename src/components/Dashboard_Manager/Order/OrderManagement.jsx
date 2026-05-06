@@ -591,6 +591,14 @@ const OrderManagement = () => {
     await mutCreateTempBillJob({ variables: { input: { orderId: order.id, restaurantId: selectedRestaurantId } } });
     showNotification("Đã tạo print job in tạm tính.", "success");
   }, [mutCreateTempBillJob, selectedRestaurantId, showNotification]);
+  const handleReviewItemVoid = useCallback(
+    async (payload) => {
+      const updatedOrder = await reviewOrderItemVoid(payload);
+      if (updatedOrder) setSelectedOrder(updatedOrder);
+      return updatedOrder;
+    },
+    [reviewOrderItemVoid],
+  );
 
   // ---------------- RENDER ----------------
   return (
@@ -916,6 +924,7 @@ const OrderManagement = () => {
             onClose={() => setSelectedOrder(null)}
             onUpdateItemStatus={handleUpdateItemStatus}
             onCreateTemporaryBill={handleCreateTemporaryBill}
+            onReviewItemVoid={handleReviewItemVoid}
           />
         )}
 

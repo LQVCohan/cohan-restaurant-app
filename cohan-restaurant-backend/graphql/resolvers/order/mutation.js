@@ -2200,6 +2200,9 @@ export const OrderMutation = {
     if (!mongoose.isValidObjectId(orderItemId)) {
       throw new Error("Invalid orderItemId");
     }
+    if (!String(requestId || "").trim()) {
+      throw new Error("Invalid requestId");
+    }
 
     const session = await mongoose.startSession();
     let updatedOrder = null;
@@ -2272,8 +2275,8 @@ export const OrderMutation = {
           status: order.currentStatus,
           at: new Date(),
           note: approve
-            ? `Đã duyệt hủy ${req.quantity} món "${item.name}". ${note || ""}`.trim()
-            : `Từ chối hủy món "${item.name}". ${note || ""}`.trim(),
+            ? `Duyệt hủy ${req.quantity} món "${item.name}". ${note || ""}`.trim()
+            : `Từ chối yêu cầu hủy món "${item.name}". ${note || ""}`.trim(),
         });
 
         await order.save({ session });

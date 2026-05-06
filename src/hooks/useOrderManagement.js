@@ -529,8 +529,23 @@ const GET_ORDER = gql`
         note
         priority
         quantity
+        originalQuantity
+        cancelledQuantity
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
         weightGrams
         status
+        image
+        proofImages
         ingredientsSnapshot {
           ingredientId
           name
@@ -642,6 +657,56 @@ const UPDATE_ORDER_STATUS = gql`
       restaurantId
       priority
       currentStatus
+      items {
+        _id
+        dishId
+        menuId
+        categoryId
+        name
+        unit
+        basePrice
+        servingKey
+        servingVariant {
+          key
+          name
+          mode
+          price
+          sellQty
+          sellUnit
+        }
+        modifiersPrice
+        unitPrice
+        lineSubtotal
+        note
+        priority
+        quantity
+        originalQuantity
+        cancelledQuantity
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        weightGrams
+        status
+        image
+        proofImages
+        ingredientsSnapshot {
+          ingredientId
+          name
+          quantity
+          unit
+          baseUnitQuantity
+          costPerBaseUnit
+          totalCost
+        }
+      }
       totals {
         subtotal
         discount
@@ -687,6 +752,19 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
           note
           priority
           quantity
+          originalQuantity
+          cancelledQuantity
+          voidRequests {
+            requestId
+            quantity
+            reason
+            status
+            requestedBy
+            requestedAt
+            reviewedBy
+            reviewedAt
+            reviewNote
+          }
           weightGrams
           status
           image
@@ -2622,6 +2700,7 @@ export default function useOrderManagement(pos = null) {
     confirmPayment,
     checkoutOrder,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
+    reviewOrderItemVoid,
 
     // customer (dine-in, theo orderCode)
     updateOrderCustomerByCode,
