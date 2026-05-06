@@ -2384,6 +2384,9 @@ export const OrderMutation = {
           item.returnedQuantity = Number(item.returnedQuantity || 0) + qty;
           if (req.refundMode === "remove_from_bill") {
             item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
+            if (item.quantity <= 0) {
+              item.status = "returned";
+            }
             const plainItems = order.items.map((x) => (typeof x.toObject === "function" ? x.toObject() : x));
             order.totals = computeTotalsFromHydratedItems(plainItems, {
               serviceRate: order?.totals?.serviceRate || 0,
@@ -2393,9 +2396,6 @@ export const OrderMutation = {
               shippingFee: order?.totals?.shippingFee || 0,
               voucherCode: order?.totals?.voucherCode || undefined,
             });
-          }
-          if (Number(item.returnedQuantity || 0) >= Number(item.originalQuantity || 0)) {
-            item.status = "returned";
           }
         }
 
