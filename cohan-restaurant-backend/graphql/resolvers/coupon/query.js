@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Coupon, VoucherPackage } from "../../../models/index.js";
+import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -30,30 +31,49 @@ function requireRestaurantIdForCouponLookup(restaurantId) {
 }
 
 export const CouponQuery = {
-  async coupons(_, { restaurantId, activeOnly = false, limit = 50, offset = 0, now } = {}) {
-    const query = {
-      ...(restaurantId ? { restaurantId: toObjectId(restaurantId) || restaurantId } : {}),
-      ...buildActiveQuery(activeOnly, now),
-    };
+  async coupons(_, { restaurantId, activeOnly = false, limit = 50, offset = 0, now } = {}, ctx) {
+    const activeQuery = buildActiveQuery(activeOnly, now);
 
-    return Coupon.find(query)
+    if (restaurantId) {
+      const rid = toObjectId(restaurantId);
+      if (!rid) throw new GraphQLError("Invalid restaurantId");
+      await requireRestaurantAccess(ctx, rid);
+      return Coupon.find({ restaurantId: rid, ...activeQuery })
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .lean({ virtuals: true });
+    }
+
+    requireRoles(ctx, ["ADMIN"]);
+    return Coupon.find(activeQuery)
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
       .lean({ virtuals: true });
   },
 
-  async couponByCode(_, { code, restaurantId } = {}) {
+  async couponByCode(_, { code, restaurantId } = {}, ctx) {
     const norm = String(code || "").trim().toUpperCase();
     if (!norm) return null;
 
     const rid = requireRestaurantIdForCouponLookup(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
     return Coupon.findOne({ code: norm, restaurantId: rid }).lean({ virtuals: true });
   },
 
-  async voucherPackages(_, { restaurantId } = {}) {
-    const query = restaurantId ? { restaurantId: toObjectId(restaurantId) || restaurantId } : {};
-    return VoucherPackage.find(query)
+  async voucherPackages(_, { restaurantId } = {}, ctx) {
+    if (restaurantId) {
+      const rid = toObjectId(restaurantId);
+      if (!rid) throw new GraphQLError("Invalid restaurantId");
+      await requireRestaurantAccess(ctx, rid);
+      return VoucherPackage.find({ restaurantId: rid })
+        .sort({ level: 1, createdAt: -1 })
+        .lean({ virtuals: true });
+    }
+
+    requireRoles(ctx, ["ADMIN"]);
+    return VoucherPackage.find({})
       .sort({ level: 1, createdAt: -1 })
       .lean({ virtuals: true });
   },
