@@ -1128,8 +1128,7 @@ export default function StaffOrdering() {
           variables: { input: { restaurantId, orderIds } },
         });
         alert(
-          data?.requestPaymentForOrder?.message ||
-            "Đã gửi yêu cầu thanh toán theo đơn.",
+          "Đã gửi yêu cầu thanh toán đến POS.",
         );
         return;
       }
@@ -1144,8 +1143,7 @@ export default function StaffOrdering() {
         },
       });
       alert(
-        data?.requestPaymentForTable?.message ||
-          "Đã gửi yêu cầu thanh toán theo bàn.",
+        "Đã gửi yêu cầu thanh toán đến POS.",
       );
     } catch (e) {
       alert(e?.message || "Yêu cầu thanh toán thất bại.");
