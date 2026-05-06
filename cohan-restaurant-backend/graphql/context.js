@@ -16,10 +16,9 @@ export default async function buildContext(request, reply) {
   // 2) Verify & tải user
   if (token) {
     try {
-      const payload = jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+      const payload = jwt.verify(token, process.env.JWT_SECRET, {
+        issuer: process.env.JWT_ISSUER || "foodhub-system",
+      });
 
       // chấp nhận id ở nhiều key: id | sub | userId
       const userId = String(payload.id || payload.sub || payload.userId || "");
@@ -28,7 +27,7 @@ export default async function buildContext(request, reply) {
           .populate("role")
           .lean({ virtuals: true });
 
-        if (userDoc) {
+        if (userDoc && userDoc.status === "active") {
           const roleName = (
             userDoc.role?.slug ||
             userDoc.role?.name ||
