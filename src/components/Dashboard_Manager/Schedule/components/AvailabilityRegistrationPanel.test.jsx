@@ -144,4 +144,23 @@ describe("AvailabilityRegistrationPanel", () => {
     expect(onReviewSubmission).toHaveBeenNthCalledWith(2, "sub-1", false);
   });
 
+  it("shows only one primary CTA when no window and reminder is active", () => {
+    render(
+      <AvailabilityRegistrationPanel
+        {...baseProps}
+        availabilityWindow={null}
+        shouldRemindNextWeekRegistration
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Tạo kỳ đăng ký cho tuần kế tiếp" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mở đăng ký tuần sau" })).not.toBeInTheDocument();
+  });
+
+  it("shows open label for draft and reopen label for closed", () => {
+    const { rerender } = render(<AvailabilityRegistrationPanel {...baseProps} availabilityWindow={{ ...baseProps.availabilityWindow, status: "draft" }} />);
+    expect(screen.getByRole("button", { name: "Mở đăng ký" })).toBeInTheDocument();
+    rerender(<AvailabilityRegistrationPanel {...baseProps} availabilityWindow={{ ...baseProps.availabilityWindow, status: "closed" }} />);
+    expect(screen.getByRole("button", { name: "Mở lại đăng ký" })).toBeInTheDocument();
+  });
+
 });

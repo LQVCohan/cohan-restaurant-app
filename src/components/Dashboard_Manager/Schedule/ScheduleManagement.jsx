@@ -1886,13 +1886,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
         );
         return;
       }
-      const confirmed = window.confirm(
-        [
-          "Mở lại đăng ký lịch?",
-          `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
-          "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
-        ].join("\n"),
-      );
+      const currentWindowStatus = String(
+        managerCurrentWindow?.effectiveStatus || managerCurrentWindow?.status || "",
+      ).toLowerCase();
+      const confirmLines = [
+        currentWindowStatus === "closed"
+          ? "Mở lại đăng ký lịch?"
+          : "Mở đăng ký lịch?",
+        `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
+      ];
+      if (currentWindowStatus === "closed") {
+        confirmLines.push("Sau khi mở lại, nhân viên có thể thay đổi submissions.");
+      } else if (currentWindowStatus === "draft") {
+        confirmLines.push("Sau khi mở, nhân viên có thể gửi hoặc cập nhật đăng ký.");
+      }
+      const confirmed = window.confirm(confirmLines.join("\n"));
       if (!confirmed) return;
       await openAvailabilityWindow({
         variables: { id: managerCurrentWindow.id },
