@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { consumeForOrderTx } from "../../../src/services/inventory.service.js";
 import { Warehouse } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   if (!mongoose.isValidObjectId(restaurantId)) {
@@ -69,7 +70,7 @@ function normalizeLines(lines) {
 }
 
 export default {
-  consumeForOrder: async (_p, { input }) => {
+  consumeForOrder: async (_p, { input }, ctx) => {
     const { restaurantId, orderCode, lines } = input || {};
 
     if (!mongoose.isValidObjectId(restaurantId)) {
@@ -80,6 +81,8 @@ export default {
     }
 
     try {
+      await requireRestaurantAccess(ctx, restaurantId);
+
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input.warehouseId
