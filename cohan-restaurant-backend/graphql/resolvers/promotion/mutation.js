@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Promotion } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const toObjId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -124,34 +125,59 @@ const loadPromotionForOutput = async (id) =>
   Promotion.findById(id).lean({ virtuals: true });
 
 export const PromotionMutation = {
-  async createPromotion(_, { input }, { user }) {
+  async createPromotion(_, { input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     const payload = sanitizeInput(input);
     validatePromotionPayload(payload);
+    await requireRestaurantAccess(ctx, payload.restaurantId);
     const created = await Promotion.create(payload);
     return (await loadPromotionForOutput(created._id)) || created;
   },
 
-  async updatePromotion(_, { id, input }, { user }) {
+  async updatePromotion(_, { id, input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid promotion id");
+
+    const existing = await Promotion.findById(id).lean();
+    if (!existing) throw new GraphQLError("Promotion not found");
+    if (!existing.restaurantId || !mongoose.isValidObjectId(existing.restaurantId)) {
+      throw new GraphQLError("Invalid promotion restaurant");
+    }
+
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+
     const payload = sanitizeInput(input);
     validatePromotionPayload(payload);
+    payload.restaurantId = existing.restaurantId;
     const updated = await Promotion.findByIdAndUpdate(id, payload, { new: true });
     if (!updated) throw new GraphQLError("Promotion not found");
     return (await loadPromotionForOutput(updated._id)) || updated;
   },
 
-  async deletePromotion(_, { id }, { user }) {
+  async deletePromotion(_, { id }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid promotion id");
+
+    const existing = await Promotion.findById(id).lean();
+    if (!existing) return false;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+
     const rs = await Promotion.deleteOne({ _id: id });
     return rs.deletedCount > 0;
   },
 
-  async togglePromotion(_, { id, isActive }, { user }) {
+  async togglePromotion(_, { id, isActive }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid promotion id");
+
+    const existing = await Promotion.findById(id).lean();
+    if (!existing) throw new GraphQLError("Promotion not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+
     const updated = await Promotion.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true });
     if (!updated) throw new GraphQLError("Promotion not found");
     return (await loadPromotionForOutput(updated._id)) || updated;

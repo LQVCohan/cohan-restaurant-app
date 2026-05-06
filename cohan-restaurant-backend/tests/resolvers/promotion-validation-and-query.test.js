@@ -4,11 +4,18 @@ const modelMocks = vi.hoisted(() => ({
   Promotion: {
     create: vi.fn(),
     findById: vi.fn(),
+    findByIdAndUpdate: vi.fn(),
+    deleteOne: vi.fn(),
     find: vi.fn(),
   },
 }));
 
+const guardMocks = vi.hoisted(() => ({
+  requireRestaurantAccess: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -39,6 +46,7 @@ describe("Promotion validation and query filtering", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
   });
 
   it("accepts FREESHIP with discountValue = 0 when scope is ORDER", async () => {
@@ -89,18 +97,128 @@ describe("Promotion validation and query filtering", () => {
     const chain = mockFindChain();
     const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
 
-    await PromotionQuery.promotionsByRestaurant(null, {
-      restaurantId: "restaurant-1",
-      activeOnly: true,
-      now: "2026-05-04T00:00:00.000Z",
-    });
+    const ctx = { user: { roleName: "manager" } };
+    await PromotionQuery.promotionsByRestaurant(
+      null,
+      {
+        restaurantId: "restaurant-1",
+        activeOnly: true,
+        now: "2026-05-04T00:00:00.000Z",
+      },
+      ctx,
+    );
 
     const passedQuery = modelMocks.Promotion.find.mock.calls[0][0];
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, passedQuery.restaurantId);
     expect(passedQuery.isActive).toBe(true);
     expect(passedQuery.$and).toHaveLength(2);
     expect(passedQuery.$expr).toEqual({
       $or: [{ $lte: ["$usageLimit", 0] }, { $lt: ["$usageCount", "$usageLimit"] }],
     });
     expect(chain.sort).toHaveBeenCalled();
+  });
+
+  it("blocks promotionsByRestaurant when restaurant access is denied", async () => {
+    mockFindChain();
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+    const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
+
+    await expect(
+      PromotionQuery.promotionsByRestaurant(
+        null,
+        { restaurantId: "restaurant-1", activeOnly: true },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Promotion.find).not.toHaveBeenCalled();
+  });
+
+  it("createPromotion calls restaurant access guard and create", async () => {
+    modelMocks.Promotion.create.mockResolvedValue({ _id: "promotion-1" });
+    modelMocks.Promotion.findById.mockReturnValue(mockLeanQuery({ id: "promotion-1" }));
+    const ctx = { user: { roleName: "manager" } };
+    const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
+
+    await PromotionMutation.createPromotion(
+      null,
+      { input: { name: "Promo", restaurantId: "restaurant-1", discountValue: 10 } },
+      ctx,
+    );
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
+    expect(modelMocks.Promotion.create).toHaveBeenCalled();
+  });
+
+  it("createPromotion blocks when restaurant access is denied", async () => {
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+    const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
+
+    await expect(
+      PromotionMutation.createPromotion(
+        null,
+        { input: { name: "Promo", restaurantId: "restaurant-1", discountValue: 10 } },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Promotion.create).not.toHaveBeenCalled();
+  });
+
+  it("updatePromotion guards existing restaurant and preserves existing restaurantId", async () => {
+    modelMocks.Promotion.findById
+      .mockReturnValueOnce(mockLeanQuery({ _id: "promotion-1", restaurantId: "restaurant-existing" }))
+      .mockReturnValueOnce(mockLeanQuery({ id: "promotion-1" }));
+    modelMocks.Promotion.findByIdAndUpdate.mockResolvedValue({ _id: "promotion-1" });
+    const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
+
+    await PromotionMutation.updatePromotion(
+      null,
+      {
+        id: "promotion-1",
+        input: {
+          name: "Updated",
+          restaurantId: "restaurant-other",
+          discountValue: 10,
+        },
+      },
+      { user: { roleName: "manager" } },
+    );
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
+      { user: { roleName: "manager" } },
+      "restaurant-existing",
+    );
+    expect(modelMocks.Promotion.findByIdAndUpdate).toHaveBeenCalled();
+    const payload = modelMocks.Promotion.findByIdAndUpdate.mock.calls[0][1];
+    expect(payload.restaurantId).toBe("restaurant-existing");
+  });
+
+  it("deletePromotion blocks cross-restaurant access", async () => {
+    modelMocks.Promotion.findById.mockReturnValue(
+      mockLeanQuery({ _id: "promotion-1", restaurantId: "restaurant-existing" }),
+    );
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+    const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
+
+    await expect(
+      PromotionMutation.deletePromotion(null, { id: "promotion-1" }, { user: { roleName: "manager" } }),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Promotion.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it("togglePromotion blocks cross-restaurant access", async () => {
+    modelMocks.Promotion.findById.mockReturnValue(
+      mockLeanQuery({ _id: "promotion-1", restaurantId: "restaurant-existing" }),
+    );
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+    const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
+
+    await expect(
+      PromotionMutation.togglePromotion(
+        null,
+        { id: "promotion-1", isActive: false },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Promotion.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 });
