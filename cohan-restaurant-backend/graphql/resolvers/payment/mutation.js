@@ -146,6 +146,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   const tid = toId(tableId);
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
@@ -326,7 +327,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           "payment.status": "paid",
           "payment.paidAmount": amountToPay,
           "payment.paidAt": now,
-          "payment.paidBy": toId(ctx?.user?.id),
+          "payment.paidBy": actorId,
           currentStatus: "completed",
         },
       },
@@ -394,6 +395,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   const normalizedOrderIds = [...new Set((orderIds || []).map(String))]
     .map(toId)
@@ -550,14 +552,14 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           "payment.status": "paid",
           "payment.paidAmount": amountToPay,
           "payment.paidAt": now,
-          "payment.paidBy": toId(ctx?.user?.id),
+          "payment.paidBy": actorId,
           currentStatus: "completed",
         },
         $push: {
           statusTimeline: {
             status: "completed",
             at: now,
-            byUserId: toId(ctx?.user?.id) || null,
+            byUserId: actorId || null,
             note: "Đã thanh toán và hoàn tất đơn.",
           },
         },

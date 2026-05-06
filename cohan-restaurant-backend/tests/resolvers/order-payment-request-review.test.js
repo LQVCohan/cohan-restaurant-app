@@ -93,4 +93,64 @@ describe("payment request + confirm guards", () => {
     expect(order.save).not.toHaveBeenCalled();
   });
 
+  it("payOrdersByOrderIds succeeds and sets paid status with actor fallback _id", async () => {
+    const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+    const paidOrder = {
+      _id: "65f000000000000000000001",
+      restaurantId: "65f000000000000000000099",
+      orderCode: "ORD-001",
+      currentStatus: "served",
+      items: [
+        {
+          status: "served",
+          quantity: 1,
+          lineSubtotal: 100000,
+          unitPrice: 100000,
+          dishId: "dish-1",
+          name: "Món test",
+          voidRequests: [],
+          returnRequests: [],
+        },
+      ],
+      totals: { subtotal: 100000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 100000 },
+      payment: { status: "payment_requested" },
+    };
+
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) })
+      .mockResolvedValueOnce([paidOrder]);
+
+    await payOrdersByOrderIds(
+      null,
+      {
+        input: {
+          restaurantId: "65f000000000000000000099",
+          orderIds: ["65f000000000000000000001"],
+          method: "cash",
+          note: "test",
+        },
+      },
+      { user: { _id: "65f000000000000000000777" } },
+    );
+
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          "payment.status": "paid",
+          "payment.paidBy": expect.anything(),
+          currentStatus: "completed",
+        }),
+        $push: expect.objectContaining({
+          statusTimeline: expect.objectContaining({
+            note: "Đã thanh toán và hoàn tất đơn.",
+          }),
+        }),
+      }),
+      expect.anything(),
+    );
+    const updatePayload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
+    expect(updatePayload.$set["payment.paidAt"]).toBeTruthy();
+    expect(emitOrderEventMock).toHaveBeenCalled();
+  });
 });
