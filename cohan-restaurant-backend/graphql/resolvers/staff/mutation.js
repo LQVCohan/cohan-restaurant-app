@@ -16,6 +16,7 @@ import {
   Notification,
   SchedulePublication,
   ShiftAcknowledgement,
+  ScheduleAcknowledgement,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -2504,7 +2505,7 @@ export default {
     ctx,
   ) => {
     requireAuth(ctx);
-    requireRestaurantScope(ctx, restaurantId);
+    await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
     if (!employeeId) throw new Error("Unauthorized.");
     const publication = await SchedulePublication.findOne({
