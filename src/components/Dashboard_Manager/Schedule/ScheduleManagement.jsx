@@ -137,11 +137,18 @@ const GET_DECLINED_SHIFT_ACKS = gql`
   query ShiftAcknowledgements($restaurantId: ID!, $periodStart: DateTime, $periodEnd: DateTime, $status: ShiftAcknowledgementStatus) {
     shiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd, status: $status) {
       id
+      restaurantId
+      publicationId
       shiftId
       employeeId
+      periodStart
+      periodEnd
+      status
       reasonCategory
       reason
       declineClassification
+      respondedAt
+      updatedAt
     }
   }
 `;
@@ -1412,16 +1419,41 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId || viewMode !== "week",
   });
-  const { data: declinedShiftAcksData, refetch: refetchDeclinedShiftAcks } = useQuery(GET_DECLINED_SHIFT_ACKS, {
+  const periodStartIso = rangeStart.toISOString();
+  const periodEndIso = rangeEnd.toISOString();
+  const {
+    data: declinedShiftAcksData,
+    loading: declinedShiftAcksLoading,
+    error: declinedShiftAcksError,
+    refetch: refetchDeclinedShiftAcks,
+  } = useQuery(GET_DECLINED_SHIFT_ACKS, {
     variables: {
       restaurantId: effectiveRestaurantId,
-      periodStart: rangeStart.toISOString(),
-      periodEnd: rangeEnd.toISOString(),
+      periodStart: periodStartIso,
+      periodEnd: periodEndIso,
       status: "declined",
     },
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId || viewMode !== "week",
   });
+  const declinedShiftAcks = declinedShiftAcksData?.shiftAcknowledgements || [];
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.info("[ScheduleManagement] declined shift ack query", {
+      restaurantId: effectiveRestaurantId,
+      periodStart: periodStartIso,
+      periodEnd: periodEndIso,
+      status: "declined",
+      count: declinedShiftAcks.length,
+      error: declinedShiftAcksError?.message,
+    });
+  }, [
+    declinedShiftAcks.length,
+    declinedShiftAcksError?.message,
+    effectiveRestaurantId,
+    periodEndIso,
+    periodStartIso,
+  ]);
   const [reviewShiftAck] = useMutation(REVIEW_SHIFT_ACK);
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
@@ -3959,8 +3991,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       </header>
       <section className="declined-shift-review-panel">
-        <h3>Ca bị từ chối ({(declinedShiftAcksData?.shiftAcknowledgements || []).length})</h3>
-        {(declinedShiftAcksData?.shiftAcknowledgements || []).map((ack) => (
+        <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>
+        {declinedShiftAcksLoading ? (
+          <p>Đang tải ca bị từ chối...</p>
+        ) : declinedShiftAcksError ? (
+          <p>
+            Không thể tải ca bị từ chối:{" "}
+            {getGraphQLErrorMessage(
+              declinedShiftAcksError,
+              declinedShiftAcksError.message || "Đã xảy ra lỗi.",
+            )}
+          </p>
+        ) : null}
+        {!declinedShiftAcksLoading && !declinedShiftAcksError && declinedShiftAcks.length === 0 ? (
+          <p>Chưa có ca bị từ chối trong tuần này.</p>
+        ) : null}
+        {declinedShiftAcks.map((ack) => (
           <div key={ack.id} className="declined-shift-review-item">
             <div>Nhân viên: {ack.employeeId}</div>
             <div>Ca: {ack.shiftId}</div>

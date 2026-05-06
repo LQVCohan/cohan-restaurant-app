@@ -9,6 +9,9 @@ let mockRestaurantData;
 let mockStaffData;
 let mockShiftsData;
 let mockDeclinedShiftAcksData;
+let mockDeclinedShiftAcksError;
+let mockDeclinedShiftAcksLoading;
+let capturedDeclinedShiftAckVariables;
 let mutationSpy;
 let lazyQuerySpy;
 
@@ -17,7 +20,7 @@ vi.mock("@apollo/client", async () => {
 
   return {
     ...actual,
-    useQuery: vi.fn((query) => {
+    useQuery: vi.fn((query, queryOptions) => {
       const body = query?.loc?.source?.body || "";
 
       if (body.includes("query Me")) {
@@ -41,7 +44,13 @@ vi.mock("@apollo/client", async () => {
         };
       }
       if (body.includes("query ShiftAcknowledgements")) {
-        return { data: mockDeclinedShiftAcksData, loading: false, error: null, refetch: vi.fn() };
+        capturedDeclinedShiftAckVariables = queryOptions?.variables;
+        return {
+          data: mockDeclinedShiftAcksData,
+          loading: mockDeclinedShiftAcksLoading,
+          error: mockDeclinedShiftAcksError,
+          refetch: vi.fn(),
+        };
       }
 
       return { data: null, loading: false, error: null };
@@ -113,6 +122,9 @@ describe("ScheduleManagement", () => {
         },
       ],
     };
+    mockDeclinedShiftAcksError = null;
+    mockDeclinedShiftAcksLoading = false;
+    capturedDeclinedShiftAckVariables = null;
   });
 
   afterEach(() => {
@@ -241,5 +253,33 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     expect(screen.getByRole("button", { name: "Chấp nhận lý do" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Không duyệt lý do" })).toBeInTheDocument();
+  });
+
+  it("shows declined shift count and reason/category", () => {
+    render(<ScheduleManagement />);
+    expect(screen.getByText(/Ca bị từ chối \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText("Lý do: sick - Bị ốm")).toBeInTheDocument();
+  });
+
+  it("shows count 0 when declined acknowledgement query returns empty", () => {
+    mockDeclinedShiftAcksData = { shiftAcknowledgements: [] };
+    render(<ScheduleManagement />);
+    expect(screen.getByText(/Ca bị từ chối \(0\)/)).toBeInTheDocument();
+    expect(screen.getByText("Chưa có ca bị từ chối trong tuần này.")).toBeInTheDocument();
+  });
+
+  it("shows GraphQL error for declined acknowledgement query", () => {
+    mockDeclinedShiftAcksData = undefined;
+    mockDeclinedShiftAcksError = new Error("FORBIDDEN_SCOPE");
+    render(<ScheduleManagement />);
+    expect(screen.getByText(/Không thể tải ca bị từ chối: FORBIDDEN_SCOPE/)).toBeInTheDocument();
+  });
+
+  it("updates declined acknowledgement query period when changing week", () => {
+    render(<ScheduleManagement />);
+    const firstPeriodStart = capturedDeclinedShiftAckVariables?.periodStart;
+    fireEvent.click(screen.getByRole("button", { name: /Sau/i }));
+    expect(capturedDeclinedShiftAckVariables?.periodStart).not.toBe(firstPeriodStart);
+    expect(capturedDeclinedShiftAckVariables?.periodEnd).toBeTruthy();
   });
 });
