@@ -92,6 +92,38 @@ describe("shift acknowledgement query resolvers", () => {
     expect(modelMocks.findSortMock).toHaveBeenCalledWith({ deadlineAt: 1, createdAt: -1 });
   });
 
+  it("allows manager access through refRestaurants for shiftAcknowledgements", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    await query.shiftAcknowledgements(
+      null,
+      { restaurantId: "rest-1", status: "declined" },
+      { user: { id: "manager-1", roles: ["manager"], refRestaurants: ["rest-1"] } },
+    );
+
+    expect(modelMocks.findMock).toHaveBeenCalledWith({
+      restaurantId: { __oid: "rest-1" },
+      status: "declined",
+    });
+  });
+
+  it("returns empty for another week when filters do not overlap", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    modelMocks.findSortMock.mockResolvedValue([]);
+
+    const result = await query.shiftAcknowledgements(
+      null,
+      {
+        restaurantId: "rest-1",
+        periodStart: "2026-06-01T00:00:00.000Z",
+        periodEnd: "2026-06-07T23:59:59.999Z",
+        status: "declined",
+      },
+      { user: { id: "manager-1", roles: ["manager"], primaryRestaurant: "rest-1" } },
+    );
+
+    expect(result).toEqual([]);
+  });
+
   it("myShiftAcknowledgements only filters by current user and lowercases status", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.myShiftAcknowledgements(

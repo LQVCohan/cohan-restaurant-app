@@ -16,12 +16,13 @@ const modelMocks = vi.hoisted(() => ({
   PayrollAdjustment: {},
   EmployeeCodeCounter: {},
   Notification: {},
-  SchedulePublication: {},
-  ShiftAcknowledgement: { updateMany: vi.fn(), findById: vi.fn() },
+  SchedulePublication: { findById: vi.fn() },
+  ShiftAcknowledgement: { updateMany: vi.fn(), findById: vi.fn(), findOne: vi.fn() },
 }));
 
 modelMocks.ShiftAcknowledgement.updateMany = modelMocks.updateManyMock;
 modelMocks.ShiftAcknowledgement.findById = modelMocks.findByIdMock;
+modelMocks.ShiftAcknowledgement.findOne = vi.fn();
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
@@ -84,6 +85,12 @@ describe("shift acknowledgement mutation resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     modelMocks.updateManyMock.mockResolvedValue({ modifiedCount: 1 });
+    modelMocks.SchedulePublication.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "pub-1",
+        status: "published",
+      }),
+    });
   });
 
   function buildAckDoc({ employeeId = { __oid: "staff-1" }, status = "pending", deadlineAt = "2099-01-01T00:00:00.000Z" } = {}) {
@@ -312,5 +319,40 @@ describe("shift acknowledgement mutation resolvers", () => {
       ),
     ).rejects.toThrow("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
     expect(doc.save).not.toHaveBeenCalled();
+  });
+
+  it("respondShiftAcknowledgement persists declined status and reason fields", async () => {
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const doc = {
+      employeeId: { __oid: "staff-1" },
+      publicationId: "pub-1",
+      status: "pending",
+      deadlineAt: "2099-01-01T00:00:00.000Z",
+      reason: "",
+      reasonCategory: "other",
+      declineClassification: "unknown",
+      save: vi.fn().mockResolvedValue(true),
+    };
+    modelMocks.ShiftAcknowledgement.findOne.mockResolvedValue(doc);
+
+    const result = await mutation.respondShiftAcknowledgement(
+      null,
+      {
+        input: {
+          shiftId: "shift-1",
+          response: "decline",
+          reason: "Không thể đi làm ca này",
+          reasonCategory: "personal",
+        },
+      },
+      { user: { id: "staff-1", roles: ["staff"] } },
+    );
+
+    expect(result.status).toBe("declined");
+    expect(result.reason).toBe("Không thể đi làm ca này");
+    expect(result.reasonCategory).toBe("personal");
+    expect(result.respondedAt).toBeInstanceOf(Date);
+    expect(doc.declineClassification).toBe("unknown");
+    expect(doc.save).toHaveBeenCalledTimes(1);
   });
 });

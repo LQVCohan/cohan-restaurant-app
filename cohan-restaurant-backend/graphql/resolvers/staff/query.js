@@ -357,7 +357,7 @@ export default {
     ctx,
   ) => {
     requireAuth(ctx);
-    requireRestaurantScope(ctx, restaurantId);
+    await requireRestaurantAccess(ctx, restaurantId);
     requireRoles(ctx, SHIFT_ACK_READ_ROLES);
 
     const filter = { restaurantId: toObjectId(restaurantId) || restaurantId };
