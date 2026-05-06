@@ -158,6 +158,13 @@ const OrderItemRow = React.memo(
       allowedNextStatuses.length === 0;
     const pendingVoidRequests = (item.voidRequests || []).filter((r) => r.status === "pending");
     const pendingReturnRequests = (item.returnRequests || []).filter((r) => r.status === "pending");
+    const baseline = Number(item.originalQuantity || 0) > 0
+      ? Number(item.originalQuantity)
+      : Number(item.quantity || 0) + Number(item.returnedQuantity || 0);
+    const remainingReturnable = Math.max(
+      0,
+      baseline - Number(item.returnedQuantity || 0),
+    );
     const [reviewingRequestId, setReviewingRequestId] = useState(null);
     const canReviewVoid =
       !["completed", "cancelled"].includes(orderStatus) &&
@@ -225,7 +232,8 @@ const OrderItemRow = React.memo(
           {Number(item.returnedQuantity || 0) > 0 && <div className="itemCard__note">Đã trả lại: x{item.returnedQuantity}</div>}
           {item.status === "served" &&
             !["completed", "cancelled"].includes(order?.currentStatus) &&
-            pendingReturnRequests.length === 0 && (
+            pendingReturnRequests.length === 0 &&
+            remainingReturnable > 0 && (
             <button onClick={async () => {
               const qtyRaw = window.prompt("Nhập số lượng muốn trả lại", "1");
               if (qtyRaw == null) return;
@@ -234,13 +242,6 @@ const OrderItemRow = React.memo(
                 window.alert("Số lượng trả lại phải là số nguyên lớn hơn 0.");
                 return;
               }
-              const baseline = Number(item.originalQuantity || 0) > 0
-                ? Number(item.originalQuantity)
-                : Number(item.quantity || 0) + Number(item.returnedQuantity || 0);
-              const remainingReturnable = Math.max(
-                0,
-                baseline - Number(item.returnedQuantity || 0),
-              );
               if (qty > remainingReturnable) {
                 window.alert("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
                 return;
