@@ -775,7 +775,7 @@ export const UserMutation = {
 
   // ========== Guest nhanh ==========
   async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
-    requireRole(user, ["admin", "manager", "staff"]);
+    requireRole(user, ["admin"]);
 
     const doc = new Customer({
       fullName: (fullName || "Guest").trim(),
@@ -798,7 +798,7 @@ export const UserMutation = {
 
   // === Admin update user ===
   async adminUpdateUser(_, { userId, input }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -951,7 +951,7 @@ export const UserMutation = {
 
   // === Quick status ===
   async setUserStatus(_, { userId, status }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -978,7 +978,7 @@ export const UserMutation = {
 
   // === Soft delete ===
   async softDeleteUser(_, { userId }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },

@@ -79,7 +79,7 @@ export const UserQuery = {
   async roleList(_, __, { user: authUser }) {
     try {
       // Cho phép admin/manager xem role list (tuỳ chính sách của bạn)
-      requireRole(authUser, ["admin", "manager"]);
+      requireRole(authUser, ["admin"]);
 
       const list = await Role.find({})
         .populate({ path: "parentRole", select: "name slug" })
@@ -98,7 +98,7 @@ export const UserQuery = {
 
   async users(_, { roleId, isGuest, search }, { user: authUser }) {
     try {
-      requireRole(authUser, ["admin", "manager"]);
+      requireRole(authUser, ["admin"]);
 
       const cond = {};
       if (typeof isGuest === "boolean") cond.isGuest = isGuest;
@@ -127,6 +127,7 @@ export const UserQuery = {
   async customers(_, { search, includeGuests = true }, { user: authUser }) {
     try {
       // Cho phép admin, manager, staff
+      // TODO: add restaurant-scoped customers query for manager access.
       requireRole(authUser, ["admin", "manager", "staff"]);
 
       // Tìm role "customer"
