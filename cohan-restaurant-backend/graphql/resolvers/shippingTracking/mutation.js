@@ -2,6 +2,14 @@
 import { Order } from "../../../models/index.js";
 import { emitOrderEvent, toId } from "../order/helper/index.js";
 import { createOrderTrackingEvent } from "../order/helper/tracking.js";
+import { requireRestaurantAccess } from "../../guards.js";
+
+
+function requireValidRestaurantId(restaurantId) {
+  const rid = toId(restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  return rid;
+}
 
 export const ShippingTrackingMutation = {
   /** DRIVER UPDATE LOCATION (real-time) */
@@ -17,9 +25,12 @@ export const ShippingTrackingMutation = {
       address,
     } = input || {};
 
+    const rid = requireValidRestaurantId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const order = await Order.findOne({
       _id: toId(orderId),
-      restaurantId: toId(restaurantId),
+      restaurantId: rid,
       orderType: "delivery",
     });
     if (!order) throw new Error("Order not found");
@@ -78,9 +89,12 @@ export const ShippingTrackingMutation = {
   async updateDeliveryStatus(_, { input }, ctx) {
     const { orderId, restaurantId, status, message } = input || {};
 
+    const rid = requireValidRestaurantId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const order = await Order.findOne({
       _id: toId(orderId),
-      restaurantId: toId(restaurantId),
+      restaurantId: rid,
       orderType: "delivery",
     });
     if (!order) throw new Error("Delivery order not found");
@@ -135,9 +149,12 @@ export const ShippingTrackingMutation = {
   async updateDeliveryETA(_, { input }, ctx) {
     const { orderId, restaurantId, eta, distance, duration } = input || {};
 
+    const rid = requireValidRestaurantId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const order = await Order.findOne({
       _id: toId(orderId),
-      restaurantId: toId(restaurantId),
+      restaurantId: rid,
       orderType: "delivery",
     });
     if (!order) throw new Error("Delivery order not found");
@@ -212,9 +229,12 @@ export const ShippingTrackingMutation = {
       channel,
     } = input || {};
 
+    const rid = requireValidRestaurantId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const order = await Order.findOne({
       _id: toId(orderId),
-      restaurantId: toId(restaurantId),
+      restaurantId: rid,
       orderType: "delivery",
     });
     if (!order) throw new Error("Delivery order not found");
