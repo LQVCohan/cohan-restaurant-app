@@ -330,6 +330,14 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           "payment.paidBy": actorId,
           currentStatus: "completed",
         },
+        $push: {
+          statusTimeline: {
+            status: "completed",
+            at: now,
+            byUserId: actorId || null,
+            note: "Đã thanh toán và hoàn tất đơn.",
+          },
+        },
       },
       { session }
     );
