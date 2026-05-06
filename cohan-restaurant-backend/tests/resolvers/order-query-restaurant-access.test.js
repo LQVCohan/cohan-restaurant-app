@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const modelMocks = vi.hoisted(() => ({
   Order: {
     find: vi.fn(),
+    findById: vi.fn(),
     countDocuments: vi.fn(),
   },
   User: { find: vi.fn() },
@@ -60,6 +61,83 @@ describe("OrderQuery restaurant access guard", () => {
     vi.resetModules();
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
+  });
+
+  it("order(id) returns null for invalid id without querying", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+
+    const result = await OrderQuery.order(
+      null,
+      { id: "bad-id" },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(result).toBeNull();
+    expect(modelMocks.Order.findById).not.toHaveBeenCalled();
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+  });
+
+  it("order(id) returns null when order is not found", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Order.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    });
+
+    const result = await OrderQuery.order(
+      null,
+      { id: "valid-order-1" },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(result).toBeNull();
+    expect(modelMocks.Order.findById).toHaveBeenCalledWith("valid-order-1");
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+  });
+
+  it("order(id) enforces restaurant access and returns order", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    const order = { _id: "valid-order-2", restaurantId: "valid-r6" };
+    modelMocks.Order.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(order),
+    });
+
+    const result = await OrderQuery.order(
+      null,
+      { id: "valid-order-2" },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      "valid-r6",
+    );
+    expect(result).toBe(order);
+  });
+
+  it("order(id) propagates access denied errors", async () => {
+    guardMocks.requireRestaurantAccess.mockRejectedValue(
+      new Error("FORBIDDEN_SCOPE"),
+    );
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Order.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "valid-order-3",
+        restaurantId: "valid-r7",
+      }),
+    });
+
+    await expect(
+      OrderQuery.order(
+        null,
+        { id: "valid-order-3" },
+        { user: { id: "staff-1" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      "valid-r7",
+    );
   });
 
   it("guards ordersByRestaurantNow and continues query when access is allowed", async () => {
