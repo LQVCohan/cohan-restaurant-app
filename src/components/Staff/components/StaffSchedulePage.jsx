@@ -532,13 +532,7 @@ export default function StaffSchedulePage() {
   const [respondShiftAck, { loading: respondingShiftAck }] =
     useMutation(RESPOND_SHIFT_ACK);
   const [declineDraft, setDeclineDraft] = useState({});
-  const closeDeclinePanelForShift = (shiftId) => {
-    setDeclineDraft((prev) => {
-      const next = { ...prev };
-      delete next[shiftId];
-      return next;
-    });
-  };
+
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
     GET_MY_SHIFT_ACKS,
     {
