@@ -512,8 +512,15 @@ export default function StaffSchedulePage() {
     fetchPolicy: "network-only",
   });
   const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
-  const [respondShiftAck] = useMutation(RESPOND_SHIFT_ACK);
+  const [respondShiftAck, { loading: respondingShiftAck }] = useMutation(RESPOND_SHIFT_ACK);
   const [declineDraft, setDeclineDraft] = useState({});
+  const closeDeclinePanelForShift = (shiftId) => {
+    setDeclineDraft((prev) => {
+      const next = { ...prev };
+      delete next[shiftId];
+      return next;
+    });
+  };
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(GET_MY_SHIFT_ACKS, {
     variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
     skip: !employeeId,
@@ -1512,11 +1519,12 @@ export default function StaffSchedulePage() {
                         ) : null}
                         {ack?.status === "pending" ? (
                           <div className="staff-shift-ack-actions">
-                            <button className="staff-primary-btn" type="button" onClick={async () => {
+                            <button className="staff-primary-btn" type="button" disabled={respondingShiftAck} onClick={async () => {
                               setError("");
                               setSuccess("");
                               try {
                                 await respondShiftAck({ variables: { input: { shiftId: shift.id, response: "accept" } } });
+                                closeDeclinePanelForShift(shift.id);
                                 await refetchShiftAcks();
                                 setSuccess("Bạn đã nhận ca thành công.");
                               } catch (submitError) {
@@ -1526,12 +1534,12 @@ export default function StaffSchedulePage() {
                             <button className="staff-primary-btn" type="button" onClick={() => setDeclineDraft((p) => ({ ...p, [shift.id]: p[shift.id]?.open ? { open: false } : { open: true, reason: "", reasonCategory: "sick" } }))}>Từ chối ca</button>
                           </div>
                         ) : null}
-                        {declineDraft[shift.id]?.open ? <div className="staff-shift-decline-panel"><select value={declineDraft[shift.id].reasonCategory} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reasonCategory: e.target.value } }))}><option value="sick">Bị ốm</option><option value="personal">Việc cá nhân</option><option value="emergency">Khẩn cấp</option><option value="schedule_conflict">Trùng lịch</option><option value="transportation">Vấn đề di chuyển</option><option value="other">Khác</option></select><textarea value={declineDraft[shift.id].reason} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reason: e.target.value } }))} placeholder="Lý do từ chối (>= 5 ký tự)" /><button className="staff-primary-btn" type="button" disabled={(declineDraft[shift.id].reason || "").trim().length < 5} onClick={async () => {
+                        {ack?.status === "pending" && declineDraft[shift.id]?.open ? <div className="staff-shift-decline-panel"><select value={declineDraft[shift.id].reasonCategory} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reasonCategory: e.target.value } }))}><option value="sick">Bị ốm</option><option value="personal">Việc cá nhân</option><option value="emergency">Khẩn cấp</option><option value="schedule_conflict">Trùng lịch</option><option value="transportation">Vấn đề di chuyển</option><option value="other">Khác</option></select><textarea value={declineDraft[shift.id].reason} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reason: e.target.value } }))} placeholder="Lý do từ chối (>= 5 ký tự)" />{(declineDraft[shift.id].reason || "").trim().length < 5 ? <p className="staff-my-shift-card__note">Vui lòng nhập lý do tối thiểu 5 ký tự.</p> : null}<button className="staff-primary-btn" type="button" disabled={respondingShiftAck || (declineDraft[shift.id].reason || "").trim().length < 5} onClick={async () => {
                           setError("");
                           setSuccess("");
                           try {
                             await respondShiftAck({ variables: { input: { shiftId: shift.id, response: "decline", reason: declineDraft[shift.id].reason, reasonCategory: declineDraft[shift.id].reasonCategory } } });
-                            setDeclineDraft((p) => ({ ...p, [shift.id]: { open: false } }));
+                            closeDeclinePanelForShift(shift.id);
                             await refetchShiftAcks();
                             setSuccess("Bạn đã gửi từ chối ca. Chờ quản lý xem xét.");
                           } catch (submitError) {
