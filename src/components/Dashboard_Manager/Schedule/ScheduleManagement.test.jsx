@@ -116,6 +116,11 @@ describe("ScheduleManagement", () => {
           id: "ack-1",
           shiftId: "shift-row-1",
           employeeId: "staff-1",
+          employeeName: "Lan Manager",
+          employeeCode: "MN001",
+          shiftType: "morning",
+          shiftStartTime: "2026-04-20T06:00:00.000Z",
+          shiftEndTime: "2026-04-20T14:00:00.000Z",
           reasonCategory: "sick",
           reason: "Bị ốm",
           declineClassification: "unknown",
@@ -249,16 +254,65 @@ describe("ScheduleManagement", () => {
     expect(screen.getByText("Chế độ chỉ xem: không thể duyệt lý do từ chối.")).toBeInTheDocument();
   });
 
-  it("shows decline review action buttons when not read-only", () => {
+  it("unknown decline shows both review buttons", () => {
     render(<ScheduleManagement />);
     expect(screen.getByRole("button", { name: "Chấp nhận lý do" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Không duyệt lý do" })).toBeInTheDocument();
   });
 
-  it("shows declined shift count and reason/category", () => {
+  it("does not show raw IDs as primary display when enriched fields are available", () => {
     render(<ScheduleManagement />);
     expect(screen.getByText(/Ca bị từ chối \(1\)/)).toBeInTheDocument();
-    expect(screen.getByText("Lý do: sick - Bị ốm")).toBeInTheDocument();
+    expect(screen.getByText(/Nhân viên:/)).toBeInTheDocument();
+    expect(screen.getByText(/Lan Manager - MN001/)).toBeInTheDocument();
+    expect(screen.getByText("Lý do: Bị ốm")).toBeInTheDocument();
+    expect(screen.queryByText("Ca: shift-row-1")).not.toBeInTheDocument();
+  });
+
+  it("valid decline hides review buttons and shows open shift CTA", () => {
+    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "valid";
+    render(<ScheduleManagement />);
+    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Không duyệt lý do" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mở ca để xử lý" })).toBeInTheDocument();
+  });
+
+  it("invalid decline hides review buttons and shows expected assignment helper", () => {
+    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "invalid";
+    render(<ScheduleManagement />);
+    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Không duyệt lý do" })).not.toBeInTheDocument();
+    expect(screen.getByText("Nhân viên vẫn được kỳ vọng đi làm ca này.")).toBeInTheDocument();
+  });
+
+  it("late decline hides review buttons", () => {
+    mockDeclinedShiftAcksData.shiftAcknowledgements[0].declineClassification = "late";
+    render(<ScheduleManagement />);
+    expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Không duyệt lý do" })).not.toBeInTheDocument();
+    expect(screen.getByText("Từ chối muộn - không thể duyệt lại trong màn này.")).toBeInTheDocument();
+  });
+
+  it("clicking accept reason triggers valid review mutation", async () => {
+    render(<ScheduleManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Chấp nhận lý do" }));
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    expect(mutationSpy.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        variables: { input: { acknowledgementId: "ack-1", classification: "valid" } },
+      }),
+    );
+  });
+
+  it("clicking reject reason triggers invalid review mutation", async () => {
+    render(<ScheduleManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Không duyệt lý do" }));
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    expect(mutationSpy.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        variables: { input: { acknowledgementId: "ack-1", classification: "invalid" } },
+      }),
+    );
   });
 
   it("shows count 0 when declined acknowledgement query returns empty", () => {
