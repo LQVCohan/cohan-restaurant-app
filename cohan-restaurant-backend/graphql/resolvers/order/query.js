@@ -228,7 +228,10 @@ export const OrderQuery = {
   /** List with offset pagination */
   async orders(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
     const q = buildFilter(filter);
-    if (filter.restaurantId && mongoose.isValidObjectId(filter.restaurantId)) {
+    if (filter.restaurantId) {
+      if (!mongoose.isValidObjectId(filter.restaurantId)) {
+        throw new Error("Invalid restaurantId");
+      }
       await requireRestaurantAccess(ctx, q.restaurantId);
     }
 

@@ -170,4 +170,20 @@ describe("OrderQuery restaurant access guard", () => {
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(modelMocks.Order.find).toHaveBeenCalled();
   });
+
+  it("orders(filter) throws on invalid restaurantId and skips query", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+
+    await expect(
+      OrderQuery.orders(
+        null,
+        { filter: { restaurantId: "bad-id" }, limit: 10, offset: 0 },
+        { user: { id: "manager-1" } },
+      ),
+    ).rejects.toThrow("Invalid restaurantId");
+
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
+    expect(modelMocks.Order.countDocuments).not.toHaveBeenCalled();
+  });
 });
