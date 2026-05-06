@@ -259,6 +259,14 @@ async function ensureShiftAcknowledgement({
   });
 }
 
+async function assertShiftAcknowledgementPublicationActive(ackDoc) {
+  if (!ackDoc?.publicationId) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_PUBLISHED");
+  const publication = await SchedulePublication.findById(ackDoc.publicationId).lean();
+  if (!publication || !["published", "active"].includes(publication.status)) {
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_PUBLISHED");
+  }
+}
+
 async function markScheduleAcknowledgementsNeedReview({
   restaurantId,
   publicationId,
@@ -2487,16 +2495,76 @@ export default {
     const doc = await ShiftAcknowledgement.findById(id);
     assertAcknowledgementCanRespond(doc, employeeId);
     const now = new Date();
-    const isLate = now > new Date(doc.deadlineAt);
     doc.status = "declined";
     doc.reasonCategory = reasonCategory || "other";
     doc.reason = normalizedReason;
     doc.respondedAt = now;
-    doc.declineClassification = isLate ? "late" : "valid";
+    doc.declineClassification = now > new Date(doc.deadlineAt) ? "late" : "unknown";
     await doc.save();
     // TODO: integrate ScheduleIncident service:
     // - valid decline => EMPLOYEE_VALID_DECLINE (neutral responsibility)
     // - late decline => EMPLOYEE_LATE_DECLINE (employee responsibility)
+    return doc;
+  },
+  respondShiftAcknowledgement: async (_, { input }, ctx) => {
+    const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!employeeId) throw new Error("UNAUTHENTICATED");
+    const shiftId = toObjectId(input?.shiftId);
+    if (!shiftId) throw new Error("SHIFT_ID_INVALID");
+    const doc = await ShiftAcknowledgement.findOne({ shiftId, employeeId });
+    assertAcknowledgementCanRespond(doc, employeeId);
+    await assertShiftAcknowledgementPublicationActive(doc);
+    const response = String(input?.response || "").trim().toLowerCase();
+    if (response === "accept") {
+      doc.status = "accepted";
+      doc.reason = "";
+      doc.reasonCategory = "no_reason";
+      doc.respondedAt = new Date();
+      doc.declineClassification = "unknown";
+      await doc.save();
+      return doc;
+    }
+    if (response === "decline") {
+      const reason = String(input?.reason || "").trim();
+      if (reason.length < 5) throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
+      const reasonCategory = String(input?.reasonCategory || "").trim().toLowerCase();
+      if (!reasonCategory || reasonCategory === "no_reason") {
+        throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_CATEGORY_REQUIRED");
+      }
+      const now = new Date();
+      doc.status = "declined";
+      doc.reason = reason;
+      doc.reasonCategory = reasonCategory;
+      doc.respondedAt = now;
+      doc.declineClassification = now > new Date(doc.deadlineAt) ? "late" : "unknown";
+      await doc.save();
+      return doc;
+    }
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_RESPONSE_INVALID");
+  },
+  reviewShiftAcknowledgement: async (_, { input }, ctx) => {
+    requireRoles(ctx, SHIFT_ACK_ADMIN_ROLES);
+    const actorUserId = getActorUserId(ctx);
+    const doc = await ShiftAcknowledgement.findById(input?.acknowledgementId);
+    if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
+    await requireRestaurantScope(ctx, String(doc.restaurantId));
+    if (doc.status !== "declined") throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_DECLINED");
+    const classification = String(input?.classification || "").trim().toLowerCase();
+    if (!["valid", "invalid"].includes(classification)) {
+      throw new Error("SHIFT_ACKNOWLEDGEMENT_REVIEW_CLASSIFICATION_INVALID");
+    }
+    doc.declineClassification = classification;
+    await doc.save();
+    await EventLog.create({
+      restaurantId: doc.restaurantId,
+      actorUserId,
+      verb: "schedule.shift_ack_decline_reviewed",
+      object: { kind: "ShiftAcknowledgement", id: doc._id, code: String(doc.shiftId) },
+      status: "success",
+      source: "schedule-management",
+      meta: { classification, reviewNote: String(input?.reviewNote || "") },
+      at: new Date(),
+    });
     return doc;
   },
   acknowledgeMySchedule: async (
