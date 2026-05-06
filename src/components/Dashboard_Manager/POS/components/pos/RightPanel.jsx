@@ -12,6 +12,7 @@ import { usePos } from "../../../../../context/PosContext";
 import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "@/utils/formatters";
 import { PRINT_STATIONS } from "@/utils/printStations";
+import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
 
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
@@ -981,52 +982,10 @@ export default function RightPanel() {
     !hasItems ||
     newItems.length === 0 ||
     (isOffPremise && !currentOrderCode);
-  const groupedPaymentRequests = useMemo(() => {
-    const raw = Array.isArray(paymentRequests) ? paymentRequests : [];
-    const map = new Map();
-
-    raw.forEach((req) => {
-      const isDineIn = (req?.orderType || "dine_in") === "dine_in";
-
-      const groupKey =
-        isDineIn && req?.tableCode
-          ? `table:${req.tableCode}`
-          : `order:${req?.orderId || req?.orderCode}`;
-
-      if (!map.has(groupKey)) {
-        map.set(groupKey, {
-          ...req,
-          groupKey,
-          isTableGroup: isDineIn && Boolean(req?.tableCode),
-          orderIds: [],
-          orderCodes: [],
-          totals: {
-            ...(req?.totals || {}),
-            grandTotal: 0,
-          },
-        });
-      }
-
-      const group = map.get(groupKey);
-
-      if (req?.orderId) group.orderIds.push(req.orderId);
-      if (req?.orderCode) group.orderCodes.push(req.orderCode);
-
-      group.totals.grandTotal += Number(req?.totals?.grandTotal || 0);
-
-      const currentAt = group.requestedAt
-        ? new Date(group.requestedAt).getTime()
-        : 0;
-      const nextAt = req?.requestedAt ? new Date(req.requestedAt).getTime() : 0;
-
-      if (nextAt > currentAt) {
-        group.requestedAt = req.requestedAt;
-        group.payment = req.payment;
-      }
-    });
-
-    return Array.from(map.values());
-  }, [paymentRequests]);
+  const groupedPaymentRequests = useMemo(
+    () => groupPaymentRequests(Array.isArray(paymentRequests) ? paymentRequests : []),
+    [paymentRequests],
+  );
   return (
     <div
       className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
