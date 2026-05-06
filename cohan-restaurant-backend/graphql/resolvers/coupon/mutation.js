@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Coupon, VoucherPackage } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const toObjId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -77,60 +78,89 @@ const loadPackageForOutput = async (id) =>
   VoucherPackage.findById(id).lean({ virtuals: true });
 
 export const CouponMutation = {
-  async createCoupon(_, { input }, { user }) {
+  async createCoupon(_, { input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     const payload = mapCouponInput(input);
     assertValidDateRange(payload);
     assertValidCouponPayload(payload);
+    if (!payload.restaurantId) throw new GraphQLError("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, payload.restaurantId);
     const created = await Coupon.create(payload);
     return (await loadCouponForOutput(created._id)) || created;
   },
-  async updateCoupon(_, { id, input }, { user }) {
+  async updateCoupon(_, { id, input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid coupon id");
+    const existing = await Coupon.findById(id).lean();
+    if (!existing) throw new GraphQLError("Coupon not found");
+    const existingRestaurantId = toObjId(existing.restaurantId);
+    if (!existingRestaurantId) throw new GraphQLError("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, existingRestaurantId);
+
     const payload = mapCouponInput(input);
     assertValidDateRange(payload);
     assertValidCouponPayload(payload);
+    payload.restaurantId = existingRestaurantId;
     const updated = await Coupon.findByIdAndUpdate(id, payload, { new: true });
-    if (!updated) throw new GraphQLError("Coupon not found");
     return (await loadCouponForOutput(updated._id)) || updated;
   },
-  async deleteCoupon(_, { id }, { user }) {
+  async deleteCoupon(_, { id }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid coupon id");
+    const existing = await Coupon.findById(id).lean();
+    if (!existing) return false;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     const rs = await Coupon.deleteOne({ _id: id });
     return rs.deletedCount > 0;
   },
-  async toggleCoupon(_, { id, isActive }, { user }) {
+  async toggleCoupon(_, { id, isActive }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid coupon id");
+    const existing = await Coupon.findById(id).lean();
+    if (!existing) throw new GraphQLError("Coupon not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     const updated = await Coupon.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true });
-    if (!updated) throw new GraphQLError("Coupon not found");
     return (await loadCouponForOutput(updated._id)) || updated;
   },
 
-  async createVoucherPackage(_, { input }, { user }) {
+  async createVoucherPackage(_, { input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     const payload = mapPackageInput(input);
     assertValidDateRange(payload);
     if (!payload.name || !payload.code || payload.voucherIds.length === 0) {
       throw new GraphQLError("Invalid voucher package input");
     }
+    if (!payload.restaurantId) throw new GraphQLError("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, payload.restaurantId);
     const created = await VoucherPackage.create(payload);
     return (await loadPackageForOutput(created._id)) || created;
   },
-  async updateVoucherPackage(_, { id, input }, { user }) {
+  async updateVoucherPackage(_, { id, input }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid package id");
+    const existing = await VoucherPackage.findById(id).lean();
+    if (!existing) throw new GraphQLError("Voucher package not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+
     const payload = mapPackageInput(input);
     assertValidDateRange(payload);
+    payload.restaurantId = toObjId(existing.restaurantId);
     const updated = await VoucherPackage.findByIdAndUpdate(id, payload, { new: true });
-    if (!updated) throw new GraphQLError("Voucher package not found");
     return (await loadPackageForOutput(updated._id)) || updated;
   },
-  async deleteVoucherPackage(_, { id }, { user }) {
+  async deleteVoucherPackage(_, { id }, ctx) {
+    const { user } = ctx;
     requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid package id");
+    const existing = await VoucherPackage.findById(id).lean();
+    if (!existing) return false;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     const rs = await VoucherPackage.deleteOne({ _id: id });
     return rs.deletedCount > 0;
   },

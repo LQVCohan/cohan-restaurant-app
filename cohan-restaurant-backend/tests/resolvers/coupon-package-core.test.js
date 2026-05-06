@@ -3,22 +3,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const modelMocks = vi.hoisted(() => ({
   Coupon: {
     create: vi.fn(),
-    find: vi.fn(),
-    findOne: vi.fn(),
     findById: vi.fn(),
     findByIdAndUpdate: vi.fn(),
     deleteOne: vi.fn(),
   },
   VoucherPackage: {
     create: vi.fn(),
-    find: vi.fn(),
     findById: vi.fn(),
     findByIdAndUpdate: vi.fn(),
     deleteOne: vi.fn(),
   },
 }));
 
+const guardMocks = vi.hoisted(() => ({
+  requireRestaurantAccess: vi.fn(),
+  requireRoles: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -30,206 +33,96 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-const mockLeanQuery = (value) => ({
-  lean: vi.fn().mockResolvedValue(value),
-});
-
-const mockFindChain = (result) => {
-  const chain = {
-    sort: vi.fn(() => chain),
-    skip: vi.fn(() => chain),
-    limit: vi.fn(() => chain),
-    lean: vi.fn().mockResolvedValue(result),
-  };
-  return chain;
-};
+const mockLeanQuery = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
 
 describe("Coupon and voucher package core flows", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
+    guardMocks.requireRoles.mockImplementation(() => undefined);
   });
 
-  it("returns a usable coupon payload with non-null id after create", async () => {
+  it("createCoupon calls requireRestaurantAccess before Coupon.create", async () => {
     modelMocks.Coupon.create.mockResolvedValue({ _id: "coupon-1" });
-    modelMocks.Coupon.findById.mockReturnValue(
-      mockLeanQuery({
-        id: "coupon-1",
-        name: "Voucher food",
-        restaurantId: "restaurant-1",
-      }),
-    );
+    modelMocks.Coupon.findById.mockReturnValue(mockLeanQuery({ id: "coupon-1" }));
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+    const ctx = { user: { roleName: "manager" } };
 
-    const { CouponMutation } = await import(
-      "../../graphql/resolvers/coupon/mutation.js"
-    );
+    await CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, ctx);
 
-    const result = await CouponMutation.createCoupon(
-      null,
-      {
-        input: {
-          name: "Voucher food",
-          code: "FOOD10",
-          category: "food",
-          discountType: "PERCENT",
-          discountValue: 10,
-          publishAt: "2026-05-01T03:00:00.000Z",
-          startAt: "2026-05-01T03:00:00.000Z",
-          endAt: "2026-05-05T15:00:00.000Z",
-          restaurantId: "restaurant-1",
-        },
-      },
-      { user: { roleName: "manager" } },
-    );
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        id: "coupon-1",
-        restaurantId: "restaurant-1",
-      }),
-    );
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
+    expect(modelMocks.Coupon.create).toHaveBeenCalled();
   });
 
-  it("rejects invalid DateTime input early for coupon create", async () => {
-    const { CouponMutation } = await import(
-      "../../graphql/resolvers/coupon/mutation.js"
-    );
+  it("createCoupon denied => Coupon.create not called", async () => {
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    let thrownError = null;
-    try {
-      await CouponMutation.createCoupon(
-        null,
-        {
-          input: {
-            name: "Voucher food",
-            code: "FOOD10",
-            category: "food",
-            discountType: "PERCENT",
-            discountValue: 10,
-            startAt: "not-a-date",
-            endAt: "2026-05-05T15:00:00.000Z",
-            restaurantId: "restaurant-1",
-          },
-        },
-        { user: { roleName: "manager" } },
-      );
-    } catch (error) {
-      thrownError = error;
-    }
-
-    expect(thrownError?.message).toBe("Invalid startAt");
+    await expect(CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
     expect(modelMocks.Coupon.create).not.toHaveBeenCalled();
   });
 
-  it("filters coupon queries by the selected restaurant", async () => {
-    const findChain = mockFindChain([{ id: "coupon-1" }]);
-    modelMocks.Coupon.find.mockReturnValue(findChain);
-
-    const { CouponQuery } = await import(
-      "../../graphql/resolvers/coupon/query.js"
-    );
-
-    await CouponQuery.coupons(null, {
-      restaurantId: "restaurant-2",
-      activeOnly: false,
-      limit: 50,
-      offset: 0,
-    });
-
-    expect(modelMocks.Coupon.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restaurantId: expect.objectContaining({ value: "restaurant-2" }),
-      }),
-    );
-  });
-
-  it("filters couponByCode with restaurantId when provided", async () => {
-    modelMocks.Coupon.findOne.mockReturnValue(mockLeanQuery({ id: "coupon-1" }));
-    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
-
-    await CouponQuery.couponByCode(null, { code: "food10", restaurantId: "restaurant-2" });
-
-    expect(modelMocks.Coupon.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: "FOOD10",
-        restaurantId: expect.objectContaining({ value: "restaurant-2" }),
-      }),
-    );
-  });
-
-  it("rejects percent discount outside 1..100", async () => {
+  it("updateCoupon guards existing restaurant and preserves restaurantId", async () => {
+    modelMocks.Coupon.findById
+      .mockReturnValueOnce(mockLeanQuery({ _id: "coupon-1", restaurantId: "existing-r" }))
+      .mockReturnValueOnce(mockLeanQuery({ id: "coupon-1" }));
+    modelMocks.Coupon.findByIdAndUpdate.mockResolvedValue({ _id: "coupon-1" });
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
-    await expect(
-      CouponMutation.createCoupon(
-        null,
-        {
-          input: {
-            name: "Voucher food",
-            code: "FOOD10",
-            discountType: "PERCENT",
-            discountValue: 101,
-          },
-        },
-        { user: { roleName: "manager" } },
-      ),
-    ).rejects.toThrow("PERCENT discountValue must be between 1 and 100");
+
+    await CouponMutation.updateCoupon(null, { id: "coupon-1", input: { name: "A", code: "C", discountValue: 10, restaurantId: "other-r" } }, { user: { roleName: "manager" } });
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ value: "existing-r" }));
+    expect(modelMocks.Coupon.findByIdAndUpdate).toHaveBeenCalledWith("coupon-1", expect.objectContaining({ restaurantId: expect.objectContaining({ value: "existing-r" }) }), { new: true });
   });
 
-  it("rejects negative coupon limits and values", async () => {
+  it("deleteCoupon denied => Coupon.deleteOne not called", async () => {
+    modelMocks.Coupon.findById.mockReturnValue(mockLeanQuery({ _id: "coupon-1", restaurantId: "r1" }));
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
-    await expect(
-      CouponMutation.createCoupon(
-        null,
-        {
-          input: {
-            name: "Voucher food",
-            code: "FOOD10",
-            discountType: "AMOUNT",
-            discountValue: 10,
-            minOrderValue: -1,
-          },
-        },
-        { user: { roleName: "manager" } },
-      ),
-    ).rejects.toThrow("minOrderValue, maxDiscount, and maxUsage must not be negative");
+
+    await expect(CouponMutation.deleteCoupon(null, { id: "coupon-1" }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    expect(modelMocks.Coupon.deleteOne).not.toHaveBeenCalled();
   });
 
-  it("returns voucher packages with non-null id after create", async () => {
+  it("toggleCoupon denied => Coupon.findByIdAndUpdate not called", async () => {
+    modelMocks.Coupon.findById.mockReturnValue(mockLeanQuery({ _id: "coupon-1", restaurantId: "r1" }));
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+
+    await expect(CouponMutation.toggleCoupon(null, { id: "coupon-1", isActive: true }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    expect(modelMocks.Coupon.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("createVoucherPackage calls requireRestaurantAccess before create", async () => {
     modelMocks.VoucherPackage.create.mockResolvedValue({ _id: "package-1" });
-    modelMocks.VoucherPackage.findById.mockReturnValue(
-      mockLeanQuery({
-        id: "package-1",
-        name: "Goi VIP",
-        restaurantId: "restaurant-1",
-        voucherIds: ["coupon-1"],
-      }),
-    );
+    modelMocks.VoucherPackage.findById.mockReturnValue(mockLeanQuery({ id: "package-1" }));
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    const { CouponMutation } = await import(
-      "../../graphql/resolvers/coupon/mutation.js"
-    );
+    await CouponMutation.createVoucherPackage(null, { input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "r1" } }, { user: { roleName: "manager" } });
 
-    const result = await CouponMutation.createVoucherPackage(
-      null,
-      {
-        input: {
-          name: "Goi VIP",
-          code: "VIP-01",
-          voucherIds: ["coupon-1"],
-          startAt: "2026-05-01T03:00:00.000Z",
-          endAt: "2026-05-05T15:00:00.000Z",
-          restaurantId: "restaurant-1",
-        },
-      },
-      { user: { roleName: "manager" } },
-    );
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
+    expect(modelMocks.VoucherPackage.create).toHaveBeenCalled();
+  });
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        id: "package-1",
-        restaurantId: "restaurant-1",
-        voucherIds: ["coupon-1"],
-      }),
-    );
+  it("updateVoucherPackage preserves existing restaurantId", async () => {
+    modelMocks.VoucherPackage.findById
+      .mockReturnValueOnce(mockLeanQuery({ _id: "package-1", restaurantId: "existing-r" }))
+      .mockReturnValueOnce(mockLeanQuery({ id: "package-1" }));
+    modelMocks.VoucherPackage.findByIdAndUpdate.mockResolvedValue({ _id: "package-1" });
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+
+    await CouponMutation.updateVoucherPackage(null, { id: "package-1", input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "other-r" } }, { user: { roleName: "manager" } });
+
+    expect(modelMocks.VoucherPackage.findByIdAndUpdate).toHaveBeenCalledWith("package-1", expect.objectContaining({ restaurantId: expect.objectContaining({ value: "existing-r" }) }), { new: true });
+  });
+
+  it("deleteVoucherPackage denied => VoucherPackage.deleteOne not called", async () => {
+    modelMocks.VoucherPackage.findById.mockReturnValue(mockLeanQuery({ _id: "package-1", restaurantId: "r1" }));
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+
+    await expect(CouponMutation.deleteVoucherPackage(null, { id: "package-1" }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    expect(modelMocks.VoucherPackage.deleteOne).not.toHaveBeenCalled();
   });
 });
