@@ -43,7 +43,7 @@ const RANK_POINT_DIVISOR = 1_000_000;
 
 function hasPendingItemWork(order) {
   return (order?.items || []).some((item) =>
-    ["pending", "preparing", "ready"].includes(String(item?.status || "")),
+    ["pending", "confirmed", "preparing", "ready"].includes(String(item?.status || "")),
   );
 }
 
