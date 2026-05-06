@@ -529,18 +529,20 @@ export default function StaffSchedulePage() {
     fetchPolicy: "network-only",
   });
   const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
-  const [respondShiftAck, { loading: respondingShiftAck }] =
-    useMutation(RESPOND_SHIFT_ACK);
+  const [respondShiftAck, { loading: respondingShiftAck }] = useMutation(RESPOND_SHIFT_ACK);
   const [declineDraft, setDeclineDraft] = useState({});
-
-  const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
-    GET_MY_SHIFT_ACKS,
-    {
-      variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
-      skip: !employeeId,
-      fetchPolicy: "network-only",
-    },
-  );
+  const closeDeclinePanelForShift = (shiftId) => {
+    setDeclineDraft((prev) => {
+      const next = { ...prev };
+      delete next[shiftId];
+      return next;
+    });
+  };
+  const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(GET_MY_SHIFT_ACKS, {
+    variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
+    skip: !employeeId,
+    fetchPolicy: "network-only",
+  });
 
   useEffect(() => {
     if (!restaurantId || !availabilityQueryFromIso || !availabilityQueryToIso) {
@@ -1593,6 +1595,8 @@ export default function StaffSchedulePage() {
                   const ack = shiftAckMap.get(String(shift.id));
                   const shiftMeta = SHIFT_META[shift.shiftType] || {};
                   const Icon = shiftMeta.icon || Clock3;
+                  const declineReason = declineDraft[shift.id]?.reason || "";
+                  const isDeclineReasonTooShort = declineReason.trim().length < 5;
 
                   return (
                     <article key={shift.id} className="staff-my-shift-card">
@@ -1639,51 +1643,16 @@ export default function StaffSchedulePage() {
                         ) : null}
                         {ack?.status === "pending" ? (
                           <div className="staff-shift-ack-actions">
-                            <button
-                              className="staff-primary-btn"
-                              type="button"
-                              disabled={respondingShiftAck}
-                              onClick={async () => {
-                                setError("");
-                                setSuccess("");
-                                try {
-                                  await respondShiftAck({
-                                    variables: {
-                                      input: {
-                                        shiftId: shift.id,
-                                        response: "accept",
-                                      },
-                                    },
-                                  });
-                                  closeDeclinePanelForShift(shift.id);
-                                  await refetchShiftAcks();
-                                  setSuccess("Bạn đã nhận ca thành công.");
-                                } catch (submitError) {
-                                  setError(
-                                    getGraphQLErrorMessage(
-                                      submitError,
-                                      "Không thể nhận ca.",
-                                    ),
-                                  );
-                                }
-                              }}
-                            >
-                              Nhận ca
-                            </button>
-                            <button
-                              className="staff-primary-btn"
-                              type="button"
-                              onClick={() =>
-                                setDeclineDraft((p) => ({
-                                  ...p,
-                                  [shift.id]: p[shift.id]?.open
-                                    ? { open: false }
-                                    : {
-                                        open: true,
-                                        reason: "",
-                                        reasonCategory: "sick",
-                                      },
-                                }))
+                            <button className="staff-primary-btn" type="button" disabled={respondingShiftAck} onClick={async () => {
+                              setError("");
+                              setSuccess("");
+                              try {
+                                await respondShiftAck({ variables: { input: { shiftId: shift.id, response: "accept" } } });
+                                closeDeclinePanelForShift(shift.id);
+                                await refetchShiftAcks();
+                                setSuccess("Bạn đã nhận ca thành công.");
+                              } catch (submitError) {
+                                setError(getGraphQLErrorMessage(submitError, "Không thể nhận ca."));
                               }
                             >
                               Từ chối ca
@@ -1777,6 +1746,18 @@ export default function StaffSchedulePage() {
                             </button>
                           </div>
                         ) : null}
+                        {ack?.status === "pending" && declineDraft[shift.id]?.open ? <div className="staff-shift-decline-panel"><select value={declineDraft[shift.id].reasonCategory} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reasonCategory: e.target.value } }))}><option value="sick">Bị ốm</option><option value="personal">Việc cá nhân</option><option value="emergency">Khẩn cấp</option><option value="schedule_conflict">Trùng lịch</option><option value="transportation">Vấn đề di chuyển</option><option value="other">Khác</option></select><textarea value={declineReason} onChange={(e) => setDeclineDraft((p) => ({ ...p, [shift.id]: { ...p[shift.id], reason: e.target.value } }))} placeholder="Lý do từ chối (>= 5 ký tự)" />{isDeclineReasonTooShort ? <p className="staff-my-shift-card__note">Vui lòng nhập lý do tối thiểu 5 ký tự.</p> : null}<button className="staff-primary-btn" type="button" disabled={respondingShiftAck || isDeclineReasonTooShort} onClick={async () => {
+                          setError("");
+                          setSuccess("");
+                          try {
+                            await respondShiftAck({ variables: { input: { shiftId: shift.id, response: "decline", reason: declineReason, reasonCategory: declineDraft[shift.id].reasonCategory } } });
+                            closeDeclinePanelForShift(shift.id);
+                            await refetchShiftAcks();
+                            setSuccess("Bạn đã gửi từ chối ca. Chờ quản lý xem xét.");
+                          } catch (submitError) {
+                            setError(getGraphQLErrorMessage(submitError, "Không thể gửi từ chối ca."));
+                          }
+                        }}>Gửi từ chối</button></div> : null}
                       </div>
                     </article>
                   );
