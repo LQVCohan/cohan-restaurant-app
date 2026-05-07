@@ -108,12 +108,6 @@ export default function POSLayout() {
               </option>
             ))}
           </select>
-
-          {selectedRestaurant && (
-            <span className={styles.restaurantHint}>
-              Đang dùng: {selectedRestaurant.name}
-            </span>
-          )}
         </div>
 
         <button
