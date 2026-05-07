@@ -21,6 +21,12 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../graphql/guards.js", () => ({
+  requireAuth: vi.fn(),
+  requireRestaurantAccess: vi.fn(async () => true),
+  requireRoles: vi.fn(),
+  requireRestaurantScope: vi.fn(),
+}));
 vi.mock("../../lib/mailer.js", () => ({
   mailer: {
     sendMail: vi.fn(async () => ({})),
@@ -130,9 +136,14 @@ describe("createStaff employeeCode generation", () => {
   });
 
   it("retries employee code counter allocation when the first upsert collides", async () => {
-    modelMocks.EmployeeCodeCounter.findOneAndUpdate
-      .mockRejectedValueOnce({ code: 11000 })
-      .mockResolvedValueOnce({ seq: 1 });
+    let called = 0;
+    modelMocks.EmployeeCodeCounter.findOneAndUpdate.mockImplementation(
+      async () => {
+        called += 1;
+        if (called === 1) throw { code: 11000 };
+        return { seq: 1 };
+      },
+    );
 
     const { __testables } = await import(
       "../../graphql/resolvers/staff/mutation.js"
