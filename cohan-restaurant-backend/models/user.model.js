@@ -248,3 +248,14 @@ userSchema.index({
 userSchema.index({ phone: 1 });
 export const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;
+
+
+userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
+  unique: true,
+  partialFilterExpression: {
+    userType: "STAFF",
+    employeeCode: { $exists: true, $type: "string", $ne: "" },
+    restaurantForStaff: { $exists: true, $type: "objectId" },
+  },
+});
+userSchema.index({ userType: 1, employmentStatus: 1, restaurantForStaff: 1 });

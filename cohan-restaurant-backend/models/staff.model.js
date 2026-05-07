@@ -24,8 +24,7 @@ const staffSchema = new mongoose.Schema(
       ],
     },
 
-    rate: { type: Number, default: 0 },
-    rateCount: { type: Number, default: 0 },
+    baseSalary: { type: Number, default: 0, min: 0 },
 
     positionTitle: {
       type: String,
@@ -42,11 +41,6 @@ const staffSchema = new mongoose.Schema(
       type: String,
       enum: ["working", "on_leave", "resigned", "suspended"],
       default: "working",
-    },
-
-    primaryRestaurant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Restaurant",
     },
 
     shiftType: {
@@ -66,25 +60,48 @@ const staffSchema = new mongoose.Schema(
 
     noteInternal: { type: String, trim: true },
 
-    emergencyContact: {
-      name: { type: String, trim: true },
-      phone: { type: String, trim: true },
-      relation: { type: String, trim: true },
-    },
+    dateOfBirth: { type: Date },
+    gender: { type: String, enum: ["male", "female", "other", "unspecified"], default: "unspecified" },
+    nationalId: { type: String, trim: true },
+    nationalIdIssuedAt: { type: Date },
+    nationalIdIssuedPlace: { type: String, trim: true },
+    maritalStatus: { type: String, enum: ["single", "married", "divorced", "widowed", "unspecified"], default: "unspecified" },
+    permanentAddress: { type: String, trim: true },
+    temporaryAddress: { type: String, trim: true },
+    contractCode: { type: String, trim: true },
+    contractType: { type: String, enum: ["none", "probation", "fixed_term", "indefinite", "seasonal", "service"], default: "none" },
+    contractStartDate: { type: Date },
+    contractEndDate: { type: Date },
+    probationEndDate: { type: Date },
+    officialStartDate: { type: Date },
+    terminationReason: { type: String, trim: true },
+    salaryType: { type: String, enum: ["monthly", "hourly", "shift", "commission"], default: "monthly" },
+    hourlyRate: { type: Number, min: 0 },
+    allowanceAmount: { type: Number, min: 0 },
+    bankName: { type: String, trim: true },
+    bankAccountNumber: { type: String, trim: true },
+    bankAccountHolder: { type: String, trim: true },
+    socialInsuranceNumber: { type: String, trim: true },
+    healthInsuranceNumber: { type: String, trim: true },
+    unemploymentInsuranceNumber: { type: String, trim: true },
+    insuranceEligible: { type: Boolean, default: false },
+    insuranceStartDate: { type: Date },
+    educationLevel: { type: String, trim: true },
+    certifications: [{ name: String, issuedBy: String, issuedAt: Date, expiresAt: Date, fileUrl: String }],
+    skills: [{ type: String, trim: true }],
+    languages: [{ name: String, level: String }],
+    uniformSize: { type: String, trim: true },
+    deviceIds: [{ type: String, trim: true }],
+    accessCardCode: { type: String, trim: true },
+    trainingStatus: { type: String, enum: ["not_started", "in_progress", "completed", "expired"], default: "not_started" },
+    lastTrainingAt: { type: Date },
+    nextTrainingDueAt: { type: Date },
+
+
+    emergencyContacts: [{ name: String, phone: String, relation: String, address: String, isPrimary: Boolean }],
   }
 );
 
-staffSchema.index(
-  { primaryRestaurant: 1, employeeCode: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      employeeCode: { $exists: true, $type: "string", $ne: "" },
-      primaryRestaurant: { $exists: true, $type: "objectId" },
-    },
-  }
-);
-staffSchema.index({ userType: 1, employmentStatus: 1, primaryRestaurant: 1 });
 
 export const Staff =
   mongoose.models.Staff || User.discriminator("Staff", staffSchema, "STAFF");

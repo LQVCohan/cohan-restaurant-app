@@ -1029,14 +1029,19 @@ export default {
       .toUpperCase();
     input.userType = normalizedUserType;
 
-    const fromPrimary = input.primaryRestaurantId || null;
-    const fromStaffScope = input.restaurantForStaff || null;
-    if (fromPrimary && fromStaffScope && String(fromPrimary) !== String(fromStaffScope)) {
-      throw new Error("restaurantForStaff and primaryRestaurantId must match");
+    if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
+      const err = new Error("primaryRestaurantId has been removed; use restaurantForStaff");
+      err.extensions = { code: "BAD_USER_INPUT" };
+      throw err;
     }
-    const restaurantAccessId = fromStaffScope || fromPrimary || input.restaurantId || null;
+    if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
+      const err = new Error("refRestaurantIds is not allowed for staff; use restaurantForStaff");
+      err.extensions = { code: "BAD_USER_INPUT" };
+      throw err;
+    }
+    const restaurantAccessId = input.restaurantForStaff || null;
     if (!mongoose.isValidObjectId(restaurantAccessId)) {
-      throw new Error("primaryRestaurantId is required to generate employee code");
+      throw new Error("restaurantForStaff is required and must be a valid ObjectId");
     }
     await requireRestaurantAccess(ctx, restaurantAccessId);
 
@@ -1066,7 +1071,6 @@ export default {
 
     const {
       password,
-      primaryRestaurantId,
       employeeCode: _ignoredEmployeeCode,
       ...rest
     } = input;
@@ -1102,14 +1106,13 @@ export default {
     // DepartmentType đã là lowercase (service, kitchen, ...) -> không cần đổi
 
     // Gán nhà hàng
-    const sequenceRestaurantId = input.restaurantForStaff || primaryRestaurantId || input.restaurantId || null;
+    const sequenceRestaurantId = input.restaurantForStaff || null;
     if (!sequenceRestaurantId) {
       throw new Error(
         "primaryRestaurantId is required to generate employee code",
       );
     }
 
-    doc.primaryRestaurant = sequenceRestaurantId;
     doc.restaurantForStaff = sequenceRestaurantId;
 
     let staff = null;
@@ -1145,7 +1148,7 @@ export default {
       throw lastCreateError || new Error("Failed to create staff");
     }
 
-    await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
+    await staff.populate(["role", "refRestaurants"]);
 
     await logStaffEvent({
       staff,
@@ -1170,11 +1173,15 @@ export default {
     const { staff: scopedStaff, restaurantId: currentRestaurantId } =
       await requireStaffMutationAccess(ctx, userId);
     const targetRestaurantIds = [];
-    if (input.primaryRestaurantId) {
-      if (!mongoose.isValidObjectId(input.primaryRestaurantId)) {
-        throw new Error("Invalid primaryRestaurantId");
-      }
-      targetRestaurantIds.push(input.primaryRestaurantId);
+    if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
+      const err = new Error("primaryRestaurantId has been removed; use restaurantForStaff");
+      err.extensions = { code: "BAD_USER_INPUT" };
+      throw err;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
+      const err = new Error("refRestaurantIds is not allowed for staff; use restaurantForStaff");
+      err.extensions = { code: "BAD_USER_INPUT" };
+      throw err;
     }
     if (input.restaurantForStaff) {
       if (!mongoose.isValidObjectId(input.restaurantForStaff)) {
@@ -1208,7 +1215,6 @@ export default {
       "roleId",
       "dateJoined",
       "dateLeft",
-      "primaryRestaurantId",
     ];
     if (
       Object.keys(input || {}).some((key) =>
@@ -1224,32 +1230,9 @@ export default {
       });
     }
 
-    // restaurantForStaff là source-of-truth; primaryRestaurant chỉ để backward compatibility.
-    const hasPrimaryRestaurantInput = Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId");
     const hasRestaurantForStaffInput = Object.prototype.hasOwnProperty.call(input, "restaurantForStaff");
-    if (hasPrimaryRestaurantInput && input.primaryRestaurantId && !mongoose.isValidObjectId(input.primaryRestaurantId)) {
-      throw new Error("Invalid primaryRestaurantId");
-    }
     if (hasRestaurantForStaffInput && input.restaurantForStaff && !mongoose.isValidObjectId(input.restaurantForStaff)) {
       throw new Error("Invalid restaurantForStaff");
-    }
-    if (
-      hasPrimaryRestaurantInput &&
-      hasRestaurantForStaffInput &&
-      input.primaryRestaurantId &&
-      input.restaurantForStaff &&
-      String(input.primaryRestaurantId) !== String(input.restaurantForStaff)
-    ) {
-      throw new Error("restaurantForStaff and primaryRestaurantId must match");
-    }
-    if (hasPrimaryRestaurantInput || hasRestaurantForStaffInput) {
-      const finalRestaurantId = input.restaurantForStaff || input.primaryRestaurantId || null;
-      input.restaurantForStaff = finalRestaurantId;
-      input.primaryRestaurant = finalRestaurantId;
-      delete input.primaryRestaurantId;
-    }
-    if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
-      delete input.refRestaurantIds;
     }
 
     // Chuẩn hoá enum giống như createStaff
@@ -1292,7 +1275,7 @@ export default {
 
     Object.assign(staff, input);
     await staff.save();
-    await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
+    await staff.populate(["role", "refRestaurants"]);
 
     await logStaffEvent({
       staff,
@@ -1374,7 +1357,7 @@ export default {
 
     staff.employmentStatus = normalizedStatus;
     await staff.save();
-    await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
+    await staff.populate(["role", "refRestaurants"]);
 
     const verb =
       normalizedStatus === "on_leave"
@@ -1415,7 +1398,7 @@ export default {
     staff.rateCount = newCount;
 
     await staff.save();
-    await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
+    await staff.populate(["role", "refRestaurants"]);
 
     await logStaffEvent({
       staff,

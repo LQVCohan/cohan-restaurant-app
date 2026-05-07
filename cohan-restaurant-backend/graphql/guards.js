@@ -57,8 +57,13 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
   // restaurantForStaff is the staff restaurant scope source-of-truth.
   const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
   if (isStaffLike) {
-    const scopedRestaurantId = ctx?.user?.restaurantForStaff || ctx?.user?.primaryRestaurant;
-    if (String(scopedRestaurantId || "") === String(restaurantId || "")) return;
+    const scopedRestaurantId = ctx?.user?.restaurantForStaff;
+    if (!scopedRestaurantId) {
+      const err = new Error("FORBIDDEN_SCOPE");
+      err.statusCode = 403;
+      throw err;
+    }
+    if (String(scopedRestaurantId) === String(restaurantId || "")) return;
   }
 
   const err = new Error("FORBIDDEN_SCOPE");

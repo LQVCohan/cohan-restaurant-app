@@ -25,10 +25,7 @@ const STAFF_FIELDS = gql`
       slug
     }
 
-    primaryRestaurant {
-      id
-      name
-    }
+
     refRestaurants {
       id
       name
@@ -56,8 +53,7 @@ const STAFF_FIELDS = gql`
     dateLeft
     baseSalary
 
-    rate
-    rateCount
+
     isOnline
 
     lastLoginAt
@@ -173,14 +169,6 @@ const MUTATION_SET_USER_STATUS = gql`
   ${STAFF_FIELDS}
 `;
 
-const MUTATION_RATE_STAFF = gql`
-  mutation RateStaff($userId: ID!, $rating: Int!) {
-    rateStaff(userId: $userId, rating: $rating) {
-      ...StaffFields
-    }
-  }
-  ${STAFF_FIELDS}
-`;
 
 /* ============================================================================
  * HOOK: useStaffManagement
@@ -421,21 +409,6 @@ const useStaffManagement = (initialFilters = {}) => {
   );
 
   /** RATE STAFF 1–5 STAR */
-  const [rateStaffMutation, { loading: ratingStaff, error: rateStaffError }] =
-    useMutation(MUTATION_RATE_STAFF, {
-      onCompleted: () => refetchStaffList(),
-    });
-
-  const rateStaff = useCallback(
-    async (userId, rating) => {
-      const safeRating = Math.max(1, Math.min(5, Number(rating) || 0));
-      const res = await rateStaffMutation({
-        variables: { userId, rating: safeRating },
-      });
-      return res.data?.rateStaff ?? null;
-    },
-    [rateStaffMutation]
-  );
 
   /* -----------------------------------------
    * Loading + Error
@@ -460,7 +433,6 @@ const useStaffManagement = (initialFilters = {}) => {
     softDelete: softDeleteStaffError,
     setEmploymentStatus: setEmploymentStatusError,
     setUserStatus: setUserStatusError,
-    rate: rateStaffError,
   };
 
   /* -----------------------------------------
@@ -494,7 +466,6 @@ const useStaffManagement = (initialFilters = {}) => {
     softDeleteStaff,
     setStaffEmploymentStatus,
     setStaffAccountStatus,
-    rateStaff,
 
     // loading
     staffListLoading,
@@ -505,7 +476,6 @@ const useStaffManagement = (initialFilters = {}) => {
     softDeletingStaff,
     changingEmploymentStatus,
     changingUserStatus,
-    ratingStaff,
     anyLoading,
 
     // errors

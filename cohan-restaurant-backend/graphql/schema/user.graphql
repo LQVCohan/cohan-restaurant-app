@@ -390,7 +390,6 @@ type User {
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
 
-  primaryRestaurant: Restaurant
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
 
@@ -403,8 +402,6 @@ type User {
 
   noteInternal: String
   emergencyContact: EmergencyContact
-  rate: Float
-  rateCount: Int
 
   wallet: Wallet
   isOnline: Boolean
@@ -498,7 +495,6 @@ input CreateUserInput {
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurantId: ID
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
@@ -564,7 +560,6 @@ input AdminUpdateUserInput {
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurantId: ID
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
@@ -594,7 +589,6 @@ type StaffAccountOverview {
   employeeCode: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurant: Restaurant
   restaurantForStaff: ID
   floorAssigned: [String!]!
   floorCount: Int!
@@ -2389,7 +2383,6 @@ type Mutation {
   createStaff(input: CreateUserInput!): User!
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
   deleteStaff(userId: ID!): Boolean!
-  rateStaff(userId: ID!, rating: Int!): User!
   setStaffEmploymentStatus(
     userId: ID!
     employmentStatus: EmploymentStatus!
