@@ -229,6 +229,13 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     fallbackUser?.restaurantForStaff ||
     null;
 
+  const primaryRestaurant =
+    rawUser?.primaryRestaurant?.id ||
+    rawUser?.primaryRestaurant ||
+    fallbackUser?.primaryRestaurant?.id ||
+    fallbackUser?.primaryRestaurant ||
+    null;
+
   const customerRefRestaurants =
     rawUser?.refRestaurants || fallbackUser?.refRestaurants || [];
 
@@ -239,6 +246,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
     status: rawUser?.status || fallbackUser?.status || "active",
     restaurantForStaff,
+    primaryRestaurant,
     employmentType:
       rawUser?.employmentType ||
       fallbackUser?.employmentType ||

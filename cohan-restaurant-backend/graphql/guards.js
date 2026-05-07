@@ -1,6 +1,11 @@
 import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
 import { Restaurant } from "../models/index.js";
 
+const STAFF_SUBROLES = new Set([
+  "STAFF", "SERVER", "SUPERVISOR", "HOST", "CASHIER", "CHEF", "COOK",
+  "KITCHEN_HELPER", "CLEANER", "SHIPPER", "STOREKEEPER", "BARTENDER",
+]);
+
 export function requireAuth(ctx) {
   if (!ctx?.user?.id) {
     const err = new Error("UNAUTHENTICATED");
@@ -40,19 +45,6 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
   const roles = resolveUserRoles(ctx.user);
   if (roles.includes("ADMIN")) return;
 
-  const target = String(restaurantId || "");
-  const directCandidates = [
-    ctx?.user?.restaurantId,
-    ctx?.user?.restaurantForStaff,
-    ctx?.user?.primaryRestaurant,
-    ...(Array.isArray(ctx?.user?.refRestaurants) ? ctx.user.refRestaurants : []),
-    ...(Array.isArray(ctx?.user?.restaurants) ? ctx.user.restaurants : []),
-  ];
-  const directMatch = directCandidates.some(
-    (item) => String(item?._id || item || "") === target,
-  );
-  if (directMatch) return;
-
   if (roles.includes("MANAGER")) {
     const managerId = ctx?.user?.id || ctx?.user?._id;
     const managed = await Restaurant.exists({
@@ -60,6 +52,13 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
       managerId,
     });
     if (managed) return;
+  }
+
+  // restaurantForStaff is the staff restaurant scope source-of-truth.
+  const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
+  if (isStaffLike) {
+    const scopedRestaurantId = ctx?.user?.restaurantForStaff || ctx?.user?.primaryRestaurant;
+    if (String(scopedRestaurantId || "") === String(restaurantId || "")) return;
   }
 
   const err = new Error("FORBIDDEN_SCOPE");

@@ -114,17 +114,13 @@ async function assertCanMutateRestaurant(user, restaurantDoc) {
 async function createRestaurant(_, { input }, { user }) {
   if (!user) throw forbidden("Unauthorized");
   const admin = isAdmin(user);
-  const manager = await isManager(user);
-  if (!admin && !manager) throw forbidden("Insufficient permission");
+  if (!admin) throw forbidden("Admin only");
 
   const { managerId, ...rest } = input || {};
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
-  let finalManagerId = managerId;
-
-  // Manager tự tạo thì bắt buộc assign chính họ (trừ khi admin)
-  if (manager && !admin) finalManagerId = String(user.id || user._id);
+  const finalManagerId = managerId;
   if (!finalManagerId) throw badInput("managerId is required");
 
   const mId = toObjectId(finalManagerId);
@@ -132,11 +128,6 @@ async function createRestaurant(_, { input }, { user }) {
   if (!managerDoc) throw badInput("Manager not found");
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
   if (!isRoleManager) throw forbidden("Target user is not a manager");
-
-  // Đảm bảo 1 manager chỉ có 1 restaurant
-  const existed = await Restaurant.exists({ managerId: mId });
-  if (existed)
-    throw badInput("This manager is already assigned to another restaurant");
 
   const created = await Restaurant.create({ ...rest, managerId: mId });
   return created.toObject();
@@ -162,12 +153,11 @@ async function updateRestaurant(_, { id, input }, { user }) {
 
 /** Xoá nhà hàng */
 async function deleteRestaurant(_, { id }, { user }) {
-  if (!user) throw forbidden("Unauthorized");
+  if (!isAdmin(user)) throw forbidden("Admin only");
   const _id = toObjectId(id);
 
   const doc = await Restaurant.findById(_id);
   if (!doc) throw notFound("Restaurant not found");
-  await assertCanMutateRestaurant(user, doc);
 
   await Restaurant.deleteOne({ _id });
   return true;
@@ -191,14 +181,6 @@ async function updateRestaurantManager(_, { input }, { user }) {
   if (!managerDoc) throw badInput("Manager not found");
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
   if (!isRoleManager) throw forbidden("Target user is not a manager");
-
-  // Đảm bảo 1 manager chỉ có 1 restaurant
-  const existed = await Restaurant.exists({
-    managerId: mId,
-    _id: { $ne: rId },
-  });
-  if (existed)
-    throw badInput("This manager is already assigned to another restaurant");
 
   doc.managerId = mId;
   await doc.save();
