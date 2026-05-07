@@ -9,7 +9,7 @@ export const RoleMutation = {
    * ===================================== */
 
   createRole: async (_, { input }, { user }) => {
-    // requireRole(user, ["admin", "manager"]);
+    requireRole(user, ["admin"]);
 
     const { permissionIds = [], parentRoleId, ...rest } = input;
 

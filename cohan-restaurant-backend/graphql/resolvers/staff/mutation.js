@@ -1398,6 +1398,8 @@ export default {
   // RATE STAFF (1–5 sao)
   // =========================
   rateStaff: async (_, { userId, rating }, ctx) => {
+    requireAuth(ctx);
+    await requireStaffMutationAccess(ctx, userId);
     const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
