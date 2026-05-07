@@ -124,7 +124,7 @@ async function createRestaurant(_, { input }, { user }) {
   let finalManagerId = managerId;
 
   // Manager tự tạo thì bắt buộc assign chính họ (trừ khi admin)
-  if (manager && !admin) finalManagerId = String(user._id);
+  if (manager && !admin) finalManagerId = String(user.id || user._id);
   if (!finalManagerId) throw badInput("managerId is required");
 
   const mId = toObjectId(finalManagerId);
@@ -148,7 +148,6 @@ async function updateRestaurant(_, { id, input }, { user }) {
   const _id = toObjectId(id);
 
   const doc = await Restaurant.findById(_id);
-  console.log(doc);
   if (!doc) throw notFound("Restaurant not found");
   await assertCanMutateRestaurant(user, doc);
 

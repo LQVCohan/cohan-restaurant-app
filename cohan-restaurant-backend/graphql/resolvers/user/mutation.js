@@ -12,6 +12,7 @@ import {
   WalletTransaction,
 } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 import dayjs from "dayjs";
 
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
@@ -774,7 +775,7 @@ export const UserMutation = {
 
   // ========== Guest nhanh ==========
   async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
-    requireRole(user, ["admin", "manager", "staff"]);
+    requireRole(user, ["admin"]);
 
     const doc = new Customer({
       fullName: (fullName || "Guest").trim(),
@@ -797,7 +798,7 @@ export const UserMutation = {
 
   // === Admin update user ===
   async adminUpdateUser(_, { userId, input }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -950,7 +951,7 @@ export const UserMutation = {
 
   // === Quick status ===
   async setUserStatus(_, { userId, status }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -977,7 +978,7 @@ export const UserMutation = {
 
   // === Soft delete ===
   async softDeleteUser(_, { userId }, { user: authUser }) {
-    requireRole(authUser, ["admin", "manager"]);
+    requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -1048,14 +1049,18 @@ export const UserMutation = {
   async upsertCustomerRankSettings(
     _,
     { restaurantId, ranks },
-    { user: authUser },
+    ctx,
   ) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
     const normalizedRanks = (Array.isArray(ranks) ? ranks : [])
       .map((r) => ({
         name: String(r?.name || "").trim(),
@@ -1073,7 +1078,7 @@ export const UserMutation = {
     normalizedRanks.sort((a, b) => a.minPoints - b.minPoints);
 
     const saved = await CustomerRankSetting.findOneAndUpdate(
-      { restaurantId: new mongoose.Types.ObjectId(restaurantId) },
+      { restaurantId: rid },
       {
         $set: {
           ranks: normalizedRanks,
