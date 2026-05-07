@@ -328,11 +328,24 @@ export default function LeftPanel() {
       isVirtual: true,
     });
     setDeliveryCustomer({
-      id: null,
-      name: payload.customerInfo?.name || "",
-      phone: payload.customerInfo?.phone || "",
-      email: payload.customerInfo?.email || "",
+      id: payload.userId || null,
+      name: payload.customerInfo?.name || payload.shipping?.fullName || "",
+      phone: payload.customerInfo?.phone || payload.shipping?.phone || "",
+      email: payload.customerInfo?.email || payload.shipping?.email || "",
+      note: payload.customerInfo?.note || payload.shipping?.note || "",
     });
+    setShippingInfo((prev) => ({
+      ...prev,
+      fullName: payload.shipping?.fullName || payload.customerInfo?.name || "",
+      phone: payload.shipping?.phone || payload.customerInfo?.phone || "",
+      email: payload.shipping?.email || payload.customerInfo?.email || "",
+      address: payload.shipping?.address || "",
+      note: payload.shipping?.note || payload.customerInfo?.note || "",
+      deliveryMethod: payload.shipping?.deliveryMethod || prev.deliveryMethod || "ship_now",
+      deliveryTime: payload.shipping?.deliveryTime || "",
+      scheduleDate: payload.shipping?.scheduleDate || "",
+      scheduleTime: payload.shipping?.scheduleTime || "",
+    }));
   };
 
   const openActionModal = (e, table) => {
@@ -738,7 +751,7 @@ export default function LeftPanel() {
               <div
                 key={order.id}
                 className={cls.tableItem}
-                data-status={order.currentStatus || "pending"}
+                data-status={(order.shipping?.address || "").trim() || order.currentStatus || "pending"}
                 onClick={() => handleOffPremiseOrderClick(order)}
               >
                 <div className={cls.tableTop}>
@@ -746,10 +759,10 @@ export default function LeftPanel() {
                 </div>
                 <div className={cls.tableMeta}>
                   <span className={cls.capacity}>
-                    {order.customerInfo?.name || "Khách lẻ"}
+                    {order.customerInfo?.name || order.shipping?.fullName || order.customerInfo?.phone || order.shipping?.phone || "Khách lẻ"}
                   </span>
                   <span className={cls.statusText}>
-                    {order.currentStatus || "pending"}
+                    {(order.shipping?.address || "").trim() || order.currentStatus || "pending"}
                   </span>
                 </div>
               </div>

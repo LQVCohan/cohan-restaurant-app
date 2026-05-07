@@ -64,6 +64,7 @@ export default function OrderConfirmModal({
 
   const hasCustomer = !!(customerName || customerPhone || customerEmail);
   const hasAddress = !!address;
+  const hasIdentityConflict = !!deliveryCustomer?.conflict;
 
   // ✅ rule save:
   // - dine_in: chỉ cần có món mới
@@ -236,6 +237,13 @@ export default function OrderConfirmModal({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {hasIdentityConflict && (
+            <div className={cls.section}>
+              <div className={cls.sectionTitle}>Cảnh báo định danh</div>
+              <div className={cls.address}>Lưu snapshot-only, không gắn hồ sơ khách.</div>
             </div>
           )}
 

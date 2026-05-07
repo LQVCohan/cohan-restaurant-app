@@ -2515,8 +2515,8 @@ export default function useOrderManagement(pos = null) {
               note: orderNote,
               customer: cleanCustomer,
               shipping: shippingPayload,
-              userId: deliveryCustomer?.id || null,
-              customerIdentityMode: "snapshot_only",
+              userId: deliveryCustomer?.conflict ? null : deliveryCustomer?.id || null,
+              customerIdentityMode: deliveryCustomer?.conflict ? "snapshot_only" : (deliveryCustomer?.id ? "attach_existing" : "snapshot_only"),
               clientMeta: {
                 savedAt: new Date().toISOString(),
                 ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
