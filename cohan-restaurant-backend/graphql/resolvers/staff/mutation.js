@@ -917,6 +917,45 @@ export const __testables = {
   formatEmployeeCode,
   getNextEmployeeCode,
 };
+function resolveStaffRestaurantId(staff) {
+  return (
+    staff?.restaurantForStaff ||
+    staff?.primaryRestaurant?._id ||
+    staff?.primaryRestaurant ||
+    (Array.isArray(staff?.refRestaurants)
+      ? staff.refRestaurants[0]?._id || staff.refRestaurants[0]
+      : null)
+  );
+}
+
+async function loadStaffScope(staffId) {
+  if (!mongoose.isValidObjectId(staffId)) return null;
+  return Staff.findById(staffId)
+    .select({
+      _id: 1,
+      userType: 1,
+      deletedAt: 1,
+      primaryRestaurant: 1,
+      restaurantForStaff: 1,
+      refRestaurants: 1,
+      role: 1,
+      employmentStatus: 1,
+    })
+    .lean();
+}
+
+async function requireStaffMutationAccess(ctx, staffId) {
+  requireAuth(ctx);
+  const staff = await loadStaffScope(staffId);
+  if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+    throw new Error("Staff not found");
+  }
+  const restaurantId = resolveStaffRestaurantId(staff);
+  if (!restaurantId) throw new Error("STAFF_RESTAURANT_NOT_FOUND");
+  await requireRestaurantAccess(ctx, restaurantId);
+  return { staff, restaurantId };
+}
+
 function getBatchErrorCode(error) {
   return (
     error?.extensions?.code ||
@@ -938,11 +977,22 @@ export default {
   // CREATE STAFF
   // =========================
   createStaff: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     // Ép kiểu userType (HIỆN TẠI luôn là STAFF)
     const normalizedUserType = (input.userType || "STAFF")
       .toString()
       .toUpperCase();
     input.userType = normalizedUserType;
+
+    const restaurantAccessId =
+      input.primaryRestaurantId ||
+      input.restaurantForStaff ||
+      input.restaurantId ||
+      (Array.isArray(input.refRestaurantIds) ? input.refRestaurantIds[0] : null);
+    if (!mongoose.isValidObjectId(restaurantAccessId)) {
+      throw new Error("primaryRestaurantId is required to generate employee code");
+    }
+    await requireRestaurantAccess(ctx, restaurantAccessId);
 
     // =========================
     // XÁC ĐỊNH ROLE CHO STAFF
@@ -950,6 +1000,7 @@ export default {
     let roleDoc = null;
 
     if (input.roleId) {
+      requireRoles(ctx, ["ADMIN"]);
       roleDoc = await resolveStaffRoleById(input.roleId, input.department);
     } else {
       // Không truyền roleId -> dùng default staff role
@@ -1009,6 +1060,7 @@ export default {
     const sequenceRestaurantId =
       primaryRestaurantId ||
       input.restaurantForStaff ||
+      input.restaurantId ||
       (Array.isArray(refRestaurantIds) ? refRestaurantIds[0] : null);
     if (!sequenceRestaurantId) {
       throw new Error(
@@ -1076,6 +1128,38 @@ export default {
   // UPDATE STAFF
   // =========================
   updateStaff: async (_, { userId, input }, ctx) => {
+    requireAuth(ctx);
+    const { staff: scopedStaff, restaurantId: currentRestaurantId } =
+      await requireStaffMutationAccess(ctx, userId);
+    const targetRestaurantIds = [];
+    if (input.primaryRestaurantId) {
+      if (!mongoose.isValidObjectId(input.primaryRestaurantId)) {
+        throw new Error("Invalid primaryRestaurantId");
+      }
+      targetRestaurantIds.push(input.primaryRestaurantId);
+    }
+    if (input.restaurantForStaff) {
+      if (!mongoose.isValidObjectId(input.restaurantForStaff)) {
+        throw new Error("Invalid restaurantForStaff");
+      }
+      targetRestaurantIds.push(input.restaurantForStaff);
+    }
+    if (input.refRestaurantIds) {
+      if (!Array.isArray(input.refRestaurantIds)) {
+        throw new Error("Invalid refRestaurantIds");
+      }
+      for (const id of input.refRestaurantIds) {
+        if (!mongoose.isValidObjectId(id)) {
+          throw new Error("Invalid refRestaurantIds");
+        }
+        targetRestaurantIds.push(id);
+      }
+    }
+    for (const rid of [...new Set(targetRestaurantIds.map(String))]) {
+      if (String(rid) !== String(currentRestaurantId)) {
+        await requireRestaurantAccess(ctx, rid);
+      }
+    }
     const staff = await Staff.findById(userId);
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -1084,6 +1168,8 @@ export default {
     if ("employeeCode" in input) {
       delete input.employeeCode;
     }
+    if ("deletedAt" in input) delete input.deletedAt;
+    if ("userType" in input) delete input.userType;
 
     const before = staff.toObject();
     const payrollSensitiveFields = [
@@ -1142,12 +1228,16 @@ export default {
     }
 
     if (input.roleId) {
+      requireRoles(ctx, ["ADMIN"]);
       const roleDoc = await resolveStaffRoleById(
         input.roleId,
         input.department || staff.department,
       );
       input.role = roleDoc._id;
       delete input.roleId;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "baseSalary")) {
+      requireRoles(ctx, ["ADMIN"]);
     }
 
     // Hỗ trợ đổi mật khẩu nếu có truyền trong input
@@ -1195,6 +1285,8 @@ export default {
   // DELETE STAFF (SOFT DELETE)
   // =========================
   deleteStaff: async (_, { userId }, ctx) => {
+    requireAuth(ctx);
+    await requireStaffMutationAccess(ctx, userId);
     const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
@@ -1220,6 +1312,8 @@ export default {
   // SET STAFF EMPLOYMENT STATUS
   // =========================
   setStaffEmploymentStatus: async (_, { userId, employmentStatus }, ctx) => {
+    requireAuth(ctx);
+    await requireStaffMutationAccess(ctx, userId);
     const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
