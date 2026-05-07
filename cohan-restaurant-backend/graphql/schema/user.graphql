@@ -655,43 +655,6 @@ input CreateUserInput {
   lastTrainingAt: DateTime
   nextTrainingDueAt: DateTime
   emergencyContacts: [EmergencyContactExtendedInput!]
-  dateOfBirth: DateTime
-  gender: StaffGender
-  nationalId: String
-  nationalIdIssuedAt: DateTime
-  nationalIdIssuedPlace: String
-  maritalStatus: MaritalStatus
-  permanentAddress: String
-  temporaryAddress: String
-  contractCode: String
-  contractType: StaffContractType
-  contractStartDate: DateTime
-  contractEndDate: DateTime
-  probationEndDate: DateTime
-  officialStartDate: DateTime
-  terminationReason: String
-  salaryType: StaffSalaryType
-  hourlyRate: Float
-  allowanceAmount: Float
-  bankName: String
-  bankAccountNumber: String
-  bankAccountHolder: String
-  socialInsuranceNumber: String
-  healthInsuranceNumber: String
-  unemploymentInsuranceNumber: String
-  insuranceEligible: Boolean
-  insuranceStartDate: DateTime
-  educationLevel: String
-  certifications: [StaffCertification!]
-  skills: [String!]
-  languages: [StaffLanguageSkill!]
-  uniformSize: String
-  deviceIds: [String!]
-  accessCardCode: String
-  trainingStatus: StaffTrainingStatus
-  lastTrainingAt: DateTime
-  nextTrainingDueAt: DateTime
-  emergencyContacts: [EmergencyContactExtended!]
 }
 
 input UpdateUserInput {
@@ -758,6 +721,44 @@ input AdminUpdateUserInput {
   forcePasswordChange: Boolean
   noteInternal: String
   emergencyContact: EmergencyContactInput
+  baseSalary: Int
+  dateOfBirth: DateTime
+  gender: StaffGender
+  nationalId: String
+  nationalIdIssuedAt: DateTime
+  nationalIdIssuedPlace: String
+  maritalStatus: MaritalStatus
+  permanentAddress: String
+  temporaryAddress: String
+  contractCode: String
+  contractType: StaffContractType
+  contractStartDate: DateTime
+  contractEndDate: DateTime
+  probationEndDate: DateTime
+  officialStartDate: DateTime
+  terminationReason: String
+  salaryType: StaffSalaryType
+  hourlyRate: Float
+  allowanceAmount: Float
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+  socialInsuranceNumber: String
+  healthInsuranceNumber: String
+  unemploymentInsuranceNumber: String
+  insuranceEligible: Boolean
+  insuranceStartDate: DateTime
+  educationLevel: String
+  certifications: [StaffCertificationInput!]
+  skills: [String!]
+  languages: [StaffLanguageSkillInput!]
+  uniformSize: String
+  deviceIds: [String!]
+  accessCardCode: String
+  trainingStatus: StaffTrainingStatus
+  lastTrainingAt: DateTime
+  nextTrainingDueAt: DateTime
+  emergencyContacts: [EmergencyContactExtendedInput!]
 }
 
 # =========================

@@ -30,6 +30,7 @@ const STAFF_FIELDS = gql`
       id
       name
     }
+    restaurantForStaff
 
     address {
       line1
@@ -421,8 +422,7 @@ const useStaffManagement = (initialFilters = {}) => {
     deletingStaff ||
     softDeletingStaff ||
     changingEmploymentStatus ||
-    changingUserStatus ||
-    ratingStaff;
+    changingUserStatus;
 
   const errors = {
     list: staffListError,

@@ -51,7 +51,7 @@ describe("staff mutation access hardening", () => {
   it("createStaff denies before writes when restaurant scope forbidden", async () => {
     guards.requireRestaurantAccess.mockRejectedValueOnce(new Error("FORBIDDEN_SCOPE"));
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await expect(mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1" } }, { user: { id: "u1" } })).rejects.toThrow("restaurantForStaff has been removed; use restaurantForStaff");
+    await expect(mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Role.findById).not.toHaveBeenCalled();
     expect(modelMocks.EmployeeCodeCounter.findOneAndUpdate).not.toHaveBeenCalled();
     expect(modelMocks.Staff).not.toHaveBeenCalled();
@@ -72,15 +72,15 @@ describe("staff mutation access hardening", () => {
     expect(createdInput.restaurantForStaff).toBe("r1");
   });
 
-  it("createStaff rejects restaurantForStaff usage", async () => {
+  it("createStaff rejects primaryRestaurantId legacy input", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(
-      mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1", restaurantForStaff: "r2" } }, { user: { id: "u1" } }),
-    ).rejects.toThrow("restaurantForStaff has been removed; use restaurantForStaff");
+      mutation.createStaff(null, { input: { fullName: "A", primaryRestaurantId: "r1" } }, { user: { id: "u1" } }),
+    ).rejects.toThrow("primaryRestaurantId has been removed; use restaurantForStaff");
   });
 
   it("updateStaff requires access to old and new restaurants", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
     modelMocks.Staff.findById = vi
       .fn()
       .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
@@ -93,7 +93,7 @@ describe("staff mutation access hardening", () => {
   });
 
   it("updateStaff strips userType and enforces baseSalary admin-only", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
     const doc = makeStaffDoc({ _id: "staff-1" });
     modelMocks.Staff.findById = vi
       .fn()
@@ -105,7 +105,7 @@ describe("staff mutation access hardening", () => {
     expect(doc.save).not.toHaveBeenCalled();
   });
 
-  it("updateStaff rejects restaurantForStaff usage", async () => {
+  it("updateStaff rejects primaryRestaurantId legacy input", async () => {
     const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", restaurantForStaff: "r1" };
     modelMocks.Staff.findById = vi
       .fn()
@@ -113,12 +113,12 @@ describe("staff mutation access hardening", () => {
       .mockResolvedValueOnce(makeStaffDoc({ _id: "staff-1" }));
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(
-      mutation.updateStaff(null, { userId: "staff-1", input: { restaurantForStaff: "r1", restaurantForStaff: "r2" } }, { user: { id: "u1" } }),
-    ).rejects.toThrow("restaurantForStaff has been removed; use restaurantForStaff");
+      mutation.updateStaff(null, { userId: "staff-1", input: { primaryRestaurantId: "r2" } }, { user: { id: "u1" } }),
+    ).rejects.toThrow("primaryRestaurantId has been removed; use restaurantForStaff");
   });
 
   it("deleteStaff denied before save when scope forbidden", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
     const doc = makeStaffDoc({ _id: "staff-1" });
     modelMocks.Staff.findById = vi
       .fn()
