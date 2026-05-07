@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { gql, useLazyQuery } from "@apollo/client";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import cls from "./RegularCustomerModal.module.scss";
@@ -19,6 +19,25 @@ const Q_POS_CUSTOMERS = gql`
       email
       address
       note
+    }
+  }
+`;
+
+
+const M_UPSERT_POS_CUSTOMER = gql`
+  mutation UpsertPosCustomer($input: UpsertPosCustomerInput!) {
+    upsertPosCustomer(input: $input) {
+      id
+      restaurantId
+      fullName
+      phone
+      email
+      defaultAddress
+      note
+      source
+      orderCount
+      lastOrderAt
+      isActive
     }
   }
 `;
@@ -90,8 +109,9 @@ export default function RegularCustomerModal({
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
-  const [customers, setCustomers] = useState([]);
   const [loadCustomers, { data: customersData, loading: customersLoading }] = useLazyQuery(Q_POS_CUSTOMERS, { fetchPolicy: "network-only" });
+  const [upsertPosCustomer, { loading: upsertingCustomer }] =
+    useMutation(M_UPSERT_POS_CUSTOMER);
   const [searchDebounced, setSearchDebounced] = useState("");
 
   const [form, setForm] = useState(emptyForm);
@@ -238,11 +258,7 @@ export default function RegularCustomerModal({
     }),
     onRestore: (draft) => {
       setForm((prev) => ({ ...prev, ...draft }));
-      showNotification(
-        "Một số thông tin nhạy cảm (tên/SĐT/email) không được khôi phục tự động.",
-        "info",
-        3200,
-      );
+      showNotification("Đã khôi phục dữ liệu khách nhập dở.", "info", 2400);
     },
     notify: showNotification,
   });
@@ -305,12 +321,39 @@ export default function RegularCustomerModal({
     setForm((prev) => ({ ...prev, wardKey: code }));
   };
 
+
+function isValidEmail(value) {
+  const email = normalizeEmail(value);
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidVietnamPhone(value) {
+  const phone = normalizePhone(value);
+  if (!phone) return false;
+  if (!/^\d{9,11}$/.test(phone)) return false;
+  if (/^0+$/.test(phone)) return false;
+  if (phone === "0123456789" || phone === "123456789") return false;
+  return true;
+}
+
   const validateCreate = () => {
     const name = safeStr(form.name);
     const phone = normalizePhone(form.phone);
+    const email = normalizeEmail(form.email);
+    const address = safeStr(fullAddress);
+
+    if (!restaurantId) return "Thiếu nhà hàng. Vui lòng chọn nhà hàng trước.";
     if (!name) return "Vui lòng nhập tên khách.";
     if (!phone) return "Vui lòng nhập SĐT.";
-    if (!safeStr(fullAddress)) return "Vui lòng nhập địa chỉ đầy đủ.";
+    if (!isValidVietnamPhone(phone)) return "SĐT không hợp lệ.";
+    if (email && !isValidEmail(email)) return "Email không hợp lệ.";
+    if (!address) return "Vui lòng nhập địa chỉ đầy đủ.";
+
+    if (identityConflict) {
+      return "Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen. Hãy chọn hồ sơ có sẵn hoặc dùng thông tin này cho đơn hiện tại.";
+    }
+
     return null;
   };
 
@@ -432,53 +475,72 @@ export default function RegularCustomerModal({
   const handleSaveCustomer = async () => {
     const errMsg = validateCreate();
     if (errMsg) {
-      alert(errMsg);
+      showNotification?.(errMsg, "error");
       return;
     }
 
     setSaving(true);
     try {
-      const payload = {
-        conflict: identityConflict,
-        customerIdentityMode: identityConflict ? "snapshot_only" : "attach_if_selected",
-        id: `tmp_${Date.now()}`,
-        name: safeStr(form.name),
+      const input = {
+        restaurantId,
+        fullName: safeStr(form.name),
         phone: normalizePhone(form.phone),
-        email: normalizeEmail(form.email),
+        email: normalizeEmail(form.email) || null,
+        defaultAddress: safeStr(fullAddress),
         note: safeStr(form.note),
+        source: "POS",
+      };
+
+      const res = await upsertPosCustomer({
+        variables: { input },
+      });
+
+      const saved = res?.data?.upsertPosCustomer;
+      if (!saved?.id) {
+        throw new Error("Không lưu được khách quen.");
+      }
+
+      const selected = {
+        id: saved.id,
+        name: safeStr(saved.fullName),
+        phone: safeStr(saved.phone),
+        email: safeStr(saved.email),
+        note: safeStr(saved.note),
+        isNew: false,
+        addressText: safeStr(saved.defaultAddress),
         shippingInfo: {
-          fullName: safeStr(form.name),
-          phone: normalizePhone(form.phone),
-          email: normalizeEmail(form.email),
-          address: safeStr(fullAddress),
-          note: safeStr(form.note),
+          fullName: safeStr(saved.fullName),
+          phone: safeStr(saved.phone),
+          email: safeStr(saved.email),
+          address: safeStr(saved.defaultAddress),
+          note: safeStr(saved.note),
           deliveryMethod: "ship_now",
           deliveryTime: "",
           scheduleDate: "",
           scheduleTime: "",
         },
-        restaurantId,
       };
 
-      setCustomers((prev) => [payload, ...(prev || [])]);
-
-      onSelectCustomer?.({
-        id: payload.id,
-        name: payload.name,
-        phone: payload.phone,
-        email: payload.email,
-        note: payload.note,
-        isNew: true,
-        addressText: payload.shippingInfo.address,
-        shippingInfo: payload.shippingInfo,
-      });
-
+      onSelectCustomer?.(selected);
       clearDraft();
-      onClose?.();
       setForm(emptyForm);
+      showNotification?.("Đã lưu khách quen.", "success");
+      onClose?.();
+
+      loadCustomers?.({
+        variables: {
+          restaurantId,
+          keyword: safeStr(form.name),
+          email: normalizeEmail(form.email) || null,
+          phone: normalizePhone(form.phone) || null,
+        },
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
-      alert("Lưu khách thất bại, vui lòng thử lại.");
+      showNotification?.(
+        e?.message || "Lưu khách thất bại, vui lòng thử lại.",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -516,7 +578,7 @@ export default function RegularCustomerModal({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên / sđt / email..."
               />
-              {identityConflict && <div className={cls.empty} style={{color:"#b91c1c"}}>Email và SĐT thuộc hai hồ sơ khác nhau. Chỉ lưu snapshot-only.</div>}
+              
               <Button onClick={() => setTab("create")} variant="ghost">
                 + Thêm
               </Button>
@@ -671,20 +733,49 @@ export default function RegularCustomerModal({
               </div>
             </div>
 
+            {identityConflict && (
+              <div className={cls.empty} style={{ color: "#b91c1c" }}>
+                Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen. Hãy chọn hồ sơ có sẵn hoặc dùng thông tin này cho đơn hiện tại.
+              </div>
+            )}
+
+            {!identityConflict &&
+              (candidateCheck.byPhone?.length > 0 || candidateCheck.byEmail?.length > 0) && (
+                <div className={cls.empty}>
+                  Tìm thấy khách trùng thông tin. Nếu lưu, hệ thống sẽ cập nhật hồ sơ theo SĐT hoặc bạn có thể chọn khách có sẵn.
+                </div>
+              )}
+
+            {!identityConflict && (candidateCheck.byPhone?.length > 0 || candidateCheck.byEmail?.length > 0) && (
+              <div className={cls.list}>
+                {[...candidateCheck.byPhone, ...candidateCheck.byEmail]
+                  .filter((c, i, arr) => arr.findIndex((x) => String(x.id) === String(c.id)) === i)
+                  .map((c) => (
+                    <button key={c.id || c._id} className={cls.customerRow} onClick={() => handlePickCustomer(c)}>
+                      <div className={cls.customerMain}>
+                        <div className={cls.customerName}>{safeStr(c.fullName || c.name)}</div>
+                        <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
+                      </div>
+                      <div className={cls.customerAddr}>{safeStr(c.address) || "Chưa có địa chỉ"}</div>
+                    </button>
+                  ))}
+              </div>
+            )}
+
             <div className={cls.actions}>
               <Button
                 onClick={closeWithConfirm}
                 variant="ghost"
-                disabled={saving || locating}
+                disabled={saving || upsertingCustomer || locating}
               >
                 Thoát
               </Button>
               <Button
                 onClick={handleSaveCustomer}
                 variant="primary"
-                disabled={saving || locating}
+                disabled={saving || upsertingCustomer || locating}
               >
-                {saving ? "Đang lưu..." : "Lưu khách"}
+                {saving || upsertingCustomer ? "Đang lưu..." : "Lưu khách"}
               </Button>
             </div>
           </div>

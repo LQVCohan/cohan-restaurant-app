@@ -154,6 +154,45 @@ describe("PosCustomer resolvers", () => {
     expect(existing.save).toHaveBeenCalled();
   });
 
+
+
+  it("does not persist empty email string on create", async () => {
+    modelMocks.PosCustomer.findOne.mockResolvedValue(null);
+    modelMocks.PosCustomer.create.mockResolvedValue({
+      toObject: vi.fn(() => ({ id: "pc2", phone: "0901234567" })),
+    });
+    const { PosCustomerMutation } = await import("../../graphql/resolvers/posCustomer/mutation.js");
+
+    await PosCustomerMutation.upsertPosCustomer(
+      null,
+      {
+        input: {
+          restaurantId: "valid-restaurant-1",
+          phone: "0901234567",
+          email: "   ",
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(modelMocks.PosCustomer.create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ email: "" }),
+    );
+  });
+
+  it("rejects missing phone", async () => {
+    const { PosCustomerMutation } = await import("../../graphql/resolvers/posCustomer/mutation.js");
+
+    await expect(
+      PosCustomerMutation.upsertPosCustomer(
+        null,
+        { input: { restaurantId: "valid-restaurant-1", phone: "" } },
+        { user: { id: "manager-1" } },
+      ),
+    ).rejects.toThrow("phone is required");
+
+    expect(modelMocks.PosCustomer.findOne).not.toHaveBeenCalled();
+  });
   it("rejects invalid restaurantId before querying", async () => {
     const { PosCustomerMutation } = await import("../../graphql/resolvers/posCustomer/mutation.js");
 
