@@ -1,4 +1,4 @@
-import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
+import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission, Staff } from "../../../models/index.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
@@ -67,6 +67,13 @@ export default {
     const windowDoc = await AvailabilityRegistrationWindow.findById(input.availabilityWindowId);
     if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
     await requireRestaurantAccess(ctx, windowDoc.restaurantId);
+    if (isManager && String(ctx.user.id) !== String(input.employeeId)) {
+      const employee = await Staff.findOne({
+        _id: input.employeeId,
+        primaryRestaurant: windowDoc.restaurantId,
+      }).select({ _id: 1, employmentType: 1 }).lean();
+      if (!employee) throw new Error("EMPLOYEE_NOT_IN_RESTAURANT");
+    }
 
     const windowStatus = String(windowDoc.status || "").toLowerCase();
     if (windowStatus === "used_for_schedule") {

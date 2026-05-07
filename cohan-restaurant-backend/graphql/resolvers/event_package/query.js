@@ -1,11 +1,13 @@
 import mongoose from "mongoose";
 import { EventPackage } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 export const EventPackageQuery = {
-  async eventPackagesByRestaurant(_, { restaurantId, activeOnly = true }) {
+  async eventPackagesByRestaurant(_, { restaurantId, activeOnly = true }, ctx) {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new Error("Invalid restaurantId");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const query = {
       restaurantId: new mongoose.Types.ObjectId(restaurantId),

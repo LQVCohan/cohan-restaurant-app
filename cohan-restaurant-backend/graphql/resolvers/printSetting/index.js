@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { PrintSetting, Restaurant } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const DEFAULT_TEMPLATES = [
   {
@@ -121,11 +122,13 @@ function toPrintSettingView(doc) {
   };
 }
 
-async function assertRestaurantAccess(user, restaurantId) {
+async function assertRestaurantAccess(ctx, restaurantId) {
+  const user = ctx?.user;
   requireRole(user, ["admin", "manager"]);
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw badInput("Invalid restaurantId");
   }
+  await requireRestaurantAccess(ctx, restaurantId);
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
   return restaurant;
@@ -147,17 +150,17 @@ async function findOrCreatePrintSetting(restaurantId) {
 }
 
 export const Query = {
-  async printSettings(_, { restaurantId }, { user }) {
-    await assertRestaurantAccess(user, restaurantId);
+  async printSettings(_, { restaurantId }, ctx) {
+    await assertRestaurantAccess(ctx, restaurantId);
     const doc = await findOrCreatePrintSetting(restaurantId);
     return toPrintSettingView(doc);
   },
 };
 
 export const Mutation = {
-  async upsertPrintSettings(_, { input }, { user }) {
+  async upsertPrintSettings(_, { input }, ctx) {
     const { restaurantId } = input || {};
-    await assertRestaurantAccess(user, restaurantId);
+    await assertRestaurantAccess(ctx, restaurantId);
     const doc = await findOrCreatePrintSetting(restaurantId);
     const hasPrinters = Object.prototype.hasOwnProperty.call(input || {}, "printers");
     const hasStations = Object.prototype.hasOwnProperty.call(input || {}, "stations");
@@ -195,10 +198,10 @@ export const Mutation = {
     return toPrintSettingView(updated);
   },
 
-  async enqueuePrintJob(_, { input }, { user }) {
+  async enqueuePrintJob(_, { input }, ctx) {
     const { restaurantId, printerId, stationId, printType, templateKey, payload } = input || {};
     if (!printType) throw badInput("printType is required");
-    await assertRestaurantAccess(user, restaurantId);
+    await assertRestaurantAccess(ctx, restaurantId);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
@@ -238,9 +241,9 @@ export const Mutation = {
     return job;
   },
 
-  async retryPrintJob(_, { input }, { user }) {
+  async retryPrintJob(_, { input }, ctx) {
     const { restaurantId, jobId } = input || {};
-    await assertRestaurantAccess(user, restaurantId);
+    await assertRestaurantAccess(ctx, restaurantId);
     const doc = await findOrCreatePrintSetting(restaurantId);
     const jobs = normalizeJobs(doc.jobs);
     const index = jobs.findIndex((j) => j.id === String(jobId));
@@ -269,9 +272,9 @@ export const Mutation = {
     return updated;
   },
 
-  async updatePrintJobStatus(_, { input }, { user }) {
+  async updatePrintJobStatus(_, { input }, ctx) {
     const { restaurantId, jobId, status, error } = input || {};
-    await assertRestaurantAccess(user, restaurantId);
+    await assertRestaurantAccess(ctx, restaurantId);
     if (!status) throw badInput("status is required");
 
     const doc = await findOrCreatePrintSetting(restaurantId);
@@ -300,9 +303,9 @@ export const Mutation = {
     return updated;
   },
 
-  async testPrint(_, { input }, { user }) {
+  async testPrint(_, { input }, ctx) {
     const { restaurantId, printerId, draftName, draftIp, draftType, draftLocation } = input || {};
-    await assertRestaurantAccess(user, restaurantId);
+    await assertRestaurantAccess(ctx, restaurantId);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
