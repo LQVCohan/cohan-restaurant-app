@@ -271,16 +271,18 @@ export default function RegularCustomerModal({
 
     const addressText = safeStr(c?.shippingInfo?.address || c?.address);
 
+    const displayName = safeStr(c.fullName || c.name);
+
     onSelectCustomer?.({
       id: c.id || c._id || null,
-      name: safeStr(c.name),
+      name: displayName,
       phone: safeStr(c.phone),
       email: safeStr(c.email),
       note: safeStr(c?.shippingInfo?.note || c?.note),
       isNew: false,
       addressText,
       shippingInfo: {
-        fullName: safeStr(c.name),
+        fullName: displayName,
         phone: safeStr(c.phone),
         email: safeStr(c.email),
         address: addressText,

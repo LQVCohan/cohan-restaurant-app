@@ -117,6 +117,8 @@ export default function LeftPanel() {
     startTakeawayOrder, // Action: Bắt đầu đơn mang về
     selectTableForOrder,
     currentOrderId,
+    currentOrderCode,
+    setCurrentOrderId,
     setCurrentTable,
     setCurrentOrder,
     setCurrentOrderCode,
@@ -348,6 +350,8 @@ export default function LeftPanel() {
     const payload = res.data;
     const items = (payload.items || []).map((it, idx) => ({
       _lineId: `ord_${payload.orderCode || payload.id}_${idx}`,
+      orderId: payload.id || order.id || null,
+      orderCode: payload.orderCode || null,
       dishId: it.dishId,
       menuId: it.menuId,
       categoryId: it.categoryId,
@@ -368,6 +372,7 @@ export default function LeftPanel() {
 
     setCurrentOrder(items);
     setCurrentOrderCode(payload.orderCode || null);
+    setCurrentOrderId?.(payload.id || order.id || null);
     setCurrentOrderType(payload.orderType || currentOrderType);
     setCurrentTable({
       id: null,

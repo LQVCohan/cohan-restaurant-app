@@ -38,6 +38,16 @@ function mockFindChain(value = []) {
   return chain;
 }
 
+
+function mockPosCandidateFindChain(value = []) {
+  const chain = {
+    limit: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(value),
+  };
+  modelMocks.PosCustomer.find.mockReturnValue(chain);
+  return chain;
+}
+
 function mockUserFindChain(value = []) {
   const chain = {
     select: vi.fn().mockReturnThis(),
@@ -207,17 +217,78 @@ describe("PosCustomer resolvers", () => {
     expect(modelMocks.PosCustomer.findOne).not.toHaveBeenCalled();
   });
 
-  it("finds customer candidates by normalized email/phone", async () => {
+  it("finds POS customer candidates by phone with POS source", async () => {
+    mockPosCandidateFindChain([
+      {
+        _id: "pc1",
+        fullName: "Pos A",
+        email: "posa@example.com",
+        phone: "0901234567",
+        defaultAddress: "12 Nguyen Trai",
+        note: "VIP",
+      },
+    ]);
+    mockUserFindChain([]);
+    const { PosCustomerQuery } = await import("../../graphql/resolvers/posCustomer/query.js");
+    const rows = await PosCustomerQuery.posCustomerCandidates(
+      null,
+      { restaurantId: "valid-restaurant-1", phone: "+84 901 234 567" },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(rows).toContainEqual(
+      expect.objectContaining({ id: "pc1", source: "POS", phone: "0901234567" }),
+    );
+  });
+
+  it("finds POS customer candidates by email and returns note/address/source", async () => {
+    mockPosCandidateFindChain([
+      {
+        _id: "pc2",
+        fullName: "Pos B",
+        email: "posb@example.com",
+        phone: "0907654321",
+        defaultAddress: "34 Le Loi",
+        note: "Frequent",
+      },
+    ]);
+    mockUserFindChain([]);
+    const { PosCustomerQuery } = await import("../../graphql/resolvers/posCustomer/query.js");
+    const rows = await PosCustomerQuery.posCustomerCandidates(
+      null,
+      { restaurantId: "valid-restaurant-1", email: " POSB@example.com " },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        id: "pc2",
+        source: "POS",
+        note: "Frequent",
+        address: "34 Le Loi",
+      }),
+    );
+  });
+
+  it("still returns USER candidates alongside POS candidates", async () => {
+    mockPosCandidateFindChain([
+      { _id: "pc3", fullName: "Pos C", email: "c@example.com", phone: "0901000000", defaultAddress: "1 C st" },
+    ]);
     mockUserFindChain([
-      { _id: "u1", fullName: "A", email: "a@example.com", phone: "0901234567", address: { line1: "1 A st" } },
+      { _id: "u1", fullName: "User A", email: "a@example.com", phone: "0901234567", address: { line1: "1 A st" } },
     ]);
     const { PosCustomerQuery } = await import("../../graphql/resolvers/posCustomer/query.js");
     const rows = await PosCustomerQuery.posCustomerCandidates(
       null,
-      { restaurantId: "valid-restaurant-1", email: " A@Example.com ", phone: "+84 901 234 567" },
+      { restaurantId: "valid-restaurant-1", keyword: "A" },
       { user: { id: "manager-1" } },
     );
-    expect(rows[0]).toEqual(expect.objectContaining({ id: "u1", source: "USER" }));
-    expect(modelMocks.User.find).toHaveBeenCalled();
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "pc3", source: "POS" }),
+        expect.objectContaining({ id: "u1", source: "USER", note: null }),
+      ]),
+    );
   });
 });
