@@ -43,7 +43,7 @@ const toDraftComparableForm = (value, fallbackStartDate, fallbackRestaurantId) =
   startDate: value?.startDate || fallbackStartDate,
   emergencyRelation: normalizeDraftText(value?.emergencyRelation),
   notes: normalizeDraftText(value?.notes),
-  primaryRestaurantId: value?.primaryRestaurantId || fallbackRestaurantId || "",
+  restaurantForStaff: value?.restaurantForStaff || fallbackRestaurantId || "",
   userType: value?.userType || "STAFF",
   employmentType: value?.employmentType || "FULL_TIME",
 });
@@ -61,7 +61,7 @@ const createBaselineForm = (fallbackStartDate, fallbackRestaurantId) =>
       startDate: fallbackStartDate,
       emergencyRelation: "",
       notes: "",
-      primaryRestaurantId: fallbackRestaurantId || "",
+      restaurantForStaff: fallbackRestaurantId || "",
       userType: "STAFF",
       employmentType: "FULL_TIME",
     },
@@ -96,7 +96,7 @@ const EmployeeFormModal = ({
     emergencyPhone: "",
     emergencyRelation: "",
     notes: "",
-    primaryRestaurantId: defaultRestaurantId || "",
+    restaurantForStaff: defaultRestaurantId || "",
     userType: "STAFF",
     employmentType: "FULL_TIME",
     password: "",
@@ -144,7 +144,7 @@ const EmployeeFormModal = ({
       emergencyPhone: "",
       emergencyRelation: "",
       notes: "",
-      primaryRestaurantId: defaultRestaurantId || "",
+      restaurantForStaff: defaultRestaurantId || "",
       userType: "STAFF",
       employmentType: "FULL_TIME",
       password: "",
@@ -338,8 +338,8 @@ const EmployeeFormModal = ({
       if (!formData.roleSlug) newErrors.roleSlug = "Vui lòng chọn vai trò";
       if (!formData.positionTitle.trim())
         newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
-      if (!formData.primaryRestaurantId)
-        newErrors.primaryRestaurantId = "Chọn nhà hàng";
+      if (!formData.restaurantForStaff)
+        newErrors.restaurantForStaff = "Chọn nhà hàng";
     }
 
     // --- STEP 2 ---
@@ -618,8 +618,7 @@ const EmployeeFormModal = ({
         roleSlug: formData.roleSlug || undefined,
         positionTitle: formData.positionTitle.trim(),
         department: formData.department,
-        primaryRestaurantId: formData.primaryRestaurantId || undefined,
-        restaurantForStaff: formData.primaryRestaurantId || undefined,
+        restaurantForStaff: formData.restaurantForStaff || undefined,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
         dateJoined,
@@ -700,11 +699,11 @@ const EmployeeFormModal = ({
           <select
             aria-label="Nhà hàng chính"
             className={`form-input form-select ${
-              errors.primaryRestaurantId ? "error" : ""
+              errors.restaurantForStaff ? "error" : ""
             }`}
-            value={formData.primaryRestaurantId}
+            value={formData.restaurantForStaff}
             onChange={(e) =>
-              handleInputChange("primaryRestaurantId", e.target.value)
+              handleInputChange("restaurantForStaff", e.target.value)
             }
           >
             <option value="">-- Chọn nhà hàng --</option>
@@ -714,8 +713,8 @@ const EmployeeFormModal = ({
               </option>
             ))}
           </select>
-          {errors.primaryRestaurantId && (
-            <span className="error-msg">{errors.primaryRestaurantId}</span>
+          {errors.restaurantForStaff && (
+            <span className="error-msg">{errors.restaurantForStaff}</span>
           )}
         </div>
       </div>

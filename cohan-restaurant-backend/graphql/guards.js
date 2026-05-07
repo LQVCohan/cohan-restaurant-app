@@ -107,7 +107,15 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
 
   // Preserve prior intent that scoped staff-like roles are restaurant-bound.
   const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
-  if (isStaffLike && hasDirectRestaurantScope(ctx, restaurantId)) return;
+  if (isStaffLike) {
+    const scopedRestaurantId = ctx?.user?.restaurantForStaff;
+    if (!scopedRestaurantId) {
+      const err = new Error("FORBIDDEN_SCOPE");
+      err.statusCode = 403;
+      throw err;
+    }
+    if (String(scopedRestaurantId) === String(restaurantId || "")) return;
+  }
 
   const err = new Error("FORBIDDEN_SCOPE");
   err.statusCode = 403;

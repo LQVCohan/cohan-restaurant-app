@@ -290,7 +290,7 @@ async function resolveStaffDoc(staffId, ctx) {
 
   return Staff.findById(oid)
     .populate("role")
-    .populate("primaryRestaurant");
+    ;
 }
 
 export default {
@@ -303,8 +303,7 @@ export default {
       .select({
         userType: 1,
         deletedAt: 1,
-        primaryRestaurant: 1,
-        restaurantForStaff: 1,
+                restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -313,15 +312,13 @@ export default {
     }
     if (String(ctx?.user?.id || ctx?.user?._id || "") !== String(id)) {
       const targetRestaurantId =
-        minimal?.restaurantForStaff ||
-        minimal?.primaryRestaurant ||
-        null;
+        minimal?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
     const user = await Staff.findById(id)
       .populate("role")
       .populate("refRestaurants")
-      .populate("primaryRestaurant");
+      ;
     return user;
   },
 
@@ -338,7 +335,6 @@ export default {
       // Legacy compatibility: ưu tiên restaurantForStaff, fallback primaryRestaurant.
       filter.$or = [
         { restaurantForStaff: rid || restaurantId },
-        { primaryRestaurant: rid || restaurantId },
       ];
     } else {
       requireRoles(ctx, ["ADMIN"]);
@@ -366,7 +362,7 @@ export default {
     return Staff.find(filter)
       .populate("role")
       .populate("refRestaurants")
-      .populate("primaryRestaurant")
+      
       .sort({ fullName: 1 });
   },
   shiftAcknowledgements: async (
@@ -497,12 +493,12 @@ export default {
     const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
       const targetRestaurantId =
-        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+        staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
     const restaurantId =
-      staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+      staff?.restaurantForStaff || null;
     const rid = toObjectId(restaurantId);
 
     let floorAssigned = [];
@@ -571,8 +567,7 @@ export default {
       employmentStatus: String(
         staff.employmentStatus || "working",
       ).toUpperCase(),
-      primaryRestaurant: staff.primaryRestaurant || null,
-      restaurantForStaff: staff.restaurantForStaff || null,
+            restaurantForStaff: staff.restaurantForStaff || null,
       floorAssigned,
       floorCount,
       tableCount,
@@ -593,7 +588,7 @@ export default {
     const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
       const targetRestaurantId =
-        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+        staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
       assertPayrollPermission(ctx, "payroll.read");
     }
@@ -716,7 +711,7 @@ export default {
     const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
       const targetRestaurantId =
-        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+        staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
@@ -783,7 +778,6 @@ export default {
     const fallbackRestaurantId =
       restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) {
@@ -854,7 +848,6 @@ export default {
     const rid =
       restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     if (!rid) return null;
     await requireRestaurantAccess(ctx, rid);
@@ -1032,7 +1025,6 @@ export default {
     const fallbackRestaurantId =
       restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     const rid = toObjectId(fallbackRestaurantId);
     const eid = toObjectId(employeeId);
@@ -1119,21 +1111,20 @@ export default {
     const fallbackRestaurantId =
       restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
 
     const staffFilter = {
       userType: "STAFF",
-      $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+      $or: [{ restaurantForStaff: rid }],
     };
     const eid = toObjectId(employeeId);
     if (eid) staffFilter._id = eid;
     if (search) {
       const regex = new RegExp(search, "i");
       staffFilter.$and = [
-        { $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }] },
+        { $or: [{ restaurantForStaff: rid }] },
         {
           $or: [
             { fullName: regex },
@@ -1375,7 +1366,6 @@ export default {
     const fallbackRestaurantId =
       filter.restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
@@ -1587,7 +1577,6 @@ export default {
     const fallbackRestaurantId =
       input.restaurantId ||
       authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
       null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) throw new Error("Missing restaurantId for staff report");
@@ -1607,7 +1596,7 @@ export default {
       await Promise.all([
         Staff.find({
           userType: "STAFF",
-          $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+          $or: [{ restaurantForStaff: rid }],
         })
           .select({
             _id: 1,

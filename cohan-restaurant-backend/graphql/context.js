@@ -45,7 +45,6 @@ export default async function buildContext(request, reply) {
             provider: userDoc.provider,
             refRestaurants: userDoc.refRestaurants,
             restaurantForStaff: userDoc.restaurantForStaff,
-            primaryRestaurant: userDoc.primaryRestaurant,
             point: userDoc.point,
             loyaltyPoints: userDoc.loyaltyPoints,
             customerType: userDoc.customerType,

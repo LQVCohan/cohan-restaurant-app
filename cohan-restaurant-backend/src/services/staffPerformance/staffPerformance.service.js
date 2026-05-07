@@ -319,13 +319,15 @@ async function calculateSnapshotForEmployee({
   const punctualityScore =
     recordCount > 0 ? clampScore(100 - punctualityPenalty, 75) : 75;
 
-  const staffRate = Number(staff.rate || 0);
-  const staffRateCount = Number(staff.rateCount || 0);
-
-  const qualityScore =
-    staffRate > 0 && staffRateCount > 0
-      ? clampScore((staffRate / 5) * 100, 75)
-      : 75;
+  const qualityScore = review
+    ? clampScore(
+        (Number(review.skillScore || 75) +
+          Number(review.attitudeScore || 75) +
+          Number(review.teamworkScore || 75)) /
+          3,
+        75,
+      )
+    : 75;
 
   const managerBaseScore = review
     ? clampScore(
@@ -486,8 +488,6 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
     userType: "STAFF",
     deletedAt: null,
     $or: [
-      { primaryRestaurant: restaurantId },
-      { refRestaurants: restaurantId },
       { restaurantForStaff: restaurantId },
     ],
   };

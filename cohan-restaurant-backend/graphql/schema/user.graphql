@@ -57,6 +57,44 @@ enum DepartmentType {
   bar
 }
 
+enum StaffGender {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  UNSPECIFIED
+}
+
+enum StaffContractType {
+  NONE
+  PROBATION
+  FIXED_TERM
+  INDEFINITE
+  SEASONAL
+  SERVICE
+}
+
+enum StaffSalaryType {
+  MONTHLY
+  HOURLY
+  SHIFT
+  COMMISSION
+}
+
+enum StaffTrainingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
 enum CustomerType {
   VIP
   NEW
@@ -308,6 +346,27 @@ type EmergencyContact {
   relation: String
 }
 
+type EmergencyContactExtended {
+  name: String
+  phone: String
+  relation: String
+  address: String
+  isPrimary: Boolean
+}
+
+type StaffCertification {
+  name: String
+  issuedBy: String
+  issuedAt: DateTime
+  expiresAt: DateTime
+  fileUrl: String
+}
+
+type StaffLanguageSkill {
+  name: String
+  level: String
+}
+
 type Wallet {
   provider: String
   status: String
@@ -387,10 +446,46 @@ type User {
   employeeCode: String
   positionTitle: String
   baseSalary: Int
+  dateOfBirth: DateTime
+  gender: StaffGender
+  nationalId: String
+  nationalIdIssuedAt: DateTime
+  nationalIdIssuedPlace: String
+  maritalStatus: MaritalStatus
+  permanentAddress: String
+  temporaryAddress: String
+  contractCode: String
+  contractType: StaffContractType
+  contractStartDate: DateTime
+  contractEndDate: DateTime
+  probationEndDate: DateTime
+  officialStartDate: DateTime
+  terminationReason: String
+  salaryType: StaffSalaryType
+  hourlyRate: Float
+  allowanceAmount: Float
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+  socialInsuranceNumber: String
+  healthInsuranceNumber: String
+  unemploymentInsuranceNumber: String
+  insuranceEligible: Boolean
+  insuranceStartDate: DateTime
+  educationLevel: String
+  certifications: [StaffCertification!]
+  skills: [String!]
+  languages: [StaffLanguageSkill!]
+  uniformSize: String
+  deviceIds: [String!]
+  accessCardCode: String
+  trainingStatus: StaffTrainingStatus
+  lastTrainingAt: DateTime
+  nextTrainingDueAt: DateTime
+  emergencyContacts: [EmergencyContactExtended!]
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
 
-  primaryRestaurant: Restaurant
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
 
@@ -403,8 +498,6 @@ type User {
 
   noteInternal: String
   emergencyContact: EmergencyContact
-  rate: Float
-  rateCount: Int
 
   wallet: Wallet
   isOnline: Boolean
@@ -476,6 +569,27 @@ input EmergencyContactInput {
   relation: String
 }
 
+input EmergencyContactExtendedInput {
+  name: String
+  phone: String
+  relation: String
+  address: String
+  isPrimary: Boolean
+}
+
+input StaffCertificationInput {
+  name: String
+  issuedBy: String
+  issuedAt: DateTime
+  expiresAt: DateTime
+  fileUrl: String
+}
+
+input StaffLanguageSkillInput {
+  name: String
+  level: String
+}
+
 input CreateUserInput {
   fullName: String!
   username: String
@@ -498,13 +612,86 @@ input CreateUserInput {
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurantId: ID
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
   noteInternal: String
   emergencyContact: EmergencyContactInput
   baseSalary: Int
+  dateOfBirth: DateTime
+  gender: StaffGender
+  nationalId: String
+  nationalIdIssuedAt: DateTime
+  nationalIdIssuedPlace: String
+  maritalStatus: MaritalStatus
+  permanentAddress: String
+  temporaryAddress: String
+  contractCode: String
+  contractType: StaffContractType
+  contractStartDate: DateTime
+  contractEndDate: DateTime
+  probationEndDate: DateTime
+  officialStartDate: DateTime
+  terminationReason: String
+  salaryType: StaffSalaryType
+  hourlyRate: Float
+  allowanceAmount: Float
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+  socialInsuranceNumber: String
+  healthInsuranceNumber: String
+  unemploymentInsuranceNumber: String
+  insuranceEligible: Boolean
+  insuranceStartDate: DateTime
+  educationLevel: String
+  certifications: [StaffCertificationInput!]
+  skills: [String!]
+  languages: [StaffLanguageSkillInput!]
+  uniformSize: String
+  deviceIds: [String!]
+  accessCardCode: String
+  trainingStatus: StaffTrainingStatus
+  lastTrainingAt: DateTime
+  nextTrainingDueAt: DateTime
+  emergencyContacts: [EmergencyContactExtendedInput!]
+  dateOfBirth: DateTime
+  gender: StaffGender
+  nationalId: String
+  nationalIdIssuedAt: DateTime
+  nationalIdIssuedPlace: String
+  maritalStatus: MaritalStatus
+  permanentAddress: String
+  temporaryAddress: String
+  contractCode: String
+  contractType: StaffContractType
+  contractStartDate: DateTime
+  contractEndDate: DateTime
+  probationEndDate: DateTime
+  officialStartDate: DateTime
+  terminationReason: String
+  salaryType: StaffSalaryType
+  hourlyRate: Float
+  allowanceAmount: Float
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+  socialInsuranceNumber: String
+  healthInsuranceNumber: String
+  unemploymentInsuranceNumber: String
+  insuranceEligible: Boolean
+  insuranceStartDate: DateTime
+  educationLevel: String
+  certifications: [StaffCertification!]
+  skills: [String!]
+  languages: [StaffLanguageSkill!]
+  uniformSize: String
+  deviceIds: [String!]
+  accessCardCode: String
+  trainingStatus: StaffTrainingStatus
+  lastTrainingAt: DateTime
+  nextTrainingDueAt: DateTime
+  emergencyContacts: [EmergencyContactExtended!]
 }
 
 input UpdateUserInput {
@@ -564,7 +751,6 @@ input AdminUpdateUserInput {
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurantId: ID
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
@@ -594,7 +780,6 @@ type StaffAccountOverview {
   employeeCode: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
-  primaryRestaurant: Restaurant
   restaurantForStaff: ID
   floorAssigned: [String!]!
   floorCount: Int!
@@ -2389,7 +2574,6 @@ type Mutation {
   createStaff(input: CreateUserInput!): User!
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
   deleteStaff(userId: ID!): Boolean!
-  rateStaff(userId: ID!, rating: Int!): User!
   setStaffEmploymentStatus(
     userId: ID!
     employmentStatus: EmploymentStatus!
