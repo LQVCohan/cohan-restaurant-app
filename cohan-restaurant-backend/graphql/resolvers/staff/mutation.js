@@ -17,6 +17,7 @@ import {
   SchedulePublication,
   ShiftAcknowledgement,
   ScheduleAcknowledgement,
+  AttendanceCorrectionRequest,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -172,6 +173,11 @@ function staffBelongsToRestaurant(staff, restaurantId) {
     String(staff?.restaurantForStaff || "") === rid ||
     refs.some((id) => String(id?._id || id) === rid)
   );
+}
+
+function isSelf(ctx, employeeId) {
+  const actorId = ctx?.user?.id || ctx?.user?._id;
+  return actorId && String(actorId) === String(employeeId);
 }
 
 async function loadStaffForRestaurant(employeeId, restaurantId) {
@@ -3238,18 +3244,56 @@ export default {
     );
   },
   createAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const employeeId = input?.employeeId;
+    const selfRequest = !employeeId || isSelf(ctx, employeeId);
+    if (!selfRequest) {
+      requireRoles(ctx, [
+        ...ATTENDANCE_OPERATION_ROLES,
+        ...ATTENDANCE_REVIEW_ROLES,
+      ]);
+      if (input?.restaurantId) {
+        await requireRestaurantAccess(ctx, input.restaurantId);
+      }
+    }
     return createAttendanceCorrectionRequestService({ input, ctx });
   },
 
   approveAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
+      .select({ _id: 1, restaurantId: 1 });
+    if (!existing) throw new Error("Attendance correction request not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return approveAttendanceCorrectionRequestService({ input, ctx });
   },
 
   rejectAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
+      .select({ _id: 1, restaurantId: 1 });
+    if (!existing) throw new Error("Attendance correction request not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return rejectAttendanceCorrectionRequestService({ input, ctx });
   },
 
   cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
+    requireAuth(ctx);
+    const existing = await AttendanceCorrectionRequest.findById(requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
+    if (!existing) throw new Error("Attendance correction request not found");
+    if (!isSelf(ctx, existing.employeeId)) {
+      requireRoles(ctx, [
+        ...ATTENDANCE_REVIEW_ROLES,
+        ...ATTENDANCE_OPERATION_ROLES,
+      ]);
+      await requireRestaurantAccess(ctx, existing.restaurantId);
+    }
     return cancelAttendanceCorrectionRequestService({ requestId, ctx });
   },
   reviewPerformanceIncident: async (_, { input }, ctx) => {
@@ -3301,32 +3345,17 @@ export default {
     return completeOvertimeRequestService({ input, ctx });
   },
   upsertStaffAttendance: async (_, { input }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
+    requireAuth(ctx);
     const employeeId = toObjectId(input.employeeId);
     const restaurantId = toObjectId(input.restaurantId);
     if (!employeeId || !restaurantId)
       throw new Error("Invalid employeeId or restaurantId");
-    const roles = resolveUserRoles(ctx.user);
     const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    const isSelfRole = roles.some((role) =>
-      ATTENDANCE_SELF_ROLES.includes(role),
-    );
-    const isOperationRole = roles.some((role) =>
-      ATTENDANCE_OPERATION_ROLES.includes(role),
-    );
-    if (isSelfRole) {
-      if (!actorId || String(actorId) !== String(employeeId)) {
-        throw new Error("FORBIDDEN");
-      }
-      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
-        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-      }
-    } else if (isOperationRole) {
-      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
-        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-      }
+    if (isSelf(ctx, employeeId)) {
+      requireRoles(ctx, ATTENDANCE_SELF_ROLES);
     } else {
-      throw new Error("FORBIDDEN");
+      requireRoles(ctx, ATTENDANCE_OPERATION_ROLES);
+      await requireRestaurantAccess(ctx, restaurantId);
     }
 
     const action = String(input.action || "").toLowerCase();
@@ -3486,18 +3515,13 @@ export default {
     return mapAttendanceOutput(populated, staff);
   },
   approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
-    const roles = resolveUserRoles(ctx.user);
-    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
-      throw new Error("FORBIDDEN");
-    }
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const tsid = toObjectId(timesheetId);
     if (!tsid) throw new Error("Invalid timesheetId");
     const record = await Timesheet.findById(tsid);
     if (!record) throw new Error("Timesheet not found");
-    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
-      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-    }
+    await requireRestaurantAccess(ctx, record.restaurantId);
     if (!record.isOffSchedule)
       throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.offScheduleApprovalStatus === "rejected") {
@@ -3536,18 +3560,13 @@ export default {
     return mapAttendanceOutput(record.toObject(), staff);
   },
   rejectOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
-    const roles = resolveUserRoles(ctx.user);
-    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
-      throw new Error("FORBIDDEN");
-    }
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const tsid = toObjectId(timesheetId);
     if (!tsid) throw new Error("Invalid timesheetId");
     const record = await Timesheet.findById(tsid);
     if (!record) throw new Error("Timesheet not found");
-    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
-      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-    }
+    await requireRestaurantAccess(ctx, record.restaurantId);
     if (!record.isOffSchedule)
       throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.approved || record.offScheduleApprovalStatus === "approved") {
