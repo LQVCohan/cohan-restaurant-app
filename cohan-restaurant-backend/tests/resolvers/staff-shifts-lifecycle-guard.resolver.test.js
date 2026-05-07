@@ -50,6 +50,7 @@ vi.mock("../../src/services/performance/performanceAppeal.service.js", () => ({ 
 vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(value) { return value; } } } }));
 
 const lean = (value) => ({ lean: vi.fn(async () => value) });
+const query = (value) => ({ select: vi.fn(() => lean(value)) });
 
 const baseInput = {
   employeeId: "staff-1",
@@ -79,7 +80,7 @@ function mockPublicationStatus(status) {
 describe("createStaffShift lifecycle guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Staff.findById.mockReturnValue(lean({ _id: "staff-1", userType: "STAFF", fullName: "A" }));
+    modelMocks.Staff.findById.mockReturnValue(query({ _id: "staff-1", userType: "STAFF", fullName: "A", primaryRestaurant: "rest-1" }));
     modelMocks.Shift.create.mockResolvedValue({ _id: "shift-1", employeeId: "staff-1", restaurantId: "rest-1", shiftType: "morning", startTime: new Date(baseInput.startTime), endTime: new Date(baseInput.endTime), status: "scheduled", notes: "" });
   });
 

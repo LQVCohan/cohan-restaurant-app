@@ -163,10 +163,49 @@ function assertAcknowledgementCanRespond(doc, employeeId) {
   if (doc.status === "cancelled")
     throw new Error("SHIFT_ACKNOWLEDGEMENT_CANCELLED");
 }
+function staffBelongsToRestaurant(staff, restaurantId) {
+  const rid = String(restaurantId);
+  const refs = Array.isArray(staff?.refRestaurants) ? staff.refRestaurants : [];
+  return (
+    String(staff?.primaryRestaurant?._id || staff?.primaryRestaurant || "") ===
+      rid ||
+    String(staff?.restaurantForStaff || "") === rid ||
+    refs.some((id) => String(id?._id || id) === rid)
+  );
+}
+
+async function loadStaffForRestaurant(employeeId, restaurantId) {
+  const staff = await Staff.findById(employeeId)
+    .select({
+      _id: 1,
+      userType: 1,
+      deletedAt: 1,
+      primaryRestaurant: 1,
+      restaurantForStaff: 1,
+      refRestaurants: 1,
+      fullName: 1,
+      employeeCode: 1,
+    })
+    .lean();
+  if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+    throw new Error("Staff not found");
+  }
+  if (!staffBelongsToRestaurant(staff, restaurantId)) {
+    throw new Error("Staff does not belong to this restaurant");
+  }
+  return staff;
+}
+
+async function requireScheduleWriteAccess(ctx, restaurantId) {
+  requireAuth(ctx);
+  requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+  await requireRestaurantAccess(ctx, restaurantId);
+}
 async function createStaffShiftInternal(input, ctx) {
   requireAuth(ctx);
   requireRoles(ctx, SCHEDULE_WRITE_ROLES);
   const restaurantId = input.restaurantId;
+  await requireRestaurantAccess(ctx, restaurantId);
   const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu ca");
   const endTime = toValidDateTime(input.endTime, "Giờ kết thúc ca");
 
@@ -200,10 +239,7 @@ async function createStaffShiftInternal(input, ctx) {
     },
     ctx,
   });
-  const staff = await Staff.findById(input.employeeId).lean();
-  if (!staff || staff.userType !== "STAFF") {
-    throw new Error("Staff not found");
-  }
+  const staff = await loadStaffForRestaurant(input.employeeId, restaurantId);
 
   const created = await Shift.create({
     employeeId: input.employeeId,
@@ -1387,6 +1423,7 @@ export default {
     return staff;
   },
   publishSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = toObjectId(ctx?.user?.id || ctx?.user?._id);
@@ -1395,6 +1432,7 @@ export default {
 
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
     const shiftCount = await Shift.countDocuments({
       restaurantId,
       startTime: { $gte: periodStart, $lte: periodEnd },
@@ -1526,12 +1564,14 @@ export default {
     return mapSchedulePublicationOutput(publication);
   },
   lockSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
     if (!reason) throw new Error("Cần nhập lý do khóa lịch.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
@@ -1572,12 +1612,14 @@ export default {
   },
 
   reopenSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
     if (!reason) throw new Error("Cần nhập lý do mở lại lịch để chỉnh sửa.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
@@ -1629,12 +1671,14 @@ export default {
     return mapSchedulePublicationOutput(publication);
   },
   closeSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
     if (!reason) throw new Error("Cần nhập lý do đóng lịch.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
@@ -1749,7 +1793,20 @@ export default {
     };
   },
   updateStaffShift: async (_, { shiftId, input }, ctx) => {
-    const oldShift = await Shift.findById(shiftId).lean();
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const oldShift = await Shift.findById(shiftId)
+      .select({
+        restaurantId: 1,
+        employeeId: 1,
+        startTime: 1,
+        endTime: 1,
+        shiftType: 1,
+        status: 1,
+      })
+      .lean();
+    if (!oldShift) throw new Error("Shift not found");
+    await requireRestaurantAccess(ctx, oldShift.restaurantId);
     if (oldShift) {
       const publication = await getPublishedScheduleForShift({
         restaurantId: oldShift.restaurantId,
@@ -1769,40 +1826,45 @@ export default {
         }
       }
     }
-    if (oldShift) {
-      await assertNoLockedPayrollPeriodOverlap({
-        restaurantId: oldShift.restaurantId,
-        employeeId: oldShift.employeeId,
-        startDate: oldShift.startTime,
-        endDate: oldShift.endTime,
-        action: "shift",
-      });
-    }
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: oldShift.restaurantId,
+      employeeId: oldShift.employeeId,
+      startDate: oldShift.startTime,
+      endDate: oldShift.endTime,
+      action: "shift",
+    });
     const payload = { ...input };
     if (payload.shiftType)
       payload.shiftType = payload.shiftType.toString().toLowerCase();
     if (payload.startTime) payload.startTime = new Date(payload.startTime);
     if (payload.endTime) payload.endTime = new Date(payload.endTime);
-    if (oldShift) {
-      const nextStartTime = payload.startTime || oldShift.startTime;
-      const nextEndTime = payload.endTime || oldShift.endTime;
-      const nextRestaurantId = oldShift.restaurantId;
-      const nextEmployeeId = oldShift.employeeId;
-
-      await assertShiftAssignmentValid({
-        input: {
-          employeeId: nextEmployeeId,
-          restaurantId: nextRestaurantId,
-          shiftType: payload.shiftType || oldShift.shiftType,
-          startTime: nextStartTime,
-          endTime: nextEndTime,
-          ignoreShiftId: shiftId,
-          allowOverride: input.allowOverride,
-          overrideReason: input.overrideReason,
-        },
-        ctx,
-      });
+    if (Object.prototype.hasOwnProperty.call(payload, "restaurantId")) {
+      delete payload.restaurantId;
     }
+    if (
+      payload.employeeId &&
+      String(payload.employeeId) !== String(oldShift.employeeId)
+    ) {
+      await loadStaffForRestaurant(payload.employeeId, oldShift.restaurantId);
+    }
+    const nextStartTime = payload.startTime || oldShift.startTime;
+    const nextEndTime = payload.endTime || oldShift.endTime;
+    const nextRestaurantId = oldShift.restaurantId;
+    const nextEmployeeId = payload.employeeId || oldShift.employeeId;
+
+    await assertShiftAssignmentValid({
+      input: {
+        employeeId: nextEmployeeId,
+        restaurantId: nextRestaurantId,
+        shiftType: payload.shiftType || oldShift.shiftType,
+        startTime: nextStartTime,
+        endTime: nextEndTime,
+        ignoreShiftId: shiftId,
+        allowOverride: input.allowOverride,
+        overrideReason: input.overrideReason,
+      },
+      ctx,
+    });
     const updated = await Shift.findByIdAndUpdate(shiftId, payload, {
       new: true,
     }).populate("employeeId", "fullName");
@@ -1821,6 +1883,7 @@ export default {
     };
   },
   changePublishedShiftGroupTime: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
@@ -1832,6 +1895,7 @@ export default {
     if (!actorUserId) {
       throw new Error("Unauthorized.");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const reason = String(input.reason || "").trim();
     const overrideReason = String(input.overrideReason || reason || "").trim();
@@ -2087,6 +2151,8 @@ export default {
     { shiftId, reason = "", notifyEmployee = true },
     ctx,
   ) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const shift = await Shift.findById(shiftId).populate(
       "employeeId",
       "fullName employeeCode email",
@@ -2095,6 +2161,7 @@ export default {
     if (!shift) {
       throw new Error("Shift not found");
     }
+    await requireRestaurantAccess(ctx, shift.restaurantId);
 
     const actorUserId = getActorUserId(ctx);
     if (!actorUserId) throw new Error("Unauthorized.");
@@ -2218,12 +2285,14 @@ export default {
     return true;
   },
   deletePublishedShiftGroup: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
 
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const reason = String(input.reason || "").trim();
     if (!reason) {
@@ -2369,6 +2438,7 @@ export default {
     return true;
   },
   addStaffToPublishedShiftGroup: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const employeeId = toObjectId(input.employeeId);
@@ -2377,6 +2447,7 @@ export default {
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!employeeId) throw new Error("employeeId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const reason = String(input.reason || "").trim();
     const overrideReason = String(input.overrideReason || reason || "").trim();
@@ -2408,11 +2479,7 @@ export default {
     }
     assertPublishedScheduleCanChange(publication);
 
-    const staff = await Staff.findById(employeeId).lean();
-
-    if (!staff || staff.userType !== "STAFF") {
-      throw new Error("Không tìm thấy nhân viên.");
-    }
+    const staff = await loadStaffForRestaurant(employeeId, restaurantId);
 
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId,
