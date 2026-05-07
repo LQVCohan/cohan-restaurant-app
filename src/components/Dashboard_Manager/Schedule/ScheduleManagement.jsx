@@ -58,6 +58,7 @@ import AutoScheduleModal from "./components/AutoScheduleModal";
 import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
 import AvailabilityRegistrationPanel from "./components/AvailabilityRegistrationPanel";
+import AvailabilitySnapshotModal from "./components/AvailabilitySnapshotModal";
 import useAvailabilityPolicyUpdate from "./hooks/useAvailabilityPolicyUpdate";
 const SCHEDULE_STATUS_LABELS = {
   draft: "Bản nháp",
@@ -1216,6 +1217,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
   const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] =
     useState(false);
+  const [isAvailabilitySnapshotOpen, setIsAvailabilitySnapshotOpen] = useState(false);
   const lastAvailabilityTargetPublicationKeyRef = useRef("");
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
@@ -4293,6 +4295,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
           {!readOnly && (
             <button
               type="button"
+              className="btn-availability-snapshot"
+              onClick={() => {
+                setIsAvailabilitySnapshotOpen(true);
+                refetchManagerWindows?.();
+                refetchManagerSubmissions?.();
+              }}
+            >
+              <CalendarCheck2 size={16} />
+              Xem availability đã chốt
+            </button>
+          )}
+
+          {!readOnly && (
+            <button
+              type="button"
               className="btn-auto-schedule"
               onClick={() => setIsAutoScheduleOpen(true)}
             >
@@ -4775,6 +4792,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
           applying={isApplyingAutoSchedule}
         />
       )}
+
+      <AvailabilitySnapshotModal
+        isOpen={isAvailabilitySnapshotOpen}
+        onClose={() => setIsAvailabilitySnapshotOpen(false)}
+        weekStart={currentWeekStart}
+        weekEnd={currentWeekEnd}
+        staffList={staff}
+        availabilityWindows={managerAvailabilityWindowsData?.availabilityWindows || []}
+        availabilitySubmissions={managerScheduleWeekSubmissions}
+        shiftTemplates={schedulingPolicy?.shiftTemplates}
+        shiftRules={configuredShiftTypes}
+        loading={availabilityWindowsState.loading || availabilitySubmissionsState.loading}
+        error={null}
+      />
 
       {isPublishConfirmOpen ? (
         <div className="schedule-publish-modal-overlay">

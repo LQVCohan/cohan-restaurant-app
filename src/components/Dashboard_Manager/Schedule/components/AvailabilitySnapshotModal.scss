@@ -1,0 +1,5 @@
+.availability-snapshot-modal-overlay {position: fixed; inset: 0; background: rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:1200;}
+.availability-snapshot-modal {background:#fff; width:min(1200px,96vw); max-height:90vh; overflow:auto; border-radius:14px; padding:16px;}
+.availability-snapshot-table {width:100%; border-collapse:collapse; font-size:12px;}
+.availability-snapshot-table th,.availability-snapshot-table td{border:1px solid #e2e8f0; padding:6px;}
+.availability-cell.available{background:#dcfce7}.availability-cell.unavailable{background:#fee2e2}.availability-cell.warning{background:#fef3c7}.availability-cell.neutral{background:#f1f5f9}
