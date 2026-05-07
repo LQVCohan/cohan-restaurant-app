@@ -1,7 +1,24 @@
+import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
 import EventLog from "../../../models/event-log.model.js";
+import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+
+function badInput(message) {
+  return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
 
 export default {
   async eventLogs(_, { filter = {}, limit = 50, skip = 0 }, ctx) {
+    const restaurantId = filter?.restaurantId;
+    if (restaurantId) {
+      if (!mongoose.isValidObjectId(restaurantId)) {
+        throw badInput("Invalid restaurantId");
+      }
+      await requireRestaurantAccess(ctx, restaurantId);
+    } else {
+      await requireRoles(ctx, ["ADMIN"]);
+    }
+
     const q = {};
 
     if (filter.restaurantId) q.restaurantId = filter.restaurantId;
