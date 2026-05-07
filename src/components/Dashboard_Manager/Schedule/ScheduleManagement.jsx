@@ -3801,10 +3801,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsApplyingAutoSchedule(true);
     setAutoScheduleError("");
 
-    const successRows = [];
-    const failedRows = [];
+    const validationFailedRows = [];
 
     try {
+      const batchInputs = [];
       for (const input of inputs) {
         try {
           const override = await validateShiftAssignmentOrThrow({
@@ -3814,21 +3814,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
             endTime: input.endTime,
           });
 
-          const finalInput = {
+          batchInputs.push({
             ...input,
             allowOverride: Boolean(override.allowOverride),
             overrideReason: override.overrideReason || undefined,
-          };
-
-          await createShift({
-            variables: {
-              input: finalInput,
-            },
           });
-
-          successRows.push(finalInput);
         } catch (error) {
-          failedRows.push({
+          validationFailedRows.push({
             input,
             message: getGraphQLErrorMessage(
               error,
@@ -3838,13 +3830,35 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }
       }
 
-      if (successRows.length > 0) {
+      const response =
+        batchInputs.length > 0
+          ? await createShifts({
+              variables: {
+                inputs: batchInputs,
+              },
+            })
+          : null;
+
+      const batchResult = response?.data?.createStaffShifts || {
+        successCount: 0,
+        failedCount: batchInputs.length,
+        errors: [],
+      };
+
+      const successCount = Number(batchResult.successCount || 0);
+      const batchFailedRows = (batchResult.errors || []).map((error) => ({
+        input: batchInputs[error.index] || null,
+        message: error.message,
+      }));
+      const failedRows = [...validationFailedRows, ...batchFailedRows];
+
+      if (successCount > 0) {
         await refetch();
       }
 
       const missingRoleLines = getMissingRoleSummaryForSelectedPreview();
 
-      if (successRows.length > 0 && failedRows.length === 0) {
+      if (successCount > 0 && failedRows.length === 0) {
         setIsAutoScheduleOpen(false);
         setSelectedAutoShiftKeys({});
         setValidatedAutoSchedulePreview(null);
@@ -3854,25 +3868,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
           : "";
 
         showNotification(
-          `Đã áp dụng ${successRows.length} phân công từ chia ca tự động.${missingText}`,
+          `Đã áp dụng ${successCount} phân công từ chia ca tự động.${missingText}`,
           missingRoleLines.length ? "warning" : "success",
         );
 
         return;
       }
 
-      if (successRows.length > 0 && failedRows.length > 0) {
+      if (successCount > 0 && failedRows.length > 0) {
         const failText = failedRows
           .slice(0, 3)
           .map((row) => row.message)
           .join(" | ");
 
         setAutoScheduleError(
-          `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi. ${failText}`,
+          `Đã lưu ${successCount} phân công, ${failedRows.length} phân công lỗi. ${failText}`,
         );
 
         showNotification(
-          `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi.`,
+          `Đã lưu ${successCount} phân công, ${failedRows.length} phân công lỗi.`,
           "warning",
         );
 

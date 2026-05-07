@@ -170,7 +170,7 @@ async function createStaffShiftInternal(input, ctx) {
   const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu ca");
   const endTime = toValidDateTime(input.endTime, "Giờ kết thúc ca");
 
-  const publication = await getPublishedScheduleForShift({
+  const publication = await getSchedulePublicationForShift({
     restaurantId,
     shiftTime: startTime,
   });
@@ -181,7 +181,7 @@ async function createStaffShiftInternal(input, ctx) {
       periodStart: publication.periodStart,
       periodEnd: publication.periodEnd,
     });
-    if (effectiveStatus !== "draft") {
+    if (!["draft", "revision_draft"].includes(effectiveStatus)) {
       throw new Error(
         "Không thể tạo ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
       );
