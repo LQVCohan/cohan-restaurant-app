@@ -502,3 +502,107 @@ it("blocks full-time unavailable exception", () => {
   expect(preview.items[0].plannedAssignments).toHaveLength(0);
   expect(preview.items[0].blockedCandidates.map((c) => c.staffId)).toContain("ft-block");
 });
+
+describe("auto schedule policy alignment", () => {
+  it("uses shiftConfig templates for preview windows and create inputs", async () => {
+    const { buildAutoScheduleCreateInputs } = await import("./autoSchedule");
+    const preview = buildAutoSchedulePreview({
+      assistant: {
+        shifts: [
+          {
+            shiftKey: "2026-04-28|morning",
+            date: "2026-04-28",
+            shiftType: "morning",
+            recommendedTotalStaff: 1,
+            currentAssignedStaff: 0,
+            recommendedRoles: [{ role: "server", required: 1, assigned: 0, delta: -1 }],
+            suggestedCandidates: [{ staffId: "s1", fullName: "S1", role: "server" }],
+          },
+        ],
+      },
+      shiftConfig: { morning: { startTime: "06:00", endTime: "14:00" } },
+      staffList: [{ id: "s1", fullName: "S1", department: "service", employmentStatus: "working" }],
+    });
+
+    expect(preview.items[0].startTime).toContain("T06:00:00");
+    expect(preview.items[0].endTime).toContain("T14:00:00");
+    expect(preview.items[0].hours).toBe(8);
+
+    const inputs = buildAutoScheduleCreateInputs({
+      previewItems: preview.items,
+      selectedShiftKeys: { "2026-04-28|morning": true },
+      restaurantId: "r1",
+    });
+
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].startTime).toBe(preview.items[0].startTime);
+    expect(inputs[0].endTime).toBe(preview.items[0].endTime);
+  });
+
+  it("keeps mandatory roles unresolved when no eligible candidate and fills when candidate exists", () => {
+    const assistant = {
+      shifts: [{
+        shiftKey: "2026-04-29|morning",
+        date: "2026-04-29",
+        shiftType: "morning",
+        recommendedTotalStaff: 2,
+        currentAssignedStaff: 0,
+        recommendedRoles: [
+          { role: "server", required: 1, assigned: 0, delta: -1 },
+          { role: "cashier", required: 1, assigned: 0, delta: -1 },
+        ],
+        suggestedCandidates: [{ staffId: "sv1", fullName: "SV", role: "server" }],
+      }],
+    };
+    const noCashier = buildAutoSchedulePreview({ assistant, staffList: [{ id: "sv1", fullName: "SV", department: "service", employmentStatus: "working" }] });
+    expect(noCashier.items[0].unfilledRoles.map((r) => r.role)).toContain("cashier");
+
+    const withCashier = buildAutoSchedulePreview({
+      assistant,
+      staffList: [
+        { id: "sv1", fullName: "SV", department: "service", employmentStatus: "working" },
+        { id: "c1", fullName: "Cashier", department: "service", role: { slug: "cashier" }, employmentStatus: "working" },
+      ],
+    });
+    expect(withCashier.items[0].plannedAssignments.map((a) => a.role)).toContain("cashier");
+  });
+
+  it("prefers concrete role slug over department fallback for eligibility", () => {
+    const preview = buildAutoSchedulePreview({
+      assistant: {
+        shifts: [{
+          shiftKey: "2026-04-30|morning",
+          date: "2026-04-30",
+          shiftType: "morning",
+          recommendedTotalStaff: 1,
+          currentAssignedStaff: 0,
+          recommendedRoles: [{ role: "cashier", required: 1, assigned: 0, delta: -1 }],
+          suggestedCandidates: [{ staffId: "staff-c", fullName: "Cashier", role: "cashier" }],
+        }],
+      },
+      staffList: [{ id: "staff-c", fullName: "Cashier", department: "service", role: { slug: "cashier" }, employmentStatus: "working" }],
+    });
+
+    expect(preview.items[0].plannedAssignments.map((a) => a.staffId)).toContain("staff-c");
+    expect(preview.items[0].plannedAssignments.map((a) => a.role)).not.toEqual(["server"]);
+  });
+
+  it("buildAutoScheduleCreateInputs applies selection/guards/dedupe and unresolved note", async () => {
+    const { buildAutoScheduleCreateInputs } = await import("./autoSchedule");
+    const items = [{
+      shiftKey: "k1",
+      canApply: true,
+      shiftType: "morning",
+      startTime: "2026-05-01T06:00:00.000Z",
+      endTime: "2026-05-01T14:00:00.000Z",
+      unresolvedCount: 1,
+      plannedAssignments: [{ staffId: "s1" }, { staffId: "s1" }],
+    }, {
+      shiftKey: "k2", canApply: false, plannedAssignments: [{ staffId: "s2" }], startTime: "2026-05-01T14:00:00.000Z", endTime: "2026-05-01T22:00:00.000Z", shiftType: "evening",
+    }];
+
+    const inputs = buildAutoScheduleCreateInputs({ previewItems: items, selectedShiftKeys: { k1: true, k2: true }, restaurantId: "r1" });
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].notes).toContain("Ca còn thiếu 1 vị trí");
+  });
+});

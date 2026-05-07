@@ -112,6 +112,11 @@ const AutoScheduleModal = ({
               trước khi áp dụng. Luồng này chỉ bổ sung ca còn thiếu, không tự
               xóa lịch đang có.
             </p>
+            <p>
+              Chia ca tự động chỉ áp dụng các phân công vượt qua kiểm tra policy.
+              Vai trò còn thiếu cần được quản lý xử lý thủ công. Thời gian ca lấy
+              từ cài đặt ca làm việc.
+            </p>
           </div>
         </div>
 
