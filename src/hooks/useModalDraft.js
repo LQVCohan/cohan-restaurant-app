@@ -82,6 +82,7 @@ export default function useModalDraft({
   const timerRef = useRef(null);
   const restoredRef = useRef(false);
   const [didRestore, setDidRestore] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState(null);
 
   const storageKey = useMemo(() => {
     const identity = draftIdentity || {};
@@ -152,7 +153,7 @@ export default function useModalDraft({
     [enabled, isDirty, notify, saveDraftNow],
   );
 
-  const confirmAndRestore = useCallback(() => {
+  const detectRestoreDraft = useCallback(() => {
     if (!enabled || restoredRef.current) return;
     cleanupStaleDrafts(tabIdRef.current);
     const draft = readDraftRecord(storageKey);
@@ -164,29 +165,19 @@ export default function useModalDraft({
     }
 
     restoredRef.current = true;
-    notify?.("Phát hiện dữ liệu nháp chưa hoàn tất.", "info", 3200);
-    const shouldRestore = window.confirm(
-      "Phát hiện dữ liệu nháp chưa hoàn tất. Bạn có muốn khôi phục không?",
-    );
-
-    if (shouldRestore) {
-      onRestore?.(draft.data);
-      setDidRestore(true);
-      notify?.("Đã khôi phục dữ liệu nháp.", "success", 2600);
-    } else if (typeof onDiscard === "function") {
-      onDiscard(draft.data);
-    }
-  }, [canRestoreDraft, clearDraft, enabled, notify, onDiscard, onRestore, storageKey]);
+    setPendingRestore(draft.data);
+  }, [canRestoreDraft, clearDraft, enabled, storageKey]);
 
   useEffect(() => {
     if (!enabled) return;
-    confirmAndRestore();
-  }, [confirmAndRestore, enabled]);
+    detectRestoreDraft();
+  }, [detectRestoreDraft, enabled]);
 
   useEffect(() => {
     if (enabled) return;
     restoredRef.current = false;
     setDidRestore(false);
+    setPendingRestore(null);
   }, [enabled]);
 
   useEffect(() => {
@@ -200,11 +191,31 @@ export default function useModalDraft({
     };
   }, []);
 
+  const restorePendingDraft = useCallback(() => {
+    if (!pendingRestore) return false;
+    onRestore?.(pendingRestore);
+    setDidRestore(true);
+    setPendingRestore(null);
+    notify?.("Đã khôi phục dữ liệu nháp.", "success", 2600);
+    return true;
+  }, [notify, onRestore, pendingRestore]);
+
+  const discardPendingDraft = useCallback(() => {
+    if (!pendingRestore) return false;
+    if (typeof onDiscard === "function") onDiscard(pendingRestore);
+    clearDraft();
+    setPendingRestore(null);
+    return true;
+  }, [clearDraft, onDiscard, pendingRestore]);
+
   return {
     storageKey,
     saveDraftNow,
     clearDraft,
     requestCloseWithDraft,
     didRestore,
+    pendingRestore,
+    restorePendingDraft,
+    discardPendingDraft,
   };
 }

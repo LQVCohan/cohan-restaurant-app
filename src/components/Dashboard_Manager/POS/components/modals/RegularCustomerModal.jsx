@@ -208,17 +208,11 @@ export default function RegularCustomerModal({
   })), [customersData]);
 
   const closeWithConfirm = () => {
-    if (tab === "create" && hasDirtyForm) {
-      const ok = window.confirm(
-        "Bạn có chắc muốn thoát? Dữ liệu đã nhập sẽ bị mất."
-      );
-      if (!ok) return;
-    }
     requestCloseWithDraft(() => onClose?.());
     setForm(emptyForm);
   };
 
-  const { clearDraft, requestCloseWithDraft } = useModalDraft({
+  const { clearDraft, requestCloseWithDraft, pendingRestore, restorePendingDraft, discardPendingDraft } = useModalDraft({
     enabled: isOpen && tab === "create",
     draftIdentity: {
       module: "pos",
@@ -233,6 +227,9 @@ export default function RegularCustomerModal({
     formValue: form,
     isDirty: hasDirtyForm,
     sanitize: (v) => ({
+      name: safeStr(v?.name),
+      phone: safeStr(v?.phone),
+      email: safeStr(v?.email),
       note: safeStr(v?.note),
       detail: safeStr(v?.detail),
       provinceKey: v?.provinceKey || "",
@@ -554,7 +551,15 @@ export default function RegularCustomerModal({
           </div>
         )}
 
-        {tab === "create" && (
+        {tab === "create" && pendingRestore && !hasDirtyForm && (
+            <div className={cls.restoreBanner}>
+              <span>Có dữ liệu khách nhập dở. Khôi phục?</span>
+              <button type="button" onClick={restorePendingDraft}>Khôi phục</button>
+              <button type="button" onClick={discardPendingDraft}>Bỏ qua</button>
+            </div>
+          )}
+
+          {tab === "create" && (
           <div className={cls.createTab}>
             <div className={cls.formGrid}>
               <div className={cls.field}>

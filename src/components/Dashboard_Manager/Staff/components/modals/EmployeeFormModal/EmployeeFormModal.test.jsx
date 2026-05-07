@@ -69,7 +69,6 @@ describe("EmployeeFormModal draft lifecycle", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("does not create a draft when the modal is opened and closed without input", async () => {
@@ -81,7 +80,6 @@ describe("EmployeeFormModal draft lifecycle", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /hủy bỏ/i }));
 
-    expect(window.confirm).not.toHaveBeenCalled();
     expect(getDraftKeys()).toHaveLength(0);
   });
 
@@ -91,7 +89,6 @@ describe("EmployeeFormModal draft lifecycle", () => {
     fireEvent.click(screen.getByRole("button", { name: /dùng gợi ý/i }));
     fireEvent.click(screen.getByRole("button", { name: /hủy bỏ/i }));
 
-    expect(window.confirm).not.toHaveBeenCalled();
     expect(getDraftKeys()).toHaveLength(0);
   });
 
@@ -110,13 +107,12 @@ describe("EmployeeFormModal draft lifecycle", () => {
     fireEvent.click(screen.getByRole("button", { name: /hủy bỏ/i }));
 
     expect(getDraftKeys()).toHaveLength(1);
-    expect(window.confirm).not.toHaveBeenCalled();
-
     fireEvent.click(screen.getByRole("button", { name: /reopen/i }));
 
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledTimes(1);
-    });
+    expect(
+      screen.getByText("Có dữ liệu nhân viên nhập dở. Khôi phục?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Khôi phục" }));
     expect(screen.getByDisplayValue("Nguyen Test")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));

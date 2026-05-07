@@ -124,7 +124,6 @@ const IconOrderList = () => (
   </svg>
 );
 
-const DRAFT_KEY_PREFIX = "pos_draft_items_v1";
 
 const PRIORITY_LABELS = {
   HIGH: "Ưu tiên cao",
@@ -182,6 +181,8 @@ export default function RightPanel() {
     menuItems,
     setCurrentOrderType,
     setCurrentOrderCode,
+    ensureOffPremiseSession,
+    clearOffPremiseDraft,
     setShippingInfo,
     setDeliveryCustomer,
     setCurrentOrder,
@@ -253,65 +254,6 @@ export default function RightPanel() {
     currentOrderType === "delivery" || currentOrderType === "takeaway";
 
   const offPremiseKind = currentOrderType === "delivery" ? "SHIP" : "TAKE";
-
-  const draftKey = useMemo(() => {
-    const code = currentOrderCode || "";
-    if (!code) return null;
-    return `${DRAFT_KEY_PREFIX}:${restaurantId || "na"}:${code}`;
-  }, [restaurantId, currentOrderCode]);
-
-  useEffect(() => {
-    if (!draftKey) return;
-    try {
-      const payload = JSON.parse(localStorage.getItem(draftKey) || "null");
-      const saved = Array.isArray(payload?.items) ? payload.items : [];
-      if (!saved.length) return;
-
-      const currentHasNew = (newItems || []).length > 0;
-      if (currentHasNew) return;
-
-      const safe = saved
-        .filter((x) => x && (x.isNew || (!x.isExisting && x.isNew !== false)))
-        .map((x) => ({
-          ...x,
-          isNew: true,
-          isExisting: false,
-        }));
-
-      if (!safe.length) return;
-
-      showNotification("Đã khôi phục món nháp (draft).", "info", 2500);
-
-      // NOTE: autosave/restore chuẩn nhất nên thực hiện trong PosContext
-      // vì RightPanel không có quyền setCurrentOrder ở phiên bản này.
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]);
-
-  useEffect(() => {
-    if (!draftKey) return;
-    try {
-      const toSave = (newItems || []).map((x) => ({
-        ...x,
-        isNew: true,
-        isExisting: false,
-      }));
-      localStorage.setItem(
-        draftKey,
-        JSON.stringify({
-          at: Date.now(),
-          items: toSave,
-        }),
-      );
-    } catch {}
-  }, [draftKey, newItems]);
-
-  const clearDraft = useCallback(() => {
-    if (!draftKey) return;
-    try {
-      localStorage.removeItem(draftKey);
-    } catch {}
-  }, [draftKey]);
 
   const getItemPrice = (item) => formatPrice(Number(item.price || 0));
   const getItemTotal = (item) => {
@@ -508,7 +450,7 @@ export default function RightPanel() {
       setTableStatus,
       setCurrentTable,
       showNotification,
-      clearDraft,
+  
       clearPaymentRequest,
     ],
   );
@@ -855,14 +797,6 @@ export default function RightPanel() {
       }
     }
 
-    if (!currentOrderCode) {
-      showNotification(
-        "Thiếu currentOrderCode. Vui lòng tạo đơn mới.",
-        "error",
-      );
-      return { ok: false };
-    }
-
     return { ok: true };
   }, [
     hasItems,
@@ -900,11 +834,13 @@ export default function RightPanel() {
       scheduleTime: "",
     });
   }, [
-    clearDraft,
+
     clearOrder,
     setCurrentOrder,
     setCurrentTable,
     setCurrentOrderCode,
+    ensureOffPremiseSession,
+    clearOffPremiseDraft,
     setDeliveryCustomer,
     setShippingInfo,
     currentOrderType,
@@ -917,13 +853,14 @@ export default function RightPanel() {
 
     setSaving(true);
     try {
+      if ((currentOrderType === "delivery" || currentOrderType === "takeaway") && !currentOrderCode && hasItems) { ensureOffPremiseSession?.(currentOrderType, { force: true }); }
       const res = await saveOrder?.({ persist: true });
 
       if (res?.success) {
         setPulse(true);
         setTimeout(() => setPulse(false), 650);
 
-        clearDraft();
+        clearOffPremiseDraft?.(currentOrderType);
 
         if (currentOrderType === "dine_in" && currentTable?.code) {
           showNotification(
@@ -970,7 +907,7 @@ export default function RightPanel() {
     saving,
     validateBeforeConfirm,
     saveOrder,
-    clearDraft,
+
     currentOrderType,
     currentTable?.code,
     showNotification,
