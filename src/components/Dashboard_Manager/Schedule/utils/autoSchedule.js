@@ -1,6 +1,6 @@
 import { format, startOfWeek } from "date-fns";
 
-import { shiftTypes } from "./scheduleHelpers";
+import { resolveConcreteStaffRoleSlug, shiftTypes } from "./scheduleHelpers";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -414,7 +414,7 @@ const evaluateCandidate = ({
   if (String(staff.employmentStatus || "").toLowerCase() !== "working") {
     return "Nhân sự không ở trạng thái làm việc";
   }
-  if (mapDepartmentToJob(staff.department) !== candidate.role) {
+  if (staff.roleSlug !== candidate.role) {
     return "Vai trò thực tế không khớp với gợi ý assistant";
   }
   if (
@@ -506,6 +506,9 @@ export const buildAutoSchedulePreview = ({
         department: String(staff.department || "").toLowerCase(),
         employmentType: normalizeEmploymentType(staff.employmentType),
         employmentStatus: String(staff.employmentStatus || "").toLowerCase(),
+        roleSlug:
+          resolveConcreteStaffRoleSlug(staff) ||
+          mapDepartmentToJob(staff.department),
         workingDays: Array.isArray(staff.workingDays)
           ? staff.workingDays.map((day) => String(day || "").toUpperCase())
           : [],
@@ -572,7 +575,7 @@ export const buildAutoSchedulePreview = ({
     };
     const buildFallbackCandidatesForRole = (role) =>
       Array.from(staffById.values())
-        .filter((staff) => mapDepartmentToJob(staff.department) === role)
+         .filter((staff) => staff.roleSlug === role)
         .map((staff) => ({
           staffId: staff.id,
           fullName: staff.fullName,

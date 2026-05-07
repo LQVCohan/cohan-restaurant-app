@@ -3830,14 +3830,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }
       }
 
-      const response =
-        batchInputs.length > 0
-          ? await createShifts({
-              variables: {
-                inputs: batchInputs,
-              },
-            })
-          : null;
+      let response = null;
+      if (batchInputs.length > 0) {
+        try {
+          response = await createShifts({
+            variables: {
+              inputs: batchInputs,
+            },
+          });
+        } catch (error) {
+          const message = getGraphQLErrorMessage(error, "Không thể áp dụng chia ca tự động.");
+
+          setAutoScheduleError(message);
+          showNotification(message, "error");
+          return;
+        }
+      }
 
       const batchResult = response?.data?.createStaffShifts || {
         successCount: 0,
@@ -3897,6 +3905,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .slice(0, 3)
         .map((row) => row.message)
         .join(" | ");
+
+      if (batchInputs.length === 0 && validationFailedRows.length > 0) {
+        setAutoScheduleError(failText || "Không thể áp dụng gợi ý chia ca.");
+        showNotification(failText || "Không thể áp dụng gợi ý chia ca.", "warning");
+        return;
+      }
 
       setAutoScheduleError(failText || "Không thể áp dụng gợi ý chia ca.");
       showNotification(failText || "Không thể áp dụng gợi ý chia ca.", "error");
