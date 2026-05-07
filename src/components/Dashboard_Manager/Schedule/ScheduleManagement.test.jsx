@@ -336,4 +336,12 @@ describe("ScheduleManagement", () => {
     expect(capturedDeclinedShiftAckVariables?.periodStart).not.toBe(firstPeriodStart);
     expect(capturedDeclinedShiftAckVariables?.periodEnd).toBeTruthy();
   });
+
+  it("opens finalized availability modal", () => {
+    render(<ScheduleManagement />);
+    expect(screen.queryByText("Availability đã chốt")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Xem availability đã chốt/i }));
+    expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
+  });
+
 });
