@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { gql, useLazyQuery } from "@apollo/client";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import cls from "./RegularCustomerModal.module.scss";
@@ -6,6 +7,21 @@ import { usePos } from "../../../../../context/PosContext";
 import { useVnAddressLazy } from "../../../../../hooks/useVnAddressLazy";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
+import { deriveCandidateMatches, detectIdentityConflict } from "../../../../../utils/posCustomerIdentity";
+
+
+const Q_POS_CUSTOMERS = gql`
+  query PosCustomers($restaurantId: ID!, $search: String, $limit: Int) {
+    posCustomers(restaurantId: $restaurantId, search: $search, limit: $limit) {
+      id
+      fullName
+      phone
+      email
+      defaultAddress
+      note
+    }
+  }
+`;
 
 const emptyForm = {
   name: "",
@@ -76,8 +92,8 @@ export default function RegularCustomerModal({
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
-  // TODO: thay bằng data thật (query) của bạn
   const [customers, setCustomers] = useState([]);
+  const [loadCustomers, { data: customersData, loading: customersLoading }] = useLazyQuery(Q_POS_CUSTOMERS, { fetchPolicy: "network-only" });
 
   const [form, setForm] = useState(emptyForm);
   const firstOpenRef = useRef(false);
@@ -174,16 +190,16 @@ export default function RegularCustomerModal({
     );
   }, [form]);
 
-  const filteredCustomers = useMemo(() => {
-    const q = safeStr(search).toLowerCase();
-    if (!q) return customers || [];
-    return (customers || []).filter((c) => {
-      const name = safeStr(c.name).toLowerCase();
-      const phone = safeStr(c.phone).toLowerCase();
-      const email = safeStr(c.email).toLowerCase();
-      return name.includes(q) || phone.includes(q) || email.includes(q);
-    });
-  }, [customers, search]);
+  useEffect(() => {
+    if (!isOpen || !restaurantId) return;
+    loadCustomers({ variables: { restaurantId, search: safeStr(search), limit: 25 } });
+  }, [isOpen, restaurantId, search, loadCustomers]);
+
+  const filteredCustomers = useMemo(() => (customersData?.posCustomers || []).map((c) => ({
+    ...c,
+    name: safeStr(c.fullName),
+    address: safeStr(c.defaultAddress),
+  })), [customersData]);
 
   const closeWithConfirm = () => {
     if (tab === "create" && hasDirtyForm) {
@@ -403,6 +419,13 @@ export default function RegularCustomerModal({
     }
   };
 
+  const candidateCheck = useMemo(() => deriveCandidateMatches(filteredCustomers, { email: form.email, phone: form.phone }), [filteredCustomers, form.email, form.phone]);
+  const identityConflict = useMemo(() => {
+    const ec = candidateCheck.byEmail?.[0] || null;
+    const pc = candidateCheck.byPhone?.[0] || null;
+    return detectIdentityConflict(ec, pc);
+  }, [candidateCheck]);
+
   const handleSaveCustomer = async () => {
     const errMsg = validateCreate();
     if (errMsg) {
@@ -413,6 +436,8 @@ export default function RegularCustomerModal({
     setSaving(true);
     try {
       const payload = {
+        conflict: identityConflict,
+        customerIdentityMode: identityConflict ? "snapshot_only" : "attach_if_selected",
         id: `tmp_${Date.now()}`,
         name: safeStr(form.name),
         phone: normalizePhone(form.phone),
@@ -488,6 +513,7 @@ export default function RegularCustomerModal({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên / sđt / email..."
               />
+              {identityConflict && <div className={cls.empty} style={{color:"#b91c1c"}}>Email và SĐT thuộc hai hồ sơ khác nhau. Chỉ lưu snapshot-only.</div>}
               <Button onClick={() => setTab("create")} variant="ghost">
                 + Thêm
               </Button>
@@ -514,6 +540,7 @@ export default function RegularCustomerModal({
                 </button>
               ))}
 
+              {customersLoading && <div className={cls.empty}>Đang tìm khách...</div>}
               {filteredCustomers.length === 0 && (
                 <div className={cls.empty}>Chưa có khách nào.</div>
               )}

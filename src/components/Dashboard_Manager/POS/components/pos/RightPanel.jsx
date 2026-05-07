@@ -364,14 +364,15 @@ export default function RightPanel() {
         deliveryCustomer?.phone ||
         ""
       ).trim();
+      const email = (shippingInfo?.email || deliveryCustomer?.email || "").trim();
       const addr = (shippingInfo?.address || "").trim();
 
       return {
         line1:
-          name || phone
-            ? `${name || "Khách"}${phone ? ` · ${phone}` : ""}`
+          name || phone || email
+            ? `${name || "Khách"}${phone ? ` · ${phone}` : ""}${email ? ` · ${email}` : ""}`
             : "",
-        line2: addr || "Chưa có địa chỉ",
+        line2: addr || (currentOrderType === "takeaway" ? "Không có địa chỉ" : "Chưa có địa chỉ"),
       };
     }
 
