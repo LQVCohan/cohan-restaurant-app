@@ -113,6 +113,10 @@ export default function RegularCustomerModal({
   const [upsertPosCustomer, { loading: upsertingCustomer }] =
     useMutation(M_UPSERT_POS_CUSTOMER);
   const [searchDebounced, setSearchDebounced] = useState("");
+  const [identityDebounced, setIdentityDebounced] = useState({
+    email: "",
+    phone: "",
+  });
 
   const [form, setForm] = useState(emptyForm);
   const firstOpenRef = useRef(false);
@@ -151,6 +155,10 @@ export default function RegularCustomerModal({
     if (!firstOpenRef.current) firstOpenRef.current = true;
     setTab("select");
     setSearch("");
+    setIdentityDebounced({
+      email: normalizeEmail(form.email),
+      phone: normalizePhone(form.phone),
+    });
   }, [isOpen]);
 
   useEffect(() => {
@@ -215,11 +223,29 @@ export default function RegularCustomerModal({
   }, [search]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const t = setTimeout(() => {
+      setIdentityDebounced({
+        email: normalizeEmail(form.email),
+        phone: normalizePhone(form.phone),
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isOpen, form.email, form.phone]);
+
+  useEffect(() => {
     if (!isOpen || !restaurantId) return;
-    const email = normalizeEmail(form.email);
-    const phone = normalizePhone(form.phone);
-    loadCustomers({ variables: { restaurantId, keyword: safeStr(searchDebounced), email: email || null, phone: phone || null } });
-  }, [isOpen, restaurantId, searchDebounced, form.email, form.phone, loadCustomers]);
+    const email = identityDebounced.email;
+    const phone = identityDebounced.phone;
+    loadCustomers({
+      variables: {
+        restaurantId,
+        keyword: safeStr(searchDebounced),
+        email: email || null,
+        phone: phone || null,
+      },
+    }).catch(() => {});
+  }, [isOpen, restaurantId, searchDebounced, identityDebounced.email, identityDebounced.phone, loadCustomers]);
 
   const filteredCustomers = useMemo(() => (customersData?.posCustomerCandidates || []).map((c) => ({
     ...c,
@@ -584,9 +610,9 @@ function isValidVietnamPhone(value) {
       loadCustomers?.({
         variables: {
           restaurantId,
-          keyword: safeStr(form.name),
-          email: normalizeEmail(form.email) || null,
-          phone: normalizePhone(form.phone) || null,
+          keyword: "",
+          email: null,
+          phone: null,
         },
       }).catch(() => {});
     } catch (e) {

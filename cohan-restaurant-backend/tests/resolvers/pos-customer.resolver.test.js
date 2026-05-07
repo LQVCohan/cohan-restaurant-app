@@ -41,6 +41,7 @@ function mockFindChain(value = []) {
 
 function mockPosCandidateFindChain(value = []) {
   const chain = {
+    sort: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     lean: vi.fn().mockResolvedValue(value),
   };
@@ -239,6 +240,7 @@ describe("PosCustomer resolvers", () => {
     expect(rows).toContainEqual(
       expect.objectContaining({ id: "pc1", source: "POS", phone: "0901234567" }),
     );
+    expect(modelMocks.User.find).toHaveBeenCalled();
   });
 
   it("finds POS customer candidates by email and returns note/address/source", async () => {
@@ -268,6 +270,43 @@ describe("PosCustomer resolvers", () => {
         address: "34 Le Loi",
       }),
     );
+    expect(modelMocks.User.find).toHaveBeenCalled();
+  });
+
+  it("returns recent active POS customers when candidate query is empty", async () => {
+    const chain = mockPosCandidateFindChain([
+      {
+        _id: "pc9",
+        fullName: "Recent POS",
+        email: "recent@example.com",
+        phone: "0909000000",
+        defaultAddress: "99 Tran Hung Dao",
+        note: "Recent note",
+      },
+    ]);
+    const { PosCustomerQuery } = await import("../../graphql/resolvers/posCustomer/query.js");
+    const rows = await PosCustomerQuery.posCustomerCandidates(
+      null,
+      { restaurantId: "valid-restaurant-1", keyword: "   ", email: " ", phone: " " },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(modelMocks.PosCustomer.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: expect.objectContaining({ value: "valid-restaurant-1" }),
+        isActive: { $ne: false },
+      }),
+    );
+    expect(chain.sort).toHaveBeenCalledWith({ lastOrderAt: -1, updatedAt: -1, createdAt: -1 });
+    expect(modelMocks.User.find).not.toHaveBeenCalled();
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: "pc9",
+        source: "POS",
+        note: "Recent note",
+        address: "99 Tran Hung Dao",
+      }),
+    ]);
   });
 
   it("still returns USER candidates alongside POS candidates", async () => {
