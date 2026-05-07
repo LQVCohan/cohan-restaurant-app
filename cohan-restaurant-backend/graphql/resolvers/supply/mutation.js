@@ -3,6 +3,7 @@ import { GraphQLError } from "graphql";
 import { Supply, StockItem, StockMovement, SupplyCategory } from "../../../models/index.js";
 import Warehouse from "../../../models/warehouse.model.js";
 import { findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName } from "./mutation.support.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function buildStockInsertDefaults(supply) {
   return {
@@ -89,7 +90,8 @@ async function assertSupplyBusinessUnique({
 
 export default {
   // ===== CRUD =====
-  createSupply: async (_p, { input }) => {
+  createSupply: async (_p, { input }, ctx) => {
+    await requireRestaurantAccess(ctx, input.restaurantId);
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -139,8 +141,13 @@ export default {
     }
   },
 
-  updateSupply: async (_p, { id, input }) => {
+  updateSupply: async (_p, { id, input }, ctx) => {
     if (!isValidObjectId(id)) return null;
+    const existing = await Supply.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return null;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+    const patch = { ...input };
+    delete patch.restaurantId;
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -151,8 +158,8 @@ export default {
       }
 
       const nextCategory =
-        input?.category !== undefined
-          ? toEnglishCategoryName(input?.category) || "Other"
+        patch?.category !== undefined
+          ? toEnglishCategoryName(patch?.category) || "Other"
           : current.category;
 
       const categoryDoc = await findOrCreateSupplyCategory({
@@ -163,19 +170,19 @@ export default {
       });
 
       const normalizedSku =
-        input?.sku !== undefined ? String(input?.sku || "").trim() : current.sku || "";
+        patch?.sku !== undefined ? String(patch?.sku || "").trim() : current.sku || "";
 
       await assertSupplyBusinessUnique({
         restaurantId: current.restaurantId,
         excludeId: id,
-        name: input?.name ?? current.name,
+        name: patch?.name ?? current.name,
         sku: normalizedSku,
         category: categoryDoc?.name || nextCategory,
         session,
       });
 
       current.set({
-        ...input,
+        ...patch,
         sku: normalizedSku,
         category: categoryDoc?.name || nextCategory,
       });
@@ -199,15 +206,18 @@ export default {
     }
   },
 
-  deleteSupply: async (_p, { id }) => {
+  deleteSupply: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return false;
+    const existing = await Supply.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return false;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     await Supply.findByIdAndDelete(id);
     await StockItem.deleteMany({ supplyId: id }); // dọn stock liên quan
     return true;
   },
 
   // ===== Điều chỉnh ±qty =====
-  adjustSupply: async (_p, { input }) => {
+  adjustSupply: async (_p, { input }, ctx) => {
     const { restaurantId, warehouseId, supplyId, qty, reason, meta } = input;
     const nQty = Number(qty);
 
@@ -219,11 +229,23 @@ export default {
       throw new Error("Invalid IDs");
     if (!Number.isFinite(nQty) || nQty === 0)
       throw new Error("qty must be a non-zero number");
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) throw new Error("Warehouse not found");
+    if (String(wh.restaurantId) !== String(restaurantId)) {
+      throw new GraphQLError("Warehouse does not belong to this restaurant", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
     const supply = await Supply.findById(supplyId).lean();
+    if (!supply) throw new Error("Supply not found");
+    if (String(supply.restaurantId) !== String(restaurantId)) {
+      throw new GraphQLError("Supply does not belong to this restaurant", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
     const stock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, supplyId },
       {
@@ -248,7 +270,7 @@ export default {
   },
 
   // ===== Nhập kho (inbound) + thêm batch =====
-  stockInbound: async (_p, { input }) => {
+  stockInbound: async (_p, { input }, ctx) => {
     const {
       restaurantId,
       warehouseId,
@@ -288,6 +310,7 @@ export default {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) {
@@ -295,11 +318,21 @@ export default {
         extensions: { code: "NOT_FOUND" },
       });
     }
+    if (String(wh.restaurantId) !== String(restaurantId)) {
+      throw new GraphQLError("Warehouse does not belong to this restaurant", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
     const supply = await Supply.findById(supplyId).lean();
     if (!supply) {
       throw new GraphQLError("Không tìm thấy vật tư cần nhập kho.", {
         extensions: { code: "NOT_FOUND" },
+      });
+    }
+    if (String(supply.restaurantId) !== String(restaurantId)) {
+      throw new GraphQLError("Supply does not belong to this restaurant", {
+        extensions: { code: "BAD_USER_INPUT" },
       });
     }
 
@@ -358,7 +391,7 @@ export default {
   },
 
   // ===== Xuất kho FIFO (outbound) =====
-  stockOutbound: async (_p, { input }) => {
+  stockOutbound: async (_p, { input }, ctx) => {
     const { restaurantId, warehouseId, supplyId, qty, reason, meta } = input;
     const nQty = Number(qty);
 
@@ -375,6 +408,7 @@ export default {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const stock = await StockItem.findOne({
       restaurantId,
@@ -425,7 +459,7 @@ export default {
 
     return stock.toObject({ virtuals: true });
   },
-  stockTransfer: async (_p, { input }) => {
+  stockTransfer: async (_p, { input }, ctx) => {
     const {
       restaurantId,
       fromWarehouseId,
@@ -445,9 +479,19 @@ export default {
     )
       throw new Error("Invalid IDs");
     if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
+    await requireRestaurantAccess(ctx, restaurantId);
 
     if (fromWarehouseId === toWarehouseId)
       throw new Error("Cannot transfer to the same warehouse");
+    const warehouses = await Warehouse.find({
+      _id: { $in: [fromWarehouseId, toWarehouseId] },
+      restaurantId,
+    }).lean();
+    if (warehouses.length !== 2) {
+      throw new GraphQLError("Warehouse does not belong to this restaurant", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
     // ===== 1️⃣: Trừ FIFO ở kho xuất =====
     const supply = await Supply.findById(supplyId).lean();
