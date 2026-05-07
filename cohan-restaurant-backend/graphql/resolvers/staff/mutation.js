@@ -86,6 +86,7 @@ import {
 import {
   createPerformanceIncidentOnce,
   applyPerformanceIncidentScore as applyPerformanceIncidentScoreService,
+  getPerformanceIncidentById,
   markPerformanceIncidentEligible as markPerformanceIncidentEligibleService,
   reviewPerformanceIncident as reviewPerformanceIncidentService,
   waivePerformanceIncident as waivePerformanceIncidentService,
@@ -93,6 +94,7 @@ import {
 import {
   createPerformanceIncidentAppeal,
   cancelPerformanceIncidentAppeal,
+  getPerformanceIncidentAppealById,
   reviewPerformanceIncidentAppeal,
   reverseScoreForAcceptedAppeal as reverseScoreForAcceptedAppealService,
 } from "../../../src/services/performance/performanceAppeal.service.js";
@@ -628,6 +630,7 @@ function mapLeaveOutput(row) {
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
+
 
 function formatLeaveTypeLabel(leaveType) {
   const map = {
@@ -2810,6 +2813,26 @@ export default {
     return startSchedulingOperations({ restaurantId });
   },
   upsertStaffPerformanceReview: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const staff = await Staff.findById(input.employeeId)
+      .select({
+        _id: 1,
+        userType: 1,
+        deletedAt: 1,
+        primaryRestaurant: 1,
+        restaurantForStaff: 1,
+        refRestaurants: 1,
+      })
+      .lean();
+    if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+      throw new Error("Staff not found");
+    }
+    const restaurantId = input.restaurantId || resolveStaffRestaurantId(staff);
+    if (!restaurantId || !staffBelongsToRestaurant(staff, restaurantId)) {
+      throw new Error("Staff does not belong to this restaurant");
+    }
+    await requireRestaurantAccess(ctx, restaurantId);
     return upsertStaffPerformanceReview({
       input,
       ctx,
@@ -2823,6 +2846,7 @@ export default {
     });
   },
   createPayrollPeriod: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(
@@ -2831,6 +2855,7 @@ export default {
         actor.primaryRestaurantId,
     );
     if (!rid) throw new Error("Restaurant is required");
+    await requireRestaurantAccess(ctx, rid);
     const startDate = payrollToStartOfDay(input.startDate);
     const endDate = payrollToEndOfDay(input.endDate);
     if (
@@ -2928,9 +2953,11 @@ export default {
   },
 
   recalculatePayrollPeriod: async (_, { periodId }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.recalculate");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status !== "draft") {
       throw new Error("Chỉ có thể tính lại kỳ lương đang ở trạng thái nháp.");
     }
@@ -2942,9 +2969,11 @@ export default {
   },
 
   finalizePayrollPeriod: async (_, { periodId }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.finalize");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status !== "draft")
       throw new Error("Chỉ có thể chốt kỳ lương đang ở trạng thái nháp.");
     const validation = await validatePayrollPeriodService(periodId);
@@ -3001,9 +3030,11 @@ export default {
   },
 
   lockPayrollPeriod: async (_, { periodId }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.lock");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status !== "finalized")
       throw new Error("Chỉ có thể khóa kỳ lương đã chốt.");
     period.status = "locked";
@@ -3041,9 +3072,11 @@ export default {
   },
 
   markPayrollPeriodPaid: async (_, { periodId, employeeIds = [] }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.markPaid");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (!["locked", "paid"].includes(period.status)) {
       throw new Error("Chỉ có thể thanh toán kỳ lương đã khóa.");
     }
@@ -3088,6 +3121,7 @@ export default {
   },
 
   updatePayrollSettings: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.settings.update");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(
@@ -3096,6 +3130,7 @@ export default {
         actor.primaryRestaurantId,
     );
     if (!rid) throw new Error("Restaurant is required");
+    await requireRestaurantAccess(ctx, rid);
 
     const existingSettings = await PayrollSetting.findOne({
       restaurantId: rid,
@@ -3122,6 +3157,15 @@ export default {
         throw new Error(
           "Current payroll period must be fully paid before changing the applied payroll cycle",
         );
+      }
+    }
+    if (nextCurrentPeriodId) {
+      const selectedPeriod = await PayrollPeriod.findById(nextCurrentPeriodId);
+      if (
+        selectedPeriod &&
+        String(selectedPeriod.restaurantId) !== String(rid)
+      ) {
+        throw new Error("Current payroll period does not belong to restaurant");
       }
     }
 
@@ -3167,9 +3211,11 @@ export default {
   },
 
   upsertPayrollAdjustment: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(input.periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status !== "draft")
       throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
 
@@ -3200,6 +3246,23 @@ export default {
       throw new Error("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
     }
 
+    const staff = await Staff.findById(input.employeeId)
+      .select({
+        _id: 1,
+        userType: 1,
+        deletedAt: 1,
+        primaryRestaurant: 1,
+        restaurantForStaff: 1,
+        refRestaurants: 1,
+      })
+      .lean();
+    if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+      throw new Error("Staff not found");
+    }
+    if (!staffBelongsToRestaurant(staff, period.restaurantId)) {
+      throw new Error("Staff does not belong to this restaurant");
+    }
+
     await PayrollAdjustment.create({
       periodId: period._id,
       employeeId: payrollToObjectId(input.employeeId),
@@ -3223,9 +3286,11 @@ export default {
     { periodId, employeeId, adjustmentId },
     ctx,
   ) => {
+    requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
+    await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status !== "draft")
       throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
 
@@ -3296,27 +3361,55 @@ export default {
     return cancelAttendanceCorrectionRequestService({ requestId, ctx });
   },
   reviewPerformanceIncident: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const incident = await getPerformanceIncidentById(input.incidentId);
+    await requireRestaurantAccess(ctx, incident.restaurantId);
+    if (isSelf(ctx, incident.employeeId)) throw new Error("FORBIDDEN");
     return reviewPerformanceIncidentService({ input, ctx });
   },
   waivePerformanceIncident: async (_, { incidentId, reason }, ctx) => {
+    requireAuth(ctx);
+    const incident = await getPerformanceIncidentById(incidentId);
+    await requireRestaurantAccess(ctx, incident.restaurantId);
     return waivePerformanceIncidentService({ incidentId, reason, ctx });
   },
   markPerformanceIncidentEligible: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const incident = await getPerformanceIncidentById(input.incidentId);
+    await requireRestaurantAccess(ctx, incident.restaurantId);
     return markPerformanceIncidentEligibleService({ input, ctx });
   },
   applyPerformanceIncidentScore: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const incident = await getPerformanceIncidentById(input.incidentId);
+    await requireRestaurantAccess(ctx, incident.restaurantId);
     return applyPerformanceIncidentScoreService({
       incidentId: input.incidentId,
       actor: ctx?.user,
       note: input.note,
     });
   },
-  createPerformanceIncidentAppeal: async (_, { input }, ctx) =>
-    createPerformanceIncidentAppeal(input, ctx?.user),
-  cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) =>
-    cancelPerformanceIncidentAppeal(appealId, ctx?.user),
-  reviewPerformanceIncidentAppeal: async (_, { input }, ctx) =>
-    reviewPerformanceIncidentAppeal(input, ctx?.user),
+  createPerformanceIncidentAppeal: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const incident = await getPerformanceIncidentById(input.incidentId);
+    if (!isSelf(ctx, incident.employeeId)) throw new Error("FORBIDDEN");
+    await requireRestaurantAccess(ctx, incident.restaurantId);
+    return createPerformanceIncidentAppeal(input, ctx?.user);
+  },
+  cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) => {
+    requireAuth(ctx);
+    const appeal = await getPerformanceIncidentAppealById(appealId, ctx?.user);
+    if (!isSelf(ctx, appeal.employeeId)) throw new Error("FORBIDDEN");
+    await requireRestaurantAccess(ctx, appeal.restaurantId);
+    return cancelPerformanceIncidentAppeal(appealId, ctx?.user);
+  },
+  reviewPerformanceIncidentAppeal: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const appeal = await getPerformanceIncidentAppealById(input.appealId, ctx?.user);
+    await requireRestaurantAccess(ctx, appeal.restaurantId);
+    if (isSelf(ctx, appeal.employeeId)) throw new Error("FORBIDDEN");
+    return reviewPerformanceIncidentAppeal(input, ctx?.user);
+  },
   reverseScoreForAcceptedAppeal: async (_, { input }, ctx) =>
     reverseScoreForAcceptedAppealService({ ...input, actor: ctx?.user }),
 
@@ -3697,15 +3790,21 @@ export default {
   },
 
   createLeaveRequest: async (_, { input }, ctx) => {
-    const employeeId = toObjectId(input.employeeId);
-    const restaurantId = toObjectId(input.restaurantId);
-    if (!employeeId || !restaurantId)
-      throw new Error("Invalid employeeId or restaurantId");
+    requireAuth(ctx);
+    const actorIdRaw = ctx?.user?.id || ctx?.user?._id || null;
+    const resolvedEmployeeId = input.employeeId || actorIdRaw;
+    const employeeId = toObjectId(resolvedEmployeeId);
+    if (!employeeId) throw new Error("Invalid employeeId or restaurantId");
 
     const employee = await Staff.findById(employeeId)
       .populate("role")
       .select({
         _id: 1,
+        userType: 1,
+        deletedAt: 1,
+        primaryRestaurant: 1,
+        restaurantForStaff: 1,
+        refRestaurants: 1,
         fullName: 1,
         employeeCode: 1,
         positionTitle: 1,
@@ -3715,8 +3814,19 @@ export default {
         department: 1,
       })
       .lean();
-    if (!employee || employee.userType !== "STAFF")
+    if (!employee || employee.userType !== "STAFF" || employee.deletedAt)
       throw new Error("Staff not found");
+
+    const restaurantId = toObjectId(input.restaurantId || resolveStaffRestaurantId(employee));
+    if (!restaurantId) throw new Error("Invalid employeeId or restaurantId");
+    if (!staffBelongsToRestaurant(employee, restaurantId)) {
+      throw new Error("Staff does not belong to restaurant");
+    }
+    const actorIsSelf = isSelf(ctx, employeeId);
+    if (!actorIsSelf) {
+      requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+      await requireRestaurantAccess(ctx, restaurantId);
+    }
 
     const leaveType = fromGraphLeaveType(input.leaveType);
     const startSession = fromGraphSession(input.startSession);
@@ -3808,6 +3918,8 @@ export default {
   },
 
   approveLeaveRequest: async (_, { requestId, approverId, note }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const request = await LeaveRequest.findById(requestId)
       .populate(
         "employeeId",
@@ -3816,6 +3928,8 @@ export default {
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
+    await requireRestaurantAccess(ctx, request.restaurantId);
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -3898,6 +4012,8 @@ export default {
   },
 
   rejectLeaveRequest: async (_, { requestId, approverId, reason }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const request = await LeaveRequest.findById(requestId)
       .populate(
         "employeeId",
@@ -3906,6 +4022,8 @@ export default {
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
+    await requireRestaurantAccess(ctx, request.restaurantId);
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -3979,6 +4097,7 @@ export default {
     { requestId, managerId, note },
     ctx,
   ) => {
+    requireAuth(ctx);
     const actorId = toObjectId(
       managerId || ctx?.user?.id || ctx?.user?._id || null,
     );
@@ -3990,6 +4109,8 @@ export default {
       .populate("replacementManagerId", "fullName")
       .lean();
     if (!request) throw new Error("Leave request not found");
+    await requireRestaurantAccess(ctx, request.restaurantId);
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -4000,12 +4121,19 @@ export default {
     if (!actorId) throw new Error("Replacement manager is required");
     if (!request.replacementManagerId)
       throw new Error("Leave request does not require replacement");
-    if (
-      String(
-        request.replacementManagerId._id || request.replacementManagerId,
-      ) !== String(actorId)
-    ) {
-      throw new Error("Only assigned replacement manager can confirm");
+    const isAssignedReplacement =
+      String(request.replacementManagerId._id || request.replacementManagerId) ===
+      String(actorId);
+    if (!isAssignedReplacement) {
+      requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+      await requireRestaurantAccess(ctx, request.restaurantId);
+    } else {
+      const actorStaff = await Staff.findById(actorId)
+        .select({ primaryRestaurant: 1, restaurantForStaff: 1, refRestaurants: 1 })
+        .lean();
+      if (!staffBelongsToRestaurant(actorStaff, request.restaurantId)) {
+        throw new Error("FORBIDDEN");
+      }
     }
 
     const updated = await LeaveRequest.findByIdAndUpdate(
