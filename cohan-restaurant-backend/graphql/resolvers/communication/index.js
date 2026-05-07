@@ -6,6 +6,7 @@ import {
   Restaurant,
   User,
 } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const toId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -84,12 +85,25 @@ const toThreadOutput = (thread, userId) => {
   };
 };
 
+
+function badInput(message) {
+  return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
+
+async function requireRestaurantScopeIfProvided(ctx, restaurantId) {
+  if (!restaurantId) return null;
+  const rid = toId(restaurantId);
+  if (!rid) throw badInput("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, rid);
+  return rid;
+}
+
 const Query = {
   chatThreads: async (_, { restaurantId, channel, limit = 30 }, ctx) => {
     ensureAuth(ctx);
     const user = ctx.user;
     const uid = toId(user.id);
-    const rid = toId(restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
 
     const cond = { status: "open" };
     if (rid) cond.restaurantId = rid;
@@ -117,7 +131,7 @@ const Query = {
   notifications: async (_, { restaurantId, unreadOnly = false, limit = 50 }, ctx) => {
     ensureAuth(ctx);
     const user = ctx.user;
-    const rid = toId(restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
 
     const cond = {
       $or: [{ toUserId: toId(user.id) }, { toRole: roleSlug(user) }],
@@ -136,7 +150,7 @@ const Query = {
 
   unreadNotificationCount: async (_, { restaurantId }, ctx) => {
     ensureAuth(ctx);
-    const rid = toId(restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
     const cond = {
       readAt: null,
       $or: [{ toUserId: toId(ctx.user.id) }, { toRole: roleSlug(ctx.user) }],
@@ -151,11 +165,9 @@ const Mutation = {
     ensureAuth(ctx);
     const user = ctx.user;
     const senderId = toId(user.id);
-    const rid = toId(input?.restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, input?.restaurantId);
 
-    if (!rid) {
-      throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
-    }
+    if (!rid) throw badInput("Invalid restaurantId");
 
     const participantIds = [senderId, ...(input?.participantIds || []).map(toId).filter(Boolean)];
     let uniqueParticipantIds = [...new Set(participantIds.map((id) => String(id)))].map(toId);
@@ -312,7 +324,7 @@ const Mutation = {
   markAllNotificationsRead: async (_, { restaurantId }, ctx) => {
     ensureAuth(ctx);
     const uid = toId(ctx.user.id);
-    const rid = toId(restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
     const cond = { toUserId: uid, readAt: null };
     if (rid) cond.restaurantId = rid;
     await Notification.updateMany(cond, { $set: { readAt: new Date() } });

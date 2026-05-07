@@ -11,6 +11,32 @@ const HOLD_TTL_MS = 5 * 60 * 1000;
 const ABUSE_BLOCK_THRESHOLD = 8;
 const ABUSE_WARN_THRESHOLD = 3;
 
+function unauthenticated() {
+  return new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+}
+
+function forbidden() {
+  return new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
+}
+
+function requireAuthUser(ctx) {
+  const uid = ctx?.user?.id;
+  if (!uid || !mongoose.isValidObjectId(uid)) throw unauthenticated();
+  return uid;
+}
+
+function resolveSelfUserId(inputUserId, ctx) {
+  const authUserId = requireAuthUser(ctx);
+  if (inputUserId && String(inputUserId) !== String(authUserId)) throw forbidden();
+  return authUserId;
+}
+
+function assertCartOwner(cart, ctx) {
+  const uid = requireAuthUser(ctx);
+  if (!cart || String(cart.userId) !== String(uid)) throw forbidden();
+  return uid;
+}
+
 function computeTotals(items = []) {
   let totalQuantity = 0;
   let totalAmount = 0;
@@ -41,7 +67,7 @@ async function resolveWarehouseIdOrDefault(restaurantId) {
 }
 
 function getUserId(inputUserId, ctx) {
-  return inputUserId || ctx?.user?.id;
+  return resolveSelfUserId(inputUserId, ctx);
 }
 
 function assertNotBlocked(cart) {
@@ -186,14 +212,16 @@ export const CartMutation = {
     return after;
   },
 
-  async updateCartItem(_, { input }) {
+  async updateCartItem(_, { input }, ctx) {
     const { cartId, itemId, quantity } = input;
+    requireAuthUser(ctx);
 
     if (!mongoose.isValidObjectId(cartId)) throw new GraphQLError("Invalid cartId");
     if (!mongoose.isValidObjectId(itemId)) throw new GraphQLError("Invalid itemId");
 
     const cart = await Cart.findById(cartId);
     if (!cart || cart.status !== "active") throw new GraphQLError("Cart not found or not active");
+    assertCartOwner(cart, ctx);
 
     const it = cart.items.id(itemId);
     if (!it) throw new GraphQLError("Cart item not found");
@@ -218,6 +246,7 @@ export const CartMutation = {
 
     const cart = await Cart.findById(cartId);
     if (!cart || cart.status !== "active") throw new GraphQLError("Cart not found or not active");
+    assertCartOwner(cart, ctx);
 
     const it = cart.items.id(itemId);
     if (!it) throw new GraphQLError("Cart item not found");
@@ -255,8 +284,11 @@ export const CartMutation = {
 
     if (!mongoose.isValidObjectId(cartId)) throw new GraphQLError("Invalid cartId");
 
+    requireAuthUser(ctx);
+
     const cart = await Cart.findById(cartId);
     if (!cart || cart.status !== "active") return true;
+    assertCartOwner(cart, ctx);
 
     for (const it of cart.items || []) {
       try {
@@ -289,7 +321,6 @@ export const CartMutation = {
 
   async releaseMyCartHolds(_, { input = {} }, ctx) {
     const uid = getUserId(input.userId, ctx);
-    if (!mongoose.isValidObjectId(uid)) throw new GraphQLError("Invalid userId");
 
     const cart = await Cart.findOne({ userId: uid, status: "active" });
     if (!cart) return true;

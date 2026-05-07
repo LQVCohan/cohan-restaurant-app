@@ -1,44 +1,29 @@
-// src/graphql/reviewComment/reviewComment.query.js
-import { ReviewComment } from "../../../models/index.js";
-// src/graphql/reviewComment/reviewComment.query.js
+import { GraphQLError } from "graphql";
+import { Review, ReviewComment } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
+
+function roleSlug(user) { return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase(); }
+function isStaffLike(user) { const role = roleSlug(user); return role.includes("staff") || role.includes("manager") || role.includes("admin"); }
+function isOwner(ctx, doc) { const uid = ctx?.user?.id; return uid && String(doc?.createdBy || doc?.userId) === String(uid); }
+function forbidden(message = "Forbidden") { return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } }); }
 
 export default {
-  /**
-   * Lấy danh sách comment hoặc reply của 1 review (có phân trang)
-   *
-   * - Nếu parentId = null → comment gốc
-   * - Nếu parentId có giá trị → reply của comment đó
-   */
-  reviewComments: async (_, { reviewId, parentId, limit = 20, skip = 0 }) => {
-    const filter = { reviewId };
-
-    // Comment gốc
-    if (!parentId) {
-      filter.parentId = null;
-    } else {
-      // Reply
-      filter.parentId = parentId;
+  reviewComments: async (_, { reviewId, parentId, limit = 20, skip = 0 }, ctx) => {
+    const review = await Review.findById(reviewId).select({ status: 1, restaurantId: 1, createdBy: 1 }).lean();
+    if (!review) return { total: 0, items: [] };
+    let canViewAllStatuses = false;
+    if (review.status !== "published") {
+      if (isOwner(ctx, review)) canViewAllStatuses = true;
+      else { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, review.restaurantId); canViewAllStatuses = true; }
+    } else if (isStaffLike(ctx?.user)) {
+      try { await requireRestaurantAccess(ctx, review.restaurantId); canViewAllStatuses = true; } catch (_) { canViewAllStatuses = false; }
     }
-
+    const filter = { reviewId };
+    filter.parentId = !parentId ? null : parentId;
+    if (!canViewAllStatuses) filter.status = "published";
     const total = await ReviewComment.countDocuments(filter);
-
-    // Sort logic:
-    // comment gốc: mới nhất lên đầu
-    // reply: cũ → mới (natural conversation order)
-    const sort =
-      parentId === null || parentId === undefined
-        ? { createdAt: -1 }
-        : { createdAt: 1 };
-
-    const items = await ReviewComment.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean({ virtuals: true });
-
-    return {
-      total,
-      items,
-    };
+    const sort = parentId === null || parentId === undefined ? { createdAt: -1 } : { createdAt: 1 };
+    const items = await ReviewComment.find(filter).sort(sort).skip(skip).limit(limit).lean({ virtuals: true });
+    return { total, items };
   },
 };
