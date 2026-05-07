@@ -166,12 +166,12 @@ function assertAcknowledgementCanRespond(doc, employeeId) {
 }
 function staffBelongsToRestaurant(staff, restaurantId) {
   const rid = String(restaurantId);
-  const refs = Array.isArray(staff?.refRestaurants) ? staff.refRestaurants : [];
+  // Source-of-truth cho staff scope là restaurantForStaff.
+  // primaryRestaurant chỉ fallback để tương thích dữ liệu legacy.
   return (
-    String(staff?.primaryRestaurant?._id || staff?.primaryRestaurant || "") ===
-      rid ||
     String(staff?.restaurantForStaff || "") === rid ||
-    refs.some((id) => String(id?._id || id) === rid)
+    String(staff?.primaryRestaurant?._id || staff?.primaryRestaurant || "") ===
+      rid
   );
 }
 
@@ -188,7 +188,6 @@ async function loadStaffForRestaurant(employeeId, restaurantId) {
       deletedAt: 1,
       primaryRestaurant: 1,
       restaurantForStaff: 1,
-      refRestaurants: 1,
       fullName: 1,
       employeeCode: 1,
     })
@@ -1026,11 +1025,12 @@ export default {
       .toUpperCase();
     input.userType = normalizedUserType;
 
-    const restaurantAccessId =
-      input.primaryRestaurantId ||
-      input.restaurantForStaff ||
-      input.restaurantId ||
-      (Array.isArray(input.refRestaurantIds) ? input.refRestaurantIds[0] : null);
+    const fromPrimary = input.primaryRestaurantId || null;
+    const fromStaffScope = input.restaurantForStaff || null;
+    if (fromPrimary && fromStaffScope && String(fromPrimary) !== String(fromStaffScope)) {
+      throw new Error("restaurantForStaff and primaryRestaurantId must match");
+    }
+    const restaurantAccessId = fromStaffScope || fromPrimary || input.restaurantId || null;
     if (!mongoose.isValidObjectId(restaurantAccessId)) {
       throw new Error("primaryRestaurantId is required to generate employee code");
     }
@@ -1063,7 +1063,6 @@ export default {
     const {
       password,
       primaryRestaurantId,
-      refRestaurantIds,
       employeeCode: _ignoredEmployeeCode,
       ...rest
     } = input;
@@ -1099,11 +1098,7 @@ export default {
     // DepartmentType đã là lowercase (service, kitchen, ...) -> không cần đổi
 
     // Gán nhà hàng
-    const sequenceRestaurantId =
-      primaryRestaurantId ||
-      input.restaurantForStaff ||
-      input.restaurantId ||
-      (Array.isArray(refRestaurantIds) ? refRestaurantIds[0] : null);
+    const sequenceRestaurantId = input.restaurantForStaff || primaryRestaurantId || input.restaurantId || null;
     if (!sequenceRestaurantId) {
       throw new Error(
         "primaryRestaurantId is required to generate employee code",
@@ -1111,10 +1106,7 @@ export default {
     }
 
     doc.primaryRestaurant = sequenceRestaurantId;
-    if (!doc.restaurantForStaff) {
-      doc.restaurantForStaff = sequenceRestaurantId;
-    }
-    if (refRestaurantIds) doc.refRestaurants = refRestaurantIds;
+    doc.restaurantForStaff = sequenceRestaurantId;
 
     let staff = null;
     let lastCreateError = null;
@@ -1186,17 +1178,6 @@ export default {
       }
       targetRestaurantIds.push(input.restaurantForStaff);
     }
-    if (input.refRestaurantIds) {
-      if (!Array.isArray(input.refRestaurantIds)) {
-        throw new Error("Invalid refRestaurantIds");
-      }
-      for (const id of input.refRestaurantIds) {
-        if (!mongoose.isValidObjectId(id)) {
-          throw new Error("Invalid refRestaurantIds");
-        }
-        targetRestaurantIds.push(id);
-      }
-    }
     for (const rid of [...new Set(targetRestaurantIds.map(String))]) {
       if (String(rid) !== String(currentRestaurantId)) {
         await requireRestaurantAccess(ctx, rid);
@@ -1239,14 +1220,31 @@ export default {
       });
     }
 
-    // Map các field ID sang schema thực tế
-    if (input.primaryRestaurantId) {
-      input.primaryRestaurant = input.primaryRestaurantId;
+    // restaurantForStaff là source-of-truth; primaryRestaurant chỉ để backward compatibility.
+    const hasPrimaryRestaurantInput = Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId");
+    const hasRestaurantForStaffInput = Object.prototype.hasOwnProperty.call(input, "restaurantForStaff");
+    if (hasPrimaryRestaurantInput && input.primaryRestaurantId && !mongoose.isValidObjectId(input.primaryRestaurantId)) {
+      throw new Error("Invalid primaryRestaurantId");
+    }
+    if (hasRestaurantForStaffInput && input.restaurantForStaff && !mongoose.isValidObjectId(input.restaurantForStaff)) {
+      throw new Error("Invalid restaurantForStaff");
+    }
+    if (
+      hasPrimaryRestaurantInput &&
+      hasRestaurantForStaffInput &&
+      input.primaryRestaurantId &&
+      input.restaurantForStaff &&
+      String(input.primaryRestaurantId) !== String(input.restaurantForStaff)
+    ) {
+      throw new Error("restaurantForStaff and primaryRestaurantId must match");
+    }
+    if (hasPrimaryRestaurantInput || hasRestaurantForStaffInput) {
+      const finalRestaurantId = input.restaurantForStaff || input.primaryRestaurantId || null;
+      input.restaurantForStaff = finalRestaurantId;
+      input.primaryRestaurant = finalRestaurantId;
       delete input.primaryRestaurantId;
     }
-
-    if (input.refRestaurantIds) {
-      input.refRestaurants = input.refRestaurantIds;
+    if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
       delete input.refRestaurantIds;
     }
 

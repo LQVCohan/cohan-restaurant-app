@@ -40,9 +40,12 @@ export default async function buildContext(request, reply) {
             fullName: userDoc.fullName,
             role: userDoc.role, // object đã populate
             roleName, // string, ví dụ "admin"
+            userType: userDoc.userType,
             status: userDoc.status,
             provider: userDoc.provider,
             refRestaurants: userDoc.refRestaurants,
+            restaurantForStaff: userDoc.restaurantForStaff,
+            primaryRestaurant: userDoc.primaryRestaurant,
             point: userDoc.point,
             loyaltyPoints: userDoc.loyaltyPoints,
             customerType: userDoc.customerType,

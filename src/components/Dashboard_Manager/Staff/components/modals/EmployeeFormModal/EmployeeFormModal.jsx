@@ -619,6 +619,7 @@ const EmployeeFormModal = ({
         positionTitle: formData.positionTitle.trim(),
         department: formData.department,
         primaryRestaurantId: formData.primaryRestaurantId || undefined,
+        restaurantForStaff: formData.primaryRestaurantId || undefined,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
         dateJoined,

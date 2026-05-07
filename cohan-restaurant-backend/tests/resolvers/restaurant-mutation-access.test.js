@@ -67,50 +67,58 @@ describe("restaurant mutation access hardening", () => {
   });
 
   it("deleteRestaurant denies manager for another restaurant before deleteOne", async () => {
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-owner" });
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
 
     await expect(
       RestaurantMutation.deleteRestaurant(null, { id: "valid-r1" }, ctxFor("manager", "manager-other")),
-    ).rejects.toThrow("You can only modify your own restaurant");
+    ).rejects.toThrow("Admin only");
 
+    expect(modelMocks.Restaurant.findById).not.toHaveBeenCalled();
     expect(modelMocks.Restaurant.deleteOne).not.toHaveBeenCalled();
   });
 
-  it("deleteRestaurant allows manager owner", async () => {
+  it("deleteRestaurant allows admin", async () => {
     modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-1" });
     modelMocks.Restaurant.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
-    await RestaurantMutation.deleteRestaurant(null, { id: "valid-r1" }, ctxFor("manager", "manager-1"));
+    await RestaurantMutation.deleteRestaurant(null, { id: "valid-r1" }, ctxFor("admin", "admin-1"));
 
     expect(modelMocks.Restaurant.deleteOne).toHaveBeenCalledWith({ _id: { _mockObjectId: "valid-r1" } });
   });
 
-  it("createRestaurant manager self-create uses user.id fallback", async () => {
+  it("createRestaurant allows assigning one manager to many restaurants", async () => {
     modelMocks.User.findById.mockReturnValue({ populate: async () => ({ _id: "valid-manager-1", role: { slug: "manager" } }) });
-    modelMocks.Restaurant.exists.mockResolvedValue(false);
-    modelMocks.Restaurant.create.mockResolvedValue({ toObject: () => ({ _id: "valid-r1" }) });
+    modelMocks.Restaurant.create
+      .mockResolvedValueOnce({ toObject: () => ({ _id: "valid-r1" }) })
+      .mockResolvedValueOnce({ toObject: () => ({ _id: "valid-r2" }) });
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await RestaurantMutation.createRestaurant(
       null,
-      { input: { name: "R1", phone: "090" } },
-      { user: { id: "valid-manager-1", roleName: "manager" } },
+      { input: { name: "R1", phone: "090", managerId: "valid-manager-1" } },
+      { user: { id: "valid-admin-1", roleName: "admin" } },
+    );
+    await RestaurantMutation.createRestaurant(
+      null,
+      { input: { name: "R2", phone: "091", managerId: "valid-manager-1" } },
+      { user: { id: "valid-admin-1", roleName: "admin" } },
     );
 
     expect(modelMocks.User.findById).toHaveBeenCalledWith({ _mockObjectId: "valid-manager-1" });
-    expect(modelMocks.Restaurant.create).toHaveBeenCalledWith(
-      expect.objectContaining({ managerId: { _mockObjectId: "valid-manager-1" } }),
-    );
+    expect(modelMocks.Restaurant.create).toHaveBeenCalledTimes(2);
   });
 
-  it("createRestaurant denies non-admin/non-manager", async () => {
+  it("createRestaurant denies non-admin", async () => {
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
 
     await expect(
-      RestaurantMutation.createRestaurant(null, { input: { name: "R1" } }, ctxFor("staff", "valid-staff-1")),
-    ).rejects.toThrow("Insufficient permission");
+      RestaurantMutation.createRestaurant(
+        null,
+        { input: { name: "R1", managerId: "valid-manager-1" } },
+        ctxFor("manager", "valid-manager-1"),
+      ),
+    ).rejects.toThrow("Admin only");
 
     expect(modelMocks.User.findById).not.toHaveBeenCalled();
     expect(modelMocks.Restaurant.create).not.toHaveBeenCalled();
@@ -127,6 +135,22 @@ describe("restaurant mutation access hardening", () => {
     ).rejects.toThrow("Admin only");
 
     expect(modelMocks.Restaurant.findById).not.toHaveBeenCalled();
+  });
+
+  it("updateRestaurantManager allows manager already assigned elsewhere", async () => {
+    const save = vi.fn(async () => {});
+    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "valid-manager-old", save, toObject: vi.fn(() => ({ _id: "valid-r1" })) });
+    modelMocks.User.findById.mockReturnValue({ populate: async () => ({ _id: "valid-manager-1", role: { slug: "manager" } }) });
+
+    const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
+    const res = await RestaurantMutation.updateRestaurantManager(
+      null,
+      { input: { restaurantId: "valid-r1", managerId: "valid-manager-1" } },
+      ctxFor("admin", "admin-1"),
+    );
+
+    expect(save).toHaveBeenCalled();
+    expect(res).toEqual({ _id: "valid-r1" });
   });
 
   it("updateRestaurantCategoryIndex denies unrelated manager before upsert", async () => {

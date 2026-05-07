@@ -290,7 +290,6 @@ async function resolveStaffDoc(staffId, ctx) {
 
   return Staff.findById(oid)
     .populate("role")
-    .populate("refRestaurants")
     .populate("primaryRestaurant");
 }
 
@@ -316,7 +315,6 @@ export default {
       const targetRestaurantId =
         minimal?.restaurantForStaff ||
         minimal?.primaryRestaurant ||
-        minimal?.refRestaurants?.[0] ||
         null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
@@ -337,10 +335,10 @@ export default {
     const rid = toObjectId(restaurantId);
     if (restaurantId) {
       await requireRestaurantAccess(ctx, restaurantId);
+      // Legacy compatibility: ưu tiên restaurantForStaff, fallback primaryRestaurant.
       filter.$or = [
-        { refRestaurants: rid || restaurantId },
-        { primaryRestaurant: rid || restaurantId },
         { restaurantForStaff: rid || restaurantId },
+        { primaryRestaurant: rid || restaurantId },
       ];
     } else {
       requireRoles(ctx, ["ADMIN"]);

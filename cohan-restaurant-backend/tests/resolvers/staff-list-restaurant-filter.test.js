@@ -65,7 +65,7 @@ describe("staffList restaurant filter", () => {
     vi.clearAllMocks();
   });
 
-  it("includes primaryRestaurant and restaurantForStaff when filtering by restaurant", async () => {
+  it("includes restaurantForStaff and legacy primaryRestaurant when filtering by restaurant", async () => {
     const findChain = createFindChain();
     modelMocks.Staff.find.mockReturnValue(findChain);
 
@@ -76,9 +76,8 @@ describe("staffList restaurant filter", () => {
       userType: "STAFF",
       deletedAt: null,
       $or: [
-        { refRestaurants: { __oid: "restaurant-1" } },
-        { primaryRestaurant: { __oid: "restaurant-1" } },
         { restaurantForStaff: { __oid: "restaurant-1" } },
+        { primaryRestaurant: { __oid: "restaurant-1" } },
       ],
     });
     expect(findChain.populate).toHaveBeenCalledWith("role");
@@ -102,9 +101,8 @@ describe("staffList restaurant filter", () => {
     expect(filter.$and).toHaveLength(2);
     expect(filter.$and[0]).toEqual({
       $or: [
-        { refRestaurants: { __oid: "restaurant-1" } },
-        { primaryRestaurant: { __oid: "restaurant-1" } },
         { restaurantForStaff: { __oid: "restaurant-1" } },
+        { primaryRestaurant: { __oid: "restaurant-1" } },
       ],
     });
     expect(filter.$and[1].$or).toEqual(
