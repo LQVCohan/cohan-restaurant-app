@@ -71,6 +71,32 @@ describe("AvailabilitySnapshotModal", () => {
     expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
   });
 
+
+  it("matches availability window by date key even with different periodEnd timestamp/timezone", () => {
+    render(
+      <AvailabilitySnapshotModal
+        isOpen
+        onClose={() => {}}
+        weekStart={new Date("2026-05-25T00:00:00.000Z")}
+        weekEnd={new Date("2026-05-31T12:34:56.000Z")}
+        availabilityWindows={[
+          {
+            periodStart: "2026-05-25T00:00:00.000Z",
+            periodEnd: "2026-05-31T23:59:59.999+07:00",
+            status: "open",
+          },
+        ]}
+        shiftTemplates={shifts}
+        staffList={[]}
+        availabilitySubmissions={[]}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Chưa có kỳ availability đã chốt cho tuần này."),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders filter controls", () => {
     renderModal();
     expect(screen.getByPlaceholderText(/Tìm tên\/mã NV/i)).toBeInTheDocument();

@@ -10,6 +10,11 @@ const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const getWorkingDayKey = (date) => DAY_KEYS[new Date(date).getDay()];
 const getWeekDays = (weekStart, weekEnd) => eachDayOfInterval({ start: new Date(weekStart), end: new Date(weekEnd) });
 const isFinalizedStatus = (status) => FINALIZED_STATUSES.has(String(status || "").toLowerCase());
+const toDateKey = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd");
+};
+
 
 export function normalizeShiftDefinitions({ shiftTemplates, shiftRules }) {
   if (Array.isArray(shiftTemplates) && shiftTemplates.length) {
@@ -60,7 +65,22 @@ const AvailabilitySnapshotModalContent = (props) => {
 
   const shiftTypes = useMemo(() => normalizeShiftDefinitions({ shiftTemplates, shiftRules }), [shiftRules, shiftTemplates]);
   const days = useMemo(() => getWeekDays(weekStart, weekEnd), [weekStart, weekEnd]);
-  const hasWindow = useMemo(() => (availabilityWindows || []).some((w) => new Date(w.periodStart).getTime() === new Date(weekStart).getTime() && new Date(w.periodEnd).getTime() === new Date(weekEnd).getTime()), [availabilityWindows, weekEnd, weekStart]);
+  const weekStartKey = toDateKey(weekStart);
+  const weekEndKey = toDateKey(weekEnd);
+
+  const hasWindow = useMemo(
+    () =>
+      (availabilityWindows || []).some((w) => {
+        const status = String(w.status || w.effectiveStatus || "").toLowerCase();
+        if (status === "cancelled") return false;
+
+        return (
+          toDateKey(w.periodStart) === weekStartKey &&
+          toDateKey(w.periodEnd) === weekEndKey
+        );
+      }),
+    [availabilityWindows, weekStartKey, weekEndKey],
+  );
 
   const submissionByStaff = useMemo(() => {
     const map = new Map();
