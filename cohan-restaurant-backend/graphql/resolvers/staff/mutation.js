@@ -1373,44 +1373,6 @@ export default {
     return staff;
   },
 
-  // =========================
-  // RATE STAFF (1–5 sao)
-  // =========================
-  rateStaff: async (_, { userId, rating }, ctx) => {
-    requireAuth(ctx);
-    await requireStaffMutationAccess(ctx, userId);
-    const staff = await Staff.findById(userId);
-
-    if (!staff || staff.userType !== "STAFF") {
-      throw new Error("Staff not found");
-    }
-
-    const r = Math.max(1, Math.min(5, Number(rating) || 0));
-    const prevRate = staff.rate || 0;
-    const prevCount = staff.rateCount || 0;
-
-    const newCount = prevCount + 1;
-    const newRate = (prevRate * prevCount + r) / newCount;
-
-    staff.rate = newRate;
-    staff.rateCount = newCount;
-
-    await staff.save();
-    await staff.populate(["role", "refRestaurants"]);
-
-    await logStaffEvent({
-      staff,
-      verb: "staff.rate",
-      ctx,
-      meta: { rating: r },
-      diff: {
-        before: { rate: prevRate, rateCount: prevCount },
-        after: { rate: staff.rate, rateCount: staff.rateCount },
-      },
-    });
-
-    return staff;
-  },
   publishSchedule: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, SCHEDULE_WRITE_ROLES);
