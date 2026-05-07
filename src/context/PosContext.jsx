@@ -489,7 +489,67 @@ export default function PosProvider({
     return `${prefix}-${yyyy}${mm}${dd}-${randomPart}`;
   }, []);
 
-  const getDraftKeyForTable = useCallback(
+  
+  const getOffPremiseDraftKey = useCallback(
+    (type) => {
+      if (!restaurantId) return null;
+      if (type !== "delivery" && type !== "takeaway") return null;
+      return `pos_offpremise_draft:${restaurantId}:${type}`;
+    },
+    [restaurantId],
+  );
+
+  const clearOffPremiseDraft = useCallback((type) => {
+    const key = getOffPremiseDraftKey(type);
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch {}
+  }, [getOffPremiseDraftKey]);
+
+  const saveCurrentOffPremiseDraft = useCallback(() => {
+    if (currentOrderType !== "delivery" && currentOrderType !== "takeaway") return;
+    const key = getOffPremiseDraftKey(currentOrderType);
+    if (!key) return;
+    const payload = { version:1, savedAt: Date.now(), orderType: currentOrderType, currentOrderCode, currentOrder, deliveryCustomer, shippingInfo, orderNote };
+    try { localStorage.setItem(key, JSON.stringify(payload)); } catch {}
+  }, [currentOrderType, getOffPremiseDraftKey, currentOrderCode, currentOrder, deliveryCustomer, shippingInfo, orderNote]);
+
+  const ensureOffPremiseSession = useCallback((type, options = {}) => {
+    if (type !== "delivery" && type !== "takeaway") return;
+    if (currentOrderCode && !options.force) return;
+    setCurrentOrderType(type);
+    setCurrentOrderCode(generateVirtualCode(type === "delivery" ? "SHIP" : "TAKE"));
+    setCurrentTable({ id:null, code: type === "delivery" ? "DELIVERY" : "TAKEAWAY", name: type === "delivery" ? "Delivery" : "Takeaway", status:"occupied", type, restaurantId, isVirtual:true });
+  }, [currentOrderCode, generateVirtualCode, restaurantId]);
+
+  const restoreOffPremiseDraft = useCallback((type) => {
+    const key = getOffPremiseDraftKey(type);
+    if (!key) return false;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return false;
+      const p = JSON.parse(raw);
+      setCurrentOrderType(type);
+      setCurrentOrderCode(p?.currentOrderCode || null);
+      setCurrentOrder(Array.isArray(p?.currentOrder) ? p.currentOrder : []);
+      setDeliveryCustomer(p?.deliveryCustomer || null);
+      if (p?.shippingInfo) setShippingInfo((prev) => ({...prev, ...p.shippingInfo}));
+      setOrderNote?.(p?.orderNote || "");
+      setCurrentTable({ id:null, code: type === "delivery" ? "DELIVERY" : "TAKEAWAY", name: type === "delivery" ? "Delivery" : "Takeaway", status:"occupied", type, restaurantId, isVirtual:true });
+      return true;
+    } catch { return false; }
+  }, [getOffPremiseDraftKey, restaurantId, setOrderNote]);
+
+  const switchOffPremiseMode = useCallback((type) => {
+    if (type !== "delivery" && type !== "takeaway") return;
+    if (currentOrderType === type) return;
+    saveCurrentOffPremiseDraft();
+    const restored = restoreOffPremiseDraft(type);
+    if (!restored) {
+      setCurrentOrderType(type);
+      ensureOffPremiseSession(type);
+    }
+  }, [currentOrderType, ensureOffPremiseSession, restoreOffPremiseDraft, saveCurrentOffPremiseDraft]);
+const getDraftKeyForTable = useCallback(
     (tableId) => {
       if (!tableId) return null;
       return `pos_draft_table_${restaurantId}_${tableId}`;
@@ -615,9 +675,7 @@ export default function PosProvider({
 
   // --- [NEW] START DELIVERY ORDER ---
   const startDeliveryOrder = useCallback(() => {
-    const shipCode = generateVirtualCode("SHIP");
-    setCurrentOrderType("delivery");
-    setCurrentOrderCode(shipCode);
+    ensureOffPremiseSession("delivery");
 
     // currentTable.code là "table code" theo bạn: off-premise vẫn có 1 mã cố định
     setCurrentTable({
@@ -643,13 +701,11 @@ export default function PosProvider({
       scheduleTime: "",
     });
     setDeliveryCustomer(null);
-  }, [restaurantId, generateVirtualCode]);
+  }, [ensureOffPremiseSession]);
 
   // --- [NEW] START TAKEAWAY ORDER ---
   const startTakeawayOrder = useCallback(() => {
-    const takeCode = generateVirtualCode("TAKE");
-    setCurrentOrderType("takeaway");
-    setCurrentOrderCode(takeCode);
+    ensureOffPremiseSession("takeaway");
 
     setCurrentTable({
       id: null,
@@ -674,7 +730,7 @@ export default function PosProvider({
       scheduleTime: "",
     });
     setDeliveryCustomer(null);
-  }, [restaurantId, generateVirtualCode]);
+  }, [ensureOffPremiseSession]);
   const resetPosOrderSession = useCallback(
     (nextType = "dine_in") => {
       skipDraftAutosaveRef.current = true;
@@ -968,6 +1024,10 @@ export default function PosProvider({
     () => ({
       restaurantId,
       resetPosOrderSession,
+      switchOffPremiseMode,
+      ensureOffPremiseSession,
+      clearOffPremiseDraft,
+      saveCurrentOffPremiseDraft,
       floors,
       floorsLoading,
       floorsError,

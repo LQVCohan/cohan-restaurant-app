@@ -103,6 +103,8 @@ export default function LeftPanel() {
     floors,
     restaurantId,
     resetPosOrderSession,
+    switchOffPremiseMode,
+    ensureOffPremiseSession,
 
     tables,
     currentTable,
@@ -413,30 +415,22 @@ export default function LeftPanel() {
       }
     }
   };
-  const hasUnsavedItems =
-    Array.isArray(currentOrder) &&
-    currentOrder.some((item) => item?.isNew || !item?.isExisting);
-
   const handleChangeOrderType = (nextType) => {
     if (!nextType || nextType === currentOrderType) return;
-
-    if (hasUnsavedItems) {
-      const ok = window.confirm(
-        "Đổi chế độ sẽ xóa giỏ hàng/món nháp hiện tại. Bạn có muốn tiếp tục?",
-      );
-      if (!ok) return;
+    if (nextType === "delivery" || nextType === "takeaway") {
+      switchOffPremiseMode?.(nextType);
+      return;
     }
-
     resetPosOrderSession?.(nextType);
   };
   const handleCreateOffPremiseOrder = () => {
     if (currentOrderType === "delivery") {
-      startDeliveryOrder?.();
+      ensureOffPremiseSession?.("delivery");
       return;
     }
 
     if (currentOrderType === "takeaway") {
-      startTakeawayOrder?.();
+      ensureOffPremiseSession?.("takeaway");
       return;
     }
   };
