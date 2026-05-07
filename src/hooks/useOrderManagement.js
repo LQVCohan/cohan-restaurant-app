@@ -2464,12 +2464,20 @@ export default function useOrderManagement(pos = null) {
               deliveryCustomer.name ||
               ""
             ).trim(),
-            name: undefined, // tránh gửi cả 2 field name/fullName nếu BE không cần
+            name: undefined,
             phone: (deliveryCustomer.phone || "").trim() || undefined,
-            email:
-              (deliveryCustomer.email || "").trim().toLowerCase() || undefined,
+            email: (deliveryCustomer.email || "").trim().toLowerCase() || undefined,
           }
         : null;
+      const selectedPayload = deriveSelectedCustomerPayload({
+        selectedCandidate: deliveryCustomer,
+        conflict: deliveryCustomer?.conflict,
+        form: {
+          name: cleanCustomer?.fullName,
+          phone: cleanCustomer?.phone,
+          email: cleanCustomer?.email,
+        },
+      });
 
       // map đúng với ShippingInput trên BE
       const shippingPayload = shippingInfo
@@ -2515,8 +2523,8 @@ export default function useOrderManagement(pos = null) {
               note: orderNote,
               customer: cleanCustomer,
               shipping: shippingPayload,
-              userId: deliveryCustomer?.conflict ? null : deliveryCustomer?.id || null,
-              customerIdentityMode: deliveryCustomer?.conflict ? "snapshot_only" : (deliveryCustomer?.id ? "attach_existing" : "snapshot_only"),
+              userId: selectedPayload.userId,
+              customerIdentityMode: selectedPayload.customerIdentityMode,
               clientMeta: {
                 savedAt: new Date().toISOString(),
                 ua: typeof navigator !== "undefined" ? navigator.userAgent : "",

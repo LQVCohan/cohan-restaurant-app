@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { PosCustomer } from "../../../models/index.js";
+import { PosCustomer, User } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
 
 function toObjectId(value) {
@@ -12,9 +12,12 @@ function escapeRegex(value) {
 }
 
 export function normalizePosCustomerPhone(value) {
-  return String(value || "")
+  let normalized = String(value || "")
     .trim()
     .replace(/[\s.\-()]/g, "");
+  if (normalized.startsWith("+84")) normalized = `0${normalized.slice(3)}`;
+  if (normalized.startsWith("84")) normalized = `0${normalized.slice(2)}`;
+  return normalized;
 }
 
 function buildSearchFilter(search) {
@@ -53,6 +56,49 @@ export const PosCustomerQuery = {
       .sort({ lastOrderAt: -1, updatedAt: -1, createdAt: -1 })
       .limit(safeLimit)
       .lean({ virtuals: true });
+  },
+  async posCustomerCandidates(_, { restaurantId, keyword = "", email, phone } = {}, ctx) {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, rid);
+
+    const nEmail = String(email || "").trim().toLowerCase() || null;
+    const nPhone = normalizePosCustomerPhone(phone || "") || null;
+    const search = String(keyword || "").trim();
+
+    const userOr = [];
+    if (nEmail) userOr.push({ email: nEmail });
+    if (nPhone) userOr.push({ phone: nPhone });
+    if (search) {
+      const escaped = escapeRegex(search);
+      userOr.push({ fullName: new RegExp(escaped, "i") });
+      userOr.push({ email: new RegExp(escaped, "i") });
+      userOr.push({ phone: new RegExp(escapeRegex(normalizePosCustomerPhone(search)), "i") });
+    }
+
+    const userRows = userOr.length
+      ? await User.find({
+          deletedAt: null,
+          $or: userOr,
+        })
+          .select("_id fullName email phone address")
+          .limit(30)
+          .lean()
+      : [];
+
+    const out = new Map();
+    for (const u of userRows) {
+      const id = String(u._id);
+      out.set(id, {
+        id,
+        fullName: u.fullName || null,
+        email: u.email || null,
+        phone: u.phone || null,
+        address: u?.address?.line1 || null,
+        source: "USER",
+      });
+    }
+    return [...out.values()];
   },
 };
 

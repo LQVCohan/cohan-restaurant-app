@@ -6,6 +6,9 @@ const modelMocks = vi.hoisted(() => ({
     findOne: vi.fn(),
     create: vi.fn(),
   },
+  User: {
+    find: vi.fn(),
+  },
 }));
 
 const guardMocks = vi.hoisted(() => ({
@@ -32,6 +35,16 @@ function mockFindChain(value = []) {
     lean: vi.fn().mockResolvedValue(value),
   };
   modelMocks.PosCustomer.find.mockReturnValue(chain);
+  return chain;
+}
+
+function mockUserFindChain(value = []) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(value),
+  };
+  modelMocks.User.find.mockReturnValue(chain);
   return chain;
 }
 
@@ -153,5 +166,19 @@ describe("PosCustomer resolvers", () => {
     ).rejects.toThrow("Invalid restaurantId");
 
     expect(modelMocks.PosCustomer.findOne).not.toHaveBeenCalled();
+  });
+
+  it("finds customer candidates by normalized email/phone", async () => {
+    mockUserFindChain([
+      { _id: "u1", fullName: "A", email: "a@example.com", phone: "0901234567", address: { line1: "1 A st" } },
+    ]);
+    const { PosCustomerQuery } = await import("../../graphql/resolvers/posCustomer/query.js");
+    const rows = await PosCustomerQuery.posCustomerCandidates(
+      null,
+      { restaurantId: "valid-restaurant-1", email: " A@Example.com ", phone: "+84 901 234 567" },
+      { user: { id: "manager-1" } },
+    );
+    expect(rows[0]).toEqual(expect.objectContaining({ id: "u1", source: "USER" }));
+    expect(modelMocks.User.find).toHaveBeenCalled();
   });
 });

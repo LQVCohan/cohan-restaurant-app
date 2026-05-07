@@ -1,5 +1,10 @@
 export const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
-export const normalizePhone = (value) => String(value || "").replace(/[\s.\-()]/g, "").trim();
+export const normalizePhone = (value) => {
+  let normalized = String(value || "").replace(/[\s.\-()]/g, "").trim();
+  if (normalized.startsWith("+84")) normalized = `0${normalized.slice(3)}`;
+  if (normalized.startsWith("84")) normalized = `0${normalized.slice(2)}`;
+  return normalized;
+};
 
 export function deriveCandidateMatches(candidates = [], { email, phone }) {
   const nEmail = normalizeEmail(email);
@@ -19,4 +24,17 @@ export function deriveCandidateMatches(candidates = [], { email, phone }) {
 export function detectIdentityConflict(emailCandidate, phoneCandidate) {
   if (!emailCandidate || !phoneCandidate) return false;
   return String(emailCandidate?.id || emailCandidate?._id) !== String(phoneCandidate?.id || phoneCandidate?._id);
+}
+
+export function deriveSelectedCustomerPayload({ selectedCandidate, conflict, form }) {
+  if (conflict || !selectedCandidate) return { userId: null, customerIdentityMode: "snapshot_only" };
+  return {
+    userId: selectedCandidate.id || selectedCandidate._id || null,
+    customerIdentityMode: "attach_existing",
+    customer: {
+      fullName: (form?.name || selectedCandidate?.fullName || "").trim(),
+      phone: normalizePhone(form?.phone || selectedCandidate?.phone || "") || undefined,
+      email: normalizeEmail(form?.email || selectedCandidate?.email || "") || undefined,
+    },
+  };
 }
