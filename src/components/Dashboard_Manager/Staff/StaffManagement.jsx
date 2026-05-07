@@ -163,7 +163,7 @@ const StaffManagement = () => {
 
       const staffRestaurantIds = [
         ...(staff.refRestaurants || []).map((restaurant) => restaurant?.id),
-        staff.primaryRestaurant?.id,
+        staff.restaurantForStaff,
       ].filter(Boolean);
 
       return staffRestaurantIds.some((id) => allowedIds.includes(id));
@@ -211,7 +211,7 @@ const StaffManagement = () => {
           shift: staff.shiftType || "Ca xoay",
           baseSalary: staff.baseSalary ?? null,
           salary: staff.baseSalary ?? null,
-          primaryRestaurantId: staff.primaryRestaurant?.id,
+          restaurantForStaff: staff.restaurantForStaff,
           raw: staff,
         };
       }),

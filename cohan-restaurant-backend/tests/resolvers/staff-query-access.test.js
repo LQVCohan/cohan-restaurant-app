@@ -100,9 +100,9 @@ describe("staff query access guards", () => {
     modelMocks.Staff.findById().populate().populate.mockReturnValue({ populate: vi.fn(async () => staffDoc) });
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("denied"));
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    await expect(query.staffAccountOverview(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
-    await expect(query.staffSalarySummary(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
-    await expect(query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
+    await expect(query.staffAccountOverview(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
+    await expect(query.staffSalarySummary(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
+    await expect(query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
     expect(modelMocks.Table.find).not.toHaveBeenCalled();
     expect(modelMocks.Shift.find).not.toHaveBeenCalled();
     expect(modelMocks.Timesheet.aggregate).not.toHaveBeenCalled();

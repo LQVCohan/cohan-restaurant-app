@@ -246,10 +246,6 @@ userSchema.index({
 });
 
 userSchema.index({ phone: 1 });
-export const User = mongoose.models.User || mongoose.model("User", userSchema);
-export default User;
-
-
 userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
   unique: true,
   partialFilterExpression: {
@@ -259,3 +255,5 @@ userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
   },
 });
 userSchema.index({ userType: 1, employmentStatus: 1, restaurantForStaff: 1 });
+export const User = mongoose.models.User || mongoose.model("User", userSchema);
+export default User;

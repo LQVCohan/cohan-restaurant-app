@@ -102,7 +102,7 @@ describe("createStaff employeeCode generation", () => {
         input: {
           fullName: "Alice",
           employeeCode: "HACKED",
-          primaryRestaurantId: restaurantA,
+          restaurantForStaff: restaurantA,
         },
       },
       { user: { id: "manager-1" } },
@@ -112,7 +112,7 @@ describe("createStaff employeeCode generation", () => {
       {
         input: {
           fullName: "Bob",
-          primaryRestaurantId: restaurantA,
+          restaurantForStaff: restaurantA,
         },
       },
       { user: { id: "manager-1" } },
@@ -122,7 +122,7 @@ describe("createStaff employeeCode generation", () => {
       {
         input: {
           fullName: "Carol",
-          primaryRestaurantId: restaurantB,
+          restaurantForStaff: restaurantB,
         },
       },
       { user: { id: "manager-1" } },

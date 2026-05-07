@@ -189,8 +189,7 @@ async function loadStaffForRestaurant(employeeId, restaurantId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-      primaryRestaurant: 1,
-      restaurantForStaff: 1,
+            restaurantForStaff: 1,
       fullName: 1,
       employeeCode: 1,
     })
@@ -980,8 +979,7 @@ async function loadStaffScope(staffId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-      primaryRestaurant: 1,
-      restaurantForStaff: 1,
+            restaurantForStaff: 1,
       refRestaurants: 1,
       role: 1,
       employmentStatus: 1,
@@ -1222,7 +1220,7 @@ export default {
       )
     ) {
       await assertNoLockedPayrollPeriodOverlap({
-        restaurantId: staff.primaryRestaurant || staff.restaurantForStaff,
+        restaurantId: staff.restaurantForStaff,
         employeeId: staff._id,
         startDate: staff.dateJoined || new Date("2000-01-01"),
         endDate: new Date(),
@@ -1289,8 +1287,7 @@ export default {
           department: before.department,
           employmentType: before.employmentType,
           employmentStatus: before.employmentStatus,
-          primaryRestaurant: before.primaryRestaurant,
-          role: before.role ? String(before.role) : null,
+                    role: before.role ? String(before.role) : null,
         },
         after: {
           fullName: staff.fullName,
@@ -1299,8 +1296,7 @@ export default {
           department: staff.department,
           employmentType: staff.employmentType,
           employmentStatus: staff.employmentStatus,
-          primaryRestaurant: staff.primaryRestaurant,
-          role: staff.role ? String(staff.role._id || staff.role) : null,
+                    role: staff.role ? String(staff.role._id || staff.role) : null,
         },
       },
     });
@@ -2803,8 +2799,7 @@ export default {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        primaryRestaurant: 1,
-        restaurantForStaff: 1,
+                restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -2835,7 +2830,7 @@ export default {
     const rid = payrollToObjectId(
       input.restaurantId ||
         actor.restaurantForStaff ||
-        actor.primaryRestaurantId,
+        null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3110,7 +3105,7 @@ export default {
     const rid = payrollToObjectId(
       input.restaurantId ||
         actor.restaurantForStaff ||
-        actor.primaryRestaurantId,
+        null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3234,8 +3229,7 @@ export default {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        primaryRestaurant: 1,
-        restaurantForStaff: 1,
+                restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -3785,8 +3779,7 @@ export default {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        primaryRestaurant: 1,
-        restaurantForStaff: 1,
+                restaurantForStaff: 1,
         refRestaurants: 1,
         fullName: 1,
         employeeCode: 1,
@@ -4112,7 +4105,7 @@ export default {
       await requireRestaurantAccess(ctx, request.restaurantId);
     } else {
       const actorStaff = await Staff.findById(actorId)
-        .select({ primaryRestaurant: 1, restaurantForStaff: 1, refRestaurants: 1 })
+        .select({ restaurantForStaff: 1, refRestaurants: 1 })
         .lean();
       if (!staffBelongsToRestaurant(actorStaff, request.restaurantId)) {
         throw new Error("FORBIDDEN");
