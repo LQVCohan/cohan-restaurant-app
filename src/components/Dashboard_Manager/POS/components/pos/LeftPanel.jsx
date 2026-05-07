@@ -343,12 +343,13 @@ export default function LeftPanel() {
 
   const handleSelectRegularCustomer = (customer) => {
     if (!customer) return;
-    const { id, name, phone, isNew, shippingInfo: ship } = customer;
+    const { id, name, phone, email, isNew, shippingInfo: ship } = customer;
 
     setDeliveryCustomer({
       id: id || null,
       name: name,
       phone: phone,
+      email: email || "",
       isNew: !!isNew,
     });
 

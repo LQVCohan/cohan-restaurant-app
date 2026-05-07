@@ -2465,8 +2465,9 @@ export default function useOrderManagement(pos = null) {
               ""
             ).trim(),
             name: undefined, // tránh gửi cả 2 field name/fullName nếu BE không cần
-            phone: (deliveryCustomer.phone || "").trim(),
-            email: (deliveryCustomer.email || "").trim().toLowerCase(),
+            phone: (deliveryCustomer.phone || "").trim() || undefined,
+            email:
+              (deliveryCustomer.email || "").trim().toLowerCase() || undefined,
           }
         : null;
 
@@ -2479,8 +2480,11 @@ export default function useOrderManagement(pos = null) {
               cleanCustomer?.name ||
               "" ||
               null,
-            phone: shippingInfo.phone || cleanCustomer?.phone || "" || null,
-            email: shippingInfo.email || cleanCustomer?.email || "" || null,
+            phone: (shippingInfo.phone || cleanCustomer?.phone || "").trim() || null,
+            email:
+              (shippingInfo.email || cleanCustomer?.email || "")
+                .trim()
+                .toLowerCase() || null,
             address: shippingInfo.address || null,
             note: shippingInfo.note || null,
             deliveryMethod: shippingInfo.deliveryMethod || null,
@@ -2511,6 +2515,8 @@ export default function useOrderManagement(pos = null) {
               note: orderNote,
               customer: cleanCustomer,
               shipping: shippingPayload,
+              userId: deliveryCustomer?.id || null,
+              customerIdentityMode: "snapshot_only",
               clientMeta: {
                 savedAt: new Date().toISOString(),
                 ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
