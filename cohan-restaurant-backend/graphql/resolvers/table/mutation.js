@@ -3,6 +3,7 @@ import { GraphQLError } from "graphql";
 import Floor from "../../../models/floor.model.js";
 import Table from "../../../models/table.model.js";
 import { logEvent } from "../../../src/services/eventLog.service.js";
+import { requireRestaurantAccess } from "../../guards.js";
 const ensureFloorLevel = async (floorId) => {
   const f = await Floor.findById(floorId).select({ level: 1 }).lean();
   if (!f) throw new GraphQLError("Floor not found");
@@ -61,7 +62,7 @@ const mapDuplicateMongoError = (error, fallbackCode) => {
 };
 
 export default {
-  createTable: async (_p, { input }) => {
+  createTable: async (_p, { input }, ctx) => {
     const { restaurantId, floorId } = input;
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -69,6 +70,7 @@ export default {
     ) {
       throw new GraphQLError("Invalid restaurantId or floorId");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
     const normalizedCode = humanizeTableCode(input.code);
     await ensureUniqueTableCodeInFloor({
       restaurantId,
@@ -103,6 +105,7 @@ export default {
     if (anchorId && !mongoose.isValidObjectId(anchorId)) {
       throw new GraphQLError("Invalid anchorId");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     // Lấy toàn bộ bàn, đảm bảo cùng nhà hàng
     const tables = await Table.find({
@@ -163,6 +166,7 @@ export default {
         throw new GraphQLError("Invalid tableIds");
       }
     }
+    await requireRestaurantAccess(ctx, restaurantId);
 
     // Xác định tập bàn sẽ tách
     let toUnmergeFilter = { restaurantId, joinGroupId };
@@ -212,6 +216,8 @@ export default {
       .select({ _id: 1, restaurantId: 1, floorId: 1, code: 1 })
       .lean();
     if (!current) throw new GraphQLError("Table not found");
+    await requireRestaurantAccess(ctx, current.restaurantId);
+    delete patch.restaurantId;
 
     const nextCode =
       patch.code != null ? humanizeTableCode(patch.code) : current.code;
@@ -230,7 +236,14 @@ export default {
     if (patch.floorId) {
       if (!mongoose.isValidObjectId(patch.floorId))
         throw new GraphQLError("Invalid floorId");
-      const level = await ensureFloorLevel(patch.floorId);
+      const floor = await Floor.findById(patch.floorId)
+        .select({ restaurantId: 1, level: 1 })
+        .lean();
+      if (!floor) throw new GraphQLError("Floor not found");
+      if (String(floor.restaurantId) !== String(current.restaurantId)) {
+        throw new GraphQLError("Floor does not belong to this restaurant");
+      }
+      const level = floor.level ?? 1;
       patch.floorLevel = level;
     }
     try {
@@ -263,6 +276,7 @@ export default {
     // Lấy thông tin bàn trước khi xóa để ghi log
     const before = await Table.findById(id).lean({ virtuals: true });
     if (!before) return false;
+    await requireRestaurantAccess(ctx, before.restaurantId);
 
     const res = await Table.deleteOne({ _id: id });
 
@@ -287,13 +301,25 @@ export default {
   moveTable: async (_p, { input }, ctx) => {
     const { id, floorId, position } = input;
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
+    const current = await Table.findById(id)
+      .select({ restaurantId: 1, floorId: 1 })
+      .lean();
+    if (!current) throw new GraphQLError("Table not found");
+    await requireRestaurantAccess(ctx, current.restaurantId);
 
     const patch = {};
     if (position) patch.position = position;
     if (floorId) {
       if (!mongoose.isValidObjectId(floorId))
         throw new GraphQLError("Invalid floorId");
-      const level = await ensureFloorLevel(floorId);
+      const floor = await Floor.findById(floorId)
+        .select({ restaurantId: 1, level: 1 })
+        .lean();
+      if (!floor) throw new GraphQLError("Floor not found");
+      if (String(floor.restaurantId) !== String(current.restaurantId)) {
+        throw new GraphQLError("Floor does not belong to this restaurant");
+      }
+      const level = floor.level ?? 1;
       patch.floorId = floorId;
       patch.floorLevel = level;
     }
@@ -318,9 +344,12 @@ export default {
     return doc;
   },
 
-  setTableStatus: async (_p, { input }) => {
+  setTableStatus: async (_p, { input }, ctx) => {
     const { id, status } = input;
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
+    const existing = await Table.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) throw new GraphQLError("Table not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     const doc = await Table.findByIdAndUpdate(
       id,
       { $set: { status } },
@@ -335,6 +364,7 @@ export default {
     if (![restaurantId, floorId, aId, bId].every(mongoose.isValidObjectId)) {
       throw new GraphQLError("Invalid ids");
     }
+    await requireRestaurantAccess(ctx, restaurantId);
     const [a, b] = await Promise.all([
       Table.findOne({ _id: aId, restaurantId, floorId })
         .select({ code: 1 })
@@ -361,7 +391,7 @@ export default {
     return true;
   },
 
-  bulkUpsertTables: async (_p, { input }) => {
+  bulkUpsertTables: async (_p, { input }, ctx) => {
     const { restaurantId, floorId, items } = input;
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -369,7 +399,15 @@ export default {
     ) {
       throw new GraphQLError("Invalid restaurantId or floorId");
     }
-    const level = await ensureFloorLevel(floorId);
+    await requireRestaurantAccess(ctx, restaurantId);
+    const floor = await Floor.findById(floorId)
+      .select({ restaurantId: 1, level: 1 })
+      .lean();
+    if (!floor) throw new GraphQLError("Floor not found");
+    if (String(floor.restaurantId) !== String(restaurantId)) {
+      throw new GraphQLError("Floor does not belong to this restaurant");
+    }
+    const level = floor.level ?? 1;
 
     const ops = items.map((it) => ({
       updateOne: {
@@ -404,6 +442,7 @@ export default {
 
     const table = await Table.findById(tableId).lean();
     if (!table) throw new GraphQLError("Table not found");
+    await requireRestaurantAccess(ctx, table.restaurantId);
 
     const lock = table.viewLock || null;
     const lockActive = lock?.expiresAt && new Date(lock.expiresAt) > now;
@@ -459,6 +498,9 @@ export default {
     const uid = userId || ctx?.user?.id;
     if (!mongoose.isValidObjectId(uid)) throw new GraphQLError("Invalid userId");
 
+    const existing = await Table.findById(tableId).select({ restaurantId: 1 }).lean();
+    if (!existing) return null;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     const updated = await Table.findOneAndUpdate(
       { _id: tableId, "viewLock.userId": new mongoose.Types.ObjectId(uid) },
       { $unset: { viewLock: 1 } },
