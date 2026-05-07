@@ -66,6 +66,30 @@ export const PosCustomerQuery = {
     const nPhone = normalizePosCustomerPhone(phone || "") || null;
     const search = String(keyword || "").trim();
 
+    const posOr = [];
+    if (nEmail) posOr.push({ email: nEmail });
+    if (nPhone) posOr.push({ phone: nPhone });
+    if (search) {
+      const escaped = escapeRegex(search);
+      posOr.push({ fullName: new RegExp(escaped, "i") });
+      posOr.push({ email: new RegExp(escaped, "i") });
+      posOr.push({ defaultAddress: new RegExp(escaped, "i") });
+      const searchPhone = normalizePosCustomerPhone(search);
+      if (searchPhone) {
+        posOr.push({ phone: new RegExp(escapeRegex(searchPhone), "i") });
+      }
+    }
+
+    const posRows = posOr.length
+      ? await PosCustomer.find({
+          restaurantId: rid,
+          isActive: { $ne: false },
+          $or: posOr,
+        })
+          .limit(30)
+          .lean({ virtuals: true })
+      : [];
+
     const userOr = [];
     if (nEmail) userOr.push({ email: nEmail });
     if (nPhone) userOr.push({ phone: nPhone });
@@ -73,7 +97,10 @@ export const PosCustomerQuery = {
       const escaped = escapeRegex(search);
       userOr.push({ fullName: new RegExp(escaped, "i") });
       userOr.push({ email: new RegExp(escaped, "i") });
-      userOr.push({ phone: new RegExp(escapeRegex(normalizePosCustomerPhone(search)), "i") });
+      const searchPhone = normalizePosCustomerPhone(search);
+      if (searchPhone) {
+        userOr.push({ phone: new RegExp(escapeRegex(searchPhone), "i") });
+      }
     }
 
     const userRows = userOr.length
@@ -87,14 +114,28 @@ export const PosCustomerQuery = {
       : [];
 
     const out = new Map();
+    for (const c of posRows) {
+      const id = String(c._id || c.id);
+      out.set(`POS:${id}`, {
+        id,
+        fullName: c.fullName || null,
+        email: c.email || null,
+        phone: c.phone || null,
+        address: c.defaultAddress || null,
+        note: c.note || null,
+        source: "POS",
+      });
+    }
+
     for (const u of userRows) {
       const id = String(u._id);
-      out.set(id, {
+      out.set(`USER:${id}`, {
         id,
         fullName: u.fullName || null,
         email: u.email || null,
         phone: u.phone || null,
         address: u?.address?.line1 || null,
+        note: null,
         source: "USER",
       });
     }

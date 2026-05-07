@@ -20,6 +20,7 @@ type PosCustomerCandidate {
   email: String
   phone: String
   address: String
+  note: String
   source: String
 }
 
