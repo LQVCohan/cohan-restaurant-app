@@ -7,17 +7,17 @@ import { usePos } from "../../../../../context/PosContext";
 import { useVnAddressLazy } from "../../../../../hooks/useVnAddressLazy";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
-import { deriveCandidateMatches, detectIdentityConflict } from "../../../../../utils/posCustomerIdentity";
+import { deriveCandidateMatches, detectIdentityConflict, normalizeEmail, normalizePhone } from "../../../../../utils/posCustomerIdentity";
 
 
 const Q_POS_CUSTOMERS = gql`
-  query PosCustomers($restaurantId: ID!, $search: String, $limit: Int) {
-    posCustomers(restaurantId: $restaurantId, search: $search, limit: $limit) {
+  query PosCustomerCandidates($restaurantId: ID!, $keyword: String, $email: String, $phone: String) {
+    posCustomerCandidates(restaurantId: $restaurantId, keyword: $keyword, email: $email, phone: $phone) {
       id
       fullName
       phone
       email
-      defaultAddress
+      address
       note
     }
   }
@@ -34,8 +34,6 @@ const emptyForm = {
   wardKey: "",
 };
 
-const normalizePhone = (v) => (v || "").replace(/\s+/g, "").trim();
-const normalizeEmail = (v) => (v || "").trim().toLowerCase();
 
 function safeStr(v) {
   return (v || "").toString().trim();
@@ -94,6 +92,7 @@ export default function RegularCustomerModal({
 
   const [customers, setCustomers] = useState([]);
   const [loadCustomers, { data: customersData, loading: customersLoading }] = useLazyQuery(Q_POS_CUSTOMERS, { fetchPolicy: "network-only" });
+  const [searchDebounced, setSearchDebounced] = useState("");
 
   const [form, setForm] = useState(emptyForm);
   const firstOpenRef = useRef(false);
@@ -191,14 +190,21 @@ export default function RegularCustomerModal({
   }, [form]);
 
   useEffect(() => {
-    if (!isOpen || !restaurantId) return;
-    loadCustomers({ variables: { restaurantId, search: safeStr(search), limit: 25 } });
-  }, [isOpen, restaurantId, search, loadCustomers]);
+    const t = setTimeout(() => setSearchDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const filteredCustomers = useMemo(() => (customersData?.posCustomers || []).map((c) => ({
+  useEffect(() => {
+    if (!isOpen || !restaurantId) return;
+    const email = normalizeEmail(form.email);
+    const phone = normalizePhone(form.phone);
+    loadCustomers({ variables: { restaurantId, keyword: safeStr(searchDebounced), email: email || null, phone: phone || null } });
+  }, [isOpen, restaurantId, searchDebounced, form.email, form.phone, loadCustomers]);
+
+  const filteredCustomers = useMemo(() => (customersData?.posCustomerCandidates || []).map((c) => ({
     ...c,
     name: safeStr(c.fullName),
-    address: safeStr(c.defaultAddress),
+    address: safeStr(c.address),
   })), [customersData]);
 
   const closeWithConfirm = () => {
