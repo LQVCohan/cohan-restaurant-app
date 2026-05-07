@@ -1500,6 +1500,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   ].join(":");
   const {
     data: managerAvailabilityWindowsData,
+    error: managerAvailabilityWindowsError,
     refetch: refetchManagerWindows,
   } = useQuery(GET_AVAILABILITY_WINDOWS, {
     variables: {
@@ -1547,6 +1548,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const {
     data: managerAvailabilitySubmissionsData,
+    error: managerAvailabilitySubmissionsError,
     refetch: refetchManagerSubmissions,
   } = useQuery(GET_AVAILABILITY_SUBMISSIONS, {
     variables: {
@@ -4426,7 +4428,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
             openingAvailabilityWindow ||
             closingAvailabilityWindow
           }
-          error={null}
+          error={
+          managerAvailabilityWindowsError ||
+          managerAvailabilitySubmissionsError ||
+          availabilityWindowsState.error ||
+          availabilitySubmissionsState.error ||
+          null
+        }
           onCreateWindow={handleCreateOrOpenAvailabilityWindow}
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
@@ -4804,7 +4812,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         shiftTemplates={schedulingPolicy?.shiftTemplates}
         shiftRules={configuredShiftTypes}
         loading={availabilityWindowsState.loading || availabilitySubmissionsState.loading}
-        error={null}
+        error={
+          managerAvailabilityWindowsError ||
+          managerAvailabilitySubmissionsError ||
+          availabilityWindowsState.error ||
+          availabilitySubmissionsState.error ||
+          null
+        }
       />
 
       {isPublishConfirmOpen ? (
