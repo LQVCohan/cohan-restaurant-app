@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Table from "../../../models/table.model.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 async function cleanupExpiredViewLocks(restaurantId) {
   const now = new Date();
@@ -12,8 +13,9 @@ export default {
   tables: async (
     _p,
     { restaurantId, floorId, status, type, search, limit }
-  ) => {
+  , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     const q = { restaurantId };
 
@@ -51,12 +53,13 @@ export default {
       .lean({ virtuals: true });
   },
 
-  tableByCode: async (_p, { restaurantId, floorId, code }) => {
+  tableByCode: async (_p, { restaurantId, floorId, code }, ctx) => {
     if (
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(floorId)
     )
       return null;
+    await requireRestaurantAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     return Table.findOne({ restaurantId, floorId, code }).lean({
       virtuals: true,
