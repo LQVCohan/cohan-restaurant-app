@@ -134,8 +134,18 @@ const GET_SCHEDULE_ACK_SUMMARY = gql`
   }
 `;
 const GET_DECLINED_SHIFT_ACKS = gql`
-  query ShiftAcknowledgements($restaurantId: ID!, $periodStart: DateTime, $periodEnd: DateTime, $status: ShiftAcknowledgementStatus) {
-    shiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd, status: $status) {
+  query ShiftAcknowledgements(
+    $restaurantId: ID!
+    $periodStart: DateTime
+    $periodEnd: DateTime
+    $status: ShiftAcknowledgementStatus
+  ) {
+    shiftAcknowledgements(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+      status: $status
+    ) {
       id
       shiftId
       employeeId
@@ -149,8 +159,13 @@ const GET_DECLINED_SHIFT_ACKS = gql`
   }
 `;
 const REVIEW_SHIFT_ACK = gql`
-  mutation ReviewShiftAcknowledgement($input: ReviewShiftAcknowledgementInput!) {
-    reviewShiftAcknowledgement(input: $input) { id declineClassification }
+  mutation ReviewShiftAcknowledgement(
+    $input: ReviewShiftAcknowledgementInput!
+  ) {
+    reviewShiftAcknowledgement(input: $input) {
+      id
+      declineClassification
+    }
   }
 `;
 
@@ -706,15 +721,7 @@ const resolveAssistantShiftStatus = (deltaStaff) => {
   if (deltaStaff >= 1) return { status: "overstaffed", severity: "low" };
   return { status: "balanced", severity: "low" };
 };
-const getGraphQLErrorMessage = (error, fallback = "Đã xảy ra lỗi.") => {
-  const graphQLError =
-    error?.graphQLErrors?.[0]?.message ||
-    error?.networkError?.result?.errors?.[0]?.message ||
-    error?.cause?.message ||
-    "";
 
-  return graphQLError || error?.message || fallback;
-};
 const mergeAssistantWithRequiredRoles = (assistant, requiredRoles = []) => {
   if (!assistant) return assistant;
 
@@ -1556,8 +1563,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useMutation(CHANGE_PUBLISHED_SHIFT_GROUP_TIME);
   const [publishSchedule, { loading: publishingSchedule }] =
     useMutation(PUBLISH_SCHEDULE);
-  const [lockSchedule] = useMutation(LOCK_SCHEDULE);
-  const [closeSchedule] = useMutation(CLOSE_SCHEDULE);
+
   const [reopenSchedule, { loading: reopeningSchedule }] =
     useMutation(REOPEN_SCHEDULE);
   const [addStaffToPublishedShiftGroup, { loading: addingPublishedStaff }] =
@@ -1731,7 +1737,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const shiftGroup =
       shifts.find((shift) => String(shift.id) === ackShiftId) ||
       shifts.find((shift) =>
-        (shift.records || []).some((record) => String(record.id) === ackShiftId),
+        (shift.records || []).some(
+          (record) => String(record.id) === ackShiftId,
+        ),
       );
     if (shiftGroup) {
       setSelectedShift(shiftGroup);
@@ -1739,8 +1747,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
     setHighlightedShiftIds([ackShiftId]);
     requestAnimationFrame(() => {
-      const target = document.querySelector(`[data-shift-group-id="${ackShiftId}"]`);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      const target = document.querySelector(
+        `[data-shift-group-id="${ackShiftId}"]`,
+      );
+      if (target)
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
       clearShiftHighlightLater();
     });
     showNotification(
@@ -1781,24 +1792,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ),
     [staff],
   );
-  const managerAvailabilitySummary = useMemo(() => {
-    const submittedIds = new Set(
-      managerAvailabilitySubmissions
-        .filter((item) =>
-          ["submitted", "approved", "locked"].includes(item.status),
-        )
-        .map((item) => String(item.employeeId)),
-    );
-    const latePending = managerAvailabilitySubmissions.filter(
-      (item) => item.status === "late_change_requested",
-    ).length;
-    return {
-      requiredCount: partTimeStaff.length,
-      submittedCount: submittedIds.size,
-      missingCount: Math.max(0, partTimeStaff.length - submittedIds.size),
-      latePending,
-    };
-  }, [managerAvailabilitySubmissions, partTimeStaff.length]);
+
   const totalAssignmentsForPublish = useMemo(
     () =>
       shifts.reduce(
@@ -1849,13 +1843,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     ),
   };
   const isSchedulePublished = scheduleLifecycleStatus === "published";
-  const isScheduleActive = scheduleLifecycleStatus === "active";
-  const isScheduleLocked = scheduleLifecycleStatus === "locked";
-  const isScheduleClosed = scheduleLifecycleStatus === "closed";
-  const isScheduleReadOnly = Boolean(schedulePermissions.isReadOnly);
-  const isDraftLikeSchedule = ["draft", "revision_draft"].includes(
-    scheduleLifecycleStatus,
-  );
+
   const hasChangesAfterPublish =
     isSchedulePublished &&
     schedulePublication?.lastChangedAt &&
@@ -1978,7 +1966,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         return;
       }
       const currentWindowStatus = String(
-        managerCurrentWindow?.effectiveStatus || managerCurrentWindow?.status || "",
+        managerCurrentWindow?.effectiveStatus ||
+          managerCurrentWindow?.status ||
+          "",
       ).toLowerCase();
       const confirmLines = [
         currentWindowStatus === "closed"
@@ -1987,9 +1977,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
       ];
       if (currentWindowStatus === "closed") {
-        confirmLines.push("Sau khi mở lại, nhân viên có thể thay đổi submissions.");
+        confirmLines.push(
+          "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
+        );
       } else if (currentWindowStatus === "draft") {
-        confirmLines.push("Sau khi mở, nhân viên có thể gửi hoặc cập nhật đăng ký.");
+        confirmLines.push(
+          "Sau khi mở, nhân viên có thể gửi hoặc cập nhật đăng ký.",
+        );
       }
       const confirmed = window.confirm(confirmLines.join("\n"));
       if (!confirmed) return;
@@ -4062,52 +4056,131 @@ const ScheduleManagement = ({ readOnly = false }) => {
             )}
           </p>
         ) : null}
-        {!declinedShiftAcksLoading && !declinedShiftAcksError && declinedShiftAcks.length === 0 ? (
+        {!declinedShiftAcksLoading &&
+        !declinedShiftAcksError &&
+        declinedShiftAcks.length === 0 ? (
           <p>Chưa có ca bị từ chối trong tuần này.</p>
         ) : null}
         {declinedShiftAcks.map((ack) => (
           <div key={ack.id} className="declined-shift-review-item">
             {(() => {
               const shiftRow = shiftRowsById.get(String(ack.shiftId));
-              const personName = ack.employeeName || shiftRow?.employeeName || "Nhân viên";
-              const personCode = ack.employeeCode || staff.find((item) => String(item.id) === String(ack.employeeId))?.employeeCode || "";
-              const shiftTypeLabel = (ack.shiftType || shiftRow?.shiftType || "").toString().toLowerCase();
+              const personName =
+                ack.employeeName || shiftRow?.employeeName || "Nhân viên";
+              const personCode =
+                ack.employeeCode ||
+                staff.find((item) => String(item.id) === String(ack.employeeId))
+                  ?.employeeCode ||
+                "";
+              const shiftTypeLabel = (
+                ack.shiftType ||
+                shiftRow?.shiftType ||
+                ""
+              )
+                .toString()
+                .toLowerCase();
               const shiftStart = ack.shiftStartTime || shiftRow?.startTime;
               const shiftEnd = ack.shiftEndTime || shiftRow?.endTime;
-              const shiftDate = shiftStart ? format(new Date(shiftStart), "dd/MM/yyyy") : "";
+              const shiftDate = shiftStart
+                ? format(new Date(shiftStart), "dd/MM/yyyy")
+                : "";
               const label = reasonCategoryLabels[ack.reasonCategory] || "Khác";
               const classification = ack.declineClassification || "unknown";
-              const isResolved = !shiftRow || String(shiftRow.employeeId) !== String(ack.employeeId);
+              const isResolved =
+                !shiftRow ||
+                String(shiftRow.employeeId) !== String(ack.employeeId);
               const isReviewing = reviewingAckId === ack.id;
               return (
                 <>
-                  <div>Nhân viên: <strong>{personName}{personCode ? ` - ${personCode}` : ""}</strong></div>
-                  <div>Ca: <strong>{shiftTypeLabel || "ca làm"}, {shiftDate}{shiftStart && shiftEnd ? `, ${normalizeTime(shiftStart)} - ${normalizeTime(shiftEnd)}` : ""}</strong></div>
+                  <div>
+                    Nhân viên:{" "}
+                    <strong>
+                      {personName}
+                      {personCode ? ` - ${personCode}` : ""}
+                    </strong>
+                  </div>
+                  <div>
+                    Ca:{" "}
+                    <strong>
+                      {shiftTypeLabel || "ca làm"}, {shiftDate}
+                      {shiftStart && shiftEnd
+                        ? `, ${normalizeTime(shiftStart)} - ${normalizeTime(shiftEnd)}`
+                        : ""}
+                    </strong>
+                  </div>
                   <div>Lý do: {label}</div>
                   <div>Ghi chú: {ack.reason || "Không có"}</div>
-                  <div>Trạng thái xử lý: <span className={`decline-status-badge ${classification}`}>{isResolved ? "Đã xử lý lịch" : getDeclineStatusLabel(classification)}</span></div>
-                  {import.meta.env.DEV ? <small className="debug-ids">ID: {ack.employeeId} · {ack.shiftId}</small> : null}
+                  <div>
+                    Trạng thái xử lý:{" "}
+                    <span className={`decline-status-badge ${classification}`}>
+                      {isResolved
+                        ? "Đã xử lý lịch"
+                        : getDeclineStatusLabel(classification)}
+                    </span>
+                  </div>
+                  {import.meta.env.DEV ? (
+                    <small className="debug-ids">
+                      ID: {ack.employeeId} · {ack.shiftId}
+                    </small>
+                  ) : null}
                   {!readOnly && classification === "unknown" ? (
                     <div className="decline-action-row">
-                      <button type="button" disabled={isReviewing} onClick={() => handleReviewDeclinedShiftAck(ack.id, "valid")}>
+                      <button
+                        type="button"
+                        disabled={isReviewing}
+                        onClick={() =>
+                          handleReviewDeclinedShiftAck(ack.id, "valid")
+                        }
+                      >
                         {isReviewing ? "Đang xử lý..." : "Chấp nhận lý do"}
                       </button>
-                      <button type="button" disabled={isReviewing} onClick={() => handleReviewDeclinedShiftAck(ack.id, "invalid")}>
+                      <button
+                        type="button"
+                        disabled={isReviewing}
+                        onClick={() =>
+                          handleReviewDeclinedShiftAck(ack.id, "invalid")
+                        }
+                      >
                         {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}
                       </button>
                     </div>
                   ) : null}
-                  {readOnly ? <small>Chế độ chỉ xem: không thể duyệt lý do từ chối.</small> : null}
+                  {readOnly ? (
+                    <small>
+                      Chế độ chỉ xem: không thể duyệt lý do từ chối.
+                    </small>
+                  ) : null}
                   {classification === "valid" ? (
                     <div className="decline-helper-block">
-                      <small>Lý do hợp lệ. Cần xử lý lịch: đổi nhân viên hoặc bỏ nhân viên khỏi ca.</small>
-                      <small>Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh lịch.</small>
-                      <button type="button" onClick={() => handleOpenShiftForResolution(ack)}>Mở ca để xử lý</button>
+                      <small>
+                        Lý do hợp lệ. Cần xử lý lịch: đổi nhân viên hoặc bỏ nhân
+                        viên khỏi ca.
+                      </small>
+                      <small>
+                        Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
+                        lịch.
+                      </small>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenShiftForResolution(ack)}
+                      >
+                        Mở ca để xử lý
+                      </button>
                     </div>
                   ) : null}
-                  {classification === "invalid" ? <small>Nhân viên vẫn được kỳ vọng đi làm ca này.</small> : null}
-                  {classification === "late" ? <small>Từ chối muộn - không thể duyệt lại trong màn này.</small> : null}
-                  {declineReviewErrors[ack.id] ? <small className="decline-inline-error">{declineReviewErrors[ack.id]}</small> : null}
+                  {classification === "invalid" ? (
+                    <small>Nhân viên vẫn được kỳ vọng đi làm ca này.</small>
+                  ) : null}
+                  {classification === "late" ? (
+                    <small>
+                      Từ chối muộn - không thể duyệt lại trong màn này.
+                    </small>
+                  ) : null}
+                  {declineReviewErrors[ack.id] ? (
+                    <small className="decline-inline-error">
+                      {declineReviewErrors[ack.id]}
+                    </small>
+                  ) : null}
                 </>
               );
             })()}
