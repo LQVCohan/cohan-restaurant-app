@@ -23,8 +23,15 @@ const SHIFT_ORDER = {
 
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const PART_TIME_AVAILABILITY_TYPES = new Set(["part_time", "seasonal"]);
-const ACTIVE_AVAILABILITY_STATUSES = new Set(["submitted", "locked", "approved"]);
+const ACTIVE_AVAILABILITY_STATUSES = new Set(["submitted", "locked", "approved", "late_change_requested"]);
 const INACTIVE_AVAILABILITY_STATUSES = new Set(["rejected", "cancelled"]);
+
+const NON_BLOCKING_AVAILABILITY_ISSUES = new Set([
+  "LATE_AVAILABILITY_CHANGE_PENDING",
+]);
+
+const shouldBlockAvailabilityIssue = (issue) =>
+  Boolean(issue?.code) && !NON_BLOCKING_AVAILABILITY_ISSUES.has(issue.code);
 
 const AVAILABILITY_WARNING_MESSAGES = {
   PART_TIME_AVAILABILITY_REQUIRED:
@@ -416,8 +423,22 @@ const evaluateCandidate = ({
   ) {
     return "Đã có trong ca hoặc đã được chọn cho ca này";
   }
-  if (respectAvailability && !staffWorksThatDay(staff, shiftInsight.date)) {
+  const employmentType = normalizeEmploymentType(staff.employmentType);
+  const usesAvailabilitySubmission = PART_TIME_AVAILABILITY_TYPES.has(employmentType);
+
+  if (
+    respectAvailability &&
+    !usesAvailabilitySubmission &&
+    !staffWorksThatDay(staff, shiftInsight.date)
+  ) {
     return "Không nằm trong workingDays của nhân sự";
+  }
+  if (
+    respectAvailability &&
+    candidate.availabilityIssue &&
+    shouldBlockAvailabilityIssue(candidate.availabilityIssue)
+  ) {
+    return candidate.availabilityIssue.message || "Không đạt yêu cầu availability";
   }
   if (
     respectAvailability &&
@@ -695,6 +716,10 @@ export const buildAutoSchedulePreview = ({
         assignedForRole += 1;
         currentShiftAssignedIds.add(staffId);
 
+        const availabilityIssueBlocks = shouldBlockAvailabilityIssue(
+          candidate.availabilityIssue,
+        );
+
         plannedAssignments.push({
           staffId,
           fullName: candidate.fullName || staff?.fullName || "Nhân viên",
@@ -702,7 +727,9 @@ export const buildAutoSchedulePreview = ({
           validationWarnings: candidate.availabilityIssue
             ? [candidate.availabilityIssue]
             : [],
-          requiresOverride: Boolean(candidate.availabilityIssue),
+          requiresOverride: Boolean(
+            candidate.availabilityIssue && availabilityIssueBlocks,
+          ),
           reason: candidate.reason || "Đề xuất từ scheduling assistant",
           currentWeekHours: getWeeklyHours(weekHoursByStaff, staffId, weekKey),
           projectedWeekHours: Number(
