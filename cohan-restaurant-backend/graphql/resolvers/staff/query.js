@@ -298,32 +298,52 @@ export default {
   // =========================
   // GET ONE STAFF
   // =========================
-  staff: async (_, { id }) => {
+  staff: async (_, { id }, ctx) => {
+    requireAuth(ctx);
+    const minimal = await Staff.findById(id)
+      .select({
+        userType: 1,
+        deletedAt: 1,
+        primaryRestaurant: 1,
+        restaurantForStaff: 1,
+        refRestaurants: 1,
+      })
+      .lean();
+    if (!minimal || minimal.userType !== "STAFF" || minimal.deletedAt) {
+      throw new Error("Staff not found");
+    }
+    if (String(ctx?.user?.id || ctx?.user?._id || "") !== String(id)) {
+      const targetRestaurantId =
+        minimal?.restaurantForStaff ||
+        minimal?.primaryRestaurant ||
+        minimal?.refRestaurants?.[0] ||
+        null;
+      await requireRestaurantAccess(ctx, targetRestaurantId);
+    }
     const user = await Staff.findById(id)
       .populate("role")
       .populate("refRestaurants")
       .populate("primaryRestaurant");
-
-    if (!user || user.userType !== "STAFF" || user.deletedAt) {
-      throw new Error("Staff not found");
-    }
-
     return user;
   },
 
   // =========================
   // GET STAFF LIST
   // =========================
-  staffList: async (_, { restaurantId, roleId, search, employmentStatus }) => {
+  staffList: async (_, { restaurantId, roleId, search, employmentStatus }, ctx) => {
+    requireAuth(ctx);
     const filter = { userType: "STAFF", deletedAt: null };
 
     const rid = toObjectId(restaurantId);
     if (restaurantId) {
+      await requireRestaurantAccess(ctx, restaurantId);
       filter.$or = [
         { refRestaurants: rid || restaurantId },
         { primaryRestaurant: rid || restaurantId },
         { restaurantForStaff: rid || restaurantId },
       ];
+    } else {
+      requireRoles(ctx, ["ADMIN"]);
     }
     if (roleId) filter.role = roleId;
     if (employmentStatus) filter.employmentStatus = employmentStatus;
@@ -458,7 +478,9 @@ export default {
     const pendingCount = employees.length-acknowledgedCount-changedAfterAcknowledgementCount;
     return { totalAssignedStaff: employees.length, acknowledgedCount, pendingCount, changedAfterAcknowledgementCount, employees };
   },
-  schedulingPolicy: async (_, { restaurantId }) => {
+  schedulingPolicy: async (_, { restaurantId }, ctx) => {
+    requireAuth(ctx);
+    await requireRestaurantAccess(ctx, restaurantId);
     return getSchedulingPolicy({ restaurantId });
   },
   staffPerformanceSnapshots: async (_, { filter }, ctx) => {
@@ -471,8 +493,15 @@ export default {
     return validateShiftAssignment({ input, ctx });
   },
   staffAccountOverview: async (_, { staffId }, ctx) => {
+    requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return null;
+    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    if (!isSelf) {
+      const targetRestaurantId =
+        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+      await requireRestaurantAccess(ctx, targetRestaurantId);
+    }
 
     const restaurantId =
       staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
@@ -560,8 +589,16 @@ export default {
   },
 
   staffSalarySummary: async (_, { staffId }, ctx) => {
+    requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return null;
+    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    if (!isSelf) {
+      const targetRestaurantId =
+        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+      await requireRestaurantAccess(ctx, targetRestaurantId);
+      assertPayrollPermission(ctx, "payroll.read");
+    }
 
     const shifts = await Shift.find({ employeeId: staff._id })
       .select({ _id: 1 })
@@ -675,8 +712,15 @@ export default {
   },
 
   staffShiftHistory: async (_, { staffId, limit = 20 }, ctx) => {
+    requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return [];
+    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    if (!isSelf) {
+      const targetRestaurantId =
+        staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+      await requireRestaurantAccess(ctx, targetRestaurantId);
+    }
 
     const rows = await Shift.find({ employeeId: staff._id })
       .sort({ startTime: -1 })
@@ -705,7 +749,18 @@ export default {
     { startDate, endDate, restaurantId, periodId },
     ctx,
   ) => {
+    requireAuth(ctx);
     if (periodId && mongoose.isValidObjectId(periodId)) {
+      const period = await PayrollPeriod.findById(periodId)
+        .select({ restaurantId: 1 })
+        .lean();
+      if (!period) {
+        return {
+          stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+          items: [],
+        };
+      }
+      await requireRestaurantAccess(ctx, period.restaurantId);
       const docs = await PayrollItem.find({
         periodId: payrollToObjectId(periodId),
       }).lean();
@@ -739,6 +794,7 @@ export default {
         items: [],
       };
     }
+    await requireRestaurantAccess(ctx, rid);
     const rows = await buildPayrollItemsForRange({
       start,
       end,
@@ -750,6 +806,7 @@ export default {
   },
 
   payrollPeriods: async (_, { restaurantId, limit = 12 }, ctx) => {
+    requireAuth(ctx);
     const authUser = ctx?.user || null;
     const rid = toObjectId(
       restaurantId ||
@@ -758,6 +815,7 @@ export default {
         null,
     );
     if (!rid) return [];
+    await requireRestaurantAccess(ctx, rid);
     const rows = await PayrollPeriod.find({ restaurantId: rid })
       .sort({ startDate: -1 })
       .limit(Math.max(1, Math.min(Number(limit || 12), 52)))
@@ -781,15 +839,27 @@ export default {
     }));
   },
 
-  payrollPeriodDetail: async (_, { periodId }) => getPeriodDetail(periodId),
+  payrollPeriodDetail: async (_, { periodId }, ctx) => {
+    requireAuth(ctx);
+    const period = await PayrollPeriod.findById(periodId)
+      .select({ restaurantId: 1 })
+      .lean();
+    if (period?.restaurantId) {
+      await requireRestaurantAccess(ctx, period.restaurantId);
+    }
+    return getPeriodDetail(periodId);
+  },
 
   payrollSettings: async (_, { restaurantId }, ctx) => {
+    requireAuth(ctx);
     const authUser = ctx?.user || null;
     const rid =
       restaurantId ||
       authUser?.restaurantForStaff ||
       authUser?.primaryRestaurantId ||
       null;
+    if (!rid) return null;
+    await requireRestaurantAccess(ctx, rid);
     const settings = await getPayrollSettings(rid);
     if (!settings) return null;
     return {

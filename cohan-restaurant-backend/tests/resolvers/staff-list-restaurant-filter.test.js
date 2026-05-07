@@ -18,6 +18,12 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../graphql/guards.js", () => ({
+  requireAuth: vi.fn(),
+  requireRestaurantAccess: vi.fn(),
+  requireRoles: vi.fn(),
+  requireRestaurantScope: vi.fn(),
+}));
 vi.mock("../../src/services/ai/staffSchedulingAssistant.service.js", () => ({
   buildStaffSchedulingAssistant: vi.fn(),
 }));
@@ -64,7 +70,7 @@ describe("staffList restaurant filter", () => {
     modelMocks.Staff.find.mockReturnValue(findChain);
 
     const { default: StaffQuery } = await import("../../graphql/resolvers/staff/query.js");
-    await StaffQuery.staffList(null, { restaurantId: "restaurant-1" });
+    await StaffQuery.staffList(null, { restaurantId: "restaurant-1" }, { user: { id: "u1" } });
 
     expect(modelMocks.Staff.find).toHaveBeenCalledWith({
       userType: "STAFF",
@@ -89,7 +95,7 @@ describe("staffList restaurant filter", () => {
     await StaffQuery.staffList(null, {
       restaurantId: "restaurant-1",
       search: "Lan",
-    });
+    }, { user: { id: "u1" } });
 
     const filter = modelMocks.Staff.find.mock.calls[0][0];
     expect(filter.$or).toBeUndefined();
