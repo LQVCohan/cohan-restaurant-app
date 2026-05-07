@@ -112,7 +112,7 @@ describe("staff query access guards", () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await expect(query.staffAccountOverview(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
     await expect(query.staffSalarySummary(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
-    await expect(query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toBeNull();
+    await expect(query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } })).resolves.toEqual([]);
     expect(modelMocks.Table.find).not.toHaveBeenCalled();
     expect(modelMocks.Shift.find).not.toHaveBeenCalled();
     expect(modelMocks.Timesheet.aggregate).not.toHaveBeenCalled();
