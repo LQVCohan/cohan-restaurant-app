@@ -20,7 +20,14 @@ import {
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
-import { ensureUserForOrder, resolveTable } from "./helper/userUtils.js";
+import {
+  ensureUserForOrder,
+  resolveTable,
+  compactCustomerInput,
+  resolveCustomerIdentity,
+  normalizeEmail,
+  normalizePhone,
+} from "./helper/userUtils.js";
 import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
@@ -1293,6 +1300,11 @@ export const OrderMutation = {
           });
         }
       });
+    } catch (error) {
+      if (error?.code === 11000) {
+        throw new Error("Thông tin khách hàng đã tồn tại hoặc bị trùng. Vui lòng chọn khách hiện có hoặc tạo đơn snapshot-only.");
+      }
+      throw error;
     } finally {
       await session.endSession();
     }
@@ -1316,6 +1328,7 @@ export const OrderMutation = {
       customer,
       shipping,
       userId,
+      customerIdentityMode,
       warehouseId,
       clientMeta,
       paymentMethod,
@@ -1331,15 +1344,29 @@ export const OrderMutation = {
       throw new Error("items is required");
 
     const normalizedItems = items.map(normalizeItem);
-    const finalUserId = await ensureUserForOrder(userId, customer);
+    const compactCustomer = compactCustomerInput(customer || {});
+    const identity = await resolveCustomerIdentity({
+      email: compactCustomer.email,
+      phone: compactCustomer.phone,
+      selectedUserId: userId,
+    });
+    const requiresSnapshotOnlyConfirm = Boolean(identity?.conflict) && customerIdentityMode !== "snapshot_only";
+    if (requiresSnapshotOnlyConfirm) {
+      throw new Error("Thông tin email và số điện thoại khớp với hai khách khác nhau. Vui lòng xác nhận tạo đơn dạng snapshot-only.");
+    }
+    const finalUserId = identity?.conflict ? null : await ensureUserForOrder(userId, compactCustomer);
 
     const prefix = orderType === "delivery" ? "DEL" : "TAKE";
     const effectiveOrderCode = generateOrderCode(prefix, new Date(), null);
 
+    const safeShipping = { ...(shipping || {}) };
+    safeShipping.email = normalizeEmail(safeShipping.email);
+    safeShipping.phone = normalizePhone(safeShipping.phone);
+
     const shippingObj = buildShippingForOffPremise(
       orderType,
-      shipping,
-      customer,
+      safeShipping,
+      compactCustomer,
     );
 
     const session = await mongoose.startSession();
@@ -1457,6 +1484,13 @@ export const OrderMutation = {
           });
         }
       });
+    } catch (error) {
+      if (error?.code === 11000) {
+        throw new Error(
+          "Thông tin khách hàng đã tồn tại hoặc bị trùng. Vui lòng chọn khách hiện có hoặc tạo đơn snapshot-only.",
+        );
+      }
+      throw error;
     } finally {
       await session.endSession();
     }

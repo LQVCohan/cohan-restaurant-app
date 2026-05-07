@@ -438,6 +438,7 @@ input CreateOrderForTableInput {
   note: String
   customer: CustomerInput
   userId: ID
+  customerIdentityMode: String
   clientMeta: JSON
   warehouseId: ID
 }
@@ -459,6 +460,7 @@ input CreateOffPremiseOrderInput {
   paymentMethod: String
   pricing: CheckoutPricingInput
   userId: ID
+  customerIdentityMode: String
   clientMeta: JSON
   warehouseId: ID
 }
@@ -568,6 +570,7 @@ input CreateCheckoutOrdersInput {
   pricing: CheckoutPricingInput
   note: String
   userId: ID
+  customerIdentityMode: String
   clientMeta: JSON
   warehouseId: ID
 }
