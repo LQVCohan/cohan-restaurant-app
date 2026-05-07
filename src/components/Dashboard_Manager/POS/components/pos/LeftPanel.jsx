@@ -417,10 +417,12 @@ export default function LeftPanel() {
 
     setDeliveryCustomer({
       id: id || null,
-      name: name,
-      phone: phone,
+      name,
+      phone,
       email: email || "",
       isNew: !!isNew,
+      customerIdentityMode: customer.customerIdentityMode || null,
+      conflict: !!customer.conflict,
     });
 
     if (ship) {
