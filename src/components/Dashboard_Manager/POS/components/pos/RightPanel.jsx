@@ -392,6 +392,17 @@ export default function RightPanel() {
     showNotification,
   ]);
 
+  const clearActiveDrafts = useCallback(() => {
+    if (currentOrderType === "delivery" || currentOrderType === "takeaway") {
+      clearOffPremiseDraft?.(currentOrderType);
+      if (currentOrderCode) {
+        try {
+          localStorage.removeItem(`pos_draft_${currentOrderCode}`);
+        } catch {}
+      }
+    }
+  }, [clearOffPremiseDraft, currentOrderCode, currentOrderType]);
+
   const handlePaymentComplete = useCallback(
     (payload) => {
       const serverPayload = payload?.server || {};
@@ -434,7 +445,7 @@ export default function RightPanel() {
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
       if (inv) showNotification(`Hóa đơn: ${inv}`, "info");
 
-      clearDraft();
+      clearActiveDrafts();
 
       clearOrder();
       if (currentTable?.id && setTableStatus) {
@@ -452,6 +463,7 @@ export default function RightPanel() {
       showNotification,
   
       clearPaymentRequest,
+      clearActiveDrafts,
     ],
   );
 
@@ -522,7 +534,7 @@ export default function RightPanel() {
 
   const handleClearConfirm = (action) => {
     if (action === "clear_table") {
-      clearDraft();
+      clearActiveDrafts();
       clearOrder();
       if (currentTable?.id && setTableStatus) {
         setTableStatus({ id: currentTable.id, status: "available" });
@@ -534,7 +546,7 @@ export default function RightPanel() {
           : "Đã xóa đơn",
       );
     } else {
-      clearDraft();
+      clearActiveDrafts();
       clearOrder();
       showNotification("Đã xóa tất cả món (giữ thông tin bàn/đơn)");
     }
@@ -815,7 +827,7 @@ export default function RightPanel() {
     setConfirmOpen(true);
   }, [validateBeforeConfirm]);
   const resetOffPremiseAfterSave = useCallback(() => {
-    clearDraft?.();
+    clearActiveDrafts();
     clearOrder?.();
     setCurrentOrder?.([]);
     setCurrentTable?.(null);
@@ -839,8 +851,7 @@ export default function RightPanel() {
     setCurrentOrder,
     setCurrentTable,
     setCurrentOrderCode,
-    ensureOffPremiseSession,
-    clearOffPremiseDraft,
+    clearActiveDrafts,
     setDeliveryCustomer,
     setShippingInfo,
     currentOrderType,
@@ -853,7 +864,13 @@ export default function RightPanel() {
 
     setSaving(true);
     try {
-      if ((currentOrderType === "delivery" || currentOrderType === "takeaway") && !currentOrderCode && hasItems) { ensureOffPremiseSession?.(currentOrderType, { force: true }); }
+      if (
+        (currentOrderType === "delivery" || currentOrderType === "takeaway") &&
+        !currentOrderCode &&
+        hasItems
+      ) {
+        await ensureOffPremiseSession?.(currentOrderType, { force: true });
+      }
       const res = await saveOrder?.({ persist: true });
 
       if (res?.success) {
@@ -915,11 +932,7 @@ export default function RightPanel() {
     resetOffPremiseAfterSave,
   ]);
 
-  const saveDisabled =
-    saving ||
-    !hasItems ||
-    newItems.length === 0 ||
-    (isOffPremise && !currentOrderCode);
+  const saveDisabled = saving || !hasItems || newItems.length === 0;
   const groupedPaymentRequests = useMemo(
     () => groupPaymentRequests(Array.isArray(paymentRequests) ? paymentRequests : []),
     [paymentRequests],
