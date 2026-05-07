@@ -105,7 +105,7 @@ export default function LeftPanel() {
     resetPosOrderSession,
     switchOffPremiseMode,
     ensureOffPremiseSession,
-
+    createNewOffPremiseOrder,
     tables,
     currentTable,
     currentOrder,
@@ -116,6 +116,7 @@ export default function LeftPanel() {
     startDeliveryOrder, // Action: Bắt đầu đơn giao hàng
     startTakeawayOrder, // Action: Bắt đầu đơn mang về
     selectTableForOrder,
+    currentOrderId,
     setCurrentTable,
     setCurrentOrder,
     setCurrentOrderCode,
@@ -205,7 +206,28 @@ export default function LeftPanel() {
       currentOrder.some((it) => it?.isNew || (!it?.isExisting && it?.quantity))
     );
   }, [currentOrder]);
+  const hasAnyCurrentItems = useMemo(() => {
+    return Array.isArray(currentOrder) && currentOrder.length > 0;
+  }, [currentOrder]);
 
+  const hasCustomerDraft = useMemo(() => {
+    return Boolean(
+      deliveryCustomer?.id ||
+      deliveryCustomer?.name ||
+      deliveryCustomer?.fullName ||
+      deliveryCustomer?.phone ||
+      deliveryCustomer?.email ||
+      shippingInfo?.fullName ||
+      shippingInfo?.phone ||
+      shippingInfo?.email ||
+      shippingInfo?.address ||
+      shippingInfo?.note,
+    );
+  }, [deliveryCustomer, shippingInfo]);
+
+  const shouldConfirmBeforeNewOffPremiseOrder = useMemo(() => {
+    return hasAnyCurrentItems || hasCustomerDraft || currentTable?.isVirtual;
+  }, [hasAnyCurrentItems, hasCustomerDraft, currentTable?.isVirtual]);
   const counts = useMemo(() => {
     const all = tables.length;
     const available = tables.filter((t) => t.status === "available").length;
@@ -292,7 +314,17 @@ export default function LeftPanel() {
   };
 
   const handleOffPremiseOrderClick = async (order) => {
-    if (!order?.id) return;
+    if (currentOrderId && String(currentOrderId) === String(order.id)) {
+      return;
+    }
+
+    if (hasAnyCurrentItems || hasCustomerDraft) {
+      const ok = window.confirm(
+        "Bạn đang có đơn/món nháp chưa lưu. Mở đơn khác sẽ thay thế nội dung hiện tại. Bạn có muốn tiếp tục?",
+      );
+
+      if (!ok) return;
+    }
     const res = await fetchOrderById?.(order.id);
     if (!res?.success || !res?.data) return;
 
@@ -343,7 +375,8 @@ export default function LeftPanel() {
       email: payload.shipping?.email || payload.customerInfo?.email || "",
       address: payload.shipping?.address || "",
       note: payload.shipping?.note || payload.customerInfo?.note || "",
-      deliveryMethod: payload.shipping?.deliveryMethod || prev.deliveryMethod || "ship_now",
+      deliveryMethod:
+        payload.shipping?.deliveryMethod || prev.deliveryMethod || "ship_now",
       deliveryTime: payload.shipping?.deliveryTime || "",
       scheduleDate: payload.shipping?.scheduleDate || "",
       scheduleTime: payload.shipping?.scheduleTime || "",
@@ -418,21 +451,35 @@ export default function LeftPanel() {
   const handleChangeOrderType = (nextType) => {
     if (!nextType || nextType === currentOrderType) return;
     if (nextType === "delivery" || nextType === "takeaway") {
+      if (currentOrderType === "delivery" || currentOrderType === "takeaway") {
+        const ok = window.confirm(
+          "Chuyển loại đơn sẽ lưu nháp hiện tại và mở nháp của loại đơn mới. Bạn có muốn tiếp tục?",
+        );
+
+        if (!ok) return;
+      }
+
       switchOffPremiseMode?.(nextType);
       return;
     }
     resetPosOrderSession?.(nextType);
   };
   const handleCreateOffPremiseOrder = () => {
-    if (currentOrderType === "delivery") {
-      ensureOffPremiseSession?.("delivery");
+    if (currentOrderType !== "delivery" && currentOrderType !== "takeaway") {
       return;
     }
 
-    if (currentOrderType === "takeaway") {
-      ensureOffPremiseSession?.("takeaway");
-      return;
+    if (shouldConfirmBeforeNewOffPremiseOrder) {
+      const ok = window.confirm(
+        "Tạo đơn mới sẽ xóa món/order nháp hiện tại. Bạn có muốn tiếp tục?",
+      );
+
+      if (!ok) return;
     }
+
+    createNewOffPremiseOrder?.(currentOrderType, {
+      preserveCustomer: true,
+    });
   };
   return (
     <div className={cls.wrapper}>
@@ -745,7 +792,11 @@ export default function LeftPanel() {
               <div
                 key={order.id}
                 className={cls.tableItem}
-                data-status={(order.shipping?.address || "").trim() || order.currentStatus || "pending"}
+                data-status={
+                  (order.shipping?.address || "").trim() ||
+                  order.currentStatus ||
+                  "pending"
+                }
                 onClick={() => handleOffPremiseOrderClick(order)}
               >
                 <div className={cls.tableTop}>
@@ -753,10 +804,16 @@ export default function LeftPanel() {
                 </div>
                 <div className={cls.tableMeta}>
                   <span className={cls.capacity}>
-                    {order.customerInfo?.name || order.shipping?.fullName || order.customerInfo?.phone || order.shipping?.phone || "Khách lẻ"}
+                    {order.customerInfo?.name ||
+                      order.shipping?.fullName ||
+                      order.customerInfo?.phone ||
+                      order.shipping?.phone ||
+                      "Khách lẻ"}
                   </span>
                   <span className={cls.statusText}>
-                    {(order.shipping?.address || "").trim() || order.currentStatus || "pending"}
+                    {(order.shipping?.address || "").trim() ||
+                      order.currentStatus ||
+                      "pending"}
                   </span>
                 </div>
               </div>

@@ -622,7 +622,55 @@ export default function PosProvider({
       restaurantId,
     ],
   );
+  const createNewOffPremiseOrder = useCallback(
+    (type, options = {}) => {
+      if (type !== "delivery" && type !== "takeaway") return null;
 
+      const preserveCustomer = options.preserveCustomer !== false;
+      const nextCode = generateVirtualCode(
+        type === "delivery" ? "SHIP" : "TAKE",
+      );
+
+      clearOffPremiseDraft?.(type);
+
+      setCurrentOrderType(type);
+      setCurrentOrderCode(nextCode);
+      setCurrentOrderId(null);
+      setCurrentOrder([]);
+      setTableOrders({});
+      setOrderNote?.("");
+
+      setCurrentTable({
+        id: null,
+        code: type === "delivery" ? "DELIVERY" : "TAKEAWAY",
+        name: type === "delivery" ? "Delivery" : "Takeaway",
+        status: "occupied",
+        type,
+        restaurantId,
+        isVirtual: true,
+      });
+
+      if (!preserveCustomer) {
+        setDeliveryCustomer(null);
+        setShippingInfo(getDefaultShippingInfo(type));
+      } else {
+        setShippingInfo((prev) => ({
+          ...getDefaultShippingInfo(type),
+          ...(prev || {}),
+          deliveryMethod: type === "takeaway" ? "pickup_at_store" : "ship_now",
+        }));
+      }
+
+      return nextCode;
+    },
+    [
+      generateVirtualCode,
+      clearOffPremiseDraft,
+      restaurantId,
+      getDefaultShippingInfo,
+      setOrderNote,
+    ],
+  );
   const restoreOffPremiseDraft = useCallback(
     (type) => {
       const key = getOffPremiseDraftKey(type);
@@ -1202,6 +1250,7 @@ export default function PosProvider({
       resetPosOrderSession,
       switchOffPremiseMode,
       ensureOffPremiseSession,
+      createNewOffPremiseOrder,
       clearOffPremiseDraft,
       saveCurrentOffPremiseDraft,
       floors,
@@ -1332,7 +1381,7 @@ export default function PosProvider({
       refetchTables,
       updateTable,
       fetchTableByCode,
-
+      createNewOffPremiseOrder,
       tableSearch,
       setTableSearch,
       statusFilter,
