@@ -1,6 +1,17 @@
+import mongoose from "mongoose";
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { AVAILABILITY_READ_ROLES, userHasAnyRole } from "../../../src/services/scheduling/schedulingPermission.service.js";
+
+async function findWindowRestaurantScope(windowId) {
+  const base = await AvailabilityRegistrationWindow.findById(windowId);
+  if (base?.select) {
+    const selected = base.select({ restaurantId: 1 });
+    if (selected?.lean) return selected.lean();
+    return selected;
+  }
+  return base;
+}
 
 export default {
   availabilityWindow: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
@@ -18,7 +29,7 @@ export default {
   },
   staffAvailabilitySubmission: async (_, { windowId, employeeId }, ctx) => {
     requireAuth(ctx);
-    const windowDoc = await AvailabilityRegistrationWindow.findById(windowId);
+    const windowDoc = await findWindowRestaurantScope(windowId);
     if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
     await requireRestaurantAccess(ctx, windowDoc.restaurantId);
 
@@ -31,6 +42,16 @@ export default {
   staffAvailabilitySubmissions: async (_, { windowId, restaurantId, status, employmentType }, ctx) => {
     requireRoles(ctx, AVAILABILITY_READ_ROLES);
     await requireRestaurantAccess(ctx, restaurantId);
+    const windowDoc = await findWindowRestaurantScope(windowId);
+    if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
+    if (
+      windowDoc?.restaurantId != null &&
+      mongoose.isValidObjectId(String(windowDoc.restaurantId)) &&
+      mongoose.isValidObjectId(String(restaurantId)) &&
+      String(windowDoc.restaurantId) !== String(restaurantId)
+    ) {
+      throw new Error("AVAILABILITY_WINDOW_RESTAURANT_MISMATCH");
+    }
     const query = { availabilityWindowId: windowId, restaurantId };
     if (status) query.status = status;
     if (employmentType) query.employmentType = employmentType;

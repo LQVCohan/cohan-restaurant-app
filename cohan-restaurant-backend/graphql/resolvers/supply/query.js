@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { Supply, StockItem } from "../../../models/index.js";
 import { listSupplyCategories, suggestSupplyCategory } from "./category-ai.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function makeSupplyWithStock(s, stockItem) {
   // luôn đảm bảo có id (string) cho stockItem trả về
@@ -46,13 +47,15 @@ function makeSupplyWithStock(s, stockItem) {
 }
 
 export default {
-  supplyCategories: async (_p, { restaurantId, search, includeInactive, limit }) => {
+  supplyCategories: async (_p, { restaurantId, search, includeInactive, limit }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
     return listSupplyCategories({ restaurantId, search, includeInactive, limit });
   },
 
-  suggestSupplyCategory: async (_p, { restaurantId, name, category }) => {
+  suggestSupplyCategory: async (_p, { restaurantId, name, category }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return null;
+    await requireRestaurantAccess(ctx, restaurantId);
     return suggestSupplyCategory({
       restaurantId,
       supplyName: name,
@@ -61,8 +64,9 @@ export default {
   },
 
   // Supply + stockItem (theo warehouse nếu có; nếu không -> tổng across warehouses)
-  supplies: async (_p, { restaurantId, warehouseId }) => {
+  supplies: async (_p, { restaurantId, warehouseId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const list = await Supply.find({ restaurantId })
       .select({ __v: 0 })
@@ -129,10 +133,11 @@ export default {
     });
   },
 
-  supply: async (_p, { id }) => {
+  supply: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return null;
     const s = await Supply.findById(id).lean({ virtuals: true });
     if (!s) return null;
+    await requireRestaurantAccess(ctx, s.restaurantId);
 
     const stocks = await StockItem.find({ supplyId: id })
       .select({ __v: 0 })

@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
 import Supplier from "../../../models/supplier.model.js";
+import { requireRole } from "../../../utils/authz.js";
 
 function escapeRegex(input) {
   return String(input || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export default {
-  suppliers: async (_p, { filter, limit = 6, cursor }) => {
+  suppliers: async (_p, { filter, limit = 6, cursor }, ctx) => {
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
     const lim = Math.min(Math.max(limit || 6, 1), 50);
     const q = {};
 
@@ -41,8 +43,9 @@ export default {
     };
   },
 
-  supplier: async (_p, { id }) => {
+  supplier: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return null;
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
     return Supplier.findById(id).lean();
   },
 };

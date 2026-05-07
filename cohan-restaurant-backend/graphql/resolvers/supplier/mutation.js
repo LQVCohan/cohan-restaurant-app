@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import Supplier from "../../../models/supplier.model.js";
+import { requireRole } from "../../../utils/authz.js";
 
 function normalizeDup(err) {
   if (err?.code === 11000) return new GraphQLError("Supplier name already exists");
@@ -8,7 +9,8 @@ function normalizeDup(err) {
 }
 
 export default {
-  createSupplier: async (_p, { input }) => {
+  createSupplier: async (_p, { input }, ctx) => {
+    requireRole(ctx?.user, ["admin"]);
     try {
       const doc = await Supplier.create(input);
       return doc.toObject({ virtuals: true });
@@ -19,9 +21,10 @@ export default {
     }
   },
 
-  updateSupplier: async (_p, { input }) => {
+  updateSupplier: async (_p, { input }, ctx) => {
     const { id, ...patch } = input || {};
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
+    requireRole(ctx?.user, ["admin"]);
 
     try {
       const doc = await Supplier.findByIdAndUpdate(id, { $set: patch }, { new: true, runValidators: true })
@@ -35,14 +38,16 @@ export default {
     }
   },
 
-  deleteSupplier: async (_p, { id }) => {
+  deleteSupplier: async (_p, { id }, ctx) => {
     if (!mongoose.isValidObjectId(id)) return false;
+    requireRole(ctx?.user, ["admin"]);
     const res = await Supplier.deleteOne({ _id: id });
     return res.deletedCount > 0;
   },
 
-  bumpSupplierReliability: async (_p, { id, delta = 1 }) => {
+  bumpSupplierReliability: async (_p, { id, delta = 1 }, ctx) => {
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
+    requireRole(ctx?.user, ["admin"]);
 
     const doc = await Supplier.findByIdAndUpdate(
       id,
