@@ -265,3 +265,240 @@ describe("buildAutoSchedulePreview", () => {
     );
   });
 });
+
+it("blocks part-time staff without approved availability slot when no fallback exists", () => {
+  const assistant = {
+    shifts: [
+      {
+        shiftKey: "2026-04-24|morning",
+        date: "2026-04-24",
+        shiftType: "morning",
+        recommendedTotalStaff: 1,
+        currentAssignedStaff: 0,
+        status: "understaffed",
+        recommendedRoles: [{ role: "server", required: 1, assigned: 0, delta: -1 }],
+        suggestedCandidates: [
+          {
+            staffId: "pt-only",
+            fullName: "Part Time Only",
+            role: "server",
+          },
+        ],
+      },
+    ],
+  };
+
+  const preview = buildAutoSchedulePreview({
+    assistant,
+    staffList: [
+      {
+        id: "pt-only",
+        fullName: "Part Time Only",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["THU"],
+      },
+    ],
+    availabilityWindows: [
+      {
+        id: "window-pt",
+        periodStart: "2026-04-20T00:00:00.000Z",
+        periodEnd: "2026-04-26T23:59:59.999Z",
+        status: "closed",
+      },
+    ],
+    availabilitySubmissions: [
+      {
+        availabilityWindowId: "window-pt",
+        employeeId: "pt-only",
+        status: "locked",
+        slots: [
+          {
+            date: "2026-04-24T00:00:00.000Z",
+            shiftType: "afternoon",
+            status: "available",
+          },
+        ],
+      },
+    ],
+    now: new Date("2026-04-24T00:00:00.000Z"),
+  });
+
+  const [shiftItem] = preview.items;
+  expect(shiftItem.plannedAssignments).toHaveLength(0);
+  expect(shiftItem.unfilledRoles[0].unresolved).toBeGreaterThan(0);
+  expect(shiftItem.blockedCandidates.map((c) => c.staffId)).toContain("pt-only");
+  expect(shiftItem.blockedCandidates[0].reason).toContain("part-time");
+});
+
+it("does not block part-time staff by Staff.workingDays when official availability slot exists", () => {
+  const assistant = {
+    shifts: [
+      {
+        shiftKey: "2026-04-23|morning",
+        date: "2026-04-23",
+        shiftType: "morning",
+        recommendedTotalStaff: 1,
+        currentAssignedStaff: 0,
+        status: "understaffed",
+        recommendedRoles: [{ role: "server", required: 1, assigned: 0, delta: -1 }],
+        suggestedCandidates: [{ staffId: "pt-thu", fullName: "PT Thu", role: "server" }],
+      },
+    ],
+  };
+
+  const preview = buildAutoSchedulePreview({
+    assistant,
+    staffList: [
+      {
+        id: "pt-thu",
+        fullName: "PT Thu",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+    ],
+    availabilityWindows: [
+      {
+        id: "window-thu",
+        periodStart: "2026-04-20T00:00:00.000Z",
+        periodEnd: "2026-04-26T23:59:59.999Z",
+        status: "closed",
+      },
+    ],
+    availabilitySubmissions: [
+      {
+        availabilityWindowId: "window-thu",
+        employeeId: "pt-thu",
+        status: "approved",
+        slots: [{ date: "2026-04-23T00:00:00.000Z", shiftType: "morning", status: "available" }],
+      },
+    ],
+  });
+
+  const [shiftItem] = preview.items;
+  expect(shiftItem.plannedAssignments.map((a) => a.staffId)).toContain("pt-thu");
+  expect(
+    shiftItem.blockedCandidates.some((c) => c.reason.includes("workingDays")),
+  ).toBe(false);
+});
+
+it("uses official slots for late_change_requested but ignores pendingSlots", () => {
+  const baseAssistant = {
+    shifts: [
+      {
+        shiftKey: "2026-04-25|morning",
+        date: "2026-04-25",
+        shiftType: "morning",
+        recommendedTotalStaff: 1,
+        currentAssignedStaff: 0,
+        status: "understaffed",
+        recommendedRoles: [{ role: "server", required: 1, assigned: 0, delta: -1 }],
+        suggestedCandidates: [{ staffId: "pt-late", fullName: "PT Late", role: "server" }],
+      },
+    ],
+  };
+
+  const common = {
+    assistant: baseAssistant,
+    staffList: [
+      {
+        id: "pt-late",
+        fullName: "PT Late",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "part_time",
+      },
+    ],
+    availabilityWindows: [
+      {
+        id: "window-late",
+        periodStart: "2026-04-20T00:00:00.000Z",
+        periodEnd: "2026-04-26T23:59:59.999Z",
+        status: "closed",
+      },
+    ],
+  };
+
+  const partA = buildAutoSchedulePreview({
+    ...common,
+    availabilitySubmissions: [
+      {
+        availabilityWindowId: "window-late",
+        employeeId: "pt-late",
+        status: "late_change_requested",
+        slots: [{ date: "2026-04-25T00:00:00.000Z", shiftType: "morning", status: "available" }],
+        pendingSlots: [{ date: "2026-04-25T00:00:00.000Z", shiftType: "afternoon", status: "available" }],
+      },
+    ],
+  });
+  expect(partA.items[0].plannedAssignments).toHaveLength(1);
+  expect(partA.items[0].plannedAssignments[0].validationWarnings[0].code).toBe(
+    "LATE_AVAILABILITY_CHANGE_PENDING",
+  );
+
+  const partB = buildAutoSchedulePreview({
+    ...common,
+    availabilitySubmissions: [
+      {
+        availabilityWindowId: "window-late",
+        employeeId: "pt-late",
+        status: "late_change_requested",
+        slots: [{ date: "2026-04-25T00:00:00.000Z", shiftType: "afternoon", status: "available" }],
+        pendingSlots: [{ date: "2026-04-25T00:00:00.000Z", shiftType: "morning", status: "available" }],
+      },
+    ],
+  });
+  expect(partB.items[0].plannedAssignments).toHaveLength(0);
+  expect(partB.items[0].blockedCandidates.map((c) => c.staffId)).toContain("pt-late");
+});
+
+it("blocks full-time unavailable exception", () => {
+  const preview = buildAutoSchedulePreview({
+    assistant: {
+      shifts: [
+        {
+          shiftKey: "2026-04-26|morning",
+          date: "2026-04-26",
+          shiftType: "morning",
+          recommendedTotalStaff: 1,
+          currentAssignedStaff: 0,
+          status: "understaffed",
+          recommendedRoles: [{ role: "server", required: 1, assigned: 0, delta: -1 }],
+          suggestedCandidates: [{ staffId: "ft-block", fullName: "FT Block", role: "server" }],
+        },
+      ],
+    },
+    staffList: [
+      {
+        id: "ft-block",
+        fullName: "FT Block",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "full_time",
+      },
+    ],
+    availabilityWindows: [
+      {
+        id: "window-ft",
+        periodStart: "2026-04-20T00:00:00.000Z",
+        periodEnd: "2026-04-26T23:59:59.999Z",
+        status: "closed",
+      },
+    ],
+    availabilitySubmissions: [
+      {
+        availabilityWindowId: "window-ft",
+        employeeId: "ft-block",
+        status: "approved",
+        submissionType: "unavailable_exception",
+        slots: [{ date: "2026-04-26T00:00:00.000Z", shiftType: "morning", status: "unavailable" }],
+      },
+    ],
+  });
+
+  expect(preview.items[0].plannedAssignments).toHaveLength(0);
+  expect(preview.items[0].blockedCandidates.map((c) => c.staffId)).toContain("ft-block");
+});
