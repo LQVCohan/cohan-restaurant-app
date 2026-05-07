@@ -93,16 +93,41 @@ describe("staff query access guards", () => {
   });
 
   it("account/salary/shift non-self denied before reads", async () => {
-    const staffDoc = { _id: "s2", userType: "STAFF", restaurantForStaff: "r1" };
-    modelMocks.Staff.findById.mockReturnValue({ populate: vi.fn().mockReturnThis() });
-    modelMocks.Staff.findById().populate.mockReturnThis();
-    modelMocks.Staff.findById().populate.mockReturnValue({ populate: vi.fn().mockReturnThis() });
-    modelMocks.Staff.findById().populate().populate.mockReturnValue({ populate: vi.fn(async () => staffDoc) });
+    modelMocks.Staff.findById.mockReset();
+    guardMocks.requireRestaurantAccess.mockReset();
+
+    const staffDoc = {
+      _id: "s2",
+      userType: "STAFF",
+      restaurantForStaff: "r1",
+    };
+
+    modelMocks.Staff.findById.mockReturnValue({
+      populate: vi.fn().mockReturnValue({
+        populate: vi.fn().mockResolvedValue(staffDoc),
+      }),
+    });
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("denied"));
+
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    await expect(query.staffAccountOverview(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
-    await expect(query.staffSalarySummary(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
-    await expect(query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } })).rejects.toThrow();
+
+    await expect(
+      query.staffAccountOverview(null, { staffId: "s2" }, { user: { id: "me" } }),
+    ).rejects.toThrow("denied");
+
+    await expect(
+      query.staffSalarySummary(null, { staffId: "s2" }, { user: { id: "me" } }),
+    ).rejects.toThrow("denied");
+
+    await expect(
+      query.staffShiftHistory(null, { staffId: "s2" }, { user: { id: "me" } }),
+    ).rejects.toThrow("denied");
+
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      "r1",
+    );
+
     expect(modelMocks.Table.find).not.toHaveBeenCalled();
     expect(modelMocks.Shift.find).not.toHaveBeenCalled();
     expect(modelMocks.Timesheet.aggregate).not.toHaveBeenCalled();
