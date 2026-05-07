@@ -254,7 +254,13 @@ const EmployeeFormModal = ({
     };
   }, [isOpen]);
 
-  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+  const {
+    requestCloseWithDraft,
+    clearDraft,
+    pendingRestore,
+    restorePendingDraft,
+    discardPendingDraft,
+  } = useModalDraft({
     enabled: isOpen && mode === "add",
     draftIdentity: {
       module: "staff",
@@ -1072,6 +1078,19 @@ const EmployeeFormModal = ({
       className="employee-form-modal"
       showCloseButton={false}
     >
+      {pendingRestore && (
+        <div className="draft-restore-banner">
+          <span>Có dữ liệu nhân viên nhập dở. Khôi phục?</span>
+          <div className="draft-restore-actions">
+            <button type="button" onClick={restorePendingDraft}>
+              Khôi phục
+            </button>
+            <button type="button" onClick={discardPendingDraft}>
+              Bỏ qua
+            </button>
+          </div>
+        </div>
+      )}
       <div className="modal-header-custom">
         <div className="header-text">
           <h2>{mode === "add" ? "Thêm Nhân Viên Mới" : "Cập Nhật Hồ Sơ"}</h2>
