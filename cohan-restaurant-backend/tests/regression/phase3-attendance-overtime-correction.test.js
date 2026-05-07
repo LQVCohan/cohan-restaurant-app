@@ -21,12 +21,25 @@ const modelMocks = vi.hoisted(() => {
 const permissionMocks = vi.hoisted(() => ({ userCanAccessRestaurant: vi.fn() }));
 
 vi.mock('../../models/index.js', () => modelMocks);
+vi.mock('../../graphql/guards.js', () => ({
+  requireAuth: vi.fn((ctx) => { if (!ctx?.user) throw new Error('UNAUTHENTICATED'); }),
+  requireRoles: vi.fn((ctx, allowed) => {
+    const role = String(ctx?.user?.roleName || ctx?.user?.userType || '').toUpperCase();
+    if (!allowed.includes(role)) throw new Error('FORBIDDEN');
+  }),
+  requireRestaurantAccess: vi.fn(async (ctx, restaurantId) => {
+    if (!permissionMocks.userCanAccessRestaurant(ctx?.user, restaurantId)) throw new Error('RESTAURANT_SCOPE_FORBIDDEN');
+    return true;
+  }),
+  requireRestaurantScope: vi.fn(),
+}));
 vi.mock('../../src/services/payroll/payrollLockGuard.service.js', () => ({ assertNoLockedPayrollPeriodOverlap: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../../src/services/scheduling/schedulingPermission.service.js', () => ({
   ATTENDANCE_READ_ROLES: ['ADMIN', 'MANAGER', 'HR', 'ACCOUNTANT'],
   ATTENDANCE_REVIEW_ROLES: ['ADMIN', 'MANAGER', 'HR'],
   ATTENDANCE_OPERATION_ROLES: ['ADMIN', 'MANAGER'],
   ATTENDANCE_SELF_ROLES: ['STAFF'],
+  normalizeRole: vi.fn((role) => String(role || '').trim().toUpperCase()),
   resolveUserRoles: vi.fn((user) => [String(user?.roleName || user?.userType || '').toUpperCase()]),
   userHasAnyRole: vi.fn((user, roles) => roles.includes(String(user?.roleName || user?.userType || '').toUpperCase())),
   userCanAccessRestaurant: permissionMocks.userCanAccessRestaurant,

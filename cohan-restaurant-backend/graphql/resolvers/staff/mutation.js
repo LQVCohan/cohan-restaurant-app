@@ -17,6 +17,8 @@ import {
   SchedulePublication,
   ShiftAcknowledgement,
   ScheduleAcknowledgement,
+  AttendanceCorrectionRequest,
+  OvertimeRequest,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -172,6 +174,11 @@ function staffBelongsToRestaurant(staff, restaurantId) {
     String(staff?.restaurantForStaff || "") === rid ||
     refs.some((id) => String(id?._id || id) === rid)
   );
+}
+
+function isSelf(ctx, employeeId) {
+  const actorId = ctx?.user?.id || ctx?.user?._id;
+  return actorId && String(actorId) === String(employeeId);
 }
 
 async function loadStaffForRestaurant(employeeId, restaurantId) {
@@ -3238,18 +3245,56 @@ export default {
     );
   },
   createAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const employeeId = input?.employeeId;
+    const selfRequest = !employeeId || isSelf(ctx, employeeId);
+    if (!selfRequest) {
+      requireRoles(ctx, [
+        ...ATTENDANCE_OPERATION_ROLES,
+        ...ATTENDANCE_REVIEW_ROLES,
+      ]);
+      if (input?.restaurantId) {
+        await requireRestaurantAccess(ctx, input.restaurantId);
+      }
+    }
     return createAttendanceCorrectionRequestService({ input, ctx });
   },
 
   approveAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
+      .select({ _id: 1, restaurantId: 1 });
+    if (!existing) throw new Error("Attendance correction request not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return approveAttendanceCorrectionRequestService({ input, ctx });
   },
 
   rejectAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
+      .select({ _id: 1, restaurantId: 1 });
+    if (!existing) throw new Error("Attendance correction request not found");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return rejectAttendanceCorrectionRequestService({ input, ctx });
   },
 
   cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
+    requireAuth(ctx);
+    const existing = await AttendanceCorrectionRequest.findById(requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
+    if (!existing) throw new Error("Attendance correction request not found");
+    if (!isSelf(ctx, existing.employeeId)) {
+      requireRoles(ctx, [
+        ...ATTENDANCE_REVIEW_ROLES,
+        ...ATTENDANCE_OPERATION_ROLES,
+      ]);
+      await requireRestaurantAccess(ctx, existing.restaurantId);
+    }
     return cancelAttendanceCorrectionRequestService({ requestId, ctx });
   },
   reviewPerformanceIncident: async (_, { input }, ctx) => {
@@ -3278,55 +3323,136 @@ export default {
     reverseScoreForAcceptedAppealService({ ...input, actor: ctx?.user }),
 
   createOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const actorId = ctx?.user?.id || ctx?.user?._id;
+    const providedEmployeeId = input?.employeeId || null;
+    let resolvedEmployeeId = providedEmployeeId;
+    let resolvedRestaurantId = input?.restaurantId || null;
+
+    let shift = null;
+    if (input?.shiftId) {
+      shift = await Shift.findById(input.shiftId)
+        .select({ _id: 1, employeeId: 1, restaurantId: 1 })
+        .lean();
+      if (!shift) throw new Error("Shift not found");
+      resolvedEmployeeId = resolvedEmployeeId || String(shift.employeeId);
+      resolvedRestaurantId = resolvedRestaurantId || String(shift.restaurantId);
+      if (
+        providedEmployeeId &&
+        String(shift.employeeId) !== String(providedEmployeeId)
+      ) {
+        throw new Error("SHIFT_EMPLOYEE_MISMATCH");
+      }
+    }
+
+    let timesheet = null;
+    if (input?.timesheetId) {
+      timesheet = await Timesheet.findById(input.timesheetId)
+        .select({ _id: 1, employeeId: 1, restaurantId: 1, shiftId: 1 })
+        .lean();
+      if (!timesheet) throw new Error("Timesheet not found");
+      resolvedEmployeeId = resolvedEmployeeId || String(timesheet.employeeId);
+      resolvedRestaurantId =
+        resolvedRestaurantId || String(timesheet.restaurantId);
+      if (shift && String(shift.restaurantId) !== String(timesheet.restaurantId))
+        throw new Error("SHIFT_TIMESHEET_RESTAURANT_MISMATCH");
+      if (shift && String(shift.employeeId) !== String(timesheet.employeeId))
+        throw new Error("SHIFT_TIMESHEET_EMPLOYEE_MISMATCH");
+      if (
+        providedEmployeeId &&
+        String(timesheet.employeeId) !== String(providedEmployeeId)
+      ) {
+        throw new Error("TIMESHEET_EMPLOYEE_MISMATCH");
+      }
+    }
+
+    if (!resolvedEmployeeId) resolvedEmployeeId = actorId;
+    if (!resolvedEmployeeId || !resolvedRestaurantId) {
+      throw new Error("employeeId hoặc restaurantId không hợp lệ.");
+    }
+    if (isSelf(ctx, resolvedEmployeeId)) {
+      if (shift && String(shift.employeeId) !== String(resolvedEmployeeId)) {
+        throw new Error("FORBIDDEN");
+      }
+      if (
+        timesheet &&
+        String(timesheet.employeeId) !== String(resolvedEmployeeId)
+      ) {
+        throw new Error("FORBIDDEN");
+      }
+    } else {
+      requireRoles(ctx, ATTENDANCE_OPERATION_ROLES);
+      await requireRestaurantAccess(ctx, resolvedRestaurantId);
+    }
+    await loadStaffForRestaurant(resolvedEmployeeId, resolvedRestaurantId);
     return createOvertimeRequestService({ input, ctx });
   },
 
   confirmOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const request = await OvertimeRequest.findById(input?.requestId)
+      .select({ _id: 1, employeeId: 1, restaurantId: 1, status: 1 });
+    if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+    if (!isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     return confirmOvertimeRequestService({ input, ctx });
   },
 
   approveOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const request = await OvertimeRequest.findById(input?.requestId)
+      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+    if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
+    await requireRestaurantAccess(ctx, request.restaurantId);
     return approveOvertimeRequestService({ input, ctx });
   },
 
   rejectOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const request = await OvertimeRequest.findById(input?.requestId)
+      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+    if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
+    await requireRestaurantAccess(ctx, request.restaurantId);
     return rejectOvertimeRequestService({ input, ctx });
   },
 
   cancelOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    const request = await OvertimeRequest.findById(input?.requestId)
+      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+    if (!isSelf(ctx, request.employeeId)) {
+      requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+      await requireRestaurantAccess(ctx, request.restaurantId);
+    }
     return cancelOvertimeRequestService({ input, ctx });
   },
 
   completeOvertimeRequest: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+    const request = await OvertimeRequest.findById(input?.requestId)
+      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+    if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
+    await requireRestaurantAccess(ctx, request.restaurantId);
     return completeOvertimeRequestService({ input, ctx });
   },
   upsertStaffAttendance: async (_, { input }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
+    requireAuth(ctx);
     const employeeId = toObjectId(input.employeeId);
     const restaurantId = toObjectId(input.restaurantId);
     if (!employeeId || !restaurantId)
       throw new Error("Invalid employeeId or restaurantId");
-    const roles = resolveUserRoles(ctx.user);
     const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    const isSelfRole = roles.some((role) =>
-      ATTENDANCE_SELF_ROLES.includes(role),
-    );
-    const isOperationRole = roles.some((role) =>
-      ATTENDANCE_OPERATION_ROLES.includes(role),
-    );
-    if (isSelfRole) {
-      if (!actorId || String(actorId) !== String(employeeId)) {
-        throw new Error("FORBIDDEN");
-      }
-      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
-        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-      }
-    } else if (isOperationRole) {
-      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
-        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-      }
+    if (isSelf(ctx, employeeId)) {
+      requireRoles(ctx, ATTENDANCE_SELF_ROLES);
     } else {
-      throw new Error("FORBIDDEN");
+      requireRoles(ctx, ATTENDANCE_OPERATION_ROLES);
+      await requireRestaurantAccess(ctx, restaurantId);
     }
 
     const action = String(input.action || "").toLowerCase();
@@ -3486,18 +3612,13 @@ export default {
     return mapAttendanceOutput(populated, staff);
   },
   approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
-    const roles = resolveUserRoles(ctx.user);
-    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
-      throw new Error("FORBIDDEN");
-    }
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const tsid = toObjectId(timesheetId);
     if (!tsid) throw new Error("Invalid timesheetId");
     const record = await Timesheet.findById(tsid);
     if (!record) throw new Error("Timesheet not found");
-    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
-      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-    }
+    await requireRestaurantAccess(ctx, record.restaurantId);
     if (!record.isOffSchedule)
       throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.offScheduleApprovalStatus === "rejected") {
@@ -3536,18 +3657,13 @@ export default {
     return mapAttendanceOutput(record.toObject(), staff);
   },
   rejectOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
-    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
-    const roles = resolveUserRoles(ctx.user);
-    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
-      throw new Error("FORBIDDEN");
-    }
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
     const tsid = toObjectId(timesheetId);
     if (!tsid) throw new Error("Invalid timesheetId");
     const record = await Timesheet.findById(tsid);
     if (!record) throw new Error("Timesheet not found");
-    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
-      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-    }
+    await requireRestaurantAccess(ctx, record.restaurantId);
     if (!record.isOffSchedule)
       throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.approved || record.offScheduleApprovalStatus === "approved") {
