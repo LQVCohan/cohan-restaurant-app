@@ -65,6 +65,27 @@ export const PosCustomerQuery = {
     const nEmail = String(email || "").trim().toLowerCase() || null;
     const nPhone = normalizePosCustomerPhone(phone || "") || null;
     const search = String(keyword || "").trim();
+    const hasAnyFilter = Boolean(nEmail || nPhone || search);
+
+    if (!hasAnyFilter) {
+      const recentPosRows = await PosCustomer.find({
+        restaurantId: rid,
+        isActive: { $ne: false },
+      })
+        .sort({ lastOrderAt: -1, updatedAt: -1, createdAt: -1 })
+        .limit(30)
+        .lean({ virtuals: true });
+
+      return recentPosRows.map((c) => ({
+        id: String(c._id || c.id),
+        fullName: c.fullName || null,
+        email: c.email || null,
+        phone: c.phone || null,
+        address: c.defaultAddress || null,
+        note: c.note || null,
+        source: "POS",
+      }));
+    }
 
     const posOr = [];
     if (nEmail) posOr.push({ email: nEmail });

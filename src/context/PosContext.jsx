@@ -19,6 +19,10 @@ import useSocketOrder from "@/hooks/useSocketOrder";
 import { PRINT_STATIONS } from "@/utils/printStations";
 
 const OFF_PREMISE_TYPES = new Set(["delivery", "takeaway"]);
+const hasMeaningfulOffPremiseDraft = (payload) => {
+  const items = Array.isArray(payload?.currentOrder) ? payload.currentOrder : [];
+  return items.length > 0;
+};
 export const isValidOffPremiseSessionForType = ({
   type,
   currentOrderType,
@@ -561,6 +565,12 @@ export default function PosProvider({
       return;
     const key = getOffPremiseDraftKey(currentOrderType);
     if (!key) return;
+    if (!hasMeaningfulOffPremiseDraft({ currentOrder })) {
+      try {
+        localStorage.removeItem(key);
+      } catch {}
+      return;
+    }
     const payload = {
       version: 1,
       savedAt: Date.now(),
@@ -679,6 +689,10 @@ export default function PosProvider({
         const raw = localStorage.getItem(key);
         if (!raw) return false;
         const p = JSON.parse(raw);
+        if (!hasMeaningfulOffPremiseDraft(p)) {
+          localStorage.removeItem(key);
+          return false;
+        }
         setCurrentOrderType(type);
         const nextCode =
           p?.currentOrderCode ||
