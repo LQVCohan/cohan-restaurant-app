@@ -7,7 +7,7 @@ import {
   gql,
 } from "@apollo/client";
 import useSocketOrder from "./useSocketOrder";
-
+import { deriveSelectedCustomerPayload } from "@/utils/posCustomerIdentity";
 /* ============================================================
    1) GRAPHQL
    ============================================================ */
@@ -1178,7 +1178,10 @@ export default function useOrderManagement(pos = null) {
     currentTable,
     setTableOrders,
     restaurantId,
-
+    currentOrderCode,
+    setCurrentOrderCode,
+    currentOrderId,
+    setCurrentOrderId,
     // 🔹 từ PosContext
     currentOrderType, // "dine_in" | "delivery" | "takeaway"
     deliveryCustomer,
@@ -2466,7 +2469,8 @@ export default function useOrderManagement(pos = null) {
             ).trim(),
             name: undefined,
             phone: (deliveryCustomer.phone || "").trim() || undefined,
-            email: (deliveryCustomer.email || "").trim().toLowerCase() || undefined,
+            email:
+              (deliveryCustomer.email || "").trim().toLowerCase() || undefined,
           }
         : null;
       const selectedPayload = deriveSelectedCustomerPayload({
@@ -2488,7 +2492,8 @@ export default function useOrderManagement(pos = null) {
               cleanCustomer?.name ||
               "" ||
               null,
-            phone: (shippingInfo.phone || cleanCustomer?.phone || "").trim() || null,
+            phone:
+              (shippingInfo.phone || cleanCustomer?.phone || "").trim() || null,
             email:
               (shippingInfo.email || cleanCustomer?.email || "")
                 .trim()
@@ -2540,6 +2545,13 @@ export default function useOrderManagement(pos = null) {
         });
 
         const serverOrder = res?.data?.createOffPremiseOrder?.order || null;
+        if (serverOrder?.id) {
+          setCurrentOrderId?.(serverOrder.id);
+        }
+
+        if (serverOrder?.orderCode) {
+          setCurrentOrderCode?.(serverOrder.orderCode);
+        }
         if (serverOrder) {
           writeOrderIntoCache(serverOrder);
         }

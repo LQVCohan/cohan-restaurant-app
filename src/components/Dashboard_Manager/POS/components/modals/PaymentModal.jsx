@@ -55,6 +55,7 @@ function PaymentModal({
   const [isConfirming, setIsConfirming] = useState(false);
 
   const pos = usePos?.() || null;
+  const effectiveOrderId = pos?.currentOrderId || order?.[0]?.orderId || null;
   const restaurantId =
     table?.restaurantId ||
     table?.restaurant_id ||
@@ -168,13 +169,16 @@ function PaymentModal({
       Boolean(res?.data?.invoice) || Boolean(res?.data?.transaction);
 
     if (!hasPaymentProof) {
-      alert("Thanh toán chưa được backend xác nhận.");
+      alert(
+        res?.message ||
+          "Không thể hoàn tất thanh toán. Vui lòng kiểm tra trạng thái món hoặc yêu cầu đang chờ.",
+      );
       return;
     }
 
     onConfirm?.(method, paidAmount);
     onComplete?.({
-      orderId: order?.[0]?.orderId || order?.[0]?.id || null,
+      orderId: effectiveOrderId,
       method,
       paidAmount: Number(paidAmount || 0),
       total: Number(convertedTotalAmount || 0),

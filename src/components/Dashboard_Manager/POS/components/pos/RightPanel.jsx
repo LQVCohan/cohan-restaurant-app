@@ -124,7 +124,6 @@ const IconOrderList = () => (
   </svg>
 );
 
-
 const PRIORITY_LABELS = {
   HIGH: "Ưu tiên cao",
   MEDIUM: "Ưu tiên vừa",
@@ -187,6 +186,7 @@ export default function RightPanel() {
     setDeliveryCustomer,
     setCurrentOrder,
     setCurrentTable,
+    setCurrentOrderId,
   } = usePos();
 
   const { showNotification } = useNotification?.() || {
@@ -254,7 +254,11 @@ export default function RightPanel() {
     currentOrderType === "delivery" || currentOrderType === "takeaway";
 
   const offPremiseKind = currentOrderType === "delivery" ? "SHIP" : "TAKE";
-
+  const clearActiveDrafts = useCallback(() => {
+    if (currentOrderType === "delivery" || currentOrderType === "takeaway") {
+      clearOffPremiseDraft?.(currentOrderType);
+    }
+  }, [currentOrderType, clearOffPremiseDraft]);
   const getItemPrice = (item) => formatPrice(Number(item.price || 0));
   const getItemTotal = (item) => {
     const t =
@@ -306,7 +310,11 @@ export default function RightPanel() {
         deliveryCustomer?.phone ||
         ""
       ).trim();
-      const email = (shippingInfo?.email || deliveryCustomer?.email || "").trim();
+      const email = (
+        shippingInfo?.email ||
+        deliveryCustomer?.email ||
+        ""
+      ).trim();
       const addr = (shippingInfo?.address || "").trim();
 
       return {
@@ -314,7 +322,11 @@ export default function RightPanel() {
           name || phone || email
             ? `${name || "Khách"}${phone ? ` · ${phone}` : ""}${email ? ` · ${email}` : ""}`
             : "",
-        line2: addr || (currentOrderType === "takeaway" ? "Không có địa chỉ" : "Chưa có địa chỉ"),
+        line2:
+          addr ||
+          (currentOrderType === "takeaway"
+            ? "Không có địa chỉ"
+            : "Chưa có địa chỉ"),
       };
     }
 
@@ -392,17 +404,6 @@ export default function RightPanel() {
     showNotification,
   ]);
 
-  const clearActiveDrafts = useCallback(() => {
-    if (currentOrderType === "delivery" || currentOrderType === "takeaway") {
-      clearOffPremiseDraft?.(currentOrderType);
-      if (currentOrderCode) {
-        try {
-          localStorage.removeItem(`pos_draft_${currentOrderCode}`);
-        } catch {}
-      }
-    }
-  }, [clearOffPremiseDraft, currentOrderCode, currentOrderType]);
-
   const handlePaymentComplete = useCallback(
     (payload) => {
       const serverPayload = payload?.server || {};
@@ -461,7 +462,7 @@ export default function RightPanel() {
       setTableStatus,
       setCurrentTable,
       showNotification,
-  
+
       clearPaymentRequest,
       clearActiveDrafts,
     ],
@@ -832,6 +833,7 @@ export default function RightPanel() {
     setCurrentOrder?.([]);
     setCurrentTable?.(null);
     setCurrentOrderCode?.(null);
+    setCurrentOrderId?.(null);
     setDeliveryCustomer?.(null);
     setShippingInfo?.({
       fullName: "",
@@ -846,7 +848,6 @@ export default function RightPanel() {
       scheduleTime: "",
     });
   }, [
-
     clearOrder,
     setCurrentOrder,
     setCurrentTable,
@@ -934,7 +935,10 @@ export default function RightPanel() {
 
   const saveDisabled = saving || !hasItems || newItems.length === 0;
   const groupedPaymentRequests = useMemo(
-    () => groupPaymentRequests(Array.isArray(paymentRequests) ? paymentRequests : []),
+    () =>
+      groupPaymentRequests(
+        Array.isArray(paymentRequests) ? paymentRequests : [],
+      ),
     [paymentRequests],
   );
   return (

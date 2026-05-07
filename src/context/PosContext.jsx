@@ -147,7 +147,7 @@ export default function PosProvider({
 
   // ✅ NEW: currentOrderCode tách khỏi currentTable.code
   const [currentOrderCode, setCurrentOrderCode] = useState(null);
-
+  const [currentOrderId, setCurrentOrderId] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [currentCategory, setCurrentCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -250,7 +250,20 @@ export default function PosProvider({
       upsertPrintSettings({ variables: { input: payload } }).catch(() => {});
     }, 400);
   }, [restaurantId, printers, printStations]);
-
+  const getDefaultShippingInfo = useCallback(
+    (type) => ({
+      fullName: "",
+      phone: "",
+      email: "",
+      address: "",
+      note: "",
+      deliveryMethod: type === "takeaway" ? "pickup_at_store" : "ship_now",
+      deliveryTime: "",
+      scheduleDate: "",
+      scheduleTime: "",
+    }),
+    [],
+  );
   // 🔹 Shipping + Customer cho off-premise (delivery/takeaway)
   const [shippingInfo, setShippingInfo] = useState({
     fullName: "",
@@ -267,7 +280,19 @@ export default function PosProvider({
   const [deliveryCustomer, setDeliveryCustomer] = useState(null);
   const skipDraftAutosaveRef = useRef(false);
   const lastDraftKeyRef = useRef(null);
-
+  const hasCustomerLike = useCallback((customer, shipping) => {
+    return Boolean(
+      customer?.id ||
+      customer?.name ||
+      customer?.fullName ||
+      customer?.phone ||
+      customer?.email ||
+      shipping?.fullName ||
+      shipping?.phone ||
+      shipping?.email ||
+      shipping?.address,
+    );
+  }, []);
   // --- FLOORS ---
   const {
     floors,
@@ -495,6 +520,8 @@ export default function PosProvider({
     shippingInfo,
     currentOrderCode,
     setCurrentOrderCode,
+    currentOrderId,
+    setCurrentOrderId,
   });
 
   // --- [UTILITY] GENERATE VIRTUAL CODE ---
@@ -509,7 +536,6 @@ export default function PosProvider({
     return `${prefix}-${yyyy}${mm}${dd}-${randomPart}`;
   }, []);
 
-  
   const getOffPremiseDraftKey = useCallback(
     (type) => {
       if (!restaurantId) return null;
@@ -519,77 +545,172 @@ export default function PosProvider({
     [restaurantId],
   );
 
-  const clearOffPremiseDraft = useCallback((type) => {
-    const key = getOffPremiseDraftKey(type);
-    if (!key) return;
-    try { localStorage.removeItem(key); } catch {}
-  }, [getOffPremiseDraftKey]);
+  const clearOffPremiseDraft = useCallback(
+    (type) => {
+      const key = getOffPremiseDraftKey(type);
+      if (!key) return;
+      try {
+        localStorage.removeItem(key);
+      } catch {}
+    },
+    [getOffPremiseDraftKey],
+  );
 
   const saveCurrentOffPremiseDraft = useCallback(() => {
-    if (currentOrderType !== "delivery" && currentOrderType !== "takeaway") return;
+    if (currentOrderType !== "delivery" && currentOrderType !== "takeaway")
+      return;
     const key = getOffPremiseDraftKey(currentOrderType);
     if (!key) return;
-    const payload = { version:1, savedAt: Date.now(), orderType: currentOrderType, currentOrderCode, currentOrder, deliveryCustomer, shippingInfo, orderNote };
-    try { localStorage.setItem(key, JSON.stringify(payload)); } catch {}
-  }, [currentOrderType, getOffPremiseDraftKey, currentOrderCode, currentOrder, deliveryCustomer, shippingInfo, orderNote]);
+    const payload = {
+      version: 1,
+      savedAt: Date.now(),
+      orderType: currentOrderType,
+      currentOrderCode,
+      currentOrder,
+      deliveryCustomer,
+      shippingInfo,
+      orderNote,
+    };
+    try {
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+  }, [
+    currentOrderType,
+    getOffPremiseDraftKey,
+    currentOrderCode,
+    currentOrder,
+    deliveryCustomer,
+    shippingInfo,
+    orderNote,
+  ]);
 
-  const ensureOffPremiseSession = useCallback((type, options = {}) => {
-    if (type !== "delivery" && type !== "takeaway") return null;
+  const ensureOffPremiseSession = useCallback(
+    (type, options = {}) => {
+      if (type !== "delivery" && type !== "takeaway") return null;
 
-    const isValidExistingSession = isValidOffPremiseSessionForType({
-      type,
+      const isValidExistingSession = isValidOffPremiseSessionForType({
+        type,
+        currentOrderType,
+        currentTable,
+        currentOrderCode,
+        force: options.force,
+      });
+
+      if (isValidExistingSession) return currentOrderCode;
+
+      const nextCode = generateVirtualCode(
+        type === "delivery" ? "SHIP" : "TAKE",
+      );
+      setCurrentOrderType(type);
+      setCurrentOrderCode(nextCode);
+      setCurrentTable({
+        id: null,
+        code: type === "delivery" ? "DELIVERY" : "TAKEAWAY",
+        name: type === "delivery" ? "Delivery" : "Takeaway",
+        status: "occupied",
+        type,
+        restaurantId,
+        isVirtual: true,
+      });
+      return nextCode;
+    },
+    [
+      currentOrderCode,
       currentOrderType,
       currentTable,
-      currentOrderCode,
-      force: options.force,
-    });
-
-    if (isValidExistingSession) return currentOrderCode;
-
-    const nextCode = generateVirtualCode(type === "delivery" ? "SHIP" : "TAKE");
-    setCurrentOrderType(type);
-    setCurrentOrderCode(nextCode);
-    setCurrentTable({
-      id: null,
-      code: type === "delivery" ? "DELIVERY" : "TAKEAWAY",
-      name: type === "delivery" ? "Delivery" : "Takeaway",
-      status: "occupied",
-      type,
+      generateVirtualCode,
       restaurantId,
-      isVirtual: true,
-    });
-    return nextCode;
-  }, [currentOrderCode, currentOrderType, currentTable, generateVirtualCode, restaurantId]);
+    ],
+  );
 
-  const restoreOffPremiseDraft = useCallback((type) => {
-    const key = getOffPremiseDraftKey(type);
-    if (!key) return false;
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return false;
-      const p = JSON.parse(raw);
-      setCurrentOrderType(type);
-      setCurrentOrderCode(p?.currentOrderCode || null);
-      setCurrentOrder(Array.isArray(p?.currentOrder) ? p.currentOrder : []);
-      setDeliveryCustomer(p?.deliveryCustomer || null);
-      if (p?.shippingInfo) setShippingInfo((prev) => ({...prev, ...p.shippingInfo}));
-      setOrderNote?.(p?.orderNote || "");
-      setCurrentTable({ id:null, code: type === "delivery" ? "DELIVERY" : "TAKEAWAY", name: type === "delivery" ? "Delivery" : "Takeaway", status:"occupied", type, restaurantId, isVirtual:true });
-      return true;
-    } catch { return false; }
-  }, [getOffPremiseDraftKey, restaurantId, setOrderNote]);
+  const restoreOffPremiseDraft = useCallback(
+    (type) => {
+      const key = getOffPremiseDraftKey(type);
+      if (!key) return false;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return false;
+        const p = JSON.parse(raw);
+        setCurrentOrderType(type);
+        const nextCode =
+          p?.currentOrderCode ||
+          generateVirtualCode(type === "delivery" ? "SHIP" : "TAKE");
 
-  const switchOffPremiseMode = useCallback((type) => {
-    if (type !== "delivery" && type !== "takeaway") return;
-    if (currentOrderType === type) return;
-    saveCurrentOffPremiseDraft();
-    const restored = restoreOffPremiseDraft(type);
-    if (!restored) {
-      setCurrentOrderType(type);
-      ensureOffPremiseSession(type);
-    }
-  }, [currentOrderType, ensureOffPremiseSession, restoreOffPremiseDraft, saveCurrentOffPremiseDraft]);
-const getDraftKeyForTable = useCallback(
+        setCurrentOrderCode(nextCode);
+        setCurrentOrder(Array.isArray(p?.currentOrder) ? p.currentOrder : []);
+        setDeliveryCustomer(p?.deliveryCustomer || null);
+        setShippingInfo({
+          ...getDefaultShippingInfo(type),
+          ...(p?.shippingInfo || {}),
+        });
+        setOrderNote?.(p?.orderNote || "");
+        setCurrentTable({
+          id: null,
+          code: type === "delivery" ? "DELIVERY" : "TAKEAWAY",
+          name: type === "delivery" ? "Delivery" : "Takeaway",
+          status: "occupied",
+          type,
+          restaurantId,
+          isVirtual: true,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [
+      getOffPremiseDraftKey,
+      restaurantId,
+      setOrderNote,
+      generateVirtualCode,
+      getDefaultShippingInfo,
+    ],
+  );
+
+  const switchOffPremiseMode = useCallback(
+    (type) => {
+      if (type !== "delivery" && type !== "takeaway") return;
+      if (currentOrderType === type) return;
+
+      const previousCustomer = deliveryCustomer;
+      const previousShipping = shippingInfo;
+      const previousOrder = currentOrder;
+      const previousNote = orderNote;
+
+      saveCurrentOffPremiseDraft();
+
+      const restored = restoreOffPremiseDraft(type);
+
+      if (!restored) {
+        ensureOffPremiseSession(type, { force: true });
+
+        setCurrentOrder(Array.isArray(previousOrder) ? previousOrder : []);
+        setDeliveryCustomer(previousCustomer || null);
+        setShippingInfo({
+          ...getDefaultShippingInfo(type),
+          ...(hasCustomerLike(previousCustomer, previousShipping)
+            ? previousShipping
+            : {}),
+          deliveryMethod: type === "takeaway" ? "pickup_at_store" : "ship_now",
+        });
+        setOrderNote?.(previousNote || "");
+      }
+    },
+    [
+      currentOrderType,
+      deliveryCustomer,
+      shippingInfo,
+      currentOrder,
+      orderNote,
+      saveCurrentOffPremiseDraft,
+      restoreOffPremiseDraft,
+      ensureOffPremiseSession,
+      getDefaultShippingInfo,
+      hasCustomerLike,
+      setOrderNote,
+    ],
+  );
+  const getDraftKeyForTable = useCallback(
     (tableId) => {
       if (!tableId) return null;
       return `pos_draft_table_${restaurantId}_${tableId}`;
@@ -606,13 +727,9 @@ const getDraftKeyForTable = useCallback(
       const tableKey = currentTable?.id || currentTable?.code;
       return `pos_draft_table_${restaurantId}_${tableKey}`;
     }
-    if (currentOrderCode) return `pos_draft_${currentOrderCode}`;
-    if (currentOrderType === "delivery")
-      return `pos_draft_ship_${restaurantId}`;
-    if (currentOrderType === "takeaway")
-      return `pos_draft_take_${restaurantId}`;
+
     return null;
-  }, [currentOrderCode, currentOrderType, restaurantId]);
+  }, [currentOrderType, currentTable?.id, currentTable?.code, restaurantId]);
 
   // ===== Auto-save only isNew (FE) =====
   useEffect(() => {
@@ -714,63 +831,78 @@ const getDraftKeyForTable = useCallback(
   }, [currentOrderType, currentTable?.id, getDraftKey, getDraftKeyForTable]);
 
   // --- [NEW] START DELIVERY ORDER ---
-  const startDeliveryOrder = useCallback(() => {
-    ensureOffPremiseSession("delivery");
+  const startDeliveryOrder = useCallback(
+    (options = {}) => {
+      ensureOffPremiseSession("delivery");
 
-    // currentTable.code là "table code" theo bạn: off-premise vẫn có 1 mã cố định
-    setCurrentTable({
-      id: null,
-      code: "DELIVERY",
-      name: "Delivery",
-      status: "occupied",
-      type: "delivery",
+      setCurrentTable({
+        id: null,
+        code: "DELIVERY",
+        name: "Delivery",
+        status: "occupied",
+        type: "delivery",
+        restaurantId,
+        isVirtual: true,
+      });
+
+      if (options.reset === true) {
+        setCurrentOrder([]);
+        setShippingInfo(getDefaultShippingInfo("delivery"));
+        setDeliveryCustomer(null);
+        setOrderNote?.("");
+        return;
+      }
+
+      setShippingInfo((prev) => ({
+        ...getDefaultShippingInfo("delivery"),
+        ...(prev || {}),
+        deliveryMethod: prev?.deliveryMethod || "ship_now",
+      }));
+    },
+    [
+      ensureOffPremiseSession,
       restaurantId,
-      isVirtual: true,
-    });
-
-    setCurrentOrder([]);
-    setShippingInfo({
-      fullName: "",
-      phone: "",
-      email: "",
-      address: "",
-      note: "",
-      deliveryMethod: "ship_now",
-      deliveryTime: "",
-      scheduleDate: "",
-      scheduleTime: "",
-    });
-    setDeliveryCustomer(null);
-  }, [ensureOffPremiseSession]);
+      getDefaultShippingInfo,
+      setOrderNote,
+    ],
+  );
 
   // --- [NEW] START TAKEAWAY ORDER ---
-  const startTakeawayOrder = useCallback(() => {
-    ensureOffPremiseSession("takeaway");
+  const startTakeawayOrder = useCallback(
+    (options = {}) => {
+      ensureOffPremiseSession("takeaway");
 
-    setCurrentTable({
-      id: null,
-      code: "TAKEAWAY",
-      name: "Takeaway",
-      status: "occupied",
-      type: "takeaway",
+      setCurrentTable({
+        id: null,
+        code: "TAKEAWAY",
+        name: "Takeaway",
+        status: "occupied",
+        type: "takeaway",
+        restaurantId,
+        isVirtual: true,
+      });
+
+      if (options.reset === true) {
+        setCurrentOrder([]);
+        setShippingInfo(getDefaultShippingInfo("takeaway"));
+        setDeliveryCustomer(null);
+        setOrderNote?.("");
+        return;
+      }
+
+      setShippingInfo((prev) => ({
+        ...getDefaultShippingInfo("takeaway"),
+        ...(prev || {}),
+        deliveryMethod: "pickup_at_store",
+      }));
+    },
+    [
+      ensureOffPremiseSession,
       restaurantId,
-      isVirtual: true,
-    });
-
-    setCurrentOrder([]);
-    setShippingInfo({
-      fullName: "",
-      phone: "",
-      email: "",
-      address: "",
-      note: "",
-      deliveryMethod: "pickup_at_store",
-      deliveryTime: "",
-      scheduleDate: "",
-      scheduleTime: "",
-    });
-    setDeliveryCustomer(null);
-  }, [ensureOffPremiseSession]);
+      getDefaultShippingInfo,
+      setOrderNote,
+    ],
+  );
   const resetPosOrderSession = useCallback(
     (nextType = "dine_in") => {
       skipDraftAutosaveRef.current = true;
@@ -778,6 +910,7 @@ const getDraftKeyForTable = useCallback(
 
       setCurrentOrderType(nextType);
       setCurrentOrderCode(null);
+      setCurrentOrderId(null);
       setCurrentTable(null);
       setCurrentOrder([]);
       setTableOrders({});
@@ -958,6 +1091,7 @@ const getDraftKeyForTable = useCallback(
 
       setCurrentOrderType(order.orderType || request?.orderType || "takeaway");
       setCurrentOrderCode(order.orderCode || request?.orderCode || null);
+      setCurrentOrderId(order.id || request?.orderId || null);
       if (order.orderType === "delivery" || order.orderType === "takeaway") {
         setCurrentTable({
           id: null,
@@ -971,6 +1105,8 @@ const getDraftKeyForTable = useCallback(
       }
       const mappedItems = (order.items || []).map((it, idx) => ({
         ...it,
+        orderId: order.id,
+        orderCode: order.orderCode,
         _lineId: it._id || `${it.dishId || "dish"}-${idx}`,
         isExisting: true,
         isNew: false,
@@ -1106,6 +1242,9 @@ const getDraftKeyForTable = useCallback(
       // ✅ expose orderCode
       currentOrderCode,
       setCurrentOrderCode,
+
+      currentOrderId,
+      setCurrentOrderId,
 
       currentOrder,
       setCurrentOrder,
@@ -1281,6 +1420,8 @@ const getDraftKeyForTable = useCallback(
 
       hasNewDraftItems,
       clearDraftStorage,
+      currentOrderId,
+      setCurrentOrderId,
     ],
   );
 
