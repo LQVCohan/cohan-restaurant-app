@@ -14,10 +14,35 @@ async function resolveWarehouseIdOrDefault(restaurantId) {
   return wh._id;
 }
 
+function unauthenticated() {
+  return new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+}
+
+function forbidden() {
+  return new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
+}
+
+function requireAuthUser(ctx) {
+  const uid = ctx?.user?.id;
+  if (!uid || !mongoose.isValidObjectId(uid)) throw unauthenticated();
+  return uid;
+}
+
+function resolveSelfUserId(inputUserId, ctx) {
+  const authUserId = requireAuthUser(ctx);
+  if (inputUserId && String(inputUserId) !== String(authUserId)) throw forbidden();
+  return authUserId;
+}
+
+function assertCartOwner(cart, ctx) {
+  const uid = requireAuthUser(ctx);
+  if (!cart || String(cart.userId) !== String(uid)) throw forbidden();
+  return uid;
+}
+
 export const CartQuery = {
   async myCart(_, { userId }, ctx) {
-    const uid = userId || ctx.user?.id;
-    if (!mongoose.isValidObjectId(uid)) throw new GraphQLError("Invalid userId");
+    const uid = resolveSelfUserId(userId, ctx);
 
     const cart = await Cart.findOne({ userId: uid, status: "active" }).lean({ virtuals: true });
     return cart;
@@ -28,9 +53,12 @@ export const CartQuery = {
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     if (!mongoose.isValidObjectId(menuItemId)) throw new GraphQLError("Invalid menuItemId");
 
-    const uid = userId || ctx?.user?.id;
+    let uid = null;
+    if (userId) uid = resolveSelfUserId(userId, ctx);
+    else if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) uid = ctx.user.id;
+
     let abuse = null;
-    if (uid && mongoose.isValidObjectId(uid)) {
+    if (uid) {
       const cart = await Cart.findOne({ userId: uid, status: "active" })
         .select({ abuse: 1 })
         .lean();
