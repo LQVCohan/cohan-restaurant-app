@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Reservation } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 function badInput(msg) {
   return new GraphQLError(msg, { extensions: { code: "BAD_USER_INPUT" } });
@@ -14,16 +15,38 @@ function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function isAdminOrStaffLike(ctx) {
+  const role = String(ctx?.user?.roleName || ctx?.user?.role || "").toLowerCase();
+  return role.includes("staff") || role.includes("manager") || role.includes("admin");
+}
+
+function isReservationOwner(ctx, reservation) {
+  const userId = ctx?.auth?.user?.id || ctx?.user?.id;
+  return userId && String(reservation?.userId) === String(userId);
+}
+
 export const ReservationQuery = {
-  async reservation(_, { id, orderCode }) {
+  async reservation(_, { id, orderCode }, ctx) {
+    const authorize = async (doc) => {
+      if (!doc) return null;
+      if (isReservationOwner(ctx, doc)) return doc;
+      if (isAdminOrStaffLike(ctx)) {
+        await requireRestaurantAccess(ctx, doc.restaurantId);
+        return doc;
+      }
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    };
+
     if (id) {
       if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
-      return Reservation.findById(id).lean({ virtuals: true });
+      const doc = await Reservation.findById(id).lean({ virtuals: true });
+      return authorize(doc);
     }
     if (orderCode) {
-      return Reservation.findOne({ orderCode: String(orderCode).trim() })
+      const doc = await Reservation.findOne({ orderCode: String(orderCode).trim() })
         .sort({ createdAt: -1 })
         .lean({ virtuals: true });
+      return authorize(doc);
     }
     return null;
   },
@@ -43,12 +66,13 @@ export const ReservationQuery = {
       .lean({ virtuals: true });
   },
 
-  async confirmedReservationByTable(_, { restaurantId, tableId }) {
+  async confirmedReservationByTable(_, { restaurantId, tableId }, ctx) {
     if (!restaurantId || !tableId)
       throw badInput("restaurantId and tableId are required");
 
     const rId = toObjectId(restaurantId);
     const tId = toObjectId(tableId);
+    await requireRestaurantAccess(ctx, rId);
     const activeStatuses = ["pending_payment", "confirmed", "seated", "pending_change"];
 
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);

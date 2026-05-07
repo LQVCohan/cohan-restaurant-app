@@ -8,6 +8,7 @@ import {
   PaymentTransaction,
   EventLog,
 } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
@@ -59,6 +60,20 @@ function canManageReservation(ctx, reservationUserId) {
   if (actorId && String(actorId) === String(reservationUserId)) return true;
   const role = userRole(ctx);
   return role.includes("staff") || role.includes("manager") || role.includes("admin");
+}
+
+function isReservationOwner(ctx, reservation) {
+  const userId = ctx?.user?.id;
+  return userId && String(reservation?.userId) === String(userId);
+}
+
+async function requireReservationManagerOrOwner(ctx, reservation) {
+  if (isReservationOwner(ctx, reservation)) return "owner";
+  if (!canManageReservation(ctx, reservation.userId)) {
+    throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+  }
+  await requireRestaurantAccess(ctx, reservation.restaurantId);
+  return "manager";
 }
 
 async function getRestaurantOrThrow(restaurantId, session = null) {
@@ -466,9 +481,14 @@ export const ReservationMutation = {
     return current;
   },
 
-  async updateReservationStatus(_, { input }) {
+  async updateReservationStatus(_, { input }, ctx) {
     const current = await Reservation.findById(toObjectId(input.id, "reservationId"));
     if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+    const role = userRole(ctx);
+    if (!(role.includes("staff") || role.includes("manager") || role.includes("admin"))) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    }
+    await requireRestaurantAccess(ctx, current.restaurantId);
 
     if (input.status) current.status = input.status;
     if (input.depositStatus) current.depositStatus = input.depositStatus;
@@ -486,9 +506,7 @@ export const ReservationMutation = {
     const reservation = await Reservation.findById(toObjectId(reservationId, "reservationId"));
     if (!reservation) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
 
-    if (!canManageReservation(ctx, reservation.userId)) {
-      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
-    }
+    await requireReservationManagerOrOwner(ctx, reservation);
 
     const normMethod = normalizePaymentMethod(method);
     const pStatus = String(paymentStatus || "pending").toLowerCase();
@@ -566,9 +584,7 @@ export const ReservationMutation = {
   async cancelReservation(_, { id }, ctx) {
     const current = await Reservation.findById(toObjectId(id, "reservationId"));
     if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
-    if (!canManageReservation(ctx, current.userId)) {
-      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
-    }
+    await requireReservationManagerOrOwner(ctx, current);
     current.status = "cancelled";
     if (current.depositStatus === "pending") current.depositStatus = "cancelled";
     await current.save();
@@ -585,9 +601,17 @@ export const ReservationMutation = {
     return current;
   },
 
-  async deleteReservation(_, { id }) {
+  async deleteReservation(_, { id }, ctx) {
     const current = await Reservation.findById(toObjectId(id, "reservationId"));
     if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+    const role = userRole(ctx);
+    if (!(role.includes("staff") || role.includes("manager") || role.includes("admin"))) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    }
+    if (!canManageReservation(ctx, current.userId)) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    }
+    await requireRestaurantAccess(ctx, current.restaurantId);
     current.status = "no_show";
     await current.save();
     await updateTableStatusByReservation(current.tableId);
