@@ -15,14 +15,15 @@ function restaurantIdToString(value) {
 
 function hasDirectRestaurantScope(ctx, restaurantId) {
   const user = ctx?.user || {};
+  const roles = resolveUserRoles(user);
+  const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
   const target = restaurantIdToString(restaurantId);
   if (!target) return false;
 
   const scopedIds = [
     user.restaurantId,
     user.restaurantForStaff,
-    user.primaryRestaurant,
-    ...(Array.isArray(user.refRestaurants) ? user.refRestaurants : []),
+    ...(!isStaffLike && Array.isArray(user.refRestaurants) ? user.refRestaurants : []),
     ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
   ];
 

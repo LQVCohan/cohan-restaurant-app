@@ -39,9 +39,7 @@ export function userCanAccessRestaurant(user, restaurantId) {
 
   const candidates = [
     user?.restaurantId,
-    user?.primaryRestaurant,
     user?.restaurantForStaff,
-    ...(Array.isArray(user?.refRestaurants) ? user.refRestaurants : []),
     ...(Array.isArray(user?.restaurants) ? user.restaurants : []),
   ];
 

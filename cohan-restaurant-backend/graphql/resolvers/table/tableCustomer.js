@@ -91,7 +91,7 @@ async function assertCanWriteRestaurant(user, restaurantId) {
   const staff = await isStaff(user);
   if (staff) {
     const scopedRid =
-      user?.restaurantForStaff || user?.primaryRestaurantId || null;
+      user?.restaurantForStaff || null;
     if (!scopedRid) throw forbidden("Staff chưa được phân nhà hàng");
     if (String(scopedRid) !== String(rid)) {
       throw forbidden("You can only modify your assigned restaurant");

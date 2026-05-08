@@ -576,7 +576,7 @@ export const OrderQuery = {
           $or: [{ endAt: null }, { endAt: { $gte: now } }],
         }),
         Staff.countDocuments({
-          primaryRestaurant: rid,
+          restaurantForStaff: rid,
           employmentStatus: { $in: ["working", "on_leave"] },
         }),
         StockItem.find({ restaurantId: rid }).limit(200).lean(),
@@ -735,7 +735,7 @@ export const OrderQuery = {
       })
     );
 
-    const staffDocs = await Staff.find({ primaryRestaurant: rid })
+    const staffDocs = await Staff.find({ restaurantForStaff: rid })
       .select({ _id: 1, fullName: 1, positionTitle: 1, employmentStatus: 1 })
       .lean();
     const staffPerfMap = new Map(
