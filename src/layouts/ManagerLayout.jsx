@@ -20,7 +20,7 @@ import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDash
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
-import { filterNavigationByRole } from "@/utils/roleAccess";
+import { filterNavigationByRole, isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/roleAccess";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",
@@ -263,11 +263,22 @@ const ManagerLayout = () => {
     setSidebarOpen(false);
   };
 
+  const preferredFallbackPage = useMemo(() => {
+    if (isHrRole(roleName)) return "staff";
+    if (isAccountantRole(roleName)) return "payroll";
+    if (isAdminRole(roleName) || isManagerRole(roleName)) return "dashboard";
+    return "dashboard";
+  }, [roleName]);
+
   useEffect(() => {
-    if (!allowedPages.has(currentPage)) {
-      setCurrentPage("dashboard");
-    }
-  }, [allowedPages, currentPage]);
+    if (allowedPages.has(currentPage)) return;
+
+    const nextPage = allowedPages.has(preferredFallbackPage)
+      ? preferredFallbackPage
+      : [...allowedPages][0] || "dashboard";
+
+    if (nextPage !== currentPage) setCurrentPage(nextPage);
+  }, [allowedPages, currentPage, preferredFallbackPage]);
 
   const managerSearchItems = useMemo(
     () =>

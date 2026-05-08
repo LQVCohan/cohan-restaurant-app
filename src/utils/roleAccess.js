@@ -1,9 +1,3 @@
-const normalizeRoleName = (role) => {
-  if (typeof role !== "string") return null;
-  const normalized = role.trim().toLowerCase();
-  return normalized || null;
-};
-
 export const ADMIN_ROLES = new Set(["admin"]);
 export const MANAGER_ROLES = new Set(["manager"]);
 export const HR_ROLES = new Set(["hr"]);
@@ -11,6 +5,7 @@ export const ACCOUNTANT_ROLES = new Set(["accountant"]);
 export const STAFF_OPERATIONAL_ROLES = new Set([
   "staff",
   "server",
+  "supervisor",
   "host",
   "cashier",
   "chef",
@@ -20,53 +15,85 @@ export const STAFF_OPERATIONAL_ROLES = new Set([
   "shipper",
   "storekeeper",
   "bartender",
-  "supervisor",
 ]);
 export const CUSTOMER_ROLES = new Set(["customer"]);
 
-export { normalizeRoleName };
+export const normalizeRoleName = (input) => {
+  if (typeof input === "string") {
+    const normalized = input.trim().toLowerCase();
+    return normalized || null;
+  }
+  return null;
+};
 
-export const isAdminRole = (role) => ADMIN_ROLES.has(normalizeRoleName(role));
-export const isManagerRole = (role) => MANAGER_ROLES.has(normalizeRoleName(role));
-export const isHrRole = (role) => HR_ROLES.has(normalizeRoleName(role));
-export const isAccountantRole = (role) => ACCOUNTANT_ROLES.has(normalizeRoleName(role));
+export const resolveUserRoleName = (userOrRole) => {
+  if (!userOrRole) return null;
+  if (typeof userOrRole === "string") return normalizeRoleName(userOrRole);
+  if (typeof userOrRole !== "object") return null;
+
+  const candidates = [
+    userOrRole.roleName,
+    userOrRole.roleSlug,
+    userOrRole.userType,
+    userOrRole.role?.slug,
+    userOrRole.role?.name,
+    userOrRole.role?.parentRole?.slug,
+    userOrRole.role?.parentRole?.name,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeRoleName(candidate);
+    if (normalized) return normalized;
+  }
+
+  return null;
+};
+
+export const resolveAccessRoleName = (userOrRole) => {
+  const resolved = resolveUserRoleName(userOrRole);
+  if (!resolved) return null;
+  return STAFF_OPERATIONAL_ROLES.has(resolved) ? "staff" : resolved;
+};
+
+export const isAdminRole = (role) => ADMIN_ROLES.has(resolveUserRoleName(role));
+export const isManagerRole = (role) => MANAGER_ROLES.has(resolveUserRoleName(role));
+export const isHrRole = (role) => HR_ROLES.has(resolveUserRoleName(role));
+export const isAccountantRole = (role) => ACCOUNTANT_ROLES.has(resolveUserRoleName(role));
 export const isStaffOperationalRole = (role) =>
-  STAFF_OPERATIONAL_ROLES.has(normalizeRoleName(role));
-export const isCustomerRole = (role) => CUSTOMER_ROLES.has(normalizeRoleName(role));
+  STAFF_OPERATIONAL_ROLES.has(resolveUserRoleName(role));
+export const isCustomerRole = (role) => CUSTOMER_ROLES.has(resolveUserRoleName(role));
 
-export const getDefaultPathForRole = (role) => {
-  const normalized = normalizeRoleName(role);
+export const getDefaultPathForRole = (userOrRole) => {
+  const normalized = resolveUserRoleName(userOrRole);
   if (isAdminRole(normalized)) return "/admin/dashboard";
   if (isManagerRole(normalized)) return "/manager";
   if (isHrRole(normalized)) return "/manager#staff";
   if (isAccountantRole(normalized)) return "/manager#payroll";
   if (isStaffOperationalRole(normalized)) return "/staff/schedule";
-  if (isCustomerRole(normalized)) return "/";
   return "/";
 };
 
+const SHARED_USER_ALLOW = ["customer", "admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
 const ROUTE_ACCESS_RULES = [
   { test: /^\/admin(\/|$)/, allow: ["admin"] },
   { test: /^\/manager(\/|$)/, allow: ["admin", "manager", "hr", "accountant"] },
-  { test: /^\/staff(\/|$)/, allow: ["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES] },
-  { test: /^\/(orders|restaurants|restaurant\/|profile|notifications|search|checkout|cus-menu|food\/|vouchers\/|favorites\/|address-book\/|help-center\/|track-order\/)/, allow: ["customer", "admin", "manager"] },
+  { test: /^\/staff(\/|$)/, allow: ["admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES] },
+  { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
+  { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },
 ];
 
-export const canAccessRoute = (role, pathname) => {
-  const normalizedRole = normalizeRoleName(role);
+export const canAccessRoute = (userOrRole, pathname) => {
+  const normalizedRole = resolveUserRoleName(userOrRole);
   if (!normalizedRole || typeof pathname !== "string") return false;
 
   for (const rule of ROUTE_ACCESS_RULES) {
-    if (rule.test.test(pathname)) {
-      return rule.allow.includes(normalizedRole);
-    }
+    if (rule.test.test(pathname)) return rule.allow.includes(normalizedRole);
   }
-
   return true;
 };
 
-export const filterNavigationByRole = (items, role) => {
-  const normalizedRole = normalizeRoleName(role);
+export const filterNavigationByRole = (items, userOrRole) => {
+  const normalizedRole = resolveUserRoleName(userOrRole);
   if (!Array.isArray(items)) return [];
 
   return items
@@ -76,8 +103,7 @@ export const filterNavigationByRole = (items, role) => {
           if (!Array.isArray(child.roles) || child.roles.length === 0) return true;
           return child.roles.map(normalizeRoleName).includes(normalizedRole);
         });
-        if (childItems.length === 0) return null;
-        return { ...item, items: childItems };
+        return childItems.length > 0 ? { ...item, items: childItems } : null;
       }
 
       if (!Array.isArray(item.roles) || item.roles.length === 0) return item;

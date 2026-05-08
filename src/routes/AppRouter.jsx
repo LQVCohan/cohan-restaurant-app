@@ -237,7 +237,7 @@ const AppRouter = () => {
         path="/manager/dashboard/POS"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "accountant"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <POSLayout />
@@ -249,7 +249,7 @@ const AppRouter = () => {
       <Route
         path="/manager/floor-map/:restaurantId"
         element={
-          <PrivateRoute allowedRoles={["manager", "admin", "accountant"]}>
+          <PrivateRoute allowedRoles={["manager", "admin"]}>
             <FloorPlanDesigner />
           </PrivateRoute>
         }
@@ -259,7 +259,7 @@ const AppRouter = () => {
         path="/manager/performance"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "hr", "accountant"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <ManagerLayout>
@@ -273,7 +273,7 @@ const AppRouter = () => {
         path="/manager/restaurants/categories"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "hr", "accountant"]}
+            allowedRoles={["manager", "admin", "hr"]}
             requireVerifiedEmail
           >
             <ManagerRestaurantInfoManagement />
