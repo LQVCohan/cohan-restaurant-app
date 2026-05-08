@@ -21,8 +21,6 @@ function hasDirectRestaurantScope(ctx, restaurantId) {
   const scopedIds = [
     user.restaurantId,
     user.restaurantForStaff,
-    user.primaryRestaurant,
-    ...(Array.isArray(user.refRestaurants) ? user.refRestaurants : []),
     ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
   ];
 

@@ -169,13 +169,7 @@ function assertAcknowledgementCanRespond(doc, employeeId) {
 }
 function staffBelongsToRestaurant(staff, restaurantId) {
   const rid = String(restaurantId);
-  // Source-of-truth cho staff scope là restaurantForStaff.
-  // primaryRestaurant chỉ fallback để tương thích dữ liệu legacy.
-  return (
-    String(staff?.restaurantForStaff || "") === rid ||
-    String(staff?.primaryRestaurant?._id || staff?.primaryRestaurant || "") ===
-      rid
-  );
+  return String(staff?.restaurantForStaff || "") === rid;
 }
 
 function isSelf(ctx, employeeId) {

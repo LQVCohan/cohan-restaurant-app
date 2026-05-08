@@ -735,7 +735,7 @@ export const OrderQuery = {
       })
     );
 
-    const staffDocs = await Staff.find({ primaryRestaurant: rid })
+    const staffDocs = await Staff.find({ restaurantForStaff: rid })
       .select({ _id: 1, fullName: 1, positionTitle: 1, employmentStatus: 1 })
       .lean();
     const staffPerfMap = new Map(

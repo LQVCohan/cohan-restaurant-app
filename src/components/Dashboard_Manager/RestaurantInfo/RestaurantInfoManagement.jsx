@@ -251,12 +251,7 @@ const GET_STAFF_LIST = gql`
       id
       fullName
       roleName
-      positionTitle
-      primaryRestaurant {
-        id
-        name
-      }
-    }
+      positionTitle    }
   }
 `;
 

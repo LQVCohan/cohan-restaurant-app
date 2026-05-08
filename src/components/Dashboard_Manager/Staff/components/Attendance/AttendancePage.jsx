@@ -222,8 +222,6 @@ const AttendancePage = () => {
 
   const userRestaurantId =
     user?.restaurantForStaff ||
-    user?.primaryRestaurantId ||
-    user?.primaryRestaurant?.id ||
     user?.refRestaurants?.[0]?.id ||
     null;
 

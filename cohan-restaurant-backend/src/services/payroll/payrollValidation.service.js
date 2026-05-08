@@ -203,7 +203,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
           employmentStatus: 1,
           department: 1,
           positionTitle: 1,
-          primaryRestaurant: 1,
+          restaurantForStaff: 1,
         })
         .lean(),
       Shift.find({
@@ -439,7 +439,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
   });
 
   const staffRestaurantMap = new Map(
-    staffs.map((s) => [String(s._id), String(s.primaryRestaurant || "")]),
+    staffs.map((s) => [String(s._id), String(s.restaurantForStaff || "")]),
   );
   items.forEach((item) => {
     const netSalary = Number(item?.breakdown?.netSalary || 0);

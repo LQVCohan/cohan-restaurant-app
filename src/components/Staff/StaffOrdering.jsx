@@ -354,7 +354,6 @@ export default function StaffOrdering() {
   const { user, restaurants } = useContext(AuthContext) || {};
   const restaurantId =
     user?.restaurantForStaff ||
-    user?.primaryRestaurant?.id ||
     restaurants?.[0]?.id ||
     null;
 

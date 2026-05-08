@@ -227,27 +227,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     rawUser?.restaurantForStaff ||
     fallbackUser?.restaurantForStaff?.id ||
     fallbackUser?.restaurantForStaff ||
-    null;
-
-  const primaryRestaurant =
-    rawUser?.primaryRestaurant?.id ||
-    rawUser?.primaryRestaurant ||
-    fallbackUser?.primaryRestaurant?.id ||
-    fallbackUser?.primaryRestaurant ||
-    null;
-
-  const customerRefRestaurants =
-    rawUser?.refRestaurants || fallbackUser?.refRestaurants || [];
-
-  const baseUser = {
-    ...(fallbackUser || {}),
-    ...(typeof rawUser === "object" && rawUser ? rawUser : {}),
-    roleName,
-    avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
-    status: rawUser?.status || fallbackUser?.status || "active",
-    restaurantForStaff,
-    primaryRestaurant,
-    employmentType:
+    null;    employmentType:
       rawUser?.employmentType ||
       fallbackUser?.employmentType ||
       "",

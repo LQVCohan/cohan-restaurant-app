@@ -16,10 +16,7 @@ export const QUERY_ATTENDANCE_PAGE = gql`
       positionTitle
       roleName
       avatarUrl
-      primaryRestaurant {
-        id
-      }
-    }
+          }
     staffAttendanceRecords(
       restaurantId: $restaurantId
       startDate: $startDate
