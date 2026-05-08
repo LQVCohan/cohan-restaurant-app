@@ -305,7 +305,7 @@ const useStaffManagement = (initialFilters = {}) => {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
           throw new Error(
-            "Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn",
+            `Không tìm thấy roleId hợp lệ cho vai trò "${roleSlug}". Vui lòng kiểm tra seed roles hoặc roleList backend.`,
           );
         }
         finalInput.roleId = resolvedRoleId;
@@ -338,7 +338,7 @@ const useStaffManagement = (initialFilters = {}) => {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
           throw new Error(
-            "Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn",
+            `Không tìm thấy roleId hợp lệ cho vai trò "${roleSlug}". Vui lòng kiểm tra seed roles hoặc roleList backend.`,
           );
         }
         finalInput.roleId = resolvedRoleId;
