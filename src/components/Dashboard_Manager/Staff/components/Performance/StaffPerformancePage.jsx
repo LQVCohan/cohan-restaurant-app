@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import useStaffPerformance from "../../../../../hooks/useStaffPerformance";
 import "./StaffPerformancePage.scss";
+import { getPerformanceActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
 
 const SCORE_LEVELS = {
   excellent: {
@@ -475,7 +476,7 @@ const StaffPerformancePage = ({
       });
       alert("Đã tính lại hiệu suất kỳ này.");
     } catch (err) {
-      alert(`Không thể tính hiệu suất: ${err.message}`);
+      alert(getPerformanceActionErrorMessage(err, `Không thể tính hiệu suất: ${err.message}`));
     }
   };
 
@@ -494,26 +495,35 @@ const StaffPerformancePage = ({
         },
       });
     } catch (err) {
-      alert(`Không thể tính hiệu suất nhân viên: ${err.message}`);
+      alert(getPerformanceActionErrorMessage(err, `Không thể tính hiệu suất nhân viên: ${err.message}`));
     }
   };
 
   const handleSubmitReview = async (input) => {
-    await upsertStaffPerformanceReview({ variables: { input } });
+    try {
+      await upsertStaffPerformanceReview({ variables: { input } });
 
-    await recalculateStaffPerformanceSnapshots({
-      variables: {
-        input: {
-          restaurantId: input.restaurantId,
-          employeeId: input.employeeId,
-          periodStart: input.periodStart,
-          periodEnd: input.periodEnd,
+      await recalculateStaffPerformanceSnapshots({
+        variables: {
+          input: {
+            restaurantId: input.restaurantId,
+            employeeId: input.employeeId,
+            periodStart: input.periodStart,
+            periodEnd: input.periodEnd,
+          },
         },
-      },
-    });
+      });
 
-    setReviewEmployee(null);
-    alert("Đã lưu đánh giá và tính lại hiệu suất nhân viên.");
+      setReviewEmployee(null);
+      alert("Đã lưu đánh giá và tính lại hiệu suất nhân viên.");
+    } catch (err) {
+      alert(
+        getPerformanceActionErrorMessage(
+          err,
+          `Không thể lưu đánh giá hiệu suất: ${err?.message || "Lỗi không xác định"}`,
+        ),
+      );
+    }
   };
 
   const openDetail = (row) => {

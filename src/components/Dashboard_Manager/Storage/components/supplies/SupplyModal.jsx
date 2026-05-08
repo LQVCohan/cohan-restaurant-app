@@ -3,6 +3,7 @@ import { useLazyQuery } from "@apollo/client";
 import Modal from "../../../../common/Modal";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
+import { getSupplyActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { Q_SUGGEST_SUPPLY_CATEGORY } from "../../graphql/supply.gql";
 import "./SupplyModal.scss";
 
@@ -254,7 +255,10 @@ const SupplyModal = ({
     } catch (error) {
       const friendly = toFriendlySupplyError(error);
       setErrors((prev) => ({ ...prev, ...friendly.fieldErrors }));
-      showNotification(friendly.message, "error");
+      showNotification(
+        getSupplyActionErrorMessage(error, friendly.message),
+        "error",
+      );
       // giữ draft khi submit lỗi
     } finally {
       setIsSubmitting(false);

@@ -13,6 +13,7 @@ import SupplyCard from "./SupplyCard";
 import SupplyModal from "./SupplyModal";
 import useSupply from "../../../../../hooks/useSupply";
 import { useNotification } from "@/hooks/useNotification";
+import { getSupplyActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import StockOutModal from "../modals/StockOutModal";
 import StockTransferModal from "../modals/StockTransferModal";
 import QuickStockModal from "../ingredients/QuickStockModal";
@@ -110,12 +111,23 @@ const SupplyList = ({
     setEditing(null);
   };
   const submitSupply = async (values) => {
-    if (editing) {
-      await handleUpdate(editing.id, { ...values, restaurantId });
-    } else {
-      await handleCreate({ ...values, restaurantId });
+    try {
+      if (editing) {
+        await handleUpdate(editing.id, { ...values, restaurantId });
+      } else {
+        await handleCreate({ ...values, restaurantId });
+      }
+      closeModal();
+    } catch (err) {
+      showNotification(
+        getSupplyActionErrorMessage(
+          err,
+          err?.message || "Không thể lưu vật tư.",
+        ),
+        "error",
+      );
+      throw err;
     }
-    closeModal();
   };
 
   const requireWarehouse = () => {
@@ -161,12 +173,25 @@ const SupplyList = ({
 
   const submitInbound = async (values) => {
     if (!current) return;
-    await handleInbound({
-      restaurantId,
-      warehouseId,
-      supplyId: current.id,
-      ...values,
-    });
+    try {
+      await handleInbound({
+        restaurantId,
+        warehouseId,
+        supplyId: current.id,
+        ...values,
+      });
+      showNotification("Nhập kho vật tư thành công.", "success");
+      closeStockModal();
+    } catch (err) {
+      showNotification(
+        getSupplyActionErrorMessage(
+          err,
+          err?.message || "Không thể nhập kho vật tư.",
+        ),
+        "error",
+      );
+      throw err;
+    }
   };
 
   const submitOutbound = async (values) => {
@@ -196,7 +221,10 @@ const SupplyList = ({
       showNotification("Xuất kho vật tư thành công.", "success");
       closeStockModal();
     } catch (err) {
-      showNotification(toFriendlyOutboundError(err), "error");
+      showNotification(
+        getSupplyActionErrorMessage(err, toFriendlyOutboundError(err)),
+        "error",
+      );
     } finally {
       setIsSubmittingStockOut(false);
     }
@@ -204,12 +232,24 @@ const SupplyList = ({
 
   const submitTransfer = async (values) => {
     if (!current) return;
-    await handleTransfer({
-      restaurantId,
-      supplyId: current.id,
-      ...values,
-    });
-    closeStockModal();
+    try {
+      await handleTransfer({
+        restaurantId,
+        supplyId: current.id,
+        ...values,
+      });
+      showNotification("Chuyển kho vật tư thành công.", "success");
+      closeStockModal();
+    } catch (err) {
+      showNotification(
+        getSupplyActionErrorMessage(
+          err,
+          err?.message || "Không thể chuyển kho vật tư.",
+        ),
+        "error",
+      );
+      throw err;
+    }
   };
 
   // --- Render Skeleton ---
