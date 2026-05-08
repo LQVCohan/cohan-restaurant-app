@@ -18,15 +18,6 @@ export default {
       if (!parent.refRestaurants?.length) return [];
       return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean();
     },
-    primaryRestaurant: (parent) => {
-      if (parent.primaryRestaurant && typeof parent.primaryRestaurant === "object") {
-        return parent.primaryRestaurant;
-      }
-      if (parent.primaryRestaurant) {
-        return Restaurant.findById(parent.primaryRestaurant).lean();
-      }
-      return null;
-    },
 
     createdBy: (parent) => {
       if (!parent.createdBy) return null;
@@ -47,7 +38,7 @@ export default {
       if (!Number.isFinite(created) || created <= 0) return 0;
       return Math.max(
         0,
-        Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24))
+        Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)),
       );
     },
   },
