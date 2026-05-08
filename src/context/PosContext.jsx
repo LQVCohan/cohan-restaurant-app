@@ -567,18 +567,21 @@ export default function PosProvider({
       return;
     const key = getOffPremiseDraftKey(currentOrderType);
     if (!key) return;
-    if (!hasMeaningfulOffPremiseDraft({ currentOrder })) {
+    const draftItems = getUnsavedOffPremiseDraftItems(currentOrder);
+
+    if (!draftItems.length) {
       try {
         localStorage.removeItem(key);
       } catch {}
       return;
     }
+
     const payload = {
       version: 1,
       savedAt: Date.now(),
       orderType: currentOrderType,
       currentOrderCode,
-      currentOrder,
+      currentOrder: draftItems,
       deliveryCustomer,
       shippingInfo,
       orderNote,
@@ -748,7 +751,9 @@ export default function PosProvider({
       if (!restored) {
         ensureOffPremiseSession(type, { force: true });
 
-        setCurrentOrder(Array.isArray(previousOrder) ? previousOrder : []);
+        setCurrentOrder([]);
+        setCurrentOrderId(null);
+        setTableOrders({});
         setDeliveryCustomer(previousCustomer || null);
         setShippingInfo({
           ...getDefaultShippingInfo(type),
@@ -757,7 +762,7 @@ export default function PosProvider({
             : {}),
           deliveryMethod: type === "takeaway" ? "pickup_at_store" : "ship_now",
         });
-        setOrderNote?.(previousNote || "");
+        setOrderNote?.("");
       }
     },
     [
@@ -774,6 +779,19 @@ export default function PosProvider({
       setOrderNote,
     ],
   );
+  const isUnsavedOrderItem = (item) => {
+    if (!item) return false;
+    if (item.isNew) return true;
+    if (!item.isExisting && Number(item.quantity || 0) > 0) return true;
+    return false;
+  };
+
+  const getUnsavedOffPremiseDraftItems = (items) =>
+    (Array.isArray(items) ? items : []).filter(isUnsavedOrderItem);
+
+  const hasMeaningfulOffPremiseDraft = (payload) => {
+    return getUnsavedOffPremiseDraftItems(payload?.currentOrder).length > 0;
+  };
   const getDraftKeyForTable = useCallback(
     (tableId) => {
       if (!tableId) return null;

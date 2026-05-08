@@ -11,7 +11,20 @@ function toObjectId(value) {
 function clean(value) {
   return String(value || "").trim();
 }
+function isValidPosCustomerPhone(value) {
+  const phone = normalizePosCustomerPhone(value);
+  if (!phone) return false;
+  if (!/^\d{9,11}$/.test(phone)) return false;
+  if (/^0+$/.test(phone)) return false;
+  if (phone === "0123456789" || phone === "123456789") return false;
+  return true;
+}
 
+function isValidEmail(value) {
+  const email = clean(value).toLowerCase();
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 function sourceOf(value) {
   const key = clean(value).toUpperCase();
   return ["POS", "DELIVERY", "TAKEAWAY"].includes(key) ? key : "POS";
@@ -19,7 +32,8 @@ function sourceOf(value) {
 
 function safeFields(input = {}, includeDefaultSource = false) {
   const fields = { isActive: true };
-  if (clean(input.source) || includeDefaultSource) fields.source = sourceOf(input.source);
+  if (clean(input.source) || includeDefaultSource)
+    fields.source = sourceOf(input.source);
   const fullName = clean(input.fullName);
   if (fullName) fields.fullName = fullName;
   const email = clean(input.email).toLowerCase();
@@ -36,8 +50,13 @@ function nextAddressBook(existing = [], address = "") {
   const current = Array.isArray(existing) ? existing : [];
   if (!addr) return current.slice(0, 10);
   const lower = addr.toLowerCase();
-  const rest = current.filter((item) => clean(item && item.address).toLowerCase() !== lower);
-  return [{ address: addr, note: "", lastUsedAt: new Date() }, ...rest].slice(0, 10);
+  const rest = current.filter(
+    (item) => clean(item && item.address).toLowerCase() !== lower,
+  );
+  return [{ address: addr, note: "", lastUsedAt: new Date() }, ...rest].slice(
+    0,
+    10,
+  );
 }
 
 export const PosCustomerMutation = {
@@ -48,12 +67,19 @@ export const PosCustomerMutation = {
 
     const phone = normalizePosCustomerPhone(input && input.phone);
     if (!phone) throw new Error("phone is required");
+    if (!isValidPosCustomerPhone(phone)) throw new Error("Invalid phone");
 
+    if (!isValidEmail(input?.email)) {
+      throw new Error("Invalid email");
+    }
     const existing = await PosCustomer.findOne({ restaurantId: rid, phone });
     if (existing) {
       const fields = safeFields(input || {}, false);
       for (const key of Object.keys(fields)) existing[key] = fields[key];
-      existing.addressBook = nextAddressBook(existing.addressBook, input && input.defaultAddress);
+      existing.addressBook = nextAddressBook(
+        existing.addressBook,
+        input && input.defaultAddress,
+      );
       await existing.save();
       return existing.toObject({ virtuals: true });
     }
