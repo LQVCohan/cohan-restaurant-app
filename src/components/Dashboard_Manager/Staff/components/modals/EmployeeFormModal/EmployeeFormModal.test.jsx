@@ -18,7 +18,25 @@ const testMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../../../common/Modal", () => ({
-  default: ({ isOpen, children }) => (isOpen ? <div>{children}</div> : null),
+  default: ({
+    isOpen,
+    children,
+    onClose,
+    closeOnOverlayClick = true,
+  }) =>
+    isOpen ? (
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            if (closeOnOverlayClick) onClose?.();
+          }}
+        >
+          Overlay
+        </button>
+        {children}
+      </div>
+    ) : null,
 }));
 
 vi.mock("../../../../../common/LoadingSpinner", () => ({
@@ -41,7 +59,16 @@ vi.mock("../../../../../../utils/legalSalaryReference", async () => {
   };
 });
 
-function ModalHarness({ onSubmit = vi.fn(async () => {}) }) {
+const TEST_ROLE_LIST = [
+  { id: "r-server", slug: "server", name: "Server" },
+  { id: "r-supervisor", slug: "supervisor", name: "Supervisor" },
+  { id: "r-host", slug: "host", name: "Host" },
+];
+
+function ModalHarness({
+  onSubmit = vi.fn(async () => {}),
+  roleList = TEST_ROLE_LIST,
+}) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -54,6 +81,7 @@ function ModalHarness({ onSubmit = vi.fn(async () => {}) }) {
         onClose={() => setOpen(false)}
         onSubmit={onSubmit}
         restaurantList={[{ id: "rest-1", name: "Chi nhánh 1" }]}
+        roleList={roleList}
       />
     </div>
   );
@@ -63,6 +91,15 @@ const getDraftKeys = () =>
   Object.keys(window.localStorage).filter((key) =>
     key.includes("employee-form-modal"),
   );
+
+const fillStepOneAndGoNext = () => {
+  const stepOneInputs = screen.getAllByRole("textbox");
+  fireEvent.change(stepOneInputs[0], { target: { value: "Nguyen Test" } });
+  fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
+    target: { value: "rest-1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+};
 
 describe("EmployeeFormModal draft lifecycle", () => {
   beforeEach(() => {
@@ -126,5 +163,67 @@ describe("EmployeeFormModal draft lifecycle", () => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
     });
     expect(getDraftKeys()).toHaveLength(0);
+  });
+
+  it("blocks submit when roleList has not loaded", async () => {
+    const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
+    render(<ModalHarness onSubmit={onSubmit} roleList={[]} />);
+
+    fillStepOneAndGoNext();
+    fireEvent.change(screen.getByPlaceholderText("09..."), {
+      target: { value: "0912345678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
+
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    expect(
+      screen.getByText(
+        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks submit when selected roleSlug host is missing from roleList", async () => {
+    const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
+    render(
+      <ModalHarness
+        onSubmit={onSubmit}
+        roleList={[{ id: "r-server", slug: "server", name: "Server" }]}
+      />,
+    );
+
+    const roleSelect = screen.getByLabelText("Vai trò");
+    fireEvent.change(roleSelect, { target: { value: "host" } });
+
+    fillStepOneAndGoNext();
+    fireEvent.change(screen.getByPlaceholderText("09..."), {
+      target: { value: "0912345678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
+
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    expect(
+      screen.getByText(
+        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not close modal when clicking overlay", () => {
+    render(<ModalHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Overlay" }));
+
+    expect(screen.getByRole("heading", { name: /thêm nhân viên mới/i })).toBeInTheDocument();
   });
 });

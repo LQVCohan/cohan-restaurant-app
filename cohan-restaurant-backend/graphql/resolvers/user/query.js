@@ -78,8 +78,8 @@ export const UserQuery = {
   // ========== Danh sách vai trò (để FE map slug -> id) ==========
   async roleList(_, __, { user: authUser }) {
     try {
-      // Cho phép admin/manager xem role list (tuỳ chính sách của bạn)
-      requireRole(authUser, ["admin"]);
+      // Cho phép các vai trò quản lý nhân sự tải role list
+      requireRole(authUser, ["admin", "manager", "hr"]);
 
       const list = await Role.find({})
         .populate({ path: "parentRole", select: "name slug" })
