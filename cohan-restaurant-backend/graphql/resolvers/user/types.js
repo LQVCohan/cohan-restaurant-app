@@ -18,6 +18,10 @@ export default {
       if (!parent.refRestaurants?.length) return [];
       return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean();
     },
+<<<<<<< codex/clean-up-legacy-fields-from-project
+=======
+
+>>>>>>> main
     createdBy: (parent) => {
       if (!parent.createdBy) return null;
       return User.findById(parent.createdBy).lean();
@@ -37,7 +41,7 @@ export default {
       if (!Number.isFinite(created) || created <= 0) return 0;
       return Math.max(
         0,
-        Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24))
+        Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)),
       );
     },
   },

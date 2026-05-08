@@ -25,7 +25,6 @@ const STAFF_FIELDS = gql`
       slug
     }
 
-
     refRestaurants {
       id
       name
@@ -53,7 +52,6 @@ const STAFF_FIELDS = gql`
     dateJoined
     dateLeft
     baseSalary
-
 
     isOnline
 
@@ -170,7 +168,6 @@ const MUTATION_SET_USER_STATUS = gql`
   ${STAFF_FIELDS}
 `;
 
-
 /* ============================================================================
  * HOOK: useStaffManagement
  * ==========================================================================*/
@@ -200,12 +197,14 @@ const useStaffManagement = (initialFilters = {}) => {
       search: filters.search || undefined,
       employmentStatus: filters.employmentStatus || undefined,
     }),
-    [filters]
+    [filters],
   );
 
   /* -----------------------------------------
    * QUERY: LIST
    * -----------------------------------------*/
+  const shouldSkipStaffList = !filters.restaurantId;
+
   const {
     data: staffListData,
     loading: staffListLoading,
@@ -213,8 +212,10 @@ const useStaffManagement = (initialFilters = {}) => {
     refetch: refetchStaffList,
   } = useQuery(QUERY_STAFF_LIST, {
     variables: staffListVariables,
+    skip: shouldSkipStaffList,
     fetchPolicy: "cache-and-network",
-    pollInterval: pollInterval > 0 ? pollInterval : undefined,
+    pollInterval:
+      !shouldSkipStaffList && pollInterval > 0 ? pollInterval : undefined,
     notifyOnNetworkStatusChange: true,
   });
 
@@ -224,7 +225,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
   const staffList = useMemo(
     () => staffListData?.staffList ?? [],
-    [staffListData]
+    [staffListData],
   );
 
   const roleList = useMemo(() => roleListData?.roleList ?? [], [roleListData]);
@@ -240,7 +241,7 @@ const useStaffManagement = (initialFilters = {}) => {
   const totalItems = staffList.length;
   const totalPages = useMemo(
     () => (pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1),
-    [totalItems, pageSize]
+    [totalItems, pageSize],
   );
 
   const safePage = useMemo(() => {
@@ -276,7 +277,7 @@ const useStaffManagement = (initialFilters = {}) => {
       const res = await loadStaffQuery({ variables: { id } });
       return res.data?.staff ?? null;
     },
-    [loadStaffQuery]
+    [loadStaffQuery],
   );
 
   /* -----------------------------------------
@@ -288,7 +289,9 @@ const useStaffManagement = (initialFilters = {}) => {
     createStaffMutation,
     { loading: creatingStaff, error: createStaffError },
   ] = useMutation(MUTATION_CREATE_STAFF, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const createStaff = useCallback(
@@ -301,7 +304,9 @@ const useStaffManagement = (initialFilters = {}) => {
       if (!finalInput.roleId && roleSlug) {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
-          throw new Error("Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn");
+          throw new Error(
+            "Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn",
+          );
         }
         finalInput.roleId = resolvedRoleId;
       }
@@ -312,7 +317,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
       return res.data?.createStaff ?? null;
     },
-    [createStaffMutation, roleMap]
+    [createStaffMutation, roleMap],
   );
 
   /** UPDATE */
@@ -320,7 +325,9 @@ const useStaffManagement = (initialFilters = {}) => {
     updateStaffMutation,
     { loading: updatingStaff, error: updateStaffError },
   ] = useMutation(MUTATION_UPDATE_STAFF, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const updateStaff = useCallback(
@@ -330,7 +337,9 @@ const useStaffManagement = (initialFilters = {}) => {
       if (!finalInput.roleId && roleSlug) {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
-          throw new Error("Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn");
+          throw new Error(
+            "Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn",
+          );
         }
         finalInput.roleId = resolvedRoleId;
       }
@@ -339,7 +348,7 @@ const useStaffManagement = (initialFilters = {}) => {
       });
       return res.data?.updateStaff ?? null;
     },
-    [roleMap, updateStaffMutation]
+    [roleMap, updateStaffMutation],
   );
 
   /** DELETE */
@@ -347,14 +356,18 @@ const useStaffManagement = (initialFilters = {}) => {
     deleteStaffMutation,
     { loading: deletingStaff, error: deleteStaffError },
   ] = useMutation(MUTATION_DELETE_STAFF, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const [
     softDeleteUserMutation,
     { loading: softDeletingStaff, error: softDeleteStaffError },
   ] = useMutation(MUTATION_SOFT_DELETE_USER, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const deleteStaff = useCallback(
@@ -362,7 +375,7 @@ const useStaffManagement = (initialFilters = {}) => {
       const res = await deleteStaffMutation({ variables: { userId } });
       return res.data?.deleteStaff ?? false;
     },
-    [deleteStaffMutation]
+    [deleteStaffMutation],
   );
 
   const softDeleteStaff = useCallback(
@@ -370,7 +383,7 @@ const useStaffManagement = (initialFilters = {}) => {
       const res = await softDeleteUserMutation({ variables: { userId } });
       return res.data?.softDeleteUser ?? false;
     },
-    [softDeleteUserMutation]
+    [softDeleteUserMutation],
   );
 
   /** SET EMPLOYMENT STATUS (ON_LEAVE, WORKING, ...) */
@@ -378,7 +391,9 @@ const useStaffManagement = (initialFilters = {}) => {
     setEmploymentStatusMutation,
     { loading: changingEmploymentStatus, error: setEmploymentStatusError },
   ] = useMutation(MUTATION_SET_STAFF_EMPLOYMENT_STATUS, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const setStaffEmploymentStatus = useCallback(
@@ -388,7 +403,7 @@ const useStaffManagement = (initialFilters = {}) => {
       });
       return res.data?.setStaffEmploymentStatus ?? null;
     },
-    [setEmploymentStatusMutation]
+    [setEmploymentStatusMutation],
   );
 
   /** SET ACCOUNT STATUS (active, inactive, blocked, pending) */
@@ -396,7 +411,9 @@ const useStaffManagement = (initialFilters = {}) => {
     setUserStatusMutation,
     { loading: changingUserStatus, error: setUserStatusError },
   ] = useMutation(MUTATION_SET_USER_STATUS, {
-    onCompleted: () => refetchStaffList(),
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
   });
 
   const setStaffAccountStatus = useCallback(
@@ -406,7 +423,7 @@ const useStaffManagement = (initialFilters = {}) => {
       });
       return res.data?.setUserStatus ?? null;
     },
-    [setUserStatusMutation]
+    [setUserStatusMutation],
   );
 
   /** RATE STAFF 1–5 STAR */
