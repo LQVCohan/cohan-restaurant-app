@@ -192,9 +192,11 @@ const StaffHeader = ({
                 value={selectedRestaurant}
                 onChange={(e) => onRestaurantChange(e.target.value)}
               >
-                <option value="all">🏢 Toàn hệ thống</option>
+                {!restaurantList.length && (
+                  <option value="">Không có nhà hàng</option>
+                )}
                 {restaurantList.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <option key={r.id || r._id} value={r.id || r._id}>
                     {r.name}
                   </option>
                 ))}

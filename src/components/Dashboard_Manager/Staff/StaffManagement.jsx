@@ -56,7 +56,7 @@ const getStaffFocusParams = () => {
 const StaffManagement = () => {
   // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
-  const [selectedRestaurant, setSelectedRestaurant] = useState("all");
+  const [selectedRestaurant, setSelectedRestaurant] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -106,7 +106,15 @@ const StaffManagement = () => {
       cancelled = true;
     };
   }, [managerId, getManagedRestaurantIds, getManagedRestaurants]);
+  useEffect(() => {
+    if (selectedRestaurant) return;
+    if (!restaurantList.length) return;
 
+    const firstRestaurantId = restaurantList[0]?.id || restaurantList[0]?._id;
+    if (firstRestaurantId) {
+      setSelectedRestaurant(firstRestaurantId);
+    }
+  }, [restaurantList, selectedRestaurant]);
   const {
     staffList,
     roleList,
@@ -118,9 +126,10 @@ const StaffManagement = () => {
     setFilters,
     staffListLoading,
   } = useStaffManagement({
+    restaurantId: selectedRestaurant || null,
     page: 1,
     pageSize: 50,
-    pollInterval: 15000,
+    pollInterval: selectedRestaurant ? 15000 : 0,
   }); // Tăng pageSize để demo mượt
 
   const leaveFilter = useMemo(() => ({ status: "PENDING" }), []);
@@ -143,13 +152,14 @@ const StaffManagement = () => {
   }, [searchQuery]);
 
   useEffect(() => {
+    if (!selectedRestaurant) return;
+
     setFilters((prev) => ({
       ...prev,
-      restaurantId: selectedRestaurant === "all" ? null : selectedRestaurant,
+      restaurantId: selectedRestaurant,
       search: undefined,
     }));
   }, [selectedRestaurant, debouncedSearchQuery, setFilters]);
-
   // Client-side filtering (nếu cần filter thêm ở client)
   const filteredStaff = useMemo(() => {
     if (!staffList) return [];
@@ -161,21 +171,14 @@ const StaffManagement = () => {
         : [restaurantIds].filter(Boolean);
       if (!allowedIds.length) return true;
 
-      const staffRestaurantIds = [
-        ...(staff.refRestaurants || []).map((restaurant) => restaurant?.id),
-        staff.restaurantForStaff,
-      ].filter(Boolean);
+      const staffRestaurantIds = [staff.restaurantForStaff].filter(Boolean);
 
       return staffRestaurantIds.some((id) => allowedIds.includes(id));
     };
 
     // Filter by Restaurant
-    if (selectedRestaurant !== "all") {
+    if (selectedRestaurant) {
       result = result.filter((s) => hasRestaurantMatch(s, selectedRestaurant));
-    } else if (managedRestaurantIds.length > 0) {
-      result = result.filter((s) =>
-        hasRestaurantMatch(s, managedRestaurantIds),
-      );
     }
 
     // Filter by Search (Local fallback)
@@ -226,9 +229,7 @@ const StaffManagement = () => {
       onLeaveStaff: filteredStaff.filter(
         (s) => s.employmentStatus === "ON_LEAVE",
       ).length,
-      avgRate:
-        filteredStaff.reduce((sum, s) => sum + (s.rate || 0), 0) /
-        (filteredStaff.length || 1),
+      avgRate: 0,
     }),
     [filteredStaff],
   );
@@ -236,22 +237,13 @@ const StaffManagement = () => {
   const pendingLeaveCount = useMemo(() => {
     const requests = pendingLeaveData?.leaveRequests || [];
     if (!requests.length) return 0;
-    if (selectedRestaurant !== "all") {
+    if (selectedRestaurant) {
       return requests.filter(
         (request) => request.restaurantId === selectedRestaurant,
       ).length;
     }
-    if (managedRestaurantIds.length > 0) {
-      return requests.filter((request) =>
-        managedRestaurantIds.includes(request.restaurantId),
-      ).length;
-    }
-    return requests.length;
-  }, [
-    managedRestaurantIds,
-    pendingLeaveData?.leaveRequests,
-    selectedRestaurant,
-  ]);
+    return 0;
+  }, [pendingLeaveData?.leaveRequests, selectedRestaurant]);
 
   // --- HANDLERS ---
   const toggleHeader = useCallback(
