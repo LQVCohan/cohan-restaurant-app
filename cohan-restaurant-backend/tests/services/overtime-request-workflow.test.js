@@ -27,7 +27,7 @@ describe('Overtime request workflow polish', () => {
 
     modelMocks.Staff.findById.mockReturnValue({
       populate: vi.fn().mockReturnThis(),
-      lean: vi.fn().mockResolvedValue({ _id: EMPLOYEE_ID, userType: 'STAFF', primaryRestaurant: { _id: RESTAURANT_ID }, deletedAt: null }),
+      lean: vi.fn().mockResolvedValue({ _id: EMPLOYEE_ID, userType: 'STAFF', restaurantForStaff: RESTAURANT_ID, deletedAt: null }),
     });
   });
 

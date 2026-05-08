@@ -32,7 +32,7 @@ describe("attendance correction workflow guards", () => {
   it("rejects duplicate pending with explicit code", async () => {
     const { createAttendanceCorrectionRequest } = await import("../../src/services/attendance/attendanceCorrectionWorkflow.service.js");
 
-    const staffDoc = { _id: "507f1f77bcf86cd799439012", userType: "STAFF", primaryRestaurant: "507f1f77bcf86cd799439011" };
+    const staffDoc = { _id: "507f1f77bcf86cd799439012", userType: "STAFF", restaurantForStaff: "507f1f77bcf86cd799439011" };
     modelMocks.Staff.findById.mockReturnValue({
       populate: vi.fn().mockReturnThis(),
       then: (resolve) => Promise.resolve(resolve(staffDoc)),
