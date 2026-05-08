@@ -211,8 +211,7 @@ async function resolveStaff(employeeId) {
   if (!oid) throw new Error("employeeId không hợp lệ.");
 
   const staff = await Staff.findById(oid)
-    .populate("role")
-        .populate("refRestaurants");
+    .populate("role");
 
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
     throw new Error("Không tìm thấy nhân viên.");
@@ -222,15 +221,7 @@ async function resolveStaff(employeeId) {
 }
 
 function staffBelongsToRestaurant(staff, restaurantId) {
-  const target = String(restaurantId);
-    const restaurantForStaff = staff.restaurantForStaff;
-  const refs = Array.isArray(staff.refRestaurants) ? staff.refRestaurants : [];
-
-  return (
-    String(primary || "") === target ||
-    String(restaurantForStaff || "") === target ||
-    refs.some((item) => String(item?._id || item) === target)
-  );
+  return String(staff?.restaurantForStaff || "") === String(restaurantId || "");
 }
 
 async function resolveExistingTimesheet({

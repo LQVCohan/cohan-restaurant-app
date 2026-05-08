@@ -118,7 +118,7 @@ describe("shift acknowledgement query resolvers", () => {
         periodEnd: "2026-06-07T23:59:59.999Z",
         status: "declined",
       },
-      { user: { id: "manager-1", roles: ["manager"], primaryRestaurant: "rest-1" } },
+      { user: { id: "manager-1", roles: ["manager"], restaurantId: "rest-1" } },
     );
 
     expect(result).toEqual([]);

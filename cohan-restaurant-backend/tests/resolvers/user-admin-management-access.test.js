@@ -136,9 +136,12 @@ describe("user admin management access hardening", () => {
 
   it("setUserStatus allows admin", async () => {
     modelMocks.User.findByIdAndUpdate.mockReturnValueOnce({ lean: async () => ({ _id: "valid-u1" }) });
-    modelMocks.User.findById.mockReturnValueOnce({
-      populate: () => ({ populate: () => ({ populate: () => ({ lean: async () => ({ _id: "valid-u1" }) }) }) }),
-    });
+    const userDoc = { _id: "valid-u1" };
+    const query = {
+      populate: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue(userDoc),
+    };
+    modelMocks.User.findById.mockReturnValueOnce(query);
 
     const { UserMutation } = await import("../../graphql/resolvers/user/mutation.js");
     await UserMutation.setUserStatus(null, { userId: "valid-u1", status: "active" }, ctxFor("admin"));
