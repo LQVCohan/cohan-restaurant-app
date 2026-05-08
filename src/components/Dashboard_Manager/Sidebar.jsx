@@ -36,7 +36,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
         { id: "staff", roles: ["admin", "manager", "hr"], icon: "👥", label: "Nhân viên", page: "Nhân viên" },
         {
           id: "schedules",
-          roles: ["admin", "manager", "hr"],
+          roles: ["admin", "manager"],
           icon: "📅",
           label: "Lịch làm việc",
           page: "Lịch làm việc",
@@ -82,7 +82,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "reports",
-          roles: ["admin", "manager", "accountant"],
+          roles: ["admin", "manager"],
           icon: "📊",
           label: "Báo cáo tổng hợp",
           page: "Báo cáo",

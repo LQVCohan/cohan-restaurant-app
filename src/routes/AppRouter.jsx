@@ -51,6 +51,8 @@ import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
 import { canAccessRoute, getDefaultPathForRole } from "@/utils/roleAccess";
+import { STAFF_OPERATIONAL_ROLES } from "@/utils/roleAccess";
+
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
@@ -158,6 +160,8 @@ const LogoutHandler = () => {
 // =========================
 // 🌐 App Router
 // =========================
+const SHARED_STAFF_AND_INTERNAL_ROLES = ["admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
+
 const AppRouter = () => {
   return (
     <Routes>
@@ -179,12 +183,31 @@ const AppRouter = () => {
           =============================================
       */}
 
+      {/* Staff Home */}
+      <Route
+        path="/staff"
+        element={
+          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+            <Navigate to="/staff/dashboard" replace />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/staff/dashboard"
+        element={
+          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+            <StaffSchedulePage />
+          </PrivateRoute>
+        }
+      />
+
       {/* Staff Order */}
       <Route
         path="/staff/orders"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffOrdering />
@@ -196,7 +219,7 @@ const AppRouter = () => {
         path="/staff/performance"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin", "hr"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffPerformancePage />
@@ -209,7 +232,7 @@ const AppRouter = () => {
         path="/staff/schedule"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin", "hr"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffSchedulePage />
@@ -385,7 +408,7 @@ const AppRouter = () => {
           path="/search"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <SearchPage />
@@ -459,7 +482,7 @@ const AppRouter = () => {
           path="/notifications"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <NotificationsPage />
@@ -471,7 +494,7 @@ const AppRouter = () => {
           path="/profile"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <ProfilePage />

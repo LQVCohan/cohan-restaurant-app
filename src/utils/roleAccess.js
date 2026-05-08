@@ -69,11 +69,15 @@ export const getDefaultPathForRole = (userOrRole) => {
   if (isManagerRole(normalized)) return "/manager";
   if (isHrRole(normalized)) return "/manager#staff";
   if (isAccountantRole(normalized)) return "/manager#payroll";
-  if (isStaffOperationalRole(normalized)) return "/staff/schedule";
+  if (["server", "host", "cashier", "supervisor"].includes(normalized)) return "/staff/orders";
+  if (["chef", "cook", "kitchen_helper"].includes(normalized)) return "/staff/schedule";
+  if (isStaffOperationalRole(normalized)) return "/staff/dashboard";
   return "/";
 };
 
 const SHARED_USER_ALLOW = ["customer", "admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
+
+// NOTE: public customer pages are protected in AppRouter only when wrapped by PrivateRoute.
 const ROUTE_ACCESS_RULES = [
   { test: /^\/admin(\/|$)/, allow: ["admin"] },
   { test: /^\/manager(\/|$)/, allow: ["admin", "manager", "hr", "accountant"] },
