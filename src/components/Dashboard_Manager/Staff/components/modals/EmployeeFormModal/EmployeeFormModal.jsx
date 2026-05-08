@@ -335,7 +335,13 @@ const EmployeeFormModal = ({
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
       if (!formData.department) newErrors.department = "Vui lòng chọn bộ phận";
-      if (!formData.roleSlug) newErrors.roleSlug = "Vui lòng chọn vai trò";
+      if (!formData.roleSlug) {
+        newErrors.roleSlug = "Vui lòng chọn vai trò";
+      } else if (!Array.isArray(roleList) || roleList.length === 0) {
+        newErrors.roleSlug = "Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây.";
+      } else if (!selectedRoleRecord) {
+        newErrors.roleSlug = "Vai trò đã chọn chưa được cấu hình trong hệ thống. Vui lòng seed roles hoặc chọn vai trò khác.";
+      }
       if (!formData.positionTitle.trim())
         newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
       if (!formData.restaurantForStaff)
@@ -1077,6 +1083,8 @@ const EmployeeFormModal = ({
       size="lg"
       className="employee-form-modal"
       showCloseButton={false}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
     >
       {pendingRestore && (
         <div className="draft-restore-banner">
