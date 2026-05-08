@@ -7,22 +7,36 @@ import { usePos } from "../../../../../context/PosContext";
 import { useVnAddressLazy } from "../../../../../hooks/useVnAddressLazy";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
-import { deriveCandidateMatches, detectIdentityConflict, normalizeEmail, normalizePhone } from "../../../../../utils/posCustomerIdentity";
-
+import {
+  deriveCandidateMatches,
+  detectIdentityConflict,
+  normalizeEmail,
+  normalizePhone,
+} from "../../../../../utils/posCustomerIdentity";
 
 const Q_POS_CUSTOMERS = gql`
-  query PosCustomerCandidates($restaurantId: ID!, $keyword: String, $email: String, $phone: String) {
-    posCustomerCandidates(restaurantId: $restaurantId, keyword: $keyword, email: $email, phone: $phone) {
+  query PosCustomerCandidates(
+    $restaurantId: ID!
+    $keyword: String
+    $email: String
+    $phone: String
+  ) {
+    posCustomerCandidates(
+      restaurantId: $restaurantId
+      keyword: $keyword
+      email: $email
+      phone: $phone
+    ) {
       id
       fullName
       phone
       email
       address
       note
+      source
     }
   }
 `;
-
 
 const M_UPSERT_POS_CUSTOMER = gql`
   mutation UpsertPosCustomer($input: UpsertPosCustomerInput!) {
@@ -53,7 +67,6 @@ const emptyForm = {
   wardKey: "",
 };
 
-
 function safeStr(v) {
   return (v || "").toString().trim();
 }
@@ -82,7 +95,7 @@ async function reverseGeocodeOSM(lat, lng) {
   const url =
     `https://nominatim.openstreetmap.org/reverse?format=jsonv2&` +
     `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
-      lng
+      lng,
     )}&accept-language=vi`;
 
   const res = await fetch(url, {
@@ -109,9 +122,11 @@ export default function RegularCustomerModal({
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
-  const [loadCustomers, { data: customersData, loading: customersLoading }] = useLazyQuery(Q_POS_CUSTOMERS, { fetchPolicy: "network-only" });
-  const [upsertPosCustomer, { loading: upsertingCustomer }] =
-    useMutation(M_UPSERT_POS_CUSTOMER);
+  const [loadCustomers, { data: customersData, loading: customersLoading }] =
+    useLazyQuery(Q_POS_CUSTOMERS, { fetchPolicy: "network-only" });
+  const [upsertPosCustomer, { loading: upsertingCustomer }] = useMutation(
+    M_UPSERT_POS_CUSTOMER,
+  );
   const [searchDebounced, setSearchDebounced] = useState("");
   const [identityDebounced, setIdentityDebounced] = useState({
     email: "",
@@ -191,7 +206,7 @@ export default function RegularCustomerModal({
           if (distName && lx === distName.toLowerCase()) return false;
           if (provName && lx === provName.toLowerCase()) return false;
           return true;
-        })
+        }),
     ).join(", ");
 
     const parts = dedupeParts([cleanedDetail, wardName, distName, provName]);
@@ -245,25 +260,44 @@ export default function RegularCustomerModal({
         phone: phone || null,
       },
     }).catch(() => {});
-  }, [isOpen, restaurantId, searchDebounced, identityDebounced.email, identityDebounced.phone, loadCustomers]);
+  }, [
+    isOpen,
+    restaurantId,
+    searchDebounced,
+    identityDebounced.email,
+    identityDebounced.phone,
+    loadCustomers,
+  ]);
 
-  const filteredCustomers = useMemo(() => (customersData?.posCustomerCandidates || []).map((c) => ({
-    ...c,
-    name: safeStr(c.fullName),
-    address: safeStr(c.address),
-  })), [customersData]);
+  const filteredCustomers = useMemo(
+    () =>
+      (customersData?.posCustomerCandidates || []).map((c) => ({
+        ...c,
+        name: safeStr(c.fullName),
+        address: safeStr(c.address),
+        source: safeStr(c.source),
+      })),
+    [customersData],
+  );
 
   const closeWithConfirm = () => {
     requestCloseWithDraft(() => onClose?.());
     setForm(emptyForm);
   };
 
-  const { clearDraft, requestCloseWithDraft, pendingRestore, restorePendingDraft, discardPendingDraft } = useModalDraft({
+  const {
+    clearDraft,
+    requestCloseWithDraft,
+    pendingRestore,
+    restorePendingDraft,
+    discardPendingDraft,
+  } = useModalDraft({
     enabled: isOpen && tab === "create",
     draftIdentity: {
       module: "pos",
       modal: "regular-customer-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "create",
       entityType: "customer",
       recordId: null,
@@ -295,7 +329,9 @@ export default function RegularCustomerModal({
   const handlePickCustomer = (c) => {
     if (!c) return;
 
-    const addressText = safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress);
+    const addressText = safeStr(
+      c?.shippingInfo?.address || c?.address || c?.defaultAddress,
+    );
 
     const displayName = safeStr(c.fullName || c.name);
 
@@ -351,21 +387,20 @@ export default function RegularCustomerModal({
     setForm((prev) => ({ ...prev, wardKey: code }));
   };
 
+  function isValidEmail(value) {
+    const email = normalizeEmail(value);
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
 
-function isValidEmail(value) {
-  const email = normalizeEmail(value);
-  if (!email) return true;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function isValidVietnamPhone(value) {
-  const phone = normalizePhone(value);
-  if (!phone) return false;
-  if (!/^\d{9,11}$/.test(phone)) return false;
-  if (/^0+$/.test(phone)) return false;
-  if (phone === "0123456789" || phone === "123456789") return false;
-  return true;
-}
+  function isValidVietnamPhone(value) {
+    const phone = normalizePhone(value);
+    if (!phone) return false;
+    if (!/^\d{9,11}$/.test(phone)) return false;
+    if (/^0+$/.test(phone)) return false;
+    if (phone === "0123456789" || phone === "123456789") return false;
+    return true;
+  }
 
   const validateSnapshotForCurrentOrder = () => {
     const name = safeStr(form.name);
@@ -441,7 +476,7 @@ function isValidVietnamPhone(value) {
         const house = normalizePart(addr.house_number);
         const road = normalizePart(addr.road);
         const neighbourhood = normalizePart(
-          addr.neighbourhood || addr.suburb || addr.quarter
+          addr.neighbourhood || addr.suburb || addr.quarter,
         );
 
         const detailLine = dedupeParts([house, road, neighbourhood]).join(" ");
@@ -457,13 +492,13 @@ function isValidVietnamPhone(value) {
       // Nếu bạn không muốn map tự động thì comment block này.
       if (addr && Array.isArray(provinces) && provinces.length > 0) {
         const provName = safeStr(
-          addr.state || addr.city || addr.county || addr.province
+          addr.state || addr.city || addr.county || addr.province,
         ).toLowerCase();
 
         const foundProv =
           provinces.find((p) => safeStr(p.name).toLowerCase() === provName) ||
           provinces.find((p) =>
-            safeStr(p.name).toLowerCase().includes(provName)
+            safeStr(p.name).toLowerCase().includes(provName),
           );
 
         if (foundProv?.code) {
@@ -473,7 +508,7 @@ function isValidVietnamPhone(value) {
           // đợi 1 tick để districts cập nhật
           setTimeout(async () => {
             const distName = safeStr(
-              addr.county || addr.city_district || addr.district || ""
+              addr.county || addr.city_district || addr.district || "",
             ).toLowerCase();
 
             const ds = (foundProv.districts || []).map((d) => d);
@@ -486,14 +521,18 @@ function isValidVietnamPhone(value) {
 
               setTimeout(() => {
                 const wardName = safeStr(
-                  addr.suburb || addr.village || addr.town || addr.quarter || ""
+                  addr.suburb ||
+                    addr.village ||
+                    addr.town ||
+                    addr.quarter ||
+                    "",
                 ).toLowerCase();
 
                 const ws = wards || [];
                 const foundWard =
                   ws.find((w) => safeStr(w.name).toLowerCase() === wardName) ||
                   ws.find((w) =>
-                    safeStr(w.name).toLowerCase().includes(wardName)
+                    safeStr(w.name).toLowerCase().includes(wardName),
                   );
 
                 if (foundWard?.code) handleWardChange(String(foundWard.code));
@@ -510,7 +549,14 @@ function isValidVietnamPhone(value) {
     }
   };
 
-  const candidateCheck = useMemo(() => deriveCandidateMatches(filteredCustomers, { email: form.email, phone: form.phone }), [filteredCustomers, form.email, form.phone]);
+  const candidateCheck = useMemo(
+    () =>
+      deriveCandidateMatches(filteredCustomers, {
+        email: form.email,
+        phone: form.phone,
+      }),
+    [filteredCustomers, form.email, form.phone],
+  );
   const identityConflict = useMemo(() => {
     const ec = candidateCheck.byEmail?.[0] || null;
     const pc = candidateCheck.byPhone?.[0] || null;
@@ -660,7 +706,7 @@ function isValidVietnamPhone(value) {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên / sđt / email..."
               />
-              
+
               <Button onClick={() => setTab("create")} variant="ghost">
                 + Thêm
               </Button>
@@ -674,7 +720,16 @@ function isValidVietnamPhone(value) {
                   onClick={() => handlePickCustomer(c)}
                 >
                   <div className={cls.customerMain}>
-                    <div className={cls.customerName}>{c.name}</div>
+                    <div className={cls.customerName}>
+                      {c.name}
+                      {c.source ? (
+                        <span
+                          style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}
+                        >
+                          [{safeStr(c.source).toUpperCase()}]
+                        </span>
+                      ) : null}
+                    </div>
                     <div className={cls.customerSub}>
                       {safeStr(c.phone)}
                       {c.email ? ` · ${c.email}` : ""}
@@ -687,7 +742,9 @@ function isValidVietnamPhone(value) {
                 </button>
               ))}
 
-              {customersLoading && <div className={cls.empty}>Đang tìm khách...</div>}
+              {customersLoading && (
+                <div className={cls.empty}>Đang tìm khách...</div>
+              )}
               {filteredCustomers.length === 0 && (
                 <div className={cls.empty}>Chưa có khách nào.</div>
               )}
@@ -696,14 +753,18 @@ function isValidVietnamPhone(value) {
         )}
 
         {tab === "create" && pendingRestore && !hasDirtyForm && (
-            <div className={cls.restoreBanner}>
-              <span>Có dữ liệu khách nhập dở. Khôi phục?</span>
-              <button type="button" onClick={restorePendingDraft}>Khôi phục</button>
-              <button type="button" onClick={discardPendingDraft}>Bỏ qua</button>
-            </div>
-          )}
+          <div className={cls.restoreBanner}>
+            <span>Có dữ liệu khách nhập dở. Khôi phục?</span>
+            <button type="button" onClick={restorePendingDraft}>
+              Khôi phục
+            </button>
+            <button type="button" onClick={discardPendingDraft}>
+              Bỏ qua
+            </button>
+          </div>
+        )}
 
-          {tab === "create" && (
+        {tab === "create" && (
           <div className={cls.createTab}>
             <div className={cls.formGrid}>
               <div className={cls.field}>
@@ -817,7 +878,9 @@ function isValidVietnamPhone(value) {
 
             {identityConflict && (
               <div className={cls.empty} style={{ color: "#b91c1c" }}>
-                Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen để tránh cập nhật sai hồ sơ. Hãy chọn một hồ sơ có sẵn hoặc dùng thông tin này cho đơn hiện tại.
+                Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen
+                để tránh cập nhật sai hồ sơ. Hãy chọn một hồ sơ có sẵn hoặc dùng
+                thông tin này cho đơn hiện tại.
               </div>
             )}
 
@@ -831,28 +894,58 @@ function isValidVietnamPhone(value) {
               candidateCheck.byPhone?.length === 0 &&
               candidateCheck.byEmail?.length > 0 && (
                 <div className={cls.empty}>
-                  Tìm thấy khách trùng thông tin. Bạn có thể chọn khách có sẵn hoặc lưu khách mới.
+                  Tìm thấy khách trùng thông tin. Bạn có thể chọn khách có sẵn
+                  hoặc lưu khách mới.
                 </div>
               )}
 
-            {(candidateCheck.byPhone?.length > 0 || candidateCheck.byEmail?.length > 0) && (
+            {(candidateCheck.byPhone?.length > 0 ||
+              candidateCheck.byEmail?.length > 0) && (
               <div>
                 {candidateCheck.byPhone?.length > 0 && (
                   <>
                     <div className={cls.empty}>Khớp theo SĐT</div>
                     <div className={cls.list}>
                       {candidateCheck.byPhone.map((c) => (
-                        <div key={`phone_${c.id || c._id}`} className={cls.customerRow} style={{ cursor: "default" }}>
+                        <div
+                          key={`phone_${c.id || c._id}`}
+                          className={cls.customerRow}
+                          style={{ cursor: "default" }}
+                        >
                           <div className={cls.customerMain}>
                             <div className={cls.customerName}>
                               {safeStr(c.fullName || c.name)}
-                              {c.source ? <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>[{safeStr(c.source).toUpperCase()}]</span> : null}
+                              {c.source ? (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    opacity: 0.7,
+                                  }}
+                                >
+                                  [{safeStr(c.source).toUpperCase()}]
+                                </span>
+                              ) : null}
                             </div>
-                            <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
+                            <div className={cls.customerSub}>
+                              {safeStr(c.phone)}
+                              {c.email ? ` · ${c.email}` : ""}
+                            </div>
                           </div>
-                          <div className={cls.customerAddr}>{safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress) || "Chưa có địa chỉ"}</div>
+                          <div className={cls.customerAddr}>
+                            {safeStr(
+                              c?.shippingInfo?.address ||
+                                c?.address ||
+                                c?.defaultAddress,
+                            ) || "Chưa có địa chỉ"}
+                          </div>
                           <div style={{ marginTop: 8 }}>
-                            <Button variant="ghost" onClick={() => handlePickCustomer(c)}>Chọn khách này</Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => handlePickCustomer(c)}
+                            >
+                              Chọn khách này
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -865,19 +958,52 @@ function isValidVietnamPhone(value) {
                     <div className={cls.empty}>Khớp theo email</div>
                     <div className={cls.list}>
                       {candidateCheck.byEmail
-                        .filter((c) => candidateCheck.byPhone.findIndex((p) => String(p.id) === String(c.id)) === -1)
+                        .filter(
+                          (c) =>
+                            candidateCheck.byPhone.findIndex(
+                              (p) => String(p.id) === String(c.id),
+                            ) === -1,
+                        )
                         .map((c) => (
-                          <div key={`email_${c.id || c._id}`} className={cls.customerRow} style={{ cursor: "default" }}>
+                          <div
+                            key={`email_${c.id || c._id}`}
+                            className={cls.customerRow}
+                            style={{ cursor: "default" }}
+                          >
                             <div className={cls.customerMain}>
                               <div className={cls.customerName}>
                                 {safeStr(c.fullName || c.name)}
-                                {c.source ? <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>[{safeStr(c.source).toUpperCase()}]</span> : null}
+                                {c.source ? (
+                                  <span
+                                    style={{
+                                      marginLeft: 8,
+                                      fontSize: 11,
+                                      opacity: 0.7,
+                                    }}
+                                  >
+                                    [{safeStr(c.source).toUpperCase()}]
+                                  </span>
+                                ) : null}
                               </div>
-                              <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
+                              <div className={cls.customerSub}>
+                                {safeStr(c.phone)}
+                                {c.email ? ` · ${c.email}` : ""}
+                              </div>
                             </div>
-                            <div className={cls.customerAddr}>{safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress) || "Chưa có địa chỉ"}</div>
+                            <div className={cls.customerAddr}>
+                              {safeStr(
+                                c?.shippingInfo?.address ||
+                                  c?.address ||
+                                  c?.defaultAddress,
+                              ) || "Chưa có địa chỉ"}
+                            </div>
                             <div style={{ marginTop: 8 }}>
-                              <Button variant="ghost" onClick={() => handlePickCustomer(c)}>Chọn khách này</Button>
+                              <Button
+                                variant="ghost"
+                                onClick={() => handlePickCustomer(c)}
+                              >
+                                Chọn khách này
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -905,7 +1031,9 @@ function isValidVietnamPhone(value) {
               <Button
                 onClick={handleSaveCustomer}
                 variant="primary"
-                disabled={saving || upsertingCustomer || locating || identityConflict}
+                disabled={
+                  saving || upsertingCustomer || locating || identityConflict
+                }
                 title={
                   identityConflict
                     ? "Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen."

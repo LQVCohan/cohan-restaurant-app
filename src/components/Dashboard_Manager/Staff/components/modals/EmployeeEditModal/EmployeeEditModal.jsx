@@ -39,6 +39,8 @@ const EmployeeEditModal = ({
   onSubmit,
   onUpdate,
   roleList = [],
+  roleListLoading = false,
+  roleListError = null,
 }) => {
   const { showNotification } = useNotification();
   const [formData, setFormData] = useState({});
@@ -94,7 +96,9 @@ const EmployeeEditModal = ({
       setHasChanges(false);
       setActiveTab("basic");
       setSalaryManuallyEdited(false);
-      setPositionTitleSelectionSource(source.positionTitle || employee.role ? "restored" : "suggested");
+      setPositionTitleSelectionSource(
+        source.positionTitle || employee.role ? "restored" : "suggested",
+      );
     }
   }, [employee, isOpen]);
 
@@ -124,7 +128,8 @@ const EmployeeEditModal = ({
     draftIdentity: {
       module: "staff",
       modal: "employee-edit-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "edit",
       entityType: "employee",
       recordId: employee?.id || employee?._id || employee?.raw?.id || null,
@@ -175,8 +180,14 @@ const EmployeeEditModal = ({
     if (field === "baseSalary") setSalaryManuallyEdited(true);
     if (field === "positionTitle") setPositionTitleSelectionSource("manual");
     if (field === "employmentType") {
-      const suggested = getSuggestedSalaryByEmploymentType(value, salaryReference);
-      if (!salaryManuallyEdited || !parseCurrencyInputToNumber(formData.baseSalary)) {
+      const suggested = getSuggestedSalaryByEmploymentType(
+        value,
+        salaryReference,
+      );
+      if (
+        !salaryManuallyEdited ||
+        !parseCurrencyInputToNumber(formData.baseSalary)
+      ) {
         setFormData((prev) => ({
           ...prev,
           baseSalary: suggested ? formatCurrencyDisplay(suggested) : "",
@@ -193,7 +204,10 @@ const EmployeeEditModal = ({
       salaryReference,
     );
     if (!suggested) return;
-    setFormData((prev) => ({ ...prev, baseSalary: formatCurrencyDisplay(suggested) }));
+    setFormData((prev) => ({
+      ...prev,
+      baseSalary: formatCurrencyDisplay(suggested),
+    }));
   }, [formData.baseSalary, formData.employmentType, isOpen, salaryReference]);
 
   const availableRoleOptions = useMemo(
@@ -209,7 +223,8 @@ const EmployeeEditModal = ({
     return map;
   }, [roleList]);
 
-  const selectedRoleRecord = roleRecordsBySlug[String(formData.roleSlug || "").toLowerCase()] || null;
+  const selectedRoleRecord =
+    roleRecordsBySlug[String(formData.roleSlug || "").toLowerCase()] || null;
 
   const displayedRoleOptions = useMemo(() => {
     if (
@@ -242,12 +257,19 @@ const EmployeeEditModal = ({
       const nextRoleSlug = currentRoleStillValid
         ? prev.roleSlug
         : getDefaultRoleSlug(department);
-      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
-      const nextSuggestion = getAiSuggestedPositionTitle(department, nextRoleSlug);
+      const previousSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        prev.roleSlug,
+      );
+      const nextSuggestion = getAiSuggestedPositionTitle(
+        department,
+        nextRoleSlug,
+      );
       const shouldUseSuggestion =
         !normalizeDraftText(prev.positionTitle) ||
         positionTitleSelectionSource === "suggested" ||
-        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+        normalizeDraftText(prev.positionTitle) ===
+          normalizeDraftText(previousSuggestion);
 
       if (shouldUseSuggestion) setPositionTitleSelectionSource("suggested");
 
@@ -255,27 +277,43 @@ const EmployeeEditModal = ({
         ...prev,
         department,
         roleSlug: nextRoleSlug,
-        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+        positionTitle: shouldUseSuggestion
+          ? nextSuggestion
+          : prev.positionTitle,
       };
     });
-    setErrors((prev) => ({ ...prev, department: "", roleSlug: "", positionTitle: "" }));
+    setErrors((prev) => ({
+      ...prev,
+      department: "",
+      roleSlug: "",
+      positionTitle: "",
+    }));
   };
 
   const handleRoleSlugChange = (roleSlug) => {
     setFormData((prev) => {
-      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
-      const nextSuggestion = getAiSuggestedPositionTitle(prev.department, roleSlug);
+      const previousSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        prev.roleSlug,
+      );
+      const nextSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        roleSlug,
+      );
       const shouldUseSuggestion =
         !normalizeDraftText(prev.positionTitle) ||
         positionTitleSelectionSource === "suggested" ||
-        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+        normalizeDraftText(prev.positionTitle) ===
+          normalizeDraftText(previousSuggestion);
 
       if (shouldUseSuggestion) setPositionTitleSelectionSource("suggested");
 
       return {
         ...prev,
         roleSlug,
-        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+        positionTitle: shouldUseSuggestion
+          ? nextSuggestion
+          : prev.positionTitle,
       };
     });
     setErrors((prev) => ({ ...prev, roleSlug: "", positionTitle: "" }));
@@ -341,6 +379,20 @@ const EmployeeEditModal = ({
     if (!formData.fullName?.trim()) newErrors.fullName = "Vui lòng nhập họ tên";
     if (!formData.department) newErrors.department = "Vui lòng chọn bộ phận";
     if (!formData.roleSlug) newErrors.roleSlug = "Vui lòng chọn vai trò";
+    const roleChanged = Boolean(
+      formData.roleSlug && formData.roleSlug !== originalData.roleSlug,
+    );
+
+    if (roleChanged && roleListLoading) {
+      newErrors.roleSlug =
+        "Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây.";
+    } else if (roleChanged && (roleListError || roleList.length === 0)) {
+      newErrors.roleSlug =
+        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.";
+    } else if (roleChanged && !selectedRoleRecord?.id) {
+      newErrors.roleSlug =
+        "Vai trò đã chọn chưa được cấu hình trong hệ thống, vui lòng chọn vai trò khác.";
+    }
     if (!formData.positionTitle?.trim())
       newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
 
@@ -418,13 +470,20 @@ const EmployeeEditModal = ({
         await handler(payload);
       }
       clearDraft();
-      showNotification("Đã xóa dữ liệu nháp sau khi cập nhật.", "success", 2200);
+      showNotification(
+        "Đã xóa dữ liệu nháp sau khi cập nhật.",
+        "success",
+        2200,
+      );
       setOriginalData(formData);
       setHasChanges(false);
       onClose();
     } catch (error) {
       console.error("Error updating employee:", error);
-      setErrors({ submit: "Có lỗi xảy ra khi cập nhật. Vui lòng thử lại." });
+      setErrors({
+        submit:
+          error?.message || "Có lỗi xảy ra khi cập nhật. Vui lòng thử lại.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -456,7 +515,9 @@ const EmployeeEditModal = ({
         <div className="employee-info">
           <h3>{formData.fullName || "Chưa có tên"}</h3>
           <Badge
-            variant={formData.employmentStatus === "WORKING" ? "success" : "danger"}
+            variant={
+              formData.employmentStatus === "WORKING" ? "success" : "danger"
+            }
           >
             {formData.employmentStatus === "WORKING"
               ? "✅ Đang làm việc"
@@ -738,7 +799,9 @@ const EmployeeEditModal = ({
             onChange={(e) =>
               handleInputChange(
                 "baseSalary",
-                formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+                formatCurrencyDisplay(
+                  parseCurrencyInputToNumber(e.target.value),
+                ),
               )
             }
             placeholder="8000000"
@@ -762,15 +825,26 @@ const EmployeeEditModal = ({
         {salaryReference && (
           <div className="salary-note">
             Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
-            <a href={salaryReference.decreeUrl} target="_blank" rel="noreferrer">
+            <a
+              href={salaryReference.decreeUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
               văn bản
             </a>{" "}
             ·{" "}
-            <a href={salaryReference.articleUrl} target="_blank" rel="noreferrer">
+            <a
+              href={salaryReference.articleUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
               cổng công bố
             </a>
             {!salaryReference.isLive && (
-              <> · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.</>
+              <>
+                {" "}
+                · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.
+              </>
             )}
           </div>
         )}

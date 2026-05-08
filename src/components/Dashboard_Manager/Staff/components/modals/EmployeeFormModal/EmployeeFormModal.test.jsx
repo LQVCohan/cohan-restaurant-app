@@ -18,12 +18,7 @@ const testMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../../../common/Modal", () => ({
-  default: ({
-    isOpen,
-    children,
-    onClose,
-    closeOnOverlayClick = true,
-  }) =>
+  default: ({ isOpen, children, onClose, closeOnOverlayClick = true }) =>
     isOpen ? (
       <div>
         <button
@@ -57,63 +52,6 @@ vi.mock("../../../../../../utils/legalSalaryReference", async () => {
     ...actual,
     getLegalSalaryReference: testMocks.getLegalSalaryReference,
   };
-
-  it("blocks submit when roleList has not loaded", async () => {
-    const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
-    render(<ModalHarness onSubmit={onSubmit} roleList={[]} />);
-
-    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
-      target: { value: "Nguyen Test" },
-    });
-    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
-      target: { value: "rest-1" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(
-      screen.getByText("Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây."),
-    ).toBeInTheDocument();
-  });
-
-  it("blocks submit when selected roleSlug host is missing from roleList", async () => {
-    const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
-    render(
-      <ModalHarness
-        onSubmit={onSubmit}
-        roleList={[{ id: "r-server", slug: "server", name: "Server" }]}
-      />,
-    );
-
-    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
-      target: { value: "Nguyen Test" },
-    });
-    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
-      target: { value: "rest-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Vai trò"), {
-      target: { value: "host" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(
-        "Vai trò đã chọn chưa được cấu hình trong hệ thống. Vui lòng seed roles hoặc chọn vai trò khác.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("does not close modal when clicking overlay", () => {
-    render(<ModalHarness />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Overlay" }));
-
-    expect(screen.getByRole("heading", { name: /thêm nhân viên mới/i })).toBeInTheDocument();
-  });
-
 });
 
 const TEST_ROLE_LIST = [
@@ -125,6 +63,8 @@ const TEST_ROLE_LIST = [
 function ModalHarness({
   onSubmit = vi.fn(async () => {}),
   roleList = TEST_ROLE_LIST,
+  roleListLoading = false,
+  roleListError = null,
 }) {
   const [open, setOpen] = useState(true);
 
@@ -139,6 +79,8 @@ function ModalHarness({
         onSubmit={onSubmit}
         restaurantList={[{ id: "rest-1", name: "Chi nhánh 1" }]}
         roleList={roleList}
+        roleListLoading={roleListLoading}
+        roleListError={roleListError}
       />
     </div>
   );
@@ -210,7 +152,7 @@ describe("EmployeeFormModal draft lifecycle", () => {
     expect(screen.getByDisplayValue("Nguyen Test")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-    fireEvent.change(screen.getByLabelText("Số điện thoại"), {
+    fireEvent.change(screen.getByPlaceholderText("09..."), {
       target: { value: "0912345678" },
     });
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
@@ -224,24 +166,27 @@ describe("EmployeeFormModal draft lifecycle", () => {
 
   it("blocks submit when roleList has not loaded", async () => {
     const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
-    render(<ModalHarness onSubmit={onSubmit} roleList={[]} />);
+    render(
+      <ModalHarness onSubmit={onSubmit} roleList={[]} roleListLoading={true} />,
+    );
 
-    fillStepOneAndGoNext();
-    fireEvent.change(screen.getByPlaceholderText("09..."), {
-      target: { value: "0912345678" },
+    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
+      target: { value: "Nguyen Test" },
     });
+    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
+      target: { value: "rest-1" },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-    fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
 
-    await waitFor(() => {
-      expect(onSubmit).not.toHaveBeenCalled();
-    });
-    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
-    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    expect(onSubmit).not.toHaveBeenCalled();
     expect(
       screen.getByText(
-        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+        "Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây.",
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /thông tin cơ bản/i }),
     ).toBeInTheDocument();
   });
 
@@ -258,8 +203,7 @@ describe("EmployeeFormModal draft lifecycle", () => {
       target: { value: "host" },
     });
 
-    const stepOneInputs = screen.getAllByRole("textbox");
-    fireEvent.change(stepOneInputs[0], {
+    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
       target: { value: "Nguyen Test" },
     });
     fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
@@ -270,7 +214,12 @@ describe("EmployeeFormModal draft lifecycle", () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("heading", { name: /liên hệ & bảo mật/i }),
+      screen.getByRole("heading", { name: /thông tin cơ bản/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vai trò đã chọn chưa được cấu hình trong hệ thống, vui lòng chọn vai trò khác.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -279,6 +228,8 @@ describe("EmployeeFormModal draft lifecycle", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Overlay" }));
 
-    expect(screen.getByRole("heading", { name: /thêm nhân viên mới/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /thêm nhân viên mới/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -644,13 +644,22 @@ const EmployeeFormModal = ({
       return;
     }
 
-    if (formData.roleSlug && (roleListLoading || roleListError || !selectedRoleRecord?.id)) {
+    if (
+      formData.roleSlug &&
+      (roleListLoading ||
+        roleListError ||
+        roleList.length === 0 ||
+        !selectedRoleRecord?.id)
+    ) {
       setErrors((prev) => ({
         ...prev,
-        roleSlug:
-          "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+        roleSlug: roleListLoading
+          ? "Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây."
+          : !selectedRoleRecord?.id && roleList.length > 0
+            ? "Vai trò đã chọn chưa được cấu hình trong hệ thống, vui lòng chọn vai trò khác."
+            : "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
       }));
-      if (currentStep < 3) setCurrentStep(3);
+      setCurrentStep(1);
       return;
     }
 
@@ -703,7 +712,9 @@ const EmployeeFormModal = ({
       onClose();
     } catch (error) {
       console.error("Error creating employee:", error);
-      setErrors({ submit: error?.message || "Có lỗi xảy ra. Vui lòng thử lại." });
+      setErrors({
+        submit: error?.message || "Có lỗi xảy ra. Vui lòng thử lại.",
+      });
     } finally {
       setIsSubmitting(false);
     }

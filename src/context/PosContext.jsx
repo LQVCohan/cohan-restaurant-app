@@ -20,7 +20,9 @@ import { PRINT_STATIONS } from "@/utils/printStations";
 
 const OFF_PREMISE_TYPES = new Set(["delivery", "takeaway"]);
 const hasMeaningfulOffPremiseDraft = (payload) => {
-  const items = Array.isArray(payload?.currentOrder) ? payload.currentOrder : [];
+  const items = Array.isArray(payload?.currentOrder)
+    ? payload.currentOrder
+    : [];
   return items.length > 0;
 };
 export const isValidOffPremiseSessionForType = ({

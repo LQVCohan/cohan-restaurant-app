@@ -7,7 +7,11 @@ import StaffSchedulePage from "./StaffSchedulePage";
 import { AuthContext } from "@/context/AuthContext";
 
 const GET_AVAILABILITY_WINDOWS = gql`
-  query StaffAvailabilityWindows($restaurantId: ID!, $from: DateTime, $to: DateTime) {
+  query StaffAvailabilityWindows(
+    $restaurantId: ID!
+    $from: DateTime
+    $to: DateTime
+  ) {
     availabilityWindows(restaurantId: $restaurantId, from: $from, to: $to) {
       id
       periodStart
@@ -25,7 +29,12 @@ const GET_AVAILABILITY_WINDOWS = gql`
 `;
 
 const GET_STAFF_SHIFTS = gql`
-  query StaffMyShifts($restaurantId: ID, $employeeId: ID, $startDate: DateTime, $endDate: DateTime) {
+  query StaffMyShifts(
+    $restaurantId: ID
+    $employeeId: ID
+    $startDate: DateTime
+    $endDate: DateTime
+  ) {
     staffShifts(
       restaurantId: $restaurantId
       employeeId: $employeeId
@@ -68,7 +77,11 @@ const GET_SUBMISSION = gql`
   }
 `;
 const GET_MY_SCHEDULE_ACK = gql`
-  query MyScheduleAck($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
+  query MyScheduleAck(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
     myScheduleAcknowledgement(
       restaurantId: $restaurantId
       periodStart: $periodStart
@@ -84,10 +97,29 @@ const GET_MY_SCHEDULE_ACK = gql`
 const GET_SCHEDULING_POLICY = gql`
   query StaffSchedulingPolicy($restaurantId: ID!) {
     schedulingPolicy(restaurantId: $restaurantId) {
-      shiftTemplates { key startTime endTime enabled allowCrossDay }
+      shiftTemplates {
+        key
+        label
+        startTime
+        endTime
+        enabled
+        allowCrossDay
+      }
       employmentTypePolicy {
-        part_time { minWeeklyHours weeklyHoursTarget weeklyHoursCap maxShiftsPerWeek requireAvailability }
-        seasonal { minWeeklyHours weeklyHoursTarget weeklyHoursCap maxShiftsPerWeek requireAvailability }
+        part_time {
+          minWeeklyHours
+          weeklyHoursTarget
+          weeklyHoursCap
+          maxShiftsPerWeek
+          requireAvailability
+        }
+        seasonal {
+          minWeeklyHours
+          weeklyHoursTarget
+          weeklyHoursCap
+          maxShiftsPerWeek
+          requireAvailability
+        }
       }
     }
   }
@@ -103,7 +135,9 @@ const GET_MY_SHIFT_ACKS = gql`
   }
 `;
 const RESPOND_SHIFT_ACK = gql`
-  mutation RespondShiftAcknowledgement($input: RespondShiftAcknowledgementInput!) {
+  mutation RespondShiftAcknowledgement(
+    $input: RespondShiftAcknowledgementInput!
+  ) {
     respondShiftAcknowledgement(input: $input) {
       id
       status
@@ -111,7 +145,33 @@ const RESPOND_SHIFT_ACK = gql`
     }
   }
 `;
+const anyIsoDateRange = (variables, startKey, endKey) =>
+  typeof variables?.[startKey] === "string" &&
+  typeof variables?.[endKey] === "string" &&
+  variables[startKey].endsWith("Z") &&
+  variables[endKey].endsWith("Z");
 
+const matchRestaurantWindowVars =
+  (restaurantId = "r1") =>
+  (variables) =>
+    variables?.restaurantId === restaurantId &&
+    anyIsoDateRange(variables, "from", "to");
+
+const matchRestaurantPeriodVars =
+  (restaurantId = "r1") =>
+  (variables) =>
+    variables?.restaurantId === restaurantId &&
+    anyIsoDateRange(variables, "periodStart", "periodEnd");
+
+const matchStaffShiftVars =
+  ({ restaurantId = "r1", employeeId = "e1" } = {}) =>
+  (variables) =>
+    variables?.restaurantId === restaurantId &&
+    variables?.employeeId === employeeId &&
+    anyIsoDateRange(variables, "startDate", "endDate");
+
+const matchShiftAckVars = (variables) =>
+  anyIsoDateRange(variables, "periodStart", "periodEnd");
 function renderWithAuth(user, mocks = []) {
   const defaultMocks = [
     {
@@ -123,13 +183,46 @@ function renderWithAuth(user, mocks = []) {
         data: {
           schedulingPolicy: {
             shiftTemplates: [
-              { key: "morning", startTime: "06:00", endTime: "12:00", enabled: true, allowCrossDay: false },
-              { key: "afternoon", startTime: "12:00", endTime: "18:00", enabled: true, allowCrossDay: false },
-              { key: "evening", startTime: "18:00", endTime: "23:00", enabled: true, allowCrossDay: false },
+              {
+                key: "morning",
+                label: "Ca sáng",
+                startTime: "06:00",
+                endTime: "12:00",
+                enabled: true,
+                allowCrossDay: false,
+              },
+              {
+                key: "afternoon",
+                label: "Ca chiều",
+                startTime: "12:00",
+                endTime: "18:00",
+                enabled: true,
+                allowCrossDay: false,
+              },
+              {
+                key: "evening",
+                label: "Ca tối",
+                startTime: "18:00",
+                endTime: "23:00",
+                enabled: true,
+                allowCrossDay: false,
+              },
             ],
             employmentTypePolicy: {
-              part_time: { minWeeklyHours: 8, weeklyHoursTarget: 20, weeklyHoursCap: 28, maxShiftsPerWeek: 4, requireAvailability: true },
-              seasonal: { minWeeklyHours: 0, weeklyHoursTarget: 24, weeklyHoursCap: 40, maxShiftsPerWeek: 5, requireAvailability: true },
+              part_time: {
+                minWeeklyHours: 8,
+                weeklyHoursTarget: 20,
+                weeklyHoursCap: 28,
+                maxShiftsPerWeek: 4,
+                requireAvailability: true,
+              },
+              seasonal: {
+                minWeeklyHours: 0,
+                weeklyHoursTarget: 24,
+                weeklyHoursCap: 40,
+                maxShiftsPerWeek: 5,
+                requireAvailability: true,
+              },
             },
           },
         },
@@ -138,12 +231,8 @@ function renderWithAuth(user, mocks = []) {
     {
       request: {
         query: GET_AVAILABILITY_WINDOWS,
-        variables: {
-          restaurantId: "r1",
-          from: "2026-05-10T00:00:00.000Z",
-          to: "2026-05-18T23:59:59.999Z",
-        },
       },
+      variableMatcher: matchRestaurantWindowVars("r1"),
       result: {
         data: { availabilityWindows: [] },
       },
@@ -153,8 +242,8 @@ function renderWithAuth(user, mocks = []) {
         query: GET_AVAILABILITY_WINDOWS,
         variables: {
           restaurantId: "r1",
-          from: "2026-05-10T00:00:00.000Z",
-          to: "2026-05-18T23:59:59.999Z",
+          from: "2026-05-09T17:00:00.000Z",
+          to: "2026-05-18T16:59:59.999Z",
         },
       },
       result: {
@@ -164,12 +253,8 @@ function renderWithAuth(user, mocks = []) {
     {
       request: {
         query: GET_MY_SCHEDULE_ACK,
-        variables: {
-          restaurantId: "r1",
-          periodStart: "2026-05-04T00:00:00.000Z",
-          periodEnd: "2026-05-10T23:59:59.999Z",
-        },
       },
+      variableMatcher: matchRestaurantPeriodVars("r1"),
       result: { data: { myScheduleAcknowledgement: null } },
     },
     {
@@ -177,8 +262,8 @@ function renderWithAuth(user, mocks = []) {
         query: GET_MY_SCHEDULE_ACK,
         variables: {
           restaurantId: "r1",
-          periodStart: "2026-05-04T00:00:00.000Z",
-          periodEnd: "2026-05-10T23:59:59.999Z",
+          periodStart: "2026-05-03T17:00:00.000Z",
+          periodEnd: "2026-05-10T16:59:59.999Z",
         },
       },
       result: { data: { myScheduleAcknowledgement: null } },
@@ -189,8 +274,8 @@ function renderWithAuth(user, mocks = []) {
         variables: {
           restaurantId: "r1",
           employeeId: "e1",
-          startDate: "2026-05-04T00:00:00.000Z",
-          endDate: "2026-05-10T23:59:59.999Z",
+          startDate: "2026-05-03T17:00:00.000Z",
+          endDate: "2026-05-10T16:59:59.999Z",
         },
       },
       result: {
@@ -210,17 +295,33 @@ function renderWithAuth(user, mocks = []) {
 
 describe("StaffSchedulePage", () => {
   it("shows page title", async () => {
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" });
-    expect(await screen.findByText("Lịch làm việc của tôi")).toBeInTheDocument();
+    renderWithAuth({
+      id: "e1",
+      employmentType: "part_time",
+      restaurantForStaff: "r1",
+    });
+    expect(
+      await screen.findByText("Lịch làm việc của tôi"),
+    ).toBeInTheDocument();
   });
 
   it("shows full-time unavailable copy", async () => {
-    renderWithAuth({ id: "e1", employmentType: "full_time", restaurantForStaff: "r1" });
-    expect((await screen.findAllByText(/Báo ca không khả dụng/i)).length).toBeGreaterThan(0);
+    renderWithAuth({
+      id: "e1",
+      employmentType: "full_time",
+      restaurantForStaff: "r1",
+    });
+    expect(
+      (await screen.findAllByText(/Báo ca không khả dụng/i)).length,
+    ).toBeGreaterThan(0);
   });
 
   it("does not render manager controls", async () => {
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" });
+    renderWithAuth({
+      id: "e1",
+      employmentType: "part_time",
+      restaurantForStaff: "r1",
+    });
     expect(screen.queryByText(/Tạo cửa đăng ký/i)).not.toBeInTheDocument();
   });
 
@@ -231,8 +332,8 @@ describe("StaffSchedulePage", () => {
           query: GET_AVAILABILITY_WINDOWS,
           variables: {
             restaurantId: "r1",
-            from: "2026-05-10T00:00:00.000Z",
-            to: "2026-05-18T23:59:59.999Z",
+            from: "2026-05-09T17:00:00.000Z",
+            to: "2026-05-18T16:59:59.999Z",
           },
         },
         result: {
@@ -242,7 +343,7 @@ describe("StaffSchedulePage", () => {
                 id: "w1",
                 periodStart: "2026-05-11T00:00:00.000Z",
                 periodEnd: "2026-05-17T23:59:59.999Z",
-                openAt: "2026-05-10T00:00:00.000Z",
+                openAt: "2026-05-09T17:00:00.000Z",
                 closeAt: "2026-05-17T23:59:59.999Z",
                 status: "open",
                 effectiveStatus: "open",
@@ -260,8 +361,8 @@ describe("StaffSchedulePage", () => {
           query: GET_MY_SCHEDULE_ACK,
           variables: {
             restaurantId: "r1",
-            periodStart: "2026-05-04T00:00:00.000Z",
-            periodEnd: "2026-05-10T23:59:59.999Z",
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
           },
         },
         result: { data: { myScheduleAcknowledgement: null } },
@@ -269,13 +370,11 @@ describe("StaffSchedulePage", () => {
       {
         request: {
           query: GET_STAFF_SHIFTS,
-          variables: {
-            restaurantId: "r1",
-            employeeId: "e1",
-            startDate: "2026-05-04T00:00:00.000Z",
-            endDate: "2026-05-10T23:59:59.999Z",
-          },
         },
+        variableMatcher: matchStaffShiftVars({
+          restaurantId: "r1",
+          employeeId: "e1",
+        }),
         result: {
           data: { staffShifts: [] },
         },
@@ -295,36 +394,210 @@ describe("StaffSchedulePage", () => {
     ];
 
     renderWithAuth(
-      { id: "e1", employmentType: "part_time", restaurantForStaff: { id: "r1" } },
+      {
+        id: "e1",
+        employmentType: "part_time",
+        restaurantForStaff: { id: "r1" },
+      },
       mocks,
     );
 
     expect((await screen.findAllByText("Đang mở")).length).toBeGreaterThan(0);
-    expect(screen.queryByText("Chưa có kỳ đăng ký lịch")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Chưa có kỳ đăng ký lịch"),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
   });
 
   it("renders approved submission summary and approved badge", async () => {
-    const mocks = [{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: { id: "s1", status: "approved", submissionType: "weekly_availability", reviewNote: null, pendingSubmittedAt: null, pendingSlots: [], slots: [{ date: "2026-05-11T00:00:00.000Z", shiftType: "morning", status: "available", note: null }] } } } },{ request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } }];
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    const mocks = [
+      {
+        request: {
+          query: GET_SUBMISSION,
+          variables: { windowId: "w1", employeeId: "e1" },
+        },
+        result: {
+          data: {
+            staffAvailabilitySubmission: {
+              id: "s1",
+              status: "approved",
+              submissionType: "weekly_availability",
+              reviewNote: null,
+              pendingSubmittedAt: null,
+              pendingSlots: [],
+              slots: [
+                {
+                  date: "2026-05-11T00:00:00.000Z",
+                  shiftType: "morning",
+                  status: "available",
+                  note: null,
+                },
+              ],
+            },
+          },
+        },
+      },
+      {
+        request: {
+          query: GET_AVAILABILITY_WINDOWS,
+          variables: {
+            restaurantId: "r1",
+            from: "2026-05-09T17:00:00.000Z",
+            to: "2026-05-18T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            availabilityWindows: [
+              {
+                id: "w1",
+                periodStart: "2026-05-11T00:00:00.000Z",
+                periodEnd: "2026-05-17T23:59:59.999Z",
+                openAt: "2026-05-09T17:00:00.000Z",
+                closeAt: "2026-05-17T23:59:59.999Z",
+                status: "open",
+                effectiveStatus: "open",
+                registrationMode: "manual",
+                targetEmploymentTypes: ["part_time"],
+                allowFullTimeUnavailableException: true,
+                lateChangeRequiresApproval: true,
+              },
+            ],
+          },
+        },
+      },
+    ];
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     expect(await screen.findByText("Các ca đã đăng ký")).toBeInTheDocument();
-    expect(await screen.findByText("Đã được quản lý duyệt")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Đã được quản lý duyệt"),
+    ).toBeInTheDocument();
   });
 
   it("renders late change pending slots and rejected note", async () => {
-    const baseWindow = { request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } };
-    const mocks = [baseWindow,{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: { id: "s2", status: "late_change_requested", submissionType: "weekly_availability", reviewNote: null, pendingSubmittedAt: null, pendingSlots: [{ date: "2026-05-12T00:00:00.000Z", shiftType: "morning", status: "available", note: null }], slots: [] } } } }];
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
-    expect(await screen.findByText("Yêu cầu thay đổi muộn đang chờ duyệt")).toBeInTheDocument();
-    expect(await screen.findByText(/Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt/)).toBeInTheDocument();
+    const baseWindow = {
+      request: {
+        query: GET_AVAILABILITY_WINDOWS,
+        variables: {
+          restaurantId: "r1",
+          from: "2026-05-09T17:00:00.000Z",
+          to: "2026-05-18T16:59:59.999Z",
+        },
+      },
+      result: {
+        data: {
+          availabilityWindows: [
+            {
+              id: "w1",
+              periodStart: "2026-05-11T00:00:00.000Z",
+              periodEnd: "2026-05-17T23:59:59.999Z",
+              openAt: "2026-05-09T17:00:00.000Z",
+              closeAt: "2026-05-17T23:59:59.999Z",
+              status: "open",
+              effectiveStatus: "open",
+              registrationMode: "manual",
+              targetEmploymentTypes: ["part_time"],
+              allowFullTimeUnavailableException: true,
+              lateChangeRequiresApproval: true,
+            },
+          ],
+        },
+      },
+    };
+    const mocks = [
+      baseWindow,
+      {
+        request: {
+          query: GET_SUBMISSION,
+          variables: { windowId: "w1", employeeId: "e1" },
+        },
+        result: {
+          data: {
+            staffAvailabilitySubmission: {
+              id: "s2",
+              status: "late_change_requested",
+              submissionType: "weekly_availability",
+              reviewNote: null,
+              pendingSubmittedAt: null,
+              pendingSlots: [
+                {
+                  date: "2026-05-12T00:00:00.000Z",
+                  shiftType: "morning",
+                  status: "available",
+                  note: null,
+                },
+              ],
+              slots: [],
+            },
+          },
+        },
+      },
+    ];
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
+    expect(
+      await screen.findByText("Yêu cầu thay đổi muộn đang chờ duyệt"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt/,
+      ),
+    ).toBeInTheDocument();
   });
   it("shows and enforces minimum availability hours for part-time", async () => {
-    const mocks = [{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: null } } },{ request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } }];
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    const mocks = [
+      {
+        request: {
+          query: GET_SUBMISSION,
+          variables: { windowId: "w1", employeeId: "e1" },
+        },
+        result: { data: { staffAvailabilitySubmission: null } },
+      },
+      {
+        request: {
+          query: GET_AVAILABILITY_WINDOWS,
+          variables: {
+            restaurantId: "r1",
+            from: "2026-05-09T17:00:00.000Z",
+            to: "2026-05-18T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            availabilityWindows: [
+              {
+                id: "w1",
+                periodStart: "2026-05-11T00:00:00.000Z",
+                periodEnd: "2026-05-17T23:59:59.999Z",
+                openAt: "2026-05-09T17:00:00.000Z",
+                closeAt: "2026-05-17T23:59:59.999Z",
+                status: "open",
+                effectiveStatus: "open",
+                registrationMode: "manual",
+                targetEmploymentTypes: ["part_time"],
+                allowFullTimeUnavailableException: true,
+                lateChangeRequiresApproval: true,
+              },
+            ],
+          },
+        },
+      },
+    ];
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     expect(await screen.findByText("Yêu cầu giờ khả dụng")).toBeInTheDocument();
     fireEvent.click((await screen.findAllByRole("checkbox"))[0]);
     expect(await screen.findByText(/Còn thiếu: 2 giờ/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Gửi đăng ký ca khả dụng/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Gửi đăng ký ca khả dụng/i }),
+    ).toBeDisabled();
   });
 
   it("shows non-cancelled shifts in weekly schedule", async () => {
@@ -335,8 +608,8 @@ describe("StaffSchedulePage", () => {
           variables: {
             restaurantId: "r1",
             employeeId: "e1",
-            startDate: "2026-05-04T00:00:00.000Z",
-            endDate: "2026-05-10T23:59:59.999Z",
+            startDate: "2026-05-03T17:00:00.000Z",
+            endDate: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
@@ -368,7 +641,10 @@ describe("StaffSchedulePage", () => {
       },
     ];
 
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
 
     expect(await screen.findByText("1 ca đã công bố")).toBeInTheDocument();
   });
@@ -384,8 +660,8 @@ describe("StaffSchedulePage", () => {
           variables: {
             restaurantId: "r1",
             employeeId: "e1",
-            startDate: "2026-05-04T00:00:00.000Z",
-            endDate: "2026-05-10T23:59:59.999Z",
+            startDate: "2026-05-03T17:00:00.000Z",
+            endDate: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
@@ -409,14 +685,19 @@ describe("StaffSchedulePage", () => {
         request: {
           query: GET_MY_SHIFT_ACKS,
           variables: {
-            periodStart: "2026-05-04T00:00:00.000Z",
-            periodEnd: "2026-05-10T23:59:59.999Z",
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
           data: {
             myShiftAcknowledgements: [
-              { id: "ack-1", shiftId, status: "pending", declineClassification: null },
+              {
+                id: "ack-1",
+                shiftId,
+                status: "pending",
+                declineClassification: null,
+              },
             ],
           },
         },
@@ -442,34 +723,51 @@ describe("StaffSchedulePage", () => {
         request: {
           query: GET_MY_SHIFT_ACKS,
           variables: {
-            periodStart: "2026-05-04T00:00:00.000Z",
-            periodEnd: "2026-05-10T23:59:59.999Z",
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
           data: {
             myShiftAcknowledgements: [
-              { id: "ack-1", shiftId, status: "declined", declineClassification: "unknown" },
+              {
+                id: "ack-1",
+                shiftId,
+                status: "declined",
+                declineClassification: "unknown",
+              },
             ],
           },
         },
       },
     ];
 
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Từ chối ca" }));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: reasonCategory } });
-    fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), {
-      target: { value: reason },
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: reasonCategory },
     });
+    fireEvent.change(
+      screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"),
+      {
+        target: { value: reason },
+      },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Gửi từ chối" }));
 
-    expect(await screen.findByRole("button", { name: "Đang gửi..." })).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: "Đang gửi..." }),
+    ).toBeDisabled();
     expect(
       await screen.findByText("Bạn đã gửi từ chối ca. Chờ quản lý xem xét."),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "Gửi từ chối" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Gửi từ chối" }),
+      ).not.toBeInTheDocument();
     });
     expect(await screen.findByText("Đã từ chối")).toBeInTheDocument();
   });
@@ -483,8 +781,8 @@ describe("StaffSchedulePage", () => {
           variables: {
             restaurantId: "r1",
             employeeId: "e1",
-            startDate: "2026-05-04T00:00:00.000Z",
-            endDate: "2026-05-10T23:59:59.999Z",
+            startDate: "2026-05-03T17:00:00.000Z",
+            endDate: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
@@ -508,32 +806,47 @@ describe("StaffSchedulePage", () => {
         request: {
           query: GET_MY_SHIFT_ACKS,
           variables: {
-            periodStart: "2026-05-04T00:00:00.000Z",
-            periodEnd: "2026-05-10T23:59:59.999Z",
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
           },
         },
         result: {
           data: {
             myShiftAcknowledgements: [
-              { id: "ack-2", shiftId, status: "pending", declineClassification: null },
+              {
+                id: "ack-2",
+                shiftId,
+                status: "pending",
+                declineClassification: null,
+              },
             ],
           },
         },
       },
     ];
 
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Từ chối ca" }));
-    fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), {
-      target: { value: "abc" },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"),
+      {
+        target: { value: "abc" },
+      },
+    );
     const submitBtn = screen.getByRole("button", { name: "Gửi từ chối" });
     expect(submitBtn).not.toBeDisabled();
     fireEvent.click(submitBtn);
 
-    expect(await screen.findByText("Vui lòng nhập lý do tối thiểu 5 ký tự.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Vui lòng nhập lý do tối thiểu 5 ký tự."),
+    ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "Đang gửi..." })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Đang gửi..." }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -542,25 +855,85 @@ describe("StaffSchedulePage", () => {
     const reason = "Bận việc gia đình đột xuất";
     const mocks = [
       {
-        request: { query: GET_STAFF_SHIFTS, variables: { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04T00:00:00.000Z", endDate: "2026-05-10T23:59:59.999Z" } },
-        result: { data: { staffShifts: [{ id: shiftId, employeeId: "e1", shiftType: "morning", startTime: "2026-05-05T06:00:00.000Z", endTime: "2026-05-05T12:00:00.000Z", status: "scheduled", notes: null, restaurantId: "r1" }] } },
+        request: {
+          query: GET_STAFF_SHIFTS,
+          variables: {
+            restaurantId: "r1",
+            employeeId: "e1",
+            startDate: "2026-05-03T17:00:00.000Z",
+            endDate: "2026-05-10T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            staffShifts: [
+              {
+                id: shiftId,
+                employeeId: "e1",
+                shiftType: "morning",
+                startTime: "2026-05-05T06:00:00.000Z",
+                endTime: "2026-05-05T12:00:00.000Z",
+                status: "scheduled",
+                notes: null,
+                restaurantId: "r1",
+              },
+            ],
+          },
+        },
       },
       {
-        request: { query: GET_MY_SHIFT_ACKS, variables: { periodStart: "2026-05-04T00:00:00.000Z", periodEnd: "2026-05-10T23:59:59.999Z" } },
-        result: { data: { myShiftAcknowledgements: [{ id: "ack-3", shiftId, status: "pending", declineClassification: null }] } },
+        request: {
+          query: GET_MY_SHIFT_ACKS,
+          variables: {
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            myShiftAcknowledgements: [
+              {
+                id: "ack-3",
+                shiftId,
+                status: "pending",
+                declineClassification: null,
+              },
+            ],
+          },
+        },
       },
       {
-        request: { query: RESPOND_SHIFT_ACK, variables: { input: { shiftId, response: "decline", reason, reasonCategory: "personal" } } },
+        request: {
+          query: RESPOND_SHIFT_ACK,
+          variables: {
+            input: {
+              shiftId,
+              response: "decline",
+              reason,
+              reasonCategory: "personal",
+            },
+          },
+        },
         error: new Error("Backend down"),
       },
     ];
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Từ chối ca" }));
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "personal" } });
-    fireEvent.change(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"), { target: { value: reason } });
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "personal" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"),
+      { target: { value: reason } },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Gửi từ chối" }));
     expect(await screen.findByText("Backend down")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)")).toHaveValue(reason);
+    expect(
+      screen.getByPlaceholderText("Lý do từ chối (>= 5 ký tự)"),
+    ).toHaveValue(reason);
     expect(screen.getByRole("combobox")).toHaveValue("personal");
   });
 
@@ -568,16 +941,61 @@ describe("StaffSchedulePage", () => {
     const shiftId = "shift-stale-1";
     const mocks = [
       {
-        request: { query: GET_STAFF_SHIFTS, variables: { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04T00:00:00.000Z", endDate: "2026-05-10T23:59:59.999Z" } },
-        result: { data: { staffShifts: [{ id: shiftId, employeeId: "e1", shiftType: "morning", startTime: "2026-05-05T06:00:00.000Z", endTime: "2026-05-05T12:00:00.000Z", status: "scheduled", notes: null, restaurantId: "r1" }] } },
+        request: {
+          query: GET_STAFF_SHIFTS,
+          variables: {
+            restaurantId: "r1",
+            employeeId: "e1",
+            startDate: "2026-05-03T17:00:00.000Z",
+            endDate: "2026-05-10T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            staffShifts: [
+              {
+                id: shiftId,
+                employeeId: "e1",
+                shiftType: "morning",
+                startTime: "2026-05-05T06:00:00.000Z",
+                endTime: "2026-05-05T12:00:00.000Z",
+                status: "scheduled",
+                notes: null,
+                restaurantId: "r1",
+              },
+            ],
+          },
+        },
       },
       {
-        request: { query: GET_MY_SHIFT_ACKS, variables: { periodStart: "2026-05-04T00:00:00.000Z", periodEnd: "2026-05-10T23:59:59.999Z" } },
-        result: { data: { myShiftAcknowledgements: [{ id: "ack-4", shiftId, status: "accepted", declineClassification: null }] } },
+        request: {
+          query: GET_MY_SHIFT_ACKS,
+          variables: {
+            periodStart: "2026-05-03T17:00:00.000Z",
+            periodEnd: "2026-05-10T16:59:59.999Z",
+          },
+        },
+        result: {
+          data: {
+            myShiftAcknowledgements: [
+              {
+                id: "ack-4",
+                shiftId,
+                status: "accepted",
+                declineClassification: null,
+              },
+            ],
+          },
+        },
       },
     ];
-    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    renderWithAuth(
+      { id: "e1", employmentType: "part_time", restaurantForStaff: "r1" },
+      mocks,
+    );
     expect(await screen.findByText("Đã nhận ca")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Từ chối ca" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Từ chối ca" }),
+    ).not.toBeInTheDocument();
   });
 });
