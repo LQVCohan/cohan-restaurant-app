@@ -21,6 +21,14 @@ function calcDiscountAmount({ discountType, discountValue, subtotal, maxDiscount
   return Math.min(base, roundVnd(amount));
 }
 
+function getPriority(doc) {
+  return toNum(doc?.priority ?? doc?.constraints?.priority ?? doc?.level, 0);
+}
+
+function isExclusive(doc) {
+  return Boolean(doc?.exclusive ?? doc?.constraints?.exclusive);
+}
+
 function canStack({ coupon, promotionSelected }) {
   if (!promotionSelected) return true;
   const constraints = coupon?.constraints || {};
@@ -38,12 +46,13 @@ export async function calculateDiscountBreakdown({ restaurantId, items = [], pri
   const rid = mongoose.isValidObjectId(restaurantId) ? new mongoose.Types.ObjectId(restaurantId) : restaurantId;
   let selectedPromotion = null;
   if (promotionIds?.length) {
-    selectedPromotion = await Promotion.findOne({ _id: promotionIds[0], restaurantId: rid, isActive: true }).session(session);
-    if (selectedPromotion && !inWindow(selectedPromotion, now)) selectedPromotion = null;
+    const promotions = await Promise.all(promotionIds.map((id) => Promotion.findOne({ _id: id, restaurantId: rid, isActive: true }).session(session)));
+    selectedPromotion = (promotions.filter((p) => p && inWindow(p, now) && subtotal >= Math.max(0, toNum(p.minOrderValue)))
+      .sort((a, b) => getPriority(b) - getPriority(a))[0]) || null;
   }
 
   let promotionDiscount = 0;
-  if (selectedPromotion && subtotal >= Math.max(0, toNum(selectedPromotion.minOrderValue))) {
+  if (selectedPromotion) {
     promotionDiscount = calcDiscountAmount({
       discountType: selectedPromotion.discountType,
       discountValue: selectedPromotion.discountValue,
@@ -61,7 +70,7 @@ export async function calculateDiscountBreakdown({ restaurantId, items = [], pri
     if (subtotal < Math.max(0, toNum(coupon.minOrderValue))) throw new Error(`Invalid voucher: minimum order value is ${Math.max(0, toNum(coupon.minOrderValue))}`);
     const maxUsage = toNum(coupon.maxUsage);
     if (maxUsage > 0 && toNum(coupon.used) >= maxUsage) throw new Error("Invalid voucher: usage limit reached");
-    if (!canStack({ coupon, promotionSelected: selectedPromotion })) {
+    if (isExclusive(selectedPromotion) || isExclusive(coupon) || !canStack({ coupon, promotionSelected: selectedPromotion })) {
       promotionDiscount = 0;
     }
     voucherDiscount = calcDiscountAmount({
