@@ -18,16 +18,6 @@ export default {
       if (!parent.refRestaurants?.length) return [];
       return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean();
     },
-    primaryRestaurant: (parent) => {
-      if (parent.primaryRestaurant && typeof parent.primaryRestaurant === "object") {
-        return parent.primaryRestaurant;
-      }
-      if (parent.primaryRestaurant) {
-        return Restaurant.findById(parent.primaryRestaurant).lean();
-      }
-      return null;
-    },
-
     createdBy: (parent) => {
       if (!parent.createdBy) return null;
       return User.findById(parent.createdBy).lean();

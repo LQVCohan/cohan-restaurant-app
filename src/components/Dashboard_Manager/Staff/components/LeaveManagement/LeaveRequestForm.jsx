@@ -152,7 +152,7 @@ const LeaveRequestForm = ({
     }
 
     const restaurantId =
-      selectedEmployee?.primaryRestaurant?.id || selectedEmployee?.primaryRestaurantId;
+      selectedEmployee?.restaurantForStaff;
 
     if (!restaurantId) {
       alert("Không xác định được nhà hàng của nhân sự.");

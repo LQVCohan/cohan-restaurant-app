@@ -299,7 +299,7 @@ export async function buildPayrollItemsForRange({
 
   const staffFilter = {
     userType: "STAFF",
-    $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+    $or: [{ restaurantForStaff: rid }, { refRestaurants: rid }],
   };
   const staffs = await Staff.find(staffFilter)
     .select({

@@ -190,10 +190,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       PayrollItem.find({ periodId: period._id }).lean(),
       Staff.find({
         userType: "STAFF",
-        $or: [
-          { primaryRestaurant: restaurantId },
-          { refRestaurants: restaurantId },
-        ],
+        restaurantForStaff: restaurantId,
       })
         .select({
           _id: 1,
@@ -203,7 +200,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
           employmentStatus: 1,
           department: 1,
           positionTitle: 1,
-          primaryRestaurant: 1,
+          restaurantForStaff: 1,
         })
         .lean(),
       Shift.find({
@@ -439,7 +436,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
   });
 
   const staffRestaurantMap = new Map(
-    staffs.map((s) => [String(s._id), String(s.primaryRestaurant || "")]),
+    staffs.map((s) => [String(s._id), String(s.restaurantForStaff || "")]),
   );
   items.forEach((item) => {
     const netSalary = Number(item?.breakdown?.netSalary || 0);

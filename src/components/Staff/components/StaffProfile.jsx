@@ -39,12 +39,7 @@ const STAFF_ACCOUNT_OVERVIEW = gql`
       positionTitle
       employeeCode
       employmentType
-      employmentStatus
-      primaryRestaurant {
-        id
-        name
-      }
-      floorAssigned
+      employmentStatus      floorAssigned
       floorCount
       tableCount
       categoryCount
@@ -151,7 +146,7 @@ export default function StaffProfile() {
   const contactEmail = overview?.email || user?.email || "—";
   const employmentType = overview?.employmentType || user?.employmentType || "";
   const restaurantId =
-    user?.restaurantForStaff || overview?.primaryRestaurant?.id || null;
+    user?.restaurantForStaff || null;
 
   const shiftSummaryLabel = useMemo(() => {
     if (overview?.currentShift)
