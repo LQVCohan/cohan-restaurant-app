@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
+import { getPayrollActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
 import "./PayrollManagement.scss";
 
 const getDefaultRange = () => {
@@ -500,19 +501,23 @@ const PayrollManagement = () => {
       return;
     }
 
-    const created = await createPeriod({
-      variables: {
-        input: {
-          startDate: dateRange.start,
-          endDate: dateRange.end,
-          name: `Kỳ ${dateRange.start} - ${dateRange.end}`,
+    try {
+      const created = await createPeriod({
+        variables: {
+          input: {
+            startDate: dateRange.start,
+            endDate: dateRange.end,
+            name: `Kỳ ${dateRange.start} - ${dateRange.end}`,
+          },
         },
-      },
-    });
-    const id = created?.data?.createPayrollPeriod?.id;
-    if (id) {
-      await refetchSettings?.();
-      setSelectedPeriodId(id);
+      });
+      const id = created?.data?.createPayrollPeriod?.id;
+      if (id) {
+        await refetchSettings?.();
+        setSelectedPeriodId(id);
+      }
+    } catch (err) {
+      alert(getPayrollActionErrorMessage(err, `Không thể thiết lập kỳ lương: ${err?.message || "Lỗi không xác định"}`));
     }
   };
 
@@ -593,7 +598,10 @@ const PayrollManagement = () => {
       setShowSettings(false);
     } catch (saveError) {
       setSettingsSaveError(
-        saveError?.message || "Không thể lưu cấu hình lương.",
+        getPayrollActionErrorMessage(
+          saveError,
+          saveError?.message || "Không thể lưu cấu hình lương.",
+        ),
       );
     } finally {
       setSettingsSaving(false);
@@ -607,21 +615,31 @@ const PayrollManagement = () => {
       alert("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
       return;
     }
-    await upsertAdjustment({
-      variables: {
-        input: {
-          periodId: selectedPeriodId,
-          employeeId: showPayslip.id,
-          type: adjustmentType,
-          amount,
-          note: adjustmentNote,
+    try {
+      await upsertAdjustment({
+        variables: {
+          input: {
+            periodId: selectedPeriodId,
+            employeeId: showPayslip.id,
+            type: adjustmentType,
+            amount,
+            note: adjustmentNote,
+          },
         },
-      },
-    });
-    setAdjustmentAmount("");
-    setAdjustmentNote("");
-    await refetchDetail?.();
-    await refetchValidation?.();
+      });
+      setAdjustmentAmount("");
+      setAdjustmentNote("");
+      await refetchDetail?.();
+      await refetchValidation?.();
+      alert("✅ Đã cập nhật điều chỉnh bảng lương.");
+    } catch (err) {
+      alert(
+        getPayrollActionErrorMessage(
+          err,
+          `❌ Không thể cập nhật điều chỉnh: ${err?.message || "Lỗi không xác định"}`,
+        ),
+      );
+    }
   };
 
   return (
@@ -653,7 +671,14 @@ const PayrollManagement = () => {
           </select>
           <button className="btn btn-white" data-testid="payroll-settings-open" onClick={handleOpenSettings}>⚙️ Cấu hình</button>
           <button className="btn btn-white" onClick={handleExportExcel}>📥 Xuất Excel</button>
-          <button className="btn btn-primary" onClick={() => recalculatePeriod({ variables: { periodId: selectedPeriodId } })}>
+          <button className="btn btn-primary" onClick={async () => {
+            try {
+              await recalculatePeriod({ variables: { periodId: selectedPeriodId } });
+              alert("✅ Đã tính lại bảng lương.");
+            } catch (err) {
+              alert(getPayrollActionErrorMessage(err, `❌ Không thể tính lại bảng lương: ${err?.message || "Lỗi không xác định"}`));
+            }
+          }}>
             🔄 Tính lại
           </button>
         </div>
@@ -668,9 +693,9 @@ const PayrollManagement = () => {
           </div>
           <div className="right-actions" style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-white" onClick={() => { setShowValidationPanel(true); refetchValidation?.(); }}>Kiểm tra trước khi chốt</button>
-            <button className="btn btn-white" disabled={periodStatus !== "draft" || Number(validationResult?.errorCount || 0) > 0} onClick={() => finalizePeriod({ variables: { periodId: selectedPeriodId } })}>Chốt kỳ</button>
-            <button className="btn btn-white" disabled={periodStatus !== "finalized"} onClick={() => lockPeriod({ variables: { periodId: selectedPeriodId } })}>Khóa kỳ</button>
-            <button className="btn btn-primary" disabled={periodStatus !== "locked"} onClick={() => markPaid({ variables: { periodId: selectedPeriodId } })}>Xác nhận đã trả</button>
+            <button className="btn btn-white" disabled={periodStatus !== "draft" || Number(validationResult?.errorCount || 0) > 0} onClick={async () => { try { await finalizePeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã chốt kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể chốt kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Chốt kỳ</button>
+            <button className="btn btn-white" disabled={periodStatus !== "finalized"} onClick={async () => { try { await lockPeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã khóa kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể khóa kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Khóa kỳ</button>
+            <button className="btn btn-primary" disabled={periodStatus !== "locked"} onClick={async () => { try { await markPaid({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã xác nhận trả lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể xác nhận trả lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Xác nhận đã trả</button>
           </div>
         </div>
       )}

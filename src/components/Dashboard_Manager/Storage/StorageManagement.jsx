@@ -22,6 +22,7 @@ import InventoryAuditTab from "./components/inventory/InventoryAuditTab";
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
 import { useNotification } from "@/hooks/useNotification";
+import { getInventoryActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import {
   Carrot,
@@ -474,7 +475,7 @@ const StorageManagement = () => {
             throw new Error("Danh sách nhập kho đang trống.");
           }
 
-          await Promise.all(
+          const results = await Promise.allSettled(
             rows.map((row) =>
               adjustStockMu({
                 variables: {
@@ -484,15 +485,35 @@ const StorageManagement = () => {
                   qty: row.qty,
                   reason: buildReason(row),
                 },
-              })
-            )
+              }),
+            ),
           );
 
-          setPoOpen(false);
+          const failed = results.filter((item) => item.status === "rejected");
+          const successCount = results.length - failed.length;
+          if (successCount === 0) {
+            const firstError = failed[0]?.reason;
+            throw new Error(
+              getInventoryActionErrorMessage(
+                firstError,
+                `Nhập kho thất bại cho ${rows.length} nguyên liệu.`,
+              ),
+            );
+          }
+
           await reloadIngredientsAndStock();
+          if (failed.length === 0) {
+            setPoOpen(false);
+            showNotification(
+              `Nhập kho thành công ${rows.length} nguyên liệu.`,
+              "success",
+            );
+            return;
+          }
+
           showNotification(
-            `Nhập kho thành công ${rows.length} nguyên liệu.`,
-            "success"
+            `⚠️ Nhập kho thành công ${successCount}/${rows.length} nguyên liệu. Vui lòng kiểm tra các dòng lỗi.`,
+            "warning",
           );
         }}
       />

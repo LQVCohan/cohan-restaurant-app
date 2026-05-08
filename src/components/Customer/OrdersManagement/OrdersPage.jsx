@@ -14,6 +14,10 @@ import ChangeTimeModal from "./modals/ChangeTimeModal";
 import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
 import TrackingModal from "./modals/TrackingModal";
 import ChangeTableModal from "./modals/ChangeTableModal";
+import {
+  getOrderActionErrorMessage,
+  getReservationActionErrorMessage,
+} from "@/utils/commerceActionErrorMessages";
 import ConfirmationModal from "../../Customer/TableBooking/ConfirmationModal/ConfirmationModal";
 
 /* ───────────────── GraphQL Queries (Giữ nguyên) ───────────────── */
@@ -167,18 +171,23 @@ export default function OrdersPage() {
       pushToast("Đã hủy đơn");
       refetchOrders();
     },
+    onError: (err) => pushToast(getOrderActionErrorMessage(err, "Không thể hủy đơn.")),
   });
   const [cancelReservationMutation] = useMutation(CANCEL_RESERVATION, {
     onCompleted: () => {
       pushToast("Đã hủy bàn");
       refetchReservations();
     },
+    onError: (err) =>
+      pushToast(getReservationActionErrorMessage(err, "Không thể hủy đặt bàn.")),
   });
   const [requestReservationChange] = useMutation(REQUEST_RESERVATION_CHANGE, {
     onCompleted: () => {
       pushToast("Đã gửi yêu cầu thay đổi tới nhà hàng");
       refetchReservations();
     },
+    onError: (err) =>
+      pushToast(getReservationActionErrorMessage(err, "Không thể gửi yêu cầu thay đổi.")),
   });
 
   const [deleteReservationMutation] = useMutation(DELETE_RESERVATION, {
@@ -186,6 +195,8 @@ export default function OrdersPage() {
       pushToast("Đã xóa lịch sử");
       refetchReservations();
     },
+    onError: (err) =>
+      pushToast(getReservationActionErrorMessage(err, "Không thể xóa lịch sử đặt bàn.")),
   });
 
   const pushToast = (text) =>
@@ -419,8 +430,8 @@ export default function OrdersPage() {
       <ChangeTimeModal
         isOpen={!!changeTimeTarget}
         onClose={() => setChangeTimeTarget(null)}
-        onSubmit={(v) => {
-          requestReservationChange({
+        onSubmit={async (v) => {
+          await requestReservationChange({
             variables: {
               input: {
                 reservationId: changeTimeTarget?.id,
@@ -437,19 +448,19 @@ export default function OrdersPage() {
       <CancelOrderModal
         isOpen={!!cancelTarget}
         onClose={() => setCancelTarget(null)}
-        onConfirm={({ reason }) => {
+        onConfirm={async ({ reason }) => {
           if (cancelTarget.kind === "reservation")
-            cancelReservationMutation({ variables: { id: cancelTarget.id } });
+            await cancelReservationMutation({ variables: { id: cancelTarget.id } });
           else
-            cancelOrderMutation({ variables: { id: cancelTarget.id, reason } });
+            await cancelOrderMutation({ variables: { id: cancelTarget.id, reason } });
           setCancelTarget(null);
         }}
       />
       <ConfirmationModal
         visible={!!deleteTarget}
         title="Xóa lịch sử?"
-        onConfirm={() => {
-          deleteReservationMutation({ variables: { id: deleteTarget.id } });
+        onConfirm={async () => {
+          await deleteReservationMutation({ variables: { id: deleteTarget.id } });
           setDeleteTarget(null);
         }}
         onClose={() => setDeleteTarget(null)}
@@ -462,8 +473,8 @@ export default function OrdersPage() {
       <ChangeTableModal
         isOpen={!!changeTableOpen}
         onClose={() => setChangeTableOpen(null)}
-        onSubmit={(payload) => {
-          requestReservationChange({
+        onSubmit={async (payload) => {
+          await requestReservationChange({
             variables: {
               input: {
                 reservationId: changeTableOpen?.id,
