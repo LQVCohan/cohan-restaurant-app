@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useMutation, gql } from "@apollo/client";
 import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đúng
 import ToggleSwitch from "../../../common/ToggleSwitch/ToggleSwitch";
+import { getCustomerActionErrorMessage } from "@/utils/customerFlowErrorMessages";
 import "./SecuritySettings.scss";
 
 const CHANGE_PASSWORD = gql`
@@ -53,7 +54,12 @@ const SecuritySettings = () => {
       setChangePwdOpen(false);
       setPwdForm({ current: "", next: "", confirm: "" });
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      alert(
+        getCustomerActionErrorMessage(
+          err,
+          "Lỗi: " + (err?.message || "Không thể đổi mật khẩu."),
+        ),
+      );
     }
   };
 

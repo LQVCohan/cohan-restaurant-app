@@ -18,8 +18,13 @@ const testMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../../../common/Modal", () => ({
-  default: ({ isOpen, children, onClose, closeOnOverlayClick = true }) =>
-    (isOpen ? (
+  default: ({
+    isOpen,
+    children,
+    onClose,
+    closeOnOverlayClick = true,
+  }) =>
+    isOpen ? (
       <div>
         <button
           type="button"
@@ -31,7 +36,7 @@ vi.mock("../../../../../common/Modal", () => ({
         </button>
         {children}
       </div>
-    ) : null),
+    ) : null,
 }));
 
 vi.mock("../../../../../common/LoadingSpinner", () => ({
@@ -111,11 +116,16 @@ vi.mock("../../../../../../utils/legalSalaryReference", async () => {
 
 });
 
-function ModalHarness({ onSubmit = vi.fn(async () => {}), roleList = [
+const TEST_ROLE_LIST = [
   { id: "r-server", slug: "server", name: "Server" },
   { id: "r-supervisor", slug: "supervisor", name: "Supervisor" },
   { id: "r-host", slug: "host", name: "Host" },
-] }) {
+];
+
+function ModalHarness({
+  onSubmit = vi.fn(async () => {}),
+  roleList = TEST_ROLE_LIST,
+}) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -138,6 +148,15 @@ const getDraftKeys = () =>
   Object.keys(window.localStorage).filter((key) =>
     key.includes("employee-form-modal"),
   );
+
+const fillStepOneAndGoNext = () => {
+  const stepOneInputs = screen.getAllByRole("textbox");
+  fireEvent.change(stepOneInputs[0], { target: { value: "Nguyen Test" } });
+  fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
+    target: { value: "rest-1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+};
 
 describe("EmployeeFormModal draft lifecycle", () => {
   beforeEach(() => {
@@ -207,18 +226,22 @@ describe("EmployeeFormModal draft lifecycle", () => {
     const onSubmit = vi.fn(async () => ({ id: "staff-1" }));
     render(<ModalHarness onSubmit={onSubmit} roleList={[]} />);
 
-    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
-      target: { value: "Nguyen Test" },
+    fillStepOneAndGoNext();
+    fireEvent.change(screen.getByPlaceholderText("09..."), {
+      target: { value: "0912345678" },
     });
-    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
-      target: { value: "rest-1" },
-    });
-
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
     expect(
-      screen.getByText("Danh sách vai trò chưa tải xong. Vui lòng thử lại sau vài giây."),
+      screen.getByText(
+        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -231,23 +254,23 @@ describe("EmployeeFormModal draft lifecycle", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("Nguyễn Văn A"), {
+    fireEvent.change(screen.getByLabelText("Vai trò"), {
+      target: { value: "host" },
+    });
+
+    const stepOneInputs = screen.getAllByRole("textbox");
+    fireEvent.change(stepOneInputs[0], {
       target: { value: "Nguyen Test" },
     });
     fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
       target: { value: "rest-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Vai trò"), {
-      target: { value: "host" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
-      screen.getByText(
-        "Vai trò đã chọn chưa được cấu hình trong hệ thống. Vui lòng seed roles hoặc chọn vai trò khác.",
-      ),
+      screen.getByRole("heading", { name: /liên hệ & bảo mật/i }),
     ).toBeInTheDocument();
   });
 
@@ -258,5 +281,4 @@ describe("EmployeeFormModal draft lifecycle", () => {
 
     expect(screen.getByRole("heading", { name: /thêm nhân viên mới/i })).toBeInTheDocument();
   });
-
 });

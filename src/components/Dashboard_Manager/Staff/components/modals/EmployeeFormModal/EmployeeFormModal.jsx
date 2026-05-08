@@ -82,6 +82,8 @@ const EmployeeFormModal = ({
   restaurantList = [],
   defaultRestaurantId = "",
   roleList = [],
+  roleListLoading = false,
+  roleListError = null,
 }) => {
   const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const { showNotification } = useNotification();
@@ -642,6 +644,16 @@ const EmployeeFormModal = ({
       return;
     }
 
+    if (formData.roleSlug && (roleListLoading || roleListError || !selectedRoleRecord?.id)) {
+      setErrors((prev) => ({
+        ...prev,
+        roleSlug:
+          "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+      }));
+      if (currentStep < 3) setCurrentStep(3);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const baseSalary = formData.salary
@@ -691,7 +703,7 @@ const EmployeeFormModal = ({
       onClose();
     } catch (error) {
       console.error("Error creating employee:", error);
-      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
+      setErrors({ submit: error?.message || "Có lỗi xảy ra. Vui lòng thử lại." });
     } finally {
       setIsSubmitting(false);
     }

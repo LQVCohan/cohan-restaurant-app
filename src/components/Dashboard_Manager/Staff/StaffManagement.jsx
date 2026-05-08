@@ -118,6 +118,8 @@ const StaffManagement = () => {
   const {
     staffList,
     roleList,
+    roleListLoading,
+    roleListError,
     createStaff,
     updateStaff,
     softDeleteStaff,
@@ -489,7 +491,10 @@ const StaffManagement = () => {
         onClose={() => closeModal("addEmployee")}
         onSubmit={handleAddEmployee}
         restaurantList={restaurantList}
+        defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
+        roleListLoading={roleListLoading}
+        roleListError={roleListError}
       />
       <EditEmployeeModal
         isOpen={modals.editEmployee}
@@ -497,7 +502,10 @@ const StaffManagement = () => {
         onClose={() => closeModal("editEmployee")}
         onSubmit={handleEditEmployee}
         restaurantList={restaurantList}
+        defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
+        roleListLoading={roleListLoading}
+        roleListError={roleListError}
       />
       <WorkHistoryModal
         isOpen={modals.workHistory}

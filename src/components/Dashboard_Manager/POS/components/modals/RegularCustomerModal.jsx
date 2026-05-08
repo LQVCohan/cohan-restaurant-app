@@ -295,12 +295,14 @@ export default function RegularCustomerModal({
   const handlePickCustomer = (c) => {
     if (!c) return;
 
-    const addressText = safeStr(c?.shippingInfo?.address || c?.address);
+    const addressText = safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress);
 
     const displayName = safeStr(c.fullName || c.name);
 
     onSelectCustomer?.({
       id: c.id || c._id || null,
+      customerIdentityMode: "profile",
+      source: c.source || null,
       name: displayName,
       phone: safeStr(c.phone),
       email: safeStr(c.email),
@@ -834,24 +836,54 @@ function isValidVietnamPhone(value) {
               )}
 
             {(candidateCheck.byPhone?.length > 0 || candidateCheck.byEmail?.length > 0) && (
-              <div className={cls.list}>
-                {[...candidateCheck.byPhone, ...candidateCheck.byEmail]
-                  .filter((c, i, arr) => arr.findIndex((x) => String(x.id) === String(c.id)) === i)
-                  .map((c) => (
-                    <div key={c.id || c._id} className={cls.customerRow} style={{ cursor: "default" }}>
-                      <div className={cls.customerMain}>
-                        <div className={cls.customerName}>
-                          {safeStr(c.fullName || c.name)}
-                          {c.source ? <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>[{safeStr(c.source)}]</span> : null}
+              <div>
+                {candidateCheck.byPhone?.length > 0 && (
+                  <>
+                    <div className={cls.empty}>Khớp theo SĐT</div>
+                    <div className={cls.list}>
+                      {candidateCheck.byPhone.map((c) => (
+                        <div key={`phone_${c.id || c._id}`} className={cls.customerRow} style={{ cursor: "default" }}>
+                          <div className={cls.customerMain}>
+                            <div className={cls.customerName}>
+                              {safeStr(c.fullName || c.name)}
+                              {c.source ? <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>[{safeStr(c.source).toUpperCase()}]</span> : null}
+                            </div>
+                            <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
+                          </div>
+                          <div className={cls.customerAddr}>{safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress) || "Chưa có địa chỉ"}</div>
+                          <div style={{ marginTop: 8 }}>
+                            <Button variant="ghost" onClick={() => handlePickCustomer(c)}>Chọn khách này</Button>
+                          </div>
                         </div>
-                        <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
-                      </div>
-                      <div className={cls.customerAddr}>{safeStr(c.address) || "Chưa có địa chỉ"}</div>
-                      <div style={{ marginTop: 8 }}>
-                        <Button variant="ghost" onClick={() => handlePickCustomer(c)}>Chọn khách này</Button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  </>
+                )}
+
+                {candidateCheck.byEmail?.length > 0 && (
+                  <>
+                    <div className={cls.empty}>Khớp theo email</div>
+                    <div className={cls.list}>
+                      {candidateCheck.byEmail
+                        .filter((c) => candidateCheck.byPhone.findIndex((p) => String(p.id) === String(c.id)) === -1)
+                        .map((c) => (
+                          <div key={`email_${c.id || c._id}`} className={cls.customerRow} style={{ cursor: "default" }}>
+                            <div className={cls.customerMain}>
+                              <div className={cls.customerName}>
+                                {safeStr(c.fullName || c.name)}
+                                {c.source ? <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>[{safeStr(c.source).toUpperCase()}]</span> : null}
+                              </div>
+                              <div className={cls.customerSub}>{safeStr(c.phone)}{c.email ? ` · ${c.email}` : ""}</div>
+                            </div>
+                            <div className={cls.customerAddr}>{safeStr(c?.shippingInfo?.address || c?.address || c?.defaultAddress) || "Chưa có địa chỉ"}</div>
+                            <div style={{ marginTop: 8 }}>
+                              <Button variant="ghost" onClick={() => handlePickCustomer(c)}>Chọn khách này</Button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
