@@ -1,6 +1,17 @@
 import React, { useMemo } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
 import "./LeaveRequestsList.scss";
+
+export const getLeaveActionErrorMessage = (error, fallback) => {
+  if (isForbiddenError(error)) {
+    return "Bạn không có quyền thực hiện thao tác đơn nghỉ phép này.";
+  }
+  if (isUnauthenticatedError(error)) {
+    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+  }
+  return fallback;
+};
 
 const statusLabel = {
   PENDING: "⏳ Chờ duyệt",
@@ -181,14 +192,14 @@ const LeaveRequestsList = ({
                       <button
                         className="btn-icon approve"
                         title="Xác nhận thay thế"
-                        onClick={async () => {
-                          try {
-                            await onConfirmReplacement(req.id, "Đã xác nhận thay thế");
-                            alert("✅ Đã xác nhận thay thế thành công.");
-                          } catch (err) {
-                            alert(`❌ Xác nhận thay thế thất bại: ${err?.message || "Unknown error"}`);
-                          }
-                        }}
+                          onClick={async () => {
+                            try {
+                              await onConfirmReplacement(req.id, "Đã xác nhận thay thế");
+                              alert("✅ Đã xác nhận thay thế thành công.");
+                            } catch (err) {
+                              alert(`❌ ${getLeaveActionErrorMessage(err, err?.message || "Xác nhận thay thế thất bại")}`);
+                            }
+                          }}
                       >
                         ↔
                       </button>
@@ -203,7 +214,7 @@ const LeaveRequestsList = ({
                               await onApprove(req.id, "Duyệt đơn");
                               alert("✅ Duyệt đơn thành công và đã gửi email cho nhân viên.");
                             } catch (err) {
-                              alert(`⚠️ ${err?.message || "Duyệt đơn thất bại"}`);
+                              alert(`⚠️ ${getLeaveActionErrorMessage(err, err?.message || "Duyệt đơn thất bại")}`);
                             }
                           }}
                         >
@@ -218,7 +229,7 @@ const LeaveRequestsList = ({
                               await onReject(req.id, reason);
                               alert("✅ Từ chối đơn thành công và đã gửi email cho nhân viên.");
                             } catch (err) {
-                              alert(`⚠️ ${err?.message || "Từ chối đơn thất bại"}`);
+                              alert(`⚠️ ${getLeaveActionErrorMessage(err, err?.message || "Từ chối đơn thất bại")}`);
                             }
                           }}
                         >
