@@ -422,6 +422,7 @@ export default function LeftPanel() {
       email: email || "",
       isNew: !!isNew,
       customerIdentityMode: customer.customerIdentityMode || null,
+      source: customer.source || null,
       conflict: !!customer.conflict,
     });
 
