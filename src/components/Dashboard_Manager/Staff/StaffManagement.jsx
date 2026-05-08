@@ -491,6 +491,7 @@ const StaffManagement = () => {
         onClose={() => closeModal("addEmployee")}
         onSubmit={handleAddEmployee}
         restaurantList={restaurantList}
+        defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
         roleListLoading={roleListLoading}
         roleListError={roleListError}
@@ -501,6 +502,7 @@ const StaffManagement = () => {
         onClose={() => closeModal("editEmployee")}
         onSubmit={handleEditEmployee}
         restaurantList={restaurantList}
+        defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
         roleListLoading={roleListLoading}
         roleListError={roleListError}

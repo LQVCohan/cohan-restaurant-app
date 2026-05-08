@@ -327,7 +327,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
       return res.data?.createStaff ?? null;
     },
-    [createStaffMutation, roleMap],
+    [createStaffMutation, roleList, roleListError, roleListLoading, roleMap],
   );
 
   /** UPDATE */
@@ -363,7 +363,7 @@ const useStaffManagement = (initialFilters = {}) => {
       });
       return res.data?.updateStaff ?? null;
     },
-    [roleMap, updateStaffMutation],
+    [roleList, roleListError, roleListLoading, roleMap, updateStaffMutation],
   );
 
   /** DELETE */

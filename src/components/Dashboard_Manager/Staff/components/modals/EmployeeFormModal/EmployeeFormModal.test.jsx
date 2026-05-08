@@ -41,6 +41,11 @@ vi.mock("../../../../../../utils/legalSalaryReference", async () => {
   };
 });
 
+const TEST_ROLE_LIST = [
+  { id: "role-server", slug: "server", name: "Server" },
+  { id: "role-host", slug: "host", name: "Host" },
+];
+
 function ModalHarness({ onSubmit = vi.fn(async () => {}) }) {
   const [open, setOpen] = useState(true);
 
@@ -54,6 +59,7 @@ function ModalHarness({ onSubmit = vi.fn(async () => {}) }) {
         onClose={() => setOpen(false)}
         onSubmit={onSubmit}
         restaurantList={[{ id: "rest-1", name: "Chi nhánh 1" }]}
+        roleList={TEST_ROLE_LIST}
       />
     </div>
   );
