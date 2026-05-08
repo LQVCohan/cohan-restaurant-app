@@ -37,10 +37,17 @@ describe("requireRestaurantAccess", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("allows refRestaurants direct scope", async () => {
+  it("denies staff-like role when only refRestaurants matches", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
-      requireRestaurantAccess({ user: { id: "s1", roleName: "staff", refRestaurants: ["r2"] } }, "r2"),
+      requireRestaurantAccess({ user: { id: "s1", roleName: "staff", userType: "STAFF", refRestaurants: ["r2"] } }, "r2"),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+  });
+
+  it("allows non-staff direct scope via refRestaurants", async () => {
+    const { requireRestaurantAccess } = await import("../../graphql/guards.js");
+    await expect(
+      requireRestaurantAccess({ user: { id: "c1", roleName: "customer", userType: "CUSTOMER", refRestaurants: ["r2"] } }, "r2"),
     ).resolves.toBeUndefined();
   });
 

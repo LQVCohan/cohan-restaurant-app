@@ -62,7 +62,7 @@ export default function StaffPersonalInfo({ data, user, onBack }) {
     data?.positionTitle || data?.roleName || user?.roleName || "Nhân viên";
   const employeeCode = data?.employeeCode || user?.employeeCode || "—";
   const restaurantName =
-    data?.primaryRestaurant?.name || user?.primaryRestaurant?.name || "—";
+    "—";
   const floors = (data?.floorAssigned || []).join(", ") || "—";
 
   const handleInputChange = (e) => {

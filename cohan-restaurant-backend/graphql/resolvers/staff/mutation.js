@@ -169,13 +169,7 @@ function assertAcknowledgementCanRespond(doc, employeeId) {
 }
 function staffBelongsToRestaurant(staff, restaurantId) {
   const rid = String(restaurantId);
-  // Source-of-truth cho staff scope là restaurantForStaff.
-  // primaryRestaurant chỉ fallback để tương thích dữ liệu legacy.
-  return (
-    String(staff?.restaurantForStaff || "") === rid ||
-    String(staff?.primaryRestaurant?._id || staff?.primaryRestaurant || "") ===
-      rid
-  );
+  return String(staff?.restaurantForStaff || "") === rid;
 }
 
 function isSelf(ctx, employeeId) {
@@ -887,11 +881,7 @@ async function logStaffEvent({
   try {
     const actorUserId = ctx?.user?.id || ctx?.user?._id || null;
 
-    const restaurantId =
-      staff.primaryRestaurant ||
-      (Array.isArray(staff.refRestaurants) && staff.refRestaurants.length > 0
-        ? staff.refRestaurants[0]
-        : null);
+    const restaurantId = staff.restaurantForStaff || null;
 
     await EventLog.create({
       restaurantId,
@@ -962,14 +952,7 @@ export const __testables = {
   getNextEmployeeCode,
 };
 function resolveStaffRestaurantId(staff) {
-  return (
-    staff?.restaurantForStaff ||
-    staff?.primaryRestaurant?._id ||
-    staff?.primaryRestaurant ||
-    (Array.isArray(staff?.refRestaurants)
-      ? staff.refRestaurants[0]?._id || staff.refRestaurants[0]
-      : null)
-  );
+  return staff?.restaurantForStaff || null;
 }
 
 async function loadStaffScope(staffId) {
@@ -1107,7 +1090,7 @@ export default {
     const sequenceRestaurantId = input.restaurantForStaff || null;
     if (!sequenceRestaurantId) {
       throw new Error(
-        "primaryRestaurantId is required to generate employee code",
+        "restaurantForStaff is required to generate employee code",
       );
     }
 

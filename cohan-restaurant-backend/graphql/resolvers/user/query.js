@@ -133,7 +133,7 @@ export const UserQuery = {
       // Tìm role "customer"
       const customerRole = await Role.findOne({ slug: "customer" }).lean();
       const staffRestaurantId =
-        authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
+        authUser?.restaurantForStaff || null;
       const isStaff = String(authUser?.roleName || "").toLowerCase() === "staff";
 
       const restaurantScopeCond =

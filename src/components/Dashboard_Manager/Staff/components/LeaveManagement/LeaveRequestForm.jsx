@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { AuthContext } from "@/context/AuthContext";
 import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
+import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
 import "./LeaveRequestForm.scss";
 
 const leaveTypes = [
@@ -40,6 +42,10 @@ const LeaveRequestForm = ({
   loading = false,
   error = null,
 }) => {
+  const authContext = React.useContext(AuthContext) || {};
+  const user = authContext.user;
+  const isStaffSelfService = String(user?.roleName || user?.role || "").toLowerCase() === "staff";
+  const currentUserId = user?.id || user?._id || user?.userId || "";
   const [formData, setFormData] = useState(initialFormData);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [errors, setErrors] = useState({});
@@ -48,6 +54,14 @@ const LeaveRequestForm = ({
     () => staffList.find((item) => item.id === formData.employee),
     [formData.employee, staffList]
   );
+
+  useEffect(() => {
+    if (!isStaffSelfService || !currentUserId || formData.employee) return;
+    const selfInList = staffList.find((item) => String(item.id) === String(currentUserId));
+    if (selfInList) {
+      setFormData((prev) => ({ ...prev, employee: selfInList.id }));
+    }
+  }, [currentUserId, formData.employee, isStaffSelfService, staffList]);
 
   const requiresReplacementManager = useMemo(
     () => isManagerStaff(selectedEmployee),
@@ -152,7 +166,7 @@ const LeaveRequestForm = ({
     }
 
     const restaurantId =
-      selectedEmployee?.primaryRestaurant?.id || selectedEmployee?.primaryRestaurantId;
+      selectedEmployee?.restaurantForStaff;
 
     if (!restaurantId) {
       alert("Không xác định được nhà hàng của nhân sự.");
@@ -176,6 +190,14 @@ const LeaveRequestForm = ({
       alert("Đã tạo đơn nghỉ phép và lưu database.");
       resetForm();
     } catch (submitError) {
+      if (isForbiddenError(submitError)) {
+        alert("Bạn không có quyền tạo đơn nghỉ phép cho nhân sự này.");
+        return;
+      }
+      if (isUnauthenticatedError(submitError)) {
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.");
+        return;
+      }
       alert(`Tạo đơn thất bại: ${submitError?.message || "Unknown error"}`);
     }
   };
@@ -208,7 +230,7 @@ const LeaveRequestForm = ({
                 onChange={handleChange}
                 aria-label="Người làm đơn"
                 data-testid="leave-employee-select"
-                disabled={disabled || !hasStaffList}
+                disabled={disabled || !hasStaffList || isStaffSelfService}
               >
                 <option value="">-- Chọn nhân viên --</option>
                 {filteredStaffList.map((employee) => (

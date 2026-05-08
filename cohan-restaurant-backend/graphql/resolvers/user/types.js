@@ -18,7 +18,6 @@ export default {
       if (!parent.refRestaurants?.length) return [];
       return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean();
     },
-
     createdBy: (parent) => {
       if (!parent.createdBy) return null;
       return User.findById(parent.createdBy).lean();

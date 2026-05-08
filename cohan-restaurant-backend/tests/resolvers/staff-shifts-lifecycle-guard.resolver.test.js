@@ -80,7 +80,7 @@ function mockPublicationStatus(status) {
 describe("createStaffShift lifecycle guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Staff.findById.mockReturnValue(query({ _id: "staff-1", userType: "STAFF", fullName: "A", primaryRestaurant: "rest-1" }));
+    modelMocks.Staff.findById.mockReturnValue(query({ _id: "staff-1", userType: "STAFF", fullName: "A", restaurantForStaff: "rest-1" }));
     modelMocks.Shift.create.mockResolvedValue({ _id: "shift-1", employeeId: "staff-1", restaurantId: "rest-1", shiftType: "morning", startTime: new Date(baseInput.startTime), endTime: new Date(baseInput.endTime), status: "scheduled", notes: "" });
   });
 

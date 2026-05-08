@@ -250,7 +250,7 @@ export async function buildStaffSchedulingAssistant({
       userType: "STAFF",
       deletedAt: null,
       $or: [
-        { primaryRestaurant: rid },
+        { restaurantForStaff: rid },
         { refRestaurants: rid },
         { restaurantForStaff: rid },
       ],
@@ -265,7 +265,7 @@ export async function buildStaffSchedulingAssistant({
         positionTitle: 1,
         baseSalary: 1,
         restaurantForStaff: 1,
-        primaryRestaurant: 1,
+        restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean(),

@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from "react";
 import useOvertimeManagement from "@/hooks/useOvertimeManagement";
+import {
+  isForbiddenError,
+  isUnauthenticatedError,
+} from "@/utils/graphqlErrorUtils";
 
 const REVIEW_ROLES = new Set(["admin", "manager", "hr"]);
 const STAFF_ROLE = "staff";
@@ -199,6 +203,16 @@ const getDefaultForm = ({ selectedDate, employees, user, restaurantId }) => {
   };
 };
 
+export const getOvertimeActionErrorMessage = (error, fallback) => {
+  if (isForbiddenError(error)) {
+    return "❌ Bạn không có quyền thực hiện thao tác này.";
+  }
+  if (isUnauthenticatedError(error)) {
+    return "⚠️ Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+  }
+  return fallback;
+};
+
 const OvertimePanel = ({
   user,
   employees = [],
@@ -280,8 +294,6 @@ const OvertimePanel = ({
     const effectiveRestaurantId =
       form.restaurantId ||
       restaurantId ||
-      selectedEmployee?.primaryRestaurant?.id ||
-      selectedEmployee?.primaryRestaurantId ||
       null;
 
     if (!form.employeeId) {
@@ -333,7 +345,12 @@ const OvertimePanel = ({
       alert("✅ Đã tạo yêu cầu tăng ca.");
       closeCreateModal();
     } catch (err) {
-      alert(`❌ Không thể tạo yêu cầu tăng ca: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Không thể tạo yêu cầu tăng ca: ${err.message}`,
+        ),
+      );
     }
   };
 
@@ -352,7 +369,12 @@ const OvertimePanel = ({
       });
       alert("✅ Đã xác nhận tăng ca.");
     } catch (err) {
-      alert(`❌ Xác nhận tăng ca thất bại: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Xác nhận tăng ca thất bại: ${err.message}`,
+        ),
+      );
     }
   };
 
@@ -392,7 +414,12 @@ const OvertimePanel = ({
       });
       alert("✅ Đã duyệt yêu cầu tăng ca.");
     } catch (err) {
-      alert(`❌ Duyệt tăng ca thất bại: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Duyệt tăng ca thất bại: ${err.message}`,
+        ),
+      );
     }
   };
 
@@ -418,7 +445,12 @@ const OvertimePanel = ({
       });
       alert("✅ Đã từ chối yêu cầu tăng ca.");
     } catch (err) {
-      alert(`❌ Từ chối tăng ca thất bại: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Từ chối tăng ca thất bại: ${err.message}`,
+        ),
+      );
     }
   };
 
@@ -440,7 +472,12 @@ const OvertimePanel = ({
       });
       alert("✅ Đã hủy yêu cầu tăng ca.");
     } catch (err) {
-      alert(`❌ Hủy tăng ca thất bại: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Hủy tăng ca thất bại: ${err.message}`,
+        ),
+      );
     }
   };
 
@@ -506,7 +543,12 @@ const OvertimePanel = ({
       });
       alert("✅ Đã hoàn tất tăng ca và cập nhật bảng công.");
     } catch (err) {
-      alert(`❌ Hoàn tất tăng ca thất bại: ${err.message}`);
+      alert(
+        getOvertimeActionErrorMessage(
+          err,
+          `❌ Hoàn tất tăng ca thất bại: ${err.message}`,
+        ),
+      );
     }
   };
 

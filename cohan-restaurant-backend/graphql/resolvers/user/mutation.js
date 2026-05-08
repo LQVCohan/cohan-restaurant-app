@@ -124,7 +124,6 @@ const loadUserForGraph = async (userId) =>
   User.findById(userId)
     .populate("role")
     .populate("refRestaurants")
-    .populate("primaryRestaurant")
     .lean({ virtuals: true });
 
 export const UserMutation = {

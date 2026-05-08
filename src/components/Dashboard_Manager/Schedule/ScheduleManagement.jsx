@@ -60,6 +60,10 @@ import DailyView from "./DailyView";
 import AvailabilityRegistrationPanel from "./components/AvailabilityRegistrationPanel";
 import AvailabilitySnapshotModal from "./components/AvailabilitySnapshotModal";
 import useAvailabilityPolicyUpdate from "./hooks/useAvailabilityPolicyUpdate";
+import {
+  isForbiddenError,
+  isUnauthenticatedError,
+} from "@/utils/graphqlErrorUtils";
 const SCHEDULE_STATUS_LABELS = {
   draft: "Bản nháp",
   published: "Đã công bố",
@@ -2270,6 +2274,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setSelectedAutoShiftKeys({});
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setSelectedShift(null);
+    setAddModalContext({ date: "", shiftType: "" });
+    setIsAddModalOpen(false);
   }, [effectiveRestaurantId]);
   useEffect(() => {
     if (isAutoScheduleOpen && assistantPayload) return;
@@ -2553,6 +2560,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
   };
 
   const getGraphQLErrorMessage = (error, fallback) => {
+    if (isForbiddenError(error)) {
+      return "Bạn không có quyền thực hiện thao tác này.";
+    }
+    if (isUnauthenticatedError(error)) {
+      return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+    }
     const graphQLError =
       error?.graphQLErrors?.[0]?.message ||
       error?.networkError?.result?.errors?.[0]?.message;
@@ -2862,10 +2875,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
           return `${employeeName}: ${getGraphQLErrorMessage(row.result.reason, "Không thể tạo ca cho nhân viên.")}`;
         });
 
-      if (failedRows.length) {
-        throw new Error(
-          `Tạo ca chưa hoàn tất cho tất cả nhân viên:\n${failedRows.join("\n")}`,
-        );
+      const successCount = mutationResults.length - failedRows.length;
+      if (failedRows.length && successCount === 0) {
+        throw new Error(`Không thể tạo ca:\n${failedRows.join("\n")}`);
       }
 
       await refetch();
@@ -2878,12 +2890,19 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setIsAddModalOpen(false);
       setAddModalContext({ date: "", shiftType: "" });
 
-      showNotification(
-        scheduleLifecycleStatus === "revision_draft"
-          ? `Đã cập nhật bản chỉnh sửa với ${staffIds.length} phân công mới.`
-          : `Đã tạo ca cho ${staffIds.length} nhân viên.`,
-        "success",
-      );
+      if (failedRows.length > 0 && successCount > 0) {
+        showNotification(
+          `Đã tạo ${successCount}/${staffIds.length} ca. Thất bại:\n${failedRows.join("\n")}`,
+          "warning",
+        );
+      } else {
+        showNotification(
+          scheduleLifecycleStatus === "revision_draft"
+            ? `Đã cập nhật bản chỉnh sửa với ${staffIds.length} phân công mới.`
+            : `Đã tạo ca cho ${staffIds.length} nhân viên.`,
+          "success",
+        );
+      }
       return;
     } catch (error) {
       const failText = getGraphQLErrorMessage(error, "Không thể tạo ca làm.");

@@ -1122,6 +1122,8 @@ const EmployeeFormModal = ({
       showCloseButton={false}
       closeOnOverlayClick={false}
       closeOnEscape={false}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
     >
       {pendingRestore && (
         <div className="draft-restore-banner">

@@ -212,8 +212,7 @@ export const QUERY_PAYROLL_CONTEXT = gql`
     me {
       id
       restaurantForStaff
-      primaryRestaurantId
-    }
+          }
   }
 `;
 
@@ -478,7 +477,6 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       settingsQuery.data?.payrollSettings?.restaurantId ||
       periodsQuery.data?.payrollPeriods?.[0]?.restaurantId ||
       meQuery.data?.me?.restaurantForStaff ||
-      meQuery.data?.me?.primaryRestaurantId ||
       null,
     refetchPeriods: periodsQuery.refetch,
     refetchDetail: detailQuery.refetch,
