@@ -5,6 +5,7 @@ import useAttendanceManagement, {
 } from "@/hooks/useAttendanceManagement";
 import "./Attendance.scss";
 import OvertimePanel from "./OvertimePanel";
+import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
 const STATUS_TABS = [
   { key: "all", label: "Tất cả" },
   { key: "late", label: "Đi muộn" },
@@ -117,6 +118,16 @@ const formatDateTime = (value) => {
 
 const getCorrectionTypeLabel = (value) =>
   CORRECTION_TYPES.find((item) => item.value === value)?.label || value || "--";
+
+export const getAttendanceActionErrorMessage = (error, fallback) => {
+  if (isForbiddenError(error)) {
+    return "Bạn không có quyền thực hiện thao tác chấm công/chỉnh công này.";
+  }
+  if (isUnauthenticatedError(error)) {
+    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+  }
+  return fallback;
+};
 
 const getAvatarColor = (name = "?") => {
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -311,7 +322,10 @@ const AttendancePage = () => {
       setQuickId("");
       setQuickNote("");
     } catch (err) {
-      const message = err?.message || "Không thể lưu chấm công";
+      const message = getAttendanceActionErrorMessage(
+        err,
+        err?.message || "Không thể lưu chấm công",
+      );
       alert(`❌ Lưu chấm công thất bại: ${message}`);
     }
   };
@@ -409,7 +423,12 @@ const AttendancePage = () => {
       setActiveView("corrections");
       setCorrectionStatus("pending");
     } catch (err) {
-      alert(`❌ Không thể tạo yêu cầu chỉnh công: ${err.message}`);
+      alert(
+        `❌ Không thể tạo yêu cầu chỉnh công: ${getAttendanceActionErrorMessage(
+          err,
+          err?.message || "Lỗi không xác định",
+        )}`,
+      );
     }
   };
 
@@ -432,7 +451,12 @@ const AttendancePage = () => {
       });
       alert("✅ Đã duyệt và áp dụng chỉnh công.");
     } catch (err) {
-      alert(`❌ Duyệt chỉnh công thất bại: ${err.message}`);
+      alert(
+        `❌ Duyệt chỉnh công thất bại: ${getAttendanceActionErrorMessage(
+          err,
+          err?.message || "Lỗi không xác định",
+        )}`,
+      );
     }
   };
 
@@ -458,7 +482,12 @@ const AttendancePage = () => {
       });
       alert("✅ Đã từ chối yêu cầu chỉnh công.");
     } catch (err) {
-      alert(`❌ Từ chối yêu cầu thất bại: ${err.message}`);
+      alert(
+        `❌ Từ chối yêu cầu thất bại: ${getAttendanceActionErrorMessage(
+          err,
+          err?.message || "Lỗi không xác định",
+        )}`,
+      );
     }
   };
 
@@ -476,7 +505,12 @@ const AttendancePage = () => {
       });
       alert("✅ Đã hủy yêu cầu chỉnh công.");
     } catch (err) {
-      alert(`❌ Hủy yêu cầu thất bại: ${err.message}`);
+      alert(
+        `❌ Hủy yêu cầu thất bại: ${getAttendanceActionErrorMessage(
+          err,
+          err?.message || "Lỗi không xác định",
+        )}`,
+      );
     }
   };
 
