@@ -1,4 +1,5 @@
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { getCommunicationActionErrorMessage } from "@/utils/activityActionErrorMessages";
 
 export const Q_CHAT_THREADS = gql`
   query ChatThreads($restaurantId: ID, $channel: ChatChannel, $limit: Int = 30) {
@@ -118,18 +119,21 @@ export const M_MARK_ALL_NOTIFICATIONS_READ = gql`
 export default function useCommunication({ restaurantId = null } = {}) {
   const threadsQuery = useQuery(Q_CHAT_THREADS, {
     variables: { restaurantId, limit: 30 },
+    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 6000,
   });
 
   const notificationsQuery = useQuery(Q_NOTIFICATIONS, {
     variables: { restaurantId, limit: 50 },
+    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });
 
   const unreadCountQuery = useQuery(Q_UNREAD_NOTIFICATION_COUNT, {
     variables: { restaurantId },
+    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });
@@ -143,6 +147,32 @@ export default function useCommunication({ restaurantId = null } = {}) {
   const [markThreadReadMut] = useMutation(M_MARK_THREAD_READ);
   const [markNotificationReadMut] = useMutation(M_MARK_NOTIFICATION_READ);
   const [markAllNotificationsReadMut] = useMutation(M_MARK_ALL_NOTIFICATIONS_READ);
+
+  const openThread = async (options) => {
+    try {
+      return await openThreadMut(options);
+    } catch (error) {
+      throw new Error(
+        getCommunicationActionErrorMessage(
+          error,
+          error?.message || "Không thể mở hội thoại.",
+        ),
+      );
+    }
+  };
+
+  const sendMessage = async (options) => {
+    try {
+      return await sendMessageMut(options);
+    } catch (error) {
+      throw new Error(
+        getCommunicationActionErrorMessage(
+          error,
+          error?.message || "Không thể gửi tin nhắn.",
+        ),
+      );
+    }
+  };
 
   return {
     threads: threadsQuery.data?.chatThreads || [],
@@ -159,9 +189,9 @@ export default function useCommunication({ restaurantId = null } = {}) {
     threadError: threadState.error,
     loadThread,
 
-    openThread: openThreadMut,
+    openThread,
     openThreadState,
-    sendMessage: sendMessageMut,
+    sendMessage,
     sendMessageState,
     markThreadRead: markThreadReadMut,
     markNotificationRead: markNotificationReadMut,

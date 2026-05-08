@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
+import { getPrintSettingActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { PrinterSettingsModal } from "@/components/Dashboard_Manager/POS/components/modals/PrinterSettingsModal";
 import {
   Printer,
@@ -159,6 +160,10 @@ export default function PrintManagement() {
     }
   }, [restaurantList, selectedRestaurantId]);
 
+  useEffect(() => {
+    setEditingPrinter(null);
+  }, [selectedRestaurantId]);
+
   const { data, loading, error, refetch } = useQuery(Q_PRINT_SETTINGS, {
     variables: { restaurantId: selectedRestaurantId },
     skip: !selectedRestaurantId,
@@ -210,7 +215,14 @@ export default function PrintManagement() {
         },
       })
         .then(() => setSaveError(""))
-        .catch(() => setSaveError("Lưu cấu hình thất bại. Vui lòng kiểm tra kết nối và thử lại."));
+        .catch((err) =>
+          setSaveError(
+            getPrintSettingActionErrorMessage(
+              err,
+              "Lưu cấu hình thất bại. Vui lòng kiểm tra kết nối và thử lại.",
+            ),
+          ),
+        );
     }, 400);
   }, [selectedRestaurantId, printers, stationMap, templates, upsertPrintSettings]);
 
@@ -244,18 +256,30 @@ export default function PrintManagement() {
         };
       }
 
-      const result = await testPrint({
-        variables: {
-          input: {
-            restaurantId: selectedRestaurantId,
-            printerId: draft.id,
-            draftName: draft.name,
-            draftIp: draft.ip,
-            draftType: draft.type,
-            draftLocation: draft.location,
+      let result;
+      try {
+        result = await testPrint({
+          variables: {
+            input: {
+              restaurantId: selectedRestaurantId,
+              printerId: draft.id,
+              draftName: draft.name,
+              draftIp: draft.ip,
+              draftType: draft.type,
+              draftLocation: draft.location,
+            },
           },
-        },
-      });
+        });
+      } catch (err) {
+        return {
+          ok: false,
+          mode: "db_simulation",
+          message: getPrintSettingActionErrorMessage(
+            err,
+            `Test job thất bại: ${err?.message || "unknown error"}`,
+          ),
+        };
+      }
       await refetch();
       const job = result?.data?.testPrint;
       return {
@@ -316,15 +340,26 @@ export default function PrintManagement() {
 
 
   const handleRetryJob = async (jobId) => {
-    await retryPrintJob({
-      variables: {
-        input: {
-          restaurantId: selectedRestaurantId,
-          jobId,
+    if (!selectedRestaurantId) return;
+    try {
+      await retryPrintJob({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            jobId,
+          },
         },
-      },
-    });
-    await refetch();
+      });
+      await refetch();
+      alert("✅ Đã gửi lại print job.");
+    } catch (err) {
+      alert(
+        getPrintSettingActionErrorMessage(
+          err,
+          `Không thể retry print job: ${err?.message || "Lỗi không xác định"}`,
+        ),
+      );
+    }
   };
 
   const handleTemplateToggle = (key) => {
@@ -342,19 +377,29 @@ export default function PrintManagement() {
   const handleSendTemplateTest = async (templateKey) => {
     const targetPrinter = printers.find((p) => p.status === "online") || printers[0];
     if (!targetPrinter || !selectedRestaurantId) return;
-    await enqueuePrintJob({
-      variables: {
-        input: {
-          restaurantId: selectedRestaurantId,
-          printerId: targetPrinter.id,
-          stationId: targetPrinter.location,
-          printType: "manual_test",
-          templateKey,
-          payload: { source: "print_management" },
+    try {
+      await enqueuePrintJob({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            printerId: targetPrinter.id,
+            stationId: targetPrinter.location,
+            printType: "manual_test",
+            templateKey,
+            payload: { source: "print_management" },
+          },
         },
-      },
-    });
-    await refetch();
+      });
+      await refetch();
+      alert("✅ Đã enqueue test print job.");
+    } catch (err) {
+      alert(
+        getPrintSettingActionErrorMessage(
+          err,
+          `Không thể gửi test print: ${err?.message || "Lỗi không xác định"}`,
+        ),
+      );
+    }
   };
 
   const statusText = (status) => {

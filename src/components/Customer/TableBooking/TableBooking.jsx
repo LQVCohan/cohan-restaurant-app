@@ -14,6 +14,7 @@ import useFloorManagement from "../../../hooks/useFloorManagement";
 import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { getReservationActionErrorMessage } from "@/utils/commerceActionErrorMessages";
 import "./TableBooking.scss";
 
 const ACQUIRE_TABLE_VIEW_LOCK = gql`
@@ -144,7 +145,12 @@ const TableBooking = () => {
       });
       setSelectedTable(table);
     } catch (err) {
-      alert(err?.message || "Bàn đang được khách khác xem.");
+      alert(
+        getReservationActionErrorMessage(
+          err,
+          err?.message || "Bàn đang được khách khác xem.",
+        ),
+      );
     }
   };
 
