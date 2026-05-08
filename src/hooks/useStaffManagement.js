@@ -219,7 +219,11 @@ const useStaffManagement = (initialFilters = {}) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  const { data: roleListData } = useQuery(QUERY_ROLE_LIST, {
+  const {
+    data: roleListData,
+    loading: roleListLoading,
+    error: roleListError,
+  } = useQuery(QUERY_ROLE_LIST, {
     fetchPolicy: "cache-first",
   });
 
@@ -301,6 +305,12 @@ const useStaffManagement = (initialFilters = {}) => {
         ...restInput,
         userType: input.userType || "STAFF",
       };
+
+      if (roleSlug && (roleListLoading || roleListError || roleList.length === 0)) {
+        throw new Error(
+          "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+        );
+      }
       if (!finalInput.roleId && roleSlug) {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
@@ -317,7 +327,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
       return res.data?.createStaff ?? null;
     },
-    [createStaffMutation, roleMap],
+    [createStaffMutation, roleList, roleListError, roleListLoading, roleMap],
   );
 
   /** UPDATE */
@@ -334,11 +344,16 @@ const useStaffManagement = (initialFilters = {}) => {
     async (userId, input) => {
       const { roleSlug, ...restInput } = input;
       const finalInput = { ...restInput };
+      if (roleSlug && (roleListLoading || roleListError || roleList.length === 0)) {
+        throw new Error(
+          "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
+        );
+      }
       if (!finalInput.roleId && roleSlug) {
         const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
         if (!resolvedRoleId) {
           throw new Error(
-            `Không tìm thấy roleId hợp lệ cho vai trò "${roleSlug}". Vui lòng kiểm tra seed roles hoặc roleList backend.`,
+            `Không tìm thấy roleId hợp lệ cho vai trò "${roleSlug}". Vui lòng kiểm tra roleList backend.`,
           );
         }
         finalInput.roleId = resolvedRoleId;
@@ -348,7 +363,7 @@ const useStaffManagement = (initialFilters = {}) => {
       });
       return res.data?.updateStaff ?? null;
     },
-    [roleMap, updateStaffMutation],
+    [roleList, roleListError, roleListLoading, roleMap, updateStaffMutation],
   );
 
   /** DELETE */
@@ -459,6 +474,8 @@ const useStaffManagement = (initialFilters = {}) => {
     // data
     staffList,
     roleList,
+    roleListLoading,
+    roleListError,
     roleMap,
     paginatedStaff,
     selectedStaff,
