@@ -50,6 +50,7 @@ import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
+import { canAccessRoute, getDefaultPathForRole } from "@/utils/roleAccess";
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
@@ -123,8 +124,9 @@ export const PrivateRoute = ({
   if (!isAuthenticated || !token)
     return <Navigate to="/login" state={{ from: location }} replace />;
 
-  if (!hasAllowedRole(allowedRoles, role))
-    return <Navigate to="/403" replace />;
+  if (!hasAllowedRole(allowedRoles, role) || !canAccessRoute(role, location.pathname)) {
+    return <Navigate to={getDefaultPathForRole(role)} replace />;
+  }
 
   if (requireVerifiedEmail && !emailVerified)
     return <Navigate to="/verify-email" replace />;
@@ -479,7 +481,7 @@ const AppRouter = () => {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/403" replace />} />
     </Routes>
   );
 };

@@ -1,25 +1,29 @@
-import React, { useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 import "./Styles/Sidebar.scss";
+import { AuthContext } from "@/context/AuthContext";
+import { filterNavigationByRole } from "@/utils/roleAccess";
 
 const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
+  const { user } = useContext(AuthContext);
   // Navigation items data
   const navigationSections = [
     {
       title: "Tổng quan",
       items: [
-        { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan" },
-        { id: "analytics", icon: "📈", label: "Phân tích", page: "Phân tích" },
+        { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", roles: ["admin", "manager", "hr", "accountant"] },
+        { id: "analytics", icon: "📈", label: "Phân tích", page: "Phân tích", roles: ["admin", "manager"] },
       ],
     },
     {
       title: "Quản lý",
       items: [
-        { id: "orders", icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
-        { id: "menu", icon: "📋", label: "Thực đơn", page: "Thực đơn" },
-        { id: "inventory", icon: "📦", label: "Kho hàng", page: "Kho hàng" },
-        { id: "tables", icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
+        { id: "orders", roles: ["admin", "manager"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
+        { id: "menu", roles: ["admin", "manager"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
+        { id: "inventory", roles: ["admin", "manager"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
+        { id: "tables", roles: ["admin", "manager"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
         {
           id: "restaurant-info-management",
+          roles: ["admin", "manager"],
           icon: "🏪",
           label: "Quản lý thông tin nhà hàng",
           page: "Quản lý thông tin nhà hàng",
@@ -29,15 +33,17 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
     {
       title: "Nhân sự",
       items: [
-        { id: "staff", icon: "👥", label: "Nhân viên", page: "Nhân viên" },
+        { id: "staff", roles: ["admin", "manager", "hr"], icon: "👥", label: "Nhân viên", page: "Nhân viên" },
         {
           id: "schedules",
+          roles: ["admin", "manager", "hr"],
           icon: "📅",
           label: "Lịch làm việc",
           page: "Lịch làm việc",
         },
         {
           id: "payroll",
+          roles: ["admin", "manager", "accountant"],
           icon: "💰",
           label: "Lương thưởng",
           page: "Lương thưởng",
@@ -49,23 +55,26 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "customers",
+          roles: ["admin", "manager"],
           icon: "👤",
           label: "Khách hàng",
           page: "Khách hàng",
         },
         {
           id: "customer-analytics",
+          roles: ["admin", "manager"],
           icon: "🧠",
           label: "Phân tích người dùng",
           page: "Phân tích người dùng",
         },
         {
           id: "promotions",
+          roles: ["admin", "manager"],
           icon: "🎁",
           label: "Khuyến mãi",
           page: "Chương trình khuyến mãi",
         },
-        { id: "reviews", icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
+        { id: "reviews", roles: ["admin", "manager"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
       ],
     },
     {
@@ -73,27 +82,32 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "reports",
+          roles: ["admin", "manager", "accountant"],
           icon: "📊",
           label: "Báo cáo tổng hợp",
           page: "Báo cáo",
         },
-        { id: "finance", icon: "💳", label: "Tài chính", page: "Tài chính" },
+        { id: "finance", roles: ["admin", "manager", "accountant"], icon: "💳", label: "Tài chính", page: "Tài chính" },
       ],
     },
     {
       title: "Hệ thống",
       items: [
-        { id: "settings", icon: "⚙️", label: "Cài đặt", page: "Cài đặt" },
+        { id: "settings", roles: ["admin"], icon: "⚙️", label: "Cài đặt", page: "Cài đặt" },
         {
           id: "print-management",
+          roles: ["admin", "manager"],
           icon: "🖨️",
           label: "Quản lý in ấn",
           page: "Quản lý in ấn",
         },
-        { id: "backup", icon: "💾", label: "Sao lưu", page: "Sao lưu" },
+        { id: "backup", roles: ["admin"], icon: "💾", label: "Sao lưu", page: "Sao lưu" },
       ],
     },
   ];
+
+
+  const visibleSections = filterNavigationByRole(navigationSections, user?.roleName || user?.role?.slug);
 
   // Handle navigation item click
   const handleItemClick = (item) => {
@@ -154,7 +168,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          {navigationSections.map((section, sectionIndex) => (
+          {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="nav-section">
               <div className="nav-section-title">{section.title}</div>
               {section.items.map((item) => (

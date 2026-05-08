@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
 import Dashboard from "../components/Dashboard_Manager/Dashboard";
@@ -19,6 +19,8 @@ import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManag
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
+import { AuthContext } from "@/context/AuthContext";
+import { filterNavigationByRole } from "@/utils/roleAccess";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",
@@ -53,6 +55,31 @@ const resolveInitialManagerPage = () => {
   if (saved && VALID_MANAGER_PAGES.has(saved)) return saved;
 
   return "dashboard";
+};
+
+
+const MANAGER_PAGE_ROLE_ACCESS = {
+  dashboard: ["admin", "manager", "hr", "accountant"],
+  analytics: ["admin", "manager"],
+  orders: ["admin", "manager"],
+  menu: ["admin", "manager"],
+  inventory: ["admin", "manager"],
+  tables: ["admin", "manager"],
+  "restaurant-info-management": ["admin", "manager"],
+  staff: ["admin", "manager", "hr"],
+  schedules: ["admin", "manager", "hr"],
+  payroll: ["admin", "manager", "accountant"],
+  customers: ["admin", "manager"],
+  "customer-analytics": ["admin", "manager"],
+  promotions: ["admin", "manager"],
+  reviews: ["admin", "manager"],
+  reports: ["admin", "manager", "accountant"],
+  finance: ["admin", "manager", "accountant"],
+  settings: ["admin"],
+  rates: ["admin"],
+  setting: ["admin"],
+  backup: ["admin"],
+  "print-management": ["admin", "manager"],
 };
 
 const PAGE_CONFIG = {
@@ -185,14 +212,20 @@ const PAGE_CONFIG = {
 };
 
 const ManagerLayout = () => {
+  const { user } = useContext(AuthContext);
+  const roleName = user?.roleName || user?.role?.slug;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
+  const allowedPages = useMemo(() => {
+    const navItems = Object.entries(MANAGER_PAGE_ROLE_ACCESS).map(([id, roles]) => ({ id, roles }));
+    return new Set(filterNavigationByRole(navItems, roleName).map((item) => item.id));
+  }, [roleName]);
 
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash?.replace("#", "");
-      if (hash && validPages.has(hash)) {
+      if (hash && validPages.has(hash) && allowedPages.has(hash)) {
         setCurrentPage(hash);
       }
     };
@@ -200,16 +233,16 @@ const ManagerLayout = () => {
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [validPages]);
+  }, [allowedPages, validPages]);
 
   useEffect(() => {
-    if (validPages.has(currentPage)) {
+    if (validPages.has(currentPage) && allowedPages.has(currentPage)) {
       localStorage.setItem("manager.currentPage", currentPage);
       if (window.location.hash !== `#${currentPage}`) {
         history.replaceState(null, "", `#${currentPage}`);
       }
     }
-  }, [currentPage, validPages]);
+  }, [allowedPages, currentPage, validPages]);
   // Close sidebar on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -230,10 +263,16 @@ const ManagerLayout = () => {
     setSidebarOpen(false);
   };
 
+  useEffect(() => {
+    if (!allowedPages.has(currentPage)) {
+      setCurrentPage("dashboard");
+    }
+  }, [allowedPages, currentPage]);
+
   const managerSearchItems = useMemo(
     () =>
       [...VALID_MANAGER_PAGES]
-        .filter((page) => PAGE_CONFIG[page])
+        .filter((page) => PAGE_CONFIG[page] && allowedPages.has(page))
         .map((page) => ({
           id: page,
           title: PAGE_CONFIG[page].title,
@@ -244,7 +283,7 @@ const ManagerLayout = () => {
           keywords: PAGE_CONFIG[page].keywords || [],
           route: `#${page}`,
         })),
-    []
+    [allowedPages]
   );
   const renderContent = () => {
     switch (currentPage) {

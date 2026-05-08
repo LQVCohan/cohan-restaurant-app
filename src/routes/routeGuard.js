@@ -1,23 +1,6 @@
-const STAFF_ROLE_SLUGS = new Set([
-  "staff",
-  "server",
-  "supervisor",
-  "host",
-  "cashier",
-  "chef",
-  "cook",
-  "kitchen_helper",
-  "cleaner",
-  "shipper",
-  "storekeeper",
-  "bartender",
-]);
+import { STAFF_OPERATIONAL_ROLES, getDefaultPathForRole, normalizeRoleName } from "@/utils/roleAccess";
 
-const normalizeRole = (role) => {
-  if (typeof role !== "string") return null;
-  const normalized = role.trim().toLowerCase();
-  return normalized || null;
-};
+const normalizeRole = normalizeRoleName;
 
 export const resolveRoleName = (me) => {
   if (!me || typeof me !== "object") return null;
@@ -46,9 +29,9 @@ export const resolveAccessRoleName = (me) => {
   if (parentSlug) return parentSlug;
   if (parentName) return parentName;
 
-  if (directRole && STAFF_ROLE_SLUGS.has(directRole)) return "staff";
-  if (roleSlug && STAFF_ROLE_SLUGS.has(roleSlug)) return "staff";
-  if (roleName && STAFF_ROLE_SLUGS.has(roleName)) return "staff";
+  if (directRole && STAFF_OPERATIONAL_ROLES.has(directRole)) return "staff";
+  if (roleSlug && STAFF_OPERATIONAL_ROLES.has(roleSlug)) return "staff";
+  if (roleName && STAFF_OPERATIONAL_ROLES.has(roleName)) return "staff";
 
   return directRole || roleSlug || roleName || null;
 };
@@ -71,7 +54,5 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
 
 export const getRoleHomeRoute = (roleName) => {
   const role = normalizeRole(roleName);
-  if (["admin", "manager", "hr", "accountant"].includes(role)) return "/manager";
-  if (role && STAFF_ROLE_SLUGS.has(role)) return "/staff/orders";
-  return "/";
+  return getDefaultPathForRole(role);
 };

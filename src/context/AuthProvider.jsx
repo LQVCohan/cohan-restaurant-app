@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { isStaffOperationalRole } from "@/utils/roleAccess";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -21,22 +22,7 @@ const AUTH_ERROR_CODES = new Set([
   "TOKEN_REVOKED",
   "UNAUTHORIZED",
 ]);
-const STAFF_ROLE_SLUGS = new Set([
-  "staff",
-  "server",
-  "supervisor",
-  "host",
-  "cashier",
-  "chef",
-  "cook",
-  "kitchen_helper",
-  "cleaner",
-  "shipper",
-  "storekeeper",
-  "bartender",
-]);
-const isStaffAccessRole = (roleName) =>
-  STAFF_ROLE_SLUGS.has(String(roleName || "").trim().toLowerCase());
+const isStaffAccessRole = (roleName) => isStaffOperationalRole(roleName);
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
