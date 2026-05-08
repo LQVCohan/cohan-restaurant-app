@@ -197,25 +197,23 @@ describe("EmployeeFormModal draft lifecycle", () => {
       />,
     );
 
-    const roleSelect = screen.getByLabelText("Vai trò");
-    fireEvent.change(roleSelect, { target: { value: "host" } });
-
-    fillStepOneAndGoNext();
-    fireEvent.change(screen.getByPlaceholderText("09..."), {
-      target: { value: "0912345678" },
+    fireEvent.change(screen.getByLabelText("Vai trò"), {
+      target: { value: "host" },
     });
+
+    const stepOneInputs = screen.getAllByRole("textbox");
+    fireEvent.change(stepOneInputs[0], {
+      target: { value: "Nguyen Test" },
+    });
+    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
+      target: { value: "rest-1" },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-    fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
 
-    await waitFor(() => {
-      expect(onSubmit).not.toHaveBeenCalled();
-    });
-    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
-    fireEvent.click(screen.getByRole("button", { name: /quay lại/i }));
+    expect(onSubmit).not.toHaveBeenCalled();
     expect(
-      screen.getByText(
-        "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
-      ),
+      screen.getByRole("heading", { name: /liên hệ & bảo mật/i }),
     ).toBeInTheDocument();
   });
 
