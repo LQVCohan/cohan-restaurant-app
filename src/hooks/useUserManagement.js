@@ -79,8 +79,16 @@ export const GET_USERS = gql`
 `;
 
 export const GET_CUSTOMERS = gql`
-  query GetCustomers($search: String, $includeGuests: Boolean, $restaurantId: ID) {
-    customers(search: $search, includeGuests: $includeGuests,  $restaurantId: ID) {
+  query GetCustomers(
+    $search: String
+    $includeGuests: Boolean
+    $restaurantId: ID
+  ) {
+    customers(
+      search: $search
+      includeGuests: $includeGuests
+      restaurantId: $restaurantId
+    ) {
       id
       fullName
       username
@@ -544,17 +552,20 @@ const useUserManagement = () => {
   );
 
   const getCustomers = useCallback(
-    ({ includeGuests = true, search } = {}) => {
+    ({ includeGuests = true, search, restaurantId } = {}) => {
       const variables = {
         includeGuests,
+        restaurantId: restaurantId || undefined,
         search:
           (typeof search === "string" ? search : searchQuery) || undefined,
       };
+
       lastFetch.current = {
         purpose: "customers",
         variables,
       };
-      fetchCustomers({ variables });
+
+      return fetchCustomers({ variables });
     },
     [fetchCustomers, searchQuery],
   );
