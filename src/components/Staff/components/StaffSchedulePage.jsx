@@ -405,7 +405,6 @@ export default function StaffSchedulePage() {
 
   const restaurantId =
     resolveId(user?.restaurantForStaff) ||
-    resolveId(user?.primaryRestaurant) ||
     resolveId(restaurants?.[0]);
 
   const employeeId = user?.id;

@@ -70,7 +70,7 @@ export default {
     if (isManager && String(ctx.user.id) !== String(input.employeeId)) {
       const employee = await Staff.findOne({
         _id: input.employeeId,
-        primaryRestaurant: windowDoc.restaurantId,
+        restaurantForStaff: windowDoc.restaurantId,
       }).select({ _id: 1, employmentType: 1 }).lean();
       if (!employee) throw new Error("EMPLOYEE_NOT_IN_RESTAURANT");
     }

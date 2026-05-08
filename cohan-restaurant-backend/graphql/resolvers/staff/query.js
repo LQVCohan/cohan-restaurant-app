@@ -332,7 +332,6 @@ export default {
     const rid = toObjectId(restaurantId);
     if (restaurantId) {
       await requireRestaurantAccess(ctx, restaurantId);
-      // Legacy compatibility: ưu tiên restaurantForStaff, fallback primaryRestaurant.
       filter.$or = [
         { restaurantForStaff: rid || restaurantId },
       ];
@@ -803,8 +802,7 @@ export default {
     const rid = toObjectId(
       restaurantId ||
         authUser?.restaurantForStaff ||
-        authUser?.primaryRestaurantId ||
-        null,
+        authUser?.restaurantForStaff || null,
     );
     if (!rid) return [];
     await requireRestaurantAccess(ctx, rid);

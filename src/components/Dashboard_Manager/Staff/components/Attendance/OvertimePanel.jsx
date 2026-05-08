@@ -280,8 +280,6 @@ const OvertimePanel = ({
     const effectiveRestaurantId =
       form.restaurantId ||
       restaurantId ||
-      selectedEmployee?.primaryRestaurant?.id ||
-      selectedEmployee?.primaryRestaurantId ||
       null;
 
     if (!form.employeeId) {

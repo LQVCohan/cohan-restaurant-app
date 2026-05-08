@@ -365,7 +365,7 @@ const StaffPerformancePage = ({
   const effectiveRestaurantId =
     selectedRestaurant !== "all"
       ? selectedRestaurant
-      : restaurantList?.[0]?.id || employees?.[0]?.primaryRestaurantId || "";
+      : restaurantList?.[0]?.id || employees?.[0]?.restaurantForStaff || "";
 
   const {
     snapshots,

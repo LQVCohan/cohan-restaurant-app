@@ -212,8 +212,7 @@ async function resolveStaff(employeeId) {
 
   const staff = await Staff.findById(oid)
     .populate("role")
-    .populate("primaryRestaurant")
-    .populate("refRestaurants");
+        .populate("refRestaurants");
 
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
     throw new Error("Không tìm thấy nhân viên.");
@@ -224,8 +223,7 @@ async function resolveStaff(employeeId) {
 
 function staffBelongsToRestaurant(staff, restaurantId) {
   const target = String(restaurantId);
-  const primary = staff.primaryRestaurant?._id || staff.primaryRestaurant;
-  const restaurantForStaff = staff.restaurantForStaff;
+    const restaurantForStaff = staff.restaurantForStaff;
   const refs = Array.isArray(staff.refRestaurants) ? staff.refRestaurants : [];
 
   return (
