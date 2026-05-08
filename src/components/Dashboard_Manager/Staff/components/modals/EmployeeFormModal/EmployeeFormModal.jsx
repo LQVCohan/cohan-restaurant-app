@@ -32,10 +32,15 @@ const normalizeDraftText = (value) => String(value || "").trim();
 const getDefaultRoleSlug = (department) =>
   getDefaultRoleByDepartment(department)?.slug || "";
 
-const toDraftComparableForm = (value, fallbackStartDate, fallbackRestaurantId) => ({
+const toDraftComparableForm = (
+  value,
+  fallbackStartDate,
+  fallbackRestaurantId,
+) => ({
   name: normalizeDraftText(value?.name),
   department: value?.department || "service",
-  roleSlug: value?.roleSlug || getDefaultRoleSlug(value?.department || "service"),
+  roleSlug:
+    value?.roleSlug || getDefaultRoleSlug(value?.department || "service"),
   positionTitle: normalizeDraftText(value?.positionTitle ?? value?.role),
   address: normalizeDraftText(value?.address),
   salary: normalizeDraftText(value?.salary),
@@ -87,7 +92,10 @@ const EmployeeFormModal = ({
     name: "",
     department: "service",
     roleSlug: getDefaultRoleSlug("service"),
-    positionTitle: getAiSuggestedPositionTitle("service", getDefaultRoleSlug("service")),
+    positionTitle: getAiSuggestedPositionTitle(
+      "service",
+      getDefaultRoleSlug("service"),
+    ),
     phone: "",
     email: "",
     address: "",
@@ -194,44 +202,43 @@ const EmployeeFormModal = ({
     return map;
   }, [roleList]);
 
-  const selectedRoleRecord = roleRecordsBySlug[String(formData.roleSlug || "").toLowerCase()] || null;
+  const selectedRoleRecord =
+    roleRecordsBySlug[String(formData.roleSlug || "").toLowerCase()] || null;
 
   const positionTitleSuggestion = useMemo(
     () => getAiSuggestedPositionTitle(formData.department, formData.roleSlug),
     [formData.department, formData.roleSlug],
   );
 
-  const isDirty = useMemo(
-    () => {
-      const meaningfulForm = { ...comparableForm };
+  const isDirty = useMemo(() => {
+    const meaningfulForm = { ...comparableForm };
 
-      if (
-        !salaryManuallyEdited &&
-        meaningfulForm.salary &&
-        meaningfulForm.salary === normalizeDraftText(autoSuggestedSalary)
-      ) {
-        meaningfulForm.salary = baselineForm.salary;
-      }
+    if (
+      !salaryManuallyEdited &&
+      meaningfulForm.salary &&
+      meaningfulForm.salary === normalizeDraftText(autoSuggestedSalary)
+    ) {
+      meaningfulForm.salary = baselineForm.salary;
+    }
 
-      if (
-        positionTitleSelectionSource === "suggested" &&
-        meaningfulForm.positionTitle &&
-        meaningfulForm.positionTitle === normalizeDraftText(positionTitleSuggestion)
-      ) {
-        meaningfulForm.positionTitle = baselineForm.positionTitle;
-      }
+    if (
+      positionTitleSelectionSource === "suggested" &&
+      meaningfulForm.positionTitle &&
+      meaningfulForm.positionTitle ===
+        normalizeDraftText(positionTitleSuggestion)
+    ) {
+      meaningfulForm.positionTitle = baselineForm.positionTitle;
+    }
 
-      return JSON.stringify(meaningfulForm) !== JSON.stringify(baselineForm);
-    },
-    [
-      autoSuggestedSalary,
-      baselineForm,
-      comparableForm,
-      positionTitleSelectionSource,
-      positionTitleSuggestion,
-      salaryManuallyEdited,
-    ],
-  );
+    return JSON.stringify(meaningfulForm) !== JSON.stringify(baselineForm);
+  }, [
+    autoSuggestedSalary,
+    baselineForm,
+    comparableForm,
+    positionTitleSelectionSource,
+    positionTitleSuggestion,
+    salaryManuallyEdited,
+  ]);
 
   useEffect(() => {
     if (isOpen && mode === "add") {
@@ -278,7 +285,11 @@ const EmployeeFormModal = ({
     formValue: formData,
     isDirty,
     sanitize: (v) => {
-      const normalized = toDraftComparableForm(v, todayStr, defaultRestaurantId);
+      const normalized = toDraftComparableForm(
+        v,
+        todayStr,
+        defaultRestaurantId,
+      );
       const normalizedAutoSalary = normalizeDraftText(autoSuggestedSalary);
       const sanitized = { ...normalized };
 
@@ -313,7 +324,11 @@ const EmployeeFormModal = ({
       return JSON.stringify(restored) !== JSON.stringify(baselineForm);
     },
     onRestore: (draft) => {
-      const restored = toDraftComparableForm(draft, todayStr, defaultRestaurantId);
+      const restored = toDraftComparableForm(
+        draft,
+        todayStr,
+        defaultRestaurantId,
+      );
       const restoredSuggestion = getAiSuggestedPositionTitle(
         restored.department,
         restored.roleSlug,
@@ -324,7 +339,9 @@ const EmployeeFormModal = ({
         positionTitle: restored.positionTitle || restoredSuggestion,
       }));
       setShowSensitiveNotice(true);
-      setPositionTitleSelectionSource(restored?.positionTitle ? "restored" : "suggested");
+      setPositionTitleSelectionSource(
+        restored?.positionTitle ? "restored" : "suggested",
+      );
       setSalaryManuallyEdited(Boolean(draft?.salary));
     },
     notify: showNotification,
@@ -338,6 +355,10 @@ const EmployeeFormModal = ({
       if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
       if (!formData.department) newErrors.department = "Vui lòng chọn bộ phận";
       if (!formData.roleSlug) newErrors.roleSlug = "Vui lòng chọn vai trò";
+      if (formData.roleSlug && roleList.length > 0 && !selectedRoleRecord) {
+        newErrors.roleSlug =
+          "Vai trò đã chọn chưa được cấu hình trong hệ thống, vui lòng chọn vai trò khác.";
+      }
       if (!formData.positionTitle.trim())
         newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
       if (!formData.restaurantForStaff)
@@ -442,12 +463,19 @@ const EmployeeFormModal = ({
       const nextRoleSlug = currentRoleStillValid
         ? prev.roleSlug
         : getDefaultRoleSlug(department);
-      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
-      const nextSuggestion = getAiSuggestedPositionTitle(department, nextRoleSlug);
+      const previousSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        prev.roleSlug,
+      );
+      const nextSuggestion = getAiSuggestedPositionTitle(
+        department,
+        nextRoleSlug,
+      );
       const shouldUseSuggestion =
         !normalizeDraftText(prev.positionTitle) ||
         positionTitleSelectionSource === "suggested" ||
-        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+        normalizeDraftText(prev.positionTitle) ===
+          normalizeDraftText(previousSuggestion);
 
       if (shouldUseSuggestion) {
         setPositionTitleSelectionSource("suggested");
@@ -457,7 +485,9 @@ const EmployeeFormModal = ({
         ...prev,
         department,
         roleSlug: nextRoleSlug,
-        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+        positionTitle: shouldUseSuggestion
+          ? nextSuggestion
+          : prev.positionTitle,
       };
     });
     setErrors((prev) => ({
@@ -470,12 +500,19 @@ const EmployeeFormModal = ({
 
   const handleRoleSlugChange = (roleSlug) => {
     setFormData((prev) => {
-      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
-      const nextSuggestion = getAiSuggestedPositionTitle(prev.department, roleSlug);
+      const previousSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        prev.roleSlug,
+      );
+      const nextSuggestion = getAiSuggestedPositionTitle(
+        prev.department,
+        roleSlug,
+      );
       const shouldUseSuggestion =
         !normalizeDraftText(prev.positionTitle) ||
         positionTitleSelectionSource === "suggested" ||
-        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+        normalizeDraftText(prev.positionTitle) ===
+          normalizeDraftText(previousSuggestion);
 
       if (shouldUseSuggestion) {
         setPositionTitleSelectionSource("suggested");
@@ -484,7 +521,9 @@ const EmployeeFormModal = ({
       return {
         ...prev,
         roleSlug,
-        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+        positionTitle: shouldUseSuggestion
+          ? nextSuggestion
+          : prev.positionTitle,
       };
     });
     setErrors((prev) => ({ ...prev, roleSlug: "", positionTitle: "" }));
@@ -506,7 +545,9 @@ const EmployeeFormModal = ({
 
   const applySuggestedPositionTitle = () => {
     if (!positionTitleSuggestion) return;
-    handleInputChange("positionTitle", positionTitleSuggestion, { source: "suggested" });
+    handleInputChange("positionTitle", positionTitleSuggestion, {
+      source: "suggested",
+    });
   };
 
   const validateContactFieldOnBlur = (field) => {
@@ -566,7 +607,7 @@ const EmployeeFormModal = ({
     requestCloseWithDraft(() => onClose?.());
     return;
   };
-    /*
+  /*
     if (!isDirty) {
       onClose?.();
       return;
@@ -775,7 +816,9 @@ const EmployeeFormModal = ({
               </option>
             ))}
           </select>
-          {errors.roleSlug && <span className="error-msg">{errors.roleSlug}</span>}
+          {errors.roleSlug && (
+            <span className="error-msg">{errors.roleSlug}</span>
+          )}
         </div>
 
         <div className="form-group">
@@ -1091,6 +1134,10 @@ const EmployeeFormModal = ({
       closeOnOverlayClick={false}
       closeOnEscape={false}
       showCloseButton={false}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
     >
       {pendingRestore && (
         <div className="draft-restore-banner">
