@@ -134,11 +134,18 @@ const StaffManagement = () => {
     pollInterval: selectedRestaurant ? 15000 : 0,
   }); // Tăng pageSize để demo mượt
 
-  const leaveFilter = useMemo(() => ({ status: "PENDING" }), []);
+  const leaveFilter = useMemo(
+    () => ({
+      status: "PENDING",
+      restaurantId: selectedRestaurant || undefined,
+    }),
+    [selectedRestaurant],
+  );
   const { data: pendingLeaveData, loading: pendingLeaveLoading } = useQuery(
     QUERY_PENDING_LEAVE_REQUESTS,
     {
       variables: { filter: leaveFilter },
+      skip: !selectedRestaurant,
       fetchPolicy: "cache-and-network",
       pollInterval: 30000,
       notifyOnNetworkStatusChange: true,
@@ -410,7 +417,9 @@ const StaffManagement = () => {
         <AttendancePage currentTime={currentTime} currentDate={currentDate} />
       );
     }
-    if (currentPage === "leave") return <LeaveManagement />;
+    if (currentPage === "leave") {
+      return <LeaveManagement restaurantId={selectedRestaurant} />;
+    }
     if (currentPage === "schedule") return <SchedulePage />;
     if (currentPage === "performance") {
       return (

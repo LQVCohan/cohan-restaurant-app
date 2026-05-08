@@ -79,8 +79,8 @@ export const GET_USERS = gql`
 `;
 
 export const GET_CUSTOMERS = gql`
-  query GetCustomers($search: String, $includeGuests: Boolean) {
-    customers(search: $search, includeGuests: $includeGuests) {
+  query GetCustomers($search: String, $includeGuests: Boolean, $restaurantId: ID) {
+    customers(search: $search, includeGuests: $includeGuests,  $restaurantId: ID) {
       id
       fullName
       username
@@ -482,42 +482,42 @@ const useUserManagement = () => {
     CREATE_GUEST_USER,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
   const [updateMyUserMut, { loading: updatingMe }] = useMutation(
     UPDATE_MY_USER,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
   const [adminUpdateUserMut, { loading: adminUpdating }] = useMutation(
     ADMIN_UPDATE_USER,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
   const [assignRoleMut, { loading: assigningRole }] = useMutation(
     ASSIGN_ROLE_TO_USER,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
   const [setStatusMut, { loading: settingStatus }] = useMutation(
     SET_USER_STATUS,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
   const [softDeleteMut, { loading: softDeleting }] = useMutation(
     SOFT_DELETE_USER,
     {
       onCompleted: () => refreshLast(),
-    }
+    },
   );
 
   // NEW: mutation chuyên cập nhật loyaltyPoints + customerType (được CustomerModal dùng thẳng)
   const [updateMetricsMut, { loading: updatingMetrics }] = useMutation(
-    UPDATE_CUSTOMER_METRICS
+    UPDATE_CUSTOMER_METRICS,
   );
 
   const refreshLast = useCallback(() => {
@@ -540,7 +540,7 @@ const useUserManagement = () => {
       lastFetch.current = { purpose: "allUsers", variables };
       return fetchUsers({ variables });
     },
-    [fetchUsers, searchQuery]
+    [fetchUsers, searchQuery],
   );
 
   const getCustomers = useCallback(
@@ -556,7 +556,7 @@ const useUserManagement = () => {
       };
       fetchCustomers({ variables });
     },
-    [fetchCustomers, searchQuery]
+    [fetchCustomers, searchQuery],
   );
 
   /* ===== Derived ===== */
@@ -565,7 +565,7 @@ const useUserManagement = () => {
 
   const customers = useMemo(() => {
     const roleCustomers = allUsers.filter(
-      (u) => u.role?.slug?.toLowerCase() === "customer"
+      (u) => u.role?.slug?.toLowerCase() === "customer",
     );
     const guests = allUsers.filter((u) => u.isGuest === true);
     const merged = [...roleCustomers, ...guests].reduce((acc, cur) => {
@@ -576,7 +576,9 @@ const useUserManagement = () => {
     return merged.map((u) => {
       const totalSpending = Number(u.totalSpending || 0);
       const computedPoints = Number(u.loyaltyPoints ?? 0);
-      const computedType = (u.customerType || computeTypeFromPoints(computedPoints)).toUpperCase();
+      const computedType = (
+        u.customerType || computeTypeFromPoints(computedPoints)
+      ).toUpperCase();
       return {
         name: u.fullName || u.username || "Khách hàng",
         avatar: u.avatarUrl || avatarEmojiFromType(computedType),
@@ -613,7 +615,7 @@ const useUserManagement = () => {
         (c) =>
           c.name?.toLowerCase().includes(q) ||
           c.email?.toLowerCase().includes(q) ||
-          c.phone?.includes(searchQuery)
+          c.phone?.includes(searchQuery),
       );
     }
 

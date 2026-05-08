@@ -2374,7 +2374,7 @@ type Query {
   me: User
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
-  customers(search: String, includeGuests: Boolean): [User!]!
+  customers(search: String, includeGuests: Boolean, restaurantId: ID): [User!]!
   customerDetailAnalytics(
     userId: ID!
     restaurantId: ID

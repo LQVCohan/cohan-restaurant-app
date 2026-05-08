@@ -95,7 +95,10 @@ const buildTopDishes = (orders = []) => {
     for (const item of order.items || []) {
       const name = item?.name?.trim();
       if (!name) continue;
-      dishCount.set(name, (dishCount.get(name) || 0) + Number(item.quantity || 1));
+      dishCount.set(
+        name,
+        (dishCount.get(name) || 0) + Number(item.quantity || 1),
+      );
     }
   }
   return [...dishCount.entries()]
@@ -153,10 +156,10 @@ const CustomerManagement = () => {
       skip: !selectedRestaurantId,
       variables: { restaurantId: selectedRestaurantId },
       fetchPolicy: "network-only",
-    }
+    },
   );
   const [saveRankSettings, { loading: savingRank }] = useMutation(
-    UPSERT_CUSTOMER_RANK_SETTINGS
+    UPSERT_CUSTOMER_RANK_SETTINGS,
   );
 
   // --- 2. Effects ---
@@ -170,7 +173,11 @@ const CustomerManagement = () => {
 
   // Fetch dữ liệu khách hàng và đơn hàng khi thay đổi nhà hàng
   useEffect(() => {
-    getCustomers({ includeGuests: true, search: "" });
+    getCustomers({
+      restaurantId: selectedRestaurantId,
+      includeGuests: true,
+      search: "",
+    });
 
     if (selectedRestaurantId) {
       loadOrdersAll({
@@ -235,7 +242,11 @@ const CustomerManagement = () => {
   };
 
   const refreshCustomerListAfterCreate = async (createdUser = null) => {
-    await getCustomers({ includeGuests: true, search: "" });
+    await getCustomers({
+      restaurantId: selectedRestaurantId,
+      includeGuests: true,
+      search: "",
+    });
     if (selectedRestaurantId) {
       await loadOrdersAll({
         variables: {
@@ -267,11 +278,7 @@ const CustomerManagement = () => {
 
     const typeRaw = (createdUser.customerType || "NEW").toUpperCase();
     const typeVN =
-      typeRaw === "VIP"
-        ? "VIP"
-        : typeRaw === "OFTEN"
-          ? "Thường xuyên"
-          : "Mới";
+      typeRaw === "VIP" ? "VIP" : typeRaw === "OFTEN" ? "Thường xuyên" : "Mới";
     const matchesFilter =
       activeFilter === "all" ||
       (activeFilter === "vip" && typeVN === "VIP") ||
@@ -324,20 +331,20 @@ const CustomerManagement = () => {
 
   const onlineCount = useMemo(
     () => customersDecorated.filter((c) => c.online).length,
-    [customersDecorated]
+    [customersDecorated],
   );
 
   // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
     const vip = customersDecorated.filter(
-      (c) => c.customerType === "VIP"
+      (c) => c.customerType === "VIP",
     ).length;
     const isNew = customersDecorated.filter(
-      (c) => c.customerType === "Mới"
+      (c) => c.customerType === "Mới",
     ).length;
     const often = customersDecorated.filter(
-      (c) => c.customerType === "Thường xuyên"
+      (c) => c.customerType === "Thường xuyên",
     ).length;
 
     return [
@@ -392,7 +399,9 @@ const CustomerManagement = () => {
     ];
 
     if (scope === "current_list") {
-      return [{ name: "DanhSachHienTai", rows: [header, ...rows.map(toCustomerRow)] }];
+      return [
+        { name: "DanhSachHienTai", rows: [header, ...rows.map(toCustomerRow)] },
+      ];
     }
 
     if (scope === "customer_type") {
@@ -400,7 +409,10 @@ const CustomerManagement = () => {
       const registeredRows = rows.filter((c) => !c.isGuest);
       return [
         { name: "KhachGuest", rows: [header, ...guestRows.map(toCustomerRow)] },
-        { name: "KhachDangKy", rows: [header, ...registeredRows.map(toCustomerRow)] },
+        {
+          name: "KhachDangKy",
+          rows: [header, ...registeredRows.map(toCustomerRow)],
+        },
       ];
     }
 
@@ -438,7 +450,7 @@ const CustomerManagement = () => {
             : "phan-loai-hang";
       downloadXlsxWorkbook(
         sheets,
-        `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`
+        `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`,
       );
       setShowExportModal(false);
     } catch (err) {
@@ -591,8 +603,10 @@ const CustomerManagement = () => {
                       onChange={(e) =>
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
-                            i === idx ? { ...item, name: e.target.value } : item
-                          )
+                            i === idx
+                              ? { ...item, name: e.target.value }
+                              : item,
+                          ),
                         )
                       }
                     />
@@ -604,9 +618,12 @@ const CustomerManagement = () => {
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
                             i === idx
-                              ? { ...item, minPoints: Number(e.target.value || 0) }
-                              : item
-                          )
+                              ? {
+                                  ...item,
+                                  minPoints: Number(e.target.value || 0),
+                                }
+                              : item,
+                          ),
                         )
                       }
                     />
@@ -666,7 +683,8 @@ const CustomerManagement = () => {
           <Modal.Body>
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Chọn 1 trong 3 phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện tại.
+                Chọn 1 trong 3 phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện
+                tại.
               </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -676,7 +694,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("current_list")}
                 />
                 <span>
-                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách đang hiển thị.
+                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách
+                  đang hiển thị.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -687,7 +706,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("customer_type")}
                 />
                 <span>
-                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách guest và khách đăng ký.
+                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách
+                  guest và khách đăng ký.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -698,7 +718,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("loyalty_tier")}
                 />
                 <span>
-                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân thiết, Mới (theo loyalty points).
+                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân
+                  thiết, Mới (theo loyalty points).
                 </span>
               </label>
               {exportError ? (
@@ -737,7 +758,8 @@ const CustomerManagement = () => {
           <Modal.Body>
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Chọn 1 trong 3 phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện tại.
+                Chọn 1 trong 3 phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện
+                tại.
               </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -747,7 +769,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("current_list")}
                 />
                 <span>
-                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách đang hiển thị.
+                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách
+                  đang hiển thị.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -758,7 +781,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("customer_type")}
                 />
                 <span>
-                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách guest và khách đăng ký.
+                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách
+                  guest và khách đăng ký.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -769,7 +793,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("loyalty_tier")}
                 />
                 <span>
-                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân thiết, Mới (theo loyalty points).
+                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân
+                  thiết, Mới (theo loyalty points).
                 </span>
               </label>
               {exportError ? (

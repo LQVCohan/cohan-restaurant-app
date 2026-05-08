@@ -37,13 +37,16 @@ function computeLoyaltyDurationScore(createdAt) {
   if (!Number.isFinite(createdMs) || createdMs <= 0) return 0;
   const days = Math.max(
     0,
-    Math.floor((Date.now() - createdMs) / (1000 * 60 * 60 * 24))
+    Math.floor((Date.now() - createdMs) / (1000 * 60 * 60 * 24)),
   );
   return days;
 }
 
 function computeRankPoints(totalSpending) {
-  return Math.max(0, Math.floor((Number(totalSpending) || 0) / VND_PER_RANK_POINT));
+  return Math.max(
+    0,
+    Math.floor((Number(totalSpending) || 0) / VND_PER_RANK_POINT),
+  );
 }
 
 export const UserQuery = {
@@ -124,58 +127,79 @@ export const UserQuery = {
   // ========== Lấy khách hàng (mục đích: quản trị KH) ==========
   // Args: search?: String, includeGuests?: Boolean (default = true)
   // Kết quả = users có role=customer UNION (isGuest = true nếu includeGuests)
-  async customers(_, { search, includeGuests = true }, { user: authUser }) {
+  async customers(_, { search, includeGuests = true, restaurantId }, ctx) {
     try {
-      // Cho phép admin, manager, staff
-      // TODO: add restaurant-scoped customers query for manager access.
+      const authUser = ctx?.user;
       requireRole(authUser, ["admin", "manager", "staff"]);
+
+      const roleName = String(authUser?.roleName || "").toLowerCase();
+      const isAdmin = roleName === "admin";
+
+      let scopedRestaurantId = null;
+
+      if (restaurantId) {
+        if (!mongoose.isValidObjectId(restaurantId)) {
+          throw new GraphQLError("Invalid restaurantId", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+
+        scopedRestaurantId = restaurantId;
+      } else if (!isAdmin && authUser?.restaurantForStaff) {
+        scopedRestaurantId = authUser.restaurantForStaff;
+      }
+
+      if (!isAdmin && !scopedRestaurantId) {
+        throw new GraphQLError("restaurantId is required", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
+      if (scopedRestaurantId) {
+        await requireRestaurantAccess(ctx, scopedRestaurantId);
+      }
+
+      const restaurantScopeCond = scopedRestaurantId
+        ? {
+            refRestaurants: {
+              $in: [toObjectId(scopedRestaurantId)],
+            },
+          }
+        : {};
+
+      const s = buildSearchCond(search);
 
       // Tìm role "customer"
       const customerRole = await Role.findOne({ slug: "customer" }).lean();
-      const staffRestaurantId =
-        authUser?.restaurantForStaff || null;
-      const isStaff = String(authUser?.roleName || "").toLowerCase() === "staff";
-
-      const restaurantScopeCond =
-        isStaff && mongoose.isValidObjectId(staffRestaurantId)
-          ? {
-              refRestaurants: {
-                $in: [toObjectId(staffRestaurantId)],
-              },
-            }
-          : {};
 
       if (!customerRole?._id) {
-        // Không có role "customer" thì chỉ có thể trả về guest (nếu includeGuests)
-        const s = buildSearchCond(search);
         const guestOnlyCond = {
           isGuest: true,
           ...(s || {}),
           ...restaurantScopeCond,
         };
+
         const guestOnly = includeGuests
           ? await Customer.find(guestOnlyCond)
               .populate({ path: "role", select: "name slug" })
               .sort({ createdAt: -1 })
               .lean()
           : [];
+
         return guestOnly;
       }
 
-      const s = buildSearchCond(search);
-
-      // 1) Customers theo role
       const customerCond = {
         role: customerRole._id,
         ...(s || {}),
         ...restaurantScopeCond,
       };
+
       const roleCustomers = await Customer.find(customerCond)
         .populate({ path: "role", select: "name slug" })
         .sort({ createdAt: -1 })
         .lean();
 
-      // 2) Guests nếu cần
       let guests = [];
       if (includeGuests) {
         const guestCond = {
@@ -183,13 +207,13 @@ export const UserQuery = {
           ...(s || {}),
           ...restaurantScopeCond,
         };
+
         guests = await Customer.find(guestCond)
           .populate({ path: "role", select: "name slug" })
           .sort({ createdAt: -1 })
           .lean();
       }
 
-      // 3) Merge & unique theo id
       const merged = [...roleCustomers, ...guests].reduce((acc, cur) => {
         if (
           !acc.find((x) => String(x._id || x.id) === String(cur._id || cur.id))
@@ -202,6 +226,23 @@ export const UserQuery = {
       return merged;
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
+
+      if (err?.statusCode === 401 || err?.message === "UNAUTHENTICATED") {
+        throw new GraphQLError("Unauthorized", {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
+      }
+
+      if (
+        err?.statusCode === 403 ||
+        err?.message === "FORBIDDEN" ||
+        err?.message === "FORBIDDEN_SCOPE"
+      ) {
+        throw new GraphQLError("Forbidden", {
+          extensions: { code: "FORBIDDEN" },
+        });
+      }
+
       throw new GraphQLError(err.message || "Failed to fetch customers", {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
@@ -259,13 +300,18 @@ export const UserQuery = {
       .map(([dishName, quantity]) => ({ dishName, quantity }));
 
     const userDoc = await User.findById(userId).lean();
-    const loyaltyDurationScore = computeLoyaltyDurationScore(userDoc?.createdAt);
+    const loyaltyDurationScore = computeLoyaltyDurationScore(
+      userDoc?.createdAt,
+    );
     const rankPoints = computeRankPoints(userDoc?.totalSpending);
 
     return {
       userId,
       favoriteFoods: topDishes.map((x) => x.dishName),
-      recentOrderCodes: orders.slice(0, 5).map((x) => x.orderCode).filter(Boolean),
+      recentOrderCodes: orders
+        .slice(0, 5)
+        .map((x) => x.orderCode)
+        .filter(Boolean),
       topDishes,
       loyaltyDurationScore,
       rankPoints,
@@ -300,7 +346,10 @@ export const UserQuery = {
       }
       if (o.userId) {
         const key = String(o.userId);
-        customerCountByUserId.set(key, (customerCountByUserId.get(key) || 0) + 1);
+        customerCountByUserId.set(
+          key,
+          (customerCountByUserId.get(key) || 0) + 1,
+        );
       }
     }
 
@@ -310,7 +359,7 @@ export const UserQuery = {
     const membershipDays =
       scopedCustomers.reduce(
         (sum, c) => sum + computeLoyaltyDurationScore(c.createdAt),
-        0
+        0,
       ) || 0;
 
     return {
@@ -329,7 +378,7 @@ export const UserQuery = {
           : 0,
       activeCustomerCount: customerCountByUserId.size,
       returningCustomerCount: [...customerCountByUserId.values()].filter(
-        (v) => v >= 2
+        (v) => v >= 2,
       ).length,
     };
   },
@@ -357,7 +406,11 @@ export const UserQuery = {
     );
   },
 
-  async myWalletTransactions(_, { limit = 20, offset = 0 }, { user: authUser }) {
+  async myWalletTransactions(
+    _,
+    { limit = 20, offset = 0 },
+    { user: authUser },
+  ) {
     if (!authUser?.id) {
       throw new GraphQLError("Unauthorized", {
         extensions: { code: "UNAUTHENTICATED" },
@@ -367,11 +420,17 @@ export const UserQuery = {
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const safeOffset = Math.max(Number(offset) || 0, 0);
 
-    const rows = await WalletTransaction.find({ userId: toObjectId(authUser.id) })
+    const rows = await WalletTransaction.find({
+      userId: toObjectId(authUser.id),
+    })
       .sort({ createdAt: -1, _id: -1 })
       .skip(safeOffset)
       .limit(safeLimit)
       .lean();
-    return rows.map((row) => ({ ...row, id: String(row._id), userId: String(row.userId) }));
+    return rows.map((row) => ({
+      ...row,
+      id: String(row._id),
+      userId: String(row.userId),
+    }));
   },
 };

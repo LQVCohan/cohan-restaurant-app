@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 export const Q_LEAVE_PAGE = gql`
   query LeavePageData($filter: LeaveRequestFilterInput) {
-    staffList {
+    staffList(restaurantId: $restaurantId) {
       id
       fullName
       employeeCode
@@ -111,19 +111,26 @@ const M_CONFIRM_REPLACEMENT = gql`
   }
 `;
 
-export const useLeaveManagement = ({ selectedDate, status, search }) => {
+export const useLeaveManagement = ({
+  selectedDate,
+  status,
+  search,
+  restaurantId,
+}) => {
   const filter = useMemo(
     () => ({
+      restaurantId: restaurantId || undefined,
       startDate: selectedDate || undefined,
       endDate: selectedDate || undefined,
       status: status === "all" ? undefined : status,
       search: search?.trim() || undefined,
     }),
-    [search, selectedDate, status]
+    [search, selectedDate, status, restaurantId],
   );
 
   const { data, loading, error, refetch } = useQuery(Q_LEAVE_PAGE, {
     variables: { filter },
+    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
   });
 
@@ -131,10 +138,13 @@ export const useLeaveManagement = ({ selectedDate, status, search }) => {
   const [approveLeaveMutation, approveState] = useMutation(M_APPROVE);
   const [rejectLeaveMutation, rejectState] = useMutation(M_REJECT);
   const [confirmReplacementMutation, confirmState] = useMutation(
-    M_CONFIRM_REPLACEMENT
+    M_CONFIRM_REPLACEMENT,
   );
 
-  const leaveRequests = useMemo(() => data?.leaveRequests || [], [data?.leaveRequests]);
+  const leaveRequests = useMemo(
+    () => data?.leaveRequests || [],
+    [data?.leaveRequests],
+  );
   const staffList = useMemo(() => data?.staffList || [], [data?.staffList]);
 
   const submitLeaveRequest = async (input) => {
@@ -143,7 +153,9 @@ export const useLeaveManagement = ({ selectedDate, status, search }) => {
   };
 
   const approveLeave = async (requestId, note) => {
-    await approveLeaveMutation({ variables: { requestId, note: note || undefined } });
+    await approveLeaveMutation({
+      variables: { requestId, note: note || undefined },
+    });
     await refetch();
   };
 
@@ -153,7 +165,9 @@ export const useLeaveManagement = ({ selectedDate, status, search }) => {
   };
 
   const confirmReplacement = async (requestId, note) => {
-    await confirmReplacementMutation({ variables: { requestId, note: note || undefined } });
+    await confirmReplacementMutation({
+      variables: { requestId, note: note || undefined },
+    });
     await refetch();
   };
 

@@ -105,7 +105,9 @@ function mapAttendanceStatus(timesheet) {
 
 function mapAttendanceRecord(timesheet, staff) {
   const isOffSchedule = Boolean(timesheet.isOffSchedule);
-  const legacyStatus = String(timesheet.offScheduleApprovalStatus || "").toLowerCase();
+  const legacyStatus = String(
+    timesheet.offScheduleApprovalStatus || "",
+  ).toLowerCase();
   const approvalStatus = !isOffSchedule
     ? "not_required"
     : Boolean(timesheet.approved)
@@ -288,9 +290,7 @@ async function resolveStaffDoc(staffId, ctx) {
   const oid = toObjectId(targetId);
   if (!oid) return null;
 
-  return Staff.findById(oid)
-    .populate("role")
-    ;
+  return Staff.findById(oid).populate("role");
 }
 
 export default {
@@ -303,7 +303,7 @@ export default {
       .select({
         userType: 1,
         deletedAt: 1,
-                restaurantForStaff: 1,
+        restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -311,30 +311,30 @@ export default {
       throw new Error("Staff not found");
     }
     if (String(ctx?.user?.id || ctx?.user?._id || "") !== String(id)) {
-      const targetRestaurantId =
-        minimal?.restaurantForStaff || null;
+      const targetRestaurantId = minimal?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
     const user = await Staff.findById(id)
       .populate("role")
-      .populate("refRestaurants")
-      ;
+      .populate("refRestaurants");
     return user;
   },
 
   // =========================
   // GET STAFF LIST
   // =========================
-  staffList: async (_, { restaurantId, roleId, search, employmentStatus }, ctx) => {
+  staffList: async (
+    _,
+    { restaurantId, roleId, search, employmentStatus },
+    ctx,
+  ) => {
     requireAuth(ctx);
     const filter = { userType: "STAFF", deletedAt: null };
 
     const rid = toObjectId(restaurantId);
     if (restaurantId) {
       await requireRestaurantAccess(ctx, restaurantId);
-      filter.$or = [
-        { restaurantForStaff: rid || restaurantId },
-      ];
+      filter.$or = [{ restaurantForStaff: rid || restaurantId }];
     } else {
       requireRoles(ctx, ["ADMIN"]);
     }
@@ -361,7 +361,7 @@ export default {
     return Staff.find(filter)
       .populate("role")
       .populate("refRestaurants")
-      
+
       .sort({ fullName: 1 });
   },
   shiftAcknowledgements: async (
@@ -405,7 +405,11 @@ export default {
       createdAt: -1,
     });
   },
-  myShiftAcknowledgements: async (_, { periodStart, periodEnd, status }, ctx) => {
+  myShiftAcknowledgements: async (
+    _,
+    { periodStart, periodEnd, status },
+    ctx,
+  ) => {
     requireAuth(ctx);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
     const filter = { employeeId: toObjectId(employeeId) || employeeId };
@@ -434,7 +438,11 @@ export default {
     return ShiftAcknowledgement.find(filter).sort({ deadlineAt: 1 });
   },
 
-  myScheduleAcknowledgement: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+  myScheduleAcknowledgement: async (
+    _,
+    { restaurantId, periodStart, periodEnd },
+    ctx,
+  ) => {
     requireAuth(ctx);
     await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
@@ -451,7 +459,11 @@ export default {
       schedulePublicationId: publication._id,
     });
   },
-  scheduleAcknowledgementSummary: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+  scheduleAcknowledgementSummary: async (
+    _,
+    { restaurantId, periodStart, periodEnd },
+    ctx,
+  ) => {
     requireAuth(ctx);
     await requireRestaurantAccess(ctx, restaurantId);
     requireRoles(ctx, SCHEDULE_READ_ROLES);
@@ -460,16 +472,52 @@ export default {
       periodStart: toStartOfDay(periodStart),
       periodEnd: toEndOfDay(periodEnd),
     }).lean();
-    if (!publication || !["published","active"].includes(publication.status)) return { totalAssignedStaff: 0, acknowledgedCount: 0, pendingCount: 0, changedAfterAcknowledgementCount: 0, employees: [] };
-    const shifts = await Shift.find({ restaurantId: publication.restaurantId, startTime: { $gte: publication.periodStart, $lte: publication.periodEnd }, status: { $ne: "cancelled" } }).lean();
-    const employeeIds = [...new Set(shifts.map((s)=>String(s.employeeId)).filter(Boolean))];
-    const acks = await ScheduleAcknowledgement.find({ restaurantId: publication.restaurantId, schedulePublicationId: publication._id, employeeId: { $in: employeeIds.map(toObjectId).filter(Boolean) } }).lean();
-    const map = new Map(acks.map((a)=>[String(a.employeeId), a]));
-    const employees = employeeIds.map((id)=>{ const a=map.get(id); return { employeeId:id, status:a?.status||null, changedAfterAcknowledgement:Boolean(a?.changedAfterAcknowledgement), acknowledgedAt:a?.acknowledgedAt||null };});
-    const acknowledgedCount = employees.filter((e)=>e.status==="acknowledged"&&!e.changedAfterAcknowledgement).length;
-    const changedAfterAcknowledgementCount = employees.filter((e)=>e.changedAfterAcknowledgement||e.status==="needs_review").length;
-    const pendingCount = employees.length-acknowledgedCount-changedAfterAcknowledgementCount;
-    return { totalAssignedStaff: employees.length, acknowledgedCount, pendingCount, changedAfterAcknowledgementCount, employees };
+    if (!publication || !["published", "active"].includes(publication.status))
+      return {
+        totalAssignedStaff: 0,
+        acknowledgedCount: 0,
+        pendingCount: 0,
+        changedAfterAcknowledgementCount: 0,
+        employees: [],
+      };
+    const shifts = await Shift.find({
+      restaurantId: publication.restaurantId,
+      startTime: { $gte: publication.periodStart, $lte: publication.periodEnd },
+      status: { $ne: "cancelled" },
+    }).lean();
+    const employeeIds = [
+      ...new Set(shifts.map((s) => String(s.employeeId)).filter(Boolean)),
+    ];
+    const acks = await ScheduleAcknowledgement.find({
+      restaurantId: publication.restaurantId,
+      schedulePublicationId: publication._id,
+      employeeId: { $in: employeeIds.map(toObjectId).filter(Boolean) },
+    }).lean();
+    const map = new Map(acks.map((a) => [String(a.employeeId), a]));
+    const employees = employeeIds.map((id) => {
+      const a = map.get(id);
+      return {
+        employeeId: id,
+        status: a?.status || null,
+        changedAfterAcknowledgement: Boolean(a?.changedAfterAcknowledgement),
+        acknowledgedAt: a?.acknowledgedAt || null,
+      };
+    });
+    const acknowledgedCount = employees.filter(
+      (e) => e.status === "acknowledged" && !e.changedAfterAcknowledgement,
+    ).length;
+    const changedAfterAcknowledgementCount = employees.filter(
+      (e) => e.changedAfterAcknowledgement || e.status === "needs_review",
+    ).length;
+    const pendingCount =
+      employees.length - acknowledgedCount - changedAfterAcknowledgementCount;
+    return {
+      totalAssignedStaff: employees.length,
+      acknowledgedCount,
+      pendingCount,
+      changedAfterAcknowledgementCount,
+      employees,
+    };
   },
   schedulingPolicy: async (_, { restaurantId }, ctx) => {
     requireAuth(ctx);
@@ -489,15 +537,14 @@ export default {
     requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return null;
-    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    const isSelf =
+      String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId =
-        staff?.restaurantForStaff || null;
+      const targetRestaurantId = staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
-    const restaurantId =
-      staff?.restaurantForStaff || null;
+    const restaurantId = staff?.restaurantForStaff || null;
     const rid = toObjectId(restaurantId);
 
     let floorAssigned = [];
@@ -566,7 +613,7 @@ export default {
       employmentStatus: String(
         staff.employmentStatus || "working",
       ).toUpperCase(),
-            restaurantForStaff: staff.restaurantForStaff || null,
+      restaurantForStaff: staff.restaurantForStaff || null,
       floorAssigned,
       floorCount,
       tableCount,
@@ -584,10 +631,10 @@ export default {
     requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return null;
-    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    const isSelf =
+      String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId =
-        staff?.restaurantForStaff || null;
+      const targetRestaurantId = staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
       assertPayrollPermission(ctx, "payroll.read");
     }
@@ -707,10 +754,10 @@ export default {
     requireAuth(ctx);
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return [];
-    const isSelf = String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
+    const isSelf =
+      String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId =
-        staff?.restaurantForStaff || null;
+      const targetRestaurantId = staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
@@ -775,9 +822,7 @@ export default {
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+      restaurantId || authUser?.restaurantForStaff || null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) {
       return {
@@ -802,7 +847,8 @@ export default {
     const rid = toObjectId(
       restaurantId ||
         authUser?.restaurantForStaff ||
-        authUser?.restaurantForStaff || null,
+        authUser?.restaurantForStaff ||
+        null,
     );
     if (!rid) return [];
     await requireRestaurantAccess(ctx, rid);
@@ -843,10 +889,7 @@ export default {
   payrollSettings: async (_, { restaurantId }, ctx) => {
     requireAuth(ctx);
     const authUser = ctx?.user || null;
-    const rid =
-      restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+    const rid = restaurantId || authUser?.restaurantForStaff || null;
     if (!rid) return null;
     await requireRestaurantAccess(ctx, rid);
     const settings = await getPayrollSettings(rid);
@@ -924,7 +967,11 @@ export default {
   staffSchedulingAssistant: async (
     _,
     { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
+    ctx,
   ) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_READ_ROLES);
+    await requireRestaurantAccess(ctx, restaurantId);
     return buildStaffSchedulingAssistant({
       restaurantId,
       horizonDays,
@@ -936,6 +983,9 @@ export default {
     { restaurantId, periodStart, periodEnd },
     ctx,
   ) => {
+    requireAuth(ctx);
+    await requireRestaurantAccess(ctx, restaurantId);
+
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("restaurantId không hợp lệ.");
 
@@ -946,13 +996,16 @@ export default {
     }).lean();
 
     if (!doc) return null;
-
     return mapSchedulePublicationOutput(doc);
   },
   scheduleChangeLogs: async (
     _,
     { restaurantId, shiftIds = [], periodStart, periodEnd, limit = 50 },
+    ctx,
   ) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_READ_ROLES);
+    await requireRestaurantAccess(ctx, restaurantId);
     const rid = toObjectId(restaurantId);
     if (!rid) {
       throw new Error("restaurantId không hợp lệ.");
@@ -1021,12 +1074,20 @@ export default {
       authUserId &&
       requestedEmployeeId === authUserId;
     const fallbackRestaurantId =
-      restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+      restaurantId || authUser?.restaurantForStaff || null;
     const rid = toObjectId(fallbackRestaurantId);
     const eid = toObjectId(employeeId);
+    if (!rid) return [];
 
+    if (isStaffSelfView) {
+      if (!eid || String(eid) !== String(authUserId)) {
+        throw new Error("FORBIDDEN");
+      }
+      await requireRestaurantAccess(ctx, rid);
+    } else {
+      requireRoles(ctx, SCHEDULE_READ_ROLES);
+      await requireRestaurantAccess(ctx, rid);
+    }
     if (rid) filter.restaurantId = rid;
     if (eid) filter.employeeId = eid;
     if (status) filter.status = status;
@@ -1047,8 +1108,10 @@ export default {
 
       if (periodStart || periodEnd) {
         publicationFilter.$and = [];
-        if (periodStart) publicationFilter.$and.push({ periodEnd: { $gte: periodStart } });
-        if (periodEnd) publicationFilter.$and.push({ periodStart: { $lte: periodEnd } });
+        if (periodStart)
+          publicationFilter.$and.push({ periodEnd: { $gte: periodStart } });
+        if (periodEnd)
+          publicationFilter.$and.push({ periodStart: { $lte: periodEnd } });
       }
 
       const publications = await SchedulePublication.find(publicationFilter)
@@ -1059,7 +1122,10 @@ export default {
 
       const publicationRanges = publications
         .map((publication) => ({
-          startTime: { $gte: publication.periodStart, $lte: publication.periodEnd },
+          startTime: {
+            $gte: publication.periodStart,
+            $lte: publication.periodEnd,
+          },
         }))
         .filter((range) => range.startTime.$gte && range.startTime.$lte);
 
@@ -1096,43 +1162,73 @@ export default {
     { restaurantId, startDate, endDate, employeeId, status, search },
     ctx,
   ) => {
+    requireAuth(ctx);
+
     const start = toStartOfDay(startDate);
     const end = toEndOfDay(endDate);
     if (
       Number.isNaN(start.getTime()) ||
       Number.isNaN(end.getTime()) ||
       end < start
-    )
+    ) {
       return [];
+    }
 
     const authUser = ctx?.user || null;
+    const actorId = authUser?.id || authUser?._id || null;
     const fallbackRestaurantId =
-      restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+      restaurantId || authUser?.restaurantForStaff || null;
+
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
 
+    await requireRestaurantAccess(ctx, rid);
+
+    const roles = resolveUserRoles(authUser);
+    const canReadAttendance = roles.some((role) =>
+      ATTENDANCE_READ_ROLES.includes(role),
+    );
+    const canSelfAttendance = roles.some((role) =>
+      ATTENDANCE_SELF_ROLES.includes(role),
+    );
+
+    const requestedEmployeeId = employeeId ? String(employeeId) : "";
+    const actorEmployeeId = actorId ? String(actorId) : "";
+
+    const isSelfRequest =
+      canSelfAttendance &&
+      actorEmployeeId &&
+      (!requestedEmployeeId || requestedEmployeeId === actorEmployeeId);
+
+    if (!canReadAttendance && !isSelfRequest) {
+      const err = new Error("FORBIDDEN");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const effectiveEmployeeId = isSelfRequest
+      ? actorEmployeeId
+      : requestedEmployeeId;
+
     const staffFilter = {
       userType: "STAFF",
-      $or: [{ restaurantForStaff: rid }],
+      deletedAt: null,
+      restaurantForStaff: rid,
     };
-    const eid = toObjectId(employeeId);
-    if (eid) staffFilter._id = eid;
-    if (search) {
+
+    const eid = toObjectId(effectiveEmployeeId);
+    if (eid) {
+      staffFilter._id = eid;
+    }
+
+    if (!isSelfRequest && search) {
       const regex = new RegExp(search, "i");
-      staffFilter.$and = [
-        { $or: [{ restaurantForStaff: rid }] },
-        {
-          $or: [
-            { fullName: regex },
-            { employeeCode: regex },
-            { phone: regex },
-            { email: regex },
-          ],
-        },
+      staffFilter.$or = [
+        { fullName: regex },
+        { employeeCode: regex },
+        { phone: regex },
+        { email: regex },
       ];
-      delete staffFilter.$or;
     }
 
     const staffs = await Staff.find(staffFilter)
@@ -1147,6 +1243,7 @@ export default {
         avatar: 1,
       })
       .lean();
+
     if (!staffs.length) return [];
 
     const staffById = new Map(staffs.map((s) => [String(s._id), s]));
@@ -1182,15 +1279,19 @@ export default {
     const existingKey = new Set(
       timesheets.map((ts) => {
         const day = new Date(ts.workDate).toISOString().slice(0, 10);
-        return `${String(ts.employeeId)}|${day}|${ts.shiftId ? String(ts.shiftId._id || ts.shiftId) : "off"}`;
+        return `${String(ts.employeeId)}|${day}|${
+          ts.shiftId ? String(ts.shiftId._id || ts.shiftId) : "off"
+        }`;
       }),
     );
 
     const records = [...timesheets];
+
     for (const shift of shifts) {
       const day = new Date(shift.startTime).toISOString().slice(0, 10);
       const key = `${String(shift.employeeId)}|${day}|${String(shift._id)}`;
       if (existingKey.has(key)) continue;
+
       records.push({
         _id: `${key}-virtual`,
         employeeId: shift.employeeId,
@@ -1223,6 +1324,7 @@ export default {
         (a, b) =>
           new Date(b.workDate).getTime() - new Date(a.workDate).getTime(),
       );
+
     if (!status || status === "all") return mapped;
     return mapped.filter((record) => record.status === status);
   },
@@ -1232,7 +1334,9 @@ export default {
     if (!rid) throw new Error("Invalid restaurantId");
     const roles = resolveUserRoles(ctx.user);
     const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
-    const isStaffRole = roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role));
+    const isStaffRole = roles.some((role) =>
+      ATTENDANCE_SELF_ROLES.includes(role),
+    );
     const canReadAttendance = roles.some((role) =>
       ATTENDANCE_READ_ROLES.includes(role),
     );
@@ -1336,7 +1440,8 @@ export default {
     const roles = resolveUserRoles(ctx.user);
     const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
     if (roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role))) {
-      if (input.employeeId && String(input.employeeId) !== actorId) throw new Error("FORBIDDEN");
+      if (input.employeeId && String(input.employeeId) !== actorId)
+        throw new Error("FORBIDDEN");
       input.employeeId = actorId;
     } else if (!roles.some((role) => ATTENDANCE_READ_ROLES.includes(role))) {
       throw new Error("FORBIDDEN");
@@ -1360,15 +1465,19 @@ export default {
     return getManagerPerformanceDashboard(input, ctx.user);
   },
   leaveRequests: async (_, { filter = {} }, ctx) => {
+    requireAuth(ctx);
+
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      filter.restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+      filter.restaurantId || authUser?.restaurantForStaff || null;
+
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
 
+    await requireRestaurantAccess(ctx, rid);
+
     const query = { restaurantId: rid };
+
     const eid = toObjectId(filter.employeeId);
     if (eid) query.employeeId = eid;
     if (filter.status) query.status = String(filter.status).toLowerCase();
@@ -1573,9 +1682,7 @@ export default {
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      input.restaurantId ||
-      authUser?.restaurantForStaff ||
-      null;
+      input.restaurantId || authUser?.restaurantForStaff || null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) throw new Error("Missing restaurantId for staff report");
 
