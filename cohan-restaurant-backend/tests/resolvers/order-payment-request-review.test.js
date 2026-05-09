@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitOrderEventMock = vi.hoisted(() => vi.fn());
+const findOneChainFactory = (value) => {
+  const chain = {
+    sort: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(value),
+  };
+  return chain;
+};
 
 const orderDocFactory = (overrides = {}) => ({
   _id: "65f000000000000000000001",
@@ -67,7 +74,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.findOne.mockReset();
     modelMocks.Order.updateMany.mockReset();
     modelMocks.Order.updateMany.mockResolvedValue({ acknowledged: true });
-    modelMocks.Order.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.Order.findOne.mockReturnValue(findOneChainFactory(null));
   });
 
   it("requestPaymentForOrder succeeds for fully served order", async () => {
@@ -150,7 +157,7 @@ describe("payment request + confirm guards", () => {
       parentOrderId: "65f00000000000000000aa11",
     };
 
-    modelMocks.Order.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "65f00000000000000000aa11" }) });
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000aa11" }));
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([servedOrder]) }).mockResolvedValueOnce([servedOrder]);
 
     await expect(
@@ -185,7 +192,7 @@ describe("payment request + confirm guards", () => {
       _id: "65f000000000000000000131", restaurantId: "65f000000000000000000099", orderKind: "order_batch", orderCode: "ORD-C1", currentStatus: "preparing",
       items: [{ status: "served", quantity: 1, lineSubtotal: 10000, unitPrice: 10000, dishId: "dish-1", name: "Dish", voidRequests: [], returnRequests: [] }],
     };
-    modelMocks.Order.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "65f00000000000000000aa12" }) });
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000aa12" }));
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([unservedChild]) });
     const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: false } }, AUTH_CONTEXT);
     expect(out.warning).toBe(true);
@@ -257,6 +264,57 @@ describe("payment request + confirm guards", () => {
     expect(out.warning).toBe(true);
     expect(out.pendingOrderCodes).toEqual(["65f000000000000000000123"]);
     expect(out.invoice).toBeNull();
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("payOrdersByTableId applies deterministic sort when finding active session", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const findOneChain = findOneChainFactory({ _id: "65f00000000000000000aa99" });
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChain);
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) }).mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
+
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT);
+    expect(findOneChain.sort).toHaveBeenCalledWith({ openedAt: -1, createdAt: -1, _id: -1 });
+    expect(out.warning).toBe(true);
+  });
+
+  it("payOrdersByTableId falls back to legacy table orders when active session has no child links", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const legacyOrder = {
+      _id: "65f000000000000000000188", restaurantId: "65f000000000000000000099", orderCode: "LEG-188", currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 12000, unitPrice: 12000, dishId: "d8", name: "Legacy", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 12000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 12000 },
+    };
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab88" }));
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([legacyOrder]) })
+      .mockResolvedValueOnce([legacyOrder]);
+
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: false } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(false);
+    expect(out.invoice).toBeTruthy();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(2);
+    expect(modelMocks.Order.updateMany.mock.calls[1][0]).toMatchObject({
+      orderKind: "table_session",
+    });
+  });
+
+  it("payOrdersByTableId returns warning when both child and legacy fallback orders are empty", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab89" }));
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
+
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT);
+    expect(out).toMatchObject({
+      warning: true,
+      pendingOrderCodes: [],
+      invoice: null,
+      transaction: null,
+      cashflow: null,
+    });
     expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 

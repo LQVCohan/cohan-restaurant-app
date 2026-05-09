@@ -171,13 +171,25 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     throw new Error("Table not found");
   }
   const tableCode = table?.code || null;
+
+  async function findLegacyTableOrders() {
+    return Order.find({
+      restaurantId: rid,
+      tableId: tid,
+      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+      ...orderBatchOrLegacyFilter(),
+    }).lean();
+  }
+
   const activeSession = await Order.findOne(
     activeTableSessionLookupFilter({
       restaurantId: rid,
       tableId: tid,
       tableCode,
     }),
-  ).lean();
+  )
+    .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
 
   let orders = [];
   if (activeSession) {
@@ -191,16 +203,9 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       ],
     };
     orders = await Order.find(sessionChildFilter).lean();
-    if (!orders.length) {
-      throw new Error("Không tìm thấy order con đang hoạt động cho phiên bàn hiện tại.");
-    }
+    if (!orders.length) orders = await findLegacyTableOrders();
   } else {
-    orders = await Order.find({
-      restaurantId: rid,
-      tableId: tid,
-      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-      ...orderBatchOrLegacyFilter(),
-    }).lean();
+    orders = await findLegacyTableOrders();
   }
 
   if (!orders.length) {
