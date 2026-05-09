@@ -42,6 +42,7 @@ const buildInitialFormData = (promotion, fallbackRestaurantId = "") => {
       ? promotion.conditions.join("\n")
       : "",
     stacking: Boolean(promotion?.stacking),
+    level: promotion?.level || 1,
   };
 };
 
@@ -69,7 +70,10 @@ const PromotionModal = ({
   );
 
   const fallbackRestaurantId =
-    promotion?.restaurantId || defaultRestaurantId || restaurantOptions[0]?.id || "";
+    promotion?.restaurantId ||
+    defaultRestaurantId ||
+    restaurantOptions[0]?.id ||
+    "";
 
   const [formData, setFormData] = useState(
     buildInitialFormData(promotion, fallbackRestaurantId),
@@ -168,7 +172,10 @@ const PromotionModal = ({
       if (toNumber(formData.getQuantity) < 1) {
         nextErrors.getQuantity = "Nhập SL tặng";
       }
-    } else if (formData.type !== "freeship" && toNumber(formData.discountValue) <= 0) {
+    } else if (
+      formData.type !== "freeship" &&
+      toNumber(formData.discountValue) <= 0
+    ) {
       nextErrors.discountValue = "Nhập giá trị";
     }
 
@@ -189,14 +196,18 @@ const PromotionModal = ({
       minOrderValue: toNumber(formData.minOrderValue),
       maxDiscount: toNumber(formData.maxDiscount),
       usageLimit: toNumber(formData.usageLimit),
-      buyQuantity: formData.type === "bogo" ? toNumber(formData.buyQuantity, 1) : 0,
-      getQuantity: formData.type === "bogo" ? toNumber(formData.getQuantity, 1) : 0,
+      buyQuantity:
+        formData.type === "bogo" ? toNumber(formData.buyQuantity, 1) : 0,
+      getQuantity:
+        formData.type === "bogo" ? toNumber(formData.getQuantity, 1) : 0,
       conditions: formData.conditions
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean),
       status: mode === "draft" ? "draft" : "active",
       productId: formData.giftItemId || null,
+      level: toNumber(formData.level, 1),
+      stacking: Boolean(formData.stacking),
     });
   };
 
@@ -209,9 +220,7 @@ const PromotionModal = ({
         <div className="modal-header">
           <div className="header-content">
             <h2>{promotion ? "Chỉnh sửa ưu đãi" : "Tạo ưu đãi mới"}</h2>
-            <p>
-              Điền thông tin chi tiết để thiết lập chương trình khuyến mãi.
-            </p>
+            <p>Điền thông tin chi tiết để thiết lập chương trình khuyến mãi.</p>
           </div>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
@@ -237,7 +246,9 @@ const PromotionModal = ({
                     type="text"
                     value={formData.name}
                   />
-                  {errors.name && <span className="err-msg">{errors.name}</span>}
+                  {errors.name && (
+                    <span className="err-msg">{errors.name}</span>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -255,7 +266,9 @@ const PromotionModal = ({
                       value={formData.code}
                     />
                   </div>
-                  {errors.code && <span className="err-msg">{errors.code}</span>}
+                  {errors.code && (
+                    <span className="err-msg">{errors.code}</span>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -418,7 +431,43 @@ const PromotionModal = ({
                 </div>
               </div>
             </div>
+            <div className="form-section">
+              <h3 className="section-title">
+                <Gift size={18} /> Cấu hình dùng chồng
+              </h3>
 
+              <div className="grid-2">
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="stacking"
+                    checked={Boolean(formData.stacking)}
+                    onChange={handleInputChange}
+                  />
+                  <span>
+                    Cho phép khuyến mãi này dùng chung với voucher hợp lệ
+                  </span>
+                </label>
+
+                <div className="form-group">
+                  <label>Độ ưu tiên</label>
+                  <select
+                    name="level"
+                    value={formData.level}
+                    onChange={handleInputChange}
+                  >
+                    <option value={1}>Thấp</option>
+                    <option value={2}>Trung bình</option>
+                    <option value={3}>Cao</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="text-xs text-secondary mt-2">
+                Promotion chỉ được cộng với voucher nếu cả promotion và voucher
+                đều cho phép.
+              </p>
+            </div>
             <div className="form-section">
               <h3 className="section-title">
                 <ShoppingBag size={18} /> Đối tượng áp dụng
@@ -455,7 +504,8 @@ const PromotionModal = ({
                   </div>
                 </div>
 
-                {(formData.scope === "category" || formData.scope === "item") && (
+                {(formData.scope === "category" ||
+                  formData.scope === "item") && (
                   <div className="form-group full">
                     <label>Danh mục món</label>
                     <select
@@ -500,7 +550,9 @@ const PromotionModal = ({
                 {formData.scope === "item" && (
                   <div className="form-group full">
                     <label>
-                      {formData.type === "bogo" ? "Món khách phải mua" : "Món áp dụng"}{" "}
+                      {formData.type === "bogo"
+                        ? "Món khách phải mua"
+                        : "Món áp dụng"}{" "}
                       <span className="req">*</span>
                     </label>
                     <select

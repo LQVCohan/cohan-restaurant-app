@@ -7,7 +7,12 @@ import {
 } from "@/utils/vietnamDateTime";
 
 const Q_COUPONS = gql`
-  query Coupons($restaurantId: ID, $activeOnly: Boolean!, $limit: Int!, $offset: Int!) {
+  query Coupons(
+    $restaurantId: ID
+    $activeOnly: Boolean!
+    $limit: Int!
+    $offset: Int!
+  ) {
     coupons(
       restaurantId: $restaurantId
       activeOnly: $activeOnly
@@ -100,7 +105,13 @@ const M_DELETE_PACKAGE = gql`
     deleteVoucherPackage(id: $id)
   }
 `;
+const toBoolean = (value, fallback = false) =>
+  typeof value === "boolean" ? value : fallback;
 
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 const resolveStatus = (item) => {
   if (item.status === "draft") return "draft";
   const now = new Date();
@@ -136,6 +147,13 @@ const normalizeVoucher = (item) => ({
   conditions: Array.isArray(item.constraints?.conditions)
     ? item.constraints.conditions
     : [],
+  stackable: toBoolean(item.constraints?.stackable, false),
+  combinableWithPromotions: toBoolean(
+    item.constraints?.combinableWithPromotions,
+    false,
+  ),
+  exclusive: toBoolean(item.constraints?.exclusive, false),
+  priority: toNumber(item.constraints?.priority, 0),
   isActive: Boolean(item.isActive),
   restaurantId: item.restaurantId || "",
 });
@@ -159,15 +177,24 @@ const buildCouponInput = (voucherData, restaurantId) => ({
   code: voucherData.code,
   category: voucherData.category,
   description: voucherData.description,
-  discountType:
-    voucherData.discountType === "fixed" ? "AMOUNT" : "PERCENT",
+  discountType: voucherData.discountType === "fixed" ? "AMOUNT" : "PERCENT",
   discountValue: Number(voucherData.discountValue || 0),
   minOrderValue: Number(voucherData.minOrderValue || 0),
   maxDiscount: Number(voucherData.maxDiscount || 0),
   maxUsage: Number(voucherData.usageLimit || 0),
-  constraints: { conditions: voucherData.conditions || [] },
-  publishAt: voucherData.publishAt ? toVietnamDateTimeISO(voucherData.publishAt) : null,
-  startAt: voucherData.startDate ? toVietnamDateTimeISO(voucherData.startDate) : null,
+  constraints: {
+    conditions: voucherData.conditions || [],
+    stackable: Boolean(voucherData.stackable),
+    combinableWithPromotions: Boolean(voucherData.combinableWithPromotions),
+    exclusive: Boolean(voucherData.exclusive),
+    priority: Number(voucherData.priority || 0),
+  },
+  publishAt: voucherData.publishAt
+    ? toVietnamDateTimeISO(voucherData.publishAt)
+    : null,
+  startAt: voucherData.startDate
+    ? toVietnamDateTimeISO(voucherData.startDate)
+    : null,
   endAt: voucherData.endDate ? toVietnamDateTimeISO(voucherData.endDate) : null,
   isActive: voucherData.status !== "draft",
   restaurantId,
@@ -178,9 +205,13 @@ const buildPackageInput = (packageData, restaurantId) => ({
   code: packageData.code,
   description: packageData.description,
   voucherIds: packageData.voucherIds || [],
-  startAt: packageData.startDate ? toVietnamDateTimeISO(packageData.startDate) : null,
+  startAt: packageData.startDate
+    ? toVietnamDateTimeISO(packageData.startDate)
+    : null,
   endAt: packageData.endDate ? toVietnamDateTimeISO(packageData.endDate) : null,
-  publishAt: packageData.publishAt ? toVietnamDateTimeISO(packageData.publishAt) : null,
+  publishAt: packageData.publishAt
+    ? toVietnamDateTimeISO(packageData.publishAt)
+    : null,
   isActive: packageData.status !== "draft",
   conditions: packageData.conditions || [],
   restaurantId,
@@ -197,7 +228,8 @@ export const __testables = {
 export const useVouchers = (selectedRestaurantId = "") => {
   const { restaurants } = useContext(AuthContext);
   const defaultRestaurantId = restaurants?.[0]?.id || "";
-  const activeRestaurantId = selectedRestaurantId || defaultRestaurantId || null;
+  const activeRestaurantId =
+    selectedRestaurantId || defaultRestaurantId || null;
 
   const [voucherFilters, setVoucherFilters] = useState({
     search: "",
@@ -322,7 +354,9 @@ export const useVouchers = (selectedRestaurantId = "") => {
       },
     });
     await refetchPackages();
-    return result?.data?.createVoucherPackage?.restaurantId || activeRestaurantId;
+    return (
+      result?.data?.createVoucherPackage?.restaurantId || activeRestaurantId
+    );
   };
 
   const updatePackage = async (id, packageData) => {
@@ -334,7 +368,9 @@ export const useVouchers = (selectedRestaurantId = "") => {
       },
     });
     await refetchPackages();
-    return result?.data?.updateVoucherPackage?.restaurantId || activeRestaurantId;
+    return (
+      result?.data?.updateVoucherPackage?.restaurantId || activeRestaurantId
+    );
   };
 
   return {

@@ -29,7 +29,58 @@ describe("useVouchers input builders", () => {
       }),
     );
   });
+  it("preserves voucher stacking constraints in coupon input", () => {
+    const input = __testables.buildCouponInput(
+      {
+        name: "Voucher stack",
+        code: "STACK10",
+        category: "order",
+        discountType: "percent",
+        discountValue: 10,
+        status: "active",
+        conditions: ["Ap dung don tu 100k"],
+        stackable: true,
+        combinableWithPromotions: true,
+        exclusive: false,
+        priority: 2,
+      },
+      "restaurant-1",
+    );
 
+    expect(input.constraints).toEqual({
+      conditions: ["Ap dung don tu 100k"],
+      stackable: true,
+      combinableWithPromotions: true,
+      exclusive: false,
+      priority: 2,
+    });
+  });
+  it("normalizes voucher stacking constraints from coupon constraints", () => {
+    const voucher = __testables.normalizeVoucher({
+      id: "coupon-1",
+      name: "Voucher stack",
+      code: "STACK10",
+      discountType: "PERCENT",
+      discountValue: 10,
+      constraints: {
+        conditions: ["Ap dung don tu 100k"],
+        stackable: true,
+        combinableWithPromotions: true,
+        exclusive: true,
+        priority: 3,
+      },
+    });
+
+    expect(voucher).toEqual(
+      expect.objectContaining({
+        conditions: ["Ap dung don tu 100k"],
+        stackable: true,
+        combinableWithPromotions: true,
+        exclusive: true,
+        priority: 3,
+      }),
+    );
+  });
   it("keeps voucher package ids and normalizes datetime-local values for package mutations", () => {
     const input = __testables.buildPackageInput(
       {

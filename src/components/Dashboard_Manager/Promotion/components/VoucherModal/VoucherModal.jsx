@@ -29,6 +29,13 @@ const buildInitialFormData = (voucher) => ({
   publishAt: voucher?.publishAt || "",
   description: voucher?.description || "",
   conditions: voucher?.conditions ? voucher.conditions.join("\n") : "",
+  stackable: Boolean(voucher?.stackable),
+  combinableWithPromotions: Boolean(voucher?.combinableWithPromotions),
+  exclusive: Boolean(voucher?.exclusive),
+  priority:
+    voucher?.priority === 0 || voucher?.priority
+      ? String(voucher.priority)
+      : "0",
 });
 
 const VoucherModal = ({ voucher, onSave, onClose }) => {
@@ -41,8 +48,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
   }, [voucher]);
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { checked, name, type, value } = event.target;
+    const nextValue = type === "checkbox" ? checked : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -97,9 +105,15 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
       maxDiscount: formData.maxDiscount
         ? parseFloat(formData.maxDiscount)
         : null,
-      usageLimit: formData.usageLimit ? parseInt(formData.usageLimit, 10) : null,
+      usageLimit: formData.usageLimit
+        ? parseInt(formData.usageLimit, 10)
+        : null,
       conditions: formData.conditions.split("\n").filter((line) => line.trim()),
       status,
+      stackable: Boolean(formData.stackable),
+      combinableWithPromotions: Boolean(formData.combinableWithPromotions),
+      exclusive: Boolean(formData.exclusive),
+      priority: formData.priority ? parseInt(formData.priority, 10) : 0,
     };
 
     onSave(formattedData);
@@ -114,7 +128,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
         <div className="modal-header">
           <div className="header-content">
             <h2>{voucher ? "Chỉnh sửa voucher" : "Tạo voucher mới"}</h2>
-            <p>Thiết lập voucher đầy đủ điều kiện, thời gian và lịch xuất bản.</p>
+            <p>
+              Thiết lập voucher đầy đủ điều kiện, thời gian và lịch xuất bản.
+            </p>
           </div>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
@@ -140,7 +156,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     onChange={handleInputChange}
                     className={errors.name ? "error" : ""}
                   />
-                  {errors.name && <span className="err-msg">{errors.name}</span>}
+                  {errors.name && (
+                    <span className="err-msg">{errors.name}</span>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -200,11 +218,13 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     className={errors.discountType ? "error" : ""}
                   >
                     <option value="">-- Loại --</option>
-                    {Object.entries(VOUCHER_DISCOUNT_TYPES).map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
+                    {Object.entries(VOUCHER_DISCOUNT_TYPES).map(
+                      ([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
 
@@ -271,7 +291,60 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                 />
               </div>
             </div>
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Cấu hình dùng chồng
+              </h3>
 
+              <div className="grid-2">
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="stackable"
+                    checked={Boolean(formData.stackable)}
+                    onChange={handleInputChange}
+                  />
+                  <span>Cho phép dùng chồng với voucher khác</span>
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="combinableWithPromotions"
+                    checked={Boolean(formData.combinableWithPromotions)}
+                    onChange={handleInputChange}
+                  />
+                  <span>Cho phép dùng chung với chương trình khuyến mãi</span>
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="exclusive"
+                    checked={Boolean(formData.exclusive)}
+                    onChange={handleInputChange}
+                  />
+                  <span>Voucher độc quyền, ưu tiên chặn ưu đãi khác</span>
+                </label>
+
+                <div className="form-group">
+                  <label>Độ ưu tiên</label>
+                  <input
+                    type="number"
+                    name="priority"
+                    min="0"
+                    placeholder="0"
+                    value={formData.priority}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-secondary mt-2">
+                Quy tắc dùng chồng voucher sẽ được tính lại khi áp voucher vào
+                đơn hàng.
+              </p>
+            </div>
             <div className="form-section">
               <h3 className="section-title">
                 <Clock size={18} /> Thời gian & công bố
@@ -321,9 +394,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
 
             <div className="form-section no-border">
               <div className="form-group full">
-                <label>
-                  Điều kiện áp dụng (mỗi dòng 1 điều kiện)
-                </label>
+                <label>Điều kiện áp dụng (mỗi dòng 1 điều kiện)</label>
                 <textarea
                   name="conditions"
                   rows="3"
