@@ -440,6 +440,17 @@ export const OrderQuery = {
       .sort({ openedAt: -1, createdAt: -1, _id: -1 })
       .lean({ virtuals: true });
 
+    const findLegacyTableOrders = async () =>
+      Order.find({
+        restaurantId: rid,
+        tableId: table._id,
+        tableCode: safeCode,
+        ...orderBatchOrLegacyFilter(),
+        currentStatus: { $nin: inactiveStatuses },
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .lean({ virtuals: true });
+
     let orders = [];
     if (session?._id) {
       orders = await Order.find({
@@ -451,22 +462,17 @@ export const OrderQuery = {
       })
         .sort({ createdAt: 1, _id: 1 })
         .lean({ virtuals: true });
+      if (!orders.length) {
+        orders = await findLegacyTableOrders();
+      }
     } else {
-      orders = await Order.find({
-        restaurantId: rid,
-        tableId: table._id,
-        tableCode: safeCode,
-        ...orderBatchOrLegacyFilter(),
-        currentStatus: { $nin: inactiveStatuses },
-      })
-        .sort({ createdAt: 1, _id: 1 })
-        .lean({ virtuals: true });
+      orders = await findLegacyTableOrders();
     }
 
     const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders });
     return {
       session: session || null,
-      orders: docsWithCustomer.filter((o) => o?.orderType !== "table_session"),
+      orders: docsWithCustomer.filter((o) => o?.orderKind !== "table_session"),
       tableId: String(table._id),
       tableCode: safeCode || null,
     };
