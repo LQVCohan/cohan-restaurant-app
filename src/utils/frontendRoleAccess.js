@@ -76,8 +76,6 @@ export const getDefaultPathForRole = (userOrRole) => {
   if (isManagerRole(normalized)) return "/manager";
   if (isHrRole(normalized)) return "/manager#staff";
   if (isAccountantRole(normalized)) return "/manager#payroll";
-  if (["server", "host", "cashier", "supervisor"].includes(normalized)) return "/staff/orders";
-  if (["chef", "cook", "kitchen_helper"].includes(normalized)) return "/staff/schedule";
   if (isStaffOperationalRole(normalized)) return "/staff/dashboard";
   return "/";
 };
