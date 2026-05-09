@@ -30,7 +30,10 @@ import {
   Receipt,
   AlertCircle,
 } from "lucide-react";
-
+import {
+  getDiscountPreviewErrorMessage,
+  useDiscountPreview,
+} from "../../../hooks/useDiscountPreview";
 const DEFAULT_SHIPPING = (prefill = {}) => ({
   fullName: prefill.fullName || "",
   phone: prefill.phone || "",
@@ -110,7 +113,14 @@ const OrderSummaryModal = ({
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const [receipt, setReceipt] = useState(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
+  const [discountBreakdown, setDiscountBreakdown] = useState(null);
+  const [discountError, setDiscountError] = useState("");
+  const [discountTouched, setDiscountTouched] = useState(false);
 
+  const { previewOrderDiscount, loading: isPreviewingDiscount } =
+    useDiscountPreview();
   const handleCloseAll = () => {
     setIsSuccessOpen(false);
     onClose?.();
@@ -153,7 +163,16 @@ const OrderSummaryModal = ({
     () => new Set(orderData.map((i) => i.restaurantId || "unknown")).size,
     [orderData],
   );
+  const previewRestaurantId = useMemo(() => {
+    if (restaurantId) return restaurantId;
+    const ids = [
+      ...new Set(orderData.map((item) => item.restaurantId).filter(Boolean)),
+    ];
+    return ids.length === 1 ? ids[0] : null;
+  }, [restaurantId, orderData]);
 
+  const canPreviewDiscount =
+    restaurantCount <= 1 && Boolean(previewRestaurantId);
   useEffect(() => {
     if (isOpen) {
       const prefill = {
@@ -166,9 +185,26 @@ const OrderSummaryModal = ({
       setOrderData(mappedOrderData);
       setShipping(DEFAULT_SHIPPING(prefill));
       setShippingTouched(false);
+      setVoucherCode("");
+      setSelectedPromotionIds([]);
+      setDiscountBreakdown(null);
+      setDiscountError("");
+      setDiscountTouched(false);
     }
   }, [isOpen, mappedOrderData, user]);
+  useEffect(() => {
+    if (!discountTouched) return;
 
+    setDiscountBreakdown(null);
+    setDiscountError("");
+  }, [
+    orderData,
+    shipping.deliveryMethod,
+    shipping.deliveryTime,
+    shipping.address,
+    selectedPromotionIds,
+    discountTouched,
+  ]);
   const generateOrderInfo = () => {
     const orderId =
       "DH" + Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -277,17 +313,116 @@ const OrderSummaryModal = ({
       ),
     );
   };
+  const buildDiscountPreviewInput = useCallback(() => {
+    const orderType = mapDeliveryToOrderType(shipping?.deliveryMethod);
 
+    const previewItems = orderData.map((i) => ({
+      dishId: i.dishId,
+      menuId: i.menuId,
+      categoryId: i.categoryId,
+      name: i.name,
+      unit: i.unit || "phần",
+      image: typeof i.image === "string" ? i.image : undefined,
+      basePrice: Number(i.price || 0),
+      servingKey: i.servingKey || "portion",
+      servingVariant: {
+        key: i.servingKey || "portion",
+        name: i.servingVariant?.name || "Phần",
+        mode: i.servingVariant?.mode || "PORTION",
+        price: Number(i.price || 0),
+        sellQty: i.servingVariant?.sellQty || 1,
+        sellUnit: i.servingVariant?.sellUnit || "portion",
+      },
+      quantity: Number(i.quantity || 1),
+      selectedModifiers: (i.modifiers || []).map((m) => ({
+        groupId: m.groupId,
+        optionId: m.optionId,
+      })),
+      note: i.description || undefined,
+      priority: "MEDIUM",
+    }));
+
+    return {
+      restaurantId: previewRestaurantId,
+      orderType,
+      items: previewItems,
+      pricing: {
+        taxRate: ORDER_VAT_RATE,
+        serviceRate: 0,
+        shippingFee:
+          shipping?.deliveryMethod === "delivery"
+            ? Number(shipping?.shippingFee || 0)
+            : 0,
+        voucherCode: voucherCode.trim().toUpperCase() || null,
+      },
+      promotionIds: selectedPromotionIds,
+    };
+  }, [
+    orderData,
+    previewRestaurantId,
+    shipping?.deliveryMethod,
+    shipping?.shippingFee,
+    voucherCode,
+    selectedPromotionIds,
+  ]);
+  const handleApplyDiscountPreview = useCallback(async () => {
+    setDiscountTouched(true);
+    setDiscountError("");
+
+    if (!orderData.length) {
+      setDiscountBreakdown(null);
+      setDiscountError("Giỏ hàng đang trống.");
+      return;
+    }
+
+    if (!canPreviewDiscount || !previewRestaurantId) {
+      setDiscountBreakdown(null);
+      setDiscountError(
+        "Voucher hiện chỉ hỗ trợ áp dụng cho đơn thuộc một nhà hàng. Vui lòng tách đơn hoặc bỏ voucher.",
+      );
+      return;
+    }
+
+    try {
+      const breakdown = await previewOrderDiscount(buildDiscountPreviewInput());
+      setDiscountBreakdown(breakdown);
+    } catch (error) {
+      setDiscountBreakdown(null);
+      setDiscountError(getDiscountPreviewErrorMessage(error));
+    }
+  }, [
+    orderData.length,
+    previewOrderDiscount,
+    buildDiscountPreviewInput,
+    canPreviewDiscount,
+    previewRestaurantId,
+  ]);
+  const hasVoucherCode = voucherCode.trim().length > 0;
+  const hasUnappliedDiscount =
+    hasVoucherCode && discountTouched && !discountBreakdown;
+  const shouldBlockCheckoutForDiscount =
+    canPreviewDiscount &&
+    hasVoucherCode &&
+    (!discountBreakdown || !!discountError);
   const mapDeliveryToOrderType = (deliveryMethod) => {
     if (deliveryMethod === "dinein") return "dine_in";
     if (deliveryMethod === "pickup") return "takeaway";
     return "delivery";
   };
+  useEffect(() => {
+    if (canPreviewDiscount) return;
 
-
-
+    setVoucherCode("");
+    setSelectedPromotionIds([]);
+    setDiscountBreakdown(null);
+    setDiscountError("");
+    setDiscountTouched(false);
+  }, [canPreviewDiscount]);
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
+      if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
+        throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
+      }
       const checkoutItems = orderData.map((i) => ({
         restaurantId: i.restaurantId,
         dishId: i.dishId,
@@ -310,7 +445,20 @@ const OrderSummaryModal = ({
         items: checkoutItems,
         shipping,
         paymentMethod,
-        pricing: { taxRate: ORDER_VAT_RATE },
+        pricing: {
+          taxRate: ORDER_VAT_RATE,
+          serviceRate: 0,
+          shippingFee:
+            shipping?.deliveryMethod === "delivery"
+              ? Number(shipping?.shippingFee || 0)
+              : 0,
+          voucherCode:
+            canPreviewDiscount && discountBreakdown
+              ? voucherCode.trim().toUpperCase()
+              : null,
+        },
+        promotionIds:
+          canPreviewDiscount && discountBreakdown ? selectedPromotionIds : [],
         note: shipping?.note || undefined,
         idempotencyKey: `checkout-${orderInfo.id}`,
       };
@@ -322,12 +470,26 @@ const OrderSummaryModal = ({
           email: shipping?.email || undefined,
         };
       }
-
+      const checkout = res?.data?.createCheckoutOrders?.checkout || null;
       const res = await createCheckoutOrders({ variables: { input } });
       const created = res?.data?.createCheckoutOrders?.orders || [];
-      return { orderCode: res?.data?.createCheckoutOrders?.checkout?.checkoutCode, orders: created };
+      return {
+        orderCode: res?.data?.createCheckoutOrders?.checkout?.checkoutCode,
+        orders: created,
+        checkout,
+      };
     },
-    [orderData, shipping, isAuthenticated, createCheckoutOrders, orderInfo.id],
+    [
+      voucherCode,
+      discountBreakdown,
+      orderData,
+      shipping,
+      selectedPromotionIds,
+      orderInfo.id,
+      isAuthenticated,
+      createCheckoutOrders,
+      canPreviewDiscount,
+    ],
   );
 
   const setAndShowSuccess = (createdOrders) => {
@@ -429,7 +591,11 @@ const OrderSummaryModal = ({
       case "qr":
         return (
           <QRPaymentScreen
-            amount={calculateSubtotals().finalTotal}
+            amount={
+              discountBreakdown?.grandTotal ||
+              discountBreakdown?.finalTotal ||
+              calculateSubtotals().finalTotal
+            }
             onConfirm={handleQRPayment}
             isProcessing={isProcessingPayment}
           />
@@ -438,6 +604,7 @@ const OrderSummaryModal = ({
         return (
           <SummaryContent
             orderInfo={orderInfo}
+            canPreviewDiscount={canPreviewDiscount}
             orderData={orderData}
             groupedByRestaurant={groupedByRestaurant}
             subtotals={calculateSubtotals()}
@@ -450,6 +617,13 @@ const OrderSummaryModal = ({
             restaurantCount={restaurantCount}
             calcGroupTotals={calcGroupTotals}
             walletBalance={walletBalance}
+            voucherCode={voucherCode}
+            onVoucherCodeChange={setVoucherCode}
+            discountBreakdown={discountBreakdown}
+            discountError={discountError}
+            isPreviewingDiscount={isPreviewingDiscount}
+            onApplyDiscountPreview={handleApplyDiscountPreview}
+            hasUnappliedDiscount={hasUnappliedDiscount}
           />
         );
     }
@@ -504,14 +678,18 @@ const OrderSummaryModal = ({
               disabled={
                 !isShippingValid ||
                 !selectedPaymentMethod ||
-                isProcessingPayment
+                isProcessingPayment ||
+                shouldBlockCheckoutForDiscount ||
+                isPreviewingDiscount
               }
               title={
                 !isShippingValid
                   ? "Vui lòng nhập đầy đủ thông tin giao hàng"
                   : !selectedPaymentMethod
                     ? "Chọn phương thức thanh toán"
-                    : undefined
+                    : shouldBlockCheckoutForDiscount
+                      ? "Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng"
+                      : undefined
               }
             >
               {isProcessingPayment ? "Đang lưu đơn..." : "Xác nhận đặt hàng"}
@@ -565,6 +743,7 @@ export default OrderSummaryModal;
 const SummaryContent = ({
   orderInfo,
   orderData,
+  canPreviewDiscount,
   groupedByRestaurant,
   subtotals,
   shipping,
@@ -576,6 +755,13 @@ const SummaryContent = ({
   restaurantCount,
   calcGroupTotals,
   walletBalance,
+  voucherCode,
+  onVoucherCodeChange,
+  discountBreakdown,
+  discountError,
+  isPreviewingDiscount,
+  onApplyDiscountPreview,
+  hasUnappliedDiscount,
 }) => (
   <>
     <RestaurantInfo
@@ -593,12 +779,30 @@ const SummaryContent = ({
       onAddModifier={onAddModifier}
       calcGroupTotals={calcGroupTotals}
     />
-    <PriceBreakdown subtotals={subtotals} />
+    <DiscountSection
+      voucherCode={voucherCode}
+      onVoucherCodeChange={onVoucherCodeChange}
+      discountBreakdown={discountBreakdown}
+      discountError={discountError}
+      isPreviewingDiscount={isPreviewingDiscount}
+      onApplyDiscountPreview={onApplyDiscountPreview}
+      hasUnappliedDiscount={hasUnappliedDiscount}
+      canPreviewDiscount={canPreviewDiscount}
+    />
+
+    <PriceBreakdown
+      subtotals={subtotals}
+      discountBreakdown={discountBreakdown}
+    />
     <PaymentMethods
       selectedMethod={selectedPaymentMethod}
       onSelect={onPaymentMethodSelect}
       walletBalance={walletBalance}
-      amount={subtotals.finalTotal}
+      amount={
+        discountBreakdown?.grandTotal ||
+        discountBreakdown?.finalTotal ||
+        subtotals.finalTotal
+      }
     />
   </>
 );
@@ -858,7 +1062,73 @@ const OrderItems = ({
     </div>
   );
 };
+const DiscountSection = ({
+  voucherCode,
+  onVoucherCodeChange,
+  discountBreakdown,
+  discountError,
+  isPreviewingDiscount,
+  onApplyDiscountPreview,
+  hasUnappliedDiscount,
+  canPreviewDiscount,
+}) => (
+  <div className="section discount-section">
+    <h3 className="section-title">
+      <Receipt size={20} /> Ưu đãi & voucher
+    </h3>
 
+    <div className="voucher-row">
+      <input
+        className="form-input"
+        type="text"
+        placeholder={
+          canPreviewDiscount
+            ? "Nhập mã voucher"
+            : "Voucher chưa hỗ trợ cho đơn nhiều nhà hàng"
+        }
+        value={voucherCode}
+        onChange={(event) => onVoucherCodeChange(event.target.value)}
+        disabled={!canPreviewDiscount}
+      />
+      <button
+        type="button"
+        className="btn btn--secondary"
+        onClick={onApplyDiscountPreview}
+        disabled={
+          isPreviewingDiscount || !voucherCode.trim() || !canPreviewDiscount
+        }
+      >
+        {isPreviewingDiscount ? "Đang kiểm tra..." : "Áp dụng"}
+      </button>
+      {!canPreviewDiscount && (
+        <div className="discount-message discount-message--warning">
+          <AlertCircle size={16} /> Voucher hiện chỉ áp dụng cho đơn thuộc một
+          nhà hàng.
+        </div>
+      )}
+    </div>
+
+    {discountError && (
+      <div className="discount-message discount-message--error">
+        <AlertCircle size={16} /> {discountError}
+      </div>
+    )}
+
+    {hasUnappliedDiscount && !discountError && (
+      <div className="discount-message discount-message--warning">
+        <AlertCircle size={16} /> Voucher đã thay đổi. Vui lòng áp dụng lại
+        trước khi đặt hàng.
+      </div>
+    )}
+
+    {discountBreakdown?.voucherCode && (
+      <div className="discount-message discount-message--success">
+        <CheckCircle size={16} /> Đã áp dụng voucher{" "}
+        <strong>{discountBreakdown.voucherCode}</strong>
+      </div>
+    )}
+  </div>
+);
 const RestaurantGroup = ({
   restaurantId,
   items,
@@ -973,43 +1243,136 @@ const OrderItem = ({ item, onAddModifier }) => {
   );
 };
 
-const PriceBreakdown = ({ subtotals }) => (
-  <div className="section final-breakdown">
-    <h3 className="section-title">
-      <CreditCard size={20} /> Tổng thanh toán
-    </h3>
-    <div className="price-breakdown">
-      <div className="price-row">
-        <span className="price-label">Tổng tiền món ăn</span>
-        <span className="price-value">
-          {formatCurrency(subtotals.subtotal)}
-        </span>
+const PriceBreakdown = ({ subtotals, discountBreakdown }) => {
+  const hasBackendBreakdown = Boolean(discountBreakdown);
+
+  if (hasBackendBreakdown) {
+    return (
+      <div className="section">
+        <h3 className="section-title">
+          <CreditCard size={20} /> Tổng thanh toán
+        </h3>
+
+        <div className="price-breakdown">
+          <div className="price-row">
+            <span className="price-label">Tạm tính</span>
+            <span className="price-value">
+              {formatCurrency(discountBreakdown.subtotal)}
+            </span>
+          </div>
+
+          {discountBreakdown.promotionDiscount > 0 && (
+            <div className="price-row discount">
+              <span className="price-label">Giảm khuyến mãi</span>
+              <span className="price-value">
+                -{formatCurrency(discountBreakdown.promotionDiscount)}
+              </span>
+            </div>
+          )}
+
+          {discountBreakdown.voucherDiscount > 0 && (
+            <div className="price-row discount">
+              <span className="price-label">Giảm voucher</span>
+              <span className="price-value">
+                -{formatCurrency(discountBreakdown.voucherDiscount)}
+              </span>
+            </div>
+          )}
+
+          {discountBreakdown.totalDiscount > 0 && (
+            <div className="price-row discount-total">
+              <span className="price-label">Tổng giảm</span>
+              <span className="price-value">
+                -{formatCurrency(discountBreakdown.totalDiscount)}
+              </span>
+            </div>
+          )}
+
+          {discountBreakdown.service > 0 && (
+            <div className="price-row">
+              <span className="price-label">Phí dịch vụ</span>
+              <span className="price-value">
+                {formatCurrency(discountBreakdown.service)}
+              </span>
+            </div>
+          )}
+
+          {discountBreakdown.tax > 0 && (
+            <div className="price-row">
+              <span className="price-label">VAT</span>
+              <span className="price-value">
+                {formatCurrency(discountBreakdown.tax)}
+              </span>
+            </div>
+          )}
+
+          {discountBreakdown.shippingFee > 0 && (
+            <div className="price-row">
+              <span className="price-label">Phí giao hàng</span>
+              <span className="price-value">
+                {formatCurrency(discountBreakdown.shippingFee)}
+              </span>
+            </div>
+          )}
+
+          <div className="price-row total">
+            <span className="price-label">Thành tiền</span>
+            <span className="price-value">
+              {formatCurrency(
+                discountBreakdown.grandTotal || discountBreakdown.finalTotal,
+              )}
+            </span>
+          </div>
+        </div>
       </div>
-      <div className="price-row">
-        <span className="price-label">Phí tùy chọn thêm</span>
-        <span className="price-value">
-          {formatCurrency(subtotals.modifiersTotal)}
-        </span>
-      </div>
-      <div className="price-row">
-        <span className="price-label">Thuế VAT (10%)</span>
-        <span className="price-value">{formatCurrency(subtotals.tax)}</span>
-      </div>
-      <div className="price-row">
-        <span className="price-label">Phí giao hàng</span>
-        <span className="price-value text-green">Miễn phí</span>
-      </div>
-      <div className="price-row grand-total">
-        <span className="price-label">Tổng cộng</span>
-        <span className="price-value">
-          {formatCurrency(subtotals.finalTotal)}
-        </span>
+    );
+  }
+
+  return (
+    <div className="section">
+      <h3 className="section-title">
+        <CreditCard size={20} /> Tổng thanh toán
+      </h3>
+
+      <div className="price-breakdown">
+        <div className="price-row">
+          <span className="price-label">Tạm tính món ăn</span>
+          <span className="price-value">
+            {formatCurrency(subtotals.subtotal)}
+          </span>
+        </div>
+
+        {subtotals.modifiersTotal > 0 && (
+          <div className="price-row">
+            <span className="price-label">Phí tùy chọn thêm</span>
+            <span className="price-value">
+              {formatCurrency(subtotals.modifiersTotal)}
+            </span>
+          </div>
+        )}
+
+        <div className="price-row">
+          <span className="price-label">VAT (10%)</span>
+          <span className="price-value">{formatCurrency(subtotals.tax)}</span>
+        </div>
+
+        <div className="price-row total">
+          <span className="price-label">Thành tiền tạm tính</span>
+          <span className="price-value">
+            {formatCurrency(subtotals.finalTotal)}
+          </span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const PaymentMethods = ({ selectedMethod, onSelect, walletBalance, amount }) => (
+const PaymentMethods = ({
+  selectedMethod,
+  onSelect,
+  walletBalance,
+  amount,
+}) => (
   <div className="section">
     <h3 className="section-title">
       <CreditCard size={20} /> Phương thức thanh toán

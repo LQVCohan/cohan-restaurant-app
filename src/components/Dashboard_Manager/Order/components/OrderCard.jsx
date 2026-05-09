@@ -45,7 +45,31 @@ const PRIORITY_LABELS = {
   MEDIUM: "Ưu tiên vừa",
   LOW: "Ưu tiên thấp",
 };
+const ORDER_STATUS_LABELS = {
+  pending: "Chờ xử lý",
+  confirmed: "Đã nhận",
+  preparing: "Đang chế biến",
+  ready: "Sẵn sàng phục vụ",
+  served: "Đã phục vụ",
+  completed: "Hoàn tất",
+  cancelled: "Đã hủy",
+  failed: "Thất bại",
+};
 
+const getOrderStatusLabel = (status) => {
+  const key = String(status || "").toLowerCase();
+  return ORDER_STATUS_LABELS[key] || status || "Không rõ";
+};
+
+const getBatchTitle = (order) => {
+  if (order?.orderType !== "dine_in" || !order?.tableCode) return null;
+
+  if (order?.batchDisplayIndex) {
+    return `Đợt gọi món ${order.batchDisplayIndex}`;
+  }
+
+  return "Đợt gọi món";
+};
 const minutesSince = (createdAt) => {
   if (!createdAt) return 0;
   const d = new Date(createdAt);
@@ -127,13 +151,18 @@ const OrderCard = ({
   const hasPendingReturnRequest = (order?.items || []).some((it) =>
     (it?.returnRequests || []).some((r) => r?.status === "pending"),
   );
-  const isPaymentRequested = order?.payment?.status === "payment_requested" || !!order?.payment?.requestedAt;
+  const isPaymentRequested =
+    order?.payment?.status === "payment_requested" ||
+    !!order?.payment?.requestedAt;
   const orderLocationLabel =
     order?.orderType === "delivery"
       ? "Giao hàng"
       : order?.orderType === "takeaway"
         ? "Mang về"
         : order?.tableCode || "Tại bàn";
+
+  const statusLabel = getOrderStatusLabel(order?.currentStatus);
+  const batchTitle = getBatchTitle(order);
   // Xử lý action an toàn với Loading state
   const handleAction = async (e, status) => {
     e.stopPropagation();
@@ -246,7 +275,7 @@ const OrderCard = ({
       case "served":
         return (
           <div className="oc-status-label text-blue">
-            <CheckCircle size={14} /> Hoàn tất
+            <CheckCircle size={14} /> Đã phục vụ
           </div>
         );
       case "cancelled":
@@ -280,12 +309,24 @@ const OrderCard = ({
           >
             {orderLocationLabel}
           </div>
-          <span className="oc-id">
-            #{String(order?.orderCode || order?.id).slice(-4)}
+
+          <span
+            className={`oc-status-pill oc-status-pill--${order?.currentStatus || "unknown"}`}
+          >
+            {statusLabel}
           </span>
         </div>
+
         <TimeBadge minutes={ageMinutes} />
       </div>
+      {batchTitle && (
+        <div className="oc-batch-info">
+          <span className="oc-batch-title">{batchTitle}</span>
+          {order?.orderCode && (
+            <span className="oc-batch-code">{order.orderCode}</span>
+          )}
+        </div>
+      )}
       <div className="oc-info-section">
         <div className="oc-guest">
           <AlertTriangle size={12} />
@@ -303,17 +344,30 @@ const OrderCard = ({
           <span className="name">{customerName}</span>
         </div>
         {isPaymentRequested && (
-          <div className="oc-note-badge" style={{ marginBottom: 6, color: "#15803d" }}>
+          <div
+            className="oc-note-badge"
+            style={{ marginBottom: 6, color: "#15803d" }}
+          >
             Khách gọi thanh toán
           </div>
         )}
         {hasPendingVoidRequest && (
-            <div className="oc-note-badge" style={{ marginBottom: 6, color: "#b45309" }}>Có yêu cầu hủy món</div>
-          )}
-          {hasPendingReturnRequest && (
-            <div className="oc-note-badge" style={{ marginBottom: 6, color: "#0369a1" }}>Có yêu cầu trả lại món</div>
-          )}
-          {hasNote && (
+          <div
+            className="oc-note-badge"
+            style={{ marginBottom: 6, color: "#b45309" }}
+          >
+            Có yêu cầu hủy món
+          </div>
+        )}
+        {hasPendingReturnRequest && (
+          <div
+            className="oc-note-badge"
+            style={{ marginBottom: 6, color: "#0369a1" }}
+          >
+            Có yêu cầu trả lại món
+          </div>
+        )}
+        {hasNote && (
           <div className="oc-note-box">
             <StickyNote size={12} />
             <span>{order.note}</span>

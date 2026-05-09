@@ -54,17 +54,34 @@ const UPDATE_ORDER_STATUS = gql`
 `;
 const CONFIRM_INCOMING_ORDER = gql`
   mutation ConfirmIncomingOrder($input: ConfirmIncomingOrderInput!) {
-    confirmIncomingOrder(input: $input) { order { id currentStatus updatedAt } }
+    confirmIncomingOrder(input: $input) {
+      order {
+        id
+        currentStatus
+        updatedAt
+      }
+    }
   }
 `;
 const REJECT_INCOMING_ORDER = gql`
   mutation RejectIncomingOrder($input: RejectIncomingOrderInput!) {
-    rejectIncomingOrder(input: $input) { order { id currentStatus updatedAt } }
+    rejectIncomingOrder(input: $input) {
+      order {
+        id
+        currentStatus
+        updatedAt
+      }
+    }
   }
 `;
 const CREATE_TEMP_BILL_PRINT_JOB = gql`
-  mutation CreateTemporaryBillPrintJob($input: CreateTemporaryBillPrintJobInput!) {
-    createTemporaryBillPrintJob(input: $input) { ok message }
+  mutation CreateTemporaryBillPrintJob(
+    $input: CreateTemporaryBillPrintJobInput!
+  ) {
+    createTemporaryBillPrintJob(input: $input) {
+      ok
+      message
+    }
   }
 `;
 
@@ -218,7 +235,7 @@ const OrderManagement = () => {
     try {
       localStorage.setItem(
         "orderSettings",
-        JSON.stringify({ timeSettings, chipSize, timeColors })
+        JSON.stringify({ timeSettings, chipSize, timeColors }),
       );
     } catch (e) {
       void e;
@@ -257,7 +274,7 @@ const OrderManagement = () => {
       if (evt?.order?.tableCode)
         showNotification(
           `Realtime: ${evt.type} (${evt.order.tableCode})`,
-          "info"
+          "info",
         );
       if (loadOrders && selectedRestaurantId) {
         loadOrders({
@@ -281,7 +298,7 @@ const OrderManagement = () => {
     const onKey = (e) => {
       if (
         ["input", "textarea", "select"].includes(
-          (e.target?.tagName || "").toLowerCase()
+          (e.target?.tagName || "").toLowerCase(),
         ) ||
         e.target?.isContentEditable
       )
@@ -298,9 +315,9 @@ const OrderManagement = () => {
       (orders || []).filter(
         (o) =>
           !["served", "completed", "cancelled"].includes(o.currentStatus) &&
-          !hiddenOrderIds.includes(o.id)
+          !hiddenOrderIds.includes(o.id),
       ),
-    [orders, hiddenOrderIds]
+    [orders, hiddenOrderIds],
   );
 
   const normalizeText = (value) => {
@@ -321,7 +338,11 @@ const OrderManagement = () => {
     const source = String(meta.source || meta.clientSource || "").toLowerCase();
     const channel = String(meta.channel || "").toLowerCase();
     const clientType = String(meta.clientType || "").toLowerCase();
-    return typeOk && statusOk && [source, channel, clientType].includes("staff_remote");
+    return (
+      typeOk &&
+      statusOk &&
+      [source, channel, clientType].includes("staff_remote")
+    );
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -331,13 +352,15 @@ const OrderManagement = () => {
     const singleToken = q && !q.includes(" ");
 
     const matchesStatus = (o) => {
-      if (statusFilter === "remote_staff_pending") return isRemoteStaffPendingOrder(o);
+      if (statusFilter === "remote_staff_pending")
+        return isRemoteStaffPendingOrder(o);
       return !statusFilter || o.currentStatus === statusFilter;
     };
     const matchesTableType = (o) => !tableFilter || o.orderType === tableFilter;
     const matchesDate = (o) => {
       const created = o?.createdAt ? new Date(o.createdAt) : null;
-      if (!created || Number.isNaN(created.getTime())) return !dateFrom && !dateTo;
+      if (!created || Number.isNaN(created.getTime()))
+        return !dateFrom && !dateTo;
       if (dateFrom) {
         const from = new Date(`${dateFrom}T00:00:00`);
         if (created < from) return false;
@@ -351,7 +374,7 @@ const OrderManagement = () => {
 
     if (!q)
       return activeOrders.filter(
-        (o) => matchesStatus(o) && matchesTableType(o) && matchesDate(o)
+        (o) => matchesStatus(o) && matchesTableType(o) && matchesDate(o),
       );
 
     if (endsWithSpace && singleToken) {
@@ -388,7 +411,15 @@ const OrderManagement = () => {
         matchesDate(o)
       );
     });
-  }, [activeOrders, searchTerm, statusFilter, tableFilter, dateFrom, dateTo, isRemoteStaffPendingOrder]);
+  }, [
+    activeOrders,
+    searchTerm,
+    statusFilter,
+    tableFilter,
+    dateFrom,
+    dateTo,
+    isRemoteStaffPendingOrder,
+  ]);
 
   const orderedFilteredOrders = useMemo(() => {
     const sorted = [...filteredOrders].sort((a, b) => {
@@ -398,7 +429,53 @@ const OrderManagement = () => {
     });
     return sorted;
   }, [filteredOrders, sortBy]);
+  const batchIndexByOrderId = useMemo(() => {
+    const map = new Map();
+    const groups = new Map();
 
+    for (const order of activeOrders || []) {
+      // Chỉ đánh số đợt cho order tại bàn.
+      // Delivery/takeaway không cần "Đợt gọi món".
+      if (order?.orderType !== "dine_in" || !order?.tableCode) continue;
+
+      // Vì active list chỉ chứa các order chưa hoàn tất,
+      // group theo restaurant + table là đủ cho phiên bàn hiện tại.
+      const key = `${order.restaurantId || selectedRestaurantId || ""}:${
+        order.tableCode
+      }`;
+
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(order);
+    }
+
+    for (const ordersInTable of groups.values()) {
+      const sorted = [...ordersInTable].sort((a, b) => {
+        const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+        if (ta !== tb) return ta - tb;
+
+        return String(a?.id || "").localeCompare(String(b?.id || ""));
+      });
+
+      sorted.forEach((order, index) => {
+        if (order?.id) {
+          map.set(order.id, index + 1);
+        }
+      });
+    }
+
+    return map;
+  }, [activeOrders, selectedRestaurantId]);
+
+  const displayOrders = useMemo(
+    () =>
+      orderedFilteredOrders.map((order) => ({
+        ...order,
+        batchDisplayIndex: batchIndexByOrderId.get(order.id) || null,
+      })),
+    [orderedFilteredOrders, batchIndexByOrderId],
+  );
   const handleExportCsv = useCallback(() => {
     const rows = orderedFilteredOrders.map((o) => ({
       orderCode: o.orderCode || o.id,
@@ -423,7 +500,7 @@ const OrderManagement = () => {
     const csvRows = rows.map((r) =>
       header
         .map((h) => `"${String(r[h] ?? "").replaceAll('"', '""')}"`)
-        .join(",")
+        .join(","),
     );
     const csv = [header.join(","), ...csvRows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -488,13 +565,13 @@ const OrderManagement = () => {
     () => ({
       total: activeOrders.length,
       pending: activeOrders.filter(
-        (o) => !["completed", "cancelled", "served"].includes(o.currentStatus)
+        (o) => !["completed", "cancelled", "served"].includes(o.currentStatus),
       ).length,
       preparing: activeOrders.filter((o) => o.currentStatus === "preparing")
         .length,
       completed: 0,
     }),
-    [activeOrders]
+    [activeOrders],
   );
 
   // --- HANDLERS ---
@@ -504,18 +581,23 @@ const OrderManagement = () => {
       try {
         const { data } = await mutUpdateOrderStatus({
           variables: {
-            input: { id: orderId, restaurantId: selectedRestaurantId, status, note: extraNote },
+            input: {
+              id: orderId,
+              restaurantId: selectedRestaurantId,
+              status,
+              note: extraNote,
+            },
           },
         });
         const updated = data?.updateOrderStatus;
         setSelectedOrder((prev) =>
           prev?.id === orderId
             ? { ...prev, currentStatus: status, updatedAt: updated?.updatedAt }
-            : prev
+            : prev,
         );
         if (["served", "completed", "cancelled"].includes(status)) {
           setHiddenOrderIds((prev) =>
-            prev.includes(orderId) ? prev : [...prev, orderId]
+            prev.includes(orderId) ? prev : [...prev, orderId],
           );
         }
         if (loadOrders && selectedRestaurantId)
@@ -528,7 +610,7 @@ const OrderManagement = () => {
         showNotification(err?.message || "Lỗi cập nhật", "error");
       }
     },
-    [mutUpdateOrderStatus, loadOrders, selectedRestaurantId, showNotification]
+    [mutUpdateOrderStatus, loadOrders, selectedRestaurantId, showNotification],
   );
 
   const handleUpdateItemStatus = useCallback(
@@ -550,7 +632,7 @@ const OrderManagement = () => {
         },
       });
     },
-    [orders, selectedRestaurantId, loadOrders, updateItemStatus]
+    [orders, selectedRestaurantId, loadOrders, updateItemStatus],
   );
 
   const handleDishClick = useCallback((dish) => {
@@ -561,7 +643,7 @@ const OrderManagement = () => {
       window.requestAnimationFrame(() => {
         const cards = Array.from(document.querySelectorAll("[data-order-id]"));
         const matched = cards.find((el) =>
-          (dish.orderIds || []).includes(el.getAttribute("data-order-id"))
+          (dish.orderIds || []).includes(el.getAttribute("data-order-id")),
         );
         if (matched)
           matched.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -578,21 +660,50 @@ const OrderManagement = () => {
     async (orderId) => {
       const reason = window.prompt("Nhập lý do từ chối đơn:", "");
       if (reason == null) return;
-      await mutRejectIncomingOrder({ variables: { input: { id: orderId, restaurantId: selectedRestaurantId, reason } } });
-      loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
+      await mutRejectIncomingOrder({
+        variables: {
+          input: { id: orderId, restaurantId: selectedRestaurantId, reason },
+        },
+      });
+      loadOrders({
+        variables: { restaurantId: selectedRestaurantId, limit: 100 },
+        fetchPolicy: "network-only",
+      });
       showNotification("Đã từ chối đơn từ xa", "warning");
     },
-    [loadOrders, mutRejectIncomingOrder, selectedRestaurantId, showNotification]
+    [
+      loadOrders,
+      mutRejectIncomingOrder,
+      selectedRestaurantId,
+      showNotification,
+    ],
   );
-  const handleConfirmRemoteOrder = useCallback(async (orderId) => {
-    await mutConfirmIncomingOrder({ variables: { input: { id: orderId, restaurantId: selectedRestaurantId } } });
-    loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
-  }, [loadOrders, mutConfirmIncomingOrder, selectedRestaurantId]);
-  const handleCreateTemporaryBill = useCallback(async (order) => {
-    if (!order?.id || !selectedRestaurantId) return;
-    await mutCreateTempBillJob({ variables: { input: { orderId: order.id, restaurantId: selectedRestaurantId } } });
-    showNotification("Đã tạo print job in tạm tính.", "success");
-  }, [mutCreateTempBillJob, selectedRestaurantId, showNotification]);
+  const handleConfirmRemoteOrder = useCallback(
+    async (orderId) => {
+      await mutConfirmIncomingOrder({
+        variables: {
+          input: { id: orderId, restaurantId: selectedRestaurantId },
+        },
+      });
+      loadOrders({
+        variables: { restaurantId: selectedRestaurantId, limit: 100 },
+        fetchPolicy: "network-only",
+      });
+    },
+    [loadOrders, mutConfirmIncomingOrder, selectedRestaurantId],
+  );
+  const handleCreateTemporaryBill = useCallback(
+    async (order) => {
+      if (!order?.id || !selectedRestaurantId) return;
+      await mutCreateTempBillJob({
+        variables: {
+          input: { orderId: order.id, restaurantId: selectedRestaurantId },
+        },
+      });
+      showNotification("Đã tạo print job in tạm tính.", "success");
+    },
+    [mutCreateTempBillJob, selectedRestaurantId, showNotification],
+  );
   const handleReviewItemVoid = useCallback(
     async (payload) => {
       const updatedOrder = await reviewOrderItemVoid(payload);
@@ -692,7 +803,7 @@ const OrderManagement = () => {
           <div className="om-stats-grid">
             <StatsCard
               icon={<ShoppingBag />}
-              title="Tổng đơn hàng"
+              title="Đợt gọi món"
               value={stats.total}
               variant="blue"
             />
@@ -743,7 +854,9 @@ const OrderManagement = () => {
                   >
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending">Chờ xác nhận</option>
-                    <option value="remote_staff_pending">Đơn từ xa chờ xác nhận</option>
+                    <option value="remote_staff_pending">
+                      Đơn từ xa chờ xác nhận
+                    </option>
                     <option value="confirmed">Đã xác nhận</option>
                     <option value="preparing">Đang chuẩn bị</option>
                     <option value="ready">Sẵn sàng</option>
@@ -873,7 +986,7 @@ const OrderManagement = () => {
             </div>
           ) : (
             <div className="om-grid">
-              {orderedFilteredOrders.map((order) => (
+              {displayOrders.map((order) => (
                 <div
                   key={order.id}
                   data-order-id={order.id}
@@ -886,7 +999,11 @@ const OrderManagement = () => {
                   <OrderCard
                     order={order}
                     onUpdateStatus={async (orderId, status) => {
-                      if (status === "confirmed" && isRemoteStaffPendingOrder(order)) return handleConfirmRemoteOrder(orderId);
+                      if (
+                        status === "confirmed" &&
+                        isRemoteStaffPendingOrder(order)
+                      )
+                        return handleConfirmRemoteOrder(orderId);
                       return handleUpdateStatus(orderId, status);
                     }}
                     onRejectOrder={handleRejectOrder}
@@ -897,7 +1014,11 @@ const OrderManagement = () => {
                     onQuickItemDone={handleUpdateItemStatus}
                     onMessageCustomer={(o) => {
                       const threadId = o?.clientMeta?.chatThreadId;
-                      if (!threadId) return showNotification("Chưa có luồng chat cho đơn này", "warning");
+                      if (!threadId)
+                        return showNotification(
+                          "Chưa có luồng chat cho đơn này",
+                          "warning",
+                        );
                       window.location.href = `/staff?tab=contacts&threadId=${threadId}`;
                     }}
                     timeThresholds={timeSettings}
