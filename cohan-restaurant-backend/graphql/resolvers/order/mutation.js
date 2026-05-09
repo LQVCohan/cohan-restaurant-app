@@ -39,6 +39,7 @@ import {
   KITCHEN_STATUS,
   ORDER_PAYMENT_STATUS,
   activeTableSessionFilter,
+  buildActiveTableSessionKey,
 } from "../../../utils/orderLifecycle.js";
 
 import {
@@ -1088,6 +1089,10 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
   };
 }
 
+function isDuplicateKeyError(error) {
+  return error?.code === 11000 || String(error?.message || "").includes("E11000");
+}
+
 async function findOrCreateActiveTableSession({
   restaurantId,
   tableId,
@@ -1097,9 +1102,19 @@ async function findOrCreateActiveTableSession({
   session,
 }) {
   const activeFilter = activeTableSessionFilter({ restaurantId, tableId });
+  const activeSessionKey = buildActiveTableSessionKey({ restaurantId, tableId });
 
   const existing = await Order.findOne(activeFilter, null, { session });
-  if (existing) return existing;
+  if (existing) {
+    if (activeSessionKey && !existing.activeSessionKey) {
+      await Order.updateOne(
+        { _id: existing._id, activeSessionKey: { $in: [null, undefined] } },
+        { $set: { activeSessionKey } },
+        { session },
+      ).catch(() => {});
+    }
+    return existing;
+  }
 
   const parentOrderCode = await findOrCreateOrderCode({
     restaurantId,
@@ -1108,31 +1123,41 @@ async function findOrCreateActiveTableSession({
     session,
   });
 
-  const [created] = await Order.create([
-    {
-      restaurantId,
-      tableId,
-      tableCode,
-      userId: userId ? toId(userId) : undefined,
-      orderCode: parentOrderCode,
-      orderType: "dine_in",
-      orderKind: ORDER_KIND.TABLE_SESSION,
-      parentOrderId: null,
-      rootOrderId: null,
-      splitStatus: SPLIT_STATUS.NONE,
-      sessionStatus: SESSION_STATUS.OPEN,
-      kitchenStatus: KITCHEN_STATUS.DRAFT,
-      orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
-      openedAt: new Date(),
-      items: [],
-      totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
-      currentStatus: "pending",
-      payment: { method: "cash", status: "pending" },
-      customer: customerSnapshot || undefined,
-    },
-  ], { session });
+  try {
+    const [created] = await Order.create([
+      {
+        restaurantId,
+        tableId,
+        tableCode,
+        userId: userId ? toId(userId) : undefined,
+        orderCode: parentOrderCode,
+        orderType: "dine_in",
+        orderKind: ORDER_KIND.TABLE_SESSION,
+        activeSessionKey,
+        parentOrderId: null,
+        rootOrderId: null,
+        splitStatus: SPLIT_STATUS.NONE,
+        sessionStatus: SESSION_STATUS.OPEN,
+        kitchenStatus: KITCHEN_STATUS.DRAFT,
+        orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+        openedAt: new Date(),
+        items: [],
+        totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
+        currentStatus: "pending",
+        payment: { method: "cash", status: "pending" },
+        customer: customerSnapshot || undefined,
+      },
+    ], { session });
 
-  return created;
+    return created;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+
+    const afterDuplicate = await Order.findOne(activeFilter, null, { session });
+    if (afterDuplicate) return afterDuplicate;
+
+    throw error;
+  }
 }
 
 export const OrderMutation = {

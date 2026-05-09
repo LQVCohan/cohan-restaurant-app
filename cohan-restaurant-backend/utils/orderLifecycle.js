@@ -56,6 +56,16 @@ export const ACTIVE_SESSION_STATUSES = [
   SESSION_STATUS.READY_TO_PAY,
 ];
 
+export function buildActiveTableSessionKey({ restaurantId, tableId }) {
+  if (!restaurantId || !tableId) return null;
+  return `${String(restaurantId)}:${String(tableId)}:active`;
+}
+
+export function activeTableSessionKeyFilter({ restaurantId, tableId }) {
+  const activeSessionKey = buildActiveTableSessionKey({ restaurantId, tableId });
+  return activeSessionKey ? { activeSessionKey } : {};
+}
+
 export function orderBatchOrLegacyFilter() {
   return {
     $or: [

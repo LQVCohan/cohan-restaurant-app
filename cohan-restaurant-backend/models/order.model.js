@@ -375,6 +375,12 @@ const OrderSchema = BaseSchemaModel({
     index: true,
   },
 
+  activeSessionKey: {
+    type: String,
+    default: null,
+    index: true,
+  },
+
   openedAt: {
     type: Date,
     default: null,
@@ -598,6 +604,15 @@ OrderSchema.index({
   orderPaymentStatus: 1,
   createdAt: -1,
 });
+
+OrderSchema.index(
+  { activeSessionKey: 1 },
+  {
+    unique: true,
+    sparse: true,
+    name: "unique_active_table_session_key",
+  },
+);
 
 // ingredient lookup in orders
 OrderSchema.index({
