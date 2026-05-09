@@ -20,6 +20,8 @@ import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngi
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 import {
+  activeTableSessionLookupFilter,
+  childOrdersForSessionFilter,
   orderBatchOrLegacyFilter,
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
@@ -412,6 +414,68 @@ export const OrderQuery = {
     });
 
     return groupOrdersByRootCode(docsWithCustomer);
+  },
+
+  async activeTableSessionOrders(_, { restaurantId, tableId }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    if (!tableId || !mongoose.isValidObjectId(tableId)) {
+      throw new Error("Invalid tableId");
+    }
+
+    const table = await Table.findOne({ _id: tableId, restaurantId: rid })
+      .select({ _id: 1, code: 1 })
+      .lean();
+    if (!table) return { session: null, orders: [], tableId, tableCode: null };
+
+    const safeCode = (table.code || "").toUpperCase();
+    const inactiveStatuses = ["completed", "cancelled", "failed"];
+
+    const session = await Order.findOne(
+      activeTableSessionLookupFilter({
+        restaurantId: rid,
+        tableId: table._id,
+        tableCode: safeCode,
+      }),
+    )
+      .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+      .lean({ virtuals: true });
+
+    const findLegacyTableOrders = async () =>
+      Order.find({
+        restaurantId: rid,
+        tableId: table._id,
+        tableCode: safeCode,
+        ...orderBatchOrLegacyFilter(),
+        currentStatus: { $nin: inactiveStatuses },
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .lean({ virtuals: true });
+
+    let orders = [];
+    if (session?._id) {
+      orders = await Order.find({
+        ...childOrdersForSessionFilter({
+          restaurantId: rid,
+          parentOrderId: session._id,
+        }),
+        currentStatus: { $nin: inactiveStatuses },
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .lean({ virtuals: true });
+      if (!orders.length) {
+        orders = await findLegacyTableOrders();
+      }
+    } else {
+      orders = await findLegacyTableOrders();
+    }
+
+    const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders });
+    return {
+      session: session || null,
+      orders: docsWithCustomer.filter((o) => o?.orderKind !== "table_session"),
+      tableId: String(table._id),
+      tableCode: safeCode || null,
+    };
   },
 
   /**

@@ -648,6 +648,13 @@ type OrderGroup {
   orders: [Order!]!
 }
 
+type ActiveTableSessionOrdersResult {
+  session: Order
+  orders: [Order!]!
+  tableId: ID
+  tableCode: String
+}
+
 type PageInfo {
   endCursor: ID
   hasNextPage: Boolean!
@@ -1039,6 +1046,10 @@ extend type Query {
     tableId: ID
     tableCode: String
   ): [OrderGroup!]!
+  activeTableSessionOrders(
+    restaurantId: ID!
+    tableId: ID
+  ): ActiveTableSessionOrdersResult
   managerDashboard(restaurantId: ID!, range: String = "week"): ManagerDashboard!
   reportsOverview(
     restaurantId: ID!

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const modelMocks = vi.hoisted(() => ({
   Order: {
     find: vi.fn(),
+    findOne: vi.fn(),
     findById: vi.fn(),
     countDocuments: vi.fn(),
   },
@@ -63,6 +64,7 @@ describe("OrderQuery restaurant access guard", () => {
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
     guardMocks.requireRoles.mockImplementation(() => undefined);
+    modelMocks.Order.findOne.mockReset();
   });
 
   it("order(id) returns null for invalid id without querying", async () => {
@@ -321,5 +323,87 @@ describe("OrderQuery restaurant access guard", () => {
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(modelMocks.Order.find).not.toHaveBeenCalled();
     expect(modelMocks.Order.countDocuments).not.toHaveBeenCalled();
+  });
+
+  it("activeTableSessionOrders returns child orders when active session has linked children", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Table.findOne.mockReturnValue({
+      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
+    });
+    modelMocks.Order.findOne.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-1", orderKind: "table_session" }) }),
+    });
+    modelMocks.Order.find
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "child-1", orderKind: "order_batch" }]) }) });
+
+    const out = await OrderQuery.activeTableSessionOrders(
+      null,
+      { restaurantId: "valid-r1", tableId: "valid-table-1" },
+      { user: { id: "m1" } },
+    );
+    expect(out.orders.map((o) => o._id)).toEqual(["child-1"]);
+  });
+
+  it("activeTableSessionOrders falls back to legacy table orders when child query is empty", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Table.findOne.mockReturnValue({
+      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
+    });
+    modelMocks.Order.findOne.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-2", orderKind: "table_session" }) }),
+    });
+    modelMocks.Order.find
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) })
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "legacy-1", orderKind: "order_batch" }]) }) });
+
+    const out = await OrderQuery.activeTableSessionOrders(
+      null,
+      { restaurantId: "valid-r1", tableId: "valid-table-1" },
+      { user: { id: "m1" } },
+    );
+    expect(out.orders.map((o) => o._id)).toEqual(["legacy-1"]);
+  });
+
+  it("activeTableSessionOrders returns empty orders when both child and legacy are empty", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Table.findOne.mockReturnValue({
+      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
+    });
+    modelMocks.Order.findOne.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-3", orderKind: "table_session" }) }),
+    });
+    modelMocks.Order.find
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) })
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
+    const out = await OrderQuery.activeTableSessionOrders(
+      null,
+      { restaurantId: "valid-r1", tableId: "valid-table-1" },
+      { user: { id: "m1" } },
+    );
+    expect(out.orders).toEqual([]);
+  });
+
+  it("activeTableSessionOrders never returns table_session rows in orders[]", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    modelMocks.Table.findOne.mockReturnValue({
+      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
+    });
+    modelMocks.Order.findOne.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-4", orderKind: "table_session" }) }),
+    });
+    modelMocks.Order.find.mockReturnValueOnce({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          { _id: "sess-row", orderKind: "table_session" },
+          { _id: "child-2", orderKind: "order_batch" },
+        ]),
+      }),
+    });
+    const out = await OrderQuery.activeTableSessionOrders(
+      null,
+      { restaurantId: "valid-r1", tableId: "valid-table-1" },
+      { user: { id: "m1" } },
+    );
+    expect(out.orders.map((o) => o._id)).toEqual(["child-2"]);
   });
 });

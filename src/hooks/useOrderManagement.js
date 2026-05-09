@@ -264,6 +264,46 @@ const ORDERS_GROUPED_BY_TABLE = gql`
   }
 `;
 
+const ACTIVE_TABLE_SESSION_ORDERS = gql`
+  query ActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!) {
+    activeTableSessionOrders(restaurantId: $restaurantId, tableId: $tableId) {
+      tableId
+      tableCode
+      session {
+        id
+        orderCode
+      }
+      orders {
+        id
+        orderCode
+        tableCode
+        currentStatus
+        createdAt
+        items {
+          _id
+          dishId
+          menuId
+          categoryId
+          name
+          unit
+          basePrice
+          servingKey
+          modifiersPrice
+          unitPrice
+          lineSubtotal
+          note
+          priority
+          quantity
+          weightGrams
+          status
+          image
+          proofImages
+          modifiers { groupId groupName optionId optionName }
+        }
+      }
+    }
+  }
+`;
 /** ACTIVE orders (exclude cancelled/completed) – cho màn khác dùng */
 const ORDERS_BY_RESTAURANT_NOW = gql`
   query OrdersByRestaurantNow($restaurantId: ID!, $limit: Int, $cursor: ID) {
@@ -1239,6 +1279,10 @@ export default function useOrderManagement(pos = null) {
   const [loadGroupsQuery] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
   });
+  const [loadActiveTableSessionOrdersQuery] = useLazyQuery(
+    ACTIVE_TABLE_SESSION_ORDERS,
+    { fetchPolicy: "network-only" },
+  );
 
   /* ============================================================
      4) HELPERS
@@ -1297,10 +1341,38 @@ export default function useOrderManagement(pos = null) {
   const loadGroupsForTable = useCallback(
     async ({ restaurantId, tableId, tableCode }) => {
       if (!restaurantId || !(tableId || tableCode)) return [];
+      try {
+        if (tableId) {
+          const { data } = await loadActiveTableSessionOrdersQuery({
+            variables: { restaurantId, tableId },
+          });
+          const payload = data?.activeTableSessionOrders;
+          const activeOrders = Array.isArray(payload?.orders) ? payload.orders : [];
+          if (payload) {
+            const mergedItems = activeOrders.flatMap((o) =>
+              (Array.isArray(o?.items) ? o.items : []).map((i) => ({
+                ...mapServerItemToUi(i),
+                sourceOrderId: o.id,
+                sourceOrderCode: o.orderCode,
+                isExisting: true,
+                isNew: false,
+                _edited: false,
+                _lineId: `session_${o.id}_${(i.dishId || i.name || "x").toString().slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+              })),
+            );
+            setCurrentOrder?.(mergedItems);
+            const key = tableCode || payload.tableCode || payload.tableId || "";
+            if (setTableOrders && key) {
+              setTableOrders((prev) => ({ ...prev, [key]: mergedItems }));
+            }
+            setGroups([]);
+            setActiveGroup(null);
+            return [];
+          }
+        }
+      } catch (_e) {}
 
-      const { data } = await loadGroupsQuery({
-        variables: { restaurantId, tableId, tableCode },
-      });
+      const { data } = await loadGroupsQuery({ variables: { restaurantId, tableId, tableCode } });
 
       const rawGroups = data?.ordersGroupedByTable || [];
 
@@ -1363,7 +1435,7 @@ export default function useOrderManagement(pos = null) {
       }
       return gs;
     },
-    [loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders],
+    [loadActiveTableSessionOrdersQuery, loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders],
   );
 
   useSocketOrder(restaurantId, {
@@ -2880,9 +2952,44 @@ export default function useOrderManagement(pos = null) {
         return { success: false, message: "missing restaurantId/tableId" };
       }
 
-      const { data } = await loadGroupsQuery({
-        variables: { restaurantId, tableId, tableCode },
-      });
+      try {
+        if (tableId) {
+          const { data } = await loadActiveTableSessionOrdersQuery({
+            variables: { restaurantId, tableId },
+          });
+          const payload = data?.activeTableSessionOrders;
+          if (payload) {
+            const allItems = (payload.orders || []).flatMap((order) =>
+              (order.items || []).map((it) => ({
+                ...it,
+                lineSubtotal:
+                  it?.lineSubtotal != null
+                    ? Number(it.lineSubtotal)
+                    : (Number(it.unitPrice || it.price || 0) + Number(it.modifiersPrice || 0)) *
+                      Number(it.quantity || 0),
+                isExisting: true,
+                isNew: false,
+              })),
+            );
+            return {
+              success: true,
+              data: [
+                {
+                  orderCode: payload?.session?.orderCode || null,
+                  tableCode: payload.tableCode || tableCode || null,
+                  tableId: payload.tableId || tableId || null,
+                  latestStatus: "ACTIVE",
+                  items: allItems,
+                  totals: null,
+                  user: null,
+                },
+              ],
+            };
+          }
+        }
+      } catch (_e) {}
+
+      const { data } = await loadGroupsQuery({ variables: { restaurantId, tableId, tableCode } });
 
       const rawGroups = data?.ordersGroupedByTable || [];
 
@@ -2928,7 +3035,7 @@ export default function useOrderManagement(pos = null) {
 
       return { success: true, data: normalized };
     },
-    [loadGroupsQuery, mergeGroupItems],
+    [loadActiveTableSessionOrdersQuery, loadGroupsQuery, mergeGroupItems],
   );
 
   const fetchOrderById = useCallback(
