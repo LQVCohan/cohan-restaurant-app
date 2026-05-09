@@ -2752,7 +2752,7 @@ export default function useOrderManagement(pos = null) {
             };
           }
 
-          return { success: true, data: res };
+          return { success: true, data: result };
         }
 
         const preparedOrderId = lastPreparedOrderIdRef.current || null;
