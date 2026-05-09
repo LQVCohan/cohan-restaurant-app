@@ -16,6 +16,8 @@ import { createReservationPayment } from "../../../src/services/payment/paymentS
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
+  activeTableSessionLookupFilter,
+  childOrdersForSessionFilter,
   orderBatchOrLegacyFilter,
   ORDER_KIND,
   SESSION_STATUS,
@@ -168,13 +170,38 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   if (!table || String(table.restaurantId) !== String(rid)) {
     throw new Error("Table not found");
   }
+  const tableCode = table?.code || null;
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({
+      restaurantId: rid,
+      tableId: tid,
+      tableCode,
+    }),
+  ).lean();
 
-  const orders = await Order.find({
-    restaurantId: rid,
-    tableId: tid,
-    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-    ...orderBatchOrLegacyFilter(),
-  }).lean();
+  let orders = [];
+  if (activeSession) {
+    const sessionChildFilter = {
+      $and: [
+        childOrdersForSessionFilter({
+          restaurantId: rid,
+          parentOrderId: activeSession._id,
+        }),
+        { currentStatus: { $nin: INACTIVE_ORDER_STATUSES } },
+      ],
+    };
+    orders = await Order.find(sessionChildFilter).lean();
+    if (!orders.length) {
+      throw new Error("Không tìm thấy order con đang hoạt động cho phiên bàn hiện tại.");
+    }
+  } else {
+    orders = await Order.find({
+      restaurantId: rid,
+      tableId: tid,
+      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+      ...orderBatchOrLegacyFilter(),
+    }).lean();
+  }
 
   if (!orders.length) {
     return {
@@ -354,48 +381,52 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     const shouldCloseParentSession =
       pendingCodes.length === 0 || includeUnserved === true;
 
-    const parentSessionIds = [
-      ...new Set(
-        payOrders
-          .map((o) => o.parentOrderId || o.rootOrderId)
-          .filter(Boolean)
-          .map(String)
-      ),
-    ]
-      .map((id) => toId(id))
-      .filter(Boolean);
+    if (shouldCloseParentSession) {
+      const parentSessionIds = activeSession
+        ? [activeSession._id]
+        : [
+            ...new Set(
+              payOrders
+                .map((o) => o.parentOrderId || o.rootOrderId)
+                .filter(Boolean)
+                .map(String)
+            ),
+          ]
+            .map((id) => toId(id))
+            .filter(Boolean);
 
-    if (shouldCloseParentSession && parentSessionIds.length) {
-      await Order.updateMany(
-        {
-          _id: { $in: parentSessionIds },
-          restaurantId: rid,
-          orderKind: ORDER_KIND.TABLE_SESSION,
-        },
-        {
-          $set: {
-            sessionStatus: SESSION_STATUS.CLOSED,
-            orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
-            activeSessionKey: null,
-            closedAt: now,
-            "payment.method": normMethod,
-            "payment.status": "paid",
-            "payment.paidAmount": amountToPay,
-            "payment.paidAt": now,
-            "payment.paidBy": actorId,
-            currentStatus: "completed",
+      if (parentSessionIds.length) {
+        await Order.updateMany(
+          {
+            _id: { $in: parentSessionIds },
+            restaurantId: rid,
+            orderKind: ORDER_KIND.TABLE_SESSION,
           },
-          $push: {
-            statusTimeline: {
-              status: "completed",
-              at: now,
-              byUserId: actorId || null,
-              note: "Đã thanh toán và đóng phiên bàn.",
+          {
+            $set: {
+              sessionStatus: SESSION_STATUS.CLOSED,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
+              activeSessionKey: null,
+              closedAt: now,
+              "payment.method": normMethod,
+              "payment.status": "paid",
+              "payment.paidAmount": amountToPay,
+              "payment.paidAt": now,
+              "payment.paidBy": actorId,
+              currentStatus: "completed",
+            },
+            $push: {
+              statusTimeline: {
+                status: "completed",
+                at: now,
+                byUserId: actorId || null,
+                note: "Đã thanh toán và đóng phiên bàn.",
+              },
             },
           },
-        },
-        { session }
-      );
+          { session }
+        );
+      }
     }
 
 

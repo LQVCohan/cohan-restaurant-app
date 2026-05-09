@@ -16,6 +16,7 @@ const orderDocFactory = (overrides = {}) => ({
 const modelMocks = vi.hoisted(() => ({
   Order: {
     find: vi.fn(),
+    findOne: vi.fn(),
     updateMany: vi.fn().mockResolvedValue({ acknowledged: true }),
   },
   Invoice: { create: vi.fn().mockResolvedValue([{ _id: "inv-1" }]) },
@@ -62,6 +63,7 @@ describe("payment request + confirm guards", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Order.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
   });
 
   it("requestPaymentForOrder succeeds for fully served order", async () => {
@@ -131,7 +133,7 @@ describe("payment request + confirm guards", () => {
     expect(emitOrderEventMock).toHaveBeenCalled();
   });
 
-  it("payOrdersByTableId does not reference undefined activeOrderIds", async () => {
+  it("payOrdersByTableId pays child orders from active parent session only", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const servedOrder = {
       _id: "65f000000000000000000111",
@@ -144,6 +146,7 @@ describe("payment request + confirm guards", () => {
       parentOrderId: "65f00000000000000000aa11",
     };
 
+    modelMocks.Order.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "65f00000000000000000aa11" }) });
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([servedOrder]) }).mockResolvedValueOnce([servedOrder]);
 
     await expect(
@@ -151,11 +154,10 @@ describe("payment request + confirm guards", () => {
     ).resolves.toBeTruthy();
 
     const listFilter = modelMocks.Order.find.mock.calls.at(0)[0];
-    expect(listFilter.$or).toEqual([
-      { orderKind: "order_batch" },
-      { orderKind: { $exists: false } },
-      { orderKind: null },
-    ]);
+    expect(listFilter.$and?.[0]).toMatchObject({
+      restaurantId: expect.anything(),
+      orderKind: "order_batch",
+    });
 
     const childUpdate = modelMocks.Order.updateMany.mock.calls[0];
     expect(childUpdate[1].$push.statusTimeline.note).toBe("Đã thanh toán và hoàn tất đơn.");
@@ -171,6 +173,21 @@ describe("payment request + confirm guards", () => {
     expect(parentUpdate[1].$set.currentStatus).toBe("completed");
     expect(parentUpdate[1].$set.closedAt).toBeTruthy();
     expect(emitOrderEventMock).toHaveBeenCalled();
+  });
+
+  it("payOrdersByTableId returns warning for unserved child with active parent and does not close parent", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const unservedChild = {
+      _id: "65f000000000000000000131", restaurantId: "65f000000000000000000099", orderKind: "order_batch", orderCode: "ORD-C1", currentStatus: "preparing",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 10000, unitPrice: 10000, dishId: "dish-1", name: "Dish", voidRequests: [], returnRequests: [] }],
+    };
+    modelMocks.Order.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "65f00000000000000000aa12" }) });
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([unservedChild]) });
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: false } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(true);
+    expect(out.pendingOrderCodes).toEqual(["ORD-C1"]);
+    expect(out.invoice).toBeNull();
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
   it("requestPaymentForTable marks multiple active orders of same table as payment_requested", async () => {

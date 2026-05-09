@@ -92,6 +92,28 @@ export function activeTableSessionFilter({ restaurantId, tableId }) {
   };
 }
 
+export function activeTableSessionLookupFilter({ restaurantId, tableId, tableCode }) {
+  const base = {
+    restaurantId,
+    orderKind: ORDER_KIND.TABLE_SESSION,
+    sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+    orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+  };
+
+  if (tableId) return { ...base, tableId };
+  if (tableCode) return { ...base, tableCode };
+
+  return base;
+}
+
+export function childOrdersForSessionFilter({ restaurantId, parentOrderId }) {
+  return {
+    restaurantId,
+    orderKind: ORDER_KIND.ORDER_BATCH,
+    $or: [{ parentOrderId }, { rootOrderId: parentOrderId }],
+  };
+}
+
 const CLOSED_PAYMENT_STATUSES = new Set([
   ORDER_PAYMENT_STATUS.PAID,
   ORDER_PAYMENT_STATUS.REFUNDED,
