@@ -240,15 +240,17 @@ export const OrderQuery = {
 
   /** List with offset pagination */
   async orders(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
-    const q = withOrderBatchOrLegacyFilter(buildFilter(filter));
+    const baseQ = buildFilter(filter);
     if (filter.restaurantId) {
       if (!mongoose.isValidObjectId(filter.restaurantId)) {
         throw new Error("Invalid restaurantId");
       }
-      await requireRestaurantAccess(ctx, q.restaurantId);
+      await requireRestaurantAccess(ctx, baseQ.restaurantId);
     } else {
       requireRoles(ctx, ["ADMIN"]);
     }
+
+    const q = withOrderBatchOrLegacyFilter(baseQ);
 
     const safeLimit = Math.max(1, Math.min(200, limit));
     const safeOffset = Math.max(0, offset);
@@ -264,9 +266,9 @@ export const OrderQuery = {
 
     // Attach customerInfo if restaurantId exists
     let items = itemsRaw;
-    if (q.restaurantId) {
+    if (baseQ.restaurantId) {
       items = await attachCustomerInfoToOrders({
-        rid: q.restaurantId,
+        rid: baseQ.restaurantId,
         orders: itemsRaw,
       });
     }
@@ -314,7 +316,10 @@ export const OrderQuery = {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const safeTableCode = String(tableCode).trim().toUpperCase();
 
-    const q = { restaurantId: rid, tableCode: safeTableCode, ...orderBatchOrLegacyFilter() };
+    const q = withOrderBatchOrLegacyFilter({
+      restaurantId: rid,
+      tableCode: safeTableCode,
+    });
 
     const safeLimit = Math.max(1, Math.min(200, limit));
     const safeOffset = Math.max(0, offset);
@@ -421,8 +426,6 @@ export const OrderQuery = {
       userId: uid,
     };
 
-    // restaurantId không cố định ở đây -> customerInfo mapping cần dựa trên từng order.restaurantId
-    // => tái dùng buildCursorConnection nhưng phải xử lý customerInfo theo nhiều restaurantId
     const safeLimit = Math.max(1, Math.min(200, limit));
 
     const q = Order.find(baseFilter).sort({ _id: 1 });

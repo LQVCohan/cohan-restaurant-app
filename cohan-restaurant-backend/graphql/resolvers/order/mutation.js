@@ -1443,7 +1443,7 @@ export const OrderMutation = {
           [
             {
               restaurantId: rid,
-              userId: sessionUserId ? toId(sessionUserId) : undefined,
+              userId: finalUserId ? toId(finalUserId) : undefined,
               orderCode: effectiveOrderCode,
 
               orderType,
@@ -1462,7 +1462,7 @@ export const OrderMutation = {
                 {
                   status: "pending",
                   at: new Date(),
-                  byUserId: sessionUserId ? toId(sessionUserId) : undefined,
+                  byUserId: finalUserId ? toId(finalUserId) : undefined,
                   note: "Off-premise order created",
                 },
               ],
@@ -1893,7 +1893,7 @@ export const OrderMutation = {
             [
               {
                 restaurantId: g.restaurantId,
-                userId: sessionUserId ? toId(sessionUserId) : undefined,
+                userId: finalUserId ? toId(finalUserId) : undefined,
                 orderCode: childOrderCode,
                 parentOrderCode: checkoutCode,
                 orderType,
@@ -1907,7 +1907,7 @@ export const OrderMutation = {
                   {
                     status: "pending",
                     at: new Date(),
-                    byUserId: sessionUserId ? toId(sessionUserId) : undefined,
+                    byUserId: finalUserId ? toId(finalUserId) : undefined,
                     note: `Created from checkout ${checkoutCode}`,
                   },
                 ],
@@ -1960,7 +1960,7 @@ export const OrderMutation = {
             {
               checkoutCode,
               idempotencyKey: idempotencyKey || undefined,
-              userId: sessionUserId ? toId(sessionUserId) : undefined,
+              userId: finalUserId ? toId(finalUserId) : undefined,
               customer: customer || undefined,
               orderIds: createdOrders.map((o) => o._id),
               restaurantIds: createdOrders.map((o) => o.restaurantId),
