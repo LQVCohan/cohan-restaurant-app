@@ -2725,23 +2725,31 @@ export default function useOrderManagement(pos = null) {
             },
           });
 
-          const res = data?.payOrdersByTableId || null;
+          const result = data?.payOrdersByTableId || null;
 
-          if (res?.warning || Array.isArray(res?.pendingOrderCodes)) {
+          const tablePendingOrderCodes = Array.isArray(
+            result?.pendingOrderCodes,
+          )
+            ? result.pendingOrderCodes
+            : [];
+
+          if (result?.warning === true || tablePendingOrderCodes.length > 0) {
             return {
               success: false,
               message:
-                res?.pendingOrderCodes?.length > 0
-                  ? `Không thể thanh toán khi còn order chưa phục vụ xong: ${res.pendingOrderCodes.join(", ")}`
-                  : "Không thể thanh toán khi còn món chưa phục vụ xong.",
+                tablePendingOrderCodes.length > 0
+                  ? `Không thể thanh toán khi còn order chưa phục vụ xong: ${tablePendingOrderCodes.join(", ")}`
+                  : "Backend trả về cảnh báo khi thanh toán. Vui lòng kiểm tra lại trạng thái đơn.",
+              data: result,
             };
           }
 
-          if (currentTable?.id) {
-            await loadGroupsForTable({
-              restaurantId,
-              tableId: currentTable.id,
-            });
+          if (!result?.invoice && !result?.transaction) {
+            return {
+              success: false,
+              message: "Thanh toán chưa được backend xác nhận.",
+              data: result,
+            };
           }
 
           return { success: true, data: res };
