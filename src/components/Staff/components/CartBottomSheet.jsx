@@ -16,7 +16,26 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import "./CartBottomSheet.scss";
+function getStaffCartLineTotal(item) {
+  const price = Number(item?.price || 0);
+  const variant = item?.servingVariant || {};
+  const mode = String(variant?.mode || "").toUpperCase();
 
+  if (mode === "BY_WEIGHT") {
+    const grams = Number(item?.weightGrams || 0);
+    if (!Number.isFinite(grams) || grams <= 0) return 0;
+
+    const sellQty = Number(variant?.sellQty || 1);
+    const safeSellQty = Number.isFinite(sellQty) && sellQty > 0 ? sellQty : 1;
+
+    const sellUnit = String(variant?.sellUnit || "kg").toLowerCase();
+    const soldAmount = sellUnit === "g" ? grams : grams / 1000;
+
+    return Math.round(price * (soldAmount / safeSellQty));
+  }
+
+  return Math.round(price * Number(item?.quantity || 1));
+}
 export default function CartBottomSheet({
   cart = [],
   setCart,
@@ -57,7 +76,7 @@ export default function CartBottomSheet({
   };
 
   const totalPrice = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + getStaffCartLineTotal(item),
     0,
   );
 
@@ -104,7 +123,7 @@ export default function CartBottomSheet({
                     </div>
                   </div>
                   <div className="item-price">
-                    {(item.price * item.quantity).toLocaleString()}đ
+                    {getStaffCartLineTotal(item).toLocaleString("vi-VN")}đ
                   </div>
                 </div>
 
@@ -259,13 +278,30 @@ export default function CartBottomSheet({
           </div>
 
           <div className="billing-actions">
-            <button className="btn-sub">
+            <button
+              className="btn-sub disabled"
+              type="button"
+              disabled
+              title="Chức năng ưu đãi sẽ được bổ sung ở phiên bản sau"
+            >
               <Tag size={16} /> Thêm Ưu Đãi
             </button>
-            <button className="btn-sub">
+
+            <button
+              className="btn-sub disabled"
+              type="button"
+              disabled
+              title="Chức năng tách bill sẽ được bổ sung ở phiên bản sau"
+            >
               <Scissors size={16} /> Tách Bill
             </button>
-            <button className="btn-sub">
+
+            <button
+              className="btn-sub disabled"
+              type="button"
+              disabled
+              title="Chức năng in tạm tính sẽ được bổ sung ở phiên bản sau"
+            >
               <Printer size={16} /> In Tạm Tính
             </button>
           </div>

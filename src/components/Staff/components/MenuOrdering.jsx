@@ -72,7 +72,28 @@ export default function MenuOrdering({
     setPrepChoice("");
     setServeOrder("Mang ra cùng lúc");
   };
+  function formatCurrency(value) {
+    return Number(value || 0).toLocaleString("vi-VN");
+  }
 
+  function getCustomerAccumulatedValue(customer) {
+    return Number(
+      customer?.totalSpending ??
+        customer?.points ??
+        customer?.loyaltyPoints ??
+        0,
+    );
+  }
+
+  function getCustomerNote(customer) {
+    return (
+      customer?.note ||
+      customer?.noteInternal ||
+      customer?.dietaryNotes ||
+      customer?.customerPreferences ||
+      ""
+    );
+  }
   return (
     <div className="staff-pos-menu">
       {/* Banner Trạng thái Bàn */}
@@ -99,19 +120,25 @@ export default function MenuOrdering({
                 </span>
               </h4>
               <p>
-                {selectedTable.customer.phone} • Tích lũy:{" "}
-                <strong>{selectedTable.customer.points}đ</strong>
+                {selectedTable.customer.phone || "Chưa có SĐT"} • Tích lũy:{" "}
+                <strong>
+                  {formatCurrency(
+                    getCustomerAccumulatedValue(selectedTable.customer),
+                  )}
+                  đ
+                </strong>
               </p>
             </div>
             <button className="btn-remove-cus" onClick={onRemoveCustomer}>
               <X size={20} />
             </button>
           </div>
-          {selectedTable.customer.note && (
+          {getCustomerNote(selectedTable.customer) && (
             <div className="cus-warning">
               <AlertTriangle size={14} />
               <span>
-                <strong>Lưu ý:</strong> {selectedTable.customer.note}
+                <strong>Lưu ý:</strong>{" "}
+                {getCustomerNote(selectedTable.customer)}
               </span>
             </div>
           )}
