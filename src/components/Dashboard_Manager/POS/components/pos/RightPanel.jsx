@@ -13,6 +13,7 @@ import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "@/utils/formatters";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
+import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
 
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
@@ -250,6 +251,11 @@ export default function RightPanel() {
     });
     return { existingItems: ex, newItems: nw };
   }, [currentOrder]);
+
+  const groupedExistingBatches = useMemo(
+    () => groupItemsByBatch(existingItems),
+    [existingItems],
+  );
 
   const isOffPremise =
     currentOrderType === "delivery" || currentOrderType === "takeaway";
@@ -1098,7 +1104,7 @@ export default function RightPanel() {
       <div className={cls.body}>
         {newItems.length > 0 && (
           <div className={cls.sectionNew}>
-            <div className={cls.groupHeader}>Món mới ({newItems.length})</div>
+            <div className={cls.groupHeader}>Món mới chưa gửi bếp ({newItems.length})</div>
             <div className={cls.itemsList}>
               {newItems.map((item) => (
                 <div
@@ -1192,72 +1198,62 @@ export default function RightPanel() {
 
         {existingItems.length > 0 && (
           <div className={cls.sectionExisting}>
-            <div className={cls.dividerLabel}>
-              Đã gửi bếp ({existingItems.length})
-            </div>
-            <div className={cls.itemsList}>
-              {existingItems.map((item) => (
-                <div
-                  key={item._lineId || item.dishId || item.id}
-                  className={cls.cardExisting}
-                  onClick={() => handleItemClick(item)}
-                >
-                  <div className={cls.rowTop}>
-                    <div className={cls.cardName}>
-                      {item.name}
-                      {item.proofImages && item.proofImages.length > 0 && (
-                        <span className={cls.iconProof} title="Có ảnh xác nhận">
-                          <IconImage />
-                        </span>
-                      )}
-                    </div>
-                    {item.createdAt && (
-                      <span className={cls.timeTag}>
-                        {formatTime(item.createdAt)}
-                      </span>
-                    )}
-                  </div>
-
-                  {(item.note ||
-                    item.method ||
-                    item.cookingOption ||
-                    item.priority) && (
-                    <div className={cls.rowNote}>
-                      {(item.method || item.cookingOption) && (
-                        <span className={cls.tagMethod}>
-                          {item.method || item.cookingOption}
-                        </span>
-                      )}
-                      {item.priority && (
-                        <span className={cls.tagMethod}>
-                          {PRIORITY_LABELS[
-                            String(item.priority).toUpperCase()
-                          ] || item.priority}
-                        </span>
-                      )}
-                      {item.note && (
-                        <span className={cls.textNoteSaved}>{item.note}</span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className={cls.rowBottom}>
-                    <div className={cls.priceSingle}>{getItemPrice(item)}</div>
-                    <div className={cls.qtyStatic}>x{item.quantity}</div>
-                    <div className={cls.cardTotal}>{getItemTotal(item)}</div>
-
-                    <button
-                      className={cls.btnDeleteSavedDisabled}
-                      onClick={(e) => handleDeleteClick(e, item)}
-                      title="Không thể xóa món đã lưu"
-                      disabled
-                    >
-                      <IconTrash />
-                    </button>
-                  </div>
+            <div className={cls.dividerLabel}>Đã gửi bếp ({existingItems.length})</div>
+            {groupedExistingBatches.map((batch, batchIdx) => (
+              <div key={batch.key || `batch_${batchIdx}`}>
+                <div className={cls.groupHeader}>
+                  Đợt gọi món {batch.batchIndex || batchIdx + 1}
+                  {batch.orderCode ? ` · ${batch.orderCode}` : ""}
+                  {batch.status ? ` · ${batch.status}` : ""}
                 </div>
-              ))}
-            </div>
+                <div className={cls.itemsList}>
+                  {batch.items.map((item) => (
+                    <div
+                      key={item._lineId || item.dishId || item.id}
+                      className={cls.cardExisting}
+                      onClick={() => handleItemClick(item)}
+                    >
+                      <div className={cls.rowTop}>
+                        <div className={cls.cardName}>
+                          {item.name}
+                          {item.proofImages && item.proofImages.length > 0 && (
+                            <span className={cls.iconProof} title="Có ảnh xác nhận">
+                              <IconImage />
+                            </span>
+                          )}
+                        </div>
+                        {(item.sourceOrderCreatedAt || item.createdAt) && (
+                          <span className={cls.timeTag}>
+                            {formatTime(item.sourceOrderCreatedAt || item.createdAt)}
+                          </span>
+                        )}
+                      </div>
+                      {(item.note || item.method || item.cookingOption || item.priority) && (
+                        <div className={cls.rowNote}>
+                          {(item.method || item.cookingOption) && (
+                            <span className={cls.tagMethod}>{item.method || item.cookingOption}</span>
+                          )}
+                          {item.priority && (
+                            <span className={cls.tagMethod}>
+                              {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
+                            </span>
+                          )}
+                          {item.note && <span className={cls.textNoteSaved}>{item.note}</span>}
+                        </div>
+                      )}
+                      <div className={cls.rowBottom}>
+                        <div className={cls.priceSingle}>{getItemPrice(item)}</div>
+                        <div className={cls.qtyStatic}>x{item.quantity}</div>
+                        <div className={cls.cardTotal}>{getItemTotal(item)}</div>
+                        <button className={cls.btnDeleteSavedDisabled} onClick={(e) => handleDeleteClick(e, item)} title="Không thể xóa món đã lưu" disabled>
+                          <IconTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

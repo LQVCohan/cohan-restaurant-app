@@ -7,6 +7,7 @@ import { usePos } from "@/context/PosContext";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import { convertCurrencyAmount } from "@/utils/currency";
 import useModalKeyboardClose from "./useModalKeyboardClose";
+import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
 
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
@@ -74,6 +75,8 @@ function PaymentModal({
     activeCurrency,
     usdToVndRate,
   );
+
+  const groupedBatches = groupItemsByBatch(order || []);
 
   const changeAmount = Math.max(
     0,
@@ -251,39 +254,48 @@ function PaymentModal({
             <h4 className={s.panelTitle}>Chi tiết Hóa đơn</h4>
             <div className={s.itemsList}>
               {Array.isArray(order) && order.length > 0 ? (
-                order.map((item, index) => (
-                  <div
-                    key={item._lineId || item.dishId || index}
-                    className={s.itemRow}
-                  >
-                    <div className={s.itemInfo}>
-                      <span className={s.itemName}>
-                        {item.quantity} x {item.name}
-                      </span>
-                      <span className={s.itemPrice}>
-                        {formatPrice(
-                          convertCurrencyAmount(
-                            (item.price || 0) + (item.modifiersPrice || 0),
-                            "VND",
-                            activeCurrency,
-                            usdToVndRate,
-                          ),
-                          { currency: activeCurrency },
-                        )}
-                      </span>
-                    </div>
-                    <div className={s.itemTotal}>
-                      {formatPrice(
-                        convertCurrencyAmount(
-                          ((item.price || 0) + (item.modifiersPrice || 0)) *
-                            (item.quantity || 0),
-                          "VND",
-                          activeCurrency,
-                          usdToVndRate,
-                        ),
-                        { currency: activeCurrency },
-                      )}
-                    </div>
+                groupedBatches.map((batch, batchIdx) => (
+                  <div key={batch.key || `payment_batch_${batchIdx}`}>
+                    <h5 className={s.panelTitle}>
+                      {batch.isDraft
+                        ? "Món mới chưa gửi bếp"
+                        : `Đợt gọi món ${batch.batchIndex || batchIdx + 1}${batch.orderCode ? ` · ${batch.orderCode}` : ""}`}
+                    </h5>
+                    {batch.items.map((item, index) => (
+                      <div
+                        key={item._lineId || item.dishId || index}
+                        className={s.itemRow}
+                      >
+                        <div className={s.itemInfo}>
+                          <span className={s.itemName}>
+                            {item.quantity} x {item.name}
+                          </span>
+                          <span className={s.itemPrice}>
+                            {formatPrice(
+                              convertCurrencyAmount(
+                                (item.price || 0) + (item.modifiersPrice || 0),
+                                "VND",
+                                activeCurrency,
+                                usdToVndRate,
+                              ),
+                              { currency: activeCurrency },
+                            )}
+                          </span>
+                        </div>
+                        <div className={s.itemTotal}>
+                          {formatPrice(
+                            convertCurrencyAmount(
+                              ((item.price || 0) + (item.modifiersPrice || 0)) *
+                                (item.quantity || 0),
+                              "VND",
+                              activeCurrency,
+                              usdToVndRate,
+                            ),
+                            { currency: activeCurrency },
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))
               ) : (
