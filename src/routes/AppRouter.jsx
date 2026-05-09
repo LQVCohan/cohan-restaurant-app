@@ -50,8 +50,8 @@ import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
-import { canAccessRoute, getDefaultPathForRole } from "@/utils/roleAccess";
-import { STAFF_OPERATIONAL_ROLES } from "@/utils/roleAccess";
+import { canAccessRoute, getDefaultPathForRole } from "@/utils/frontendRoleAccess";
+import { STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
 
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";

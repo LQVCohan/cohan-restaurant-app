@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { isStaffOperationalRole } from "@/utils/roleAccess";
+import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
 
 const TOKEN_KEYS = {
   token: "auth_token",

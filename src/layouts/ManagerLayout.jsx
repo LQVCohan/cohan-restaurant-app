@@ -20,7 +20,7 @@ import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDash
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
-import { filterNavigationByRole, isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/roleAccess";
+import { filterNavigationByRole, isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",

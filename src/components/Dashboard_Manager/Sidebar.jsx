@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from "react";
 import "./Styles/Sidebar.scss";
 import { AuthContext } from "@/context/AuthContext";
-import { filterNavigationByRole } from "@/utils/roleAccess";
+import { filterNavigationByRole } from "@/utils/frontendRoleAccess";
 
 const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);

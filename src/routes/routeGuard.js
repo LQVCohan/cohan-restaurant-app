@@ -3,7 +3,7 @@ import {
   normalizeRoleName,
   resolveAccessRoleName as resolveAccessRoleNameFromConfig,
   resolveUserRoleName,
-} from "@/utils/roleAccess";
+} from "@/utils/frontendRoleAccess";
 
 export const resolveRoleName = (me) => resolveUserRoleName(me);
 
