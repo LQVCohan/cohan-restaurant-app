@@ -1101,12 +1101,20 @@ async function findOrCreateActiveTableSession({
   const existing = await Order.findOne(activeFilter, null, { session });
   if (existing) return existing;
 
+  const parentOrderCode = await findOrCreateOrderCode({
+    restaurantId,
+    tableId,
+    tableCode,
+    session,
+  });
+
   const [created] = await Order.create([
     {
       restaurantId,
       tableId,
       tableCode,
       userId: userId ? toId(userId) : undefined,
+      orderCode: parentOrderCode,
       orderType: "dine_in",
       orderKind: ORDER_KIND.TABLE_SESSION,
       parentOrderId: null,
@@ -1117,7 +1125,7 @@ async function findOrCreateActiveTableSession({
       orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
       openedAt: new Date(),
       items: [],
-      totals: { subtotal: 0, tax: 0, discount: 0, grandTotal: 0 },
+      totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
       currentStatus: "pending",
       payment: { method: "cash", status: "pending" },
       customer: customerSnapshot || undefined,
