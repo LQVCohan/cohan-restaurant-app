@@ -253,8 +253,7 @@ describe("order discount business safety", () => {
       expect(src).toMatch(/previewOrderDiscount/);
       expect(src).toMatch(/calculateDiscountBreakdown/);
     });
-
-    it("enforces restaurant access before preview calculation", () => {
+    it("uses shared priced order item helper instead of fallback preview item pricing", () => {
       const src = read(ORDER_QUERY_PATH);
 
       const previewStart = src.indexOf("previewOrderDiscount");
@@ -262,12 +261,31 @@ describe("order discount business safety", () => {
 
       const previewSrc = src.slice(previewStart, previewStart + 5000);
 
+      expect(previewSrc).toMatch(/buildPricedOrderItems/);
+      expect(src).not.toMatch(/function buildPreviewItems/);
+    });
+    it("enforces restaurant access before preview item pricing and discount calculation", () => {
+      const src = read(ORDER_QUERY_PATH);
+
+      const previewStart = src.indexOf("previewOrderDiscount");
+      expect(previewStart).toBeGreaterThanOrEqual(0);
+
+      const previewSrc = src.slice(previewStart, previewStart + 5000);
+
+      const accessIndex = previewSrc.indexOf("requireQueryRestaurantAccess");
+      const pricingIndex = previewSrc.indexOf("buildPricedOrderItems");
+      const discountIndex = previewSrc.indexOf("calculateDiscountBreakdown");
+
       expect(previewSrc).toMatch(
-        /requireQueryRestaurantAccess\(ctx,\s*restaurantId\)/,
+        /const rid\s*=\s*await requireQueryRestaurantAccess\(ctx,\s*restaurantId\)/,
       );
-      expect(previewSrc.indexOf("requireQueryRestaurantAccess")).toBeLessThan(
-        previewSrc.indexOf("calculateDiscountBreakdown"),
-      );
+
+      expect(accessIndex).toBeGreaterThanOrEqual(0);
+      expect(pricingIndex).toBeGreaterThanOrEqual(0);
+      expect(discountIndex).toBeGreaterThanOrEqual(0);
+
+      expect(accessIndex).toBeLessThan(pricingIndex);
+      expect(accessIndex).toBeLessThan(discountIndex);
     });
 
     it("does not mutate coupon usage or create orders in preview", () => {

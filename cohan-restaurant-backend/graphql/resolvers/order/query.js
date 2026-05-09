@@ -37,26 +37,7 @@ const INACTIVE_STATUSES = ["cancelled", "completed"];
 function getRootCode(ord) {
   return ord.parentOrderCode || ord.orderCode || "unknown";
 }
-function buildPreviewItems(items = []) {
-  return (Array.isArray(items) ? items : [])
-    .map((item) => {
-      const quantity = Math.max(0, Number(item?.quantity || 0));
 
-      const unitPrice = Math.max(
-        0,
-        Number(item?.servingVariant?.price ?? item?.basePrice ?? 0),
-      );
-
-      return {
-        ...item,
-        quantity,
-        unitPrice,
-        lineSubtotal: Math.round(unitPrice * quantity),
-        status: item?.status || "pending",
-      };
-    })
-    .filter((item) => item.quantity > 0);
-}
 function buildFilter(filter = {}) {
   const q = {};
 
@@ -264,11 +245,13 @@ export const OrderQuery = {
       pricing = {},
       promotionIds = [],
     } = input || {};
+
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+
     const previewItems = await buildPricedOrderItems({
       restaurantId: rid,
       items,
     });
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     if (!previewItems.length) {
       throw new Error("No valid order items for discount preview");
