@@ -1113,7 +1113,7 @@ async function findOrCreateActiveTableSession({
         { session },
       ).catch(() => {});
     }
-    return existing;
+    return { sessionOrder: existing, created: false };
   }
 
   const parentOrderCode = await findOrCreateOrderCode({
@@ -1149,12 +1149,12 @@ async function findOrCreateActiveTableSession({
       },
     ], { session });
 
-    return created;
+    return { sessionOrder: created, created: true };
   } catch (error) {
     if (!isDuplicateKeyError(error)) throw error;
 
     const afterDuplicate = await Order.findOne(activeFilter, null, { session });
-    if (afterDuplicate) return afterDuplicate;
+    if (afterDuplicate) return { sessionOrder: afterDuplicate, created: false };
 
     throw error;
   }
@@ -1212,8 +1212,6 @@ export const OrderMutation = {
     // normalizeItem: enforce servingKey + grams integer for BY_WEIGHT
     const normalizedItems = items.map(normalizeItem);
 
-    const finalUserId = await ensureUserForOrder(userId, effectiveCustomer);
-
     const session = await mongoose.startSession();
     let createdOrderDoc = null;
 
@@ -1237,14 +1235,38 @@ export const OrderMutation = {
 
         const totals = computeTotalsFromHydratedItems(normalizedItems);
 
-        const parentSession = await findOrCreateActiveTableSession({
+        const activeSessionProbe = await Order.findOne(
+          activeTableSessionFilter({
+            restaurantId: rid,
+            tableId: toId(tableInfo.tableId),
+          }),
+          null,
+          { session },
+        );
+
+        if (
+          activeSessionProbe &&
+          effectiveCustomer &&
+          (
+            (normalizeEmail(activeSessionProbe?.customer?.email) && normalizeEmail(effectiveCustomer?.email) && normalizeEmail(activeSessionProbe?.customer?.email) !== normalizeEmail(effectiveCustomer?.email)) ||
+            (normalizePhone(activeSessionProbe?.customer?.phone) && normalizePhone(effectiveCustomer?.phone) && normalizePhone(activeSessionProbe?.customer?.phone) !== normalizePhone(effectiveCustomer?.phone))
+          )
+        ) {
+          throw new Error("Bàn đang có phiên khách khác. Vui lòng đóng/thanh toán phiên hiện tại trước khi đổi khách.");
+        }
+
+        const parentSessionMeta = await findOrCreateActiveTableSession({
           restaurantId: rid,
           tableId: toId(tableInfo.tableId),
           tableCode: tableInfo.tableCode,
-          userId: finalUserId,
+          userId,
           customerSnapshot: effectiveCustomer,
           session,
         });
+        const parentSession = parentSessionMeta.sessionOrder;
+
+        const sessionCustomer = parentSession?.customer || effectiveCustomer || null;
+        const sessionUserId = parentSession?.userId || (await ensureUserForOrder(userId, sessionCustomer));
 
         const [order] = await Order.create(
           [
@@ -1253,7 +1275,7 @@ export const OrderMutation = {
               tableId: toId(tableInfo.tableId),
               tableCode: tableInfo.tableCode,
 
-              userId: finalUserId ? toId(finalUserId) : undefined,
+              userId: sessionUserId ? toId(sessionUserId) : undefined,
               orderCode: effectiveOrderCode,
 
               orderType: "dine_in",
@@ -1276,7 +1298,7 @@ export const OrderMutation = {
                 {
                   status: "pending",
                   at: new Date(),
-                  byUserId: finalUserId ? toId(finalUserId) : undefined,
+                  byUserId: sessionUserId ? toId(sessionUserId) : undefined,
                   note: "Created via POS",
                 },
               ],
@@ -1299,12 +1321,12 @@ export const OrderMutation = {
           { session },
         );
 
-        if (effectiveCustomer) {
+        if (sessionCustomer && parentSessionMeta.created) {
           await upsertTableCustomerFromOrder({
             restaurantId,
             tableId: tableInfo.tableId,
             tableCode: tableInfo.tableCode,
-            customer: effectiveCustomer,
+            customer: sessionCustomer,
             note,
             session,
           });

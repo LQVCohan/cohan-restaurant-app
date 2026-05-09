@@ -378,7 +378,6 @@ const OrderSchema = BaseSchemaModel({
   activeSessionKey: {
     type: String,
     default: null,
-    index: true,
   },
 
   openedAt: {
@@ -609,8 +608,10 @@ OrderSchema.index(
   { activeSessionKey: 1 },
   {
     unique: true,
-    sparse: true,
     name: "unique_active_table_session_key",
+    partialFilterExpression: {
+      activeSessionKey: { $type: "string" },
+    },
   },
 );
 

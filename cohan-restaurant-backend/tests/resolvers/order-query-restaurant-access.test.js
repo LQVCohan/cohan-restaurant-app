@@ -158,6 +158,14 @@ describe("OrderQuery restaurant access guard", () => {
       expect.objectContaining({ value: "valid-r1" }),
     );
     expect(modelMocks.Order.find).toHaveBeenCalled();
+    expect(modelMocks.Order.find.mock.calls[0][0]).toMatchObject({
+      $and: [
+        expect.objectContaining({
+          restaurantId: expect.objectContaining({ value: "valid-r1" }),
+        }),
+        expect.objectContaining({ $or: expect.any(Array) }),
+      ],
+    });
     expect(result.edges).toHaveLength(1);
   });
 
@@ -295,6 +303,7 @@ describe("OrderQuery restaurant access guard", () => {
     );
     expect(guardMocks.requireRoles).not.toHaveBeenCalled();
     expect(modelMocks.Order.find).toHaveBeenCalled();
+    expect(modelMocks.Order.find.mock.calls[0][0]).toHaveProperty("$and");
     expect(modelMocks.Order.countDocuments).toHaveBeenCalled();
   });
 
