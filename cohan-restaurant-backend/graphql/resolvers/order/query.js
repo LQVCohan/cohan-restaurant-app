@@ -19,6 +19,7 @@ import { buildDemandForecast } from "../../../src/services/ai/demandForecast.ser
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { orderBatchOrLegacyFilter } from "../../../utils/orderLifecycle.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -310,7 +311,7 @@ export const OrderQuery = {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const safeTableCode = String(tableCode).trim().toUpperCase();
 
-    const q = { restaurantId: rid, tableCode: safeTableCode };
+    const q = { restaurantId: rid, tableCode: safeTableCode, ...orderBatchOrLegacyFilter() };
 
     const safeLimit = Math.max(1, Math.min(200, limit));
     const safeOffset = Math.max(0, offset);
@@ -351,6 +352,7 @@ export const OrderQuery = {
       restaurantId: rid,
       tableId: t._id,
       tableCode: safeCode,
+      ...orderBatchOrLegacyFilter(),
       // nếu muốn chỉ "đang hoạt động": currentStatus: { $nin: INACTIVE_STATUSES }
     };
 

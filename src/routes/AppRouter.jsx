@@ -50,6 +50,9 @@ import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
+import { canAccessRoute, getDefaultPathForRole } from "@/utils/frontendRoleAccess";
+import { STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
+
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
@@ -123,8 +126,9 @@ export const PrivateRoute = ({
   if (!isAuthenticated || !token)
     return <Navigate to="/login" state={{ from: location }} replace />;
 
-  if (!hasAllowedRole(allowedRoles, role))
-    return <Navigate to="/403" replace />;
+  if (!hasAllowedRole(allowedRoles, role) || !canAccessRoute(role, location.pathname)) {
+    return <Navigate to={getDefaultPathForRole(role)} replace />;
+  }
 
   if (requireVerifiedEmail && !emailVerified)
     return <Navigate to="/verify-email" replace />;
@@ -156,6 +160,8 @@ const LogoutHandler = () => {
 // =========================
 // 🌐 App Router
 // =========================
+const SHARED_STAFF_AND_INTERNAL_ROLES = ["admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
+
 const AppRouter = () => {
   return (
     <Routes>
@@ -177,12 +183,31 @@ const AppRouter = () => {
           =============================================
       */}
 
+      {/* Staff Home */}
+      <Route
+        path="/staff"
+        element={
+          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+            <Navigate to="/staff/dashboard" replace />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/staff/dashboard"
+        element={
+          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+            <StaffSchedulePage />
+          </PrivateRoute>
+        }
+      />
+
       {/* Staff Order */}
       <Route
         path="/staff/orders"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffOrdering />
@@ -194,7 +219,7 @@ const AppRouter = () => {
         path="/staff/performance"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin", "hr"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffPerformancePage />
@@ -207,7 +232,7 @@ const AppRouter = () => {
         path="/staff/schedule"
         element={
           <PrivateRoute
-            allowedRoles={["staff", "manager", "admin", "hr"]}
+            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
             requireVerifiedEmail
           >
             <StaffSchedulePage />
@@ -235,7 +260,7 @@ const AppRouter = () => {
         path="/manager/dashboard/POS"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "accountant"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <POSLayout />
@@ -247,7 +272,7 @@ const AppRouter = () => {
       <Route
         path="/manager/floor-map/:restaurantId"
         element={
-          <PrivateRoute allowedRoles={["manager", "admin", "accountant"]}>
+          <PrivateRoute allowedRoles={["manager", "admin"]}>
             <FloorPlanDesigner />
           </PrivateRoute>
         }
@@ -257,7 +282,7 @@ const AppRouter = () => {
         path="/manager/performance"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "hr", "accountant"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <ManagerLayout>
@@ -271,7 +296,7 @@ const AppRouter = () => {
         path="/manager/restaurants/categories"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "hr", "accountant"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <ManagerRestaurantInfoManagement />
@@ -383,7 +408,7 @@ const AppRouter = () => {
           path="/search"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <SearchPage />
@@ -419,7 +444,17 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-        <Route path="/track-order/:orderId" element={<OrderTrackingPage />} />
+        <Route
+          path="/track-order/:orderId"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <OrderTrackingPage />
+            </PrivateRoute>
+          }
+        />
 
         {/* Restaurants */}
         <Route
@@ -447,17 +482,47 @@ const AppRouter = () => {
         <Route path="/restaurant/:id/layout" element={<TableBooking />} />
         <Route path="/vr/table/:tableId" element={<VRViewer />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/checkout"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <CheckoutPage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/food/:foodId" element={<FoodDetail />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
-        <Route path="/favorites/:id" element={<FavoritePage />} />
-        <Route path="/address-book/:id" element={<AddressPage />} />
+        <Route
+          path="/favorites/:id"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <FavoritePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/address-book/:id"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <AddressPage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/help-center/:id" element={<HelpPage />} />
         <Route
           path="/notifications"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <NotificationsPage />
@@ -469,7 +534,7 @@ const AppRouter = () => {
           path="/profile"
           element={
             <PrivateRoute
-              allowedRoles={["customer", "manager", "staff", "admin"]}
+              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
               requireVerifiedEmail
             >
               <ProfilePage />
@@ -479,7 +544,7 @@ const AppRouter = () => {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/403" replace />} />
     </Routes>
   );
 };

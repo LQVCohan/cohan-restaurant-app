@@ -262,20 +262,46 @@ const emptyShiftAcksMock = () => ({
   result: { data: { myShiftAcknowledgements: [] } },
 });
 
-const availabilityWindow = (overrides = {}) => ({
-  id: "w1",
-  periodStart: "2026-05-10T17:00:00.000Z",
-  periodEnd: "2026-05-17T16:59:59.999Z",
-  openAt: "2026-05-09T17:00:00.000Z",
-  closeAt: "2026-05-17T16:59:59.999Z",
-  status: "open",
-  effectiveStatus: "open",
-  registrationMode: "manual",
-  targetEmploymentTypes: ["part_time"],
-  allowFullTimeUnavailableException: true,
-  lateChangeRequiresApproval: true,
-  ...overrides,
-});
+const buildIsoDate = (date) => date.toISOString();
+
+const buildWeekRange = (weekOffset = 0) => {
+  const now = new Date();
+  const dayIndex = now.getDay();
+  const daysFromMonday = dayIndex === 0 ? 6 : dayIndex - 1;
+
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysFromMonday + weekOffset * 7);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return { weekStart, weekEnd };
+};
+
+const availabilityWindow = (overrides = {}) => {
+  const { weekStart, weekEnd } = buildWeekRange(1);
+  const openAt = new Date(weekStart);
+  openAt.setDate(openAt.getDate() - 2);
+  const closeAt = new Date(weekEnd);
+  closeAt.setDate(closeAt.getDate() + 1);
+
+  return {
+    id: "w1",
+    periodStart: buildIsoDate(weekStart),
+    periodEnd: buildIsoDate(weekEnd),
+    openAt: buildIsoDate(openAt),
+    closeAt: buildIsoDate(closeAt),
+    status: "open",
+    effectiveStatus: "open",
+    registrationMode: "manual",
+    targetEmploymentTypes: ["part_time"],
+    allowFullTimeUnavailableException: true,
+    lateChangeRequiresApproval: true,
+    ...overrides,
+  };
+};
 
 const availabilityWindowsMock = (windows) => ({
   request: { query: GET_AVAILABILITY_WINDOWS },

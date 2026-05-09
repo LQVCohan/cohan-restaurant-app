@@ -29,6 +29,40 @@ const ItemStatusEnum = [
 
 const PriorityEnum = ["LOW", "MEDIUM", "HIGH"];
 
+const OrderKindEnum = ["table_session", "order_batch", "split_bill"];
+
+const SessionStatusEnum = [
+  "open",
+  "dining",
+  "ready_to_pay",
+  "closed",
+  "cancelled",
+];
+
+const KitchenStatusEnum = [
+  "draft",
+  "pending",
+  "confirmed",
+  "customer_attached",
+  "preparing",
+  "ready",
+  "served",
+  "cancelled",
+  "failed",
+];
+
+const OrderPaymentStatusEnum = [
+  "unpaid",
+  "payment_requested",
+  "partial",
+  "paid",
+  "failed",
+  "refunded",
+  "partially_refunded",
+];
+
+const SplitStatusEnum = ["none", "root", "root_hidden", "partial"];
+
 const ModifierPriceRuleEnum = ["DELTA", "SET"];
 const ModifierInventoryRuleEnum = [
   "NONE",
@@ -287,6 +321,76 @@ const OrderSchema = BaseSchemaModel({
   // split bill: order con có parentOrderCode trỏ về orderCode của order trước đó
   parentOrderCode: { type: String, index: true },
 
+  // Lifecycle note:
+  // - table_session: parent order for one dine-in table session, should not own kitchen items.
+  // - order_batch: child order for each staff send-to-kitchen round, owns items.
+  // - split_bill: future payment grouping for split bill, not used by kitchen flow.
+  // `currentStatus` is kept for backward compatibility during migration.
+  orderKind: {
+    type: String,
+    enum: OrderKindEnum,
+    default: "order_batch",
+    index: true,
+  },
+
+  parentOrderId: {
+    type: Schema.Types.ObjectId,
+    ref: "Order",
+    default: null,
+    index: true,
+  },
+
+  rootOrderId: {
+    type: Schema.Types.ObjectId,
+    ref: "Order",
+    default: null,
+    index: true,
+  },
+
+  splitStatus: {
+    type: String,
+    enum: SplitStatusEnum,
+    default: "none",
+    index: true,
+  },
+
+  sessionStatus: {
+    type: String,
+    enum: SessionStatusEnum,
+    default: "open",
+    index: true,
+  },
+
+  kitchenStatus: {
+    type: String,
+    enum: KitchenStatusEnum,
+    default: "pending",
+    index: true,
+  },
+
+  orderPaymentStatus: {
+    type: String,
+    enum: OrderPaymentStatusEnum,
+    default: "unpaid",
+    index: true,
+  },
+
+  activeSessionKey: {
+    type: String,
+    default: null,
+    index: true,
+  },
+
+  openedAt: {
+    type: Date,
+    default: null,
+  },
+
+  closedAt: {
+    type: Date,
+    default: null,
+  },
+
   dailySequence: { type: Number },
 
   tableId: { type: Schema.Types.ObjectId, ref: "Table" },
@@ -375,6 +479,8 @@ const OrderSchema = BaseSchemaModel({
     },
   ],
 
+  // Legacy/backward-compatible status field.
+  // New lifecycle logic should gradually move to sessionStatus, kitchenStatus, and orderPaymentStatus.
   currentStatus: { type: String, default: "confirmed", enum: OrderStatusEnum },
   priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
   note: { type: String },
@@ -473,6 +579,40 @@ OrderSchema.index({ restaurantId: 1, orderCode: 1 });
 OrderSchema.index({ restaurantId: 1, tableCode: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, currentStatus: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, parentOrderCode: 1, createdAt: -1 });
+OrderSchema.index({
+  restaurantId: 1,
+  tableId: 1,
+  orderKind: 1,
+  sessionStatus: 1,
+  createdAt: -1,
+});
+OrderSchema.index({
+  restaurantId: 1,
+  parentOrderId: 1,
+  orderKind: 1,
+  createdAt: 1,
+});
+OrderSchema.index({
+  restaurantId: 1,
+  rootOrderId: 1,
+  splitStatus: 1,
+  createdAt: 1,
+});
+OrderSchema.index({
+  restaurantId: 1,
+  orderKind: 1,
+  orderPaymentStatus: 1,
+  createdAt: -1,
+});
+
+OrderSchema.index(
+  { activeSessionKey: 1 },
+  {
+    unique: true,
+    sparse: true,
+    name: "unique_active_table_session_key",
+  },
+);
 
 // ingredient lookup in orders
 OrderSchema.index({

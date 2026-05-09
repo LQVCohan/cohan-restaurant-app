@@ -15,6 +15,12 @@ import {
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
+import {
+  orderBatchOrLegacyFilter,
+  ORDER_KIND,
+  SESSION_STATUS,
+  ORDER_PAYMENT_STATUS,
+} from "../../../utils/orderLifecycle.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
@@ -167,6 +173,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     restaurantId: rid,
     tableId: tid,
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+    ...orderBatchOrLegacyFilter(),
   }).lean();
 
   if (!orders.length) {
@@ -344,6 +351,54 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       { session }
     );
 
+    const shouldCloseParentSession =
+      pendingCodes.length === 0 || includeUnserved === true;
+
+    const parentSessionIds = [
+      ...new Set(
+        payOrders
+          .map((o) => o.parentOrderId || o.rootOrderId)
+          .filter(Boolean)
+          .map(String)
+      ),
+    ]
+      .map((id) => toId(id))
+      .filter(Boolean);
+
+    if (shouldCloseParentSession && parentSessionIds.length) {
+      await Order.updateMany(
+        {
+          _id: { $in: parentSessionIds },
+          restaurantId: rid,
+          orderKind: ORDER_KIND.TABLE_SESSION,
+        },
+        {
+          $set: {
+            sessionStatus: SESSION_STATUS.CLOSED,
+            orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
+            activeSessionKey: null,
+            closedAt: now,
+            "payment.method": normMethod,
+            "payment.status": "paid",
+            "payment.paidAmount": amountToPay,
+            "payment.paidAt": now,
+            "payment.paidBy": actorId,
+            currentStatus: "completed",
+          },
+          $push: {
+            statusTimeline: {
+              status: "completed",
+              at: now,
+              byUserId: actorId || null,
+              note: "Đã thanh toán và đóng phiên bàn.",
+            },
+          },
+        },
+        { session }
+      );
+    }
+
+
     await EventLog.log(
       {
         restaurantId: rid,
@@ -434,6 +489,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     _id: { $in: uniqueOrderIds },
     restaurantId: rid,
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+    ...orderBatchOrLegacyFilter(),
   }).lean();
 
   if (!orders.length) {

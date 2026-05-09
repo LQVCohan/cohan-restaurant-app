@@ -31,6 +31,16 @@ import {
 import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
+import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import {
+  ORDER_KIND,
+  SPLIT_STATUS,
+  SESSION_STATUS,
+  KITCHEN_STATUS,
+  ORDER_PAYMENT_STATUS,
+  activeTableSessionFilter,
+  buildActiveTableSessionKey,
+} from "../../../utils/orderLifecycle.js";
 
 import {
   reserveForOrderTx,
@@ -866,104 +876,21 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
  * Totals from hydrated items
  * ========================= */
 function computeTotalsFromHydratedItems(items = [], pricing = {}) {
-  let subtotal = 0;
-
-  for (const it of items) {
-    if (!CANCELLED_ITEM_STATUSES.includes(it.status)) {
-      subtotal += Number(it.lineSubtotal || 0);
-    }
-  }
-
-  subtotal = Math.round(subtotal);
-
+  const subtotal = Math.round((items || []).reduce((sum, it) => {
+    if (CANCELLED_ITEM_STATUSES.includes(it?.status)) return sum;
+    return sum + Number(it?.lineSubtotal || 0);
+  }, 0));
   const serviceRate = Math.max(0, Number(pricing.serviceRate || 0));
   const taxRate = Math.max(0, Number(pricing.taxRate || 0));
+  const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
   const promotionDiscount = Math.max(0, Number(pricing.promotionDiscount || 0));
   const voucherDiscount = Math.max(0, Number(pricing.voucherDiscount || 0));
-  const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
-
   const service = Math.round(subtotal * serviceRate);
-  const discount = Math.min(
-    subtotal + service,
-    promotionDiscount + voucherDiscount,
-  );
+  const discount = Math.min(subtotal + service, promotionDiscount + voucherDiscount);
   const beforeTax = Math.max(0, subtotal + service - discount);
   const tax = Math.round(beforeTax * taxRate);
   const grandTotal = Math.round(beforeTax + tax + shippingFee);
-
-  return {
-    subtotal,
-    discount,
-    tax,
-    service,
-    shippingFee,
-    grandTotal,
-    taxRate,
-    serviceRate,
-    voucherCode: pricing.voucherCode || undefined,
-  };
-}
-
-async function resolveVoucherDiscount({
-  restaurantId,
-  voucherCode,
-  subtotal,
-  userId,
-  session,
-}) {
-  const code = String(voucherCode || "")
-    .trim()
-    .toUpperCase();
-  if (!code) return null;
-
-  const now = new Date();
-  const rid = toId(restaurantId);
-  if (!rid) throw new Error("Invalid restaurantId for voucher");
-
-  const coupon = await Coupon.findOne({
-    restaurantId: rid,
-    code,
-    isActive: true,
-  }).session(session);
-
-  // Keep query readable: startAt/endAt may be missing in old docs
-  const validCoupon =
-    coupon &&
-    (!coupon.publishAt || coupon.publishAt <= now) &&
-    (!coupon.startAt || coupon.startAt <= now) &&
-    (!coupon.endAt || coupon.endAt >= now);
-
-  if (!validCoupon) throw new Error("Invalid voucher: not found or not active");
-
-  const minOrderValue = Math.max(0, Number(coupon.minOrderValue || 0));
-  if (Number(subtotal || 0) < minOrderValue) {
-    throw new Error(`Invalid voucher: minimum order value is ${minOrderValue}`);
-  }
-
-  const maxUsage = Number(coupon.maxUsage || 0);
-  const used = Number(coupon.used || 0);
-  if (maxUsage > 0 && used >= maxUsage) {
-    throw new Error("Invalid voucher: usage limit reached");
-  }
-
-  let discount = 0;
-  const discountValue = Number(coupon.discountValue || 0);
-  if (coupon.discountType === "PERCENT") {
-    discount = (Number(subtotal || 0) * discountValue) / 100;
-    const maxDiscount = Number(coupon.maxDiscount || 0);
-    if (maxDiscount > 0) discount = Math.min(discount, maxDiscount);
-  } else {
-    discount = discountValue;
-  }
-
-  discount = Math.max(0, Math.min(Number(subtotal || 0), Math.round(discount)));
-
-  return {
-    couponId: coupon._id,
-    voucherCode: code,
-    voucherDiscount: discount,
-    discountReason: `coupon:${coupon._id}${userId ? `;user:${userId}` : ""}`,
-  };
+  return { subtotal, discount, tax, service, shippingFee, grandTotal, taxRate, serviceRate, voucherCode: pricing.voucherCode || undefined };
 }
 
 /** =========================
@@ -1162,6 +1089,77 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
   };
 }
 
+function isDuplicateKeyError(error) {
+  return error?.code === 11000 || String(error?.message || "").includes("E11000");
+}
+
+async function findOrCreateActiveTableSession({
+  restaurantId,
+  tableId,
+  tableCode,
+  userId,
+  customerSnapshot,
+  session,
+}) {
+  const activeFilter = activeTableSessionFilter({ restaurantId, tableId });
+  const activeSessionKey = buildActiveTableSessionKey({ restaurantId, tableId });
+
+  const existing = await Order.findOne(activeFilter, null, { session });
+  if (existing) {
+    if (activeSessionKey && !existing.activeSessionKey) {
+      await Order.updateOne(
+        { _id: existing._id, activeSessionKey: { $in: [null, undefined] } },
+        { $set: { activeSessionKey } },
+        { session },
+      ).catch(() => {});
+    }
+    return existing;
+  }
+
+  const parentOrderCode = await findOrCreateOrderCode({
+    restaurantId,
+    tableId,
+    tableCode,
+    session,
+  });
+
+  try {
+    const [created] = await Order.create([
+      {
+        restaurantId,
+        tableId,
+        tableCode,
+        userId: userId ? toId(userId) : undefined,
+        orderCode: parentOrderCode,
+        orderType: "dine_in",
+        orderKind: ORDER_KIND.TABLE_SESSION,
+        activeSessionKey,
+        parentOrderId: null,
+        rootOrderId: null,
+        splitStatus: SPLIT_STATUS.NONE,
+        sessionStatus: SESSION_STATUS.OPEN,
+        kitchenStatus: KITCHEN_STATUS.DRAFT,
+        orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+        openedAt: new Date(),
+        items: [],
+        totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
+        currentStatus: "pending",
+        payment: { method: "cash", status: "pending" },
+        customer: customerSnapshot || undefined,
+      },
+    ], { session });
+
+    return created;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+
+    const afterDuplicate = await Order.findOne(activeFilter, null, { session });
+    if (afterDuplicate) return afterDuplicate;
+
+    throw error;
+  }
+}
+
 export const OrderMutation = {
   /** =========================================
    * CREATE TABLE ORDER (dine_in)
@@ -1239,6 +1237,15 @@ export const OrderMutation = {
 
         const totals = computeTotalsFromHydratedItems(normalizedItems);
 
+        const parentSession = await findOrCreateActiveTableSession({
+          restaurantId: rid,
+          tableId: toId(tableInfo.tableId),
+          tableCode: tableInfo.tableCode,
+          userId: finalUserId,
+          customerSnapshot: effectiveCustomer,
+          session,
+        });
+
         const [order] = await Order.create(
           [
             {
@@ -1250,6 +1257,15 @@ export const OrderMutation = {
               orderCode: effectiveOrderCode,
 
               orderType: "dine_in",
+              orderKind: ORDER_KIND.ORDER_BATCH,
+              parentOrderId: parentSession._id,
+              rootOrderId: parentSession._id,
+              splitStatus: SPLIT_STATUS.NONE,
+              sessionStatus: SESSION_STATUS.DINING,
+              kitchenStatus: KITCHEN_STATUS.PENDING,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+              openedAt: null,
+              closedAt: null,
               items: normalizedItems,
               totals,
               note,
@@ -1271,6 +1287,17 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+
+        await Order.updateOne(
+          { _id: parentSession._id },
+          {
+            $set: {
+              sessionStatus: SESSION_STATUS.DINING,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+            },
+          },
+          { session },
+        );
 
         if (effectiveCustomer) {
           await upsertTableCustomerFromOrder({
@@ -1383,35 +1410,12 @@ export const OrderMutation = {
 
         validateIncomingOrderItems(normalizedItems);
 
-        const trustedPricing = {
-          taxRate: pricing?.taxRate,
-          serviceRate: pricing?.serviceRate,
-          shippingFee: pricing?.shippingFee,
-          voucherCode: pricing?.voucherCode,
-          promotionDiscount: 0,
-          voucherDiscount: 0,
-        };
-        const baseTotals = computeTotalsFromHydratedItems(
-          normalizedItems,
-          trustedPricing,
-        );
-        let voucherMeta = null;
-        if (trustedPricing.voucherCode) {
-          voucherMeta = await resolveVoucherDiscount({
-            restaurantId: rid,
-            voucherCode: trustedPricing.voucherCode,
-            subtotal: baseTotals.subtotal,
-            userId: finalUserId,
-            session,
-          });
-        }
-        const totals = computeTotalsFromHydratedItems(normalizedItems, {
-          ...trustedPricing,
-          voucherDiscount: voucherMeta?.voucherDiscount || 0,
-          voucherCode: voucherMeta?.voucherCode,
+        const totals = await calculateDiscountBreakdown({
+          restaurantId: rid,
+          items: normalizedItems,
+          pricing,
+          session,
         });
-        if (voucherMeta?.discountReason)
-          totals.discountReason = voucherMeta.discountReason;
 
         const [order] = await Order.create(
           [
@@ -1448,10 +1452,10 @@ export const OrderMutation = {
 
         createdOrderDoc = order;
 
-        if (voucherMeta?.couponId) {
+        if (totals?.couponId) {
           const updateResult = await Coupon.updateOne(
             {
-              _id: voucherMeta.couponId,
+              _id: totals.couponId,
               $expr: {
                 $or: [
                   { $lte: ["$maxUsage", 0] },
@@ -1834,36 +1838,12 @@ export const OrderMutation = {
             session,
           });
 
-          const trustedPricing = {
-            taxRate: pricing?.taxRate,
-            serviceRate: pricing?.serviceRate,
-            shippingFee: pricing?.shippingFee,
-            voucherCode: pricing?.voucherCode,
-            promotionDiscount: 0,
-            voucherDiscount: 0,
-          };
-
-          const baseTotals = computeTotalsFromHydratedItems(
-            g.items,
-            trustedPricing,
-          );
-          let voucherMeta = null;
-          if (trustedPricing.voucherCode) {
-            voucherMeta = await resolveVoucherDiscount({
-              restaurantId: g.restaurantId,
-              voucherCode: trustedPricing.voucherCode,
-              subtotal: baseTotals.subtotal,
-              userId: finalUserId,
-              session,
-            });
-          }
-          const totals = computeTotalsFromHydratedItems(g.items, {
-            ...trustedPricing,
-            voucherDiscount: voucherMeta?.voucherDiscount || 0,
-            voucherCode: voucherMeta?.voucherCode,
+          const totals = await calculateDiscountBreakdown({
+            restaurantId: g.restaurantId,
+            items: g.items,
+            pricing,
+            session,
           });
-          if (voucherMeta?.discountReason)
-            totals.discountReason = voucherMeta.discountReason;
 
           const shippingObj = buildShippingForOffPremise(
             orderType,
@@ -1917,10 +1897,10 @@ export const OrderMutation = {
 
           createdOrders.push(order);
 
-          if (voucherMeta?.couponId) {
+          if (totals?.couponId) {
             const updateResult = await Coupon.updateOne(
               {
-                _id: voucherMeta.couponId,
+                _id: totals.couponId,
                 $expr: {
                   $or: [
                     { $lte: ["$maxUsage", 0] },
