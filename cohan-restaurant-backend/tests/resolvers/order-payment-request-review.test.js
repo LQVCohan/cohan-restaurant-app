@@ -63,6 +63,10 @@ describe("payment request + confirm guards", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Order.find.mockReset();
+    modelMocks.Order.findOne.mockReset();
+    modelMocks.Order.updateMany.mockReset();
+    modelMocks.Order.updateMany.mockResolvedValue({ acknowledged: true });
     modelMocks.Order.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
   });
 
@@ -208,7 +212,7 @@ describe("payment request + confirm guards", () => {
     expect(orderB.save).toHaveBeenCalled();
   });
 
-  it("payOrdersByTableId blocks when any order item is confirmed", async () => {
+  it("payOrdersByTableId returns structured warning when any child item is confirmed", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const blockedOrder = {
       _id: "65f000000000000000000121", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
@@ -217,11 +221,14 @@ describe("payment request + confirm guards", () => {
     };
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
 
-    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
-      .rejects.toThrow("Không thể thanh toán khi còn món chưa phục vụ xong.");
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(true);
+    expect(out.pendingOrderCodes).toEqual(["65f000000000000000000121"]);
+    expect(out.invoice).toBeNull();
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
-  it("payOrdersByTableId blocks when pending void request exists", async () => {
+  it("payOrdersByTableId returns structured warning when pending void request exists", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const blockedOrder = {
       _id: "65f000000000000000000122", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
@@ -230,11 +237,14 @@ describe("payment request + confirm guards", () => {
     };
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
 
-    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
-      .rejects.toThrow("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(true);
+    expect(out.pendingOrderCodes).toEqual(["65f000000000000000000122"]);
+    expect(out.invoice).toBeNull();
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
-  it("payOrdersByTableId blocks when pending return request exists", async () => {
+  it("payOrdersByTableId returns structured warning when pending return request exists", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const blockedOrder = {
       _id: "65f000000000000000000123", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
@@ -243,8 +253,11 @@ describe("payment request + confirm guards", () => {
     };
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
 
-    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
-      .rejects.toThrow("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(true);
+    expect(out.pendingOrderCodes).toEqual(["65f000000000000000000123"]);
+    expect(out.invoice).toBeNull();
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
   it("payOrdersByTableId completes multiple served orders on same table", async () => {
@@ -282,7 +295,7 @@ describe("payment request + confirm guards", () => {
     const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: false } }, AUTH_CONTEXT);
 
     expect(out.warning).toBe(true);
-    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(1);
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
   it("payOrdersByOrderIds applies orderBatchOrLegacyFilter", async () => {
@@ -293,7 +306,9 @@ describe("payment request + confirm guards", () => {
       totals: { subtotal: 20000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 20000 },
       payment: { status: "payment_requested" },
     };
-    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) }).mockResolvedValueOnce([paidOrder]);
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) })
+      .mockResolvedValueOnce([paidOrder]);
 
     await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000161"], method: "cash" } }, AUTH_CONTEXT);
 

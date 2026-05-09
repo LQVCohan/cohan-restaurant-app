@@ -213,24 +213,30 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
-  for (const order of orders) {
-    if (hasPendingItemWork(order)) {
-      throw new Error("Không thể thanh toán khi còn món chưa phục vụ xong.");
-    }
-    if (hasPendingAdjustmentRequests(order)) {
-      throw new Error("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
-    }
-  }
-
   const served = [];
   const unserved = [];
   for (const o of orders) {
-    if (String(o.currentStatus || "").toLowerCase() === "served") served.push(o);
-    else unserved.push(o);
+    const status = String(o.currentStatus || "").toLowerCase();
+    const blocked =
+      status !== "served" ||
+      hasPendingItemWork(o) ||
+      hasPendingAdjustmentRequests(o);
+    if (blocked) unserved.push(o);
+    else served.push(o);
+  }
+
+  const pendingCodes = unserved.map((o) => o.orderCode || String(o._id));
+  if (pendingCodes.length && !includeUnserved) {
+    return {
+      warning: true,
+      pendingOrderCodes: pendingCodes,
+      invoice: null,
+      transaction: null,
+      cashflow: null,
+    };
   }
 
   const payOrders = includeUnserved ? [...served, ...unserved] : served;
-  const pendingCodes = unserved.map((o) => o.orderCode || String(o._id));
 
   if (!payOrders.length) {
     return {
