@@ -12,6 +12,7 @@ import {
   Staff,
   Review,
 } from "../../../models/index.js";
+import { buildPricedOrderItems } from "../../../src/services/orderItemPricing.service.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
@@ -263,10 +264,11 @@ export const OrderQuery = {
       pricing = {},
       promotionIds = [],
     } = input || {};
-
+    const previewItems = await buildPricedOrderItems({
+      restaurantId: rid,
+      items,
+    });
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
-
-    const previewItems = buildPreviewItems(items);
 
     if (!previewItems.length) {
       throw new Error("No valid order items for discount preview");
