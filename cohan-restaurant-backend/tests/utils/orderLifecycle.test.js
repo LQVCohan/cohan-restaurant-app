@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeTableSessionLookupFilter,
   buildActiveTableSessionKey,
+  childOrdersForSessionFilter,
   isKitchenPayable,
   isOrderBatch,
   isPaymentClosed,
@@ -142,6 +144,25 @@ describe("orderLifecycle helpers", () => {
   it("buildActiveTableSessionKey returns null when restaurantId or tableId missing", () => {
     expect(buildActiveTableSessionKey({ restaurantId: null, tableId: "t1" })).toBeNull();
     expect(buildActiveTableSessionKey({ restaurantId: "r1", tableId: null })).toBeNull();
+  });
+
+  it("activeTableSessionLookupFilter builds active table_session filter", () => {
+    const out = activeTableSessionLookupFilter({ restaurantId: "r1", tableId: "t1" });
+    expect(out).toMatchObject({
+      restaurantId: "r1",
+      tableId: "t1",
+      orderKind: "table_session",
+      sessionStatus: { $in: ["open", "dining", "ready_to_pay"] },
+      orderPaymentStatus: { $ne: "paid" },
+    });
+  });
+
+  it("childOrdersForSessionFilter builds parent/root child order_batch filter", () => {
+    expect(childOrdersForSessionFilter({ restaurantId: "r1", parentOrderId: "p1" })).toEqual({
+      restaurantId: "r1",
+      orderKind: "order_batch",
+      $or: [{ parentOrderId: "p1" }, { rootOrderId: "p1" }],
+    });
   });
 
 });
