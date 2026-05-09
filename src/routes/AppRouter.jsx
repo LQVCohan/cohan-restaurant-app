@@ -161,7 +161,8 @@ const LogoutHandler = () => {
 // =========================
 // 🌐 App Router
 // =========================
-const SHARED_STAFF_AND_INTERNAL_ROLES = ["admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
+const STAFF_SHARED_ROLES = ["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES];
+const STAFF_ORDER_ROLES = ["admin", "manager", "server", "host", "cashier", "supervisor"];
 
 const AppRouter = () => {
   return (
@@ -188,7 +189,7 @@ const AppRouter = () => {
       <Route
         path="/staff"
         element={
-          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+          <PrivateRoute allowedRoles={STAFF_SHARED_ROLES} requireVerifiedEmail>
             <Navigate to="/staff/dashboard" replace />
           </PrivateRoute>
         }
@@ -197,7 +198,7 @@ const AppRouter = () => {
       <Route
         path="/staff/dashboard"
         element={
-          <PrivateRoute allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES} requireVerifiedEmail>
+          <PrivateRoute allowedRoles={STAFF_SHARED_ROLES} requireVerifiedEmail>
             <StaffDashboardPage />
           </PrivateRoute>
         }
@@ -208,7 +209,7 @@ const AppRouter = () => {
         path="/staff/orders"
         element={
           <PrivateRoute
-            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
+            allowedRoles={STAFF_ORDER_ROLES}
             requireVerifiedEmail
           >
             <StaffOrdering />
@@ -220,7 +221,7 @@ const AppRouter = () => {
         path="/staff/performance"
         element={
           <PrivateRoute
-            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
+            allowedRoles={STAFF_SHARED_ROLES}
             requireVerifiedEmail
           >
             <StaffPerformancePage />
@@ -233,7 +234,7 @@ const AppRouter = () => {
         path="/staff/schedule"
         element={
           <PrivateRoute
-            allowedRoles={SHARED_STAFF_AND_INTERNAL_ROLES}
+            allowedRoles={STAFF_SHARED_ROLES}
             requireVerifiedEmail
           >
             <StaffSchedulePage />
