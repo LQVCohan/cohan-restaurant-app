@@ -234,7 +234,51 @@ export default function PosProvider({
   });
 
   const [upsertPrintSettings] = useMutation(M_UPSERT_PRINT_SETTINGS);
+  const clearTableSessionState = useCallback(
+    (table) => {
+      const tableId = table?.id || table?._id || null;
+      const tableCode = table?.code || null;
 
+      skipDraftAutosaveRef.current = true;
+      lastDraftKeyRef.current = null;
+
+      setCurrentOrder([]);
+      setCurrentOrderCode(null);
+      setCurrentOrderId(null);
+      setCurrentTable(null);
+
+      setTableOrders((prev) => {
+        const next = { ...(prev || {}) };
+
+        if (tableId) {
+          delete next[tableId];
+          delete next[String(tableId)];
+        }
+
+        if (tableCode) {
+          delete next[tableCode];
+          delete next[String(tableCode).toUpperCase()];
+        }
+
+        return next;
+      });
+
+      try {
+        if (tableId) {
+          localStorage.removeItem(`pos_draft_table_${restaurantId}_${tableId}`);
+        }
+        if (tableCode) {
+          localStorage.removeItem(
+            `pos_draft_table_${restaurantId}_${tableCode}`,
+          );
+          localStorage.removeItem(
+            `pos_draft_table_${restaurantId}_${String(tableCode).toUpperCase()}`,
+          );
+        }
+      } catch {}
+    },
+    [restaurantId],
+  );
   useEffect(() => {
     if (!restaurantId) return;
     loadPrintSettings({ variables: { restaurantId } });
@@ -1302,7 +1346,7 @@ export default function PosProvider({
       refetchTables,
       updateTable,
       fetchTableByCode,
-
+      clearTableSessionState,
       tableSearch,
       setTableSearch,
       statusFilter,

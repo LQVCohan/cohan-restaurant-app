@@ -298,7 +298,12 @@ const ACTIVE_TABLE_SESSION_ORDERS = gql`
           status
           image
           proofImages
-          modifiers { groupId groupName optionId optionName }
+          modifiers {
+            groupId
+            groupName
+            optionId
+            optionName
+          }
         }
       }
     }
@@ -1347,7 +1352,9 @@ export default function useOrderManagement(pos = null) {
             variables: { restaurantId, tableId },
           });
           const payload = data?.activeTableSessionOrders;
-          const activeOrders = Array.isArray(payload?.orders) ? payload.orders : [];
+          const activeOrders = Array.isArray(payload?.orders)
+            ? payload.orders
+            : [];
           if (payload) {
             const mergedItems = activeOrders.flatMap((o) =>
               (Array.isArray(o?.items) ? o.items : []).map((i) => ({
@@ -1361,9 +1368,27 @@ export default function useOrderManagement(pos = null) {
               })),
             );
             setCurrentOrder?.(mergedItems);
-            const key = tableCode || payload.tableCode || payload.tableId || "";
-            if (setTableOrders && key) {
-              setTableOrders((prev) => ({ ...prev, [key]: mergedItems }));
+
+            if (setTableOrders) {
+              setTableOrders((prev) => {
+                const next = { ...(prev || {}) };
+
+                const keys = [
+                  tableId,
+                  tableCode,
+                  payload.tableId,
+                  payload.tableCode,
+                  payload.tableCode
+                    ? String(payload.tableCode).toUpperCase()
+                    : null,
+                ].filter(Boolean);
+
+                keys.forEach((key) => {
+                  next[key] = mergedItems;
+                });
+
+                return next;
+              });
             }
             setGroups([]);
             setActiveGroup(null);
@@ -1372,7 +1397,9 @@ export default function useOrderManagement(pos = null) {
         }
       } catch (_e) {}
 
-      const { data } = await loadGroupsQuery({ variables: { restaurantId, tableId, tableCode } });
+      const { data } = await loadGroupsQuery({
+        variables: { restaurantId, tableId, tableCode },
+      });
 
       const rawGroups = data?.ordersGroupedByTable || [];
 
@@ -1435,7 +1462,13 @@ export default function useOrderManagement(pos = null) {
       }
       return gs;
     },
-    [loadActiveTableSessionOrdersQuery, loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders],
+    [
+      loadActiveTableSessionOrdersQuery,
+      loadGroupsQuery,
+      mapServerItemToUi,
+      setCurrentOrder,
+      setTableOrders,
+    ],
   );
 
   useSocketOrder(restaurantId, {
@@ -2965,7 +2998,8 @@ export default function useOrderManagement(pos = null) {
                 lineSubtotal:
                   it?.lineSubtotal != null
                     ? Number(it.lineSubtotal)
-                    : (Number(it.unitPrice || it.price || 0) + Number(it.modifiersPrice || 0)) *
+                    : (Number(it.unitPrice || it.price || 0) +
+                        Number(it.modifiersPrice || 0)) *
                       Number(it.quantity || 0),
                 isExisting: true,
                 isNew: false,
@@ -2989,7 +3023,9 @@ export default function useOrderManagement(pos = null) {
         }
       } catch (_e) {}
 
-      const { data } = await loadGroupsQuery({ variables: { restaurantId, tableId, tableCode } });
+      const { data } = await loadGroupsQuery({
+        variables: { restaurantId, tableId, tableCode },
+      });
 
       const rawGroups = data?.ordersGroupedByTable || [];
 

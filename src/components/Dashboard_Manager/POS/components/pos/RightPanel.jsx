@@ -178,10 +178,11 @@ export default function RightPanel() {
     selectedPrinter,
     setSelectedPrinter,
     menuItems,
-    setCurrentOrderType,
-    setCurrentOrderCode,
+    clearTableSessionState,
+    refetchTables,
     ensureOffPremiseSession,
     clearOffPremiseDraft,
+    setCurrentOrderCode,
     setShippingInfo,
     setDeliveryCustomer,
     setCurrentOrder,
@@ -446,25 +447,41 @@ export default function RightPanel() {
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
       if (inv) showNotification(`Hóa đơn: ${inv}`, "info");
 
+      const paidTable = currentTable;
+
       clearActiveDrafts();
 
-      clearOrder();
-      if (currentTable?.id && setTableStatus) {
-        setTableStatus({ id: currentTable.id, status: "available" });
+      if (clearTableSessionState) {
+        clearTableSessionState(paidTable);
+      } else {
+        clearOrder();
+        setCurrentOrder?.([]);
+        setCurrentOrderCode?.(null);
+        setCurrentOrderId?.(null);
+        setCurrentTable?.(null);
       }
-      if (setCurrentTable) setCurrentTable(null);
+
+      if (paidTable?.id && setTableStatus) {
+        setTableStatus({ id: paidTable.id, status: "available" });
+      }
+
+      refetchTables?.();
 
       setPaymentModalOpen(false);
     },
     [
-      clearOrder,
-      currentTable,
-      setTableStatus,
-      setCurrentTable,
       showNotification,
-
-      clearPaymentRequest,
+      currentTable,
       clearActiveDrafts,
+      clearTableSessionState,
+      setTableStatus,
+      refetchTables,
+      clearPaymentRequest,
+      clearOrder,
+      setCurrentOrder,
+      setCurrentOrderCode,
+      setCurrentOrderId,
+      setCurrentTable,
     ],
   );
 
