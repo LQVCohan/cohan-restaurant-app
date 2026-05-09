@@ -7,6 +7,7 @@ import {
   isSessionActive,
   isTableSession,
   orderBatchOrLegacyFilter,
+  withOrderBatchOrLegacyFilter,
 } from "../../utils/orderLifecycle.js";
 
 describe("orderLifecycle helpers", () => {
@@ -115,6 +116,17 @@ describe("orderLifecycle helpers", () => {
         { orderKind: { $exists: false } },
         { orderKind: null },
       ],
+    });
+  });
+
+  it("withOrderBatchOrLegacyFilter preserves keyword $or by wrapping in $and", () => {
+    const baseFilter = {
+      restaurantId: "r1",
+      $or: [{ orderCode: /abc/i }, { tableCode: /abc/i }],
+    };
+
+    expect(withOrderBatchOrLegacyFilter(baseFilter)).toEqual({
+      $and: [baseFilter, orderBatchOrLegacyFilter()],
     });
   });
 

@@ -76,6 +76,12 @@ export function orderBatchOrLegacyFilter() {
   };
 }
 
+export function withOrderBatchOrLegacyFilter(baseFilter = {}) {
+  return {
+    $and: [baseFilter, orderBatchOrLegacyFilter()],
+  };
+}
+
 export function activeTableSessionFilter({ restaurantId, tableId }) {
   return {
     restaurantId,

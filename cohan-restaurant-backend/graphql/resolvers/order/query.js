@@ -19,7 +19,10 @@ import { buildDemandForecast } from "../../../src/services/ai/demandForecast.ser
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
-import { orderBatchOrLegacyFilter } from "../../../utils/orderLifecycle.js";
+import {
+  orderBatchOrLegacyFilter,
+  withOrderBatchOrLegacyFilter,
+} from "../../../utils/orderLifecycle.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -237,7 +240,7 @@ export const OrderQuery = {
 
   /** List with offset pagination */
   async orders(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
-    const q = buildFilter(filter);
+    const q = withOrderBatchOrLegacyFilter(buildFilter(filter));
     if (filter.restaurantId) {
       if (!mongoose.isValidObjectId(filter.restaurantId)) {
         throw new Error("Invalid restaurantId");
@@ -277,10 +280,10 @@ export const OrderQuery = {
   async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
-    const baseFilter = {
+    const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
       currentStatus: { $nin: INACTIVE_STATUSES },
-    };
+    });
 
     return buildCursorConnection({ baseFilter, limit, cursor, rid });
   },
@@ -292,10 +295,10 @@ export const OrderQuery = {
   async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
-    const baseFilter = {
+    const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
       // không lọc status để lấy lịch sử đầy đủ
-    };
+    });
 
     return buildCursorConnection({ baseFilter, limit, cursor, rid });
   },
@@ -566,9 +569,9 @@ export const OrderQuery = {
 
     const [ordersInRange, ordersPrevRange, allOrders, tableCount, menuCount, customerCount, promoCount, staffCount, stockItems] =
       await Promise.all([
-        Order.find({ restaurantId: rid, createdAt: { $gte: start, $lte: now } }).lean(),
-        Order.find({ restaurantId: rid, createdAt: { $gte: prevStart, $lt: start } }).lean(),
-        Order.find({ restaurantId: rid }).sort({ createdAt: -1 }).limit(20).lean(),
+        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid, createdAt: { $gte: start, $lte: now } })).lean(),
+        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid, createdAt: { $gte: prevStart, $lt: start } })).lean(),
+        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid })).sort({ createdAt: -1 }).limit(20).lean(),
         Table.countDocuments({ restaurantId: rid }),
         MenuItem.countDocuments({ restaurantId: rid }),
         Customer.countDocuments({ refRestaurants: { $in: [rid] } }),
