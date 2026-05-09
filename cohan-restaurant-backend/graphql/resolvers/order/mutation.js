@@ -880,6 +880,46 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
 /** =========================
  * Totals from hydrated items
  * ========================= */
+
+function normalizeVoucherCode(value) {
+  const code = String(value || "")
+    .trim()
+    .toUpperCase();
+  return code || undefined;
+}
+
+function buildDiscountPricing(pricing = {}) {
+  return {
+    serviceRate: Math.max(0, Number(pricing?.serviceRate || 0)),
+    taxRate: Math.max(0, Number(pricing?.taxRate || 0)),
+    shippingFee: Math.max(0, Number(pricing?.shippingFee || 0)),
+    voucherCode: normalizeVoucherCode(pricing?.voucherCode),
+  };
+}
+
+function normalizePromotionIds(promotionIds = []) {
+  return Array.isArray(promotionIds)
+    ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+}
+async function incrementCouponUsageOnce({ totals, session }) {
+  if (!totals?.couponId) return;
+
+  const updateResult = await Coupon.updateOne(
+    {
+      _id: totals.couponId,
+      $expr: {
+        $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }],
+      },
+    },
+    { $inc: { used: 1 } },
+    { session },
+  );
+
+  if (!updateResult.modifiedCount) {
+    throw new Error("Invalid voucher: usage limit reached");
+  }
+}
 function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   const subtotal = Math.round(
     (items || []).reduce((sum, it) => {
@@ -887,19 +927,22 @@ function computeTotalsFromHydratedItems(items = [], pricing = {}) {
       return sum + Number(it?.lineSubtotal || 0);
     }, 0),
   );
-  const serviceRate = Math.max(0, Number(pricing.serviceRate || 0));
-  const taxRate = Math.max(0, Number(pricing.taxRate || 0));
-  const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
-  const promotionDiscount = Math.max(0, Number(pricing.promotionDiscount || 0));
-  const voucherDiscount = Math.max(0, Number(pricing.voucherDiscount || 0));
+
+  const safePricing = buildDiscountPricing(pricing);
+  const serviceRate = safePricing.serviceRate;
+  const taxRate = safePricing.taxRate;
+  const shippingFee = safePricing.shippingFee;
+
   const service = Math.round(subtotal * serviceRate);
-  const discount = Math.min(
-    subtotal + service,
-    promotionDiscount + voucherDiscount,
-  );
+
+  // Base totals only. Voucher/promotion discount must come from
+  // calculateDiscountBreakdown, not client pricing fields.
+  const discount = 0;
+
   const beforeTax = Math.max(0, subtotal + service - discount);
   const tax = Math.round(beforeTax * taxRate);
   const grandTotal = Math.round(beforeTax + tax + shippingFee);
+
   return {
     subtotal,
     discount,
@@ -909,7 +952,7 @@ function computeTotalsFromHydratedItems(items = [], pricing = {}) {
     grandTotal,
     taxRate,
     serviceRate,
-    voucherCode: pricing.voucherCode || undefined,
+    voucherCode: safePricing.voucherCode,
   };
 }
 async function generateUniqueOrderCode({
@@ -1449,6 +1492,7 @@ export const OrderMutation = {
       clientMeta,
       paymentMethod,
       pricing,
+      promotionIds,
     } = input || {};
 
     const rid = toId(restaurantId);
@@ -1507,7 +1551,8 @@ export const OrderMutation = {
         const totals = await calculateDiscountBreakdown({
           restaurantId: rid,
           items: normalizedItems,
-          pricing,
+          pricing: buildDiscountPricing(pricing),
+          promotionIds: normalizePromotionIds(promotionIds),
           session,
         });
 
@@ -1547,19 +1592,11 @@ export const OrderMutation = {
         createdOrderDoc = order;
 
         if (totals?.couponId) {
-          const updateResult = await Coupon.updateOne(
-            {
-              _id: totals.couponId,
-              $expr: {
-                $or: [
-                  { $lte: ["$maxUsage", 0] },
-                  { $lt: ["$used", "$maxUsage"] },
-                ],
-              },
-            },
-            { $inc: { used: 1 } },
-            { session },
-          );
+          const updateResult = await incrementCouponUsageOnce({
+            totals,
+            session,
+          });
+
           if (!updateResult.modifiedCount) {
             throw new Error("Invalid voucher: usage limit reached");
           }
@@ -1623,6 +1660,7 @@ export const OrderMutation = {
       warehouseId,
       paymentMethod,
       pricing,
+      promotionIds,
       channel,
       idempotencyKey,
       clientMeta,
@@ -1659,6 +1697,7 @@ export const OrderMutation = {
           userId,
           warehouseId,
           paymentMethod,
+          promotionIds,
           pricing,
           clientMeta: finalClientMeta,
         },
@@ -1873,6 +1912,7 @@ export const OrderMutation = {
       paymentMethod,
       idempotencyKey,
       pricing,
+      promotionIds,
     } = input || {};
 
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
@@ -1926,6 +1966,14 @@ export const OrderMutation = {
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
     const finalUserId = await ensureUserForOrder(userId, customer);
     const createdOrders = [];
+    const checkoutTotals = {
+      subtotal: 0,
+      promotionDiscount: 0,
+      voucherDiscount: 0,
+      tax: 0,
+      shippingFee: 0,
+      grandTotal: 0,
+    };
     const normalizedPaymentMethodRaw = String(
       paymentMethod || "cash",
     ).toLowerCase();
@@ -1944,10 +1992,21 @@ export const OrderMutation = {
             session,
           });
 
+          const groupShippingFee =
+            orderType === "delivery" && grouped.size > 1
+              ? Math.round(Number(pricing?.shippingFee || 0) / grouped.size)
+              : Number(pricing?.shippingFee || 0);
+
+          const groupPricing = buildDiscountPricing({
+            ...pricing,
+            shippingFee: groupShippingFee,
+          });
+
           const totals = await calculateDiscountBreakdown({
             restaurantId: g.restaurantId,
             items: g.items,
-            pricing,
+            pricing: groupPricing,
+            promotionIds: normalizePromotionIds(promotionIds),
             session,
           });
 
@@ -1956,20 +2015,8 @@ export const OrderMutation = {
             shipping,
             customer,
           );
-          if (orderType === "delivery" && grouped.size > 1) {
-            shippingObj.shippingFee = Math.round(
-              Number(pricing?.shippingFee || 0) / grouped.size,
-            );
-            totals.shippingFee = shippingObj.shippingFee;
-            totals.grandTotal = Math.round(
-              totals.subtotal -
-                totals.discount +
-                totals.service +
-                totals.tax +
-                totals.shippingFee,
-            );
-          }
 
+          shippingObj.shippingFee = totals.shippingFee;
           const prefix = orderType === "delivery" ? "DEL" : "TAKE";
           const childOrderCode = generateOrderCode(prefix, new Date(), null);
 
@@ -2002,21 +2049,19 @@ export const OrderMutation = {
           );
 
           createdOrders.push(order);
-
+          checkoutTotals.subtotal += Number(totals.subtotal || 0);
+          checkoutTotals.promotionDiscount += Number(
+            totals.promotionDiscount || 0,
+          );
+          checkoutTotals.voucherDiscount += Number(totals.voucherDiscount || 0);
+          checkoutTotals.tax += Number(totals.tax || 0);
+          checkoutTotals.shippingFee += Number(totals.shippingFee || 0);
+          checkoutTotals.grandTotal += Number(totals.grandTotal || 0);
           if (totals?.couponId) {
-            const updateResult = await Coupon.updateOne(
-              {
-                _id: totals.couponId,
-                $expr: {
-                  $or: [
-                    { $lte: ["$maxUsage", 0] },
-                    { $lt: ["$used", "$maxUsage"] },
-                  ],
-                },
-              },
-              { $inc: { used: 1 } },
-              { session },
-            );
+            const updateResult = await incrementCouponUsageOnce({
+              totals,
+              session,
+            });
             if (!updateResult.modifiedCount) {
               throw new Error("Invalid voucher: usage limit reached");
             }
@@ -2049,25 +2094,7 @@ export const OrderMutation = {
               orderIds: createdOrders.map((o) => o._id),
               restaurantIds: createdOrders.map((o) => o.restaurantId),
               payment: { method: normalizedPaymentMethod, status: "pending" },
-              totals: createdOrders.reduce(
-                (acc, o) => {
-                  acc.subtotal += Number(o.totals?.subtotal || 0);
-                  acc.promotionDiscount += 0;
-                  acc.voucherDiscount += 0;
-                  acc.tax += Number(o.totals?.tax || 0);
-                  acc.shippingFee += Number(o.totals?.shippingFee || 0);
-                  acc.grandTotal += Number(o.totals?.grandTotal || 0);
-                  return acc;
-                },
-                {
-                  subtotal: 0,
-                  promotionDiscount: 0,
-                  voucherDiscount: 0,
-                  tax: 0,
-                  shippingFee: 0,
-                  grandTotal: 0,
-                },
-              ),
+              totals: checkoutTotals,
             },
           ],
           { session },
@@ -2261,13 +2288,19 @@ export const OrderMutation = {
           session,
         });
 
-        const nextTotals = computeTotalsFromHydratedItems(nextItems, {
-          serviceRate: order?.totals?.serviceRate || 0,
-          taxRate: order?.totals?.taxRate || 0,
-          promotionDiscount: order?.totals?.promotionDiscount || 0,
-          voucherDiscount: order?.totals?.voucherDiscount || 0,
-          shippingFee: order?.totals?.shippingFee || 0,
-          voucherCode: order?.totals?.voucherCode || undefined,
+        const nextTotals = await calculateDiscountBreakdown({
+          restaurantId: order.restaurantId,
+          items: nextItems,
+          pricing: buildDiscountPricing({
+            serviceRate: order?.totals?.serviceRate || 0,
+            taxRate: order?.totals?.taxRate || 0,
+            shippingFee: order?.totals?.shippingFee || 0,
+            voucherCode: order?.totals?.voucherCode || undefined,
+          }),
+          promotionIds: order?.totals?.promotionId
+            ? [String(order.totals.promotionId)]
+            : [],
+          session,
         });
 
         const newLines = buildInventoryLinesFromItems(nextItems);

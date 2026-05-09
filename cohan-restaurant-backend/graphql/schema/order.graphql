@@ -487,6 +487,7 @@ input CreateOffPremiseOrderInput {
   customerIdentityMode: String
   clientMeta: JSON
   warehouseId: ID
+  promotionIds: [ID!]
 }
 
 type CreateOffPremiseOrderPayload {
@@ -507,6 +508,7 @@ input CreateStaffRemoteOrderInput {
   idempotencyKey: String
   clientMeta: JSON
   warehouseId: ID
+  promotionIds: [ID!]
 }
 
 type CreateStaffRemoteOrderPayload {
@@ -603,6 +605,7 @@ input CreateCheckoutOrdersInput {
   customerIdentityMode: String
   clientMeta: JSON
   warehouseId: ID
+  promotionIds: [ID!]
 }
 
 type CheckoutSession {
