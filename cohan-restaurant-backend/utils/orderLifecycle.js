@@ -41,6 +41,20 @@ export const SPLIT_STATUS = Object.freeze({
   PARTIAL: "partial",
 });
 
+function normalizeStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isBlankStatus(value) {
+  return value == null || String(value).trim() === "";
+}
+
+const CLOSED_PAYMENT_STATUSES = new Set([
+  ORDER_PAYMENT_STATUS.PAID,
+  ORDER_PAYMENT_STATUS.REFUNDED,
+  ORDER_PAYMENT_STATUS.PARTIALLY_REFUNDED,
+]);
+
 export function isTableSession(order) {
   return order?.orderKind === ORDER_KIND.TABLE_SESSION;
 }
@@ -63,15 +77,31 @@ export function isSessionActive(order) {
 }
 
 export function isPaymentClosed(order) {
-  const status = String(
-    order?.orderPaymentStatus || order?.payment?.status || "",
-  ).toLowerCase();
+  const orderPaymentStatus = normalizeStatus(order?.orderPaymentStatus);
 
-  return ["paid", "refunded", "partially_refunded"].includes(status);
+  if (
+    !isBlankStatus(order?.orderPaymentStatus) &&
+    orderPaymentStatus !== ORDER_PAYMENT_STATUS.UNPAID
+  ) {
+    return CLOSED_PAYMENT_STATUSES.has(orderPaymentStatus);
+  }
+
+  const legacyPaymentStatus = normalizeStatus(order?.payment?.status);
+  return CLOSED_PAYMENT_STATUSES.has(legacyPaymentStatus);
 }
 
 export function isKitchenPayable(order) {
-  const status = String(order?.kitchenStatus || order?.currentStatus || "").toLowerCase();
+  if (!isOrderBatch(order)) return false;
 
-  return status === "served";
+  const kitchenStatus = normalizeStatus(order?.kitchenStatus);
+
+  if (
+    !isBlankStatus(order?.kitchenStatus) &&
+    kitchenStatus !== KITCHEN_STATUS.PENDING
+  ) {
+    return kitchenStatus === KITCHEN_STATUS.SERVED;
+  }
+
+  const legacyStatus = normalizeStatus(order?.currentStatus);
+  return legacyStatus === KITCHEN_STATUS.SERVED;
 }
