@@ -82,17 +82,25 @@ export const getDefaultPathForRole = (userOrRole) => {
   return "/";
 };
 
-const SHARED_USER_ALLOW = ["customer", "admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES];
+const SHARED_USER_ALLOW = [
+  ...new Set(["customer", "admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES]),
+];
 
 // NOTE: public customer pages are protected in AppRouter only when wrapped by PrivateRoute.
 const ROUTE_ACCESS_RULES = [
   { test: /^\/admin(\/|$)/, allow: ["admin"] },
   { test: /^\/manager(\/|$)/, allow: ["admin", "manager", "hr", "accountant"] },
-  { test: /^\/staff(\/|$)/, allow: ["admin", "manager", "hr", "staff", ...STAFF_OPERATIONAL_ROLES] },
+  {
+    test: /^\/staff(\/|$)/,
+    allow: [...new Set(["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES])],
+  },
   { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
   { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },
 ];
 
+// Role-level route gate only. This does not validate restaurantId ownership.
+// Any query/mutation involving restaurant data must still be protected by
+// backend restaurant-scope guards.
 export const canAccessRoute = (userOrRole, pathname) => {
   const normalizedRole = resolveUserRoleName(userOrRole);
   if (!normalizedRole || typeof pathname !== "string") return false;
