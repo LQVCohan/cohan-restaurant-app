@@ -1364,10 +1364,17 @@ export default function useOrderManagement(pos = null) {
                 isExisting: true,
                 isNew: false,
                 _edited: false,
-                _lineId: `session_${o.id}_${(i.dishId || i.name || "x").toString().slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+                _lineId: `session_${o.id}_${(i.dishId || i.name || "x")
+                  .toString()
+                  .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
               })),
             );
+
             setCurrentOrder?.(mergedItems);
+
+            // Quan trọng: không giữ orderId/orderCode cũ sau khi session active đã rỗng/đổi
+            setCurrentOrderCode?.(payload?.session?.orderCode || null);
+            setCurrentOrderId?.(null);
 
             if (setTableOrders) {
               setTableOrders((prev) => {
@@ -1390,6 +1397,7 @@ export default function useOrderManagement(pos = null) {
                 return next;
               });
             }
+
             setGroups([]);
             setActiveGroup(null);
             return [];
@@ -1404,24 +1412,51 @@ export default function useOrderManagement(pos = null) {
       const rawGroups = data?.ordersGroupedByTable || [];
 
       // Chỉ giữ các group còn active (không phải đã hoàn tất/hủy)
+      const inactiveStatuses = new Set([
+        "COMPLETED",
+        "ORDER_COMPLETED",
+        "CANCELLED",
+        "ORDER_CANCELLED",
+        "FAILED",
+        "PAID",
+      ]);
+
       const gs = rawGroups.filter((g) => {
-        const st = (g.latestStatus || "").toUpperCase();
-        return ![
-          "ORDER_COMPLETED",
-          "ORDER_CANCELLED",
-          "FAILED",
-          "CANCELLED",
-        ].includes(st);
+        const st = String(g.latestStatus || "").toUpperCase();
+        return !inactiveStatuses.has(st);
       });
 
       setGroups(gs);
 
-      // chọn đợt mới nhất trong các group còn active,
-      // nếu không có thì fallback sang rawGroups (lịch sử)
-      const sourceForLatest = gs.length ? gs : rawGroups;
+      if (!gs.length) {
+        setActiveGroup(null);
+        setCurrentOrder?.([]);
+        setCurrentOrderCode?.(null);
+        setCurrentOrderId?.(null);
+
+        if (setTableOrders) {
+          setTableOrders((prev) => {
+            const next = { ...(prev || {}) };
+
+            const keys = [
+              tableId,
+              tableCode,
+              tableCode ? String(tableCode).toUpperCase() : null,
+            ].filter(Boolean);
+
+            keys.forEach((key) => {
+              next[key] = [];
+            });
+
+            return next;
+          });
+        }
+
+        return [];
+      }
 
       const latest =
-        [...sourceForLatest].sort((a, b) => {
+        [...gs].sort((a, b) => {
           const ta = new Date(
             a.orders?.[a.orders.length - 1]?.createdAt || 0,
           ).getTime();
@@ -1432,7 +1467,6 @@ export default function useOrderManagement(pos = null) {
         })[0] || null;
 
       setActiveGroup(latest || null);
-
       // Hydrate currentOrder ở UI bằng gộp món
       if (latest) {
         const merged = mergeGroupItems(latest);

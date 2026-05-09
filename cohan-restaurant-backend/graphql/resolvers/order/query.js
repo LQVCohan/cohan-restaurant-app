@@ -134,9 +134,7 @@ async function attachCustomerInfoToOrders({ rid, orders }) {
   const tableCodes = [
     ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
   ];
-  const tableIds = [
-    ...new Set(slice.map((o) => o.tableId).filter(Boolean)),
-  ];
+  const tableIds = [...new Set(slice.map((o) => o.tableId).filter(Boolean))];
 
   const customerDocs = await TableCustomer.find({
     restaurantId: rid,
@@ -313,7 +311,7 @@ export const OrderQuery = {
   async ordersByTableCode(
     _,
     { restaurantId, tableCode, limit = 50, offset = 0 },
-    ctx
+    ctx,
   ) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const safeTableCode = String(tableCode).trim().toUpperCase();
@@ -363,7 +361,12 @@ export const OrderQuery = {
       tableId: t._id,
       tableCode: safeCode,
       ...orderBatchOrLegacyFilter(),
-      // nếu muốn chỉ "đang hoạt động": currentStatus: { $nin: INACTIVE_STATUSES }
+
+      // POS/StaffOrdering active table view không được lấy đơn đã đóng
+      currentStatus: { $nin: ["completed", "cancelled", "failed"] },
+
+      // Chặn case payment đã paid nhưng currentStatus bị stale
+      "payment.status": { $ne: "paid" },
     };
 
     const docs = await Order.find(f)
@@ -375,7 +378,7 @@ export const OrderQuery = {
     // attach user (optional)
     const userIds = [
       ...new Set(
-        docs.map((o) => (o.userId ? String(o.userId) : null)).filter(Boolean)
+        docs.map((o) => (o.userId ? String(o.userId) : null)).filter(Boolean),
       ),
     ];
 
@@ -394,7 +397,7 @@ export const OrderQuery = {
             email: u.email || null,
             phone: u.phone || null,
           },
-        ])
+        ]),
       );
     }
 
@@ -510,7 +513,7 @@ export const OrderQuery = {
       ...new Set(
         slice
           .map((o) => (o.restaurantId ? String(o.restaurantId) : null))
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ].map(toId);
 
@@ -518,9 +521,7 @@ export const OrderQuery = {
     const tableCodes = [
       ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
     ];
-    const tableIds = [
-      ...new Set(slice.map((o) => o.tableId).filter(Boolean)),
-    ];
+    const tableIds = [...new Set(slice.map((o) => o.tableId).filter(Boolean))];
 
     let customerDocs = [];
     if (restaurantIds.length && (tableCodes.length || tableIds.length)) {
@@ -589,9 +590,11 @@ export const OrderQuery = {
     };
   },
 
-
-
-  async demandForecast(_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }, ctx) {
+  async demandForecast(
+    _,
+    { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
+    ctx,
+  ) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildDemandForecast({
       restaurantId: rid,
@@ -600,7 +603,11 @@ export const OrderQuery = {
     });
   },
 
-  async menuEngineeringAssistant(_, { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" }, ctx) {
+  async menuEngineeringAssistant(
+    _,
+    { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" },
+    ctx,
+  ) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildMenuEngineeringAssistant({
       restaurantId: rid,
@@ -611,8 +618,13 @@ export const OrderQuery = {
 
   async smartPromotionEngine(
     _,
-    { restaurantId, lookbackDays = 30, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
-    ctx
+    {
+      restaurantId,
+      lookbackDays = 30,
+      horizonDays = 2,
+      timezone = "Asia/Ho_Chi_Minh",
+    },
+    ctx,
   ) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     return buildSmartPromotionEngine({
@@ -634,25 +646,47 @@ export const OrderQuery = {
     const prevStart = new Date(start);
     prevStart.setDate(prevStart.getDate() - days);
 
-    const [ordersInRange, ordersPrevRange, allOrders, tableCount, menuCount, customerCount, promoCount, staffCount, stockItems] =
-      await Promise.all([
-        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid, createdAt: { $gte: start, $lte: now } })).lean(),
-        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid, createdAt: { $gte: prevStart, $lt: start } })).lean(),
-        Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid })).sort({ createdAt: -1 }).limit(20).lean(),
-        Table.countDocuments({ restaurantId: rid }),
-        MenuItem.countDocuments({ restaurantId: rid }),
-        Customer.countDocuments({ refRestaurants: { $in: [rid] } }),
-        Promotion.countDocuments({
+    const [
+      ordersInRange,
+      ordersPrevRange,
+      allOrders,
+      tableCount,
+      menuCount,
+      customerCount,
+      promoCount,
+      staffCount,
+      stockItems,
+    ] = await Promise.all([
+      Order.find(
+        withOrderBatchOrLegacyFilter({
           restaurantId: rid,
-          isActive: true,
-          $or: [{ endAt: null }, { endAt: { $gte: now } }],
+          createdAt: { $gte: start, $lte: now },
         }),
-        Staff.countDocuments({
-          restaurantForStaff: rid,
-          employmentStatus: { $in: ["working", "on_leave"] },
+      ).lean(),
+      Order.find(
+        withOrderBatchOrLegacyFilter({
+          restaurantId: rid,
+          createdAt: { $gte: prevStart, $lt: start },
         }),
-        StockItem.find({ restaurantId: rid }).limit(200).lean(),
-      ]);
+      ).lean(),
+      Order.find(withOrderBatchOrLegacyFilter({ restaurantId: rid }))
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+      Table.countDocuments({ restaurantId: rid }),
+      MenuItem.countDocuments({ restaurantId: rid }),
+      Customer.countDocuments({ refRestaurants: { $in: [rid] } }),
+      Promotion.countDocuments({
+        restaurantId: rid,
+        isActive: true,
+        $or: [{ endAt: null }, { endAt: { $gte: now } }],
+      }),
+      Staff.countDocuments({
+        restaurantForStaff: rid,
+        employmentStatus: { $in: ["working", "on_leave"] },
+      }),
+      StockItem.find({ restaurantId: rid }).limit(200).lean(),
+    ]);
 
     const statusCounts = {
       pending: 0,
@@ -663,11 +697,18 @@ export const OrderQuery = {
     let revenue = 0;
     for (const o of ordersInRange) {
       const st = String(o.currentStatus || "");
-      if (["pending", "confirmed", "customer_attached"].includes(st)) statusCounts.pending += 1;
-      if (["preparing", "ready", "served"].includes(st)) statusCounts.preparing += 1;
+      if (["pending", "confirmed", "customer_attached"].includes(st))
+        statusCounts.pending += 1;
+      if (["preparing", "ready", "served"].includes(st))
+        statusCounts.preparing += 1;
       if (st === "completed") statusCounts.completed += 1;
       if (st === "cancelled") statusCounts.cancelled += 1;
-      if (st === "completed" && ["paid", "partially_refunded", "refunded"].includes(String(o?.payment?.status || ""))) {
+      if (
+        st === "completed" &&
+        ["paid", "partially_refunded", "refunded"].includes(
+          String(o?.payment?.status || ""),
+        )
+      ) {
         revenue += Number(o?.totals?.grandTotal || 0);
       }
     }
@@ -683,12 +724,18 @@ export const OrderQuery = {
       if (!Number.isFinite(d.getTime())) return -1;
       if (String(range).toLowerCase() === "month") {
         const refStart = isPrevious ? prevStart : start;
-        const diff = Math.floor((d.getTime() - refStart.getTime()) / (1000 * 60 * 60 * 24));
+        const diff = Math.floor(
+          (d.getTime() - refStart.getTime()) / (1000 * 60 * 60 * 24),
+        );
         return Math.max(0, Math.min(3, Math.floor(diff / 7)));
       }
       return d.getDay() === 0 ? 6 : d.getDay() - 1;
     };
-    const orderBuckets = revenueBuckets.map((x) => ({ ...x, current: 0, previous: 0 }));
+    const orderBuckets = revenueBuckets.map((x) => ({
+      ...x,
+      current: 0,
+      previous: 0,
+    }));
     for (const o of ordersInRange) {
       const bi = assignBucket(o.createdAt, false);
       if (bi < 0) continue;
@@ -710,24 +757,42 @@ export const OrderQuery = {
         const qty = Number(item?.quantity || 1);
         const rev = Number(item?.lineSubtotal || 0);
         const prev = dishMap.get(name) || { quantity: 0, revenue: 0 };
-        dishMap.set(name, { quantity: prev.quantity + qty, revenue: prev.revenue + rev });
+        dishMap.set(name, {
+          quantity: prev.quantity + qty,
+          revenue: prev.revenue + rev,
+        });
       }
     }
     const topDishes = [...dishMap.entries()]
-      .map(([dishName, v]) => ({ dishName, quantity: v.quantity, revenue: v.revenue }))
+      .map(([dishName, v]) => ({
+        dishName,
+        quantity: v.quantity,
+        revenue: v.revenue,
+      }))
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    const userIds = [...new Set(allOrders.map((o) => (o.userId ? String(o.userId) : null)).filter(Boolean))];
+    const userIds = [
+      ...new Set(
+        allOrders
+          .map((o) => (o.userId ? String(o.userId) : null))
+          .filter(Boolean),
+      ),
+    ];
     const users = userIds.length
-      ? await User.find({ _id: { $in: userIds } }).select({ _id: 1, fullName: 1 }).lean()
+      ? await User.find({ _id: { $in: userIds } })
+          .select({ _id: 1, fullName: 1 })
+          .lean()
       : [];
-    const userMap = new Map(users.map((u) => [String(u._id), u.fullName || null]));
+    const userMap = new Map(
+      users.map((u) => [String(u._id), u.fullName || null]),
+    );
 
     const recentOrders = allOrders.slice(0, 8).map((o) => ({
       id: String(o._id),
       orderCode: o.orderCode || null,
-      customerName: (o.userId && userMap.get(String(o.userId))) || "Khách vãng lai",
+      customerName:
+        (o.userId && userMap.get(String(o.userId))) || "Khách vãng lai",
       orderType: o.orderType || null,
       tableCode: o.tableCode || null,
       status: o.currentStatus || null,
@@ -736,23 +801,37 @@ export const OrderQuery = {
       itemNames: (o.items || []).map((x) => x.name).filter(Boolean),
     }));
 
-    const supplyIds = [...new Set(stockItems.map((x) => (x.supplyId ? String(x.supplyId) : null)).filter(Boolean))];
+    const supplyIds = [
+      ...new Set(
+        stockItems
+          .map((x) => (x.supplyId ? String(x.supplyId) : null))
+          .filter(Boolean),
+      ),
+    ];
     const supplies = supplyIds.length
-      ? await Supply.find({ _id: { $in: supplyIds } }).select({ _id: 1, name: 1 }).lean()
+      ? await Supply.find({ _id: { $in: supplyIds } })
+          .select({ _id: 1, name: 1 })
+          .lean()
       : [];
-    const supplyMap = new Map(supplies.map((s) => [String(s._id), s.name || "Supply"]));
+    const supplyMap = new Map(
+      supplies.map((s) => [String(s._id), s.name || "Supply"]),
+    );
 
     const lowStockItems = stockItems
       .filter((s) => Number(s.onHand || 0) - Number(s.reserved || 0) <= 10)
       .slice(0, 8)
       .map((s) => ({
         id: String(s._id),
-        name: (s.supplyId && supplyMap.get(String(s.supplyId))) || "Nguyên liệu",
+        name:
+          (s.supplyId && supplyMap.get(String(s.supplyId))) || "Nguyên liệu",
         onHand: Number(s.onHand || 0),
         reserved: Number(s.reserved || 0),
       }));
 
-    const reviews = await Review.find({ restaurantId: rid, status: "published" })
+    const reviews = await Review.find({
+      restaurantId: rid,
+      status: "published",
+    })
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -763,7 +842,7 @@ export const OrderQuery = {
             (
               reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) /
               totalReviews
-            ).toFixed(2)
+            ).toFixed(2),
           )
         : 0;
     const feedbackItems = reviews.slice(0, 8).map((r) => ({
@@ -772,7 +851,12 @@ export const OrderQuery = {
       rating: Number(r.rating || 0),
       content: r.content || "",
       createdAt: r.createdAt || null,
-      sentiment: Number(r.rating || 0) <= 2 ? "negative" : Number(r.rating || 0) >= 4 ? "positive" : "neutral",
+      sentiment:
+        Number(r.rating || 0) <= 2
+          ? "negative"
+          : Number(r.rating || 0) >= 4
+            ? "positive"
+            : "neutral",
     }));
     const feedbackSummary = {
       avgRating,
@@ -789,7 +873,10 @@ export const OrderQuery = {
       if (!Number.isFinite(d.getTime())) continue;
       const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
       const hour = d.getHours();
-      const slot = hourSlots.reduce((best, h) => (Math.abs(h - hour) < Math.abs(best - hour) ? h : best), hourSlots[0]);
+      const slot = hourSlots.reduce(
+        (best, h) => (Math.abs(h - hour) < Math.abs(best - hour) ? h : best),
+        hourSlots[0],
+      );
       const key = `${day}-${slot}`;
       occupancyMap.set(key, (occupancyMap.get(key) || 0) + 1);
     }
@@ -804,7 +891,7 @@ export const OrderQuery = {
           occupancyRate,
           staffRequired: Math.max(2, Math.ceil(occupancyRate * 10)),
         };
-      })
+      }),
     );
 
     const staffDocs = await Staff.find({ restaurantForStaff: rid })
@@ -821,7 +908,7 @@ export const OrderQuery = {
           ordersHandled: 0,
           efficiency: 0,
         },
-      ])
+      ]),
     );
     for (const o of ordersInRange) {
       const uid = o.createdBy ? String(o.createdBy) : null;
@@ -832,7 +919,12 @@ export const OrderQuery = {
     const staffPerformance = [...staffPerfMap.values()]
       .map((s) => ({
         ...s,
-        efficiency: Number(Math.min(100, (s.ordersHandled / Math.max(1, ordersInRange.length)) * 100).toFixed(1)),
+        efficiency: Number(
+          Math.min(
+            100,
+            (s.ordersHandled / Math.max(1, ordersInRange.length)) * 100,
+          ).toFixed(1),
+        ),
       }))
       .sort((a, b) => b.ordersHandled - a.ordersHandled)
       .slice(0, 8);
@@ -900,7 +992,11 @@ export const OrderQuery = {
       const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
       if (createdAt && Number.isFinite(createdAt.getTime())) {
         const dayKey = createdAt.toISOString().slice(0, 10);
-        const prev = byDay.get(dayKey) || { date: dayKey, grossRevenue: 0, orders: 0 };
+        const prev = byDay.get(dayKey) || {
+          date: dayKey,
+          grossRevenue: 0,
+          orders: 0,
+        };
         prev.orders += 1;
         if (!isCancelled) prev.grossRevenue += grandTotal;
         byDay.set(dayKey, prev);
@@ -921,10 +1017,22 @@ export const OrderQuery = {
     return {
       totalOrders: rows.length,
       grossRevenue,
-      byStatus: [...byStatus.entries()].map(([key, count]) => ({ key, label: key, count })),
-      byOrderType: [...byOrderType.entries()].map(([key, count]) => ({ key, label: key, count })),
-      topDishes: [...dishMap.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 10),
-      revenueByDay: [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      byStatus: [...byStatus.entries()].map(([key, count]) => ({
+        key,
+        label: key,
+        count,
+      })),
+      byOrderType: [...byOrderType.entries()].map(([key, count]) => ({
+        key,
+        label: key,
+        count,
+      })),
+      topDishes: [...dishMap.values()]
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 10),
+      revenueByDay: [...byDay.values()].sort((a, b) =>
+        a.date.localeCompare(b.date),
+      ),
     };
   },
 };
