@@ -1356,17 +1356,24 @@ export default function useOrderManagement(pos = null) {
             ? payload.orders
             : [];
           if (payload) {
-            const mergedItems = activeOrders.flatMap((o) =>
-              (Array.isArray(o?.items) ? o.items : []).map((i) => ({
+            const sortedOrders = [...activeOrders].sort(
+              (a, b) =>
+                new Date(a?.createdAt || 0).getTime() -
+                new Date(b?.createdAt || 0).getTime(),
+            );
+
+            const mergedItems = sortedOrders.flatMap((o, orderIdx) =>
+              (Array.isArray(o?.items) ? o.items : []).map((i, itemIdx) => ({
                 ...mapServerItemToUi(i),
                 sourceOrderId: o.id,
                 sourceOrderCode: o.orderCode,
+                sourceOrderStatus: o.currentStatus,
+                sourceOrderCreatedAt: o.createdAt || null,
+                batchIndex: orderIdx + 1,
                 isExisting: true,
                 isNew: false,
                 _edited: false,
-                _lineId: `session_${o.id}_${(i.dishId || i.name || "x")
-                  .toString()
-                  .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+                _lineId: `session_${o.id}_${i._id || i.dishId || itemIdx}`,
               })),
             );
 
@@ -1483,29 +1490,29 @@ export default function useOrderManagement(pos = null) {
       const latest = sortedGroups[sortedGroups.length - 1] || null;
       setActiveGroup(latest || null);
 
-      const allOrders = sortedGroups.flatMap((g) =>
-        Array.isArray(g.orders) ? g.orders : [],
-      );
+      const allOrders = sortedGroups
+        .flatMap((g) => (Array.isArray(g.orders) ? g.orders : []))
+        .sort(
+          (a, b) =>
+            new Date(a?.createdAt || 0).getTime() -
+            new Date(b?.createdAt || 0).getTime(),
+        );
 
-      const uiItems = allOrders.flatMap((order) =>
-        (Array.isArray(order.items) ? order.items : []).map((i) => {
+      const uiItems = allOrders.flatMap((order, orderIdx) =>
+        (Array.isArray(order.items) ? order.items : []).map((i, itemIdx) => {
           const base = mapServerItemToUi(i);
 
           return {
             ...base,
             sourceOrderId: order.id,
             sourceOrderCode: order.orderCode,
+            sourceOrderStatus: order.currentStatus,
+            sourceOrderCreatedAt: order.createdAt || null,
+            batchIndex: orderIdx + 1,
             isExisting: true,
             isNew: false,
             _edited: false,
-            _lineId: `grp_${order.id || order.orderCode}_${(
-              i._id ||
-              i.dishId ||
-              i.name ||
-              "x"
-            )
-              .toString()
-              .slice(0, 8)}`,
+            _lineId: `grp_${order.id || order.orderCode}_${i._id || i.dishId || itemIdx}`,
           };
         }),
       );
@@ -3132,9 +3139,7 @@ export default function useOrderManagement(pos = null) {
             Number(it.quantity || 0),
           isExisting: true,
           isNew: false,
-          _lineId: `grp_${group.orderCode}_${(it.dishId || it.name || "x")
-            .toString()
-            .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+          _lineId: `grp_${group.orderCode}_${it._id || it.dishId || it.name || "x"}`,
         }));
 
         const ordersArr = Array.isArray(group.orders) ? group.orders : [];
