@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildActiveTableSessionKey,
   isKitchenPayable,
   isOrderBatch,
   isPaymentClosed,
@@ -115,6 +116,20 @@ describe("orderLifecycle helpers", () => {
         { orderKind: null },
       ],
     });
+  });
+
+  it("buildActiveTableSessionKey returns deterministic key", () => {
+    expect(
+      buildActiveTableSessionKey({
+        restaurantId: "rest-1",
+        tableId: "table-9",
+      }),
+    ).toBe("rest-1:table-9:active");
+  });
+
+  it("buildActiveTableSessionKey returns null when restaurantId or tableId missing", () => {
+    expect(buildActiveTableSessionKey({ restaurantId: null, tableId: "t1" })).toBeNull();
+    expect(buildActiveTableSessionKey({ restaurantId: "r1", tableId: null })).toBeNull();
   });
 
 });

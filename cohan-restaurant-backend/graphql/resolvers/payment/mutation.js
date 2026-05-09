@@ -376,6 +376,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           $set: {
             sessionStatus: SESSION_STATUS.CLOSED,
             orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
+            activeSessionKey: null,
             closedAt: now,
             "payment.method": normMethod,
             "payment.status": "paid",

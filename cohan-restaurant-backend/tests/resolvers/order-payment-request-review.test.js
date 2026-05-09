@@ -167,6 +167,7 @@ describe("payment request + confirm guards", () => {
     });
     expect(parentUpdate[1].$set.sessionStatus).toBe("closed");
     expect(parentUpdate[1].$set.orderPaymentStatus).toBe("paid");
+    expect(parentUpdate[1].$set.activeSessionKey).toBeNull();
     expect(parentUpdate[1].$set.currentStatus).toBe("completed");
     expect(parentUpdate[1].$set.closedAt).toBeTruthy();
     expect(emitOrderEventMock).toHaveBeenCalled();
