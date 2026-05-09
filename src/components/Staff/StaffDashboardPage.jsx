@@ -37,7 +37,14 @@ const StaffDashboardPage = () => {
     }
 
     if (KITCHEN_ROLES.has(normalizedRole)) {
-      return <p className="text-sm text-gray-600">Khu vực bếp sẽ được bổ sung.</p>;
+      return (
+        <Link
+          to="/staff/kitchen"
+          className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Xem món cần chuẩn bị
+        </Link>
+      );
     }
 
     if (normalizedRole === "shipper") {
