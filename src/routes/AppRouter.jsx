@@ -296,7 +296,7 @@ const AppRouter = () => {
         path="/manager/restaurants/categories"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin", "hr"]}
+            allowedRoles={["manager", "admin"]}
             requireVerifiedEmail
           >
             <ManagerRestaurantInfoManagement />
@@ -444,7 +444,17 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-        <Route path="/track-order/:orderId" element={<OrderTrackingPage />} />
+        <Route
+          path="/track-order/:orderId"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <OrderTrackingPage />
+            </PrivateRoute>
+          }
+        />
 
         {/* Restaurants */}
         <Route
@@ -472,11 +482,41 @@ const AppRouter = () => {
         <Route path="/restaurant/:id/layout" element={<TableBooking />} />
         <Route path="/vr/table/:tableId" element={<VRViewer />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/checkout"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <CheckoutPage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/food/:foodId" element={<FoodDetail />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
-        <Route path="/favorites/:id" element={<FavoritePage />} />
-        <Route path="/address-book/:id" element={<AddressPage />} />
+        <Route
+          path="/favorites/:id"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <FavoritePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/address-book/:id"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <AddressPage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/help-center/:id" element={<HelpPage />} />
         <Route
           path="/notifications"
