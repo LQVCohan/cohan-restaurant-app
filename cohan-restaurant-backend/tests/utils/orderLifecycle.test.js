@@ -5,6 +5,7 @@ import {
   isPaymentClosed,
   isSessionActive,
   isTableSession,
+  orderBatchOrLegacyFilter,
 } from "../../utils/orderLifecycle.js";
 
 describe("orderLifecycle helpers", () => {
@@ -104,4 +105,16 @@ describe("orderLifecycle helpers", () => {
       isKitchenPayable({ kitchenStatus: "pending", currentStatus: "ready" }),
     ).toBe(false);
   });
+
+  it("orderBatchOrLegacyFilter includes legacy and order_batch only", () => {
+    const filter = orderBatchOrLegacyFilter();
+    expect(filter).toEqual({
+      $or: [
+        { orderKind: "order_batch" },
+        { orderKind: { $exists: false } },
+        { orderKind: null },
+      ],
+    });
+  });
+
 });

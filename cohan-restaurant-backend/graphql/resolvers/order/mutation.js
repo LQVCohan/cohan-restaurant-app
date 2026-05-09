@@ -32,6 +32,14 @@ import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import {
+  ORDER_KIND,
+  SPLIT_STATUS,
+  SESSION_STATUS,
+  KITCHEN_STATUS,
+  ORDER_PAYMENT_STATUS,
+  activeTableSessionFilter,
+} from "../../../utils/orderLifecycle.js";
 
 import {
   reserveForOrderTx,
@@ -1080,6 +1088,53 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
   };
 }
 
+async function findOrCreateActiveTableSession({
+  restaurantId,
+  tableId,
+  tableCode,
+  userId,
+  customerSnapshot,
+  session,
+}) {
+  const activeFilter = activeTableSessionFilter({ restaurantId, tableId });
+
+  const existing = await Order.findOne(activeFilter, null, { session });
+  if (existing) return existing;
+
+  const parentOrderCode = await findOrCreateOrderCode({
+    restaurantId,
+    tableId,
+    tableCode,
+    session,
+  });
+
+  const [created] = await Order.create([
+    {
+      restaurantId,
+      tableId,
+      tableCode,
+      userId: userId ? toId(userId) : undefined,
+      orderCode: parentOrderCode,
+      orderType: "dine_in",
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      parentOrderId: null,
+      rootOrderId: null,
+      splitStatus: SPLIT_STATUS.NONE,
+      sessionStatus: SESSION_STATUS.OPEN,
+      kitchenStatus: KITCHEN_STATUS.DRAFT,
+      orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+      openedAt: new Date(),
+      items: [],
+      totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
+      currentStatus: "pending",
+      payment: { method: "cash", status: "pending" },
+      customer: customerSnapshot || undefined,
+    },
+  ], { session });
+
+  return created;
+}
+
 export const OrderMutation = {
   /** =========================================
    * CREATE TABLE ORDER (dine_in)
@@ -1157,6 +1212,15 @@ export const OrderMutation = {
 
         const totals = computeTotalsFromHydratedItems(normalizedItems);
 
+        const parentSession = await findOrCreateActiveTableSession({
+          restaurantId: rid,
+          tableId: toId(tableInfo.tableId),
+          tableCode: tableInfo.tableCode,
+          userId: finalUserId,
+          customerSnapshot: effectiveCustomer,
+          session,
+        });
+
         const [order] = await Order.create(
           [
             {
@@ -1168,6 +1232,15 @@ export const OrderMutation = {
               orderCode: effectiveOrderCode,
 
               orderType: "dine_in",
+              orderKind: ORDER_KIND.ORDER_BATCH,
+              parentOrderId: parentSession._id,
+              rootOrderId: parentSession._id,
+              splitStatus: SPLIT_STATUS.NONE,
+              sessionStatus: SESSION_STATUS.DINING,
+              kitchenStatus: KITCHEN_STATUS.PENDING,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+              openedAt: null,
+              closedAt: null,
               items: normalizedItems,
               totals,
               note,
@@ -1189,6 +1262,17 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+
+        await Order.updateOne(
+          { _id: parentSession._id },
+          {
+            $set: {
+              sessionStatus: SESSION_STATUS.DINING,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+            },
+          },
+          { session },
+        );
 
         if (effectiveCustomer) {
           await upsertTableCustomerFromOrder({

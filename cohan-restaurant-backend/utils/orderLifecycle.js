@@ -49,6 +49,33 @@ function isBlankStatus(value) {
   return value == null || String(value).trim() === "";
 }
 
+
+export const ACTIVE_SESSION_STATUSES = [
+  SESSION_STATUS.OPEN,
+  SESSION_STATUS.DINING,
+  SESSION_STATUS.READY_TO_PAY,
+];
+
+export function orderBatchOrLegacyFilter() {
+  return {
+    $or: [
+      { orderKind: ORDER_KIND.ORDER_BATCH },
+      { orderKind: { $exists: false } },
+      { orderKind: null },
+    ],
+  };
+}
+
+export function activeTableSessionFilter({ restaurantId, tableId }) {
+  return {
+    restaurantId,
+    tableId,
+    orderKind: ORDER_KIND.TABLE_SESSION,
+    sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+    orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+  };
+}
+
 const CLOSED_PAYMENT_STATUSES = new Set([
   ORDER_PAYMENT_STATUS.PAID,
   ORDER_PAYMENT_STATUS.REFUNDED,
