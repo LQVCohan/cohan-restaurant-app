@@ -15,6 +15,7 @@ import {
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
+import { orderBatchOrLegacyFilter } from "../../../utils/orderLifecycle.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
@@ -167,6 +168,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     restaurantId: rid,
     tableId: tid,
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+    ...orderBatchOrLegacyFilter(),
   }).lean();
 
   if (!orders.length) {

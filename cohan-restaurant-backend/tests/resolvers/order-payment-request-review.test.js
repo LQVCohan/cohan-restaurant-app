@@ -149,6 +149,13 @@ describe("payment request + confirm guards", () => {
       payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: true } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", restaurantId: "65f000000000000000000099" } }),
     ).resolves.toBeTruthy();
 
+    const listFilter = modelMocks.Order.find.mock.calls.at(0)[0];
+    expect(listFilter.$or).toEqual([
+      { orderKind: "order_batch" },
+      { orderKind: { $exists: false } },
+      { orderKind: null },
+    ]);
+
     const tableUpdatePayload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
     expect(tableUpdatePayload.$push.statusTimeline.note).toBe("Đã thanh toán và hoàn tất đơn.");
     expect(emitOrderEventMock).toHaveBeenCalled();
