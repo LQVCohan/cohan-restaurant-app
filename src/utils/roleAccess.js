@@ -1,3 +1,10 @@
+// Frontend-only route/menu access policy.
+// This file is used to hide navigation items, choose landing pages, and
+// redirect users away from screens that are not intended for their role.
+// It does not enforce data security and must not replace backend guards.
+// Restaurant-scoped access must still be checked on the backend, e.g.
+// requireRestaurantAccess(ctx, restaurantId).
+
 export const ADMIN_ROLES = new Set(["admin"]);
 export const MANAGER_ROLES = new Set(["manager"]);
 export const HR_ROLES = new Set(["hr"]);
