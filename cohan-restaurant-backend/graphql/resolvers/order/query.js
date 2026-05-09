@@ -25,7 +25,7 @@ import {
   orderBatchOrLegacyFilter,
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
-
+import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
 /**
@@ -36,7 +36,26 @@ const INACTIVE_STATUSES = ["cancelled", "completed"];
 function getRootCode(ord) {
   return ord.parentOrderCode || ord.orderCode || "unknown";
 }
+function buildPreviewItems(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const quantity = Math.max(0, Number(item?.quantity || 0));
 
+      const unitPrice = Math.max(
+        0,
+        Number(item?.servingVariant?.price ?? item?.basePrice ?? 0),
+      );
+
+      return {
+        ...item,
+        quantity,
+        unitPrice,
+        lineSubtotal: Math.round(unitPrice * quantity),
+        status: item?.status || "pending",
+      };
+    })
+    .filter((item) => item.quantity > 0);
+}
 function buildFilter(filter = {}) {
   const q = {};
 
@@ -237,7 +256,34 @@ export const OrderQuery = {
     await requireRestaurantAccess(ctx, order.restaurantId);
     return order;
   },
+  async previewOrderDiscount(_, { input }, ctx) {
+    const {
+      restaurantId,
+      items = [],
+      pricing = {},
+      promotionIds = [],
+    } = input || {};
 
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+
+    const previewItems = buildPreviewItems(items);
+
+    if (!previewItems.length) {
+      throw new Error("No valid order items for discount preview");
+    }
+
+    return calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: previewItems,
+      pricing: {
+        taxRate: pricing?.taxRate,
+        serviceRate: pricing?.serviceRate,
+        shippingFee: pricing?.shippingFee,
+        voucherCode: pricing?.voucherCode,
+      },
+      promotionIds: Array.isArray(promotionIds) ? promotionIds : [],
+    });
+  },
   /** List with offset pagination */
   async orders(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
     const baseQ = buildFilter(filter);
@@ -362,10 +408,7 @@ export const OrderQuery = {
       tableCode: safeCode,
       ...orderBatchOrLegacyFilter(),
 
-      // POS/StaffOrdering active table view không được lấy đơn đã đóng
       currentStatus: { $nin: ["completed", "cancelled", "failed"] },
-
-      // Chặn case payment đã paid nhưng currentStatus bị stale
       "payment.status": { $ne: "paid" },
     };
 

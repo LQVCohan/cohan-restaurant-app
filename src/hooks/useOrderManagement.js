@@ -1403,7 +1403,17 @@ export default function useOrderManagement(pos = null) {
             return [];
           }
         }
-      } catch (_e) {}
+      } catch (e) {
+        console.warn(
+          "activeTableSessionOrders failed, fallback to ordersGroupedByTable",
+          {
+            restaurantId,
+            tableId,
+            tableCode,
+            error: e,
+          },
+        );
+      }
 
       const { data } = await loadGroupsQuery({
         variables: { restaurantId, tableId, tableCode },
@@ -1412,6 +1422,7 @@ export default function useOrderManagement(pos = null) {
       const rawGroups = data?.ordersGroupedByTable || [];
 
       // Chỉ giữ các group còn active (không phải đã hoàn tất/hủy)
+      // Chỉ giữ các group còn active, không lấy order đã completed/paid
       const inactiveStatuses = new Set([
         "COMPLETED",
         "ORDER_COMPLETED",
@@ -1428,6 +1439,8 @@ export default function useOrderManagement(pos = null) {
 
       setGroups(gs);
 
+      // Nếu không còn group active thì đây là bàn trống.
+      // Tuyệt đối không fallback sang rawGroups lịch sử đã thanh toán.
       if (!gs.length) {
         setActiveGroup(null);
         setCurrentOrder?.([]);
@@ -1455,45 +1468,70 @@ export default function useOrderManagement(pos = null) {
         return [];
       }
 
-      const latest =
-        [...gs].sort((a, b) => {
-          const ta = new Date(
-            a.orders?.[a.orders.length - 1]?.createdAt || 0,
-          ).getTime();
-          const tb = new Date(
-            b.orders?.[b.orders.length - 1]?.createdAt || 0,
-          ).getTime();
-          return tb - ta;
-        })[0] || null;
+      // Fallback grouped query: không chọn 1 latest group nữa.
+      // Phải gom tất cả active groups của cùng bàn.
+      const sortedGroups = [...gs].sort((a, b) => {
+        const ta = new Date(
+          a.orders?.[a.orders.length - 1]?.createdAt || 0,
+        ).getTime();
+        const tb = new Date(
+          b.orders?.[b.orders.length - 1]?.createdAt || 0,
+        ).getTime();
+        return ta - tb;
+      });
 
+      const latest = sortedGroups[sortedGroups.length - 1] || null;
       setActiveGroup(latest || null);
-      // Hydrate currentOrder ở UI bằng gộp món
-      if (latest) {
-        const merged = mergeGroupItems(latest);
-        const uiItems = merged.items.map((i) => {
+
+      const allOrders = sortedGroups.flatMap((g) =>
+        Array.isArray(g.orders) ? g.orders : [],
+      );
+
+      const uiItems = allOrders.flatMap((order) =>
+        (Array.isArray(order.items) ? order.items : []).map((i) => {
           const base = mapServerItemToUi(i);
+
           return {
             ...base,
+            sourceOrderId: order.id,
+            sourceOrderCode: order.orderCode,
             isExisting: true,
             isNew: false,
             _edited: false,
-            _lineId: `grp_${latest.orderCode}_${(i.dishId || i.name || "x")
+            _lineId: `grp_${order.id || order.orderCode}_${(
+              i._id ||
+              i.dishId ||
+              i.name ||
+              "x"
+            )
               .toString()
-              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+              .slice(0, 8)}`,
           };
+        }),
+      );
+
+      setCurrentOrder?.(uiItems);
+
+      if (setTableOrders) {
+        setTableOrders((prev) => {
+          const next = { ...(prev || {}) };
+
+          const keys = [
+            tableId,
+            tableCode,
+            latest?.tableId,
+            latest?.tableCode,
+            latest?.tableCode ? String(latest.tableCode).toUpperCase() : null,
+          ].filter(Boolean);
+
+          keys.forEach((key) => {
+            next[key] = uiItems;
+          });
+
+          return next;
         });
-        setCurrentOrder?.(uiItems);
-        const key = tableCode || latest.tableCode || latest.tableId || "";
-        if (setTableOrders && key) {
-          setTableOrders((prev) => ({ ...prev, [key]: uiItems }));
-        }
-      } else {
-        setCurrentOrder?.([]);
-        const key = tableCode || "";
-        if (setTableOrders && key) {
-          setTableOrders((prev) => ({ ...prev, [key]: [] }));
-        }
       }
+
       return gs;
     },
     [
@@ -1501,6 +1539,8 @@ export default function useOrderManagement(pos = null) {
       loadGroupsQuery,
       mapServerItemToUi,
       setCurrentOrder,
+      setCurrentOrderCode,
+      setCurrentOrderId,
       setTableOrders,
     ],
   );
@@ -2548,8 +2588,7 @@ export default function useOrderManagement(pos = null) {
               input: {
                 restaurantId,
                 tableCode: currentTable.code,
-                orderCode:
-                  activeGroup?.orderCode || currentTable.orderCode || null,
+
                 items: outgoing,
                 note: orderNote,
                 clientMeta: {
@@ -2745,30 +2784,41 @@ export default function useOrderManagement(pos = null) {
 
   const preparePayment = useCallback(
     async ({ restaurantId } = {}) => {
-      if (!restaurantId)
+      if (!restaurantId) {
         return { success: false, message: "Thiếu restaurantId." };
+      }
 
-      if (activeGroup?.orderCode) {
+      const isDineIn = !currentOrderType || currentOrderType === "dine_in";
+
+      if (isDineIn) {
+        if (!currentOrder?.length) {
+          return { success: false, message: "Chưa có món để thanh toán." };
+        }
+
         return {
           success: true,
           data: {
-            orderCode: activeGroup.orderCode,
-            tableCode: activeGroup.tableCode,
-            tableId: activeGroup.tableId,
-            items: mergedCurrent.items,
-            totals: mergedCurrent.totals,
+            tableId: currentTable?.id || currentTable?._id || null,
+            tableCode: currentTable?.code || null,
+            items: currentOrder,
+            totals: {
+              ...totals,
+              grandTotal: totals.total,
+            },
           },
         };
       }
 
-      if (!currentOrder?.length)
+      if (!currentOrder?.length) {
         return { success: false, message: "Chưa có món để thanh toán." };
+      }
 
       const saved = await saveOrder({
         persist: true,
         restaurantId,
         clearAfterSave: false,
       });
+
       if (!saved?.success) return saved;
 
       const orderId = saved?.data?.id || saved?.data?._id || null;
@@ -2780,18 +2830,17 @@ export default function useOrderManagement(pos = null) {
           orderId,
           items: currentOrder,
           totals,
-          tableId: currentTable?.id,
         },
       };
     },
     [
-      activeGroup?.orderCode,
-      mergedCurrent,
+      currentOrderType,
       currentOrder,
+      currentTable?.id,
+      currentTable?._id,
+      currentTable?.code,
       totals,
       saveOrder,
-      currentOrderType,
-      currentTable?.id,
     ],
   );
 
@@ -2822,10 +2871,7 @@ export default function useOrderManagement(pos = null) {
         return { success: false, message: "Thiếu restaurantId." };
 
       const isDineIn = !currentOrderType || currentOrderType === "dine_in";
-      const grand =
-        isDineIn && activeGroup?.orderCode && mergedCurrent?.totals?.grandTotal
-          ? Number(mergedCurrent.totals.grandTotal || 0)
-          : Number(totals.total || 0);
+      const grand = Number(totals.total || 0);
 
       const valid = validatePayment({
         method,
@@ -2938,14 +2984,13 @@ export default function useOrderManagement(pos = null) {
     },
     [
       currentOrderType,
-      activeGroup?.orderCode,
-      mergedCurrent,
-      validatePayment,
       totals.total,
-      mutPayByTable,
+      validatePayment,
       mutPayByOrderIds,
       currentTable?.id,
-      loadGroupsForTable,
+      currentTable?._id,
+      activeGroup?.tableId,
+      mutPayByTable,
     ],
   );
 
@@ -3055,7 +3100,12 @@ export default function useOrderManagement(pos = null) {
             };
           }
         }
-      } catch (_e) {}
+      } catch (e) {
+        console.warn(
+          "activeTableSessionOrders failed, fallback to ordersGroupedByTable",
+          e,
+        );
+      }
 
       const { data } = await loadGroupsQuery({
         variables: { restaurantId, tableId, tableCode },

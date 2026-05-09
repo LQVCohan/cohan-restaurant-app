@@ -337,7 +337,31 @@ type OrderTotals {
   shippingFee: Int
   grandTotal: Int!
 }
+type DiscountBreakdown {
+  subtotal: Int!
+  eligibleSubtotal: Int
+  promotionDiscount: Int!
+  voucherDiscount: Int!
+  couponDiscount: Int
+  shippingDiscount: Int
+  totalDiscount: Int!
+  discount: Int!
 
+  service: Int!
+  serviceRate: Float
+  tax: Int!
+  taxRate: Float
+  shippingFee: Int
+
+  finalTotal: Int!
+  grandTotal: Int!
+
+  voucherCode: String
+  couponId: ID
+  appliedPromotions: [ID!]!
+  appliedCoupons: [ID!]!
+  discountReason: String
+}
 # =========================================================
 # PAYMENT
 # =========================================================
@@ -550,7 +574,13 @@ input CheckoutCartItemInput {
   note: String
   priority: OrderPriority
 }
-
+input PreviewOrderDiscountInput {
+  restaurantId: ID!
+  orderType: OrderType
+  items: [OrderItemInput!]!
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
+}
 input CheckoutPricingInput {
   taxRate: Float
   serviceRate: Float
@@ -1017,7 +1047,7 @@ type SmartPromotionEngine {
 
 extend type Query {
   order(id: ID!): Order
-
+  previewOrderDiscount(input: PreviewOrderDiscountInput!): DiscountBreakdown!
   orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
 
   ordersByRestaurantNow(

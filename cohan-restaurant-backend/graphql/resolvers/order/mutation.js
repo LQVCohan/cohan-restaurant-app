@@ -57,10 +57,11 @@ const RESERVABLE_STATUSES = [
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 const RANK_POINT_DIVISOR = 1_000_000;
 
-
 function hasPendingItemWork(order) {
   return (order?.items || []).some((item) =>
-    ["pending", "confirmed", "preparing", "ready"].includes(String(item?.status || "")),
+    ["pending", "confirmed", "preparing", "ready"].includes(
+      String(item?.status || ""),
+    ),
   );
 }
 
@@ -82,10 +83,14 @@ function assertOrderCanRequestPayment(order) {
     throw new Error("Đơn đã kết thúc, không thể yêu cầu thanh toán.");
   }
   if (hasPendingItemWork(order)) {
-    throw new Error("Không thể yêu cầu thanh toán khi còn món chưa phục vụ xong.");
+    throw new Error(
+      "Không thể yêu cầu thanh toán khi còn món chưa phục vụ xong.",
+    );
   }
   if (hasPendingAdjustmentRequests(order)) {
-    throw new Error("Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+    throw new Error(
+      "Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.",
+    );
   }
 }
 
@@ -876,23 +881,62 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
  * Totals from hydrated items
  * ========================= */
 function computeTotalsFromHydratedItems(items = [], pricing = {}) {
-  const subtotal = Math.round((items || []).reduce((sum, it) => {
-    if (CANCELLED_ITEM_STATUSES.includes(it?.status)) return sum;
-    return sum + Number(it?.lineSubtotal || 0);
-  }, 0));
+  const subtotal = Math.round(
+    (items || []).reduce((sum, it) => {
+      if (CANCELLED_ITEM_STATUSES.includes(it?.status)) return sum;
+      return sum + Number(it?.lineSubtotal || 0);
+    }, 0),
+  );
   const serviceRate = Math.max(0, Number(pricing.serviceRate || 0));
   const taxRate = Math.max(0, Number(pricing.taxRate || 0));
   const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
   const promotionDiscount = Math.max(0, Number(pricing.promotionDiscount || 0));
   const voucherDiscount = Math.max(0, Number(pricing.voucherDiscount || 0));
   const service = Math.round(subtotal * serviceRate);
-  const discount = Math.min(subtotal + service, promotionDiscount + voucherDiscount);
+  const discount = Math.min(
+    subtotal + service,
+    promotionDiscount + voucherDiscount,
+  );
   const beforeTax = Math.max(0, subtotal + service - discount);
   const tax = Math.round(beforeTax * taxRate);
   const grandTotal = Math.round(beforeTax + tax + shippingFee);
-  return { subtotal, discount, tax, service, shippingFee, grandTotal, taxRate, serviceRate, voucherCode: pricing.voucherCode || undefined };
+  return {
+    subtotal,
+    discount,
+    tax,
+    service,
+    shippingFee,
+    grandTotal,
+    taxRate,
+    serviceRate,
+    voucherCode: pricing.voucherCode || undefined,
+  };
 }
+async function generateUniqueOrderCode({
+  restaurantId,
+  tableCode,
+  session,
+  source = "POS",
+}) {
+  const rid = toId(restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId for orderCode generation");
 
+  for (let i = 0; i < 10; i += 1) {
+    const code = generateOrderCode(source, new Date(), tableCode || null);
+
+    const query = Order.exists({
+      restaurantId: rid,
+      orderCode: code,
+    });
+
+    if (session) query.session(session);
+
+    const exists = await query;
+    if (!exists) return code;
+  }
+
+  return generateOrderCode(source, new Date(), tableCode || null);
+}
 /** =========================
  * Find / create orderCode
  * ========================= */
@@ -1090,7 +1134,9 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
 }
 
 function isDuplicateKeyError(error) {
-  return error?.code === 11000 || String(error?.message || "").includes("E11000");
+  return (
+    error?.code === 11000 || String(error?.message || "").includes("E11000")
+  );
 }
 
 async function findOrCreateActiveTableSession({
@@ -1102,7 +1148,10 @@ async function findOrCreateActiveTableSession({
   session,
 }) {
   const activeFilter = activeTableSessionFilter({ restaurantId, tableId });
-  const activeSessionKey = buildActiveTableSessionKey({ restaurantId, tableId });
+  const activeSessionKey = buildActiveTableSessionKey({
+    restaurantId,
+    tableId,
+  });
 
   const existing = await Order.findOne(activeFilter, null, { session });
   if (existing) {
@@ -1124,30 +1173,40 @@ async function findOrCreateActiveTableSession({
   });
 
   try {
-    const [created] = await Order.create([
-      {
-        restaurantId,
-        tableId,
-        tableCode,
-        userId: userId ? toId(userId) : undefined,
-        orderCode: parentOrderCode,
-        orderType: "dine_in",
-        orderKind: ORDER_KIND.TABLE_SESSION,
-        activeSessionKey,
-        parentOrderId: null,
-        rootOrderId: null,
-        splitStatus: SPLIT_STATUS.NONE,
-        sessionStatus: SESSION_STATUS.OPEN,
-        kitchenStatus: KITCHEN_STATUS.DRAFT,
-        orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
-        openedAt: new Date(),
-        items: [],
-        totals: { subtotal: 0, tax: 0, discount: 0, service: 0, shippingFee: 0, grandTotal: 0 },
-        currentStatus: "pending",
-        payment: { method: "cash", status: "pending" },
-        customer: customerSnapshot || undefined,
-      },
-    ], { session });
+    const [created] = await Order.create(
+      [
+        {
+          restaurantId,
+          tableId,
+          tableCode,
+          userId: userId ? toId(userId) : undefined,
+          orderCode: parentOrderCode,
+          orderType: "dine_in",
+          orderKind: ORDER_KIND.TABLE_SESSION,
+          activeSessionKey,
+          parentOrderId: null,
+          rootOrderId: null,
+          splitStatus: SPLIT_STATUS.NONE,
+          sessionStatus: SESSION_STATUS.OPEN,
+          kitchenStatus: KITCHEN_STATUS.DRAFT,
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+          openedAt: new Date(),
+          items: [],
+          totals: {
+            subtotal: 0,
+            tax: 0,
+            discount: 0,
+            service: 0,
+            shippingFee: 0,
+            grandTotal: 0,
+          },
+          currentStatus: "pending",
+          payment: { method: "cash", status: "pending" },
+          customer: customerSnapshot || undefined,
+        },
+      ],
+      { session },
+    );
 
     return { sessionOrder: created, created: true };
   } catch (error) {
@@ -1170,7 +1229,7 @@ export const OrderMutation = {
       restaurantId,
       tableId,
       tableCode,
-      orderCode,
+
       items,
       note,
       customer,
@@ -1217,14 +1276,11 @@ export const OrderMutation = {
 
     try {
       await session.withTransaction(async () => {
-        const effectiveOrderCode =
-          (orderCode && String(orderCode).trim()) ||
-          (await findOrCreateOrderCode({
-            restaurantId,
-            tableId: tableInfo.tableId,
-            tableCode: tableInfo.tableCode,
-            session,
-          }));
+        const childOrderCode = await generateUniqueOrderCode({
+          restaurantId: rid,
+          tableCode: tableInfo.tableCode,
+          session,
+        });
 
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
         await hydrateOrderItems({
@@ -1247,12 +1303,18 @@ export const OrderMutation = {
         if (
           activeSessionProbe &&
           effectiveCustomer &&
-          (
-            (normalizeEmail(activeSessionProbe?.customer?.email) && normalizeEmail(effectiveCustomer?.email) && normalizeEmail(activeSessionProbe?.customer?.email) !== normalizeEmail(effectiveCustomer?.email)) ||
-            (normalizePhone(activeSessionProbe?.customer?.phone) && normalizePhone(effectiveCustomer?.phone) && normalizePhone(activeSessionProbe?.customer?.phone) !== normalizePhone(effectiveCustomer?.phone))
-          )
+          ((normalizeEmail(activeSessionProbe?.customer?.email) &&
+            normalizeEmail(effectiveCustomer?.email) &&
+            normalizeEmail(activeSessionProbe?.customer?.email) !==
+              normalizeEmail(effectiveCustomer?.email)) ||
+            (normalizePhone(activeSessionProbe?.customer?.phone) &&
+              normalizePhone(effectiveCustomer?.phone) &&
+              normalizePhone(activeSessionProbe?.customer?.phone) !==
+                normalizePhone(effectiveCustomer?.phone)))
         ) {
-          throw new Error("Bàn đang có phiên khách khác. Vui lòng đóng/thanh toán phiên hiện tại trước khi đổi khách.");
+          throw new Error(
+            "Bàn đang có phiên khách khác. Vui lòng đóng/thanh toán phiên hiện tại trước khi đổi khách.",
+          );
         }
 
         const parentSessionMeta = await findOrCreateActiveTableSession({
@@ -1265,8 +1327,11 @@ export const OrderMutation = {
         });
         const parentSession = parentSessionMeta.sessionOrder;
 
-        const sessionCustomer = parentSession?.customer || effectiveCustomer || null;
-        const sessionUserId = parentSession?.userId || (await ensureUserForOrder(userId, sessionCustomer));
+        const sessionCustomer =
+          parentSession?.customer || effectiveCustomer || null;
+        const sessionUserId =
+          parentSession?.userId ||
+          (await ensureUserForOrder(userId, sessionCustomer));
 
         const [order] = await Order.create(
           [
@@ -1276,7 +1341,7 @@ export const OrderMutation = {
               tableCode: tableInfo.tableCode,
 
               userId: sessionUserId ? toId(sessionUserId) : undefined,
-              orderCode: effectiveOrderCode,
+              orderCode: childOrderCode,
 
               orderType: "dine_in",
               orderKind: ORDER_KIND.ORDER_BATCH,
@@ -1343,7 +1408,7 @@ export const OrderMutation = {
           await reserveForOrderTx({
             restaurantId: rid,
             warehouseId: whId,
-            orderCode: effectiveOrderCode,
+            orderCode: childOrderCode,
             lines,
             session,
           });
@@ -1351,7 +1416,9 @@ export const OrderMutation = {
       });
     } catch (error) {
       if (error?.code === 11000) {
-        throw new Error("Thông tin khách hàng đã tồn tại hoặc bị trùng. Vui lòng chọn khách hiện có hoặc tạo đơn snapshot-only.");
+        throw new Error(
+          "Thông tin khách hàng đã tồn tại hoặc bị trùng. Vui lòng chọn khách hiện có hoặc tạo đơn snapshot-only.",
+        );
       }
       throw error;
     } finally {
@@ -1399,11 +1466,16 @@ export const OrderMutation = {
       phone: compactCustomer.phone,
       selectedUserId: userId,
     });
-    const requiresSnapshotOnlyConfirm = Boolean(identity?.conflict) && customerIdentityMode !== "snapshot_only";
+    const requiresSnapshotOnlyConfirm =
+      Boolean(identity?.conflict) && customerIdentityMode !== "snapshot_only";
     if (requiresSnapshotOnlyConfirm) {
-      throw new Error("Thông tin email và số điện thoại khớp với hai khách khác nhau. Vui lòng xác nhận tạo đơn dạng snapshot-only.");
+      throw new Error(
+        "Thông tin email và số điện thoại khớp với hai khách khác nhau. Vui lòng xác nhận tạo đơn dạng snapshot-only.",
+      );
     }
-    const finalUserId = identity?.conflict ? null : await ensureUserForOrder(userId, compactCustomer);
+    const finalUserId = identity?.conflict
+      ? null
+      : await ensureUserForOrder(userId, compactCustomer);
 
     const prefix = orderType === "delivery" ? "DEL" : "TAKE";
     const effectiveOrderCode = generateOrderCode(prefix, new Date(), null);
@@ -1709,7 +1781,8 @@ export const OrderMutation = {
     const actorId = toId(ctx?.user?.id || ctx?.user?._id);
     const ids = orderIds.map((id) => toId(id)).filter(Boolean);
     const orders = await Order.find({ restaurantId: rid, _id: { $in: ids } });
-    if (!orders.length) throw new Error("Không tìm thấy đơn để yêu cầu thanh toán.");
+    if (!orders.length)
+      throw new Error("Không tìm thấy đơn để yêu cầu thanh toán.");
 
     for (const order of orders) {
       assertOrderCanRequestPayment(order);
@@ -1727,7 +1800,12 @@ export const OrderMutation = {
         },
       ];
       await order.save();
-      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_UPDATED", order);
+      await emitOrderEvent(
+        ctx,
+        String(order.restaurantId),
+        "ORDER_UPDATED",
+        order,
+      );
     }
 
     return { ok: true, message: "Đã gửi yêu cầu thanh toán đến POS." };
@@ -1743,7 +1821,8 @@ export const OrderMutation = {
       tableCode: String(tableCode),
       currentStatus: { $nin: ["cancelled", "completed"] },
     });
-    if (!orders.length) throw new Error("Không tìm thấy đơn đang phục vụ của bàn này.");
+    if (!orders.length)
+      throw new Error("Không tìm thấy đơn đang phục vụ của bàn này.");
 
     for (const order of orders) {
       assertOrderCanRequestPayment(order);
@@ -1761,7 +1840,12 @@ export const OrderMutation = {
         },
       ];
       await order.save();
-      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_UPDATED", order);
+      await emitOrderEvent(
+        ctx,
+        String(order.restaurantId),
+        "ORDER_UPDATED",
+        order,
+      );
     }
     return { ok: true, message: "Đã gửi yêu cầu thanh toán đến POS." };
   },
@@ -2412,27 +2496,39 @@ export const OrderMutation = {
   },
   requestOrderItemReturn: async (_p, { input }, ctx) => {
     const { orderId, orderItemId, quantity, reason, refundMode } = input || {};
-    const allowedRefundModes = ["none", "remove_from_bill", "refund_after_payment"];
+    const allowedRefundModes = [
+      "none",
+      "remove_from_bill",
+      "refund_after_payment",
+    ];
     if (!mongoose.isValidObjectId(orderId)) throw new Error("Invalid orderId");
-    if (!mongoose.isValidObjectId(orderItemId)) throw new Error("Invalid orderItemId");
+    if (!mongoose.isValidObjectId(orderItemId))
+      throw new Error("Invalid orderItemId");
     const qty = Number(quantity);
-    if (!Number.isInteger(qty) || qty <= 0) throw new Error("quantity must be a positive integer");
-    if (!String(reason || "").trim()) throw new Error("Vui lòng nhập lý do trả lại món.");
-    if (!allowedRefundModes.includes(refundMode)) throw new Error("refundMode không hợp lệ.");
+    if (!Number.isInteger(qty) || qty <= 0)
+      throw new Error("quantity must be a positive integer");
+    if (!String(reason || "").trim())
+      throw new Error("Vui lòng nhập lý do trả lại món.");
+    if (!allowedRefundModes.includes(refundMode))
+      throw new Error("refundMode không hợp lệ.");
 
     const order = await Order.findById(orderId);
     if (!order) throw new Error("Order not found");
-    if (["completed", "cancelled"].includes(order.currentStatus)) throw new Error("Đơn hiện không thể tạo yêu cầu trả lại món.");
+    if (["completed", "cancelled"].includes(order.currentStatus))
+      throw new Error("Đơn hiện không thể tạo yêu cầu trả lại món.");
     const item = order.items.id(orderItemId);
     if (!item) throw new Error("Order item not found");
-    if (item.status !== "served") throw new Error("Chỉ cho phép trả lại món đã phục vụ.");
-    if ((item.returnRequests || []).some((r) => r.status === "pending")) throw new Error("Món này đang có yêu cầu trả lại chờ duyệt.");
+    if (item.status !== "served")
+      throw new Error("Chỉ cho phép trả lại món đã phục vụ.");
+    if ((item.returnRequests || []).some((r) => r.status === "pending"))
+      throw new Error("Món này đang có yêu cầu trả lại chờ duyệt.");
 
     if (Number(item.originalQuantity || 0) <= 0) {
       item.originalQuantity = getReturnBaselineQuantity(item);
     }
     const maxReturnableQty = getRemainingReturnableQuantity(item);
-    if (qty > maxReturnableQty) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
+    if (qty > maxReturnableQty)
+      throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
 
     item.returnRequests = item.returnRequests || [];
     item.returnRequests.push({
@@ -2451,15 +2547,22 @@ export const OrderMutation = {
       note: `Yêu cầu trả lại ${qty} món "${item.name}": ${reason.trim()}`,
     });
     await order.save();
-    const updatedOrder = await Order.findById(order._id).lean({ virtuals: true });
+    const updatedOrder = await Order.findById(order._id).lean({
+      virtuals: true,
+    });
     emitOrderEvent("order:updated", updatedOrder);
     return updatedOrder;
   },
   reviewOrderItemReturn: async (_p, { input }, ctx) => {
     const { orderId, orderItemId, requestId, approve, note } = input || {};
-    const refundModeLabels = { none: "Không hoàn tiền", remove_from_bill: "Trừ khỏi hóa đơn", refund_after_payment: "Hoàn sau thanh toán" };
+    const refundModeLabels = {
+      none: "Không hoàn tiền",
+      remove_from_bill: "Trừ khỏi hóa đơn",
+      refund_after_payment: "Hoàn sau thanh toán",
+    };
     if (!mongoose.isValidObjectId(orderId)) throw new Error("Invalid orderId");
-    if (!mongoose.isValidObjectId(orderItemId)) throw new Error("Invalid orderItemId");
+    if (!mongoose.isValidObjectId(orderItemId))
+      throw new Error("Invalid orderItemId");
     if (!String(requestId || "").trim()) throw new Error("Invalid requestId");
 
     const session = await mongoose.startSession();
@@ -2470,9 +2573,12 @@ export const OrderMutation = {
         if (!order) throw new Error("Order not found");
         const item = order.items.id(orderItemId);
         if (!item) throw new Error("Order item not found");
-        const req = (item.returnRequests || []).find((r) => String(r.requestId) === String(requestId));
+        const req = (item.returnRequests || []).find(
+          (r) => String(r.requestId) === String(requestId),
+        );
         if (!req) throw new Error("Return request not found");
-        if (req.status !== "pending") throw new Error("Yêu cầu này đã được xử lý.");
+        if (req.status !== "pending")
+          throw new Error("Yêu cầu này đã được xử lý.");
 
         req.status = approve ? "approved" : "rejected";
         req.reviewedBy = ctx?.user?.id || null;
@@ -2485,14 +2591,17 @@ export const OrderMutation = {
             item.originalQuantity = getReturnBaselineQuantity(item);
           }
           const maxReturnableQty = getRemainingReturnableQuantity(item);
-          if (qty <= 0 || qty > maxReturnableQty) throw new Error("Số lượng trả lại không hợp lệ.");
+          if (qty <= 0 || qty > maxReturnableQty)
+            throw new Error("Số lượng trả lại không hợp lệ.");
           item.returnedQuantity = Number(item.returnedQuantity || 0) + qty;
           if (req.refundMode === "remove_from_bill") {
             item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
             if (item.quantity <= 0) {
               item.status = "returned";
             }
-            const plainItems = order.items.map((x) => (typeof x.toObject === "function" ? x.toObject() : x));
+            const plainItems = order.items.map((x) =>
+              typeof x.toObject === "function" ? x.toObject() : x,
+            );
             order.totals = computeTotalsFromHydratedItems(plainItems, {
               serviceRate: order?.totals?.serviceRate || 0,
               taxRate: order?.totals?.taxRate || 0,
@@ -2513,7 +2622,9 @@ export const OrderMutation = {
             : `Từ chối yêu cầu trả lại món "${item.name}".`,
         });
         await order.save({ session });
-        updatedOrder = await Order.findById(order._id).session(session).lean({ virtuals: true });
+        updatedOrder = await Order.findById(order._id)
+          .session(session)
+          .lean({ virtuals: true });
       });
       emitOrderEvent("order:updated", updatedOrder);
       return updatedOrder;
