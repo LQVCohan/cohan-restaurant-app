@@ -118,15 +118,17 @@ describe("payment request + confirm guards", () => {
     expect(order.save).not.toHaveBeenCalled();
   });
 
-  it("requestTablePayment marks active parent session and child batches as payment_requested", async () => {
+  it("requestTablePayment marks active parent session and child batches as payment_requested and returns detailed readiness payload", async () => {
     const { requestTablePayment } = await import("../../graphql/resolvers/payment/mutation.js");
-    const activeSession = { _id: "65f00000000000000000aa10" };
+    const activeSession = { _id: "65f00000000000000000aa10", currentStatus: "served" };
     const childOrder = {
       _id: "65f000000000000000000111",
       restaurantId: "65f000000000000000000099",
       currentStatus: "served",
       orderKind: "order_batch",
       parentOrderId: "65f00000000000000000aa10",
+      orderCode: "ORD-111",
+      payment: { status: "pending" },
     };
 
     modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory(activeSession));
@@ -134,14 +136,37 @@ describe("payment request + confirm guards", () => {
 
     const out = await requestTablePayment(
       null,
-      { input: { restaurantId: "65f000000000000000000099", tableId: "table-1" } },
+      {
+        input: {
+          restaurantId: "65f000000000000000000099",
+          tableId: "table-1",
+          source: "customer_qr",
+          requestedBy: "65f000000000000000000999",
+          note: "please bring card machine",
+        },
+      },
       AUTH_CONTEXT,
     );
 
     expect(out.ok).toBe(true);
+    expect(out.warning).toBe(false);
+    expect(out.readyForPayment).toBe(true);
+    expect(out.pendingOrderCodes).toEqual([]);
+    expect(out.session).toMatchObject({
+      _id: "65f00000000000000000aa10",
+      sessionStatus: "ready_to_pay",
+      orderPaymentStatus: "payment_requested",
+    });
+    expect(out.orders).toHaveLength(1);
+    expect(out.orders[0]).toMatchObject({
+      _id: "65f000000000000000000111",
+      orderPaymentStatus: "payment_requested",
+    });
+    expect(out.requestedAt).toBeTruthy();
     expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(2);
     expect(modelMocks.Order.updateMany.mock.calls[0][1].$set["payment.status"]).toBe("payment_requested");
     expect(modelMocks.Order.updateMany.mock.calls[0][1].$set.orderPaymentStatus).toBe("payment_requested");
+    expect(modelMocks.Order.updateMany.mock.calls[0][1].$set["payment.requestSource"]).toBe("customer_qr");
     expect(modelMocks.Order.updateMany.mock.calls[1][0]).toMatchObject({
       restaurantId: expect.anything(),
       orderKind: "table_session",
@@ -150,20 +175,22 @@ describe("payment request + confirm guards", () => {
     expect(modelMocks.Order.updateMany.mock.calls[1][1].$set.orderPaymentStatus).toBe("payment_requested");
   });
 
-  it("requestTablePayment does not force unrelated active session update during legacy fallback without parent refs", async () => {
+  it("requestTablePayment returns warning details when child orders are not ready yet", async () => {
     const { requestTablePayment } = await import("../../graphql/resolvers/payment/mutation.js");
-    const legacyOrder = {
-      _id: "65f000000000000000000188",
+    const activeSession = { _id: "65f00000000000000000aa12", currentStatus: "served" };
+    const preparingChild = {
+      _id: "65f000000000000000000122",
       restaurantId: "65f000000000000000000099",
-      tableId: "table-1",
-      currentStatus: "served",
-      orderCode: "LEG-188",
+      currentStatus: "preparing",
+      orderKind: "order_batch",
+      parentOrderId: "65f00000000000000000aa12",
+      orderCode: "ORD-122",
+      items: [{ status: "preparing", voidRequests: [], returnRequests: [] }],
+      payment: { status: "pending" },
     };
 
-    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab88" }));
-    modelMocks.Order.find
-      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
-      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([legacyOrder]) });
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory(activeSession));
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([preparingChild]) });
 
     const out = await requestTablePayment(
       null,
@@ -172,8 +199,36 @@ describe("payment request + confirm guards", () => {
     );
 
     expect(out.ok).toBe(true);
-    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(1);
-    expect(modelMocks.Order.updateMany.mock.calls[0][1].$set["payment.status"]).toBe("payment_requested");
+    expect(out.warning).toBe(true);
+    expect(out.readyForPayment).toBe(false);
+    expect(out.pendingOrderCodes).toEqual(["ORD-122"]);
+    expect(out.session).toMatchObject({ _id: "65f00000000000000000aa12" });
+    expect(out.orders).toHaveLength(1);
+    expect(out.requestedAt).toBeTruthy();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it("requestTablePayment does not use legacy fallback when active session has no child orders", async () => {
+    const { requestTablePayment } = await import("../../graphql/resolvers/payment/mutation.js");
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab88" }));
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
+
+    const out = await requestTablePayment(
+      null,
+      { input: { restaurantId: "65f000000000000000000099", tableId: "table-1" } },
+      AUTH_CONTEXT,
+    );
+
+    expect(out).toMatchObject({
+      ok: false,
+      warning: true,
+      readyForPayment: false,
+      pendingOrderCodes: [],
+      orders: [],
+      requestedAt: null,
+    });
+    expect(out.session).toMatchObject({ _id: "65f00000000000000000ab88" });
+    expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
   });
 
   it("payOrdersByOrderIds succeeds and sets paid status with authenticated actor context", async () => {
