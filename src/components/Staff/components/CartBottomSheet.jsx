@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext, useMemo } from "react";
 import {
   X,
   Clock,
@@ -15,7 +15,15 @@ import {
   ShoppingBag,
   ShieldAlert,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
 import "./CartBottomSheet.scss";
+
+const NO_PERMISSION_MESSAGE =
+  "Vai trò hiện tại không có quyền thực hiện thao tác này.";
+const READONLY_MESSAGE =
+  "Vai trò hiện tại chỉ có quyền xem và thao tác trong phạm vi được phân công.";
+
 function getStaffCartPayableTotal({ discountBreakdown, fallbackTotal }) {
   return Number(
     discountBreakdown?.grandTotal ??
@@ -66,7 +74,18 @@ export default function CartBottomSheet({
   discountError,
   discountLoading = false,
 }) {
+  const { user } = useContext(AuthContext) || {};
+  const isRemoteOrder = table?.id === "remote_order";
+  const permissions = useMemo(() => {
+    return getStaffOrderingPermissions(user, { isRemoteOrder });
+  }, [isRemoteOrder, user]);
+
   const handleRequestVoid = (item) => {
+    if (!permissions.canRequestItemVoid) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+
     const maxQty = Number(item.quantity || 1);
     const rawQty = window.prompt(
       `Nhập số lượng muốn hủy/giảm cho [${item.name}] (tối đa ${maxQty}):`,
@@ -88,6 +107,38 @@ export default function CartBottomSheet({
       quantity,
       reason: reason.trim(),
     });
+  };
+
+  const handleSend = () => {
+    if (!permissions.canCreateOrder) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+    onSendKitchen?.();
+  };
+
+  const handleCheckout = () => {
+    if (!permissions.canRequestPayment) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+    onCheckout?.();
+  };
+
+  const handlePersistedQuantityAdjust = (item, delta) => {
+    if (!permissions.canAdjustItemQuantity) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+    onAdjustPersistedItemQuantity?.(item, delta);
+  };
+
+  const handleRemind = (item) => {
+    if (!permissions.canRemindItems) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+    onRemindItem?.(item);
   };
 
   const totalPrice = cart.reduce(
@@ -114,6 +165,10 @@ export default function CartBottomSheet({
             <X size={24} />
           </button>
         </div>
+
+        {permissions.isReadOnlyRole && (
+          <div className="staff-inline-state">{READONLY_MESSAGE}</div>
+        )}
 
         <div className="sheet-body">
           {cart.length === 0 ? (
@@ -209,7 +264,12 @@ export default function CartBottomSheet({
                         step="1"
                         placeholder="Nhập cân nặng (gram)"
                         value={item.weightGrams ?? ""}
+                        disabled={!permissions.canEditPendingItem}
                         onChange={(e) => {
+                          if (!permissions.canEditPendingItem) {
+                            alert(NO_PERMISSION_MESSAGE);
+                            return;
+                          }
                           const raw = e.target.value;
                           setCart((prev) =>
                             (prev || []).map((c) =>
@@ -230,51 +290,70 @@ export default function CartBottomSheet({
                   <div className="actions">
                     <button
                       className={`btn-icon ${item.hasPhoto ? "active-cam" : ""}`}
-                      onClick={() => onOpenProofCapture?.(item)}
+                      disabled={!permissions.canCaptureProof}
+                      onClick={() => {
+                        if (!permissions.canCaptureProof) {
+                          alert(NO_PERMISSION_MESSAGE);
+                          return;
+                        }
+                        onOpenProofCapture?.(item);
+                      }}
                     >
                       <Camera size={16} />
                     </button>
                     {item.status === "pending" && !item.persisted ? (
-                      <button
-                        className="btn-icon btn-minus"
-                        onClick={() =>
-                          setCart((prev) =>
-                            (prev || []).flatMap((c) => {
-                              if (c.id !== item.id) return [c];
-                              const nextQty = Number(c.quantity || 1) - 1;
-                              return nextQty > 0
-                                ? [{ ...c, quantity: nextQty }]
-                                : [];
-                            }),
-                          )
-                        }
-                      >
-                        <Minus size={16} />
-                      </button>
+                      permissions.canCreateOrder && (
+                        <button
+                          className="btn-icon btn-minus"
+                          onClick={() => {
+                            if (!permissions.canEditPendingItem) {
+                              alert(NO_PERMISSION_MESSAGE);
+                              return;
+                            }
+                            setCart((prev) =>
+                              (prev || []).flatMap((c) => {
+                                if (c.id !== item.id) return [c];
+                                const nextQty = Number(c.quantity || 1) - 1;
+                                return nextQty > 0
+                                  ? [{ ...c, quantity: nextQty }]
+                                  : [];
+                              }),
+                            );
+                          }}
+                        >
+                          <Minus size={16} />
+                        </button>
+                      )
                     ) : item.status === "pending" && item.persisted ? (
-                      <button
-                        className="btn-icon btn-minus"
-                        onClick={() =>
-                          onAdjustPersistedItemQuantity?.(item, -1)
-                        }
-                      >
-                        <Minus size={16} />
-                      </button>
+                      permissions.canAdjustItemQuantity && (
+                        <button
+                          className="btn-icon btn-minus"
+                          onClick={() =>
+                            handlePersistedQuantityAdjust(item, -1)
+                          }
+                        >
+                          <Minus size={16} />
+                        </button>
+                      )
                     ) : item.status !== "void_pending" ? (
                       <>
-                        <button
-                          className="btn-icon btn-void"
-                          onClick={() => handleRequestVoid(item)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <button
-                          className="btn-icon"
-                          onClick={() => onRemindItem?.(item)}
-                          title="Nhắc món"
-                        >
-                          <Clock size={16} />
-                        </button>
+                        {permissions.canRequestItemVoid && (
+                          <button
+                            className="btn-icon btn-void"
+                            onClick={() => handleRequestVoid(item)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                        {permissions.canRemindItems && (
+                          <button
+                            className="btn-icon"
+                            onClick={() => onRemindItem?.(item)}
+                            title="Nhắc món"
+                          >
+                            <Clock size={16} />
+                          </button>
+                        )}
                       </>
                     ) : null}
                   </div>
@@ -304,15 +383,30 @@ export default function CartBottomSheet({
                     className="staff-discount-input"
                     value={voucherCode}
                     placeholder="Nhập mã voucher"
-                    onChange={(event) =>
-                      onVoucherCodeChange?.(event.target.value)
-                    }
+                    disabled={!permissions.canApplyVoucher}
+                    onChange={(event) => {
+                      if (!permissions.canApplyVoucher) {
+                        alert(NO_PERMISSION_MESSAGE);
+                        return;
+                      }
+                      onVoucherCodeChange?.(event.target.value);
+                    }}
                   />
                   <button
                     className="btn-sub"
                     type="button"
-                    disabled={discountLoading || !voucherCode.trim()}
-                    onClick={onApplyVoucher}
+                    disabled={
+                      discountLoading ||
+                      !voucherCode.trim() ||
+                      !permissions.canApplyVoucher
+                    }
+                    onClick={() => {
+                      if (!permissions.canApplyVoucher) {
+                        alert(NO_PERMISSION_MESSAGE);
+                        return;
+                      }
+                      onApplyVoucher?.();
+                    }}
                   >
                     <Tag size={16} />{" "}
                     {discountLoading ? "Đang kiểm..." : "Áp dụng"}
@@ -366,20 +460,26 @@ export default function CartBottomSheet({
           <div className="main-actions">
             <button
               className="btn-primary btn-send-kitchen"
-              disabled={cart.length === 0 || sending}
-              onClick={onSendKitchen}
+              disabled={cart.length === 0 || sending || !permissions.canCreateOrder}
+              onClick={handleSend}
             >
               <CheckCircle2 size={20} />{" "}
               {sending ? "Đang gửi..." : sendActionLabel}
             </button>
             <button
               className="btn-primary btn-checkout"
-              disabled={cart.length === 0 || !checkoutEnabled}
-              onClick={onCheckout}
+              disabled={
+                cart.length === 0 ||
+                !checkoutEnabled ||
+                !permissions.canRequestPayment
+              }
+              onClick={handleCheckout}
               title={
-                checkoutEnabled
-                  ? "Yêu cầu thanh toán"
-                  : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"
+                permissions.canRequestPayment
+                  ? checkoutEnabled
+                    ? "Yêu cầu thanh toán"
+                    : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"
+                  : READONLY_MESSAGE
               }
             >
               <Banknote size={20} /> Thanh Toán
