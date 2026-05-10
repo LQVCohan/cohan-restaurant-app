@@ -19,7 +19,6 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 
-  /* Status Colors */
   --s-available-bg: #ecfdf5;
   --s-available-tx: #059669;
   --s-available-bd: #a7f3d0;
@@ -50,7 +49,6 @@
   font-family: -apple-system, sans-serif;
 }
 
-/* --- 1. HEADER TABS --- */
 .header {
   flex-shrink: 0;
 }
@@ -92,7 +90,6 @@
   }
 }
 
-/* --- 2. CONTROLS --- */
 .controls {
   display: flex;
   flex-direction: column;
@@ -100,10 +97,9 @@
   flex-shrink: 0;
 }
 
-/* New Order Boxes */
 .newOrderBox {
   background: #fff;
-  border: 1px solid var(--primary); /* Viền màu cam nhẹ để nhấn mạnh */
+  border: 1px solid var(--primary);
   border-radius: var(--radius-lg);
   padding: 0.75rem;
   display: flex;
@@ -126,7 +122,6 @@
   gap: 0.5rem;
 }
 
-/* === COLLAPSIBLE FILTER SECTION === */
 .filterWrapper {
   border: 1px solid var(--border-color);
   background: var(--bg-body);
@@ -154,7 +149,6 @@
   }
 }
 
-/* Khi có nội dung bên trong thì hiện border ngăn cách */
 .filterWrapper:has(.filterContent) .filterToggleBtn {
   border-bottom-color: var(--border-color);
   background: #fdfdfd;
@@ -175,12 +169,11 @@
   margin-bottom: 5px;
 }
 
-/* Nội dung bộ lọc */
 .filterContent {
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem; /* Khoảng cách giữa các dòng input/chip */
+  gap: 0.6rem;
   background: var(--bg-body);
   animation: slideDown 0.2s ease-out;
 }
@@ -259,7 +252,6 @@
   border-top: 1px dashed var(--border-color);
 }
 
-/* General Button Styles */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -307,7 +299,6 @@
   font-size: 0.8rem;
 }
 
-/* --- 3. TABLES GRID --- */
 .tablesGrid {
   flex: 1;
   overflow-y: auto;
@@ -325,7 +316,6 @@
   }
 }
 
-/* Table Item */
 .tableItem {
   position: relative;
   background: #fff;
@@ -352,7 +342,6 @@
   }
 }
 
-/* Colors based on Data Status */
 .tableItem[data-status="available"] {
   background: var(--s-available-bg);
   border-color: var(--s-available-bd);
@@ -390,7 +379,6 @@
   }
 }
 
-/* Content */
 .tableTop {
   display: flex;
   justify-content: space-between;
@@ -427,6 +415,25 @@
   opacity: 0.8;
 }
 
+.paymentRequestRow {
+  margin-top: 0.5rem;
+  display: flex;
+}
+
+.paymentRequestBadge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .kebab {
   width: 24px;
   height: 24px;
@@ -447,7 +454,6 @@
   }
 }
 
-/* States */
 .selected {
   outline: 2px solid var(--primary);
   outline-offset: -1px;
