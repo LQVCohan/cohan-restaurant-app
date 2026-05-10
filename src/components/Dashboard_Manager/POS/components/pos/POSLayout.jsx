@@ -3,8 +3,10 @@ import styles from "./POSLayout.module.scss";
 import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
+import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosProvider from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
+
 export default function POSLayout() {
   // sau bạn truyền từ router cũng được
   const { user, restaurants } = useContext(AuthContext) || {};
@@ -88,6 +90,7 @@ export default function POSLayout() {
     localStorage.setItem(lockKey, restaurantId);
     setIsLocked(true);
   };
+
   return (
     <div className={styles.page}>
       <div className={styles.restaurantBar}>
@@ -126,23 +129,21 @@ export default function POSLayout() {
       ) : (
         <PosProvider restaurantId={restaurantId}>
           <div className={styles.shell}>
-            {/* Cột trái: bàn */}
             <div className={styles.leftCol}>
               <div className={styles.card}>
                 <LeftPanel />
               </div>
             </div>
 
-            {/* Cột giữa: menu */}
             <div className={styles.centerCol}>
               <div className={styles.card}>
                 <CenterPanel />
               </div>
             </div>
 
-            {/* Cột phải: order hiện tại */}
             <div className={styles.rightCol}>
               <div className={styles.card}>
+                <TablePaymentRequestNotice />
                 <RightPanel />
               </div>
             </div>
