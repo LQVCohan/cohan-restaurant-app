@@ -135,7 +135,7 @@ const StaffKitchenPage = () => {
       const saveKey = `${order.id}:${itemKey}`;
       setSavingKey(saveKey);
       try {
-        await updateItemStatus({
+        const result = await updateItemStatus({
           orderId: order.id,
           itemKey,
           status: nextStatus,
@@ -144,6 +144,10 @@ const StaffKitchenPage = () => {
           itemsSnapshot: order?.items,
           afterSuccess: () => reloadOrders("network-only"),
         });
+
+        if (!result?.success) {
+          throw new Error(result?.message || "Không thể cập nhật trạng thái món.");
+        }
       } catch (error) {
         showNotification(error?.message || "Không thể cập nhật trạng thái món.", "error");
       } finally {
