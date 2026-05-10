@@ -21,6 +21,8 @@ input PayOrdersByTableIdInput {
   note: String
   externalRef: String
   includeUnserved: Boolean = false
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
 }
 input PayOrdersByOrderIdsInput {
   restaurantId: ID!
@@ -30,6 +32,8 @@ input PayOrdersByOrderIdsInput {
   paidAt: DateTime
   note: String
   externalRef: String
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
 }
 enum InvoiceStatus {
   UNPAID
