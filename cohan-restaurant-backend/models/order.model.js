@@ -2,10 +2,6 @@ import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 import ShippingSchema from "./order-shipping.model.js";
 import { UnitEnum } from "./ingredient.model.js";
-import {
-  ORDER_KIND,
-  autoClearPaymentRequestForNewChildOrder,
-} from "../utils/orderLifecycle.js";
 
 const { Schema } = mongoose;
 
@@ -503,19 +499,6 @@ OrderSchema.pre("save", function (next) {
     this.calculateTotals();
   }
   next();
-});
-
-OrderSchema.pre("save", async function (next) {
-  try {
-    await autoClearPaymentRequestForNewChildOrder({
-      OrderModel: this.constructor,
-      newOrderDoc: this,
-      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
-    });
-    next();
-  } catch (error) {
-    next(error);
-  }
 });
 
 OrderSchema.index({ restaurantId: 1, orderCode: 1 });
