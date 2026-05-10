@@ -4,10 +4,10 @@ import {
   ORDER_PAYMENT_STATUS,
   SESSION_STATUS,
   activeTableSessionLookupFilter,
-  autoClearPaymentRequestForNewChildOrder,
   buildActiveTableSessionKey,
   buildClearPaymentRequestUpdate,
   childOrdersForSessionFilter,
+  clearPaymentRequestAfterNewChildOrderBatchCreated,
   clearTablePaymentRequestState,
   isKitchenPayable,
   isOrderBatch,
@@ -269,7 +269,7 @@ describe("orderLifecycle helpers", () => {
     );
   });
 
-  it("autoClearPaymentRequestForNewChildOrder clears stale request when adding a new order_batch", async () => {
+  it("clearPaymentRequestAfterNewChildOrderBatchCreated clears stale request after a new order_batch is created", async () => {
     const updatedSession = {
       _id: "parent-1",
       sessionStatus: SESSION_STATUS.DINING,
@@ -292,21 +292,19 @@ describe("orderLifecycle helpers", () => {
       updateOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       find: vi.fn().mockReturnValue(queryChain(updatedOrders)),
     };
-    const newOrderDoc = {
+    const createdOrder = {
       _id: "new-child",
-      isNew: true,
       orderType: "dine_in",
       orderKind: ORDER_KIND.ORDER_BATCH,
       restaurantId: "rest-1",
       tableId: "table-1",
       tableCode: "T1",
       parentOrderId: "parent-1",
-      $session: () => null,
     };
 
-    const out = await autoClearPaymentRequestForNewChildOrder({
+    const out = await clearPaymentRequestAfterNewChildOrderBatchCreated({
       OrderModel,
-      newOrderDoc,
+      order: createdOrder,
       reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
       now: new Date("2026-05-10T20:20:00.000Z"),
     });
@@ -319,7 +317,38 @@ describe("orderLifecycle helpers", () => {
     });
   });
 
-  it("autoClearPaymentRequestForNewChildOrder does nothing when session is not payment_requested", async () => {
+  it("clearPaymentRequestAfterNewChildOrderBatchCreated does nothing for delivery/takeaway orders", async () => {
+    const OrderModel = {
+      findOne: vi.fn(),
+      updateMany: vi.fn(),
+      updateOne: vi.fn(),
+      find: vi.fn(),
+    };
+
+    for (const orderType of ["delivery", "takeaway"]) {
+      const out = await clearPaymentRequestAfterNewChildOrderBatchCreated({
+        OrderModel,
+        order: {
+          _id: "new-child",
+          orderType,
+          orderKind: ORDER_KIND.ORDER_BATCH,
+          restaurantId: "rest-1",
+          tableId: "table-1",
+          tableCode: "T1",
+          parentOrderId: "parent-1",
+        },
+        reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+      });
+
+      expect(out).toEqual({ cleared: false, session: null, orders: [] });
+    }
+
+    expect(OrderModel.findOne).not.toHaveBeenCalled();
+    expect(OrderModel.updateMany).not.toHaveBeenCalled();
+    expect(OrderModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  it("clearPaymentRequestAfterNewChildOrderBatchCreated does nothing when session is not payment_requested", async () => {
     const OrderModel = {
       findOne: vi.fn().mockReturnValue(queryChain(null)),
       updateMany: vi.fn(),
@@ -327,18 +356,16 @@ describe("orderLifecycle helpers", () => {
       find: vi.fn(),
     };
 
-    const out = await autoClearPaymentRequestForNewChildOrder({
+    const out = await clearPaymentRequestAfterNewChildOrderBatchCreated({
       OrderModel,
-      newOrderDoc: {
+      order: {
         _id: "new-child",
-        isNew: true,
         orderType: "dine_in",
         orderKind: ORDER_KIND.ORDER_BATCH,
         restaurantId: "rest-1",
         tableId: "table-1",
         tableCode: "T1",
         parentOrderId: "parent-1",
-        $session: () => null,
       },
       reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
     });
