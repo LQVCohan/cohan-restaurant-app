@@ -11,8 +11,10 @@ import {
   Table,
   Restaurant,
   PaymentSession,
+  Coupon,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
@@ -27,15 +29,19 @@ import {
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
-
 function hasPendingItemWork(order) {
-  return (order?.items || []).some((item) => ["pending", "confirmed", "preparing", "ready"].includes(String(item?.status || "").toLowerCase()));
+  return (order?.items || []).some((item) =>
+    ["pending", "confirmed", "preparing", "ready"].includes(
+      String(item?.status || "").toLowerCase(),
+    ),
+  );
 }
 
 function hasPendingAdjustmentRequests(order) {
-  return (order?.items || []).some((item) =>
-    (item?.voidRequests || []).some((req) => req?.status === "pending") ||
-    (item?.returnRequests || []).some((req) => req?.status === "pending"),
+  return (order?.items || []).some(
+    (item) =>
+      (item?.voidRequests || []).some((req) => req?.status === "pending") ||
+      (item?.returnRequests || []).some((req) => req?.status === "pending"),
   );
 }
 
@@ -68,10 +74,10 @@ function normalizeLine(item) {
   if (!(qty > 0)) return null;
 
   const unitPrice = Number(
-    item.unitPrice ?? item.price ?? item.baseUnitPrice ?? 0
+    item.unitPrice ?? item.price ?? item.baseUnitPrice ?? 0,
   );
   const modifiersPrice = Number(
-    item.modifiersPricePerUnit ?? item.modifiersPrice ?? 0
+    item.modifiersPricePerUnit ?? item.modifiersPrice ?? 0,
   );
 
   const key = buildLineKey(item, unitPrice, modifiersPrice);
@@ -86,7 +92,7 @@ function normalizeLine(item) {
       name: item.name,
       unit: item.unit,
       price: unitPrice,
-      modifiersPrice: modifiersPrice,
+      modifiersPrice,
       quantity: qty,
       totals: lineTotal,
       modifiers: (item.modifiers ?? []).map((m) => ({
@@ -120,8 +126,10 @@ function accumulateTotals(order, subtotalIncluded, linesSubtotal) {
   const baseSubtotal =
     order.items?.reduce(
       (sum, it) =>
-        EXCLUDED_ITEM_STATUSES.has(it.status) ? sum : sum + (it.lineSubtotal || 0),
-      0
+        EXCLUDED_ITEM_STATUSES.has(it.status)
+          ? sum
+          : sum + (it.lineSubtotal || 0),
+      0,
     ) || 0;
 
   const ratio = baseSubtotal > 0 ? linesSubtotal / baseSubtotal : 1;
@@ -141,6 +149,190 @@ function accumulateTotals(order, subtotalIncluded, linesSubtotal) {
   };
 }
 
+function normalizeVoucherCode(value) {
+  const code = String(value || "").trim().toUpperCase();
+  return code || undefined;
+}
+
+function normalizePromotionIds(promotionIds = []) {
+  return Array.isArray(promotionIds)
+    ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+}
+
+function hasPaymentDiscountSelection({ pricing, promotionIds }) {
+  return (
+    Boolean(normalizeVoucherCode(pricing?.voucherCode)) ||
+    normalizePromotionIds(promotionIds).length > 0
+  );
+}
+
+function buildPaymentDiscountPricing({ pricing = {}, aggregatedTotals = {} }) {
+  const subtotal = Math.max(0, Number(aggregatedTotals?.subtotal || 0));
+  const service = Math.max(0, Number(aggregatedTotals?.service || 0));
+  const tax = Math.max(0, Number(aggregatedTotals?.tax || 0));
+
+  const serviceRate = Number.isFinite(Number(pricing?.serviceRate))
+    ? Math.max(0, Number(pricing.serviceRate))
+    : subtotal > 0
+      ? service / subtotal
+      : 0;
+
+  const beforeTaxBase = Math.max(0, subtotal + service);
+  const taxRate = Number.isFinite(Number(pricing?.taxRate))
+    ? Math.max(0, Number(pricing.taxRate))
+    : beforeTaxBase > 0
+      ? tax / beforeTaxBase
+      : 0;
+
+  return {
+    serviceRate,
+    taxRate,
+    shippingFee: Math.max(
+      0,
+      Number(pricing?.shippingFee ?? aggregatedTotals?.shippingFee ?? 0),
+    ),
+    voucherCode: normalizeVoucherCode(pricing?.voucherCode),
+  };
+}
+
+function buildDiscountItemsFromOrders(orders = []) {
+  return orders.flatMap((order) =>
+    (order.items || [])
+      .filter(
+        (item) =>
+          !EXCLUDED_ITEM_STATUSES.has(
+            String(item?.status || "").toLowerCase(),
+          ),
+      )
+      .map((item) => ({
+        ...item,
+        lineSubtotal: Number(item?.lineSubtotal || 0),
+        status: item?.status || "served",
+      }))
+      .filter((item) => Number(item.lineSubtotal || 0) > 0),
+  );
+}
+
+async function incrementCouponUsageOnce({ totals, session }) {
+  if (!totals?.couponId) return;
+
+  const updateResult = await Coupon.updateOne(
+    {
+      _id: totals.couponId,
+      $expr: {
+        $or: [
+          { $lte: ["$maxUsage", 0] },
+          { $lt: ["$used", "$maxUsage"] },
+        ],
+      },
+    },
+    { $inc: { used: 1 } },
+    { session },
+  );
+
+  if (!updateResult.modifiedCount) {
+    throw new Error("Invalid voucher: usage limit reached");
+  }
+}
+
+async function calculatePaymentTotalsWithOptionalDiscount({
+  restaurantId,
+  orders,
+  aggregatedTotals,
+  pricing,
+  promotionIds,
+}) {
+  const hasDiscount = hasPaymentDiscountSelection({ pricing, promotionIds });
+
+  if (!hasDiscount) {
+    return {
+      totals: aggregatedTotals,
+      discountTotals: null,
+      appliedDiscount: false,
+    };
+  }
+
+  const discountItems = buildDiscountItemsFromOrders(orders);
+
+  if (!discountItems.length) {
+    throw new Error("No payable items for discount calculation");
+  }
+
+  const discountTotals = await calculateDiscountBreakdown({
+    restaurantId,
+    items: discountItems,
+    pricing: buildPaymentDiscountPricing({ pricing, aggregatedTotals }),
+    promotionIds: normalizePromotionIds(promotionIds),
+  });
+
+  return {
+    totals: {
+      subtotal: discountTotals.subtotal,
+      discount: discountTotals.discount,
+      tax: discountTotals.tax,
+      service: discountTotals.service,
+      shippingFee: discountTotals.shippingFee || 0,
+      grandTotal: discountTotals.grandTotal,
+      voucherCode: discountTotals.voucherCode || null,
+      promotionId: discountTotals.appliedPromotions?.[0] || null,
+      discountReason: discountTotals.discountReason || null,
+    },
+    discountTotals,
+    appliedDiscount: true,
+  };
+}
+
+function resolvePaymentAmount({ paidAmount, expectedTotal, appliedDiscount }) {
+  const expected = Math.round(Number(expectedTotal || 0));
+
+  if (!(expected > 0)) {
+    throw new Error("Invalid payment total");
+  }
+
+  if (paidAmount == null || paidAmount === "") {
+    return expected;
+  }
+
+  const amount = Math.round(Number(paidAmount));
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid paidAmount");
+  }
+
+  if (appliedDiscount && Math.abs(amount - expected) > 1) {
+    throw new Error("Payment amount does not match backend discounted total");
+  }
+
+  return amount;
+}
+
+function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
+  if (!appliedDiscount && !discountTotals) return undefined;
+
+  return {
+    discountApplied: appliedDiscount,
+    voucherCode: discountTotals?.voucherCode || null,
+    promotionIds:
+      discountTotals?.appliedPromotions ||
+      normalizePromotionIds(promotionIds),
+    discountTotals: discountTotals
+      ? {
+          subtotal: discountTotals.subtotal,
+          totalDiscount: discountTotals.totalDiscount,
+          discount: discountTotals.discount,
+          tax: discountTotals.tax,
+          service: discountTotals.service,
+          shippingFee: discountTotals.shippingFee || 0,
+          grandTotal: discountTotals.grandTotal,
+          voucherCode: discountTotals.voucherCode || null,
+          couponId: discountTotals.couponId || null,
+          appliedPromotions: discountTotals.appliedPromotions || [],
+        }
+      : null,
+  };
+}
+
 export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   const {
     restaurantId,
@@ -151,6 +343,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     note,
     externalRef,
     includeUnserved = false,
+    pricing,
+    promotionIds,
   } = input || {};
 
   const rid = toId(restaurantId);
@@ -162,7 +356,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   await requireRestaurantAccess(ctx, rid);
 
   const normMethod = String(method || "").toLowerCase();
-  if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
+  if (
+    !["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(
+      normMethod,
+    )
+  ) {
     throw new Error("Unsupported payment method");
   }
 
@@ -254,12 +452,20 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   }
 
   const allLines = [];
-  let aggregatedTotals = { subtotal: 0, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 0 };
+  let aggregatedTotals = {
+    subtotal: 0,
+    discount: 0,
+    tax: 0,
+    service: 0,
+    shippingFee: 0,
+    grandTotal: 0,
+  };
   const orderIds = payOrders.map((o) => o._id);
 
   for (const order of payOrders) {
     const filteredItems = (order.items || []).filter(
-      (it) => !EXCLUDED_ITEM_STATUSES.has(String(it.status || "").toLowerCase())
+      (it) =>
+        !EXCLUDED_ITEM_STATUSES.has(String(it.status || "").toLowerCase()),
     );
 
     const normalizedLines = filteredItems.map(normalizeLine).filter(Boolean);
@@ -287,8 +493,24 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
+  const {
+    totals: payableTotals,
+    discountTotals,
+    appliedDiscount,
+  } = await calculatePaymentTotalsWithOptionalDiscount({
+    restaurantId: rid,
+    orders: payOrders,
+    aggregatedTotals,
+    pricing,
+    promotionIds,
+  });
+
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
-  const amountToPay = paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
+  const amountToPay = resolvePaymentAmount({
+    paidAmount,
+    expectedTotal: payableTotals.grandTotal,
+    appliedDiscount,
+  });
 
   const session = await startSession();
   session.startTransaction();
@@ -308,7 +530,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           createdBy: ctx?.user?.id,
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
 
     const number = await generateInvoiceNumber(Invoice, session);
@@ -323,24 +545,33 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           issuedAt: now,
           lines: mergedLines,
           totals: {
-            subtotal: aggregatedTotals.subtotal,
-            discount: aggregatedTotals.discount,
-            tax: aggregatedTotals.tax,
-            service: aggregatedTotals.service,
-            grandTotal: aggregatedTotals.grandTotal,
+            subtotal: payableTotals.subtotal,
+            discount: payableTotals.discount,
+            discountReason: payableTotals.discountReason || undefined,
+            voucherCode: payableTotals.voucherCode || undefined,
+            promotionId: payableTotals.promotionId || undefined,
+            tax: payableTotals.tax,
+            service: payableTotals.service,
+            shippingFee: payableTotals.shippingFee,
+            grandTotal: payableTotals.grandTotal,
           },
           paid: amountToPay,
           status:
-            amountToPay + 1e-6 >= aggregatedTotals.grandTotal
+            amountToPay + 1e-6 >= payableTotals.grandTotal
               ? "PAID"
               : amountToPay > 0
-              ? "PARTIAL"
-              : "UNPAID",
+                ? "PARTIAL"
+                : "UNPAID",
           currency: "VND",
           refTransactionId: trx._id,
+          meta: buildInvoiceMeta({
+            appliedDiscount,
+            discountTotals,
+            promotionIds,
+          }),
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
 
     const cashflow = await Cashflow.create(
@@ -362,10 +593,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           occurredAt: now,
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
 
-    // update orders status/payments
+    await incrementCouponUsageOnce({ totals: discountTotals, session });
+
     await Order.updateMany(
       { _id: { $in: orderIds } },
       {
@@ -386,7 +618,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           },
         },
       },
-      { session }
+      { session },
     );
 
     const shouldCloseParentSession =
@@ -400,11 +632,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
               payOrders
                 .map((o) => o.parentOrderId || o.rootOrderId)
                 .filter(Boolean)
-                .map(String)
+                .map(String),
             ),
           ]
-            .map((id) => toId(id))
-            .filter(Boolean);
+              .map((id) => toId(id))
+              .filter(Boolean);
 
       if (parentSessionIds.length) {
         await Order.updateMany(
@@ -435,11 +667,10 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
               },
             },
           },
-          { session }
+          { session },
         );
       }
     }
-
 
     await EventLog.log(
       {
@@ -456,15 +687,18 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           includeUnserved,
           paidAmount: amountToPay,
           method: normMethod,
+          discountApplied: appliedDiscount,
+          voucherCode: discountTotals?.voucherCode || null,
+          promotionIds: discountTotals?.appliedPromotions || [],
         },
       },
-      { session }
+      { session },
     );
 
     await Table.updateOne(
       { _id: tid },
       { $set: { status: "available" } },
-      { session }
+      { session },
     ).catch(() => {});
 
     await session.commitTransaction();
@@ -472,7 +706,12 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
     const paidOrders = await Order.find({ _id: { $in: orderIds } });
     for (const paidOrder of paidOrders) {
-      await emitOrderEvent(ctx, String(paidOrder.restaurantId), "ORDER_UPDATED", paidOrder);
+      await emitOrderEvent(
+        ctx,
+        String(paidOrder.restaurantId),
+        "ORDER_UPDATED",
+        paidOrder,
+      );
     }
 
     return {
@@ -498,6 +737,8 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     paidAt,
     note,
     externalRef,
+    pricing,
+    promotionIds,
   } = input || {};
 
   const rid = toId(restaurantId);
@@ -523,7 +764,11 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   ];
 
   const normMethod = String(method || "").toLowerCase();
-  if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
+  if (
+    !["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(
+      normMethod,
+    )
+  ) {
     throw new Error("Unsupported payment method");
   }
 
@@ -549,18 +794,28 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
       throw new Error("Không thể thanh toán khi còn món chưa phục vụ xong.");
     }
     if (hasPendingAdjustmentRequests(order)) {
-      throw new Error("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+      throw new Error(
+        "Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.",
+      );
     }
   }
 
   const pendingCodes = [];
   const allLines = [];
-  let aggregatedTotals = { subtotal: 0, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 0 };
+  let aggregatedTotals = {
+    subtotal: 0,
+    discount: 0,
+    tax: 0,
+    service: 0,
+    shippingFee: 0,
+    grandTotal: 0,
+  };
   const activeOrderIds = orders.map((o) => o._id);
 
   for (const order of orders) {
     const filteredItems = (order.items || []).filter(
-      (it) => !EXCLUDED_ITEM_STATUSES.has(String(it.status || "").toLowerCase())
+      (it) =>
+        !EXCLUDED_ITEM_STATUSES.has(String(it.status || "").toLowerCase()),
     );
 
     const normalizedLines = filteredItems.map(normalizeLine).filter(Boolean);
@@ -588,9 +843,24 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     };
   }
 
+  const {
+    totals: payableTotals,
+    discountTotals,
+    appliedDiscount,
+  } = await calculatePaymentTotalsWithOptionalDiscount({
+    restaurantId: rid,
+    orders,
+    aggregatedTotals,
+    pricing,
+    promotionIds,
+  });
+
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
-  const amountToPay =
-    paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
+  const amountToPay = resolvePaymentAmount({
+    paidAmount,
+    expectedTotal: payableTotals.grandTotal,
+    appliedDiscount,
+  });
   const firstOrder = orders[0] || null;
 
   const session = await startSession();
@@ -611,7 +881,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           createdBy: actorId || ctx?.user?.id,
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
 
     const number = await generateInvoiceNumber(Invoice, session);
@@ -626,24 +896,33 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           issuedAt: now,
           lines: mergedLines,
           totals: {
-            subtotal: aggregatedTotals.subtotal,
-            discount: aggregatedTotals.discount,
-            tax: aggregatedTotals.tax,
-            service: aggregatedTotals.service,
-            grandTotal: aggregatedTotals.grandTotal,
+            subtotal: payableTotals.subtotal,
+            discount: payableTotals.discount,
+            discountReason: payableTotals.discountReason || undefined,
+            voucherCode: payableTotals.voucherCode || undefined,
+            promotionId: payableTotals.promotionId || undefined,
+            tax: payableTotals.tax,
+            service: payableTotals.service,
+            shippingFee: payableTotals.shippingFee,
+            grandTotal: payableTotals.grandTotal,
           },
           paid: amountToPay,
           status:
-            amountToPay + 1e-6 >= aggregatedTotals.grandTotal
+            amountToPay + 1e-6 >= payableTotals.grandTotal
               ? "PAID"
               : amountToPay > 0
                 ? "PARTIAL"
                 : "UNPAID",
           currency: "VND",
           refTransactionId: trx._id,
+          meta: buildInvoiceMeta({
+            appliedDiscount,
+            discountTotals,
+            promotionIds,
+          }),
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
 
     const cashflow = await Cashflow.create(
@@ -662,8 +941,10 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           occurredAt: now,
         },
       ],
-      { session }
+      { session },
     ).then((r) => r[0]);
+
+    await incrementCouponUsageOnce({ totals: discountTotals, session });
 
     await Order.updateMany(
       { _id: { $in: activeOrderIds } },
@@ -685,7 +966,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           },
         },
       },
-      { session }
+      { session },
     );
 
     await EventLog.log(
@@ -701,9 +982,12 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           orders: activeOrderIds.map(String),
           paidAmount: amountToPay,
           method: normMethod,
+          discountApplied: appliedDiscount,
+          voucherCode: discountTotals?.voucherCode || null,
+          promotionIds: discountTotals?.appliedPromotions || [],
         },
       },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -711,7 +995,12 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
     const paidOrders = await Order.find({ _id: { $in: activeOrderIds } });
     for (const paidOrder of paidOrders) {
-      await emitOrderEvent(ctx, String(paidOrder.restaurantId), "ORDER_UPDATED", paidOrder);
+      await emitOrderEvent(
+        ctx,
+        String(paidOrder.restaurantId),
+        "ORDER_UPDATED",
+        paidOrder,
+      );
     }
 
     return {
@@ -728,13 +1017,18 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 };
 
-
-
-export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
+export const createReservationPaymentMutation = async (
+  _parent,
+  { input },
+  ctx,
+) => {
   const userId = ctx?.user?.id;
   if (!userId) throw new Error("Unauthorized");
 
-  const baseApiUrl = process.env.PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL || "http://localhost:4000";
+  const baseApiUrl =
+    process.env.PUBLIC_BASE_URL ||
+    process.env.APP_PUBLIC_URL ||
+    "http://localhost:4000";
 
   const payment = await createReservationPayment({
     reservationId: input?.reservationId,
@@ -748,23 +1042,26 @@ export const createReservationPaymentMutation = async (_parent, { input }, ctx) 
 };
 
 export const syncPaymentStatus = async (_parent, { paymentId }) => {
-  if (!mongoose.isValidObjectId(paymentId)) throw new Error("Invalid paymentId");
+  if (!mongoose.isValidObjectId(paymentId))
+    throw new Error("Invalid paymentId");
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
 
   if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
-    // VNPAY bản chuẩn cần query API riêng; ở đây fallback trả trạng thái đã biết.
     return payment;
   }
   if (payment.provider === "momo" && payment.providerResponseRaw?.orderId) {
-    // MoMo query API optional; callback/webhook vẫn là source of truth.
     return payment;
   }
 
   return payment;
 };
 
-export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) => {
+export const updateRestaurantPaymentSettings = async (
+  _parent,
+  { input },
+  ctx,
+) => {
   if (!ctx?.user?.id) throw new Error("Unauthorized");
   const role = String(ctx?.user?.roleName || ctx?.user?.role || "").toLowerCase();
   if (!["manager", "admin"].some((x) => role.includes(x))) {
@@ -779,16 +1076,27 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
   const normalizedProviders = providers
     .map((p, idx) => ({
       provider: String(p?.provider || "").toLowerCase(),
-      label: String(p?.label || "").trim() || (String(p?.provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY"),
+      label:
+        String(p?.label || "").trim() ||
+        (String(p?.provider || "").toLowerCase() === "momo"
+          ? "MoMo"
+          : "VNPAY"),
       active: p?.active !== false,
-      priority: Number.isFinite(Number(p?.priority)) ? Number(p.priority) : idx + 1,
-      mode: String(p?.mode || "sandbox").toLowerCase() === "production" ? "production" : "sandbox",
+      priority: Number.isFinite(Number(p?.priority))
+        ? Number(p.priority)
+        : idx + 1,
+      mode:
+        String(p?.mode || "").toLowerCase() === "production"
+          ? "production"
+          : "sandbox",
     }))
     .filter((p) => ["momo", "vnpay"].includes(p.provider));
 
-  const defaultProvider = ["momo", "vnpay"].includes(String(input?.defaultProvider || "").toLowerCase())
+  const defaultProvider = ["momo", "vnpay"].includes(
+    String(input?.defaultProvider || "").toLowerCase(),
+  )
     ? String(input.defaultProvider).toLowerCase()
-    : (normalizedProviders[0]?.provider || "momo");
+    : normalizedProviders[0]?.provider || "momo";
 
   const restaurant = await Restaurant.findByIdAndUpdate(
     rid,
@@ -800,7 +1108,7 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
         },
       },
     },
-    { new: true }
+    { new: true },
   );
 
   if (!restaurant) throw new Error("Restaurant not found");
@@ -812,12 +1120,15 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
     object: { kind: "Restaurant", id: restaurant._id },
     source: "web",
     status: "success",
-    meta: { action: "update_payment_settings", defaultProvider, providers: normalizedProviders },
+    meta: {
+      action: "update_payment_settings",
+      defaultProvider,
+      providers: normalizedProviders,
+    },
   }).catch(() => {});
 
   return restaurant;
 };
-
 
 export default {
   payOrdersByTableId,
