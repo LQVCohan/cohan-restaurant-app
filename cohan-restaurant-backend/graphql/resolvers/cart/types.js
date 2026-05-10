@@ -27,7 +27,7 @@ export const CartItemFieldResolvers = {
   id: (parent) => (parent._id ? String(parent._id) : null),
 
   servingVariantKey: (parent) => {
-    const key = String(parent?.servingVariantKey || parent?.servingKey || "").trim();
+    const key = String(parent?.servingKey || parent?.servingVariantKey || "").trim();
     return key || "portion";
   },
 
