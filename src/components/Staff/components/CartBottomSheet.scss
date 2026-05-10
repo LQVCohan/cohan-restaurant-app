@@ -310,6 +310,7 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
 
       .billing-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         margin-bottom: 16px;
 
@@ -400,7 +401,9 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .staff-discount-box {
+  flex: 1 1 100%;
   width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
