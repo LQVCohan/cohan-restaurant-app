@@ -427,6 +427,25 @@
   opacity: 0.8;
 }
 
+.paymentRequestRow {
+  margin-top: 0.5rem;
+  display: flex;
+}
+
+.paymentRequestBadge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .kebab {
   width: 24px;
   height: 24px;
