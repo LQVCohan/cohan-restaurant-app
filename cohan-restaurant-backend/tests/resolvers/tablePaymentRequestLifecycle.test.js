@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const OrderModel = vi.hoisted(() => ({}));
 const clearPaymentRequestAfterNewChildOrderBatchCreatedMock = vi.hoisted(() =>
@@ -12,6 +12,10 @@ vi.mock("../../utils/orderLifecycle.js", () => ({
 }));
 
 describe("withTablePaymentRequestLifecycle", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -46,6 +50,62 @@ describe("withTablePaymentRequestLifecycle", () => {
       order: createdOrder,
       reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
     });
+  });
+
+  it("returns created order even when stale payment request clear fails", async () => {
+    const { withTablePaymentRequestLifecycle } = await import(
+      "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const createdOrder = {
+      _id: "child-2",
+      id: "child-2",
+      orderType: "dine_in",
+      orderKind: "order_batch",
+      parentOrderId: "parent-2",
+      rootOrderId: "root-2",
+      restaurantId: "rest-2",
+      tableId: "table-2",
+      tableCode: "T2",
+    };
+    const result = {
+      isNewOrder: true,
+      order: createdOrder,
+    };
+    const baseMutation = {
+      createOrderForTable: vi.fn().mockResolvedValue(result),
+    };
+
+    clearPaymentRequestAfterNewChildOrderBatchCreatedMock.mockRejectedValueOnce(
+      new Error("clear failed"),
+    );
+
+    const wrapped = withTablePaymentRequestLifecycle(baseMutation);
+    const out = await wrapped.createOrderForTable(
+      null,
+      {
+        input: {
+          restaurantId: "rest-2",
+          tableId: "table-2",
+          tableCode: "T2",
+        },
+      },
+      { user: { id: "staff-2" } },
+    );
+
+    expect(out).toBe(result);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[order] Failed to clear stale table payment request after new batch",
+      {
+        orderId: "child-2",
+        parentOrderId: "parent-2",
+        rootOrderId: "root-2",
+        restaurantId: "rest-2",
+        tableId: "table-2",
+        tableCode: "T2",
+        error: "clear failed",
+      },
+    );
   });
 
   it("does not clear payment request when createOrderForTable fails", async () => {
