@@ -49,7 +49,6 @@ function isBlankStatus(value) {
   return value == null || String(value).trim() === "";
 }
 
-
 export const ACTIVE_SESSION_STATUSES = [
   SESSION_STATUS.OPEN,
   SESSION_STATUS.DINING,
@@ -90,6 +89,39 @@ export function activeTableSessionFilter({ restaurantId, tableId }) {
     sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
     orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
   };
+}
+
+export function activeTableSessionLookupFilter({ restaurantId, tableId, tableCode }) {
+  const base = {
+    restaurantId,
+    orderKind: ORDER_KIND.TABLE_SESSION,
+    sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+    orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+  };
+
+  if (tableId) return { ...base, tableId };
+  if (tableCode) return { ...base, tableCode };
+
+  return base;
+}
+
+export function childOrdersForSessionFilter({ restaurantId, parentOrderId }) {
+  return {
+    restaurantId,
+    orderKind: ORDER_KIND.ORDER_BATCH,
+    $or: [{ parentOrderId }, { rootOrderId: parentOrderId }],
+  };
+}
+
+export function deriveParentSessionIdsFromOrders(orders = []) {
+  return [
+    ...new Set(
+      (orders || [])
+        .map((order) => order?.parentOrderId || order?.rootOrderId)
+        .filter(Boolean)
+        .map(String),
+    ),
+  ];
 }
 
 const CLOSED_PAYMENT_STATUSES = new Set([

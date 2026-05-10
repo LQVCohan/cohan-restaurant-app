@@ -16,6 +16,9 @@ import { createReservationPayment } from "../../../src/services/payment/paymentS
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
+  activeTableSessionLookupFilter,
+  childOrdersForSessionFilter,
+  deriveParentSessionIdsFromOrders,
   orderBatchOrLegacyFilter,
   ORDER_KIND,
   SESSION_STATUS,
@@ -25,7 +28,6 @@ import {
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
-
 function hasPendingItemWork(order) {
   return (order?.items || []).some((item) => ["pending", "confirmed", "preparing", "ready"].includes(String(item?.status || "").toLowerCase()));
 }
@@ -34,6 +36,16 @@ function hasPendingAdjustmentRequests(order) {
   return (order?.items || []).some((item) =>
     (item?.voidRequests || []).some((req) => req?.status === "pending") ||
     (item?.returnRequests || []).some((req) => req?.status === "pending"),
+  );
+}
+
+function isReadyForPayment(order) {
+  const status = String(order?.currentStatus || "").toLowerCase();
+
+  return (
+    ["served", "completed"].includes(status) &&
+    !hasPendingItemWork(order) &&
+    !hasPendingAdjustmentRequests(order)
   );
 }
 
@@ -139,6 +151,207 @@ function accumulateTotals(order, subtotalIncluded, linesSubtotal) {
   };
 }
 
+function deriveParentSessionObjectIds(orders = []) {
+  return deriveParentSessionIdsFromOrders(orders)
+    .map((id) => toId(id))
+    .filter(Boolean);
+}
+
+function applyRequestPaymentState(order, fields) {
+  return {
+    ...order,
+    orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+    payment: {
+      ...(order?.payment || {}),
+      status: "payment_requested",
+      requestedAt: fields.requestedAt,
+      requestSource: fields.requestSource,
+      requestedBy: fields.requestedBy,
+      requestNote: fields.requestNote,
+    },
+  };
+}
+
+export const requestTablePayment = async (_parent, { input }, ctx) => {
+  const {
+    restaurantId,
+    tableId,
+    tableCode,
+    source,
+    requestedBy,
+    note,
+  } = input || {};
+
+  const rid = toId(restaurantId);
+  const tid = toId(tableId);
+  const normalizedTableCode = String(tableCode || "").trim() || null;
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+  const requestSource = String(source || "").trim() || "unknown";
+  const requestedByValue = toId(requestedBy) || actorId || null;
+  const requestNote = String(note || "").trim() || null;
+
+  if (!rid) throw new Error("Invalid restaurantId");
+  if (!tid) throw new Error("Invalid tableId");
+
+  await requireRestaurantAccess(ctx, rid);
+
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({
+      restaurantId: rid,
+      tableId: tid,
+      tableCode: normalizedTableCode,
+    }),
+  )
+    .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
+
+  if (!activeSession) {
+    return {
+      ok: false,
+      warning: true,
+      readyForPayment: false,
+      message: "Không tìm thấy phiên bàn đang hoạt động.",
+      pendingOrderCodes: [],
+      session: null,
+      orders: [],
+      requestedAt: null,
+    };
+  }
+
+  const childOrders = await Order.find({
+    $and: [
+      childOrdersForSessionFilter({
+        restaurantId: rid,
+        parentOrderId: activeSession._id,
+      }),
+      {
+        currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+        "payment.status": { $ne: "paid" },
+      },
+    ],
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+
+  if (!childOrders.length) {
+    return {
+      ok: false,
+      warning: true,
+      readyForPayment: false,
+      message: "Bàn chưa có món nào để yêu cầu thanh toán.",
+      pendingOrderCodes: [],
+      session: activeSession,
+      orders: [],
+      requestedAt: null,
+    };
+  }
+
+  const pendingOrderCodes = childOrders
+    .filter((order) => !isReadyForPayment(order))
+    .map((order) => order.orderCode || String(order._id));
+
+  const readyForPayment = pendingOrderCodes.length === 0;
+  const warning = !readyForPayment;
+  const requestedAt = new Date();
+
+  const session = await startSession();
+  session.startTransaction();
+
+  try {
+    const childOrderIds = childOrders.map((order) => order._id);
+
+    await Order.updateMany(
+      {
+        _id: { $in: childOrderIds },
+      },
+      {
+        $set: {
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+          "payment.status": "payment_requested",
+          "payment.requestedAt": requestedAt,
+          "payment.requestSource": requestSource,
+          "payment.requestedBy": requestedByValue,
+          "payment.requestNote": requestNote,
+        },
+      },
+      { session },
+    );
+
+    await Order.updateMany(
+      {
+        _id: activeSession._id,
+        restaurantId: rid,
+        orderKind: ORDER_KIND.TABLE_SESSION,
+      },
+      {
+        $set: {
+          sessionStatus: SESSION_STATUS.READY_TO_PAY,
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+          "payment.status": "payment_requested",
+          "payment.requestedAt": requestedAt,
+          "payment.requestSource": requestSource,
+          "payment.requestedBy": requestedByValue,
+          "payment.requestNote": requestNote,
+        },
+      },
+      { session },
+    );
+
+    await EventLog.log(
+      {
+        restaurantId: rid,
+        verb: "order.request_payment",
+        actorUserId: ctx?.user?.id,
+        object: { kind: "TableSession", id: activeSession._id },
+        source: "pos",
+        status: "success",
+        meta: {
+          requestOrderIds: childOrderIds.map(String),
+          parentSessionIds: [String(activeSession._id)],
+          tableId: String(tid),
+          tableCode: normalizedTableCode,
+          requestSource,
+          requestedBy: requestedByValue ? String(requestedByValue) : null,
+          requestNote,
+          pendingOrderCodes,
+          readyForPayment,
+        },
+      },
+      { session },
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    const responseFields = {
+      requestedAt,
+      requestSource,
+      requestedBy: requestedByValue,
+      requestNote,
+    };
+
+    return {
+      ok: true,
+      warning,
+      readyForPayment,
+      message: warning
+        ? "Bàn còn món chưa sẵn sàng thanh toán."
+        : "Đã ghi nhận yêu cầu thanh toán.",
+      pendingOrderCodes,
+      session: {
+        ...applyRequestPaymentState(activeSession, responseFields),
+        sessionStatus: SESSION_STATUS.READY_TO_PAY,
+      },
+      orders: childOrders.map((order) => applyRequestPaymentState(order, responseFields)),
+      requestedAt: requestedAt.toISOString(),
+    };
+  } catch (err) {
+    await session.abortTransaction().catch(() => {});
+    session.endSession();
+    throw err;
+  }
+};
+
 export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   const {
     restaurantId,
@@ -168,13 +381,51 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   if (!table || String(table.restaurantId) !== String(rid)) {
     throw new Error("Table not found");
   }
+  const tableCode = table?.code || null;
 
-  const orders = await Order.find({
-    restaurantId: rid,
-    tableId: tid,
-    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-    ...orderBatchOrLegacyFilter(),
-  }).lean();
+  async function findLegacyTableOrders() {
+    return Order.find({
+      restaurantId: rid,
+      tableId: tid,
+      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+      ...orderBatchOrLegacyFilter(),
+    }).lean();
+  }
+
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({
+      restaurantId: rid,
+      tableId: tid,
+      tableCode,
+    }),
+  )
+    .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
+
+  let orders = [];
+  let usedActiveSessionChildren = false;
+  let usedLegacyFallback = false;
+  if (activeSession) {
+    const sessionChildFilter = {
+      $and: [
+        childOrdersForSessionFilter({
+          restaurantId: rid,
+          parentOrderId: activeSession._id,
+        }),
+        { currentStatus: { $nin: INACTIVE_ORDER_STATUSES } },
+      ],
+    };
+    orders = await Order.find(sessionChildFilter).lean();
+    if (orders.length) {
+      usedActiveSessionChildren = true;
+    } else {
+      orders = await findLegacyTableOrders();
+      usedLegacyFallback = true;
+    }
+  } else {
+    orders = await findLegacyTableOrders();
+    usedLegacyFallback = true;
+  }
 
   if (!orders.length) {
     return {
@@ -186,24 +437,30 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
-  for (const order of orders) {
-    if (hasPendingItemWork(order)) {
-      throw new Error("Không thể thanh toán khi còn món chưa phục vụ xong.");
-    }
-    if (hasPendingAdjustmentRequests(order)) {
-      throw new Error("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
-    }
-  }
-
   const served = [];
   const unserved = [];
   for (const o of orders) {
-    if (String(o.currentStatus || "").toLowerCase() === "served") served.push(o);
-    else unserved.push(o);
+    const status = String(o.currentStatus || "").toLowerCase();
+    const blocked =
+      status !== "served" ||
+      hasPendingItemWork(o) ||
+      hasPendingAdjustmentRequests(o);
+    if (blocked) unserved.push(o);
+    else served.push(o);
+  }
+
+  const pendingCodes = unserved.map((o) => o.orderCode || String(o._id));
+  if (pendingCodes.length && !includeUnserved) {
+    return {
+      warning: true,
+      pendingOrderCodes: pendingCodes,
+      invoice: null,
+      transaction: null,
+      cashflow: null,
+    };
   }
 
   const payOrders = includeUnserved ? [...served, ...unserved] : served;
-  const pendingCodes = unserved.map((o) => o.orderCode || String(o._id));
 
   if (!payOrders.length) {
     return {
@@ -327,7 +584,6 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       { session }
     ).then((r) => r[0]);
 
-    // update orders status/payments
     await Order.updateMany(
       { _id: { $in: orderIds } },
       {
@@ -354,50 +610,44 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     const shouldCloseParentSession =
       pendingCodes.length === 0 || includeUnserved === true;
 
-    const parentSessionIds = [
-      ...new Set(
-        payOrders
-          .map((o) => o.parentOrderId || o.rootOrderId)
-          .filter(Boolean)
-          .map(String)
-      ),
-    ]
-      .map((id) => toId(id))
-      .filter(Boolean);
+    if (shouldCloseParentSession) {
+      const parentSessionIds = usedActiveSessionChildren && activeSession
+        ? [toId(activeSession._id)].filter(Boolean)
+        : deriveParentSessionObjectIds(payOrders);
 
-    if (shouldCloseParentSession && parentSessionIds.length) {
-      await Order.updateMany(
-        {
-          _id: { $in: parentSessionIds },
-          restaurantId: rid,
-          orderKind: ORDER_KIND.TABLE_SESSION,
-        },
-        {
-          $set: {
-            sessionStatus: SESSION_STATUS.CLOSED,
-            orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
-            activeSessionKey: null,
-            closedAt: now,
-            "payment.method": normMethod,
-            "payment.status": "paid",
-            "payment.paidAmount": amountToPay,
-            "payment.paidAt": now,
-            "payment.paidBy": actorId,
-            currentStatus: "completed",
+      if (parentSessionIds.length) {
+        await Order.updateMany(
+          {
+            _id: { $in: parentSessionIds },
+            restaurantId: rid,
+            orderKind: ORDER_KIND.TABLE_SESSION,
           },
-          $push: {
-            statusTimeline: {
-              status: "completed",
-              at: now,
-              byUserId: actorId || null,
-              note: "Đã thanh toán và đóng phiên bàn.",
+          {
+            $set: {
+              sessionStatus: SESSION_STATUS.CLOSED,
+              orderPaymentStatus: ORDER_PAYMENT_STATUS.PAID,
+              activeSessionKey: null,
+              closedAt: now,
+              "payment.method": normMethod,
+              "payment.status": "paid",
+              "payment.paidAmount": amountToPay,
+              "payment.paidAt": now,
+              "payment.paidBy": actorId,
+              currentStatus: "completed",
+            },
+            $push: {
+              statusTimeline: {
+                status: "completed",
+                at: now,
+                byUserId: actorId || null,
+                note: "Đã thanh toán và đóng phiên bàn.",
+              },
             },
           },
-        },
-        { session }
-      );
+          { session }
+        );
+      }
     }
-
 
     await EventLog.log(
       {
@@ -414,6 +664,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           includeUnserved,
           paidAmount: amountToPay,
           method: normMethod,
+          usedActiveSessionChildren,
+          usedLegacyFallback,
         },
       },
       { session }
@@ -686,8 +938,6 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 };
 
-
-
 export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
   const userId = ctx?.user?.id;
   if (!userId) throw new Error("Unauthorized");
@@ -711,11 +961,9 @@ export const syncPaymentStatus = async (_parent, { paymentId }) => {
   if (!payment) throw new Error("Payment session not found");
 
   if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
-    // VNPAY bản chuẩn cần query API riêng; ở đây fallback trả trạng thái đã biết.
     return payment;
   }
   if (payment.provider === "momo" && payment.providerResponseRaw?.orderId) {
-    // MoMo query API optional; callback/webhook vẫn là source of truth.
     return payment;
   }
 
@@ -776,8 +1024,8 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
   return restaurant;
 };
 
-
 export default {
+  requestTablePayment,
   payOrdersByTableId,
   payOrdersByOrderIds,
   createReservationPayment: createReservationPaymentMutation,

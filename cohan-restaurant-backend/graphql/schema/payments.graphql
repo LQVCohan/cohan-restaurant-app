@@ -31,6 +31,14 @@ input PayOrdersByOrderIdsInput {
   note: String
   externalRef: String
 }
+input RequestTablePaymentInput {
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  source: String
+  requestedBy: String
+  note: String
+}
 enum InvoiceStatus {
   UNPAID
   PARTIAL
@@ -62,6 +70,17 @@ type PayOrdersByTableResult {
   invoice: Invoice
   transaction: PaymentTransaction
   cashflow: Cashflow
+}
+
+type RequestTablePaymentResult {
+  ok: Boolean!
+  warning: Boolean!
+  readyForPayment: Boolean!
+  message: String
+  pendingOrderCodes: [String!]!
+  session: Order
+  orders: [Order!]!
+  requestedAt: String
 }
 
 type CashflowReference {
@@ -111,7 +130,6 @@ type PaymentTransaction {
   createdAt: DateTime
   updatedAt: DateTime
 }
-
 
 
 type PaymentSession {
@@ -249,6 +267,7 @@ extend type Mutation {
   syncPaymentStatus(paymentId: ID!): PaymentSession!
   updateRestaurantPaymentSettings(input: UpdateRestaurantPaymentSettingsInput!): Restaurant!
 
+  requestTablePayment(input: RequestTablePaymentInput!): RequestTablePaymentResult!
   payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
   payOrdersByOrderIds(input: PayOrdersByOrderIdsInput!): PayOrdersByTableResult!
 }
