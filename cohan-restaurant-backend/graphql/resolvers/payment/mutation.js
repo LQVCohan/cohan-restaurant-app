@@ -147,21 +147,13 @@ function deriveParentSessionObjectIds(orders = []) {
     .filter(Boolean);
 }
 
-function buildRequestPaymentUpdate({ actorId, now, note }) {
+function buildRequestPaymentUpdate({ actorId, now }) {
   return {
     $set: {
       orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
       "payment.status": "payment_requested",
       "payment.requestedAt": now,
       "payment.requestedBy": actorId,
-    },
-    $push: {
-      statusTimeline: {
-        status: "served",
-        at: now,
-        byUserId: actorId || null,
-        note,
-      },
     },
   };
 }
@@ -260,11 +252,7 @@ export const requestTablePayment = async (_parent, { input }, ctx) => {
     if (requestTargets.length) {
       await Order.updateMany(
         { _id: { $in: requestTargets.map((order) => order._id) } },
-        buildRequestPaymentUpdate({
-          actorId,
-          now,
-          note: "Khách gọi thanh toán.",
-        }),
+        buildRequestPaymentUpdate({ actorId, now }),
         { session },
       );
     }
@@ -283,14 +271,6 @@ export const requestTablePayment = async (_parent, { input }, ctx) => {
             "payment.status": "payment_requested",
             "payment.requestedAt": now,
             "payment.requestedBy": actorId,
-          },
-          $push: {
-            statusTimeline: {
-              status: "served",
-              at: now,
-              byUserId: actorId || null,
-              note: "Khách gọi thanh toán.",
-            },
           },
         },
         { session },
