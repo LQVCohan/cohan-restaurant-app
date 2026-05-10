@@ -18,7 +18,17 @@ vi.mock("../../src/services/eventLog.service.js", () => event);
 vi.mock("mongoose", () => ({ default: mg }));
 
 const leanChain = (val) => ({ lean: vi.fn().mockResolvedValue(val) });
-const whChain = (val) => ({ sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(val) })) });
+const whChain = (val) => ({
+  sort: vi.fn(() => ({
+    lean: vi.fn().mockResolvedValue(val),
+    session: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(val) })),
+  })),
+  session: vi.fn(() => ({
+    sort: vi.fn(() => ({
+      lean: vi.fn().mockResolvedValue(val),
+    })),
+  })),
+});
 const sessionQuery = (val) => ({ session: vi.fn().mockResolvedValue(val) });
 const makeItems = (items = []) => {
   items.id = vi.fn((id) => items.find((it) => String(it._id) === String(id)));
@@ -29,6 +39,7 @@ const makeCart = ({
   userId = "valid-u1",
   status = "active",
   items = [],
+  abuse = {},
 } = {}) => {
   const cartItems = makeItems(items);
   return {
@@ -36,7 +47,7 @@ const makeCart = ({
     userId,
     status,
     items: cartItems,
-    abuse: {},
+    abuse: { ...abuse },
     totalQuantity: cartItems.reduce((sum, it) => sum + Number(it.quantity || 0), 0),
     totalAmount: cartItems.reduce((sum, it) => sum + Number(it.quantity || 0) * Number(it.price || 0), 0),
     lastActivityAt: null,
@@ -113,10 +124,11 @@ describe("cart access hardening", () => {
     const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
     const save = vi.fn();
     const item = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 1, restaurantId: "valid-r1", servingVariantKey: "portion", remove: vi.fn() };
-    const cart = { _id: "valid-c1", userId: "valid-u2", status: "active", items: { id: vi.fn(() => item), [Symbol.iterator]: function*(){ yield item; } }, save, toObject: () => ({}) };
+    const cart = { _id: "valid-c1", userId: "valid-u2", status: "active", items: { id: vi.fn(() => item), [Symbol.iterator]: function* () { yield item; } }, save, toObject: () => ({}) };
     model.Cart.findById
       .mockImplementationOnce(() => sessionQuery(cart))
       .mockResolvedValue(cart);
+    model.Cart.findOne.mockImplementationOnce(() => sessionQuery(cart));
     await expect(m.updateCartItem(null, { input: { cartId: "valid-c1", itemId: "valid-i1", quantity: 2 } }, { user: { id: "valid-u1" } })).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
     await expect(m.removeCartItem(null, { input: { cartId: "valid-c1", itemId: "valid-i1" } }, { user: { id: "valid-u1" } })).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
     await expect(m.clearCart(null, { input: { cartId: "valid-c1" } }, { user: { id: "valid-u1" } })).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
@@ -128,11 +140,10 @@ describe("cart access hardening", () => {
     await expect(m.releaseMyCartHolds(null, { input: { userId: "valid-u2" } }, { user: { id: "valid-u1" } })).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
     expect(model.Cart.findOne).not.toHaveBeenCalled();
 
-    const save = vi.fn();
-    const cart = { _id: "valid-c1", userId: "valid-u1", status: "active", items: [], abuse: {}, save };
-    model.Cart.findOne.mockResolvedValue(cart);
+    const cart = makeCart();
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
     await expect(m.releaseMyCartHolds(null, { input: {} }, { user: { id: "valid-u1" } })).resolves.toBe(true);
-    expect(save).toHaveBeenCalled();
+    expect(cart.save).toHaveBeenCalled();
   });
 
   it("addCartItem reserves new item with stable real item id in orderCode", async () => {
@@ -246,5 +257,152 @@ describe("cart access hardening", () => {
     expect(inv.reserveForOrderTx).not.toHaveBeenCalled();
     expect(inv.cancelReservationForOrderTx).not.toHaveBeenCalled();
     expect(new Date(result.items[0].holdExpiresAt).getTime()).toBeGreaterThan(oldHold.getTime());
+  });
+
+  it("clearCart releases every item transactionally and emits after commit", async () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) };
+    const session = {
+      withTransaction: vi.fn(async (fn) => {
+        await fn();
+        expect(emit).not.toHaveBeenCalled();
+      }),
+      endSession: vi.fn(),
+    };
+    mg.startSession.mockResolvedValue(session);
+
+    const items = [
+      { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large" },
+      { _id: "valid-i2", menuItemId: "valid-m2", quantity: 1, price: 5, restaurantId: "valid-r1", servingVariantKey: "portion" },
+    ];
+    const cart = makeCart({ items });
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    await expect(m.clearCart(null, { input: { cartId: "valid-c1" } }, { user: { id: "valid-u1" }, io })).resolves.toBe(true);
+
+    expect(inv.cancelReservationForOrderTx).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        orderCode: "CART:valid-c1:valid-i1",
+        session,
+        lines: [{ menuItemId: "valid-m1", quantity: 2, servingKey: "large" }],
+      })
+    );
+    expect(inv.cancelReservationForOrderTx).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        orderCode: "CART:valid-c1:valid-i2",
+        session,
+        lines: [{ menuItemId: "valid-m2", quantity: 1, servingKey: "portion" }],
+      })
+    );
+    expect(cart.items).toEqual([]);
+    expect(cart.totalQuantity).toBe(0);
+    expect(cart.totalAmount).toBe(0);
+    expect(cart.save).toHaveBeenCalledWith({ session });
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(
+      1,
+      "inventoryEvents",
+      expect.objectContaining({
+        type: "INVENTORY_RELEASED",
+        restaurantId: "valid-r1",
+        menuItemId: "valid-m1",
+        servingVariantKey: "large",
+        quantityDelta: 2,
+        reason: "clear_cart",
+        cartId: "valid-c1",
+        cartItemId: "valid-i1",
+      })
+    );
+  });
+
+  it("clearCart keeps cart intact and throws when release fails", async () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) };
+    const item = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large" };
+    const cart = makeCart({ items: [item] });
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+    inv.cancelReservationForOrderTx.mockRejectedValueOnce(new Error("release failed"));
+
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    await expect(m.clearCart(null, { input: { cartId: "valid-c1" } }, { user: { id: "valid-u1" }, io })).rejects.toMatchObject({
+      message: "Không thể xóa giỏ hàng vì không trả được nguyên liệu đã giữ. Vui lòng thử lại.",
+    });
+
+    expect(cart.items).toHaveLength(1);
+    expect(cart.totalQuantity).toBe(2);
+    expect(cart.totalAmount).toBe(20);
+    expect(cart.save).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("releaseMyCartHolds clears cart after release and applies exit abuse logic", async () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) };
+    const session = {
+      withTransaction: vi.fn(async (fn) => {
+        await fn();
+        expect(emit).not.toHaveBeenCalled();
+      }),
+      endSession: vi.fn(),
+    };
+    mg.startSession.mockResolvedValue(session);
+
+    const item = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large" };
+    const cart = makeCart({ items: [item], abuse: { exitReleaseCount: 2, timeoutReleaseCount: 0, warningCount: 0 } });
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    await expect(m.releaseMyCartHolds(null, { input: { reason: "exit" } }, { user: { id: "valid-u1" }, io })).resolves.toBe(true);
+
+    expect(inv.cancelReservationForOrderTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderCode: "CART:valid-c1:valid-i1",
+        session,
+        lines: [{ menuItemId: "valid-m1", quantity: 2, servingKey: "large" }],
+      })
+    );
+    expect(cart.abuse.exitReleaseCount).toBe(3);
+    expect(cart.abuse.warningCount).toBe(1);
+    expect(cart.abuse.lastViolationAt).toBeInstanceOf(Date);
+    expect(cart.items).toEqual([]);
+    expect(cart.totalQuantity).toBe(0);
+    expect(cart.totalAmount).toBe(0);
+    expect(cart.save).toHaveBeenCalledWith({ session });
+    expect(emit).toHaveBeenCalledWith(
+      "inventoryEvents",
+      expect.objectContaining({
+        type: "INVENTORY_RELEASED",
+        servingVariantKey: "large",
+        reason: "exit",
+        cartId: "valid-c1",
+        cartItemId: "valid-i1",
+      })
+    );
+  });
+
+  it("releaseMyCartHolds keeps cart intact and skips abuse updates when release fails", async () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) };
+    const item = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large" };
+    const cart = makeCart({ items: [item], abuse: { exitReleaseCount: 2, timeoutReleaseCount: 1, warningCount: 0 } });
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+    inv.cancelReservationForOrderTx.mockRejectedValueOnce(new Error("release failed"));
+
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    await expect(m.releaseMyCartHolds(null, { input: { reason: "exit" } }, { user: { id: "valid-u1" }, io })).rejects.toMatchObject({
+      message: "Không thể trả món đã giữ trong giỏ. Vui lòng thử lại.",
+    });
+
+    expect(cart.items).toHaveLength(1);
+    expect(cart.totalQuantity).toBe(2);
+    expect(cart.totalAmount).toBe(20);
+    expect(cart.abuse.exitReleaseCount).toBe(2);
+    expect(cart.abuse.warningCount).toBe(0);
+    expect(cart.abuse.lastViolationAt).toBeUndefined();
+    expect(cart.save).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
 });
