@@ -19,6 +19,7 @@ const files = [
   "floor_table.graphql",
   "inventory.graphql",
   "order.graphql",
+  "order_table_payment.graphql",
   "reservation.graphql",
   "supply.graphql",
   "event_log.graphql",

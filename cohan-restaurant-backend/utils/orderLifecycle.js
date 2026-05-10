@@ -49,11 +49,19 @@ function isBlankStatus(value) {
   return value == null || String(value).trim() === "";
 }
 
-
 export const ACTIVE_SESSION_STATUSES = [
   SESSION_STATUS.OPEN,
   SESSION_STATUS.DINING,
   SESSION_STATUS.READY_TO_PAY,
+];
+
+export const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
+
+export const PAYMENT_BLOCKING_STATUSES = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
 ];
 
 export function buildActiveTableSessionKey({ restaurantId, tableId }) {
@@ -169,4 +177,18 @@ export function isKitchenPayable(order) {
 
   const legacyStatus = normalizeStatus(order?.currentStatus);
   return legacyStatus === KITCHEN_STATUS.SERVED;
+}
+
+export function isOrderReadyForPayment(order) {
+  if (!order || !isOrderBatch(order)) return false;
+
+  const kitchenStatus = normalizeStatus(order?.kitchenStatus);
+  const currentStatus = normalizeStatus(order?.currentStatus);
+  const resolvedStatus =
+    !isBlankStatus(order?.kitchenStatus) &&
+    kitchenStatus !== KITCHEN_STATUS.PENDING
+      ? kitchenStatus
+      : currentStatus;
+
+  return [KITCHEN_STATUS.SERVED, "completed"].includes(resolvedStatus);
 }

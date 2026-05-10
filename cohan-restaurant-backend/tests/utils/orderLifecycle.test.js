@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  PAYMENT_BLOCKING_STATUSES,
   activeTableSessionLookupFilter,
   buildActiveTableSessionKey,
   childOrdersForSessionFilter,
   isKitchenPayable,
   isOrderBatch,
+  isOrderReadyForPayment,
   isPaymentClosed,
   isSessionActive,
   isTableSession,
@@ -165,4 +167,23 @@ describe("orderLifecycle helpers", () => {
     });
   });
 
+  it("PAYMENT_BLOCKING_STATUSES keeps unserved kitchen states grouped together", () => {
+    expect(PAYMENT_BLOCKING_STATUSES).toEqual([
+      "pending",
+      "confirmed",
+      "preparing",
+      "ready",
+    ]);
+  });
+
+  it("isOrderReadyForPayment returns true for served and completed orders", () => {
+    expect(isOrderReadyForPayment({ orderKind: "order_batch", currentStatus: "served" })).toBe(true);
+    expect(isOrderReadyForPayment({ orderKind: "order_batch", currentStatus: "completed" })).toBe(true);
+  });
+
+  it("isOrderReadyForPayment returns false for pending/preparing/ready orders", () => {
+    expect(isOrderReadyForPayment({ orderKind: "order_batch", currentStatus: "pending" })).toBe(false);
+    expect(isOrderReadyForPayment({ orderKind: "order_batch", currentStatus: "preparing" })).toBe(false);
+    expect(isOrderReadyForPayment({ orderKind: "order_batch", currentStatus: "ready" })).toBe(false);
+  });
 });

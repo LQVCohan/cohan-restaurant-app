@@ -1,0 +1,42 @@
+input RequestTablePaymentInput {
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  source: String
+  requestedBy: String
+  note: String
+}
+
+type RequestTablePaymentResult {
+  ok: Boolean!
+  warning: Boolean!
+  readyForPayment: Boolean!
+  message: String
+  pendingOrderCodes: [String!]!
+  session: Order
+  orders: [Order!]!
+  requestedAt: String
+}
+
+input ClearTablePaymentRequestInput {
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  reason: String
+}
+
+type ClearTablePaymentRequestResult {
+  ok: Boolean!
+  message: String
+  session: Order
+  orders: [Order!]!
+}
+
+extend type Mutation {
+  requestTablePayment(
+    input: RequestTablePaymentInput!
+  ): RequestTablePaymentResult!
+  clearTablePaymentRequest(
+    input: ClearTablePaymentRequestInput!
+  ): ClearTablePaymentRequestResult!
+}
