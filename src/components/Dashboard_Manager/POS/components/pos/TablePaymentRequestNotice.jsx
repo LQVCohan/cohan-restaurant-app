@@ -36,7 +36,7 @@ export default function TablePaymentRequestNotice() {
   const apolloClient = useApolloClient();
   const previousHadDraftItemsRef = useRef(false);
 
-  const { data } = useQuery(POS_PAYMENT_REQUESTS_QUERY, {
+  const { data, loading } = useQuery(POS_PAYMENT_REQUESTS_QUERY, {
     variables: { restaurantId, limit: 100 },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
@@ -45,6 +45,11 @@ export default function TablePaymentRequestNotice() {
 
   const [clearTablePaymentRequestMutation, { loading: clearingPaymentRequest }] =
     useMutation(CLEAR_TABLE_PAYMENT_REQUEST);
+
+  const hasLoadedPaymentRequests = useMemo(
+    () => !loading && Boolean(data),
+    [data, loading],
+  );
 
   const livePaymentRequests = useMemo(
     () => normalizePosPaymentRequests(data),
@@ -97,7 +102,9 @@ export default function TablePaymentRequestNotice() {
   ]);
 
   useEffect(() => {
-    if (!currentTable?.code || activeTablePaymentRequest) return;
+    if (!hasLoadedPaymentRequests || !currentTable?.code || activeTablePaymentRequest) {
+      return;
+    }
 
     const groupedContextRequests = groupPaymentRequests(
       Array.isArray(paymentRequests) ? paymentRequests : [],
@@ -113,6 +120,7 @@ export default function TablePaymentRequestNotice() {
 
     staleGroup.orderIds.forEach((orderId) => clearPaymentRequest?.(orderId));
   }, [
+    hasLoadedPaymentRequests,
     currentTable?.code,
     activeTablePaymentRequest,
     paymentRequests,
