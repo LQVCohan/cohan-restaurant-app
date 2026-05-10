@@ -103,8 +103,10 @@ const OrderCard = ({
   onRejectOrder,
   isRemoteStaffPending = false,
   onMessageCustomer,
+  mode = "manager",
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const isKitchenMode = mode === "kitchen";
 
   // Memoize logic gộp món & tính toán
   const { mergedItems, progress, ageMinutes, statusColorClass } =
@@ -190,6 +192,25 @@ const OrderCard = ({
     switch (status) {
       case "pending":
         if (isRemoteStaffPending) {
+          if (isKitchenMode) {
+            return (
+              <div className="oc-actions-grid">
+                <button
+                  className="oc-btn secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewOrder?.(order);
+                  }}
+                >
+                  Xem món cần chuẩn bị
+                </button>
+                <div className="oc-status-label text-blue">
+                  Chờ POS xác nhận
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div className="oc-actions-grid">
               <button
@@ -240,12 +261,14 @@ const OrderCard = ({
         }
         return (
           <div className="oc-actions-grid">
-            <button
-              className="oc-btn secondary cancel"
-              onClick={(e) => handleAction(e, "cancelled")}
-            >
-              Hủy
-            </button>
+            {!isKitchenMode && (
+              <button
+                className="oc-btn secondary cancel"
+                onClick={(e) => handleAction(e, "cancelled")}
+              >
+                Hủy
+              </button>
+            )}
             <button
               className="oc-btn primary"
               onClick={(e) => handleAction(e, "preparing")}
@@ -264,6 +287,13 @@ const OrderCard = ({
           </button>
         );
       case "ready":
+        if (isKitchenMode) {
+          return (
+            <div className="oc-status-label text-blue">
+              <CheckCircle size={14} /> Sẵn sàng phục vụ
+            </div>
+          );
+        }
         return (
           <button
             className="oc-btn primary-outline"
@@ -343,7 +373,7 @@ const OrderCard = ({
           <User size={12} />
           <span className="name">{customerName}</span>
         </div>
-        {isPaymentRequested && (
+        {!isKitchenMode && isPaymentRequested && (
           <div
             className="oc-note-badge"
             style={{ marginBottom: 6, color: "#15803d" }}
@@ -359,7 +389,7 @@ const OrderCard = ({
             Có yêu cầu hủy món
           </div>
         )}
-        {hasPendingReturnRequest && (
+        {!isKitchenMode && hasPendingReturnRequest && (
           <div
             className="oc-note-badge"
             style={{ marginBottom: 6, color: "#0369a1" }}
@@ -427,12 +457,14 @@ const OrderCard = ({
 
       {/* 6. FOOTER */}
       <div className="oc-footer">
-        <div className="oc-total">
-          <span className="label">Tổng tiền</span>
-          <span className="value">
-            {formatCurrency(order?.totals?.grandTotal)}
-          </span>
-        </div>
+        {!isKitchenMode && (
+          <div className="oc-total">
+            <span className="label">Tổng tiền</span>
+            <span className="value">
+              {formatCurrency(order?.totals?.grandTotal)}
+            </span>
+          </div>
+        )}
         <div className="oc-footer-actions">{renderActions()}</div>
       </div>
     </div>
