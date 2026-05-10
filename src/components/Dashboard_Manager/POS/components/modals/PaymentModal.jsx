@@ -1,6 +1,5 @@
 // src/components/Dashboard_Manager/POS/components/panels/modals/PaymentModal.jsx
 import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
-import { gql, useMutation } from "@apollo/client";
 import s from "./PaymentModal.module.scss";
 import { formatPrice } from "@/utils/formatters";
 import useOrderManagement from "@/hooks/useOrderManagement";
@@ -18,41 +17,6 @@ import {
   buildOrderDiscountPreviewInput,
   getDiscountBreakdownTotal,
 } from "@/utils/discountPreviewPayload";
-
-const PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS = gql`
-  mutation PayOrdersByTableIdWithTotals($input: PayOrdersByTableIdInput!) {
-    payOrdersByTableId(input: $input) {
-      warning
-      pendingOrderCodes
-      invoice {
-        id
-        number
-        totals {
-          subtotal
-          discount
-          discountReason
-          voucherCode
-          promotionId
-          service
-          tax
-          shippingFee
-          grandTotal
-        }
-      }
-      transaction {
-        id
-        paidAmount
-        method
-        status
-      }
-      cashflow {
-        id
-        amount
-        type
-      }
-    }
-  }
-`;
 
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
@@ -120,10 +84,8 @@ function PaymentModal({
     useOrderManagement(pos);
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
-  const [payOrdersByTableIdWithTotals, { loading: localPayLoading }] =
-    useMutation(PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS);
 
-  const busy = Boolean(payLoading || localPayLoading);
+  const busy = Boolean(payLoading);
   const groupedBatches = groupItemsByBatch(order || []);
   const orderSignature = useMemo(
     () =>
@@ -251,7 +213,8 @@ function PaymentModal({
 
   const handleSuggestion = (value) =>
     setPaidAmount(value === "exact" ? convertedPayableTotal || 0 : value);
-  const handleShowConfirm = () => !busy && !discountBlocksPayment && setIsConfirming(true);
+  const handleShowConfirm = () =>
+    !busy && !discountBlocksPayment && setIsConfirming(true);
 
   const mapNote = useCallback(
     () =>
@@ -309,90 +272,6 @@ function PaymentModal({
     }
   }, [previewInput, previewOrderDiscount]);
 
-  const executeDiscountedDineInPayment = useCallback(
-    async ({ backendPaidAmountVnd, note }) => {
-      const tableId =
-        table?.id || table?._id || pos?.currentTable?.id || pos?.currentTable?._id;
-      if (!tableId) {
-        return {
-          success: false,
-          message: "Thiếu tableId để thanh toán.",
-        };
-      }
-
-      try {
-        const { data } = await payOrdersByTableIdWithTotals({
-          variables: {
-            input: {
-              restaurantId,
-              tableId,
-              paidAmount: Number(backendPaidAmountVnd || 0),
-              method,
-              note,
-              externalRef: `ref_${Date.now()}_${Math.random()
-                .toString(36)
-                .slice(2, 8)}`,
-              includeUnserved: false,
-              pricing: buildDiscountPricingInput({
-                taxRate: 0,
-                serviceRate: 0,
-                shippingFee: 0,
-                voucherCode,
-              }),
-              promotionIds: selectedPromotionIds,
-            },
-          },
-        });
-
-        const result = data?.payOrdersByTableId || null;
-        const pendingOrderCodes = Array.isArray(result?.pendingOrderCodes)
-          ? result.pendingOrderCodes
-          : [];
-
-        if (result?.warning === true || pendingOrderCodes.length > 0) {
-          return {
-            success: false,
-            message:
-              pendingOrderCodes.length > 0
-                ? `Không thể thanh toán khi còn order chưa phục vụ xong: ${pendingOrderCodes.join(", ")}`
-                : "Backend trả về cảnh báo khi thanh toán. Vui lòng kiểm tra lại trạng thái đơn.",
-            data: result,
-          };
-        }
-
-        if (!result?.invoice && !result?.transaction) {
-          return {
-            success: false,
-            message: "Thanh toán chưa được backend xác nhận.",
-            data: result,
-          };
-        }
-
-        return { success: true, data: result };
-      } catch (error) {
-        return {
-          success: false,
-          message:
-            error?.graphQLErrors?.[0]?.message ||
-            error?.networkError?.result?.errors?.[0]?.message ||
-            error?.message ||
-            "Thanh toán thất bại.",
-        };
-      }
-    },
-    [
-      table?.id,
-      table?._id,
-      pos?.currentTable?.id,
-      pos?.currentTable?._id,
-      payOrdersByTableIdWithTotals,
-      restaurantId,
-      method,
-      voucherCode,
-      selectedPromotionIds,
-    ],
-  );
-
   const executePayment = async () => {
     if (busy) return;
     if (!restaurantId) {
@@ -432,9 +311,20 @@ function PaymentModal({
 
     try {
       if (hasValidDiscount) {
-        res = await executeDiscountedDineInPayment({
-          backendPaidAmountVnd,
+        const paymentPricing = buildDiscountPricingInput({
+          taxRate: 0,
+          serviceRate: 0,
+          shippingFee: 0,
+          voucherCode,
+        });
+
+        res = await confirmPayment({
+          restaurantId,
+          method,
+          paidAmount: Number(payableTotalVnd || 0),
           note: mapNote(),
+          pricing: paymentPricing,
+          promotionIds: selectedPromotionIds,
         });
       } else {
         res = await confirmPayment({
@@ -680,6 +570,12 @@ function PaymentModal({
                         {discountBreakdown.discountReason}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {discountBlocksPayment && (
+                  <div className={s.discountError}>
+                    Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.
                   </div>
                 )}
               </div>
