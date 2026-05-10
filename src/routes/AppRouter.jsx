@@ -44,13 +44,14 @@ import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/M
 
 // ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
+import StaffKitchenPage from "@/components/Dashboard_Manager/Order/OrderManagement";
 import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerformancePage";
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
 
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
-import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
+import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
 import { canAccessRoute, getDefaultPathForRole } from "@/utils/frontendRoleAccess";
 import { STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
 
@@ -74,7 +75,7 @@ const useAuth = () => {
     sessionState,
     sessionWarning,
   } = useContext(AuthContext);
-  const role = resolveAccessRoleName(user);
+  const role = resolveRoleName(user);
   const emailVerified = user?.emailVerified ?? false;
   return {
     token,
@@ -163,6 +164,7 @@ const LogoutHandler = () => {
 // =========================
 const STAFF_SHARED_ROLES = ["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES];
 const STAFF_ORDER_ROLES = ["admin", "manager", "server", "host", "cashier", "supervisor"];
+const STAFF_KITCHEN_ROLES = ["admin", "manager", "chef", "cook", "kitchen_helper"];
 
 const AppRouter = () => {
   return (
@@ -213,6 +215,19 @@ const AppRouter = () => {
             requireVerifiedEmail
           >
             <StaffOrdering />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Staff Kitchen */}
+      <Route
+        path="/staff/kitchen"
+        element={
+          <PrivateRoute
+            allowedRoles={STAFF_KITCHEN_ROLES}
+            requireVerifiedEmail
+          >
+            <StaffKitchenPage />
           </PrivateRoute>
         }
       />
