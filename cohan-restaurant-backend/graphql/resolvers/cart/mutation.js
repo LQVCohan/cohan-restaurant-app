@@ -58,10 +58,10 @@ function emitInventoryEvent(ctx, payload = {}) {
   ctx.io.to(`restaurant_${payload.restaurantId}`).emit("inventoryEvents", payload);
 }
 
-async function resolveWarehouseIdOrDefault(restaurantId) {
-  const wh = await Warehouse.findOne({ restaurantId, isActive: true })
-    .sort({ createdAt: 1, _id: 1 })
-    .lean();
+async function resolveWarehouseIdOrDefault(restaurantId, session) {
+  let q = Warehouse.findOne({ restaurantId, isActive: true }).sort({ createdAt: 1, _id: 1 });
+  if (session) q = q.session(session);
+  const wh = await q.lean();
   if (!wh?._id) throw new GraphQLError("No warehouse found for this restaurant");
   return wh._id;
 }
@@ -80,6 +80,45 @@ function assertNotBlocked(cart) {
 function getCartServingKey(value) {
   const key = String(value || "").trim();
   return key || "portion";
+}
+
+function buildCartReleaseLine(item) {
+  return {
+    menuItemId: item.menuItemId,
+    quantity: item.quantity,
+    servingKey: getCartServingKey(item.servingKey || item.servingVariantKey),
+  };
+}
+
+function buildInventoryReleasePayload(item, reason) {
+  const servingKey = getCartServingKey(item.servingKey || item.servingVariantKey);
+  return {
+    type: "INVENTORY_RELEASED",
+    restaurantId: String(item.restaurantId),
+    menuItemId: String(item.menuItemId),
+    servingVariantKey: servingKey,
+    quantityDelta: Number(item.quantity || 0),
+    reason,
+  };
+}
+
+async function releaseCartItemsTx({ cart, items, session }) {
+  for (const item of items || []) {
+    const warehouseId = await resolveWarehouseIdOrDefault(item.restaurantId, session);
+    await cancelReservationForOrderTx({
+      restaurantId: item.restaurantId,
+      warehouseId,
+      orderCode: holdOrderCode(cart._id, item._id),
+      lines: [buildCartReleaseLine(item)],
+      session,
+    });
+  }
+}
+
+function rethrowManualReleaseError(err, message) {
+  const code = err?.extensions?.code;
+  if (code === "UNAUTHENTICATED" || code === "FORBIDDEN") throw err;
+  throw new GraphQLError(message);
 }
 
 export const CartMutation = {
@@ -251,7 +290,7 @@ export const CartMutation = {
 
         if (delta > 0) {
           const restaurantId = it.restaurantId;
-          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId, session);
           const orderCode = holdOrderCode(cart._id, it._id);
           try {
             await reserveForOrderTx({
@@ -266,7 +305,7 @@ export const CartMutation = {
           }
         } else if (delta < 0) {
           const restaurantId = it.restaurantId;
-          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId, session);
           const orderCode = holdOrderCode(cart._id, it._id);
           await cancelReservationForOrderTx({
             restaurantId,
@@ -364,76 +403,98 @@ export const CartMutation = {
     const { cartId } = input;
 
     if (!mongoose.isValidObjectId(cartId)) throw new GraphQLError("Invalid cartId");
-
     requireAuthUser(ctx);
 
-    const cart = await Cart.findById(cartId);
-    if (!cart || cart.status !== "active") return true;
-    assertCartOwner(cart, ctx);
+    const session = await mongoose.startSession();
+    let releaseEvents = [];
 
-    for (const it of cart.items || []) {
-      const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
-      try {
-        const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
-        await cancelReservationForOrderTx({
-          restaurantId: it.restaurantId,
-          warehouseId,
-          orderCode: holdOrderCode(cart._id, it._id),
-          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
-        });
-      } catch (_e) {}
+    try {
+      await session.withTransaction(async () => {
+        const cart = await Cart.findOne({ _id: cartId, status: "active" }).session(session);
+        if (!cart) return;
 
-      emitInventoryEvent(ctx, {
-        type: "INVENTORY_RELEASED",
-        restaurantId: String(it.restaurantId),
-        menuItemId: String(it.menuItemId),
-        servingVariantKey: servingKey,
-        reason: "clear_cart",
+        assertCartOwner(cart, ctx);
+
+        const itemsToRelease = [...(cart.items || [])];
+        await releaseCartItemsTx({ cart, items: itemsToRelease, session });
+
+        cart.items = [];
+        cart.totalQuantity = 0;
+        cart.totalAmount = 0;
+        cart.lastActivityAt = new Date();
+
+        await cart.save({ session });
+
+        releaseEvents = itemsToRelease.map((item) => ({
+          ...buildInventoryReleasePayload(item, "clear_cart"),
+          cartId: String(cart._id),
+          cartItemId: String(item._id),
+        }));
       });
+    } catch (err) {
+      rethrowManualReleaseError(
+        err,
+        "Không thể xóa giỏ hàng vì không trả được nguyên liệu đã giữ. Vui lòng thử lại."
+      );
+    } finally {
+      await session.endSession();
     }
 
-    cart.items = [];
-    cart.totalQuantity = 0;
-    cart.totalAmount = 0;
-    cart.lastActivityAt = new Date();
-
-    await cart.save();
+    for (const event of releaseEvents) emitInventoryEvent(ctx, event);
     return true;
   },
 
   async releaseMyCartHolds(_, { input = {} }, ctx) {
     const uid = getUserId(input.userId, ctx);
-
-    const cart = await Cart.findOne({ userId: uid, status: "active" });
-    if (!cart) return true;
-
     const reason = String(input.reason || "exit");
-    for (const it of cart.items || []) {
-      const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
-      try {
-        const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
-        await cancelReservationForOrderTx({
-          restaurantId: it.restaurantId,
-          warehouseId,
-          orderCode: holdOrderCode(cart._id, it._id),
-          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
-        });
-      } catch (_e) {}
+
+    const session = await mongoose.startSession();
+    let releaseEvents = [];
+
+    try {
+      await session.withTransaction(async () => {
+        const cart = await Cart.findOne({ userId: uid, status: "active" }).session(session);
+        if (!cart) return;
+
+        const itemsToRelease = [...(cart.items || [])];
+        await releaseCartItemsTx({ cart, items: itemsToRelease, session });
+
+        cart.abuse = cart.abuse || {};
+        const now = new Date();
+
+        if (reason === "exit") {
+          cart.abuse.exitReleaseCount = Number(cart.abuse.exitReleaseCount || 0) + 1;
+        }
+        cart.abuse.lastViolationAt = now;
+
+        const totalReleaseCount =
+          Number(cart.abuse.exitReleaseCount || 0) + Number(cart.abuse.timeoutReleaseCount || 0);
+        if (totalReleaseCount >= ABUSE_BLOCK_THRESHOLD) {
+          cart.abuse.blockedUntil = new Date(now.getTime() + 60 * 60 * 1000);
+        } else if (totalReleaseCount >= ABUSE_WARN_THRESHOLD) {
+          cart.abuse.warningCount = Number(cart.abuse.warningCount || 0) + 1;
+        }
+
+        cart.items = [];
+        cart.totalQuantity = 0;
+        cart.totalAmount = 0;
+        cart.lastActivityAt = now;
+
+        await cart.save({ session });
+
+        releaseEvents = itemsToRelease.map((item) => ({
+          ...buildInventoryReleasePayload(item, reason),
+          cartId: String(cart._id),
+          cartItemId: String(item._id),
+        }));
+      });
+    } catch (err) {
+      rethrowManualReleaseError(err, "Không thể trả món đã giữ trong giỏ. Vui lòng thử lại.");
+    } finally {
+      await session.endSession();
     }
 
-    if (reason === "exit") cart.abuse.exitReleaseCount = Number(cart?.abuse?.exitReleaseCount || 0) + 1;
-    cart.abuse.lastViolationAt = new Date();
-    if ((cart.abuse.exitReleaseCount || 0) + (cart.abuse.timeoutReleaseCount || 0) >= ABUSE_BLOCK_THRESHOLD) {
-      cart.abuse.blockedUntil = new Date(Date.now() + 60 * 60 * 1000);
-    } else if ((cart.abuse.exitReleaseCount || 0) + (cart.abuse.timeoutReleaseCount || 0) >= ABUSE_WARN_THRESHOLD) {
-      cart.abuse.warningCount = Number(cart?.abuse?.warningCount || 0) + 1;
-    }
-
-    cart.items = [];
-    cart.totalQuantity = 0;
-    cart.totalAmount = 0;
-    await cart.save();
-
+    for (const event of releaseEvents) emitInventoryEvent(ctx, event);
     return true;
   },
 };
