@@ -251,6 +251,7 @@ describe("orderLifecycle helpers", () => {
     expect(OrderModel.updateMany.mock.calls[0][0].$and[1]).toMatchObject({
       currentStatus: { $nin: ["completed", "cancelled", "failed"] },
       orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+      "payment.status": { $ne: "paid" },
     });
     expect(OrderModel.updateOne).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -267,6 +268,19 @@ describe("orderLifecycle helpers", () => {
       }),
       {},
     );
+    expect(OrderModel.find).toHaveBeenCalledWith({
+      $and: [
+        childOrdersForSessionFilter({
+          restaurantId: "rest-1",
+          parentOrderId: "parent-1",
+        }),
+        {
+          currentStatus: { $nin: ["completed", "cancelled", "failed"] },
+          orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+          "payment.status": { $ne: "paid" },
+        },
+      ],
+    });
   });
 
   it("clearPaymentRequestAfterNewChildOrderBatchCreated clears stale request after a new order_batch is created", async () => {
