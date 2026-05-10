@@ -23,6 +23,24 @@ export const STAFF_OPERATIONAL_ROLES = new Set([
   "storekeeper",
   "bartender",
 ]);
+export const STAFF_SHARED_ROLES = [
+  ...new Set(["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES]),
+];
+export const STAFF_ORDER_ROLES = [
+  "admin",
+  "manager",
+  "server",
+  "host",
+  "cashier",
+  "supervisor",
+];
+export const STAFF_KITCHEN_ROLES = [
+  "admin",
+  "manager",
+  "chef",
+  "cook",
+  "kitchen_helper",
+];
 export const CUSTOMER_ROLES = new Set(["customer"]);
 
 export const normalizeRoleName = (input) => {
@@ -70,6 +88,12 @@ export const isStaffOperationalRole = (role) =>
   STAFF_OPERATIONAL_ROLES.has(resolveUserRoleName(role));
 export const isCustomerRole = (role) => CUSTOMER_ROLES.has(resolveUserRoleName(role));
 
+export const hasStaffOrderAccess = (role) =>
+  STAFF_ORDER_ROLES.includes(resolveUserRoleName(role));
+
+export const hasStaffKitchenAccess = (role) =>
+  STAFF_KITCHEN_ROLES.includes(resolveUserRoleName(role));
+
 export const getDefaultPathForRole = (userOrRole) => {
   const normalized = resolveUserRoleName(userOrRole);
   if (isAdminRole(normalized)) return "/admin/dashboard";
@@ -90,7 +114,7 @@ const ROUTE_ACCESS_RULES = [
   { test: /^\/manager(\/|$)/, allow: ["admin", "manager", "hr", "accountant"] },
   {
     test: /^\/staff(\/|$)/,
-    allow: [...new Set(["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES])],
+    allow: STAFF_SHARED_ROLES,
   },
   { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
   { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },

@@ -40,7 +40,14 @@ import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
 
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
-import { canAccessRoute, getDefaultPathForRole, STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
+import {
+  canAccessRoute,
+  getDefaultPathForRole,
+  STAFF_KITCHEN_ROLES,
+  STAFF_OPERATIONAL_ROLES,
+  STAFF_ORDER_ROLES,
+  STAFF_SHARED_ROLES,
+} from "@/utils/frontendRoleAccess";
 
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
@@ -104,10 +111,6 @@ const LogoutHandler = () => {
   }, [logout]);
   return null;
 };
-
-const STAFF_SHARED_ROLES = ["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES];
-const STAFF_ORDER_ROLES = ["admin", "manager", "server", "host", "cashier", "supervisor"];
-const STAFF_KITCHEN_ROLES = ["admin", "manager", "chef", "cook", "kitchen_helper"];
 
 const withPrivateRoute = (children, allowedRoles, requireVerifiedEmail = true) => (
   <PrivateRoute allowedRoles={allowedRoles} requireVerifiedEmail={requireVerifiedEmail}>
