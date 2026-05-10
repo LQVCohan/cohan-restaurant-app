@@ -32,7 +32,7 @@ import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayo
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/ManagerPerformancePage";
 
-import StaffOrdering from "../components/Staff/StaffOrdering";
+import StaffOrdering from "../components/Staff/StaffOrderingScoped";
 import StaffKitchenPage from "@/components/Staff/StaffKitchenPage";
 import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerformancePage";
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
