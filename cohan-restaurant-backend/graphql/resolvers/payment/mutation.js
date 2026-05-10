@@ -18,15 +18,16 @@ import { calculateDiscountBreakdown } from "../../../src/services/discountCalcul
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
+  INACTIVE_ORDER_STATUSES,
   activeTableSessionLookupFilter,
   childOrdersForSessionFilter,
+  clearTablePaymentRequestState,
   orderBatchOrLegacyFilter,
   ORDER_KIND,
   SESSION_STATUS,
   ORDER_PAYMENT_STATUS,
 } from "../../../utils/orderLifecycle.js";
 
-const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
 function hasPendingItemWork(order) {
@@ -45,9 +46,34 @@ function hasPendingAdjustmentRequests(order) {
   );
 }
 
+function isReadyForPayment(order) {
+  const status = String(order?.currentStatus || "").toLowerCase();
+
+  return (
+    ["served", "completed"].includes(status) &&
+    !hasPendingItemWork(order) &&
+    !hasPendingAdjustmentRequests(order)
+  );
+}
+
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
+}
+
+function applyRequestPaymentState(order, fields) {
+  return {
+    ...order,
+    orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+    payment: {
+      ...(order?.payment || {}),
+      status: "payment_requested",
+      requestedAt: fields.requestedAt,
+      requestSource: fields.requestSource,
+      requestedBy: fields.requestedBy,
+      requestNote: fields.requestNote,
+    },
+  };
 }
 
 function buildLineKey(item, unitPrice, modifiersPrice) {
@@ -149,189 +175,248 @@ function accumulateTotals(order, subtotalIncluded, linesSubtotal) {
   };
 }
 
-function normalizeVoucherCode(value) {
-  const code = String(value || "").trim().toUpperCase();
-  return code || undefined;
-}
+export const requestTablePayment = async (_parent, { input }, ctx) => {
+  const {
+    restaurantId,
+    tableId,
+    tableCode,
+    source,
+    requestedBy,
+    note,
+  } = input || {};
 
-function normalizePromotionIds(promotionIds = []) {
-  return Array.isArray(promotionIds)
-    ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
-    : [];
-}
+  const rid = toId(restaurantId);
+  const tid = toId(tableId);
+  const normalizedTableCode = String(tableCode || "").trim() || null;
+  const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+  const requestSource = String(source || "").trim() || "unknown";
+  const requestedByValue = toId(requestedBy) || actorId || null;
+  const requestNote = String(note || "").trim() || null;
 
-function hasPaymentDiscountSelection({ pricing, promotionIds }) {
-  return (
-    Boolean(normalizeVoucherCode(pricing?.voucherCode)) ||
-    normalizePromotionIds(promotionIds).length > 0
-  );
-}
+  if (!rid) throw new Error("Invalid restaurantId");
+  if (!tid) throw new Error("Invalid tableId");
 
-function buildPaymentDiscountPricing({ pricing = {}, aggregatedTotals = {} }) {
-  const subtotal = Math.max(0, Number(aggregatedTotals?.subtotal || 0));
-  const service = Math.max(0, Number(aggregatedTotals?.service || 0));
-  const tax = Math.max(0, Number(aggregatedTotals?.tax || 0));
+  await requireRestaurantAccess(ctx, rid);
 
-  const serviceRate = Number.isFinite(Number(pricing?.serviceRate))
-    ? Math.max(0, Number(pricing.serviceRate))
-    : subtotal > 0
-      ? service / subtotal
-      : 0;
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({
+      restaurantId: rid,
+      tableId: tid,
+      tableCode: normalizedTableCode,
+    }),
+  )
+    .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
 
-  const beforeTaxBase = Math.max(0, subtotal + service);
-  const taxRate = Number.isFinite(Number(pricing?.taxRate))
-    ? Math.max(0, Number(pricing.taxRate))
-    : beforeTaxBase > 0
-      ? tax / beforeTaxBase
-      : 0;
-
-  return {
-    serviceRate,
-    taxRate,
-    shippingFee: Math.max(
-      0,
-      Number(pricing?.shippingFee ?? aggregatedTotals?.shippingFee ?? 0),
-    ),
-    voucherCode: normalizeVoucherCode(pricing?.voucherCode),
-  };
-}
-
-function buildDiscountItemsFromOrders(orders = []) {
-  return orders.flatMap((order) =>
-    (order.items || [])
-      .filter(
-        (item) =>
-          !EXCLUDED_ITEM_STATUSES.has(
-            String(item?.status || "").toLowerCase(),
-          ),
-      )
-      .map((item) => ({
-        ...item,
-        lineSubtotal: Number(item?.lineSubtotal || 0),
-        status: item?.status || "served",
-      }))
-      .filter((item) => Number(item.lineSubtotal || 0) > 0),
-  );
-}
-
-async function incrementCouponUsageOnce({ totals, session }) {
-  if (!totals?.couponId) return;
-
-  const updateResult = await Coupon.updateOne(
-    {
-      _id: totals.couponId,
-      $expr: {
-        $or: [
-          { $lte: ["$maxUsage", 0] },
-          { $lt: ["$used", "$maxUsage"] },
-        ],
-      },
-    },
-    { $inc: { used: 1 } },
-    { session },
-  );
-
-  if (!updateResult.modifiedCount) {
-    throw new Error("Invalid voucher: usage limit reached");
-  }
-}
-
-async function calculatePaymentTotalsWithOptionalDiscount({
-  restaurantId,
-  orders,
-  aggregatedTotals,
-  pricing,
-  promotionIds,
-}) {
-  const hasDiscount = hasPaymentDiscountSelection({ pricing, promotionIds });
-
-  if (!hasDiscount) {
+  if (!activeSession) {
     return {
-      totals: aggregatedTotals,
-      discountTotals: null,
-      appliedDiscount: false,
+      ok: false,
+      warning: true,
+      readyForPayment: false,
+      message: "Không tìm thấy phiên bàn đang hoạt động.",
+      pendingOrderCodes: [],
+      session: null,
+      orders: [],
+      requestedAt: null,
     };
   }
 
-  const discountItems = buildDiscountItemsFromOrders(orders);
+  const childOrders = await Order.find({
+    $and: [
+      childOrdersForSessionFilter({
+        restaurantId: rid,
+        parentOrderId: activeSession._id,
+      }),
+      {
+        currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+        "payment.status": { $ne: "paid" },
+      },
+    ],
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
 
-  if (!discountItems.length) {
-    throw new Error("No payable items for discount calculation");
+  if (!childOrders.length) {
+    return {
+      ok: false,
+      warning: true,
+      readyForPayment: false,
+      message: "Bàn chưa có món nào để yêu cầu thanh toán.",
+      pendingOrderCodes: [],
+      session: activeSession,
+      orders: [],
+      requestedAt: null,
+    };
   }
 
-  const discountTotals = await calculateDiscountBreakdown({
-    restaurantId,
-    items: discountItems,
-    pricing: buildPaymentDiscountPricing({ pricing, aggregatedTotals }),
-    promotionIds: normalizePromotionIds(promotionIds),
-  });
+  const pendingOrderCodes = childOrders
+    .filter((order) => !isReadyForPayment(order))
+    .map((order) => order.orderCode || String(order._id));
 
-  return {
-    totals: {
-      subtotal: discountTotals.subtotal,
-      discount: discountTotals.discount,
-      tax: discountTotals.tax,
-      service: discountTotals.service,
-      shippingFee: discountTotals.shippingFee || 0,
-      grandTotal: discountTotals.grandTotal,
-      voucherCode: discountTotals.voucherCode || null,
-      promotionId: discountTotals.appliedPromotions?.[0] || null,
-      discountReason: discountTotals.discountReason || null,
-    },
-    discountTotals,
-    appliedDiscount: true,
-  };
-}
+  const readyForPayment = pendingOrderCodes.length === 0;
+  const warning = !readyForPayment;
+  const requestedAt = new Date();
 
-function resolvePaymentAmount({ paidAmount, expectedTotal, appliedDiscount }) {
-  const expected = Math.round(Number(expectedTotal || 0));
+  const session = await startSession();
+  session.startTransaction();
 
-  if (!(expected > 0)) {
-    throw new Error("Invalid payment total");
+  try {
+    const childOrderIds = childOrders.map((order) => order._id);
+
+    await Order.updateMany(
+      {
+        _id: { $in: childOrderIds },
+      },
+      {
+        $set: {
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+          "payment.status": "payment_requested",
+          "payment.requestedAt": requestedAt,
+          "payment.requestSource": requestSource,
+          "payment.requestedBy": requestedByValue,
+          "payment.requestNote": requestNote,
+        },
+      },
+      { session },
+    );
+
+    await Order.updateMany(
+      {
+        _id: activeSession._id,
+        restaurantId: rid,
+        orderKind: ORDER_KIND.TABLE_SESSION,
+      },
+      {
+        $set: {
+          sessionStatus: SESSION_STATUS.READY_TO_PAY,
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
+          "payment.status": "payment_requested",
+          "payment.requestedAt": requestedAt,
+          "payment.requestSource": requestSource,
+          "payment.requestedBy": requestedByValue,
+          "payment.requestNote": requestNote,
+        },
+      },
+      { session },
+    );
+
+    await EventLog.log(
+      {
+        restaurantId: rid,
+        verb: "order.request_payment",
+        actorUserId: ctx?.user?.id,
+        object: { kind: "TableSession", id: activeSession._id },
+        source: "pos",
+        status: "success",
+        meta: {
+          requestOrderIds: childOrderIds.map(String),
+          parentSessionIds: [String(activeSession._id)],
+          tableId: String(tid),
+          tableCode: normalizedTableCode,
+          requestSource,
+          requestedBy: requestedByValue ? String(requestedByValue) : null,
+          requestNote,
+          pendingOrderCodes,
+          readyForPayment,
+        },
+      },
+      { session },
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    const responseFields = {
+      requestedAt,
+      requestSource,
+      requestedBy: requestedByValue,
+      requestNote,
+    };
+
+    return {
+      ok: true,
+      warning,
+      readyForPayment,
+      message: warning
+        ? "Bàn còn món chưa sẵn sàng thanh toán."
+        : "Đã ghi nhận yêu cầu thanh toán.",
+      pendingOrderCodes,
+      session: {
+        ...applyRequestPaymentState(activeSession, responseFields),
+        sessionStatus: SESSION_STATUS.READY_TO_PAY,
+      },
+      orders: childOrders.map((order) =>
+        applyRequestPaymentState(order, responseFields),
+      ),
+      requestedAt: requestedAt.toISOString(),
+    };
+  } catch (err) {
+    await session.abortTransaction().catch(() => {});
+    session.endSession();
+    throw err;
+  }
+};
+
+export const clearTablePaymentRequest = async (_parent, { input }, ctx) => {
+  const { restaurantId, tableId, tableCode, reason } = input || {};
+
+  const rid = toId(restaurantId);
+  const tid = toId(tableId);
+  const normalizedTableCode = String(tableCode || "").trim() || null;
+  const clearReason = String(reason || "").trim() || null;
+
+  if (!rid) throw new Error("Invalid restaurantId");
+  if (!tid) throw new Error("Invalid tableId");
+
+  await requireRestaurantAccess(ctx, rid);
+
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({
+      restaurantId: rid,
+      tableId: tid,
+      tableCode: normalizedTableCode,
+    }),
+  )
+    .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
+
+  if (!activeSession) {
+    return {
+      ok: false,
+      message: "Không tìm thấy phiên bàn đang hoạt động.",
+      session: null,
+      orders: [],
+    };
   }
 
-  if (paidAmount == null || paidAmount === "") {
-    return expected;
+  const tx = await startSession();
+  tx.startTransaction();
+
+  try {
+    const clearedState = await clearTablePaymentRequestState({
+      OrderModel: Order,
+      restaurantId: rid,
+      activeSession,
+      reason: clearReason,
+      now: new Date(),
+      session: tx,
+    });
+
+    await tx.commitTransaction();
+    tx.endSession();
+
+    return {
+      ok: true,
+      message: "Đã hủy yêu cầu thanh toán của bàn.",
+      session: clearedState.session,
+      orders: clearedState.orders,
+    };
+  } catch (err) {
+    await tx.abortTransaction().catch(() => {});
+    tx.endSession();
+    throw err;
   }
-
-  const amount = Math.round(Number(paidAmount));
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid paidAmount");
-  }
-
-  if (appliedDiscount && Math.abs(amount - expected) > 1) {
-    throw new Error("Payment amount does not match backend discounted total");
-  }
-
-  return amount;
-}
-
-function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
-  if (!appliedDiscount && !discountTotals) return undefined;
-
-  return {
-    discountApplied: appliedDiscount,
-    voucherCode: discountTotals?.voucherCode || null,
-    promotionIds:
-      discountTotals?.appliedPromotions ||
-      normalizePromotionIds(promotionIds),
-    discountTotals: discountTotals
-      ? {
-          subtotal: discountTotals.subtotal,
-          totalDiscount: discountTotals.totalDiscount,
-          discount: discountTotals.discount,
-          tax: discountTotals.tax,
-          service: discountTotals.service,
-          shippingFee: discountTotals.shippingFee || 0,
-          grandTotal: discountTotals.grandTotal,
-          voucherCode: discountTotals.voucherCode || null,
-          couponId: discountTotals.couponId || null,
-          appliedPromotions: discountTotals.appliedPromotions || [],
-        }
-      : null,
-  };
-}
+};
 
 export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   const {
@@ -506,11 +591,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
-  const amountToPay = resolvePaymentAmount({
-    paidAmount,
-    expectedTotal: payableTotals.grandTotal,
-    appliedDiscount,
-  });
+  const amountToPay =
+    paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
 
   const session = await startSession();
   session.startTransaction();
@@ -595,8 +677,6 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       ],
       { session },
     ).then((r) => r[0]);
-
-    await incrementCouponUsageOnce({ totals: discountTotals, session });
 
     await Order.updateMany(
       { _id: { $in: orderIds } },
@@ -1017,11 +1097,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 };
 
-export const createReservationPaymentMutation = async (
-  _parent,
-  { input },
-  ctx,
-) => {
+export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
   const userId = ctx?.user?.id;
   if (!userId) throw new Error("Unauthorized");
 
@@ -1063,7 +1139,9 @@ export const updateRestaurantPaymentSettings = async (
   ctx,
 ) => {
   if (!ctx?.user?.id) throw new Error("Unauthorized");
-  const role = String(ctx?.user?.roleName || ctx?.user?.role || "").toLowerCase();
+  const role = String(
+    ctx?.user?.roleName || ctx?.user?.role || "",
+  ).toLowerCase();
   if (!["manager", "admin"].some((x) => role.includes(x))) {
     throw new Error("Forbidden");
   }
@@ -1086,7 +1164,7 @@ export const updateRestaurantPaymentSettings = async (
         ? Number(p.priority)
         : idx + 1,
       mode:
-        String(p?.mode || "").toLowerCase() === "production"
+        String(p?.mode || "sandbox").toLowerCase() === "production"
           ? "production"
           : "sandbox",
     }))
@@ -1131,6 +1209,8 @@ export const updateRestaurantPaymentSettings = async (
 };
 
 export default {
+  requestTablePayment,
+  clearTablePaymentRequest,
   payOrdersByTableId,
   payOrdersByOrderIds,
   createReservationPayment: createReservationPaymentMutation,
