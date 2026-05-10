@@ -16,6 +16,14 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import "./CartBottomSheet.scss";
+function getStaffCartPayableTotal({ discountBreakdown, fallbackTotal }) {
+  return Number(
+    discountBreakdown?.grandTotal ??
+      discountBreakdown?.finalTotal ??
+      fallbackTotal ??
+      0,
+  );
+}
 function getStaffCartLineTotal(item) {
   const price = Number(item?.price || 0);
   const variant = item?.servingVariant || {};
@@ -50,6 +58,13 @@ export default function CartBottomSheet({
   checkoutEnabled = true,
   sending = false,
   sendActionLabel = "Gửi Bếp",
+  discountEnabled = false,
+  voucherCode = "",
+  onVoucherCodeChange,
+  onApplyVoucher,
+  discountBreakdown,
+  discountError,
+  discountLoading = false,
 }) {
   const handleRequestVoid = (item) => {
     const maxQty = Number(item.quantity || 1);
@@ -273,19 +288,61 @@ export default function CartBottomSheet({
           <div className="summary-row">
             <span className="summary-label">Tổng thanh toán:</span>
             <span className="summary-total">
-              {totalPrice.toLocaleString()}đ
+              {getStaffCartPayableTotal({
+                discountBreakdown,
+                fallbackTotal: totalPrice,
+              }).toLocaleString("vi-VN")}
+              đ
             </span>
           </div>
 
           <div className="billing-actions">
-            <button
-              className="btn-sub disabled"
-              type="button"
-              disabled
-              title="Chức năng ưu đãi sẽ được bổ sung ở phiên bản sau"
-            >
-              <Tag size={16} /> Thêm Ưu Đãi
-            </button>
+            {discountEnabled ? (
+              <div className="staff-discount-box">
+                <div className="staff-discount-row">
+                  <input
+                    className="staff-discount-input"
+                    value={voucherCode}
+                    placeholder="Nhập mã voucher"
+                    onChange={(event) =>
+                      onVoucherCodeChange?.(event.target.value)
+                    }
+                  />
+                  <button
+                    className="btn-sub"
+                    type="button"
+                    disabled={discountLoading || !voucherCode.trim()}
+                    onClick={onApplyVoucher}
+                  >
+                    <Tag size={16} />{" "}
+                    {discountLoading ? "Đang kiểm..." : "Áp dụng"}
+                  </button>
+                </div>
+
+                {discountError && (
+                  <div className="staff-discount-error">{discountError}</div>
+                )}
+
+                {discountBreakdown && (
+                  <div className="staff-discount-success">
+                    Đã áp dụng. Giảm{" "}
+                    {Number(
+                      discountBreakdown.totalDiscount || 0,
+                    ).toLocaleString("vi-VN")}
+                    đ
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                className="btn-sub disabled"
+                type="button"
+                disabled
+                title="Ưu đãi chỉ áp dụng cho đơn giao hàng/mang về"
+              >
+                <Tag size={16} /> Thêm Ưu Đãi
+              </button>
+            )}
 
             <button
               className="btn-sub disabled"

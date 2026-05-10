@@ -8,6 +8,7 @@ import {
 } from "@apollo/client";
 import useSocketOrder from "./useSocketOrder";
 import { deriveSelectedCustomerPayload } from "@/utils/posCustomerIdentity";
+import { buildDiscountPricingInput } from "@/utils/discountPreviewPayload";
 /* ============================================================
    1) GRAPHQL
    ============================================================ */
@@ -2532,8 +2533,14 @@ export default function useOrderManagement(pos = null) {
      ============================================================ */
 
   const saveOrder = useCallback(
-    async ({ persist = true, restaurantId, clearAfterSave = true } = {}) => {
-      // ❌ Không cho lưu đơn rỗng
+    async (options = {}) => {
+      const {
+        persist = true,
+        pricing: discountPricing = {},
+        promotionIds = [],
+        restaurantId,
+        clearAfterSave = true,
+      } = options || {};
       if (!currentOrder?.length) {
         return { success: false, message: "Chưa có món ăn nào trong đơn." };
       }
@@ -2725,6 +2732,13 @@ export default function useOrderManagement(pos = null) {
                   customerLocation: shippingInfo?.customerLocation || null,
                 },
               },
+              pricing: buildDiscountPricingInput({
+                taxRate: discountPricing?.taxRate ?? 0,
+                serviceRate: discountPricing?.serviceRate ?? 0,
+                shippingFee: discountPricing?.shippingFee ?? 0,
+                voucherCode: discountPricing?.voucherCode ?? "",
+              }),
+              promotionIds: Array.isArray(promotionIds) ? promotionIds : [],
             },
           },
         });

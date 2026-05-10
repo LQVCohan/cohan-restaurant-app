@@ -20,7 +20,7 @@ $gray-slate-500: #64748b;
 $gray-slate-700: #334155;
 $gray-slate-800: #1e293b;
 $gray-slate-900: #0f172a;
-
+$gray-slate-600: #475569;
 .wrapper {
   display: flex;
   flex-direction: column;
@@ -145,7 +145,8 @@ $gray-slate-900: #0f172a;
   background: #ffffff;
   min-width: 140px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid $gray-slate-200;
   padding: 4px;
@@ -207,7 +208,92 @@ $gray-slate-900: #0f172a;
   margin-bottom: 0.5rem;
   margin-left: 2px;
 }
+.batchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0.35rem 2px 0.45rem;
+}
 
+.batchTitle {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: $gray-slate-700;
+  white-space: nowrap;
+}
+
+.batchMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+.batchCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: $gray-slate-500;
+  background: $gray-slate-100;
+  border: 1px solid $gray-slate-200;
+  border-radius: 999px;
+  padding: 2px 6px;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batchStatus {
+  font-size: 0.66rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: $gray-slate-100;
+  color: $gray-slate-600;
+  border: 1px solid $gray-slate-200;
+  white-space: nowrap;
+}
+
+.status_pending {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.status_confirmed {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.status_preparing {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.status_ready {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #bbf7d0;
+}
+
+.status_served,
+.status_completed {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.status_cancelled,
+.status_failed {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
 .dividerLabel {
   font-size: 0.7rem;
   font-weight: 700;
@@ -229,7 +315,7 @@ $gray-slate-900: #0f172a;
 .cardExisting {
   background: #fff;
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid $gray-slate-200;
   display: flex;
   flex-direction: column;
@@ -392,14 +478,16 @@ $gray-slate-900: #0f172a;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .priceSingle {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: $gray-slate-500;
-  font-weight: 500;
-  width: 70px;
+  font-weight: 600;
+  min-width: 78px;
+  max-width: 92px;
+  white-space: nowrap;
 }
 
 .cardTotal {
@@ -452,12 +540,13 @@ $gray-slate-900: #0f172a;
 }
 
 .qtyStatic {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   color: $gray-slate-700;
   background: $gray-slate-200;
-  padding: 1px 8px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .emptyState {
@@ -553,8 +642,9 @@ $gray-slate-900: #0f172a;
   transition: background-color 0.2s;
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
+    filter: grayscale(0.15);
   }
 }
 
@@ -690,4 +780,56 @@ $gray-slate-900: #0f172a;
   // white-space: nowrap;
   // overflow: hidden;
   // text-overflow: ellipsis;
+}
+.discountBox {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.discountTitle {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.discountRow {
+  display: flex;
+  gap: 8px;
+}
+
+.discountInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+
+.smallBtn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+}
+
+.discountError {
+  margin-top: 8px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.discountWarning {
+  margin-top: 8px;
+  color: #d97706;
+  font-size: 13px;
+}
+
+.discountSuccess {
+  margin-top: 8px;
+  color: #16a34a;
+  font-size: 13px;
 }

@@ -18,6 +18,15 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
+import {
+  getDiscountPreviewErrorMessage,
+  useDiscountPreview,
+} from "@/hooks/useDiscountPreview";
+
+import {
+  buildDiscountPricingInput,
+  buildOrderDiscountPreviewInput,
+} from "@/utils/discountPreviewPayload";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import "./StaffOrdering.scss";
@@ -352,10 +361,7 @@ const buildCartFromServerOrders = (orders = []) => {
 
 export default function StaffOrdering() {
   const { user, restaurants } = useContext(AuthContext) || {};
-  const restaurantId =
-    user?.restaurantForStaff ||
-    restaurants?.[0]?.id ||
-    null;
+  const restaurantId = user?.restaurantForStaff || restaurants?.[0]?.id || null;
 
   const [activeTab, setActiveTab] = useState("tables");
   const [searchQuery, setSearchQuery] = useState("");
@@ -382,7 +388,24 @@ export default function StaffOrdering() {
     channel: "phone",
     requestedAt: "",
   });
+  const [remoteVoucherCode, setRemoteVoucherCode] = useState("");
+  const [remotePromotionIds, setRemotePromotionIds] = useState([]);
+  const [remoteDiscountBreakdown, setRemoteDiscountBreakdown] = useState(null);
+  const [remoteDiscountError, setRemoteDiscountError] = useState("");
+  const [remoteDiscountPreviewKey, setRemoteDiscountPreviewKey] = useState("");
 
+  const {
+    previewOrderDiscount: previewRemoteDiscount,
+    loading: isPreviewingRemoteDiscount,
+  } = useDiscountPreview();
+
+  const resetRemoteDiscount = useCallback(() => {
+    setRemoteVoucherCode("");
+    setRemotePromotionIds([]);
+    setRemoteDiscountBreakdown(null);
+    setRemoteDiscountError("");
+    setRemoteDiscountPreviewKey("");
+  }, []);
   const searchTimerRef = useRef(null);
   const remoteSubmitKeyRef = useRef(null);
   const [requestOrderItemVoid] = useMutation(REQUEST_ORDER_ITEM_VOID);
@@ -452,7 +475,7 @@ export default function StaffOrdering() {
     fetchPolicy: "network-only",
   });
 
-  const { data: _overviewData } = useQuery(STAFF_ACCOUNT_OVERVIEW, {
+  useQuery(STAFF_ACCOUNT_OVERVIEW, {
     variables: { staffId: user?.id || null },
     skip: !user?.id,
     fetchPolicy: "network-only",
@@ -528,10 +551,121 @@ export default function StaffOrdering() {
   const cart = selectedTable ? cartByTable[selectedTable.id] || [] : [];
   const remoteCart = cartByTable.remote_order || [];
   const activeCart = orderMode === "remote" ? remoteCart : cart;
+  const remotePendingItems = useMemo(
+    () =>
+      remoteCart.filter(
+        (item) => item.status === "pending" && !item.persisted,
+      ),
+    [remoteCart],
+  );
+  const remoteDiscountInputKey = useMemo(
+    () =>
+      JSON.stringify({
+        restaurantId,
+        orderType: remoteOrderInfo.orderType,
+        voucherCode: remoteVoucherCode.trim().toUpperCase(),
+        promotionIds: remotePromotionIds,
+        items: remotePendingItems.map((item) => ({
+          id: item.id,
+          dishId: item.dishId,
+          menuId: item.menuId,
+          servingKey: item.servingKey,
+          quantity: item.quantity,
+          price: item.price,
+          weightGrams: item.weightGrams,
+          modifiers: item.modifiers || [],
+          proofImagesCount: Array.isArray(item.proofImages)
+            ? item.proofImages.length
+            : 0,
+        })),
+      }),
+    [
+      restaurantId,
+      remoteOrderInfo.orderType,
+      remoteVoucherCode,
+      remotePromotionIds,
+      remotePendingItems,
+    ],
+  );
+  const isRemoteDiscountStale =
+    Boolean(remoteDiscountBreakdown) &&
+    remoteDiscountPreviewKey !== remoteDiscountInputKey;
+  const hasRemoteDiscountSelection =
+    remoteVoucherCode.trim().length > 0 || remotePromotionIds.length > 0;
+  const shouldBlockRemoteDiscount =
+    hasRemoteDiscountSelection &&
+    (!remoteDiscountBreakdown ||
+      Boolean(remoteDiscountError) ||
+      isRemoteDiscountStale);
+
   const cartContextTable =
     orderMode === "remote"
       ? { id: "remote_order", name: "Order từ xa", customer: null }
       : selectedTable;
+
+  const buildRemoteDiscountPreviewInput = useCallback(() => {
+    return buildOrderDiscountPreviewInput({
+      restaurantId,
+      orderType: remoteOrderInfo.orderType,
+      items: remotePendingItems,
+      taxRate: 0,
+      serviceRate: 0,
+      shippingFee: 0,
+      voucherCode: remoteVoucherCode,
+      promotionIds: remotePromotionIds,
+    });
+  }, [
+    restaurantId,
+    remoteOrderInfo.orderType,
+    remotePendingItems,
+    remoteVoucherCode,
+    remotePromotionIds,
+  ]);
+
+  const handleApplyRemoteDiscount = useCallback(async () => {
+    setRemoteDiscountError("");
+
+    if (!remotePendingItems.length) {
+      setRemoteDiscountBreakdown(null);
+      setRemoteDiscountPreviewKey("");
+      setRemoteDiscountError("Không có món mới để kiểm tra ưu đãi.");
+      return;
+    }
+
+    if (!restaurantId) {
+      setRemoteDiscountBreakdown(null);
+      setRemoteDiscountPreviewKey("");
+      setRemoteDiscountError("Không xác định được nhà hàng.");
+      return;
+    }
+
+    try {
+      const breakdown = await previewRemoteDiscount(
+        buildRemoteDiscountPreviewInput(),
+      );
+
+      setRemoteDiscountBreakdown(breakdown);
+      setRemoteDiscountPreviewKey(remoteDiscountInputKey);
+    } catch (error) {
+      setRemoteDiscountBreakdown(null);
+      setRemoteDiscountPreviewKey("");
+      setRemoteDiscountError(getDiscountPreviewErrorMessage(error));
+    }
+  }, [
+    remotePendingItems.length,
+    restaurantId,
+    previewRemoteDiscount,
+    buildRemoteDiscountPreviewInput,
+    remoteDiscountInputKey,
+  ]);
+
+  useEffect(() => {
+    if (remoteVoucherCode.trim() || remotePromotionIds.length > 0) return;
+
+    setRemoteDiscountBreakdown(null);
+    setRemoteDiscountError("");
+    setRemoteDiscountPreviewKey("");
+  }, [remoteVoucherCode, remotePromotionIds.length]);
 
   const customerResults = useMemo(
     () =>
@@ -1005,6 +1139,10 @@ export default function StaffOrdering() {
         alert(`Món KG chưa đủ thông tin: ${labels}`);
         return;
       }
+      if (shouldBlockRemoteDiscount) {
+        alert("Vui lòng áp dụng voucher hợp lệ trước khi gửi POS.");
+        return;
+      }
       const payloadItems = pendingItems.map((item) => {
         const isWeight =
           String(item?.servingVariant?.mode || "").toUpperCase() ===
@@ -1073,11 +1211,25 @@ export default function StaffOrdering() {
                 receivedByStaffId: user?.id || null,
                 requestedAt: remoteOrderInfo.requestedAt || null,
               },
+              pricing:
+                remoteDiscountBreakdown && !isRemoteDiscountStale
+                  ? buildDiscountPricingInput({
+                      taxRate: 0,
+                      serviceRate: 0,
+                      shippingFee: 0,
+                      voucherCode: remoteVoucherCode,
+                    })
+                  : {},
+              promotionIds:
+                remoteDiscountBreakdown && !isRemoteDiscountStale
+                  ? remotePromotionIds
+                  : [],
             },
           },
         });
         setCartByTable((prev) => ({ ...prev, remote_order: [] }));
         remoteSubmitKeyRef.current = null;
+        resetRemoteDiscount();
         alert("Đã gửi POS xác nhận.");
       } catch (err) {
         alert(err?.message || "Gửi đơn từ xa thất bại");
@@ -1213,7 +1365,7 @@ export default function StaffOrdering() {
         ];
         if (!orderIds.length)
           return alert("Chưa có order đã gửi để yêu cầu thanh toán.");
-        const { data } = await requestPaymentForOrder({
+        await requestPaymentForOrder({
           variables: { input: { restaurantId, orderIds } },
         });
         alert("Đã gửi yêu cầu thanh toán đến POS.");
@@ -1221,7 +1373,7 @@ export default function StaffOrdering() {
       }
       if (!selectedTable?.tableCode && !selectedTable?.name)
         return alert("Vui lòng chọn bàn.");
-      const { data } = await requestPaymentForTable({
+      await requestPaymentForTable({
         variables: {
           input: {
             restaurantId,
@@ -1526,8 +1678,8 @@ export default function StaffOrdering() {
             <div className="cart-left">
               <div className="icon-cart-wrap">
                 <ShoppingCart size={20} />
-                {cart.length > 0 && (
-                  <span className="cart-badge">{cart.length}</span>
+                {activeCart.length > 0 && (
+                  <span className="cart-badge">{activeCart.length}</span>
                 )}
               </div>
               <div className="cart-text">
@@ -1638,6 +1790,17 @@ export default function StaffOrdering() {
           sendActionLabel={
             orderMode === "remote" ? "Gửi POS xác nhận" : "Gửi Bếp"
           }
+          discountEnabled={orderMode === "remote"}
+          voucherCode={remoteVoucherCode}
+          onVoucherCodeChange={setRemoteVoucherCode}
+          onApplyVoucher={handleApplyRemoteDiscount}
+          discountBreakdown={remoteDiscountBreakdown}
+          discountError={
+            isRemoteDiscountStale
+              ? "Voucher đã thay đổi hoặc giỏ hàng đã đổi. Vui lòng áp dụng lại."
+              : remoteDiscountError
+          }
+          discountLoading={isPreviewingRemoteDiscount}
           onAdjustPersistedItemQuantity={handleAdjustPersistedItemQuantity}
           onRequestItemVoid={handleRequestItemVoid}
         />

@@ -14,6 +14,14 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import SuccessModal from "../SuccessModal/SuccessModal";
 import { AuthContext } from "../../../context/AuthContext";
 import {
+  buildDiscountPricingInput,
+  buildOrderDiscountPreviewInput,
+  getDiscountBreakdownTotal,
+  getShippingFeeForDiscountPreview,
+  mapCartItemToOrderItemInput,
+  mapDeliveryMethodToOrderType,
+} from "../../../utils/discountPreviewPayload";
+import {
   Store,
   MapPin,
   Clock,
@@ -314,49 +322,22 @@ const OrderSummaryModal = ({
     );
   };
   const buildDiscountPreviewInput = useCallback(() => {
-    const orderType = mapDeliveryToOrderType(shipping?.deliveryMethod);
+    const orderType = mapDeliveryMethodToOrderType(shipping?.deliveryMethod);
+    const shippingFee = getShippingFeeForDiscountPreview({
+      deliveryMethod: shipping?.deliveryMethod,
+      shippingFee: shipping?.shippingFee,
+    });
 
-    const previewItems = orderData.map((i) => ({
-      dishId: i.dishId,
-      menuId: i.menuId,
-      categoryId: i.categoryId,
-      name: i.name,
-      unit: i.unit || "phần",
-      image: typeof i.image === "string" ? i.image : undefined,
-      basePrice: Number(i.price || 0),
-      servingKey: i.servingKey || "portion",
-      servingVariant: {
-        key: i.servingKey || "portion",
-        name: i.servingVariant?.name || "Phần",
-        mode: i.servingVariant?.mode || "PORTION",
-        price: Number(i.price || 0),
-        sellQty: i.servingVariant?.sellQty || 1,
-        sellUnit: i.servingVariant?.sellUnit || "portion",
-      },
-      quantity: Number(i.quantity || 1),
-      selectedModifiers: (i.modifiers || []).map((m) => ({
-        groupId: m.groupId,
-        optionId: m.optionId,
-      })),
-      note: i.description || undefined,
-      priority: "MEDIUM",
-    }));
-
-    return {
+    return buildOrderDiscountPreviewInput({
       restaurantId: previewRestaurantId,
       orderType,
-      items: previewItems,
-      pricing: {
-        taxRate: ORDER_VAT_RATE,
-        serviceRate: 0,
-        shippingFee:
-          shipping?.deliveryMethod === "delivery"
-            ? Number(shipping?.shippingFee || 0)
-            : 0,
-        voucherCode: voucherCode.trim().toUpperCase() || null,
-      },
+      items: orderData,
+      taxRate: ORDER_VAT_RATE,
+      serviceRate: 0,
+      shippingFee,
+      voucherCode,
       promotionIds: selectedPromotionIds,
-    };
+    });
   }, [
     orderData,
     previewRestaurantId,
@@ -404,11 +385,7 @@ const OrderSummaryModal = ({
     canPreviewDiscount &&
     hasVoucherCode &&
     (!discountBreakdown || !!discountError);
-  const mapDeliveryToOrderType = (deliveryMethod) => {
-    if (deliveryMethod === "dinein") return "dine_in";
-    if (deliveryMethod === "pickup") return "takeaway";
-    return "delivery";
-  };
+
   useEffect(() => {
     if (canPreviewDiscount) return;
 
@@ -423,40 +400,23 @@ const OrderSummaryModal = ({
       if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
         throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
       }
-      const checkoutItems = orderData.map((i) => ({
-        restaurantId: i.restaurantId,
-        dishId: i.dishId,
-        menuId: i.menuId,
-        categoryId: i.categoryId,
-        name: i.name,
-        unit: i.unit || "phần",
-        image: typeof i.image === "string" ? i.image : undefined,
-        quantity: i.quantity,
-        servingKey: i.servingKey || "portion",
-        note: i.description || undefined,
-        selectedModifiers: (i.modifiers || []).map((m) => ({
-          groupId: m.groupId,
-          optionId: m.optionId,
-        })),
-      }));
+      const checkoutItems = orderData.map(mapCartItemToOrderItemInput);
 
       const input = {
-        orderType: mapDeliveryToOrderType(shipping?.deliveryMethod),
+        orderType: mapDeliveryMethodToOrderType(shipping?.deliveryMethod),
         items: checkoutItems,
         shipping,
         paymentMethod,
-        pricing: {
+        pricing: buildDiscountPricingInput({
           taxRate: ORDER_VAT_RATE,
           serviceRate: 0,
-          shippingFee:
-            shipping?.deliveryMethod === "delivery"
-              ? Number(shipping?.shippingFee || 0)
-              : 0,
+          shippingFee: getShippingFeeForDiscountPreview({
+            deliveryMethod: shipping?.deliveryMethod,
+            shippingFee: shipping?.shippingFee,
+          }),
           voucherCode:
-            canPreviewDiscount && discountBreakdown
-              ? voucherCode.trim().toUpperCase()
-              : null,
-        },
+            canPreviewDiscount && discountBreakdown ? voucherCode : "",
+        }),
         promotionIds:
           canPreviewDiscount && discountBreakdown ? selectedPromotionIds : [],
         note: shipping?.note || undefined,
@@ -491,7 +451,10 @@ const OrderSummaryModal = ({
       canPreviewDiscount,
     ],
   );
-
+  const payableTotal = getDiscountBreakdownTotal(
+    discountBreakdown,
+    calculateSubtotals().finalTotal,
+  );
   const setAndShowSuccess = (createdOrders) => {
     const totalPaid = createdOrders.reduce(
       (s, o) => s + (o?.totals?.grandTotal || 0),
@@ -591,11 +554,7 @@ const OrderSummaryModal = ({
       case "qr":
         return (
           <QRPaymentScreen
-            amount={
-              discountBreakdown?.grandTotal ||
-              discountBreakdown?.finalTotal ||
-              calculateSubtotals().finalTotal
-            }
+            amount={payableTotal}
             onConfirm={handleQRPayment}
             isProcessing={isProcessingPayment}
           />
@@ -624,6 +583,7 @@ const OrderSummaryModal = ({
             isPreviewingDiscount={isPreviewingDiscount}
             onApplyDiscountPreview={handleApplyDiscountPreview}
             hasUnappliedDiscount={hasUnappliedDiscount}
+            payableTotal={payableTotal}
           />
         );
     }
@@ -762,6 +722,7 @@ const SummaryContent = ({
   isPreviewingDiscount,
   onApplyDiscountPreview,
   hasUnappliedDiscount,
+  payableTotal,
 }) => (
   <>
     <RestaurantInfo
@@ -798,11 +759,7 @@ const SummaryContent = ({
       selectedMethod={selectedPaymentMethod}
       onSelect={onPaymentMethodSelect}
       walletBalance={walletBalance}
-      amount={
-        discountBreakdown?.grandTotal ||
-        discountBreakdown?.finalTotal ||
-        subtotals.finalTotal
-      }
+      amount={payableTotal}
     />
   </>
 );

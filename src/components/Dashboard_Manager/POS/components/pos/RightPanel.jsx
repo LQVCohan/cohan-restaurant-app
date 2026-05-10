@@ -14,7 +14,17 @@ import { formatPrice } from "@/utils/formatters";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
+import {
+  getDiscountPreviewErrorMessage,
+  useDiscountPreview,
+} from "@/hooks/useDiscountPreview";
 
+import {
+  buildDiscountPricingInput,
+  buildOrderDiscountPreviewInput,
+  getDiscountBreakdownTotal,
+  getShippingFeeForDiscountPreview,
+} from "@/utils/discountPreviewPayload";
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 import MenuItemModal from "../modals/MenuItemModal";
@@ -130,7 +140,45 @@ const PRIORITY_LABELS = {
   MEDIUM: "Ưu tiên vừa",
   LOW: "Ưu tiên thấp",
 };
+const ORDER_STATUS_LABELS = {
+  pending: "Chờ xử lý",
+  confirmed: "Đã nhận",
+  preparing: "Đang chế biến",
+  ready: "Sẵn sàng phục vụ",
+  served: "Đã phục vụ",
+  completed: "Hoàn tất",
+  cancelled: "Đã hủy",
+  failed: "Thất bại",
+};
 
+const getOrderStatusLabel = (status) => {
+  const key = String(status || "").toLowerCase();
+  return ORDER_STATUS_LABELS[key] || status || "Không rõ";
+};
+
+const shortOrderCode = (code) => {
+  if (!code) return "";
+  const raw = String(code);
+  const parts = raw.split("-");
+  const last = parts[parts.length - 1];
+  return last ? `#${last}` : raw;
+};
+
+const formatOrderItemQuantity = (item) => {
+  const quantity = Number(item?.quantity || 0);
+  const unit = String(
+    item?.unit || item?.servingVariant?.sellUnit || "",
+  ).toLowerCase();
+
+  const clean = Number.isInteger(quantity)
+    ? String(quantity)
+    : String(quantity).replace(/\.0+$/, "");
+
+  if (unit === "kg") return `${clean} kg`;
+  if (unit === "g") return `${clean} g`;
+
+  return `x${clean}`;
+};
 const M_ENQUEUE_PRINT_JOB = gql`
   mutation EnqueuePrintJob($input: EnqueuePrintJobInput!) {
     enqueuePrintJob(input: $input) {
@@ -214,7 +262,24 @@ export default function RightPanel() {
   const [isPrintQueueOpen, setPrintQueueOpen] = useState(false);
   const [printMode, setPrintMode] = useState("temp");
   const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
+  const [discountBreakdown, setDiscountBreakdown] = useState(null);
+  const [discountError, setDiscountError] = useState("");
+  const [discountTouched, setDiscountTouched] = useState(false);
 
+  const { previewOrderDiscount, loading: isPreviewingDiscount } =
+    useDiscountPreview();
+
+  const discountShippingFee = useMemo(
+    () =>
+      getShippingFeeForDiscountPreview({
+        deliveryMethod:
+          currentOrderType === "delivery" ? "delivery" : "takeaway",
+        shippingFee: shippingInfo?.shippingFee || 0,
+      }),
+    [currentOrderType, shippingInfo?.shippingFee],
+  );
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -259,6 +324,78 @@ export default function RightPanel() {
 
   const isOffPremise =
     currentOrderType === "delivery" || currentOrderType === "takeaway";
+  const buildPosDiscountPreviewInput = useCallback(
+    () =>
+      buildOrderDiscountPreviewInput({
+        restaurantId,
+        orderType: currentOrderType,
+        items: newItems,
+        taxRate: 0,
+        serviceRate: 0,
+        shippingFee: discountShippingFee,
+        voucherCode,
+        promotionIds: selectedPromotionIds,
+      }),
+    [
+      restaurantId,
+      currentOrderType,
+      newItems,
+      discountShippingFee,
+      voucherCode,
+      selectedPromotionIds,
+    ],
+  );
+  const handleApplyDiscountPreview = useCallback(async () => {
+    setDiscountTouched(true);
+    setDiscountError("");
+
+    if (!isOffPremise) {
+      setDiscountBreakdown(null);
+      setDiscountError("Voucher cho bàn ăn sẽ áp dụng ở bước thanh toán.");
+      return;
+    }
+
+    if (!restaurantId) {
+      setDiscountBreakdown(null);
+      setDiscountError("Không xác định được nhà hàng.");
+      return;
+    }
+
+    if (!newItems.length) {
+      setDiscountBreakdown(null);
+      setDiscountError("Không có món mới để kiểm tra ưu đãi.");
+      return;
+    }
+
+    try {
+      const breakdown = await previewOrderDiscount(
+        buildPosDiscountPreviewInput(),
+      );
+      setDiscountBreakdown(breakdown);
+    } catch (error) {
+      setDiscountBreakdown(null);
+      setDiscountError(getDiscountPreviewErrorMessage(error));
+    }
+  }, [
+    isOffPremise,
+    restaurantId,
+    newItems.length,
+    previewOrderDiscount,
+    buildPosDiscountPreviewInput,
+  ]);
+  useEffect(() => {
+    if (!discountTouched) return;
+
+    setDiscountBreakdown(null);
+    setDiscountError("");
+  }, [
+    currentOrderType,
+    currentOrderCode,
+    newItems,
+    shippingInfo,
+    selectedPromotionIds,
+    discountTouched,
+  ]);
 
   const offPremiseKind = currentOrderType === "delivery" ? "SHIP" : "TAKE";
   const clearActiveDrafts = useCallback(() => {
@@ -266,7 +403,18 @@ export default function RightPanel() {
       clearOffPremiseDraft?.(currentOrderType);
     }
   }, [currentOrderType, clearOffPremiseDraft]);
-  const getItemPrice = (item) => formatPrice(Number(item.price || 0));
+  const getItemPrice = (item) => {
+    const unit = String(
+      item?.unit || item?.servingVariant?.sellUnit || "",
+    ).toLowerCase();
+
+    const price = formatPrice(Number(item.price || 0));
+
+    if (unit === "kg") return `${price}/kg`;
+    if (unit === "g") return `${price}/g`;
+
+    return price;
+  };
   const getItemTotal = (item) => {
     const t =
       item.total != null
@@ -350,7 +498,27 @@ export default function RightPanel() {
     };
   }, [isOffPremise, shippingInfo, deliveryCustomer, currentTable]);
 
-  const totals = finalTotals || {};
+  const payableTotal = getDiscountBreakdownTotal(
+    discountBreakdown,
+    finalTotals?.total || finalTotals?.grandTotal || 0,
+  );
+
+  const totalsForDisplay = discountBreakdown
+    ? {
+        subtotal: discountBreakdown.subtotal,
+        discount:
+          discountBreakdown.totalDiscount || discountBreakdown.discount || 0,
+        service: discountBreakdown.service || 0,
+        tax: discountBreakdown.tax || 0,
+        total: payableTotal,
+        grandTotal: payableTotal,
+      }
+    : finalTotals || {};
+  const totals = totalsForDisplay;
+  const hasVoucherCode = voucherCode.trim().length > 0;
+
+  const shouldBlockSaveForDiscount =
+    isOffPremise && hasVoucherCode && (!discountBreakdown || !!discountError);
   const breakdownConfig = [
     { key: "subtotal", label: "Tạm tính", cls: "" },
     { key: "discount", label: "Giảm giá", cls: "neg" },
@@ -871,11 +1039,12 @@ export default function RightPanel() {
       scheduleTime: "",
     });
   }, [
+    clearActiveDrafts,
     clearOrder,
     setCurrentOrder,
     setCurrentTable,
     setCurrentOrderCode,
-    clearActiveDrafts,
+    setCurrentOrderId,
     setDeliveryCustomer,
     setShippingInfo,
     currentOrderType,
@@ -885,7 +1054,13 @@ export default function RightPanel() {
 
     const v = validateBeforeConfirm();
     if (!v.ok) return;
-
+    if (shouldBlockSaveForDiscount) {
+      showNotification(
+        "Vui lòng áp dụng voucher hợp lệ trước khi lưu đơn.",
+        "error",
+      );
+      return;
+    }
     setSaving(true);
     try {
       if (
@@ -895,7 +1070,20 @@ export default function RightPanel() {
       ) {
         await ensureOffPremiseSession?.(currentOrderType, { force: true });
       }
-      const res = await saveOrder?.({ persist: true });
+      const res = await saveOrder?.({
+        persist: true,
+        pricing:
+          isOffPremise && discountBreakdown
+            ? buildDiscountPricingInput({
+                taxRate: 0,
+                serviceRate: 0,
+                shippingFee: discountShippingFee,
+                voucherCode,
+              })
+            : {},
+        promotionIds:
+          isOffPremise && discountBreakdown ? selectedPromotionIds : [],
+      });
 
       if (res?.success) {
         setPulse(true);
@@ -970,6 +1158,48 @@ export default function RightPanel() {
       data-pos-order-panel
       data-kind={isOffPremise ? offPremiseKind : "DINE"}
     >
+      {isOffPremise && (
+        <div className={cls.discountBox}>
+          <div className={cls.discountTitle}>Ưu đãi / voucher</div>
+
+          <div className={cls.discountRow}>
+            <input
+              className={cls.discountInput}
+              value={voucherCode}
+              placeholder="Nhập mã voucher"
+              onChange={(event) => setVoucherCode(event.target.value)}
+            />
+            <button
+              type="button"
+              className={cls.smallBtn}
+              onClick={handleApplyDiscountPreview}
+              disabled={isPreviewingDiscount || !voucherCode.trim()}
+            >
+              {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
+            </button>
+          </div>
+
+          {discountError && (
+            <div className={cls.discountError}>{discountError}</div>
+          )}
+
+          {voucherCode && !discountBreakdown && !discountError && (
+            <div className={cls.discountWarning}>
+              Vui lòng áp dụng voucher trước khi lưu đơn.
+            </div>
+          )}
+
+          {discountBreakdown && (
+            <div className={cls.discountSuccess}>
+              Đã áp dụng ưu đãi. Tổng giảm{" "}
+              {Number(discountBreakdown.totalDiscount || 0).toLocaleString(
+                "vi-VN",
+              )}
+              đ
+            </div>
+          )}
+        </div>
+      )}
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
@@ -1104,7 +1334,9 @@ export default function RightPanel() {
       <div className={cls.body}>
         {newItems.length > 0 && (
           <div className={cls.sectionNew}>
-            <div className={cls.groupHeader}>Món mới chưa gửi bếp ({newItems.length})</div>
+            <div className={cls.groupHeader}>
+              Món mới chưa gửi bếp ({newItems.length})
+            </div>
             <div className={cls.itemsList}>
               {newItems.map((item) => (
                 <div
@@ -1198,13 +1430,31 @@ export default function RightPanel() {
 
         {existingItems.length > 0 && (
           <div className={cls.sectionExisting}>
-            <div className={cls.dividerLabel}>Đã gửi bếp ({existingItems.length})</div>
+            <div className={cls.dividerLabel}>
+              Đã gửi bếp ({existingItems.length})
+            </div>
             {groupedExistingBatches.map((batch, batchIdx) => (
               <div key={batch.key || `batch_${batchIdx}`}>
-                <div className={cls.groupHeader}>
-                  Đợt gọi món {batch.batchIndex || batchIdx + 1}
-                  {batch.orderCode ? ` · ${batch.orderCode}` : ""}
-                  {batch.status ? ` · ${batch.status}` : ""}
+                <div className={cls.batchHeader}>
+                  <div className={cls.batchTitle}>
+                    Đợt {batch.batchIndex || batchIdx + 1}
+                  </div>
+
+                  <div className={cls.batchMeta}>
+                    {batch.orderCode && (
+                      <span className={cls.batchCode}>
+                        {shortOrderCode(batch.orderCode)}
+                      </span>
+                    )}
+
+                    {batch.status && (
+                      <span
+                        className={`${cls.batchStatus} ${cls[`status_${String(batch.status).toLowerCase()}`] || ""}`}
+                      >
+                        {getOrderStatusLabel(batch.status)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className={cls.itemsList}>
                   {batch.items.map((item) => (
@@ -1217,37 +1467,56 @@ export default function RightPanel() {
                         <div className={cls.cardName}>
                           {item.name}
                           {item.proofImages && item.proofImages.length > 0 && (
-                            <span className={cls.iconProof} title="Có ảnh xác nhận">
+                            <span
+                              className={cls.iconProof}
+                              title="Có ảnh xác nhận"
+                            >
                               <IconImage />
                             </span>
                           )}
                         </div>
                         {(item.sourceOrderCreatedAt || item.createdAt) && (
                           <span className={cls.timeTag}>
-                            {formatTime(item.sourceOrderCreatedAt || item.createdAt)}
+                            {formatTime(
+                              item.sourceOrderCreatedAt || item.createdAt,
+                            )}
                           </span>
                         )}
                       </div>
-                      {(item.note || item.method || item.cookingOption || item.priority) && (
+                      {(item.note ||
+                        item.method ||
+                        item.cookingOption ||
+                        item.priority) && (
                         <div className={cls.rowNote}>
                           {(item.method || item.cookingOption) && (
-                            <span className={cls.tagMethod}>{item.method || item.cookingOption}</span>
+                            <span className={cls.tagMethod}>
+                              {item.method || item.cookingOption}
+                            </span>
                           )}
                           {item.priority && (
                             <span className={cls.tagMethod}>
-                              {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
+                              {PRIORITY_LABELS[
+                                String(item.priority).toUpperCase()
+                              ] || item.priority}
                             </span>
                           )}
-                          {item.note && <span className={cls.textNoteSaved}>{item.note}</span>}
+                          {item.note && (
+                            <span className={cls.textNoteSaved}>
+                              {item.note}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className={cls.rowBottom}>
-                        <div className={cls.priceSingle}>{getItemPrice(item)}</div>
-                        <div className={cls.qtyStatic}>x{item.quantity}</div>
-                        <div className={cls.cardTotal}>{getItemTotal(item)}</div>
-                        <button className={cls.btnDeleteSavedDisabled} onClick={(e) => handleDeleteClick(e, item)} title="Không thể xóa món đã lưu" disabled>
-                          <IconTrash />
-                        </button>
+                        <div className={cls.priceSingle}>
+                          {getItemPrice(item)}
+                        </div>
+                        <div className={cls.qtyStatic}>
+                          {formatOrderItemQuantity(item)}
+                        </div>
+                        <div className={cls.cardTotal}>
+                          {getItemTotal(item)}
+                        </div>
                       </div>
                     </div>
                   ))}
