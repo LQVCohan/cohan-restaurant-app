@@ -26,6 +26,11 @@ export const CartFieldResolvers = {
 export const CartItemFieldResolvers = {
   id: (parent) => (parent._id ? String(parent._id) : null),
 
+  servingVariantKey: (parent) => {
+    const key = String(parent?.servingVariantKey || parent?.servingKey || "").trim();
+    return key || "portion";
+  },
+
   restaurant: async (parent) => {
     if (!parent.restaurantId) return null;
     return Restaurant.findById(parent.restaurantId).lean({ virtuals: true });
