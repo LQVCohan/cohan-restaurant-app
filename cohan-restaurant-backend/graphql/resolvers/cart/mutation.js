@@ -122,6 +122,7 @@ export const CartMutation = {
             (it.servingVariantKey || "") === (servingVariantKey || "") &&
             String(it.restaurantId) === String(restaurantId)
         );
+        const reservedItemId = existing?._id || new mongoose.Types.ObjectId();
 
         const reserveLines = [
           {
@@ -135,7 +136,7 @@ export const CartMutation = {
           await reserveForOrderTx({
             restaurantId,
             warehouseId,
-            orderCode: holdOrderCode(cart._id, existing?._id || "new"),
+            orderCode: holdOrderCode(cart._id, reservedItemId),
             lines: reserveLines,
             session,
           });
@@ -152,6 +153,7 @@ export const CartMutation = {
           existing.holdStatus = "active";
         } else {
           cart.items.push({
+            _id: reservedItemId,
             menuItemId,
             name,
             price,
@@ -218,24 +220,95 @@ export const CartMutation = {
 
     if (!mongoose.isValidObjectId(cartId)) throw new GraphQLError("Invalid cartId");
     if (!mongoose.isValidObjectId(itemId)) throw new GraphQLError("Invalid itemId");
+    const parsedQty = Number(quantity || 1);
+    if (!Number.isFinite(parsedQty)) throw new GraphQLError("Invalid quantity");
 
-    const cart = await Cart.findById(cartId);
-    if (!cart || cart.status !== "active") throw new GraphQLError("Cart not found or not active");
-    assertCartOwner(cart, ctx);
+    const session = await mongoose.startSession();
+    let after = null;
+    let eventPayload = null;
 
-    const it = cart.items.id(itemId);
-    if (!it) throw new GraphQLError("Cart item not found");
+    try {
+      await session.withTransaction(async () => {
+        const cart = await Cart.findById(cartId).session(session);
+        if (!cart || cart.status !== "active") throw new GraphQLError("Cart not found or not active");
+        assertCartOwner(cart, ctx);
 
-    it.quantity = quantity <= 0 ? 1 : quantity;
-    it.holdExpiresAt = new Date(Date.now() + HOLD_TTL_MS);
+        const it = cart.items.id(itemId);
+        if (!it) throw new GraphQLError("Cart item not found");
 
-    const totals = computeTotals(cart.items);
-    cart.totalQuantity = totals.totalQuantity;
-    cart.totalAmount = totals.totalAmount;
-    cart.lastActivityAt = new Date();
+        const oldQty = Number(it.quantity || 0);
+        const newQty = Math.max(1, parsedQty);
+        const delta = newQty - oldQty;
+        const holdExpiresAt = new Date(Date.now() + HOLD_TTL_MS);
 
-    await cart.save();
-    return cart.toObject({ virtuals: true });
+        if (delta > 0) {
+          const restaurantId = it.restaurantId;
+          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+          const orderCode = holdOrderCode(cart._id, it._id);
+          const servingKey = it.servingVariantKey || "portion";
+          try {
+            await reserveForOrderTx({
+              restaurantId,
+              warehouseId,
+              orderCode,
+              lines: [{ menuItemId: it.menuItemId, quantity: delta, servingKey }],
+              session,
+            });
+          } catch (e) {
+            throw new GraphQLError("Món đã hết hàng hoặc không đủ tồn kho để tăng số lượng.");
+          }
+        } else if (delta < 0) {
+          const restaurantId = it.restaurantId;
+          const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+          const orderCode = holdOrderCode(cart._id, it._id);
+          const servingKey = it.servingVariantKey || "portion";
+          await cancelReservationForOrderTx({
+            restaurantId,
+            warehouseId,
+            orderCode,
+            lines: [{ menuItemId: it.menuItemId, quantity: Math.abs(delta), servingKey }],
+            session,
+          });
+        }
+
+        it.quantity = newQty;
+        it.holdExpiresAt = holdExpiresAt;
+        it.holdStatus = "active";
+
+        const totals = computeTotals(cart.items);
+        cart.totalQuantity = totals.totalQuantity;
+        cart.totalAmount = totals.totalAmount;
+        cart.lastActivityAt = new Date();
+
+        await cart.save({ session });
+        after = cart.toObject({ virtuals: true });
+
+        if (delta > 0) {
+          eventPayload = {
+            type: "INVENTORY_HELD",
+            restaurantId: String(it.restaurantId),
+            menuItemId: String(it.menuItemId),
+            servingVariantKey: it.servingVariantKey || "portion",
+            quantityDelta: delta,
+            holdExpiresAt: holdExpiresAt.toISOString(),
+          };
+        } else if (delta < 0) {
+          eventPayload = {
+            type: "INVENTORY_RELEASED",
+            restaurantId: String(it.restaurantId),
+            menuItemId: String(it.menuItemId),
+            servingVariantKey: it.servingVariantKey || "portion",
+            quantityDelta: delta,
+            reason: "update_quantity",
+          };
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    emitInventoryEvent(ctx, eventPayload);
+    return after;
   },
 
   async removeCartItem(_, { input }, ctx) {
