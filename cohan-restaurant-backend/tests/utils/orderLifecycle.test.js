@@ -3,6 +3,7 @@ import {
   activeTableSessionLookupFilter,
   buildActiveTableSessionKey,
   childOrdersForSessionFilter,
+  deriveParentSessionIdsFromOrders,
   isKitchenPayable,
   isOrderBatch,
   isPaymentClosed,
@@ -165,4 +166,14 @@ describe("orderLifecycle helpers", () => {
     });
   });
 
+  it("deriveParentSessionIdsFromOrders deduplicates parent/root session ids", () => {
+    expect(
+      deriveParentSessionIdsFromOrders([
+        { parentOrderId: "p1" },
+        { rootOrderId: "p1" },
+        { parentOrderId: "p2" },
+        { parentOrderId: null, rootOrderId: null },
+      ]),
+    ).toEqual(["p1", "p2"]);
+  });
 });
