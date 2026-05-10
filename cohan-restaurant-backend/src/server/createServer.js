@@ -163,7 +163,6 @@ export async function createServer() {
     }
   });
 
-  // ===== REVERSE GEOCODE API =====
   app.get("/api/reverse-geocode", async (req, reply) => {
     const { lat, lng } = req.query || {};
 
@@ -184,7 +183,6 @@ export async function createServer() {
     try {
       const res = await fetch(url.toString(), {
         headers: {
-          // BẮT BUỘC phải có User-Agent khi gọi Nominatim
           "User-Agent": "FoodHubPOS/1.0 (your-email@example.com)",
         },
       });
@@ -235,9 +233,7 @@ export async function createServer() {
       });
     }
   });
-  // ===== END REVERSE GEOCODE API =====
 
-  // ===== AI TABLE SUGGESTIONS =====
   app.post("/api/ai/table/merge-suggestion", async (req, reply) => {
     const payload = req.body || {};
     const suggestion = await suggestTableMerge(payload);
@@ -260,7 +256,6 @@ export async function createServer() {
     const layout = await generateSmartFloorLayout(payload);
     return reply.send({ ok: true, layout });
   });
-  // ===== END AI TABLE SUGGESTIONS =====
 
   app.setNotFoundHandler((req, reply) => {
     reply.code(404).type("application/json").send({
@@ -303,7 +298,6 @@ export async function createServer() {
       app.log.info(`🚪 Socket ${socket.id} left room ${roomName}`);
     });
 
-
     socket.on("joinUserChannel", (userId) => {
       if (!userId) return;
       const roomName = `user_${userId}`;
@@ -341,7 +335,6 @@ export async function createServer() {
       socket.leave(roomName);
       app.log.info(`🚪 Socket ${socket.id} left order room ${roomName}`);
     });
-
 
     socket.on("joinMenuItemView", ({ restaurantId, menuItemId }) => {
       if (!restaurantId || !menuItemId) return;
@@ -394,9 +387,7 @@ export async function createServer() {
     const room = `restaurant_${restaurantId}`;
     io.to(room).emit("orderEvents", payload);
     app.log.info(
-      `[Socket.IO] Broadcast ${payload.type} → ${room} (${
-        payload?.order?.orderCode || "?"
-      })`
+      `[Socket.IO] Broadcast ${payload.type} → ${room} (${payload?.order?.orderCode || "?"})`
     );
   });
 
@@ -405,9 +396,7 @@ export async function createServer() {
     const room = `order_${orderCode}`;
     io.to(room).emit("orderCustomerEvents", payload);
     app.log.info(
-      `[Socket.IO] Broadcast ${payload.type} → ${room} (${
-        payload?.order?.orderCode || orderCode || "?"
-      })`
+      `[Socket.IO] Broadcast ${payload.type} → ${room} (${payload?.order?.orderCode || orderCode || "?"})`
     );
   });
 
@@ -431,9 +420,11 @@ export async function createServer() {
         );
       }
 
-      const holdResult = await cleanupExpiredCartHolds(app.io);
-      if (holdResult?.released) {
-        app.log.info(`[CartHold Cleanup] Released ${holdResult.released} expired holds`);
+      const holdResult = await cleanupExpiredCartHolds(app.io, app.log);
+      if (holdResult?.released || holdResult?.failed) {
+        app.log.info(
+          `[CartHold Cleanup] scanned=${holdResult.cartsScanned || 0} touched=${holdResult.cartsTouched || 0} released=${holdResult.released || 0} failed=${holdResult.failed || 0}`
+        );
       }
     } catch (err) {
       app.log.error(
