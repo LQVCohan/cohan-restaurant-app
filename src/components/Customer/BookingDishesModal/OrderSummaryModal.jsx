@@ -430,11 +430,11 @@ const OrderSummaryModal = ({
           email: shipping?.email || undefined,
         };
       }
-      const checkout = res?.data?.createCheckoutOrders?.checkout || null;
       const res = await createCheckoutOrders({ variables: { input } });
+      const checkout = res?.data?.createCheckoutOrders?.checkout || null;
       const created = res?.data?.createCheckoutOrders?.orders || [];
       return {
-        orderCode: res?.data?.createCheckoutOrders?.checkout?.checkoutCode,
+        orderCode: checkout?.checkoutCode,
         orders: created,
         checkout,
       };
