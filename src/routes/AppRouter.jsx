@@ -44,7 +44,7 @@ import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/M
 
 // ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
-import StaffKitchenPage from "@/components/Dashboard_Manager/Order/OrderManagement";
+import StaffKitchenPage from "@/components/Staff/StaffKitchenPage";
 import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerformancePage";
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
