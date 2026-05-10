@@ -114,7 +114,9 @@ describe("AvailabilityRegistrationPanel", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Mở đăng ký" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Mở( lại)? đăng ký/ }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Đóng đăng ký" })).toBeDisabled();
   });
 
