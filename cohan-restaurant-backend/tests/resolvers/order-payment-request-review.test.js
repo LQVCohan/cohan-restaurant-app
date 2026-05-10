@@ -118,6 +118,64 @@ describe("payment request + confirm guards", () => {
     expect(order.save).not.toHaveBeenCalled();
   });
 
+  it("requestTablePayment marks active parent session and child batches as payment_requested", async () => {
+    const { requestTablePayment } = await import("../../graphql/resolvers/payment/mutation.js");
+    const activeSession = { _id: "65f00000000000000000aa10" };
+    const childOrder = {
+      _id: "65f000000000000000000111",
+      restaurantId: "65f000000000000000000099",
+      currentStatus: "served",
+      orderKind: "order_batch",
+      parentOrderId: "65f00000000000000000aa10",
+    };
+
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory(activeSession));
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([childOrder]) });
+
+    const out = await requestTablePayment(
+      null,
+      { input: { restaurantId: "65f000000000000000000099", tableId: "table-1" } },
+      AUTH_CONTEXT,
+    );
+
+    expect(out.ok).toBe(true);
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(2);
+    expect(modelMocks.Order.updateMany.mock.calls[0][1].$set["payment.status"]).toBe("payment_requested");
+    expect(modelMocks.Order.updateMany.mock.calls[0][1].$set.orderPaymentStatus).toBe("payment_requested");
+    expect(modelMocks.Order.updateMany.mock.calls[1][0]).toMatchObject({
+      restaurantId: expect.anything(),
+      orderKind: "table_session",
+    });
+    expect(modelMocks.Order.updateMany.mock.calls[1][1].$set.sessionStatus).toBe("ready_to_pay");
+    expect(modelMocks.Order.updateMany.mock.calls[1][1].$set.orderPaymentStatus).toBe("payment_requested");
+  });
+
+  it("requestTablePayment does not force unrelated active session update during legacy fallback without parent refs", async () => {
+    const { requestTablePayment } = await import("../../graphql/resolvers/payment/mutation.js");
+    const legacyOrder = {
+      _id: "65f000000000000000000188",
+      restaurantId: "65f000000000000000000099",
+      tableId: "table-1",
+      currentStatus: "served",
+      orderCode: "LEG-188",
+    };
+
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab88" }));
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([legacyOrder]) });
+
+    const out = await requestTablePayment(
+      null,
+      { input: { restaurantId: "65f000000000000000000099", tableId: "table-1" } },
+      AUTH_CONTEXT,
+    );
+
+    expect(out.ok).toBe(true);
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(1);
+    expect(modelMocks.Order.updateMany.mock.calls[0][1].$set["payment.status"]).toBe("payment_requested");
+  });
+
   it("payOrdersByOrderIds succeeds and sets paid status with authenticated actor context", async () => {
     const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
     const paidOrder = {
@@ -278,10 +336,11 @@ describe("payment request + confirm guards", () => {
     expect(out.warning).toBe(true);
   });
 
-  it("payOrdersByTableId falls back to legacy table orders when active session has no child links", async () => {
+  it("payOrdersByTableId falls back to legacy table orders and closes derived parent sessions only", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const legacyOrder = {
       _id: "65f000000000000000000188", restaurantId: "65f000000000000000000099", orderCode: "LEG-188", currentStatus: "served",
+      parentOrderId: "65f00000000000000000cc88",
       items: [{ status: "served", quantity: 1, lineSubtotal: 12000, unitPrice: 12000, dishId: "d8", name: "Legacy", voidRequests: [], returnRequests: [] }],
       totals: { subtotal: 12000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 12000 },
     };
@@ -298,6 +357,26 @@ describe("payment request + confirm guards", () => {
     expect(modelMocks.Order.updateMany.mock.calls[1][0]).toMatchObject({
       orderKind: "table_session",
     });
+    expect(modelMocks.Order.updateMany.mock.calls[1][0]._id.$in.map(String)).toEqual(["65f00000000000000000cc88"]);
+  });
+
+  it("payOrdersByTableId does not close unrelated active session during legacy fallback without parent refs", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const legacyOrder = {
+      _id: "65f000000000000000000189", restaurantId: "65f000000000000000000099", orderCode: "LEG-189", currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 9000, unitPrice: 9000, dishId: "d9", name: "Legacy 2", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 9000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 9000 },
+    };
+    modelMocks.Order.findOne.mockReturnValueOnce(findOneChainFactory({ _id: "65f00000000000000000ab89" }));
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([legacyOrder]) })
+      .mockResolvedValueOnce([legacyOrder]);
+
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: true } }, AUTH_CONTEXT);
+    expect(out.warning).toBe(false);
+    expect(out.invoice).toBeTruthy();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalledTimes(1);
   });
 
   it("payOrdersByTableId returns warning when both child and legacy fallback orders are empty", async () => {
@@ -331,7 +410,6 @@ describe("payment request + confirm guards", () => {
     const filter = modelMocks.Order.updateMany.mock.calls.at(-1)[0];
     expect(filter._id.$in).toHaveLength(2);
   });
-
 
   it("payOrdersByTableId does not close parent session when unserved orders are excluded", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
@@ -393,5 +471,4 @@ describe("payment request + confirm guards", () => {
     expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
     expect(modelMocks.Order.updateMany).toHaveBeenCalled();
   });
-
 });
