@@ -22,7 +22,7 @@ const SHIFT_ORDER = {
 };
 
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const PART_TIME_AVAILABILITY_TYPES = new Set(["part_time", "seasonal"]);
+const PART_TIME_AVAILABILITY_TYPES = new Set(["part_time", "seasonal", "probation", "contract"]);
 const ACTIVE_AVAILABILITY_STATUSES = new Set(["submitted", "locked", "approved", "late_change_requested"]);
 const INACTIVE_AVAILABILITY_STATUSES = new Set(["rejected", "cancelled"]);
 
