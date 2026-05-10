@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
   Users,
   Star,
   ArrowRightLeft,
   Combine,
   Receipt,
-  Info,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import { resolveUserRoleName } from "@/utils/frontendRoleAccess";
 import { MOCK_FLOORS } from "../data/mockData";
 import "./TableMap.scss";
 
@@ -17,39 +18,43 @@ export default function TableMap({
   onTableAction,
   floors = MOCK_FLOORS,
 }) {
-  const [floor, setFloor] = useState((floors && floors[0]) || MOCK_FLOORS[0]);
+  const { user } = useContext(AuthContext) || {};
+  const role = resolveUserRoleName(user);
+  const permissions = useMemo(() => {
+    const elevated = ["admin", "manager", "supervisor"].includes(role);
+    const server = role === "server";
+    const cashier = role === "cashier";
 
+    return {
+      canMoveOrMerge: elevated,
+      canCheckout: elevated || server || cashier,
+    };
+  }, [role]);
+
+  const [floor, setFloor] = useState((floors && floors[0]) || MOCK_FLOORS[0]);
 
   React.useEffect(() => {
     if (!floor && floors?.length) setFloor(floors[0]);
     if (floor && floors?.length && !floors.includes(floor)) setFloor(floors[0]);
   }, [floors, floor]);
 
-  // Lọc bàn theo tầng
   const currentFloorTables = tables.filter((t) => t.floor === floor);
-
-  // Thống kê nhanh
   const servingCount = currentFloorTables.filter(
     (t) => t.status !== "empty",
   ).length;
 
   return (
     <div className="staff-pos-tables">
-      {/* Tiêu đề & Thống kê */}
       <div className="floor-header">
         <div className="floor-stats">
           <h3>Sơ đồ bàn</h3>
           <p>
-            Đang phục vụ:{" "}
-            <strong>
-              {servingCount}/{currentFloorTables.length}
-            </strong>{" "}
+            Đang phục vụ: <strong>{servingCount}/{currentFloorTables.length}</strong>{" "}
             bàn
           </p>
         </div>
       </div>
 
-      {/* Chọn Tầng (Cuộn ngang) */}
       <div className="floor-selector-scroll">
         {(floors || MOCK_FLOORS).map((f) => (
           <button
@@ -62,10 +67,10 @@ export default function TableMap({
         ))}
       </div>
 
-      {/* Lưới Bàn */}
       <div className="table-grid">
         {currentFloorTables.map((table) => {
           const isSelected = selectedTable?.id === table.id;
+          const showQuickActions = isSelected && table.status !== "empty";
 
           return (
             <div
@@ -102,47 +107,57 @@ export default function TableMap({
                 </div>
               </div>
 
-              {/* Bảng Hành Động Nhanh (Chỉ hiện khi đang được chọn và bàn có khách) */}
               <div
-                className={`table-quick-actions ${isSelected && table.status !== "empty" ? "expanded" : ""}`}
+                className={`table-quick-actions ${showQuickActions ? "expanded" : ""}`}
               >
                 <div className="actions-container">
-                  <button
-                    className="action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTableAction("move");
-                    }}
-                  >
-                    <div className="icon-wrap">
-                      <ArrowRightLeft size={16} />
-                    </div>
-                    <span>Chuyển</span>
-                  </button>
-                  <button
-                    className="action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTableAction("merge");
-                    }}
-                  >
-                    <div className="icon-wrap">
-                      <Combine size={16} />
-                    </div>
-                    <span>Gộp</span>
-                  </button>
-                  <button
-                    className="action-btn btn-checkout"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTableAction("checkout");
-                    }}
-                  >
-                    <div className="icon-wrap">
-                      <Receipt size={16} />
-                    </div>
-                    <span>Tính tiền</span>
-                  </button>
+                  {permissions.canMoveOrMerge && (
+                    <button
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!permissions.canMoveOrMerge) return;
+                        onTableAction("move");
+                      }}
+                    >
+                      <div className="icon-wrap">
+                        <ArrowRightLeft size={16} />
+                      </div>
+                      <span>Chuyển</span>
+                    </button>
+                  )}
+
+                  {permissions.canMoveOrMerge && (
+                    <button
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!permissions.canMoveOrMerge) return;
+                        onTableAction("merge");
+                      }}
+                    >
+                      <div className="icon-wrap">
+                        <Combine size={16} />
+                      </div>
+                      <span>Gộp</span>
+                    </button>
+                  )}
+
+                  {permissions.canCheckout && (
+                    <button
+                      className="action-btn btn-checkout"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!permissions.canCheckout) return;
+                        onTableAction("checkout");
+                      }}
+                    >
+                      <div className="icon-wrap">
+                        <Receipt size={16} />
+                      </div>
+                      <span>Tính tiền</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
