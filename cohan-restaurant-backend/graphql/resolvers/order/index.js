@@ -5,8 +5,10 @@ import { OrderMutation } from "./mutation.js";
 import { withOrderRestaurantAccessGuards } from "./accessGuard.js";
 import { OrderResolvers } from "./types.js";
 import { OrderSubscription } from "./subscription.js";
+import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle.js";
 
-const GuardedOrderMutation = withOrderRestaurantAccessGuards(OrderMutation);
+const LifecycleOrderMutation = withTablePaymentRequestLifecycle(OrderMutation);
+const GuardedOrderMutation = withOrderRestaurantAccessGuards(LifecycleOrderMutation);
 
 export default {
   Query: {
