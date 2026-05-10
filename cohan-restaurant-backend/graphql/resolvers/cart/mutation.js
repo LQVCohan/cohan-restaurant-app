@@ -77,6 +77,11 @@ function assertNotBlocked(cart) {
   }
 }
 
+function getCartServingKey(value) {
+  const key = String(value || "").trim();
+  return key || "portion";
+}
+
 export const CartMutation = {
   async addCartItem(_, { input }, ctx) {
     const {
@@ -100,6 +105,7 @@ export const CartMutation = {
     if (!(qty > 0)) throw new GraphQLError("quantity must be > 0");
 
     const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+    const servingKey = getCartServingKey(servingVariantKey);
 
     const session = await mongoose.startSession();
     let after = null;
@@ -119,7 +125,7 @@ export const CartMutation = {
         const existing = cart.items.find(
           (it) =>
             String(it.menuItemId) === String(menuItemId) &&
-            (it.servingVariantKey || "") === (servingVariantKey || "") &&
+            getCartServingKey(it.servingKey || it.servingVariantKey) === servingKey &&
             String(it.restaurantId) === String(restaurantId)
         );
         const reservedItemId = existing?._id || new mongoose.Types.ObjectId();
@@ -128,7 +134,7 @@ export const CartMutation = {
           {
             menuItemId,
             quantity: qty,
-            servingKey: servingVariantKey || "portion",
+            servingKey,
           },
         ];
 
@@ -151,6 +157,7 @@ export const CartMutation = {
           existing.quantity += qty;
           existing.holdExpiresAt = holdExpiresAt;
           existing.holdStatus = "active";
+          existing.servingKey = servingKey;
         } else {
           cart.items.push({
             _id: reservedItemId,
@@ -161,7 +168,7 @@ export const CartMutation = {
             restaurantId,
             thumbImage,
             note,
-            servingVariantKey,
+            servingKey,
             holdExpiresAt,
             holdStatus: "active",
           });
@@ -183,7 +190,7 @@ export const CartMutation = {
           userId: uid,
           source: "web",
           status: "success",
-          meta: { menuItemId, quantity: qty, price, servingVariantKey },
+          meta: { menuItemId, quantity: qty, price, servingVariantKey: servingKey },
           diff: {
             before: {
               totalQuantity: before.totalQuantity,
@@ -202,7 +209,7 @@ export const CartMutation = {
           type: "INVENTORY_HELD",
           restaurantId: String(restaurantId),
           menuItemId: String(menuItemId),
-          servingVariantKey: servingVariantKey || "portion",
+          servingVariantKey: servingKey,
           holdExpiresAt: holdExpiresAt.toISOString(),
         };
       });
@@ -240,12 +247,12 @@ export const CartMutation = {
         const newQty = Math.max(1, parsedQty);
         const delta = newQty - oldQty;
         const holdExpiresAt = new Date(Date.now() + HOLD_TTL_MS);
+        const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
 
         if (delta > 0) {
           const restaurantId = it.restaurantId;
           const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
           const orderCode = holdOrderCode(cart._id, it._id);
-          const servingKey = it.servingVariantKey || "portion";
           try {
             await reserveForOrderTx({
               restaurantId,
@@ -261,7 +268,6 @@ export const CartMutation = {
           const restaurantId = it.restaurantId;
           const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
           const orderCode = holdOrderCode(cart._id, it._id);
-          const servingKey = it.servingVariantKey || "portion";
           await cancelReservationForOrderTx({
             restaurantId,
             warehouseId,
@@ -274,6 +280,7 @@ export const CartMutation = {
         it.quantity = newQty;
         it.holdExpiresAt = holdExpiresAt;
         it.holdStatus = "active";
+        it.servingKey = servingKey;
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
@@ -288,7 +295,7 @@ export const CartMutation = {
             type: "INVENTORY_HELD",
             restaurantId: String(it.restaurantId),
             menuItemId: String(it.menuItemId),
-            servingVariantKey: it.servingVariantKey || "portion",
+            servingVariantKey: servingKey,
             quantityDelta: delta,
             holdExpiresAt: holdExpiresAt.toISOString(),
           };
@@ -297,7 +304,7 @@ export const CartMutation = {
             type: "INVENTORY_RELEASED",
             restaurantId: String(it.restaurantId),
             menuItemId: String(it.menuItemId),
-            servingVariantKey: it.servingVariantKey || "portion",
+            servingVariantKey: servingKey,
             quantityDelta: delta,
             reason: "update_quantity",
           };
@@ -324,12 +331,13 @@ export const CartMutation = {
     const it = cart.items.id(itemId);
     if (!it) throw new GraphQLError("Cart item not found");
 
+    const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
     const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
     await cancelReservationForOrderTx({
       restaurantId: it.restaurantId,
       warehouseId,
       orderCode: holdOrderCode(cart._id, itemId),
-      lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey: it.servingVariantKey || "portion" }],
+      lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
     });
 
     it.remove();
@@ -345,7 +353,7 @@ export const CartMutation = {
       type: "INVENTORY_RELEASED",
       restaurantId: String(it.restaurantId),
       menuItemId: String(it.menuItemId),
-      servingVariantKey: it.servingVariantKey || "portion",
+      servingVariantKey: servingKey,
       reason: "remove_item",
     });
 
@@ -364,13 +372,14 @@ export const CartMutation = {
     assertCartOwner(cart, ctx);
 
     for (const it of cart.items || []) {
+      const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
       try {
         const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
         await cancelReservationForOrderTx({
           restaurantId: it.restaurantId,
           warehouseId,
           orderCode: holdOrderCode(cart._id, it._id),
-          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey: it.servingVariantKey || "portion" }],
+          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
         });
       } catch (_e) {}
 
@@ -378,7 +387,7 @@ export const CartMutation = {
         type: "INVENTORY_RELEASED",
         restaurantId: String(it.restaurantId),
         menuItemId: String(it.menuItemId),
-        servingVariantKey: it.servingVariantKey || "portion",
+        servingVariantKey: servingKey,
         reason: "clear_cart",
       });
     }
@@ -400,13 +409,14 @@ export const CartMutation = {
 
     const reason = String(input.reason || "exit");
     for (const it of cart.items || []) {
+      const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
       try {
         const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
         await cancelReservationForOrderTx({
           restaurantId: it.restaurantId,
           warehouseId,
           orderCode: holdOrderCode(cart._id, it._id),
-          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey: it.servingVariantKey || "portion" }],
+          lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
         });
       } catch (_e) {}
     }
