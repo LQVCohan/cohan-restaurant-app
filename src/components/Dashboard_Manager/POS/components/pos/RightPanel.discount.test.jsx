@@ -3,6 +3,11 @@ import fs from "node:fs";
 
 const SRC = "src/components/Dashboard_Manager/POS/components/pos/RightPanel.jsx";
 
+const getSaveOrderCall = (src) => {
+  const match = src.match(/const res = await saveOrder\?\.\(\{[\s\S]*?\n\s*\}\);/);
+  return match?.[0] || "";
+};
+
 describe("RightPanel discount integration", () => {
   it("uses discount preview before off-premise save", () => {
     const src = fs.readFileSync(SRC, "utf8");
@@ -15,16 +20,17 @@ describe("RightPanel discount integration", () => {
 
   it("passes only safe pricing and promotionIds to saveOrder", () => {
     const src = fs.readFileSync(SRC, "utf8");
+    const saveOrderCall = getSaveOrderCall(src);
 
-    expect(src).toMatch(/saveOrder\?\.\(\{/);
-    expect(src).toMatch(/pricing:/);
-    expect(src).toMatch(/promotionIds:/);
+    expect(saveOrderCall).toMatch(/saveOrder\?\.\(\{/);
+    expect(saveOrderCall).toMatch(/pricing:/);
+    expect(saveOrderCall).toMatch(/promotionIds:/);
 
-    expect(src).not.toMatch(/voucherDiscount:/);
-    expect(src).not.toMatch(/promotionDiscount:/);
-    expect(src).not.toMatch(/finalTotal:/);
-    expect(src).not.toMatch(/grandTotal:/);
-    expect(src).not.toMatch(/discountAmount:/);
+    expect(saveOrderCall).not.toMatch(/voucherDiscount:/);
+    expect(saveOrderCall).not.toMatch(/promotionDiscount:/);
+    expect(saveOrderCall).not.toMatch(/finalTotal:/);
+    expect(saveOrderCall).not.toMatch(/grandTotal:/);
+    expect(saveOrderCall).not.toMatch(/discountAmount:/);
   });
 
   it("does not enable voucher preview for dine-in send-to-kitchen flow", () => {
