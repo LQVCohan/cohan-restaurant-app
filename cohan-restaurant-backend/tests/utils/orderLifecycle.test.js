@@ -1,16 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  ORDER_KIND,
+  ORDER_PAYMENT_STATUS,
+  SESSION_STATUS,
   activeTableSessionLookupFilter,
+  autoClearPaymentRequestForNewChildOrder,
   buildActiveTableSessionKey,
+  buildClearPaymentRequestUpdate,
   childOrdersForSessionFilter,
+  clearTablePaymentRequestState,
   isKitchenPayable,
   isOrderBatch,
   isPaymentClosed,
   isSessionActive,
   isTableSession,
   orderBatchOrLegacyFilter,
+  resolveSessionStatusAfterClearingPaymentRequest,
   withOrderBatchOrLegacyFilter,
 } from "../../utils/orderLifecycle.js";
+
+function queryChain(value) {
+  return {
+    session: vi.fn().mockReturnThis(),
+    sort: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(value),
+  };
+}
 
 describe("orderLifecycle helpers", () => {
   it("isTableSession returns true for orderKind='table_session'", () => {
@@ -165,4 +180,171 @@ describe("orderLifecycle helpers", () => {
     });
   });
 
+  it("buildClearPaymentRequestUpdate resets request-payment markers", () => {
+    const now = new Date("2026-05-10T20:00:00.000Z");
+    expect(
+      buildClearPaymentRequestUpdate({ now, reason: "new batch" }),
+    ).toEqual({
+      $set: {
+        orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+        "payment.status": "pending",
+        "payment.requestClearedAt": now,
+        "payment.requestClearReason": "new batch",
+      },
+      $unset: {
+        "payment.requestedAt": "",
+        "payment.requestSource": "",
+        "payment.requestedBy": "",
+        "payment.requestNote": "",
+      },
+    });
+  });
+
+  it("resolveSessionStatusAfterClearingPaymentRequest moves ready_to_pay back to dining", () => {
+    expect(
+      resolveSessionStatusAfterClearingPaymentRequest(SESSION_STATUS.READY_TO_PAY),
+    ).toBe(SESSION_STATUS.DINING);
+    expect(
+      resolveSessionStatusAfterClearingPaymentRequest(SESSION_STATUS.OPEN),
+    ).toBe(SESSION_STATUS.OPEN);
+  });
+
+  it("clearTablePaymentRequestState clears parent and active child payment_requested fields only", async () => {
+    const activeSession = {
+      _id: "parent-1",
+      restaurantId: "rest-1",
+      sessionStatus: SESSION_STATUS.READY_TO_PAY,
+    };
+    const updatedSession = {
+      _id: "parent-1",
+      payment: { status: "pending" },
+      sessionStatus: SESSION_STATUS.DINING,
+    };
+    const updatedOrders = [
+      { _id: "child-1", payment: { status: "pending" } },
+    ];
+    const OrderModel = {
+      updateMany: vi.fn().mockResolvedValue({ acknowledged: true }),
+      updateOne: vi.fn().mockResolvedValue({ acknowledged: true }),
+      findOne: vi
+        .fn()
+        .mockReturnValueOnce(queryChain(updatedSession)),
+      find: vi.fn().mockReturnValue(queryChain(updatedOrders)),
+    };
+
+    const out = await clearTablePaymentRequestState({
+      OrderModel,
+      restaurantId: "rest-1",
+      activeSession,
+      reason: "manual clear",
+      now: new Date("2026-05-10T20:10:00.000Z"),
+    });
+
+    expect(out).toEqual({ session: updatedSession, orders: updatedOrders });
+    expect(OrderModel.updateMany).toHaveBeenCalledTimes(1);
+    expect(OrderModel.updateMany.mock.calls[0][0].$and[0]).toEqual(
+      childOrdersForSessionFilter({
+        restaurantId: "rest-1",
+        parentOrderId: "parent-1",
+      }),
+    );
+    expect(OrderModel.updateMany.mock.calls[0][0].$and[1]).toMatchObject({
+      currentStatus: { $nin: ["completed", "cancelled", "failed"] },
+      orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+    });
+    expect(OrderModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: "parent-1",
+        restaurantId: "rest-1",
+        orderKind: ORDER_KIND.TABLE_SESSION,
+      }),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          sessionStatus: SESSION_STATUS.DINING,
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+          "payment.status": "pending",
+        }),
+      }),
+      {},
+    );
+  });
+
+  it("autoClearPaymentRequestForNewChildOrder clears stale request when adding a new order_batch", async () => {
+    const updatedSession = {
+      _id: "parent-1",
+      sessionStatus: SESSION_STATUS.DINING,
+      payment: { status: "pending" },
+    };
+    const updatedOrders = [
+      { _id: "existing-child", payment: { status: "pending" } },
+    ];
+    const OrderModel = {
+      findOne: vi
+        .fn()
+        .mockReturnValueOnce(queryChain({
+          _id: "parent-1",
+          restaurantId: "rest-1",
+          sessionStatus: SESSION_STATUS.READY_TO_PAY,
+          payment: { status: "payment_requested" },
+        }))
+        .mockReturnValueOnce(queryChain(updatedSession)),
+      updateMany: vi.fn().mockResolvedValue({ acknowledged: true }),
+      updateOne: vi.fn().mockResolvedValue({ acknowledged: true }),
+      find: vi.fn().mockReturnValue(queryChain(updatedOrders)),
+    };
+    const newOrderDoc = {
+      _id: "new-child",
+      isNew: true,
+      orderType: "dine_in",
+      orderKind: ORDER_KIND.ORDER_BATCH,
+      restaurantId: "rest-1",
+      tableId: "table-1",
+      tableCode: "T1",
+      parentOrderId: "parent-1",
+      $session: () => null,
+    };
+
+    const out = await autoClearPaymentRequestForNewChildOrder({
+      OrderModel,
+      newOrderDoc,
+      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+      now: new Date("2026-05-10T20:20:00.000Z"),
+    });
+
+    expect(out.cleared).toBe(true);
+    expect(out.session).toEqual(updatedSession);
+    expect(out.orders).toEqual(updatedOrders);
+    expect(OrderModel.updateMany.mock.calls[0][0].$and.at(-1)).toEqual({
+      _id: { $nin: ["new-child"] },
+    });
+  });
+
+  it("autoClearPaymentRequestForNewChildOrder does nothing when session is not payment_requested", async () => {
+    const OrderModel = {
+      findOne: vi.fn().mockReturnValue(queryChain(null)),
+      updateMany: vi.fn(),
+      updateOne: vi.fn(),
+      find: vi.fn(),
+    };
+
+    const out = await autoClearPaymentRequestForNewChildOrder({
+      OrderModel,
+      newOrderDoc: {
+        _id: "new-child",
+        isNew: true,
+        orderType: "dine_in",
+        orderKind: ORDER_KIND.ORDER_BATCH,
+        restaurantId: "rest-1",
+        tableId: "table-1",
+        tableCode: "T1",
+        parentOrderId: "parent-1",
+        $session: () => null,
+      },
+      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+    });
+
+    expect(out).toEqual({ cleared: false, session: null, orders: [] });
+    expect(OrderModel.updateMany).not.toHaveBeenCalled();
+    expect(OrderModel.updateOne).not.toHaveBeenCalled();
+  });
 });
