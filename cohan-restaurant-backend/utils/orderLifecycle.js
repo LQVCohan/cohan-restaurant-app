@@ -49,7 +49,6 @@ function isBlankStatus(value) {
   return value == null || String(value).trim() === "";
 }
 
-
 export const ACTIVE_SESSION_STATUSES = [
   SESSION_STATUS.OPEN,
   SESSION_STATUS.DINING,
@@ -112,6 +111,17 @@ export function childOrdersForSessionFilter({ restaurantId, parentOrderId }) {
     orderKind: ORDER_KIND.ORDER_BATCH,
     $or: [{ parentOrderId }, { rootOrderId: parentOrderId }],
   };
+}
+
+export function deriveParentSessionIdsFromOrders(orders = []) {
+  return [
+    ...new Set(
+      (orders || [])
+        .map((order) => order?.parentOrderId || order?.rootOrderId)
+        .filter(Boolean)
+        .map(String),
+    ),
+  ];
 }
 
 const CLOSED_PAYMENT_STATUSES = new Set([
