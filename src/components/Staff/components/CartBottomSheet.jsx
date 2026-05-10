@@ -348,7 +348,7 @@ export default function CartBottomSheet({
                         {permissions.canRemindItems && (
                           <button
                             className="btn-icon"
-                            onClick={() => onRemindItem?.(item)}
+                            onClick={() => handleRemind(item)}
                             title="Nhắc món"
                           >
                             <Clock size={16} />
