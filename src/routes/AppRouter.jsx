@@ -1,24 +1,13 @@
-// src/AppRouter.jsx
 import React, { useEffect, useContext } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  Outlet, // ✅ Thêm Outlet
-} from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, Outlet } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
-// ✅ Apollo Client
-
-// ==== Public Components ====
 import Home from "../components/Customer/Homepage_Client/Home";
 import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
 
-// ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
 import RestaurantDetail from "../components/Customer/RestaurantDetail/RestaurantDetail";
 import TableBooking from "../components/Customer/TableBooking/TableBooking";
@@ -35,25 +24,23 @@ import {
   AdminRestaurantInfoManagement,
   ManagerRestaurantInfoManagement,
 } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
-// ==== Manager/Admin ====
+
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerLayout from "../layouts/ManagerLayout";
+import StaffLayout from "../layouts/StaffLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/ManagerPerformancePage";
 
-// ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
 import StaffKitchenPage from "@/components/Staff/StaffKitchenPage";
 import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerformancePage";
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
 
-// ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
-import { canAccessRoute, getDefaultPathForRole } from "@/utils/frontendRoleAccess";
-import { STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
+import { canAccessRoute, getDefaultPathForRole, STAFF_OPERATIONAL_ROLES } from "@/utils/frontendRoleAccess";
 
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
@@ -63,53 +50,17 @@ import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
 import FoodDetail from "@/components/Customer/Food/FoodDetail";
 
-// =========================
-// 🔒 Auth Hook
-// =========================
 const useAuth = () => {
-  const {
-    token,
-    user,
-    loading,
-    isAuthenticated,
-    sessionState,
-    sessionWarning,
-  } = useContext(AuthContext);
+  const { token, user, loading, isAuthenticated, sessionState, sessionWarning } = useContext(AuthContext);
   const role = resolveRoleName(user);
   const emailVerified = user?.emailVerified ?? false;
-  return {
-    token,
-    role,
-    emailVerified,
-    loading,
-    sessionState,
-    sessionWarning,
-    isAuthenticated,
-  };
+  return { token, role, emailVerified, loading, sessionState, sessionWarning, isAuthenticated };
 };
 
-// =========================
-// 🔐 PrivateRoute
-// =========================
-export const PrivateRoute = ({
-  children,
-  allowedRoles,
-  requireVerifiedEmail = false,
-  authState,
-}) => {
+export const PrivateRoute = ({ children, allowedRoles, requireVerifiedEmail = false, authState }) => {
   const fallbackAuthState = useAuth();
-  const {
-    token,
-    role,
-    emailVerified,
-    loading,
-    sessionState,
-    sessionWarning,
-    isAuthenticated,
-  } =
-    authState || fallbackAuthState;
+  const { token, role, emailVerified, loading, sessionState, sessionWarning, isAuthenticated } = authState || fallbackAuthState;
   const location = useLocation();
-
   const isRestoringSession = token && sessionState === "restoring";
   const waitingForResolvedUser = Boolean(token) && (role == null || !isAuthenticated);
 
@@ -125,445 +76,104 @@ export const PrivateRoute = ({
     );
   }
 
-  if (!isAuthenticated || !token)
+  if (!isAuthenticated || !token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   if (!hasAllowedRole(allowedRoles, role) || !canAccessRoute(role, location.pathname)) {
     return <Navigate to={getDefaultPathForRole(role)} replace />;
   }
 
-  if (requireVerifiedEmail && !emailVerified)
+  if (requireVerifiedEmail && !emailVerified) {
     return <Navigate to="/verify-email" replace />;
+  }
 
   return children;
 };
 
-// =========================
-// 🖼️ Wrapper Layout cho Khách Hàng
-// =========================
-const CustomerLayout = () => {
-  return (
-    <MainLayout>
-      <Outlet /> {/* Nơi các component con sẽ hiển thị */}
-    </MainLayout>
-  );
-};
+const CustomerLayout = () => (
+  <MainLayout>
+    <Outlet />
+  </MainLayout>
+);
 
 const LogoutHandler = () => {
   const { logout } = useContext(AuthContext);
-
   useEffect(() => {
     logout?.();
   }, [logout]);
-
   return null;
 };
 
-// =========================
-// 🌐 App Router
-// =========================
 const STAFF_SHARED_ROLES = ["admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES];
 const STAFF_ORDER_ROLES = ["admin", "manager", "server", "host", "cashier", "supervisor"];
 const STAFF_KITCHEN_ROLES = ["admin", "manager", "chef", "cook", "kitchen_helper"];
 
-const AppRouter = () => {
-  return (
-    <Routes>
-      {/* =============================================
-          GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
-          =============================================
-      */}
+const withPrivateRoute = (children, allowedRoles, requireVerifiedEmail = true) => (
+  <PrivateRoute allowedRoles={allowedRoles} requireVerifiedEmail={requireVerifiedEmail}>
+    {children}
+  </PrivateRoute>
+);
 
-      <Route path="/login" element={<Login />} />
-      <Route path="/verify-email" element={<VerifyEmailPending />} />
-      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
-      <Route path="/403" element={<ForbiddenPage />} />
-      <Route path="/logout" element={<LogoutHandler />} />
+const withStaffLayout = (children) => <StaffLayout>{children}</StaffLayout>;
 
-      <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />
+const AppRouter = () => (
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route path="/verify-email" element={<VerifyEmailPending />} />
+    <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+    <Route path="/403" element={<ForbiddenPage />} />
+    <Route path="/logout" element={<LogoutHandler />} />
+    <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />
 
-      {/* =============================================
-          GROUP 2: STAFF, MANAGER, ADMIN (Layout Riêng)
-          =============================================
-      */}
+    <Route path="/staff" element={withPrivateRoute(<Navigate to="/staff/dashboard" replace />, STAFF_SHARED_ROLES)} />
+    <Route path="/staff/dashboard" element={withPrivateRoute(withStaffLayout(<StaffDashboardPage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/orders" element={withPrivateRoute(withStaffLayout(<StaffOrdering />), STAFF_ORDER_ROLES)} />
+    <Route path="/staff/kitchen" element={withPrivateRoute(withStaffLayout(<StaffKitchenPage />), STAFF_KITCHEN_ROLES)} />
+    <Route path="/staff/performance" element={withPrivateRoute(withStaffLayout(<StaffPerformancePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/schedule" element={withPrivateRoute(withStaffLayout(<StaffSchedulePage />), STAFF_SHARED_ROLES)} />
 
-      {/* Staff Home */}
-      <Route
-        path="/staff"
-        element={
-          <PrivateRoute allowedRoles={STAFF_SHARED_ROLES} requireVerifiedEmail>
-            <Navigate to="/staff/dashboard" replace />
-          </PrivateRoute>
-        }
-      />
+    <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
+    <Route path="/manager/dashboard/POS" element={withPrivateRoute(<POSLayout />, ["manager", "admin"])} />
+    <Route path="/manager/floor-map/:restaurantId" element={withPrivateRoute(<FloorPlanDesigner />, ["manager", "admin"], false)} />
+    <Route path="/manager/performance" element={withPrivateRoute(<ManagerLayout><ManagerPerformancePage /></ManagerLayout>, ["manager", "admin"])} />
+    <Route path="/manager/restaurants/categories" element={withPrivateRoute(<ManagerRestaurantInfoManagement />, ["manager", "admin"])} />
+    <Route path="/admin/restaurants/categories" element={withPrivateRoute(<AdminRestaurantInfoManagement />, ["admin"])} />
+    <Route path="/admin/dashboard" element={withPrivateRoute(<Dashboard />, ["admin"])} />
 
-      <Route
-        path="/staff/dashboard"
-        element={
-          <PrivateRoute allowedRoles={STAFF_SHARED_ROLES} requireVerifiedEmail>
-            <StaffDashboardPage />
-          </PrivateRoute>
-        }
-      />
+    <Route path="/users" element={withPrivateRoute(<div>Quản Lý Người Dùng</div>, ["admin"])} />
+    <Route path="/settings" element={withPrivateRoute(<div>Cài Đặt Hệ Thống</div>, ["admin"])} />
+    <Route path="/employees" element={withPrivateRoute(<div>Quản Lý Nhân Viên</div>, ["admin", "manager"])} />
+    <Route path="/inventory" element={withPrivateRoute(<div>Quản Lý Kho</div>, ["admin", "manager"])} />
+    <Route path="/reservations" element={withPrivateRoute(<div>Quản Lý Đặt Bàn</div>, ["admin", "manager"])} />
+    <Route path="/promotions" element={withPrivateRoute(<div>Quản Lý Khuyến Mãi</div>, ["admin", "manager"])} />
+    <Route path="/analytics" element={withPrivateRoute(<div>Phân Tích / Báo Cáo</div>, ["admin", "manager"])} />
 
-      {/* Staff Order */}
-      <Route
-        path="/staff/orders"
-        element={
-          <PrivateRoute
-            allowedRoles={STAFF_ORDER_ROLES}
-            requireVerifiedEmail
-          >
-            <StaffOrdering />
-          </PrivateRoute>
-        }
-      />
+    <Route element={<CustomerLayout />}>
+      <Route path="/" element={<Home />} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/search" element={withPrivateRoute(<SearchPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/owner/:id" element={withPrivateRoute(<OwnerProfilePage />, ["manager", "admin"])} />
+      <Route path="/for-you" element={<ForYou />} />
+      <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
+      <Route path="/track-order/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
+      <Route path="/restaurants" element={withPrivateRoute(<RestaurantsList />, ["customer", "manager", "admin"])} />
+      <Route path="/restaurant/:id" element={withPrivateRoute(<RestaurantDetail />, ["customer", "manager", "admin"])} />
+      <Route path="/restaurant/:id/layout" element={<TableBooking />} />
+      <Route path="/vr/table/:tableId" element={<VRViewer />} />
+      <Route path="/cus-menu" element={<RestaurantMenu />} />
+      <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer", "manager", "admin"])} />
+      <Route path="/food/:foodId" element={<FoodDetail />} />
+      <Route path="/vouchers/:id" element={<VoucherPage />} />
+      <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
+      <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
+      <Route path="/help-center/:id" element={<HelpPage />} />
+      <Route path="/notifications" element={withPrivateRoute(<NotificationsPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/profile" element={withPrivateRoute(<ProfilePage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+    </Route>
 
-      {/* Staff Kitchen */}
-      <Route
-        path="/staff/kitchen"
-        element={
-          <PrivateRoute
-            allowedRoles={STAFF_KITCHEN_ROLES}
-            requireVerifiedEmail
-          >
-            <StaffKitchenPage />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/staff/performance"
-        element={
-          <PrivateRoute
-            allowedRoles={STAFF_SHARED_ROLES}
-            requireVerifiedEmail
-          >
-            <StaffPerformancePage />
-          </PrivateRoute>
-        }
-      />
-
-
-      <Route
-        path="/staff/schedule"
-        element={
-          <PrivateRoute
-            allowedRoles={STAFF_SHARED_ROLES}
-            requireVerifiedEmail
-          >
-            <StaffSchedulePage />
-          </PrivateRoute>
-        }
-      />
-
-      {/* Manager Dashboard (Đã có ManagerLayout bọc bên trong element) */}
-      <Route
-        path="/manager"
-        element={
-          <PrivateRoute
-            allowedRoles={["manager", "admin", "hr", "accountant"]}
-            requireVerifiedEmail
-          >
-            <ManagerLayout>
-              <Dashboard />
-            </ManagerLayout>
-          </PrivateRoute>
-        }
-      />
-
-      {/* POS Layout */}
-      <Route
-        path="/manager/dashboard/POS"
-        element={
-          <PrivateRoute
-            allowedRoles={["manager", "admin"]}
-            requireVerifiedEmail
-          >
-            <POSLayout />
-          </PrivateRoute>
-        }
-      />
-
-      {/* Floor Plan */}
-      <Route
-        path="/manager/floor-map/:restaurantId"
-        element={
-          <PrivateRoute allowedRoles={["manager", "admin"]}>
-            <FloorPlanDesigner />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/manager/performance"
-        element={
-          <PrivateRoute
-            allowedRoles={["manager", "admin"]}
-            requireVerifiedEmail
-          >
-            <ManagerLayout>
-              <ManagerPerformancePage />
-            </ManagerLayout>
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/manager/restaurants/categories"
-        element={
-          <PrivateRoute
-            allowedRoles={["manager", "admin"]}
-            requireVerifiedEmail
-          >
-            <ManagerRestaurantInfoManagement />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/admin/restaurants/categories"
-        element={
-          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-            <AdminRestaurantInfoManagement />
-          </PrivateRoute>
-        }
-      />
-
-      {/* Admin Dashboard */}
-      <Route
-        path="/admin/dashboard"
-        element={
-          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      />
-
-      {/* Admin/Manager Shared Routes (Giữ nguyên không bọc MainLayout nếu chúng thuộc Dashboard) */}
-      <Route
-        path="/users"
-        element={
-          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-            <div>Quản Lý Người Dùng</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-            <div>Cài Đặt Hệ Thống</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/employees"
-        element={
-          <PrivateRoute
-            allowedRoles={["admin", "manager"]}
-            requireVerifiedEmail
-          >
-            <div>Quản Lý Nhân Viên</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/inventory"
-        element={
-          <PrivateRoute
-            allowedRoles={["admin", "manager"]}
-            requireVerifiedEmail
-          >
-            <div>Quản Lý Kho</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/reservations"
-        element={
-          <PrivateRoute
-            allowedRoles={["admin", "manager"]}
-            requireVerifiedEmail
-          >
-            <div>Quản Lý Đặt Bàn</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/promotions"
-        element={
-          <PrivateRoute
-            allowedRoles={["admin", "manager"]}
-            requireVerifiedEmail
-          >
-            <div>Quản Lý Khuyến Mãi</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/analytics"
-        element={
-          <PrivateRoute
-            allowedRoles={["admin", "manager"]}
-            requireVerifiedEmail
-          >
-            <div>Phân Tích / Báo Cáo</div>
-          </PrivateRoute>
-        }
-      />
-
-      {/* =============================================
-          GROUP 3: CUSTOMER ROUTES (Được bọc bởi MainLayout)
-          =============================================
-      */}
-      <Route element={<CustomerLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/contact" element={<ContactPage />} />
-        {/* Search */}
-        <Route
-          path="/search"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
-              requireVerifiedEmail
-            >
-              <SearchPage />
-            </PrivateRoute>
-          }
-        />
-
-        {/* Owner Profile */}
-        <Route
-          path="/owner/:id"
-          element={
-            <PrivateRoute
-              allowedRoles={["manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <OwnerProfilePage />
-            </PrivateRoute>
-          }
-        />
-
-        {/* For You */}
-        <Route path="/for-you" element={<ForYou />} />
-
-        {/* Orders */}
-        <Route
-          path="/orders"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <OrdersPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/track-order/:orderId"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <OrderTrackingPage />
-            </PrivateRoute>
-          }
-        />
-
-        {/* Restaurants */}
-        <Route
-          path="/restaurants"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <RestaurantsList />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/restaurant/:id"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <RestaurantDetail />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/restaurant/:id/layout" element={<TableBooking />} />
-        <Route path="/vr/table/:tableId" element={<VRViewer />} />
-        <Route path="/cus-menu" element={<RestaurantMenu />} />
-        <Route
-          path="/checkout"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <CheckoutPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/food/:foodId" element={<FoodDetail />} />
-        <Route path="/vouchers/:id" element={<VoucherPage />} />
-        <Route
-          path="/favorites/:id"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <FavoritePage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/address-book/:id"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <AddressPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/help-center/:id" element={<HelpPage />} />
-        <Route
-          path="/notifications"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
-              requireVerifiedEmail
-            >
-              <NotificationsPage />
-            </PrivateRoute>
-          }
-        />
-        {/* Profile */}
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]}
-              requireVerifiedEmail
-            >
-              <ProfilePage />
-            </PrivateRoute>
-          }
-        />
-      </Route>
-
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/403" replace />} />
-    </Routes>
-  );
-};
+    <Route path="*" element={<Navigate to="/403" replace />} />
+  </Routes>
+);
 
 export default AppRouter;
