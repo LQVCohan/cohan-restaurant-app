@@ -33,8 +33,11 @@ input PayOrdersByOrderIdsInput {
 }
 input RequestTablePaymentInput {
   restaurantId: ID!
-  tableId: ID
+  tableId: ID!
   tableCode: String
+  source: String
+  requestedBy: String
+  note: String
 }
 enum InvoiceStatus {
   UNPAID
@@ -67,6 +70,17 @@ type PayOrdersByTableResult {
   invoice: Invoice
   transaction: PaymentTransaction
   cashflow: Cashflow
+}
+
+type RequestTablePaymentResult {
+  ok: Boolean!
+  warning: Boolean!
+  readyForPayment: Boolean!
+  message: String
+  pendingOrderCodes: [String!]!
+  session: Order
+  orders: [Order!]!
+  requestedAt: String
 }
 
 type CashflowReference {
@@ -253,7 +267,7 @@ extend type Mutation {
   syncPaymentStatus(paymentId: ID!): PaymentSession!
   updateRestaurantPaymentSettings(input: UpdateRestaurantPaymentSettingsInput!): Restaurant!
 
-  requestTablePayment(input: RequestTablePaymentInput!): ActionResultPayload!
+  requestTablePayment(input: RequestTablePaymentInput!): RequestTablePaymentResult!
   payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
   payOrdersByOrderIds(input: PayOrdersByOrderIdsInput!): PayOrdersByTableResult!
 }
