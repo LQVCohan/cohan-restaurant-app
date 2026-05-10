@@ -23,19 +23,23 @@ const InvoiceLineSchema = new Schema(
       },
     ],
   },
-  { _id: false }
+  { _id: false },
 );
 
-// Tổng tiền (chi tiết)
+// Tong tien (chi tiet)
 const InvoiceTotalsSchema = new Schema(
   {
     subtotal: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
     service: { type: Number, default: 0 },
+    shippingFee: { type: Number, default: 0 },
+    discountReason: { type: String },
+    voucherCode: { type: String },
+    promotionId: { type: Types.ObjectId, ref: "Promotion" },
     grandTotal: { type: Number, required: true }, // subtotal - discount + tax + service
   },
-  { _id: false }
+  { _id: false },
 );
 
 const InvoiceSchema = BaseSchemaModel(
@@ -46,22 +50,22 @@ const InvoiceSchema = BaseSchemaModel(
     userId: { type: Types.ObjectId, ref: "User" },
     tableCode: { type: String },
 
-    // Số hoá đơn tăng dần, hiển thị cho khách (vd. INV-2025-000123)
+    // So hoa don tang dan, hien thi cho khach (vd. INV-2025-000123)
     number: { type: String, unique: true, sparse: true },
 
-    // Thời điểm phát hành hoá đơn
+    // Thoi diem phat hanh hoa don
     issuedAt: { type: Date, required: true },
 
-    // Dòng hàng
+    // Dong hang
     lines: [InvoiceLineSchema],
 
-    // Tổng tiền chi tiết
+    // Tong tien chi tiet
     totals: { type: InvoiceTotalsSchema, required: true },
 
-    // Số tiền đã thanh toán trên hoá đơn (lũy kế)
+    // So tien da thanh toan tren hoa don (luy ke)
     paid: { type: Number, default: 0 },
 
-    // Trạng thái thanh toán của hoá đơn
+    // Trang thai thanh toan cua hoa don
     status: {
       type: String,
       enum: ["UNPAID", "PARTIAL", "PAID", "VOID"],
@@ -69,16 +73,17 @@ const InvoiceSchema = BaseSchemaModel(
       index: true,
     },
 
-    // Tiền tệ hiển thị trên hoá đơn
+    // Tien te hien thi tren hoa don
     currency: { type: String, default: "VND" },
 
-    // Tham chiếu giao dịch thanh toán mới nhất (PaymentTransaction._id)
+    // Tham chieu giao dich thanh toan moi nhat (PaymentTransaction._id)
     refTransactionId: { type: Types.ObjectId, ref: "PaymentTransaction" },
+    meta: { type: Schema.Types.Mixed },
 
-    // (tuỳ chọn) mã/QR hiển thị cho khách, nếu bạn vẫn cần
+    // (tuy chon) ma/QR hien thi cho khach, neu ban van can
     code: { type: String, unique: true, sparse: true },
   },
-  {}
+  {},
 );
 
 InvoiceSchema.index({ restaurantId: 1, orderId: 1 });
