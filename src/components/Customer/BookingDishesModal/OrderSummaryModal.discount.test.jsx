@@ -29,11 +29,11 @@ describe("OrderSummaryModal discount integration", () => {
     expect(inputSnippet).toMatch(/voucherCode/);
     expect(inputSnippet).toMatch(/promotionIds/);
 
-    expect(inputSnippet).not.toMatch(/voucherDiscount:/);
-    expect(inputSnippet).not.toMatch(/promotionDiscount:/);
-    expect(inputSnippet).not.toMatch(/discountAmount:/);
-    expect(inputSnippet).not.toMatch(/finalTotal:/);
-    expect(inputSnippet).not.toMatch(/grandTotal:/);
+    expect(inputSnippet).not.toMatch(/voucherDiscount/);
+    expect(inputSnippet).not.toMatch(/promotionDiscount/);
+    expect(inputSnippet).not.toMatch(/discountAmount/);
+    expect(inputSnippet).not.toMatch(/finalTotal/);
+    expect(inputSnippet).not.toMatch(/grandTotal/);
   });
 
   it("blocks stale voucher checkout when preview is required", () => {
