@@ -14,11 +14,15 @@ async function resolveWarehouseIdOrDefault(restaurantId, session) {
     .sort({ createdAt: 1, _id: 1 });
   if (session) q = q.session(session);
   const wh = await q.lean();
-  return wh?._id || null;
+  if (!wh?._id) {
+    throw new Error(`No active warehouse found for restaurant ${restaurantId}`);
+  }
+  return wh._id;
 }
 
 function getServingKey(item) {
-  return item?.servingVariantKey || item?.servingKey || "portion";
+  const key = String(item?.servingKey || item?.servingVariantKey || "").trim();
+  return key || "portion";
 }
 
 function isExpiredActiveHold(item, now) {
@@ -105,21 +109,19 @@ export async function cleanupExpiredCartHolds(io, logger = console) {
 
         for (const it of expiredActiveItems) {
           const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId, session);
-          if (warehouseId) {
-            await cancelReservationForOrderTx({
-              restaurantId: it.restaurantId,
-              warehouseId,
-              orderCode: holdOrderCode(cart._id, it._id),
-              lines: [
-                {
-                  menuItemId: it.menuItemId,
-                  quantity: it.quantity,
-                  servingKey: getServingKey(it),
-                },
-              ],
-              session,
-            });
-          }
+          await cancelReservationForOrderTx({
+            restaurantId: it.restaurantId,
+            warehouseId,
+            orderCode: holdOrderCode(cart._id, it._id),
+            lines: [
+              {
+                menuItemId: it.menuItemId,
+                quantity: it.quantity,
+                servingKey: getServingKey(it),
+              },
+            ],
+            session,
+          });
         }
 
         const expiredIds = new Set(expiredActiveItems.map((it) => String(it._id)));
