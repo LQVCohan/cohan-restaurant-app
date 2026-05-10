@@ -234,39 +234,36 @@ export async function clearTablePaymentRequestState({
   };
 }
 
-export async function autoClearPaymentRequestForNewChildOrder({
+export async function clearPaymentRequestAfterNewChildOrderBatchCreated({
   OrderModel,
-  newOrderDoc,
+  order,
   reason,
   now = new Date(),
+  session = null,
 }) {
-  if (!OrderModel || !newOrderDoc?.isNew) {
+  if (!OrderModel || !order) {
     return { cleared: false, session: null, orders: [] };
   }
 
   if (
-    newOrderDoc.orderType !== "dine_in" ||
-    newOrderDoc.orderKind !== ORDER_KIND.ORDER_BATCH
+    order.orderType !== "dine_in" ||
+    order.orderKind !== ORDER_KIND.ORDER_BATCH
   ) {
     return { cleared: false, session: null, orders: [] };
   }
 
-  const parentOrderId = newOrderDoc.parentOrderId || newOrderDoc.rootOrderId;
-  if (!parentOrderId || !newOrderDoc.restaurantId) {
+  const parentOrderId = order.parentOrderId || order.rootOrderId;
+  if (!parentOrderId || !order.restaurantId) {
     return { cleared: false, session: null, orders: [] };
   }
 
-  const session =
-    typeof newOrderDoc.$session === "function" ? newOrderDoc.$session() : null;
-
   let sessionQuery = OrderModel.findOne({
     _id: parentOrderId,
+    restaurantId: order.restaurantId,
+    orderKind: ORDER_KIND.TABLE_SESSION,
+    sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
     currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-    ...activeTableSessionLookupFilter({
-      restaurantId: newOrderDoc.restaurantId,
-      tableId: newOrderDoc.tableId,
-      tableCode: newOrderDoc.tableCode,
-    }),
+    orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
     ...paymentRequestActiveFilter(),
   });
   if (session) sessionQuery = sessionQuery.session(session);
@@ -278,12 +275,12 @@ export async function autoClearPaymentRequestForNewChildOrder({
 
   const clearedState = await clearTablePaymentRequestState({
     OrderModel,
-    restaurantId: newOrderDoc.restaurantId,
+    restaurantId: order.restaurantId,
     activeSession,
     reason,
     now,
     session,
-    excludeOrderIds: [newOrderDoc._id],
+    excludeOrderIds: [order._id].filter(Boolean),
   });
 
   return {
