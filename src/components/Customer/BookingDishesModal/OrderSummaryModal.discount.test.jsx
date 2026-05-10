@@ -6,6 +6,19 @@ const SRC_PATH =
 
 const readSource = () => fs.readFileSync(SRC_PATH, "utf8");
 
+const getCheckoutInputSource = (src) => {
+  const persistStart = src.indexOf("const persistAllOrders = useCallback(");
+  expect(persistStart).toBeGreaterThanOrEqual(0);
+
+  const inputStart = src.indexOf("const input = {", persistStart);
+  expect(inputStart).toBeGreaterThan(persistStart);
+
+  const submitStart = src.indexOf("createCheckoutOrders({", inputStart);
+  expect(submitStart).toBeGreaterThan(inputStart);
+
+  return src.slice(inputStart, submitStart);
+};
+
 describe("OrderSummaryModal discount integration", () => {
   it("uses shared discount preview helpers", () => {
     const src = readSource();
@@ -18,12 +31,16 @@ describe("OrderSummaryModal discount integration", () => {
 
   it("does not send client-calculated discount totals in createCheckoutOrders pricing", () => {
     const src = readSource();
+    const checkoutInputSrc = getCheckoutInputSource(src);
 
-    expect(src).not.toMatch(/voucherDiscount:/);
-    expect(src).not.toMatch(/promotionDiscount:/);
-    expect(src).not.toMatch(/discountAmount:/);
-    expect(src).not.toMatch(/finalTotal:/);
-    expect(src).not.toMatch(/grandTotal:/);
+    expect(src).toMatch(/createCheckoutOrders\(\{\s*variables:\s*\{\s*input\s*\}/);
+    expect(checkoutInputSrc).toMatch(/pricing:\s*buildDiscountPricingInput\(\{/);
+    expect(checkoutInputSrc).toMatch(/promotionIds:/);
+    expect(checkoutInputSrc).not.toMatch(/voucherDiscount:/);
+    expect(checkoutInputSrc).not.toMatch(/promotionDiscount:/);
+    expect(checkoutInputSrc).not.toMatch(/discountAmount:/);
+    expect(checkoutInputSrc).not.toMatch(/finalTotal:/);
+    expect(checkoutInputSrc).not.toMatch(/grandTotal:/);
   });
 
   it("blocks stale voucher checkout when preview is required", () => {
@@ -37,6 +54,8 @@ describe("OrderSummaryModal discount integration", () => {
     const src = readSource();
 
     expect(src).toMatch(/canPreviewDiscount/);
-    expect(src).toMatch(/Voucher hiện chỉ áp dụng cho đơn thuộc một nhà hàng/);
+    expect(src).toMatch(
+      /Voucher hiện chỉ(?:\s+hỗ trợ)?\s+áp dụng cho đơn thuộc một\s+nhà hàng/,
+    );
   });
 });
