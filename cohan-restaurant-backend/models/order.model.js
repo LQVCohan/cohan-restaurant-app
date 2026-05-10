@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 import ShippingSchema from "./order-shipping.model.js";
 import { UnitEnum } from "./ingredient.model.js";
+import {
+  ORDER_KIND,
+  autoClearPaymentRequestForNewChildOrder,
+} from "../utils/orderLifecycle.js";
 
 const { Schema } = mongoose;
 
@@ -73,14 +77,10 @@ const ModifierInventoryRuleEnum = [
 
 const ServingVariantSnapshotSchema = new Schema(
   {
-    key: { type: String, trim: true }, // servingKey
+    key: { type: String, trim: true },
     name: { type: String, trim: true },
     mode: { type: String, enum: ["PORTION", "BY_WEIGHT"] },
-
-    // price per (sellQty sellUnit)
     price: { type: Number, min: 0 },
-
-    // needed to price/scale correctly for BY_WEIGHT
     sellQty: { type: Number, min: 0.000001 },
     sellUnit: { type: String, enum: ["portion", "g", "kg"] },
   },
@@ -96,14 +96,9 @@ const IngredientSnapshotLineSchema = new Schema(
       index: true,
     },
     name: { type: String, trim: true },
-
-    // qty theo unit của line (đã áp dụng factor + waste)
     quantity: { type: Number, required: true, min: 0 },
     unit: { type: String, enum: UnitEnum, required: true },
-
-    // qty quy đổi về baseUnit của Ingredient
     baseUnitQuantity: { type: Number, required: true, min: 0 },
-
     costPerBaseUnit: { type: Number, min: 0 },
     totalCost: { type: Number, min: 0 },
   },
@@ -135,23 +130,16 @@ const ModifierInventoryIngredientLineSnapshotSchema = new Schema(
 const ModifierInventoryRuleSnapshotSchema = new Schema(
   {
     rule: { type: String, enum: ModifierInventoryRuleEnum, required: true },
-
     ingredientLines: {
       type: [ModifierInventoryIngredientLineSnapshotSchema],
       default: [],
     },
-
     baseRecipeMultiplier: { type: Number, min: 0.000001 },
-
     note: { type: String },
   },
   { _id: false },
 );
 
-/**
- * Snapshot modifier selection:
- * Lưu đầy đủ để order không bị ảnh hưởng nếu ModifierGroup thay đổi sau này.
- */
 const OrderModifierSnapshotSchema = new Schema(
   {
     groupId: {
@@ -161,10 +149,8 @@ const OrderModifierSnapshotSchema = new Schema(
       index: true,
     },
     groupName: { type: String, required: true, trim: true },
-
     optionId: { type: Schema.Types.ObjectId, required: true, index: true },
     optionName: { type: String, required: true, trim: true },
-
     priceRule: { type: ModifierPriceRuleSnapshotSchema, required: true },
     inventoryRule: {
       type: ModifierInventoryRuleSnapshotSchema,
@@ -183,47 +169,28 @@ const OrderItemSchema = new Schema(
       ref: "Category",
       required: true,
     },
-
     name: { type: String, required: true, trim: true },
     unit: { type: String, default: "portion" },
-
     image: { type: String },
     proofImages: [{ type: String }],
-
-    // ===== Variant snapshot (source-of-truth: Recipe.servingVariants[key]) =====
     servingKey: { type: String, required: true, trim: true, index: true },
     servingVariant: { type: ServingVariantSnapshotSchema, required: true },
-
-    // ===== Quantity =====
     quantity: { type: Number, required: true, min: 0.000001 },
-
-    // BY_WEIGHT: grams
     weightGrams: { type: Number, min: 1 },
-
-    // ===== Modifiers snapshot =====
     modifiers: { type: [OrderModifierSnapshotSchema], default: [] },
-
-    // ===== Pricing snapshot (final) =====
-    baseUnitPrice: { type: Number, required: true, min: 0 }, // from servingVariant.price
-    unitPrice: { type: Number, required: true, min: 0 }, // baseUnitPrice + modifiers pricing rules
-    modifiersPricePerUnit: { type: Number, default: 0 }, // unitPrice - baseUnitPrice
-
+    baseUnitPrice: { type: Number, required: true, min: 0 },
+    unitPrice: { type: Number, required: true, min: 0 },
+    modifiersPricePerUnit: { type: Number, default: 0 },
     lineSubtotal: { type: Number, default: 0, min: 0 },
-
-    // ===== Ingredient snapshot =====
     ingredientsSnapshot: { type: [IngredientSnapshotLineSchema], default: [] },
-
     note: { type: String },
-
     priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
-
     status: { type: String, default: "pending", enum: ItemStatusEnum },
     originalQuantity: {
       type: Number,
       min: 0,
       default: null,
     },
-
     cancelledQuantity: {
       type: Number,
       min: 0,
@@ -234,7 +201,6 @@ const OrderItemSchema = new Schema(
       min: 0,
       default: 0,
     },
-
     voidRequests: [
       {
         requestId: {
@@ -317,88 +283,67 @@ const OrderItemSchema = new Schema(
 
 const OrderSchema = BaseSchemaModel({
   orderCode: { type: String, required: true, index: true },
-
-  // split bill: order con có parentOrderCode trỏ về orderCode của order trước đó
   parentOrderCode: { type: String, index: true },
-
-  // Lifecycle note:
-  // - table_session: parent order for one dine-in table session, should not own kitchen items.
-  // - order_batch: child order for each staff send-to-kitchen round, owns items.
-  // - split_bill: future payment grouping for split bill, not used by kitchen flow.
-  // `currentStatus` is kept for backward compatibility during migration.
   orderKind: {
     type: String,
     enum: OrderKindEnum,
     default: "order_batch",
     index: true,
   },
-
   parentOrderId: {
     type: Schema.Types.ObjectId,
     ref: "Order",
     default: null,
     index: true,
   },
-
   rootOrderId: {
     type: Schema.Types.ObjectId,
     ref: "Order",
     default: null,
     index: true,
   },
-
   splitStatus: {
     type: String,
     enum: SplitStatusEnum,
     default: "none",
     index: true,
   },
-
   sessionStatus: {
     type: String,
     enum: SessionStatusEnum,
     default: "open",
     index: true,
   },
-
   kitchenStatus: {
     type: String,
     enum: KitchenStatusEnum,
     default: "pending",
     index: true,
   },
-
   orderPaymentStatus: {
     type: String,
     enum: OrderPaymentStatusEnum,
     default: "unpaid",
     index: true,
   },
-
   activeSessionKey: {
     type: String,
     default: null,
   },
-
   openedAt: {
     type: Date,
     default: null,
   },
-
   closedAt: {
     type: Date,
     default: null,
   },
-
   dailySequence: { type: Number },
-
   tableId: { type: Schema.Types.ObjectId, ref: "Table" },
   tableCode: { type: String, index: true },
   tableName: { type: String },
   guestCount: { type: Number, default: 1, min: 1 },
-
   userId: { type: Schema.Types.ObjectId, ref: "User" },
-
   restaurantId: {
     type: Schema.Types.ObjectId,
     ref: "Restaurant",
@@ -406,69 +351,65 @@ const OrderSchema = BaseSchemaModel({
     index: true,
   },
   reservationId: { type: Schema.Types.ObjectId, ref: "Reservation" },
-
   orderType: {
     type: String,
     required: true,
     enum: ["dine_in", "takeaway", "delivery"],
     default: "dine_in",
   },
-
   shipping: ShippingSchema,
   items: { type: [OrderItemSchema], default: [] },
-
   totals: {
     subtotal: { type: Number, required: true, default: 0, min: 0 },
-
     discount: { type: Number, default: 0, min: 0 },
     discountReason: { type: String },
     voucherCode: { type: String },
     promotionId: { type: Schema.Types.ObjectId, ref: "Promotion" },
-
     tax: { type: Number, required: true, default: 0, min: 0 },
     taxRate: { type: Number, default: 0 },
-
     service: { type: Number, required: true, default: 0, min: 0 },
     serviceRate: { type: Number, default: 0 },
-
     shippingFee: { type: Number, default: 0, min: 0 },
     grandTotal: { type: Number, required: true, default: 0, min: 0 },
   },
-
   payment: {
     method: { type: String, default: "cash" },
     provider: { type: String },
-
-    // ✅ Transaction reference
     transactionId: {
       type: Schema.Types.ObjectId,
       ref: "Transaction",
       index: true,
     },
-
-    // optional public ref
     txnRef: { type: String },
-
     status: {
       type: String,
-      enum: ["payment_requested", "paid", "pending", "failed", "refunded", "partially_refunded"],
+      enum: [
+        "payment_requested",
+        "paid",
+        "pending",
+        "failed",
+        "refunded",
+        "partially_refunded",
+      ],
       default: "pending",
     },
     paidAmount: { type: Number, default: 0, min: 0 },
     changeAmount: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: "VND" },
     requestedAt: { type: Date },
+    requestSource: { type: String },
     requestedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    requestNote: { type: String },
+    requestClearedAt: { type: Date },
+    requestClearReason: { type: String },
     paidAt: { type: Date },
     paidBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },
-
   printStatus: {
     isPrinted: { type: Boolean, default: false },
     chefPrinted: { type: Boolean, default: false },
     printedAt: Date,
   },
-
   statusTimeline: [
     {
       status: { type: String, enum: OrderStatusEnum, required: true },
@@ -477,13 +418,9 @@ const OrderSchema = BaseSchemaModel({
       note: { type: String },
     },
   ],
-
-  // Legacy/backward-compatible status field.
-  // New lifecycle logic should gradually move to sessionStatus, kitchenStatus, and orderPaymentStatus.
   currentStatus: { type: String, default: "confirmed", enum: OrderStatusEnum },
   priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
   note: { type: String },
-
   clientMeta: { type: Schema.Types.Mixed },
 });
 
@@ -491,13 +428,11 @@ function qtyForPricing(item) {
   const mode = item?.servingVariant?.mode;
   if (mode === "PORTION") return Number(item.quantity || 0);
 
-  // BY_WEIGHT
   const grams = Number(item.weightGrams || 0);
   const sellQty = Number(item?.servingVariant?.sellQty || 1);
   const sellUnit = item?.servingVariant?.sellUnit || "kg";
-
-  const soldAmount = sellUnit === "g" ? grams : grams / 1000; // kg
-  return soldAmount / sellQty; // price per (sellQty sellUnit)
+  const soldAmount = sellUnit === "g" ? grams : grams / 1000;
+  return soldAmount / sellQty;
 }
 
 function normalizePriorityLevel(value) {
@@ -527,11 +462,8 @@ OrderSchema.methods.calculateTotals = function () {
   for (const item of this.items || []) {
     item.priority = normalizePriorityLevel(item.priority);
     const q = qtyForPricing(item);
-
-    // recompute modifiersPricePerUnit in case unitPrice/baseUnitPrice edited
     item.modifiersPricePerUnit =
       Number(item.unitPrice) - Number(item.baseUnitPrice);
-
     item.lineSubtotal = Math.max(0, Number(item.unitPrice) * q);
 
     if (!["cancelled", "returned"].includes(item.status)) {
@@ -573,7 +505,19 @@ OrderSchema.pre("save", function (next) {
   next();
 });
 
-// Not unique: you may have many documents sharing the same orderCode (batch orders grouped on FE)
+OrderSchema.pre("save", async function (next) {
+  try {
+    await autoClearPaymentRequestForNewChildOrder({
+      OrderModel: this.constructor,
+      newOrderDoc: this,
+      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+    });
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 OrderSchema.index({ restaurantId: 1, orderCode: 1 });
 OrderSchema.index({ restaurantId: 1, tableCode: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, currentStatus: 1, createdAt: -1 });
@@ -615,14 +559,12 @@ OrderSchema.index(
   },
 );
 
-// ingredient lookup in orders
 OrderSchema.index({
   restaurantId: 1,
   "items.ingredientsSnapshot.ingredientId": 1,
   createdAt: -1,
 });
 
-// modifier lookup
 OrderSchema.index({
   restaurantId: 1,
   "items.modifiers.groupId": 1,
