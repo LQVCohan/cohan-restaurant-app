@@ -178,6 +178,7 @@ export async function clearTablePaymentRequestState({
       {
         currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
         orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+        "payment.status": { $ne: "paid" },
       },
       paymentRequestActiveFilter(),
     ],
@@ -222,6 +223,7 @@ export async function clearTablePaymentRequestState({
       {
         currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
         orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+        "payment.status": { $ne: "paid" },
       },
     ],
   }).sort({ createdAt: 1, _id: 1 });
