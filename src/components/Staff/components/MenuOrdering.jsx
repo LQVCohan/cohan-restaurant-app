@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
   MapPin,
   UserCircle,
@@ -9,8 +9,15 @@ import {
   Crown,
   ChevronRight,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 import { MOCK_MENU, MENU_CATEGORIES } from "../data/mockData";
+import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
 import "./MenuOrdering.scss";
+
+const NO_PERMISSION_MESSAGE =
+  "Vai trò hiện tại không có quyền thực hiện thao tác này.";
+const READONLY_MESSAGE =
+  "Vai trò hiện tại chỉ có quyền xem và thao tác trong phạm vi được phân công.";
 
 export default function MenuOrdering({
   onAdd,
@@ -22,11 +29,16 @@ export default function MenuOrdering({
   menuItems = MOCK_MENU,
   categories = MENU_CATEGORIES,
 }) {
+  const { user } = useContext(AuthContext) || {};
+  const permissions = useMemo(() => {
+    return getStaffOrderingPermissions(user);
+  }, [user]);
+
   const [selectedItem, setSelectedItem] = useState(null);
   const [prepChoice, setPrepChoice] = useState("");
   const [serveOrder, setServeOrder] = useState("Mang ra cùng lúc");
   const [selectedVariantKey, setSelectedVariantKey] = useState("");
-  // Trạng thái khi chưa chọn bàn
+
   if (!selectedTable) {
     return (
       <div className="staff-pos-empty-state">
@@ -46,6 +58,11 @@ export default function MenuOrdering({
   );
 
   const handleConfirmAdd = () => {
+    if (!permissions.canAddItems) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+
     const variants = Array.isArray(selectedItem?.servingVariants)
       ? selectedItem.servingVariants
       : [];
@@ -72,6 +89,7 @@ export default function MenuOrdering({
     setPrepChoice("");
     setServeOrder("Mang ra cùng lúc");
   };
+
   function formatCurrency(value) {
     return Number(value || 0).toLocaleString("vi-VN");
   }
@@ -96,7 +114,6 @@ export default function MenuOrdering({
   }
   return (
     <div className="staff-pos-menu">
-      {/* Banner Trạng thái Bàn */}
       <div className="table-status-banner">
         <div className="table-info">
           <span className="label">Đang Order</span>
@@ -105,7 +122,6 @@ export default function MenuOrdering({
         <ChevronRight size={18} className="icon-right" />
       </div>
 
-      {/* Thông tin Khách hàng (Thành viên) */}
       {selectedTable.customer ? (
         <div className="customer-vip-card">
           <div className="cus-header">
@@ -129,9 +145,20 @@ export default function MenuOrdering({
                 </strong>
               </p>
             </div>
-            <button className="btn-remove-cus" onClick={onRemoveCustomer}>
-              <X size={20} />
-            </button>
+            {permissions.canRemoveCustomer && (
+              <button
+                className="btn-remove-cus"
+                onClick={() => {
+                  if (!permissions.canRemoveCustomer) {
+                    alert(NO_PERMISSION_MESSAGE);
+                    return;
+                  }
+                  onRemoveCustomer?.();
+                }}
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
           {getCustomerNote(selectedTable.customer) && (
             <div className="cus-warning">
@@ -150,65 +177,70 @@ export default function MenuOrdering({
         </div>
       )}
 
-      {/* Thanh Lọc Danh Mục (Scroll ngang) */}
-      <div className="category-scroll">
-        {(categories || MENU_CATEGORIES).map((cat) => (
-          <button
-            key={cat}
-            className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
-            onClick={() => setSelectedCategory(cat)}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+      {permissions.isReadOnlyRole && (
+        <div className="staff-inline-state">{READONLY_MESSAGE}</div>
+      )}
 
-      {/* Lưới Món Ăn (Grid 2 cột) */}
-      <div className="menu-grid">
-        {filteredMenu.map((item) => {
-          const isOutOfStock = item.stock <= 0;
-          return (
-            <div
-              key={item.id}
-              className={`menu-item-card ${isOutOfStock ? "out-of-stock" : ""}`}
-              onClick={() => {
-                if (isOutOfStock) return;
+      {permissions.canViewMenu && (
+        <>
+          <div className="category-scroll">
+            {(categories || MENU_CATEGORIES).map((cat) => (
+              <button
+                key={cat}
+                className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
 
-                const variants = Array.isArray(item.servingVariants)
-                  ? item.servingVariants
-                  : [];
-                const defaultVariant =
-                  item.defaultVariant ||
-                  variants.find((v) => v?.key === item.servingKey) ||
-                  variants[0] ||
-                  null;
+          <div className="menu-grid">
+            {filteredMenu.map((item) => {
+              const isOutOfStock = item.stock <= 0;
+              return (
+                <div
+                  key={item.id}
+                  className={`menu-item-card ${isOutOfStock ? "out-of-stock" : ""}`}
+                  onClick={() => {
+                    if (isOutOfStock || !permissions.canAddItems) return;
 
-                setSelectedItem(item);
-                setSelectedVariantKey(defaultVariant?.key || "");
-                setPrepChoice("");
-              }}
-            >
-              <div className="item-content">
-                <h4 className="item-name">{item.name}</h4>
-                <p className="item-price">{item.price.toLocaleString()}đ</p>
-              </div>
-              <div className="item-footer">
-                <span className={`stock-badge ${isOutOfStock ? "out" : "in"}`}>
-                  {isOutOfStock ? "Hết món" : `Còn ${item.stock}`}
-                </span>
-                {!isOutOfStock && (
-                  <button className="btn-add-quick">
-                    <Plus size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                    const variants = Array.isArray(item.servingVariants)
+                      ? item.servingVariants
+                      : [];
+                    const defaultVariant =
+                      item.defaultVariant ||
+                      variants.find((v) => v?.key === item.servingKey) ||
+                      variants[0] ||
+                      null;
 
-      {/* Bottom Sheet Modal: Chọn Option Món */}
-      {selectedItem && (
+                    setSelectedItem(item);
+                    setSelectedVariantKey(defaultVariant?.key || "");
+                    setPrepChoice("");
+                  }}
+                >
+                  <div className="item-content">
+                    <h4 className="item-name">{item.name}</h4>
+                    <p className="item-price">{item.price.toLocaleString()}đ</p>
+                  </div>
+                  <div className="item-footer">
+                    <span className={`stock-badge ${isOutOfStock ? "out" : "in"}`}>
+                      {isOutOfStock ? "Hết món" : `Còn ${item.stock}`}
+                    </span>
+                    {!isOutOfStock && permissions.canAddItems && (
+                      <button className="btn-add-quick">
+                        <Plus size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {selectedItem && permissions.canAddItems && (
         <div
           className="item-options-overlay"
           onClick={() => setSelectedItem(null)}
@@ -237,7 +269,6 @@ export default function MenuOrdering({
             </div>
 
             <div className="sheet-body">
-              {/* Nhóm Ghi chú / Cách làm */}
               {Array.isArray(selectedItem.servingVariants) &&
                 selectedItem.servingVariants.length > 1 && (
                   <div className="option-group">
@@ -260,7 +291,6 @@ export default function MenuOrdering({
                     </div>
                   </div>
                 )}
-              {/* Nhóm Thứ tự phục vụ */}
               <div className="option-group">
                 <label className="group-label">2. Thứ tự lên món</label>
                 <div className="chips-container">
