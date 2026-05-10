@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/POS/components/panels/modals/PaymentModal.jsx
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import s from "./PaymentModal.module.scss";
 import { formatPrice } from "@/utils/formatters";
 import useOrderManagement from "@/hooks/useOrderManagement";
@@ -8,6 +8,15 @@ import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import { convertCurrencyAmount } from "@/utils/currency";
 import useModalKeyboardClose from "./useModalKeyboardClose";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
+import {
+  getDiscountPreviewErrorMessage,
+  useDiscountPreview,
+} from "@/hooks/useDiscountPreview";
+import {
+  buildDiscountPricingInput,
+  buildOrderDiscountPreviewInput,
+  getDiscountBreakdownTotal,
+} from "@/utils/discountPreviewPayload";
 
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
@@ -54,6 +63,11 @@ function PaymentModal({
   const [method, setMethod] = useState("cash");
   const [paidAmount, setPaidAmount] = useState(0);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
+  const [discountBreakdown, setDiscountBreakdown] = useState(null);
+  const [discountError, setDiscountError] = useState("");
+  const [discountNeedsReapply, setDiscountNeedsReapply] = useState(false);
 
   const pos = usePos?.() || null;
   const effectiveOrderId = pos?.currentOrderId || order?.[0]?.orderId || null;
@@ -62,68 +76,201 @@ function PaymentModal({
     table?.restaurant_id ||
     pos?.currentTable?.restaurantId ||
     null;
+  const isDineIn = !pos?.currentOrderType || pos?.currentOrderType === "dine_in";
 
   const { activeCurrency, setActiveCurrency, usdToVndRate } =
     useRestaurantCurrency(restaurantId);
   const { validatePayment, confirmPayment, payLoading } =
     useOrderManagement(pos);
+  const { previewOrderDiscount, loading: isPreviewingDiscount } =
+    useDiscountPreview();
 
   const busy = Boolean(payLoading);
-  const convertedTotalAmount = convertCurrencyAmount(
-    Number(totalAmount || 0),
+  const groupedBatches = groupItemsByBatch(order || []);
+  const orderSignature = useMemo(
+    () =>
+      JSON.stringify(
+        (order || []).map((item) => [
+          item?._lineId || item?.dishId || item?.id || item?.name || "item",
+          Number(item?.quantity || 0),
+          Number(item?.price ?? item?.unitPrice ?? item?.basePrice ?? 0),
+          Number(item?.modifiersPrice || 0),
+        ]),
+      ),
+    [order],
+  );
+  const hasVoucherInput = voucherCode.trim().length > 0;
+  const baseTotalAmountVnd = Number(totalAmount || 0);
+  const payableTotalVnd = getDiscountBreakdownTotal(
+    discountBreakdown,
+    baseTotalAmountVnd,
+  );
+  const convertedPayableTotal = convertCurrencyAmount(
+    payableTotalVnd,
     "VND",
     activeCurrency,
     usdToVndRate,
   );
-
-  const groupedBatches = groupItemsByBatch(order || []);
-
   const changeAmount = Math.max(
     0,
-    (Number(paidAmount) || 0) - convertedTotalAmount,
+    (Number(paidAmount) || 0) - convertedPayableTotal,
+  );
+  const previewInput = useMemo(() => {
+    if (!restaurantId || !isDineIn) return null;
+
+    return buildOrderDiscountPreviewInput({
+      restaurantId,
+      orderType: "dine_in",
+      items: order || [],
+      taxRate: 0,
+      serviceRate: 0,
+      shippingFee: 0,
+      voucherCode,
+      promotionIds: selectedPromotionIds,
+    });
+  }, [restaurantId, isDineIn, order, voucherCode, selectedPromotionIds]);
+  const breakdownRows = useMemo(() => {
+    const source = discountBreakdown || {
+      subtotal: baseTotalAmountVnd,
+      totalDiscount: 0,
+      service: 0,
+      tax: 0,
+      grandTotal: baseTotalAmountVnd,
+    };
+
+    return [
+      { label: "Tạm tính", value: Number(source?.subtotal || baseTotalAmountVnd) },
+      {
+        label: "Giảm giá",
+        value: Number(
+          source?.totalDiscount ?? source?.discount ?? source?.voucherDiscount ?? 0,
+        ),
+        negative: true,
+      },
+      { label: "Phí phục vụ", value: Number(source?.service || 0) },
+      { label: "Thuế", value: Number(source?.tax || 0) },
+      { label: "Tổng cần trả", value: Number(payableTotalVnd || 0), total: true },
+    ];
+  }, [discountBreakdown, baseTotalAmountVnd, payableTotalVnd]);
+  const hasValidDiscount = Boolean(
+    isDineIn &&
+      discountBreakdown &&
+      !discountNeedsReapply &&
+      !discountError &&
+      (hasVoucherInput || selectedPromotionIds.length > 0),
+  );
+  const discountBlocksPayment = Boolean(
+    isDineIn &&
+      hasVoucherInput &&
+      (!discountBreakdown || discountNeedsReapply || discountError),
   );
 
   useEffect(() => {
-    if (method === "card" || method === "transfer")
-      setPaidAmount(convertedTotalAmount || 0);
-    else setPaidAmount(0);
+    if (!isOpen) return;
+
     setIsConfirming(false);
-  }, [method, isOpen, convertedTotalAmount]);
-
-  const handleSuggestion = (v) =>
-    setPaidAmount(v === "exact" ? convertedTotalAmount || 0 : v);
-  const handleShowConfirm = () => !busy && setIsConfirming(true);
-
-  const mapNote = () =>
-    method === "cash"
-      ? `Khách đưa ${formatPrice(paidAmount, { currency: activeCurrency })} - Thối lại ${formatPrice(
-          changeAmount,
-          { currency: activeCurrency },
-        )}`
-      : `Thanh toán ${method.toUpperCase()}`;
-
-  const suggestions = (() => {
-    const total = Number(convertedTotalAmount || 0);
-    if (total <= 0) return [50000, 100000, 200000];
-    const sgs = new Set();
-    sgs.add(Math.ceil(total / 1000) * 1000);
-    if (total < 100000) {
-      sgs.add(100000);
-      sgs.add(200000);
-      sgs.add(500000);
-    } else if (total < 500000) {
-      sgs.add(Math.ceil(total / 100000) * 100000);
-      sgs.add(500000);
-      sgs.add(1000000);
-    } else {
-      sgs.add(Math.ceil(total / 100000) * 100000);
-      sgs.add(1000000);
-      sgs.add(2000000);
+    if (method === "card" || method === "transfer") {
+      setPaidAmount(convertedPayableTotal || 0);
     }
-    return Array.from(sgs)
-      .filter((v) => v >= total)
+  }, [method, isOpen, convertedPayableTotal]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (method === "cash") {
+      setPaidAmount(0);
+    }
+  }, [method, isOpen]);
+
+  useEffect(() => {
+    if (!isDineIn) {
+      setVoucherCode("");
+      setSelectedPromotionIds([]);
+      setDiscountBreakdown(null);
+      setDiscountError("");
+      setDiscountNeedsReapply(false);
+    }
+  }, [isDineIn]);
+
+  useEffect(() => {
+    if (!isOpen || !isDineIn) return;
+
+    setDiscountBreakdown(null);
+    setDiscountError("");
+    setDiscountNeedsReapply(
+      Boolean(hasVoucherInput || selectedPromotionIds.length > 0),
+    );
+  }, [
+    isOpen,
+    isDineIn,
+    orderSignature,
+    table?.id,
+    table?.code,
+    voucherCode,
+    selectedPromotionIds,
+    hasVoucherInput,
+  ]);
+
+  const handleSuggestion = (value) =>
+    setPaidAmount(value === "exact" ? convertedPayableTotal || 0 : value);
+  const handleShowConfirm = () =>
+    !busy && !discountBlocksPayment && setIsConfirming(true);
+
+  const mapNote = useCallback(
+    () =>
+      method === "cash"
+        ? `Khách đưa ${formatPrice(paidAmount, { currency: activeCurrency })} - Thối lại ${formatPrice(
+            changeAmount,
+            { currency: activeCurrency },
+          )}`
+        : `Thanh toán ${method.toUpperCase()}`,
+    [method, paidAmount, activeCurrency, changeAmount],
+  );
+
+  const suggestions = useMemo(() => {
+    const total = Number(convertedPayableTotal || 0);
+    if (total <= 0) return [50000, 100000, 200000];
+    const suggestionValues = new Set();
+    suggestionValues.add(Math.ceil(total / 1000) * 1000);
+    if (total < 100000) {
+      suggestionValues.add(100000);
+      suggestionValues.add(200000);
+      suggestionValues.add(500000);
+    } else if (total < 500000) {
+      suggestionValues.add(Math.ceil(total / 100000) * 100000);
+      suggestionValues.add(500000);
+      suggestionValues.add(1000000);
+    } else {
+      suggestionValues.add(Math.ceil(total / 100000) * 100000);
+      suggestionValues.add(1000000);
+      suggestionValues.add(2000000);
+    }
+    return Array.from(suggestionValues)
+      .filter((value) => value >= total)
       .slice(0, 3);
-  })();
+  }, [convertedPayableTotal]);
+
+  const handleApplyDiscountPreview = useCallback(async () => {
+    if (!previewInput) {
+      setDiscountBreakdown(null);
+      setDiscountError("Không đủ dữ liệu để kiểm tra voucher.");
+      setDiscountNeedsReapply(true);
+      return;
+    }
+
+    setDiscountError("");
+    setDiscountBreakdown(null);
+
+    try {
+      const breakdown = await previewOrderDiscount(previewInput);
+      setDiscountBreakdown(breakdown || null);
+      setDiscountNeedsReapply(false);
+    } catch (error) {
+      setDiscountBreakdown(null);
+      setDiscountError(getDiscountPreviewErrorMessage(error));
+      setDiscountNeedsReapply(true);
+    }
+  }, [previewInput, previewOrderDiscount]);
 
   const executePayment = async () => {
     if (busy) return;
@@ -135,29 +282,58 @@ function PaymentModal({
     const check = validatePayment({
       method,
       paidAmount: Number(paidAmount || 0),
-      total: Number(convertedTotalAmount || 0),
+      total: Number(convertedPayableTotal || 0),
     });
     if (!check.ok) {
       alert(check.message);
       return;
     }
 
-    const paidAmountVnd = convertCurrencyAmount(
+    if (discountBlocksPayment) {
+      alert("Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.");
+      return;
+    }
+
+    const tenderAmountVnd = convertCurrencyAmount(
       Number(paidAmount || 0),
       activeCurrency,
       "VND",
       usdToVndRate,
     );
+    const backendPaidAmountVnd =
+      method === "cash" && hasValidDiscount
+        ? Number(payableTotalVnd || 0)
+        : method === "cash"
+          ? Number(tenderAmountVnd || 0)
+          : Number(payableTotalVnd || 0);
 
     let res;
 
     try {
-      res = await confirmPayment({
-        restaurantId,
-        method,
-        paidAmount: paidAmountVnd,
-        note: mapNote(),
-      });
+      if (hasValidDiscount) {
+        const paymentPricing = buildDiscountPricingInput({
+          taxRate: 0,
+          serviceRate: 0,
+          shippingFee: 0,
+          voucherCode,
+        });
+
+        res = await confirmPayment({
+          restaurantId,
+          method,
+          paidAmount: Number(payableTotalVnd || 0),
+          note: mapNote(),
+          pricing: paymentPricing,
+          promotionIds: selectedPromotionIds,
+        });
+      } else {
+        res = await confirmPayment({
+          restaurantId,
+          method,
+          paidAmount: backendPaidAmountVnd,
+          note: mapNote(),
+        });
+      }
     } catch (error) {
       alert(error?.message || "Thanh toán thất bại.");
       return;
@@ -179,15 +355,31 @@ function PaymentModal({
       return;
     }
 
+    const authoritativeTotalVnd = Number(
+      res?.data?.invoice?.totals?.grandTotal ??
+        res?.data?.invoice?.grandTotal ??
+        payableTotalVnd,
+    );
+    const authoritativeDisplayTotal = convertCurrencyAmount(
+      authoritativeTotalVnd,
+      "VND",
+      activeCurrency,
+      usdToVndRate,
+    );
+
     onConfirm?.(method, paidAmount);
     onComplete?.({
       orderId: effectiveOrderId,
       method,
       paidAmount: Number(paidAmount || 0),
-      total: Number(convertedTotalAmount || 0),
+      total: Number(authoritativeDisplayTotal || 0),
       change: changeAmount,
       currency: activeCurrency,
       status: "COMPLETED",
+      appliedVoucherCode: hasValidDiscount ? voucherCode.trim() : "",
+      promotionIds: hasValidDiscount ? selectedPromotionIds : [],
+      payableTotalVnd: authoritativeTotalVnd,
+      tenderedAmountVnd: Number(tenderAmountVnd || 0),
       server: res?.data || null,
     });
     setIsConfirming(false);
@@ -198,7 +390,9 @@ function PaymentModal({
   const isTransfer = method === "transfer";
   const disableConfirm =
     busy ||
-    (isCash && Number(paidAmount || 0) < Number(convertedTotalAmount || 0));
+    isPreviewingDiscount ||
+    discountBlocksPayment ||
+    (isCash && Number(paidAmount || 0) < Number(convertedPayableTotal || 0));
   useModalKeyboardClose({ isOpen, onClose, disabled: busy || isConfirming });
   if (!isOpen) return null;
 
@@ -227,23 +421,23 @@ function PaymentModal({
         <div className={s.group}>
           <label className={s.label}>Tiền tệ hóa đơn</label>
           <div className={s.grid}>
-            {["VND", "USD"].map((cur) => (
+            {["VND", "USD"].map((currency) => (
               <button
-                key={cur}
-                className={`${s.btn} ${activeCurrency === cur ? s.active : ""}`}
+                key={currency}
+                className={`${s.btn} ${activeCurrency === currency ? s.active : ""}`}
                 onClick={() => {
-                  const nextPaid = convertCurrencyAmount(
+                  const nextPaidAmount = convertCurrencyAmount(
                     Number(paidAmount || 0),
                     activeCurrency,
-                    cur,
+                    currency,
                     usdToVndRate,
                   );
-                  setActiveCurrency(cur);
-                  setPaidAmount(nextPaid);
+                  setActiveCurrency(currency);
+                  setPaidAmount(nextPaidAmount);
                 }}
                 disabled={isConfirming || busy}
               >
-                {cur}
+                {currency}
               </button>
             ))}
           </div>
@@ -254,12 +448,12 @@ function PaymentModal({
             <h4 className={s.panelTitle}>Chi tiết Hóa đơn</h4>
             <div className={s.itemsList}>
               {Array.isArray(order) && order.length > 0 ? (
-                groupedBatches.map((batch, batchIdx) => (
-                  <div key={batch.key || `payment_batch_${batchIdx}`}>
+                groupedBatches.map((batch, batchIndex) => (
+                  <div key={batch.key || `payment_batch_${batchIndex}`}>
                     <h5 className={s.panelTitle}>
                       {batch.isDraft
                         ? "Món mới chưa gửi bếp"
-                        : `Đợt gọi món ${batch.batchIndex || batchIdx + 1}${batch.orderCode ? ` · ${batch.orderCode}` : ""}`}
+                        : `Đợt gọi món ${batch.batchIndex || batchIndex + 1}${batch.orderCode ? ` · ${batch.orderCode}` : ""}`}
                     </h5>
                     {batch.items.map((item, index) => (
                       <div
@@ -311,26 +505,95 @@ function PaymentModal({
               <div className={`${s.row} ${s.totalRow}`}>
                 <span className={s.label}>Khách cần trả</span>
                 <span className={s.totalAmount}>
-                  {formatPrice(convertedTotalAmount || 0, {
+                  {formatPrice(convertedPayableTotal || 0, {
                     currency: activeCurrency,
                   })}
                 </span>
               </div>
             </div>
 
+            {isDineIn && (
+              <div className={s.group}>
+                <label className={s.label}>Voucher thanh toán</label>
+                <div className={s.voucherRow}>
+                  <input
+                    type="text"
+                    className={s.voucherInput}
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value)}
+                    placeholder="Nhập mã voucher"
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    className={s.applyButton}
+                    onClick={handleApplyDiscountPreview}
+                    disabled={busy || isPreviewingDiscount || !hasVoucherInput}
+                  >
+                    {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
+                  </button>
+                </div>
+
+                {discountError && <div className={s.discountError}>{discountError}</div>}
+
+                {!discountError && discountNeedsReapply && hasVoucherInput && (
+                  <div className={s.discountWarning}>
+                    Voucher đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng lại.
+                  </div>
+                )}
+
+                {discountBreakdown && !discountNeedsReapply && (
+                  <div className={s.breakdownCard}>
+                    {breakdownRows.map((row) => (
+                      <div
+                        key={row.label}
+                        className={`${s.breakdownRow} ${row.negative ? s.negative : ""} ${row.total ? s.breakdownTotal : ""}`}
+                      >
+                        <span>{row.label}</span>
+                        <span>
+                          {row.negative ? "-" : ""}
+                          {formatPrice(
+                            convertCurrencyAmount(
+                              Number(row.value || 0),
+                              "VND",
+                              activeCurrency,
+                              usdToVndRate,
+                            ),
+                            { currency: activeCurrency },
+                          )}
+                        </span>
+                      </div>
+                    ))}
+
+                    {discountBreakdown?.discountReason && (
+                      <div className={s.discountNote}>
+                        {discountBreakdown.discountReason}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {discountBlocksPayment && (
+                  <div className={s.discountError}>
+                    Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className={s.group}>
               <label className={s.label}>Chọn phương thức</label>
               <div className={s.grid}>
-                {["cash", "card", "transfer"].map((m) => (
+                {["cash", "card", "transfer"].map((paymentMethod) => (
                   <button
-                    key={m}
-                    className={`${s.btn} ${method === m ? s.active : ""}`}
-                    onClick={() => setMethod(m)}
+                    key={paymentMethod}
+                    className={`${s.btn} ${method === paymentMethod ? s.active : ""}`}
+                    onClick={() => setMethod(paymentMethod)}
                     disabled={isConfirming || busy}
                   >
-                    {m === "cash"
+                    {paymentMethod === "cash"
                       ? "Tiền mặt"
-                      : m === "card"
+                      : paymentMethod === "card"
                         ? "Thẻ"
                         : "Chuyển khoản"}
                   </button>
@@ -350,7 +613,7 @@ function PaymentModal({
                   <div className={s.detailItem}>
                     <span>Số tiền:</span>{" "}
                     <b>
-                      {formatPrice(convertedTotalAmount || 0, {
+                      {formatPrice(convertedPayableTotal || 0, {
                         currency: activeCurrency,
                       })}
                     </b>
@@ -358,7 +621,7 @@ function PaymentModal({
                 </div>
                 <div className={s.qrCode}>
                   <QRCodePlaceholder
-                    value={formatPrice(convertedTotalAmount || 0, {
+                    value={formatPrice(convertedPayableTotal || 0, {
                       currency: activeCurrency,
                     })}
                   />
@@ -379,14 +642,14 @@ function PaymentModal({
                   disabled={isConfirming || busy}
                 />
                 <div className={s.suggestions}>
-                  {suggestions.map((val) => (
+                  {suggestions.map((value) => (
                     <button
-                      key={val}
+                      key={value}
                       className={s.suggestionBtn}
-                      onClick={() => handleSuggestion(val)}
+                      onClick={() => handleSuggestion(value)}
                       disabled={isConfirming || busy}
                     >
-                      {formatPrice(val, { currency: activeCurrency })}
+                      {formatPrice(value, { currency: activeCurrency })}
                     </button>
                   ))}
                 </div>
@@ -427,7 +690,7 @@ function PaymentModal({
               <button
                 className={`${s.success} ${busy ? s.loading : ""}`}
                 onClick={executePayment}
-                disabled={busy}
+                disabled={disableConfirm}
               >
                 {busy ? <span className={s.spinner}></span> : "XÁC NHẬN"}
               </button>
