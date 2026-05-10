@@ -1,8 +1,14 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@apollo/client";
 import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { TableActionsModal } from "../modals/TableActionsModal";
 import RegularCustomerModal from "../modals/RegularCustomerModal";
+import {
+  buildTablePaymentRequestMap,
+  normalizePosPaymentRequests,
+  POS_PAYMENT_REQUESTS_QUERY,
+} from "@/utils/posPaymentRequests";
 
 /* --- ICONS --- */
 const IconMulti = () => (
@@ -111,10 +117,10 @@ export default function LeftPanel() {
     currentOrder,
     refreshTables,
     mergeTables,
-    currentOrderType, // Loại đơn: 'dine_in', 'delivery', 'takeaway'
+    currentOrderType,
     setCurrentOrderType,
-    startDeliveryOrder, // Action: Bắt đầu đơn giao hàng
-    startTakeawayOrder, // Action: Bắt đầu đơn mang về
+    startDeliveryOrder,
+    startTakeawayOrder,
     selectTableForOrder,
     currentOrderId,
     currentOrderCode,
@@ -132,30 +138,41 @@ export default function LeftPanel() {
     setShippingInfo,
   } = usePos();
 
-  // State bộ lọc
+  const { data: paymentRequestData } = useQuery(POS_PAYMENT_REQUESTS_QUERY, {
+    variables: { restaurantId, limit: 100 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
+  });
+
+  const paymentRequests = useMemo(
+    () => normalizePosPaymentRequests(paymentRequestData),
+    [paymentRequestData],
+  );
+
+  const tablePaymentRequestMap = useMemo(
+    () => buildTablePaymentRequestMap(paymentRequests),
+    [paymentRequests],
+  );
+
   const [currentFloorId, setCurrentFloorId] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
 
-  // State hiển thị accordion (bộ lọc)
   const [showFilters, setShowFilters] = useState(true);
 
-  // State chọn nhiều
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // State Modals
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionTable, setActionTable] = useState(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [draftTableCodes, setDraftTableCodes] = useState(new Set());
 
-  // Drag & Drop
   const [dragOverId, setDragOverId] = useState(null);
   const [draggingId, setDraggingId] = useState(null);
 
-  // Danh sách Tabs
   const tabs = useMemo(
     () => [
       { key: "dine_in", label: "Bàn ăn" },
@@ -165,14 +182,12 @@ export default function LeftPanel() {
     [],
   );
 
-  // --- EFFECT: TỰ ĐỘNG ĐÓNG/MỞ BỘ LỌC KHI CHUYỂN TAB ---
   useEffect(() => {
     if (currentOrderType !== "dine_in") {
       setShowFilters(false);
     }
   }, [currentOrderType]);
 
-  // --- HELPER FUNCTIONS ---
   const getLastName = (fullName) => {
     if (!fullName) return "";
     const parts = fullName.trim().split(" ");
@@ -209,15 +224,15 @@ export default function LeftPanel() {
   const hasCustomerDraft = useMemo(() => {
     return Boolean(
       deliveryCustomer?.id ||
-      deliveryCustomer?.name ||
-      deliveryCustomer?.fullName ||
-      deliveryCustomer?.phone ||
-      deliveryCustomer?.email ||
-      shippingInfo?.fullName ||
-      shippingInfo?.phone ||
-      shippingInfo?.email ||
-      shippingInfo?.address ||
-      shippingInfo?.note,
+        deliveryCustomer?.name ||
+        deliveryCustomer?.fullName ||
+        deliveryCustomer?.phone ||
+        deliveryCustomer?.email ||
+        shippingInfo?.fullName ||
+        shippingInfo?.phone ||
+        shippingInfo?.email ||
+        shippingInfo?.address ||
+        shippingInfo?.note,
     );
   }, [deliveryCustomer, shippingInfo]);
 
@@ -235,13 +250,12 @@ export default function LeftPanel() {
   const hasLoadedSavedOffPremiseOrder = useMemo(() => {
     return Boolean(
       currentOrderId ||
-        (
-          currentOrderCode &&
+        (currentOrderCode &&
           hasAnyCurrentItems &&
-          currentOrder?.some((it) => it?.isExisting && !it?.isNew)
-        )
+          currentOrder?.some((it) => it?.isExisting && !it?.isNew)),
     );
   }, [currentOrderId, currentOrderCode, hasAnyCurrentItems, currentOrder]);
+
   const counts = useMemo(() => {
     const all = tables.length;
     const available = tables.filter((t) => t.status === "available").length;
@@ -292,7 +306,6 @@ export default function LeftPanel() {
     loadOrdersNow?.({ variables: { restaurantId, limit: 50 } });
   }, [currentOrderType, restaurantId, loadOrdersNow]);
 
-  // --- HANDLERS ---
   const handleTableClick = async (table) => {
     if (isMultiSelectMode) {
       setSelectedIds((prev) =>
@@ -308,7 +321,6 @@ export default function LeftPanel() {
     const switching =
       currentCode && targetCode && String(currentCode) !== String(targetCode);
 
-    // Xử lý chuyển bàn khi đang có món mới chưa lưu
     if (
       ((currentOrderType === "delivery" || currentOrderType === "takeaway") &&
         switching) ||
@@ -432,7 +444,6 @@ export default function LeftPanel() {
     setCustomerModalOpen(false);
   };
 
-  // --- DRAG & DROP HANDLERS ---
   const handleDragStart = (e, table) => {
     e.dataTransfer.setData("text/plain", table.id);
     e.dataTransfer.effectAllowed = "move";
@@ -444,8 +455,9 @@ export default function LeftPanel() {
   };
   const handleDragOver = (e, targetTable) => {
     e.preventDefault();
-    if (draggingId && draggingId !== targetTable.id)
+    if (draggingId && draggingId !== targetTable.id) {
       setDragOverId(targetTable.id);
+    }
   };
   const handleDragLeave = () => {
     setDragOverId(null);
@@ -523,7 +535,6 @@ export default function LeftPanel() {
   };
   return (
     <div className={cls.wrapper}>
-      {/* 1. HEADER (TABS) */}
       <div className={cls.header}>
         <div className={cls.navTabs}>
           {tabs.map((t) => (
@@ -543,9 +554,6 @@ export default function LeftPanel() {
       </div>
 
       <div className={cls.controls}>
-        {/* 2. ACTIONS THEO TỪNG LOẠI ĐƠN */}
-
-        {/* === Bàn ăn === */}
         {currentOrderType === "dine_in" && (
           <div className={cls.newOrderBox}>
             <div className={cls.newOrderActions}>
@@ -567,12 +575,10 @@ export default function LeftPanel() {
           </div>
         )}
 
-        {/* === Giao hàng === */}
         {currentOrderType === "delivery" && (
           <div className={cls.newOrderBox}>
             <h4>Đơn Giao hàng</h4>
             <div className={cls.newOrderActions}>
-              {/* Nút này kích hoạt tạo đơn mới */}
               <button
                 className={`${cls.btn} ${cls.primary}`}
                 onClick={handleCreateOffPremiseOrder}
@@ -599,12 +605,10 @@ export default function LeftPanel() {
           </div>
         )}
 
-        {/* === Mang về === */}
         {currentOrderType === "takeaway" && (
           <div className={cls.newOrderBox}>
             <h4>Đơn Mang về</h4>
             <div className={cls.newOrderActions}>
-              {/* Nút này kích hoạt tạo đơn mới */}
               <button
                 className={`${cls.btn} ${cls.primary}`}
                 onClick={handleCreateOffPremiseOrder}
@@ -759,6 +763,9 @@ export default function LeftPanel() {
             const hasDraft =
               draftTableCodes.has(String(table.id)) ||
               draftTableCodes.has(String(table.code || "").toLowerCase());
+            const tablePaymentRequest = tablePaymentRequestMap.get(
+              String(table.code || "").trim().toUpperCase(),
+            );
 
             return (
               <div
@@ -806,6 +813,14 @@ export default function LeftPanel() {
                           : "Trống"}
                   </span>
                 </div>
+
+                {tablePaymentRequest && (
+                  <div className={cls.paymentRequestRow}>
+                    <span className={cls.paymentRequestBadge}>
+                      Yêu cầu thanh toán
+                    </span>
+                  </div>
+                )}
 
                 {isSelected && isMultiSelectMode && (
                   <div className={cls.checkOverlay}>
@@ -865,7 +880,6 @@ export default function LeftPanel() {
         </div>
       )}
 
-      {/* MODALS */}
       {actionTable && (
         <TableActionsModal
           isOpen={actionModalOpen}
