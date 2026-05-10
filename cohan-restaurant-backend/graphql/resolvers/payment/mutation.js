@@ -11,8 +11,10 @@ import {
   Table,
   Restaurant,
   PaymentSession,
+  Coupon,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
@@ -426,6 +428,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     note,
     externalRef,
     includeUnserved = false,
+    pricing,
+    promotionIds,
   } = input || {};
 
   const rid = toId(restaurantId);
@@ -574,6 +578,18 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
+  const {
+    totals: payableTotals,
+    discountTotals,
+    appliedDiscount,
+  } = await calculatePaymentTotalsWithOptionalDiscount({
+    restaurantId: rid,
+    orders: payOrders,
+    aggregatedTotals,
+    pricing,
+    promotionIds,
+  });
+
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
   const amountToPay =
     paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
@@ -611,21 +627,30 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           issuedAt: now,
           lines: mergedLines,
           totals: {
-            subtotal: aggregatedTotals.subtotal,
-            discount: aggregatedTotals.discount,
-            tax: aggregatedTotals.tax,
-            service: aggregatedTotals.service,
-            grandTotal: aggregatedTotals.grandTotal,
+            subtotal: payableTotals.subtotal,
+            discount: payableTotals.discount,
+            discountReason: payableTotals.discountReason || undefined,
+            voucherCode: payableTotals.voucherCode || undefined,
+            promotionId: payableTotals.promotionId || undefined,
+            tax: payableTotals.tax,
+            service: payableTotals.service,
+            shippingFee: payableTotals.shippingFee,
+            grandTotal: payableTotals.grandTotal,
           },
           paid: amountToPay,
           status:
-            amountToPay + 1e-6 >= aggregatedTotals.grandTotal
+            amountToPay + 1e-6 >= payableTotals.grandTotal
               ? "PAID"
               : amountToPay > 0
                 ? "PARTIAL"
                 : "UNPAID",
           currency: "VND",
           refTransactionId: trx._id,
+          meta: buildInvoiceMeta({
+            appliedDiscount,
+            discountTotals,
+            promotionIds,
+          }),
         },
       ],
       { session },
@@ -690,8 +715,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
                 .map(String),
             ),
           ]
-            .map((id) => toId(id))
-            .filter(Boolean);
+              .map((id) => toId(id))
+              .filter(Boolean);
 
       if (parentSessionIds.length) {
         await Order.updateMany(
@@ -742,6 +767,9 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           includeUnserved,
           paidAmount: amountToPay,
           method: normMethod,
+          discountApplied: appliedDiscount,
+          voucherCode: discountTotals?.voucherCode || null,
+          promotionIds: discountTotals?.appliedPromotions || [],
         },
       },
       { session },
@@ -789,6 +817,8 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     paidAt,
     note,
     externalRef,
+    pricing,
+    promotionIds,
   } = input || {};
 
   const rid = toId(restaurantId);
@@ -893,9 +923,24 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     };
   }
 
+  const {
+    totals: payableTotals,
+    discountTotals,
+    appliedDiscount,
+  } = await calculatePaymentTotalsWithOptionalDiscount({
+    restaurantId: rid,
+    orders,
+    aggregatedTotals,
+    pricing,
+    promotionIds,
+  });
+
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
-  const amountToPay =
-    paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
+  const amountToPay = resolvePaymentAmount({
+    paidAmount,
+    expectedTotal: payableTotals.grandTotal,
+    appliedDiscount,
+  });
   const firstOrder = orders[0] || null;
 
   const session = await startSession();
@@ -931,21 +976,30 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           issuedAt: now,
           lines: mergedLines,
           totals: {
-            subtotal: aggregatedTotals.subtotal,
-            discount: aggregatedTotals.discount,
-            tax: aggregatedTotals.tax,
-            service: aggregatedTotals.service,
-            grandTotal: aggregatedTotals.grandTotal,
+            subtotal: payableTotals.subtotal,
+            discount: payableTotals.discount,
+            discountReason: payableTotals.discountReason || undefined,
+            voucherCode: payableTotals.voucherCode || undefined,
+            promotionId: payableTotals.promotionId || undefined,
+            tax: payableTotals.tax,
+            service: payableTotals.service,
+            shippingFee: payableTotals.shippingFee,
+            grandTotal: payableTotals.grandTotal,
           },
           paid: amountToPay,
           status:
-            amountToPay + 1e-6 >= aggregatedTotals.grandTotal
+            amountToPay + 1e-6 >= payableTotals.grandTotal
               ? "PAID"
               : amountToPay > 0
                 ? "PARTIAL"
                 : "UNPAID",
           currency: "VND",
           refTransactionId: trx._id,
+          meta: buildInvoiceMeta({
+            appliedDiscount,
+            discountTotals,
+            promotionIds,
+          }),
         },
       ],
       { session },
@@ -969,6 +1023,8 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
       ],
       { session },
     ).then((r) => r[0]);
+
+    await incrementCouponUsageOnce({ totals: discountTotals, session });
 
     await Order.updateMany(
       { _id: { $in: activeOrderIds } },
@@ -1006,6 +1062,9 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           orders: activeOrderIds.map(String),
           paidAmount: amountToPay,
           method: normMethod,
+          discountApplied: appliedDiscount,
+          voucherCode: discountTotals?.voucherCode || null,
+          promotionIds: discountTotals?.appliedPromotions || [],
         },
       },
       { session },
@@ -1059,7 +1118,8 @@ export const createReservationPaymentMutation = async (_parent, { input }, ctx) 
 };
 
 export const syncPaymentStatus = async (_parent, { paymentId }) => {
-  if (!mongoose.isValidObjectId(paymentId)) throw new Error("Invalid paymentId");
+  if (!mongoose.isValidObjectId(paymentId))
+    throw new Error("Invalid paymentId");
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
 
@@ -1073,7 +1133,11 @@ export const syncPaymentStatus = async (_parent, { paymentId }) => {
   return payment;
 };
 
-export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) => {
+export const updateRestaurantPaymentSettings = async (
+  _parent,
+  { input },
+  ctx,
+) => {
   if (!ctx?.user?.id) throw new Error("Unauthorized");
   const role = String(
     ctx?.user?.roleName || ctx?.user?.role || "",

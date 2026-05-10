@@ -1,10 +1,11 @@
 import React, { useContext, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
-import { resolveUserRoleName } from "@/utils/frontendRoleAccess";
-
-const STAFF_ORDER_NAV_ROLES = ["admin", "manager", "server", "host", "cashier", "supervisor"];
-const STAFF_KITCHEN_NAV_ROLES = ["admin", "manager", "chef", "cook", "kitchen_helper"];
+import {
+  resolveUserRoleName,
+  STAFF_KITCHEN_ROLES,
+  STAFF_ORDER_ROLES,
+} from "@/utils/frontendRoleAccess";
 
 const getDisplayName = (user) => {
   if (!user || typeof user !== "object") return null;
@@ -32,8 +33,8 @@ const StaffLayout = ({ children }) => {
       { label: "Lịch cá nhân", to: "/staff/schedule" },
       { label: "Hồ sơ", to: "/profile" },
       { label: "Thông báo", to: "/notifications" },
-      { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_NAV_ROLES },
-      { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_NAV_ROLES },
+      { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
+      { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
     ],
     [],
   );
