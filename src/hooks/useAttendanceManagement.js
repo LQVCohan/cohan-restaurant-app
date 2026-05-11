@@ -148,6 +148,9 @@ export const buildAttendanceCorrectionFilter = ({
   search: search?.trim() || undefined,
 });
 
+export const hasAttendanceCorrectionScope = (filter = {}) =>
+  Boolean(filter.restaurantId || filter.employeeId);
+
 const MUTATION_UPSERT_ATTENDANCE = gql`
   mutation UpsertAttendance($input: UpsertStaffAttendanceInput!) {
     upsertStaffAttendance(input: $input) {
@@ -289,6 +292,8 @@ export default function useAttendanceManagement({
     [correctionStatus, employeeId, restaurantId, search, selectedDate],
   );
 
+  const canQueryCorrections = hasAttendanceCorrectionScope(correctionFilter);
+
   const { data, loading, error, refetch } = useQuery(QUERY_ATTENDANCE_PAGE, {
     variables: queryVars,
     fetchPolicy: "cache-and-network",
@@ -303,7 +308,10 @@ export default function useAttendanceManagement({
   } = useQuery(QUERY_ATTENDANCE_CORRECTIONS, {
     variables: { filter: correctionFilter },
     fetchPolicy: "cache-and-network",
-    skip: !correctionFilter.startDate || !correctionFilter.endDate,
+    skip:
+      !canQueryCorrections ||
+      !correctionFilter.startDate ||
+      !correctionFilter.endDate,
   });
 
   const [mutateQuickAttendance, mutationState] = useMutation(
@@ -313,28 +321,28 @@ export default function useAttendanceManagement({
   const [createAttendanceCorrectionRequest, createCorrectionState] =
     useMutation(MUTATION_CREATE_ATTENDANCE_CORRECTION, {
       onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
+        await Promise.allSettled([refetch(), refetchCorrections?.()]);
       },
     });
 
   const [approveAttendanceCorrectionRequest, approveCorrectionState] =
     useMutation(MUTATION_APPROVE_ATTENDANCE_CORRECTION, {
       onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
+        await Promise.allSettled([refetch(), refetchCorrections?.()]);
       },
     });
 
   const [rejectAttendanceCorrectionRequest, rejectCorrectionState] =
     useMutation(MUTATION_REJECT_ATTENDANCE_CORRECTION, {
       onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
+        await Promise.allSettled([refetch(), refetchCorrections?.()]);
       },
     });
 
   const [cancelAttendanceCorrectionRequest, cancelCorrectionState] =
     useMutation(MUTATION_CANCEL_ATTENDANCE_CORRECTION, {
       onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
+        await Promise.allSettled([refetch(), refetchCorrections?.()]);
       },
     });
 
