@@ -10,13 +10,21 @@ export const useCart = () => {
     setCart((prev) => {
       // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
       const found = prev.find(
-        (i) => i.id === incoming.id && i.restaurantId === incoming.restaurantId
+        (i) => i.id === incoming.id && i.restaurantId === incoming.restaurantId,
       );
       if (found) {
         return prev.map((i) =>
           i.id === incoming.id && i.restaurantId === incoming.restaurantId
-            ? { ...i, quantity: (i.quantity || 1) + 1 }
-            : i
+            ? {
+                ...i,
+                ...incoming,
+                quantity: (i.quantity || 0) + (incoming.quantity || 1),
+                holdExpiresAt: incoming.holdExpiresAt || i.holdExpiresAt,
+                holdStatus: incoming.holdStatus || i.holdStatus,
+                backendCartItemId:
+                  incoming.backendCartItemId || i.backendCartItemId,
+              }
+            : i,
         );
       }
       return [...prev, incoming];
