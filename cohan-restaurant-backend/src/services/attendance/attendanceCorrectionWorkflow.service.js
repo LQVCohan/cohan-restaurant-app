@@ -32,6 +32,21 @@ const ALLOWED_CORRECTION_TYPES = new Set([
   "other",
 ]);
 
+const ALLOWED_CREATE_WITHOUT_TIMESHEET_TYPES = new Set([
+  "off_schedule_work",
+  "missing_check_in",
+  "missing_check_out",
+  "wrong_check_in_out",
+]);
+
+const PENDING_FIRST_STATUS_RANK = {
+  pending: 0,
+  approved: 1,
+  applied: 2,
+  rejected: 3,
+  cancelled: 4,
+};
+
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new Types.ObjectId(value);
@@ -169,105 +184,9 @@ function buildAuditLog(ctx, action, note = "", meta = null) {
   };
 }
 
-async function logEvent({
-  ctx,
-  restaurantId,
-  verb,
-  requestId,
-  status = "success",
-  meta = {},
-  diff = {},
-}) {
-  try {
-    await EventLog.create({
-      restaurantId,
-      actorUserId: getActorId(ctx),
-      verb,
-      object: {
-        kind: "AttendanceCorrectionRequest",
-        id: requestId,
-      },
-      source: "attendance-correction",
-      status,
-      meta,
-      diff,
-      at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Failed to log attendance correction event:", error.message);
-  }
-}
-
-async function logPerformanceIncident(input) {
-  try {
-    await createPerformanceIncidentOnce(input);
-  } catch (error) {
-    console.warn("Failed to log performance incident:", error.message);
-  }
-}
-
-async function resolveStaff(employeeId) {
-  const oid = toObjectId(employeeId);
-  if (!oid) throw new Error("employeeId không hợp lệ.");
-
-  const staff = await Staff.findById(oid)
-    .populate("role");
-
-  if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
-    throw new Error("Không tìm thấy nhân viên.");
-  }
-
-  return staff;
-}
-
-function staffBelongsToRestaurant(staff, restaurantId) {
-  return String(staff?.restaurantForStaff || "") === String(restaurantId || "");
-}
-
-async function resolveExistingTimesheet({
-  timesheetId,
-  employeeId,
-  restaurantId,
-  workDate,
-  shiftId,
-}) {
-  const tsid = toObjectId(timesheetId);
-  if (tsid) {
-    return Timesheet.findById(tsid).populate("shiftId");
-  }
-
-  const filter = {
-    employeeId: toObjectId(employeeId),
-    restaurantId: toObjectId(restaurantId),
-    workDate: {
-      $gte: toStartOfDay(workDate),
-      $lte: toEndOfDay(workDate),
-    },
-  };
-
-  const sid = toObjectId(shiftId);
-  if (sid) {
-    filter.shiftId = sid;
-  }
-
-  return Timesheet.findOne(filter).populate("shiftId").sort({ createdAt: -1 });
-}
-
-async function resolveShift(shiftId) {
-  const sid = toObjectId(shiftId);
-  if (!sid) return null;
-  return Shift.findById(sid).lean();
-}
-
-function snapshotTimesheet(timesheet) {
-  return {
-    originalCheckInAt: timesheet?.actualCheckInAt || null,
-    originalCheckOutAt: timesheet?.actualCheckOutAt || null,
-    originalWorkedMinutes: Number(timesheet?.workedMinutes || 0),
-    originalLatenessMinutes: Number(timesheet?.latenessMinutes || 0),
-    originalEarlyLeaveMinutes: Number(timesheet?.earlyLeaveMinutes || 0),
-    originalOvertimeMinutes: Number(timesheet?.overtimeMinutes || 0),
-  };
+function sameCalendarDay(left, right) {
+  if (!left || !right) return false;
+  return toStartOfDay(left).getTime() === toStartOfDay(right).getTime();
 }
 
 function appendNote(oldNote, nextNote) {
@@ -319,6 +238,156 @@ function validateCorrectionRequestPayload({
   if (requiresCheckOut.has(type) && !requestedCheckOutAt) {
     throw new Error("Loại chỉnh công này yêu cầu giờ check-out đề xuất.");
   }
+}
+
+function snapshotTimesheet(timesheet) {
+  return {
+    originalCheckInAt: timesheet?.actualCheckInAt || null,
+    originalCheckOutAt: timesheet?.actualCheckOutAt || null,
+    originalWorkedMinutes: Number(timesheet?.workedMinutes || 0),
+    originalLatenessMinutes: Number(timesheet?.latenessMinutes || 0),
+    originalEarlyLeaveMinutes: Number(timesheet?.earlyLeaveMinutes || 0),
+    originalOvertimeMinutes: Number(timesheet?.overtimeMinutes || 0),
+  };
+}
+
+async function logEvent({
+  ctx,
+  restaurantId,
+  verb,
+  requestId,
+  status = "success",
+  meta = {},
+  diff = {},
+}) {
+  try {
+    await EventLog.create({
+      restaurantId,
+      actorUserId: getActorId(ctx),
+      verb,
+      object: {
+        kind: "AttendanceCorrectionRequest",
+        id: requestId,
+      },
+      source: "attendance-correction",
+      status,
+      meta,
+      diff,
+      at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Failed to log attendance correction event:", error.message);
+  }
+}
+
+async function logPerformanceIncident(input) {
+  try {
+    await createPerformanceIncidentOnce(input);
+  } catch (error) {
+    console.warn("Failed to log performance incident:", error.message);
+  }
+}
+
+async function resolveStaff(employeeId) {
+  const oid = toObjectId(employeeId);
+  if (!oid) throw new Error("employeeId không hợp lệ.");
+
+  const staff = await Staff.findById(oid).populate("role");
+
+  if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+    throw new Error("Không tìm thấy nhân viên.");
+  }
+
+  return staff;
+}
+
+function staffBelongsToRestaurant(staff, restaurantId) {
+  return String(staff?.restaurantForStaff || "") === String(restaurantId || "");
+}
+
+async function resolveExistingTimesheet({
+  timesheetId,
+  employeeId,
+  restaurantId,
+  workDate,
+  shiftId,
+}) {
+  const tsid = toObjectId(timesheetId);
+  if (tsid) {
+    return Timesheet.findById(tsid).populate("shiftId");
+  }
+
+  const filter = {
+    employeeId: toObjectId(employeeId),
+    restaurantId: toObjectId(restaurantId),
+    workDate: {
+      $gte: toStartOfDay(workDate),
+      $lte: toEndOfDay(workDate),
+    },
+  };
+
+  const sid = toObjectId(shiftId);
+  if (sid) {
+    filter.shiftId = sid;
+  }
+
+  return Timesheet.findOne(filter).populate("shiftId").sort({ createdAt: -1 });
+}
+
+async function resolveShift(shiftId) {
+  const sid = toObjectId(shiftId);
+  if (!sid) return null;
+  return Shift.findById(sid).lean();
+}
+
+function assertTimesheetMatchesRequestScope(timesheet, {
+  employeeId,
+  restaurantId,
+  workDate,
+  shiftId,
+}) {
+  if (!timesheet) return;
+
+  if (String(timesheet.employeeId || "") !== String(employeeId || "")) {
+    throw new Error("Bảng công không thuộc nhân viên đã chọn.");
+  }
+
+  if (String(timesheet.restaurantId || "") !== String(restaurantId || "")) {
+    throw new Error("Bảng công không thuộc nhà hàng đã chọn.");
+  }
+
+  if (!sameCalendarDay(timesheet.workDate, workDate)) {
+    throw new Error("Bảng công không khớp ngày công yêu cầu.");
+  }
+
+  const requestedShiftId = toObjectId(shiftId);
+  if (
+    requestedShiftId &&
+    String(timesheet.shiftId?._id || timesheet.shiftId || "") !==
+      String(requestedShiftId)
+  ) {
+    throw new Error("Bảng công không khớp ca làm việc đã chọn.");
+  }
+}
+
+function buildRequestedMetrics(existingTimesheet, requestedCheckInAt, requestedCheckOutAt) {
+  const plannedStartTime =
+    existingTimesheet?.plannedStartTime ||
+    existingTimesheet?.shiftId?.startTime ||
+    null;
+  const plannedEndTime =
+    existingTimesheet?.plannedEndTime ||
+    existingTimesheet?.shiftId?.endTime ||
+    null;
+
+  return calculateAttendanceMetrics({
+    plannedStartTime,
+    plannedEndTime,
+    actualCheckInAt:
+      requestedCheckInAt || existingTimesheet?.actualCheckInAt || null,
+    actualCheckOutAt:
+      requestedCheckOutAt || existingTimesheet?.actualCheckOutAt || null,
+  });
 }
 
 function mapCorrectionRequest(doc) {
@@ -423,15 +492,20 @@ async function populateRequest(queryOrDoc) {
 }
 
 export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
-  assertCanView(ctx);
   assertAuthenticated(ctx);
+  assertCanView(ctx);
 
-  const query = {};
   const actorId = getActorId(ctx);
   const actorRole = getActorRole(ctx);
+  const restaurantId = toObjectId(filter.restaurantId);
 
-  if (filter.restaurantId) query.restaurantId = toObjectId(filter.restaurantId);
-  if (filter.restaurantId) assertRestaurantScope(ctx, filter.restaurantId);
+  if (!restaurantId) {
+    throw new Error("restaurantId không hợp lệ.");
+  }
+  assertRestaurantScope(ctx, restaurantId);
+
+  const query = { restaurantId };
+
   if (filter.employeeId) query.employeeId = toObjectId(filter.employeeId);
   if (filter.status) query.status = String(filter.status).toLowerCase();
 
@@ -446,7 +520,7 @@ export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
   }
 
   let rows = await AttendanceCorrectionRequest.find(query)
-    .sort({ workDate: -1, createdAt: -1 })
+    .sort({ createdAt: -1, workDate: -1 })
     .limit(500)
     .populate(
       "employeeId",
@@ -474,10 +548,25 @@ export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
     });
   }
 
+  rows.sort((left, right) => {
+    const statusDiff =
+      (PENDING_FIRST_STATUS_RANK[left.status] ?? 99) -
+      (PENDING_FIRST_STATUS_RANK[right.status] ?? 99);
+    if (statusDiff !== 0) return statusDiff;
+
+    const rightWorkDate = new Date(right.workDate || 0).getTime();
+    const leftWorkDate = new Date(left.workDate || 0).getTime();
+    if (rightWorkDate !== leftWorkDate) return rightWorkDate - leftWorkDate;
+
+    return new Date(right.createdAt || 0).getTime() -
+      new Date(left.createdAt || 0).getTime();
+  });
+
   return rows.map(mapCorrectionRequest);
 }
 
 export async function getAttendanceCorrectionRequest({ id, ctx }) {
+  assertAuthenticated(ctx);
   assertCanView(ctx);
 
   const doc = await AttendanceCorrectionRequest.findById(id)
@@ -506,6 +595,8 @@ export async function getAttendanceCorrectionRequest({ id, ctx }) {
 }
 
 export async function createAttendanceCorrectionRequest({ input, ctx }) {
+  assertAuthenticated(ctx);
+
   const employeeId = toObjectId(input.employeeId);
   const restaurantId = toObjectId(input.restaurantId);
   const timesheetId = toObjectId(input.timesheetId);
@@ -550,7 +641,6 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
   });
 
   assertCanCreateForEmployee(ctx, employeeId);
-  assertAuthenticated(ctx);
   assertRestaurantScope(ctx, restaurantId);
 
   const staff = await resolveStaff(employeeId);
@@ -566,6 +656,20 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     action: "attendance_correction",
   });
 
+  const existingTimesheet = await resolveExistingTimesheet({
+    timesheetId,
+    employeeId,
+    restaurantId,
+    workDate,
+    shiftId,
+  });
+  assertTimesheetMatchesRequestScope(existingTimesheet, {
+    employeeId,
+    restaurantId,
+    workDate,
+    shiftId,
+  });
+
   const pendingFilter = {
     employeeId,
     restaurantId,
@@ -573,7 +677,9 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     status: "pending",
   };
 
-  if (timesheetId) {
+  if (existingTimesheet?._id) {
+    pendingFilter.timesheetId = existingTimesheet._id;
+  } else if (timesheetId) {
     pendingFilter.timesheetId = timesheetId;
   }
 
@@ -583,33 +689,12 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     throw new Error("ATTENDANCE_CORRECTION_PENDING_EXISTS");
   }
 
-  const existingTimesheet = await resolveExistingTimesheet({
-    timesheetId,
-    employeeId,
-    restaurantId,
-    workDate,
-    shiftId,
-  });
-
   const snapshot = snapshotTimesheet(existingTimesheet);
-
-  const plannedStartTime =
-    existingTimesheet?.plannedStartTime ||
-    existingTimesheet?.shiftId?.startTime ||
-    null;
-  const plannedEndTime =
-    existingTimesheet?.plannedEndTime ||
-    existingTimesheet?.shiftId?.endTime ||
-    null;
-
-  const requestedMetrics = calculateAttendanceMetrics({
-    plannedStartTime,
-    plannedEndTime,
-    actualCheckInAt:
-      requestedCheckInAt || existingTimesheet?.actualCheckInAt || null,
-    actualCheckOutAt:
-      requestedCheckOutAt || existingTimesheet?.actualCheckOutAt || null,
-  });
+  const requestedMetrics = buildRequestedMetrics(
+    existingTimesheet,
+    requestedCheckInAt,
+    requestedCheckOutAt,
+  );
 
   const actorId = getActorId(ctx);
   const doc = await AttendanceCorrectionRequest.create({
@@ -679,7 +764,21 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     metadata: { correctionType: doc.correctionType, workDate, reason },
   });
 
-  try { await notifyReviewers({ restaurantId, type: "attendance_correction_created", sourceType: "attendance_correction", sourceId: String(doc._id), actionUrl: "/manager/performance", payload: { title: "Có yêu cầu sửa công mới", message: "Một nhân viên đã gửi yêu cầu sửa chấm công." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+  try {
+    await notifyReviewers({
+      restaurantId,
+      type: "attendance_correction_created",
+      sourceType: "attendance_correction",
+      sourceId: String(doc._id),
+      actionUrl: "/manager/performance",
+      payload: {
+        title: "Có yêu cầu sửa công mới",
+        message: "Một nhân viên đã gửi yêu cầu sửa chấm công.",
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to create notification:", error.message);
+  }
 
   const populated = await populateRequest(doc);
   return mapCorrectionRequest(populated);
@@ -728,13 +827,21 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
         latenessMinutes: Number(timesheet.latenessMinutes || 0),
         earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
         overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+        source: timesheet.source || null,
+        isOffSchedule: Boolean(timesheet.isOffSchedule),
+        offScheduleApprovalStatus: timesheet.offScheduleApprovalStatus || null,
       }
     : null;
 
+  const correctionType = String(request.correctionType || "").toLowerCase();
+  if (!timesheet && !ALLOWED_CREATE_WITHOUT_TIMESHEET_TYPES.has(correctionType)) {
+    throw new Error("Không tìm thấy bảng công để áp dụng chỉnh công.");
+  }
+
+  const noteText = `Chỉnh công đã duyệt: ${reviewNote || request.reason}`;
+  const reviewActorId = getActorId(ctx);
+
   if (!timesheet) {
-    if (!["off_schedule_work", "missing_check_in", "missing_check_out", "wrong_check_in_out"].includes(String(request.correctionType || "").toLowerCase())) {
-      throw new Error("Không tìm thấy bảng công để áp dụng chỉnh công.");
-    }
     timesheet = await Timesheet.create({
       employeeId: request.employeeId,
       restaurantId: request.restaurantId,
@@ -747,6 +854,11 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       ...metrics,
       status: nextStatus,
       isOffSchedule,
+      approved: isOffSchedule,
+      offScheduleApprovalStatus: isOffSchedule ? "approved" : "not_required",
+      offScheduleReviewedBy: isOffSchedule ? reviewActorId : null,
+      offScheduleReviewedAt: isOffSchedule ? new Date() : null,
+      offScheduleReviewNote: isOffSchedule ? (reviewNote || request.reason) : "",
       source: "manual_correction",
       note: appendNote("", `Chỉnh công đã duyệt: ${request.reason}`),
     });
@@ -760,16 +872,23 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
     timesheet.overtimeMinutes = metrics.overtimeMinutes;
     timesheet.status = nextStatus;
     timesheet.source = "manual_correction";
+    timesheet.note = appendNote(timesheet.note, noteText);
+
+    if (isOffSchedule) {
+      timesheet.approved = true;
+      timesheet.offScheduleApprovalStatus = "approved";
+      timesheet.offScheduleReviewedBy = reviewActorId;
+      timesheet.offScheduleReviewedAt = new Date();
+      timesheet.offScheduleReviewNote = reviewNote || request.reason;
+    }
+
     if (typeof timesheet.approvedOvertimeMinutes !== "undefined") {
       timesheet.approvedOvertimeMinutes = 0;
     }
     if (typeof timesheet.overtimeApprovalStatus !== "undefined") {
       timesheet.overtimeApprovalStatus = "pending";
     }
-    timesheet.note = appendNote(
-      timesheet.note,
-      `Chỉnh công đã duyệt: ${reviewNote || request.reason}`,
-    );
+
     await timesheet.save();
   }
 
@@ -780,6 +899,9 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
     latenessMinutes: Number(timesheet.latenessMinutes || 0),
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    source: timesheet.source || null,
+    isOffSchedule: Boolean(timesheet.isOffSchedule),
+    offScheduleApprovalStatus: timesheet.offScheduleApprovalStatus || null,
   };
 
   await logEvent({
@@ -797,6 +919,7 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
 }
 
 export async function approveAttendanceCorrectionRequest({ input, ctx }) {
+  assertAuthenticated(ctx);
   assertCanReview(ctx);
 
   const request = await AttendanceCorrectionRequest.findById(input.requestId);
@@ -829,14 +952,29 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
 
   const note = String(input.note || "").trim();
 
-  request.status = "approved";
+  await applyCorrectionToTimesheet({ request, ctx, reviewNote: note });
+
+  request.status = "applied";
   request.reviewedBy = actorId;
   request.reviewedAt = new Date();
   request.reviewNote = note;
+  request.appliedBy = actorId;
+  request.appliedAt = new Date();
   request.auditLogs.push(
     buildAuditLog(ctx, "attendance_correction.approve", note),
   );
+  request.auditLogs.push(
+    buildAuditLog(ctx, "attendance_correction.apply", note),
+  );
   await request.save();
+
+  await logEvent({
+    ctx,
+    restaurantId: request.restaurantId,
+    verb: "attendance.correction.approve",
+    requestId: request._id,
+    meta: { employeeId: String(request.employeeId) },
+  });
   await logPerformanceIncident({
     restaurantId: request.restaurantId,
     employeeId: request.employeeId,
@@ -849,28 +987,29 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
     responsibilityStatus: "no_fault",
     scoreImpactStatus: "waived",
     occurredAt: new Date(),
-    metadata: { reviewNote: note, requestedCheckInAt: request.requestedCheckInAt, requestedCheckOutAt: request.requestedCheckOutAt },
+    metadata: {
+      reviewNote: note,
+      requestedCheckInAt: request.requestedCheckInAt,
+      requestedCheckOutAt: request.requestedCheckOutAt,
+    },
   });
 
-  await logEvent({
-    ctx,
-    restaurantId: request.restaurantId,
-    verb: "attendance.correction.approve",
-    requestId: request._id,
-    meta: { employeeId: String(request.employeeId) },
-  });
-  await applyCorrectionToTimesheet({ request, ctx, reviewNote: note });
-
-  request.status = "applied";
-  request.appliedBy = actorId;
-  request.appliedAt = new Date();
-  request.auditLogs.push(
-    buildAuditLog(ctx, "attendance_correction.apply", note),
-  );
-  await request.save();
-
-  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "attendance_correction_applied", sourceType: "attendance_correction", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu sửa công đã được duyệt", message: "Yêu cầu sửa công của bạn đã được áp dụng." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
-
+  try {
+    await notifyUser({
+      userId: request.employeeId,
+      restaurantId: request.restaurantId,
+      type: "attendance_correction_applied",
+      sourceType: "attendance_correction",
+      sourceId: String(request._id),
+      actionUrl: "/staff/attendance",
+      payload: {
+        title: "Yêu cầu sửa công đã được duyệt",
+        message: "Yêu cầu sửa công của bạn đã được áp dụng.",
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to create notification:", error.message);
+  }
 
   const populated = await AttendanceCorrectionRequest.findById(request._id)
     .populate(
@@ -885,6 +1024,7 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
 }
 
 export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
+  assertAuthenticated(ctx);
   assertCanReview(ctx);
 
   const reason = String(input.reason || "").trim();
@@ -932,7 +1072,22 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
     metadata: { rejectionReason: reason, reviewNote: request.reviewNote || "" },
   });
 
-  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "attendance_correction_rejected", sourceType: "attendance_correction", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu sửa công bị từ chối", message: "Yêu cầu sửa công của bạn đã bị từ chối." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+  try {
+    await notifyUser({
+      userId: request.employeeId,
+      restaurantId: request.restaurantId,
+      type: "attendance_correction_rejected",
+      sourceType: "attendance_correction",
+      sourceId: String(request._id),
+      actionUrl: "/staff/attendance",
+      payload: {
+        title: "Yêu cầu sửa công bị từ chối",
+        message: "Yêu cầu sửa công của bạn đã bị từ chối.",
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to create notification:", error.message);
+  }
 
   const populated = await AttendanceCorrectionRequest.findById(request._id)
     .populate(
@@ -947,6 +1102,8 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
 }
 
 export async function cancelAttendanceCorrectionRequest({ requestId, ctx }) {
+  assertAuthenticated(ctx);
+
   const request = await AttendanceCorrectionRequest.findById(requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
   assertRestaurantScope(ctx, request.restaurantId);
