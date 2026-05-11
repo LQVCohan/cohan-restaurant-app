@@ -4,6 +4,7 @@ import {
   buildEvidenceUrls,
   canCancelCorrection,
   canReviewCorrection,
+  resolveAttendanceDisplayStatus,
   validateCorrectionRequestForm,
 } from "./attendanceCorrectionUtils";
 
@@ -111,4 +112,32 @@ describe("attendanceCorrectionUtils", () => {
       "https://b.test",
     ]);
   });
-});
+
+  it("derives missed checkout once planned end passes grace window", () => {
+    expect(
+      resolveAttendanceDisplayStatus(
+        {
+          status: "checked_in",
+          actualCheckInAt: "2026-05-11T09:00:00.000Z",
+          actualCheckOutAt: null,
+          plannedEndTime: "2026-05-11T17:00:00.000Z",
+        },
+        { now: new Date("2026-05-11T17:31:00.000Z") },
+      ),
+    ).toBe("missed_checkout");
+  });
+
+  it("keeps checked-in status before missed checkout grace window", () => {
+    expect(
+      resolveAttendanceDisplayStatus(
+        {
+          status: "checked_in",
+          actualCheckInAt: "2026-05-11T09:00:00.000Z",
+          actualCheckOutAt: null,
+          plannedEndTime: "2026-05-11T17:00:00.000Z",
+        },
+        { now: new Date("2026-05-11T17:15:00.000Z") },
+      ),
+    ).toBe("checked_in");
+  });
+}
