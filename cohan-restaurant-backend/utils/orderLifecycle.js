@@ -235,12 +235,11 @@ export async function ensureActiveTableSessionForDineInOrder({
     throw new Error("createOrderCode is required");
   }
 
-  const parentOrderCode = await createOrderCode({
-    restaurantId,
-    tableId,
-    tableCode: normalizedTableCode,
-    session,
-  });
+  const parentOrderCode = await createOrderCode(
+    "POS",
+    now,
+    normalizedTableCode,
+  );
 
   try {
     const [created] = await OrderModel.create(
