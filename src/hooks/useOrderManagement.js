@@ -75,8 +75,12 @@ const CREATE_ORDER_FOR_TABLE = gql`
         totals {
           subtotal
           discount
+          discountReason
+          voucherCode
+          promotionId
           tax
           service
+          shippingFee
           grandTotal
         }
         orderType
@@ -165,10 +169,15 @@ const CREATE_OFF_PREMISE_ORDER = gql`
         totals {
           subtotal
           discount
+          discountReason
+          voucherCode
+          promotionId
           tax
           service
+          shippingFee
           grandTotal
         }
+
         createdAt
         updatedAt
       }
@@ -253,10 +262,15 @@ const ORDERS_GROUPED_BY_TABLE = gql`
         totals {
           subtotal
           discount
+          discountReason
+          voucherCode
+          promotionId
           tax
           service
+          shippingFee
           grandTotal
         }
+
         orderType
         createdAt
         updatedAt
@@ -397,8 +411,12 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
           totals {
             subtotal
             discount
+            discountReason
+            voucherCode
+            promotionId
             tax
             service
+            shippingFee
             grandTotal
           }
           payment {
@@ -534,8 +552,12 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
           totals {
             subtotal
             discount
+            discountReason
+            voucherCode
+            promotionId
             tax
             service
+            shippingFee
             grandTotal
           }
           payment {
@@ -654,8 +676,12 @@ const GET_ORDER = gql`
       totals {
         subtotal
         discount
+        discountReason
+        voucherCode
+        promotionId
         tax
         service
+        shippingFee
         grandTotal
       }
       payment {
@@ -839,8 +865,12 @@ const UPDATE_ORDER_STATUS = gql`
       totals {
         subtotal
         discount
+        discountReason
+        voucherCode
+        promotionId
         tax
         service
+        shippingFee
         grandTotal
       }
       updatedAt
@@ -1001,8 +1031,12 @@ const REVIEW_ORDER_ITEM_VOID = gql`
       totals {
         subtotal
         discount
+        discountReason
+        voucherCode
+        promotionId
         tax
         service
+        shippingFee
         grandTotal
       }
       statusTimeline {
@@ -1090,8 +1124,12 @@ const REQUEST_ORDER_ITEM_RETURN = gql`
       totals {
         subtotal
         discount
+        discountReason
+        voucherCode
+        promotionId
         tax
         service
+        shippingFee
         grandTotal
       }
       statusTimeline {
@@ -1179,8 +1217,12 @@ const REVIEW_ORDER_ITEM_RETURN = gql`
       totals {
         subtotal
         discount
+        discountReason
+        voucherCode
+        promotionId
         tax
         service
+        shippingFee
         grandTotal
       }
       statusTimeline {
@@ -1258,8 +1300,12 @@ export default function useOrderManagement(pos = null) {
   const [totals, setTotals] = useState({
     subtotal: 0,
     discount: 0,
+    discountReason: "",
+    voucherCode: "",
+    promotionId: "",
     tax: 0,
     service: 0,
+    shippingFee: 0,
     total: 0,
   });
   const [orderNote, setOrderNote] = useState("");
@@ -1765,8 +1811,12 @@ export default function useOrderManagement(pos = null) {
             totals {
               subtotal
               discount
+              discountReason
+              voucherCode
+              promotionId
               tax
               service
+              shippingFee
               grandTotal
             }
             user {
@@ -2080,8 +2130,9 @@ export default function useOrderManagement(pos = null) {
     [
       mutUpdateOrderStatus,
       writeOrderIntoCache,
-      currentTable?.code,
       currentOrderType,
+      currentTable.id,
+      currentTable.code,
       loadGroupsForTable,
     ],
   );
