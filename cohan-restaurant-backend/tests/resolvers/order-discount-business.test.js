@@ -69,6 +69,13 @@ const DISCOUNT_TOTAL_FIELD_PATTERNS = [
 
 describe("order discount business safety", () => {
   describe("order mutation discount source-of-truth", () => {
+    it("does not check stale coupon updateResult after centralized usage helper", () => {
+      const src = read(ORDER_MUTATION_PATH);
+
+      expect(src).not.toMatch(
+        /await\s+incrementCouponUsageOnce\([\s\S]*?\);\s*if\s*\(\s*!updateResult\.modifiedCount\s*\)/,
+      );
+    });
     it("increments promotion usage after successful order creation discounts", () => {
       const src = read(ORDER_MUTATION_PATH);
 

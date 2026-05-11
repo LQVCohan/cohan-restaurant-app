@@ -1620,14 +1620,11 @@ export const OrderMutation = {
         createdOrderDoc = order;
 
         if (totals?.couponId) {
-          const updateResult = await incrementCouponUsageOnce({
+          await incrementCouponUsageOnce({
             totals,
             session,
           });
           await incrementPromotionUsageOnce({ totals, session });
-          if (!updateResult.modifiedCount) {
-            throw new Error("Invalid voucher: usage limit reached");
-          }
         }
 
         const lines = buildInventoryLinesFromItems(normalizedItems);
@@ -2086,14 +2083,11 @@ export const OrderMutation = {
           checkoutTotals.shippingFee += Number(totals.shippingFee || 0);
           checkoutTotals.grandTotal += Number(totals.grandTotal || 0);
           if (totals?.couponId) {
-            const updateResult = await incrementCouponUsageOnce({
+            await incrementCouponUsageOnce({
               totals,
               session,
             });
             await incrementPromotionUsageOnce({ totals, session });
-            if (!updateResult.modifiedCount) {
-              throw new Error("Invalid voucher: usage limit reached");
-            }
           }
 
           const lines = buildInventoryLinesFromItems(g.items);
