@@ -26,6 +26,7 @@ export const QUERY_ATTENDANCE_PAGE = gql`
       search: $search
     ) {
       id
+      timesheetId
       employeeId
       employeeName
       employeeCode
