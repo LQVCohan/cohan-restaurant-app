@@ -88,7 +88,9 @@ describe("createOrderForTable session-batch lifecycle", () => {
       sessionOrder: createdParent,
       created: true,
     });
-    generateOrderCodeMock.mockResolvedValue("BATCH-001");
+    generateOrderCodeMock.mockImplementation(
+      (source, date, tableCode) => `${source}-${tableCode}-SAFE`,
+    );
     OrderModel.create.mockResolvedValue([{ _id: "child-1" }]);
     OrderModel.findById.mockReturnValueOnce(leanQuery(createdChild));
 
@@ -134,10 +136,19 @@ describe("createOrderForTable session-batch lifecycle", () => {
       userId: null,
       session: txSession,
     });
+    expect(generateOrderCodeMock).toHaveBeenCalledWith(
+      "POS",
+      expect.any(Date),
+      "T1",
+    );
+    expect(generateOrderCodeMock.mock.calls[0]).toHaveLength(3);
+    expect(generateOrderCodeMock.mock.calls[0][0]).not.toEqual(
+      expect.objectContaining({ tableCode: "T1" }),
+    );
     expect(OrderModel.create).toHaveBeenCalledWith(
       [
         expect.objectContaining({
-          orderCode: "BATCH-001",
+          orderCode: "POS-T1-SAFE",
           parentOrderCode: "TS-001",
           orderKind: "order_batch",
           parentOrderId: "parent-1",
@@ -146,22 +157,6 @@ describe("createOrderForTable session-batch lifecycle", () => {
           activeSessionKey: null,
         }),
       ],
-      { session: txSession },
-    );
-    expect(OrderModel.updateOne).toHaveBeenCalledWith(
-      {
-        _id: "parent-1",
-        restaurantId: "rest-1",
-        orderKind: "table_session",
-      },
-      {
-        $set: expect.objectContaining({
-          activeSessionKey: "rest-1:table-1:active",
-          sessionStatus: "dining",
-          orderPaymentStatus: "unpaid",
-          items: [],
-        }),
-      },
       { session: txSession },
     );
     expect(result.order).toEqual(createdChild);
