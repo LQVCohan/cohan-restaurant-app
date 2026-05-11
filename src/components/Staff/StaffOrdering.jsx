@@ -1022,6 +1022,9 @@ export default function StaffOrdering() {
   };
 
   const handleAddToCart = (item, optionsOrPrep, legacyServeOrder) => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canAddItems)) {
+      return;
+    }
     if (item.stock <= 0) return alert("Món này đã hết hàng!");
 
     const addOptions =
@@ -1136,11 +1139,11 @@ export default function StaffOrdering() {
     });
 
   const handleSendKitchen = async () => {
-    const tableOrderPermissions = getStaffOrderingPermissions(user, {
-      isRemoteOrder: false,
+    const orderPermissions = getStaffOrderingPermissions(user, {
+      isRemoteOrder: orderMode === "remote",
     });
 
-    if (!ensureStaffOrderPermission(tableOrderPermissions.canCreateOrder)) {
+    if (!ensureStaffOrderPermission(orderPermissions.canCreateOrder)) {
       return;
     }
     if (orderMode === "remote") {

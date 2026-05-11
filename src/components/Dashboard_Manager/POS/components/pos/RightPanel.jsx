@@ -271,12 +271,17 @@ export default function RightPanel() {
 
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
+
+  const isOffPremise =
+    currentOrderType === "delivery" || currentOrderType === "takeaway";
+
   const { promotions: activePromotions, loading: promotionsLoading } =
     useActiveDiscountPromotions(restaurantId, {
       skip: !isOffPremise,
     });
 
   const selectedPromotionId = selectedPromotionIds[0] || "";
+
   const discountShippingFee = useMemo(
     () =>
       getShippingFeeForDiscountPreview({
@@ -328,8 +333,6 @@ export default function RightPanel() {
     [existingItems],
   );
 
-  const isOffPremise =
-    currentOrderType === "delivery" || currentOrderType === "takeaway";
   const buildPosDiscountPreviewInput = useCallback(
     () =>
       buildOrderDiscountPreviewInput({
