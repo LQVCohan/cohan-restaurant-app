@@ -31,6 +31,8 @@ export const canCancelCorrection = (user, request) => {
 export const hasValidObjectIdLike = (value) =>
   typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
 
+export const MISSED_CHECKOUT_GRACE_MINUTES = 30;
+
 export const buildEvidenceUrls = (value = "") =>
   String(value)
     .split("\n")
@@ -65,6 +67,46 @@ export const buildCreateCorrectionInput = ({
     evidenceNote: form?.evidenceNote?.trim() || undefined,
     evidenceUrls: buildEvidenceUrls(form?.evidenceUrlsText),
   };
+};
+
+const addMinutes = (value, minutes) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + minutes * 60 * 1000);
+};
+
+export const resolveAttendanceDisplayStatus = (
+  record,
+  { now = new Date() } = {},
+) => {
+  if (!record) return "";
+
+  if (record.status === "missed_checkout") {
+    return "missed_checkout";
+  }
+
+  if (
+    record.status === "checked_in" &&
+    record.actualCheckInAt &&
+    !record.actualCheckOutAt &&
+    record.plannedEndTime
+  ) {
+    const threshold = addMinutes(
+      record.plannedEndTime,
+      MISSED_CHECKOUT_GRACE_MINUTES,
+    );
+    const currentTime = now instanceof Date ? now : new Date(now);
+
+    if (
+      threshold &&
+      !Number.isNaN(currentTime.getTime()) &&
+      currentTime >= threshold
+    ) {
+      return "missed_checkout";
+    }
+  }
+
+  return record.status || "";
 };
 
 export const validateCorrectionRequestForm = (form) => {
