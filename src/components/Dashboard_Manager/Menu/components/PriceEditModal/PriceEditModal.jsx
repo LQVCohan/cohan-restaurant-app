@@ -36,6 +36,68 @@ const normalizeInlineError = (error) => {
   };
 };
 
+const normalizeMethodDefaults = (methods = []) => {
+  const normalizedMethods = methods.map((method, idx) => ({
+    ...method,
+    isDefault:
+      typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
+  }));
+
+  let defaultIndex = normalizedMethods.findIndex((method) => method.isDefault);
+  if (defaultIndex < 0) defaultIndex = 0;
+
+  return normalizedMethods.map((method, idx) => ({
+    ...method,
+    isDefault: idx === defaultIndex,
+  }));
+};
+
+const buildBulkPreview = (prevPriceChanges, bulkChange, operation) => {
+  const affectedItemIds = [];
+
+  const nextPriceChanges = prevPriceChanges.map((item) => {
+    const shouldApply =
+      bulkChange.applyTo === "all" ||
+      (bulkChange.applyTo === "category" && item.category === bulkChange.category);
+
+    if (!shouldApply) return item;
+
+    const methods = item.methods.map((method) => {
+      const rawPrice =
+        operation.mode === "PERCENT"
+          ? method.originalPrice * (1 + operation.value / 100)
+          : method.originalPrice + operation.value;
+      // Align FE preview with backend bulk mutation rounding.
+      const nextPrice = Math.max(0, Math.round(rawPrice));
+      const changed = nextPrice !== method.originalPrice;
+
+      return {
+        ...method,
+        newPrice: nextPrice,
+        changed,
+        changeSource: changed ? "bulk" : null,
+        bulkOperationKey: changed ? operation.key : null,
+      };
+    });
+
+    const itemChanged = methods.some((method) => method.changed);
+    if (itemChanged) {
+      affectedItemIds.push(item.itemId);
+    }
+
+    return {
+      ...item,
+      lastBulkOperationKey: itemChanged ? operation.key : null,
+      methods,
+    };
+  });
+
+  return {
+    nextPriceChanges,
+    affectedItemIds,
+  };
+};
+
 const PriceEditModal = ({
   isOpen,
   isSubmitting = false,
@@ -54,13 +116,12 @@ const PriceEditModal = ({
 
   // Bulk state
   const [bulkChange, setBulkChange] = useState({
-    type: "percentage", // 'percentage' | 'fixed'
+    type: "percentage",
     value: "",
     category: "",
     applyTo: "all",
   });
 
-  // Init data khi mở modal
   useEffect(() => {
     if (isOpen && menuItems) {
       const changes = menuItems.map((item) => ({
@@ -68,35 +129,38 @@ const PriceEditModal = ({
         itemName: item.name,
         category: item.categoryName || item.categoryId || "Khác",
         lastBulkOperationKey: null,
-        methods: (
-          Array.isArray(item.servingVariants) && item.servingVariants.length
-            ? item.servingVariants
-            : [
-                {
-                  key: "default",
-                  name: "Mặc định",
-                  price: item.basePrice || 0,
-                  mode: "PORTION",
-                  sellQty: 1,
-                  sellUnit: "portion",
-                  ingredients: [],
-                  isDefault: true,
-                },
-              ]
-        ).map((method) => ({
-          key: method.key || method.name,
-          name: method.name || method.key || "Mặc định",
-          mode: method.mode || "PORTION",
-          sellQty: method.sellQty || 1,
-          sellUnit: method.sellUnit || "portion",
-          ingredients: cloneIngredients(method.ingredients),
-          isDefault: !!method.isDefault,
-          originalPrice: Number(method.price || 0),
-          newPrice: Number(method.price || 0),
-          changed: false,
-          changeSource: null,
-          bulkOperationKey: null,
-        })),
+        methods: normalizeMethodDefaults(
+          (
+            Array.isArray(item.servingVariants) && item.servingVariants.length
+              ? item.servingVariants
+              : [
+                  {
+                    key: "default",
+                    name: "Mặc định",
+                    price: item.basePrice || 0,
+                    mode: "PORTION",
+                    sellQty: 1,
+                    sellUnit: "portion",
+                    ingredients: [],
+                    isDefault: true,
+                  },
+                ]
+          ).map((method, idx) => ({
+            key: method.key || method.name,
+            name: method.name || method.key || "Mặc định",
+            mode: method.mode || "PORTION",
+            sellQty: method.sellQty || 1,
+            sellUnit: method.sellUnit || "portion",
+            ingredients: cloneIngredients(method.ingredients),
+            isDefault:
+              typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
+            originalPrice: Number(method.price || 0),
+            newPrice: Number(method.price || 0),
+            changed: false,
+            changeSource: null,
+            bulkOperationKey: null,
+          }))
+        ),
       }));
       setPriceChanges(changes);
       setSearchTerm("");
@@ -113,7 +177,6 @@ const PriceEditModal = ({
     }
   }, [isOpen, menuItems]);
 
-  // Handle thay đổi giá từng món
   const handlePriceChange = (itemId, methodKey, newValue) => {
     setSubmitError(null);
 
@@ -141,13 +204,12 @@ const PriceEditModal = ({
 
         return {
           ...item,
-          methods,
+          methods: normalizeMethodDefaults(methods),
         };
       })
     );
   };
 
-  // Logic Apply Bulk Change
   const applyBulkChange = () => {
     if (!bulkChange.value) return;
     if (bulkChange.applyTo === "category" && !bulkChange.category) {
@@ -179,60 +241,31 @@ const PriceEditModal = ({
       roundTo: 0,
       floorZero: true,
     };
-    const affectedItemIds = [];
 
     setSubmitError(null);
-    setPriceChanges((prev) =>
-      prev.map((item) => {
-        const shouldApply =
-          bulkChange.applyTo === "all" ||
-          (bulkChange.applyTo === "category" &&
-            item.category === bulkChange.category);
+    setPriceChanges((prev) => {
+      const { nextPriceChanges, affectedItemIds } = buildBulkPreview(
+        prev,
+        bulkChange,
+        operation
+      );
 
-        if (!shouldApply) return item;
-
-        const methods = item.methods.map((method) => {
-          const rawPrice =
-            operation.mode === "PERCENT"
-              ? method.originalPrice * (1 + changeValue / 100)
-              : method.originalPrice + changeValue;
-          const nextPrice = Math.max(0, Math.round(rawPrice));
-          const changed = nextPrice !== method.originalPrice;
-
-          return {
-            ...method,
-            newPrice: nextPrice,
-            changed,
-            changeSource: changed ? "bulk" : null,
-            bulkOperationKey: changed ? operationKey : null,
-          };
-        });
-
-        const itemChanged = methods.some((method) => method.changed);
-        if (itemChanged) {
-          affectedItemIds.push(item.itemId);
-        }
+      setAppliedBulkOperations((currentOperations) => {
+        if (!affectedItemIds.length) return currentOperations;
 
         return {
-          ...item,
-          lastBulkOperationKey: itemChanged ? operationKey : null,
-          methods,
+          ...currentOperations,
+          [operationKey]: {
+            ...operation,
+            menuItemIds: affectedItemIds,
+          },
         };
-      })
-    );
+      });
 
-    if (affectedItemIds.length > 0) {
-      setAppliedBulkOperations((prev) => ({
-        ...prev,
-        [operationKey]: {
-          ...operation,
-          menuItemIds: affectedItemIds,
-        },
-      }));
-    }
+      return nextPriceChanges;
+    });
   };
 
-  // Reset về ban đầu
   const resetPrices = () => {
     if (
       !window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ giá về ban đầu?")
@@ -246,18 +279,19 @@ const PriceEditModal = ({
       prev.map((item) => ({
         ...item,
         lastBulkOperationKey: null,
-        methods: item.methods.map((method) => ({
-          ...method,
-          newPrice: method.originalPrice,
-          changed: false,
-          changeSource: null,
-          bulkOperationKey: null,
-        })),
+        methods: normalizeMethodDefaults(
+          item.methods.map((method) => ({
+            ...method,
+            newPrice: method.originalPrice,
+            changed: false,
+            changeSource: null,
+            bulkOperationKey: null,
+          }))
+        ),
       }))
     );
   };
 
-  // Lọc danh sách hiển thị (Search & Filter)
   const filteredItems = useMemo(() => {
     return priceChanges.filter((item) => {
       const matchSearch = item.itemName
@@ -269,10 +303,10 @@ const PriceEditModal = ({
     });
   }, [priceChanges, searchTerm, filterCategory]);
 
-  // Lấy danh sách Categories unique
-  const categories = useMemo(() => {
-    return [...new Set(priceChanges.map((item) => item.category))];
-  }, [priceChanges]);
+  const categories = useMemo(
+    () => [...new Set(priceChanges.map((item) => item.category))],
+    [priceChanges]
+  );
 
   const changedItems = useMemo(
     () =>
@@ -287,16 +321,18 @@ const PriceEditModal = ({
   const buildManualUpdate = (item) => ({
     itemId: item.itemId,
     itemName: item.itemName,
-    methods: item.methods.map((method) => ({
-      key: method.key || method.name,
-      name: method.name,
-      mode: method.mode || "PORTION",
-      sellQty: method.sellQty || 1,
-      sellUnit: method.sellUnit || "portion",
-      ingredients: cloneIngredients(method.ingredients),
-      isDefault: !!method.isDefault,
-      price: method.newPrice,
-    })),
+    methods: normalizeMethodDefaults(
+      item.methods.map((method) => ({
+        key: method.key || method.name,
+        name: method.name,
+        mode: method.mode || "PORTION",
+        sellQty: method.sellQty || 1,
+        sellUnit: method.sellUnit || "portion",
+        ingredients: cloneIngredients(method.ingredients),
+        isDefault: method.isDefault,
+        price: method.newPrice,
+      }))
+    ),
   });
 
   const buildSavePayload = () => {
@@ -383,7 +419,6 @@ const PriceEditModal = ({
       closeOnEscape={!submitting}
     >
       <div className="pem-container">
-        {/* --- 1. TOOLBAR: Bulk Controls --- */}
         <div className="pem-toolbar">
           <div className="pem-row">
             <div className="pem-control-group" style={{ flex: "0 0 auto" }}>
@@ -474,7 +509,6 @@ const PriceEditModal = ({
           </div>
         </div>
 
-        {/* --- 2. TABLE WRAPPER --- */}
         <div className="pem-table-wrapper">
           {submitError?.message && (
             <div
@@ -508,7 +542,6 @@ const PriceEditModal = ({
             </div>
           )}
 
-          {/* Internal Filters */}
           <div className="pem-search-bar">
             <FiSearch className="search-icon" size={18} />
             <input
@@ -637,7 +670,6 @@ const PriceEditModal = ({
           </div>
         </div>
 
-        {/* --- 3. FOOTER --- */}
         <div className="pem-footer">
           <div className="pem-stats">
             Đang hiển thị <strong>{filteredItems.length}</strong> món. Đã sửa đổi
