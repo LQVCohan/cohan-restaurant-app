@@ -37,6 +37,36 @@ export const buildEvidenceUrls = (value = "") =>
     .map((line) => line.trim())
     .filter(Boolean);
 
+export const buildCreateCorrectionInput = ({
+  record,
+  form,
+  restaurantId,
+  workDate,
+  requestedCheckInAt,
+  requestedCheckOutAt,
+}) => {
+  const timesheetId =
+    record?.timesheetId && hasValidObjectIdLike(record.timesheetId)
+      ? record.timesheetId
+      : hasValidObjectIdLike(record?.id)
+        ? record.id
+        : undefined;
+
+  return {
+    employeeId: record?.employeeId,
+    restaurantId,
+    timesheetId,
+    shiftId: record?.shiftId || undefined,
+    workDate,
+    correctionType: form?.correctionType,
+    requestedCheckInAt: requestedCheckInAt || undefined,
+    requestedCheckOutAt: requestedCheckOutAt || undefined,
+    reason: form?.reason?.trim(),
+    evidenceNote: form?.evidenceNote?.trim() || undefined,
+    evidenceUrls: buildEvidenceUrls(form?.evidenceUrlsText),
+  };
+};
+
 export const validateCorrectionRequestForm = (form) => {
   const errors = {};
 
