@@ -7,6 +7,7 @@ import { useNotification } from "@/hooks/useNotification";
 const ITEM_STATUS_LABELS = {
   pending: "Chờ bếp nhận",
   confirmed: "Đã xác nhận",
+  customer_attached: "Khách đã gắn món",
   preparing: "Đang chuẩn bị",
   ready: "Sẵn sàng",
   served: "Đã phục vụ",
@@ -24,6 +25,17 @@ const ORDER_STATUS_LABELS = {
   cancelled: "Đã hủy",
 };
 
+const KITCHEN_FILTER_OPTIONS = [
+  { value: "active", label: "Đang cần xử lý" },
+  { value: "pending", label: "Chờ nhận" },
+  { value: "preparing", label: "Đang làm" },
+  { value: "ready", label: "Sẵn sàng" },
+  { value: "all", label: "Tất cả" },
+];
+
+const PENDING_KITCHEN_ITEM_STATUSES = ["pending", "confirmed", "customer_attached"];
+const HIDDEN_KITCHEN_ITEM_STATUSES = ["cancelled", "returned", "served"];
+
 const getRestaurantForStaffId = (restaurantForStaff) => {
   if (!restaurantForStaff) return null;
   if (typeof restaurantForStaff === "string") return restaurantForStaff;
@@ -39,6 +51,34 @@ const getRestaurantForStaffName = (restaurantForStaff) => {
 };
 
 const normalizeStatus = (status) => String(status || "pending").toLowerCase();
+
+const getKitchenItemBucket = (status) => {
+  const normalized = normalizeStatus(status);
+  if (PENDING_KITCHEN_ITEM_STATUSES.includes(normalized)) return "pending";
+  if (normalized === "preparing") return "preparing";
+  if (normalized === "ready") return "ready";
+  return "other";
+};
+
+const isKitchenVisibleItem = (item) => {
+  const status = normalizeStatus(item?.status);
+  return !HIDDEN_KITCHEN_ITEM_STATUSES.includes(status);
+};
+
+const matchesKitchenFilter = (item, filter) => {
+  const bucket = getKitchenItemBucket(item?.status);
+  if (filter === "all") return isKitchenVisibleItem(item);
+  if (filter === "active") return ["pending", "preparing"].includes(bucket);
+  return bucket === filter;
+};
+
+const getKitchenItemBadgeClassName = (status) => {
+  const bucket = getKitchenItemBucket(status);
+  if (bucket === "pending") return "bg-amber-50 text-amber-700";
+  if (bucket === "preparing") return "bg-blue-50 text-blue-700";
+  if (bucket === "ready") return "bg-green-50 text-green-700";
+  return "bg-gray-100 text-gray-700";
+};
 
 const isRemoteStaffPendingOrder = (order) => {
   if (!order) return false;
@@ -81,6 +121,7 @@ const StaffKitchenPage = () => {
   const restaurantId = getRestaurantForStaffId(restaurantForStaff);
   const restaurantName = getRestaurantForStaffName(restaurantForStaff);
   const [savingKey, setSavingKey] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("active");
   const { showNotification } = useNotification?.() || {
     showNotification: () => {},
   };
@@ -128,6 +169,45 @@ const StaffKitchenPage = () => {
       });
   }, [ordersNow]);
 
+  const kitchenSummary = useMemo(() => {
+    let pending = 0;
+    let preparing = 0;
+    let ready = 0;
+    let totalActive = 0;
+
+    for (const order of activeKitchenOrders) {
+      for (const item of order.items || []) {
+        if (!isKitchenVisibleItem(item)) continue;
+        const bucket = getKitchenItemBucket(item.status);
+        if (bucket === "pending") pending += 1;
+        if (bucket === "preparing") preparing += 1;
+        if (bucket === "ready") ready += 1;
+        if (["pending", "preparing"].includes(bucket)) totalActive += 1;
+      }
+    }
+
+    return { pending, preparing, ready, totalActive };
+  }, [activeKitchenOrders]);
+
+  const kitchenOrderRows = useMemo(() => {
+    return activeKitchenOrders
+      .map((order) => {
+        const visibleItems = (order.items || [])
+          .map((item, index) => ({ item, index }))
+          .filter(({ item }) => isKitchenVisibleItem(item));
+        const filteredItems = visibleItems.filter(({ item }) =>
+          matchesKitchenFilter(item, statusFilter),
+        );
+
+        return {
+          order,
+          visibleItems,
+          filteredItems,
+        };
+      })
+      .filter((row) => row.filteredItems.length > 0);
+  }, [activeKitchenOrders, statusFilter]);
+
   const handleUpdateItemStatus = useCallback(
     async (order, item, index, nextStatus) => {
       if (!restaurantId || !order?.id || !nextStatus) return;
@@ -174,17 +254,58 @@ const StaffKitchenPage = () => {
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Temporary staff kitchen wrapper: reuse the existing order-management hook only,
           without rendering the manager OrderManagement screen or its admin/cashier actions. */}
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-blue-600">KITCHEN DISPLAY</p>
-          <h1 className="text-2xl font-semibold text-gray-900">Khu vực bếp</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Xem món cần chuẩn bị và cập nhật trạng thái chế biến cho nhà hàng được gán.
-          </p>
+      <div className="mb-5 flex flex-col gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-blue-600">KITCHEN DISPLAY</p>
+            <h1 className="text-2xl font-semibold text-gray-900">Khu vực bếp</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Xem món cần chuẩn bị và cập nhật trạng thái chế biến cho nhà hàng được gán.
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm">
+            <span className="font-medium">Nhà hàng:</span>{" "}
+            {restaurantName || restaurantId}
+          </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm">
-          <span className="font-medium">Nhà hàng:</span>{" "}
-          {restaurantName || restaurantId}
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Cần xử lý</p>
+            <p className="mt-2 text-2xl font-semibold text-amber-900">{kitchenSummary.totalActive}</p>
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Chờ nhận</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.pending}</p>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Đang làm</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.preparing}</p>
+          </div>
+          <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-green-700">Sẵn sàng</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.ready}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {KITCHEN_FILTER_OPTIONS.map((option) => {
+            const isActive = statusFilter === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  isActive
+                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:text-blue-700"
+                }`}
+                onClick={() => setStatusFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -200,9 +321,13 @@ const StaffKitchenPage = () => {
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">
           Hiện chưa có món nào cần chuẩn bị.
         </div>
+      ) : kitchenOrderRows.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">
+          Không có món nào trong bộ lọc hiện tại.
+        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {activeKitchenOrders.map((order) => {
+          {kitchenOrderRows.map(({ order, filteredItems, visibleItems }) => {
             const ageMinutes = getOrderAgeMinutes(order.createdAt);
             return (
               <article key={order.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -220,6 +345,13 @@ const StaffKitchenPage = () => {
                   </span>
                 </div>
 
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500">
+                  <span>{filteredItems.length} món</span>
+                  {visibleItems.length > filteredItems.length ? (
+                    <span>{visibleItems.length} món trong đơn</span>
+                  ) : null}
+                </div>
+
                 {order.note ? (
                   <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     Ghi chú: {order.note}
@@ -227,7 +359,7 @@ const StaffKitchenPage = () => {
                 ) : null}
 
                 <div className="mt-4 space-y-3">
-                  {(order.items || []).filter((item) => normalizeStatus(item?.status) !== "cancelled").map((item, index) => {
+                  {filteredItems.map(({ item, index }) => {
                     const status = normalizeStatus(item.status);
                     const next = getNextKitchenStatus(status);
                     const itemKey = item?._lineId || item?._id || index;
@@ -239,9 +371,11 @@ const StaffKitchenPage = () => {
                             <div className="font-medium text-gray-900">
                               x{formatQuantity(item.quantity)} {item.name || "Món"}
                             </div>
-                            <div className="mt-1 text-xs text-gray-500">
-                              {ITEM_STATUS_LABELS[status] || status}
-                              {item.unit ? ` · ${item.unit}` : ""}
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                              <span className={`rounded-full px-2.5 py-1 font-medium ${getKitchenItemBadgeClassName(status)}`}>
+                                {ITEM_STATUS_LABELS[status] || status}
+                              </span>
+                              {item.unit ? <span className="text-gray-500">{item.unit}</span> : null}
                             </div>
                           </div>
                           {next ? (
