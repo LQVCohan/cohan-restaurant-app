@@ -6,6 +6,7 @@ import {
   ApolloLink,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { getToken } from "@/lib/authStorage";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -17,11 +18,7 @@ const httpLink = new HttpLink({
 
 /* ---------------- Auth link ---------------- */
 const authLink = setContext((_, { headers }) => {
-  const token =
-    localStorage.getItem("auth_token") ||
-    localStorage.getItem("token") ||
-    sessionStorage.getItem("auth_token") ||
-    sessionStorage.getItem("token");
+  const token = getToken();
 
   return {
     headers: {
