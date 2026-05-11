@@ -3,13 +3,13 @@ import "./RestaurantCard.scss";
 
 const RestaurantCard = ({
   restaurant,
-  variant = "grid", // "grid" | "list"
+  variant = "grid",
   isFavorited,
   onToggleFavorite,
   onMakeReservation,
   onViewDetails,
+  favoriteTitle,
 }) => {
-  // --- HELPERS ---
   const getStatusInfo = (status) => {
     switch (status) {
       case "open":
@@ -59,7 +59,6 @@ const RestaurantCard = ({
       }`}
       onClick={() => onViewDetails(restaurant.id)}
     >
-      {/* 1. KHU VỰC ẢNH */}
       <div className="restaurant-card__image-wrapper">
         <img
           src={restaurant.image || "/default-restaurant.jpg"}
@@ -68,7 +67,6 @@ const RestaurantCard = ({
           loading="lazy"
         />
 
-        {/* Badges & Favorite Overlay */}
         <div className="restaurant-card__badges-top">
           {renderBadges(restaurant.badges)}
         </div>
@@ -76,15 +74,13 @@ const RestaurantCard = ({
         <button
           className={`btn-favorite ${isFavorited ? "active" : ""}`}
           onClick={(e) => onToggleFavorite(e, restaurant.id)}
-          title={isFavorited ? "Bỏ thích" : "Yêu thích"}
+          title={favoriteTitle || (isFavorited ? "Bỏ thích" : "Yêu thích")}
         >
           {isFavorited ? "❤️" : "🤍"}
         </button>
       </div>
 
-      {/* 2. KHU VỰC NỘI DUNG */}
       <div className="restaurant-card__content">
-        {/* Cột Thông tin (Chính) */}
         <div className="info-section">
           <div className="content-header">
             <h3 className="restaurant-name" title={restaurant.name}>
@@ -117,16 +113,13 @@ const RestaurantCard = ({
               "Nhà hàng phục vụ các món ăn ngon, không gian thoáng mát, phù hợp cho gia đình và bạn bè."}
           </p>
 
-          {/* Địa chỉ (Chỉ hiện ở cột này khi là List View) */}
           <div className="address-info list-only">
             <span className="icon">📍</span>{" "}
             <span className="text">{addressText}</span>
           </div>
         </div>
 
-        {/* Cột Hành động / Footer */}
         <div className="action-section">
-          {/* Địa chỉ (Chỉ hiện ở cột này khi là Grid View - Footer style) */}
           <div className="address-info grid-only">
             <span className="icon">📍</span>{" "}
             <span className="text">{addressText}</span>
