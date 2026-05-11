@@ -1,17 +1,30 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 
-const SRC = "src/components/Dashboard_Manager/POS/components/pos/RightPanel.jsx";
+const SRC =
+  "src/components/Dashboard_Manager/POS/components/pos/RightPanel.jsx";
 
 const getSaveOrderCall = (src) => {
-  const match = src.match(/const res = await saveOrder\?\.\(\{[\s\S]*?\n\s*\}\);/);
+  const match = src.match(
+    /const res = await saveOrder\?\.\(\{[\s\S]*?\n\s*\}\);/,
+  );
   return match?.[0] || "";
 };
 
 describe("RightPanel discount integration", () => {
-  it("uses discount preview before off-premise save", () => {
+  it("allows selecting an active promotion for off-premise discount preview", () => {
     const src = fs.readFileSync(SRC, "utf8");
 
+    expect(src).toMatch(/useActiveDiscountPromotions/);
+    expect(src).toMatch(/activePromotions/);
+    expect(src).toMatch(/selectedPromotionId/);
+    expect(src).toMatch(/Chương trình khuyến mãi/);
+    expect(src).toMatch(/setSelectedPromotionIds/);
+  });
+  it("uses discount preview before off-premise save", () => {
+    const src = fs.readFileSync(SRC, "utf8");
+    expect(src).toMatch(/hasDiscountSelection/);
+    expect(src).toMatch(/hasPromotionSelection/);
     expect(src).toMatch(/useDiscountPreview/);
     expect(src).toMatch(/buildOrderDiscountPreviewInput/);
     expect(src).toMatch(/handleApplyDiscountPreview/);

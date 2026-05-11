@@ -19,7 +19,7 @@ import {
   getDiscountPreviewErrorMessage,
   useDiscountPreview,
 } from "@/hooks/useDiscountPreview";
-
+import { useActiveDiscountPromotions } from "@/hooks/useActiveDiscountPromotions";
 import {
   buildDiscountPricingInput,
   buildOrderDiscountPreviewInput,
@@ -271,7 +271,12 @@ export default function RightPanel() {
 
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
+  const { promotions: activePromotions, loading: promotionsLoading } =
+    useActiveDiscountPromotions(restaurantId, {
+      skip: !isOffPremise,
+    });
 
+  const selectedPromotionId = selectedPromotionIds[0] || "";
   const discountShippingFee = useMemo(
     () =>
       getShippingFeeForDiscountPreview({
@@ -517,9 +522,13 @@ export default function RightPanel() {
     : finalTotals || {};
   const totals = totalsForDisplay;
   const hasVoucherCode = voucherCode.trim().length > 0;
+  const hasPromotionSelection = selectedPromotionIds.length > 0;
+  const hasDiscountSelection = hasVoucherCode || hasPromotionSelection;
 
   const shouldBlockSaveForDiscount =
-    isOffPremise && hasVoucherCode && (!discountBreakdown || !!discountError);
+    isOffPremise &&
+    hasDiscountSelection &&
+    (!discountBreakdown || !!discountError);
   const breakdownConfig = [
     { key: "subtotal", label: "Tạm tính", cls: "" },
     { key: "discount", label: "Giảm giá", cls: "neg" },
@@ -1263,7 +1272,31 @@ export default function RightPanel() {
               {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
             </button>
           </div>
-
+          {activePromotions.length > 0 && (
+            <div className={cls.promotionRow}>
+              <label className={cls.promotionLabel}>
+                Chương trình khuyến mãi
+              </label>
+              <select
+                className={cls.promotionSelect}
+                value={selectedPromotionId}
+                onChange={(event) =>
+                  setSelectedPromotionIds(
+                    event.target.value ? [event.target.value] : [],
+                  )
+                }
+                disabled={isPreviewingDiscount || promotionsLoading}
+              >
+                <option value="">Không áp dụng promotion</option>
+                {activePromotions.map((promotion) => (
+                  <option key={promotion.id} value={promotion.id}>
+                    {promotion.name}
+                    {promotion.code ? ` · ${promotion.code}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {discountError && (
             <div className={cls.discountError}>{discountError}</div>
           )}

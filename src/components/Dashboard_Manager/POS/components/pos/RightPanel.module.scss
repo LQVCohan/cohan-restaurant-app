@@ -833,3 +833,35 @@ $gray-slate-600: #475569;
   color: #16a34a;
   font-size: 13px;
 }
+.promotionRow {
+  margin-top: 10px;
+}
+
+.promotionLabel {
+  display: block;
+  margin-bottom: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.promotionSelect {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+
+  &:focus {
+    outline: none;
+    border-color: #f97316;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
