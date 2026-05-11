@@ -3,6 +3,32 @@ const { Schema, Types } = mongoose;
 
 const baseOptions = { timestamps: true };
 
+async function runAttendanceExceptionDetection() {
+  const options = this.getOptions?.() || {};
+  if (options.skipAttendanceExceptionDetection) return;
+
+  const filter = this.getFilter?.() || {};
+  const workDate = filter.workDate || null;
+  if (!filter.restaurantId || !workDate?.$gte || !workDate?.$lte) return;
+
+  try {
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    await detectAttendanceExceptionsForRange({
+      restaurantId: filter.restaurantId,
+      startDate: workDate.$gte,
+      endDate: workDate.$lte,
+    });
+  } catch (error) {
+    console.warn(
+      "Failed to lazily detect attendance exceptions:",
+      error?.message || error,
+    );
+  }
+}
+
 const TimesheetSchema = new Schema(
   {
     shiftId: { type: Types.ObjectId, ref: "Shift", default: null },
@@ -51,6 +77,7 @@ const TimesheetSchema = new Schema(
       enum: [
         "scheduled_absent",
         "checked_in",
+        "missed_checkout",
         "completed",
         "late",
         "early_leave",
@@ -91,6 +118,8 @@ const TimesheetSchema = new Schema(
   },
   baseOptions,
 );
+
+TimesheetSchema.pre("find", runAttendanceExceptionDetection);
 
 TimesheetSchema.index(
   { employeeId: 1, workDate: 1, shiftId: 1 },
