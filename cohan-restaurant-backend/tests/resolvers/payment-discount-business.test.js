@@ -6,17 +6,44 @@ const PAYMENT_MUTATION_PATH = "graphql/resolvers/payment/mutation.js";
 const INVOICE_MODEL_PATH = "models/invoice.model.js";
 
 const readFile = (path) => fs.readFileSync(path, "utf8");
+const getFunctionSnippet = (src, functionName) => {
+  const start = src.indexOf(`export const ${functionName}`);
+  if (start < 0) return "";
 
+  const next = src.indexOf("\nexport const ", start + 1);
+  return next > start ? src.slice(start, next) : src.slice(start);
+};
 describe("payment stage discount business coverage", () => {
   it("payments.graphql accepts pricing and promotionIds on payment inputs", () => {
     const src = readFile(PAYMENTS_SCHEMA_PATH);
 
-    expect(src).toMatch(/input PayOrdersByTableIdInput \{[\s\S]*pricing: CheckoutPricingInput/);
-    expect(src).toMatch(/input PayOrdersByTableIdInput \{[\s\S]*promotionIds: \[ID!\]/);
-    expect(src).toMatch(/input PayOrdersByOrderIdsInput \{[\s\S]*pricing: CheckoutPricingInput/);
-    expect(src).toMatch(/input PayOrdersByOrderIdsInput \{[\s\S]*promotionIds: \[ID!\]/);
+    expect(src).toMatch(
+      /input PayOrdersByTableIdInput \{[\s\S]*pricing: CheckoutPricingInput/,
+    );
+    expect(src).toMatch(
+      /input PayOrdersByTableIdInput \{[\s\S]*promotionIds: \[ID!\]/,
+    );
+    expect(src).toMatch(
+      /input PayOrdersByOrderIdsInput \{[\s\S]*pricing: CheckoutPricingInput/,
+    );
+    expect(src).toMatch(
+      /input PayOrdersByOrderIdsInput \{[\s\S]*promotionIds: \[ID!\]/,
+    );
   });
+  it("payOrdersByTableId uses backend discounted total and increments coupon usage", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const snippet = getFunctionSnippet(src, "payOrdersByTableId");
 
+    expect(snippet).toMatch(/resolvePaymentAmount\(\{/);
+    expect(snippet).toMatch(/expectedTotal:\s*payableTotals\.grandTotal/);
+    expect(snippet).toMatch(/appliedDiscount/);
+    expect(snippet).toMatch(
+      /incrementCouponUsageOnce\(\{\s*totals:\s*discountTotals,\s*session\s*\}\)/,
+    );
+    expect(snippet).not.toMatch(
+      /paidAmount != null \? Number\(paidAmount\) : aggregatedTotals\.grandTotal/,
+    );
+  });
   it("payment mutation imports and uses calculateDiscountBreakdown", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 
@@ -38,7 +65,9 @@ describe("payment stage discount business coverage", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 
     expect(src).toMatch(/resolvePaymentAmount/);
-    expect(src).toMatch(/Payment amount does not match backend discounted total/);
+    expect(src).toMatch(
+      /Payment amount does not match backend discounted total/,
+    );
   });
 
   it("invoice totals are persisted from payableTotals", () => {
@@ -47,7 +76,9 @@ describe("payment stage discount business coverage", () => {
     expect(src).toMatch(/subtotal:\s*payableTotals\.subtotal/);
     expect(src).toMatch(/discount:\s*payableTotals\.discount/);
     expect(src).toMatch(/grandTotal:\s*payableTotals\.grandTotal/);
-    expect(src).not.toMatch(/amountToPay \+ 1e-6 >= aggregatedTotals\.grandTotal/);
+    expect(src).not.toMatch(
+      /amountToPay \+ 1e-6 >= aggregatedTotals\.grandTotal/,
+    );
   });
 
   it("invoice model persists discount metadata and payment-stage totals", () => {

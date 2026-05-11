@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-
+import process from "node:process";
 const paymentModalPath = path.resolve(
   process.cwd(),
   "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.jsx",
@@ -15,12 +15,27 @@ const paymentModalSource = fs.readFileSync(paymentModalPath, "utf8");
 const orderManagementSource = fs.readFileSync(orderManagementPath, "utf8");
 
 describe("PaymentModal voucher payment flow", () => {
+  it("forwards payment-stage pricing and promotionIds through useOrderManagement", () => {
+    const src = fs.readFileSync("src/hooks/useOrderManagement.js", "utf8");
+
+    expect(src).toMatch(/pricing\s*(?:=\s*null)?\s*,/);
+    expect(src).toMatch(/promotionIds\s*(?:=\s*\[\])?\s*,/);
+    expect(src).toMatch(/paymentInputExtras/);
+    expect(src).toMatch(/\.\.\.paymentInputExtras/);
+
+    expect(src).toMatch(/discountReason/);
+    expect(src).toMatch(/voucherCode/);
+    expect(src).toMatch(/promotionId/);
+    expect(src).toMatch(/shippingFee/);
+  });
   it("keeps voucher preview helpers and routes payment through confirmPayment", () => {
     expect(paymentModalSource).toContain("useDiscountPreview");
     expect(paymentModalSource).toContain("buildOrderDiscountPreviewInput");
     expect(paymentModalSource).toContain("buildDiscountPricingInput");
     expect(paymentModalSource).toContain("getDiscountBreakdownTotal");
-    expect(paymentModalSource).not.toContain("PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS");
+    expect(paymentModalSource).not.toContain(
+      "PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS",
+    );
     expect(paymentModalSource).not.toContain(
       "useMutation(PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS)",
     );
@@ -44,7 +59,7 @@ describe("PaymentModal voucher payment flow", () => {
 
 describe("useOrderManagement payment mutation payload", () => {
   it("accepts pricing and promotionIds and requests richer invoice totals", () => {
-    expect(orderManagementSource).toContain("pricing,");
+    expect(orderManagementSource).toMatch(/pricing\s*(?:=\s*null)?\s*,/);
     expect(orderManagementSource).toContain("promotionIds = []");
     expect(orderManagementSource).toContain("...(pricing ? { pricing } : {})");
     expect(orderManagementSource).toContain(

@@ -701,6 +701,14 @@ const PAY_ORDERS_BY_TABLE_ID = gql`
         id
         number
         totals {
+          subtotal
+          discount
+          discountReason
+          voucherCode
+          promotionId
+          service
+          tax
+          shippingFee
           grandTotal
         }
       }
@@ -729,6 +737,14 @@ const PAY_ORDERS_BY_ORDER_IDS = gql`
         id
         number
         totals {
+          subtotal
+          discount
+          discountReason
+          voucherCode
+          promotionId
+          service
+          tax
+          shippingFee
           grandTotal
         }
       }
@@ -2887,21 +2903,43 @@ export default function useOrderManagement(pos = null) {
       paidAmount = 0,
       note = "",
       externalRef = null,
+      pricing = null,
+      promotionIds = [],
     } = {}) => {
       if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
 
       const isDineIn = !currentOrderType || currentOrderType === "dine_in";
       const grand = Number(totals.total || 0);
+      const normalizedPromotionIds = Array.isArray(promotionIds)
+        ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
+        : [];
 
+      const hasPaymentDiscountPayload =
+        Boolean(pricing) || normalizedPromotionIds.length > 0;
+
+      const validationTotal = hasPaymentDiscountPayload
+        ? Number(paidAmount || 0)
+        : grand;
+
+      const paymentInputExtras = {
+        ...(pricing ? { pricing } : {}),
+        ...(normalizedPromotionIds.length
+          ? { promotionIds: normalizedPromotionIds }
+          : {}),
+      };
       const valid = validatePayment({
         method,
         paidAmount,
-        total: grand,
+        total: validationTotal,
       });
       if (!valid.ok) return { success: false, message: valid.message };
 
-      const paid = method === "cash" ? Number(paidAmount || 0) : grand;
+      const paid = hasPaymentDiscountPayload
+        ? Number(paidAmount || 0)
+        : method === "cash"
+          ? Number(paidAmount || 0)
+          : grand;
       const idempotency =
         externalRef ||
         `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -2927,6 +2965,7 @@ export default function useOrderManagement(pos = null) {
                 note,
                 externalRef: idempotency,
                 includeUnserved: false,
+                ...paymentInputExtras,
               },
             },
           });
@@ -2978,6 +3017,7 @@ export default function useOrderManagement(pos = null) {
               method,
               note,
               externalRef: idempotency,
+              ...paymentInputExtras,
             },
           },
         });

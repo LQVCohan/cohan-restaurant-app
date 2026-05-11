@@ -174,16 +174,190 @@ function accumulateTotals(order, subtotalIncluded, linesSubtotal) {
     grandTotal: subtotalIncluded - discount + tax + service + shippingFee,
   };
 }
+function normalizeVoucherCode(value) {
+  const code = String(value || "")
+    .trim()
+    .toUpperCase();
+  return code || undefined;
+}
 
-export const requestTablePayment = async (_parent, { input }, ctx) => {
-  const {
+function normalizePromotionIds(promotionIds = []) {
+  return Array.isArray(promotionIds)
+    ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+}
+
+function hasPaymentDiscountSelection({ pricing, promotionIds }) {
+  return (
+    Boolean(normalizeVoucherCode(pricing?.voucherCode)) ||
+    normalizePromotionIds(promotionIds).length > 0
+  );
+}
+
+function buildPaymentDiscountPricing({ pricing = {}, aggregatedTotals = {} }) {
+  const subtotal = Math.max(0, Number(aggregatedTotals?.subtotal || 0));
+  const service = Math.max(0, Number(aggregatedTotals?.service || 0));
+  const tax = Math.max(0, Number(aggregatedTotals?.tax || 0));
+
+  const serviceRate = Number.isFinite(Number(pricing?.serviceRate))
+    ? Math.max(0, Number(pricing.serviceRate))
+    : subtotal > 0
+      ? service / subtotal
+      : 0;
+
+  const beforeTaxBase = Math.max(0, subtotal + service);
+  const taxRate = Number.isFinite(Number(pricing?.taxRate))
+    ? Math.max(0, Number(pricing.taxRate))
+    : beforeTaxBase > 0
+      ? tax / beforeTaxBase
+      : 0;
+
+  return {
+    serviceRate,
+    taxRate,
+    shippingFee: Math.max(
+      0,
+      Number(pricing?.shippingFee ?? aggregatedTotals?.shippingFee ?? 0),
+    ),
+    voucherCode: normalizeVoucherCode(pricing?.voucherCode),
+  };
+}
+
+function buildDiscountItemsFromOrders(orders = []) {
+  return orders.flatMap((order) =>
+    (order.items || [])
+      .filter(
+        (item) =>
+          !EXCLUDED_ITEM_STATUSES.has(String(item?.status || "").toLowerCase()),
+      )
+      .map((item) => ({
+        ...item,
+        lineSubtotal: Number(item?.lineSubtotal || 0),
+        status: item?.status || "served",
+      }))
+      .filter((item) => Number(item.lineSubtotal || 0) > 0),
+  );
+}
+
+function resolvePaymentAmount({ paidAmount, expectedTotal, appliedDiscount }) {
+  const expected = Math.round(Number(expectedTotal || 0));
+
+  if (!(expected > 0)) {
+    throw new Error("Invalid payment total");
+  }
+
+  if (paidAmount == null || paidAmount === "") {
+    return expected;
+  }
+
+  const amount = Math.round(Number(paidAmount));
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid paidAmount");
+  }
+
+  if (appliedDiscount && Math.abs(amount - expected) > 1) {
+    throw new Error("Payment amount does not match backend discounted total");
+  }
+
+  return amount;
+}
+
+function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
+  if (!appliedDiscount) return undefined;
+
+  return {
+    discountApplied: true,
+    voucherCode: discountTotals?.voucherCode || null,
+    couponId: discountTotals?.couponId ? String(discountTotals.couponId) : null,
+    appliedCoupons: Array.isArray(discountTotals?.appliedCoupons)
+      ? discountTotals.appliedCoupons.map(String)
+      : [],
+    appliedPromotions: Array.isArray(discountTotals?.appliedPromotions)
+      ? discountTotals.appliedPromotions.map(String)
+      : [],
+    requestedPromotionIds: normalizePromotionIds(promotionIds),
+    discountReason: discountTotals?.discountReason || null,
+    promotionDiscount: Number(discountTotals?.promotionDiscount || 0),
+    voucherDiscount: Number(
+      discountTotals?.voucherDiscount ?? discountTotals?.couponDiscount ?? 0,
+    ),
+    totalDiscount: Number(
+      discountTotals?.totalDiscount ?? discountTotals?.discount ?? 0,
+    ),
+    subtotal: Number(discountTotals?.subtotal || 0),
+    grandTotal: Number(discountTotals?.grandTotal || 0),
+  };
+}
+
+async function incrementCouponUsageOnce({ totals, session }) {
+  if (!totals?.couponId) return;
+
+  const updateResult = await Coupon.updateOne(
+    {
+      _id: totals.couponId,
+      $expr: {
+        $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }],
+      },
+    },
+    { $inc: { used: 1 } },
+    { session },
+  );
+
+  if (!updateResult.modifiedCount) {
+    throw new Error("Invalid voucher: usage limit reached");
+  }
+}
+
+async function calculatePaymentTotalsWithOptionalDiscount({
+  restaurantId,
+  orders,
+  aggregatedTotals,
+  pricing,
+  promotionIds,
+}) {
+  const hasDiscount = hasPaymentDiscountSelection({ pricing, promotionIds });
+
+  if (!hasDiscount) {
+    return {
+      totals: aggregatedTotals,
+      discountTotals: null,
+      appliedDiscount: false,
+    };
+  }
+
+  const discountItems = buildDiscountItemsFromOrders(orders);
+
+  if (!discountItems.length) {
+    throw new Error("No payable items for discount calculation");
+  }
+
+  const discountTotals = await calculateDiscountBreakdown({
     restaurantId,
-    tableId,
-    tableCode,
-    source,
-    requestedBy,
-    note,
-  } = input || {};
+    items: discountItems,
+    pricing: buildPaymentDiscountPricing({ pricing, aggregatedTotals }),
+    promotionIds: normalizePromotionIds(promotionIds),
+  });
+
+  return {
+    totals: {
+      subtotal: discountTotals.subtotal,
+      discount: discountTotals.discount,
+      discountReason: discountTotals.discountReason || null,
+      voucherCode: discountTotals.voucherCode || null,
+      promotionId: discountTotals.appliedPromotions?.[0] || null,
+      tax: discountTotals.tax,
+      service: discountTotals.service,
+      shippingFee: discountTotals.shippingFee || 0,
+      grandTotal: discountTotals.grandTotal,
+    },
+    discountTotals,
+    appliedDiscount: true,
+  };
+}
+export const requestTablePayment = async (_parent, { input }, ctx) => {
+  const { restaurantId, tableId, tableCode, source, requestedBy, note } =
+    input || {};
 
   const rid = toId(restaurantId);
   const tid = toId(tableId);
@@ -591,9 +765,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
-  const amountToPay =
-    paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
-
+  const amountToPay = resolvePaymentAmount({
+    paidAmount,
+    expectedTotal: payableTotals.grandTotal,
+    appliedDiscount,
+  });
   const session = await startSession();
   session.startTransaction();
 
@@ -677,7 +853,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       ],
       { session },
     ).then((r) => r[0]);
-
+    await incrementCouponUsageOnce({ totals: discountTotals, session });
     await Order.updateMany(
       { _id: { $in: orderIds } },
       {
@@ -715,8 +891,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
                 .map(String),
             ),
           ]
-              .map((id) => toId(id))
-              .filter(Boolean);
+            .map((id) => toId(id))
+            .filter(Boolean);
 
       if (parentSessionIds.length) {
         await Order.updateMany(
@@ -1097,7 +1273,11 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 };
 
-export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
+export const createReservationPaymentMutation = async (
+  _parent,
+  { input },
+  ctx,
+) => {
   const userId = ctx?.user?.id;
   if (!userId) throw new Error("Unauthorized");
 
@@ -1156,9 +1336,7 @@ export const updateRestaurantPaymentSettings = async (
       provider: String(p?.provider || "").toLowerCase(),
       label:
         String(p?.label || "").trim() ||
-        (String(p?.provider || "").toLowerCase() === "momo"
-          ? "MoMo"
-          : "VNPAY"),
+        (String(p?.provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY"),
       active: p?.active !== false,
       priority: Number.isFinite(Number(p?.priority))
         ? Number(p.priority)
