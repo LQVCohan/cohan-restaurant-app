@@ -6,10 +6,14 @@ const clearPaymentRequestAfterNewChildOrderBatchCreatedMock = vi.hoisted(() =>
 );
 
 vi.mock("../../models/index.js", () => ({ Order: OrderModel }));
-vi.mock("../../utils/orderLifecycle.js", () => ({
-  clearPaymentRequestAfterNewChildOrderBatchCreated:
-    clearPaymentRequestAfterNewChildOrderBatchCreatedMock,
-}));
+vi.mock("../../utils/orderLifecycle.js", async () => {
+  const actual = await vi.importActual("../../utils/orderLifecycle.js");
+  return {
+    ...actual,
+    clearPaymentRequestAfterNewChildOrderBatchCreated:
+      clearPaymentRequestAfterNewChildOrderBatchCreatedMock,
+  };
+});
 
 describe("withTablePaymentRequestLifecycle", () => {
   afterEach(() => {
@@ -52,7 +56,7 @@ describe("withTablePaymentRequestLifecycle", () => {
     });
   });
 
-  it("returns created order even when stale payment request clear fails", async () => {
+  it("returns created order even when lifecycle hardening or stale payment clear fails", async () => {
     const { withTablePaymentRequestLifecycle } = await import(
       "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
     );
@@ -95,7 +99,7 @@ describe("withTablePaymentRequestLifecycle", () => {
 
     expect(out).toBe(result);
     expect(warnSpy).toHaveBeenCalledWith(
-      "[order] Failed to clear stale table payment request after new batch",
+      "[order] Failed to harden dine-in session lifecycle after createOrderForTable",
       {
         orderId: "child-2",
         parentOrderId: "parent-2",
