@@ -813,8 +813,46 @@ export default function RightPanel() {
 
   const tempPreview = useMemo(() => {
     if (!hasItems) return "Không có món để in.";
-    return buildPreview(currentOrder, "Tạm tính");
-  }, [buildPreview, currentOrder, hasItems]);
+
+    const lines = [buildPreview(currentOrder, "Tạm tính")];
+
+    const subtotal = Number(totals?.subtotal || 0);
+    const discount = Math.max(0, Number(totals?.discount || 0));
+    const service = Math.max(0, Number(totals?.service || 0));
+    const tax = Math.max(0, Number(totals?.tax || 0));
+    const total = Number(totals?.total || totals?.grandTotal || 0);
+
+    lines.push("");
+    lines.push("------------------------------");
+
+    if (subtotal > 0) {
+      lines.push(`Tạm tính: ${formatPrice(subtotal)}`);
+    }
+
+    if (discount > 0) {
+      lines.push(`Giảm giá: -${formatPrice(discount)}`);
+    }
+
+    if (service > 0) {
+      lines.push(`Phí phục vụ: ${formatPrice(service)}`);
+    }
+
+    if (tax > 0) {
+      lines.push(`Thuế: ${formatPrice(tax)}`);
+    }
+
+    lines.push(`Tổng cần trả: ${formatPrice(total)}`);
+
+    if (discountBreakdown?.voucherCode) {
+      lines.push(`Voucher: ${discountBreakdown.voucherCode}`);
+    }
+
+    if (discountBreakdown?.discountReason) {
+      lines.push(`Ưu đãi: ${discountBreakdown.discountReason}`);
+    }
+
+    return lines.filter(Boolean).join("\n");
+  }, [buildPreview, currentOrder, discountBreakdown, hasItems, totals]);
 
   const stationPreviews = useMemo(() => {
     const groups = {};
