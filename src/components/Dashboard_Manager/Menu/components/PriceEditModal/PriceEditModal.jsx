@@ -1,20 +1,56 @@
-import React, { useState, useEffect, useMemo } from "react";
-import Modal from "../../../../common/Modal"; // Giữ nguyên đường dẫn của bạn
+import React, { useEffect, useMemo, useState } from "react";
+import Modal from "../../../../common/Modal";
 import {
-  FiSearch,
+  FiAlertCircle,
+  FiCheck,
   FiFilter,
   FiRefreshCw,
-  FiCheck,
-  FiTrendingUp,
+  FiSearch,
   FiTrendingDown,
+  FiTrendingUp,
   FiZap,
 } from "react-icons/fi";
 import "./PriceEditModal.scss";
 
-const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
+const cloneIngredients = (ingredients = []) =>
+  Array.isArray(ingredients)
+    ? ingredients.map((ingredient) => ({
+        ingredientId: ingredient?.ingredientId,
+        qty: Number(ingredient?.qty || 0),
+        unit: ingredient?.unit || ingredient?.baseUnit || "",
+        wastePct: Number(ingredient?.wastePct || 0),
+      }))
+    : [];
+
+const createBulkOperationKey = () =>
+  `bulk_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+const normalizeInlineError = (error) => {
+  if (!error) return null;
+
+  return {
+    message: error?.message || "Không thể lưu thay đổi giá.",
+    successCount: Number(error?.successCount || 0),
+    failureCount: Number(error?.failureCount || 0),
+    failures: Array.isArray(error?.failures) ? error.failures : [],
+  };
+};
+
+const PriceEditModal = ({
+  isOpen,
+  isSubmitting = false,
+  menuItems,
+  onSave,
+  onClose,
+}) => {
   const [priceChanges, setPriceChanges] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [submitError, setSubmitError] = useState(null);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
+  const [appliedBulkOperations, setAppliedBulkOperations] = useState({});
+
+  const submitting = isSubmitting || isLocalSubmitting;
 
   // Bulk state
   const [bulkChange, setBulkChange] = useState({
@@ -31,22 +67,43 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
         itemId: item.id,
         itemName: item.name,
         category: item.categoryName || item.categoryId || "Khác",
-        methods: (Array.isArray(item.servingVariants) && item.servingVariants.length
-          ? item.servingVariants
-          : [{ key: "default", name: "Mặc định", price: item.basePrice || 0, mode: "PORTION", sellQty: 1, sellUnit: "portion" }]).map((method) => ({
+        lastBulkOperationKey: null,
+        methods: (
+          Array.isArray(item.servingVariants) && item.servingVariants.length
+            ? item.servingVariants
+            : [
+                {
+                  key: "default",
+                  name: "Mặc định",
+                  price: item.basePrice || 0,
+                  mode: "PORTION",
+                  sellQty: 1,
+                  sellUnit: "portion",
+                  ingredients: [],
+                  isDefault: true,
+                },
+              ]
+        ).map((method) => ({
           key: method.key || method.name,
           name: method.name || method.key || "Mặc định",
           mode: method.mode || "PORTION",
           sellQty: method.sellQty || 1,
           sellUnit: method.sellUnit || "portion",
+          ingredients: cloneIngredients(method.ingredients),
+          isDefault: !!method.isDefault,
           originalPrice: Number(method.price || 0),
           newPrice: Number(method.price || 0),
           changed: false,
+          changeSource: null,
+          bulkOperationKey: null,
         })),
       }));
       setPriceChanges(changes);
       setSearchTerm("");
       setFilterCategory("all");
+      setSubmitError(null);
+      setIsLocalSubmitting(false);
+      setAppliedBulkOperations({});
       setBulkChange({
         type: "percentage",
         value: "",
@@ -57,24 +114,34 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
   }, [isOpen, menuItems]);
 
   // Handle thay đổi giá từng món
-  const handlePriceChange = (itemId, methodName, newValue) => {
+  const handlePriceChange = (itemId, methodKey, newValue) => {
+    setSubmitError(null);
+
     setPriceChanges((prev) =>
       prev.map((item) => {
         if (item.itemId !== itemId) return item;
 
+        const methods = item.methods.map((method) => {
+          if (method.key !== methodKey) return method;
+
+          const parsedValue = newValue === "" ? 0 : Number(newValue);
+          const nextPrice = Number.isFinite(parsedValue)
+            ? Math.max(0, parsedValue)
+            : 0;
+          const changed = nextPrice !== method.originalPrice;
+
+          return {
+            ...method,
+            newPrice: nextPrice,
+            changed,
+            changeSource: changed ? "manual" : null,
+            bulkOperationKey: null,
+          };
+        });
+
         return {
           ...item,
-          methods: item.methods.map((method) => {
-            if (method.name !== methodName) return method;
-
-            // Validate input
-            const val = newValue === "" ? 0 : parseFloat(newValue);
-            return {
-              ...method,
-              newPrice: val,
-              changed: val !== method.originalPrice,
-            };
-          }),
+          methods,
         };
       })
     );
@@ -83,12 +150,40 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
   // Logic Apply Bulk Change
   const applyBulkChange = () => {
     if (!bulkChange.value) return;
+    if (bulkChange.applyTo === "category" && !bulkChange.category) {
+      setSubmitError({
+        message: "Hãy chọn danh mục trước khi áp dụng điều chỉnh giá.",
+        failures: [],
+        successCount: 0,
+        failureCount: 0,
+      });
+      return;
+    }
 
-    const changeValue = parseFloat(bulkChange.value);
+    const changeValue = Number(bulkChange.value);
+    if (!Number.isFinite(changeValue)) {
+      setSubmitError({
+        message: "Giá trị điều chỉnh không hợp lệ.",
+        failures: [],
+        successCount: 0,
+        failureCount: 0,
+      });
+      return;
+    }
 
+    const operationKey = createBulkOperationKey();
+    const operation = {
+      key: operationKey,
+      mode: bulkChange.type === "percentage" ? "PERCENT" : "AMOUNT",
+      value: changeValue,
+      roundTo: 0,
+      floorZero: true,
+    };
+    const affectedItemIds = [];
+
+    setSubmitError(null);
     setPriceChanges((prev) =>
       prev.map((item) => {
-        // Filter logic for bulk
         const shouldApply =
           bulkChange.applyTo === "all" ||
           (bulkChange.applyTo === "category" &&
@@ -96,44 +191,67 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
 
         if (!shouldApply) return item;
 
+        const methods = item.methods.map((method) => {
+          const rawPrice =
+            operation.mode === "PERCENT"
+              ? method.originalPrice * (1 + changeValue / 100)
+              : method.originalPrice + changeValue;
+          const nextPrice = Math.max(0, Math.round(rawPrice));
+          const changed = nextPrice !== method.originalPrice;
+
+          return {
+            ...method,
+            newPrice: nextPrice,
+            changed,
+            changeSource: changed ? "bulk" : null,
+            bulkOperationKey: changed ? operationKey : null,
+          };
+        });
+
+        const itemChanged = methods.some((method) => method.changed);
+        if (itemChanged) {
+          affectedItemIds.push(item.itemId);
+        }
+
         return {
           ...item,
-          methods: item.methods.map((method) => {
-            let newPrice = method.originalPrice;
-
-            if (bulkChange.type === "percentage") {
-              newPrice = method.originalPrice * (1 + changeValue / 100);
-            } else {
-              newPrice = method.originalPrice + changeValue;
-            }
-
-            // Làm tròn đến 1000
-            newPrice = Math.max(0, Math.round(newPrice / 1000) * 1000);
-
-            return {
-              ...method,
-              newPrice,
-              changed: newPrice !== method.originalPrice,
-            };
-          }),
+          lastBulkOperationKey: itemChanged ? operationKey : null,
+          methods,
         };
       })
     );
+
+    if (affectedItemIds.length > 0) {
+      setAppliedBulkOperations((prev) => ({
+        ...prev,
+        [operationKey]: {
+          ...operation,
+          menuItemIds: affectedItemIds,
+        },
+      }));
+    }
   };
 
   // Reset về ban đầu
   const resetPrices = () => {
     if (
       !window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ giá về ban đầu?")
-    )
+    ) {
       return;
+    }
+
+    setSubmitError(null);
+    setAppliedBulkOperations({});
     setPriceChanges((prev) =>
       prev.map((item) => ({
         ...item,
+        lastBulkOperationKey: null,
         methods: item.methods.map((method) => ({
           ...method,
           newPrice: method.originalPrice,
           changed: false,
+          changeSource: null,
+          bulkOperationKey: null,
         })),
       }))
     );
@@ -153,40 +271,101 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
 
   // Lấy danh sách Categories unique
   const categories = useMemo(() => {
-    return [...new Set(priceChanges.map((i) => i.category))];
+    return [...new Set(priceChanges.map((item) => item.category))];
   }, [priceChanges]);
 
-  // Tổng hợp items đã thay đổi
-  const getChangedItems = () => {
-    return priceChanges.filter((item) => item.methods.some((m) => m.changed));
+  const changedItems = useMemo(
+    () =>
+      priceChanges.filter((item) =>
+        item.methods.some((method) => method.changed)
+      ),
+    [priceChanges]
+  );
+
+  const changedCount = changedItems.length;
+
+  const buildManualUpdate = (item) => ({
+    itemId: item.itemId,
+    itemName: item.itemName,
+    methods: item.methods.map((method) => ({
+      key: method.key || method.name,
+      name: method.name,
+      mode: method.mode || "PORTION",
+      sellQty: method.sellQty || 1,
+      sellUnit: method.sellUnit || "portion",
+      ingredients: cloneIngredients(method.ingredients),
+      isDefault: !!method.isDefault,
+      price: method.newPrice,
+    })),
+  });
+
+  const buildSavePayload = () => {
+    const bulkGroups = new Map();
+    const manualUpdates = [];
+
+    changedItems.forEach((item) => {
+      const hasManualChanges = item.methods.some(
+        (method) => method.changed && method.changeSource === "manual"
+      );
+
+      if (hasManualChanges) {
+        manualUpdates.push(buildManualUpdate(item));
+        return;
+      }
+
+      const changedMethods = item.methods.filter((method) => method.changed);
+      if (!changedMethods.length) return;
+
+      const bulkOperationKey =
+        item.lastBulkOperationKey || changedMethods[0]?.bulkOperationKey;
+      const bulkOperation = bulkOperationKey
+        ? appliedBulkOperations[bulkOperationKey]
+        : null;
+      const isBulkOnlyItem = changedMethods.every(
+        (method) =>
+          method.changeSource === "bulk" &&
+          method.bulkOperationKey === bulkOperationKey
+      );
+
+      if (!bulkOperation || !isBulkOnlyItem) {
+        manualUpdates.push(buildManualUpdate(item));
+        return;
+      }
+
+      const existingGroup = bulkGroups.get(bulkOperationKey) || {
+        ...bulkOperation,
+        menuItemIds: [],
+      };
+      existingGroup.menuItemIds.push(item.itemId);
+      bulkGroups.set(bulkOperationKey, existingGroup);
+    });
+
+    return {
+      bulkOperations: Array.from(bulkGroups.values()),
+      manualUpdates,
+    };
   };
 
-  const changedCount = getChangedItems().length;
-
-  const handleSave = () => {
-    const changedItems = getChangedItems();
+  const handleSave = async () => {
+    if (submitting) return;
     if (changedItems.length === 0) return;
 
-    const updates = changedItems.map((item) => ({
-      itemId: item.itemId,
-      updates: {
-        methods: item.methods.map((method) => {
-          // Find original method details safely
-          const originalItem = menuItems.find((mi) => mi.id === item.itemId);
-          const originalMethod = (originalItem?.servingVariants || []).find((m) => (m.key || m.name) === (method.key || method.name));
+    setSubmitError(null);
+    setIsLocalSubmitting(true);
 
-          return {
-            key: method.key || method.name,
-            name: method.name,
-            mode: method.mode || originalMethod?.mode || "PORTION",
-            sellQty: method.sellQty || originalMethod?.sellQty || 1,
-            sellUnit: method.sellUnit || originalMethod?.sellUnit || "portion",
-            price: method.newPrice,
-          };
-        }),
-      },
-    }));
-    onSave(updates);
+    try {
+      await onSave(buildSavePayload());
+      onClose?.();
+    } catch (error) {
+      setSubmitError(normalizeInlineError(error));
+    } finally {
+      setIsLocalSubmitting(false);
+    }
+  };
+
+  const handleRequestClose = () => {
+    if (submitting) return;
+    onClose?.();
   };
 
   const formatPrice = (price) => {
@@ -196,10 +375,12 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleRequestClose}
       title="Điều chỉnh giá hàng loạt"
       size="xl"
       className="price-edit-modal"
+      closeOnOverlayClick={!submitting}
+      closeOnEscape={!submitting}
     >
       <div className="pem-container">
         {/* --- 1. TOOLBAR: Bulk Controls --- */}
@@ -213,6 +394,7 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, applyTo: e.target.value })
                 }
+                disabled={submitting}
               >
                 <option value="all">Tất cả món ăn</option>
                 <option value="category">Theo danh mục</option>
@@ -228,11 +410,12 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                   onChange={(e) =>
                     setBulkChange({ ...bulkChange, category: e.target.value })
                   }
+                  disabled={submitting}
                 >
                   <option value="">-- Chọn --</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
                     </option>
                   ))}
                 </select>
@@ -247,6 +430,7 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, type: e.target.value })
                 }
+                disabled={submitting}
               >
                 <option value="percentage">Tăng/Giảm %</option>
                 <option value="fixed">Cộng/Trừ tiền (VNĐ)</option>
@@ -263,19 +447,28 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                 placeholder={
                   bulkChange.type === "percentage"
                     ? "VD: 10 hoặc -10"
-                    : "VD: 5000"
+                    : "VD: 5000 hoặc -5000"
                 }
                 value={bulkChange.value}
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, value: e.target.value })
                 }
+                disabled={submitting}
               />
             </div>
 
-            <button className="pem-btn-apply" onClick={applyBulkChange}>
+            <button
+              className="pem-btn-apply"
+              onClick={applyBulkChange}
+              disabled={submitting}
+            >
               <FiZap /> Áp dụng
             </button>
-            <button className="pem-btn-reset" onClick={resetPrices}>
+            <button
+              className="pem-btn-reset"
+              onClick={resetPrices}
+              disabled={submitting}
+            >
               <FiRefreshCw /> Đặt lại
             </button>
           </div>
@@ -283,6 +476,38 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
 
         {/* --- 2. TABLE WRAPPER --- */}
         <div className="pem-table-wrapper">
+          {submitError?.message && (
+            <div
+              className="pem-empty"
+              style={{ marginBottom: 12, color: "#b91c1c" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FiAlertCircle />
+                <strong>{submitError.message}</strong>
+              </div>
+              {submitError.failureCount > 0 && (
+                <div style={{ marginTop: 8, textAlign: "left" }}>
+                  {submitError.successCount > 0 && (
+                    <div style={{ marginBottom: 6 }}>
+                      Đã lưu thành công {submitError.successCount} món.
+                    </div>
+                  )}
+                  {submitError.failures.map((failure, index) => (
+                    <div
+                      key={`${
+                        failure.itemId || failure.itemName || "failure"
+                      }-${index}`}
+                    >
+                      {(failure.itemName || failure.itemId || "Món không xác định") +
+                        ": " +
+                        failure.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Internal Filters */}
           <div className="pem-search-bar">
             <FiSearch className="search-icon" size={18} />
@@ -291,6 +516,7 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
               placeholder="Tìm món ăn..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={submitting}
             />
             <div
               style={{
@@ -308,15 +534,16 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                 background: "transparent",
                 fontSize: 13,
                 color: "#64748b",
-                cursor: "pointer",
+                cursor: submitting ? "not-allowed" : "pointer",
               }}
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
+              disabled={submitting}
             >
               <option value="all">Tất cả danh mục</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
                 </option>
               ))}
             </select>
@@ -343,19 +570,16 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                     <React.Fragment key={item.itemId}>
                       {item.methods.map((method, idx) => (
                         <tr
-                          key={`${item.itemId}-${idx}`}
+                          key={`${item.itemId}-${method.key || idx}`}
                           className={method.changed ? "is-changed" : ""}
                         >
-                          {/* Group Name cell visually */}
                           <td>
                             {idx === 0 && (
                               <div>
                                 <div style={{ fontWeight: 600 }}>
                                   {item.itemName}
                                 </div>
-                                <span className="pem-cate-tag">
-                                  {item.category}
-                                </span>
+                                <span className="pem-cate-tag">{item.category}</span>
                               </div>
                             )}
                           </td>
@@ -375,10 +599,11 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
                               onChange={(e) =>
                                 handlePriceChange(
                                   item.itemId,
-                                  method.name,
+                                  method.key,
                                   e.target.value
                                 )
                               }
+                              disabled={submitting}
                             />
                           </td>
                           <td>
@@ -415,20 +640,26 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
         {/* --- 3. FOOTER --- */}
         <div className="pem-footer">
           <div className="pem-stats">
-            Đang hiển thị <strong>{filteredItems.length}</strong> món. Đã sửa
-            đổi <strong>{changedCount}</strong> món.
+            Đang hiển thị <strong>{filteredItems.length}</strong> món. Đã sửa đổi
+            <strong>{` ${changedCount} `}</strong>món.
           </div>
           <div className="pem-actions">
-            <button className="btn-cancel" onClick={onClose}>
+            <button
+              className="btn-cancel"
+              onClick={handleRequestClose}
+              disabled={submitting}
+            >
               Hủy bỏ
             </button>
             <button
               className="btn-save"
               onClick={handleSave}
-              disabled={changedCount === 0}
+              disabled={changedCount === 0 || submitting}
             >
               <FiCheck style={{ marginRight: 6 }} />
-              Lưu {changedCount > 0 ? `(${changedCount})` : ""} thay đổi
+              {submitting
+                ? "Đang lưu..."
+                : `Lưu${changedCount > 0 ? ` (${changedCount})` : ""} thay đổi`}
             </button>
           </div>
         </div>
