@@ -1,6 +1,8 @@
+import { print } from "graphql";
 import { describe, expect, it } from "vitest";
 
 import {
+  QUERY_ATTENDANCE_PAGE,
   buildAttendanceCorrectionFilter,
   buildAttendanceQueryVars,
   toAttendanceIsoEndOfDay,
@@ -8,6 +10,10 @@ import {
 } from "./useAttendanceManagement";
 
 describe("useAttendanceManagement date normalization", () => {
+  it("does not query unsupported timesheetId on StaffAttendanceRecord", () => {
+    expect(print(QUERY_ATTENDANCE_PAGE)).not.toContain("timesheetId");
+  });
+
   it("converts a selected date into valid DateTime query variables", () => {
     expect(
       buildAttendanceQueryVars({
