@@ -47,7 +47,10 @@ const PriceEditModal = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [submitError, setSubmitError] = useState(null);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
   const [appliedBulkOperations, setAppliedBulkOperations] = useState({});
+
+  const submitting = isSubmitting || isLocalSubmitting;
 
   // Bulk state
   const [bulkChange, setBulkChange] = useState({
@@ -99,6 +102,7 @@ const PriceEditModal = ({
       setSearchTerm("");
       setFilterCategory("all");
       setSubmitError(null);
+      setIsLocalSubmitting(false);
       setAppliedBulkOperations({});
       setBulkChange({
         type: "percentage",
@@ -131,7 +135,7 @@ const PriceEditModal = ({
             newPrice: nextPrice,
             changed,
             changeSource: changed ? "manual" : null,
-            bulkOperationKey: changed ? null : null,
+            bulkOperationKey: null,
           };
         });
 
@@ -270,12 +274,15 @@ const PriceEditModal = ({
     return [...new Set(priceChanges.map((item) => item.category))];
   }, [priceChanges]);
 
-  // Tổng hợp items đã thay đổi
-  const getChangedItems = () => {
-    return priceChanges.filter((item) => item.methods.some((method) => method.changed));
-  };
+  const changedItems = useMemo(
+    () =>
+      priceChanges.filter((item) =>
+        item.methods.some((method) => method.changed)
+      ),
+    [priceChanges]
+  );
 
-  const changedCount = getChangedItems().length;
+  const changedCount = changedItems.length;
 
   const buildManualUpdate = (item) => ({
     itemId: item.itemId,
@@ -296,7 +303,7 @@ const PriceEditModal = ({
     const bulkGroups = new Map();
     const manualUpdates = [];
 
-    getChangedItems().forEach((item) => {
+    changedItems.forEach((item) => {
       const hasManualChanges = item.methods.some(
         (method) => method.changed && method.changeSource === "manual"
       );
@@ -340,23 +347,24 @@ const PriceEditModal = ({
   };
 
   const handleSave = async () => {
-    if (isSubmitting) return;
-
-    const changedItems = getChangedItems();
+    if (submitting) return;
     if (changedItems.length === 0) return;
 
     setSubmitError(null);
+    setIsLocalSubmitting(true);
 
     try {
       await onSave(buildSavePayload());
       onClose?.();
     } catch (error) {
       setSubmitError(normalizeInlineError(error));
+    } finally {
+      setIsLocalSubmitting(false);
     }
   };
 
   const handleRequestClose = () => {
-    if (isSubmitting) return;
+    if (submitting) return;
     onClose?.();
   };
 
@@ -371,8 +379,8 @@ const PriceEditModal = ({
       title="Điều chỉnh giá hàng loạt"
       size="xl"
       className="price-edit-modal"
-      closeOnOverlayClick={!isSubmitting}
-      closeOnEscape={!isSubmitting}
+      closeOnOverlayClick={!submitting}
+      closeOnEscape={!submitting}
     >
       <div className="pem-container">
         {/* --- 1. TOOLBAR: Bulk Controls --- */}
@@ -386,7 +394,7 @@ const PriceEditModal = ({
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, applyTo: e.target.value })
                 }
-                disabled={isSubmitting}
+                disabled={submitting}
               >
                 <option value="all">Tất cả món ăn</option>
                 <option value="category">Theo danh mục</option>
@@ -402,7 +410,7 @@ const PriceEditModal = ({
                   onChange={(e) =>
                     setBulkChange({ ...bulkChange, category: e.target.value })
                   }
-                  disabled={isSubmitting}
+                  disabled={submitting}
                 >
                   <option value="">-- Chọn --</option>
                   {categories.map((category) => (
@@ -422,7 +430,7 @@ const PriceEditModal = ({
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, type: e.target.value })
                 }
-                disabled={isSubmitting}
+                disabled={submitting}
               >
                 <option value="percentage">Tăng/Giảm %</option>
                 <option value="fixed">Cộng/Trừ tiền (VNĐ)</option>
@@ -445,21 +453,21 @@ const PriceEditModal = ({
                 onChange={(e) =>
                   setBulkChange({ ...bulkChange, value: e.target.value })
                 }
-                disabled={isSubmitting}
+                disabled={submitting}
               />
             </div>
 
             <button
               className="pem-btn-apply"
               onClick={applyBulkChange}
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               <FiZap /> Áp dụng
             </button>
             <button
               className="pem-btn-reset"
               onClick={resetPrices}
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               <FiRefreshCw /> Đặt lại
             </button>
@@ -469,7 +477,10 @@ const PriceEditModal = ({
         {/* --- 2. TABLE WRAPPER --- */}
         <div className="pem-table-wrapper">
           {submitError?.message && (
-            <div className="pem-empty" style={{ marginBottom: 12, color: "#b91c1c" }}>
+            <div
+              className="pem-empty"
+              style={{ marginBottom: 12, color: "#b91c1c" }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <FiAlertCircle />
                 <strong>{submitError.message}</strong>
@@ -482,7 +493,11 @@ const PriceEditModal = ({
                     </div>
                   )}
                   {submitError.failures.map((failure, index) => (
-                    <div key={`${failure.itemId || failure.itemName || "failure"}-${index}`}>
+                    <div
+                      key={`${
+                        failure.itemId || failure.itemName || "failure"
+                      }-${index}`}
+                    >
                       {(failure.itemName || failure.itemId || "Món không xác định") +
                         ": " +
                         failure.message}
@@ -501,7 +516,7 @@ const PriceEditModal = ({
               placeholder="Tìm món ăn..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={isSubmitting}
+              disabled={submitting}
             />
             <div
               style={{
@@ -519,11 +534,11 @@ const PriceEditModal = ({
                 background: "transparent",
                 fontSize: 13,
                 color: "#64748b",
-                cursor: isSubmitting ? "not-allowed" : "pointer",
+                cursor: submitting ? "not-allowed" : "pointer",
               }}
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               <option value="all">Tất cả danh mục</option>
               {categories.map((category) => (
@@ -588,7 +603,7 @@ const PriceEditModal = ({
                                   e.target.value
                                 )
                               }
-                              disabled={isSubmitting}
+                              disabled={submitting}
                             />
                           </td>
                           <td>
@@ -632,17 +647,17 @@ const PriceEditModal = ({
             <button
               className="btn-cancel"
               onClick={handleRequestClose}
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               Hủy bỏ
             </button>
             <button
               className="btn-save"
               onClick={handleSave}
-              disabled={changedCount === 0 || isSubmitting}
+              disabled={changedCount === 0 || submitting}
             >
               <FiCheck style={{ marginRight: 6 }} />
-              {isSubmitting
+              {submitting
                 ? "Đang lưu..."
                 : `Lưu${changedCount > 0 ? ` (${changedCount})` : ""} thay đổi`}
             </button>
