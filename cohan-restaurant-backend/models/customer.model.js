@@ -16,6 +16,9 @@ const customerSchema = new mongoose.Schema(
 
     isGuest: { type: Boolean, default: false },
     guestExpiresAt: { type: Date },
+    guestCreatedAt: { type: Date, default: null },
+    guestLastSeenAt: { type: Date, default: null },
+    registeredAt: { type: Date, default: null },
   }
 );
 
