@@ -10,6 +10,7 @@ import {
 const HOLD_TTL_MS = 5 * 60 * 1000;
 const ABUSE_BLOCK_THRESHOLD = 8;
 const ABUSE_WARN_THRESHOLD = 3;
+const ABUSE_BLOCK_MS = 60 * 60 * 1000;
 
 function unauthenticated() {
   return new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
@@ -80,6 +81,65 @@ function assertNotBlocked(cart) {
 function getCartServingKey(value) {
   const key = String(value || "").trim();
   return key || "portion";
+}
+
+function normalizeReleaseReason(value) {
+  const reason = String(value || "exit").trim().toLowerCase();
+  return reason || "exit";
+}
+
+function isActiveHoldItem(item) {
+  return !item?.holdStatus || item.holdStatus === "active";
+}
+
+function isExpiredHoldItem(item, now) {
+  if (!item?.holdExpiresAt) return false;
+  const holdExpiresAt = new Date(item.holdExpiresAt);
+  if (Number.isNaN(holdExpiresAt.getTime())) return false;
+  return holdExpiresAt <= now;
+}
+
+function getItemsToReleaseForReason(cart, reason, now) {
+  const activeItems = [...(cart?.items || [])].filter(isActiveHoldItem);
+
+  if (reason === "timeout") {
+    return activeItems.filter((item) => isExpiredHoldItem(item, now));
+  }
+
+  return activeItems;
+}
+
+function removeReleasedItems(cart, releasedItems = []) {
+  const releasedIds = new Set(releasedItems.map((item) => String(item._id)));
+  cart.items = [...(cart.items || [])].filter(
+    (item) => !releasedIds.has(String(item._id))
+  );
+}
+
+function applyHoldAbusePenalty(cart, reason, now) {
+  if (reason !== "exit" && reason !== "timeout") return;
+
+  cart.abuse = cart.abuse || {};
+
+  if (reason === "exit") {
+    cart.abuse.exitReleaseCount = Number(cart.abuse.exitReleaseCount || 0) + 1;
+  }
+
+  if (reason === "timeout") {
+    cart.abuse.timeoutReleaseCount = Number(cart.abuse.timeoutReleaseCount || 0) + 1;
+  }
+
+  cart.abuse.lastViolationAt = now;
+
+  const totalReleaseCount =
+    Number(cart.abuse.exitReleaseCount || 0) +
+    Number(cart.abuse.timeoutReleaseCount || 0);
+
+  if (totalReleaseCount >= ABUSE_BLOCK_THRESHOLD) {
+    cart.abuse.blockedUntil = new Date(now.getTime() + ABUSE_BLOCK_MS);
+  } else if (totalReleaseCount >= ABUSE_WARN_THRESHOLD) {
+    cart.abuse.warningCount = Number(cart.abuse.warningCount || 0) + 1;
+  }
 }
 
 function buildCartReleaseLine(item) {
@@ -446,7 +506,7 @@ export const CartMutation = {
 
   async releaseMyCartHolds(_, { input = {} }, ctx) {
     const uid = getUserId(input.userId, ctx);
-    const reason = String(input.reason || "exit");
+    const reason = normalizeReleaseReason(input.reason);
 
     const session = await mongoose.startSession();
     let releaseEvents = [];
@@ -456,28 +516,22 @@ export const CartMutation = {
         const cart = await Cart.findOne({ userId: uid, status: "active" }).session(session);
         if (!cart) return;
 
-        const itemsToRelease = [...(cart.items || [])];
+        const now = new Date();
+        const itemsToRelease = getItemsToReleaseForReason(cart, reason, now);
+
+        if (!itemsToRelease.length) {
+          return;
+        }
+
         await releaseCartItemsTx({ cart, items: itemsToRelease, session });
 
-        cart.abuse = cart.abuse || {};
-        const now = new Date();
+        applyHoldAbusePenalty(cart, reason, now);
 
-        if (reason === "exit") {
-          cart.abuse.exitReleaseCount = Number(cart.abuse.exitReleaseCount || 0) + 1;
-        }
-        cart.abuse.lastViolationAt = now;
+        removeReleasedItems(cart, itemsToRelease);
 
-        const totalReleaseCount =
-          Number(cart.abuse.exitReleaseCount || 0) + Number(cart.abuse.timeoutReleaseCount || 0);
-        if (totalReleaseCount >= ABUSE_BLOCK_THRESHOLD) {
-          cart.abuse.blockedUntil = new Date(now.getTime() + 60 * 60 * 1000);
-        } else if (totalReleaseCount >= ABUSE_WARN_THRESHOLD) {
-          cart.abuse.warningCount = Number(cart.abuse.warningCount || 0) + 1;
-        }
-
-        cart.items = [];
-        cart.totalQuantity = 0;
-        cart.totalAmount = 0;
+        const totals = computeTotals(cart.items);
+        cart.totalQuantity = totals.totalQuantity;
+        cart.totalAmount = totals.totalAmount;
         cart.lastActivityAt = now;
 
         await cart.save({ session });

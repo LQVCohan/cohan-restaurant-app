@@ -89,8 +89,9 @@ export const CartQuery = {
       outOfStock: !availability?.isAvailable,
       blocked,
       blockedUntil,
-      abuseWarning:
-        violationCount >= 3
+      abuseWarning: blocked
+        ? "B\u1ea1n \u0111ang b\u1ecb t\u1ea1m ch\u1eb7n gi\u1eef m\u00f3n do nhi\u1ec1u l\u1ea7n gi\u1eef m\u00f3n r\u1ed3i kh\u00f4ng x\u00e1c nh\u1eadn."
+        : violationCount >= 3
           ? `Bạn đã trả giữ chỗ ${violationCount} lần. Nếu tiếp tục có thể bị chặn tạm thời.`
           : null,
       policyMessage: POLICY_MESSAGE,
