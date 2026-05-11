@@ -1,22 +1,18 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useContext } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-// Components
 import DiscoveryHero from "./components/DiscoveryHero/DiscoveryHero";
 import FiltersSidebar from "./components/FiltersSidebar/FiltersSidebar";
 import RestaurantCard from "./components/RestaurantCard/RestaurantCard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 import { useRestaurants } from "../../../hooks/useRestaurants";
+import { AuthContext } from "../../../context/AuthContext";
 
-// Styles
 import "./RestaurantList.scss";
 
-/* =========================
-   GraphQL Query
-   ========================= */
 const GET_RESTAURANTS = gql`
   query GetRestaurants($limit: Int, $cursor: ID, $filter: RestaurantFilter) {
     restaurants(limit: $limit, cursor: $cursor, restaurantFilter: $filter) {
@@ -49,20 +45,19 @@ const GET_RESTAURANTS = gql`
 const LIMIT = 12;
 
 const RestaurantList = ({ restaurantFilter }) => {
-  // Nhận filter từ props (nếu có từ Router)
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useContext(AuthContext) || {};
   const [currentView, setCurrentView] = useState("grid");
+  const isLoggedIn = Boolean(user?.id);
 
-  // Data States
   const [accumulated, setAccumulated] = useState([]);
   const [endCursor, setEndCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
 
-  // Filter States
   const [addressFilterState, setAddressFilterState] = useState(undefined);
-  const [quickFilter, setQuickFilter] = useState(null); // Filter từ Hero
+  const [quickFilter, setQuickFilter] = useState(null);
 
-  // --- MAPPING DATA FOR HOOK ---
   const source = useMemo(() => {
     return accumulated.map((node) => ({
       id: node.id,
@@ -78,7 +73,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     }));
   }, [accumulated]);
 
-  // Hook xử lý lọc client-side (nếu cần) & quản lý state filter
   const {
     searchTerm,
     setSearchTerm,
@@ -93,22 +87,20 @@ const RestaurantList = ({ restaurantFilter }) => {
     handleToggleFavorite,
   } = useRestaurants(source, { itemsPerPage: 10000 });
 
-  // --- CONVERT FILTER TO GRAPHQL ---
   const gqlFilters = useMemo(() => {
     let minRating = 0;
     if (filters.ratings.includes("5")) minRating = 5;
     else if (filters.ratings.includes("4")) minRating = 4;
-    else if (quickFilter === "rating") minRating = 4.5; // Quick filter logic
+    else if (quickFilter === "rating") minRating = 4.5;
 
     return {
       cuisineTypes: filters.cuisines.length ? filters.cuisines : undefined,
       minRating: minRating || undefined,
       priceRange: filters.priceRanges.length ? filters.priceRanges : undefined,
-      search: searchTerm?.trim() || restaurantFilter?.search || undefined, // Ưu tiên search local -> prop
+      search: searchTerm?.trim() || restaurantFilter?.search || undefined,
     };
   }, [filters, searchTerm, restaurantFilter, quickFilter]);
 
-  // Sync Address Filter
   useEffect(() => {
     const city = filters.cities?.[0] || filters.city || undefined;
     const district = filters.districts?.[0] || undefined;
@@ -118,7 +110,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     );
   }, [filters]);
 
-  // --- QUERY DATA ---
   const { data, loading, error, fetchMore, refetch } = useQuery(
     GET_RESTAURANTS,
     {
@@ -132,7 +123,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     }
   );
 
-  // Handle Initial Load
   useEffect(() => {
     if (!data?.restaurants) return;
     const edges = data.restaurants.edges ?? [];
@@ -141,7 +131,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     setHasNextPage(!!data.restaurants.pageInfo?.hasNextPage);
   }, [data]);
 
-  // Handle Load More
   const handleLoadMore = async () => {
     if (!hasNextPage || !endCursor) return;
     const more = await fetchMore({
@@ -159,7 +148,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     setHasNextPage(!!more?.data?.restaurants?.pageInfo?.hasNextPage);
   };
 
-  // Refetch when filters change
   useEffect(() => {
     refetch({
       limit: LIMIT,
@@ -169,12 +157,10 @@ const RestaurantList = ({ restaurantFilter }) => {
     });
   }, [addressFilterState, gqlFilters, refetch]);
 
-  // --- HANDLERS ---
   const handleQuickFilter = (type) => {
     setQuickFilter(type);
     if (type === "distance") setSortBy("distance");
     if (type === "rating") setSortBy("rating");
-    // Scroll xuống list
     document
       .querySelector(".results-area")
       ?.scrollIntoView({ behavior: "smooth" });
@@ -185,17 +171,24 @@ const RestaurantList = ({ restaurantFilter }) => {
     navigate(`/restaurant/${restaurantId}/layout`);
   };
 
+  const handleFavoriteClick = (event, restaurantId) => {
+    if (isLoggedIn) {
+      handleToggleFavorite(event, restaurantId);
+      return;
+    }
+
+    event?.stopPropagation?.();
+    navigate("/login", { state: { from: location } });
+  };
+
   return (
     <div className="restaurant-list-page">
-      {/* 1. DISCOVERY HERO */}
       <div className="hero-wrapper">
         <DiscoveryHero onQuickFilter={handleQuickFilter} />
       </div>
 
-      {/* 2. MAIN CONTENT */}
       <div className="list-container">
         <div className="content-layout">
-          {/* Sidebar */}
           <aside className="sidebar-wrapper">
             <FiltersSidebar
               filters={filters}
@@ -208,9 +201,7 @@ const RestaurantList = ({ restaurantFilter }) => {
             />
           </aside>
 
-          {/* Results Grid */}
           <main className="results-area">
-            {/* Toolbar */}
             <div className="results-header">
               <div className="header-left">
                 <h2 className="results-title">
@@ -254,7 +245,6 @@ const RestaurantList = ({ restaurantFilter }) => {
               </div>
             </div>
 
-            {/* List Content */}
             {loading && accumulated.length === 0 && (
               <div className="state-box loading">
                 <LoadingSpinner size="large" />
@@ -274,9 +264,16 @@ const RestaurantList = ({ restaurantFilter }) => {
                         restaurant={restaurant}
                         variant={currentView}
                         isFavorited={favorites.has(restaurant.id)}
-                        onToggleFavorite={handleToggleFavorite}
+                        onToggleFavorite={handleFavoriteClick}
                         onMakeReservation={handleMakeReservation}
                         onViewDetails={(id) => navigate(`/restaurant/${id}`)}
+                        favoriteTitle={
+                          isLoggedIn
+                            ? favorites.has(restaurant.id)
+                              ? "Bỏ thích"
+                              : "Yêu thích"
+                            : "Đăng nhập để yêu thích"
+                        }
                       />
                     </div>
                   ))}
