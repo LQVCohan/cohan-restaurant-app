@@ -12,6 +12,7 @@ import {
   Restaurant,
   PaymentSession,
   Coupon,
+  Promotion,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
@@ -308,7 +309,33 @@ async function incrementCouponUsageOnce({ totals, session }) {
     throw new Error("Invalid voucher: usage limit reached");
   }
 }
+async function incrementPromotionUsageOnce({ totals, session }) {
+  const promotionIds = Array.isArray(totals?.appliedPromotions)
+    ? totals.appliedPromotions.map((id) => toId(id)).filter(Boolean)
+    : [];
 
+  if (!promotionIds.length) return;
+
+  for (const promotionId of promotionIds) {
+    const updateResult = await Promotion.updateOne(
+      {
+        _id: promotionId,
+        $expr: {
+          $or: [
+            { $lte: ["$usageLimit", 0] },
+            { $lt: ["$usageCount", "$usageLimit"] },
+          ],
+        },
+      },
+      { $inc: { usageCount: 1 } },
+      { session },
+    );
+
+    if (!updateResult.modifiedCount) {
+      throw new Error("Invalid promotion: usage limit reached");
+    }
+  }
+}
 async function calculatePaymentTotalsWithOptionalDiscount({
   restaurantId,
   orders,
@@ -854,6 +881,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       { session },
     ).then((r) => r[0]);
     await incrementCouponUsageOnce({ totals: discountTotals, session });
+    await incrementPromotionUsageOnce({ totals: discountTotals, session });
     await Order.updateMany(
       { _id: { $in: orderIds } },
       {
@@ -1201,7 +1229,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     ).then((r) => r[0]);
 
     await incrementCouponUsageOnce({ totals: discountTotals, session });
-
+    await incrementPromotionUsageOnce({ totals: discountTotals, session });
     await Order.updateMany(
       { _id: { $in: activeOrderIds } },
       {

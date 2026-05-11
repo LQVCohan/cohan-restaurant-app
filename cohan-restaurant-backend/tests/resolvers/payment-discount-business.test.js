@@ -60,7 +60,51 @@ describe("payment stage discount business coverage", () => {
     expect(src).toMatch(/\$inc:\s*\{\s*used:\s*1\s*\}/);
     expect(src).toMatch(/\$lt:\s*\[\s*"\$used",\s*"\$maxUsage"\s*\]/);
   });
+  it("promotion usage increment is atomic and inside payment resolver", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
 
+    expect(src).toMatch(/async function incrementPromotionUsageOnce/);
+    expect(src).toMatch(/Promotion\.updateOne/);
+    expect(src).toMatch(/\$inc:\s*\{\s*usageCount:\s*1\s*\}/);
+    expect(src).toMatch(
+      /\$lt:\s*\[\s*"\$usageCount"\s*,\s*"\$usageLimit"\s*\]/,
+    );
+    expect(src).toMatch(/\$lte:\s*\[\s*"\$usageLimit"\s*,\s*0\s*\]/);
+    expect(src).toMatch(/Invalid promotion: usage limit reached/);
+  });
+
+  it("increments promotion usage after successful payment-stage discount", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
+    const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
+
+    expect(tableSnippet).toMatch(
+      /await incrementPromotionUsageOnce\(\{\s*totals:\s*discountTotals,\s*session\s*\}\)/,
+    );
+    expect(orderIdsSnippet).toMatch(
+      /await incrementPromotionUsageOnce\(\{\s*totals:\s*discountTotals,\s*session\s*\}\)/,
+    );
+
+    const tableCouponIndex = tableSnippet.indexOf(
+      "await incrementCouponUsageOnce",
+    );
+    const tablePromotionIndex = tableSnippet.indexOf(
+      "await incrementPromotionUsageOnce",
+    );
+
+    expect(tableCouponIndex).toBeGreaterThanOrEqual(0);
+    expect(tablePromotionIndex).toBeGreaterThan(tableCouponIndex);
+
+    const orderIdsCouponIndex = orderIdsSnippet.indexOf(
+      "await incrementCouponUsageOnce",
+    );
+    const orderIdsPromotionIndex = orderIdsSnippet.indexOf(
+      "await incrementPromotionUsageOnce",
+    );
+
+    expect(orderIdsCouponIndex).toBeGreaterThanOrEqual(0);
+    expect(orderIdsPromotionIndex).toBeGreaterThan(orderIdsCouponIndex);
+  });
   it("payment amount is backend source-of-truth when discount applies", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 

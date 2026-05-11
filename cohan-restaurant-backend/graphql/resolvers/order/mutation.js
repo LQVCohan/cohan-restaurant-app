@@ -16,6 +16,7 @@ import {
   User,
   WalletTransaction,
   PrintSetting,
+  Promotion,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -920,6 +921,33 @@ async function incrementCouponUsageOnce({ totals, session }) {
     throw new Error("Invalid voucher: usage limit reached");
   }
 }
+async function incrementPromotionUsageOnce({ totals, session }) {
+  const promotionIds = Array.isArray(totals?.appliedPromotions)
+    ? totals.appliedPromotions.map((id) => toId(id)).filter(Boolean)
+    : [];
+
+  if (!promotionIds.length) return;
+
+  for (const promotionId of promotionIds) {
+    const updateResult = await Promotion.updateOne(
+      {
+        _id: promotionId,
+        $expr: {
+          $or: [
+            { $lte: ["$usageLimit", 0] },
+            { $lt: ["$usageCount", "$usageLimit"] },
+          ],
+        },
+      },
+      { $inc: { usageCount: 1 } },
+      { session },
+    );
+
+    if (!updateResult.modifiedCount) {
+      throw new Error("Invalid promotion: usage limit reached");
+    }
+  }
+}
 function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   const subtotal = Math.round(
     (items || []).reduce((sum, it) => {
@@ -1596,7 +1624,7 @@ export const OrderMutation = {
             totals,
             session,
           });
-
+          await incrementPromotionUsageOnce({ totals, session });
           if (!updateResult.modifiedCount) {
             throw new Error("Invalid voucher: usage limit reached");
           }
@@ -2062,6 +2090,7 @@ export const OrderMutation = {
               totals,
               session,
             });
+            await incrementPromotionUsageOnce({ totals, session });
             if (!updateResult.modifiedCount) {
               throw new Error("Invalid voucher: usage limit reached");
             }
