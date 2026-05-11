@@ -23,6 +23,28 @@ describe("attendanceCorrectionUtils", () => {
     expect(canCancelCorrection(user, rejectedRequest)).toBe(false);
   });
 
+  it("does not let staff cancel a pending request they did not create", () => {
+    const user = { id: "staff-1", roleName: "staff" };
+    const managerCreatedRequest = {
+      status: "pending",
+      requestedBy: "manager-1",
+      employeeId: "staff-1",
+    };
+
+    expect(canCancelCorrection(user, managerCreatedRequest)).toBe(false);
+  });
+
+  it("still lets reviewers cancel pending requests", () => {
+    const manager = { id: "manager-1", roleName: "manager" };
+    const request = {
+      status: "pending",
+      requestedBy: "staff-1",
+      employeeId: "staff-1",
+    };
+
+    expect(canCancelCorrection(manager, request)).toBe(true);
+  });
+
   it("prefers explicit record.timesheetId when building correction input", () => {
     expect(
       buildCreateCorrectionInput({
