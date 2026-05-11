@@ -11,6 +11,10 @@ import {
 } from "./useAttendanceManagement";
 
 describe("useAttendanceManagement date normalization", () => {
+  it("exports the expected attendance timezone offset", () => {
+    expect(ATTENDANCE_TIMEZONE_OFFSET).toBe("+07:00");
+  });
+
   it("does not query unsupported timesheetId on StaffAttendanceRecord", () => {
     expect(print(QUERY_ATTENDANCE_PAGE)).not.toContain("timesheetId");
   });
@@ -24,8 +28,8 @@ describe("useAttendanceManagement date normalization", () => {
       }),
     ).toEqual({
       restaurantId: undefined,
-      startDate: `2026-04-23T00:00:00.000${ATTENDANCE_TIMEZONE_OFFSET}`,
-      endDate: `2026-04-23T23:59:59.999${ATTENDANCE_TIMEZONE_OFFSET}`,
+      startDate: "2026-04-23T00:00:00.000+07:00",
+      endDate: "2026-04-23T23:59:59.999+07:00",
       status: undefined,
       search: "Nguyen",
     });
@@ -33,10 +37,10 @@ describe("useAttendanceManagement date normalization", () => {
 
   it("keeps explicit status filters and normalizes start/end helpers", () => {
     expect(toAttendanceIsoStartOfDay("2026-04-24")).toBe(
-      `2026-04-24T00:00:00.000${ATTENDANCE_TIMEZONE_OFFSET}`,
+      "2026-04-24T00:00:00.000+07:00",
     );
     expect(toAttendanceIsoEndOfDay("2026-04-24")).toBe(
-      `2026-04-24T23:59:59.999${ATTENDANCE_TIMEZONE_OFFSET}`,
+      "2026-04-24T23:59:59.999+07:00",
     );
     expect(
       buildAttendanceQueryVars({
@@ -60,8 +64,8 @@ describe("useAttendanceManagement date normalization", () => {
       restaurantId: "rest-1",
       employeeId: "emp-1",
       status: "pending",
-      startDate: `2026-05-11T00:00:00.000${ATTENDANCE_TIMEZONE_OFFSET}`,
-      endDate: `2026-05-11T23:59:59.999${ATTENDANCE_TIMEZONE_OFFSET}`,
+      startDate: "2026-05-11T00:00:00.000+07:00",
+      endDate: "2026-05-11T23:59:59.999+07:00",
       search: "camera",
     });
   });
@@ -78,8 +82,8 @@ describe("useAttendanceManagement date normalization", () => {
       restaurantId: undefined,
       employeeId: undefined,
       status: undefined,
-      startDate: `2026-05-11T00:00:00.000${ATTENDANCE_TIMEZONE_OFFSET}`,
-      endDate: `2026-05-11T23:59:59.999${ATTENDANCE_TIMEZONE_OFFSET}`,
+      startDate: "2026-05-11T00:00:00.000+07:00",
+      endDate: "2026-05-11T23:59:59.999+07:00",
       search: undefined,
     });
   });
