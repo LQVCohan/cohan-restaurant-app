@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
-import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
+import { ChevronLeft, Info, Layers } from "lucide-react";
 
 import FloorMap from "./components/FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
@@ -53,6 +53,7 @@ const TableBooking = () => {
   const restaurantId = id;
   const { user } = useContext(AuthContext) || {};
   const lastWatchingFloorRef = useRef(null);
+  const isLoggedIn = Boolean(user?.id);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -133,6 +134,11 @@ const TableBooking = () => {
       return;
     }
 
+    if (!isLoggedIn) {
+      setSelectedTable(table);
+      return;
+    }
+
     try {
       await acquireTableViewLock({
         variables: {
@@ -189,7 +195,6 @@ const TableBooking = () => {
 
   return (
     <div className="table-booking-premium">
-      {/* Header Premium */}
       <header className="premium-header">
         <div className="header-inner">
           <button className="btn-back-link" onClick={() => navigate(-1)}>
@@ -215,9 +220,7 @@ const TableBooking = () => {
       )}
 
       <div className="booking-layout-grid">
-        {/* LEFT COLUMN: Main Interaction Area */}
         <main className="main-visual-area">
-          {/* Floor Selector Bar */}
           <div className="floor-control-bar">
             <div className="bar-label">
               <Layers size={18} /> Chọn tầng:
@@ -231,7 +234,6 @@ const TableBooking = () => {
             </div>
           </div>
 
-          {/* Map Viewport */}
           <div className="map-viewport-frame">
             {tablesLoading ? (
               <div className="map-state-msg">
@@ -248,11 +250,9 @@ const TableBooking = () => {
                   selectedTable={selectedTable}
                   onSelectTable={handleSelectTable}
                   layout={activeFloorData?.layout || []}
-                  // Truyền prop để map render style đẹp hơn
                   theme="premium"
                 />
 
-                {/* Legend Floating Pill */}
                 <div className="legend-pill">
                   <div className="l-item">
                     <span className="dot available"></span> Trống
@@ -269,7 +269,6 @@ const TableBooking = () => {
           </div>
         </main>
 
-        {/* RIGHT COLUMN: Sidebar Summary Card */}
         <aside className="sidebar-summary-area">
           <div className="summary-sticky-wrapper">
             <div className="summary-card-premium">
@@ -282,8 +281,6 @@ const TableBooking = () => {
                   selectedFloorName={activeFloorData?.name}
                   menuDeposit={menuDeposit}
                   menuItemsCount={restaurantCartItems.length}
-                  // Chúng ta sẽ ẩn nút mặc định của component con và dùng nút custom ở dưới nếu cần,
-                  // hoặc style lại nút của component con qua CSS
                   onConfirm={() => selectedTable && setShowBookingModal(true)}
                   onCancel={() => setSelectedTable(null)}
                   onOrderDishes={() =>
@@ -300,7 +297,6 @@ const TableBooking = () => {
         </aside>
       </div>
 
-      {/* Modals */}
       <BookingModal
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
