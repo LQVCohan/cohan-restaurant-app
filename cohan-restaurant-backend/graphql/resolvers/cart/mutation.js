@@ -527,11 +527,7 @@ export const CartMutation = {
 
         applyHoldAbusePenalty(cart, reason, now);
 
-        if (reason === "timeout") {
-          removeReleasedItems(cart, itemsToRelease);
-        } else {
-          cart.items = [];
-        }
+        removeReleasedItems(cart, itemsToRelease);
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
