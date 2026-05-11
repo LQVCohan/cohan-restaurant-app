@@ -135,7 +135,7 @@ describe("cart access hardening", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("releaseMyCartHolds blocks cross-user and allows owner", async () => {
+  it("releaseMyCartHolds blocks cross-user and skips empty cart abuse/save", async () => {
     const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
     await expect(m.releaseMyCartHolds(null, { input: { userId: "valid-u2" } }, { user: { id: "valid-u1" } })).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
     expect(model.Cart.findOne).not.toHaveBeenCalled();
@@ -143,7 +143,8 @@ describe("cart access hardening", () => {
     const cart = makeCart();
     model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
     await expect(m.releaseMyCartHolds(null, { input: {} }, { user: { id: "valid-u1" } })).resolves.toBe(true);
-    expect(cart.save).toHaveBeenCalled();
+    expect(cart.save).not.toHaveBeenCalled();
+    expect(cart.abuse).toEqual({});
   });
 
   it("addCartItem reserves new item with stable real item id in orderCode", async () => {
@@ -338,7 +339,7 @@ describe("cart access hardening", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("releaseMyCartHolds clears cart after release and applies exit abuse logic", async () => {
+  it("releaseMyCartHolds clears active items after exit release and applies abuse logic", async () => {
     const emit = vi.fn();
     const io = { to: vi.fn(() => ({ emit })) };
     const session = {
@@ -350,13 +351,17 @@ describe("cart access hardening", () => {
     };
     mg.startSession.mockResolvedValue(session);
 
-    const item = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large" };
-    const cart = makeCart({ items: [item], abuse: { exitReleaseCount: 2, timeoutReleaseCount: 0, warningCount: 0 } });
+    const items = [
+      { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large", holdStatus: "active" },
+      { _id: "valid-i2", menuItemId: "valid-m2", quantity: 1, price: 5, restaurantId: "valid-r1", servingKey: "portion", holdStatus: "released" },
+    ];
+    const cart = makeCart({ items, abuse: { exitReleaseCount: 2, timeoutReleaseCount: 0, warningCount: 0 } });
     model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
 
     const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
     await expect(m.releaseMyCartHolds(null, { input: { reason: "exit" } }, { user: { id: "valid-u1" }, io })).resolves.toBe(true);
 
+    expect(inv.cancelReservationForOrderTx).toHaveBeenCalledTimes(1);
     expect(inv.cancelReservationForOrderTx).toHaveBeenCalledWith(
       expect.objectContaining({
         orderCode: "CART:valid-c1:valid-i1",
@@ -377,6 +382,46 @@ describe("cart access hardening", () => {
         type: "INVENTORY_RELEASED",
         servingVariantKey: "large",
         reason: "exit",
+        cartId: "valid-c1",
+        cartItemId: "valid-i1",
+      })
+    );
+  });
+
+  it("releaseMyCartHolds timeout only releases expired active items and keeps the rest", async () => {
+    const now = new Date();
+    const expired = new Date(now.getTime() - 60_000).toISOString();
+    const future = new Date(now.getTime() + 60_000).toISOString();
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) };
+    const item1 = { _id: "valid-i1", menuItemId: "valid-m1", quantity: 2, price: 10, restaurantId: "valid-r1", servingKey: "large", holdStatus: "active", holdExpiresAt: expired };
+    const item2 = { _id: "valid-i2", menuItemId: "valid-m2", quantity: 1, price: 5, restaurantId: "valid-r1", servingKey: "portion", holdStatus: "active", holdExpiresAt: future };
+    const item3 = { _id: "valid-i3", menuItemId: "valid-m3", quantity: 4, price: 3, restaurantId: "valid-r1", servingKey: "portion", holdStatus: "released", holdExpiresAt: expired };
+    const cart = makeCart({ items: [item1, item2, item3], abuse: { exitReleaseCount: 1, timeoutReleaseCount: 1, warningCount: 0 } });
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    await expect(m.releaseMyCartHolds(null, { input: { reason: "timeout" } }, { user: { id: "valid-u1" }, io })).resolves.toBe(true);
+
+    expect(inv.cancelReservationForOrderTx).toHaveBeenCalledTimes(1);
+    expect(inv.cancelReservationForOrderTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderCode: "CART:valid-c1:valid-i1",
+        lines: [{ menuItemId: "valid-m1", quantity: 2, servingKey: "large" }],
+      })
+    );
+    expect(cart.abuse.timeoutReleaseCount).toBe(2);
+    expect(cart.abuse.warningCount).toBe(1);
+    expect(cart.items).toHaveLength(2);
+    expect(cart.items.map((item) => item._id)).toEqual(["valid-i2", "valid-i3"]);
+    expect(cart.totalQuantity).toBe(5);
+    expect(cart.totalAmount).toBe(17);
+    expect(cart.save).toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      "inventoryEvents",
+      expect.objectContaining({
+        reason: "timeout",
         cartId: "valid-c1",
         cartItemId: "valid-i1",
       })
