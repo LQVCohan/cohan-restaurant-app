@@ -298,30 +298,45 @@ const FoodDetail = () => {
     .filter(Boolean)
     .join(", ");
 
+  const liveStateReady = !!liveState;
   const maxAvailableQty = Number(liveState?.maxAvailableQty || 0);
   const isBlocked = !!liveState?.blocked;
-  const isOutOfStock = !!liveState?.outOfStock || maxAvailableQty < 1;
-  const quantityExceedsAvailable = quantity > maxAvailableQty;
+  const isOutOfStock =
+    liveStateReady && (!!liveState?.outOfStock || maxAvailableQty < 1);
+  const quantityExceedsAvailable =
+    liveStateReady && maxAvailableQty > 0 && quantity > maxAvailableQty;
   const addDisabled =
-    addingToBackendCart || isBlocked || isOutOfStock || quantityExceedsAvailable;
-  const plusDisabled =
     addingToBackendCart ||
+    !selectedServingKey ||
+    !liveStateReady ||
     isBlocked ||
     isOutOfStock ||
-    (maxAvailableQty > 0 && quantity >= maxAvailableQty);
+    quantityExceedsAvailable;
+  const plusDisabled =
+    addingToBackendCart ||
+    !selectedServingKey ||
+    (liveStateReady &&
+      (isBlocked ||
+        isOutOfStock ||
+        (maxAvailableQty > 0 && quantity >= maxAvailableQty)));
 
   const addToCartButtonText = addingToBackendCart
     ? "Đang giữ món..."
-    : isBlocked
-      ? "Tạm chặn giữ món"
-      : isOutOfStock
-        ? "Hết hàng"
-        : quantityExceedsAvailable
-          ? "Không đủ số lượng"
-          : "Thêm vào giỏ";
+    : !selectedServingKey
+      ? "Đang tải tùy chọn..."
+      : !liveStateReady
+        ? "Đang kiểm tra tồn..."
+        : isBlocked
+          ? "Tạm chặn giữ món"
+          : isOutOfStock
+            ? "Hết hàng"
+            : quantityExceedsAvailable
+              ? "Không đủ số lượng"
+              : "Thêm vào giỏ";
 
   const makeCartPayload = () => {
-    if (!foundDish || !selectedServingKey) return null;
+    if (!foundDish) return null;
+    const servingVariantKey = selectedServingKey || "portion";
 
     const selectedVariantName =
       selectedSize?.name && selectedSize.name !== "Phần tiêu chuẩn"
@@ -329,13 +344,13 @@ const FoodDetail = () => {
         : "Phần tiêu chuẩn";
 
     return {
-      id: `${foundDish.id}_${selectedServingKey}`,
+      id: `${foundDish.id}_${servingVariantKey}`,
       dishId: foundDish.id,
       restaurantId: String(foundDish.restaurantId || restaurant?.id || ""),
       menuId: foundDish.menuId || null,
       categoryId: foundDish.categoryId || null,
-      variantKey: selectedServingKey,
-      servingVariantKey: selectedServingKey,
+      variantKey: servingVariantKey,
+      servingVariantKey,
       name: foundDish.name,
       price: currentUnitPrice,
       image: foundDish.thumbImage || "/default-dishes.jpg",
@@ -351,6 +366,10 @@ const FoodDetail = () => {
   const addCurrentSelectionToBackendCart = async () => {
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return null;
+    if (!selectedServingKey) {
+      alert("Vui lòng chọn tùy chọn món trước khi thêm vào giỏ.");
+      return null;
+    }
 
     if (!user?.id) {
       alert("Vui lòng đăng nhập trước khi thêm món vào giỏ.");
@@ -383,7 +402,7 @@ const FoodDetail = () => {
             quantity,
             thumbImage: payload.image,
             note: null,
-            servingVariantKey: selectedServingKey,
+            servingVariantKey: selectedServingKey || "portion",
           },
         },
       });
@@ -391,7 +410,8 @@ const FoodDetail = () => {
       const returnedItem = data?.addCartItem?.items?.find(
         (item) =>
           String(item?.menuItemId) === String(foundDish?.id) &&
-          String(item?.servingVariantKey) === String(selectedServingKey),
+          String(item?.servingVariantKey) ===
+            String(selectedServingKey || "portion"),
       );
 
       addToCart({
@@ -617,9 +637,9 @@ const FoodDetail = () => {
                 <button
                   onClick={() =>
                     setQuantity((current) =>
-                      maxAvailableQty > 0
+                      liveStateReady && maxAvailableQty > 0
                         ? Math.min(maxAvailableQty, current + 1)
-                        : current,
+                        : current + 1,
                     )
                   }
                   type="button"
