@@ -5,7 +5,18 @@ import useAttendanceManagement, {
 } from "@/hooks/useAttendanceManagement";
 import "./Attendance.scss";
 import OvertimePanel from "./OvertimePanel";
-import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
+import {
+  canCancelCorrection,
+  canReviewCorrection,
+  buildEvidenceUrls,
+  hasValidObjectIdLike,
+  validateCorrectionRequestForm,
+} from "./attendanceCorrectionUtils";
+import {
+  isForbiddenError,
+  isUnauthenticatedError,
+} from "@/utils/graphqlErrorUtils";
+
 const STATUS_TABS = [
   { key: "all", label: "Tất cả" },
   { key: "late", label: "Đi muộn" },
@@ -32,35 +43,6 @@ const CORRECTION_TYPES = [
   { value: "off_schedule_work", label: "Làm ngoài lịch" },
   { value: "other", label: "Khác" },
 ];
-
-const REVIEW_ROLES = new Set(["admin", "manager", "hr"]);
-const STAFF_ROLE = "staff";
-
-const normalizeRole = (value) => String(value || "").toLowerCase();
-
-const getUserId = (user) => user?.id || user?._id || user?.userId || null;
-
-const getRoleName = (user) =>
-  normalizeRole(
-    user?.roleName || user?.role?.slug || user?.userType || user?.role,
-  );
-
-const canReviewCorrection = (user) => REVIEW_ROLES.has(getRoleName(user));
-
-const canCancelCorrection = (user, request) => {
-  if (!request || request.status !== "pending") return false;
-  if (canReviewCorrection(user)) return true;
-
-  const userId = getUserId(user);
-  const roleName = getRoleName(user);
-
-  return (
-    roleName === STAFF_ROLE &&
-    userId &&
-    (String(request.requestedBy || "") === String(userId) ||
-      String(request.employeeId || "") === String(userId))
-  );
-};
 
 const toDateInputValue = (value) => {
   if (!value) return "";
@@ -140,9 +122,6 @@ const getDefaultCorrectionType = (record) => {
   return "wrong_check_in_out";
 };
 
-const hasValidObjectIdLike = (value) =>
-  typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
-
 const buildCorrectionInitialForm = (record, selectedDate) => ({
   correctionType: getDefaultCorrectionType(record),
   requestedCheckInAt: toDatetimeLocalValue(record?.actualCheckInAt),
@@ -155,65 +134,242 @@ const buildCorrectionInitialForm = (record, selectedDate) => ({
 
 const getStatusBadge = (status) => {
   const config = {
-    completed: { label: "Đúng ca", class: "success", icon: "✅" },
-    checked_in: { label: "Đang làm", class: "neutral", icon: "🟢" },
-    late: { label: "Đi muộn", class: "warning", icon: "⚠️" },
-    early_leave: { label: "Về sớm", class: "warning", icon: "🏃" },
+    completed: { label: "Đúng ca", className: "success", icon: "✅" },
+    checked_in: { label: "Đang làm", className: "neutral", icon: "🟢" },
+    late: { label: "Đi muộn", className: "warning", icon: "⚠️" },
+    early_leave: { label: "Về sớm", className: "warning", icon: "🏃" },
     late_early_leave: {
       label: "Muộn & về sớm",
-      class: "warning",
+      className: "warning",
       icon: "⏱️",
     },
     scheduled_absent: {
       label: "Vắng theo lịch",
-      class: "danger",
+      className: "danger",
       icon: "❌",
     },
     unscheduled_checkin: {
       label: "Vào ca ngoài lịch",
-      class: "neutral",
+      className: "neutral",
       icon: "🧭",
     },
     unscheduled_completed: {
       label: "Hoàn tất ngoài lịch",
-      class: "neutral",
+      className: "neutral",
       icon: "🧭",
     },
   };
-  const curr = config[status] || {
+  const current = config[status] || {
     label: status || "--",
-    class: "neutral",
+    className: "neutral",
     icon: "⏳",
   };
 
   return (
-    <span className={`status-badge ${curr.class}`}>
-      {curr.icon} {curr.label}
+    <span className={`status-badge ${current.className}`}>
+      {current.icon} {current.label}
     </span>
   );
 };
 
 const getCorrectionStatusBadge = (status) => {
   const config = {
-    pending: { label: "Chờ duyệt", class: "warning", icon: "⏳" },
-    approved: { label: "Đã duyệt", class: "info", icon: "✅" },
-    applied: { label: "Đã áp dụng", class: "success", icon: "✅" },
-    rejected: { label: "Từ chối", class: "danger", icon: "⛔" },
-    cancelled: { label: "Đã hủy", class: "neutral", icon: "🚫" },
+    pending: { label: "Chờ duyệt", className: "warning", icon: "⏳" },
+    approved: { label: "Đã duyệt", className: "info", icon: "✅" },
+    applied: { label: "Đã áp dụng", className: "success", icon: "✅" },
+    rejected: { label: "Từ chối", className: "danger", icon: "⛔" },
+    cancelled: { label: "Đã hủy", className: "neutral", icon: "🚫" },
   };
 
-  const curr = config[status] || {
+  const current = config[status] || {
     label: status || "--",
-    class: "neutral",
+    className: "neutral",
     icon: "•",
   };
 
   return (
-    <span className={`status-badge ${curr.class}`}>
-      {curr.icon} {curr.label}
+    <span className={`status-badge ${current.className}`}>
+      {current.icon} {current.label}
     </span>
   );
 };
+
+const formatMinutesValue = (value) => {
+  if (value === null || value === undefined || value === "") return "--";
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? `${numeric} phút` : "--";
+};
+
+const renderMetricGroup = (title, values) => (
+  <div className="detail-card metric-card">
+    <h4>{title}</h4>
+    <dl className="metric-grid">
+      {values.map((item) => (
+        <div key={item.label}>
+          <dt>{item.label}</dt>
+          <dd>{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+);
+
+const renderRequestDetails = (request) => (
+  <div className="correction-detail-panel">
+    <div className="detail-grid">
+      <div className="detail-card">
+        <h4>Thông tin yêu cầu</h4>
+        <dl className="detail-list">
+          <div>
+            <dt>Nhân viên</dt>
+            <dd>
+              {request.employeeName || "--"}
+              {request.employeeCode ? ` • ${request.employeeCode}` : ""}
+              {request.employeeRole ? ` • ${request.employeeRole}` : ""}
+            </dd>
+          </div>
+          <div>
+            <dt>Người gửi</dt>
+            <dd>
+              {request.requestedByName || "--"}
+              {request.requestedByRole ? ` • ${request.requestedByRole}` : ""}
+            </dd>
+          </div>
+          <div>
+            <dt>Ngày công</dt>
+            <dd>{formatDate(request.workDate)}</dd>
+          </div>
+          <div>
+            <dt>Gửi lúc</dt>
+            <dd>{formatDateTime(request.requestedAt || request.createdAt)}</dd>
+          </div>
+          <div>
+            <dt>Loại chỉnh công</dt>
+            <dd>{getCorrectionTypeLabel(request.correctionType)}</dd>
+          </div>
+          <div>
+            <dt>Trạng thái</dt>
+            <dd>{getCorrectionStatusBadge(request.status)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="detail-card">
+        <h4>Nội dung yêu cầu</h4>
+        <div className="detail-copy">
+          <div>
+            <span className="detail-label">Lý do</span>
+            <p>{request.reason || "--"}</p>
+          </div>
+          <div>
+            <span className="detail-label">Ghi chú bằng chứng</span>
+            <p>{request.evidenceNote || "--"}</p>
+          </div>
+          <div>
+            <span className="detail-label">Link bằng chứng</span>
+            {request.evidenceUrls?.length ? (
+              <ul className="evidence-list">
+                {request.evidenceUrls.map((url) => (
+                  <li key={url}>
+                    <a href={url} target="_blank" rel="noreferrer">
+                      {url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>--</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {renderMetricGroup("Giá trị hiện tại", [
+        {
+          label: "Check-in",
+          value: formatDateTime(request.originalCheckInAt),
+        },
+        {
+          label: "Check-out",
+          value: formatDateTime(request.originalCheckOutAt),
+        },
+        {
+          label: "Giờ công",
+          value: formatMinutesValue(request.originalWorkedMinutes),
+        },
+        {
+          label: "Đi muộn",
+          value: formatMinutesValue(request.originalLatenessMinutes),
+        },
+        {
+          label: "Về sớm",
+          value: formatMinutesValue(request.originalEarlyLeaveMinutes),
+        },
+        {
+          label: "Tăng ca",
+          value: formatMinutesValue(request.originalOvertimeMinutes),
+        },
+      ])}
+
+      {renderMetricGroup("Giá trị đề xuất", [
+        {
+          label: "Check-in",
+          value: formatDateTime(request.requestedCheckInAt),
+        },
+        {
+          label: "Check-out",
+          value: formatDateTime(request.requestedCheckOutAt),
+        },
+        {
+          label: "Giờ công",
+          value: formatMinutesValue(request.requestedWorkedMinutes),
+        },
+        {
+          label: "Đi muộn",
+          value: formatMinutesValue(request.requestedLatenessMinutes),
+        },
+        {
+          label: "Về sớm",
+          value: formatMinutesValue(request.requestedEarlyLeaveMinutes),
+        },
+        {
+          label: "Tăng ca",
+          value: formatMinutesValue(request.requestedOvertimeMinutes),
+        },
+      ])}
+
+      <div className="detail-card detail-card-wide">
+        <h4>Thông tin review</h4>
+        <dl className="detail-list detail-list-wide">
+          <div>
+            <dt>Người review</dt>
+            <dd>{request.reviewedByName || "--"}</dd>
+          </div>
+          <div>
+            <dt>Review lúc</dt>
+            <dd>{formatDateTime(request.reviewedAt)}</dd>
+          </div>
+          <div>
+            <dt>Ghi chú review</dt>
+            <dd>{request.reviewNote || "--"}</dd>
+          </div>
+          <div>
+            <dt>Lý do từ chối</dt>
+            <dd>{request.rejectionReason || "--"}</dd>
+          </div>
+          <div>
+            <dt>Người áp dụng</dt>
+            <dd>{request.appliedByName || "--"}</dd>
+          </div>
+          <div>
+            <dt>Áp dụng lúc</dt>
+            <dd>{formatDateTime(request.appliedAt)}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+);
 
 const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(
@@ -228,13 +384,15 @@ const AttendancePage = () => {
   const [selectedCorrectionRecord, setSelectedCorrectionRecord] =
     useState(null);
   const [correctionForm, setCorrectionForm] = useState(null);
+  const [correctionFormErrors, setCorrectionFormErrors] = useState({});
+  const [correctionSubmitError, setCorrectionSubmitError] = useState("");
+  const [reviewDialog, setReviewDialog] = useState(null);
+  const [expandedCorrectionId, setExpandedCorrectionId] = useState(null);
 
   const { user } = useContext(AuthContext);
 
   const userRestaurantId =
-    user?.restaurantForStaff ||
-    user?.refRestaurants?.[0]?.id ||
-    null;
+    user?.restaurantForStaff || user?.refRestaurants?.[0]?.id || null;
 
   const {
     employees,
@@ -247,6 +405,7 @@ const AttendancePage = () => {
     correctionsLoading,
     correctionsError,
     refetch,
+    refreshAttendanceViews,
     mutateQuickAttendance,
     mutationState,
     createAttendanceCorrectionRequest,
@@ -278,10 +437,14 @@ const AttendancePage = () => {
 
   const isReviewer = canReviewCorrection(user);
   const isSubmittingCorrection = createCorrectionState.loading;
+  const isApproveSubmitting =
+    reviewDialog?.mode === "approve" && approveCorrectionState.loading;
+  const isRejectSubmitting =
+    reviewDialog?.mode === "reject" && rejectCorrectionState.loading;
+  const isCancelSubmitting =
+    reviewDialog?.mode === "cancel" && cancelCorrectionState.loading;
   const isReviewingCorrection =
-    approveCorrectionState.loading ||
-    rejectCorrectionState.loading ||
-    cancelCorrectionState.loading;
+    isApproveSubmitting || isRejectSubmitting || isCancelSubmitting;
 
   const shiftLabel = (item) => {
     if (item.plannedStartTime && item.plannedEndTime) {
@@ -333,11 +496,16 @@ const AttendancePage = () => {
   const openCorrectionModal = (record) => {
     setSelectedCorrectionRecord(record);
     setCorrectionForm(buildCorrectionInitialForm(record, selectedDate));
+    setCorrectionFormErrors({});
+    setCorrectionSubmitError("");
   };
 
   const closeCorrectionModal = () => {
+    if (isSubmittingCorrection) return;
     setSelectedCorrectionRecord(null);
     setCorrectionForm(null);
+    setCorrectionFormErrors({});
+    setCorrectionSubmitError("");
   };
 
   const updateCorrectionForm = (field, value) => {
@@ -345,6 +513,12 @@ const AttendancePage = () => {
       ...prev,
       [field]: value,
     }));
+    setCorrectionFormErrors((prev) => ({
+      ...prev,
+      [field]: undefined,
+      requestedTime: undefined,
+    }));
+    setCorrectionSubmitError("");
   };
 
   const handleSubmitCorrection = async (event) => {
@@ -356,23 +530,9 @@ const AttendancePage = () => {
       selectedCorrectionRecord.restaurantId || effectiveRestaurantId || null;
 
     if (!restaurantId) {
-      alert("❌ Không xác định được nhà hàng để tạo yêu cầu chỉnh công.");
-      return;
-    }
-
-    if (
-      !correctionForm.reason?.trim() ||
-      correctionForm.reason.trim().length < 5
-    ) {
-      alert("⚠️ Vui lòng nhập lý do chỉnh công tối thiểu 5 ký tự.");
-      return;
-    }
-
-    if (
-      !correctionForm.requestedCheckInAt &&
-      !correctionForm.requestedCheckOutAt
-    ) {
-      alert("⚠️ Cần nhập ít nhất một giờ check-in hoặc check-out đề xuất.");
+      setCorrectionSubmitError(
+        "Không xác định được nhà hàng để tạo yêu cầu chỉnh công.",
+      );
       return;
     }
 
@@ -383,19 +543,16 @@ const AttendancePage = () => {
       correctionForm.requestedCheckOutAt,
     );
 
-    if (
-      requestedCheckInAt &&
-      requestedCheckOutAt &&
-      new Date(requestedCheckOutAt) <= new Date(requestedCheckInAt)
-    ) {
-      alert("⚠️ Giờ check-out đề xuất phải lớn hơn giờ check-in đề xuất.");
+    const validationErrors = validateCorrectionRequestForm({
+      ...correctionForm,
+      requestedCheckInAt,
+      requestedCheckOutAt,
+    });
+
+    if (Object.keys(validationErrors).length > 0) {
+      setCorrectionFormErrors(validationErrors);
       return;
     }
-
-    const evidenceUrls = correctionForm.evidenceUrlsText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
 
     try {
       await createAttendanceCorrectionRequest({
@@ -413,104 +570,106 @@ const AttendancePage = () => {
             requestedCheckOutAt: requestedCheckOutAt || undefined,
             reason: correctionForm.reason.trim(),
             evidenceNote: correctionForm.evidenceNote?.trim() || undefined,
-            evidenceUrls,
+            evidenceUrls: buildEvidenceUrls(correctionForm.evidenceUrlsText),
           },
         },
       });
+      await refreshAttendanceViews();
 
-      alert("✅ Đã gửi yêu cầu chỉnh công.");
       closeCorrectionModal();
       setActiveView("corrections");
       setCorrectionStatus("pending");
     } catch (err) {
-      alert(
-        `❌ Không thể tạo yêu cầu chỉnh công: ${getAttendanceActionErrorMessage(
+      setCorrectionSubmitError(
+        getAttendanceActionErrorMessage(
           err,
-          err?.message || "Lỗi không xác định",
-        )}`,
+          err?.message || "Không thể tạo yêu cầu chỉnh công.",
+        ),
       );
     }
   };
 
-  const handleApproveCorrection = async (request) => {
-    const note = window.prompt(
-      `Duyệt yêu cầu chỉnh công của ${request.employeeName || "nhân viên"}?`,
-      "Đã kiểm tra và xác nhận.",
-    );
-
-    if (note === null) return;
-
-    try {
-      await approveAttendanceCorrectionRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            note: note || undefined,
-          },
-        },
-      });
-      alert("✅ Đã duyệt và áp dụng chỉnh công.");
-    } catch (err) {
-      alert(
-        `❌ Duyệt chỉnh công thất bại: ${getAttendanceActionErrorMessage(
-          err,
-          err?.message || "Lỗi không xác định",
-        )}`,
-      );
-    }
+  const openReviewDialog = (mode, request) => {
+    setReviewDialog({
+      mode,
+      request,
+      note: mode === "approve" ? "Đã kiểm tra và xác nhận." : "",
+      reason: "",
+      error: "",
+    });
   };
 
-  const handleRejectCorrection = async (request) => {
-    const reason = window.prompt(
-      `Nhập lý do từ chối yêu cầu của ${request.employeeName || "nhân viên"}:`,
-    );
+  const closeReviewDialog = () => {
+    if (isReviewingCorrection) return;
+    setReviewDialog(null);
+  };
 
-    if (reason === null) return;
-    if (!reason.trim()) {
-      alert("⚠️ Lý do từ chối là bắt buộc.");
+  const updateReviewDialog = (field, value) => {
+    setReviewDialog((prev) =>
+      prev
+        ? {
+            ...prev,
+            [field]: value,
+            error: "",
+          }
+        : prev,
+    );
+  };
+
+  const handleSubmitReviewDialog = async (event) => {
+    event.preventDefault();
+
+    if (!reviewDialog?.request) return;
+
+    if (reviewDialog.mode === "reject" && !reviewDialog.reason?.trim()) {
+      setReviewDialog((prev) => ({
+        ...prev,
+        error: "Lý do từ chối là bắt buộc.",
+      }));
       return;
     }
 
     try {
-      await rejectAttendanceCorrectionRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            reason: reason.trim(),
+      if (reviewDialog.mode === "approve") {
+        await approveAttendanceCorrectionRequest({
+          variables: {
+            input: {
+              requestId: reviewDialog.request.id,
+              note: reviewDialog.note?.trim() || undefined,
+            },
           },
-        },
-      });
-      alert("✅ Đã từ chối yêu cầu chỉnh công.");
-    } catch (err) {
-      alert(
-        `❌ Từ chối yêu cầu thất bại: ${getAttendanceActionErrorMessage(
-          err,
-          err?.message || "Lỗi không xác định",
-        )}`,
-      );
-    }
-  };
+        });
+      }
 
-  const handleCancelCorrection = async (request) => {
-    const confirmed = window.confirm(
-      "Bạn có chắc muốn hủy yêu cầu chỉnh công này?",
-    );
-    if (!confirmed) return;
+      if (reviewDialog.mode === "reject") {
+        await rejectAttendanceCorrectionRequest({
+          variables: {
+            input: {
+              requestId: reviewDialog.request.id,
+              reason: reviewDialog.reason.trim(),
+            },
+          },
+        });
+      }
 
-    try {
-      await cancelAttendanceCorrectionRequest({
-        variables: {
-          requestId: request.id,
-        },
-      });
-      alert("✅ Đã hủy yêu cầu chỉnh công.");
+      if (reviewDialog.mode === "cancel") {
+        await cancelAttendanceCorrectionRequest({
+          variables: {
+            requestId: reviewDialog.request.id,
+          },
+        });
+      }
+
+      await refreshAttendanceViews();
+      closeReviewDialog();
     } catch (err) {
-      alert(
-        `❌ Hủy yêu cầu thất bại: ${getAttendanceActionErrorMessage(
+      setReviewDialog((prev) => ({
+        ...prev,
+        error: getAttendanceActionErrorMessage(
           err,
-          err?.message || "Lỗi không xác định",
-        )}`,
-      );
+          err?.message || "Không thể xử lý yêu cầu chỉnh công.",
+        ),
+      }));
     }
   };
 
@@ -562,7 +721,7 @@ const AttendancePage = () => {
         <div className="stat-card correction">
           <div className="icon-box">📝</div>
           <div className="info">
-            <span className="label">Yêu cầu chỉnh công</span>
+            <span className="label">Yêu cầu chỉnh công chờ duyệt</span>
             <span className="value">{correctionStats.pending}</span>
           </div>
         </div>
@@ -664,9 +823,7 @@ const AttendancePage = () => {
               {STATUS_TABS.map((tab) => (
                 <button
                   key={tab.key}
-                  className={`tab-btn ${
-                    filterStatus === tab.key ? "active" : ""
-                  }`}
+                  className={`tab-btn ${filterStatus === tab.key ? "active" : ""}`}
                   onClick={() => setFilterStatus(tab.key)}
                   type="button"
                 >
@@ -739,8 +896,7 @@ const AttendancePage = () => {
                           <div className="info">
                             <div className="name">{displayName}</div>
                             <div className="role">
-                              {item.employeeCode || "--"} •{" "}
-                              {item.employeeRole || "--"}
+                              {item.employeeCode || "--"} • {item.employeeRole || "--"}
                             </div>
                           </div>
                         </div>
@@ -750,18 +906,14 @@ const AttendancePage = () => {
                       </td>
                       <td>
                         <span
-                          className={`time-text ${
-                            checkInText ? "bold" : "placeholder"
-                          }`}
+                          className={`time-text ${checkInText ? "bold" : "placeholder"}`}
                         >
                           {checkInText || "--:--"}
                         </span>
                       </td>
                       <td>
                         <span
-                          className={`time-text ${
-                            checkOutText ? "bold" : "placeholder"
-                          }`}
+                          className={`time-text ${checkOutText ? "bold" : "placeholder"}`}
                         >
                           {checkOutText || "--:--"}
                         </span>
@@ -798,9 +950,7 @@ const AttendancePage = () => {
               {CORRECTION_STATUS_TABS.map((tab) => (
                 <button
                   key={tab.key}
-                  className={`tab-btn ${
-                    correctionStatus === tab.key ? "active" : ""
-                  }`}
+                  className={`tab-btn ${correctionStatus === tab.key ? "active" : ""}`}
                   type="button"
                   onClick={() => setCorrectionStatus(tab.key)}
                 >
@@ -818,6 +968,25 @@ const AttendancePage = () => {
             </div>
           </div>
 
+          <div className="correction-summary-strip">
+            <div className="summary-pill warning">
+              <span>Chờ duyệt</span>
+              <strong>{correctionStats.pending}</strong>
+            </div>
+            <div className="summary-pill">
+              <span>Tổng yêu cầu</span>
+              <strong>{correctionStats.total}</strong>
+            </div>
+            <div className="summary-pill success">
+              <span>Đã áp dụng</span>
+              <strong>{correctionStats.applied}</strong>
+            </div>
+            <div className="summary-pill danger">
+              <span>Từ chối / Hủy</span>
+              <strong>{correctionStats.rejected + correctionStats.cancelled}</strong>
+            </div>
+          </div>
+
           {correctionsError && (
             <div className="empty-state">
               ❌ Không tải được yêu cầu chỉnh công: {correctionsError.message}
@@ -829,11 +998,12 @@ const AttendancePage = () => {
               <thead>
                 <tr>
                   <th width="18%">Nhân viên</th>
-                  <th width="12%">Ngày</th>
-                  <th width="15%">Loại</th>
-                  <th width="18%">Giờ cũ</th>
-                  <th width="18%">Giờ đề xuất</th>
-                  <th width="11%">Trạng thái</th>
+                  <th width="10%">Ngày công</th>
+                  <th width="14%">Loại</th>
+                  <th width="14%">Người gửi</th>
+                  <th width="12%">Gửi lúc</th>
+                  <th width="12%">Trạng thái</th>
+                  <th width="12%">Tóm tắt</th>
                   <th width="8%" className="text-right">
                     Thao tác
                   </th>
@@ -842,120 +1012,124 @@ const AttendancePage = () => {
               <tbody>
                 {!correctionsLoading && correctionRequests.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center">
+                    <td colSpan={8} className="text-center">
                       Không có yêu cầu chỉnh công trong ngày đã chọn.
                     </td>
                   </tr>
                 )}
 
                 {correctionRequests.map((request) => {
-                  return (
-                    <tr key={request.id}>
-                      <td>
-                        <div className="employee-cell">
-                          <div
-                            className="avatar"
-                            style={{
-                              backgroundImage: request.employeeAvatar
-                                ? `url(${request.employeeAvatar})`
-                                : "none",
-                              backgroundColor: !request.employeeAvatar
-                                ? getAvatarColor(request.employeeName || "?")
-                                : "transparent",
-                            }}
-                          >
-                            {!request.employeeAvatar &&
-                              (request.employeeName || "?").charAt(0)}
-                          </div>
-                          <div className="info">
-                            <div className="name">
-                              {request.employeeName || "--"}
-                            </div>
-                            <div className="role">
-                              {request.employeeCode || "--"} •{" "}
-                              {request.employeeRole || "--"}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{formatDate(request.workDate)}</td>
-                      <td>
-                        <span className="shift-badge">
-                          {getCorrectionTypeLabel(request.correctionType)}
-                        </span>
-                        <div className="correction-reason">
-                          {request.reason}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="time-diff">
-                          <span>
-                            Vào:{" "}
-                            {formatTime(request.originalCheckInAt) || "--:--"}
-                          </span>
-                          <span>
-                            Ra:{" "}
-                            {formatTime(request.originalCheckOutAt) || "--:--"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="time-diff proposed">
-                          <span>
-                            Vào:{" "}
-                            {formatTime(request.requestedCheckInAt) || "--:--"}
-                          </span>
-                          <span>
-                            Ra:{" "}
-                            {formatTime(request.requestedCheckOutAt) || "--:--"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        {getCorrectionStatusBadge(request.status)}
-                        <div className="small-muted">
-                          {request.requestedByName
-                            ? `Gửi bởi ${request.requestedByName}`
-                            : formatDateTime(request.requestedAt)}
-                        </div>
-                      </td>
-                      <td className="text-right">
-                        {request.status === "pending" && isReviewer && (
-                          <>
-                            <button
-                              type="button"
-                              className="action-btn approve"
-                              title="Duyệt và áp dụng"
-                              disabled={isReviewingCorrection}
-                              onClick={() => handleApproveCorrection(request)}
-                            >
-                              ✅
-                            </button>
-                            <button
-                              type="button"
-                              className="action-btn reject"
-                              title="Từ chối"
-                              disabled={isReviewingCorrection}
-                              onClick={() => handleRejectCorrection(request)}
-                            >
-                              ⛔
-                            </button>
-                          </>
-                        )}
+                  const isExpanded = expandedCorrectionId === request.id;
+                  const canCancel = canCancelCorrection(user, request);
 
-                        {canCancelCorrection(user, request) && (
+                  return (
+                    <React.Fragment key={request.id}>
+                      <tr className={isExpanded ? "expanded-row" : ""}>
+                        <td>
+                          <div className="employee-cell">
+                            <div
+                              className="avatar"
+                              style={{
+                                backgroundImage: request.employeeAvatar
+                                  ? `url(${request.employeeAvatar})`
+                                  : "none",
+                                backgroundColor: !request.employeeAvatar
+                                  ? getAvatarColor(request.employeeName || "?")
+                                  : "transparent",
+                              }}
+                            >
+                              {!request.employeeAvatar &&
+                                (request.employeeName || "?").charAt(0)}
+                            </div>
+                            <div className="info">
+                              <div className="name">{request.employeeName || "--"}</div>
+                              <div className="role">
+                                {request.employeeCode || "--"} •{" "}
+                                {request.employeeRole || "--"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{formatDate(request.workDate)}</td>
+                        <td>
+                          <span className="shift-badge">
+                            {getCorrectionTypeLabel(request.correctionType)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="compact-stack">
+                            <strong>{request.requestedByName || "--"}</strong>
+                            <span>{request.requestedByRole || "--"}</span>
+                          </div>
+                        </td>
+                        <td>{formatDateTime(request.requestedAt || request.createdAt)}</td>
+                        <td>{getCorrectionStatusBadge(request.status)}</td>
+                        <td>
+                          <div className="compact-stack">
+                            <strong>
+                              {formatTime(request.originalCheckInAt) || "--:--"} →{" "}
+                              {formatTime(request.requestedCheckInAt) || "--:--"}
+                            </strong>
+                            <span>{request.reason || "--"}</span>
+                          </div>
+                        </td>
+                        <td className="text-right">
                           <button
                             type="button"
-                            className="action-btn cancel"
-                            title="Hủy yêu cầu"
-                            disabled={isReviewingCorrection}
-                            onClick={() => handleCancelCorrection(request)}
+                            className="action-btn detail"
+                            title={isExpanded ? "Ẩn chi tiết" : "Xem chi tiết"}
+                            onClick={() =>
+                              setExpandedCorrectionId((prev) =>
+                                prev === request.id ? null : request.id,
+                              )
+                            }
                           >
-                            🚫
+                            {isExpanded ? "▴" : "▾"}
                           </button>
-                        )}
-                      </td>
-                    </tr>
+
+                          {request.status === "pending" && isReviewer && (
+                            <>
+                              <button
+                                type="button"
+                                className="action-btn approve"
+                                title="Duyệt và áp dụng"
+                                disabled={isReviewingCorrection}
+                                onClick={() => openReviewDialog("approve", request)}
+                              >
+                                ✅
+                              </button>
+                              <button
+                                type="button"
+                                className="action-btn reject"
+                                title="Từ chối"
+                                disabled={isReviewingCorrection}
+                                onClick={() => openReviewDialog("reject", request)}
+                              >
+                                ⛔
+                              </button>
+                            </>
+                          )}
+
+                          {canCancel && (
+                            <button
+                              type="button"
+                              className="action-btn cancel"
+                              title="Hủy yêu cầu"
+                              disabled={isReviewingCorrection}
+                              onClick={() => openReviewDialog("cancel", request)}
+                            >
+                              🚫
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr className="correction-detail-row">
+                          <td colSpan={8}>{renderRequestDetails(request)}</td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -973,10 +1147,7 @@ const AttendancePage = () => {
       )}
 
       {selectedCorrectionRecord && correctionForm && (
-        <div
-          className="attendance-modal-overlay"
-          onMouseDown={closeCorrectionModal}
-        >
+        <div className="attendance-modal-overlay" onMouseDown={closeCorrectionModal}>
           <div
             className="attendance-correction-modal"
             onMouseDown={(event) => event.stopPropagation()}
@@ -993,6 +1164,7 @@ const AttendancePage = () => {
                 type="button"
                 className="modal-close"
                 onClick={closeCorrectionModal}
+                disabled={isSubmittingCorrection}
               >
                 ×
               </button>
@@ -1007,15 +1179,13 @@ const AttendancePage = () => {
                 <div>
                   <span className="label">Check-in hiện tại</span>
                   <strong>
-                    {formatTime(selectedCorrectionRecord.actualCheckInAt) ||
-                      "--:--"}
+                    {formatTime(selectedCorrectionRecord.actualCheckInAt) || "--:--"}
                   </strong>
                 </div>
                 <div>
                   <span className="label">Check-out hiện tại</span>
                   <strong>
-                    {formatTime(selectedCorrectionRecord.actualCheckOutAt) ||
-                      "--:--"}
+                    {formatTime(selectedCorrectionRecord.actualCheckOutAt) || "--:--"}
                   </strong>
                 </div>
                 <div>
@@ -1023,6 +1193,10 @@ const AttendancePage = () => {
                   {getStatusBadge(selectedCorrectionRecord.status)}
                 </div>
               </div>
+
+              {correctionSubmitError && (
+                <div className="form-alert error">{correctionSubmitError}</div>
+              )}
 
               <div className="form-grid">
                 <div className="form-group">
@@ -1060,10 +1234,7 @@ const AttendancePage = () => {
                     type="datetime-local"
                     value={correctionForm.requestedCheckInAt}
                     onChange={(event) =>
-                      updateCorrectionForm(
-                        "requestedCheckInAt",
-                        event.target.value,
-                      )
+                      updateCorrectionForm("requestedCheckInAt", event.target.value)
                     }
                   />
                 </div>
@@ -1074,13 +1245,23 @@ const AttendancePage = () => {
                     type="datetime-local"
                     value={correctionForm.requestedCheckOutAt}
                     onChange={(event) =>
-                      updateCorrectionForm(
-                        "requestedCheckOutAt",
-                        event.target.value,
-                      )
+                      updateCorrectionForm("requestedCheckOutAt", event.target.value)
                     }
                   />
+                  {correctionFormErrors.requestedCheckOutAt && (
+                    <div className="field-error">
+                      {correctionFormErrors.requestedCheckOutAt}
+                    </div>
+                  )}
                 </div>
+
+                {correctionFormErrors.requestedTime && (
+                  <div className="form-group full-width">
+                    <div className="field-error">
+                      {correctionFormErrors.requestedTime}
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group full-width">
                   <label>Lý do chỉnh công</label>
@@ -1093,6 +1274,9 @@ const AttendancePage = () => {
                     required
                     minLength={5}
                   />
+                  {correctionFormErrors.reason && (
+                    <div className="field-error">{correctionFormErrors.reason}</div>
+                  )}
                 </div>
 
                 <div className="form-group full-width">
@@ -1112,10 +1296,7 @@ const AttendancePage = () => {
                   <textarea
                     value={correctionForm.evidenceUrlsText}
                     onChange={(event) =>
-                      updateCorrectionForm(
-                        "evidenceUrlsText",
-                        event.target.value,
-                      )
+                      updateCorrectionForm("evidenceUrlsText", event.target.value)
                     }
                     placeholder="https://..."
                   />
@@ -1136,9 +1317,104 @@ const AttendancePage = () => {
                   className="btn btn-primary"
                   disabled={isSubmittingCorrection}
                 >
-                  {isSubmittingCorrection
-                    ? "Đang gửi..."
-                    : "Gửi yêu cầu chỉnh công"}
+                  {isSubmittingCorrection ? "Đang gửi..." : "Gửi yêu cầu chỉnh công"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {reviewDialog?.request && (
+        <div className="attendance-modal-overlay" onMouseDown={closeReviewDialog}>
+          <div
+            className="attendance-correction-modal review-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <h3>
+                  {reviewDialog.mode === "approve" && "Duyệt yêu cầu chỉnh công"}
+                  {reviewDialog.mode === "reject" && "Từ chối yêu cầu chỉnh công"}
+                  {reviewDialog.mode === "cancel" && "Hủy yêu cầu chỉnh công"}
+                </h3>
+                <p>
+                  {reviewDialog.request.employeeName || "Nhân viên"} •{" "}
+                  {formatDate(reviewDialog.request.workDate)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={closeReviewDialog}
+                disabled={isReviewingCorrection}
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="correction-form" onSubmit={handleSubmitReviewDialog}>
+              <div className="review-summary">
+                {renderRequestDetails(reviewDialog.request)}
+              </div>
+
+              {reviewDialog.error && (
+                <div className="form-alert error">{reviewDialog.error}</div>
+              )}
+
+              {reviewDialog.mode === "approve" && (
+                <div className="form-group full-width">
+                  <label>Ghi chú quản lý (không bắt buộc)</label>
+                  <textarea
+                    value={reviewDialog.note}
+                    onChange={(event) => updateReviewDialog("note", event.target.value)}
+                    placeholder="Ghi chú xác nhận hoặc bối cảnh review..."
+                  />
+                </div>
+              )}
+
+              {reviewDialog.mode === "reject" && (
+                <div className="form-group full-width">
+                  <label>Lý do từ chối</label>
+                  <textarea
+                    value={reviewDialog.reason}
+                    onChange={(event) =>
+                      updateReviewDialog("reason", event.target.value)
+                    }
+                    placeholder="Nêu rõ vì sao yêu cầu chưa thể áp dụng..."
+                    required
+                  />
+                </div>
+              )}
+
+              {reviewDialog.mode === "cancel" && (
+                <div className="form-alert warning">
+                  Yêu cầu này sẽ bị hủy và không còn khả dụng để duyệt.
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={closeReviewDialog}
+                  disabled={isReviewingCorrection}
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  className={`btn ${
+                    reviewDialog.mode === "reject" ? "btn-danger" : "btn-primary"
+                  }`}
+                  disabled={isReviewingCorrection}
+                >
+                  {reviewDialog.mode === "approve" &&
+                    (isApproveSubmitting ? "Đang duyệt..." : "Xác nhận duyệt")}
+                  {reviewDialog.mode === "reject" &&
+                    (isRejectSubmitting ? "Đang từ chối..." : "Xác nhận từ chối")}
+                  {reviewDialog.mode === "cancel" &&
+                    (isCancelSubmitting ? "Đang hủy..." : "Xác nhận hủy")}
                 </button>
               </div>
             </form>
