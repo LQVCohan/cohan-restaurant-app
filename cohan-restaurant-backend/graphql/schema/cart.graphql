@@ -123,6 +123,10 @@ type MenuItemLiveState {
   blockedUntil: DateTime
   abuseWarning: String
   policyMessage: String!
+  holdTtlSeconds: Int!
+  myCartQty: Int!
+  myHoldExpiresAt: DateTime
+  reservedCartQty: Int!
 }
 
 input MenuItemLiveStateInput {

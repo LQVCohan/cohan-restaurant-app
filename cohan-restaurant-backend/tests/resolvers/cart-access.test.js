@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const model = vi.hoisted(() => ({
-  Cart: { findOne: vi.fn(), findById: vi.fn(), create: vi.fn() },
+  Cart: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), create: vi.fn() },
   Warehouse: { findOne: vi.fn() },
 }));
 const inv = vi.hoisted(() => ({ checkAvailabilityForLinesTx: vi.fn(), reserveForOrderTx: vi.fn(), cancelReservationForOrderTx: vi.fn() }));
@@ -17,7 +17,10 @@ vi.mock("../../src/services/inventory.service.js", () => inv);
 vi.mock("../../src/services/eventLog.service.js", () => event);
 vi.mock("mongoose", () => ({ default: mg }));
 
-const leanChain = (val) => ({ lean: vi.fn().mockResolvedValue(val) });
+const queryChain = (val) => ({
+  select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(val) })),
+  lean: vi.fn().mockResolvedValue(val),
+});
 const whChain = (val) => ({
   sort: vi.fn(() => ({
     lean: vi.fn().mockResolvedValue(val),
@@ -73,7 +76,8 @@ const makeCart = ({
 describe("cart access hardening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    model.Cart.findOne.mockReturnValue(leanChain(null));
+    model.Cart.findOne.mockReturnValue(queryChain(null));
+    model.Cart.find.mockReturnValue(queryChain([]));
     model.Warehouse.findOne.mockReturnValue(whChain({ _id: "valid-wh1" }));
     inv.checkAvailabilityForLinesTx.mockResolvedValue({ isAvailable: true, maxAvailable: 10 });
     inv.reserveForOrderTx.mockResolvedValue({});
@@ -96,12 +100,225 @@ describe("cart access hardening", () => {
     expect(model.Cart.findOne).toHaveBeenCalledWith({ userId: "valid-u1", status: "active" });
   });
 
-  it("menuItemLiveState public works without reading cart", async () => {
+  it("menuItemLiveState public returns hold metadata and reserved cart qty", async () => {
+    const future = "2099-05-11T04:30:00.000Z";
+    model.Cart.find.mockReturnValue(
+      queryChain([
+        {
+          items: [
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 2,
+              servingKey: "portion",
+              holdStatus: "active",
+              holdExpiresAt: future,
+            },
+          ],
+        },
+      ])
+    );
+
     const q = (await import("../../graphql/resolvers/cart/query.js")).CartQuery;
-    await q.menuItemLiveState(null, { input: { restaurantId: "valid-r1", menuItemId: "valid-m1" } }, {});
+    const result = await q.menuItemLiveState(null, { input: { restaurantId: "valid-r1", menuItemId: "valid-m1" } }, {});
+
     expect(model.Cart.findOne).not.toHaveBeenCalled();
+    expect(model.Cart.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "active",
+        items: expect.objectContaining({
+          $elemMatch: expect.objectContaining({
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+          }),
+        }),
+      })
+    );
     expect(model.Warehouse.findOne).toHaveBeenCalled();
-    expect(inv.checkAvailabilityForLinesTx).toHaveBeenCalled();
+    expect(inv.checkAvailabilityForLinesTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [{ menuItemId: "valid-m1", quantity: 1, servingKey: "portion" }],
+      })
+    );
+    expect(result.myCartQty).toBe(0);
+    expect(result.myHoldExpiresAt).toBeNull();
+    expect(result.holdTtlSeconds).toBe(300);
+    expect(result.reservedCartQty).toBe(2);
+    expect(result.servingVariantKey).toBe("portion");
+  });
+
+  it("menuItemLiveState returns my hold details for matching active items", async () => {
+    const earliest = "2099-05-11T04:30:00.000Z";
+    const later = "2099-05-11T04:45:00.000Z";
+
+    model.Cart.findOne.mockReturnValue(
+      queryChain({
+        abuse: { timeoutReleaseCount: 1, exitReleaseCount: 1 },
+        items: [
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 2,
+            servingKey: " portion ",
+            holdStatus: "active",
+            holdExpiresAt: later,
+          },
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 1,
+            servingVariantKey: "portion",
+            holdStatus: "active",
+            holdExpiresAt: earliest,
+          },
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 4,
+            servingKey: "large",
+            holdStatus: "active",
+            holdExpiresAt: later,
+          },
+        ],
+      })
+    );
+    model.Cart.find.mockReturnValue(
+      queryChain([
+        {
+          items: [
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 2,
+              servingKey: "portion",
+              holdStatus: "active",
+              holdExpiresAt: later,
+            },
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 1,
+              servingVariantKey: "portion",
+              holdStatus: "active",
+              holdExpiresAt: earliest,
+            },
+          ],
+        },
+        {
+          items: [
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 3,
+              servingKey: "portion",
+              holdStatus: "active",
+              holdExpiresAt: later,
+            },
+          ],
+        },
+      ])
+    );
+
+    const q = (await import("../../graphql/resolvers/cart/query.js")).CartQuery;
+    const result = await q.menuItemLiveState(
+      null,
+      { input: { restaurantId: "valid-r1", menuItemId: "valid-m1", servingVariantKey: " portion ", userId: "valid-u1" } },
+      { user: { id: "valid-u1" } }
+    );
+
+    expect(model.Cart.findOne).toHaveBeenCalledWith({ userId: "valid-u1", status: "active" });
+    expect(result.myCartQty).toBe(3);
+    expect(result.myHoldExpiresAt?.toISOString()).toBe(earliest);
+    expect(result.reservedCartQty).toBe(6);
+    expect(result.servingVariantKey).toBe("portion");
+    expect(result.abuseWarning).toBeNull();
+  });
+
+  it("menuItemLiveState ignores expired, released, and variant-mismatched holds", async () => {
+    const future = "2099-05-11T05:00:00.000Z";
+    const expired = "2000-05-11T05:00:00.000Z";
+
+    model.Cart.findOne.mockReturnValue(
+      queryChain({
+        abuse: {},
+        items: [
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 2,
+            servingKey: "portion",
+            holdStatus: "released",
+            holdExpiresAt: future,
+          },
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 1,
+            servingKey: "portion",
+            holdStatus: "active",
+            holdExpiresAt: expired,
+          },
+          {
+            restaurantId: "valid-r1",
+            menuItemId: "valid-m1",
+            quantity: 3,
+            servingKey: "large",
+            holdStatus: "active",
+            holdExpiresAt: future,
+          },
+        ],
+      })
+    );
+    model.Cart.find.mockReturnValue(
+      queryChain([
+        {
+          items: [
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 2,
+              servingKey: "portion",
+              holdStatus: "released",
+              holdExpiresAt: future,
+            },
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 1,
+              servingKey: "portion",
+              holdStatus: "active",
+              holdExpiresAt: expired,
+            },
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 4,
+              servingKey: "large",
+              holdStatus: "active",
+              holdExpiresAt: future,
+            },
+            {
+              restaurantId: "valid-r1",
+              menuItemId: "valid-m1",
+              quantity: 5,
+              servingVariantKey: "portion",
+              holdExpiresAt: future,
+            },
+          ],
+        },
+      ])
+    );
+
+    const q = (await import("../../graphql/resolvers/cart/query.js")).CartQuery;
+    const result = await q.menuItemLiveState(
+      null,
+      { input: { restaurantId: "valid-r1", menuItemId: "valid-m1", servingVariantKey: "portion", userId: "valid-u1" } },
+      { user: { id: "valid-u1" } }
+    );
+
+    expect(result.myCartQty).toBe(0);
+    expect(result.myHoldExpiresAt).toBeNull();
+    expect(result.reservedCartQty).toBe(5);
   });
 
   it("menuItemLiveState rejects cross-user userId", async () => {
