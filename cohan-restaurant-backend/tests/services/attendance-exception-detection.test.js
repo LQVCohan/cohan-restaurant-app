@@ -5,6 +5,7 @@ const db = vi.hoisted(() => ({
   shifts: [],
   timesheets: [],
   nextTimesheetId: 1,
+  lastTimesheetFindQuery: null,
 }));
 
 const modelMocks = vi.hoisted(() => ({
@@ -27,6 +28,23 @@ function queryResult(value) {
     setOptions: vi.fn().mockReturnThis(),
     then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
   };
+}
+
+function stripSave(value) {
+  if (!value || typeof value !== "object") return value;
+  const clone = { ...value };
+  delete clone.save;
+  return clone;
+}
+
+function mutableTimesheetQuery(value) {
+  const query = {
+    lean: vi.fn(async () => value.map((row) => stripSave(row))),
+    setOptions: vi.fn().mockReturnThis(),
+    then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
+  };
+  db.lastTimesheetFindQuery = query;
+  return query;
 }
 
 function buildPublication(overrides = {}) {
@@ -87,6 +105,7 @@ describe("attendance exception detection service", () => {
     db.shifts = [buildShift({ _id: "shift-1" })];
     db.timesheets = [];
     db.nextTimesheetId = 1;
+    db.lastTimesheetFindQuery = null;
 
     modelMocks.SchedulePublication.find.mockImplementation((filter = {}) =>
       queryResult(
@@ -135,7 +154,7 @@ describe("attendance exception detection service", () => {
     );
 
     modelMocks.Timesheet.find.mockImplementation((filter = {}) =>
-      queryResult(
+      mutableTimesheetQuery(
         db.timesheets.filter((row) => {
           if (
             filter.restaurantId &&
@@ -383,7 +402,7 @@ describe("attendance exception detection service", () => {
     );
   });
 
-  it("marks missed checkout after planned end plus grace", async () => {
+  it("updates missed checkout using mutable timesheet docs instead of lean objects", async () => {
     db.timesheets = [
       buildTimesheet({
         actualCheckInAt: new Date("2026-05-11T02:00:00.000Z"),
@@ -404,6 +423,65 @@ describe("attendance exception detection service", () => {
 
     expect(summary.missedCheckoutUpdated).toBe(1);
     expect(db.timesheets[0].status).toBe("missed_checkout");
+    expect(db.timesheets[0].save).toHaveBeenCalledTimes(1);
+    expect(db.lastTimesheetFindQuery.lean).not.toHaveBeenCalled();
+  });
+
+  it("updates existing scheduled no-show records without failing on lean/plain-object mutation", async () => {
+    db.timesheets = [
+      buildTimesheet({
+        status: "checked_in",
+        actualCheckInAt: null,
+        plannedStartTime: null,
+        plannedEndTime: null,
+      }),
+    ];
+
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    const summary = await detectAttendanceExceptionsForRange({
+      restaurantId: "rest-1",
+      startDate: "2026-05-11T00:00:00.000Z",
+      endDate: "2026-05-11T23:59:59.999Z",
+      now: "2026-05-11T02:20:00.000Z",
+    });
+
+    expect(summary.noShowUpdated).toBe(1);
+    expect(db.timesheets[0].status).toBe("scheduled_absent");
+    expect(db.timesheets[0].plannedStartTime?.toISOString()).toBe(
+      "2026-05-11T02:00:00.000Z",
+    );
+    expect(db.timesheets[0].plannedEndTime?.toISOString()).toBe(
+      "2026-05-11T10:00:00.000Z",
+    );
+    expect(db.timesheets[0].save).toHaveBeenCalledTimes(1);
+    expect(db.lastTimesheetFindQuery.lean).not.toHaveBeenCalled();
+  });
+
+  it("does not silently fail when an existing timesheet requires update", async () => {
+    db.timesheets = [
+      buildTimesheet({
+        actualCheckInAt: new Date("2026-05-11T02:00:00.000Z"),
+        status: "checked_in",
+      }),
+    ];
+
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    await expect(
+      detectAttendanceExceptionsForRange({
+        restaurantId: "rest-1",
+        startDate: "2026-05-11T00:00:00.000Z",
+        endDate: "2026-05-11T23:59:59.999Z",
+        now: "2026-05-11T10:31:00.000Z",
+      }),
+    ).resolves.toMatchObject({
+      missedCheckoutUpdated: 1,
+    });
   });
 
   it("does not mark missed checkout before grace", async () => {
@@ -476,5 +554,22 @@ describe("attendance exception detection service", () => {
 
     expect(summary.missedCheckoutUpdated).toBe(0);
     expect(db.timesheets[0].save).not.toHaveBeenCalled();
+  });
+
+  it("preserves skipAttendanceExceptionDetection on internal timesheet queries", async () => {
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    await detectAttendanceExceptionsForRange({
+      restaurantId: "rest-1",
+      startDate: "2026-05-11T00:00:00.000Z",
+      endDate: "2026-05-11T23:59:59.999Z",
+      now: "2026-05-11T02:16:00.000Z",
+    });
+
+    expect(db.lastTimesheetFindQuery?.setOptions).toHaveBeenCalledWith({
+      skipAttendanceExceptionDetection: true,
+    });
   });
 });
