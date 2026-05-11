@@ -114,7 +114,6 @@ const PriceEditModal = ({
 
   const submitting = isSubmitting || isLocalSubmitting;
 
-  // Bulk state
   const [bulkChange, setBulkChange] = useState({
     type: "percentage",
     value: "",
@@ -242,28 +241,24 @@ const PriceEditModal = ({
       floorZero: true,
     };
 
+    const { nextPriceChanges, affectedItemIds } = buildBulkPreview(
+      priceChanges,
+      bulkChange,
+      operation
+    );
+
     setSubmitError(null);
-    setPriceChanges((prev) => {
-      const { nextPriceChanges, affectedItemIds } = buildBulkPreview(
-        prev,
-        bulkChange,
-        operation
-      );
+    setPriceChanges(nextPriceChanges);
 
-      setAppliedBulkOperations((currentOperations) => {
-        if (!affectedItemIds.length) return currentOperations;
-
-        return {
-          ...currentOperations,
-          [operationKey]: {
-            ...operation,
-            menuItemIds: affectedItemIds,
-          },
-        };
-      });
-
-      return nextPriceChanges;
-    });
+    if (affectedItemIds.length > 0) {
+      setAppliedBulkOperations((currentOperations) => ({
+        ...currentOperations,
+        [operationKey]: {
+          ...operation,
+          menuItemIds: affectedItemIds,
+        },
+      }));
+    }
   };
 
   const resetPrices = () => {
