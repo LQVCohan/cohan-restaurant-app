@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCreateCorrectionInput,
   buildEvidenceUrls,
   canCancelCorrection,
   canReviewCorrection,
@@ -20,6 +21,63 @@ describe("attendanceCorrectionUtils", () => {
 
     expect(canCancelCorrection(user, pendingRequest)).toBe(true);
     expect(canCancelCorrection(user, rejectedRequest)).toBe(false);
+  });
+
+  it("prefers explicit record.timesheetId when building correction input", () => {
+    expect(
+      buildCreateCorrectionInput({
+        record: {
+          id: "507f1f77bcf86cd799439012",
+          timesheetId: "507f1f77bcf86cd799439011",
+          employeeId: "emp-1",
+        },
+        form: {
+          correctionType: "wrong_check_in_out",
+          reason: "  Camera confirmed  ",
+          evidenceNote: "  lobby cam  ",
+          evidenceUrlsText: "https://a.test\n",
+        },
+        restaurantId: "rest-1",
+        workDate: "2026-05-11T00:00:00.000Z",
+      }).timesheetId,
+    ).toBe("507f1f77bcf86cd799439011");
+  });
+
+  it("falls back to record.id when timesheetId is absent", () => {
+    expect(
+      buildCreateCorrectionInput({
+        record: {
+          id: "507f1f77bcf86cd799439012",
+          employeeId: "emp-1",
+        },
+        form: {
+          correctionType: "wrong_check_in_out",
+          reason: "Camera confirmed",
+          evidenceUrlsText: "",
+        },
+        restaurantId: "rest-1",
+        workDate: "2026-05-11T00:00:00.000Z",
+      }).timesheetId,
+    ).toBe("507f1f77bcf86cd799439012");
+  });
+
+  it("omits timesheetId when neither record.timesheetId nor id is ObjectId-like", () => {
+    expect(
+      buildCreateCorrectionInput({
+        record: {
+          id: "not-an-object-id",
+          timesheetId: "invalid",
+          employeeId: "emp-1",
+        },
+        form: {
+          correctionType: "wrong_check_in_out",
+          reason: "Camera confirmed",
+          evidenceUrlsText: "",
+        },
+        restaurantId: "rest-1",
+        workDate: "2026-05-11T00:00:00.000Z",
+      }).timesheetId,
+    ).toBeUndefined();
   });
 
   it("requires reason and at least one requested time", () => {
