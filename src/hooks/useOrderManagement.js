@@ -2131,8 +2131,8 @@ export default function useOrderManagement(pos = null) {
       mutUpdateOrderStatus,
       writeOrderIntoCache,
       currentOrderType,
-      currentTable.id,
-      currentTable.code,
+      currentTable?.id,
+      currentTable?.code,
       loadGroupsForTable,
     ],
   );
