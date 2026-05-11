@@ -22,7 +22,7 @@ import {
   getDiscountPreviewErrorMessage,
   useDiscountPreview,
 } from "@/hooks/useDiscountPreview";
-
+import { getStaffOrderingPermissions } from "./staffOrderingPermissions";
 import {
   buildDiscountPricingInput,
   buildOrderDiscountPreviewInput,
@@ -42,6 +42,8 @@ import { AuthContext } from "../../context/AuthContext";
 import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
 import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
 import useCommunication from "@/hooks/useCommunication";
+const STAFF_ORDER_NO_PERMISSION_MESSAGE =
+  "Vai trò hiện tại không có quyền thực hiện thao tác này.";
 const REQUEST_ORDER_ITEM_VOID = gql`
   mutation StaffRequestOrderItemVoid($input: RequestOrderItemVoidInput!) {
     requestOrderItemVoid(input: $input) {
@@ -393,7 +395,19 @@ export default function StaffOrdering() {
   const [remoteDiscountBreakdown, setRemoteDiscountBreakdown] = useState(null);
   const [remoteDiscountError, setRemoteDiscountError] = useState("");
   const [remoteDiscountPreviewKey, setRemoteDiscountPreviewKey] = useState("");
+  const staffOrderPermissions = useMemo(
+    () =>
+      getStaffOrderingPermissions(user, {
+        isRemoteOrder: orderMode === "remote",
+      }),
+    [orderMode, user],
+  );
 
+  const ensureStaffOrderPermission = useCallback((allowed) => {
+    if (allowed) return true;
+    alert(STAFF_ORDER_NO_PERMISSION_MESSAGE);
+    return false;
+  }, []);
   const {
     previewOrderDiscount: previewRemoteDiscount,
     loading: isPreviewingRemoteDiscount,
@@ -431,6 +445,9 @@ export default function StaffOrdering() {
     fetchPolicy: "network-only",
   });
   const handleRequestItemVoid = async (item, payload) => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canRequestItemVoid)) {
+      return;
+    }
     if (!item?.orderId || !(item?.orderItemId || item?.id)) {
       alert("Thiếu thông tin món để gửi yêu cầu hủy.");
       return;
@@ -553,9 +570,7 @@ export default function StaffOrdering() {
   const activeCart = orderMode === "remote" ? remoteCart : cart;
   const remotePendingItems = useMemo(
     () =>
-      remoteCart.filter(
-        (item) => item.status === "pending" && !item.persisted,
-      ),
+      remoteCart.filter((item) => item.status === "pending" && !item.persisted),
     [remoteCart],
   );
   const remoteDiscountInputKey = useMemo(
@@ -623,6 +638,9 @@ export default function StaffOrdering() {
   ]);
 
   const handleApplyRemoteDiscount = useCallback(async () => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canApplyVoucher)) {
+      return;
+    }
     setRemoteDiscountError("");
 
     if (!remotePendingItems.length) {
@@ -652,6 +670,8 @@ export default function StaffOrdering() {
       setRemoteDiscountError(getDiscountPreviewErrorMessage(error));
     }
   }, [
+    ensureStaffOrderPermission,
+    staffOrderPermissions.canApplyVoucher,
     remotePendingItems.length,
     restaurantId,
     previewRemoteDiscount,
@@ -874,6 +894,11 @@ export default function StaffOrdering() {
     },
   });
   const handleAdjustPersistedItemQuantity = async (item, delta) => {
+    if (
+      !ensureStaffOrderPermission(staffOrderPermissions.canAdjustItemQuantity)
+    ) {
+      return;
+    }
     if (!item?.orderId || !(item?.orderItemId || item?.id)) {
       alert("Thiếu thông tin món đã lưu để điều chỉnh.");
       return;
@@ -912,6 +937,9 @@ export default function StaffOrdering() {
     }
   };
   const handleAssignCustomer = async (customer) => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canAssignCustomer)) {
+      return;
+    }
     if (!selectedTableId || !selectedTable || !restaurantId) {
       alert("Vui lòng chọn 1 bàn trước khi gán khách!");
       return;
@@ -955,6 +983,9 @@ export default function StaffOrdering() {
   };
 
   const handleRemoveCustomer = async () => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canRemoveCustomer)) {
+      return;
+    }
     if (!selectedTable || !restaurantId) return;
     if (!window.confirm("Bỏ gán khách hàng khỏi bàn này?")) return;
 
@@ -1071,6 +1102,9 @@ export default function StaffOrdering() {
     });
   };
   const handleOpenProofCapture = (item) => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canCaptureProof)) {
+      return;
+    }
     setProofCaptureItem(item);
   };
 
@@ -1102,6 +1136,13 @@ export default function StaffOrdering() {
     });
 
   const handleSendKitchen = async () => {
+    const tableOrderPermissions = getStaffOrderingPermissions(user, {
+      isRemoteOrder: false,
+    });
+
+    if (!ensureStaffOrderPermission(tableOrderPermissions.canCreateOrder)) {
+      return;
+    }
     if (orderMode === "remote") {
       const pendingItems = remoteCart.filter(
         (x) => x.status === "pending" && !x.persisted,
@@ -1358,6 +1399,9 @@ export default function StaffOrdering() {
     if (action === "checkout") setIsCartOpen(true);
   };
   const handleCheckout = async () => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canRequestPayment)) {
+      return;
+    }
     try {
       if (orderMode === "remote") {
         const orderIds = [
@@ -1387,6 +1431,9 @@ export default function StaffOrdering() {
     }
   };
   const handleRemindItem = async (item) => {
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canRemindItems)) {
+      return;
+    }
     try {
       const orderId = item?.orderId;
       const orderItemId = item?.id;
