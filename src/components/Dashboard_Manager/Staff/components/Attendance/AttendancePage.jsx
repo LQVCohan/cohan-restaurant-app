@@ -6,10 +6,9 @@ import useAttendanceManagement, {
 import "./Attendance.scss";
 import OvertimePanel from "./OvertimePanel";
 import {
+  buildCreateCorrectionInput,
   canCancelCorrection,
   canReviewCorrection,
-  buildEvidenceUrls,
-  hasValidObjectIdLike,
   validateCorrectionRequestForm,
 } from "./attendanceCorrectionUtils";
 import {
@@ -554,25 +553,18 @@ const AttendancePage = () => {
       return;
     }
 
+    const input = buildCreateCorrectionInput({
+      record: selectedCorrectionRecord,
+      form: correctionForm,
+      restaurantId,
+      workDate: toAttendanceIsoStartOfDay(correctionForm.workDate),
+      requestedCheckInAt,
+      requestedCheckOutAt,
+    });
+
     try {
       await createAttendanceCorrectionRequest({
-        variables: {
-          input: {
-            employeeId: selectedCorrectionRecord.employeeId,
-            restaurantId,
-            timesheetId: hasValidObjectIdLike(selectedCorrectionRecord.id)
-              ? selectedCorrectionRecord.id
-              : undefined,
-            shiftId: selectedCorrectionRecord.shiftId || undefined,
-            workDate: toAttendanceIsoStartOfDay(correctionForm.workDate),
-            correctionType: correctionForm.correctionType,
-            requestedCheckInAt: requestedCheckInAt || undefined,
-            requestedCheckOutAt: requestedCheckOutAt || undefined,
-            reason: correctionForm.reason.trim(),
-            evidenceNote: correctionForm.evidenceNote?.trim() || undefined,
-            evidenceUrls: buildEvidenceUrls(correctionForm.evidenceUrlsText),
-          },
-        },
+        variables: { input },
       });
       await refreshAttendanceViews();
 
