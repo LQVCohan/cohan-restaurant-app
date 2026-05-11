@@ -339,7 +339,7 @@ describe("cart access hardening", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("releaseMyCartHolds clears active items after exit release and applies abuse logic", async () => {
+  it("releaseMyCartHolds removes only released active items after exit release and applies abuse logic", async () => {
     const emit = vi.fn();
     const io = { to: vi.fn(() => ({ emit })) };
     const session = {
@@ -372,9 +372,9 @@ describe("cart access hardening", () => {
     expect(cart.abuse.exitReleaseCount).toBe(3);
     expect(cart.abuse.warningCount).toBe(1);
     expect(cart.abuse.lastViolationAt).toBeInstanceOf(Date);
-    expect(cart.items).toEqual([]);
-    expect(cart.totalQuantity).toBe(0);
-    expect(cart.totalAmount).toBe(0);
+    expect(cart.items.map((item) => item._id)).toEqual(["valid-i2"]);
+    expect(cart.totalQuantity).toBe(1);
+    expect(cart.totalAmount).toBe(5);
     expect(cart.save).toHaveBeenCalledWith({ session });
     expect(emit).toHaveBeenCalledWith(
       "inventoryEvents",
