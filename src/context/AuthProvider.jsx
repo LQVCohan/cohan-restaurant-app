@@ -4,6 +4,13 @@ import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
+import {
+  clearStorageKeys,
+  readStorageValue,
+  readStorageValueFrom,
+  removeStorageValue,
+  writeStorageValue,
+} from "@/lib/browserStorage";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -94,24 +101,22 @@ const ME_QUERY = gql`
 `;
 
 function readStoredAuth() {
-  const rememberUntil = Number(localStorage.getItem(TOKEN_KEYS.rememberUntil) || 0);
+  const rememberUntil = Number(readStorageValueFrom("local", TOKEN_KEYS.rememberUntil) || 0);
   if (rememberUntil && Date.now() > rememberUntil) {
-    localStorage.removeItem(TOKEN_KEYS.token);
-    localStorage.removeItem(TOKEN_KEYS.legacy);
-    localStorage.removeItem(TOKEN_KEYS.user);
-    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+    clearStorageKeys([
+      TOKEN_KEYS.token,
+      TOKEN_KEYS.legacy,
+      TOKEN_KEYS.user,
+      TOKEN_KEYS.rememberUntil,
+    ]);
   }
+
   const token =
-    localStorage.getItem(TOKEN_KEYS.token) ||
-    sessionStorage.getItem(TOKEN_KEYS.token) ||
-    localStorage.getItem(TOKEN_KEYS.legacy) ||
-    sessionStorage.getItem(TOKEN_KEYS.legacy) ||
+    readStorageValue(TOKEN_KEYS.token) ||
+    readStorageValue(TOKEN_KEYS.legacy) ||
     null;
 
-  const userStr =
-    localStorage.getItem(TOKEN_KEYS.user) ||
-    sessionStorage.getItem(TOKEN_KEYS.user) ||
-    null;
+  const userStr = readStorageValue(TOKEN_KEYS.user) || null;
 
   let user = null;
   try {
@@ -120,48 +125,64 @@ function readStoredAuth() {
     user = null;
   }
 
-  const storage =
-    localStorage.getItem(TOKEN_KEYS.token) ||
-    localStorage.getItem(TOKEN_KEYS.legacy)
-      ? localStorage
-      : sessionStorage;
+  return { token, user };
+}
 
-  return { token, user, storage };
+function prefersPersistentAuth() {
+  return Boolean(
+    readStorageValueFrom("local", TOKEN_KEYS.token) ||
+      readStorageValueFrom("local", TOKEN_KEYS.legacy) ||
+      readStorageValueFrom("local", TOKEN_KEYS.rememberUntil),
+  );
 }
 
 function writeStoredAuth(token, user, options = {}) {
-  const { persistSession = true, rememberIdentifier = false, identifier = "" } = options;
-  const storage = persistSession ? localStorage : sessionStorage;
-  [localStorage, sessionStorage].forEach((s) => {
-    s.removeItem(TOKEN_KEYS.token);
-    s.removeItem(TOKEN_KEYS.legacy);
-    s.removeItem(TOKEN_KEYS.user);
-    s.removeItem(TOKEN_KEYS.rememberUntil);
-  });
-  storage.setItem(TOKEN_KEYS.token, token);
-  storage.setItem(TOKEN_KEYS.legacy, token);
-  storage.setItem(TOKEN_KEYS.user, JSON.stringify(user || {}));
+  const {
+    persistSession = true,
+    rememberIdentifier = false,
+    identifier = "",
+  } = options || {};
 
-  if (persistSession) {
-    localStorage.setItem(TOKEN_KEYS.rememberUntil, String(Date.now() + THIRTY_DAYS_MS));
+  clearStorageKeys([
+    TOKEN_KEYS.token,
+    TOKEN_KEYS.legacy,
+    TOKEN_KEYS.user,
+    TOKEN_KEYS.rememberUntil,
+  ]);
+
+  const persistent = Boolean(persistSession);
+  writeStorageValue(TOKEN_KEYS.token, token, { persistent });
+  writeStorageValue(TOKEN_KEYS.legacy, token, { persistent });
+  writeStorageValue(TOKEN_KEYS.user, JSON.stringify(user || {}), { persistent });
+
+  if (persistent) {
+    writeStorageValue(
+      TOKEN_KEYS.rememberUntil,
+      String(Date.now() + THIRTY_DAYS_MS),
+      { persistent: true },
+    );
   } else {
-    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+    removeStorageValue(TOKEN_KEYS.rememberUntil);
   }
 
   if (rememberIdentifier && identifier) {
-    localStorage.setItem(TOKEN_KEYS.rememberedIdentifier, String(identifier).trim());
+    writeStorageValue(
+      TOKEN_KEYS.rememberedIdentifier,
+      String(identifier).trim(),
+      { persistent: true },
+    );
   } else {
-    localStorage.removeItem(TOKEN_KEYS.rememberedIdentifier);
+    removeStorageValue(TOKEN_KEYS.rememberedIdentifier);
   }
 }
 
 function clearStoredAuth() {
-  [localStorage, sessionStorage].forEach((s) => {
-    s.removeItem(TOKEN_KEYS.token);
-    s.removeItem(TOKEN_KEYS.legacy);
-    s.removeItem(TOKEN_KEYS.user);
-    s.removeItem(TOKEN_KEYS.rememberUntil);
-  });
+  clearStorageKeys([
+    TOKEN_KEYS.token,
+    TOKEN_KEYS.legacy,
+    TOKEN_KEYS.user,
+    TOKEN_KEYS.rememberUntil,
+  ]);
 }
 
 function getNetworkStatusCode(error) {
@@ -281,9 +302,7 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
   const managerId = user?.id;
-  const {
-    data: mgrData,
-  } = useQuery(GET_MANAGER_RESTAURANTS, {
+  const { data: mgrData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
     skip: !managerId || !["manager", "admin", "hr", "accountant"].includes(roleName),
   });
@@ -299,14 +318,10 @@ export const AuthProvider = ({ children }) => {
       setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
-        try {
-          const storage = localStorage.getItem(TOKEN_KEYS.token)
-            ? localStorage
-            : sessionStorage;
-          storage.setItem(TOKEN_KEYS.user, JSON.stringify(merged));
-        } catch {
-          // ignore storage write error (quota/private mode)
-        }
+        const persistent = prefersPersistentAuth();
+        writeStorageValue(TOKEN_KEYS.user, JSON.stringify(merged), {
+          persistent,
+        });
         return merged;
       });
     },
@@ -348,10 +363,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (isStaffAccessRole(roleName)) {
-      const staffRestaurantId =
-        user?.restaurantForStaff?.id ||
-        user?.restaurantForStaff ||
-        null;
+      const staffRestaurantId = user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
       if (staffRestaurantId) {
         setRestaurants([{ id: staffRestaurantId }]);
         return;
@@ -375,10 +387,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [roleName]);
 
-  const {
-    data: urrData,
-    error: urrError,
-  } = useQuery(GET_USER_REFRESTAURANTS, {
+  const { data: urrData, error: urrError } = useQuery(GET_USER_REFRESTAURANTS, {
     variables: { userId: user?.id },
     skip: user?.roleName !== "customer",
     onCompleted: (urrData) => {
@@ -439,7 +448,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       restaurants,
       refRestaurant,
-      rememberedLoginIdentifier: localStorage.getItem(TOKEN_KEYS.rememberedIdentifier) || "",
+      rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
     }),
     [
       token,

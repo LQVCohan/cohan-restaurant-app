@@ -6,6 +6,7 @@ import {
   ApolloLink,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { readStorageValue } from "@/lib/browserStorage";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -18,10 +19,9 @@ const httpLink = new HttpLink({
 /* ---------------- Auth link ---------------- */
 const authLink = setContext((_, { headers }) => {
   const token =
-    localStorage.getItem("auth_token") ||
-    localStorage.getItem("token") ||
-    sessionStorage.getItem("auth_token") ||
-    sessionStorage.getItem("token");
+    readStorageValue("auth_token") ||
+    readStorageValue("token") ||
+    null;
 
   return {
     headers: {
