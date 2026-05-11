@@ -306,37 +306,26 @@ export default function useAttendanceManagement({
     skip: !correctionFilter.startDate || !correctionFilter.endDate,
   });
 
+  const refreshAttendanceViews = async () =>
+    Promise.allSettled([refetch(), refetchCorrections()]);
+
   const [mutateQuickAttendance, mutationState] = useMutation(
     MUTATION_UPSERT_ATTENDANCE,
   );
 
-  const [createAttendanceCorrectionRequest, createCorrectionState] =
-    useMutation(MUTATION_CREATE_ATTENDANCE_CORRECTION, {
-      onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
-      },
-    });
+  const [createAttendanceCorrectionRequest, createCorrectionState] = useMutation(
+    MUTATION_CREATE_ATTENDANCE_CORRECTION,
+  );
 
   const [approveAttendanceCorrectionRequest, approveCorrectionState] =
-    useMutation(MUTATION_APPROVE_ATTENDANCE_CORRECTION, {
-      onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
-      },
-    });
+    useMutation(MUTATION_APPROVE_ATTENDANCE_CORRECTION);
 
-  const [rejectAttendanceCorrectionRequest, rejectCorrectionState] =
-    useMutation(MUTATION_REJECT_ATTENDANCE_CORRECTION, {
-      onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
-      },
-    });
+  const [rejectAttendanceCorrectionRequest, rejectCorrectionState] = useMutation(
+    MUTATION_REJECT_ATTENDANCE_CORRECTION,
+  );
 
   const [cancelAttendanceCorrectionRequest, cancelCorrectionState] =
-    useMutation(MUTATION_CANCEL_ATTENDANCE_CORRECTION, {
-      onCompleted: async () => {
-        await Promise.allSettled([refetch(), refetchCorrections()]);
-      },
-    });
+    useMutation(MUTATION_CANCEL_ATTENDANCE_CORRECTION);
 
   const employees = useMemo(() => data?.staffList || [], [data?.staffList]);
 
@@ -400,6 +389,7 @@ export default function useAttendanceManagement({
 
     refetch,
     refetchCorrections,
+    refreshAttendanceViews,
 
     mutateQuickAttendance,
     mutationState,
