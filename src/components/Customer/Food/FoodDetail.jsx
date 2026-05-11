@@ -183,8 +183,8 @@ const FoodDetail = () => {
     cart,
     addToCart,
     updateQuantity,
+    removeFromCart,
     clearCart,
-    removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
@@ -583,7 +583,7 @@ const FoodDetail = () => {
 
     const backendCartId = getPrimaryBackendCartId();
     if (!backendCartId) {
-      alert("Giỏ hàng chưa được đồng bộ với máy chủ. Vui lòng tải lại trang.");
+      clearCart();
       return;
     }
 
@@ -611,19 +611,15 @@ const FoodDetail = () => {
 
     if (!itemsToRemove.length) return;
 
-    const missingBackend = itemsToRemove.some(
+    const syncedItems = itemsToRemove.filter(
+      (item) => item.backendCartId && item.backendCartItemId,
+    );
+    const localOnlyItems = itemsToRemove.filter(
       (item) => !item.backendCartId || !item.backendCartItemId,
     );
 
-    if (missingBackend) {
-      alert(
-        "Một số món chưa được đồng bộ với giỏ hàng máy chủ. Vui lòng tải lại trang.",
-      );
-      return;
-    }
-
     try {
-      for (const item of itemsToRemove) {
+      for (const item of syncedItems) {
         await removeCartItemMutation({
           variables: {
             input: {
@@ -632,9 +628,14 @@ const FoodDetail = () => {
             },
           },
         });
+
+        removeFromCart(item.id);
       }
 
-      removeRestaurantItems(restaurantId);
+      for (const item of localOnlyItems) {
+        removeFromCart(item.id);
+      }
+
       await refetchLiveState?.();
     } catch (error) {
       alert(
