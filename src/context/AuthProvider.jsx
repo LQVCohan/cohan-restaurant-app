@@ -4,6 +4,12 @@ import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
+import {
+  clearStorageKeys,
+  getStoragePreferenceForKey,
+  readStorageValue,
+  writeStorageValue,
+} from "@/lib/authStorage";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -94,24 +100,22 @@ const ME_QUERY = gql`
 `;
 
 function readStoredAuth() {
-  const rememberUntil = Number(localStorage.getItem(TOKEN_KEYS.rememberUntil) || 0);
+  const rememberUntil = Number(readStorageValue(TOKEN_KEYS.rememberUntil) || 0);
   if (rememberUntil && Date.now() > rememberUntil) {
-    localStorage.removeItem(TOKEN_KEYS.token);
-    localStorage.removeItem(TOKEN_KEYS.legacy);
-    localStorage.removeItem(TOKEN_KEYS.user);
-    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+    clearStorageKeys([
+      TOKEN_KEYS.token,
+      TOKEN_KEYS.legacy,
+      TOKEN_KEYS.user,
+      TOKEN_KEYS.rememberUntil,
+    ]);
   }
+
   const token =
-    localStorage.getItem(TOKEN_KEYS.token) ||
-    sessionStorage.getItem(TOKEN_KEYS.token) ||
-    localStorage.getItem(TOKEN_KEYS.legacy) ||
-    sessionStorage.getItem(TOKEN_KEYS.legacy) ||
+    readStorageValue(TOKEN_KEYS.token) ||
+    readStorageValue(TOKEN_KEYS.legacy) ||
     null;
 
-  const userStr =
-    localStorage.getItem(TOKEN_KEYS.user) ||
-    sessionStorage.getItem(TOKEN_KEYS.user) ||
-    null;
+  const userStr = readStorageValue(TOKEN_KEYS.user) || null;
 
   let user = null;
   try {
@@ -120,48 +124,72 @@ function readStoredAuth() {
     user = null;
   }
 
-  const storage =
-    localStorage.getItem(TOKEN_KEYS.token) ||
-    localStorage.getItem(TOKEN_KEYS.legacy)
-      ? localStorage
-      : sessionStorage;
+  const storagePreference =
+    getStoragePreferenceForKey(TOKEN_KEYS.token) ||
+    getStoragePreferenceForKey(TOKEN_KEYS.legacy) ||
+    (token ? "memory" : null);
 
-  return { token, user, storage };
+  return { token, user, storagePreference };
 }
 
 function writeStoredAuth(token, user, options = {}) {
-  const { persistSession = true, rememberIdentifier = false, identifier = "" } = options;
-  const storage = persistSession ? localStorage : sessionStorage;
-  [localStorage, sessionStorage].forEach((s) => {
-    s.removeItem(TOKEN_KEYS.token);
-    s.removeItem(TOKEN_KEYS.legacy);
-    s.removeItem(TOKEN_KEYS.user);
-    s.removeItem(TOKEN_KEYS.rememberUntil);
+  const {
+    persistSession = true,
+    rememberIdentifier = false,
+    identifier = "",
+  } = options;
+
+  clearStorageKeys([
+    TOKEN_KEYS.token,
+    TOKEN_KEYS.legacy,
+    TOKEN_KEYS.user,
+    TOKEN_KEYS.rememberUntil,
+  ]);
+
+  const storagePreference = writeStorageValue(TOKEN_KEYS.token, token, {
+    preferPersistent: persistSession,
+    preferred: persistSession ? "localStorage" : "sessionStorage",
   });
-  storage.setItem(TOKEN_KEYS.token, token);
-  storage.setItem(TOKEN_KEYS.legacy, token);
-  storage.setItem(TOKEN_KEYS.user, JSON.stringify(user || {}));
+
+  writeStorageValue(TOKEN_KEYS.legacy, token, { preferred: storagePreference });
+  writeStorageValue(TOKEN_KEYS.user, JSON.stringify(user || {}), {
+    preferred: storagePreference,
+  });
 
   if (persistSession) {
-    localStorage.setItem(TOKEN_KEYS.rememberUntil, String(Date.now() + THIRTY_DAYS_MS));
+    writeStorageValue(
+      TOKEN_KEYS.rememberUntil,
+      String(Date.now() + THIRTY_DAYS_MS),
+      {
+        preferPersistent: true,
+        preferred: storagePreference,
+      },
+    );
   } else {
-    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+    clearStorageKeys([TOKEN_KEYS.rememberUntil]);
   }
 
   if (rememberIdentifier && identifier) {
-    localStorage.setItem(TOKEN_KEYS.rememberedIdentifier, String(identifier).trim());
+    writeStorageValue(
+      TOKEN_KEYS.rememberedIdentifier,
+      String(identifier).trim(),
+      {
+        preferPersistent: true,
+        preferred: "localStorage",
+      },
+    );
   } else {
-    localStorage.removeItem(TOKEN_KEYS.rememberedIdentifier);
+    clearStorageKeys([TOKEN_KEYS.rememberedIdentifier]);
   }
 }
 
 function clearStoredAuth() {
-  [localStorage, sessionStorage].forEach((s) => {
-    s.removeItem(TOKEN_KEYS.token);
-    s.removeItem(TOKEN_KEYS.legacy);
-    s.removeItem(TOKEN_KEYS.user);
-    s.removeItem(TOKEN_KEYS.rememberUntil);
-  });
+  clearStorageKeys([
+    TOKEN_KEYS.token,
+    TOKEN_KEYS.legacy,
+    TOKEN_KEYS.user,
+    TOKEN_KEYS.rememberUntil,
+  ]);
 }
 
 function getNetworkStatusCode(error) {
@@ -266,6 +294,7 @@ export const AuthProvider = ({ children }) => {
   const [sessionWarning, setSessionWarning] = useState("");
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
+
   useEffect(() => {
     const { token: t, user: u } = readStoredAuth();
     if (t) {
@@ -281,9 +310,7 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
   const managerId = user?.id;
-  const {
-    data: mgrData,
-  } = useQuery(GET_MANAGER_RESTAURANTS, {
+  const { data: mgrData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
     skip: !managerId || !["manager", "admin", "hr", "accountant"].includes(roleName),
   });
@@ -299,14 +326,12 @@ export const AuthProvider = ({ children }) => {
       setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
-        try {
-          const storage = localStorage.getItem(TOKEN_KEYS.token)
-            ? localStorage
-            : sessionStorage;
-          storage.setItem(TOKEN_KEYS.user, JSON.stringify(merged));
-        } catch {
-          // ignore storage write error (quota/private mode)
-        }
+        writeStorageValue(TOKEN_KEYS.user, JSON.stringify(merged), {
+          preferred:
+            getStoragePreferenceForKey(TOKEN_KEYS.token) ||
+            getStoragePreferenceForKey(TOKEN_KEYS.legacy) ||
+            "memory",
+        });
         return merged;
       });
     },
@@ -349,9 +374,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (isStaffAccessRole(roleName)) {
       const staffRestaurantId =
-        user?.restaurantForStaff?.id ||
-        user?.restaurantForStaff ||
-        null;
+        user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
       if (staffRestaurantId) {
         setRestaurants([{ id: staffRestaurantId }]);
         return;
@@ -375,29 +398,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, [roleName]);
 
-  const {
-    data: urrData,
-    error: urrError,
-  } = useQuery(GET_USER_REFRESTAURANTS, {
+  const { data: urrData, error: urrError } = useQuery(GET_USER_REFRESTAURANTS, {
     variables: { userId: user?.id },
     skip: user?.roleName !== "customer",
     onCompleted: (urrData) => {
       setRefRestaurant(urrData.restaurantsByUser || []);
     },
   });
+
   useEffect(() => {
     if (urrError) {
       setRefRestaurant([]);
     }
   }, [urrError]);
+
   useEffect(() => {
     if (urrData && urrData.restaurantsByUser) {
       setRestaurants(urrData.restaurantsByUser);
     }
   }, [urrData]);
-  // ✅ Lấy token từ storage khi khởi động
 
-  // ✅ Hàm login được gọi từ LoginPage
   const login = useCallback(
     (newToken, roleOrUser, avatar = null, options = {}) => {
       const rawUser =
@@ -410,12 +430,9 @@ export const AuthProvider = ({ children }) => {
       setSessionState("authenticated");
       setSessionWarning("");
     },
-    [user]
+    [user],
   );
 
-  // ✅ Lấy danh sách nhà hàng mà khách hàng có thể truy cập
-
-  // ✅ Logout
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -439,7 +456,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       restaurants,
       refRestaurant,
-      rememberedLoginIdentifier: localStorage.getItem(TOKEN_KEYS.rememberedIdentifier) || "",
+      rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
     }),
     [
       token,
@@ -453,7 +470,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       restaurants,
       refRestaurant,
-    ]
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
