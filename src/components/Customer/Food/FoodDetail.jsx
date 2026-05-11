@@ -208,6 +208,8 @@ const FoodDetail = () => {
     if (sizes.length) setSelectedSize(sizes[0]);
   }, [sizes]);
 
+  const selectedServingKey = selectedSize?.key || null;
+
   const {
     data: liveStateData,
     refetch: refetchLiveState,
@@ -216,11 +218,11 @@ const FoodDetail = () => {
       input: {
         restaurantId: foundDish?.restaurantId,
         menuItemId: foundDish?.id,
-        servingVariantKey: selectedSize?.key || "portion",
+        servingVariantKey: selectedServingKey,
         userId: user?.id,
       },
     },
-    skip: !foundDish?.restaurantId || !foundDish?.id,
+    skip: !foundDish?.restaurantId || !foundDish?.id || !selectedServingKey,
     fetchPolicy: "network-only",
     pollInterval: 10000,
   });
@@ -319,22 +321,21 @@ const FoodDetail = () => {
           : "Thêm vào giỏ";
 
   const makeCartPayload = () => {
-    if (!foundDish) return null;
+    if (!foundDish || !selectedServingKey) return null;
 
-    const servingVariantKey = selectedSize?.key || "portion";
     const selectedVariantName =
       selectedSize?.name && selectedSize.name !== "Phần tiêu chuẩn"
         ? selectedSize.name
         : "Phần tiêu chuẩn";
 
     return {
-      id: `${foundDish.id}_${servingVariantKey}`,
+      id: `${foundDish.id}_${selectedServingKey}`,
       dishId: foundDish.id,
       restaurantId: String(foundDish.restaurantId || restaurant?.id || ""),
       menuId: foundDish.menuId || null,
       categoryId: foundDish.categoryId || null,
-      variantKey: servingVariantKey,
-      servingVariantKey,
+      variantKey: selectedServingKey,
+      servingVariantKey: selectedServingKey,
       name: foundDish.name,
       price: currentUnitPrice,
       image: foundDish.thumbImage || "/default-dishes.jpg",
@@ -382,7 +383,7 @@ const FoodDetail = () => {
             quantity,
             thumbImage: payload.image,
             note: null,
-            servingVariantKey: selectedSize?.key || "portion",
+            servingVariantKey: selectedServingKey,
           },
         },
       });
@@ -390,8 +391,7 @@ const FoodDetail = () => {
       const returnedItem = data?.addCartItem?.items?.find(
         (item) =>
           String(item?.menuItemId) === String(foundDish?.id) &&
-          String(item?.servingVariantKey || "portion") ===
-            String(selectedSize?.key || "portion"),
+          String(item?.servingVariantKey) === String(selectedServingKey),
       );
 
       addToCart({
