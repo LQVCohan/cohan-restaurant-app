@@ -150,6 +150,22 @@ const safeRedirectPath = (candidate, fallback) => {
   return candidate;
 };
 
+const socialButtonStyle = {
+  border: "1px solid #ddd",
+  borderRadius: "50%",
+  display: "inline-flex",
+  justifyContent: "center",
+  alignItems: "center",
+  height: 40,
+  width: 40,
+  color: "#333",
+  fontSize: "1.1rem",
+  transition: "0.3s",
+  background: "transparent",
+  cursor: "pointer",
+  padding: 0,
+};
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -161,8 +177,6 @@ const LoginPage = () => {
     rememberedLoginIdentifier,
   } = useContext(AuthContext);
   const { showNotification } = useNotification();
-
-
 
   useEffect(() => {
     if (loading || !isAuthenticated || !user) return;
@@ -283,6 +297,13 @@ const LoginPage = () => {
     recaptchaRegisterRef.current?.reset();
   };
 
+  const announceUnavailableSocialLogin = (provider) => {
+    showNotification(
+      `Đăng nhập bằng ${provider} chưa được hỗ trợ. Vui lòng dùng email, tên đăng nhập hoặc số điện thoại.`,
+      "info",
+    );
+  };
+
   // Hàm chuyển đổi Tab (Login <-> Register)
   const togglePanel = (isRegister) => {
     setIsRightPanelActive(isRegister);
@@ -401,20 +422,24 @@ const LoginPage = () => {
             <h1>Tạo tài khoản</h1>
 
             <div className="social-container">
-              <a
-                href="#"
+              <button
+                type="button"
                 className="social"
-                onClick={(e) => e.preventDefault()}
+                style={socialButtonStyle}
+                aria-label="Đăng ký bằng Facebook chưa hỗ trợ"
+                onClick={() => announceUnavailableSocialLogin("Facebook")}
               >
                 <FacebookFilled style={{ color: "#3b5998" }} />
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="social"
-                onClick={(e) => e.preventDefault()}
+                style={socialButtonStyle}
+                aria-label="Đăng ký bằng Google chưa hỗ trợ"
+                onClick={() => announceUnavailableSocialLogin("Google")}
               >
                 <GoogleOutlined style={{ color: "#db4437" }} />
-              </a>
+              </button>
             </div>
             <p className="social-text">hoặc đăng ký bằng email</p>
 
@@ -543,20 +568,24 @@ const LoginPage = () => {
             <h1>Đăng nhập</h1>
 
             <div className="social-container">
-              <a
-                href="#"
+              <button
+                type="button"
                 className="social"
-                onClick={(e) => e.preventDefault()}
+                style={socialButtonStyle}
+                aria-label="Đăng nhập bằng Facebook chưa hỗ trợ"
+                onClick={() => announceUnavailableSocialLogin("Facebook")}
               >
                 <FacebookFilled style={{ color: "#3b5998" }} />
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="social"
-                onClick={(e) => e.preventDefault()}
+                style={socialButtonStyle}
+                aria-label="Đăng nhập bằng Google chưa hỗ trợ"
+                onClick={() => announceUnavailableSocialLogin("Google")}
               >
                 <GoogleOutlined style={{ color: "#db4437" }} />
-              </a>
+              </button>
             </div>
             <p className="social-text">hoặc sử dụng tài khoản của bạn</p>
 
