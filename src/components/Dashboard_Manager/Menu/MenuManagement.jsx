@@ -1,5 +1,12 @@
 // src/pages/Restaurant/MenuManagement/MenuManagement.jsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   FiMapPin,
   FiClock,
@@ -60,6 +67,67 @@ const TIME_SLOT_LABELS = {
   late_night: "Ăn Khuya (Late Night)",
 };
 
+const getGraphQLErrorMessage = (error) => {
+  const graphQlMessage = error?.graphQLErrors
+    ?.map((entry) => entry?.message)
+    .filter(Boolean)
+    .join("; ");
+
+  if (graphQlMessage) return graphQlMessage;
+  if (error?.networkError?.result?.errors?.length) {
+    return error.networkError.result.errors
+      .map((entry) => entry?.message)
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return error?.message || "Không thể lưu thay đổi giá.";
+};
+
+const cloneIngredients = (ingredients = []) =>
+  Array.isArray(ingredients)
+    ? ingredients.map((ingredient) => ({
+        ingredientId: ingredient?.ingredientId,
+        qty: Number(ingredient?.qty || 0),
+        unit: ingredient?.unit || ingredient?.baseUnit || "",
+        wastePct: Number(ingredient?.wastePct || 0),
+      }))
+    : [];
+
+const buildServingVariantsPayload = (methods = []) =>
+  methods.map((method, idx) => ({
+    key: method.key || `sv_${idx}`,
+    name: method.name,
+    mode: method.mode || "PORTION",
+    sellQty: Number(method.sellQty || 1),
+    sellUnit: method.sellUnit || "portion",
+    price: Number(method.price || 0),
+    ingredients: cloneIngredients(method.ingredients),
+    isDefault:
+      typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
+  }));
+
+const buildPriceEditError = ({ successCount, failures }) => {
+  const failureCount = failures.length;
+  const headline =
+    successCount > 0
+      ? `Đã lưu ${successCount} món, còn ${failureCount} món chưa lưu được.`
+      : `Không thể lưu thay đổi giá cho ${failureCount} món.`;
+
+  const details = failures
+    .map((failure) => {
+      const label = failure.itemName || failure.itemId || "Món không xác định";
+      return `${label}: ${failure.message}`;
+    })
+    .join("\n");
+
+  const error = new Error(details ? `${headline}\n${details}` : headline);
+  error.successCount = successCount;
+  error.failureCount = failureCount;
+  error.failures = failures;
+  return error;
+};
+
 const MenuManagement = () => {
   const auth = useContext(AuthContext);
   const managerId = auth?.user?.id;
@@ -79,6 +147,8 @@ const MenuManagement = () => {
   });
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
+  const [isSavingPriceEdit, setIsSavingPriceEdit] = useState(false);
+  const priceEditSubmitRef = useRef(false);
 
   /* --- DATA FETCHING --- */
   const {
@@ -126,6 +196,7 @@ const MenuManagement = () => {
     fetchMoreItems,
     refetchItems,
     deleteMenuItem,
+    bulkUpdateMenuItemPrices,
   } = useMenuManagement({
     restaurantId: currentRestaurant || null,
     defaultTimeSlot: "breakfast",
@@ -146,10 +217,27 @@ const MenuManagement = () => {
       loadCategoryMenus: modals.menu.isOpen,
     });
 
-  const { updateRecipe } = useRecipes(currentRestaurant || null, selectedTimeSlot || null, {
-    search: null,
-    categoryId: null,
-  });
+  const { updateRecipe } = useRecipes(
+    currentRestaurant || null,
+    selectedTimeSlot || null,
+    {
+      search: null,
+      categoryId: null,
+    }
+  );
+
+  const menuItemsById = useMemo(
+    () => new Map((items || []).map((item) => [String(item.id), item])),
+    [items]
+  );
+
+  const getMenuItemLabel = useCallback(
+    (itemId, fallbackName = "") => {
+      if (fallbackName) return fallbackName;
+      return menuItemsById.get(String(itemId))?.name || `Món #${itemId}`;
+    },
+    [menuItemsById]
+  );
 
   /* --- HANDLERS --- */
   // Modal toggle helpers
@@ -184,13 +272,145 @@ const MenuManagement = () => {
     }
   };
 
+  const handleSavePriceChanges = useCallback(
+    async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
+      if (priceEditSubmitRef.current) return;
+      if (!currentRestaurant) {
+        throw new Error("Chưa chọn nhà hàng để cập nhật giá.");
+      }
+
+      priceEditSubmitRef.current = true;
+      setIsSavingPriceEdit(true);
+
+      let successCount = 0;
+      const failures = [];
+
+      try {
+        for (const operation of bulkOperations) {
+          const targetIds = Array.isArray(operation?.menuItemIds)
+            ? operation.menuItemIds.filter(Boolean)
+            : [];
+
+          if (!targetIds.length) continue;
+
+          try {
+            const result = await bulkUpdateMenuItemPrices({
+              restaurantId: currentRestaurant,
+              timeSlot: selectedTimeSlot || null,
+              target: { menuItemIds: targetIds },
+              mode: operation.mode,
+              value: Number(operation.value),
+              roundTo: Number.isInteger(operation.roundTo)
+                ? operation.roundTo
+                : 0,
+              floorZero: operation.floorZero !== false,
+            });
+
+            const updatedIds = new Set(
+              (result?.items || []).map((item) => String(item.id))
+            );
+
+            targetIds.forEach((itemId) => {
+              if (updatedIds.has(String(itemId))) {
+                successCount += 1;
+                return;
+              }
+
+              failures.push({
+                type: "bulk",
+                itemId,
+                itemName: getMenuItemLabel(itemId),
+                message: "Backend không xác nhận cập nhật giá cho món này.",
+              });
+            });
+          } catch (error) {
+            const message = getGraphQLErrorMessage(error);
+
+            targetIds.forEach((itemId) => {
+              const itemName = getMenuItemLabel(itemId);
+              failures.push({
+                type: "bulk",
+                itemId,
+                itemName,
+                message,
+              });
+              console.error("Bulk price update failed", {
+                itemId,
+                itemName,
+                error,
+              });
+            });
+          }
+        }
+
+        for (const update of manualUpdates) {
+          try {
+            await updateRecipe(update.itemId, {
+              servingVariants: buildServingVariantsPayload(update.methods),
+            });
+            successCount += 1;
+          } catch (error) {
+            const message = getGraphQLErrorMessage(error);
+            const itemName = getMenuItemLabel(update.itemId, update.itemName);
+
+            failures.push({
+              type: "manual",
+              itemId: update.itemId,
+              itemName,
+              message,
+            });
+            console.error("Manual price update failed", {
+              itemId: update.itemId,
+              itemName,
+              error,
+            });
+          }
+        }
+
+        try {
+          await refetchItems?.();
+        } catch (error) {
+          const message = getGraphQLErrorMessage(error);
+
+          if (!successCount && failures.length === 0) {
+            throw error;
+          }
+
+          failures.push({
+            type: "refresh",
+            itemId: null,
+            itemName: "Danh sách món ăn",
+            message: `Đã lưu xong nhưng không thể tải lại dữ liệu: ${message}`,
+          });
+        }
+
+        if (failures.length > 0) {
+          throw buildPriceEditError({ successCount, failures });
+        }
+      } finally {
+        priceEditSubmitRef.current = false;
+        setIsSavingPriceEdit(false);
+      }
+    },
+    [
+      bulkUpdateMenuItemPrices,
+      currentRestaurant,
+      getMenuItemLabel,
+      refetchItems,
+      selectedTimeSlot,
+      updateRecipe,
+    ]
+  );
+
   /* --- SORT LOGIC (Client-side example if backend not ready) --- */
   // Nếu hook useMenuManagement chưa xử lý sort, ta có thể sort tạm ở đây:
   const displayItems = useMemo(() => {
     if (!items) return [];
     let sorted = [...items].map((item) => ({
       ...item,
-      categoryName: categories.find((c) => c.id === item.categoryId)?.name || item.categoryName,
+      categoryName:
+        categories.find((c) => c.id === item.categoryId)?.name ||
+        item.categoryName,
     }));
     if (sortOption === "name_asc")
       sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -430,25 +650,9 @@ const MenuManagement = () => {
 
       <PriceEditModal
         isOpen={modals.priceEdit.isOpen}
+        isSubmitting={isSavingPriceEdit}
         onClose={() => toggleModal("priceEdit", false)}
-        onSave={async (updates) => {
-          for (const update of updates) {
-            await updateRecipe(update.itemId, {
-              servingVariants: update.updates.methods.map((m, idx) => ({
-                key: m.key || `sv_${idx}`,
-                name: m.name,
-                mode: m.mode || "PORTION",
-                sellQty: Number(m.sellQty || 1),
-                sellUnit: m.sellUnit || "portion",
-                price: Number(m.price || 0),
-                ingredients: [],
-                isDefault: idx === 0,
-              })),
-            });
-          }
-          await refetchItems?.();
-          toggleModal("priceEdit", false);
-        }}
+        onSave={handleSavePriceChanges}
         menuItems={items}
       />
     </div>
