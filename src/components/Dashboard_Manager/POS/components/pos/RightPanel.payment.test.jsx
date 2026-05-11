@@ -25,3 +25,4 @@ describe("RightPanel payment completion discount display", () => {
     expect(source).toContain("Hóa đơn:");
   });
 });
+expect(source).toContain("formatDiscountReasonLabel");

@@ -14,6 +14,7 @@ import { formatPrice } from "@/utils/formatters";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
+import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
 import {
   getDiscountPreviewErrorMessage,
   useDiscountPreview,
@@ -638,9 +639,9 @@ export default function RightPanel() {
         ),
       );
 
-      const discountReason =
-        invoiceTotals?.discountReason || invoice?.meta?.discountReason || "";
-
+      const discountReason = formatDiscountReasonLabel(
+        invoiceTotals?.discountReason || invoice?.meta?.discountReason || "",
+      );
       if (invoiceNumber) {
         showNotification(`Hóa đơn: ${invoiceNumber}`, "info");
       }
@@ -847,8 +848,12 @@ export default function RightPanel() {
       lines.push(`Voucher: ${discountBreakdown.voucherCode}`);
     }
 
-    if (discountBreakdown?.discountReason) {
-      lines.push(`Ưu đãi: ${discountBreakdown.discountReason}`);
+    const discountReasonLabel = formatDiscountReasonLabel(
+      discountBreakdown?.discountReason,
+    );
+
+    if (discountReasonLabel) {
+      lines.push(`Ưu đãi: ${discountReasonLabel}`);
     }
 
     return lines.filter(Boolean).join("\n");

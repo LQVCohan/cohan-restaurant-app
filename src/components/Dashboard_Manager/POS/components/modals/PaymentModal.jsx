@@ -17,7 +17,7 @@ import {
   buildOrderDiscountPreviewInput,
   getDiscountBreakdownTotal,
 } from "@/utils/discountPreviewPayload";
-
+import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
     <svg
@@ -76,7 +76,8 @@ function PaymentModal({
     table?.restaurant_id ||
     pos?.currentTable?.restaurantId ||
     null;
-  const isDineIn = !pos?.currentOrderType || pos?.currentOrderType === "dine_in";
+  const isDineIn =
+    !pos?.currentOrderType || pos?.currentOrderType === "dine_in";
 
   const { activeCurrency, setActiveCurrency, usdToVndRate } =
     useRestaurantCurrency(restaurantId);
@@ -139,30 +140,40 @@ function PaymentModal({
     };
 
     return [
-      { label: "Tạm tính", value: Number(source?.subtotal || baseTotalAmountVnd) },
+      {
+        label: "Tạm tính",
+        value: Number(source?.subtotal || baseTotalAmountVnd),
+      },
       {
         label: "Giảm giá",
         value: Number(
-          source?.totalDiscount ?? source?.discount ?? source?.voucherDiscount ?? 0,
+          source?.totalDiscount ??
+            source?.discount ??
+            source?.voucherDiscount ??
+            0,
         ),
         negative: true,
       },
       { label: "Phí phục vụ", value: Number(source?.service || 0) },
       { label: "Thuế", value: Number(source?.tax || 0) },
-      { label: "Tổng cần trả", value: Number(payableTotalVnd || 0), total: true },
+      {
+        label: "Tổng cần trả",
+        value: Number(payableTotalVnd || 0),
+        total: true,
+      },
     ];
   }, [discountBreakdown, baseTotalAmountVnd, payableTotalVnd]);
   const hasValidDiscount = Boolean(
     isDineIn &&
-      discountBreakdown &&
-      !discountNeedsReapply &&
-      !discountError &&
-      (hasVoucherInput || selectedPromotionIds.length > 0),
+    discountBreakdown &&
+    !discountNeedsReapply &&
+    !discountError &&
+    (hasVoucherInput || selectedPromotionIds.length > 0),
   );
   const discountBlocksPayment = Boolean(
     isDineIn &&
-      hasVoucherInput &&
-      (!discountBreakdown || discountNeedsReapply || discountError),
+    hasVoucherInput &&
+    (!discountBreakdown || discountNeedsReapply || discountError),
   );
 
   useEffect(() => {
@@ -534,11 +545,14 @@ function PaymentModal({
                   </button>
                 </div>
 
-                {discountError && <div className={s.discountError}>{discountError}</div>}
+                {discountError && (
+                  <div className={s.discountError}>{discountError}</div>
+                )}
 
                 {!discountError && discountNeedsReapply && hasVoucherInput && (
                   <div className={s.discountWarning}>
-                    Voucher đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng lại.
+                    Voucher đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng
+                    lại.
                   </div>
                 )}
 
@@ -565,9 +579,13 @@ function PaymentModal({
                       </div>
                     ))}
 
-                    {discountBreakdown?.discountReason && (
+                    {formatDiscountReasonLabel(
+                      discountBreakdown?.discountReason,
+                    ) && (
                       <div className={s.discountNote}>
-                        {discountBreakdown.discountReason}
+                        {formatDiscountReasonLabel(
+                          discountBreakdown?.discountReason,
+                        )}
                       </div>
                     )}
                   </div>
@@ -575,7 +593,8 @@ function PaymentModal({
 
                 {discountBlocksPayment && (
                   <div className={s.discountError}>
-                    Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.
+                    Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh
+                    toán.
                   </div>
                 )}
               </div>

@@ -13,7 +13,7 @@ const orderManagementPath = path.resolve(
 
 const paymentModalSource = fs.readFileSync(paymentModalPath, "utf8");
 const orderManagementSource = fs.readFileSync(orderManagementPath, "utf8");
-
+expect(paymentModalSource).toContain("formatDiscountReasonLabel");
 describe("PaymentModal voucher payment flow", () => {
   it("forwards payment-stage pricing and promotionIds through useOrderManagement", () => {
     expect(orderManagementSource).toMatch(/pricing\s*(?:=\s*null)?\s*,/);

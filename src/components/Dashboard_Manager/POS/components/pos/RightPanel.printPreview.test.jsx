@@ -27,3 +27,5 @@ describe("RightPanel temp print preview discount display", () => {
     expect(source).toContain("Ưu đãi:");
   });
 });
+expect(source).toContain("formatDiscountReasonLabel");
+expect(source).toContain("discountReasonLabel");
