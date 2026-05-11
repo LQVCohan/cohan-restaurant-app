@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
 import process from "node:process";
+import { describe, expect, it } from "vitest";
+
 const paymentModalPath = path.resolve(
   process.cwd(),
   "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.jsx",
 );
+
 const orderManagementPath = path.resolve(
   process.cwd(),
   "src/hooks/useOrderManagement.js",
@@ -13,7 +15,7 @@ const orderManagementPath = path.resolve(
 
 const paymentModalSource = fs.readFileSync(paymentModalPath, "utf8");
 const orderManagementSource = fs.readFileSync(orderManagementPath, "utf8");
-expect(paymentModalSource).toContain("formatDiscountReasonLabel");
+
 describe("PaymentModal voucher payment flow", () => {
   it("forwards payment-stage pricing and promotionIds through useOrderManagement", () => {
     expect(orderManagementSource).toMatch(/pricing\s*(?:=\s*null)?\s*,/);
@@ -26,11 +28,14 @@ describe("PaymentModal voucher payment flow", () => {
     expect(orderManagementSource).toMatch(/promotionId/);
     expect(orderManagementSource).toMatch(/shippingFee/);
   });
+
   it("keeps voucher preview helpers and routes payment through confirmPayment", () => {
     expect(paymentModalSource).toContain("useDiscountPreview");
     expect(paymentModalSource).toContain("buildOrderDiscountPreviewInput");
     expect(paymentModalSource).toContain("buildDiscountPricingInput");
     expect(paymentModalSource).toContain("getDiscountBreakdownTotal");
+    expect(paymentModalSource).toContain("formatDiscountReasonLabel");
+
     expect(paymentModalSource).not.toContain(
       "PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS",
     );
@@ -41,17 +46,27 @@ describe("PaymentModal voucher payment flow", () => {
       "mutation PayOrdersByTableIdWithTotals",
     );
     expect(paymentModalSource).not.toContain("executeDiscountedDineInPayment");
+
     expect(paymentModalSource).toContain("confirmPayment({");
     expect(paymentModalSource).toContain("pricing: paymentPricing");
     expect(paymentModalSource).toContain("promotionIds: selectedPromotionIds");
     expect(paymentModalSource).toContain(
       "paidAmount: Number(payableTotalVnd || 0)",
     );
+
     expect(paymentModalSource).toContain("discountBlocksPayment");
     expect(paymentModalSource).toContain("discountNeedsReapply");
     expect(paymentModalSource).toContain(
       "Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.",
     );
+  });
+
+  it("allows selecting an active promotion in the payment modal", () => {
+    expect(paymentModalSource).toContain("useActiveDiscountPromotions");
+    expect(paymentModalSource).toContain("activePromotions");
+    expect(paymentModalSource).toContain("selectedPromotionId");
+    expect(paymentModalSource).toContain("Chương trình khuyến mãi");
+    expect(paymentModalSource).toContain("setSelectedPromotionIds");
   });
 });
 

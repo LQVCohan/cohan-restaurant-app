@@ -18,6 +18,8 @@ import {
   getDiscountBreakdownTotal,
 } from "@/utils/discountPreviewPayload";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+
+import { useActiveDiscountPromotions } from "@/hooks/useActiveDiscountPromotions";
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
     <svg
@@ -85,7 +87,12 @@ function PaymentModal({
     useOrderManagement(pos);
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
+  const { promotions: activePromotions, loading: promotionsLoading } =
+    useActiveDiscountPromotions(restaurantId, {
+      skip: !isDineIn,
+    });
 
+  const selectedPromotionId = selectedPromotionIds[0] || "";
   const busy = Boolean(payLoading);
   const groupedBatches = groupItemsByBatch(order || []);
   const orderSignature = useMemo(
@@ -544,7 +551,31 @@ function PaymentModal({
                     {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
                   </button>
                 </div>
-
+                {activePromotions.length > 0 && (
+                  <div className={s.promotionRow}>
+                    <label className={s.subLabel}>
+                      Chương trình khuyến mãi
+                    </label>
+                    <select
+                      className={s.promotionSelect}
+                      value={selectedPromotionId}
+                      onChange={(event) =>
+                        setSelectedPromotionIds(
+                          event.target.value ? [event.target.value] : [],
+                        )
+                      }
+                      disabled={busy || promotionsLoading}
+                    >
+                      <option value="">Không áp dụng promotion</option>
+                      {activePromotions.map((promotion) => (
+                        <option key={promotion.id} value={promotion.id}>
+                          {promotion.name}
+                          {promotion.code ? ` · ${promotion.code}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {discountError && (
                   <div className={s.discountError}>{discountError}</div>
                 )}
