@@ -94,8 +94,8 @@ const cloneIngredients = (ingredients = []) =>
       }))
     : [];
 
-const buildServingVariantsPayload = (methods = []) =>
-  methods.map((method, idx) => ({
+const normalizeServingVariantsForSave = (methods = []) => {
+  const normalizedMethods = methods.map((method, idx) => ({
     key: method.key || `sv_${idx}`,
     name: method.name,
     mode: method.mode || "PORTION",
@@ -107,6 +107,15 @@ const buildServingVariantsPayload = (methods = []) =>
       typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
   }));
 
+  let defaultIndex = normalizedMethods.findIndex((method) => method.isDefault);
+  if (defaultIndex < 0) defaultIndex = 0;
+
+  return normalizedMethods.map((method, idx) => ({
+    ...method,
+    isDefault: idx === defaultIndex,
+  }));
+};
+
 const buildPriceEditError = ({ successCount, failures }) => {
   const failureCount = failures.length;
   const headline =
@@ -114,14 +123,7 @@ const buildPriceEditError = ({ successCount, failures }) => {
       ? `Đã lưu ${successCount} món, còn ${failureCount} món chưa lưu được.`
       : `Không thể lưu thay đổi giá cho ${failureCount} món.`;
 
-  const details = failures
-    .map((failure) => {
-      const label = failure.itemName || failure.itemId || "Món không xác định";
-      return `${label}: ${failure.message}`;
-    })
-    .join("\n");
-
-  const error = new Error(details ? `${headline}\n${details}` : headline);
+  const error = new Error(headline);
   error.successCount = successCount;
   error.failureCount = failureCount;
   error.failures = failures;
@@ -149,6 +151,7 @@ const MenuManagement = () => {
   const [isSavingMenu, setIsSavingMenu] = useState(false);
   const [isSavingPriceEdit, setIsSavingPriceEdit] = useState(false);
   const priceEditSubmitRef = useRef(false);
+  const priceEditInFlightPromiseRef = useRef(null);
 
   /* --- DATA FETCHING --- */
   const {
@@ -274,123 +277,132 @@ const MenuManagement = () => {
 
   const handleSavePriceChanges = useCallback(
     async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
-      if (priceEditSubmitRef.current) return;
+      if (priceEditSubmitRef.current) {
+        throw new Error("Đang lưu thay đổi giá, vui lòng chờ hoàn tất.");
+      }
       if (!currentRestaurant) {
         throw new Error("Chưa chọn nhà hàng để cập nhật giá.");
       }
 
-      priceEditSubmitRef.current = true;
-      setIsSavingPriceEdit(true);
+      const submitPromise = (async () => {
+        priceEditSubmitRef.current = true;
+        setIsSavingPriceEdit(true);
 
-      let successCount = 0;
-      const failures = [];
+        let successCount = 0;
+        const failures = [];
 
-      try {
-        for (const operation of bulkOperations) {
-          const targetIds = Array.isArray(operation?.menuItemIds)
-            ? operation.menuItemIds.filter(Boolean)
-            : [];
+        try {
+          for (const operation of bulkOperations) {
+            const targetIds = Array.isArray(operation?.menuItemIds)
+              ? operation.menuItemIds.filter(Boolean)
+              : [];
 
-          if (!targetIds.length) continue;
+            if (!targetIds.length) continue;
 
-          try {
-            const result = await bulkUpdateMenuItemPrices({
-              restaurantId: currentRestaurant,
-              timeSlot: selectedTimeSlot || null,
-              target: { menuItemIds: targetIds },
-              mode: operation.mode,
-              value: Number(operation.value),
-              roundTo: Number.isInteger(operation.roundTo)
-                ? operation.roundTo
-                : 0,
-              floorZero: operation.floorZero !== false,
-            });
-
-            const updatedIds = new Set(
-              (result?.items || []).map((item) => String(item.id))
-            );
-
-            targetIds.forEach((itemId) => {
-              if (updatedIds.has(String(itemId))) {
-                successCount += 1;
-                return;
-              }
-
-              failures.push({
-                type: "bulk",
-                itemId,
-                itemName: getMenuItemLabel(itemId),
-                message: "Backend không xác nhận cập nhật giá cho món này.",
+            try {
+              const result = await bulkUpdateMenuItemPrices({
+                restaurantId: currentRestaurant,
+                timeSlot: selectedTimeSlot || null,
+                target: { menuItemIds: targetIds },
+                mode: operation.mode,
+                value: Number(operation.value),
+                // Align FE preview with backend bulk mutation rounding.
+                roundTo: Number.isInteger(operation.roundTo)
+                  ? operation.roundTo
+                  : 0,
+                floorZero: operation.floorZero !== false,
               });
-            });
-          } catch (error) {
-            const message = getGraphQLErrorMessage(error);
 
-            targetIds.forEach((itemId) => {
-              const itemName = getMenuItemLabel(itemId);
+              const updatedIds = new Set(
+                (result?.items || []).map((item) => String(item.id))
+              );
+
+              targetIds.forEach((itemId) => {
+                if (updatedIds.has(String(itemId))) {
+                  successCount += 1;
+                  return;
+                }
+
+                failures.push({
+                  type: "bulk",
+                  itemId,
+                  itemName: getMenuItemLabel(itemId),
+                  message: "Backend không xác nhận cập nhật giá cho món này.",
+                });
+              });
+            } catch (error) {
+              const message = getGraphQLErrorMessage(error);
+
+              targetIds.forEach((itemId) => {
+                const itemName = getMenuItemLabel(itemId);
+                failures.push({
+                  type: "bulk",
+                  itemId,
+                  itemName,
+                  message,
+                });
+                console.error("Bulk price update failed", {
+                  itemId,
+                  itemName,
+                  error,
+                });
+              });
+            }
+          }
+
+          for (const update of manualUpdates) {
+            try {
+              await updateRecipe(update.itemId, {
+                servingVariants: normalizeServingVariantsForSave(update.methods),
+              });
+              successCount += 1;
+            } catch (error) {
+              const message = getGraphQLErrorMessage(error);
+              const itemName = getMenuItemLabel(update.itemId, update.itemName);
+
               failures.push({
-                type: "bulk",
-                itemId,
+                type: "manual",
+                itemId: update.itemId,
                 itemName,
                 message,
               });
-              console.error("Bulk price update failed", {
-                itemId,
+              console.error("Manual price update failed", {
+                itemId: update.itemId,
                 itemName,
                 error,
               });
-            });
+            }
           }
-        }
 
-        for (const update of manualUpdates) {
           try {
-            await updateRecipe(update.itemId, {
-              servingVariants: buildServingVariantsPayload(update.methods),
-            });
-            successCount += 1;
+            await refetchItems?.();
           } catch (error) {
             const message = getGraphQLErrorMessage(error);
-            const itemName = getMenuItemLabel(update.itemId, update.itemName);
+
+            if (!successCount && failures.length === 0) {
+              throw error;
+            }
 
             failures.push({
-              type: "manual",
-              itemId: update.itemId,
-              itemName,
-              message,
-            });
-            console.error("Manual price update failed", {
-              itemId: update.itemId,
-              itemName,
-              error,
+              type: "refresh",
+              itemId: null,
+              itemName: "Danh sách món ăn",
+              message: `Đã lưu xong nhưng không thể tải lại dữ liệu: ${message}`,
             });
           }
-        }
 
-        try {
-          await refetchItems?.();
-        } catch (error) {
-          const message = getGraphQLErrorMessage(error);
-
-          if (!successCount && failures.length === 0) {
-            throw error;
+          if (failures.length > 0) {
+            throw buildPriceEditError({ successCount, failures });
           }
-
-          failures.push({
-            type: "refresh",
-            itemId: null,
-            itemName: "Danh sách món ăn",
-            message: `Đã lưu xong nhưng không thể tải lại dữ liệu: ${message}`,
-          });
+        } finally {
+          priceEditSubmitRef.current = false;
+          priceEditInFlightPromiseRef.current = null;
+          setIsSavingPriceEdit(false);
         }
+      })();
 
-        if (failures.length > 0) {
-          throw buildPriceEditError({ successCount, failures });
-        }
-      } finally {
-        priceEditSubmitRef.current = false;
-        setIsSavingPriceEdit(false);
-      }
+      priceEditInFlightPromiseRef.current = submitPromise;
+      return submitPromise;
     },
     [
       bulkUpdateMenuItemPrices,
