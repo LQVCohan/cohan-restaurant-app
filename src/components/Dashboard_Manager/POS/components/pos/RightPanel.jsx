@@ -617,9 +617,51 @@ export default function RightPanel() {
 
       activePaymentRequestRef.current = null;
       showNotification("Thanh toán thành công.", "success");
-      const inv =
-        payload?.server?.invoice?.number || payload?.server?.invoice?.id;
-      if (inv) showNotification(`Hóa đơn: ${inv}`, "info");
+
+      const invoice = payload?.server?.invoice || null;
+      const invoiceTotals = invoice?.totals || {};
+      const invoiceNumber = invoice?.number || invoice?.id;
+
+      const appliedVoucherCode =
+        payload?.appliedVoucherCode ||
+        invoiceTotals?.voucherCode ||
+        invoice?.meta?.voucherCode ||
+        "";
+
+      const discountAmount = Math.max(
+        0,
+        Number(
+          invoiceTotals?.discount ??
+            invoice?.meta?.totalDiscount ??
+            invoice?.meta?.voucherDiscount ??
+            0,
+        ),
+      );
+
+      const discountReason =
+        invoiceTotals?.discountReason || invoice?.meta?.discountReason || "";
+
+      if (invoiceNumber) {
+        showNotification(`Hóa đơn: ${invoiceNumber}`, "info");
+      }
+
+      if (discountAmount > 0 || appliedVoucherCode || discountReason) {
+        const parts = [];
+
+        if (appliedVoucherCode) {
+          parts.push(`Voucher ${appliedVoucherCode}`);
+        }
+
+        if (discountAmount > 0) {
+          parts.push(`giảm ${formatPrice(discountAmount)}`);
+        }
+
+        if (discountReason) {
+          parts.push(discountReason);
+        }
+
+        showNotification(`Ưu đãi đã áp dụng: ${parts.join(" · ")}`, "success");
+      }
 
       const paidTable = currentTable;
 
