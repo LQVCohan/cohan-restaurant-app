@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Cart, Warehouse } from "../../models/index.js";
 import { cancelReservationForOrderTx } from "./inventory.service.js";
 
+const ABUSE_WARN_THRESHOLD = 3;
 const ABUSE_BLOCK_THRESHOLD = 8;
 const ABUSE_BLOCK_MS = 60 * 60 * 1000;
 
@@ -133,13 +134,16 @@ export async function cleanupExpiredCartHolds(io, logger = console) {
 
         cart.abuse = cart.abuse || {};
         cart.abuse.timeoutReleaseCount = Number(cart.abuse.timeoutReleaseCount || 0) + 1;
-        cart.abuse.lastViolationAt = new Date();
-        if (
+        cart.abuse.lastViolationAt = now;
+
+        const totalReleaseCount =
           Number(cart.abuse.timeoutReleaseCount || 0) +
-            Number(cart.abuse.exitReleaseCount || 0) >=
-          ABUSE_BLOCK_THRESHOLD
-        ) {
-          cart.abuse.blockedUntil = new Date(Date.now() + ABUSE_BLOCK_MS);
+          Number(cart.abuse.exitReleaseCount || 0);
+
+        if (totalReleaseCount >= ABUSE_BLOCK_THRESHOLD) {
+          cart.abuse.blockedUntil = new Date(now.getTime() + ABUSE_BLOCK_MS);
+        } else if (totalReleaseCount >= ABUSE_WARN_THRESHOLD) {
+          cart.abuse.warningCount = Number(cart.abuse.warningCount || 0) + 1;
         }
 
         await cart.save({ session });
