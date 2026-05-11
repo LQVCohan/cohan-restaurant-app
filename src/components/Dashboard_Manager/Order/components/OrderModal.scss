@@ -376,6 +376,45 @@ $st-cancelled-text: #b91c1c;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  .discount-meta-card {
+    margin-top: 0.5rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px dashed rgba($gold, 0.45);
+    border-radius: 8px;
+    background: #fffbeb;
+  }
+
+  .discount-meta-title {
+    margin-bottom: 0.45rem;
+    color: $charcoal;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .discount-meta-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .discount-meta-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid rgba($gold, 0.35);
+    border-radius: 999px;
+    background: #fff;
+    color: $charcoal;
+    font-size: 0.75rem;
+    font-weight: 700;
+
+    &.muted {
+      color: $text-sub;
+      font-weight: 600;
+    }
+  }
   .summary-row {
     display: flex;
     justify-content: space-between;

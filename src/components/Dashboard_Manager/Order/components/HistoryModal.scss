@@ -467,3 +467,52 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
     background-color: #94a3b8;
   }
 }
+.hm-card__discount {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px dashed rgba($gold, 0.45);
+  border-radius: 0.5rem;
+  background: #fffbeb;
+}
+
+.hm-discount-label {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: $charcoal;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 0.15rem;
+}
+
+.hm-discount-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hm-discount-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba($gold, 0.35);
+  background: #fff;
+  color: $charcoal;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  &--amount {
+    color: #15803d;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+  }
+
+  &--muted {
+    color: $text-sub;
+    font-weight: 600;
+  }
+}

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
-
+import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
 /* ---------------- Helpers & Sub-components vẫn giữ nguyên ---------------- */
 
 const formatCurrency = (amount) => {
@@ -500,18 +500,31 @@ const OrderModal = ({
     const discount = Number(fromOrder.discount || 0);
     const tax = Number(fromOrder.tax || 0);
     const service = Number(fromOrder.service || 0);
+    const shippingFee = Number(fromOrder.shippingFee || 0);
+    const voucherCode = String(fromOrder.voucherCode || "").trim();
+    const promotionId = String(fromOrder.promotionId || "").trim();
+    const discountReason = formatDiscountReasonLabel(fromOrder.discountReason);
 
     const grandTotal =
       fromOrder.grandTotal != null
         ? Number(fromOrder.grandTotal)
-        : Math.max(0, subtotal - discount + tax + service);
+        : Math.max(0, subtotal - discount + tax + service + shippingFee);
 
     return {
       subtotal,
       discount,
       tax,
       service,
+      shippingFee,
+      voucherCode,
+      promotionId,
+      discountReason,
       grandTotal,
+      hasDiscountMeta:
+        discount > 0 ||
+        Boolean(voucherCode) ||
+        Boolean(promotionId) ||
+        Boolean(discountReason),
     };
   }, [order?.totals, items]);
   useEffect(() => {
@@ -765,12 +778,42 @@ const OrderModal = ({
               <span>Tạm tính</span>
               <span>{formatCurrency(totals.subtotal)}</span>
             </div>
+
             {totals.discount > 0 && (
               <div className="summary-row discount">
                 <span>Giảm giá</span>
                 <span>-{formatCurrency(totals.discount)}</span>
               </div>
             )}
+
+            {totals.shippingFee > 0 && (
+              <div className="summary-row">
+                <span>Phí giao hàng</span>
+                <span>{formatCurrency(totals.shippingFee)}</span>
+              </div>
+            )}
+
+            {totals.hasDiscountMeta && (
+              <div className="discount-meta-card">
+                <div className="discount-meta-title">Ưu đãi áp dụng</div>
+                <div className="discount-meta-tags">
+                  {totals.voucherCode && (
+                    <span className="discount-meta-tag">
+                      Voucher {totals.voucherCode}
+                    </span>
+                  )}
+                  {totals.promotionId && (
+                    <span className="discount-meta-tag">Promotion</span>
+                  )}
+                  {totals.discountReason && (
+                    <span className="discount-meta-tag muted">
+                      {totals.discountReason}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="summary-row grand-total">
               <span>Tổng cộng</span>
               <span>{formatCurrency(totals.grandTotal)}</span>

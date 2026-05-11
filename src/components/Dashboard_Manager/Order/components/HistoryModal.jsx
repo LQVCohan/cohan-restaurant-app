@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { X, Eye, Loader, Calendar, Filter, DollarSign } from "lucide-react";
 import useOrderManagement from "../../../../hooks/useOrderManagement";
 import "./HistoryModal.scss";
-
+import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
 /* --- Helpers --- */
 const toEpochMs = (v) => {
   if (v == null) return null;
@@ -17,7 +17,25 @@ const toEpochMs = (v) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d.getTime();
 };
+const getOrderDiscountMeta = (order) => {
+  const totals = order?.totals || {};
+  const discount = Number(totals.discount || 0);
+  const voucherCode = String(totals.voucherCode || "").trim();
+  const promotionId = String(totals.promotionId || "").trim();
+  const discountReason = formatDiscountReasonLabel(totals.discountReason);
 
+  return {
+    discount,
+    voucherCode,
+    promotionId,
+    discountReason,
+    hasDiscount:
+      discount > 0 ||
+      Boolean(voucherCode) ||
+      Boolean(promotionId) ||
+      Boolean(discountReason),
+  };
+};
 const toDT = (v) => {
   const ms = toEpochMs(v);
   return ms ? new Date(ms) : null;
@@ -86,7 +104,7 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
 
         // Filter local
         const filtered = nodes.filter((o) =>
-          VALID_HISTORY.has(o?.currentStatus)
+          VALID_HISTORY.has(o?.currentStatus),
         );
 
         // Sort DESC
@@ -107,7 +125,7 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
         setLoading(false);
       }
     },
-    [restaurantId, loadOrdersAll]
+    [restaurantId, loadOrdersAll],
   );
 
   useEffect(() => {
@@ -122,10 +140,10 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
   const summary = useMemo(() => {
     const served = allOrders.filter((o) => o.currentStatus === "served").length;
     const completed = allOrders.filter(
-      (o) => o.currentStatus === "completed"
+      (o) => o.currentStatus === "completed",
     ).length;
     const cancelled = allOrders.filter(
-      (o) => o.currentStatus === "cancelled"
+      (o) => o.currentStatus === "cancelled",
     ).length;
     return { served, completed, cancelled, total: allOrders.length };
   }, [allOrders]);
@@ -235,7 +253,7 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                 const visibleItems = items.slice(0, 5);
                 const remaining = items.length - 5;
                 const st = order.currentStatus;
-
+                const discountMeta = getOrderDiscountMeta(order);
                 return (
                   <div key={order.id} className="hm-card">
                     {/* Card Header */}
@@ -252,8 +270,8 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                         {st === "served"
                           ? "Đã phục vụ"
                           : st === "completed"
-                          ? "Hoàn thành"
-                          : "Đã hủy"}
+                            ? "Hoàn thành"
+                            : "Đã hủy"}
                       </div>
                     </div>
 
@@ -283,7 +301,31 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                         </span>
                       )}
                     </div>
-
+                    {discountMeta.hasDiscount && (
+                      <div className="hm-card__discount">
+                        <span className="hm-discount-label">Ưu đãi</span>
+                        <div className="hm-discount-tags">
+                          {discountMeta.voucherCode && (
+                            <span className="hm-discount-tag">
+                              Voucher {discountMeta.voucherCode}
+                            </span>
+                          )}
+                          {discountMeta.promotionId && (
+                            <span className="hm-discount-tag">Promotion</span>
+                          )}
+                          {discountMeta.discount > 0 && (
+                            <span className="hm-discount-tag hm-discount-tag--amount">
+                              -{formatCurrency(discountMeta.discount)}
+                            </span>
+                          )}
+                          {discountMeta.discountReason && (
+                            <span className="hm-discount-tag hm-discount-tag--muted">
+                              {discountMeta.discountReason}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {/* Footer */}
                     <div className="hm-card__footer">
                       <div className="hm-card__total">
