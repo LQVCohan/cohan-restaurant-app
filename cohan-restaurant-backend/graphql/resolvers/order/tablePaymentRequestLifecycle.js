@@ -92,12 +92,7 @@ async function hardenCreatedDineInOrderBatch({ order, input }) {
         String(parentOrderId) === String(orderId) ||
         order.orderKind === ORDER_KIND.TABLE_SESSION
       ) {
-        const childOrderCode = await generateOrderCode({
-          restaurantId,
-          tableId,
-          tableCode,
-          session: dbSession,
-        });
+        const childOrderCode = generateOrderCode("POS", new Date(), tableCode);
 
         const [createdChild] = await Order.create(
           [
@@ -220,6 +215,8 @@ export function withTablePaymentRequestLifecycle(orderMutation) {
       );
 
       const createdOrder = result?.order;
+      let orderForPaymentRequestClear = createdOrder;
+
       if (createdOrder) {
         try {
           const hardenedOrder = await hardenCreatedDineInOrderBatch({
@@ -229,13 +226,8 @@ export function withTablePaymentRequestLifecycle(orderMutation) {
 
           if (hardenedOrder) {
             result.order = hardenedOrder;
+            orderForPaymentRequestClear = hardenedOrder;
           }
-
-          await clearPaymentRequestAfterNewChildOrderBatchCreated({
-            OrderModel: Order,
-            order: result.order,
-            reason: STALE_PAYMENT_REQUEST_CLEAR_REASON,
-          });
         } catch (error) {
           console.warn(
             "[order] Failed to harden dine-in session lifecycle after createOrderForTable",
@@ -248,6 +240,37 @@ export function withTablePaymentRequestLifecycle(orderMutation) {
               tableId: createdOrder?.tableId || args?.input?.tableId || null,
               tableCode:
                 createdOrder?.tableCode || args?.input?.tableCode || null,
+              error: error?.message || String(error),
+            },
+          );
+        }
+
+        try {
+          await clearPaymentRequestAfterNewChildOrderBatchCreated({
+            OrderModel: Order,
+            order: orderForPaymentRequestClear,
+            reason: STALE_PAYMENT_REQUEST_CLEAR_REASON,
+          });
+        } catch (error) {
+          console.warn(
+            "[order] Failed to clear stale table payment request after new batch",
+            {
+              orderId:
+                orderForPaymentRequestClear?._id ||
+                orderForPaymentRequestClear?.id ||
+                null,
+              parentOrderId: orderForPaymentRequestClear?.parentOrderId || null,
+              rootOrderId: orderForPaymentRequestClear?.rootOrderId || null,
+              restaurantId:
+                orderForPaymentRequestClear?.restaurantId ||
+                args?.input?.restaurantId ||
+                null,
+              tableId:
+                orderForPaymentRequestClear?.tableId || args?.input?.tableId || null,
+              tableCode:
+                orderForPaymentRequestClear?.tableCode ||
+                args?.input?.tableCode ||
+                null,
               error: error?.message || String(error),
             },
           );
