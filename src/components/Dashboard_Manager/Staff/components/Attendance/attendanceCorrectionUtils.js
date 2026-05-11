@@ -23,8 +23,7 @@ export const canCancelCorrection = (user, request) => {
   return (
     roleName === STAFF_ROLE &&
     userId &&
-    (String(request.requestedBy || "") === String(userId) ||
-      String(request.employeeId || "") === String(userId))
+    String(request.requestedBy || "") === String(userId)
   );
 };
 

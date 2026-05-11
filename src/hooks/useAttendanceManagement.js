@@ -111,11 +111,13 @@ export const QUERY_ATTENDANCE_CORRECTIONS = gql`
   }
 `;
 
+export const ATTENDANCE_TIMEZONE_OFFSET = "+07:00";
+
 export const toAttendanceIsoStartOfDay = (value) =>
-  value ? `${value}T00:00:00.000Z` : null;
+  value ? `${value}T00:00:00.000${ATTENDANCE_TIMEZONE_OFFSET}` : null;
 
 export const toAttendanceIsoEndOfDay = (value) =>
-  value ? `${value}T23:59:59.999Z` : null;
+  value ? `${value}T23:59:59.999${ATTENDANCE_TIMEZONE_OFFSET}` : null;
 
 export const buildAttendanceQueryVars = ({
   selectedDate,

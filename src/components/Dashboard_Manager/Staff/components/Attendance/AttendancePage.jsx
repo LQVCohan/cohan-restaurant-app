@@ -16,11 +16,14 @@ import {
   isUnauthenticatedError,
 } from "@/utils/graphqlErrorUtils";
 
+const MISSED_CHECKOUT_GRACE_MINUTES = 30;
+
 const STATUS_TABS = [
   { key: "all", label: "Tất cả" },
   { key: "late", label: "Đi muộn" },
   { key: "early_leave", label: "Về sớm" },
-  { key: "scheduled_absent", label: "Vắng theo lịch" },
+  { key: "scheduled_absent", label: "No-show / Vắng lịch" },
+  { key: "missed_checkout", label: "Thiếu check-out" },
   { key: "checked_in", label: "Đang trong ca" },
   { key: "unscheduled_checkin", label: "Ngoài lịch" },
 ];
@@ -115,6 +118,29 @@ const getAvatarColor = (name = "?") => {
   return colors[name.length % colors.length];
 };
 
+const resolveAttendanceDisplayStatus = (
+  record,
+  now = new Date(),
+  graceMinutes = MISSED_CHECKOUT_GRACE_MINUTES,
+) => {
+  const storedStatus = String(record?.status || "").toLowerCase();
+  if (storedStatus === "missed_checkout") return storedStatus;
+  if (
+    storedStatus === "checked_in" &&
+    record?.actualCheckInAt &&
+    !record?.actualCheckOutAt &&
+    record?.plannedEndTime &&
+    !record?.isOffSchedule
+  ) {
+    const overdueAt =
+      new Date(record.plannedEndTime).getTime() + graceMinutes * 60 * 1000;
+    if (Number.isFinite(overdueAt) && overdueAt <= now.getTime()) {
+      return "missed_checkout";
+    }
+  }
+  return storedStatus || "--";
+};
+
 const getDefaultCorrectionType = (record) => {
   if (!record?.actualCheckInAt) return "missing_check_in";
   if (!record?.actualCheckOutAt) return "missing_check_out";
@@ -135,6 +161,11 @@ const getStatusBadge = (status) => {
   const config = {
     completed: { label: "Đúng ca", className: "success", icon: "✅" },
     checked_in: { label: "Đang làm", className: "neutral", icon: "🟢" },
+    missed_checkout: {
+      label: "Thiếu check-out",
+      className: "warning",
+      icon: "🟠",
+    },
     late: { label: "Đi muộn", className: "warning", icon: "⚠️" },
     early_leave: { label: "Về sớm", className: "warning", icon: "🏃" },
     late_early_leave: {
@@ -143,7 +174,7 @@ const getStatusBadge = (status) => {
       icon: "⏱️",
     },
     scheduled_absent: {
-      label: "Vắng theo lịch",
+      label: "No-show / Vắng lịch",
       className: "danger",
       icon: "❌",
     },
@@ -816,8 +847,8 @@ const AttendancePage = () => {
                 <button
                   key={tab.key}
                   className={`tab-btn ${filterStatus === tab.key ? "active" : ""}`}
-                  onClick={() => setFilterStatus(tab.key)}
                   type="button"
+                  onClick={() => setFilterStatus(tab.key)}
                 >
                   {tab.label}
                 </button>
@@ -867,6 +898,7 @@ const AttendancePage = () => {
                   const displayName = item.employeeName || "Chưa có tên";
                   const checkInText = formatTime(item.actualCheckInAt);
                   const checkOutText = formatTime(item.actualCheckOutAt);
+                  const displayStatus = resolveAttendanceDisplayStatus(item);
 
                   return (
                     <tr key={item.id}>
@@ -910,7 +942,7 @@ const AttendancePage = () => {
                           {checkOutText || "--:--"}
                         </span>
                       </td>
-                      <td>{getStatusBadge(item.status)}</td>
+                      <td>{getStatusBadge(displayStatus)}</td>
                       <td>
                         <span className="source-badge">
                           {item.source === "manual_correction"
@@ -1182,7 +1214,9 @@ const AttendancePage = () => {
                 </div>
                 <div>
                   <span className="label">Trạng thái</span>
-                  {getStatusBadge(selectedCorrectionRecord.status)}
+                  {getStatusBadge(
+                    resolveAttendanceDisplayStatus(selectedCorrectionRecord),
+                  )}
                 </div>
               </div>
 
