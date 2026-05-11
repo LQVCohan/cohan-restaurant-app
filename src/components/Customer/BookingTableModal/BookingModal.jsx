@@ -29,7 +29,6 @@ import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 import "./BookingModal.scss";
 
-/* ───────────────── GraphQL ───────────────── */
 const GET_RESTAURANT = gql`
   query Restaurant($id: ID!) {
     restaurant(id: $id) {
@@ -120,7 +119,6 @@ const CREATE_ORDER_FOR_TABLE = gql`
   }
 `;
 
-/* ───────────────── Utils Helpers ───────────────── */
 function addressToText(addr) {
   if (!addr) return "—";
   return [addr.line1, addr.line2, addr.ward, addr.district, addr.city]
@@ -150,6 +148,31 @@ function calculateDurationMinutes(date, timeIn, timeOut) {
   return Math.floor(diffMs / 60000);
 }
 
+function normalizeCustomerEmail(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized || "";
+}
+
+function normalizeCustomerPhone(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  let phone = raw.replace(/\s+/g, "");
+  phone = phone.replace(/^(\+84)/, "0");
+  if (phone.startsWith("84")) phone = `0${phone.slice(2)}`;
+  return phone;
+}
+
+function isValidCustomerEmail(value) {
+  if (!value) return true;
+  return /^[^\s@]+@[^
+\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidCustomerPhone(value) {
+  if (!value) return true;
+  return /^(0\d{9,10})$/.test(value);
+}
+
 const POLICY_ITEMS = [
   "Vui lòng đến đúng giờ; được phép trễ tối đa 15 phút.",
   "Sau 15 phút không có thông báo, hệ thống tự hủy bàn.",
@@ -157,7 +180,6 @@ const POLICY_ITEMS = [
   "Nếu có vấn đề, vui lòng gọi số 1900-888-999 hoặc nhắn chatbot để được hỗ trợ.",
 ];
 
-/* ───────────────── Main Component ───────────────── */
 const BookingModal = ({
   isOpen,
   onClose,
@@ -178,7 +200,6 @@ const BookingModal = ({
   const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
   const [showVirtualTour, setShowVirtualTour] = useState(false);
 
-  // Khóa scroll body khi modal mở
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
@@ -186,7 +207,6 @@ const BookingModal = ({
     };
   }, [isOpen]);
 
-  // --- Data Fetching ---
   const { data: rData } = useQuery(GET_RESTAURANT, {
     variables: { id: restaurantId },
     skip: !restaurantId,
@@ -223,7 +243,6 @@ const BookingModal = ({
     [eventPackageData]
   );
 
-  // --- State ---
   const [pickedTable, setPickedTable] = useState(null);
   const [formData, setFormData] = useState({
     customerName: "",
@@ -243,7 +262,6 @@ const BookingModal = ({
   const [showSummary, setShowSummary] = useState(false);
   const [timeWarning, setTimeWarning] = useState(null);
 
-  // --- PREFILL DATA ---
   useEffect(() => {
     if (!isOpen) return;
     setErrors({});
@@ -315,7 +333,6 @@ const BookingModal = ({
   const packagePrice = Number(selectedPackage?.price || 0);
   const totalDuePreview = totalDeposit;
 
-  // --- Handlers ---
   const checkTimeWarning = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) {
       setTimeWarning(null);
@@ -340,10 +357,10 @@ const BookingModal = ({
       if (field === "time") {
         checkTimeWarning(newData.date, value);
         if (!newData.openEnded && value) {
-          const [h,m]=String(value).split(":").map(Number);
-          const total=(h*60+m+60)%(24*60);
-          const nh=String(Math.floor(total/60)).padStart(2,"0");
-          const nm=String(total%60).padStart(2,"0");
+          const [h, m] = String(value).split(":").map(Number);
+          const total = (h * 60 + m + 60) % (24 * 60);
+          const nh = String(Math.floor(total / 60)).padStart(2, "0");
+          const nm = String(total % 60).padStart(2, "0");
           newData.timeOut = `${nh}:${nm}`;
         }
       }
@@ -353,6 +370,12 @@ const BookingModal = ({
       return newData;
     });
     if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
+    if (field === "customerPhone" && errors.contact) {
+      setErrors((e) => ({ ...e, contact: null }));
+    }
+    if (field === "customerEmail" && errors.contact) {
+      setErrors((e) => ({ ...e, contact: null }));
+    }
   };
 
   const handlePartyBtn = (delta) => {
@@ -362,16 +385,28 @@ const BookingModal = ({
 
   const validate = () => {
     const errs = {};
+    const normalizedPhone = normalizeCustomerPhone(formData.customerPhone);
+    const normalizedEmail = normalizeCustomerEmail(formData.customerEmail);
+
     if (!formData.customerName?.trim()) errs.customerName = "Vui lòng nhập tên";
-    if (!formData.customerPhone?.trim() && !formData.customerEmail?.trim())
-      errs.contact = "Cần SĐT hoặc Email";
+    if (!normalizedPhone && !normalizedEmail) {
+      errs.contact = "Vui lòng nhập email hoặc số điện thoại để nhà hàng xác nhận đặt bàn.";
+    }
+    if (normalizedPhone && !isValidCustomerPhone(normalizedPhone)) {
+      errs.customerPhone = "Số điện thoại không hợp lệ.";
+    }
+    if (normalizedEmail && !isValidCustomerEmail(normalizedEmail)) {
+      errs.customerEmail = "Email không hợp lệ.";
+    }
     if (!pickedTable?.id) errs.table = "Vui lòng chọn bàn";
     if (!formData.date) errs.date = "Chọn ngày";
     if (!formData.time) errs.time = "Chọn giờ vào";
-    if (!formData.openEnded && !formData.timeOut)
+    if (!formData.openEnded && !formData.timeOut) {
       errs.timeOut = "Chọn giờ ra";
-    if (formData.openEnded && !canUseUnlimitedTime)
+    }
+    if (formData.openEnded && !canUseUnlimitedTime) {
       errs.openEnded = "Tài khoản của bạn không có quyền chọn không giới hạn thời gian";
+    }
     if (timeWarning === "Đã qua.") errs.time = "Giờ không hợp lệ";
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -383,6 +418,8 @@ const BookingModal = ({
       ? 0
       : calculateDurationMinutes(formData.date, formData.time, formData.timeOut) || 60;
     const timeToISO = localDateTimeToISO(formData.date, formData.time);
+    const normalizedPhone = normalizeCustomerPhone(formData.customerPhone);
+    const normalizedEmail = normalizeCustomerEmail(formData.customerEmail);
 
     if (!formData.openEnded && durationMinutes < 30) {
       showNotification("Thời gian dùng bữa tối thiểu 30 phút.", "error");
@@ -418,8 +455,8 @@ const BookingModal = ({
         partySize: Number(formData.partySize),
         note: noteParts.join(" | "),
         customerName: formData.customerName?.trim(),
-        customerPhone: formData.customerPhone?.trim() || null,
-        customerEmail: formData.customerEmail?.trim() || null,
+        customerPhone: normalizedPhone || null,
+        customerEmail: normalizedEmail || null,
         depositAmount: totalDeposit,
         linkedMenuSubtotal: menuSubtotal,
         isUnlimitedTime: !!formData.openEnded,
@@ -460,8 +497,8 @@ const BookingModal = ({
               note: `Order từ gói sự kiện: ${selectedPackage.name}`,
               customer: {
                 fullName: formData.customerName?.trim(),
-                phone: formData.customerPhone?.trim() || null,
-                email: formData.customerEmail?.trim() || null,
+                phone: normalizedPhone || null,
+                email: normalizedEmail || null,
               },
               clientMeta: {
                 source: "reservation_event_package",
@@ -517,7 +554,6 @@ const BookingModal = ({
   return (
     <div className="bkm-backdrop" onClick={onClose}>
       <div className="bkm-container" onClick={(e) => e.stopPropagation()}>
-        {/* --- Header --- */}
         <div className="bkm-header">
           <div className="header-content">
             <h2 className="bkm-title">Reservation</h2>
@@ -528,11 +564,9 @@ const BookingModal = ({
           </button>
         </div>
 
-        {/* --- Body --- */}
         <div className="bkm-body">
           <RestaurantInfo restaurant={restaurant} />
 
-          {/* Form Section */}
           <div className="bkm-section-title">Thông tin khách hàng</div>
           <div className="bkm-compact-form">
             <InputGroup
@@ -551,7 +585,7 @@ const BookingModal = ({
             <div className="bkm-row">
               <InputGroup
                 label="Số điện thoại"
-                error={errors.contact}
+                error={errors.customerPhone || errors.contact}
                 icon={<Phone size={16} />}
               >
                 <input
@@ -563,7 +597,11 @@ const BookingModal = ({
                   }
                 />
               </InputGroup>
-              <InputGroup label="Email nhận vé" icon={<Mail size={16} />}>
+              <InputGroup
+                label="Email nhận vé"
+                error={errors.customerEmail}
+                icon={<Mail size={16} />}
+              >
                 <input
                   type="email"
                   placeholder="name@mail.com"
@@ -578,7 +616,6 @@ const BookingModal = ({
 
           <div className="bkm-divider"></div>
 
-          {/* Table Section */}
           <div className="bkm-section-title">Chọn vị trí</div>
           {needPickTable ? (
             <TablePicker
@@ -706,7 +743,6 @@ const BookingModal = ({
             </div>
           )}
 
-          {/* Time & Party Section */}
           <div className="bkm-row-grid">
             <PartySize
               value={formData.partySize}
@@ -729,12 +765,15 @@ const BookingModal = ({
             <input
               type="checkbox"
               checked={formData.openEnded}
-              onChange={(checked) => handleChange("openEnded", checked)}
+              onChange={(e) => handleChange("openEnded", e.target.checked)}
             />
             <span>
               Không xác định giờ ra (giữ bàn đến khi set trống)
             </span>
           </label>
+          {errors.openEnded ? (
+            <div className="error-text">{errors.openEnded}</div>
+          ) : null}
 
           <div className="bkm-note-area">
             <textarea
@@ -911,7 +950,6 @@ const BookingModal = ({
           )}
         </div>
 
-        {/* --- Footer --- */}
         <div className="bkm-footer">
           {!showSummary ? (
             <button
@@ -944,8 +982,6 @@ const BookingModal = ({
     </div>
   );
 };
-
-/* ──────── Sub-Components ──────── */
 
 const generateSlots = (
   startStr,
@@ -1022,7 +1058,7 @@ const TimeLogicSelection = ({
       .toString()
       .padStart(2, "0")}`;
     return generateSlots(nextStartStr, closingHours, null, true);
-  }, [time, closingHours]);
+  }, [time, closingHours, openEnded]);
 
   return (
     <>
