@@ -23,6 +23,7 @@ export const useCart = () => {
                 holdStatus: incoming.holdStatus || i.holdStatus,
                 backendCartItemId:
                   incoming.backendCartItemId || i.backendCartItemId,
+                backendCartId: incoming.backendCartId || i.backendCartId,
               }
             : i,
         );
@@ -42,13 +43,13 @@ export const useCart = () => {
           }
           return i;
         })
-        .filter(Boolean)
+        .filter(Boolean),
     );
   }, []);
 
   const removeFromCart = useCallback(
     (itemId) => setCart((prev) => prev.filter((i) => i.id !== itemId)),
-    []
+    [],
   );
 
   const clearCart = useCallback(() => setCart([]), []);
@@ -61,7 +62,7 @@ export const useCart = () => {
   // ✅ Tổng số lượng món trong giỏ (sum quantity)
   const getTotalItems = useCallback(
     () => cart.reduce((sum, i) => sum + (i.quantity || 0), 0),
-    [cart]
+    [cart],
   );
 
   // Tổng tiền toàn giỏ
@@ -69,9 +70,9 @@ export const useCart = () => {
     () =>
       cart.reduce(
         (sum, i) => sum + (Number(i.price) || 0) * (i.quantity || 1),
-        0
+        0,
       ),
-    [cart]
+    [cart],
   );
 
   return {
@@ -81,7 +82,7 @@ export const useCart = () => {
     removeFromCart,
     clearCart,
     removeRestaurantItems,
-    getTotalItems, // 👈 đã bổ sung lại
+    getTotalItems,
     getTotalPrice,
   };
 };
