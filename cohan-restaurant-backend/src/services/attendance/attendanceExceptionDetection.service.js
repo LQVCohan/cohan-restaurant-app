@@ -144,7 +144,7 @@ async function loadTimesheetsForEligibleShifts({ restaurantId, shiftIds }) {
     query.setOptions({ skipAttendanceExceptionDetection: true });
   }
 
-  return query.lean ? query.lean() : query;
+  return query;
 }
 
 async function createNoShowTimesheet(shift) {
