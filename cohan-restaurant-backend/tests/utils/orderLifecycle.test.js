@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  ACTIVE_TABLE_SESSION_SORT,
   ORDER_KIND,
   ORDER_PAYMENT_STATUS,
   SESSION_STATUS,
@@ -9,6 +10,7 @@ import {
   childOrdersForSessionFilter,
   clearPaymentRequestAfterNewChildOrderBatchCreated,
   clearTablePaymentRequestState,
+  ensureActiveTableSessionForDineInOrder,
   isKitchenPayable,
   isOrderBatch,
   isPaymentClosed,
@@ -209,6 +211,166 @@ describe("orderLifecycle helpers", () => {
     ).toBe(SESSION_STATUS.OPEN);
   });
 
+  it("ensureActiveTableSessionForDineInOrder reuses existing active table_session by activeSessionKey", async () => {
+    const existingSession = {
+      _id: "parent-1",
+      restaurantId: "rest-1",
+      tableId: "table-1",
+      tableCode: "T1",
+      activeSessionKey: "rest-1:table-1:active",
+    };
+    const OrderModel = {
+      findOne: vi.fn().mockReturnValueOnce(queryChain(existingSession)),
+      updateOne: vi.fn(),
+      create: vi.fn(),
+    };
+
+    const out = await ensureActiveTableSessionForDineInOrder({
+      OrderModel,
+      createOrderCode: vi.fn(),
+      restaurantId: "rest-1",
+      tableId: "table-1",
+      tableCode: "t1",
+    });
+
+    expect(out).toEqual({ sessionOrder: existingSession, created: false });
+    expect(OrderModel.findOne).toHaveBeenCalledWith({
+      restaurantId: "rest-1",
+      activeSessionKey: "rest-1:table-1:active",
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      sessionStatus: { $in: ["open", "dining", "ready_to_pay"] },
+      orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+    });
+    expect(OrderModel.create).not.toHaveBeenCalled();
+  });
+
+  it("ensureActiveTableSessionForDineInOrder backfills activeSessionKey and creates a new table_session when needed", async () => {
+    const now = new Date("2026-05-10T20:30:00.000Z");
+    const existingSession = {
+      _id: "parent-legacy",
+      restaurantId: "rest-1",
+      tableId: "table-1",
+      tableCode: "T1",
+      activeSessionKey: null,
+    };
+    const createdSession = {
+      _id: "parent-2",
+      restaurantId: "rest-1",
+      tableId: "table-2",
+      tableCode: "T2",
+      activeSessionKey: "rest-1:table-2:active",
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      sessionStatus: SESSION_STATUS.OPEN,
+      kitchenStatus: "draft",
+      orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+    };
+    const createOrderCode = vi
+      .fn()
+      .mockResolvedValueOnce("TS-001")
+      .mockResolvedValueOnce("TS-002");
+    const OrderModel = {
+      findOne: vi
+        .fn()
+        .mockReturnValueOnce(queryChain(null))
+        .mockReturnValueOnce(queryChain(existingSession))
+        .mockReturnValueOnce(queryChain(null))
+        .mockReturnValueOnce(queryChain(null)),
+      updateOne: vi.fn().mockResolvedValue({ acknowledged: true }),
+      create: vi.fn().mockResolvedValueOnce([createdSession]),
+    };
+
+    const reused = await ensureActiveTableSessionForDineInOrder({
+      OrderModel,
+      createOrderCode,
+      restaurantId: "rest-1",
+      tableId: "table-1",
+      tableCode: "t1",
+    });
+
+    expect(reused.created).toBe(false);
+    expect(reused.sessionOrder).toEqual({
+      ...existingSession,
+      activeSessionKey: "rest-1:table-1:active",
+    });
+    expect(OrderModel.updateOne).toHaveBeenCalledWith(
+      { _id: "parent-legacy", activeSessionKey: { $in: [null, undefined] } },
+      { $set: { activeSessionKey: "rest-1:table-1:active" } },
+      {},
+    );
+
+    const created = await ensureActiveTableSessionForDineInOrder({
+      OrderModel,
+      createOrderCode,
+      restaurantId: "rest-1",
+      tableId: "table-2",
+      tableCode: "t2",
+      userId: "staff-1",
+      now,
+    });
+
+    expect(created).toEqual({ sessionOrder: createdSession, created: true });
+    expect(createOrderCode).toHaveBeenNthCalledWith(2, {
+      restaurantId: "rest-1",
+      tableId: "table-2",
+      tableCode: "T2",
+      session: null,
+    });
+    expect(OrderModel.create).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          orderCode: "TS-002",
+          tableCode: "T2",
+          userId: "staff-1",
+          activeSessionKey: "rest-1:table-2:active",
+          orderKind: ORDER_KIND.TABLE_SESSION,
+          sessionStatus: SESSION_STATUS.OPEN,
+          currentStatus: "pending",
+          openedAt: now,
+        }),
+      ],
+      {},
+    );
+  });
+
+  it("ensureActiveTableSessionForDineInOrder retries lookup after duplicate activeSessionKey race", async () => {
+    const existingSession = {
+      _id: "parent-race",
+      restaurantId: "rest-1",
+      tableId: "table-5",
+      tableCode: "T5",
+      activeSessionKey: "rest-1:table-5:active",
+    };
+    const duplicateKeyError = Object.assign(new Error("E11000 duplicate key error"), {
+      code: 11000,
+    });
+    const OrderModel = {
+      findOne: vi
+        .fn()
+        .mockReturnValueOnce(queryChain(null))
+        .mockReturnValueOnce(queryChain(null))
+        .mockReturnValueOnce(queryChain(existingSession)),
+      updateOne: vi.fn(),
+      create: vi.fn().mockRejectedValueOnce(duplicateKeyError),
+    };
+
+    const out = await ensureActiveTableSessionForDineInOrder({
+      OrderModel,
+      createOrderCode: vi.fn().mockResolvedValue("TS-005"),
+      restaurantId: "rest-1",
+      tableId: "table-5",
+      tableCode: "t5",
+    });
+
+    expect(out).toEqual({ sessionOrder: existingSession, created: false });
+    expect(OrderModel.findOne.mock.calls[2][0]).toEqual({
+      restaurantId: "rest-1",
+      activeSessionKey: "rest-1:table-5:active",
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      sessionStatus: { $in: ["open", "dining", "ready_to_pay"] },
+      orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+    });
+  });
+
   it("clearTablePaymentRequestState clears parent and active child payment_requested fields only", async () => {
     const activeSession = {
       _id: "parent-1",
@@ -387,5 +549,13 @@ describe("orderLifecycle helpers", () => {
     expect(out).toEqual({ cleared: false, session: null, orders: [] });
     expect(OrderModel.updateMany).not.toHaveBeenCalled();
     expect(OrderModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  it("exports deterministic active table session sort for parent lookup", () => {
+    expect(ACTIVE_TABLE_SESSION_SORT).toEqual({
+      openedAt: -1,
+      createdAt: -1,
+      _id: -1,
+    });
   });
 });
