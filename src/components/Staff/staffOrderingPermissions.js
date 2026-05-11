@@ -18,6 +18,7 @@ export function getStaffOrderingPermissions(
     isReadOnlyRole: isHost || isCashier,
     canViewMenu: canMutateOrder,
     canAddItems: canMutateOrder,
+    canAssignCustomer: isElevated || isServer || isHost,
     canRemoveCustomer: isElevated || isHost,
     canCreateOrder: isRemoteOrder ? isElevated : canMutateOrder,
     canRequestPayment: isElevated || isServer || isCashier,
