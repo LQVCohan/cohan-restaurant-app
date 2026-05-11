@@ -264,10 +264,7 @@ describe("orderLifecycle helpers", () => {
       kitchenStatus: "draft",
       orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
     };
-    const createOrderCode = vi
-      .fn()
-      .mockResolvedValueOnce("TS-001")
-      .mockResolvedValueOnce("TS-002");
+    const createOrderCode = vi.fn().mockResolvedValueOnce("TS-002");
     const OrderModel = {
       findOne: vi
         .fn()
@@ -297,6 +294,7 @@ describe("orderLifecycle helpers", () => {
       { $set: { activeSessionKey: "rest-1:table-1:active" } },
       {},
     );
+    expect(createOrderCode).not.toHaveBeenCalled();
 
     const created = await ensureActiveTableSessionForDineInOrder({
       OrderModel,
@@ -309,12 +307,8 @@ describe("orderLifecycle helpers", () => {
     });
 
     expect(created).toEqual({ sessionOrder: createdSession, created: true });
-    expect(createOrderCode).toHaveBeenNthCalledWith(2, {
-      restaurantId: "rest-1",
-      tableId: "table-2",
-      tableCode: "T2",
-      session: null,
-    });
+    expect(createOrderCode).toHaveBeenCalledTimes(1);
+    expect(createOrderCode).toHaveBeenCalledWith("POS", now, "T2");
     expect(OrderModel.create).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -343,6 +337,7 @@ describe("orderLifecycle helpers", () => {
     const duplicateKeyError = Object.assign(new Error("E11000 duplicate key error"), {
       code: 11000,
     });
+    const createOrderCode = vi.fn().mockResolvedValue("TS-005");
     const OrderModel = {
       findOne: vi
         .fn()
@@ -355,13 +350,18 @@ describe("orderLifecycle helpers", () => {
 
     const out = await ensureActiveTableSessionForDineInOrder({
       OrderModel,
-      createOrderCode: vi.fn().mockResolvedValue("TS-005"),
+      createOrderCode,
       restaurantId: "rest-1",
       tableId: "table-5",
       tableCode: "t5",
     });
 
     expect(out).toEqual({ sessionOrder: existingSession, created: false });
+    expect(createOrderCode).toHaveBeenCalledWith(
+      "POS",
+      expect.any(Date),
+      "T5",
+    );
     expect(OrderModel.findOne.mock.calls[2][0]).toEqual({
       restaurantId: "rest-1",
       activeSessionKey: "rest-1:table-5:active",
