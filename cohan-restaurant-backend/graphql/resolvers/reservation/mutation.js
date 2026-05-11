@@ -5,6 +5,7 @@ import {
   Restaurant,
   Table,
   User,
+  Customer,
   PaymentTransaction,
   EventLog,
 } from "../../../models/index.js";
@@ -65,6 +66,20 @@ function canManageReservation(ctx, reservationUserId) {
 function isReservationOwner(ctx, reservation) {
   const userId = ctx?.user?.id;
   return userId && String(reservation?.userId) === String(userId);
+}
+
+function normalizeEmail(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized || null;
+}
+
+function normalizePhone(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  let phone = raw.replace(/\s+/g, "");
+  phone = phone.replace(/^(\+84)/, "0");
+  if (phone.startsWith("84")) phone = `0${phone.slice(2)}`;
+  return phone || null;
 }
 
 async function requireReservationManagerOrOwner(ctx, reservation) {
@@ -189,19 +204,92 @@ function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent })
   return Math.max(0, Number(baseDeposit || 0)) + menuPart;
 }
 
+async function resolveReservationUser({ input, ctx, session }) {
+  const loggedInUserId = ctx?.user?.id;
+
+  if (loggedInUserId && mongoose.isValidObjectId(loggedInUserId)) {
+    const user = await User.findById(loggedInUserId).session(session);
+    if (!user) {
+      throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+    }
+    return { userId: user._id, user, isGuest: !!user.isGuest };
+  }
+
+  const customerName = String(input.customerName || "").trim();
+  const email = normalizeEmail(input.customerEmail);
+  const phone = normalizePhone(input.customerPhone);
+
+  if (!customerName) {
+    throw new GraphQLError("Vui lòng nhập tên khách đặt bàn.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  if (!email && !phone) {
+    throw new GraphQLError("Vui lòng nhập email hoặc số điện thoại để nhà hàng xác nhận đặt bàn.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const now = new Date();
+  const guestExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const or = [];
+  if (email) or.push({ email });
+  if (phone) or.push({ phone });
+
+  let user = await Customer.findOne({
+    userType: "CUSTOMER",
+    $or: or,
+  }).session(session);
+
+  if (user) {
+    if (user.isGuest) {
+      user.fullName = customerName || user.fullName;
+      if (email && !user.email) user.email = email;
+      if (phone && !user.phone) user.phone = phone;
+      user.guestLastSeenAt = now;
+      user.guestExpiresAt = guestExpiresAt;
+      await user.save({ session });
+    }
+
+    return { userId: user._id, user, isGuest: !!user.isGuest };
+  }
+
+  const [guest] = await Customer.create(
+    [
+      {
+        fullName: customerName,
+        email: email || undefined,
+        phone: phone || undefined,
+        userType: "CUSTOMER",
+        status: "pending",
+        customerType: "NEW",
+        loyaltyPoints: 0,
+        totalOrders: 0,
+        totalSpending: 0,
+        isGuest: true,
+        guestCreatedAt: now,
+        guestLastSeenAt: now,
+        guestExpiresAt,
+        emailVerified: false,
+      },
+    ],
+    { session }
+  );
+
+  return { userId: guest._id, user: guest, isGuest: true };
+}
+
 export const ReservationMutation = {
   async createReservation(_, { input }, ctx) {
     const session = await mongoose.startSession();
     try {
       let created = null;
       await session.withTransaction(async () => {
-        const userId = ctx?.user?.id;
-        if (!mongoose.isValidObjectId(userId)) {
-          throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
-        }
-
-        const user = await User.findById(userId).lean();
-        if (!user) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+        const { userId, user, isGuest } = await resolveReservationUser({ input, ctx, session });
+        const normalizedCustomerPhone = normalizePhone(input.customerPhone);
+        const normalizedCustomerEmail = normalizeEmail(input.customerEmail);
 
         const restaurant = await getRestaurantOrThrow(input.restaurantId, session);
         const table = await getTableOrThrow(input.tableId, input.restaurantId, session);
@@ -263,13 +351,13 @@ export const ReservationMutation = {
               restaurantId: toObjectId(input.restaurantId, "restaurantId"),
               restaurantName: restaurant.name || "",
               tableId: toObjectId(input.tableId, "tableId"),
-              userId: toObjectId(userId, "userId"),
+              userId,
               timeTo: arrival,
               durationMinutes,
               isUnlimitedTime,
               customerName: input.customerName || user.fullName || "",
-              customerPhone: input.customerPhone || user.phone || "",
-              customerEmail: input.customerEmail || user.email || "",
+              customerPhone: normalizedCustomerPhone || user.phone || "",
+              customerEmail: normalizedCustomerEmail || user.email || "",
               partySize: Number(input.partySize || 2),
               note: input.note || "",
               linkedMenuSubtotal: Number(input.linkedMenuSubtotal || 0),
@@ -311,6 +399,7 @@ export const ReservationMutation = {
               depositAmount: created.depositAmount,
               paymentMethod,
               isUnlimitedTime,
+              isGuestCustomer: isGuest,
             },
           },
           { session }
@@ -427,7 +516,7 @@ export const ReservationMutation = {
     const restaurant = await getRestaurantOrThrow(current.restaurantId);
 
     const type = String(input.type || "").toLowerCase();
-    if (!['time', 'table'].includes(type)) {
+    if (!["time", "table"].includes(type)) {
       throw new GraphQLError("type must be 'time' or 'table'", { extensions: { code: "BAD_USER_INPUT" } });
     }
 
