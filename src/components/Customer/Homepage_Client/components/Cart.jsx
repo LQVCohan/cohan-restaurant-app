@@ -101,6 +101,7 @@ const Cart = ({
   onClearCart,
   onRemoveRestaurantItems,
   autoOpenCheckout = false,
+  isBusy = false,
 }) => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   useEffect(() => {
@@ -111,7 +112,7 @@ const Cart = ({
 
   const formatVND = useCallback(
     (v) => (v || 0).toLocaleString("vi-VN") + "đ",
-    []
+    [],
   );
 
   // Nhóm theo nhà hàng
@@ -119,8 +120,9 @@ const Cart = ({
     const map = new Map();
     for (const i of cart || []) {
       const rid = i.restaurantId || "unknown";
-      if (!map.has(rid))
+      if (!map.has(rid)) {
         map.set(rid, { restaurantId: rid, items: [], subtotal: 0 });
+      }
       const g = map.get(rid);
       const line = (i.price || 0) * (i.quantity || 1);
       g.items.push(i);
@@ -135,6 +137,7 @@ const Cart = ({
     cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
 
   const handleQtyChange = (item, e) => {
+    if (isBusy) return;
     const raw = e.target.value;
     const next = Math.max(1, parseInt(raw || "1", 10));
     const delta = next - (item.quantity || 1);
@@ -143,14 +146,12 @@ const Cart = ({
 
   return (
     <>
-      {/* Overlay Backdrop */}
       <div
         className={`cart-backdrop ${isOpen ? "open" : ""}`}
         onClick={onClose}
       />
 
       <div className={`cart-panel ${isOpen ? "open" : ""}`}>
-        {/* HEADER */}
         <div className="cart-header">
           <div className="cart-header__top">
             <h3 className="cart-header__title">
@@ -164,13 +165,13 @@ const Cart = ({
             <button
               className="cart-header__clear"
               onClick={() => onClearCart?.()}
+              disabled={isBusy}
             >
               Xóa tất cả
             </button>
           )}
         </div>
 
-        {/* BODY */}
         <div className="cart-body">
           {!cart?.length && (
             <div className="cart-empty">
@@ -192,11 +193,11 @@ const Cart = ({
               onUpdateQuantity={onUpdateQuantity}
               onQtyChange={handleQtyChange}
               onRemoveRestaurantItems={onRemoveRestaurantItems}
+              isBusy={isBusy}
             />
           ))}
         </div>
 
-        {/* FOOTER */}
         {!!cart?.length && (
           <div className="cart-footer">
             <div className="cart-footer__row">
@@ -205,7 +206,11 @@ const Cart = ({
             </div>
             <button
               className="cart-checkout-btn"
-              onClick={() => setIsOrderModalOpen(true)}
+              onClick={() => {
+                if (isBusy) return;
+                setIsOrderModalOpen(true);
+              }}
+              disabled={isBusy}
             >
               Đặt đơn ngay
             </button>
@@ -223,13 +228,13 @@ const Cart = ({
   );
 };
 
-// --- SUB-COMPONENT: GROUP NHÀ HÀNG ---
 function RestaurantGroup({
   group,
   formatVND,
   onUpdateQuantity,
   onQtyChange,
   onRemoveRestaurantItems,
+  isBusy,
 }) {
   const name =
     useRestaurantName(group.restaurantId) || `Nhà hàng ${group.restaurantId}`;
@@ -245,6 +250,7 @@ function RestaurantGroup({
           className="cart-group__remove"
           onClick={() => onRemoveRestaurantItems?.(group.restaurantId)}
           title="Xóa nhà hàng này"
+          disabled={isBusy}
         >
           <IconTrash />
         </button>
@@ -269,7 +275,7 @@ function RestaurantGroup({
                   <button
                     onClick={() => onUpdateQuantity?.(item.id, -1)}
                     className="cart-qty__btn"
-                    disabled={item.quantity <= 1} // Hoặc để logic xóa nếu giảm về 0
+                    disabled={isBusy || item.quantity <= 1}
                   >
                     −
                   </button>
@@ -278,10 +284,12 @@ function RestaurantGroup({
                     type="number"
                     value={item.quantity}
                     onChange={(e) => onQtyChange(item, e)}
+                    disabled={isBusy}
                   />
                   <button
                     onClick={() => onUpdateQuantity?.(item.id, 1)}
                     className="cart-qty__btn"
+                    disabled={isBusy}
                   >
                     +
                   </button>
