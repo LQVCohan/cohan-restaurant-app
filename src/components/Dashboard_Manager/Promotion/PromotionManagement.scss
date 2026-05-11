@@ -420,10 +420,13 @@ $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
       }
 
       .voucher-chip {
-        background: #eef2ff;
-        color: #4338ca;
-        padding: 2px 8px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.45rem;
+        border: 1px solid #e5e7eb;
         border-radius: 999px;
+        background: #f9fafb;
+        color: #374151;
         font-size: 0.75rem;
         font-weight: 600;
       }
@@ -517,4 +520,16 @@ $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
 .py-0\.5 {
   padding-top: 0.125rem;
   padding-bottom: 0.125rem;
+}
+.voucher-stack-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.voucher-chip-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }

@@ -278,73 +278,69 @@ const PromotionManagement = () => {
   };
 
   // --- Derived Data (Tính toán số liệu) ---
-  const statsData = useMemo(
-    () => {
-      if (activeSection === "vouchers") {
-        const totalUsage = allVouchers.reduce(
-          (sum, v) => sum + (v.usageCount || 0),
-          0
-        );
-        const totalLimit = allVouchers.reduce(
-          (sum, v) => sum + (v.usageLimit || 0),
-          0
-        );
-        const totalSavings = allVouchers.reduce(
-          (sum, v) =>
-            sum + (v.discountValue || 0) * (v.usageCount || 0),
-          0
-        );
-
-        return {
-          totalSavings,
-          usageRate: totalLimit ? Math.round((totalUsage / totalLimit) * 100) : 0,
-          totalUsage,
-          hotPromotions: allVouchers.filter((v) => (v.usageCount || 0) > 100)
-            .length,
-        };
-      }
-
-      if (activeSection === "packages") {
-        const activePackages = allPackages.filter(
-          (pkg) => resolveStatus(pkg) === "active"
-        ).length;
-        const totalUsage = allPackages.length;
-
-        return {
-          totalSavings: allPackages.length * 50000,
-          usageRate: totalUsage
-            ? Math.round((activePackages / totalUsage) * 100)
-            : 0,
-          totalUsage,
-          hotPromotions: allPackages.filter(
-            (pkg) => resolveStatus(pkg) === "scheduled"
-          ).length,
-        };
-      }
+  const statsData = useMemo(() => {
+    if (activeSection === "vouchers") {
+      const totalUsage = allVouchers.reduce(
+        (sum, v) => sum + (v.usageCount || 0),
+        0,
+      );
+      const totalLimit = allVouchers.reduce(
+        (sum, v) => sum + (v.usageLimit || 0),
+        0,
+      );
+      const totalSavings = allVouchers.reduce(
+        (sum, v) => sum + (v.discountValue || 0) * (v.usageCount || 0),
+        0,
+      );
 
       return {
-        totalSavings: allPromotions.reduce((sum, p) => {
-          const usage = Number(p.usageCount || 0);
-          const discountValue = Number(p.discountValue || 0);
-          const perUsage =
-            p.type === "percentage"
-              ? Math.min(
-                  (Number(p.minOrderValue || 0) * discountValue) / 100,
-                  Number(p.maxDiscount || Number.MAX_SAFE_INTEGER)
-                )
-              : discountValue;
-          return sum + Math.max(0, perUsage) * usage;
-        }, 0),
-        usageRate: 45,
-        totalUsage: allPromotions.reduce(
-          (sum, p) => sum + (p.usageCount || 0),
-          0
-        ),
-        hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
+        totalSavings,
+        usageRate: totalLimit ? Math.round((totalUsage / totalLimit) * 100) : 0,
+        totalUsage,
+        hotPromotions: allVouchers.filter((v) => (v.usageCount || 0) > 100)
+          .length,
       };
-    },
-    [activeSection, allPromotions, allVouchers, allPackages, resolveStatus]
-  );
+    }
+
+    if (activeSection === "packages") {
+      const activePackages = allPackages.filter(
+        (pkg) => resolveStatus(pkg) === "active",
+      ).length;
+      const totalUsage = allPackages.length;
+
+      return {
+        totalSavings: allPackages.length * 50000,
+        usageRate: totalUsage
+          ? Math.round((activePackages / totalUsage) * 100)
+          : 0,
+        totalUsage,
+        hotPromotions: allPackages.filter(
+          (pkg) => resolveStatus(pkg) === "scheduled",
+        ).length,
+      };
+    }
+
+    return {
+      totalSavings: allPromotions.reduce((sum, p) => {
+        const usage = Number(p.usageCount || 0);
+        const discountValue = Number(p.discountValue || 0);
+        const perUsage =
+          p.type === "percentage"
+            ? Math.min(
+                (Number(p.minOrderValue || 0) * discountValue) / 100,
+                Number(p.maxDiscount || Number.MAX_SAFE_INTEGER),
+              )
+            : discountValue;
+        return sum + Math.max(0, perUsage) * usage;
+      }, 0),
+      usageRate: 45,
+      totalUsage: allPromotions.reduce(
+        (sum, p) => sum + (p.usageCount || 0),
+        0,
+      ),
+      hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
+    };
+  }, [activeSection, allPromotions, allVouchers, allPackages, resolveStatus]);
 
   // --- Handlers ---
   const handleOpenModal = (promotion = null) => {
@@ -557,16 +553,15 @@ const PromotionManagement = () => {
     <div className="table-responsive">
       <table className="premium-table voucher-table">
         <thead>
-          <tr>
-            <th width="25%">Voucher / Mã</th>
-            <th width="18%">Nhóm</th>
-            <th width="18%">Hiệu lực</th>
-            <th width="15%">Giảm giá</th>
-            <th width="10%">Trạng thái</th>
-            <th width="14%" className="text-right">
-              Hành động
-            </th>
-          </tr>
+          <th width="25%">Voucher / Mã</th>
+          <th width="15%">Nhóm</th>
+          <th width="16%">Hiệu lực</th>
+          <th width="14%">Giảm giá</th>
+          <th width="14%">Dùng chồng</th>
+          <th width="8%">Trạng thái</th>
+          <th width="8%" className="text-right">
+            Hành động
+          </th>
         </thead>
         <tbody>
           {vouchers.map((voucher) => (
@@ -595,6 +590,31 @@ const PromotionManagement = () => {
                   : `${Number(voucher.discountValue || 0).toLocaleString()}đ`}
               </td>
               <td>{renderStatusBadge(resolveStatus(voucher))}</td>
+              <td className="text-secondary text-sm">
+                <div className="voucher-stack-flags">
+                  {voucher.combinableWithPromotions && (
+                    <span className="voucher-chip">+ Promotion</span>
+                  )}
+                  {voucher.stackable && (
+                    <span className="voucher-chip">+ Voucher</span>
+                  )}
+                  {voucher.exclusive && (
+                    <span className="voucher-chip voucher-chip-danger">
+                      Độc quyền
+                    </span>
+                  )}
+                  {!voucher.combinableWithPromotions &&
+                    !voucher.stackable &&
+                    !voucher.exclusive && (
+                      <span className="text-xs text-muted">
+                        Không dùng chồng
+                      </span>
+                    )}
+                </div>
+                <div className="text-xs text-secondary mt-1">
+                  Ưu tiên: {voucher.priority || 0}
+                </div>
+              </td>
               <td className="text-right">
                 <div className="action-buttons">
                   <button
@@ -657,7 +677,7 @@ const PromotionManagement = () => {
                 <div className="voucher-pack-list">
                   {(pkg.voucherIds || []).map((voucherId) => {
                     const voucher = allVouchers.find(
-                      (item) => item.id === voucherId
+                      (item) => item.id === voucherId,
                     );
                     return (
                       <span key={voucherId} className="voucher-chip">
@@ -871,10 +891,7 @@ const PromotionManagement = () => {
               </button>
             </div>
 
-            <button
-              className="btn-secondary"
-              onClick={handleExport}
-            >
+            <button className="btn-secondary" onClick={handleExport}>
               <Download size={18} />
               <span>Xuất</span>
             </button>
@@ -901,11 +918,13 @@ const PromotionManagement = () => {
 
         {/* C. Content Body */}
         <div className="content-body">
-          {(activeSection === "promotions"
-            ? promotions.length === 0
-            : activeSection === "vouchers"
-              ? vouchers.length === 0
-              : packages.length === 0) ? (
+          {(
+            activeSection === "promotions"
+              ? promotions.length === 0
+              : activeSection === "vouchers"
+                ? vouchers.length === 0
+                : packages.length === 0
+          ) ? (
             <div className="empty-state">
               <Inbox size={48} />
               <h3>Không tìm thấy dữ liệu</h3>
@@ -966,7 +985,7 @@ const PromotionManagement = () => {
                                         ((item.usageCount || 0) /
                                           (item.usageLimit || 100)) *
                                           100,
-                                        100
+                                        100,
                                       )}%`,
                                     }}
                                   ></div>
