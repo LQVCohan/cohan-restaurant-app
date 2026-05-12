@@ -21,11 +21,10 @@ import {
   Filter,
   Search,
   ShoppingBag,
-  Download, // <--- Đã thêm import này
+  Download,
 } from "lucide-react";
-import { gql, useMutation } from "@apollo/client";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 
-// Import Components con
 import OrderCard from "./components/OrderCard";
 import OrderModal from "./components/OrderModal";
 import ItemModal from "./components/ItemModal";
@@ -39,10 +38,157 @@ import { useNotification } from "@/hooks/useNotification";
 import { AuthContext } from "@/context/AuthContext";
 import useSocketOrder from "@/hooks/useSocketOrder";
 
-// Import Style
 import "./OrderManagement.scss";
 
 /* ---------------- GQL ---------------- */
+const ORDERS_BY_RESTAURANT_NOW = gql`
+  query OrdersByRestaurantNow($restaurantId: ID!, $limit: Int, $cursor: ID) {
+    ordersByRestaurantNow(
+      restaurantId: $restaurantId
+      limit: $limit
+      cursor: $cursor
+    ) {
+      edges {
+        node {
+          id
+          orderCode
+          parentOrderCode
+          orderKind
+          parentOrderId
+          rootOrderId
+          orderPaymentStatus
+          tableCode
+          currentStatus
+          restaurantId
+          priority
+          note
+          user {
+            id
+            fullName
+            email
+            phone
+          }
+          items {
+            _id
+            dishId
+            menuId
+            categoryId
+            name
+            unit
+            basePrice
+            servingKey
+            servingVariant {
+              key
+              name
+              mode
+              price
+              sellQty
+              sellUnit
+            }
+            modifiersPrice
+            unitPrice
+            lineSubtotal
+            note
+            priority
+            quantity
+            originalQuantity
+            cancelledQuantity
+            returnedQuantity
+            voidRequests {
+              requestId
+              quantity
+              reason
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
+            returnRequests {
+              requestId
+              quantity
+              reason
+              refundMode
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
+            weightGrams
+            status
+            ingredientsSnapshot {
+              ingredientId
+              name
+              quantity
+              unit
+              baseUnitQuantity
+              costPerBaseUnit
+              totalCost
+            }
+          }
+          totals {
+            subtotal
+            discount
+            discountReason
+            voucherCode
+            promotionId
+            tax
+            service
+            shippingFee
+            grandTotal
+          }
+          payment {
+            method
+            status
+            paidAmount
+            changeAmount
+            currency
+            requestedAt
+            requestedBy
+            paidAt
+            paidBy
+          }
+          shipping {
+            fullName
+            phone
+            address
+            deliveryMethod
+            deliveryTime
+            scheduleDate
+            scheduleTime
+          }
+          statusTimeline {
+            status
+            at
+            note
+            byUserId
+          }
+          customerInfo {
+            name
+            phone
+            email
+            note
+            partySize
+            timeTo
+          }
+          clientMeta
+          orderType
+          createdAt
+          updatedAt
+        }
+        cursor
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
 const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
     updateOrderStatus(input: $input) {
@@ -85,9 +231,46 @@ const CREATE_TEMP_BILL_PRINT_JOB = gql`
   }
 `;
 
+const ACTIVE_ORDER_HIDDEN_STATUSES = new Set([
+  "served",
+  "completed",
+  "cancelled",
+  "failed",
+]);
+
 const useRestaurant = () => {
   const { restaurants } = useContext(AuthContext);
   return { restaurantList: restaurants || [] };
+};
+
+const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
+const normalizeId = (value) => (value ? String(value) : null);
+const normalizeTableCode = (value) => String(value || "").trim().toUpperCase();
+
+const isParentTableSession = (order) => order?.orderKind === "table_session";
+
+const isPaidOrder = (order) => {
+  const statuses = [order?.orderPaymentStatus, order?.payment?.status]
+    .map((value) => normalizeStatus(value))
+    .filter(Boolean);
+  return statuses.includes("paid");
+};
+
+const resolveKitchenActionOrderId = (order, fallbackId = null) => {
+  if (!order || isParentTableSession(order)) return null;
+  return normalizeId(order?.sourceOrderId || order?.actionOrderId || order?.id) ||
+    normalizeId(fallbackId);
+};
+
+const getBatchSessionKey = (order) => {
+  const tableCode = normalizeTableCode(order?.tableCode);
+  if (order?.orderType !== "dine_in" || !tableCode) return null;
+  const sessionId =
+    normalizeId(order?.rootOrderId) ||
+    normalizeId(order?.parentOrderId) ||
+    normalizeId(order?.id);
+  if (!sessionId) return null;
+  return `${normalizeId(order?.restaurantId) || ""}:${tableCode}:${sessionId}`;
 };
 
 /* ---------------- Component: DishSummaryPanel ---------------- */
@@ -173,7 +356,6 @@ const DishSummaryPanel = ({
 
 /* ---------------- Main Component ---------------- */
 const OrderManagement = () => {
-  // --- STATE ---
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -195,12 +377,15 @@ const OrderManagement = () => {
   };
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const [loadOrders, { data: ordersData, loading: ordersLoading, error: ordersError }] =
+    useLazyQuery(ORDERS_BY_RESTAURANT_NOW, {
+      notifyOnNetworkStatusChange: true,
+    });
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutConfirmIncomingOrder] = useMutation(CONFIRM_INCOMING_ORDER);
   const [mutRejectIncomingOrder] = useMutation(REJECT_INCOMING_ORDER);
   const [mutCreateTempBillJob] = useMutation(CREATE_TEMP_BILL_PRINT_JOB);
 
-  // Settings
   const [timeSettings, setTimeSettings] = useState({
     warn: 10,
     danger: 20,
@@ -216,7 +401,6 @@ const OrderManagement = () => {
     critical: "#b91c1c",
   });
 
-  // --- EFFECTS & HOOKS ---
   useEffect(() => {
     try {
       const raw = localStorage.getItem("orderSettings");
@@ -243,20 +427,30 @@ const OrderManagement = () => {
   }, [timeSettings, chipSize, timeColors]);
 
   const {
-    ordersNow,
-    ordersNowLoading,
-    ordersNowError,
-    loadOrdersNow,
     updateItemStatus,
     reviewOrderItemVoid,
     requestOrderItemReturn,
     reviewOrderItemReturn,
   } = useOrderManagement();
 
-  const orders = ordersNow || [];
-  const ordersLoading = ordersNowLoading;
-  const ordersError = ordersNowError;
-  const loadOrders = loadOrdersNow;
+  const refetchOrders = useCallback(
+    (fetchPolicy = "network-only") => {
+      if (!selectedRestaurantId) return Promise.resolve();
+      return loadOrders({
+        variables: { restaurantId: selectedRestaurantId, limit: 100 },
+        fetchPolicy,
+      });
+    },
+    [loadOrders, selectedRestaurantId],
+  );
+
+  const orders = useMemo(() => {
+    const nodes = ordersData?.ordersByRestaurantNow?.edges?.map((edge) => edge.node) || [];
+    return nodes.map((order) => ({
+      ...order,
+      actionOrderId: resolveKitchenActionOrderId(order, order?.id),
+    }));
+  }, [ordersData]);
 
   useEffect(() => {
     if (restaurantList.length > 0 && !selectedRestaurantId) {
@@ -268,32 +462,22 @@ const OrderManagement = () => {
     setHiddenOrderIds([]);
   }, [selectedRestaurantId]);
 
-  // Socket Realtime
   useSocketOrder(selectedRestaurantId, {
     onAny: (evt) => {
-      if (evt?.order?.tableCode)
+      if (evt?.order?.tableCode) {
         showNotification(
           `Realtime: ${evt.type} (${evt.order.tableCode})`,
           "info",
         );
-      if (loadOrders && selectedRestaurantId) {
-        loadOrders({
-          variables: { restaurantId: selectedRestaurantId, limit: 100 },
-          fetchPolicy: "network-only",
-        });
       }
+      void refetchOrders();
     },
   });
 
   useEffect(() => {
-    if (selectedRestaurantId && loadOrders) {
-      loadOrders({
-        variables: { restaurantId: selectedRestaurantId, limit: 100 },
-      });
-    }
-  }, [loadOrders, selectedRestaurantId]);
+    void refetchOrders();
+  }, [refetchOrders]);
 
-  // Keybind 'F' for Focus Mode
   useEffect(() => {
     const onKey = (e) => {
       if (
@@ -301,22 +485,26 @@ const OrderManagement = () => {
           (e.target?.tagName || "").toLowerCase(),
         ) ||
         e.target?.isContentEditable
-      )
+      ) {
         return;
+      }
       if (e.key.toLowerCase() === "f") setFocusMode((s) => !s);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // --- LOGIC ---
   const activeOrders = useMemo(
     () =>
-      (orders || []).filter(
-        (o) =>
-          !["served", "completed", "cancelled"].includes(o.currentStatus) &&
-          !hiddenOrderIds.includes(o.id),
-      ),
+      (orders || []).filter((order) => {
+        const currentStatus = normalizeStatus(order?.currentStatus);
+        return (
+          !isParentTableSession(order) &&
+          !isPaidOrder(order) &&
+          !ACTIVE_ORDER_HIDDEN_STATUSES.has(currentStatus) &&
+          !hiddenOrderIds.includes(order.id)
+        );
+      }),
     [orders, hiddenOrderIds],
   );
 
@@ -333,7 +521,7 @@ const OrderManagement = () => {
   const isRemoteStaffPendingOrder = useCallback((order) => {
     if (!order) return false;
     const typeOk = ["delivery", "takeaway"].includes(order.orderType);
-    const statusOk = order.currentStatus === "pending";
+    const statusOk = normalizeStatus(order.currentStatus) === "pending";
     const meta = order.clientMeta || {};
     const source = String(meta.source || meta.clientSource || "").toLowerCase();
     const channel = String(meta.channel || "").toLowerCase();
@@ -351,16 +539,19 @@ const OrderManagement = () => {
     const endsWithSpace = /\s$/.test(raw);
     const singleToken = q && !q.includes(" ");
 
-    const matchesStatus = (o) => {
-      if (statusFilter === "remote_staff_pending")
-        return isRemoteStaffPendingOrder(o);
-      return !statusFilter || o.currentStatus === statusFilter;
+    const matchesStatus = (order) => {
+      if (statusFilter === "remote_staff_pending") {
+        return isRemoteStaffPendingOrder(order);
+      }
+      return !statusFilter || normalizeStatus(order.currentStatus) === statusFilter;
     };
-    const matchesTableType = (o) => !tableFilter || o.orderType === tableFilter;
-    const matchesDate = (o) => {
-      const created = o?.createdAt ? new Date(o.createdAt) : null;
-      if (!created || Number.isNaN(created.getTime()))
+    const matchesTableType = (order) =>
+      !tableFilter || order.orderType === tableFilter;
+    const matchesDate = (order) => {
+      const created = order?.createdAt ? new Date(order.createdAt) : null;
+      if (!created || Number.isNaN(created.getTime())) {
         return !dateFrom && !dateTo;
+      }
       if (dateFrom) {
         const from = new Date(`${dateFrom}T00:00:00`);
         if (created < from) return false;
@@ -372,43 +563,45 @@ const OrderManagement = () => {
       return true;
     };
 
-    if (!q)
+    if (!q) {
       return activeOrders.filter(
-        (o) => matchesStatus(o) && matchesTableType(o) && matchesDate(o),
+        (order) =>
+          matchesStatus(order) && matchesTableType(order) && matchesDate(order),
       );
+    }
 
     if (endsWithSpace && singleToken) {
-      return activeOrders.filter((o) => {
-        const table = normalizeText(o.tableCode);
-        const code = normalizeText(o.orderCode);
-        const id = normalizeText(o.id);
+      return activeOrders.filter((order) => {
+        const table = normalizeText(order.tableCode);
+        const code = normalizeText(order.orderCode);
+        const id = normalizeText(order.id);
         return (
           (table === q || code === q || id === q || id.endsWith(q)) &&
-          matchesStatus(o) &&
-          matchesTableType(o) &&
-          matchesDate(o)
+          matchesStatus(order) &&
+          matchesTableType(order) &&
+          matchesDate(order)
         );
       });
     }
 
     const tokens = q.split(" ");
-    return activeOrders.filter((o) => {
+    return activeOrders.filter((order) => {
       const combined = [
-        o.id,
-        o.orderCode,
-        o.tableCode,
-        o.user?.fullName,
-        o.note,
-        o.user?.phone,
-        ...(o.items || []).map((it) => it.name),
+        order.id,
+        order.orderCode,
+        order.tableCode,
+        order.user?.fullName,
+        order.note,
+        order.user?.phone,
+        ...(order.items || []).map((item) => item.name),
       ]
         .map(normalizeText)
         .join(" ");
       return (
-        tokens.every((t) => combined.includes(t)) &&
-        matchesStatus(o) &&
-        matchesTableType(o) &&
-        matchesDate(o)
+        tokens.every((token) => combined.includes(token)) &&
+        matchesStatus(order) &&
+        matchesTableType(order) &&
+        matchesDate(order)
       );
     });
   }, [
@@ -425,36 +618,34 @@ const OrderManagement = () => {
     const sorted = [...filteredOrders].sort((a, b) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return sortBy === "newest" ? tb - ta : ta - tb;
+      if (ta !== tb) return sortBy === "newest" ? tb - ta : ta - tb;
+      return String(a.orderCode || a.id || "").localeCompare(
+        String(b.orderCode || b.id || ""),
+      );
     });
     return sorted;
   }, [filteredOrders, sortBy]);
+
   const batchIndexByOrderId = useMemo(() => {
     const map = new Map();
     const groups = new Map();
 
     for (const order of activeOrders || []) {
-      // Chỉ đánh số đợt cho order tại bàn.
-      // Delivery/takeaway không cần "Đợt gọi món".
-      if (order?.orderType !== "dine_in" || !order?.tableCode) continue;
-
-      // Vì active list chỉ chứa các order chưa hoàn tất,
-      // group theo restaurant + table là đủ cho phiên bàn hiện tại.
-      const key = `${order.restaurantId || selectedRestaurantId || ""}:${
-        order.tableCode
-      }`;
-
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(order);
+      const groupKey = getBatchSessionKey(order);
+      if (!groupKey) continue;
+      if (!groups.has(groupKey)) groups.set(groupKey, []);
+      groups.get(groupKey).push(order);
     }
 
-    for (const ordersInTable of groups.values()) {
-      const sorted = [...ordersInTable].sort((a, b) => {
+    for (const ordersInSession of groups.values()) {
+      const sorted = [...ordersInSession].sort((a, b) => {
         const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
         const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-
         if (ta !== tb) return ta - tb;
-
+        const codeCompare = String(a?.orderCode || "").localeCompare(
+          String(b?.orderCode || ""),
+        );
+        if (codeCompare !== 0) return codeCompare;
         return String(a?.id || "").localeCompare(String(b?.id || ""));
       });
 
@@ -466,32 +657,34 @@ const OrderManagement = () => {
     }
 
     return map;
-  }, [activeOrders, selectedRestaurantId]);
+  }, [activeOrders]);
 
   const displayOrders = useMemo(
     () =>
       orderedFilteredOrders.map((order) => ({
         ...order,
+        actionOrderId: resolveKitchenActionOrderId(order, order.id),
         batchDisplayIndex: batchIndexByOrderId.get(order.id) || null,
       })),
     [orderedFilteredOrders, batchIndexByOrderId],
   );
+
   const handleExportCsv = useCallback(() => {
-    const rows = orderedFilteredOrders.map((o) => ({
-      orderCode: o.orderCode || o.id,
-      tableCode: o.tableCode || "",
-      orderType: o.orderType || "",
-      status: o.currentStatus || "",
-      paymentStatus: o.payment?.status || "",
-      paymentMethod: o.payment?.method || "",
-      subtotal: o.totals?.subtotal || 0,
-      discount: o.totals?.discount || 0,
-      voucherCode: o.totals?.voucherCode || "",
-      promotionId: o.totals?.promotionId || "",
-      discountReason: o.totals?.discountReason || "",
-      shippingFee: o.totals?.shippingFee || 0,
-      total: o.totals?.grandTotal || 0,
-      createdAt: o.createdAt || "",
+    const rows = orderedFilteredOrders.map((order) => ({
+      orderCode: order.orderCode || order.id,
+      tableCode: order.tableCode || "",
+      orderType: order.orderType || "",
+      status: order.currentStatus || "",
+      paymentStatus: order.payment?.status || order.orderPaymentStatus || "",
+      paymentMethod: order.payment?.method || "",
+      subtotal: order.totals?.subtotal || 0,
+      discount: order.totals?.discount || 0,
+      voucherCode: order.totals?.voucherCode || "",
+      promotionId: order.totals?.promotionId || "",
+      discountReason: order.totals?.discountReason || "",
+      shippingFee: order.totals?.shippingFee || 0,
+      total: order.totals?.grandTotal || 0,
+      createdAt: order.createdAt || "",
     }));
     const header = [
       "orderCode",
@@ -509,9 +702,9 @@ const OrderManagement = () => {
       "total",
       "createdAt",
     ];
-    const csvRows = rows.map((r) =>
+    const csvRows = rows.map((row) =>
       header
-        .map((h) => `"${String(r[h] ?? "").replaceAll('"', '""')}"`)
+        .map((key) => `"${String(row[key] ?? "").replaceAll('"', '""')}"`)
         .join(","),
     );
     const csv = [header.join(","), ...csvRows].join("\n");
@@ -551,8 +744,9 @@ const OrderManagement = () => {
         }
         const summary = map.get(key);
         const qty = Number(item.quantity || 0);
-        if (createdAtMs < summary.earliestCreatedAt)
+        if (createdAtMs < summary.earliestCreatedAt) {
           summary.earliestCreatedAt = createdAtMs;
+        }
         if (unit === "kg" && qty > 0) summary.portions.push(qty);
         else if (qty > 0) summary.totalCount += qty;
         if (order.id) summary.orderIds.add(order.id);
@@ -560,10 +754,10 @@ const OrderManagement = () => {
     });
 
     return Array.from(map.values())
-      .map((d) => ({ ...d, orderIds: Array.from(d.orderIds) }))
+      .map((dish) => ({ ...dish, orderIds: Array.from(dish.orderIds) }))
       .sort((a, b) => {
-        const ta = a.earliestCreatedAt,
-          tb = b.earliestCreatedAt;
+        const ta = a.earliestCreatedAt;
+        const tb = b.earliestCreatedAt;
         if (ta !== tb) return ta - tb;
         return (
           b.orderIds.length - a.orderIds.length ||
@@ -577,24 +771,42 @@ const OrderManagement = () => {
     () => ({
       total: activeOrders.length,
       pending: activeOrders.filter(
-        (o) => !["completed", "cancelled", "served"].includes(o.currentStatus),
+        (order) => !ACTIVE_ORDER_HIDDEN_STATUSES.has(normalizeStatus(order.currentStatus)),
       ).length,
-      preparing: activeOrders.filter((o) => o.currentStatus === "preparing")
-        .length,
+      preparing: activeOrders.filter(
+        (order) => normalizeStatus(order.currentStatus) === "preparing",
+      ).length,
       completed: 0,
     }),
     [activeOrders],
   );
 
-  // --- HANDLERS ---
+  const mergeSelectedOrderMetadata = useCallback(
+    (updatedOrder, fallbackOrder = null) => {
+      const source = fallbackOrder || selectedOrder || null;
+      return {
+        ...(updatedOrder || {}),
+        actionOrderId:
+          resolveKitchenActionOrderId(source, updatedOrder?.id) || updatedOrder?.id,
+        batchDisplayIndex:
+          source?.batchDisplayIndex ?? batchIndexByOrderId.get(updatedOrder?.id) ?? null,
+      };
+    },
+    [batchIndexByOrderId, selectedOrder],
+  );
+
   const handleUpdateStatus = useCallback(
     async (orderId, status, extraNote = "") => {
-      if (!orderId || !status) return;
+      const order = displayOrders.find(
+        (item) => item.id === orderId || item.actionOrderId === orderId,
+      );
+      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
+      if (!targetOrderId || !status) return;
       try {
         const { data } = await mutUpdateOrderStatus({
           variables: {
             input: {
-              id: orderId,
+              id: targetOrderId,
               restaurantId: selectedRestaurantId,
               status,
               note: extraNote,
@@ -602,49 +814,60 @@ const OrderManagement = () => {
           },
         });
         const updated = data?.updateOrderStatus;
-        setSelectedOrder((prev) =>
-          prev?.id === orderId
-            ? { ...prev, currentStatus: status, updatedAt: updated?.updatedAt }
-            : prev,
-        );
-        if (["served", "completed", "cancelled"].includes(status)) {
+        setSelectedOrder((prev) => {
+          if (!prev) return prev;
+          if (
+            prev?.id !== order?.id &&
+            prev?.actionOrderId !== targetOrderId &&
+            prev?.id !== targetOrderId
+          ) {
+            return prev;
+          }
+          return {
+            ...prev,
+            currentStatus: status,
+            updatedAt: updated?.updatedAt,
+          };
+        });
+        if (ACTIVE_ORDER_HIDDEN_STATUSES.has(normalizeStatus(status))) {
+          const hiddenId = order?.id || targetOrderId;
           setHiddenOrderIds((prev) =>
-            prev.includes(orderId) ? prev : [...prev, orderId],
+            prev.includes(hiddenId) ? prev : [...prev, hiddenId],
           );
         }
-        if (loadOrders && selectedRestaurantId)
-          loadOrders({
-            variables: { restaurantId: selectedRestaurantId, limit: 100 },
-            fetchPolicy: "network-only",
-          });
+        await refetchOrders();
       } catch (err) {
         console.error(err);
         showNotification(err?.message || "Lỗi cập nhật", "error");
       }
     },
-    [mutUpdateOrderStatus, loadOrders, selectedRestaurantId, showNotification],
+    [displayOrders, mutUpdateOrderStatus, refetchOrders, selectedRestaurantId, showNotification],
   );
 
   const handleUpdateItemStatus = useCallback(
     (orderId, itemKey, nextStatus) => {
-      const ord = orders.find((o) => o.id === orderId);
+      const order = displayOrders.find(
+        (item) => item.id === orderId || item.actionOrderId === orderId,
+      );
+      const targetOrderId =
+        resolveKitchenActionOrderId(order, orderId) || normalizeId(orderId);
+      if (!targetOrderId) return;
       return updateItemStatus({
-        orderId,
+        orderId: targetOrderId,
         itemKey,
         status: nextStatus,
         restaurantId: selectedRestaurantId,
-        tableCode: ord?.tableCode,
-        itemsSnapshot: ord?.items,
-        afterSuccess: (updated) => {
-          if (updated) setSelectedOrder(updated);
-          loadOrders({
-            variables: { restaurantId: selectedRestaurantId, limit: 100 },
-            fetchPolicy: "network-only",
-          });
+        tableCode: order?.tableCode,
+        itemsSnapshot: order?.items,
+        afterSuccess: async (updated) => {
+          if (updated) {
+            setSelectedOrder(mergeSelectedOrderMetadata(updated, order));
+          }
+          await refetchOrders();
         },
       });
     },
-    [orders, selectedRestaurantId, loadOrders, updateItemStatus],
+    [displayOrders, mergeSelectedOrderMetadata, refetchOrders, selectedRestaurantId, updateItemStatus],
   );
 
   const handleDishClick = useCallback((dish) => {
@@ -657,8 +880,9 @@ const OrderManagement = () => {
         const matched = cards.find((el) =>
           (dish.orderIds || []).includes(el.getAttribute("data-order-id")),
         );
-        if (matched)
+        if (matched) {
           matched.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       });
     }
   }, []);
@@ -672,81 +896,90 @@ const OrderManagement = () => {
     async (orderId) => {
       const reason = window.prompt("Nhập lý do từ chối đơn:", "");
       if (reason == null) return;
+      const order = displayOrders.find(
+        (item) => item.id === orderId || item.actionOrderId === orderId,
+      );
+      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
       await mutRejectIncomingOrder({
         variables: {
-          input: { id: orderId, restaurantId: selectedRestaurantId, reason },
+          input: { id: targetOrderId, restaurantId: selectedRestaurantId, reason },
         },
       });
-      loadOrders({
-        variables: { restaurantId: selectedRestaurantId, limit: 100 },
-        fetchPolicy: "network-only",
-      });
+      await refetchOrders();
       showNotification("Đã từ chối đơn từ xa", "warning");
     },
-    [
-      loadOrders,
-      mutRejectIncomingOrder,
-      selectedRestaurantId,
-      showNotification,
-    ],
+    [displayOrders, mutRejectIncomingOrder, refetchOrders, selectedRestaurantId, showNotification],
   );
+
   const handleConfirmRemoteOrder = useCallback(
     async (orderId) => {
+      const order = displayOrders.find(
+        (item) => item.id === orderId || item.actionOrderId === orderId,
+      );
+      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
       await mutConfirmIncomingOrder({
         variables: {
-          input: { id: orderId, restaurantId: selectedRestaurantId },
+          input: { id: targetOrderId, restaurantId: selectedRestaurantId },
         },
       });
-      loadOrders({
-        variables: { restaurantId: selectedRestaurantId, limit: 100 },
-        fetchPolicy: "network-only",
-      });
+      await refetchOrders();
     },
-    [loadOrders, mutConfirmIncomingOrder, selectedRestaurantId],
+    [displayOrders, mutConfirmIncomingOrder, refetchOrders, selectedRestaurantId],
   );
+
   const handleCreateTemporaryBill = useCallback(
     async (order) => {
-      if (!order?.id || !selectedRestaurantId) return;
+      const targetOrderId = resolveKitchenActionOrderId(order, order?.id);
+      if (!targetOrderId || !selectedRestaurantId) return;
       await mutCreateTempBillJob({
         variables: {
-          input: { orderId: order.id, restaurantId: selectedRestaurantId },
+          input: { orderId: targetOrderId, restaurantId: selectedRestaurantId },
         },
       });
       showNotification("Đã tạo print job in tạm tính.", "success");
     },
     [mutCreateTempBillJob, selectedRestaurantId, showNotification],
   );
+
   const handleReviewItemVoid = useCallback(
     async (payload) => {
       const updatedOrder = await reviewOrderItemVoid(payload);
-      if (updatedOrder) setSelectedOrder(updatedOrder);
+      if (updatedOrder) {
+        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        await refetchOrders();
+      }
       return updatedOrder;
     },
-    [reviewOrderItemVoid],
+    [mergeSelectedOrderMetadata, refetchOrders, reviewOrderItemVoid],
   );
+
   const handleRequestItemReturn = useCallback(
     async (payload) => {
       const updatedOrder = await requestOrderItemReturn(payload);
-      if (updatedOrder) setSelectedOrder(updatedOrder);
+      if (updatedOrder) {
+        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        await refetchOrders();
+      }
       return updatedOrder;
     },
-    [requestOrderItemReturn],
+    [mergeSelectedOrderMetadata, refetchOrders, requestOrderItemReturn],
   );
 
   const handleReviewItemReturn = useCallback(
     async (payload) => {
       const updatedOrder = await reviewOrderItemReturn(payload);
-      if (updatedOrder) setSelectedOrder(updatedOrder);
+      if (updatedOrder) {
+        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        await refetchOrders();
+      }
       return updatedOrder;
     },
-    [reviewOrderItemReturn],
+    [mergeSelectedOrderMetadata, refetchOrders, reviewOrderItemReturn],
   );
 
-  // ---------------- RENDER ----------------
   return (
     <div className={`om-container ${focusMode ? "om-container--focus" : ""}`}>
       <div className="om-wrapper">
-        {/* --- 1. HEADER --- */}
         <header className="om-header">
           {!focusMode ? (
             <div className="om-header__titles">
@@ -810,7 +1043,6 @@ const OrderManagement = () => {
           </div>
         </header>
 
-        {/* --- 2. STATS (Normal Mode only) --- */}
         {!focusMode && (
           <div className="om-stats-grid">
             <StatsCard
@@ -840,11 +1072,9 @@ const OrderManagement = () => {
           </div>
         )}
 
-        {/* --- 3. TOOLBAR --- */}
         <div className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}>
           <div className="om-toolbar__inner">
             <div className="om-toolbar__filters">
-              {/* Search */}
               <div className="om-search-box">
                 <Search size={18} className="om-search-icon" />
                 <input
@@ -856,7 +1086,6 @@ const OrderManagement = () => {
                 />
               </div>
 
-              {/* Filter Buttons */}
               <div className="om-filter-group">
                 <div className="om-select-wrapper">
                   <select
@@ -927,7 +1156,6 @@ const OrderManagement = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="om-toolbar__actions">
               {focusMode ? (
                 <div className="om-size-control">
@@ -960,7 +1188,6 @@ const OrderManagement = () => {
           </div>
         </div>
 
-        {/* --- 4. SUMMARY PANEL (Focus Mode) --- */}
         {focusMode && dishSummaries.length > 0 && (
           <DishSummaryPanel
             dishes={dishSummaries}
@@ -971,7 +1198,6 @@ const OrderManagement = () => {
           />
         )}
 
-        {/* --- 5. GRID CONTENT --- */}
         <div className="om-content">
           {ordersLoading ? (
             <div className="om-state">
@@ -1014,8 +1240,9 @@ const OrderManagement = () => {
                       if (
                         status === "confirmed" &&
                         isRemoteStaffPendingOrder(order)
-                      )
+                      ) {
                         return handleConfirmRemoteOrder(orderId);
+                      }
                       return handleUpdateStatus(orderId, status);
                     }}
                     onRejectOrder={handleRejectOrder}
@@ -1024,13 +1251,14 @@ const OrderManagement = () => {
                     onViewItem={(data) => setSelectedItem(data)}
                     isFocusMode={focusMode}
                     onQuickItemDone={handleUpdateItemStatus}
-                    onMessageCustomer={(o) => {
-                      const threadId = o?.clientMeta?.chatThreadId;
-                      if (!threadId)
+                    onMessageCustomer={(currentOrder) => {
+                      const threadId = currentOrder?.clientMeta?.chatThreadId;
+                      if (!threadId) {
                         return showNotification(
                           "Chưa có luồng chat cho đơn này",
                           "warning",
                         );
+                      }
                       window.location.href = `/staff?tab=contacts&threadId=${threadId}`;
                     }}
                     timeThresholds={timeSettings}
@@ -1042,19 +1270,14 @@ const OrderManagement = () => {
           )}
         </div>
 
-        {/* --- 6. MODALS --- */}
         {showNewOrderModal && (
           <NewOrderModal
             isOpen={showNewOrderModal}
             onClose={() => setShowNewOrderModal(false)}
             restaurantId={selectedRestaurantId}
-            onSuccess={() => {
+            onSuccess={async () => {
               setShowNewOrderModal(false);
-              if (loadOrders && selectedRestaurantId)
-                loadOrders({
-                  variables: { restaurantId: selectedRestaurantId, limit: 100 },
-                  fetchPolicy: "network-only",
-                });
+              await refetchOrders();
             }}
           />
         )}
@@ -1093,7 +1316,7 @@ const OrderManagement = () => {
           <HistoryModal
             restaurantId={selectedRestaurantId}
             onClose={() => setShowHistory(false)}
-            onViewOrder={(o) => setSelectedOrder(o)}
+            onViewOrder={(order) => setSelectedOrder(order)}
           />
         )}
       </div>

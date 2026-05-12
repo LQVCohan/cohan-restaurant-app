@@ -14,6 +14,7 @@ import {
   FiPlus,
   FiChevronDown,
   FiSave,
+  FiAlertCircle,
 } from "react-icons/fi";
 import "./MenuModal.scss";
 import {
@@ -35,6 +36,26 @@ const getCategoryLabelWithIcon = (name = "") => {
   return `${resolveCategoryIcon(safeName)} ${safeName}`;
 };
 
+const getErrorMessage = (
+  error,
+  fallbackMessage = "Không thể tạo nhóm thực đơn mới."
+) => {
+  const graphQlMessage = error?.graphQLErrors
+    ?.map((entry) => entry?.message)
+    .filter(Boolean)
+    .join("; ");
+
+  if (graphQlMessage) return graphQlMessage;
+  if (error?.networkError?.result?.errors?.length) {
+    return error.networkError.result.errors
+      .map((entry) => entry?.message)
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return error?.message || fallbackMessage;
+};
+
 const INITIAL_STATE = {
   id: null,
   name: "",
@@ -54,6 +75,7 @@ const MenuModal = ({
   isSubmitting = false,
   createCategoryMenu,
   restaurantId,
+  submitError = "",
 }) => {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
@@ -62,6 +84,8 @@ const MenuModal = ({
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
   const [quickCatName, setQuickCatName] = useState("");
   const [quickCatSaving, setQuickCatSaving] = useState(false);
+  const [quickCatError, setQuickCatError] = useState("");
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const initialSnapshotRef = useRef(INITIAL_STATE);
   const catDropdownRef = useRef(null);
@@ -90,6 +114,8 @@ const MenuModal = ({
     setIsAddingNewCat(false);
     setQuickCatName("");
     setQuickCatSaving(false);
+    setQuickCatError("");
+    setShowDiscardConfirm(false);
     initialSnapshotRef.current = next;
   }, [isOpen, initialData]);
 
@@ -103,6 +129,7 @@ const MenuModal = ({
         if (!quickCatSaving) {
           setIsAddingNewCat(false);
           setQuickCatName("");
+          setQuickCatError("");
         }
       }
     };
@@ -154,6 +181,7 @@ const MenuModal = ({
     if (errors.categoryMenuId) {
       setErrors((prev) => ({ ...prev, categoryMenuId: "" }));
     }
+    setQuickCatError("");
     setIsCatDropdownOpen(false);
   };
 
@@ -185,14 +213,25 @@ const MenuModal = ({
     onSubmit?.(payload);
   };
 
+  const handleDismissDiscardConfirm = useCallback(() => {
+    if (isSubmitting || quickCatSaving) return;
+    setShowDiscardConfirm(false);
+  }, [isSubmitting, quickCatSaving]);
+
+  const handleConfirmDiscard = useCallback(() => {
+    if (isSubmitting || quickCatSaving) return;
+    setShowDiscardConfirm(false);
+    onClose?.();
+  }, [isSubmitting, onClose, quickCatSaving]);
+
   const handleRequestClose = useCallback(() => {
     if (isSubmitting || quickCatSaving) return;
     if (isDirty) {
-      const ok = window.confirm(
-        "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn đóng?"
-      );
-      if (!ok) return;
+      setShowDiscardConfirm(true);
+      return;
     }
+
+    setShowDiscardConfirm(false);
     onClose?.();
   }, [isDirty, isSubmitting, onClose, quickCatSaving]);
 
@@ -201,18 +240,31 @@ const MenuModal = ({
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         e.stopPropagation();
+        if (showDiscardConfirm) {
+          handleDismissDiscardConfirm();
+          return;
+        }
         handleRequestClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleRequestClose, isOpen]);
+  }, [
+    handleDismissDiscardConfirm,
+    handleRequestClose,
+    isOpen,
+    showDiscardConfirm,
+  ]);
 
-  const handleStartAddCat = () => setIsAddingNewCat(true);
+  const handleStartAddCat = () => {
+    setQuickCatError("");
+    setIsAddingNewCat(true);
+  };
 
   const handleCancelAddCat = () => {
     setIsAddingNewCat(false);
     setQuickCatName("");
+    setQuickCatError("");
   };
 
   const handleQuickCatSave = async (e) => {
@@ -220,10 +272,21 @@ const MenuModal = ({
     e?.stopPropagation();
 
     const name = quickCatName.trim();
-    if (!name || !createCategoryMenu) return;
+    if (!name) return;
+
+    if (!restaurantId) {
+      setQuickCatError("Không thể tạo nhóm thực đơn vì chưa chọn nhà hàng.");
+      return;
+    }
+
+    if (!createCategoryMenu) {
+      setQuickCatError("Không thể tạo nhóm thực đơn lúc này. Vui lòng thử lại.");
+      return;
+    }
 
     try {
       setQuickCatSaving(true);
+      setQuickCatError("");
       const created = await createCategoryMenu({
         restaurantId,
         name,
@@ -241,8 +304,11 @@ const MenuModal = ({
       setQuickCatName("");
       setIsAddingNewCat(false);
       setIsCatDropdownOpen(false);
+      setQuickCatError("");
     } catch (err) {
-      alert(err?.message || "Lỗi khi tạo nhóm thực đơn mới");
+      setQuickCatError(
+        getErrorMessage(err, "Không thể tạo nhóm thực đơn mới. Vui lòng thử lại.")
+      );
     } finally {
       setQuickCatSaving(false);
     }
@@ -274,6 +340,28 @@ const MenuModal = ({
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="modal-body">
+            {submitError && (
+              <div
+                role="alert"
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  padding: "12px 14px",
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#b91c1c",
+                }}
+              >
+                <FiAlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                  {submitError}
+                </p>
+              </div>
+            )}
+
             <div className="form-group">
               <label>
                 Tên Menu <span className="req">*</span>
@@ -384,7 +472,10 @@ const MenuModal = ({
                               type="text"
                               placeholder="Tên nhóm thực đơn..."
                               value={quickCatName}
-                              onChange={(e) => setQuickCatName(e.target.value)}
+                              onChange={(e) => {
+                                setQuickCatName(e.target.value);
+                                if (quickCatError) setQuickCatError("");
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault();
@@ -414,6 +505,12 @@ const MenuModal = ({
                               <FiX />
                             </button>
                           </div>
+                        )}
+
+                        {quickCatError && (
+                          <p className="error-text" style={{ marginTop: 8 }}>
+                            {quickCatError}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -508,6 +605,50 @@ const MenuModal = ({
             </button>
           </div>
         </form>
+
+        {showDiscardConfirm && (
+          <div className="menu-modal-confirm-layer">
+            <div
+              className="menu-modal-confirm-card"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="menu-discard-confirm-title"
+              aria-describedby="menu-discard-confirm-description"
+            >
+              <div className="menu-modal-confirm-icon">
+                <FiAlertCircle size={18} />
+              </div>
+
+              <div className="menu-modal-confirm-content">
+                <h3 id="menu-discard-confirm-title">Bỏ thay đổi chưa lưu?</h3>
+                <p id="menu-discard-confirm-description">
+                  Bạn đang có thay đổi chưa lưu trong menu này. Nếu tiếp tục
+                  đóng, mọi chỉnh sửa hiện tại sẽ bị bỏ đi.
+                </p>
+              </div>
+
+              <div className="menu-modal-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-confirm-cancel"
+                  onClick={handleDismissDiscardConfirm}
+                  disabled={isSubmitting || quickCatSaving}
+                >
+                  Tiếp tục chỉnh sửa
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-confirm-discard"
+                  onClick={handleConfirmDiscard}
+                  disabled={isSubmitting || quickCatSaving}
+                >
+                  Bỏ thay đổi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

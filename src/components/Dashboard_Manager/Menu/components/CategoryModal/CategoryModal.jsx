@@ -10,6 +10,7 @@ import {
   Save,
   X,
   Check,
+  AlertCircle,
 } from "lucide-react";
 import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
 import {
@@ -34,6 +35,9 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState(null);
+  const [isDeletingCategoryMenu, setIsDeletingCategoryMenu] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const isDirty =
     viewMode === "form" &&
     (formData.name.trim() ||
@@ -88,11 +92,16 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setFormData(INITIAL_FORM);
     setErrors({});
     setSearchTerm("");
+    setPendingDeleteGroup(null);
+    setIsDeletingCategoryMenu(false);
+    setDeleteError("");
   }, [isOpen]);
 
   const switchToCreate = () => {
     setFormData(INITIAL_FORM);
     setErrors({});
+    setPendingDeleteGroup(null);
+    setDeleteError("");
     setViewMode("form");
   };
 
@@ -104,12 +113,16 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
       description: cat.description || "",
     });
     setErrors({});
+    setPendingDeleteGroup(null);
+    setDeleteError("");
     setViewMode("form");
   };
 
   const switchToList = () => {
     setViewMode("list");
     setErrors({});
+    setPendingDeleteGroup(null);
+    setDeleteError("");
     clearDraft();
   };
 
@@ -159,12 +172,48 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa nhóm thực đơn này?")) return;
+  const handleRequestDelete = (categoryMenu) => {
+    if (!categoryMenu) return;
+    setPendingDeleteGroup({
+      id: categoryMenu.id || categoryMenu._id,
+      name: categoryMenu.name || "Nhóm thực đơn này",
+    });
+    setDeleteError("");
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeletingCategoryMenu) return;
+    setPendingDeleteGroup(null);
+    setDeleteError("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteGroup?.id || isDeletingCategoryMenu) return;
+
+    setIsDeletingCategoryMenu(true);
+    setDeleteError("");
+
     try {
-      await deleteCategoryMenu(id);
+      const deleted = await deleteCategoryMenu(pendingDeleteGroup.id);
+
+      if (!deleted) {
+        setDeleteError(
+          `Không thể xóa nhóm thực đơn \"${pendingDeleteGroup.name}\". Vui lòng thử lại.`
+        );
+        return;
+      }
+
+      setPendingDeleteGroup(null);
+      setDeleteError("");
+      setViewMode("list");
     } catch (err) {
-      alert("Lỗi khi xóa: " + (err.message || "Không xác định"));
+      console.error(err);
+      setDeleteError(
+        err?.message ||
+          `Không thể xóa nhóm thực đơn \"${pendingDeleteGroup.name}\". Vui lòng thử lại.`
+      );
+    } finally {
+      setIsDeletingCategoryMenu(false);
     }
   };
 
@@ -215,6 +264,47 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
               </button>
             </div>
 
+            {pendingDeleteGroup && (
+              <div className="delete-confirm-card" role="alertdialog" aria-live="polite">
+                <div className="delete-confirm-card__icon">
+                  <AlertCircle size={18} />
+                </div>
+                <div className="delete-confirm-card__content">
+                  <p className="delete-confirm-card__title">Xóa nhóm thực đơn</p>
+                  <p className="delete-confirm-card__message">
+                    Bạn có chắc chắn muốn xóa
+                    <strong>{` ${pendingDeleteGroup.name}`}</strong>?
+                  </p>
+                  <p className="delete-confirm-card__hint">
+                    Nhóm này sẽ bị gỡ khỏi danh sách sau khi bạn xác nhận.
+                  </p>
+                  {deleteError && (
+                    <div className="delete-confirm-card__error" role="alert">
+                      {deleteError}
+                    </div>
+                  )}
+                </div>
+                <div className="delete-confirm-card__actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCancelDelete}
+                    disabled={isDeletingCategoryMenu}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={handleConfirmDelete}
+                    disabled={isDeletingCategoryMenu}
+                  >
+                    {isDeletingCategoryMenu ? "Đang xóa..." : "Xóa nhóm"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="list-body custom-scrollbar">
               {categoryMenuLoading ? (
                 <div className="state-loading">
@@ -234,35 +324,42 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                 </div>
               ) : (
                 <div className="category-list">
-                  {filteredList.map((cat) => (
-                    <div key={cat.id || cat._id} className="category-item-card">
-                      <div className="card-visual">
-                        <span>{resolveCategoryIcon(cat.name || "")}</span>
+                  {filteredList.map((cat) => {
+                    const categoryId = cat.id || cat._id;
+                    const isPendingDelete = pendingDeleteGroup?.id === categoryId;
+
+                    return (
+                      <div key={categoryId} className="category-item-card">
+                        <div className="card-visual">
+                          <span>{resolveCategoryIcon(cat.name || "")}</span>
+                        </div>
+                        <div className="card-info">
+                          <span className="cat-name">{cat.name}</span>
+                          <span className="cat-desc">
+                            {cat.description || "Chưa có mô tả"}
+                          </span>
+                        </div>
+                        <div className="card-actions">
+                          <button
+                            className="action-btn edit"
+                            onClick={() => switchToEdit(cat)}
+                            title="Chỉnh sửa nhóm thực đơn"
+                            disabled={isDeletingCategoryMenu}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            className="action-btn delete"
+                            onClick={() => handleRequestDelete(cat)}
+                            title="Xóa nhóm thực đơn"
+                            disabled={isDeletingCategoryMenu && isPendingDelete}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="card-info">
-                        <span className="cat-name">{cat.name}</span>
-                        <span className="cat-desc">
-                          {cat.description || "Chưa có mô tả"}
-                        </span>
-                      </div>
-                      <div className="card-actions">
-                        <button
-                          className="action-btn edit"
-                          onClick={() => switchToEdit(cat)}
-                          title="Chỉnh sửa nhóm thực đơn"
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button
-                          className="action-btn delete"
-                          onClick={() => handleDelete(cat.id || cat._id)}
-                          title="Xóa nhóm thực đơn"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

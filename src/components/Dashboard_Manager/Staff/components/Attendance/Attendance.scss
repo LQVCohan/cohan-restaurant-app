@@ -873,7 +873,8 @@ $border: #e2e8f0;
     box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
     border: 1px solid #e2e8f0;
 
-    &.review-modal {
+    &.review-modal,
+    &.overtime-review-modal {
       width: min(980px, 100%);
     }
 
@@ -925,7 +926,8 @@ $border: #e2e8f0;
       padding: 1.5rem;
     }
 
-    .current-record-box {
+    .current-record-box,
+    .overtime-modal-summary {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 0.75rem;
@@ -952,6 +954,10 @@ $border: #e2e8f0;
           font-size: 0.92rem;
         }
       }
+    }
+
+    .overtime-status-note {
+      max-width: 180px;
     }
 
     .form-alert {
@@ -1309,7 +1315,8 @@ $border: #e2e8f0;
 @media (max-width: 900px) {
   .attendance-management-page {
     .attendance-correction-modal {
-      .current-record-box {
+      .current-record-box,
+      .overtime-modal-summary {
         grid-template-columns: repeat(2, 1fr);
       }
 
@@ -1335,7 +1342,8 @@ $border: #e2e8f0;
     }
 
     .attendance-correction-modal {
-      .current-record-box {
+      .current-record-box,
+      .overtime-modal-summary {
         grid-template-columns: 1fr;
       }
 

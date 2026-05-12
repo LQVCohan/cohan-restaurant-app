@@ -31,6 +31,16 @@ describe("RightPanel discount integration", () => {
     expect(src).toMatch(/shouldBlockSaveForDiscount/);
   });
 
+  it("keeps the line-level promotion breakdown block for off-premise preview", () => {
+    const src = fs.readFileSync(SRC, "utf8");
+
+    expect(src).toContain("promotionLineItems");
+    expect(src).toContain("discountBreakdown?.promotionLines");
+    expect(src).toContain("Ưu đãi theo món");
+    expect(src).toContain("Món áp dụng");
+    expect(src).toContain("Khuyến mãi");
+  });
+
   it("passes only safe pricing and promotionIds to saveOrder", () => {
     const src = fs.readFileSync(SRC, "utf8");
     const saveOrderCall = getSaveOrderCall(src);

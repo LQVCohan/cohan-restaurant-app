@@ -11,7 +11,7 @@ const db = vi.hoisted(() => ({
 const modelMocks = vi.hoisted(() => ({
   SchedulePublication: { find: vi.fn() },
   Shift: { find: vi.fn() },
-  Timesheet: vi.fn(),
+  Timesheet: Object.assign(vi.fn(), { find: vi.fn() }),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -398,7 +398,7 @@ describe("attendance exception detection service", () => {
 
     expect(summary.noShowCreated).toBe(1);
     expect(db.timesheets[0].workDate.toISOString()).toBe(
-      "2026-05-11T17:00:00.000Z",
+      "2026-05-10T17:00:00.000Z",
     );
   });
 

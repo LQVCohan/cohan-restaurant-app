@@ -13,6 +13,7 @@ import {
   FiPlus,
   FiFolderPlus,
   FiAlertCircle,
+  FiTrash2,
 } from "react-icons/fi";
 import "./MenuManagement.scss";
 
@@ -25,6 +26,7 @@ import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
 import CategoryModal from "./components/CategoryModal/CategoryModal";
 import PriceEditModal from "./components/PriceEditModal/PriceEditModal";
 import MenuModal from "./components/MenuModal/MenuModal";
+import Modal from "../../common/Modal";
 
 // Logic
 import { AuthContext } from "../../../context/AuthContext";
@@ -67,7 +69,10 @@ const TIME_SLOT_LABELS = {
   late_night: "Ăn Khuya (Late Night)",
 };
 
-const getGraphQLErrorMessage = (error) => {
+const getGraphQLErrorMessage = (
+  error,
+  fallbackMessage = "Đã xảy ra lỗi không xác định."
+) => {
   const graphQlMessage = error?.graphQLErrors
     ?.map((entry) => entry?.message)
     .filter(Boolean)
@@ -81,7 +86,7 @@ const getGraphQLErrorMessage = (error) => {
       .join("; ");
   }
 
-  return error?.message || "Không thể lưu thay đổi giá.";
+  return error?.message || fallbackMessage;
 };
 
 const cloneIngredients = (ingredients = []) =>
@@ -148,8 +153,14 @@ const MenuManagement = () => {
   });
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
+  const [menuSubmitError, setMenuSubmitError] = useState("");
   const [isSavingPriceEdit, setIsSavingPriceEdit] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
   const priceEditSubmitRef = useRef(false);
+  const deleteItemSubmitRef = useRef(false);
 
   /* --- DATA FETCHING --- */
   const {
@@ -238,6 +249,10 @@ const MenuManagement = () => {
   );
 
   const toggleModal = (name, isOpen = true, data = null) => {
+    if (name === "menu") {
+      setMenuSubmitError("");
+    }
+
     setModals((prev) => {
       const newState = { ...prev, [name]: { ...prev[name], isOpen } };
       if (name === "menuItem") newState.menuItem.editId = data;
@@ -248,6 +263,7 @@ const MenuManagement = () => {
 
   const handleSubmitMenu = async (form) => {
     if (!currentRestaurant) return;
+    setMenuSubmitError("");
     setIsSavingMenu(true);
     try {
       await ensureMenu({
@@ -262,11 +278,66 @@ const MenuManagement = () => {
       await refetchMenus?.();
       toggleModal("menu", false);
     } catch (err) {
-      alert(err?.message || "Lỗi khi lưu menu");
+      setMenuSubmitError(
+        getGraphQLErrorMessage(err, "Không thể lưu menu. Vui lòng thử lại.")
+      );
     } finally {
       setIsSavingMenu(false);
     }
   };
+
+  const handleRequestDeleteItem = useCallback((item) => {
+    if (!item?.id) return;
+
+    setDeleteError("");
+    setDeleteListRefreshError("");
+    setDeletingItem({
+      id: item.id,
+      name: item.name || `Món #${item.id}`,
+    });
+  }, []);
+
+  const handleCloseDeleteModal = useCallback(() => {
+    if (isDeletingItem) return;
+    setDeletingItem(null);
+    setDeleteError("");
+  }, [isDeletingItem]);
+
+  const handleConfirmDeleteItem = useCallback(async () => {
+    if (!deletingItem?.id || deleteItemSubmitRef.current) return;
+
+    const itemName = deletingItem.name || `Món #${deletingItem.id}`;
+    deleteItemSubmitRef.current = true;
+    setIsDeletingItem(true);
+    setDeleteError("");
+    setDeleteListRefreshError("");
+
+    try {
+      await deleteMenuItem(deletingItem.id);
+
+      try {
+        await refetchItems?.();
+        setDeletingItem(null);
+      } catch (error) {
+        const message = getGraphQLErrorMessage(
+          error,
+          "Không thể tải lại danh sách món ăn."
+        );
+
+        setDeletingItem(null);
+        setDeleteListRefreshError(
+          `Đã xóa món "${itemName}" nhưng không thể tải lại danh sách: ${message}`
+        );
+      }
+    } catch (error) {
+      setDeleteError(
+        getGraphQLErrorMessage(error, "Không thể xóa món ăn. Vui lòng thử lại.")
+      );
+    } finally {
+      deleteItemSubmitRef.current = false;
+      setIsDeletingItem(false);
+    }
+  }, [deleteMenuItem, deletingItem, refetchItems]);
 
   const handleSavePriceChanges = useCallback(
     async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
@@ -323,7 +394,10 @@ const MenuManagement = () => {
               });
             });
           } catch (error) {
-            const message = getGraphQLErrorMessage(error);
+            const message = getGraphQLErrorMessage(
+              error,
+              "Không thể lưu thay đổi giá."
+            );
 
             targetIds.forEach((itemId) => {
               const itemName = getMenuItemLabel(itemId);
@@ -349,7 +423,10 @@ const MenuManagement = () => {
             });
             successCount += 1;
           } catch (error) {
-            const message = getGraphQLErrorMessage(error);
+            const message = getGraphQLErrorMessage(
+              error,
+              "Không thể lưu thay đổi giá."
+            );
             const itemName = getMenuItemLabel(update.itemId, update.itemName);
 
             failures.push({
@@ -369,7 +446,10 @@ const MenuManagement = () => {
         try {
           await refetchItems?.();
         } catch (error) {
-          const message = getGraphQLErrorMessage(error);
+          const message = getGraphQLErrorMessage(
+            error,
+            "Không thể tải lại dữ liệu món ăn."
+          );
 
           if (!successCount && failures.length === 0) {
             throw error;
@@ -411,6 +491,32 @@ const MenuManagement = () => {
       })),
     [items, categories]
   );
+
+  const inlineAlertStyle = {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: "12px 14px",
+    marginBottom: 16,
+    borderRadius: 10,
+    border: "1px solid #fecaca",
+    background: "#fef2f2",
+    color: "#b91c1c",
+  };
+
+  const modalButtonBaseStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minWidth: 108,
+    padding: "10px 16px",
+    borderRadius: 8,
+    border: "1px solid transparent",
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
 
   if (!managerId)
     return (
@@ -527,6 +633,15 @@ const MenuManagement = () => {
         />
 
         <div className="mm-body__content">
+          {deleteListRefreshError && (
+            <div role="alert" style={inlineAlertStyle}>
+              <FiAlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                {deleteListRefreshError}
+              </p>
+            </div>
+          )}
+
           {itemsError && (
             <div className="mm-state-box error">
               <FiAlertCircle size={32} />
@@ -567,11 +682,7 @@ const MenuManagement = () => {
                     key={item.id}
                     item={item}
                     onEdit={() => toggleModal("menuItem", true, item.id)}
-                    onDelete={async () => {
-                      if (!window.confirm(`Xóa món "${item.name}"?`)) return;
-                      await deleteMenuItem(item.id);
-                      await refetchItems?.();
-                    }}
+                    onDelete={() => handleRequestDeleteItem(item)}
                     viewMode={currentView}
                   />
                 ))}
@@ -602,6 +713,8 @@ const MenuManagement = () => {
         isSubmitting={isSavingMenu}
         createCategoryMenu={createCategoryMenu}
         updateCategoryMenu={updateCategoryMenu}
+        restaurantId={currentRestaurant || null}
+        submitError={menuSubmitError}
       />
 
       <MenuItemModal
@@ -633,6 +746,72 @@ const MenuManagement = () => {
         onSave={handleSavePriceChanges}
         menuItems={items}
       />
+
+      <Modal
+        isOpen={!!deletingItem}
+        onClose={handleCloseDeleteModal}
+        size="sm"
+        closeOnOverlayClick={!isDeletingItem}
+        closeOnEscape={!isDeletingItem}
+      >
+        <Modal.Header>Xác nhận xóa món</Modal.Header>
+        <Modal.Body>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ margin: 0, color: "#334155", lineHeight: 1.6 }}>
+              Bạn có chắc chắn muốn xóa món
+              <strong style={{ color: "#1e293b" }}>
+                {` ${deletingItem?.name || "này"}`}
+              </strong>
+              ?
+            </p>
+            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+              Món sẽ bị gỡ khỏi danh sách hiện tại sau khi bạn xác nhận.
+            </p>
+
+            {deleteError && (
+              <div role="alert" style={{ ...inlineAlertStyle, marginBottom: 0 }}>
+                <FiAlertCircle
+                  size={18}
+                  style={{ flexShrink: 0, marginTop: 2 }}
+                />
+                <p style={{ margin: 0, lineHeight: 1.5 }}>{deleteError}</p>
+              </div>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <button
+            type="button"
+            onClick={handleCloseDeleteModal}
+            disabled={isDeletingItem}
+            style={{
+              ...modalButtonBaseStyle,
+              borderColor: "#cbd5e1",
+              background: "#ffffff",
+              color: "#475569",
+              cursor: isDeletingItem ? "not-allowed" : "pointer",
+              opacity: isDeletingItem ? 0.7 : 1,
+            }}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmDeleteItem}
+            disabled={isDeletingItem}
+            style={{
+              ...modalButtonBaseStyle,
+              background: "#dc2626",
+              color: "#ffffff",
+              cursor: isDeletingItem ? "not-allowed" : "pointer",
+              opacity: isDeletingItem ? 0.75 : 1,
+            }}
+          >
+            <FiTrash2 size={16} />
+            <span>{isDeletingItem ? "Đang xóa..." : "Xóa"}</span>
+          </button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

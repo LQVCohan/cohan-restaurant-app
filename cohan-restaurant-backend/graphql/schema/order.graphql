@@ -436,6 +436,10 @@ type Order {
   id: ID!
   orderCode: String
   parentOrderCode: String
+  orderKind: String
+  parentOrderId: ID
+  rootOrderId: ID
+  orderPaymentStatus: String
   restaurantId: ID!
 
   orderType: OrderType!

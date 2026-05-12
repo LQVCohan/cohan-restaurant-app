@@ -8,12 +8,21 @@ const paymentModalPath = path.resolve(
   "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.jsx",
 );
 
+const paymentModalStylesPath = path.resolve(
+  process.cwd(),
+  "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.module.scss",
+);
+
 const orderManagementPath = path.resolve(
   process.cwd(),
   "src/hooks/useOrderManagement.js",
 );
 
 const paymentModalSource = fs.readFileSync(paymentModalPath, "utf8");
+const paymentModalStylesSource = fs.readFileSync(
+  paymentModalStylesPath,
+  "utf8",
+);
 const orderManagementSource = fs.readFileSync(orderManagementPath, "utf8");
 
 describe("PaymentModal voucher payment flow", () => {
@@ -67,6 +76,18 @@ describe("PaymentModal voucher payment flow", () => {
     expect(paymentModalSource).toContain("selectedPromotionId");
     expect(paymentModalSource).toContain("Chương trình khuyến mãi");
     expect(paymentModalSource).toContain("setSelectedPromotionIds");
+  });
+
+  it("keeps the line-level promotion breakdown block and styles", () => {
+    expect(paymentModalSource).toContain("promotionLineItems");
+    expect(paymentModalSource).toContain("discountBreakdown?.promotionLines");
+    expect(paymentModalSource).toContain("Ưu đãi theo món");
+    expect(paymentModalSource).toContain("Món áp dụng");
+    expect(paymentModalSource).toContain("Khuyến mãi");
+
+    expect(paymentModalStylesSource).toContain(".linePromotionBreakdown");
+    expect(paymentModalStylesSource).toContain(".linePromotionTitle");
+    expect(paymentModalStylesSource).toContain(".linePromotionRow");
   });
 });
 

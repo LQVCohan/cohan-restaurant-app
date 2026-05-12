@@ -27,7 +27,11 @@ import {
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
-const INACTIVE_STATUSES = ["cancelled", "completed"];
+const INACTIVE_STATUSES = ["cancelled", "completed", "failed"];
+const ACTIVE_VIEW_PAYMENT_FILTER = {
+  orderPaymentStatus: { $ne: "paid" },
+  "payment.status": { $ne: "paid" },
+};
 
 /**
  * Root grouping key:
@@ -316,6 +320,7 @@ export const OrderQuery = {
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
       currentStatus: { $nin: INACTIVE_STATUSES },
+      ...ACTIVE_VIEW_PAYMENT_FILTER,
     });
 
     return buildCursorConnection({ baseFilter, limit, cursor, rid });
@@ -392,9 +397,8 @@ export const OrderQuery = {
       tableId: t._id,
       tableCode: safeCode,
       ...orderBatchOrLegacyFilter(),
-
-      currentStatus: { $nin: ["completed", "cancelled", "failed"] },
-      "payment.status": { $ne: "paid" },
+      ...ACTIVE_VIEW_PAYMENT_FILTER,
+      currentStatus: { $nin: INACTIVE_STATUSES },
     };
 
     const docs = await Order.find(f)
@@ -459,7 +463,6 @@ export const OrderQuery = {
     if (!table) return { session: null, orders: [], tableId, tableCode: null };
 
     const safeCode = (table.code || "").toUpperCase();
-    const inactiveStatuses = ["completed", "cancelled", "failed"];
 
     const session = await Order.findOne(
       activeTableSessionLookupFilter({
@@ -477,7 +480,8 @@ export const OrderQuery = {
         tableId: table._id,
         tableCode: safeCode,
         ...orderBatchOrLegacyFilter(),
-        currentStatus: { $nin: inactiveStatuses },
+        ...ACTIVE_VIEW_PAYMENT_FILTER,
+        currentStatus: { $nin: INACTIVE_STATUSES },
       })
         .sort({ createdAt: 1, _id: 1 })
         .lean({ virtuals: true });
@@ -489,7 +493,8 @@ export const OrderQuery = {
           restaurantId: rid,
           parentOrderId: session._id,
         }),
-        currentStatus: { $nin: inactiveStatuses },
+        ...ACTIVE_VIEW_PAYMENT_FILTER,
+        currentStatus: { $nin: INACTIVE_STATUSES },
       })
         .sort({ createdAt: 1, _id: 1 })
         .lean({ virtuals: true });
