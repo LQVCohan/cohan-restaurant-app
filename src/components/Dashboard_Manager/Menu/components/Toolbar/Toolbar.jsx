@@ -14,8 +14,21 @@ import {
   FiAlertCircle,
   FiChevronDown,
   FiSliders,
+  FiPauseCircle,
 } from "react-icons/fi";
 import "./Toolbar.scss";
+
+const STATUS_OPTIONS = [
+  { value: "available", label: "Sẵn sàng" },
+  { value: "unavailable", label: "Tạm dừng" },
+  { value: "out_of_stock", label: "Hết hàng" },
+  { value: "hidden", label: "Ẩn khỏi menu" },
+];
+
+const STATUS_LABELS = STATUS_OPTIONS.reduce((acc, option) => {
+  acc[option.value] = option.label;
+  return acc;
+}, {});
 
 const Toolbar = ({
   searchTerm,
@@ -64,6 +77,21 @@ const Toolbar = ({
 
   const formatCurrency = (val) =>
     val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
+
+  const renderStatusIcon = () => {
+    switch (statusFilter) {
+      case "available":
+        return <FiCheck className="select-icon" />;
+      case "unavailable":
+        return <FiPauseCircle className="select-icon" />;
+      case "hidden":
+        return <FiEyeOff className="select-icon" />;
+      case "out_of_stock":
+        return <FiAlertCircle className="select-icon" />;
+      default:
+        return <FiCheck className="select-icon" style={{ opacity: 0.5 }} />;
+    }
+  };
 
   return (
     <div className="toolbar-container">
@@ -152,24 +180,18 @@ const Toolbar = ({
           </div>
 
           <div className="select-wrapper">
-            {statusFilter === "available" ? (
-              <FiCheck className="select-icon" />
-            ) : statusFilter === "hidden" ? (
-              <FiEyeOff className="select-icon" />
-            ) : statusFilter === "out_of_stock" ? (
-              <FiAlertCircle className="select-icon" />
-            ) : (
-              <FiCheck className="select-icon" style={{ opacity: 0.5 }} />
-            )}
+            {renderStatusIcon()}
             <select
               className={`custom-select ${statusFilter ? "active" : ""}`}
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="available">Đang bán</option>
-              <option value="out_of_stock">Hết hàng</option>
-              <option value="hidden">Đang ẩn</option>
+              {STATUS_OPTIONS.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
             <FiChevronDown className="select-arrow" />
           </div>
@@ -224,11 +246,7 @@ const Toolbar = ({
           )}
           {statusFilter && (
             <span className="chip">
-              {statusFilter === "available"
-                ? "Đang bán"
-                : statusFilter === "out_of_stock"
-                ? "Hết hàng"
-                : "Ẩn"}
+              {STATUS_LABELS[statusFilter] || statusFilter}
               <FiX onClick={() => onStatusFilterChange("")} />
             </span>
           )}
