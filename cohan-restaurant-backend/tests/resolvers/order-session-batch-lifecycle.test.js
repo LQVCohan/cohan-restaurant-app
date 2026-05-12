@@ -275,6 +275,71 @@ describe("createOrderForTable session-batch lifecycle", () => {
     });
   });
 
+  it("still clears stale payment request with the original order when hardening fails", async () => {
+    const { withTablePaymentRequestLifecycle } = await import(
+      "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const txSession = {
+      withTransaction: vi.fn(async (fn) => fn()),
+      endSession: vi.fn().mockResolvedValue(undefined),
+    };
+    startSessionMock.mockResolvedValue(txSession);
+    ensureActiveTableSessionForDineInOrderMock.mockRejectedValueOnce(
+      new Error("harden failed"),
+    );
+
+    const createdOrder = {
+      _id: "child-3",
+      id: "child-3",
+      restaurantId: "rest-1",
+      tableId: "table-3",
+      tableCode: "T3",
+      orderType: "dine_in",
+      orderKind: "order_batch",
+      parentOrderId: "parent-3",
+      rootOrderId: "parent-3",
+    };
+    const baseMutation = {
+      createOrderForTable: vi.fn().mockResolvedValue({
+        isNewOrder: true,
+        order: createdOrder,
+      }),
+    };
+
+    const wrapped = withTablePaymentRequestLifecycle(baseMutation);
+    const result = await wrapped.createOrderForTable(
+      null,
+      {
+        input: {
+          restaurantId: "rest-1",
+          tableId: "table-3",
+          tableCode: "T3",
+        },
+      },
+      { user: { id: "staff-3" } },
+    );
+
+    expect(result.order).toBe(createdOrder);
+    expect(clearPaymentRequestAfterNewChildOrderBatchCreatedMock).toHaveBeenCalledWith({
+      OrderModel,
+      order: createdOrder,
+      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[order] Failed to harden dine-in session lifecycle after createOrderForTable",
+      {
+        orderId: "child-3",
+        parentOrderId: "parent-3",
+        rootOrderId: "parent-3",
+        restaurantId: "rest-1",
+        tableId: "table-3",
+        tableCode: "T3",
+        error: "harden failed",
+      },
+    );
+  });
+
   it("skips lifecycle hardening for off-premise createOrderForTable results", async () => {
     const { withTablePaymentRequestLifecycle } = await import(
       "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
