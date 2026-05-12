@@ -1,5 +1,12 @@
 // src/pages/Restaurant/MenuManagement/MenuManagement.jsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   FiMapPin,
   FiClock,
@@ -60,6 +67,69 @@ const TIME_SLOT_LABELS = {
   late_night: "Ăn Khuya (Late Night)",
 };
 
+const getGraphQLErrorMessage = (error) => {
+  const graphQlMessage = error?.graphQLErrors
+    ?.map((entry) => entry?.message)
+    .filter(Boolean)
+    .join("; ");
+
+  if (graphQlMessage) return graphQlMessage;
+  if (error?.networkError?.result?.errors?.length) {
+    return error.networkError.result.errors
+      .map((entry) => entry?.message)
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return error?.message || "Không thể lưu thay đổi giá.";
+};
+
+const cloneIngredients = (ingredients = []) =>
+  Array.isArray(ingredients)
+    ? ingredients.map((ingredient) => ({
+        ingredientId: ingredient?.ingredientId,
+        qty: Number(ingredient?.qty || 0),
+        unit: ingredient?.unit || ingredient?.baseUnit || "",
+        wastePct: Number(ingredient?.wastePct || 0),
+      }))
+    : [];
+
+const normalizeServingVariantsForSave = (methods = []) => {
+  const normalizedMethods = methods.map((method, idx) => ({
+    key: method.key || `sv_${idx}`,
+    name: method.name,
+    mode: method.mode || "PORTION",
+    sellQty: Number(method.sellQty || 1),
+    sellUnit: method.sellUnit || "portion",
+    price: Number(method.price || 0),
+    ingredients: cloneIngredients(method.ingredients),
+    isDefault:
+      typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
+  }));
+
+  let defaultIndex = normalizedMethods.findIndex((method) => method.isDefault);
+  if (defaultIndex < 0) defaultIndex = 0;
+
+  return normalizedMethods.map((method, idx) => ({
+    ...method,
+    isDefault: idx === defaultIndex,
+  }));
+};
+
+const buildPriceEditError = ({ successCount, failures }) => {
+  const failureCount = failures.length;
+  const headline =
+    successCount > 0
+      ? `Đã lưu ${successCount} món, còn ${failureCount} món chưa lưu được.`
+      : `Không thể lưu thay đổi giá cho ${failureCount} món.`;
+
+  const error = new Error(headline);
+  error.successCount = successCount;
+  error.failureCount = failureCount;
+  error.failures = failures;
+  return error;
+};
+
 const MenuManagement = () => {
   const auth = useContext(AuthContext);
   const managerId = auth?.user?.id;
@@ -68,9 +138,8 @@ const MenuManagement = () => {
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
-  const [sortOption, setSortOption] = useState("default"); // State cho sort
+  const [sortOption, setSortOption] = useState("default");
 
-  // Modals state object
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
     menu: { isOpen: false, editingMenu: null },
@@ -79,6 +148,8 @@ const MenuManagement = () => {
   });
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
+  const [isSavingPriceEdit, setIsSavingPriceEdit] = useState(false);
+  const priceEditSubmitRef = useRef(false);
 
   /* --- DATA FETCHING --- */
   const {
@@ -102,7 +173,6 @@ const MenuManagement = () => {
     }
   }, [managerRestaurants, currentRestaurant]);
 
-  // Hook Menu Management (Core logic)
   const {
     menus,
     menusLoading,
@@ -126,16 +196,14 @@ const MenuManagement = () => {
     fetchMoreItems,
     refetchItems,
     deleteMenuItem,
+    bulkUpdateMenuItemPrices,
   } = useMenuManagement({
     restaurantId: currentRestaurant || null,
     defaultTimeSlot: "breakfast",
     pageSize: 20,
     useConnection: true,
-    // (Optional) Pass sortOption to hook if backend supports it
-    // sort: sortOption
   });
 
-  // Hook Category Management
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
     useCategoryManagement({
       restaurantId: currentRestaurant || null,
@@ -146,13 +214,28 @@ const MenuManagement = () => {
       loadCategoryMenus: modals.menu.isOpen,
     });
 
-  const { updateRecipe } = useRecipes(currentRestaurant || null, selectedTimeSlot || null, {
-    search: null,
-    categoryId: null,
-  });
+  const { updateRecipe } = useRecipes(
+    currentRestaurant || null,
+    selectedTimeSlot || null,
+    {
+      search: null,
+      categoryId: null,
+    }
+  );
 
-  /* --- HANDLERS --- */
-  // Modal toggle helpers
+  const menuItemsById = useMemo(
+    () => new Map((items || []).map((item) => [String(item.id), item])),
+    [items]
+  );
+
+  const getMenuItemLabel = useCallback(
+    (itemId, fallbackName = "") => {
+      if (fallbackName) return fallbackName;
+      return menuItemsById.get(String(itemId))?.name || `Món #${itemId}`;
+    },
+    [menuItemsById]
+  );
+
   const toggleModal = (name, isOpen = true, data = null) => {
     setModals((prev) => {
       const newState = { ...prev, [name]: { ...prev[name], isOpen } };
@@ -184,26 +267,162 @@ const MenuManagement = () => {
     }
   };
 
-  /* --- SORT LOGIC (Client-side example if backend not ready) --- */
-  // Nếu hook useMenuManagement chưa xử lý sort, ta có thể sort tạm ở đây:
+  const handleSavePriceChanges = useCallback(
+    async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
+      if (priceEditSubmitRef.current) {
+        throw new Error("Đang lưu thay đổi giá, vui lòng chờ hoàn tất.");
+      }
+      if (!currentRestaurant) {
+        throw new Error("Chưa chọn nhà hàng để cập nhật giá.");
+      }
+
+      priceEditSubmitRef.current = true;
+      setIsSavingPriceEdit(true);
+
+      let successCount = 0;
+      const failures = [];
+
+      try {
+        for (const operation of bulkOperations) {
+          const targetIds = Array.isArray(operation?.menuItemIds)
+            ? operation.menuItemIds.filter(Boolean)
+            : [];
+
+          if (!targetIds.length) continue;
+
+          try {
+            const result = await bulkUpdateMenuItemPrices({
+              restaurantId: currentRestaurant,
+              timeSlot: selectedTimeSlot || null,
+              target: { menuItemIds: targetIds },
+              mode: operation.mode,
+              value: Number(operation.value),
+              // Align FE preview with backend bulk mutation rounding.
+              roundTo: Number.isInteger(operation.roundTo)
+                ? operation.roundTo
+                : 0,
+              floorZero: operation.floorZero !== false,
+            });
+
+            const updatedIds = new Set(
+              (result?.items || []).map((item) => String(item.id))
+            );
+
+            targetIds.forEach((itemId) => {
+              if (updatedIds.has(String(itemId))) {
+                successCount += 1;
+                return;
+              }
+
+              failures.push({
+                type: "bulk",
+                itemId,
+                itemName: getMenuItemLabel(itemId),
+                message: "Backend không xác nhận cập nhật giá cho món này.",
+              });
+            });
+          } catch (error) {
+            const message = getGraphQLErrorMessage(error);
+
+            targetIds.forEach((itemId) => {
+              const itemName = getMenuItemLabel(itemId);
+              failures.push({
+                type: "bulk",
+                itemId,
+                itemName,
+                message,
+              });
+              console.error("Bulk price update failed", {
+                itemId,
+                itemName,
+                error,
+              });
+            });
+          }
+        }
+
+        for (const update of manualUpdates) {
+          try {
+            await updateRecipe(update.itemId, {
+              servingVariants: normalizeServingVariantsForSave(update.methods),
+            });
+            successCount += 1;
+          } catch (error) {
+            const message = getGraphQLErrorMessage(error);
+            const itemName = getMenuItemLabel(update.itemId, update.itemName);
+
+            failures.push({
+              type: "manual",
+              itemId: update.itemId,
+              itemName,
+              message,
+            });
+            console.error("Manual price update failed", {
+              itemId: update.itemId,
+              itemName,
+              error,
+            });
+          }
+        }
+
+        try {
+          await refetchItems?.();
+        } catch (error) {
+          const message = getGraphQLErrorMessage(error);
+
+          if (!successCount && failures.length === 0) {
+            throw error;
+          }
+
+          failures.push({
+            type: "refresh",
+            itemId: null,
+            itemName: "Danh sách món ăn",
+            message: `Đã lưu xong nhưng không thể tải lại dữ liệu: ${message}`,
+          });
+        }
+
+        if (failures.length > 0) {
+          throw buildPriceEditError({ successCount, failures });
+        }
+      } finally {
+        priceEditSubmitRef.current = false;
+        setIsSavingPriceEdit(false);
+      }
+    },
+    [
+      bulkUpdateMenuItemPrices,
+      currentRestaurant,
+      getMenuItemLabel,
+      refetchItems,
+      selectedTimeSlot,
+      updateRecipe,
+    ]
+  );
+
   const displayItems = useMemo(() => {
     if (!items) return [];
-    let sorted = [...items].map((item) => ({
+    const sorted = [...items].map((item) => ({
       ...item,
-      categoryName: categories.find((c) => c.id === item.categoryId)?.name || item.categoryName,
+      categoryName:
+        categories.find((c) => c.id === item.categoryId)?.name ||
+        item.categoryName,
     }));
-    if (sortOption === "name_asc")
+    if (sortOption === "name_asc") {
       sorted.sort((a, b) => a.name.localeCompare(b.name));
-    if (sortOption === "name_desc")
+    }
+    if (sortOption === "name_desc") {
       sorted.sort((a, b) => b.name.localeCompare(a.name));
-    if (sortOption === "price_asc")
+    }
+    if (sortOption === "price_asc") {
       sorted.sort((a, b) => a.basePrice - b.basePrice);
-    if (sortOption === "price_desc")
+    }
+    if (sortOption === "price_desc") {
       sorted.sort((a, b) => b.basePrice - a.basePrice);
+    }
     return sorted;
   }, [items, categories, sortOption]);
 
-  /* --- RENDER --- */
   if (!managerId)
     return (
       <div className="mm-state-box">
@@ -225,7 +444,6 @@ const MenuManagement = () => {
 
   return (
     <div className="mm-page-container">
-      {/* 1. STICKY HEADER */}
       <header className="mm-header">
         <div className="mm-header__left">
           <h1 className="mm-title">Quản lý Thực Đơn</h1>
@@ -235,7 +453,6 @@ const MenuManagement = () => {
         </div>
 
         <div className="mm-header__right">
-          {/* Global Context Filters */}
           <div className="mm-global-filter">
             <div className="mm-select-wrapper">
               <FiMapPin className="mm-icon" />
@@ -269,7 +486,6 @@ const MenuManagement = () => {
             </div>
           </div>
 
-          {/* Primary Action Buttons */}
           <div className="mm-actions">
             <button
               className="mm-btn mm-btn--secondary"
@@ -287,7 +503,6 @@ const MenuManagement = () => {
         </div>
       </header>
 
-      {/* 2. STATS & MENU STRIP */}
       <section className="mm-stats-section">
         <CompactMenuStrip
           menus={menus}
@@ -301,9 +516,7 @@ const MenuManagement = () => {
         />
       </section>
 
-      {/* 3. MAIN BODY */}
       <main className="mm-body">
-        {/* Toolbar Component */}
         <Toolbar
           searchTerm={search}
           onSearchChange={setSearch}
@@ -313,10 +526,8 @@ const MenuManagement = () => {
           onViewChange={setCurrentView}
           statusFilter={statusFilter || ""}
           onStatusFilterChange={setStatusFilter}
-          // Sort props
           sortOption={sortOption}
           onSortChange={setSortOption}
-          // Price props
           onPriceRangeChange={setPriceRange}
           onBulkPriceEdit={() => toggleModal("priceEdit", true)}
           onAddCategory={() => toggleModal("category", true)}
@@ -326,7 +537,6 @@ const MenuManagement = () => {
           maxPrice={priceRange.maxPrice ?? ""}
         />
 
-        {/* Content Area */}
         <div className="mm-body__content">
           {itemsError && (
             <div className="mm-state-box error">
@@ -394,7 +604,6 @@ const MenuManagement = () => {
         </div>
       </main>
 
-      {/* --- MODALS INJECTION --- */}
       <MenuModal
         isOpen={modals.menu.isOpen}
         initialData={modals.menu.editingMenu}
@@ -430,25 +639,9 @@ const MenuManagement = () => {
 
       <PriceEditModal
         isOpen={modals.priceEdit.isOpen}
+        isSubmitting={isSavingPriceEdit}
         onClose={() => toggleModal("priceEdit", false)}
-        onSave={async (updates) => {
-          for (const update of updates) {
-            await updateRecipe(update.itemId, {
-              servingVariants: update.updates.methods.map((m, idx) => ({
-                key: m.key || `sv_${idx}`,
-                name: m.name,
-                mode: m.mode || "PORTION",
-                sellQty: Number(m.sellQty || 1),
-                sellUnit: m.sellUnit || "portion",
-                price: Number(m.price || 0),
-                ingredients: [],
-                isDefault: idx === 0,
-              })),
-            });
-          }
-          await refetchItems?.();
-          toggleModal("priceEdit", false);
-        }}
+        onSave={handleSavePriceChanges}
         menuItems={items}
       />
     </div>
