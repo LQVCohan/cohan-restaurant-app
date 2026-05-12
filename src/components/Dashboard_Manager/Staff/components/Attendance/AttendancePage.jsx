@@ -9,6 +9,8 @@ import {
   buildCreateCorrectionInput,
   canCancelCorrection,
   canReviewCorrection,
+  getCorrectionTimeRequirements,
+  getUserId,
   validateCorrectionRequestForm,
 } from "./attendanceCorrectionUtils";
 import {
@@ -109,6 +111,12 @@ export const getAttendanceActionErrorMessage = (error, fallback) => {
   }
   if (isUnauthenticatedError(error)) {
     return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+  }
+  if (error?.message === "ATTENDANCE_CORRECTION_PENDING_EXISTS") {
+    return "Đã có một yêu cầu chỉnh công đang chờ xử lý cho ngày công này.";
+  }
+  if (error?.message === "ATTENDANCE_CORRECTION_ALREADY_APPLIED") {
+    return "Yêu cầu này đã được áp dụng trước đó.";
   }
   return fallback;
 };
@@ -243,6 +251,27 @@ const renderMetricGroup = (title, values) => (
     </dl>
   </div>
 );
+
+const buildCorrectionSummary = (request) => {
+  const timePairs = [
+    {
+      label: "Check-in",
+      before: formatTime(request.originalCheckInAt) || "--:--",
+      after: formatTime(request.requestedCheckInAt) || "--:--",
+    },
+    {
+      label: "Check-out",
+      before: formatTime(request.originalCheckOutAt) || "--:--",
+      after: formatTime(request.requestedCheckOutAt) || "--:--",
+    },
+  ].filter((item) => item.before !== "--:--" || item.after !== "--:--");
+
+  if (timePairs.length === 0) {
+    return request.reason || "Không có tóm tắt";
+  }
+
+  return timePairs.map((item) => `${item.label}: ${item.before} → ${item.after}`).join(" • ");
+};
 
 const renderRequestDetails = (request) => (
   <div className="correction-detail-panel">
@@ -423,6 +452,7 @@ const AttendancePage = () => {
 
   const userRestaurantId =
     user?.restaurantForStaff || user?.refRestaurants?.[0]?.id || null;
+  const currentUserId = getUserId(user);
 
   const {
     employees,
@@ -466,6 +496,7 @@ const AttendancePage = () => {
     null;
 
   const isReviewer = canReviewCorrection(user);
+  const isQuickSubmitting = mutationState.loading;
   const isSubmittingCorrection = createCorrectionState.loading;
   const isApproveSubmitting =
     reviewDialog?.mode === "approve" && approveCorrectionState.loading;
@@ -486,10 +517,10 @@ const AttendancePage = () => {
   };
 
   const handleQuickAction = async (type) => {
-    if (!quickId) {
-      alert("⚠️ Vui lòng chọn nhân viên!");
+    if (!quickId || isQuickSubmitting) {
       return;
     }
+
     if (!effectiveRestaurantId) {
       alert("❌ Không xác định được nhà hàng để lưu chấm công.");
       return;
@@ -597,11 +628,10 @@ const AttendancePage = () => {
       await createAttendanceCorrectionRequest({
         variables: { input },
       });
-      await refreshAttendanceViews();
-
       closeCorrectionModal();
       setActiveView("corrections");
       setCorrectionStatus("pending");
+      await refreshAttendanceViews();
     } catch (err) {
       setCorrectionSubmitError(
         getAttendanceActionErrorMessage(
@@ -696,6 +726,52 @@ const AttendancePage = () => {
     }
   };
 
+  const getReviewAvailability = (request) => {
+    if (request.status !== "pending") {
+      return {
+        canApprove: false,
+        canReject: false,
+        reason: "Chỉ yêu cầu đang chờ duyệt mới có thể xử lý.",
+      };
+    }
+
+    if (!isReviewer) {
+      return {
+        canApprove: false,
+        canReject: false,
+        reason: "Chỉ admin, manager hoặc HR mới có quyền duyệt/từ chối.",
+      };
+    }
+
+    if (String(request.requestedBy || "") === String(currentUserId || "")) {
+      return {
+        canApprove: false,
+        canReject: false,
+        reason: "Người tạo yêu cầu không được tự duyệt yêu cầu của mình.",
+      };
+    }
+
+    return { canApprove: true, canReject: true, reason: "" };
+  };
+
+  const getCancelAvailability = (request) => {
+    if (request.status !== "pending") {
+      return {
+        canCancel: false,
+        reason: "Chỉ yêu cầu đang chờ duyệt mới có thể hủy.",
+      };
+    }
+
+    if (canCancelCorrection(user, request)) {
+      return { canCancel: true, reason: "" };
+    }
+
+    return {
+      canCancel: false,
+      reason: "Chỉ người tạo yêu cầu hoặc reviewer mới có thể hủy yêu cầu này.",
+    };
+  };
+
   return (
     <div className="attendance-management-page">
       <div className="page-header">
@@ -756,55 +832,52 @@ const AttendancePage = () => {
           <div className="text">
             <h4>Chấm Công Nhanh</h4>
             <p>
-              Lưu check-in/check-out trực tiếp. Nếu cần sửa giờ quá khứ, dùng
-              yêu cầu chỉnh công.
+              Lưu check-in/check-out trực tiếp. Khi cần sửa giờ công, tạo yêu
+              cầu chỉnh công để reviewer xử lý an toàn.
             </p>
           </div>
         </div>
-
         <div className="quick-form">
           <div className="input-group">
-            <label>Chọn nhân viên:</label>
+            <label>Nhân viên</label>
             <select
+              className="quick-select"
               value={quickId}
               onChange={(event) => setQuickId(event.target.value)}
-              className="quick-select"
             >
-              <option value="">-- Tìm theo tên / Mã NV --</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  [{emp.employeeCode || "--"}] {emp.fullName}
+              <option value="">Chọn nhân viên</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.fullName} {employee.employeeCode ? `• ${employee.employeeCode}` : ""}
                 </option>
               ))}
             </select>
           </div>
-
           <div className="input-group note-group">
-            <label>Ghi chú:</label>
+            <label>Ghi chú</label>
             <input
               type="text"
-              placeholder="VD: Quên thẻ, máy lỗi..."
               value={quickNote}
               onChange={(event) => setQuickNote(event.target.value)}
+              placeholder="Ghi chú cho thao tác nhanh nếu cần"
             />
           </div>
-
           <div className="action-buttons">
             <button
-              className="btn-quick in"
               type="button"
+              className="btn-quick in"
+              disabled={!quickId || isQuickSubmitting}
               onClick={() => handleQuickAction("in")}
-              disabled={mutationState.loading}
             >
-              🟢 VÀO CA
+              {isQuickSubmitting ? "Đang lưu..." : "Check-in"}
             </button>
             <button
-              className="btn-quick out"
               type="button"
+              className="btn-quick out"
+              disabled={!quickId || isQuickSubmitting}
               onClick={() => handleQuickAction("out")}
-              disabled={mutationState.loading}
             >
-              🔴 TAN CA
+              {isQuickSubmitting ? "Đang lưu..." : "Check-out"}
             </button>
           </div>
         </div>
@@ -816,20 +889,16 @@ const AttendancePage = () => {
           className={activeView === "attendance" ? "active" : ""}
           onClick={() => setActiveView("attendance")}
         >
-          Bảng công
+          Bảng chấm công
         </button>
-
         <button
           type="button"
           className={activeView === "corrections" ? "active" : ""}
           onClick={() => setActiveView("corrections")}
         >
           Yêu cầu chỉnh công
-          {correctionStats.pending > 0 && (
-            <span className="count-badge">{correctionStats.pending}</span>
-          )}
+          <span className="count-badge">{correctionStats.pending}</span>
         </button>
-
         <button
           type="button"
           className={activeView === "overtime" ? "active" : ""}
@@ -865,7 +934,7 @@ const AttendancePage = () => {
           </div>
 
           {error && (
-            <div className="empty-state">
+            <div className="page-alert error">
               ❌ Không tải được dữ liệu chấm công: {error.message}
             </div>
           )}
@@ -874,18 +943,24 @@ const AttendancePage = () => {
             <table className="attendance-table">
               <thead>
                 <tr>
-                  <th width="24%">Nhân viên</th>
-                  <th width="14%">Ca làm việc</th>
-                  <th width="12%">Giờ vào</th>
-                  <th width="12%">Giờ ra</th>
-                  <th width="14%">Trạng thái</th>
-                  <th width="10%">Nguồn</th>
-                  <th width="14%" className="text-right">
-                    Thao tác
-                  </th>
+                  <th>Nhân viên</th>
+                  <th>Ca làm</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Trạng thái</th>
+                  <th>Nguồn</th>
+                  <th className="text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
+                {loading && records.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center">
+                      Đang tải bản ghi chấm công...
+                    </td>
+                  </tr>
+                )}
+
                 {!loading && records.length === 0 && (
                   <tr>
                     <td colSpan={7} className="text-center">
@@ -1012,25 +1087,27 @@ const AttendancePage = () => {
           </div>
 
           {correctionsError && (
-            <div className="empty-state">
+            <div className="page-alert error">
               ❌ Không tải được yêu cầu chỉnh công: {correctionsError.message}
             </div>
+          )}
+
+          {correctionsLoading && correctionRequests.length === 0 && (
+            <div className="page-alert info">Đang tải danh sách yêu cầu chỉnh công...</div>
           )}
 
           <div className="table-container">
             <table className="attendance-table correction-table">
               <thead>
                 <tr>
-                  <th width="18%">Nhân viên</th>
-                  <th width="10%">Ngày công</th>
-                  <th width="14%">Loại</th>
-                  <th width="14%">Người gửi</th>
-                  <th width="12%">Gửi lúc</th>
-                  <th width="12%">Trạng thái</th>
-                  <th width="12%">Tóm tắt</th>
-                  <th width="8%" className="text-right">
-                    Thao tác
-                  </th>
+                  <th>Nhân viên</th>
+                  <th>Ngày công</th>
+                  <th>Loại</th>
+                  <th>Người gửi</th>
+                  <th>Gửi lúc</th>
+                  <th>Trạng thái</th>
+                  <th>Tóm tắt</th>
+                  <th className="text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -1044,7 +1121,8 @@ const AttendancePage = () => {
 
                 {correctionRequests.map((request) => {
                   const isExpanded = expandedCorrectionId === request.id;
-                  const canCancel = canCancelCorrection(user, request);
+                  const reviewAvailability = getReviewAvailability(request);
+                  const cancelAvailability = getCancelAvailability(request);
 
                   return (
                     <React.Fragment key={request.id}>
@@ -1068,13 +1146,17 @@ const AttendancePage = () => {
                             <div className="info">
                               <div className="name">{request.employeeName || "--"}</div>
                               <div className="role">
-                                {request.employeeCode || "--"} •{" "}
-                                {request.employeeRole || "--"}
+                                {request.employeeCode || "--"} • {request.employeeRole || "--"}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td>{formatDate(request.workDate)}</td>
+                        <td>
+                          <div className="compact-stack compact-meta">
+                            <strong>{formatDate(request.workDate)}</strong>
+                            <span>{formatDateTime(request.requestedAt || request.createdAt)}</span>
+                          </div>
+                        </td>
                         <td>
                           <span className="shift-badge">
                             {getCorrectionTypeLabel(request.correctionType)}
@@ -1089,11 +1171,8 @@ const AttendancePage = () => {
                         <td>{formatDateTime(request.requestedAt || request.createdAt)}</td>
                         <td>{getCorrectionStatusBadge(request.status)}</td>
                         <td>
-                          <div className="compact-stack">
-                            <strong>
-                              {formatTime(request.originalCheckInAt) || "--:--"} →{" "}
-                              {formatTime(request.requestedCheckInAt) || "--:--"}
-                            </strong>
+                          <div className="compact-stack compact-summary">
+                            <strong>{buildCorrectionSummary(request)}</strong>
                             <span>{request.reason || "--"}</span>
                           </div>
                         </td>
@@ -1116,8 +1195,15 @@ const AttendancePage = () => {
                               <button
                                 type="button"
                                 className="action-btn approve"
-                                title="Duyệt và áp dụng"
-                                disabled={isReviewingCorrection}
+                                title={
+                                  reviewAvailability.canApprove
+                                    ? "Duyệt và áp dụng"
+                                    : reviewAvailability.reason
+                                }
+                                disabled={
+                                  !reviewAvailability.canApprove ||
+                                  isReviewingCorrection
+                                }
                                 onClick={() => openReviewDialog("approve", request)}
                               >
                                 ✅
@@ -1125,8 +1211,15 @@ const AttendancePage = () => {
                               <button
                                 type="button"
                                 className="action-btn reject"
-                                title="Từ chối"
-                                disabled={isReviewingCorrection}
+                                title={
+                                  reviewAvailability.canReject
+                                    ? "Từ chối yêu cầu"
+                                    : reviewAvailability.reason
+                                }
+                                disabled={
+                                  !reviewAvailability.canReject ||
+                                  isReviewingCorrection
+                                }
                                 onClick={() => openReviewDialog("reject", request)}
                               >
                                 ⛔
@@ -1134,12 +1227,16 @@ const AttendancePage = () => {
                             </>
                           )}
 
-                          {canCancel && (
+                          {request.status === "pending" && (
                             <button
                               type="button"
                               className="action-btn cancel"
-                              title="Hủy yêu cầu"
-                              disabled={isReviewingCorrection}
+                              title={
+                                cancelAvailability.canCancel
+                                  ? "Hủy yêu cầu"
+                                  : cancelAvailability.reason
+                              }
+                              disabled={!cancelAvailability.canCancel || isReviewingCorrection}
                               onClick={() => openReviewDialog("cancel", request)}
                             >
                               🚫
@@ -1180,8 +1277,7 @@ const AttendancePage = () => {
               <div>
                 <h3>Tạo yêu cầu chỉnh công</h3>
                 <p>
-                  {selectedCorrectionRecord.employeeName || "Nhân viên"} •{" "}
-                  {formatDate(selectedCorrectionRecord.workDate)}
+                  {selectedCorrectionRecord.employeeName || "Nhân viên"} • {formatDate(selectedCorrectionRecord.workDate)}
                 </p>
               </div>
               <button
@@ -1218,6 +1314,24 @@ const AttendancePage = () => {
                     resolveAttendanceDisplayStatus(selectedCorrectionRecord),
                   )}
                 </div>
+              </div>
+
+              <div className="form-alert info">
+                {(() => {
+                  const requirements = getCorrectionTimeRequirements(
+                    correctionForm.correctionType,
+                  );
+                  if (requirements.requiresCheckIn && requirements.requiresCheckOut) {
+                    return "Loại chỉnh công này yêu cầu nhập cả giờ check-in và check-out đề xuất.";
+                  }
+                  if (requirements.requiresCheckIn) {
+                    return "Loại chỉnh công này yêu cầu nhập giờ check-in đề xuất.";
+                  }
+                  if (requirements.requiresCheckOut) {
+                    return "Loại chỉnh công này yêu cầu nhập giờ check-out đề xuất.";
+                  }
+                  return "Nhập ít nhất một mốc thời gian đề xuất và nêu rõ lý do để reviewer kiểm tra.";
+                })()}
               </div>
 
               {correctionSubmitError && (
@@ -1263,6 +1377,11 @@ const AttendancePage = () => {
                       updateCorrectionForm("requestedCheckInAt", event.target.value)
                     }
                   />
+                  {correctionFormErrors.requestedCheckInAt && (
+                    <div className="field-error">
+                      {correctionFormErrors.requestedCheckInAt}
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -1365,8 +1484,7 @@ const AttendancePage = () => {
                   {reviewDialog.mode === "cancel" && "Hủy yêu cầu chỉnh công"}
                 </h3>
                 <p>
-                  {reviewDialog.request.employeeName || "Nhân viên"} •{" "}
-                  {formatDate(reviewDialog.request.workDate)}
+                  {reviewDialog.request.employeeName || "Nhân viên"} • {formatDate(reviewDialog.request.workDate)}
                 </p>
               </div>
               <button
@@ -1415,7 +1533,8 @@ const AttendancePage = () => {
 
               {reviewDialog.mode === "cancel" && (
                 <div className="form-alert warning">
-                  Yêu cầu này sẽ bị hủy và không còn khả dụng để duyệt.
+                  Chỉ yêu cầu đang chờ duyệt mới có thể hủy. Sau khi hủy, yêu cầu
+                  sẽ không còn khả dụng để reviewer xử lý nữa.
                 </div>
               )}
 
