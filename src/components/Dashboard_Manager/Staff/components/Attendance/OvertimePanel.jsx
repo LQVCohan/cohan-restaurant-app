@@ -99,12 +99,12 @@ const getOvertimeStatusBadge = (status) => {
   );
 };
 
-const getOvertimeActionErrorMessage = (error, fallback) => {
+export const getOvertimeActionErrorMessage = (error, fallback) => {
   if (isForbiddenError(error)) {
-    return "Bạn không có quyền duyệt/từ chối tăng ca này.";
+    return "❌ Bạn không có quyền thực hiện thao tác này.";
   }
   if (isUnauthenticatedError(error)) {
-    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+    return "⚠️ Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
   }
   return fallback;
 };
