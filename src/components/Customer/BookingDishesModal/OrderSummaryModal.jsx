@@ -96,6 +96,36 @@ function useRestaurantName(restaurantId) {
   return data?.restaurant?.name;
 }
 
+const CHECKOUT_CART_SYNC_ERROR =
+  "Một số món chưa được đồng bộ đúng với giỏ hàng. Vui lòng thêm lại món.";
+const CHECKOUT_CART_HOLD_EXPIRED_ERROR =
+  "Một số món trong giỏ đã hết thời gian giữ. Vui lòng cập nhật lại giỏ.";
+
+function getCheckoutCartHoldError(items = []) {
+  const now = Date.now();
+
+  for (const item of items || []) {
+    const hasBackendRef = !!(item.backendCartId || item.backendCartItemId);
+    const hasCartRef = !!(item.cartId || item.cartItemId);
+
+    if (hasBackendRef && (!item.backendCartId || !item.backendCartItemId)) {
+      return CHECKOUT_CART_SYNC_ERROR;
+    }
+    if (hasCartRef && (!item.cartId || !item.cartItemId)) {
+      return CHECKOUT_CART_SYNC_ERROR;
+    }
+
+    if (item.holdExpiresAt) {
+      const holdExpiresAt = new Date(item.holdExpiresAt).getTime();
+      if (Number.isNaN(holdExpiresAt) || holdExpiresAt <= now) {
+        return CHECKOUT_CART_HOLD_EXPIRED_ERROR;
+      }
+    }
+  }
+
+  return "";
+}
+
 const OrderSummaryModal = ({
   isOpen,
   onClose,
@@ -138,6 +168,10 @@ const OrderSummaryModal = ({
     () =>
       (items || []).map((it) => ({
         id: it.id,
+        cartId: it.cartId || it.backendCartId || null,
+        cartItemId: it.cartItemId || it.backendCartItemId || null,
+        backendCartId: it.backendCartId || it.cartId || null,
+        backendCartItemId: it.backendCartItemId || it.cartItemId || null,
         dishId: it.dishId,
         restaurantId: it.restaurantId,
         name: it.name,
@@ -153,6 +187,22 @@ const OrderSummaryModal = ({
         modifierGroupIds: it.modifierGroupIds || [],
         menuId: it.menuId,
         categoryId: it.categoryId,
+        holdStatus: it.holdStatus || null,
+        holdExpiresAt: it.holdExpiresAt || null,
+        servingVariantKey:
+          it.servingVariantKey || it.servingVariant?.key || null,
+        variantKey:
+          it.variantKey ||
+          it.servingVariantKey ||
+          it.servingVariant?.key ||
+          null,
+        servingKey:
+          it.servingKey ||
+          it.servingVariantKey ||
+          it.variantKey ||
+          it.servingVariant?.key ||
+          it.selectedServingKey ||
+          null,
       })),
     [items],
   );
@@ -385,6 +435,10 @@ const OrderSummaryModal = ({
     canPreviewDiscount &&
     hasVoucherCode &&
     (!discountBreakdown || !!discountError);
+  const checkoutCartHoldError = useMemo(
+    () => getCheckoutCartHoldError(orderData),
+    [orderData],
+  );
 
   useEffect(() => {
     if (canPreviewDiscount) return;
@@ -400,7 +454,12 @@ const OrderSummaryModal = ({
       if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
         throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
       }
-      const checkoutItems = orderData.map(mapCartItemToOrderItemInput);
+      if (checkoutCartHoldError) {
+        throw new Error(checkoutCartHoldError);
+      }
+      const checkoutItems = orderData.map((item) =>
+        mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }),
+      );
 
       const input = {
         orderType: mapDeliveryMethodToOrderType(shipping?.deliveryMethod),
@@ -449,6 +508,7 @@ const OrderSummaryModal = ({
       isAuthenticated,
       createCheckoutOrders,
       canPreviewDiscount,
+      checkoutCartHoldError,
     ],
   );
   const payableTotal = getDiscountBreakdownTotal(
@@ -492,6 +552,10 @@ const OrderSummaryModal = ({
       alert("Vui lòng chọn phương thức thanh toán!");
       return;
     }
+    if (checkoutCartHoldError) {
+      alert(checkoutCartHoldError);
+      return;
+    }
 
     if (selectedPaymentMethod === "cash") {
       try {
@@ -528,6 +592,11 @@ const OrderSummaryModal = ({
   };
 
   const handleQRPayment = async () => {
+    if (checkoutCartHoldError) {
+      alert(checkoutCartHoldError);
+      return;
+    }
+
     try {
       setIsProcessingPayment(true);
       const { orders: created } = await persistAllOrders("transfer");
@@ -640,6 +709,7 @@ const OrderSummaryModal = ({
                 !selectedPaymentMethod ||
                 isProcessingPayment ||
                 shouldBlockCheckoutForDiscount ||
+                !!checkoutCartHoldError ||
                 isPreviewingDiscount
               }
               title={
@@ -647,6 +717,8 @@ const OrderSummaryModal = ({
                   ? "Vui lòng nhập đầy đủ thông tin giao hàng"
                   : !selectedPaymentMethod
                     ? "Chọn phương thức thanh toán"
+                    : checkoutCartHoldError
+                      ? checkoutCartHoldError
                     : shouldBlockCheckoutForDiscount
                       ? "Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng"
                       : undefined
