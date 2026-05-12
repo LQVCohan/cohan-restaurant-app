@@ -1,0 +1,30 @@
+extend type StaffAttendanceRecord {
+  approvedOvertimeMinutes: Int!
+  overtimeApprovalStatus: String!
+  overtimeReviewNote: String!
+  overtimeReviewedBy: ID
+  overtimeReviewedAt: DateTime
+}
+
+input ApproveAttendanceOvertimeInput {
+  timesheetId: ID!
+  approvedOvertimeMinutes: Int
+  reviewNote: String
+}
+
+input RejectAttendanceOvertimeInput {
+  timesheetId: ID!
+  approvedOvertimeMinutes: Int
+  reviewNote: String
+  reason: String
+}
+
+extend type Mutation {
+  approveAttendanceOvertime(
+    input: ApproveAttendanceOvertimeInput!
+  ): StaffAttendanceRecord!
+
+  rejectAttendanceOvertime(
+    input: RejectAttendanceOvertimeInput!
+  ): StaffAttendanceRecord!
+}
