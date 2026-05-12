@@ -50,7 +50,7 @@ import {
   STAFF_SHARED_ROLES,
 } from "@/utils/frontendRoleAccess";
 
-import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
+import CouponPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";
@@ -169,7 +169,8 @@ const AppRouter = () => (
       <Route path="/cus-menu" element={<RestaurantMenu />} />
       <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer", "manager", "admin"])} />
       <Route path="/food/:foodId" element={<FoodDetail />} />
-      <Route path="/vouchers/:id" element={<VoucherPage />} />
+      <Route path="/vouchers/:id" element={<CouponPage />} />
+      <Route path="/coupons/:restaurantId" element={<CouponPage />} />
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
       <Route path="/help-center/:id" element={<HelpPage />} />

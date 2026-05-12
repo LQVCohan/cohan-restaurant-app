@@ -157,9 +157,9 @@ const PAGE_CONFIG = {
   },
   promotions: {
     title: "Khuyến mãi",
-    description: "Quản lý campaign, voucher, điều kiện và thời gian hiệu lực",
+    description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực",
     icon: "🎁",
-    keywords: ["promotion", "voucher", "discount", "khuyến mãi"],
+    keywords: ["promotion", "coupon", "discount", "khuyến mãi"],
   },
   payroll: {
     title: "Bảng lương",

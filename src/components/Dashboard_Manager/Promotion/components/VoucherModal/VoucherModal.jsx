@@ -58,7 +58,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
     const nextErrors = {};
     if (!formData.name.trim()) nextErrors.name = "Bắt buộc nhập";
     if (!formData.code.trim()) nextErrors.code = "Bắt buộc nhập";
-    if (!formData.category) nextErrors.category = "Chọn nhóm voucher";
+    if (!formData.category) nextErrors.category = "Chọn nhóm coupon";
     if (!formData.discountType) nextErrors.discountType = "Chọn loại";
     if (!formData.discountValue) nextErrors.discountValue = "Nhập giá trị";
     if (!formData.startDate) nextErrors.startDate = "Chọn ngày";
@@ -127,9 +127,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
       <div className="premium-modal">
         <div className="modal-header">
           <div className="header-content">
-            <h2>{voucher ? "Chỉnh sửa voucher" : "Tạo voucher mới"}</h2>
+            <h2>{voucher ? "Chỉnh sửa coupon" : "Tạo coupon mới"}</h2>
             <p>
-              Thiết lập voucher đầy đủ điều kiện, thời gian và lịch xuất bản.
+              Thiết lập coupon đầy đủ điều kiện, thời gian và lịch xuất bản.
             </p>
           </div>
           <button className="btn-close" onClick={onClose}>
@@ -141,17 +141,17 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
           <form id="voucherForm" onSubmit={handleSubmit}>
             <div className="form-section">
               <h3 className="section-title">
-                <FileText size={18} /> Thông tin voucher
+                <FileText size={18} /> Thông tin coupon
               </h3>
               <div className="grid-2">
                 <div className="form-group full">
                   <label>
-                    Tên voucher <span className="req">*</span>
+                    Tên coupon <span className="req">*</span>
                   </label>
                   <input
                     type="text"
                     name="name"
-                    placeholder="VD: Voucher Tết 2025"
+                    placeholder="VD: Coupon Tết 2025"
                     value={formData.name}
                     onChange={handleInputChange}
                     className={errors.name ? "error" : ""}
@@ -163,7 +163,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
 
                 <div className="form-group">
                   <label>
-                    Mã voucher <span className="req">*</span>
+                    Mã coupon <span className="req">*</span>
                   </label>
                   <div className="input-icon-wrapper">
                     <Tag size={16} className="input-icon" />
@@ -180,7 +180,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
 
                 <div className="form-group">
                   <label>
-                    Nhóm voucher <span className="req">*</span>
+                    Nhóm coupon <span className="req">*</span>
                   </label>
                   <select
                     name="category"
@@ -281,11 +281,11 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
               </div>
 
               <div className="form-group full mt-3">
-                <label>Mô tả voucher</label>
+                <label>Mô tả coupon</label>
                 <input
                   type="text"
                   name="description"
-                  placeholder="Mô tả nhanh cho voucher"
+                  placeholder="Mô tả nhanh cho coupon"
                   value={formData.description}
                   onChange={handleInputChange}
                 />
@@ -304,7 +304,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     checked={Boolean(formData.stackable)}
                     onChange={handleInputChange}
                   />
-                  <span>Cho phép dùng chồng với voucher khác</span>
+                  <span>Cho phép dùng chồng với coupon khác</span>
                 </label>
 
                 <label className="checkbox-row">
@@ -324,7 +324,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     checked={Boolean(formData.exclusive)}
                     onChange={handleInputChange}
                   />
-                  <span>Voucher độc quyền, ưu tiên chặn ưu đãi khác</span>
+                  <span>Coupon độc quyền, ưu tiên chặn ưu đãi khác</span>
                 </label>
 
                 <div className="form-group">
@@ -341,7 +341,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
               </div>
 
               <p className="text-xs text-secondary mt-2">
-                Quy tắc dùng chồng voucher sẽ được tính lại khi áp voucher vào
+                Quy tắc dùng chồng coupon sẽ được tính lại khi áp coupon vào
                 đơn hàng.
               </p>
             </div>
@@ -378,7 +378,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                   )}
                 </div>
                 <div className="form-group full">
-                  <label>Lịch xuất bản (voucher sắp tới)</label>
+                  <label>Lịch xuất bản (coupon sắp tới)</label>
                   <div className="input-icon-wrapper">
                     <Clock size={16} className="input-icon" />
                     <input
@@ -398,7 +398,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                 <textarea
                   name="conditions"
                   rows="3"
-                  placeholder="- Chỉ áp dụng cho voucher nhóm món ăn"
+                  placeholder="- Chỉ áp dụng cho coupon nhóm món ăn"
                   value={formData.conditions}
                   onChange={handleInputChange}
                 />
@@ -421,7 +421,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
             </button>
             <button type="submit" form="voucherForm" className="btn-primary">
               <Save size={18} />
-              {voucher ? "Lưu thay đổi" : "Tạo voucher"}
+              {voucher ? "Lưu thay đổi" : "Tạo coupon"}
             </button>
           </div>
         </div>

@@ -445,7 +445,7 @@ const PromotionModal = ({
                     onChange={handleInputChange}
                   />
                   <span>
-                    Cho phép khuyến mãi này dùng chung với voucher hợp lệ
+                    Cho phép khuyến mãi này dùng chung với coupon hợp lệ
                   </span>
                 </label>
 
@@ -464,7 +464,7 @@ const PromotionModal = ({
               </div>
 
               <p className="text-xs text-secondary mt-2">
-                Promotion chỉ được cộng với voucher nếu cả promotion và voucher
+                Promotion chỉ được cộng với coupon nếu cả promotion và coupon
                 đều cho phép.
               </p>
             </div>

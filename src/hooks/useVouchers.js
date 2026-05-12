@@ -225,7 +225,7 @@ export const __testables = {
   resolveStatus,
 };
 
-export const useVouchers = (selectedRestaurantId = "") => {
+export const useCoupons = (selectedRestaurantId = "") => {
   const { restaurants } = useContext(AuthContext);
   const defaultRestaurantId = restaurants?.[0]?.id || "";
   const activeRestaurantId =
@@ -376,6 +376,7 @@ export const useVouchers = (selectedRestaurantId = "") => {
   return {
     vouchers,
     allVouchers,
+    allCoupons: allVouchers,
     voucherFilters,
     updateVoucherFilters: (newFilters) =>
       setVoucherFilters((prev) => ({ ...prev, ...newFilters })),
@@ -410,3 +411,5 @@ export const useVouchers = (selectedRestaurantId = "") => {
     resolveStatus,
   };
 };
+
+export const useVouchers = useCoupons;

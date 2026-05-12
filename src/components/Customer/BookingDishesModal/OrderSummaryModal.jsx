@@ -371,7 +371,7 @@ const OrderSummaryModal = ({
     if (!canPreviewDiscount || !previewRestaurantId) {
       setDiscountBreakdown(null);
       setDiscountError(
-        "Voucher hiện chỉ hỗ trợ áp dụng cho đơn thuộc một nhà hàng. Vui lòng tách đơn hoặc bỏ voucher.",
+        "Coupon hiện chỉ hỗ trợ áp dụng cho đơn thuộc một nhà hàng. Vui lòng tách đơn hoặc bỏ coupon.",
       );
       return;
     }
@@ -430,7 +430,7 @@ const OrderSummaryModal = ({
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
       if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
-        throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
+        throw new Error("Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng.");
       }
       const cartHoldError = validateCartHoldBeforeCheckout();
       if (cartHoldError) {
@@ -687,7 +687,7 @@ const OrderSummaryModal = ({
                   : !selectedPaymentMethod
                     ? "Chọn phương thức thanh toán"
                     : shouldBlockCheckoutForDiscount
-                      ? "Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng"
+                      ? "Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng"
                       : undefined
               }
             >
@@ -1079,8 +1079,8 @@ const DiscountSection = ({
         type="text"
         placeholder={
           canPreviewDiscount
-            ? "Nhập mã voucher"
-            : "Voucher chưa hỗ trợ cho đơn nhiều nhà hàng"
+            ? "Nhập mã coupon"
+            : "Coupon chưa hỗ trợ cho đơn nhiều nhà hàng"
         }
         value={voucherCode}
         onChange={(event) => onVoucherCodeChange(event.target.value)}
@@ -1268,7 +1268,7 @@ const PriceBreakdown = ({ subtotals, discountBreakdown }) => {
 
           {discountBreakdown.voucherDiscount > 0 && (
             <div className="price-row discount">
-              <span className="price-label">Giảm voucher</span>
+              <span className="price-label">Giảm coupon</span>
               <span className="price-value">
                 -{formatCurrency(discountBreakdown.voucherDiscount)}
               </span>

@@ -24,9 +24,9 @@ const buildInitialFormData = (voucherPackage) => ({
     : "",
 });
 
-const VoucherPackageModal = ({
+const CouponPackageModal = ({
   voucherPackage,
-  availableVouchers,
+  availableCoupons,
   onSave,
   onClose,
 }) => {
@@ -63,7 +63,7 @@ const VoucherPackageModal = ({
     if (!formData.startDate) nextErrors.startDate = "Chọn ngày";
     if (!formData.endDate) nextErrors.endDate = "Chọn ngày";
     if (formData.voucherIds.length === 0) {
-      nextErrors.voucherIds = "Chọn ít nhất 1 voucher";
+      nextErrors.voucherIds = "Chọn ít nhất 1 coupon";
     }
     if (
       formData.startDate &&
@@ -115,8 +115,8 @@ const VoucherPackageModal = ({
       <div className="premium-modal">
         <div className="modal-header">
           <div className="header-content">
-            <h2>{voucherPackage ? "Chỉnh sửa gói voucher" : "Tạo gói voucher"}</h2>
-            <p>Gộp nhiều voucher vào một gói cho từng nhóm khách hàng.</p>
+            <h2>{voucherPackage ? "Chỉnh sửa gói Coupon" : "Tạo gói Coupon"}</h2>
+            <p>Gộp nhiều coupon vào một gói cho từng nhóm khách hàng.</p>
           </div>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
@@ -132,7 +132,7 @@ const VoucherPackageModal = ({
               <div className="grid-2">
                 <div className="form-group full">
                   <label>
-                    Tên gói voucher <span className="req">*</span>
+                    Tên gói Coupon <span className="req">*</span>
                   </label>
                   <input
                     type="text"
@@ -167,7 +167,7 @@ const VoucherPackageModal = ({
                   <input
                     type="text"
                     name="description"
-                    placeholder="Mô tả lợi ích gói voucher"
+                    placeholder="Mô tả lợi ích gói Coupon"
                     value={formData.description}
                     onChange={handleInputChange}
                   />
@@ -177,10 +177,10 @@ const VoucherPackageModal = ({
 
             <div className="form-section">
               <h3 className="section-title">
-                <ListChecks size={18} /> Chọn voucher trong gói
+                <ListChecks size={18} /> Chọn coupon trong gói
               </h3>
               <div className="voucher-selection">
-                {availableVouchers.map((voucher) => (
+                {availableCoupons.map((voucher) => (
                   <label key={voucher.id} className="voucher-choice">
                     <input
                       type="checkbox"
@@ -292,4 +292,4 @@ const VoucherPackageModal = ({
   );
 };
 
-export default VoucherPackageModal;
+export default CouponPackageModal;

@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { __testables } from "./useVouchers";
+import { __testables, useCoupons, useVouchers } from "./useVouchers";
 
-describe("useVouchers input builders", () => {
-  it("normalizes voucher datetime-local values to ISO in Vietnam timezone", () => {
+describe("useCoupons input builders", () => {
+  it("keeps useVouchers as a backward-compatible alias", () => {
+    expect(useVouchers).toBe(useCoupons);
+  });
+  it("normalizes coupon datetime-local values to ISO in Vietnam timezone", () => {
     const input = __testables.buildCouponInput(
       {
-        name: "Voucher food",
+        name: "Coupon food",
         code: "FOOD10",
         category: "food",
         discountType: "percent",
@@ -29,10 +32,10 @@ describe("useVouchers input builders", () => {
       }),
     );
   });
-  it("preserves voucher stacking constraints in coupon input", () => {
+  it("preserves coupon stacking constraints in coupon input", () => {
     const input = __testables.buildCouponInput(
       {
-        name: "Voucher stack",
+        name: "Coupon stack",
         code: "STACK10",
         category: "order",
         discountType: "percent",
@@ -55,10 +58,10 @@ describe("useVouchers input builders", () => {
       priority: 2,
     });
   });
-  it("normalizes voucher stacking constraints from coupon constraints", () => {
+  it("normalizes coupon stacking constraints from coupon constraints", () => {
     const voucher = __testables.normalizeVoucher({
       id: "coupon-1",
-      name: "Voucher stack",
+      name: "Coupon stack",
       code: "STACK10",
       discountType: "PERCENT",
       discountValue: 10,
@@ -81,7 +84,7 @@ describe("useVouchers input builders", () => {
       }),
     );
   });
-  it("keeps voucher package ids and normalizes datetime-local values for package mutations", () => {
+  it("keeps coupon package ids and normalizes datetime-local values for package mutations", () => {
     const input = __testables.buildPackageInput(
       {
         name: "Goi VIP",

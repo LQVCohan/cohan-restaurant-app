@@ -11,8 +11,8 @@ const source = fs.readFileSync(
   "utf8",
 );
 
-describe("VoucherModal stacking config", () => {
-  it("exposes voucher stacking controls", () => {
+describe("Coupon modal stacking config", () => {
+  it("exposes coupon stacking controls", () => {
     expect(source).toContain("Cấu hình dùng chồng");
     expect(source).toContain('name="stackable"');
     expect(source).toContain('name="combinableWithPromotions"');

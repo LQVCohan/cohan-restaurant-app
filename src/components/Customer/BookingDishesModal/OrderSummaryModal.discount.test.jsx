@@ -36,14 +36,14 @@ describe("OrderSummaryModal discount integration", () => {
     expect(inputSnippet).not.toMatch(/grandTotal/);
   });
 
-  it("blocks stale voucher checkout when preview is required", () => {
+  it("blocks stale coupon checkout when preview is required", () => {
     const src = readSource();
 
     expect(src).toMatch(/shouldBlockCheckoutForDiscount/);
-    expect(src).toMatch(/Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng/);
+    expect(src).toMatch(/Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng/);
   });
 
-  it("disables voucher preview for multi restaurant cart", () => {
+  it("disables coupon preview for multi restaurant cart", () => {
     const src = readSource();
 
     expect(src).toMatch(/canPreviewDiscount/);

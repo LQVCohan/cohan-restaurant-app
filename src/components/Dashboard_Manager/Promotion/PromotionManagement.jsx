@@ -21,13 +21,13 @@ import StatsCard from "./components/StatsCard/StatsCard";
 import PromotionsGrid from "./components/PromotionsGrid/PromotionsGrid";
 import PromotionModal from "./components/PromotionModal/PromotionModal";
 import VoucherModal from "./components/VoucherModal/VoucherModal";
-import VoucherPackageModal from "./components/VoucherPackageModal/VoucherPackageModal";
+import CouponPackageModal from "./components/VoucherPackageModal/VoucherPackageModal";
 import { VOUCHER_CATEGORIES } from "../../../utils/constants";
 import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 
 // --- Hooks ---
 import { usePromotions } from "../../../hooks/usePromotions";
-import { useVouchers } from "../../../hooks/useVouchers";
+import { useCoupons } from "../../../hooks/useCoupons";
 
 // --- Styles ---
 import "./PromotionManagement.scss";
@@ -50,7 +50,7 @@ const PromotionManagement = () => {
 
   const {
     vouchers,
-    allVouchers,
+    allCoupons,
     voucherFilters,
     updateVoucherFilters,
     addVoucher,
@@ -66,7 +66,7 @@ const PromotionManagement = () => {
     deletePackage,
     duplicatePackage,
     resolveStatus,
-  } = useVouchers(selectedRestaurantId);
+  } = useCoupons(selectedRestaurantId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
@@ -131,10 +131,10 @@ const PromotionManagement = () => {
     if (activeSection === "vouchers") {
       return [
         {
-          name: "Vouchers",
+          name: "Coupons",
           rows: [
             [
-              "Tên voucher",
+              "Tên coupon",
               "Mã",
               "Nhóm",
               "Giảm giá",
@@ -173,12 +173,12 @@ const PromotionManagement = () => {
     if (activeSection === "packages") {
       return [
         {
-          name: "VoucherPackages",
+          name: "CouponPackages",
           rows: [
             [
               "Tên gói",
               "Mã",
-              "Voucher",
+              "Coupon",
               "Công bố",
               "Bắt đầu",
               "Kết thúc",
@@ -191,7 +191,7 @@ const PromotionManagement = () => {
               pkg.code,
               (pkg.voucherIds || [])
                 .map((voucherId) => {
-                  const voucher = allVouchers.find(
+                  const voucher = allCoupons.find(
                     (item) => String(item.id) === String(voucherId),
                   );
                   return voucher?.name || voucherId;
@@ -280,15 +280,15 @@ const PromotionManagement = () => {
   // --- Derived Data (Tính toán số liệu) ---
   const statsData = useMemo(() => {
     if (activeSection === "vouchers") {
-      const totalUsage = allVouchers.reduce(
+      const totalUsage = allCoupons.reduce(
         (sum, v) => sum + (v.usageCount || 0),
         0,
       );
-      const totalLimit = allVouchers.reduce(
+      const totalLimit = allCoupons.reduce(
         (sum, v) => sum + (v.usageLimit || 0),
         0,
       );
-      const totalSavings = allVouchers.reduce(
+      const totalSavings = allCoupons.reduce(
         (sum, v) => sum + (v.discountValue || 0) * (v.usageCount || 0),
         0,
       );
@@ -297,7 +297,7 @@ const PromotionManagement = () => {
         totalSavings,
         usageRate: totalLimit ? Math.round((totalUsage / totalLimit) * 100) : 0,
         totalUsage,
-        hotPromotions: allVouchers.filter((v) => (v.usageCount || 0) > 100)
+        hotPromotions: allCoupons.filter((v) => (v.usageCount || 0) > 100)
           .length,
       };
     }
@@ -340,7 +340,7 @@ const PromotionManagement = () => {
       ),
       hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
     };
-  }, [activeSection, allPromotions, allVouchers, allPackages, resolveStatus]);
+  }, [activeSection, allPromotions, allCoupons, allPackages, resolveStatus]);
 
   // --- Handlers ---
   const handleOpenModal = (promotion = null) => {
@@ -397,12 +397,12 @@ const PromotionManagement = () => {
       }
       handleCloseVoucherModal();
     } catch (error) {
-      console.error("Khong the luu voucher.", error);
+      console.error("Khong the luu coupon.", error);
     }
   };
 
   const handleDeleteVoucher = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa voucher này?")) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa coupon này?")) {
       deleteVoucher(id);
     }
   };
@@ -426,12 +426,12 @@ const PromotionManagement = () => {
       }
       handleClosePackageModal();
     } catch (error) {
-      console.error("Khong the luu goi voucher.", error);
+      console.error("Khong the luu goi coupon.", error);
     }
   };
 
   const handleDeletePackage = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa gói voucher này?")) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa gói Coupon này?")) {
       deletePackage(id);
     }
   };
@@ -473,17 +473,17 @@ const PromotionManagement = () => {
       createLabel: "Tạo khuyến mãi",
     },
     vouchers: {
-      title: "Quản Lý Voucher",
+      title: "Quản Lý Coupon",
       subtitle:
-        "Quản lý voucher theo nhóm món ăn, đặt bàn, đặt món và shipping.",
-      emptyText: "Thử thay đổi bộ lọc hoặc tạo voucher mới.",
-      createLabel: "Tạo voucher",
+        "Quản lý coupon theo nhóm món ăn, đặt bàn, đặt món và shipping.",
+      emptyText: "Thử thay đổi bộ lọc hoặc tạo coupon mới.",
+      createLabel: "Tạo coupon",
     },
     packages: {
-      title: "Quản Lý Gói Voucher",
-      subtitle: "Tạo gói voucher cho từng nhóm khách hàng.",
-      emptyText: "Thử thay đổi bộ lọc hoặc tạo gói voucher mới.",
-      createLabel: "Tạo gói voucher",
+      title: "Quản Lý Gói Coupon",
+      subtitle: "Tạo gói Coupon cho từng nhóm khách hàng.",
+      emptyText: "Thử thay đổi bộ lọc hoặc tạo gói Coupon mới.",
+      createLabel: "Tạo gói Coupon",
     },
   };
 
@@ -546,14 +546,14 @@ const PromotionManagement = () => {
     activeSection === "promotions"
       ? allPromotions.length
       : activeSection === "vouchers"
-        ? allVouchers.length
+        ? allCoupons.length
         : allPackages.length;
 
   const renderVoucherTable = () => (
     <div className="table-responsive">
       <table className="premium-table voucher-table">
         <thead>
-          <th width="25%">Voucher / Mã</th>
+          <th width="25%">Coupon / Mã</th>
           <th width="15%">Nhóm</th>
           <th width="16%">Hiệu lực</th>
           <th width="14%">Giảm giá</th>
@@ -596,7 +596,7 @@ const PromotionManagement = () => {
                     <span className="voucher-chip">+ Promotion</span>
                   )}
                   {voucher.stackable && (
-                    <span className="voucher-chip">+ Voucher</span>
+                    <span className="voucher-chip">+ Coupon</span>
                   )}
                   {voucher.exclusive && (
                     <span className="voucher-chip voucher-chip-danger">
@@ -650,8 +650,8 @@ const PromotionManagement = () => {
       <table className="premium-table voucher-table">
         <thead>
           <tr>
-            <th width="30%">Gói voucher / Mã</th>
-            <th width="25%">Voucher trong gói</th>
+            <th width="30%">Gói Coupon / Mã</th>
+            <th width="25%">Coupon trong gói</th>
             <th width="18%">Hiệu lực</th>
             <th width="12%">Trạng thái</th>
             <th width="15%" className="text-right">
@@ -676,7 +676,7 @@ const PromotionManagement = () => {
               <td>
                 <div className="voucher-pack-list">
                   {(pkg.voucherIds || []).map((voucherId) => {
-                    const voucher = allVouchers.find(
+                    const voucher = allCoupons.find(
                       (item) => item.id === voucherId,
                     );
                     return (
@@ -757,8 +757,8 @@ const PromotionManagement = () => {
       <div className="section-tabs">
         {[
           { id: "promotions", label: "Chương trình khuyến mãi" },
-          { id: "vouchers", label: "Voucher" },
-          { id: "packages", label: "Gói voucher" },
+          { id: "vouchers", label: "Coupon" },
+          { id: "packages", label: "Gói Coupon" },
         ].map((section) => (
           <button
             key={section.id}
@@ -820,8 +820,8 @@ const PromotionManagement = () => {
                   activeSection === "promotions"
                     ? "Tìm kiếm chương trình, mã..."
                     : activeSection === "vouchers"
-                      ? "Tìm kiếm voucher, mã..."
-                      : "Tìm kiếm gói voucher, mã..."
+                      ? "Tìm kiếm coupon, mã..."
+                      : "Tìm kiếm gói Coupon, mã..."
                 }
                 value={searchValue}
                 onChange={(event) => {
@@ -1075,9 +1075,9 @@ const PromotionManagement = () => {
       )}
 
       {isPackageModalOpen && (
-        <VoucherPackageModal
+        <CouponPackageModal
           voucherPackage={editingPackage}
-          availableVouchers={allVouchers}
+          availableCoupons={allCoupons}
           onSave={handleSavePackage}
           onClose={handleClosePackageModal}
         />

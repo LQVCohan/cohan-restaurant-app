@@ -222,7 +222,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                       className="header__menu-item"
                       onClick={() => goto(`/vouchers/${user.id}`)}
                     >
-                      <span className="header__item-label">🎟️ Kho Voucher</span>
+                      <span className="header__item-label">🎟️ Kho Coupon</span>
                       {counts.vouchers > 0 && (
                         <span className="header__item-badge">
                           {counts.vouchers}

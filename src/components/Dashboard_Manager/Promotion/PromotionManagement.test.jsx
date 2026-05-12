@@ -4,15 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PromotionManagement from "./PromotionManagement";
 import { usePromotions } from "@/hooks/usePromotions";
-import { useVouchers } from "@/hooks/useVouchers";
+import { useCoupons } from "@/hooks/useCoupons";
 import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
 
 vi.mock("@/hooks/usePromotions", () => ({
   usePromotions: vi.fn(),
 }));
 
-vi.mock("@/hooks/useVouchers", () => ({
-  useVouchers: vi.fn(),
+vi.mock("@/hooks/useCoupons", () => ({
+  useCoupons: vi.fn(),
 }));
 
 vi.mock("@/utils/xlsxWorkbook", () => ({
@@ -133,9 +133,10 @@ const buildPromotionHookValue = (overrides = {}) => ({
   ...overrides,
 });
 
-const buildVoucherHookValue = (overrides = {}) => ({
+const buildCouponHookValue = (overrides = {}) => ({
   vouchers: [],
   allVouchers: [],
+  allCoupons: [],
   voucherFilters: { search: "", category: "all", status: "all" },
   updateVoucherFilters: vi.fn(),
   addVoucher: vi.fn(),
@@ -160,7 +161,7 @@ describe("PromotionManagement", () => {
     addPromotion.mockResolvedValue("restaurant-2");
     updatePromotion.mockResolvedValue("restaurant-2");
     usePromotions.mockReturnValue(buildPromotionHookValue());
-    useVouchers.mockReturnValue(buildVoucherHookValue());
+    useCoupons.mockReturnValue(buildCouponHookValue());
   });
 
   it("renders the real restaurant selector and updates the promotion filter", () => {
@@ -173,7 +174,7 @@ describe("PromotionManagement", () => {
     expect(screen.getByRole("option", { name: "Chi nhanh Quan 1" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Chi nhanh Phu Nhuan" })).toBeInTheDocument();
     expect(updateFilters).toHaveBeenCalledWith({ restaurant: "restaurant-2" });
-    expect(useVouchers).toHaveBeenCalledWith("restaurant-1");
+    expect(useCoupons).toHaveBeenCalledWith("restaurant-1");
   });
 
   it("passes restaurant, category, and item data into the promotion modal", () => {
@@ -230,13 +231,13 @@ describe("PromotionManagement", () => {
     );
   });
 
-  it("loads package data for the selected restaurant and resolves voucher names from real hook data", () => {
-    useVouchers.mockReturnValue(
-      buildVoucherHookValue({
-        allVouchers: [
+  it("loads package data for the selected restaurant and resolves coupon names from real hook data", () => {
+    useCoupons.mockReturnValue(
+      buildCouponHookValue({
+        allCoupons: [
           {
             id: "voucher-1",
-            name: "Voucher Mon Chinh",
+            name: "Coupon Mon Chinh",
             code: "FOOD10",
             category: "food",
           },
@@ -271,9 +272,9 @@ describe("PromotionManagement", () => {
 
     render(<PromotionManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Gói voucher" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gói Coupon" }));
 
     expect(screen.getByText("Goi VIP")).toBeInTheDocument();
-    expect(screen.getByText("Voucher Mon Chinh")).toBeInTheDocument();
+    expect(screen.getByText("Coupon Mon Chinh")).toBeInTheDocument();
   });
 });

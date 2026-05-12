@@ -3,7 +3,7 @@ import { formatDiscountReasonLabel } from "./discountDisplay";
 
 describe("discountDisplay", () => {
   it("formats internal coupon discount reason for UI", () => {
-    expect(formatDiscountReasonLabel("coupon:665abc")).toBe("Voucher hợp lệ");
+    expect(formatDiscountReasonLabel("coupon:665abc")).toBe("Coupon hợp lệ");
   });
 
   it("formats internal promotion discount reason for UI", () => {

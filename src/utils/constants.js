@@ -61,17 +61,21 @@ export const PROMOTION_TYPES = {
   freeship: "Miễn ship",
 };
 
-export const VOUCHER_CATEGORIES = {
-  food: "Voucher món ăn",
-  table: "Voucher đặt bàn",
-  order: "Voucher đặt món",
-  shipping: "Voucher shipping",
+export const COUPON_CATEGORIES = {
+  food: "Coupon món ăn",
+  table: "Coupon đặt bàn",
+  order: "Coupon đặt món",
+  shipping: "Coupon shipping",
 };
 
-export const VOUCHER_DISCOUNT_TYPES = {
+export const VOUCHER_CATEGORIES = COUPON_CATEGORIES;
+
+export const COUPON_DISCOUNT_TYPES = {
   percent: "Giảm %",
   fixed: "Giảm tiền",
 };
+
+export const VOUCHER_DISCOUNT_TYPES = COUPON_DISCOUNT_TYPES;
 
 export const STATUS_TYPES = {
   active: "Đang hoạt động",
