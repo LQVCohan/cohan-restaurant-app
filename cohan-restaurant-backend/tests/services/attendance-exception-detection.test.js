@@ -11,7 +11,7 @@ const db = vi.hoisted(() => ({
 const modelMocks = vi.hoisted(() => ({
   SchedulePublication: { find: vi.fn() },
   Shift: { find: vi.fn() },
-  Timesheet: vi.fn(),
+  Timesheet: Object.assign(vi.fn(), { find: vi.fn() }),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
