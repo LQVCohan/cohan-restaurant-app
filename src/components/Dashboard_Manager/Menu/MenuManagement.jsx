@@ -202,6 +202,7 @@ const MenuManagement = () => {
     defaultTimeSlot: "breakfast",
     pageSize: 20,
     useConnection: true,
+    sortOption,
   });
 
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
@@ -400,28 +401,17 @@ const MenuManagement = () => {
     ]
   );
 
-  const displayItems = useMemo(() => {
-    if (!items) return [];
-    const sorted = [...items].map((item) => ({
-      ...item,
-      categoryName:
-        categories.find((c) => c.id === item.categoryId)?.name ||
-        item.categoryName,
-    }));
-    if (sortOption === "name_asc") {
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (sortOption === "name_desc") {
-      sorted.sort((a, b) => b.name.localeCompare(a.name));
-    }
-    if (sortOption === "price_asc") {
-      sorted.sort((a, b) => a.basePrice - b.basePrice);
-    }
-    if (sortOption === "price_desc") {
-      sorted.sort((a, b) => b.basePrice - a.basePrice);
-    }
-    return sorted;
-  }, [items, categories, sortOption]);
+  const displayItems = useMemo(
+    () =>
+      (items || []).map((item) => ({
+        ...item,
+        // Backend now owns connection ordering so FE only enriches display fields.
+        categoryName:
+          categories.find((c) => c.id === item.categoryId)?.name ||
+          item.categoryName,
+      })),
+    [items, categories]
+  );
 
   if (!managerId)
     return (
