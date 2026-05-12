@@ -6,6 +6,8 @@ $bg-white: #ffffff;
 $border: #e2e8f0;
 $danger: #ef4444;
 $success: #10b981;
+$warning: #d97706;
+$muted: #475569;
 $radius: 12px;
 
 .menu-item-card {
@@ -76,14 +78,30 @@ $radius: 12px;
       padding: 4px 10px;
       border-radius: 20px;
       backdrop-filter: blur(4px);
+      border: 1px solid transparent;
+
       &.available {
-        background: rgba(255, 255, 255, 0.9);
-        color: $success;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        background: rgba(236, 253, 245, 0.95);
+        color: #047857;
+        border-color: rgba(16, 185, 129, 0.25);
       }
+
+      &.out-of-stock {
+        background: rgba(255, 251, 235, 0.95);
+        color: $warning;
+        border-color: rgba(217, 119, 6, 0.2);
+      }
+
       &.unavailable {
         background: rgba(254, 242, 242, 0.95);
         color: $danger;
+        border-color: rgba(239, 68, 68, 0.18);
+      }
+
+      &.hidden {
+        background: rgba(248, 250, 252, 0.96);
+        color: $muted;
+        border-color: rgba(100, 116, 139, 0.22);
       }
     }
 
