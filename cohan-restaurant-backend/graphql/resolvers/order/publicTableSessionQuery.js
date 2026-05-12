@@ -7,7 +7,12 @@ import {
   activeTableSessionLookupFilter,
   childOrdersForSessionFilter,
 } from "../../../utils/orderLifecycle.js";
-import { buildPublicActiveTableSessionOrdersResult } from "../../../utils/publicTableSession.js";
+import {
+  TABLE_ACCESS_TOKEN_ERROR,
+  buildPublicActiveTableSessionOrdersResult,
+  normalizePublicTableCode,
+  verifyTableAccessToken,
+} from "../../../utils/publicTableSession.js";
 
 const ACTIVE_PUBLIC_ORDER_FILTER = {
   currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
@@ -19,12 +24,39 @@ function toId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
-export async function publicActiveTableSessionOrders(_parent, { restaurantId, tableId }) {
+function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, tableCode }) {
+  if (
+    !verifiedToken ||
+    verifiedToken.restaurantId !== String(restaurantId) ||
+    verifiedToken.tableId !== String(tableId)
+  ) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  if (
+    verifiedToken.tableCode &&
+    verifiedToken.tableCode !== normalizePublicTableCode(tableCode)
+  ) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+}
+
+export async function publicActiveTableSessionOrders(
+  _parent,
+  { restaurantId, tableId, token },
+) {
   const rid = toId(restaurantId);
   const tid = toId(tableId);
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
+
+  const verifiedToken = verifyTableAccessToken(token);
+  assertTableAccessTokenMatches({
+    verifiedToken,
+    restaurantId: rid,
+    tableId: tid,
+  });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
     .select({ _id: 1, code: 1 })
@@ -34,7 +66,13 @@ export async function publicActiveTableSessionOrders(_parent, { restaurantId, ta
     throw new Error("Table not found");
   }
 
-  const safeCode = String(table.code || "").trim().toUpperCase() || null;
+  const safeCode = normalizePublicTableCode(table.code);
+  assertTableAccessTokenMatches({
+    verifiedToken,
+    restaurantId: rid,
+    tableId: tid,
+    tableCode: safeCode,
+  });
 
   const session = await Order.findOne(
     activeTableSessionLookupFilter({
