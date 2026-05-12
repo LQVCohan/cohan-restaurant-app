@@ -75,20 +75,60 @@ describe("order userUtils identity helpers", () => {
     expect(out.conflict).toBe(true);
   });
 
-  it("prefers a registered customer match over a guest match", async () => {
+  it("returns conflict when email matches registered and phone matches guest", async () => {
     modelMocks.Customer.findOne
-      .mockReturnValueOnce(makeQuery({ _id: "guest-1", isGuest: true }))
-      .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }));
+      .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }))
+      .mockReturnValueOnce(makeQuery({ _id: "guest-1", isGuest: true }));
 
     const { resolveCustomerIdentity } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"
     );
     const out = await resolveCustomerIdentity({
-      email: "guest@example.com",
+      email: "registered@example.com",
       phone: "0903",
     });
 
-    expect(out).toEqual({ userId: "user-1", mode: "registered" });
+    expect(out.conflict).toBe(true);
+  });
+
+  it("throws when email matches registered and phone matches guest", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }))
+      .mockReturnValueOnce(makeQuery({ _id: "guest-1", isGuest: true }));
+
+    const { resolveOrCreateGuestCustomerForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    await expect(
+      resolveOrCreateGuestCustomerForOrder({
+        customer: {
+          email: "registered@example.com",
+          phone: "0903",
+        },
+      })
+    ).rejects.toThrow(
+      "Contact information matches multiple customer profiles. Please contact support.",
+    );
+  });
+
+  it("uses registered customer when only one registered profile matches", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }))
+      .mockReturnValueOnce(makeQuery(null));
+
+    const { resolveOrCreateGuestCustomerForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+    const out = await resolveOrCreateGuestCustomerForOrder({
+      customer: { email: "registered@example.com" },
+    });
+
+    expect(out).toEqual({
+      userId: "user-1",
+      mode: "matched_registered",
+      isGuestCustomer: false,
+    });
   });
 
   it("creates a guest customer when contact does not match anyone", async () => {
