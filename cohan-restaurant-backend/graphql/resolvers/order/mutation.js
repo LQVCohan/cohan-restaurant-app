@@ -1654,17 +1654,17 @@ export const OrderMutation = {
         const lines = buildInventoryLinesFromItems(normalizedItems);
         if (lines.length) {
           const whId = await resolveWarehouseIdOrDefault(
-            g.restaurantId,
+            restaurantId,
             warehouseId,
             session,
           );
 
           const releasedCartItems = [];
 
-          for (const entry of g.entries) {
+          for (const entry of entries) {
             const released = await validateAndReleaseCartHoldTx({
               entry,
-              restaurantId: g.restaurantId,
+              restaurantId: restaurantId,
               warehouseId: whId,
               authUserId,
               session,
@@ -1674,7 +1674,7 @@ export const OrderMutation = {
           }
 
           await reserveForOrderTx({
-            restaurantId: g.restaurantId,
+            restaurantId: restaurantId,
             warehouseId: whId,
             orderCode: childOrderCode,
             lines,
