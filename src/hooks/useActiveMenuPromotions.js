@@ -64,7 +64,6 @@ const getMenuItemCandidateIds = (item = {}) =>
     item?.id,
     item?._id,
     item?.dishId,
-    item?.menuId,
     item?.menuItemId,
     item?.menuItem?.id,
     item?.menuItem?._id,

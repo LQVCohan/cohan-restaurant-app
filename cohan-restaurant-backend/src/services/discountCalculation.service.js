@@ -27,34 +27,39 @@ function isDirectDiscountPromotion(promotion) {
   );
 }
 
-function itemIdentity(item) {
-  return {
-    dishId: item?.dishId ? String(item.dishId) : "",
-    menuId: item?.menuId ? String(item.menuId) : "",
-    categoryId: item?.categoryId ? String(item.categoryId) : "",
-  };
-}
-
 function promotionMatchesItem(promotion, item) {
   const scope = normalizeScope(promotion?.scope);
-  const ids = itemIdentity(item);
 
   if (scope === "ITEM") {
     const promotionItemId = promotion?.itemId ? String(promotion.itemId) : "";
-    return (
-      promotionItemId &&
-      [ids.dishId, ids.menuId].filter(Boolean).includes(promotionItemId)
-    );
+    const candidateItemIds = [
+      item?.id,
+      item?._id,
+      item?.dishId,
+      item?.menuItemId,
+      item?.menuItem?.id,
+      item?.menuItem?._id,
+    ]
+      .filter(Boolean)
+      .map(String);
+
+    return promotionItemId && candidateItemIds.includes(promotionItemId);
   }
 
   if (scope === "CATEGORY") {
     const promotionCategoryId = promotion?.categoryId
       ? String(promotion.categoryId)
       : "";
+    const candidateCategoryIds = [
+      item?.categoryId,
+      item?.category?.id,
+      item?.category?._id,
+    ]
+      .filter(Boolean)
+      .map(String);
+
     return (
-      promotionCategoryId &&
-      ids.categoryId &&
-      promotionCategoryId === ids.categoryId
+      promotionCategoryId && candidateCategoryIds.includes(promotionCategoryId)
     );
   }
 

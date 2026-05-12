@@ -6,11 +6,7 @@ import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotio
 import "../styles/MenuDetailView.scss";
 const ITEMS_PER_PAGE = 8;
 
-const MenuDetailView = ({
-  restaurant,
-  onBack,
-  onOpenFoodDetail,
-}) => {
+const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -51,7 +47,7 @@ const MenuDetailView = ({
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const currentItems = filteredItems.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   useEffect(() => {
@@ -66,7 +62,7 @@ const MenuDetailView = ({
             <button onClick={onBack} className="back-btn">
               ⬅ Quay lại
             </button>
-            <h2>{restaurant.name}</h2>
+            <h2>{restaurant?.name || "Thực đơn"}</h2>
             <div className="search-box">
               <input
                 placeholder="Tìm món..."
@@ -180,7 +176,6 @@ const MenuDetailView = ({
           </>
         )}
       </div>
-
     </div>
   );
 };

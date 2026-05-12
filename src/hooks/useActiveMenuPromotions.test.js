@@ -62,7 +62,7 @@ describe("useActiveMenuPromotions helpers", () => {
     expect(promotion?.id).toBe("promo-item");
   });
 
-  it("matches item promotions through dishId, menuId, menuItemId, and nested menuItem.id", () => {
+  it("matches item promotions through dishId, menuItemId, and nested menuItem.id", () => {
     const promotions = [
       normalizeMenuPromotion({
         id: "promo-dish",
@@ -72,14 +72,7 @@ describe("useActiveMenuPromotions helpers", () => {
         discountValue: 5,
         itemId: "dish-01",
       }),
-      normalizeMenuPromotion({
-        id: "promo-menu",
-        scope: "ITEM",
-        promotionType: "PERCENTAGE",
-        discountType: "PERCENT",
-        discountValue: 7,
-        itemId: "menu-02",
-      }),
+
       normalizeMenuPromotion({
         id: "promo-menu-item",
         scope: "ITEM",
@@ -92,17 +85,10 @@ describe("useActiveMenuPromotions helpers", () => {
     const promotionByItemId = buildPromotionLookup(promotions, "itemId");
 
     expect(
-      selectPromotionForMenuItem(
-        { dishId: "dish-01" },
-        { promotionByItemId },
-      )?.id,
+      selectPromotionForMenuItem({ dishId: "dish-01" }, { promotionByItemId })
+        ?.id,
     ).toBe("promo-dish");
-    expect(
-      selectPromotionForMenuItem(
-        { menuId: "menu-02" },
-        { promotionByItemId },
-      )?.id,
-    ).toBe("promo-menu");
+
     expect(
       selectPromotionForMenuItem(
         { menuItemId: "nested-03" },
@@ -128,7 +114,10 @@ describe("useActiveMenuPromotions helpers", () => {
         categoryId: "cat-01",
       }),
     ];
-    const promotionByCategoryId = buildPromotionLookup(promotions, "categoryId");
+    const promotionByCategoryId = buildPromotionLookup(
+      promotions,
+      "categoryId",
+    );
 
     expect(
       selectPromotionForMenuItem(
@@ -150,18 +139,11 @@ describe("useActiveMenuPromotions helpers", () => {
         id: "menu-1",
         _id: "menu-1",
         dishId: "dish-1",
-        menuId: "menu-ref-1",
+
         menuItemId: "menu-item-1",
         menuItem: { id: "nested-1", _id: "nested-2" },
       }),
-    ).toEqual([
-      "menu-1",
-      "dish-1",
-      "menu-ref-1",
-      "menu-item-1",
-      "nested-1",
-      "nested-2",
-    ]);
+    ).toEqual(["menu-1", "dish-1", "menu-item-1", "nested-1", "nested-2"]);
     expect(
       getMenuCategoryCandidateIds({
         categoryId: "cat-1",
@@ -192,7 +174,10 @@ describe("useActiveMenuPromotions helpers", () => {
       }),
     ];
 
-    const promotionByCategoryId = buildPromotionLookup(promotions, "categoryId");
+    const promotionByCategoryId = buildPromotionLookup(
+      promotions,
+      "categoryId",
+    );
 
     expect(promotionByCategoryId.cat_drink?.id).toBe("promo-high");
   });
