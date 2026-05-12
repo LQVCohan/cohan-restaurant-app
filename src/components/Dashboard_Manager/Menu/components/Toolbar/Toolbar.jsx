@@ -139,7 +139,7 @@ const Toolbar = ({
             </button>
           )}
           <button className="btn btn-primary" onClick={onAddCategory}>
-            <FiPlus /> <span className="hide-mobile">Danh mục</span>
+            <FiPlus /> <span className="hide-mobile">Nhóm thực đơn</span>
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@ const Toolbar = ({
               value={currentCategory}
               onChange={(e) => onCategoryChange(e.target.value)}
             >
-              <option value="">Tất cả danh mục</option>
+              <option value="">Tất cả danh mục món</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -241,7 +241,7 @@ const Toolbar = ({
           )}
           {currentCategory && (
             <span className="chip">
-              Danh mục đã chọn <FiX onClick={() => onCategoryChange("")} />
+              Danh mục món đã chọn <FiX onClick={() => onCategoryChange("")} />
             </span>
           )}
           {statusFilter && (

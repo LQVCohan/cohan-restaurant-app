@@ -88,7 +88,10 @@ const MenuItemModal = ({
       (formData.thumbImage || "").trim() ||
       (Array.isArray(formData.preparationMethods) &&
         formData.preparationMethods.some(
-          (m) => (m?.name || "").trim() || m?.price !== "" || m?.cookTime !== ""
+          (m) =>
+            (m?.name || "").trim() ||
+            m?.price !== "" ||
+            m?.cookTime !== ""
         ));
     return !!hasValues;
   }, [formData]);
@@ -118,7 +121,8 @@ const MenuItemModal = ({
         : [],
     }),
     onRestore: (draft) => setFormData((prev) => ({ ...prev, ...draft })),
-    notify: (message, type) => pushToast(message, type === "error" ? "error" : "success"),
+    notify: (message, type) =>
+      pushToast(message, type === "error" ? "error" : "success"),
   });
 
   // --- EFFECT: Load Data ---
@@ -126,7 +130,6 @@ const MenuItemModal = ({
     if (isOpen) {
       setImgError(false);
       if (editId && currentItem) {
-        // ... (Logic giữ nguyên phần map data)
         const svList = Array.isArray(currentItem.servingVariants)
           ? currentItem.servingVariants
           : [];
@@ -210,7 +213,10 @@ const MenuItemModal = ({
     e.preventDefault();
     if (!restaurantId) return pushToast("Lỗi: Thiếu ID nhà hàng", "error");
     if (!formData.name.trim() || !formData.categoryId)
-      return pushToast("Vui lòng nhập tên và chọn danh mục", "error");
+      return pushToast(
+        "Vui lòng nhập tên và chọn danh mục món",
+        "error"
+      );
 
     const validPM = formData.preparationMethods.filter(
       (m) => m.name.trim() && m.price !== "" && m.price >= 0
@@ -262,7 +268,8 @@ const MenuItemModal = ({
             key: m.key || fallbackKey,
             mode: m.mode || "PORTION",
             sellQty: Number(m.sellQty || 1),
-            sellUnit: m.sellUnit || (m.mode === "BY_WEIGHT" ? "kg" : "portion"),
+            sellUnit:
+              m.sellUnit || (m.mode === "BY_WEIGHT" ? "kg" : "portion"),
             name: m.name,
             ingredients: [],
             price: Number(m.price) || 0,
@@ -312,7 +319,7 @@ const MenuItemModal = ({
       isOpen={isOpen}
       onClose={() => requestCloseWithDraft(onClose)}
       size="xl"
-      className="menu-item-modal-modern" // Kích hoạt style mới
+      className="menu-item-modal-modern"
     >
       <Modal.Header onClose={() => requestCloseWithDraft(onClose)}>
         {editId ? "Chỉnh sửa món ăn" : "Thêm món mới"}
@@ -324,7 +331,6 @@ const MenuItemModal = ({
           onSubmit={handleSubmit}
           className="modern-form-layout"
         >
-          {/* === CỘT TRÁI: THÔNG TIN CHUNG (NỀN TRẮNG) === */}
           <div className="left-col">
             <h4 className="col-title">
               <Info size={18} /> Thông tin chung
@@ -348,7 +354,7 @@ const MenuItemModal = ({
             <div className="row-2-col">
               <div className="form-group">
                 <label>
-                  Danh mục <span className="req">*</span>
+                  Danh mục món <span className="req">*</span>
                 </label>
                 <select
                   className="modern-select"
@@ -358,7 +364,7 @@ const MenuItemModal = ({
                   }
                   required
                 >
-                  <option value="">-- Chọn --</option>
+                  <option value="">-- Chọn danh mục món --</option>
                   {categories?.map((c) => (
                     <option key={c.id || c._id} value={c.id || c._id}>
                       {c.name}
@@ -410,7 +416,6 @@ const MenuItemModal = ({
             </div>
           </div>
 
-          {/* === CỘT PHẢI: BIẾN THỂ (NỀN SLATE DỊU MẮT) === */}
           <div className="right-col">
             <div className="header-action">
               <h4 className="col-title">
@@ -494,7 +499,6 @@ const MenuItemModal = ({
           </div>
         </form>
 
-        {/* Toast Notification */}
         <div className="toast-wrapper">
           {toasts.map((t) => (
             <div key={t.id} className={`toast-item ${t.type}`}>
@@ -510,7 +514,11 @@ const MenuItemModal = ({
       </Modal.Body>
 
       <Modal.Footer>
-        <button type="button" className="btn-secondary" onClick={() => requestCloseWithDraft(onClose)}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => requestCloseWithDraft(onClose)}
+        >
           Đóng
         </button>
         <button

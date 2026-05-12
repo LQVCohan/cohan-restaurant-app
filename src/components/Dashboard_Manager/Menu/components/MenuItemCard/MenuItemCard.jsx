@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { Edit3, Trash2, Utensils, ImageOff, MoreHorizontal } from "lucide-react";
+import {
+  Edit3,
+  Trash2,
+  Utensils,
+  ImageOff,
+  MoreHorizontal,
+} from "lucide-react";
 import "./MenuItemCard.scss";
 
 const STATUS_META = {
@@ -44,17 +50,32 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
 
   const renderImage = () => {
     if (item.thumbImage && !imgError) {
-      return <img src={item.thumbImage} alt={item.name} onError={() => setImgError(true)} loading="lazy" />;
+      return (
+        <img
+          src={item.thumbImage}
+          alt={item.name}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      );
     }
     return (
       <div className="placeholder-img">
-        {item.status === "out_of_stock" ? <ImageOff size={28} /> : <Utensils size={28} />}
+        {item.status === "out_of_stock" ? (
+          <ImageOff size={28} />
+        ) : (
+          <Utensils size={28} />
+        )}
       </div>
     );
   };
 
   const renderStatusBadge = () => {
-    return <div className={`status-badge ${statusMeta.className}`}>{statusMeta.label}</div>;
+    return (
+      <div className={`status-badge ${statusMeta.className}`}>
+        {statusMeta.label}
+      </div>
+    );
   };
 
   return (
@@ -76,7 +97,9 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
 
       <div className="card-body">
         <div className="info-top">
-          <span className="category-name">{item.categoryName || item.categoryId || "Danh mục"}</span>
+          <span className="category-name">
+            {item.categoryName || item.categoryId || "Danh mục món"}
+          </span>
           <h3 className="item-name" title={item.name}>
             {item.name}
           </h3>

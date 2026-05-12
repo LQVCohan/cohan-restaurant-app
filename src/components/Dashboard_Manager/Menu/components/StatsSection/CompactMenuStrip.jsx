@@ -25,8 +25,18 @@ const SLOT_CONFIG = {
     bg: "#fffbeb",
     border: "#fde68a",
   },
-  lunch: { label: "Trưa", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-  dinner: { label: "Tối", color: "#b89365", bg: "#fdf8f3", border: "#f1e5d5" },
+  lunch: {
+    label: "Trưa",
+    color: "#059669",
+    bg: "#ecfdf5",
+    border: "#a7f3d0",
+  },
+  dinner: {
+    label: "Tối",
+    color: "#b89365",
+    bg: "#fdf8f3",
+    border: "#f1e5d5",
+  },
   late_night: {
     label: "Khuya",
     color: "#db2777",
@@ -78,7 +88,6 @@ const CompactMenuStrip = ({
 
   return (
     <div className={`cms-container ${isCollapsed ? "is-collapsed" : ""}`}>
-      {/* Header */}
       <div className="cms-header">
         <div className="cms-info">
           <div className="cms-icon-box">
@@ -92,7 +101,8 @@ const CompactMenuStrip = ({
                   <p>Đang tải danh sách...</p>
                 ) : (
                   <p>
-                    Đã tạo <strong>{totalMenus}</strong> menu theo khung giờ
+                    Đã tạo <strong>{totalMenus}</strong> thực đơn theo khung giờ
+                    và nhóm thực đơn
                   </p>
                 )}
               </>
@@ -120,7 +130,7 @@ const CompactMenuStrip = ({
                 </button>
               </div>
               <button className="cms-btn-add" onClick={() => onAddMenu?.()}>
-                <FiPlus /> <span className="text">Tạo Menu</span>
+                <FiPlus /> <span className="text">Tạo thực đơn</span>
               </button>
             </>
           )}
@@ -143,7 +153,6 @@ const CompactMenuStrip = ({
         <div className="cms-error-msg">Lỗi: {menusError.message}</div>
       )}
 
-      {/* Cards Viewport */}
       {!isCollapsed && (
         <div className="cms-viewport">
           <div className="cms-track" ref={scrollRef}>
@@ -152,8 +161,10 @@ const CompactMenuStrip = ({
                 const slotStyle =
                   SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
                 const isActive = currentActiveId === menu.id;
-                const itemCount = typeof menu.itemCount === "number" ? menu.itemCount : 0;
-                const rating = typeof menu.rating === "number" ? menu.rating : null;
+                const itemCount =
+                  typeof menu.itemCount === "number" ? menu.itemCount : 0;
+                const rating =
+                  typeof menu.rating === "number" ? menu.rating : null;
                 const revenue = menu.revenue || null;
                 const categoryName = menu.categoryMenu?.name;
 
@@ -175,7 +186,9 @@ const CompactMenuStrip = ({
                           <div className="cms-placeholder">🍽️</div>
                         )}
                         {categoryName && (
-                          <span className="cms-cate-badge">{categoryName}</span>
+                          <span className="cms-cate-badge">
+                            Nhóm thực đơn: {categoryName}
+                          </span>
                         )}
                       </div>
 
@@ -212,16 +225,13 @@ const CompactMenuStrip = ({
 
                       <div className="cms-stats">
                         <div className="cms-stat-item" title="Số món">
-                          <FiLayers className="ic" />{" "}
-                          <strong>{itemCount}</strong>
+                          <FiLayers className="ic" /> <strong>{itemCount}</strong>
                         </div>
                         <div className="cms-stat-item" title="Đánh giá">
-                          <FiStar className="ic star" />{" "}
-                          <strong>{rating ?? "--"}</strong>
+                          <FiStar className="ic star" /> <strong>{rating ?? "--"}</strong>
                         </div>
                         <div className="cms-stat-item" title="Doanh thu">
-                          <FiTrendingUp className="ic grow" />{" "}
-                          <strong>{revenue || "--"}</strong>
+                          <FiTrendingUp className="ic grow" /> <strong>{revenue || "--"}</strong>
                         </div>
                       </div>
                     </div>
@@ -229,7 +239,7 @@ const CompactMenuStrip = ({
                     <div className="cms-toolbar">
                       <button
                         className="cms-tool-btn is-edit"
-                        title="Chỉnh sửa"
+                        title="Chỉnh sửa thực đơn"
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditMenu?.(menu);
@@ -246,7 +256,7 @@ const CompactMenuStrip = ({
                       </button>
                       <button
                         className="cms-tool-btn is-delete"
-                        title="Xóa"
+                        title="Xóa thực đơn"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteMenu?.(menu);
@@ -265,7 +275,7 @@ const CompactMenuStrip = ({
                   <div className="cms-ghost-circle">
                     <FiPlus size={24} />
                   </div>
-                  <h4>Thêm Menu</h4>
+                  <h4>Thêm thực đơn</h4>
                 </div>
               </div>
             )}
