@@ -1203,7 +1203,21 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
     externalTrackingCode: s.externalTrackingCode || null,
   };
 }
+function buildOrderCustomerContact(customer = {}, shipping = {}) {
+  const c = customer || {};
+  const s = shipping || {};
 
+  const fullName = c.fullName || c.name || s.fullName || s.name || undefined;
+  const email = c.email || s.email || undefined;
+  const phone = c.phone || s.phone || undefined;
+
+  return {
+    fullName,
+    name: fullName,
+    email,
+    phone,
+  };
+}
 function isDuplicateKeyError(error) {
   return (
     error?.code === 11000 || String(error?.message || "").includes("E11000")
@@ -1388,11 +1402,17 @@ export const OrderMutation = {
           );
         }
 
+        const resolvedCustomerUserId = await ensureUserForOrder(
+          userId,
+          effectiveCustomer,
+          { session },
+        );
+
         const parentSessionMeta = await findOrCreateActiveTableSession({
           restaurantId: rid,
           tableId: toId(tableInfo.tableId),
           tableCode: tableInfo.tableCode,
-          userId,
+          userId: resolvedCustomerUserId || userId,
           customerSnapshot: effectiveCustomer,
           session,
         });
@@ -1402,7 +1422,19 @@ export const OrderMutation = {
           parentSession?.customer || effectiveCustomer || null;
         const sessionUserId =
           parentSession?.userId ||
-          (await ensureUserForOrder(userId, sessionCustomer));
+          resolvedCustomerUserId ||
+          (await ensureUserForOrder(userId, sessionCustomer, { session }));
+
+        if (sessionUserId && !parentSession?.userId) {
+          await Order.updateOne(
+            {
+              _id: parentSession._id,
+              $or: [{ userId: { $exists: false } }, { userId: null }],
+            },
+            { $set: { userId: toId(sessionUserId) } },
+            { session },
+          );
+        }
 
         const [order] = await Order.create(
           [
@@ -1532,7 +1564,9 @@ export const OrderMutation = {
       throw new Error("items is required");
 
     const normalizedItems = items.map(normalizeItem);
-    const compactCustomer = compactCustomerInput(customer || {});
+    const orderCustomerContact = buildOrderCustomerContact(customer, shipping);
+    const compactCustomer = compactCustomerInput(orderCustomerContact);
+
     const identity = await resolveCustomerIdentity({
       email: compactCustomer.email,
       phone: compactCustomer.phone,
@@ -1545,10 +1579,8 @@ export const OrderMutation = {
         "Thông tin email và số điện thoại khớp với hai khách khác nhau. Vui lòng xác nhận tạo đơn dạng snapshot-only.",
       );
     }
-    const finalUserId = identity?.conflict
-      ? null
-      : await ensureUserForOrder(userId, compactCustomer);
 
+    let finalUserId = null;
     const prefix = orderType === "delivery" ? "DEL" : "TAKE";
     const effectiveOrderCode = generateOrderCode(prefix, new Date(), null);
 
@@ -1568,6 +1600,9 @@ export const OrderMutation = {
     try {
       await session.withTransaction(async () => {
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
+        finalUserId = identity?.conflict
+          ? null
+          : await ensureUserForOrder(userId, compactCustomer, { session });
         await hydrateOrderItems({
           restaurantId,
           items: normalizedItems,
@@ -1989,7 +2024,11 @@ export const OrderMutation = {
     }
 
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
-    const finalUserId = await ensureUserForOrder(userId, customer);
+    const checkoutCustomerContact = buildOrderCustomerContact(
+      customer,
+      shipping,
+    );
+    let finalUserId = null;
     const createdOrders = [];
     const checkoutTotals = {
       subtotal: 0,
@@ -2010,6 +2049,11 @@ export const OrderMutation = {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
+        finalUserId = await ensureUserForOrder(
+          userId,
+          checkoutCustomerContact,
+          { session },
+        );
         for (const g of grouped.values()) {
           await hydrateOrderItems({
             restaurantId: g.restaurantId,
