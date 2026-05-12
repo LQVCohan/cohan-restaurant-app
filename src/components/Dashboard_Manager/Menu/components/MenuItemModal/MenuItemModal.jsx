@@ -157,6 +157,9 @@ const buildRecipeForm = (methods = [], existingVariants = []) => {
   };
 };
 
+const hasVerifiedRecipeData = (recipeItem) =>
+  !!(recipeItem?._rawRecipeId || recipeItem?._rawRecipe);
+
 const MenuItemModal = ({
   isOpen,
   editId,
@@ -167,7 +170,6 @@ const MenuItemModal = ({
   onSave,
   onClose,
 }) => {
-  // --- STATE ---
   const [formData, setFormData] = useState({
     name: "",
     categoryId: "",
@@ -183,14 +185,12 @@ const MenuItemModal = ({
   const submitLockRef = useRef(false);
   const savedMenuItemIdRef = useRef(null);
 
-  // --- HELPER: Toast ---
   const pushToast = (text, type = "success") => {
     const id = Date.now();
     setToasts((t) => [...t, { id, text, type }]);
     setTimeout(() => setToasts((t) => t.filter((i) => i.id !== id)), 3000);
   };
 
-  // --- DATA LOADING & HOOKS ---
   const currentItem = useMemo(
     () =>
       Array.isArray(menuItems) && editId
@@ -227,32 +227,43 @@ const MenuItemModal = ({
   );
 
   const recipeDetailState = useMemo(
-    () =>
-      editId ? recipeDetailsByMenuItemId[String(editId)] || null : null,
+    () => (editId ? recipeDetailsByMenuItemId[String(editId)] || null : null),
     [recipeDetailsByMenuItemId, editId]
   );
 
-  const resolvedRecipeItem = useMemo(
-    () => currentRecipeItem || recipeDetailState?.recipe || null,
-    [currentRecipeItem, recipeDetailState]
+  const verifiedCurrentRecipeItem = useMemo(
+    () => (hasVerifiedRecipeData(currentRecipeItem) ? currentRecipeItem : null),
+    [currentRecipeItem]
   );
+
+  const verifiedRecipeItem = useMemo(() => {
+    if (verifiedCurrentRecipeItem) return verifiedCurrentRecipeItem;
+    if (
+      recipeDetailState?.status === "loaded" &&
+      hasVerifiedRecipeData(recipeDetailState?.recipe)
+    ) {
+      return recipeDetailState.recipe;
+    }
+    return null;
+  }, [verifiedCurrentRecipeItem, recipeDetailState]);
 
   const existingServingVariants = useMemo(
     () =>
-      Array.isArray(resolvedRecipeItem?.servingVariants)
-        ? resolvedRecipeItem.servingVariants
+      Array.isArray(verifiedRecipeItem?.servingVariants)
+        ? verifiedRecipeItem.servingVariants
         : [],
-    [resolvedRecipeItem]
+    [verifiedRecipeItem]
   );
 
   const recipeGuardStatus = useMemo(() => {
     if (!editId) return "ready";
-    if (Array.isArray(resolvedRecipeItem?.servingVariants)) return "ready";
-    return recipeDetailState?.status || "idle";
-  }, [editId, resolvedRecipeItem, recipeDetailState]);
+    if (verifiedRecipeItem) return "ready";
+    if (recipeDetailState?.status === "missing") return "ready";
+    if (recipeDetailState?.status === "error") return "error";
+    return "loading";
+  }, [editId, verifiedRecipeItem, recipeDetailState]);
 
-  const isRecipeGuardPending =
-    !!editId && ["idle", "loading"].includes(recipeGuardStatus);
+  const isRecipeGuardPending = !!editId && recipeGuardStatus === "loading";
   const isRecipeGuardBlocked = !!editId && recipeGuardStatus === "error";
 
   const defaultMethod = {
@@ -314,17 +325,20 @@ const MenuItemModal = ({
   });
 
   useEffect(() => {
-    if (!isOpen || !editId || !restaurantId || currentRecipeItem) return;
+    if (!isOpen || !editId || !restaurantId || verifiedCurrentRecipeItem) return;
+    if (["loading", "loaded", "missing", "error"].includes(recipeDetailState?.status)) {
+      return;
+    }
     ensureRecipeLoaded(editId);
   }, [
     isOpen,
     editId,
     restaurantId,
-    currentRecipeItem,
+    verifiedCurrentRecipeItem,
+    recipeDetailState,
     ensureRecipeLoaded,
   ]);
 
-  // --- EFFECT: Load Data ---
   useEffect(() => {
     if (isOpen) {
       setImgError(false);
@@ -389,7 +403,6 @@ const MenuItemModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, currentItem, isOpen]);
 
-  // --- HANDLERS ---
   const handleRequestClose = () => {
     if (isSubmitting) return;
     requestCloseWithDraft(onClose);
@@ -590,7 +603,6 @@ const MenuItemModal = ({
     );
   };
 
-  // --- RENDER ---
   return (
     <Modal
       isOpen={isOpen}
