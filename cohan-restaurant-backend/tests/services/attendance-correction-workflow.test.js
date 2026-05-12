@@ -247,7 +247,7 @@ describe("attendance correction workflow guards", () => {
       "../../src/services/attendance/attendanceCorrectionWorkflow.service.js"
     );
 
-    const requestDoc = createRequestDoc();
+    const requestDoc = createRequestDoc({ correctionType: "wrong_check_in" });
     modelMocks.AttendanceCorrectionRequest.findById.mockReturnValue(queryDoc(requestDoc));
     modelMocks.Timesheet.findById.mockReturnValue({
       populate: vi.fn().mockResolvedValue(null),
