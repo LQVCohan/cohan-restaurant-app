@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLazyQuery, useMutation } from "@apollo/client";
 import {
   Q_MENU_ITEMS_WITH_RECIPES_PAGED,
+  Q_RECIPE,
   M_UPSERT_RECIPE,
   M_DELETE_RECIPE,
   M_UPDATE_MENU_ITEM_BASIC,
@@ -202,15 +203,10 @@ function normalizeServingVariants(inputVariants = []) {
   return normalized;
 }
 
-function mapRowToFe(row) {
-  const mi = row?.menuItem || {};
-  const r = row?.recipe || null;
-
-  const servingVariants = Array.isArray(r?.servingVariants)
-    ? r.servingVariants.map((sv) => {
-        const ingredients = Array.isArray(sv?.ingredients)
-          ? sv.ingredients
-          : [];
+function mapServingVariantsToFe(servingVariants = []) {
+  return Array.isArray(servingVariants)
+    ? servingVariants.map((sv) => {
+        const ingredients = Array.isArray(sv?.ingredients) ? sv.ingredients : [];
 
         // alias cho UI editor cũ
         const components = ingredients.map((ic) => ({
@@ -234,15 +230,32 @@ function mapRowToFe(row) {
           sellUnit: sv.sellUnit || (sv.mode === "BY_WEIGHT" ? "kg" : "portion"),
           price: typeof sv.price === "number" ? sv.price : 0,
           isDefault: !!sv.isDefault,
-
-          ingredients, // chuẩn
-          components, // alias editor
+          ingredients,
+          components,
         };
       })
     : [];
+}
+
+function mapRecipeToFe(menuItemId, recipe) {
+  return {
+    id: menuItemId,
+    menuItemId,
+    restaurantId: recipe?.restaurantId,
+    servingVariants: mapServingVariantsToFe(recipe?.servingVariants),
+    notes: recipe?.notes || "",
+    isActive: recipe?.isActive ?? true,
+    _rawRecipeId: recipe?.id || null,
+    _rawRecipe: recipe || null,
+  };
+}
+
+function mapRowToFe(row) {
+  const mi = row?.menuItem || {};
+  const r = row?.recipe || null;
 
   return {
-    id: mi.id, // menuItemId (flatten)
+    id: mi.id,
     menuItemId: mi.id,
     restaurantId: mi.restaurantId,
 
@@ -255,7 +268,7 @@ function mapRowToFe(row) {
     status: mi.status || null,
 
     // recipe
-    servingVariants,
+    servingVariants: mapServingVariantsToFe(r?.servingVariants),
     notes: r?.notes || "",
     isActive: r?.isActive ?? true,
 
@@ -367,15 +380,20 @@ export function useRecipes(
     hasNextPage: false,
   });
   const [total, setTotal] = useState(0);
+  const [recipeDetailsByMenuItemId, setRecipeDetailsByMenuItemId] = useState({});
 
   // --- local ui state
   const [localError, setLocalError] = useState(null);
 
   // for loadMore vars
   const lastVarsRef = useRef(null);
+  const recipeDetailRequestsRef = useRef({});
 
   const [fetchList, listState] = useLazyQuery(Q_MENU_ITEMS_WITH_RECIPES_PAGED, {
     fetchPolicy: "cache-and-network",
+  });
+  const [fetchRecipeDetail] = useLazyQuery(Q_RECIPE, {
+    fetchPolicy: "network-only",
   });
 
   const [upsertMu, upsertState] = useMutation(M_UPSERT_RECIPE);
@@ -414,6 +432,11 @@ export function useRecipes(
     [restaurantId, filters, fetchList, debouncedSearch, normalizeSearchInput]
   );
 
+  useEffect(() => {
+    setRecipeDetailsByMenuItemId({});
+    recipeDetailRequestsRef.current = {};
+  }, [restaurantId]);
+
   // auto fetch when restaurantId/filters change (like ingredient)
   useEffect(() => {
     if (!restaurantId) {
@@ -451,6 +474,32 @@ export function useRecipes(
     setTotal(t);
   }, [listState.data]);
 
+  useEffect(() => {
+    if (!recipes.length) return;
+
+    setRecipeDetailsByMenuItemId((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      recipes.forEach((recipe) => {
+        const key = String(recipe?.menuItemId || recipe?.id || "").trim();
+        if (!key) return;
+
+        const existing = prev[key];
+        if (existing?.status === "loaded") return;
+
+        next[key] = {
+          status: "loaded",
+          recipe,
+          error: null,
+        };
+        changed = true;
+      });
+
+      return changed ? next : prev;
+    });
+  }, [recipes]);
+
   // like useIngredients safeRefetchAll
   const safeRefetchAll = useCallback(async () => {
     try {
@@ -460,6 +509,101 @@ export function useRecipes(
       setLocalError(e);
     }
   }, [runFetch]);
+
+  const ensureRecipeLoaded = useCallback(
+    async (menuItemId) => {
+      if (!restaurantId || !menuItemId) {
+        return { status: "missing", recipe: null, error: null };
+      }
+
+      const key = String(menuItemId).trim();
+      if (!key) {
+        return { status: "missing", recipe: null, error: null };
+      }
+
+      const recipeFromList = recipes.find(
+        (recipe) => String(recipe?.menuItemId || recipe?.id) === key
+      );
+      if (recipeFromList) {
+        const loadedEntry = {
+          status: "loaded",
+          recipe: recipeFromList,
+          error: null,
+        };
+        setRecipeDetailsByMenuItemId((prev) => ({
+          ...prev,
+          [key]: loadedEntry,
+        }));
+        return loadedEntry;
+      }
+
+      const cached = recipeDetailsByMenuItemId[key];
+      if (cached?.status === "loaded" || cached?.status === "missing") {
+        return cached;
+      }
+      if (
+        cached?.status === "loading" &&
+        recipeDetailRequestsRef.current[key]
+      ) {
+        return recipeDetailRequestsRef.current[key];
+      }
+
+      setRecipeDetailsByMenuItemId((prev) => ({
+        ...prev,
+        [key]: {
+          status: "loading",
+          recipe: null,
+          error: null,
+        },
+      }));
+
+      const request = fetchRecipeDetail({
+        variables: { restaurantId, menuItemId: key },
+      })
+        .then((res) => {
+          const recipe = res?.data?.recipe || null;
+          const nextEntry = recipe
+            ? {
+                status: "loaded",
+                recipe: mapRecipeToFe(key, recipe),
+                error: null,
+              }
+            : {
+                status: "missing",
+                recipe: null,
+                error: null,
+              };
+
+          setRecipeDetailsByMenuItemId((prev) => ({
+            ...prev,
+            [key]: nextEntry,
+          }));
+
+          return nextEntry;
+        })
+        .catch((fetchError) => {
+          const nextEntry = {
+            status: "error",
+            recipe: null,
+            error: fetchError,
+          };
+
+          setRecipeDetailsByMenuItemId((prev) => ({
+            ...prev,
+            [key]: nextEntry,
+          }));
+
+          return nextEntry;
+        })
+        .finally(() => {
+          delete recipeDetailRequestsRef.current[key];
+        });
+
+      recipeDetailRequestsRef.current[key] = request;
+      return request;
+    },
+    [restaurantId, recipes, recipeDetailsByMenuItemId, fetchRecipeDetail]
+  );
 
   const loadMore = useCallback(async () => {
     if (!restaurantId) return;
@@ -563,6 +707,40 @@ export function useRecipes(
         return next;
       })
     );
+
+    setRecipeDetailsByMenuItemId((prev) => {
+      const key = String(menuItemId || "").trim();
+      if (!key) return prev;
+
+      const existing = prev[key] || {
+        status: "loaded",
+        recipe: mapRecipeToFe(key, null),
+        error: null,
+      };
+
+      const nextRecipe = {
+        ...(existing.recipe || mapRecipeToFe(key, null)),
+        id: key,
+        menuItemId: key,
+        servingVariants: Array.isArray(form?.servingVariants)
+          ? mapServingVariantsToFe(form.servingVariants)
+          : existing.recipe?.servingVariants || [],
+        notes:
+          typeof form?.notes === "string"
+            ? form.notes
+            : existing.recipe?.notes || "",
+        isActive: form?.isActive ?? existing.recipe?.isActive ?? true,
+      };
+
+      return {
+        ...prev,
+        [key]: {
+          status: "loaded",
+          recipe: nextRecipe,
+          error: null,
+        },
+      };
+    });
   }, []);
 
   // ===== CRUD =====
@@ -648,6 +826,14 @@ export function useRecipes(
             : r
         )
       );
+      setRecipeDetailsByMenuItemId((prev) => ({
+        ...prev,
+        [String(menuItemId)]: {
+          status: "missing",
+          recipe: null,
+          error: null,
+        },
+      }));
 
       await deleteMu({ variables: { restaurantId, menuItemId } });
       await safeRefetchAll();
@@ -677,6 +863,7 @@ export function useRecipes(
 
     recipes,
     filteredRecipes,
+    recipeDetailsByMenuItemId,
 
     filters,
     setFilters,
@@ -686,7 +873,8 @@ export function useRecipes(
 
     loadMore,
     refresh: safeRefetchAll,
-    refetch: safeRefetchAll, // alias
+    refetch: safeRefetchAll,
+    ensureRecipeLoaded,
 
     addRecipe,
     updateRecipe,
