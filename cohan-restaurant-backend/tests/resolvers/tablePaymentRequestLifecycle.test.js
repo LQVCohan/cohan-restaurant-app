@@ -1,15 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const OrderModel = vi.hoisted(() => ({}));
+const startSessionMock = vi.hoisted(() => vi.fn());
+const ensureActiveTableSessionForDineInOrderMock = vi.hoisted(() => vi.fn());
 const clearPaymentRequestAfterNewChildOrderBatchCreatedMock = vi.hoisted(() =>
   vi.fn(),
 );
 
+vi.mock("mongoose", () => ({
+  default: {
+    startSession: startSessionMock,
+  },
+}));
 vi.mock("../../models/index.js", () => ({ Order: OrderModel }));
 vi.mock("../../utils/orderLifecycle.js", async () => {
   const actual = await vi.importActual("../../utils/orderLifecycle.js");
   return {
     ...actual,
+    ensureActiveTableSessionForDineInOrder:
+      ensureActiveTableSessionForDineInOrderMock,
     clearPaymentRequestAfterNewChildOrderBatchCreated:
       clearPaymentRequestAfterNewChildOrderBatchCreatedMock,
   };
@@ -22,6 +31,11 @@ describe("withTablePaymentRequestLifecycle", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    clearPaymentRequestAfterNewChildOrderBatchCreatedMock.mockResolvedValue({
+      cleared: false,
+      session: null,
+      orders: [],
+    });
   });
 
   it("clears stale payment request after createOrderForTable succeeds", async () => {
@@ -56,11 +70,20 @@ describe("withTablePaymentRequestLifecycle", () => {
     });
   });
 
-  it("returns created order even when lifecycle hardening or stale payment clear fails", async () => {
+  it("still clears stale payment request with the original order when lifecycle hardening fails", async () => {
     const { withTablePaymentRequestLifecycle } = await import(
       "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
     );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const txSession = {
+      withTransaction: vi.fn(async (fn) => fn()),
+      endSession: vi.fn().mockResolvedValue(undefined),
+    };
+    startSessionMock.mockResolvedValue(txSession);
+    ensureActiveTableSessionForDineInOrderMock.mockRejectedValueOnce(
+      new Error("harden failed"),
+    );
+
     const createdOrder = {
       _id: "child-2",
       id: "child-2",
@@ -80,10 +103,6 @@ describe("withTablePaymentRequestLifecycle", () => {
       createOrderForTable: vi.fn().mockResolvedValue(result),
     };
 
-    clearPaymentRequestAfterNewChildOrderBatchCreatedMock.mockRejectedValueOnce(
-      new Error("clear failed"),
-    );
-
     const wrapped = withTablePaymentRequestLifecycle(baseMutation);
     const out = await wrapped.createOrderForTable(
       null,
@@ -98,6 +117,11 @@ describe("withTablePaymentRequestLifecycle", () => {
     );
 
     expect(out).toBe(result);
+    expect(clearPaymentRequestAfterNewChildOrderBatchCreatedMock).toHaveBeenCalledWith({
+      OrderModel,
+      order: createdOrder,
+      reason: "Thêm món mới sau khi khách yêu cầu thanh toán.",
+    });
     expect(warnSpy).toHaveBeenCalledWith(
       "[order] Failed to harden dine-in session lifecycle after createOrderForTable",
       {
@@ -107,6 +131,60 @@ describe("withTablePaymentRequestLifecycle", () => {
         restaurantId: "rest-2",
         tableId: "table-2",
         tableCode: "T2",
+        error: "harden failed",
+      },
+    );
+  });
+
+  it("returns created order even when stale payment clear fails", async () => {
+    const { withTablePaymentRequestLifecycle } = await import(
+      "../../graphql/resolvers/order/tablePaymentRequestLifecycle.js"
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const createdOrder = {
+      _id: "child-3",
+      id: "child-3",
+      orderType: "dine_in",
+      orderKind: "order_batch",
+      parentOrderId: "parent-3",
+      rootOrderId: "root-3",
+      restaurantId: "rest-3",
+      tableCode: "T3",
+    };
+    const result = {
+      isNewOrder: true,
+      order: createdOrder,
+    };
+    const baseMutation = {
+      createOrderForTable: vi.fn().mockResolvedValue(result),
+    };
+
+    clearPaymentRequestAfterNewChildOrderBatchCreatedMock.mockRejectedValueOnce(
+      new Error("clear failed"),
+    );
+
+    const wrapped = withTablePaymentRequestLifecycle(baseMutation);
+    const out = await wrapped.createOrderForTable(
+      null,
+      {
+        input: {
+          restaurantId: "rest-3",
+          tableCode: "T3",
+        },
+      },
+      { user: { id: "staff-3" } },
+    );
+
+    expect(out).toBe(result);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[order] Failed to clear stale table payment request after new batch",
+      {
+        orderId: "child-3",
+        parentOrderId: "parent-3",
+        rootOrderId: "root-3",
+        restaurantId: "rest-3",
+        tableId: null,
+        tableCode: "T3",
         error: "clear failed",
       },
     );
