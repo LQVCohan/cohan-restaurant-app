@@ -133,12 +133,17 @@ const TableBooking = () => {
       return;
     }
 
+    if (!user?.id) {
+      setSelectedTable(table);
+      return;
+    }
+
     try {
       await acquireTableViewLock({
         variables: {
           input: {
             tableId: table.id,
-            userId: user?.id,
+            userId: user.id,
             viewerName: user?.fullName || user?.username || "Khách",
           },
         },
