@@ -1,5 +1,16 @@
 export const REVIEW_ROLES = new Set(["admin", "manager", "hr"]);
 export const STAFF_ROLE = "staff";
+export const MIN_CORRECTION_REASON_LENGTH = 5;
+
+export const CORRECTION_TYPE_REQUIREMENTS = {
+  missing_check_in: { requiresCheckIn: true, requiresCheckOut: false },
+  missing_check_out: { requiresCheckIn: false, requiresCheckOut: true },
+  wrong_check_in: { requiresCheckIn: true, requiresCheckOut: false },
+  wrong_check_out: { requiresCheckIn: false, requiresCheckOut: true },
+  wrong_check_in_out: { requiresCheckIn: true, requiresCheckOut: true },
+  off_schedule_work: { requiresCheckIn: false, requiresCheckOut: false },
+  other: { requiresCheckIn: false, requiresCheckOut: false },
+};
 
 export const normalizeRole = (value) => String(value || "").toLowerCase();
 
@@ -36,6 +47,10 @@ export const buildEvidenceUrls = (value = "") =>
     .map((line) => line.trim())
     .filter(Boolean);
 
+export const getCorrectionTimeRequirements = (correctionType) =>
+  CORRECTION_TYPE_REQUIREMENTS[normalizeRole(correctionType)] ||
+  CORRECTION_TYPE_REQUIREMENTS.other;
+
 export const buildCreateCorrectionInput = ({
   record,
   form,
@@ -68,19 +83,33 @@ export const buildCreateCorrectionInput = ({
 
 export const validateCorrectionRequestForm = (form) => {
   const errors = {};
+  const reason = form?.reason?.trim() || "";
+  const requestedCheckInAt = form?.requestedCheckInAt;
+  const requestedCheckOutAt = form?.requestedCheckOutAt;
+  const requirements = getCorrectionTimeRequirements(form?.correctionType);
 
-  if (!form?.reason?.trim() || form.reason.trim().length < 5) {
-    errors.reason = "Vui lòng nhập lý do chỉnh công tối thiểu 5 ký tự.";
+  if (reason.length < MIN_CORRECTION_REASON_LENGTH) {
+    errors.reason = `Vui lòng nhập lý do chỉnh công tối thiểu ${MIN_CORRECTION_REASON_LENGTH} ký tự.`;
   }
 
-  if (!form?.requestedCheckInAt && !form?.requestedCheckOutAt) {
+  if (!requestedCheckInAt && !requestedCheckOutAt) {
     errors.requestedTime =
       "Cần nhập ít nhất một giờ check-in hoặc check-out đề xuất.";
   }
 
-  if (form?.requestedCheckInAt && form?.requestedCheckOutAt) {
-    const start = new Date(form.requestedCheckInAt);
-    const end = new Date(form.requestedCheckOutAt);
+  if (requirements.requiresCheckIn && !requestedCheckInAt) {
+    errors.requestedCheckInAt =
+      "Loại chỉnh công này yêu cầu giờ check-in đề xuất.";
+  }
+
+  if (requirements.requiresCheckOut && !requestedCheckOutAt) {
+    errors.requestedCheckOutAt =
+      "Loại chỉnh công này yêu cầu giờ check-out đề xuất.";
+  }
+
+  if (requestedCheckInAt && requestedCheckOutAt) {
+    const start = new Date(requestedCheckInAt);
+    const end = new Date(requestedCheckOutAt);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
       if (end <= start) {
         errors.requestedCheckOutAt =
