@@ -17,6 +17,14 @@ enum MenuItemStatus {
   hidden
 }
 
+enum MenuItemSortOption {
+  default
+  name_asc
+  name_desc
+  price_asc
+  price_desc
+}
+
 input BulkPriceUpdateTarget {
   categoryId: ID
   menuItemIds: [ID!]
@@ -59,6 +67,7 @@ input MenuItemFilter {
   search: String
   minPrice: Float
   maxPrice: Float
+  sort: MenuItemSortOption
 }
 
 type MenuItemEdge {
