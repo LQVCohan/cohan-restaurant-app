@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getDiscountPreviewErrorMessage } from "./useDiscountPreview";
+import {
+  getDiscountPreviewErrorMessage,
+  PREVIEW_ORDER_DISCOUNT,
+} from "./useDiscountPreview";
+
+const previewOrderDiscountSource =
+  PREVIEW_ORDER_DISCOUNT?.loc?.source?.body || "";
 
 const gqlError = (code, message = "GraphQL error") => ({
   message,
@@ -9,6 +15,28 @@ const gqlError = (code, message = "GraphQL error") => ({
       extensions: { code },
     },
   ],
+});
+
+describe("PREVIEW_ORDER_DISCOUNT", () => {
+  it("requests line-level promotion breakdown fields", () => {
+    expect(previewOrderDiscountSource).toContain("promotionLines");
+
+    [
+      "lineId",
+      "dishId",
+      "menuId",
+      "categoryId",
+      "name",
+      "promotionId",
+      "promotionName",
+      "promotionScope",
+      "discountType",
+      "discountValue",
+      "discount",
+    ].forEach((field) => {
+      expect(previewOrderDiscountSource).toContain(field);
+    });
+  });
 });
 
 describe("getDiscountPreviewErrorMessage", () => {
