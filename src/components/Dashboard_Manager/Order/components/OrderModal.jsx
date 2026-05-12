@@ -22,7 +22,6 @@ import {
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
-/* ---------------- Helpers & Sub-components vẫn giữ nguyên ---------------- */
 
 const formatCurrency = (amount) => {
   const n = Number(amount) || 0;
@@ -141,6 +140,7 @@ const OrderItemRow = React.memo(
   }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
+    const targetOrderId = item?.sourceOrderId || order?.actionOrderId || order?.id;
 
     useEffect(() => {
       const handleClickOutside = (event) => {
@@ -153,8 +153,7 @@ const OrderItemRow = React.memo(
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const config =
-      ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
+    const config = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
     const StatusIcon = config.icon;
 
     const allowedNextStatuses = getAllowedNextItemStatuses(
@@ -247,7 +246,7 @@ const OrderItemRow = React.memo(
                     setReviewingRequestId(req.requestId);
                     try {
                       await onReviewItemVoid({
-                        orderId: order.id,
+                        orderId: targetOrderId,
                         orderItemId: item._id,
                         requestId: req.requestId,
                         approve: true,
@@ -276,7 +275,7 @@ const OrderItemRow = React.memo(
                     setReviewingRequestId(req.requestId);
                     try {
                       await onReviewItemVoid({
-                        orderId: order.id,
+                        orderId: targetOrderId,
                         orderItemId: item._id,
                         requestId: req.requestId,
                         approve: false,
@@ -341,7 +340,7 @@ const OrderItemRow = React.memo(
                     return;
                   }
                   await onRequestItemReturn?.({
-                    orderId: order.id,
+                    orderId: targetOrderId,
                     orderItemId: item._id,
                     quantity: qty,
                     reason,
@@ -366,7 +365,7 @@ const OrderItemRow = React.memo(
                   )
                     return;
                   await onReviewItemReturn?.({
-                    orderId: order.id,
+                    orderId: targetOrderId,
                     orderItemId: item._id,
                     requestId: req.requestId,
                     approve: true,
@@ -380,7 +379,7 @@ const OrderItemRow = React.memo(
                   const note = window.prompt("Lý do từ chối", "");
                   if (note == null) return;
                   await onReviewItemReturn?.({
-                    orderId: order.id,
+                    orderId: targetOrderId,
                     orderItemId: item._id,
                     requestId: req.requestId,
                     approve: false,
@@ -433,8 +432,6 @@ const OrderItemRow = React.memo(
   },
 );
 
-/* ============================== Main Component ============================== */
-
 const OrderModal = ({
   order,
   onClose,
@@ -448,6 +445,7 @@ const OrderModal = ({
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
+  const actionOrderId = order?.actionOrderId || order?.id;
 
   const items = useMemo(() => {
     return (order?.items || []).map((it) => {
@@ -540,7 +538,7 @@ const OrderModal = ({
   useEffect(() => {
     const shouldComplete =
       progress === 100 &&
-      order?.id &&
+      actionOrderId &&
       ["pending", "confirmed", "preparing", "ready"].includes(
         order?.currentStatus,
       );
@@ -549,7 +547,7 @@ const OrderModal = ({
       completingRef.current = true;
       try {
         await mutStatusById({
-          variables: { input: { id: order.id, status: "served" } },
+          variables: { input: { id: actionOrderId, status: "served" } },
         });
       } catch (e) {
         console.error("Auto-complete failed:", e);
@@ -558,21 +556,22 @@ const OrderModal = ({
       }
     };
     performComplete();
-  }, [progress, order?.id, order?.currentStatus, mutStatusById]);
+  }, [actionOrderId, progress, order?.currentStatus, mutStatusById]);
 
   const handleChangeStatus = useCallback(
     async (item, index, nextStatus) => {
       const itemKey = item?._lineId || index;
+      const targetOrderId = item?.sourceOrderId || actionOrderId;
       setSavingMap((prev) => ({ ...prev, [itemKey]: true }));
       try {
         if (onUpdateItemStatus) {
-          await onUpdateItemStatus(order?.id, itemKey, nextStatus);
+          await onUpdateItemStatus(targetOrderId, itemKey, nextStatus);
         }
       } finally {
         setSavingMap((prev) => ({ ...prev, [itemKey]: false }));
       }
     },
-    [onUpdateItemStatus, order?.id],
+    [actionOrderId, onUpdateItemStatus],
   );
 
   const handleServeAll = async () => {
@@ -597,9 +596,7 @@ const OrderModal = ({
 
   return createPortal(
     <div className="om-overlay" onClick={handleClose}>
-      {/* ⚠️ ĐÃ SỬA TÊN CLASS TẠI ĐÂY TỪ om-container SANG om-modal-box */}
       <div className="om-modal-box" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <header className="om-header">
           <div className="om-header__left">
             <div className="om-header__title-row">
@@ -639,7 +636,6 @@ const OrderModal = ({
           </div>
         </header>
 
-        {/* Progress */}
         <div className="om-progress">
           <div className="om-progress__track">
             <div
@@ -652,7 +648,6 @@ const OrderModal = ({
           </div>
         </div>
 
-        {/* Body */}
         <div className="om-body custom-scrollbar">
           <section className="om-section info-card">
             <div className="info-row">
@@ -705,8 +700,7 @@ const OrderModal = ({
             )}
             {order?.note && (
               <div className="order-note-box">
-                <Utensils size={16} />{" "}
-                <span className="text">{order.note}</span>
+                <Utensils size={16} /> <span className="text">{order.note}</span>
               </div>
             )}
           </section>
@@ -821,7 +815,6 @@ const OrderModal = ({
           </section>
         </div>
 
-        {/* Footer */}
         <footer className="om-footer">
           <button className="om-btn secondary" onClick={handleClose}>
             Đóng
