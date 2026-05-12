@@ -26,7 +26,11 @@ const modelMocks = vi.hoisted(() => ({
   Role: {},
   EventLog: { create: vi.fn() },
   Shift: { findOne: vi.fn(), find: vi.fn(), countDocuments: vi.fn() },
-  Timesheet: vi.fn(),
+  Timesheet: Object.assign(vi.fn(), {
+    findOne: vi.fn(),
+    find: vi.fn(),
+    findById: vi.fn(),
+  }),
   LeaveRequest: {},
   LeaveBalance: {},
   PayrollSetting: {},
@@ -198,6 +202,34 @@ function buildPublication(status = db.publicationStatus) {
   };
 }
 
+function toLeanTimesheet(row) {
+  if (!row) return null;
+  const shiftId =
+    row.shiftId && db.shift && idOf(row.shiftId) === idOf(db.shift._id)
+      ? db.shift
+      : row.shiftId;
+  return {
+    ...row,
+    shiftId,
+  };
+}
+
+function findTimesheetById(id) {
+  return db.timesheets.find((timesheet) => idOf(timesheet._id) === idOf(id)) || null;
+}
+
+function populatedTimesheetQuery(value) {
+  const populated = toLeanTimesheet(value);
+  return {
+    populate: vi.fn().mockReturnValue({
+      lean: vi.fn(async () => populated),
+      then: (resolve, reject) => Promise.resolve(populated).then(resolve, reject),
+    }),
+    lean: vi.fn(async () => populated),
+    then: (resolve, reject) => Promise.resolve(populated).then(resolve, reject),
+  };
+}
+
 async function checkInAt(iso, { employeeId = "staff-1", restaurantId = "rest-1" } = {}) {
   vi.setSystemTime(new Date(iso));
   const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
@@ -259,7 +291,7 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     modelMocks.Shift.find.mockImplementation(() => queryResult(db.shift ? [db.shift] : []));
     modelMocks.Shift.countDocuments.mockResolvedValue(0);
 
-    modelMocks.Timesheet.findOne = vi.fn(async (filter = {}) => {
+    modelMocks.Timesheet.findOne.mockImplementation(async (filter = {}) => {
       return db.timesheets.find((timesheet) => {
         if (filter.employeeId && idOf(filter.employeeId) !== idOf(timesheet.employeeId)) return false;
         if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
@@ -268,8 +300,10 @@ describe("Timesheet binding to official published/active staff shifts", () => {
         return true;
       }) || null;
     });
-    modelMocks.Timesheet.findById = vi.fn();
-    modelMocks.Timesheet.find = vi.fn((filter = {}) => queryResult(db.timesheets.filter((timesheet) => {
+    modelMocks.Timesheet.findById.mockImplementation((id) =>
+      populatedTimesheetQuery(findTimesheetById(id)),
+    );
+    modelMocks.Timesheet.find.mockImplementation((filter = {}) => queryResult(db.timesheets.filter((timesheet) => {
       if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
       if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
       return true;
