@@ -846,8 +846,12 @@ const OrderManagement = () => {
 
   const handleUpdateItemStatus = useCallback(
     (orderId, itemKey, nextStatus) => {
-      const order = displayOrders.find((item) => item.id === orderId);
-      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
+      const order = displayOrders.find(
+        (item) => item.id === orderId || item.actionOrderId === orderId,
+      );
+      const targetOrderId =
+        resolveKitchenActionOrderId(order, orderId) || normalizeId(orderId);
+      if (!targetOrderId) return;
       return updateItemStatus({
         orderId: targetOrderId,
         itemKey,
