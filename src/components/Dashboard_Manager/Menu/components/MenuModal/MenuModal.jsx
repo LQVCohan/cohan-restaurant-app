@@ -85,6 +85,7 @@ const MenuModal = ({
   const [quickCatName, setQuickCatName] = useState("");
   const [quickCatSaving, setQuickCatSaving] = useState(false);
   const [quickCatError, setQuickCatError] = useState("");
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const initialSnapshotRef = useRef(INITIAL_STATE);
   const catDropdownRef = useRef(null);
@@ -114,6 +115,7 @@ const MenuModal = ({
     setQuickCatName("");
     setQuickCatSaving(false);
     setQuickCatError("");
+    setShowDiscardConfirm(false);
     initialSnapshotRef.current = next;
   }, [isOpen, initialData]);
 
@@ -211,14 +213,25 @@ const MenuModal = ({
     onSubmit?.(payload);
   };
 
+  const handleDismissDiscardConfirm = useCallback(() => {
+    if (isSubmitting || quickCatSaving) return;
+    setShowDiscardConfirm(false);
+  }, [isSubmitting, quickCatSaving]);
+
+  const handleConfirmDiscard = useCallback(() => {
+    if (isSubmitting || quickCatSaving) return;
+    setShowDiscardConfirm(false);
+    onClose?.();
+  }, [isSubmitting, onClose, quickCatSaving]);
+
   const handleRequestClose = useCallback(() => {
     if (isSubmitting || quickCatSaving) return;
     if (isDirty) {
-      const ok = window.confirm(
-        "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn đóng?"
-      );
-      if (!ok) return;
+      setShowDiscardConfirm(true);
+      return;
     }
+
+    setShowDiscardConfirm(false);
     onClose?.();
   }, [isDirty, isSubmitting, onClose, quickCatSaving]);
 
@@ -227,12 +240,21 @@ const MenuModal = ({
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         e.stopPropagation();
+        if (showDiscardConfirm) {
+          handleDismissDiscardConfirm();
+          return;
+        }
         handleRequestClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleRequestClose, isOpen]);
+  }, [
+    handleDismissDiscardConfirm,
+    handleRequestClose,
+    isOpen,
+    showDiscardConfirm,
+  ]);
 
   const handleStartAddCat = () => {
     setQuickCatError("");
@@ -583,6 +605,50 @@ const MenuModal = ({
             </button>
           </div>
         </form>
+
+        {showDiscardConfirm && (
+          <div className="menu-modal-confirm-layer">
+            <div
+              className="menu-modal-confirm-card"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="menu-discard-confirm-title"
+              aria-describedby="menu-discard-confirm-description"
+            >
+              <div className="menu-modal-confirm-icon">
+                <FiAlertCircle size={18} />
+              </div>
+
+              <div className="menu-modal-confirm-content">
+                <h3 id="menu-discard-confirm-title">Bỏ thay đổi chưa lưu?</h3>
+                <p id="menu-discard-confirm-description">
+                  Bạn đang có thay đổi chưa lưu trong menu này. Nếu tiếp tục
+                  đóng, mọi chỉnh sửa hiện tại sẽ bị bỏ đi.
+                </p>
+              </div>
+
+              <div className="menu-modal-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-confirm-cancel"
+                  onClick={handleDismissDiscardConfirm}
+                  disabled={isSubmitting || quickCatSaving}
+                >
+                  Tiếp tục chỉnh sửa
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-confirm-discard"
+                  onClick={handleConfirmDiscard}
+                  disabled={isSubmitting || quickCatSaving}
+                >
+                  Bỏ thay đổi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

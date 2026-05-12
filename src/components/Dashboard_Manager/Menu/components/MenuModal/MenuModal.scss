@@ -33,6 +33,7 @@ $shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
   animation: fadeIn 0.2s ease-out;
 
   .modern-modal-container {
+    position: relative;
     background: $white;
     width: 100%;
     max-width: 550px; // Gọn gàng hơn
@@ -409,6 +410,104 @@ $shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
       small {
         font-size: 12px;
         color: $slate-500;
+      }
+    }
+  }
+
+  .menu-modal-confirm-layer {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    border-radius: 12px;
+    z-index: 80;
+  }
+
+  .menu-modal-confirm-card {
+    width: 100%;
+    max-width: 380px;
+    background: $white;
+    border: 1px solid $slate-200;
+    border-radius: 12px;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .menu-modal-confirm-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #fef2f2;
+    color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .menu-modal-confirm-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: $slate-800;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: $slate-600;
+    }
+  }
+
+  .menu-modal-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    button {
+      min-width: 132px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+
+    .btn-confirm-cancel {
+      background: $white;
+      border-color: $slate-200;
+      color: $slate-600;
+
+      &:hover:not(:disabled) {
+        background: $slate-50;
+        color: $slate-800;
+      }
+    }
+
+    .btn-confirm-discard {
+      background: #dc2626;
+      color: $white;
+
+      &:hover:not(:disabled) {
+        background: #b91c1c;
       }
     }
   }
