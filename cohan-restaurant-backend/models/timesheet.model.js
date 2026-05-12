@@ -29,6 +29,30 @@ async function runAttendanceExceptionDetection() {
   }
 }
 
+async function syncAttendanceOvertimeState() {
+  try {
+    const { applyAttendanceOvertimeState } = await import(
+      "../src/services/attendance/attendanceOvertimeState.service.js"
+    );
+
+    const currentStatus = String(this.overtimeApprovalStatus || "")
+      .trim()
+      .toLowerCase();
+    const forcePending =
+      this.isModified("overtimeMinutes") &&
+      Number(this.overtimeMinutes || 0) > 0 &&
+      ["approved", "rejected"].includes(currentStatus);
+
+    applyAttendanceOvertimeState(this, { forcePending });
+  } catch (error) {
+    console.warn(
+      "Failed to sync attendance overtime state:",
+      error?.message || error,
+    );
+    throw error;
+  }
+}
+
 const TimesheetSchema = new Schema(
   {
     shiftId: { type: Types.ObjectId, ref: "Shift", default: null },
@@ -122,6 +146,7 @@ const TimesheetSchema = new Schema(
 );
 
 TimesheetSchema.pre("find", runAttendanceExceptionDetection);
+TimesheetSchema.pre("save", syncAttendanceOvertimeState);
 
 TimesheetSchema.index(
   { employeeId: 1, workDate: 1, shiftId: 1 },
