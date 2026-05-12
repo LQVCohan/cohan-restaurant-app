@@ -49,6 +49,32 @@ function isBlankStatus(value) {
   return value == null || String(value).trim() === "";
 }
 
+function normalizeTableCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function isDuplicateKeyError(error) {
+  return error?.code === 11000 || String(error?.message || "").includes("E11000");
+}
+
+async function runLeanQuery(query, { session = null, sort = null } = {}) {
+  let chain = query;
+
+  if (session && typeof chain?.session === "function") {
+    chain = chain.session(session);
+  }
+
+  if (sort && typeof chain?.sort === "function") {
+    chain = chain.sort(sort);
+  }
+
+  if (typeof chain?.lean === "function") {
+    return chain.lean();
+  }
+
+  return chain;
+}
+
 export const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 
 export const ACTIVE_SESSION_STATUSES = [
@@ -56,6 +82,12 @@ export const ACTIVE_SESSION_STATUSES = [
   SESSION_STATUS.DINING,
   SESSION_STATUS.READY_TO_PAY,
 ];
+
+export const ACTIVE_TABLE_SESSION_SORT = Object.freeze({
+  openedAt: -1,
+  createdAt: -1,
+  _id: -1,
+});
 
 export function buildActiveTableSessionKey({ restaurantId, tableId }) {
   if (!restaurantId || !tableId) return null;
@@ -105,6 +137,193 @@ export function activeTableSessionLookupFilter({ restaurantId, tableId, tableCod
   if (tableCode) return { ...base, tableCode };
 
   return base;
+}
+
+export async function ensureActiveTableSessionForDineInOrder({
+  OrderModel,
+  createOrderCode,
+  restaurantId,
+  tableId,
+  tableCode,
+  userId,
+  session = null,
+  now = new Date(),
+}) {
+  if (!OrderModel) throw new Error("OrderModel is required");
+  if (!restaurantId) throw new Error("restaurantId is required");
+  if (!tableId) throw new Error("tableId is required");
+
+  const normalizedTableCode = normalizeTableCode(tableCode);
+  if (!normalizedTableCode) {
+    throw new Error("tableCode is required");
+  }
+
+  const activeSessionKey = buildActiveTableSessionKey({ restaurantId, tableId });
+  const byActiveKeyFilter = activeSessionKey
+    ? {
+        restaurantId,
+        activeSessionKey,
+        orderKind: ORDER_KIND.TABLE_SESSION,
+        sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+        orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+      }
+    : null;
+
+  const backfillActiveKeyIfNeeded = async (sessionOrder) => {
+    if (!sessionOrder || !activeSessionKey || sessionOrder.activeSessionKey) {
+      return sessionOrder;
+    }
+
+    try {
+      await OrderModel.updateOne(
+        { _id: sessionOrder._id, activeSessionKey: { $in: [null, undefined] } },
+        { $set: { activeSessionKey } },
+        session ? { session } : {},
+      );
+      return { ...sessionOrder, activeSessionKey };
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        return sessionOrder;
+      }
+    }
+
+    if (!byActiveKeyFilter) {
+      return sessionOrder;
+    }
+
+    const refreshed = await runLeanQuery(OrderModel.findOne(byActiveKeyFilter), {
+      session,
+      sort: ACTIVE_TABLE_SESSION_SORT,
+    });
+
+    return refreshed || sessionOrder;
+  };
+
+  if (byActiveKeyFilter) {
+    const existingByKey = await runLeanQuery(OrderModel.findOne(byActiveKeyFilter), {
+      session,
+      sort: ACTIVE_TABLE_SESSION_SORT,
+    });
+
+    if (existingByKey) {
+      return {
+        sessionOrder: existingByKey,
+        created: false,
+      };
+    }
+  }
+
+  const lookupFilter = activeTableSessionLookupFilter({
+    restaurantId,
+    tableId,
+    tableCode: normalizedTableCode,
+  });
+
+  const existing = await runLeanQuery(OrderModel.findOne(lookupFilter), {
+    session,
+    sort: ACTIVE_TABLE_SESSION_SORT,
+  });
+
+  if (existing) {
+    return {
+      sessionOrder: await backfillActiveKeyIfNeeded(existing),
+      created: false,
+    };
+  }
+
+  if (typeof createOrderCode !== "function") {
+    throw new Error("createOrderCode is required");
+  }
+
+  const parentOrderCode = await createOrderCode(
+    "POS",
+    now,
+    normalizedTableCode,
+  );
+
+  try {
+    const [created] = await OrderModel.create(
+      [
+        {
+          orderCode: parentOrderCode,
+          parentOrderCode: null,
+          orderKind: ORDER_KIND.TABLE_SESSION,
+          parentOrderId: null,
+          rootOrderId: null,
+          splitStatus: SPLIT_STATUS.NONE,
+          sessionStatus: SESSION_STATUS.OPEN,
+          kitchenStatus: KITCHEN_STATUS.DRAFT,
+          orderPaymentStatus: ORDER_PAYMENT_STATUS.UNPAID,
+          activeSessionKey,
+          openedAt: now,
+          closedAt: null,
+          tableId,
+          tableCode: normalizedTableCode,
+          userId: userId || undefined,
+          restaurantId,
+          orderType: "dine_in",
+          items: [],
+          totals: {
+            subtotal: 0,
+            discount: 0,
+            tax: 0,
+            service: 0,
+            shippingFee: 0,
+            grandTotal: 0,
+          },
+          payment: {
+            method: "cash",
+            status: "pending",
+          },
+          currentStatus: KITCHEN_STATUS.PENDING,
+          statusTimeline: [
+            {
+              status: KITCHEN_STATUS.PENDING,
+              at: now,
+              note: "Opened table session",
+            },
+          ],
+        },
+      ],
+      session ? { session } : {},
+    );
+
+    return {
+      sessionOrder: created,
+      created: true,
+    };
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
+    }
+
+    if (byActiveKeyFilter) {
+      const existingByKey = await runLeanQuery(OrderModel.findOne(byActiveKeyFilter), {
+        session,
+        sort: ACTIVE_TABLE_SESSION_SORT,
+      });
+      if (existingByKey) {
+        return {
+          sessionOrder: existingByKey,
+          created: false,
+        };
+      }
+    }
+
+    const existingByLookup = await runLeanQuery(OrderModel.findOne(lookupFilter), {
+      session,
+      sort: ACTIVE_TABLE_SESSION_SORT,
+    });
+
+    if (existingByLookup) {
+      return {
+        sessionOrder: await backfillActiveKeyIfNeeded(existingByLookup),
+        created: false,
+      };
+    }
+
+    throw error;
+  }
 }
 
 export function childOrdersForSessionFilter({ restaurantId, parentOrderId }) {
