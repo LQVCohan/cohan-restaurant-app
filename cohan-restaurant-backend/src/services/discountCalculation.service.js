@@ -176,7 +176,7 @@ export async function calculateDiscountBreakdown({
   );
   const promotionLines = [];
   const appliedPromotionIds = new Set();
-
+  const appliedPromotionDocsById = new Map();
   let linePromotionDiscount = 0;
 
   for (const item of items || []) {
@@ -200,7 +200,7 @@ export async function calculateDiscountBreakdown({
 
     linePromotionDiscount += discount;
     appliedPromotionIds.add(String(promotion._id));
-
+    appliedPromotionDocsById.set(String(promotion._id), promotion);
     promotionLines.push({
       lineId: item?._id ? String(item._id) : item?.lineId || "",
       dishId: item?.dishId || null,
@@ -253,11 +253,22 @@ export async function calculateDiscountBreakdown({
 
     if (orderPromotionDiscount > 0) {
       appliedPromotionIds.add(String(selectedPromotion._id));
+      appliedPromotionDocsById.set(
+        String(selectedPromotion._id),
+        selectedPromotion,
+      );
     }
   }
 
   let promotionDiscount = linePromotionDiscount + orderPromotionDiscount;
-
+  const resetAppliedPromotions = () => {
+    promotionDiscount = 0;
+    linePromotionDiscount = 0;
+    orderPromotionDiscount = 0;
+    promotionLines.length = 0;
+    appliedPromotionIds.clear();
+    appliedPromotionDocsById.clear();
+  };
   const code = String(pricing?.voucherCode || "")
     .trim()
     .toUpperCase();
@@ -278,37 +289,32 @@ export async function calculateDiscountBreakdown({
     const maxUsage = toNum(coupon.maxUsage);
     if (maxUsage > 0 && toNum(coupon.used) >= maxUsage)
       throw new Error("Invalid voucher: usage limit reached");
+    const appliedPromotionDocs = Array.from(appliedPromotionDocsById.values());
     const hasPromotion = promotionDiscount > 0;
     const couponExclusive = isExclusive(coupon);
-    const promotionExclusive = isExclusive(selectedPromotion);
-    const stackAllowed = canStack({
-      coupon,
-      promotionSelected: selectedPromotion,
-    });
+    const promotionExclusive = appliedPromotionDocs.some((promotion) =>
+      isExclusive(promotion),
+    );
+    const stackAllowed = appliedPromotionDocs.every((promotion) =>
+      canStack({
+        coupon,
+        promotionSelected: promotion,
+      }),
+    );
 
     let shouldApplyVoucher = true;
 
     if (hasPromotion) {
       if (couponExclusive) {
         // Voucher độc quyền: giữ voucher, bỏ promotion.
-        promotionDiscount = 0;
-        promotionDiscount = 0;
-        linePromotionDiscount = 0;
-        orderPromotionDiscount = 0;
-        promotionLines.length = 0;
-        appliedPromotionIds.clear();
+        resetAppliedPromotions();
       } else if (promotionExclusive) {
         // Legacy/backward-compatible: nếu promotion có exclusive thì giữ promotion, bỏ voucher.
         shouldApplyVoucher = false;
       } else if (!stackAllowed) {
         // Không được dùng chồng: voucher code do user nhập được ưu tiên,
         // promotion tự động/được chọn sẽ bị bỏ.
-        promotionDiscount = 0;
-        promotionDiscount = 0;
-        linePromotionDiscount = 0;
-        orderPromotionDiscount = 0;
-        promotionLines.length = 0;
-        appliedPromotionIds.clear();
+        resetAppliedPromotions();
       }
     }
 

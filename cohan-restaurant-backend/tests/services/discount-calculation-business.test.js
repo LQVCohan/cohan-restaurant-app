@@ -386,6 +386,108 @@ describe("discount calculation business", () => {
     expect(r.voucherDiscount).toBe(0);
     expect(r.appliedCoupons).toEqual([]);
   });
+  it("blocks voucher stacking with non-stackable item promotion", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: {
+          stackable: true,
+          combinableWithPromotions: true,
+        },
+      }),
+    );
+
+    Promotion.findOne.mockReturnValue(chain(null));
+    Promotion.find.mockReturnValue(
+      chainList([
+        {
+          _id: "promo-icecream",
+          name: "Kem giảm 5%",
+          isActive: true,
+          scope: "ITEM",
+          itemId: "item-icecream",
+          promotionType: "PERCENTAGE",
+          discountType: "PERCENT",
+          discountValue: 5,
+          stacking: false,
+        },
+      ]),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [
+        {
+          dishId: "item-icecream",
+          categoryId: "cat-dessert",
+          name: "Kem",
+          quantity: 1,
+          lineSubtotal: 100000,
+        },
+      ],
+      pricing: { voucherCode: "A" },
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+    expect(result.promotionDiscount).toBe(0);
+    expect(result.promotionLines).toEqual([]);
+    expect(result.appliedPromotions).toEqual([]);
+  });
+
+  it("exclusive item promotion blocks voucher discount", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: {
+          stackable: true,
+          combinableWithPromotions: true,
+        },
+      }),
+    );
+
+    Promotion.findOne.mockReturnValue(chain(null));
+    Promotion.find.mockReturnValue(
+      chainList([
+        {
+          _id: "promo-icecream",
+          name: "Kem giảm 5%",
+          isActive: true,
+          scope: "ITEM",
+          itemId: "item-icecream",
+          promotionType: "PERCENTAGE",
+          discountType: "PERCENT",
+          discountValue: 5,
+          stacking: true,
+          exclusive: true,
+        },
+      ]),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [
+        {
+          dishId: "item-icecream",
+          categoryId: "cat-dessert",
+          name: "Kem",
+          quantity: 1,
+          lineSubtotal: 100000,
+        },
+      ],
+      pricing: { voucherCode: "A" },
+    });
+
+    expect(result.promotionDiscount).toBe(5000);
+    expect(result.voucherDiscount).toBe(0);
+    expect(result.appliedCoupons).toEqual([]);
+    expect(result.appliedPromotions).toEqual(["promo-icecream"]);
+  });
   it("applies item-level promotion to matching item lines", async () => {
     Coupon.findOne.mockReturnValue(chain(null));
     Promotion.findOne.mockReturnValue(chain(null));
