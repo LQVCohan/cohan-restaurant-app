@@ -326,7 +326,7 @@ const MenuItemModal = ({
 
   useEffect(() => {
     if (!isOpen || !editId || !restaurantId || verifiedCurrentRecipeItem) return;
-    if (["loading", "loaded", "missing", "error"].includes(recipeDetailState?.status)) {
+    if (["loading", "loaded", "missing"].includes(recipeDetailState?.status)) {
       return;
     }
     ensureRecipeLoaded(editId);
@@ -449,6 +449,21 @@ const MenuItemModal = ({
     }
   };
 
+  const handleRetryRecipeLoad = async () => {
+    if (!editId || isSubmitting || isRecipeGuardPending) return;
+
+    const nextState = await ensureRecipeLoaded(editId);
+    if (nextState?.status === "error") {
+      pushToast(
+        `Không thể tải dữ liệu recipe: ${getGraphQLErrorMessage(
+          nextState.error,
+          "Vui lòng thử lại."
+        )}`,
+        "error"
+      );
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -458,10 +473,7 @@ const MenuItemModal = ({
       return;
     }
     if (isRecipeGuardBlocked) {
-      pushToast(
-        "Không thể xác minh dữ liệu recipe để lưu an toàn. Vui lòng thử lại.",
-        "error"
-      );
+      await handleRetryRecipeLoad();
       return;
     }
     if (!restaurantId) {
@@ -581,7 +593,7 @@ const MenuItemModal = ({
   };
 
   const isSaving = isSubmitting;
-  const isSubmitDisabled = isSaving || isRecipeGuardPending || isRecipeGuardBlocked;
+  const isSubmitDisabled = isSaving || isRecipeGuardPending;
 
   const renderImagePreview = () => {
     if (formData.thumbImage && !imgError) {
@@ -826,17 +838,18 @@ const MenuItemModal = ({
           Đóng
         </button>
         <button
-          type="submit"
-          form="menu-form"
+          type={isRecipeGuardBlocked ? "button" : "submit"}
+          form={isRecipeGuardBlocked ? undefined : "menu-form"}
           className="btn-primary"
           disabled={isSubmitDisabled}
+          onClick={isRecipeGuardBlocked ? handleRetryRecipeLoad : undefined}
         >
           {isSaving ? (
             "Đang lưu..."
           ) : isRecipeGuardPending ? (
             "Đang tải dữ liệu recipe..."
           ) : isRecipeGuardBlocked ? (
-            "Recipe chưa sẵn sàng"
+            "Thử tải lại recipe"
           ) : (
             <>
               <Save size={18} /> {editId ? "Lưu thay đổi" : "Tạo món mới"}
