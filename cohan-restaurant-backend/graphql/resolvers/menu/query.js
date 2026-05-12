@@ -26,7 +26,22 @@ const toObjectIdOrNull = (id) => {
 const normalizeMenuItemSort = (sort) =>
   MENU_ITEM_SORTS.has(sort) ? sort : DEFAULT_MENU_ITEM_SORT;
 
-const getMenuItemSortSpec = (sort = DEFAULT_MENU_ITEM_SORT) => {
+const getMenuItemsListSortSpec = (sort = DEFAULT_MENU_ITEM_SORT) => {
+  switch (normalizeMenuItemSort(sort)) {
+    case "name_desc":
+      return { name: -1, _id: -1 };
+    case "price_asc":
+      return { basePrice: 1, _id: 1 };
+    case "price_desc":
+      return { basePrice: -1, _id: -1 };
+    case "default":
+    case "name_asc":
+    default:
+      return { name: 1, _id: 1 };
+  }
+};
+
+const getMenuItemConnectionSortSpec = (sort = DEFAULT_MENU_ITEM_SORT) => {
   switch (normalizeMenuItemSort(sort)) {
     case "name_asc":
       return { name: 1, _id: 1 };
@@ -196,7 +211,7 @@ export const MenuQuery = {
     const normalizedSort = normalizeMenuItemSort(sort);
 
     return MenuItem.find(q)
-      .sort(getMenuItemSortSpec(normalizedSort))
+      .sort(getMenuItemsListSortSpec(normalizedSort))
       .limit(safeLimit)
       .lean({ virtuals: true });
   },
@@ -265,7 +280,7 @@ export const MenuQuery = {
     const safeLimit = Math.min(Math.max(limit || 20, 1), 200);
 
     const docs = await MenuItem.find(q)
-      .sort(getMenuItemSortSpec(normalizedSort))
+      .sort(getMenuItemConnectionSortSpec(normalizedSort))
       .limit(safeLimit + 1)
       .lean({ virtuals: true });
 
