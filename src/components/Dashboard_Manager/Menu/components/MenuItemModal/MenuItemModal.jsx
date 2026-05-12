@@ -133,10 +133,10 @@ const buildRecipeForm = (methods = [], existingVariants = []) => {
         const fallbackKey =
           method.name.toLowerCase().replace(/\s+/g, "_") || `sv_${index}`;
         const mode = method.mode || existingVariant?.mode || "PORTION";
-        const ingredients = Array.isArray(method.ingredients)
-          ? cloneIngredients(method.ingredients)
-          : Array.isArray(existingVariant?.ingredients)
+        const ingredients = existingVariant
           ? cloneIngredients(existingVariant.ingredients)
+          : Array.isArray(method.ingredients)
+          ? cloneIngredients(method.ingredients)
           : [];
 
         return {
