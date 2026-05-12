@@ -36,6 +36,7 @@ const Q_ACTIVE_MENU_PROMOTIONS = gql`
 
 const SUPPORTED_SCOPES = new Set(["item", "category"]);
 const SUPPORTED_PROMOTION_TYPES = new Set(["FIXED", "PERCENTAGE"]);
+const UNSUPPORTED_PROMOTION_TYPES = new Set(["BOGO", "COMBO", "FREESHIP"]);
 const SUPPORTED_DISCOUNT_TYPES = new Set(["AMOUNT", "PERCENT"]);
 
 const normalizeMenuPromotion = (row = {}) => ({
@@ -65,6 +66,10 @@ const normalizeMenuPromotion = (row = {}) => ({
 
 const isSupportedDisplayPromotion = (promotion) => {
   if (!promotion?.id || !SUPPORTED_SCOPES.has(promotion.scope)) {
+    return false;
+  }
+
+  if (UNSUPPORTED_PROMOTION_TYPES.has(promotion.promotionType)) {
     return false;
   }
 
