@@ -389,7 +389,39 @@ describe("cart access hardening", () => {
       })
     );
     expect(result.items[0]._id).toBe("valid-generated-item");
-    expect(inv.reserveForOrderTx.mock.calls[0][0].orderCode).not.toContain(":new");
+    expect(inv.reserveForOrderTx.mock.calls[0][0].orderCode).not.toContain("[object Object]");
+  });
+
+  it("addCartItem stringifies object-like generated item ids for hold orderCode", async () => {
+    const m = (await import("../../graphql/resolvers/cart/mutation.js")).CartMutation;
+    const cart = makeCart();
+    model.Cart.findOne.mockImplementation(() => sessionQuery(cart));
+    mg.Types.ObjectId.mockImplementationOnce(() => ({
+      toHexString: () => "valid-generated-item",
+      toString: () => "[object Object]",
+    }));
+
+    const result = await m.addCartItem(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          menuItemId: "valid-m1",
+          quantity: 2,
+          price: 10,
+          name: "A",
+        },
+      },
+      { user: { id: "valid-u1" } }
+    );
+
+    expect(inv.reserveForOrderTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderCode: "CART:valid-c1:valid-generated-item",
+      })
+    );
+    expect(result.items[0]._id).toBe("valid-generated-item");
+    expect(inv.reserveForOrderTx.mock.calls[0][0].orderCode).not.toContain("[object Object]");
   });
 
   it("updateCartItem increase reserves only the delta", async () => {
