@@ -11,6 +11,7 @@ import {
   calculateAttendanceMetrics,
   deriveAttendanceStatus,
 } from "./attendanceCalculation.service.js";
+import { applyAttendanceOvertimeState } from "./attendanceOvertimeApproval.service.js";
 import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
 import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 import {
@@ -340,12 +341,10 @@ async function resolveShift(shiftId) {
   return Shift.findById(sid).lean();
 }
 
-function assertTimesheetMatchesRequestScope(timesheet, {
-  employeeId,
-  restaurantId,
-  workDate,
-  shiftId,
-}) {
+function assertTimesheetMatchesRequestScope(
+  timesheet,
+  { employeeId, restaurantId, workDate, shiftId },
+) {
   if (!timesheet) return;
 
   if (String(timesheet.employeeId || "") !== String(employeeId || "")) {
@@ -370,7 +369,11 @@ function assertTimesheetMatchesRequestScope(timesheet, {
   }
 }
 
-function buildRequestedMetrics(existingTimesheet, requestedCheckInAt, requestedCheckOutAt) {
+function buildRequestedMetrics(
+  existingTimesheet,
+  requestedCheckInAt,
+  requestedCheckOutAt,
+) {
   const plannedStartTime =
     existingTimesheet?.plannedStartTime ||
     existingTimesheet?.shiftId?.startTime ||
@@ -558,8 +561,10 @@ export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
     const leftWorkDate = new Date(left.workDate || 0).getTime();
     if (rightWorkDate !== leftWorkDate) return rightWorkDate - leftWorkDate;
 
-    return new Date(right.createdAt || 0).getTime() -
-      new Date(left.createdAt || 0).getTime();
+    return (
+      new Date(right.createdAt || 0).getTime() -
+      new Date(left.createdAt || 0).getTime()
+    );
   });
 
   return rows.map(mapCorrectionRequest);
@@ -683,8 +688,9 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     pendingFilter.timesheetId = timesheetId;
   }
 
-  const existingPending =
-    await AttendanceCorrectionRequest.findOne(pendingFilter);
+  const existingPending = await AttendanceCorrectionRequest.findOne(
+    pendingFilter,
+  );
   if (existingPending) {
     throw new Error("ATTENDANCE_CORRECTION_PENDING_EXISTS");
   }
@@ -827,6 +833,8 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
         latenessMinutes: Number(timesheet.latenessMinutes || 0),
         earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
         overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+        approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
+        overtimeApprovalStatus: timesheet.overtimeApprovalStatus || null,
         source: timesheet.source || null,
         isOffSchedule: Boolean(timesheet.isOffSchedule),
         offScheduleApprovalStatus: timesheet.offScheduleApprovalStatus || null,
@@ -840,9 +848,10 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
 
   const noteText = `Chỉnh công đã duyệt: ${reviewNote || request.reason}`;
   const reviewActorId = getActorId(ctx);
+  const previousOvertimeMinutes = Number(timesheet?.overtimeMinutes || 0);
 
   if (!timesheet) {
-    timesheet = await Timesheet.create({
+    timesheet = new Timesheet({
       employeeId: request.employeeId,
       restaurantId: request.restaurantId,
       shiftId: request.shiftId || null,
@@ -858,10 +867,12 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       offScheduleApprovalStatus: isOffSchedule ? "approved" : "not_required",
       offScheduleReviewedBy: isOffSchedule ? reviewActorId : null,
       offScheduleReviewedAt: isOffSchedule ? new Date() : null,
-      offScheduleReviewNote: isOffSchedule ? (reviewNote || request.reason) : "",
+      offScheduleReviewNote: isOffSchedule ? reviewNote || request.reason : "",
       source: "manual_correction",
       note: appendNote("", `Chỉnh công đã duyệt: ${request.reason}`),
     });
+    applyAttendanceOvertimeState(timesheet);
+    await timesheet.save();
   } else {
     timesheet.actualCheckInAt = actualCheckInAt;
     timesheet.actualCheckOutAt = actualCheckOutAt;
@@ -882,12 +893,10 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       timesheet.offScheduleReviewNote = reviewNote || request.reason;
     }
 
-    if (typeof timesheet.approvedOvertimeMinutes !== "undefined") {
-      timesheet.approvedOvertimeMinutes = 0;
-    }
-    if (typeof timesheet.overtimeApprovalStatus !== "undefined") {
-      timesheet.overtimeApprovalStatus = "pending";
-    }
+    applyAttendanceOvertimeState(timesheet, {
+      previousOvertimeMinutes,
+      preserveApproved: true,
+    });
 
     await timesheet.save();
   }
@@ -899,6 +908,8 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
     latenessMinutes: Number(timesheet.latenessMinutes || 0),
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
+    overtimeApprovalStatus: timesheet.overtimeApprovalStatus || null,
     source: timesheet.source || null,
     isOffSchedule: Boolean(timesheet.isOffSchedule),
     offScheduleApprovalStatus: timesheet.offScheduleApprovalStatus || null,
