@@ -1,0 +1,72 @@
+type PublicOrderPayment {
+  status: String
+  requestedAt: DateTime
+}
+
+type PublicOrderTotals {
+  grandTotal: Int!
+}
+
+type PublicTableOrderItem {
+  id: ID!
+  name: String!
+  quantity: Float!
+  unit: String
+  servingKey: String
+  unitPrice: Int
+  modifiersPrice: Int
+  lineSubtotal: Int
+  note: String
+  status: ItemStatus
+}
+
+type PublicTableSessionSummary {
+  id: ID!
+  orderCode: String
+  orderKind: String
+  currentStatus: OrderStatus
+  payment: PublicOrderPayment
+}
+
+type PublicTableOrder {
+  id: ID!
+  orderCode: String
+  orderKind: String
+  currentStatus: OrderStatus
+  createdAt: DateTime
+  note: String
+  totals: PublicOrderTotals!
+  payment: PublicOrderPayment
+  items: [PublicTableOrderItem!]!
+}
+
+type PublicActiveTableSessionOrdersResult {
+  session: PublicTableSessionSummary
+  orders: [PublicTableOrder!]!
+  tableId: ID
+  tableCode: String
+}
+
+type PublicRequestTablePaymentResult {
+  ok: Boolean!
+  warning: Boolean!
+  readyForPayment: Boolean!
+  message: String
+  pendingOrderCodes: [String!]!
+  session: PublicTableSessionSummary
+  orders: [PublicTableOrder!]!
+  requestedAt: String
+}
+
+extend type Query {
+  publicActiveTableSessionOrders(
+    restaurantId: ID!
+    tableId: ID!
+  ): PublicActiveTableSessionOrdersResult!
+}
+
+extend type Mutation {
+  publicRequestTablePayment(
+    input: RequestTablePaymentInput!
+  ): PublicRequestTablePaymentResult!
+}
