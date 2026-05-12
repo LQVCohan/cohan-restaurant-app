@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { gql, useQuery } from "@apollo/client";
 
 const Q_ACTIVE_MENU_PROMOTIONS = gql`
@@ -39,8 +39,46 @@ const SUPPORTED_PROMOTION_TYPES = new Set(["FIXED", "PERCENTAGE"]);
 const UNSUPPORTED_PROMOTION_TYPES = new Set(["BOGO", "COMBO", "FREESHIP"]);
 const SUPPORTED_DISCOUNT_TYPES = new Set(["AMOUNT", "PERCENT"]);
 
+const normalizeEntityId = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+};
+
+const collectCandidateIds = (values = []) => {
+  const seen = new Set();
+
+  return values.reduce((ids, value) => {
+    const normalizedId = normalizeEntityId(value);
+    if (!normalizedId || seen.has(normalizedId)) {
+      return ids;
+    }
+
+    seen.add(normalizedId);
+    ids.push(normalizedId);
+    return ids;
+  }, []);
+};
+
+const getMenuItemCandidateIds = (item = {}) =>
+  collectCandidateIds([
+    item?.id,
+    item?._id,
+    item?.dishId,
+    item?.menuId,
+    item?.menuItemId,
+    item?.menuItem?.id,
+    item?.menuItem?._id,
+  ]);
+
+const getMenuCategoryCandidateIds = (item = {}) =>
+  collectCandidateIds([
+    item?.categoryId,
+    item?.category?.id,
+    item?.category?._id,
+  ]);
+
 const normalizeMenuPromotion = (row = {}) => ({
-  id: row?.id || "",
+  id: normalizeEntityId(row?.id),
   name: row?.name || row?.code || "Ưu đãi",
   code: row?.code || "",
   promotionType: String(row?.promotionType || "")
@@ -55,8 +93,8 @@ const normalizeMenuPromotion = (row = {}) => ({
   discountValue: Number(row?.discountValue || 0),
   minOrderValue: Number(row?.minOrderValue || 0),
   maxDiscount: Number(row?.maxDiscount || 0),
-  categoryId: row?.categoryId || "",
-  itemId: row?.itemId || "",
+  categoryId: normalizeEntityId(row?.categoryId),
+  itemId: normalizeEntityId(row?.itemId),
   level: Number(row?.level || 0),
   stacking: Boolean(row?.stacking),
   isActive: Boolean(row?.isActive),
@@ -91,14 +129,22 @@ const pickHigherLevelPromotion = (currentPromotion, candidatePromotion) => {
 
 const buildPromotionLookup = (promotions, key) =>
   promotions.reduce((lookup, promotion) => {
-    const targetId = promotion?.[key];
+    const targetId = normalizeEntityId(promotion?.[key]);
     if (!targetId) return lookup;
 
-    return {
-      ...lookup,
-      [targetId]: pickHigherLevelPromotion(lookup[targetId], promotion),
-    };
+    lookup[targetId] = pickHigherLevelPromotion(lookup[targetId], promotion);
+    return lookup;
   }, {});
+
+const findPromotionInLookup = (candidateIds = [], lookup = {}) => {
+  for (const candidateId of candidateIds) {
+    if (lookup[candidateId]) {
+      return lookup[candidateId];
+    }
+  }
+
+  return null;
+};
 
 const selectPromotionForMenuItem = (
   item,
@@ -106,10 +152,16 @@ const selectPromotionForMenuItem = (
 ) => {
   if (!item) return null;
 
-  const itemPromotion = promotionByItemId[item.id];
+  const itemPromotion = findPromotionInLookup(
+    getMenuItemCandidateIds(item),
+    promotionByItemId,
+  );
   if (itemPromotion) return itemPromotion;
 
-  return promotionByCategoryId[item.categoryId] || null;
+  return findPromotionInLookup(
+    getMenuCategoryCandidateIds(item),
+    promotionByCategoryId,
+  );
 };
 
 const formatDiscountValue = (value) => {
@@ -150,8 +202,13 @@ const getPromotionLabel = (promotion) => {
 
 export const __testables = {
   buildPromotionLookup,
+  collectCandidateIds,
+  findPromotionInLookup,
+  getMenuCategoryCandidateIds,
+  getMenuItemCandidateIds,
   getPromotionLabel,
   isSupportedDisplayPromotion,
+  normalizeEntityId,
   normalizeMenuPromotion,
   pickHigherLevelPromotion,
   selectPromotionForMenuItem,
@@ -187,15 +244,20 @@ export function useActiveMenuPromotions(restaurantId, { skip = false } = {}) {
     [promotions],
   );
 
-  return {
-    promotions,
-    promotionByItemId,
-    promotionByCategoryId,
-    getPromotionForMenuItem: (item) =>
+  const getPromotionForMenuItem = useCallback(
+    (item) =>
       selectPromotionForMenuItem(item, {
         promotionByItemId,
         promotionByCategoryId,
       }),
+    [promotionByCategoryId, promotionByItemId],
+  );
+
+  return {
+    promotions,
+    promotionByItemId,
+    promotionByCategoryId,
+    getPromotionForMenuItem,
     getPromotionLabel,
     loading,
     error,
