@@ -36,6 +36,26 @@ const getCategoryLabelWithIcon = (name = "") => {
   return `${resolveCategoryIcon(safeName)} ${safeName}`;
 };
 
+const getErrorMessage = (
+  error,
+  fallbackMessage = "Không thể tạo nhóm thực đơn mới."
+) => {
+  const graphQlMessage = error?.graphQLErrors
+    ?.map((entry) => entry?.message)
+    .filter(Boolean)
+    .join("; ");
+
+  if (graphQlMessage) return graphQlMessage;
+  if (error?.networkError?.result?.errors?.length) {
+    return error.networkError.result.errors
+      .map((entry) => entry?.message)
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return error?.message || fallbackMessage;
+};
+
 const INITIAL_STATE = {
   id: null,
   name: "",
@@ -64,6 +84,7 @@ const MenuModal = ({
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
   const [quickCatName, setQuickCatName] = useState("");
   const [quickCatSaving, setQuickCatSaving] = useState(false);
+  const [quickCatError, setQuickCatError] = useState("");
 
   const initialSnapshotRef = useRef(INITIAL_STATE);
   const catDropdownRef = useRef(null);
@@ -92,6 +113,7 @@ const MenuModal = ({
     setIsAddingNewCat(false);
     setQuickCatName("");
     setQuickCatSaving(false);
+    setQuickCatError("");
     initialSnapshotRef.current = next;
   }, [isOpen, initialData]);
 
@@ -105,6 +127,7 @@ const MenuModal = ({
         if (!quickCatSaving) {
           setIsAddingNewCat(false);
           setQuickCatName("");
+          setQuickCatError("");
         }
       }
     };
@@ -156,6 +179,7 @@ const MenuModal = ({
     if (errors.categoryMenuId) {
       setErrors((prev) => ({ ...prev, categoryMenuId: "" }));
     }
+    setQuickCatError("");
     setIsCatDropdownOpen(false);
   };
 
@@ -210,11 +234,15 @@ const MenuModal = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleRequestClose, isOpen]);
 
-  const handleStartAddCat = () => setIsAddingNewCat(true);
+  const handleStartAddCat = () => {
+    setQuickCatError("");
+    setIsAddingNewCat(true);
+  };
 
   const handleCancelAddCat = () => {
     setIsAddingNewCat(false);
     setQuickCatName("");
+    setQuickCatError("");
   };
 
   const handleQuickCatSave = async (e) => {
@@ -222,10 +250,21 @@ const MenuModal = ({
     e?.stopPropagation();
 
     const name = quickCatName.trim();
-    if (!name || !createCategoryMenu) return;
+    if (!name) return;
+
+    if (!restaurantId) {
+      setQuickCatError("Không thể tạo nhóm thực đơn vì chưa chọn nhà hàng.");
+      return;
+    }
+
+    if (!createCategoryMenu) {
+      setQuickCatError("Không thể tạo nhóm thực đơn lúc này. Vui lòng thử lại.");
+      return;
+    }
 
     try {
       setQuickCatSaving(true);
+      setQuickCatError("");
       const created = await createCategoryMenu({
         restaurantId,
         name,
@@ -243,8 +282,11 @@ const MenuModal = ({
       setQuickCatName("");
       setIsAddingNewCat(false);
       setIsCatDropdownOpen(false);
+      setQuickCatError("");
     } catch (err) {
-      alert(err?.message || "Lỗi khi tạo nhóm thực đơn mới");
+      setQuickCatError(
+        getErrorMessage(err, "Không thể tạo nhóm thực đơn mới. Vui lòng thử lại.")
+      );
     } finally {
       setQuickCatSaving(false);
     }
@@ -408,7 +450,10 @@ const MenuModal = ({
                               type="text"
                               placeholder="Tên nhóm thực đơn..."
                               value={quickCatName}
-                              onChange={(e) => setQuickCatName(e.target.value)}
+                              onChange={(e) => {
+                                setQuickCatName(e.target.value);
+                                if (quickCatError) setQuickCatError("");
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault();
@@ -438,6 +483,12 @@ const MenuModal = ({
                               <FiX />
                             </button>
                           </div>
+                        )}
+
+                        {quickCatError && (
+                          <p className="error-text" style={{ marginTop: 8 }}>
+                            {quickCatError}
+                          </p>
                         )}
                       </div>
                     </div>
