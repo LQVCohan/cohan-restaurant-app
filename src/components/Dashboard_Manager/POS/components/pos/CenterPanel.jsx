@@ -1,11 +1,17 @@
 // src/components/Dashboard_Manager/POS/components/panels/CenterPanel.jsx
-import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { gql, useLazyQuery } from "@apollo/client";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
 import MenuItemModal from "../modals/MenuItemModal";
-
+import { useActiveMenuPromotions } from "@/hooks/useActiveMenuPromotions";
 const SEARCH_SUGGESTIONS = gql`
   query PosSearchSuggestions($query: String!, $timeSlot: TimeSlot) {
     searchSuggestions(query: $query, timeSlot: $timeSlot, limitPerType: 6) {
@@ -60,12 +66,12 @@ export default function CenterPanel() {
 
   const recentKey = useMemo(
     () => `pos_recent_searches_${restaurantId || "na"}`,
-    [restaurantId]
+    [restaurantId],
   );
 
   const [loadSuggestions, { error: suggestionsError }] = useLazyQuery(
     SEARCH_SUGGESTIONS,
-    { fetchPolicy: "network-only" }
+    { fetchPolicy: "network-only" },
   );
 
   useEffect(() => {
@@ -124,11 +130,12 @@ export default function CenterPanel() {
       { key: "drink", label: "Đồ uống" },
       { key: "dessert", label: "Tráng miệng" },
     ],
-    []
+    [],
   );
 
   const onSelectCategory = (cat) => setCurrentCategory?.(cat);
-
+  const { getPromotionForMenuItem, getPromotionLabel } =
+    useActiveMenuPromotions(restaurantId);
   const withDisplay = useMemo(() => {
     const toNumberOrNull = (v) => {
       const n = Number(v);
@@ -139,8 +146,8 @@ export default function CenterPanel() {
       const variants = Array.isArray(it._normalizedVariants)
         ? it._normalizedVariants
         : Array.isArray(it.servingVariants)
-        ? it.servingVariants
-        : [];
+          ? it.servingVariants
+          : [];
       const defaultVariant =
         it._defaultVariant ||
         variants.find((v) => v?.isDefault) ||
@@ -164,13 +171,15 @@ export default function CenterPanel() {
 
       const priceRange = it._priceRange || computedRange;
       const hasRange =
-        !!priceRange && priceRange.min !== priceRange.max && priceRange.min !== null;
+        !!priceRange &&
+        priceRange.min !== priceRange.max &&
+        priceRange.min !== null;
 
       const priceText = hasRange
         ? `${formatPrice(priceRange.min)} - ${formatPrice(priceRange.max)}`
         : displayPrice !== null
-        ? formatPrice(displayPrice)
-        : "Chưa có giá";
+          ? formatPrice(displayPrice)
+          : "Chưa có giá";
 
       const isByWeight =
         defaultVariant?.mode === "BY_WEIGHT" ||
@@ -179,7 +188,8 @@ export default function CenterPanel() {
         ? defaultVariant?.sellUnit || "kg"
         : it._displayUnit || "portion";
       const cookingOption = defaultVariant?.name || "";
-
+      const activePromotion = getPromotionForMenuItem(it);
+      const promotionLabel = getPromotionLabel(activePromotion);
       return {
         ...it,
         _displayPrice: displayPrice,
@@ -189,9 +199,11 @@ export default function CenterPanel() {
         _variants: variants,
         _unit: unit,
         _defaultCooking: cookingOption,
+        _promotion: activePromotion,
+        _promotionLabel: promotionLabel,
       };
     });
-  }, [filteredMenu]);
+  }, [filteredMenu, getPromotionForMenuItem, getPromotionLabel]);
 
   // Modal logic
   const [modalOpen, setModalOpen] = useState(false);
@@ -241,9 +253,7 @@ export default function CenterPanel() {
 
       const chosenUnit =
         unit ||
-        (variant?.mode === "BY_WEIGHT"
-          ? variant?.sellUnit || "kg"
-          : "portion");
+        (variant?.mode === "BY_WEIGHT" ? variant?.sellUnit || "kg" : "portion");
 
       const core = {
         id: menuItem?.id,
@@ -255,9 +265,7 @@ export default function CenterPanel() {
         thumbImage: menuItem?.thumbImage,
         price: resolvedPrice,
         defaultServingKey:
-          menuItem?.defaultServingKey ||
-          menuItem?._defaultVariant?.key ||
-          "",
+          menuItem?.defaultServingKey || menuItem?._defaultVariant?.key || "",
       };
 
       addToOrder?.({
@@ -273,40 +281,40 @@ export default function CenterPanel() {
         proofImages: proofImages || [],
       });
     },
-    [addToOrder, openModal, toFinitePrice]
+    [addToOrder, openModal, toFinitePrice],
   );
 
   const handleModalAdd = useCallback(
     (payload) => {
-    const {
-      menuItem,
-      quantity = 1,
-      cookingOption,
-      variantName,
-      variantKey,
-      servingKey,
-      unit,
-      note,
-      price,
-      proofImages,
-      variant,
-    } = payload || {};
+      const {
+        menuItem,
+        quantity = 1,
+        cookingOption,
+        variantName,
+        variantKey,
+        servingKey,
+        unit,
+        note,
+        price,
+        proofImages,
+        variant,
+      } = payload || {};
 
-    addMenuItemToOrder(menuItem, {
-      variant: variant || null,
-      variantName: variantName || cookingOption,
-      variantKey,
-      servingKey,
-      unit,
-      note,
-      quantity,
-      price,
-      proofImages: proofImages || [],
+      addMenuItemToOrder(menuItem, {
+        variant: variant || null,
+        variantName: variantName || cookingOption,
+        variantKey,
+        servingKey,
+        unit,
+        note,
+        quantity,
+        price,
+        proofImages: proofImages || [],
         cookingOption,
       });
       closeModal();
     },
-    [addMenuItemToOrder, closeModal]
+    [addMenuItemToOrder, closeModal],
   );
 
   const persistRecentSearch = useCallback(
@@ -322,7 +330,7 @@ export default function CenterPanel() {
         return capped;
       });
     },
-    [recentKey]
+    [recentKey],
   );
 
   const handleSearchChange = useCallback(
@@ -332,7 +340,7 @@ export default function CenterPanel() {
       setSearchTerm?.(value);
       if (!showSuggestions) setShowSuggestions(true);
     },
-    [setSearchTerm, showSuggestions]
+    [setSearchTerm, showSuggestions],
   );
 
   const handleSearchBlur = useCallback(() => {
@@ -356,7 +364,7 @@ export default function CenterPanel() {
       persistRecentSearch(value);
       setShowSuggestions(false);
     },
-    [persistRecentSearch, setSearchTerm]
+    [persistRecentSearch, setSearchTerm],
   );
 
   useEffect(() => {
@@ -501,8 +509,8 @@ export default function CenterPanel() {
               item._priceRange || !item._unit
                 ? null
                 : ["kg", "g"].includes(String(item._unit).toLowerCase())
-                ? String(item._unit).toLowerCase()
-                : null;
+                  ? String(item._unit).toLowerCase()
+                  : null;
             const thumb = item.thumbImage;
             const emoji = item.emoji || "🍽️";
 
@@ -528,6 +536,14 @@ export default function CenterPanel() {
                   ) : (
                     <div className={cls.cardPlaceholder}>{emoji}</div>
                   )}
+                  {item._promotionLabel && (
+                    <div
+                      className={cls.promoBadge}
+                      title={item._promotion?.name || "Ưu đãi"}
+                    >
+                      {item._promotionLabel}
+                    </div>
+                  )}
                   {/* Quick Add Overlay Button */}
                   <div
                     className={cls.overlayAdd}
@@ -540,9 +556,9 @@ export default function CenterPanel() {
                           ? item._variants[0]
                           : null);
 
-                    if (!variant && item._priceRange) {
-                      openModal(item);
-                      return;
+                      if (!variant && item._priceRange) {
+                        openModal(item);
+                        return;
                       }
 
                       addMenuItemToOrder(item, { variant });
@@ -559,7 +575,9 @@ export default function CenterPanel() {
                   <h3 className={cls.cardName} title={item.name}>
                     {item.name}
                   </h3>
-
+                  {item._promotion?.name && (
+                    <div className={cls.promoName}>{item._promotion.name}</div>
+                  )}
                   {item.description && (
                     <p className={cls.cardDesc}>{item.description}</p>
                   )}

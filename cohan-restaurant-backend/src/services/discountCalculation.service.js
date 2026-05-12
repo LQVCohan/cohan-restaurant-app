@@ -3,7 +3,79 @@ import { Coupon, Promotion } from "../../models/index.js";
 
 const toNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const roundVnd = (v) => Math.max(0, Math.round(toNum(v, 0)));
+function normalizeScope(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
 
+function normalizePromotionType(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+function isDirectDiscountPromotion(promotion) {
+  const promotionType = normalizePromotionType(promotion?.promotionType);
+  const discountType = String(promotion?.discountType || "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    ["PERCENTAGE", "FIXED", ""].includes(promotionType) &&
+    ["PERCENT", "AMOUNT"].includes(discountType)
+  );
+}
+
+function itemIdentity(item) {
+  return {
+    dishId: item?.dishId ? String(item.dishId) : "",
+    menuId: item?.menuId ? String(item.menuId) : "",
+    categoryId: item?.categoryId ? String(item.categoryId) : "",
+  };
+}
+
+function promotionMatchesItem(promotion, item) {
+  const scope = normalizeScope(promotion?.scope);
+  const ids = itemIdentity(item);
+
+  if (scope === "ITEM") {
+    const promotionItemId = promotion?.itemId ? String(promotion.itemId) : "";
+    return (
+      promotionItemId &&
+      [ids.dishId, ids.menuId].filter(Boolean).includes(promotionItemId)
+    );
+  }
+
+  if (scope === "CATEGORY") {
+    const promotionCategoryId = promotion?.categoryId
+      ? String(promotion.categoryId)
+      : "";
+    return (
+      promotionCategoryId &&
+      ids.categoryId &&
+      promotionCategoryId === ids.categoryId
+    );
+  }
+
+  return false;
+}
+
+function getLinePromotionRank(promotion) {
+  const scope = normalizeScope(promotion?.scope);
+  const scopeWeight = scope === "ITEM" ? 1000 : scope === "CATEGORY" ? 500 : 0;
+
+  return scopeWeight + getPriority(promotion);
+}
+
+function getBestLinePromotionForItem(promotions, item) {
+  return (
+    promotions
+      .filter((promotion) => promotionMatchesItem(promotion, item))
+      .sort((a, b) => getLinePromotionRank(b) - getLinePromotionRank(a))[0] ||
+    null
+  );
+}
 function inWindow(doc, now) {
   return (
     (!doc.publishAt || doc.publishAt <= now) &&
@@ -83,6 +155,63 @@ export async function calculateDiscountBreakdown({
   const rid = mongoose.isValidObjectId(restaurantId)
     ? new mongoose.Types.ObjectId(restaurantId)
     : restaurantId;
+
+  const activeLinePromotions = await Promotion.find({
+    restaurantId: rid,
+    isActive: true,
+    scope: { $in: ["ITEM", "CATEGORY"] },
+  }).session(session);
+
+  const eligibleLinePromotions = activeLinePromotions.filter(
+    (promotion) =>
+      promotion &&
+      inWindow(promotion, now) &&
+      isDirectDiscountPromotion(promotion) &&
+      subtotal >= Math.max(0, toNum(promotion.minOrderValue)),
+  );
+  const promotionLines = [];
+  const appliedPromotionIds = new Set();
+
+  let linePromotionDiscount = 0;
+
+  for (const item of items || []) {
+    const status = String(item?.status || "");
+    if (status === "cancelled" || status === "returned") continue;
+
+    const lineSubtotal = roundVnd(item?.lineSubtotal);
+    if (lineSubtotal <= 0) continue;
+
+    const promotion = getBestLinePromotionForItem(eligibleLinePromotions, item);
+    if (!promotion) continue;
+
+    const discount = calcDiscountAmount({
+      discountType: promotion.discountType,
+      discountValue: promotion.discountValue,
+      subtotal: lineSubtotal,
+      maxDiscount: promotion.maxDiscount,
+    });
+
+    if (discount <= 0) continue;
+
+    linePromotionDiscount += discount;
+    appliedPromotionIds.add(String(promotion._id));
+
+    promotionLines.push({
+      lineId: item?._id ? String(item._id) : item?.lineId || "",
+      dishId: item?.dishId || null,
+      menuId: item?.menuId || null,
+      categoryId: item?.categoryId || null,
+      name: item?.name || "",
+      quantity: toNum(item?.quantity, 0),
+      lineSubtotal,
+      promotionId: String(promotion._id),
+      promotionName: promotion.name || promotion.code || "Khuyến mãi",
+      promotionScope: normalizeScope(promotion.scope),
+      discountType: promotion.discountType,
+      discountValue: toNum(promotion.discountValue),
+      discount,
+    });
+  }
   let selectedPromotion = null;
   if (promotionIds?.length) {
     const promotions = await Promise.all(
@@ -99,21 +228,30 @@ export async function calculateDiscountBreakdown({
         .filter(
           (p) =>
             p &&
+            normalizeScope(p.scope) === "ORDER" &&
             inWindow(p, now) &&
+            isDirectDiscountPromotion(p) &&
             subtotal >= Math.max(0, toNum(p.minOrderValue)),
         )
         .sort((a, b) => getPriority(b) - getPriority(a))[0] || null;
   }
-
-  let promotionDiscount = 0;
+  let orderPromotionDiscount = 0;
   if (selectedPromotion) {
-    promotionDiscount = calcDiscountAmount({
+    const orderPromotionBase = Math.max(0, subtotal - linePromotionDiscount);
+
+    orderPromotionDiscount = calcDiscountAmount({
       discountType: selectedPromotion.discountType,
       discountValue: selectedPromotion.discountValue,
-      subtotal,
+      subtotal: orderPromotionBase,
       maxDiscount: selectedPromotion.maxDiscount,
     });
+
+    if (orderPromotionDiscount > 0) {
+      appliedPromotionIds.add(String(selectedPromotion._id));
+    }
   }
+
+  let promotionDiscount = linePromotionDiscount + orderPromotionDiscount;
 
   const code = String(pricing?.voucherCode || "")
     .trim()
@@ -135,7 +273,7 @@ export async function calculateDiscountBreakdown({
     const maxUsage = toNum(coupon.maxUsage);
     if (maxUsage > 0 && toNum(coupon.used) >= maxUsage)
       throw new Error("Invalid voucher: usage limit reached");
-    const hasPromotion = Boolean(selectedPromotion);
+    const hasPromotion = promotionDiscount > 0;
     const couponExclusive = isExclusive(coupon);
     const promotionExclusive = isExclusive(selectedPromotion);
     const stackAllowed = canStack({
@@ -149,6 +287,11 @@ export async function calculateDiscountBreakdown({
       if (couponExclusive) {
         // Voucher độc quyền: giữ voucher, bỏ promotion.
         promotionDiscount = 0;
+        promotionDiscount = 0;
+        linePromotionDiscount = 0;
+        orderPromotionDiscount = 0;
+        promotionLines.length = 0;
+        appliedPromotionIds.clear();
       } else if (promotionExclusive) {
         // Legacy/backward-compatible: nếu promotion có exclusive thì giữ promotion, bỏ voucher.
         shouldApplyVoucher = false;
@@ -156,6 +299,11 @@ export async function calculateDiscountBreakdown({
         // Không được dùng chồng: voucher code do user nhập được ưu tiên,
         // promotion tự động/được chọn sẽ bị bỏ.
         promotionDiscount = 0;
+        promotionDiscount = 0;
+        linePromotionDiscount = 0;
+        orderPromotionDiscount = 0;
+        promotionLines.length = 0;
+        appliedPromotionIds.clear();
       }
     }
 
@@ -190,7 +338,8 @@ export async function calculateDiscountBreakdown({
     shippingDiscount: 0,
     totalDiscount,
     finalTotal: grandTotal,
-    appliedPromotions: selectedPromotion ? [String(selectedPromotion._id)] : [],
+    appliedPromotions: Array.from(appliedPromotionIds),
+    promotionLines,
     appliedCoupons: coupon ? [String(coupon._id)] : [],
     voucherCode: code || undefined,
     couponId: coupon?._id,
