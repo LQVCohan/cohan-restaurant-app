@@ -344,6 +344,42 @@ function assertCartHoldCheckoutAllowed({ item, authUserId }) {
 
   return { cartId, cartItemId };
 }
+function computeCartTotals(items = []) {
+  return {
+    totalQuantity: (items || []).reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0,
+    ),
+    totalAmount: (items || []).reduce(
+      (sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0),
+      0,
+    ),
+  };
+}
+
+async function removeCheckedOutCartItemsTx({ releasedCartItems, session }) {
+  for (const { cart, cartItemId } of releasedCartItems || []) {
+    if (typeof cart.items?.id === "function") {
+      const item = cart.items.id(cartItemId);
+      if (item?.remove) item.remove();
+    } else {
+      cart.items = (cart.items || []).filter(
+        (item) => String(item._id) !== String(cartItemId),
+      );
+    }
+
+    const totals = computeCartTotals(cart.items || []);
+    cart.totalQuantity = totals.totalQuantity;
+    cart.totalAmount = totals.totalAmount;
+    cart.lastActivityAt = new Date();
+
+    if (!(cart.items || []).length) {
+      cart.status = "checked_out";
+    }
+
+    await cart.save({ session });
+  }
+}
 function buildInventoryLineFromItem(it) {
   if (!it) return null;
 
@@ -394,7 +430,80 @@ function buildInventoryLinesFromItems(items = []) {
     .map(buildInventoryLineFromItem)
     .filter(Boolean);
 }
+async function validateAndReleaseCartHoldTx({
+  entry,
+  restaurantId,
+  warehouseId,
+  authUserId,
+  session,
+}) {
+  if (!entry.cartRef) return null;
 
+  const { cartId, cartItemId } = entry.cartRef;
+  const rawItem = entry.rawItem;
+  const orderItem = entry.orderItem;
+
+  const cart = await Cart.findOne({
+    _id: toId(cartId),
+    userId: toId(authUserId),
+    status: "active",
+  }).session(session);
+
+  if (!cart) throw new Error(CART_HOLD_CHECKOUT_ERROR);
+
+  const cartItem =
+    typeof cart.items?.id === "function"
+      ? cart.items.id(cartItemId)
+      : (cart.items || []).find((it) => String(it._id) === String(cartItemId));
+
+  if (!cartItem) throw new Error(CART_HOLD_CHECKOUT_ERROR);
+
+  const holdStatus = cartItem.holdStatus
+    ? String(cartItem.holdStatus)
+    : "active";
+
+  if (holdStatus !== "active") {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  if (
+    !cartItem.holdExpiresAt ||
+    new Date(cartItem.holdExpiresAt) <= new Date()
+  ) {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  const checkoutMenuItemId = rawItem.dishId || rawItem.menuId;
+  const cartServingKey = normalizeCartHoldServingKey(
+    cartItem.servingKey || cartItem.servingVariantKey,
+  );
+  const checkoutServingKey = normalizeCartHoldServingKey(orderItem.servingKey);
+
+  if (
+    String(cartItem.restaurantId || "") !== String(restaurantId || "") ||
+    String(cartItem.menuItemId || "") !== String(checkoutMenuItemId || "") ||
+    cartServingKey !== checkoutServingKey ||
+    Number(cartItem.quantity || 0) !== Number(orderItem.quantity || 0)
+  ) {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  await cancelReservationForOrderTx({
+    restaurantId: cartItem.restaurantId,
+    warehouseId,
+    orderCode: buildCartHoldOrderCode(cartId, cartItemId),
+    lines: [
+      {
+        menuItemId: cartItem.menuItemId,
+        quantity: Number(cartItem.quantity || 1),
+        servingKey: cartServingKey,
+      },
+    ],
+    session,
+  });
+
+  return { cart, cartItemId };
+}
 /** =========================
  * Unit conversion to ingredient.baseUnit
  * ========================= */
@@ -1545,16 +1654,35 @@ export const OrderMutation = {
         const lines = buildInventoryLinesFromItems(normalizedItems);
         if (lines.length) {
           const whId = await resolveWarehouseIdOrDefault(
-            restaurantId,
+            g.restaurantId,
             warehouseId,
             session,
           );
 
+          const releasedCartItems = [];
+
+          for (const entry of g.entries) {
+            const released = await validateAndReleaseCartHoldTx({
+              entry,
+              restaurantId: g.restaurantId,
+              warehouseId: whId,
+              authUserId,
+              session,
+            });
+
+            if (released) releasedCartItems.push(released);
+          }
+
           await reserveForOrderTx({
-            restaurantId: rid,
+            restaurantId: g.restaurantId,
             warehouseId: whId,
             orderCode: childOrderCode,
             lines,
+            session,
+          });
+
+          await removeCheckedOutCartItemsTx({
+            releasedCartItems,
             session,
           });
         }
@@ -2017,7 +2145,9 @@ export const OrderMutation = {
       promotionIds,
     } = input || {};
     const authUserId =
-      ctx?.user?._id || ctx?.user?.id || ctx?.currentUser?._id || null;
+      ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
+        ? String(ctx.user.id)
+        : null;
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
       throw new Error("orderType must be 'takeaway' or 'delivery'");
     }
@@ -2056,14 +2186,40 @@ export const OrderMutation = {
     }
 
     const grouped = new Map();
+
     for (const rawItem of items) {
       const rid = toId(rawItem?.restaurantId);
-      if (!rid)
+      if (!rid) {
         throw new Error("Each checkout item must include valid restaurantId");
-      const normalized = normalizeItem(rawItem);
+      }
+
+      const menuItemId = rawItem?.dishId || rawItem?.menuId;
+      if (!menuItemId) {
+        throw new Error("Each checkout item must include dishId or menuId");
+      }
+
+      const cartRef = assertCartHoldCheckoutAllowed({
+        item: rawItem,
+        authUserId,
+      });
+
+      const orderItem = normalizeItem({
+        ...rawItem,
+        dishId: menuItemId,
+        menuId: rawItem?.menuId || menuItemId,
+        servingKey: normalizeCartHoldServingKey(rawItem?.servingKey),
+      });
+
       const key = String(rid);
-      if (!grouped.has(key)) grouped.set(key, { restaurantId: rid, items: [] });
-      grouped.get(key).items.push(normalized);
+      if (!grouped.has(key)) {
+        grouped.set(key, { restaurantId: rid, entries: [] });
+      }
+
+      grouped.get(key).entries.push({
+        rawItem,
+        cartRef,
+        orderItem,
+      });
     }
 
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
@@ -2097,10 +2253,13 @@ export const OrderMutation = {
           checkoutCustomerContact,
           { session },
         );
-        for (const g of grouped.values()) {
+        for (const group of grouped.values()) {
+          const { restaurantId, entries } = group;
+          const normalizedItems = entries.map((entry) => entry.orderItem);
+
           await hydrateOrderItems({
-            restaurantId: g.restaurantId,
-            items: g.items,
+            restaurantId: restaurantId,
+            items: normalizedItems,
             session,
           });
 
@@ -2115,8 +2274,8 @@ export const OrderMutation = {
           });
 
           const totals = await calculateDiscountBreakdown({
-            restaurantId: g.restaurantId,
-            items: g.items,
+            restaurantId: restaurantId,
+            items: normalizedItems,
             pricing: groupPricing,
             promotionIds: normalizePromotionIds(promotionIds),
             session,
@@ -2135,13 +2294,13 @@ export const OrderMutation = {
           const [order] = await Order.create(
             [
               {
-                restaurantId: g.restaurantId,
+                restaurantId: restaurantId,
                 userId: finalUserId ? toId(finalUserId) : undefined,
                 orderCode: childOrderCode,
                 parentOrderCode: checkoutCode,
                 orderType,
                 shipping: shippingObj,
-                items: g.items,
+                items: normalizedItems,
                 totals,
                 note,
                 currentStatus: "pending",
@@ -2177,15 +2336,15 @@ export const OrderMutation = {
             await incrementPromotionUsageOnce({ totals, session });
           }
 
-          const lines = buildInventoryLinesFromItems(g.items);
+          const lines = buildInventoryLinesFromItems(normalizedItems);
           if (lines.length) {
             const whId = await resolveWarehouseIdOrDefault(
-              g.restaurantId,
+              restaurantId,
               warehouseId,
               session,
             );
             await reserveForOrderTx({
-              restaurantId: g.restaurantId,
+              restaurantId: restaurantId,
               warehouseId: whId,
               orderCode: childOrderCode,
               lines,
