@@ -43,28 +43,20 @@ async function findCustomerByField(field, value, session = null) {
 function buildIdentityResult(byEmail, byPhone, selectedUserId) {
   if (selectedUserId) return { userId: selectedUserId, mode: "selected" };
 
-  const registeredMatches = [byEmail, byPhone].filter(
-    (candidate) => candidate && !candidate.isGuest,
-  );
-  const registeredIds = [...new Set(registeredMatches.map((x) => String(x._id)))];
-  if (registeredIds.length > 1) {
-    return {
-      conflict: true,
-      emailUserId: byEmail?._id ? String(byEmail._id) : null,
-      phoneUserId: byPhone?._id ? String(byPhone._id) : null,
-    };
-  }
-  if (registeredMatches[0]) {
-    return {
-      userId: String(registeredMatches[0]._id),
-      mode: "registered",
-    };
-  }
-
   const emailUserId = byEmail?._id ? String(byEmail._id) : null;
   const phoneUserId = byPhone?._id ? String(byPhone._id) : null;
   if (emailUserId && phoneUserId && emailUserId !== phoneUserId) {
     return { conflict: true, emailUserId, phoneUserId };
+  }
+
+  const matchedRegistered = [byEmail, byPhone].find(
+    (candidate) => candidate && !candidate.isGuest,
+  );
+  if (matchedRegistered) {
+    return {
+      userId: String(matchedRegistered._id),
+      mode: "registered",
+    };
   }
 
   return {
@@ -119,6 +111,14 @@ export async function resolveOrCreateGuestCustomerForOrder({
     findCustomerByField("phone", compact.phone, session),
   ]);
 
+  const emailUserId = byEmail?._id ? String(byEmail._id) : null;
+  const phoneUserId = byPhone?._id ? String(byPhone._id) : null;
+  if (emailUserId && phoneUserId && emailUserId !== phoneUserId) {
+    throw new Error(
+      "Contact information matches multiple customer profiles. Please contact support.",
+    );
+  }
+
   const matchedRegistered = [byEmail, byPhone].find(
     (candidate) => candidate && !candidate.isGuest,
   );
@@ -128,14 +128,6 @@ export async function resolveOrCreateGuestCustomerForOrder({
       mode: "matched_registered",
       isGuestCustomer: false,
     };
-  }
-
-  const emailUserId = byEmail?._id ? String(byEmail._id) : null;
-  const phoneUserId = byPhone?._id ? String(byPhone._id) : null;
-  if (emailUserId && phoneUserId && emailUserId !== phoneUserId) {
-    throw new Error(
-      "Contact information matches multiple guest profiles. Please contact support.",
-    );
   }
 
   const matchedGuest = byEmail || byPhone;
