@@ -61,6 +61,7 @@ const CompactMenuStrip = ({
   const [internalActiveId, setInternalActiveId] = useState(null);
   const currentActiveId =
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
+  const canDeleteMenu = typeof onDeleteMenu === "function";
 
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
@@ -254,16 +255,18 @@ const CompactMenuStrip = ({
                       >
                         <FiCopy />
                       </button>
-                      <button
-                        className="cms-tool-btn is-delete"
-                        title="Xóa thực đơn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteMenu?.(menu);
-                        }}
-                      >
-                        <FiTrash2 />
-                      </button>
+                      {canDeleteMenu && (
+                        <button
+                          className="cms-tool-btn is-delete"
+                          title="Xóa thực đơn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteMenu(menu);
+                          }}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
