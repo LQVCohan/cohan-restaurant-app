@@ -170,6 +170,23 @@ function PaymentModal({
       },
     ];
   }, [discountBreakdown, baseTotalAmountVnd, payableTotalVnd]);
+  const promotionLineItems = useMemo(
+    () =>
+      Array.isArray(discountBreakdown?.promotionLines)
+        ? discountBreakdown.promotionLines
+            .filter((line) => Number(line?.discount || 0) > 0)
+            .map((line, index) => ({
+              key:
+                line?.lineId ||
+                `${line?.promotionId || "promotion"}_${line?.dishId || index}`,
+              itemName: String(line?.name || "").trim() || "Món áp dụng",
+              promotionName:
+                String(line?.promotionName || "").trim() || "Khuyến mãi",
+              discount: Math.abs(Number(line?.discount || 0)),
+            }))
+        : [],
+    [discountBreakdown?.promotionLines],
+  );
   const hasValidDiscount = Boolean(
     isDineIn &&
     discountBreakdown &&
@@ -609,7 +626,33 @@ function PaymentModal({
                         </span>
                       </div>
                     ))}
+                    {promotionLineItems.length > 0 && (
+                      <div className={s.linePromotionBreakdown}>
+                        <div className={s.linePromotionTitle}>
+                          Ưu đãi theo món
+                        </div>
 
+                        {promotionLineItems.map((line) => (
+                          <div key={line.key} className={s.linePromotionRow}>
+                            <span>
+                              {line.itemName} · {line.promotionName}
+                            </span>
+                            <strong>
+                              -
+                              {formatPrice(
+                                convertCurrencyAmount(
+                                  line.discount,
+                                  "VND",
+                                  activeCurrency,
+                                  usdToVndRate,
+                                ),
+                                { currency: activeCurrency },
+                              )}
+                            </strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {formatDiscountReasonLabel(
                       discountBreakdown?.discountReason,
                     ) && (

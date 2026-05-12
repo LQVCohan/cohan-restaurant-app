@@ -359,7 +359,36 @@
   font-weight: 700;
   color: var(--color-text-primary);
 }
+.linePromotionBreakdown {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #bfdbfe;
+}
 
+.linePromotionTitle {
+  margin-bottom: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.linePromotionRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 0.86rem;
+  color: var(--color-text-secondary);
+
+  span {
+    min-width: 0;
+  }
+
+  strong {
+    white-space: nowrap;
+    color: var(--color-success);
+  }
+}
 .suggestions {
   display: flex;
   flex-wrap: wrap;
