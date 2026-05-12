@@ -7,9 +7,9 @@ import { formatPrice } from "@/utils/formatters";
 
 import "./TableCurrentSessionPage.scss";
 
-const ACTIVE_TABLE_SESSION_ORDERS = gql`
-  query ActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!) {
-    activeTableSessionOrders(restaurantId: $restaurantId, tableId: $tableId) {
+const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
+  query PublicActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!) {
+    publicActiveTableSessionOrders(restaurantId: $restaurantId, tableId: $tableId) {
       tableId
       tableCode
       session {
@@ -37,7 +37,7 @@ const ACTIVE_TABLE_SESSION_ORDERS = gql`
           requestedAt
         }
         items {
-          _id
+          id
           name
           quantity
           unit
@@ -53,9 +53,9 @@ const ACTIVE_TABLE_SESSION_ORDERS = gql`
   }
 `;
 
-const REQUEST_TABLE_PAYMENT = gql`
-  mutation RequestTablePayment($input: RequestTablePaymentInput!) {
-    requestTablePayment(input: $input) {
+const PUBLIC_REQUEST_TABLE_PAYMENT = gql`
+  mutation PublicRequestTablePayment($input: RequestTablePaymentInput!) {
+    publicRequestTablePayment(input: $input) {
       ok
       warning
       readyForPayment
@@ -145,17 +145,17 @@ const TableCurrentSessionPage = () => {
     loading,
     error,
     refetch,
-  } = useQuery(ACTIVE_TABLE_SESSION_ORDERS, {
+  } = useQuery(PUBLIC_ACTIVE_TABLE_SESSION_ORDERS, {
     variables: { restaurantId, tableId },
     skip: !restaurantId || !tableId,
     fetchPolicy: "cache-and-network",
   });
 
   const [requestTablePayment, { loading: requestingPayment }] = useMutation(
-    REQUEST_TABLE_PAYMENT,
+    PUBLIC_REQUEST_TABLE_PAYMENT,
   );
 
-  const tableSessionData = data?.activeTableSessionOrders || null;
+  const tableSessionData = data?.publicActiveTableSessionOrders || null;
   const batchOrders = useMemo(
     () => normalizeBatchOrders(tableSessionData?.orders || []),
     [tableSessionData?.orders],
@@ -196,7 +196,7 @@ const TableCurrentSessionPage = () => {
         },
       });
 
-      const result = mutationData?.requestTablePayment;
+      const result = mutationData?.publicRequestTablePayment;
 
       if (!result?.ok) {
         setFeedback({
@@ -298,7 +298,7 @@ const TableCurrentSessionPage = () => {
 
                   <ul className="customer-table-session-page__item-list">
                     {(order.items || []).map((item) => (
-                      <li key={item._id || `${order.id}-${item.name}`} className="customer-table-session-page__item">
+                      <li key={item.id || `${order.id}-${item.name}`} className="customer-table-session-page__item">
                         <div className="customer-table-session-page__item-main">
                           <div className="customer-table-session-page__item-row">
                             <strong>{item.name}</strong>
