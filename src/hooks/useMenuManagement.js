@@ -84,6 +84,7 @@ const Q_MENU_ITEMS = gql`
     $timeSlot: TimeSlot
     $categoryId: ID
     $search: String
+    $sort: MenuItemSort = default
     $limit: Int = 50
   ) {
     menuItems(
@@ -91,6 +92,7 @@ const Q_MENU_ITEMS = gql`
       timeSlot: $timeSlot
       categoryId: $categoryId
       search: $search
+      sort: $sort
       limit: $limit
     ) {
       ...MenuItemFields
@@ -287,6 +289,7 @@ export default function useMenuManagement({
   defaultTimeSlot = null,
   pageSize = 50,
   useConnection = false,
+  sort = "default",
 } = {}) {
   /* ---- Menus & timeSlot ---- */
   const {
@@ -338,9 +341,10 @@ export default function useMenuManagement({
       timeSlot: selectedTimeSlot || null,
       categoryId: categoryId || null,
       search: search?.trim() || null,
+      sort: sort || "default",
       limit: pageSize,
     }),
-    [restaurantId, selectedTimeSlot, categoryId, search, pageSize]
+    [restaurantId, selectedTimeSlot, categoryId, search, sort, pageSize]
   );
 
   const filterForConnection = useMemo(
@@ -358,6 +362,7 @@ export default function useMenuManagement({
         priceRange.maxPrice !== null && priceRange.maxPrice !== ""
           ? Number(priceRange.maxPrice)
           : null,
+      sort: sort || "default",
     }),
     [
       restaurantId,
@@ -367,6 +372,7 @@ export default function useMenuManagement({
       statusFilter,
       priceRange.minPrice,
       priceRange.maxPrice,
+      sort,
     ]
   );
 
@@ -375,7 +381,7 @@ export default function useMenuManagement({
     data: itemsData,
     loading: itemsLoading,
     error: itemsError,
-    refetch: refetchItems,
+    refetch: refetchItemsQuery,
     fetchMore,
   } = useQuery(useConnection ? Q_MENU_ITEMS_CONNECTION : Q_MENU_ITEMS, {
     variables: useConnection
@@ -555,6 +561,33 @@ export default function useMenuManagement({
     loadTopItems,
     { data: topData, loading: topLoading, error: topError },
   ] = useLazyQuery(Q_TOP_ITEMS);
+
+  const refetchItems = useCallback(
+    (overrides = {}) => {
+      if (useConnection) {
+        return refetchItemsQuery({
+          limit: pageSize,
+          cursor: null,
+          filter: {
+            ...filterForConnection,
+            ...(overrides.filter || {}),
+          },
+        });
+      }
+
+      return refetchItemsQuery({
+        ...itemsVariables,
+        ...overrides,
+      });
+    },
+    [
+      useConnection,
+      refetchItemsQuery,
+      pageSize,
+      filterForConnection,
+      itemsVariables,
+    ]
+  );
 
   /* ---- Public API ---- */
 
