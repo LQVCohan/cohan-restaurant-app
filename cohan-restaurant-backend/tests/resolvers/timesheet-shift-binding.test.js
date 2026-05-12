@@ -410,11 +410,11 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     expect(result.status).toBe("checked_in");
   });
 
-  it("does not mark late for on-time check-in within grace period", async () => {
+  it("tracks exact lateness minutes for near-on-time check-in", async () => {
     const result = await checkInAt("2026-06-02T09:03:00.000Z");
 
     expect(result.shiftId).toBe("shift-1");
-    expect(result.latenessMinutes).toBe(0);
+    expect(result.latenessMinutes).toBe(3);
   });
 
   it("marks early leave after early checkout beyond grace period", async () => {
