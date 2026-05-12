@@ -18,6 +18,7 @@ import supply from "./supply/index.js";
 import eventLogResolvers from "./event_log/index.js";
 import payment from "./payment/index.js";
 import staff from "./staff/index.js";
+import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
 import cart from "./cart/index.js";
@@ -29,7 +30,6 @@ import posCustomer from "./posCustomer/index.js";
 import eventPackage from "./event_package/index.js";
 import tableEvent from "./table_event/index.js";
 import * as printSetting from "./printSetting/index.js";
-// 🆕 Thêm search module
 import search from "./search/index.js";
 import communication from "./communication/index.js";
 import availability from "./availability/index.js";
@@ -88,6 +88,7 @@ export default {
     ...(eventLogResolvers.Mutation || {}),
     ...(payment.Mutation || {}),
     ...(staff.Mutation || {}),
+    ...(attendanceOvertime.Mutation || {}),
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
     ...(cart.Mutation || {}),
@@ -101,10 +102,6 @@ export default {
     ...(posCustomer.Mutation || {}),
   },
 
-  // ============================
-  // TYPE-LEVEL RESOLVERS
-  // ============================
-
   ...(role.Role ? { Role: role.Role } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
   ...(user.User ? { User: user.User } : {}),
@@ -117,12 +114,10 @@ export default {
     : {}),
   ...(supply.Supply ? { Supply: supply.Supply } : {}),
   ...(order.Order ? { Order: order.Order } : {}),
-
   ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
-
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
   ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),
@@ -131,5 +126,8 @@ export default {
     : {}),
   ...(review.ReactionSummary
     ? { ReactionSummary: review.ReactionSummary }
+    : {}),
+  ...(attendanceOvertime.StaffAttendanceRecord
+    ? { StaffAttendanceRecord: attendanceOvertime.StaffAttendanceRecord }
     : {}),
 };

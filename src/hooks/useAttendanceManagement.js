@@ -44,6 +44,11 @@ export const QUERY_ATTENDANCE_PAGE = gql`
       latenessMinutes
       earlyLeaveMinutes
       overtimeMinutes
+      approvedOvertimeMinutes
+      overtimeApprovalStatus
+      overtimeReviewNote
+      overtimeReviewedBy
+      overtimeReviewedAt
       status
       isOffSchedule
       source
@@ -162,6 +167,11 @@ const MUTATION_UPSERT_ATTENDANCE = gql`
       latenessMinutes
       earlyLeaveMinutes
       overtimeMinutes
+      approvedOvertimeMinutes
+      overtimeApprovalStatus
+      overtimeReviewNote
+      overtimeReviewedBy
+      overtimeReviewedAt
       shiftId
       plannedStartTime
       plannedEndTime
@@ -218,6 +228,42 @@ const ATTENDANCE_CORRECTION_FIELDS = gql`
   }
 `;
 
+const ATTENDANCE_OVERTIME_FIELDS = gql`
+  fragment AttendanceOvertimeFields on StaffAttendanceRecord {
+    id
+    employeeId
+    employeeName
+    employeeCode
+    employeeRole
+    employeeAvatar
+    restaurantId
+    workDate
+    shiftId
+    shiftType
+    plannedStartTime
+    plannedEndTime
+    actualCheckInAt
+    actualCheckOutAt
+    workedMinutes
+    hours
+    latenessMinutes
+    earlyLeaveMinutes
+    overtimeMinutes
+    approvedOvertimeMinutes
+    overtimeApprovalStatus
+    overtimeReviewNote
+    overtimeReviewedBy
+    overtimeReviewedAt
+    status
+    isOffSchedule
+    source
+    note
+    approved
+    createdAt
+    updatedAt
+  }
+`;
+
 const MUTATION_CREATE_ATTENDANCE_CORRECTION = gql`
   ${ATTENDANCE_CORRECTION_FIELDS}
   mutation CreateAttendanceCorrectionRequest(
@@ -256,6 +302,24 @@ const MUTATION_CANCEL_ATTENDANCE_CORRECTION = gql`
   mutation CancelAttendanceCorrectionRequest($requestId: ID!) {
     cancelAttendanceCorrectionRequest(requestId: $requestId) {
       ...AttendanceCorrectionFields
+    }
+  }
+`;
+
+const MUTATION_APPROVE_ATTENDANCE_OVERTIME = gql`
+  ${ATTENDANCE_OVERTIME_FIELDS}
+  mutation ApproveAttendanceOvertime($input: ApproveAttendanceOvertimeInput!) {
+    approveAttendanceOvertime(input: $input) {
+      ...AttendanceOvertimeFields
+    }
+  }
+`;
+
+const MUTATION_REJECT_ATTENDANCE_OVERTIME = gql`
+  ${ATTENDANCE_OVERTIME_FIELDS}
+  mutation RejectAttendanceOvertime($input: RejectAttendanceOvertimeInput!) {
+    rejectAttendanceOvertime(input: $input) {
+      ...AttendanceOvertimeFields
     }
   }
 `;
@@ -329,6 +393,14 @@ export default function useAttendanceManagement({
   const [cancelAttendanceCorrectionRequest, cancelCorrectionState] =
     useMutation(MUTATION_CANCEL_ATTENDANCE_CORRECTION);
 
+  const [approveAttendanceOvertime, approveOvertimeState] = useMutation(
+    MUTATION_APPROVE_ATTENDANCE_OVERTIME,
+  );
+
+  const [rejectAttendanceOvertime, rejectOvertimeState] = useMutation(
+    MUTATION_REJECT_ATTENDANCE_OVERTIME,
+  );
+
   const employees = useMemo(() => data?.staffList || [], [data?.staffList]);
 
   const records = useMemo(
@@ -400,10 +472,14 @@ export default function useAttendanceManagement({
     approveAttendanceCorrectionRequest,
     rejectAttendanceCorrectionRequest,
     cancelAttendanceCorrectionRequest,
+    approveAttendanceOvertime,
+    rejectAttendanceOvertime,
 
     createCorrectionState,
     approveCorrectionState,
     rejectCorrectionState,
     cancelCorrectionState,
+    approveOvertimeState,
+    rejectOvertimeState,
   };
 }

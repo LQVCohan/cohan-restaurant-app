@@ -1,85 +1,27 @@
 import React, { useMemo, useState } from "react";
-import useOvertimeManagement from "@/hooks/useOvertimeManagement";
+import useAttendanceManagement from "@/hooks/useAttendanceManagement";
 import {
   isForbiddenError,
   isUnauthenticatedError,
 } from "@/utils/graphqlErrorUtils";
 
 const REVIEW_ROLES = new Set(["admin", "manager", "hr"]);
-const STAFF_ROLE = "staff";
 
 const OVERTIME_STATUS_TABS = [
   { key: "all", label: "Tất cả" },
-  { key: "pending_employee_confirmation", label: "Chờ NV xác nhận" },
-  { key: "pending_approval", label: "Chờ duyệt" },
+  { key: "pending", label: "Chờ duyệt" },
   { key: "approved", label: "Đã duyệt" },
-  { key: "completed", label: "Hoàn tất" },
   { key: "rejected", label: "Từ chối" },
-  { key: "cancelled", label: "Đã hủy" },
 ];
 
-const OVERTIME_TYPES = [
-  { value: "weekday", label: "Ngày thường" },
-  { value: "weekend", label: "Cuối tuần" },
-  { value: "holiday", label: "Ngày lễ" },
-  { value: "night", label: "Ban đêm" },
-  { value: "emergency", label: "Khẩn cấp" },
-  { value: "other", label: "Khác" },
-];
-
-const normalizeRole = (value) => String(value || "").toLowerCase();
+const normalizeRole = (value) => String(value || "").trim().toLowerCase();
 
 const getRoleName = (user) =>
   normalizeRole(
     user?.roleName || user?.role?.slug || user?.userType || user?.role,
   );
 
-const getUserId = (user) => user?.id || user?._id || user?.userId || null;
-
 const canReviewOvertime = (user) => REVIEW_ROLES.has(getRoleName(user));
-
-const canConfirmOvertime = (user, request) => {
-  const userId = getUserId(user);
-  if (!request || request.status !== "pending_employee_confirmation")
-    return false;
-  if (canReviewOvertime(user)) return true;
-  return userId && String(userId) === String(request.employeeId);
-};
-
-const canCancelOvertime = (user, request) => {
-  if (!request) return false;
-  if (
-    !["pending_employee_confirmation", "pending_approval"].includes(
-      request.status,
-    )
-  ) {
-    return false;
-  }
-
-  if (canReviewOvertime(user)) return true;
-
-  const userId = getUserId(user);
-  return userId && String(userId) === String(request.requestedBy);
-};
-
-const canCreateForAnyEmployee = (user) => canReviewOvertime(user);
-
-const toDatetimeLocalValue = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-  const local = new Date(date.getTime() - offsetMs);
-  return local.toISOString().slice(0, 16);
-};
-
-const fromDatetimeLocalToIso = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
-};
 
 const formatDate = (value) => {
   if (!value) return "--";
@@ -111,56 +53,36 @@ const formatDateTime = (value) => {
   });
 };
 
-const minutesToText = (minutes) => {
-  const total = Number(minutes || 0);
-  const hours = Math.floor(total / 60);
-  const remain = total % 60;
-
-  if (!total) return "0 phút";
+const formatMinutes = (value) => {
+  const minutes = Number(value || 0);
+  if (!minutes) return "0 phút";
+  const hours = Math.floor(minutes / 60);
+  const remain = minutes % 60;
   if (hours && remain) return `${hours}h ${remain}p`;
   if (hours) return `${hours}h`;
   return `${remain}p`;
 };
 
-const getOvertimeTypeLabel = (value) =>
-  OVERTIME_TYPES.find((item) => item.value === value)?.label || value || "--";
+const getAvatarColor = (name = "?") => {
+  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+  return colors[name.length % colors.length];
+};
+
+const getOvertimeStatus = (record) => {
+  const status = String(record?.overtimeApprovalStatus || "").toLowerCase();
+  if (status) return status;
+  return Number(record?.overtimeMinutes || 0) > 0 ? "pending" : "not_required";
+};
 
 const getOvertimeStatusBadge = (status) => {
   const config = {
-    pending_employee_confirmation: {
-      label: "Chờ NV xác nhận",
-      className: "warning",
-      icon: "🙋",
-    },
-    pending_approval: {
-      label: "Chờ duyệt",
-      className: "warning",
-      icon: "⏳",
-    },
-    approved: {
-      label: "Đã duyệt",
-      className: "info",
-      icon: "✅",
-    },
-    rejected: {
-      label: "Từ chối",
-      className: "danger",
-      icon: "⛔",
-    },
-    cancelled: {
-      label: "Đã hủy",
+    pending: { label: "Chờ duyệt", className: "warning", icon: "⏳" },
+    approved: { label: "Đã duyệt", className: "success", icon: "✅" },
+    rejected: { label: "Từ chối", className: "danger", icon: "⛔" },
+    not_required: {
+      label: "Không cần duyệt",
       className: "neutral",
-      icon: "🚫",
-    },
-    completed: {
-      label: "Hoàn tất",
-      className: "success",
-      icon: "✅",
-    },
-    payroll_locked: {
-      label: "Đã khóa lương",
-      className: "neutral",
-      icon: "🔒",
+      icon: "•",
     },
   };
 
@@ -177,32 +99,6 @@ const getOvertimeStatusBadge = (status) => {
   );
 };
 
-const getAvatarColor = (name = "?") => {
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-  return colors[name.length % colors.length];
-};
-
-const getDefaultForm = ({ selectedDate, employees, user, restaurantId }) => {
-  const role = getRoleName(user);
-  const userId = getUserId(user);
-
-  const defaultEmployeeId =
-    role === STAFF_ROLE ? userId : employees?.[0]?.id || "";
-
-  const date = selectedDate || new Date().toISOString().split("T")[0];
-
-  return {
-    employeeId: defaultEmployeeId || "",
-    restaurantId: restaurantId || "",
-    workDate: date,
-    plannedStartTime: `${date}T18:00`,
-    plannedEndTime: `${date}T20:00`,
-    overtimeType: "weekday",
-    employeeConfirmationRequired: role !== STAFF_ROLE,
-    reason: "",
-  };
-};
-
 export const getOvertimeActionErrorMessage = (error, fallback) => {
   if (isForbiddenError(error)) {
     return "❌ Bạn không có quyền thực hiện thao tác này.";
@@ -213,341 +109,202 @@ export const getOvertimeActionErrorMessage = (error, fallback) => {
   return fallback;
 };
 
-const OvertimePanel = ({
-  user,
-  employees = [],
-  selectedDate,
-  searchQuery,
-  restaurantId,
-}) => {
-  const [status, setStatus] = useState("all");
-  const [overtimeType, setOvertimeType] = useState("all");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [form, setForm] = useState(() =>
-    getDefaultForm({ selectedDate, employees, user, restaurantId }),
-  );
+const getAttendanceStatus = (record) => {
+  const status = String(record?.status || "").toLowerCase();
+  if (status === "missed_checkout") return status;
+  if (!record?.actualCheckInAt) {
+    return record?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
+  }
+  if (!record?.actualCheckOutAt) {
+    return record?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  }
+  return status;
+};
+
+const canShowAction = (user, record) => {
+  if (!canReviewOvertime(user)) return false;
+  if (Number(record?.overtimeMinutes || 0) <= 0) return false;
+  if (getOvertimeStatus(record) !== "pending") return false;
+  const attendanceStatus = getAttendanceStatus(record);
+  if (["scheduled_absent", "missed_checkout", "checked_in"].includes(attendanceStatus)) {
+    return false;
+  }
+  return true;
+};
+
+const shiftLabel = (record) => {
+  if (record?.plannedStartTime && record?.plannedEndTime) {
+    return `${formatTime(record.plannedStartTime)} - ${formatTime(
+      record.plannedEndTime,
+    )}`;
+  }
+  return record?.isOffSchedule ? "Ngoài lịch" : "Chưa phân ca";
+};
+
+const buildDefaultDialog = (mode, record) => ({
+  mode,
+  record,
+  approvedMinutes:
+    mode === "approve" ? String(Number(record?.overtimeMinutes || 0)) : "0",
+  note: mode === "approve" ? "Đã đối chiếu giờ tan ca thực tế." : "",
+  error: "",
+});
+
+const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dialog, setDialog] = useState(null);
 
   const {
-    overtimeRequests,
-    stats,
+    records,
     loading,
     error,
-    createOvertimeRequest,
-    confirmOvertimeRequest,
-    approveOvertimeRequest,
-    rejectOvertimeRequest,
-    cancelOvertimeRequest,
-    completeOvertimeRequest,
-    createState,
-    confirmState,
-    approveState,
-    rejectState,
-    cancelState,
-    completeState,
-  } = useOvertimeManagement({
+    refreshAttendanceViews,
+    approveAttendanceOvertime,
+    rejectAttendanceOvertime,
+    approveOvertimeState,
+    rejectOvertimeState,
+  } = useAttendanceManagement({
     selectedDate,
-    status,
-    overtimeType,
-    restaurantId,
+    status: "all",
     search: searchQuery,
+    restaurantId,
   });
 
-  const isReviewer = canReviewOvertime(user);
-  const isStaff = getRoleName(user) === STAFF_ROLE;
-  const isBusy =
-    createState.loading ||
-    confirmState.loading ||
-    approveState.loading ||
-    rejectState.loading ||
-    cancelState.loading ||
-    completeState.loading;
+  const isBusy = approveOvertimeState.loading || rejectOvertimeState.loading;
 
-  const employeeOptions = useMemo(() => {
-    if (!isStaff) return employees;
-    const userId = getUserId(user);
-    return employees.filter((item) => String(item.id) === String(userId));
-  }, [employees, isStaff, user]);
+  const allOvertimeRecords = useMemo(
+    () =>
+      records.filter(
+        (record) =>
+          Number(record?.overtimeMinutes || 0) > 0 ||
+          ["pending", "approved", "rejected"].includes(getOvertimeStatus(record)),
+      ),
+    [records],
+  );
 
-  const updateForm = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const overtimeRecords = useMemo(() => {
+    const filtered = allOvertimeRecords.filter((record) => {
+      if (statusFilter === "all") return true;
+      return getOvertimeStatus(record) === statusFilter;
+    });
+
+    return filtered.sort((left, right) => {
+      const leftPending = getOvertimeStatus(left) === "pending" ? 0 : 1;
+      const rightPending = getOvertimeStatus(right) === "pending" ? 0 : 1;
+      if (leftPending !== rightPending) return leftPending - rightPending;
+      return new Date(right.workDate || 0).getTime() - new Date(left.workDate || 0).getTime();
+    });
+  }, [allOvertimeRecords, statusFilter]);
+
+  const stats = useMemo(() => {
+    const total = allOvertimeRecords.length;
+    const pending = allOvertimeRecords.filter(
+      (record) => getOvertimeStatus(record) === "pending",
+    ).length;
+    const approved = allOvertimeRecords.filter(
+      (record) => getOvertimeStatus(record) === "approved",
+    ).length;
+    const rejected = allOvertimeRecords.filter(
+      (record) => getOvertimeStatus(record) === "rejected",
+    ).length;
+    const rawMinutes = allOvertimeRecords.reduce(
+      (sum, record) => sum + Number(record?.overtimeMinutes || 0),
+      0,
+    );
+    const approvedMinutes = allOvertimeRecords.reduce(
+      (sum, record) => sum + Number(record?.approvedOvertimeMinutes || 0),
+      0,
+    );
+
+    return {
+      total,
+      pending,
+      approved,
+      rejected,
+      rawMinutes,
+      approvedMinutes,
+    };
+  }, [allOvertimeRecords]);
+
+  const openDialog = (mode, record) => {
+    setDialog(buildDefaultDialog(mode, record));
   };
 
-  const openCreateModal = () => {
-    setForm(getDefaultForm({ selectedDate, employees, user, restaurantId }));
-    setIsCreateOpen(true);
+  const closeDialog = () => {
+    if (isBusy) return;
+    setDialog(null);
   };
 
-  const closeCreateModal = () => {
-    setIsCreateOpen(false);
+  const updateDialog = (field, value) => {
+    setDialog((prev) =>
+      prev
+        ? {
+            ...prev,
+            [field]: value,
+            error: "",
+          }
+        : prev,
+    );
   };
 
-  const handleCreate = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!dialog?.record) return;
 
-    const selectedEmployee =
-      employees.find((item) => String(item.id) === String(form.employeeId)) ||
-      null;
-
-    const effectiveRestaurantId =
-      form.restaurantId ||
-      restaurantId ||
-      null;
-
-    if (!form.employeeId) {
-      alert("⚠️ Vui lòng chọn nhân viên.");
-      return;
-    }
-
-    if (!effectiveRestaurantId) {
-      alert("❌ Không xác định được nhà hàng cho yêu cầu tăng ca.");
-      return;
-    }
-
-    if (!form.reason?.trim() || form.reason.trim().length < 5) {
-      alert("⚠️ Lý do tăng ca phải có ít nhất 5 ký tự.");
-      return;
-    }
-
-    const plannedStartTime = fromDatetimeLocalToIso(form.plannedStartTime);
-    const plannedEndTime = fromDatetimeLocalToIso(form.plannedEndTime);
-
-    if (!plannedStartTime || !plannedEndTime) {
-      alert("⚠️ Vui lòng nhập giờ bắt đầu và kết thúc tăng ca.");
-      return;
-    }
-
-    if (new Date(plannedEndTime) <= new Date(plannedStartTime)) {
-      alert("⚠️ Giờ kết thúc tăng ca phải lớn hơn giờ bắt đầu.");
-      return;
-    }
+    const overtimeMinutes = Number(dialog.record?.overtimeMinutes || 0);
 
     try {
-      await createOvertimeRequest({
-        variables: {
-          input: {
-            employeeId: form.employeeId,
-            restaurantId: effectiveRestaurantId,
-            workDate: `${form.workDate}T00:00:00.000Z`,
-            plannedStartTime,
-            plannedEndTime,
-            overtimeType: form.overtimeType,
-            reason: form.reason.trim(),
-            employeeConfirmationRequired: Boolean(
-              form.employeeConfirmationRequired,
-            ),
+      if (dialog.mode === "approve") {
+        const approvedMinutes = Number(dialog.approvedMinutes);
+        if (!Number.isFinite(approvedMinutes)) {
+          throw new Error("Số phút duyệt không hợp lệ.");
+        }
+        if (approvedMinutes < 0) {
+          throw new Error("Số phút duyệt không được âm.");
+        }
+        if (approvedMinutes > overtimeMinutes) {
+          throw new Error("Số phút duyệt không được vượt quá overtime thực tế.");
+        }
+
+        await approveAttendanceOvertime({
+          variables: {
+            input: {
+              timesheetId: dialog.record.id,
+              approvedOvertimeMinutes: approvedMinutes,
+              reviewNote: dialog.note?.trim() || undefined,
+            },
           },
-        },
-      });
+        });
+      }
 
-      alert("✅ Đã tạo yêu cầu tăng ca.");
-      closeCreateModal();
-    } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Không thể tạo yêu cầu tăng ca: ${err.message}`,
-        ),
-      );
-    }
-  };
+      if (dialog.mode === "reject") {
+        if (!dialog.note?.trim()) {
+          throw new Error("Lý do từ chối là bắt buộc.");
+        }
 
-  const handleConfirm = async (request) => {
-    const note = window.prompt("Xác nhận đồng ý tăng ca?", "Tôi xác nhận.");
-    if (note === null) return;
-
-    try {
-      await confirmOvertimeRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            note: note || undefined,
+        await rejectAttendanceOvertime({
+          variables: {
+            input: {
+              timesheetId: dialog.record.id,
+              reviewNote: dialog.note.trim(),
+            },
           },
-        },
-      });
-      alert("✅ Đã xác nhận tăng ca.");
+        });
+      }
+
+      await refreshAttendanceViews();
+      closeDialog();
     } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Xác nhận tăng ca thất bại: ${err.message}`,
-        ),
-      );
-    }
-  };
-
-  const handleApprove = async (request) => {
-    const defaultMinutes = request.plannedOvertimeMinutes || 0;
-    const minutesText = window.prompt(
-      "Nhập số phút tăng ca được duyệt:",
-      String(defaultMinutes),
-    );
-
-    if (minutesText === null) return;
-
-    const approvedOvertimeMinutes = Number(minutesText);
-    if (
-      !Number.isFinite(approvedOvertimeMinutes) ||
-      approvedOvertimeMinutes <= 0
-    ) {
-      alert("⚠️ Số phút duyệt phải lớn hơn 0.");
-      return;
-    }
-
-    const note = window.prompt(
-      "Ghi chú duyệt tăng ca:",
-      "Đã kiểm tra nhu cầu vận hành.",
-    );
-    if (note === null) return;
-
-    try {
-      await approveOvertimeRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            approvedOvertimeMinutes,
-            note: note || undefined,
-          },
-        },
-      });
-      alert("✅ Đã duyệt yêu cầu tăng ca.");
-    } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Duyệt tăng ca thất bại: ${err.message}`,
-        ),
-      );
-    }
-  };
-
-  const handleReject = async (request) => {
-    const reason = window.prompt(
-      `Nhập lý do từ chối yêu cầu tăng ca của ${request.employeeName || "nhân viên"}:`,
-    );
-
-    if (reason === null) return;
-    if (!reason.trim()) {
-      alert("⚠️ Lý do từ chối là bắt buộc.");
-      return;
-    }
-
-    try {
-      await rejectOvertimeRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            reason: reason.trim(),
-          },
-        },
-      });
-      alert("✅ Đã từ chối yêu cầu tăng ca.");
-    } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Từ chối tăng ca thất bại: ${err.message}`,
-        ),
-      );
-    }
-  };
-
-  const handleCancel = async (request) => {
-    const reason = window.prompt(
-      "Lý do hủy yêu cầu tăng ca:",
-      "Không còn nhu cầu tăng ca.",
-    );
-    if (reason === null) return;
-
-    try {
-      await cancelOvertimeRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            reason: reason || undefined,
-          },
-        },
-      });
-      alert("✅ Đã hủy yêu cầu tăng ca.");
-    } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Hủy tăng ca thất bại: ${err.message}`,
-        ),
-      );
-    }
-  };
-
-  const handleComplete = async (request) => {
-    const actualText = window.prompt(
-      "Nhập số phút tăng ca thực tế từ bảng công:",
-      String(
-        request.actualOvertimeMinutes ||
-          request.approvedOvertimeMinutes ||
-          request.plannedOvertimeMinutes ||
-          0,
-      ),
-    );
-
-    if (actualText === null) return;
-
-    const actualOvertimeMinutes = Number(actualText);
-    if (!Number.isFinite(actualOvertimeMinutes) || actualOvertimeMinutes < 0) {
-      alert("⚠️ Số phút tăng ca thực tế không hợp lệ.");
-      return;
-    }
-
-    const approvedText = window.prompt(
-      "Nhập số phút tăng ca được tính lương:",
-      String(
-        Math.min(
-          request.approvedOvertimeMinutes ||
-            request.plannedOvertimeMinutes ||
-            0,
-          actualOvertimeMinutes,
-        ),
-      ),
-    );
-
-    if (approvedText === null) return;
-
-    const approvedOvertimeMinutes = Number(approvedText);
-    if (
-      !Number.isFinite(approvedOvertimeMinutes) ||
-      approvedOvertimeMinutes < 0
-    ) {
-      alert("⚠️ Số phút tăng ca tính lương không hợp lệ.");
-      return;
-    }
-
-    const note = window.prompt(
-      "Ghi chú hoàn tất tăng ca:",
-      "Đã đối chiếu bảng công thực tế.",
-    );
-
-    if (note === null) return;
-
-    try {
-      await completeOvertimeRequest({
-        variables: {
-          input: {
-            requestId: request.id,
-            actualOvertimeMinutes,
-            approvedOvertimeMinutes,
-            note: note || undefined,
-          },
-        },
-      });
-      alert("✅ Đã hoàn tất tăng ca và cập nhật bảng công.");
-    } catch (err) {
-      alert(
-        getOvertimeActionErrorMessage(
-          err,
-          `❌ Hoàn tất tăng ca thất bại: ${err.message}`,
-        ),
+      setDialog((prev) =>
+        prev
+          ? {
+              ...prev,
+              error: getOvertimeActionErrorMessage(
+                err,
+                err?.message || "Không thể xử lý duyệt tăng ca.",
+              ),
+            }
+          : prev,
       );
     }
   };
@@ -556,26 +313,24 @@ const OvertimePanel = ({
     <div className="overtime-panel">
       <div className="overtime-summary-grid">
         <div className="overtime-stat-card">
-          <span className="label">Yêu cầu tăng ca</span>
+          <span className="label">Bản ghi tăng ca</span>
           <strong>{stats.total}</strong>
-          <small>Tổng yêu cầu trong ngày</small>
+          <small>Timesheet có overtime trong ngày</small>
         </div>
         <div className="overtime-stat-card warning">
-          <span className="label">Chờ xử lý</span>
-          <strong>
-            {stats.pendingEmployeeConfirmation + stats.pendingApproval}
-          </strong>
-          <small>Chờ xác nhận / chờ duyệt</small>
+          <span className="label">Chờ duyệt</span>
+          <strong>{stats.pending}</strong>
+          <small>Cần manager/admin/hr xử lý</small>
         </div>
         <div className="overtime-stat-card info">
-          <span className="label">Đã duyệt</span>
-          <strong>{stats.approved}</strong>
-          <small>Cần đối chiếu sau ca</small>
+          <span className="label">Overtime thực tế</span>
+          <strong>{formatMinutes(stats.rawMinutes)}</strong>
+          <small>Dựa trên planned end và check-out thực tế</small>
         </div>
         <div className="overtime-stat-card success">
-          <span className="label">Giờ tính lương</span>
-          <strong>{stats.approvedHours}h</strong>
-          <small>Từ yêu cầu đã hoàn tất</small>
+          <span className="label">Được duyệt</span>
+          <strong>{formatMinutes(stats.approvedMinutes)}</strong>
+          <small>Payroll sau này chỉ dùng số phút này</small>
         </div>
       </div>
 
@@ -585,41 +340,19 @@ const OvertimePanel = ({
             {OVERTIME_STATUS_TABS.map((tab) => (
               <button
                 key={tab.key}
-                className={`tab-btn ${status === tab.key ? "active" : ""}`}
+                className={`tab-btn ${statusFilter === tab.key ? "active" : ""}`}
                 type="button"
-                onClick={() => setStatus(tab.key)}
+                onClick={() => setStatusFilter(tab.key)}
               >
                 {tab.label}
               </button>
             ))}
           </div>
-
-          <div className="overtime-toolbar-actions">
-            <select
-              value={overtimeType}
-              onChange={(event) => setOvertimeType(event.target.value)}
-            >
-              <option value="all">Tất cả loại tăng ca</option>
-              {OVERTIME_TYPES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={openCreateModal}
-            >
-              + Tạo yêu cầu tăng ca
-            </button>
-          </div>
         </div>
 
         {error && (
           <div className="empty-state">
-            ❌ Không tải được yêu cầu tăng ca: {error.message}
+            ❌ Không tải được dữ liệu tăng ca từ bảng công: {error.message}
           </div>
         )}
 
@@ -628,112 +361,97 @@ const OvertimePanel = ({
             <thead>
               <tr>
                 <th width="18%">Nhân viên</th>
-                <th width="12%">Ngày</th>
-                <th width="16%">Khung tăng ca</th>
-                <th width="12%">Loại</th>
-                <th width="12%">Dự kiến</th>
+                <th width="10%">Ngày công</th>
+                <th width="14%">Ca làm</th>
+                <th width="12%">Check-out</th>
+                <th width="12%">Overtime</th>
                 <th width="12%">Được duyệt</th>
-                <th width="11%">Trạng thái</th>
-                <th width="7%" className="text-right">
+                <th width="14%">Trạng thái</th>
+                <th width="8%" className="text-right">
                   Thao tác
                 </th>
               </tr>
             </thead>
             <tbody>
-              {!loading && overtimeRequests.length === 0 && (
+              {!loading && overtimeRecords.length === 0 && (
                 <tr>
                   <td colSpan={8} className="text-center">
-                    Không có yêu cầu tăng ca trong ngày đã chọn.
+                    Không có bản ghi tăng ca trong ngày đã chọn.
                   </td>
                 </tr>
               )}
 
-              {overtimeRequests.map((request) => {
-                const name = request.employeeName || "Nhân viên";
+              {overtimeRecords.map((record) => {
+                const displayName = record.employeeName || "Nhân viên";
+                const status = getOvertimeStatus(record);
+                const canAction = canShowAction(user, record);
 
                 return (
-                  <tr key={request.id}>
+                  <tr key={record.id}>
                     <td>
                       <div className="employee-cell">
                         <div
                           className="avatar"
                           style={{
-                            backgroundImage: request.employeeAvatar
-                              ? `url(${request.employeeAvatar})`
+                            backgroundImage: record.employeeAvatar
+                              ? `url(${record.employeeAvatar})`
                               : "none",
-                            backgroundColor: !request.employeeAvatar
-                              ? getAvatarColor(name)
+                            backgroundColor: !record.employeeAvatar
+                              ? getAvatarColor(displayName)
                               : "transparent",
                           }}
                         >
-                          {!request.employeeAvatar && name.charAt(0)}
+                          {!record.employeeAvatar && displayName.charAt(0)}
                         </div>
                         <div className="info">
-                          <div className="name">{name}</div>
+                          <div className="name">{displayName}</div>
                           <div className="role">
-                            {request.employeeCode || "--"} •{" "}
-                            {request.employeeRole || "--"}
+                            {record.employeeCode || "--"} • {record.employeeRole || "--"}
                           </div>
                         </div>
                       </div>
                     </td>
-
-                    <td>{formatDate(request.workDate)}</td>
-
+                    <td>{formatDate(record.workDate)}</td>
                     <td>
-                      <div className="overtime-time-range">
-                        <strong>
-                          {formatTime(request.plannedStartTime)} -{" "}
-                          {formatTime(request.plannedEndTime)}
-                        </strong>
-                        <span>{request.reason}</span>
+                      <div className="compact-stack">
+                        <strong>{shiftLabel(record)}</strong>
+                        <span>
+                          {formatTime(record.plannedEndTime)} planned end
+                        </span>
                       </div>
                     </td>
-
                     <td>
-                      <span className="shift-badge">
-                        {getOvertimeTypeLabel(request.overtimeType)}
-                      </span>
+                      <div className="compact-stack">
+                        <strong>{formatTime(record.actualCheckOutAt)}</strong>
+                        <span>{formatDateTime(record.actualCheckOutAt)}</span>
+                      </div>
                     </td>
-
-                    <td>{minutesToText(request.plannedOvertimeMinutes)}</td>
-
+                    <td>{formatMinutes(record.overtimeMinutes)}</td>
                     <td>
                       <span className="overtime-approved-minutes">
-                        {minutesToText(request.approvedOvertimeMinutes)}
+                        {formatMinutes(record.approvedOvertimeMinutes)}
                       </span>
                     </td>
-
                     <td>
-                      {getOvertimeStatusBadge(request.status)}
-                      <div className="small-muted">
-                        {request.requestedByName
-                          ? `Tạo bởi ${request.requestedByName}`
-                          : formatDateTime(request.requestedAt)}
+                      {getOvertimeStatusBadge(status)}
+                      <div className="small-muted overtime-status-note">
+                        {record.overtimeReviewNote ||
+                          (status === "pending"
+                            ? "Chưa review"
+                            : record.overtimeReviewedAt
+                              ? `Review lúc ${formatDateTime(record.overtimeReviewedAt)}`
+                              : "--")}
                       </div>
                     </td>
-
                     <td className="text-right">
-                      {canConfirmOvertime(user, request) && (
-                        <button
-                          type="button"
-                          className="action-btn approve"
-                          title="Nhân viên xác nhận"
-                          disabled={isBusy}
-                          onClick={() => handleConfirm(request)}
-                        >
-                          🙋
-                        </button>
-                      )}
-
-                      {request.status === "pending_approval" && isReviewer && (
+                      {canAction && (
                         <>
                           <button
                             type="button"
                             className="action-btn approve"
                             title="Duyệt tăng ca"
                             disabled={isBusy}
-                            onClick={() => handleApprove(request)}
+                            onClick={() => openDialog("approve", record)}
                           >
                             ✅
                           </button>
@@ -742,35 +460,11 @@ const OvertimePanel = ({
                             className="action-btn reject"
                             title="Từ chối tăng ca"
                             disabled={isBusy}
-                            onClick={() => handleReject(request)}
+                            onClick={() => openDialog("reject", record)}
                           >
                             ⛔
                           </button>
                         </>
-                      )}
-
-                      {request.status === "approved" && isReviewer && (
-                        <button
-                          type="button"
-                          className="action-btn complete"
-                          title="Hoàn tất và cập nhật bảng công"
-                          disabled={isBusy}
-                          onClick={() => handleComplete(request)}
-                        >
-                          🧾
-                        </button>
-                      )}
-
-                      {canCancelOvertime(user, request) && (
-                        <button
-                          type="button"
-                          className="action-btn cancel"
-                          title="Hủy yêu cầu"
-                          disabled={isBusy}
-                          onClick={() => handleCancel(request)}
-                        >
-                          🚫
-                        </button>
                       )}
                     </td>
                   </tr>
@@ -781,155 +475,114 @@ const OvertimePanel = ({
         </div>
       </div>
 
-      {isCreateOpen && (
-        <div
-          className="attendance-modal-overlay"
-          onMouseDown={closeCreateModal}
-        >
+      {dialog?.record && (
+        <div className="attendance-modal-overlay" onMouseDown={closeDialog}>
           <div
-            className="attendance-correction-modal overtime-modal"
+            className="attendance-correction-modal overtime-review-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <div>
-                <h3>Tạo yêu cầu tăng ca</h3>
+                <h3>
+                  {dialog.mode === "approve"
+                    ? "Duyệt tăng ca từ bảng công"
+                    : "Từ chối tăng ca từ bảng công"}
+                </h3>
                 <p>
-                  Tăng ca chỉ được tính vào payroll sau khi được duyệt và hoàn
-                  tất đối chiếu bảng công.
+                  {dialog.record.employeeName || "Nhân viên"} •{" "}
+                  {formatDate(dialog.record.workDate)}
                 </p>
               </div>
               <button
                 type="button"
                 className="modal-close"
-                onClick={closeCreateModal}
+                onClick={closeDialog}
+                disabled={isBusy}
               >
                 ×
               </button>
             </div>
 
-            <form className="correction-form" onSubmit={handleCreate}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Nhân viên</label>
-                  <select
-                    value={form.employeeId}
-                    onChange={(event) =>
-                      updateForm("employeeId", event.target.value)
-                    }
-                    disabled={!canCreateForAnyEmployee(user)}
-                    required
-                  >
-                    <option value="">-- Chọn nhân viên --</option>
-                    {employeeOptions.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        [{emp.employeeCode || "--"}] {emp.fullName}
-                      </option>
-                    ))}
-                  </select>
+            <form className="correction-form" onSubmit={handleSubmit}>
+              <div className="overtime-modal-summary">
+                <div>
+                  <span className="label">Ca làm</span>
+                  <strong>{shiftLabel(dialog.record)}</strong>
                 </div>
-
-                <div className="form-group">
-                  <label>Ngày tăng ca</label>
-                  <input
-                    type="date"
-                    value={form.workDate}
-                    onChange={(event) => {
-                      const nextDate = event.target.value;
-                      updateForm("workDate", nextDate);
-                      updateForm("plannedStartTime", `${nextDate}T18:00`);
-                      updateForm("plannedEndTime", `${nextDate}T20:00`);
-                    }}
-                    required
-                  />
+                <div>
+                  <span className="label">Check-out thực tế</span>
+                  <strong>{formatDateTime(dialog.record.actualCheckOutAt)}</strong>
                 </div>
-
-                <div className="form-group">
-                  <label>Bắt đầu tăng ca</label>
-                  <input
-                    type="datetime-local"
-                    value={form.plannedStartTime}
-                    onChange={(event) =>
-                      updateForm("plannedStartTime", event.target.value)
-                    }
-                    required
-                  />
+                <div>
+                  <span className="label">Overtime thực tế</span>
+                  <strong>{formatMinutes(dialog.record.overtimeMinutes)}</strong>
                 </div>
-
-                <div className="form-group">
-                  <label>Kết thúc tăng ca</label>
-                  <input
-                    type="datetime-local"
-                    value={form.plannedEndTime}
-                    onChange={(event) =>
-                      updateForm("plannedEndTime", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Loại tăng ca</label>
-                  <select
-                    value={form.overtimeType}
-                    onChange={(event) =>
-                      updateForm("overtimeType", event.target.value)
-                    }
-                    required
-                  >
-                    {OVERTIME_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group checkbox-group">
-                  <label>Yêu cầu nhân viên xác nhận</label>
-                  <label className="inline-check">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(form.employeeConfirmationRequired)}
-                      onChange={(event) =>
-                        updateForm(
-                          "employeeConfirmationRequired",
-                          event.target.checked,
-                        )
-                      }
-                    />
-                    Cần nhân viên xác nhận trước khi duyệt
-                  </label>
-                </div>
-
-                <div className="form-group full-width">
-                  <label>Lý do tăng ca</label>
-                  <textarea
-                    value={form.reason}
-                    onChange={(event) =>
-                      updateForm("reason", event.target.value)
-                    }
-                    placeholder="VD: Khách đông, thiếu nhân sự ca tối, cần hỗ trợ đóng ca..."
-                    minLength={5}
-                    required
-                  />
+                <div>
+                  <span className="label">Trạng thái hiện tại</span>
+                  {getOvertimeStatusBadge(getOvertimeStatus(dialog.record))}
                 </div>
               </div>
+
+              {dialog.error && <div className="form-alert error">{dialog.error}</div>}
+
+              {dialog.mode === "approve" && (
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Số phút được duyệt</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Number(dialog.record.overtimeMinutes || 0)}
+                      value={dialog.approvedMinutes}
+                      onChange={(event) =>
+                        updateDialog("approvedMinutes", event.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group full-width">
+                    <label>Ghi chú review</label>
+                    <textarea
+                      value={dialog.note}
+                      onChange={(event) => updateDialog("note", event.target.value)}
+                      placeholder="Ghi chú nếu cần..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              {dialog.mode === "reject" && (
+                <div className="form-group full-width">
+                  <label>Lý do từ chối</label>
+                  <textarea
+                    value={dialog.note}
+                    onChange={(event) => updateDialog("note", event.target.value)}
+                    placeholder="Nêu rõ vì sao overtime này không được duyệt..."
+                    required
+                  />
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button
                   type="button"
                   className="btn btn-outline"
-                  onClick={closeCreateModal}
-                  disabled={createState.loading}
+                  onClick={closeDialog}
+                  disabled={isBusy}
                 >
-                  Hủy
+                  Đóng
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
-                  disabled={createState.loading}
+                  className={`btn ${
+                    dialog.mode === "reject" ? "btn-danger" : "btn-primary"
+                  }`}
+                  disabled={isBusy}
                 >
-                  {createState.loading ? "Đang tạo..." : "Tạo yêu cầu tăng ca"}
+                  {dialog.mode === "approve" &&
+                    (approveOvertimeState.loading ? "Đang duyệt..." : "Xác nhận duyệt")}
+                  {dialog.mode === "reject" &&
+                    (rejectOvertimeState.loading ? "Đang từ chối..." : "Xác nhận từ chối")}
                 </button>
               </div>
             </form>

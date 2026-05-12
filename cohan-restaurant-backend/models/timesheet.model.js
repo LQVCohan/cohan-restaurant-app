@@ -29,6 +29,30 @@ async function runAttendanceExceptionDetection() {
   }
 }
 
+async function syncAttendanceOvertimeState() {
+  try {
+    const { applyAttendanceOvertimeState } = await import(
+      "../src/services/attendance/attendanceOvertimeState.service.js"
+    );
+
+    const currentStatus = String(this.overtimeApprovalStatus || "")
+      .trim()
+      .toLowerCase();
+    const forcePending =
+      this.isModified("overtimeMinutes") &&
+      Number(this.overtimeMinutes || 0) > 0 &&
+      ["approved", "rejected"].includes(currentStatus);
+
+    applyAttendanceOvertimeState(this, { forcePending });
+  } catch (error) {
+    console.warn(
+      "Failed to sync attendance overtime state:",
+      error?.message || error,
+    );
+    throw error;
+  }
+}
+
 const TimesheetSchema = new Schema(
   {
     shiftId: { type: Types.ObjectId, ref: "Shift", default: null },
@@ -60,16 +84,18 @@ const TimesheetSchema = new Schema(
     approvedOvertimeMinutes: { type: Number, default: 0 },
     overtimeApprovalStatus: {
       type: String,
-      enum: ["none", "pending", "approved", "rejected"],
-      default: "none",
+      enum: ["not_required", "pending", "approved", "rejected"],
+      default: "not_required",
       index: true,
     },
+    overtimeReviewNote: { type: String, default: "" },
+    overtimeReviewedBy: { type: Types.ObjectId, ref: "User", default: null },
+    overtimeReviewedAt: { type: Date, default: null },
     overtimeRequestId: {
       type: Types.ObjectId,
       ref: "OvertimeRequest",
       default: null,
     },
-    overtimeApprovalNote: { type: String, default: "" },
 
     workedMinutes: { type: Number, default: 0 },
     status: {
@@ -120,6 +146,7 @@ const TimesheetSchema = new Schema(
 );
 
 TimesheetSchema.pre("find", runAttendanceExceptionDetection);
+TimesheetSchema.pre("save", syncAttendanceOvertimeState);
 
 TimesheetSchema.index(
   { employeeId: 1, workDate: 1, shiftId: 1 },

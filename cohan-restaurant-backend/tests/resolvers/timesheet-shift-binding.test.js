@@ -145,14 +145,37 @@ vi.mock("../../src/services/payroll/payrollCalculator.service.js", () => ({ buil
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
-    Types: { ObjectId: function ObjectId(value) { return value; } },
+    Types: {
+      ObjectId: function ObjectId(value) {
+        this.value = String(value);
+        this.toString = () => String(value);
+        this.valueOf = () => String(value);
+        this[Symbol.toPrimitive] = () => String(value);
+      },
+    },
   },
 }));
 
+const OFFICIAL_PUBLICATION_STATUSES = new Set(["published", "active"]);
+
 function idOf(value) {
   if (value == null) return "";
-  if (typeof value === "object" && value._id) return String(value._id);
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    if (value.value != null) return String(value.value);
+    if (value._id != null) return idOf(value._id);
+    if (typeof value.toString === "function") {
+      const rendered = value.toString();
+      if (rendered && rendered !== "[object Object]") return String(rendered);
+    }
+  }
   return String(value);
+}
+
+function isOfficialPublicationStatus(status = db.publicationStatus) {
+  return OFFICIAL_PUBLICATION_STATUSES.has(String(status || "").toLowerCase());
 }
 
 function queryResult(value) {
@@ -166,8 +189,17 @@ function queryResult(value) {
   };
 }
 
+function normalizeTimesheetDoc(doc) {
+  if (!doc) return doc;
+  if (doc.employeeId != null) doc.employeeId = idOf(doc.employeeId);
+  if (doc.restaurantId != null) doc.restaurantId = idOf(doc.restaurantId);
+  if (doc.shiftId != null) doc.shiftId = idOf(doc.shiftId);
+  return doc;
+}
+
 function attachSave(doc) {
   doc.save = vi.fn(async () => {
+    normalizeTimesheetDoc(doc);
     if (!doc._id) doc._id = `timesheet-${db.nextTimesheetId++}`;
     if (!db.timesheets.includes(doc)) db.timesheets.push(doc);
     return doc;
@@ -195,6 +227,37 @@ function buildPublication(status = db.publicationStatus) {
     periodEnd: new Date("2026-06-07T23:59:59.999Z"),
     status,
     effectiveStatus: status,
+  };
+}
+
+function findTimesheetById(id) {
+  return db.timesheets.find((timesheet) => idOf(timesheet._id) === idOf(id)) || null;
+}
+
+function cloneTimesheet(timesheet, { populateShift = false } = {}) {
+  if (!timesheet) return null;
+  const cloned = { ...timesheet };
+  if (
+    populateShift &&
+    cloned.shiftId &&
+    db.shift &&
+    idOf(cloned.shiftId) === idOf(db.shift._id)
+  ) {
+    cloned.shiftId = db.shift;
+  }
+  return cloned;
+}
+
+function populatedTimesheetQuery(id, { populateShift = false } = {}) {
+  return {
+    populate: vi.fn((path) =>
+      path === "shiftId"
+        ? populatedTimesheetQuery(id, { populateShift: true })
+        : populatedTimesheetQuery(id, { populateShift }),
+    ),
+    lean: vi.fn(async () => cloneTimesheet(findTimesheetById(id), { populateShift })),
+    then: (resolve, reject) =>
+      Promise.resolve(cloneTimesheet(findTimesheetById(id), { populateShift })).then(resolve, reject),
   };
 }
 
@@ -248,7 +311,9 @@ describe("Timesheet binding to official published/active staff shifts", () => {
 
     modelMocks.Shift.findOne.mockImplementation((filter = {}) => {
       const shift = db.shift;
-      if (!shift) return { sort: vi.fn().mockReturnValue(queryResult(null)) };
+      if (!shift || !isOfficialPublicationStatus()) {
+        return { sort: vi.fn().mockReturnValue(queryResult(null)) };
+      }
       const employeeOk = !filter.employeeId || idOf(filter.employeeId) === idOf(shift.employeeId);
       const restaurantOk = !filter.restaurantId || idOf(filter.restaurantId) === idOf(shift.restaurantId);
       const shiftStartsBeforeRangeEnd = !filter.startTime?.$lte || shift.startTime <= filter.startTime.$lte;
@@ -268,14 +333,17 @@ describe("Timesheet binding to official published/active staff shifts", () => {
         return true;
       }) || null;
     });
-    modelMocks.Timesheet.findById = vi.fn();
-    modelMocks.Timesheet.find = vi.fn((filter = {}) => queryResult(db.timesheets.filter((timesheet) => {
-      if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
-      if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
-      return true;
-    })));
+    modelMocks.Timesheet.findById = vi.fn((id) => populatedTimesheetQuery(id));
+    modelMocks.Timesheet.find = vi.fn((filter = {}) => queryResult(db.timesheets
+      .filter((timesheet) => {
+        if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
+        if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
+        return true;
+      })
+      .map((timesheet) => cloneTimesheet(timesheet, { populateShift: true }))));
     modelMocks.Timesheet.mockImplementation(function Timesheet(data) {
       Object.assign(this, data);
+      normalizeTimesheetDoc(this);
       attachSave(this);
     });
   });
@@ -342,11 +410,11 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     expect(result.status).toBe("checked_in");
   });
 
-  it("does not mark late for on-time check-in within grace period", async () => {
+  it("tracks exact lateness minutes for near-on-time check-in", async () => {
     const result = await checkInAt("2026-06-02T09:03:00.000Z");
 
     expect(result.shiftId).toBe("shift-1");
-    expect(result.latenessMinutes).toBe(0);
+    expect(result.latenessMinutes).toBe(3);
   });
 
   it("marks early leave after early checkout beyond grace period", async () => {
