@@ -208,6 +208,8 @@ const TIME_SLOT_OPTIONS = [
   { value: "late_night", label: "Đêm" },
 ];
 
+const DEFAULT_SORT_OPTION = "default";
+
 const coalesceNumber = (n, fallback = null) => {
   const v = Number(n);
   return Number.isFinite(v) ? v : fallback;
@@ -287,6 +289,7 @@ export default function useMenuManagement({
   defaultTimeSlot = null,
   pageSize = 50,
   useConnection = false,
+  sortOption = DEFAULT_SORT_OPTION,
 } = {}) {
   /* ---- Menus & timeSlot ---- */
   const {
@@ -332,6 +335,8 @@ export default function useMenuManagement({
     maxPrice: null,
   });
 
+  const normalizedSortOption = sortOption || DEFAULT_SORT_OPTION;
+
   const itemsVariables = useMemo(
     () => ({
       restaurantId,
@@ -358,6 +363,7 @@ export default function useMenuManagement({
         priceRange.maxPrice !== null && priceRange.maxPrice !== ""
           ? Number(priceRange.maxPrice)
           : null,
+      sort: normalizedSortOption,
     }),
     [
       restaurantId,
@@ -367,6 +373,7 @@ export default function useMenuManagement({
       statusFilter,
       priceRange.minPrice,
       priceRange.maxPrice,
+      normalizedSortOption,
     ]
   );
 
@@ -706,6 +713,7 @@ export default function useMenuManagement({
     setStatusFilter,
     priceRange,
     setPriceRange,
+    sortOption: normalizedSortOption,
 
     // loading & errors
     menusLoading,
