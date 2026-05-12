@@ -608,8 +608,8 @@ const MenuManagement = () => {
         isOpen={modals.menuItem.isOpen}
         editId={modals.menuItem.editId}
         onClose={() => toggleModal("menuItem", false)}
-        onSave={() => {
-          refetchItems?.();
+        onSave={async () => {
+          await refetchItems?.();
           toggleModal("menuItem", false);
         }}
         menuItems={items}
