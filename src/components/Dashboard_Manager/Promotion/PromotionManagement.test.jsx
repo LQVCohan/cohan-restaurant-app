@@ -27,11 +27,11 @@ vi.mock("./components/PromotionsGrid/PromotionsGrid", () => ({
   default: () => <div data-testid="promotions-grid" />,
 }));
 
-vi.mock("./components/VoucherModal/VoucherModal", () => ({
+vi.mock("./components/CouponModal/CouponModal", () => ({
   default: () => null,
 }));
 
-vi.mock("./components/VoucherPackageModal/VoucherPackageModal", () => ({
+vi.mock("./components/CouponPackageModal/CouponPackageModal", () => ({
   default: () => null,
 }));
 
@@ -134,23 +134,22 @@ const buildPromotionHookValue = (overrides = {}) => ({
 });
 
 const buildCouponHookValue = (overrides = {}) => ({
-  vouchers: [],
-  allVouchers: [],
+  coupons: [],
   allCoupons: [],
-  voucherFilters: { search: "", category: "all", status: "all" },
-  updateVoucherFilters: vi.fn(),
-  addVoucher: vi.fn(),
-  updateVoucher: vi.fn(),
-  deleteVoucher: vi.fn(),
-  duplicateVoucher: vi.fn(),
-  packages: [],
-  allPackages: [],
-  packageFilters: { search: "", status: "all" },
-  updatePackageFilters: vi.fn(),
-  addPackage: vi.fn(),
-  updatePackage: vi.fn(),
-  deletePackage: vi.fn(),
-  duplicatePackage: vi.fn(),
+  couponFilters: { search: "", category: "all", status: "all" },
+  updateCouponFilters: vi.fn(),
+  addCoupon: vi.fn(),
+  updateCoupon: vi.fn(),
+  deleteCoupon: vi.fn(),
+  duplicateCoupon: vi.fn(),
+  couponPackages: [],
+  allCouponPackages: [],
+  couponPackageFilters: { search: "", status: "all" },
+  updateCouponPackageFilters: vi.fn(),
+  addCouponPackage: vi.fn(),
+  updateCouponPackage: vi.fn(),
+  deleteCouponPackage: vi.fn(),
+  duplicateCouponPackage: vi.fn(),
   resolveStatus: vi.fn(() => "draft"),
   ...overrides,
 });
@@ -231,35 +230,87 @@ describe("PromotionManagement", () => {
     );
   });
 
+  it("renders Coupon stack flags under Dùng chồng and status under Trạng thái", () => {
+    useCoupons.mockReturnValue(
+      buildCouponHookValue({
+        coupons: [
+          {
+            id: "coupon-1",
+            name: "Coupon Stack",
+            code: "STACK10",
+            category: "food",
+            discountType: "percent",
+            discountValue: 10,
+            startDate: "2026-05-01T10:00",
+            endDate: "2026-05-31T10:00",
+            publishAt: "",
+            combinableWithPromotions: true,
+            stackable: true,
+            exclusive: false,
+            priority: 2,
+          },
+        ],
+        allCoupons: [
+          {
+            id: "coupon-1",
+            name: "Coupon Stack",
+            code: "STACK10",
+            category: "food",
+            discountType: "percent",
+            discountValue: 10,
+            startDate: "2026-05-01T10:00",
+            endDate: "2026-05-31T10:00",
+            publishAt: "",
+            combinableWithPromotions: true,
+            stackable: true,
+            exclusive: false,
+            priority: 2,
+          },
+        ],
+        resolveStatus: vi.fn(() => "active"),
+      }),
+    );
+
+    render(<PromotionManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
+
+    const row = screen.getByText("Coupon Stack").closest("tr");
+    const cells = row.querySelectorAll("td");
+
+    expect(cells[4]).toHaveTextContent("+ Promotion");
+    expect(cells[4]).toHaveTextContent("+ Coupon");
+    expect(cells[5]).toHaveTextContent("Đang chạy");
+  });
+
   it("loads package data for the selected restaurant and resolves coupon names from real hook data", () => {
     useCoupons.mockReturnValue(
       buildCouponHookValue({
         allCoupons: [
           {
-            id: "voucher-1",
+            id: "coupon-1",
             name: "Coupon Mon Chinh",
             code: "FOOD10",
             category: "food",
           },
         ],
-        packages: [
+        couponPackages: [
           {
             id: "package-1",
             name: "Goi VIP",
             code: "VIP-01",
-            voucherIds: ["voucher-1"],
+            couponIds: ["coupon-1"],
             startDate: "2026-05-01T10:00",
             endDate: "2026-05-31T10:00",
             publishAt: "",
             conditions: [],
           },
         ],
-        allPackages: [
+        allCouponPackages: [
           {
             id: "package-1",
             name: "Goi VIP",
             code: "VIP-01",
-            voucherIds: ["voucher-1"],
+            couponIds: ["coupon-1"],
             startDate: "2026-05-01T10:00",
             endDate: "2026-05-31T10:00",
             publishAt: "",

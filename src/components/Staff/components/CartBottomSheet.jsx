@@ -382,7 +382,7 @@ export default function CartBottomSheet({
                   <input
                     className="staff-discount-input"
                     value={voucherCode}
-                    placeholder="Nhập mã voucher"
+                    placeholder="Nhập mã coupon"
                     disabled={!permissions.canApplyVoucher}
                     onChange={(event) => {
                       if (!permissions.canApplyVoucher) {

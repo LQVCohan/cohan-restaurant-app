@@ -103,7 +103,7 @@ const ActionsCard = ({
                 onChange={(e) => onFiltersChange({ type: e.target.value })}
               >
                 <option value="all">Tất cả loại</option>
-                <option value="voucher">Coupon</option>
+                <option value="coupon">Coupon</option>
                 <option value="item">Tặng món</option>
               </select>
               <ChevronDown size={14} className="chevron" />

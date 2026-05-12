@@ -10,42 +10,42 @@ import {
   ClipboardList,
 } from "lucide-react";
 import {
-  VOUCHER_CATEGORIES,
-  VOUCHER_DISCOUNT_TYPES,
+  COUPON_CATEGORIES,
+  COUPON_DISCOUNT_TYPES,
 } from "../../../../../utils/constants";
-import "./VoucherModal.scss";
+import "./CouponModal.scss";
 
-const buildInitialFormData = (voucher) => ({
-  name: voucher?.name || "",
-  code: voucher?.code || "",
-  category: voucher?.category || "",
-  discountType: voucher?.discountType || "",
-  discountValue: voucher?.discountValue || "",
-  minOrderValue: voucher?.minOrderValue || "",
-  maxDiscount: voucher?.maxDiscount || "",
-  usageLimit: voucher?.usageLimit || "",
-  startDate: voucher?.startDate || "",
-  endDate: voucher?.endDate || "",
-  publishAt: voucher?.publishAt || "",
-  description: voucher?.description || "",
-  conditions: voucher?.conditions ? voucher.conditions.join("\n") : "",
-  stackable: Boolean(voucher?.stackable),
-  combinableWithPromotions: Boolean(voucher?.combinableWithPromotions),
-  exclusive: Boolean(voucher?.exclusive),
+const buildInitialFormData = (coupon) => ({
+  name: coupon?.name || "",
+  code: coupon?.code || "",
+  category: coupon?.category || "",
+  discountType: coupon?.discountType || "",
+  discountValue: coupon?.discountValue || "",
+  minOrderValue: coupon?.minOrderValue || "",
+  maxDiscount: coupon?.maxDiscount || "",
+  usageLimit: coupon?.usageLimit || "",
+  startDate: coupon?.startDate || "",
+  endDate: coupon?.endDate || "",
+  publishAt: coupon?.publishAt || "",
+  description: coupon?.description || "",
+  conditions: coupon?.conditions ? coupon.conditions.join("\n") : "",
+  stackable: Boolean(coupon?.stackable),
+  combinableWithPromotions: Boolean(coupon?.combinableWithPromotions),
+  exclusive: Boolean(coupon?.exclusive),
   priority:
-    voucher?.priority === 0 || voucher?.priority
-      ? String(voucher.priority)
+    coupon?.priority === 0 || coupon?.priority
+      ? String(coupon.priority)
       : "0",
 });
 
-const VoucherModal = ({ voucher, onSave, onClose }) => {
-  const [formData, setFormData] = useState(buildInitialFormData(voucher));
+const CouponModal = ({ coupon, onSave, onClose }) => {
+  const [formData, setFormData] = useState(buildInitialFormData(coupon));
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    setFormData(buildInitialFormData(voucher));
+    setFormData(buildInitialFormData(coupon));
     setErrors({});
-  }, [voucher]);
+  }, [coupon]);
 
   const handleInputChange = (event) => {
     const { checked, name, type, value } = event.target;
@@ -127,7 +127,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
       <div className="premium-modal">
         <div className="modal-header">
           <div className="header-content">
-            <h2>{voucher ? "Chỉnh sửa coupon" : "Tạo coupon mới"}</h2>
+            <h2>{coupon ? "Chỉnh sửa coupon" : "Tạo coupon mới"}</h2>
             <p>
               Thiết lập coupon đầy đủ điều kiện, thời gian và lịch xuất bản.
             </p>
@@ -138,7 +138,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
         </div>
 
         <div className="modal-body">
-          <form id="voucherForm" onSubmit={handleSubmit}>
+          <form id="couponForm" onSubmit={handleSubmit}>
             <div className="form-section">
               <h3 className="section-title">
                 <FileText size={18} /> Thông tin coupon
@@ -189,7 +189,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     className={errors.category ? "error" : ""}
                   >
                     <option value="">-- Chọn nhóm --</option>
-                    {Object.entries(VOUCHER_CATEGORIES).map(([key, label]) => (
+                    {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
                       <option key={key} value={key}>
                         {label}
                       </option>
@@ -218,7 +218,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     className={errors.discountType ? "error" : ""}
                   >
                     <option value="">-- Loại --</option>
-                    {Object.entries(VOUCHER_DISCOUNT_TYPES).map(
+                    {Object.entries(COUPON_DISCOUNT_TYPES).map(
                       ([key, label]) => (
                         <option key={key} value={key}>
                           {label}
@@ -419,9 +419,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
             >
               <ClipboardList size={18} /> Lưu nháp
             </button>
-            <button type="submit" form="voucherForm" className="btn-primary">
+            <button type="submit" form="couponForm" className="btn-primary">
               <Save size={18} />
-              {voucher ? "Lưu thay đổi" : "Tạo coupon"}
+              {coupon ? "Lưu thay đổi" : "Tạo coupon"}
             </button>
           </div>
         </div>
@@ -430,4 +430,4 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
   );
 };
 
-export default VoucherModal;
+export default CouponModal;

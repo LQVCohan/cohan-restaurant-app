@@ -22,7 +22,7 @@ describe("RightPanel temp print preview discount display", () => {
 
   it("includes voucher discount metadata when present", () => {
     expect(source).toContain("discountBreakdown?.voucherCode");
-    expect(source).toContain("Voucher:");
+    expect(source).toContain("Coupon:");
     expect(source).toContain("discountBreakdown?.discountReason");
     expect(source).toContain("Ưu đãi:");
   });

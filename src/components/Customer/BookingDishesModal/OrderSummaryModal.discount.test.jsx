@@ -47,6 +47,6 @@ describe("OrderSummaryModal discount integration", () => {
     const src = readSource();
 
     expect(src).toMatch(/canPreviewDiscount/);
-    expect(src).toMatch(/Voucher hiện chỉ áp dụng cho đơn thuộc một\s+nhà hàng\./);
+    expect(src).toMatch(/Coupon hiện chỉ áp dụng cho đơn thuộc một\s+nhà hàng\./);
   });
 });

@@ -50,7 +50,7 @@ import {
   STAFF_SHARED_ROLES,
 } from "@/utils/frontendRoleAccess";
 
-import CouponPage from "@/components/Customer/VoucherManagement/VoucherPage";
+import CouponPage from "@/components/Customer/CouponManagement/CouponPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";

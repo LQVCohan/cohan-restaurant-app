@@ -2,21 +2,21 @@ import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
+  Check,
+  Gift,
+  Inbox,
   Search,
+  ShieldCheck,
+  Sparkles,
   Ticket,
   Truck,
   Utensils,
-  Gift,
-  ShieldCheck,
-  ChevronRight,
   Wallet,
-  Sparkles,
   X,
-  Check,
-  Inbox,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import "./VoucherPage.scss";
+import { COUPON_CATEGORIES } from "@/utils/constants";
+import "./CouponPage.scss";
 
 const GET_COUPONS = gql`
   query Coupons(
@@ -32,10 +32,17 @@ const GET_COUPONS = gql`
       offset: $offset
     ) {
       id
+      name
       code
+      category
       description
       discountType
       discountValue
+      minOrderValue
+      maxDiscount
+      maxUsage
+      used
+      publishAt
       startAt
       endAt
       isActive
@@ -48,12 +55,9 @@ const CATEGORIES = [
   { id: "all", label: "Tất cả", icon: <Ticket size={18} /> },
   { id: "shipping", label: "Vận chuyển", icon: <Truck size={18} /> },
   { id: "food", label: "Đồ ăn", icon: <Utensils size={18} /> },
-  { id: "partner", label: "Đối tác", icon: <ShieldCheck size={18} /> },
+  { id: "table", label: "Đặt bàn", icon: <ShieldCheck size={18} /> },
+  { id: "order", label: "Đặt món", icon: <Gift size={18} /> },
 ];
-
-const EMPTY_STATS = {
-  points: 0,
-};
 
 const normalizeRestaurantId = (restaurant) => {
   if (!restaurant) return "";
@@ -62,69 +66,126 @@ const normalizeRestaurantId = (restaurant) => {
   ).trim();
 };
 
-const inferCouponType = (coupon) => {
-  const category = String(
-    coupon.category || coupon.constraints?.category || "",
-  ).toLowerCase();
-  if (["shipping", "food", "partner"].includes(category)) return category;
-  return "partner";
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+
+const formatDate = (value) =>
+  value ? new Date(value).toLocaleDateString("vi-VN") : "Không giới hạn";
+
+const getCouponCategory = (coupon) => String(coupon.category || "order").toLowerCase();
+
+const getCouponColor = (category) => {
+  if (category === "shipping") return "blue";
+  if (category === "food") return "orange";
+  if (category === "table") return "purple";
+  return "green";
 };
 
-const mapCouponToCard = (coupon) => {
-  const isPercent = coupon.discountType === "PERCENT";
+const buildUsage = (coupon) => {
+  const maxUsage = Number(coupon.maxUsage || 0);
+  const used = Number(coupon.used || 0);
+
+  if (!maxUsage) {
+    return {
+      label: "Không giới hạn lượt dùng",
+      percent: null,
+    };
+  }
+
+  const remaining = Math.max(maxUsage - used, 0);
   return {
-    id: coupon.id,
-    code: coupon.code,
-    type: inferCouponType(coupon),
-    title: isPercent
-      ? `Giảm ${coupon.discountValue}%`
-      : `Giảm ${Number(coupon.discountValue || 0).toLocaleString("vi-VN")}đ`,
-    subTitle: coupon.description || "Ưu đãi áp dụng theo điều kiện",
-    expiry: coupon.endAt
-      ? new Date(coupon.endAt).toLocaleDateString("vi-VN")
-      : "Không giới hạn",
-    percent: isPercent ? Number(coupon.discountValue || 0) : 100,
-    progress: 0,
-    tag: "Coupon",
-    color: inferCouponType(coupon) === "shipping" ? "blue" : "green",
-    conditions: Array.isArray(coupon.constraints?.conditions)
-      ? coupon.constraints.conditions
-      : ["Xem điều kiện áp dụng khi thanh toán."],
+    label: `Còn ${remaining.toLocaleString("vi-VN")}/${maxUsage.toLocaleString("vi-VN")} lượt`,
+    percent: Math.min(Math.round((used / maxUsage) * 100), 100),
   };
 };
 
-// TODO(#518): physically rename this folder/CSS from VoucherManagement once routes and imports are migrated.
+const buildConditionLines = (coupon) => {
+  const constraints = coupon.constraints || {};
+  const lines = [];
+
+  if (Number(coupon.minOrderValue || 0) > 0) {
+    lines.push(`Đơn tối thiểu ${formatCurrency(coupon.minOrderValue)}.`);
+  }
+
+  if (Number(coupon.maxDiscount || 0) > 0) {
+    lines.push(`Giảm tối đa ${formatCurrency(coupon.maxDiscount)}.`);
+  }
+
+  const usage = buildUsage(coupon);
+  lines.push(usage.label + ".");
+
+  lines.push(`Hiệu lực: ${formatDate(coupon.startAt)} - ${formatDate(coupon.endAt)}.`);
+
+  if (constraints.stackable) {
+    lines.push("Có thể dùng chồng với coupon khác.");
+  }
+
+  if (constraints.combinableWithPromotions) {
+    lines.push("Có thể dùng chung với Promotion hợp lệ.");
+  }
+
+  if (constraints.exclusive) {
+    lines.push("Coupon độc quyền, có thể chặn ưu đãi khác.");
+  }
+
+  if (Array.isArray(constraints.conditions)) {
+    lines.push(...constraints.conditions.filter(Boolean));
+  }
+
+  return lines.length ? lines : ["Xem điều kiện áp dụng khi thanh toán."];
+};
+
+const mapCouponToCard = (coupon) => {
+  const category = getCouponCategory(coupon);
+  const isPercent = coupon.discountType === "PERCENT";
+  const usage = buildUsage(coupon);
+
+  return {
+    id: coupon.id,
+    name: coupon.name || coupon.code,
+    code: coupon.code,
+    category,
+    categoryLabel: COUPON_CATEGORIES[category] || category,
+    title: coupon.name || (isPercent
+      ? `Giảm ${coupon.discountValue}%`
+      : `Giảm ${formatCurrency(coupon.discountValue)}`),
+    subTitle: coupon.description || "Ưu đãi áp dụng theo điều kiện",
+    discountLabel: isPercent
+      ? `Giảm ${coupon.discountValue}%`
+      : `Giảm ${formatCurrency(coupon.discountValue)}`,
+    expiry: formatDate(coupon.endAt),
+    usage,
+    tag: "Coupon",
+    color: getCouponColor(category),
+    conditions: buildConditionLines(coupon),
+  };
+};
+
 const CouponPage = () => {
-  const { id: legacyRouteId, restaurantId: routeRestaurantId } = useParams();
+  const { restaurantId: routeRestaurantId } = useParams();
   const [searchParams] = useSearchParams();
   const { restaurants = [], refRestaurant = [] } = useContext(AuthContext) || {};
 
-  const contextRestaurantIds = useMemo(
+  const contextRestaurantId = useMemo(
     () =>
       [...restaurants, ...refRestaurant]
         .map(normalizeRestaurantId)
-        .filter(Boolean),
+        .find(Boolean) || "",
     [restaurants, refRestaurant],
   );
 
   const restaurantId = useMemo(() => {
-    const explicitRouteId = routeRestaurantId
-      ? String(routeRestaurantId).trim()
-      : "";
-    if (explicitRouteId) return explicitRouteId;
+    const routeId = routeRestaurantId ? String(routeRestaurantId).trim() : "";
+    if (routeId) return routeId;
 
     const queryRestaurantId = String(
       searchParams.get("restaurantId") || "",
     ).trim();
     if (queryRestaurantId) return queryRestaurantId;
 
-    const legacyId = legacyRouteId ? String(legacyRouteId).trim() : "";
-    if (legacyId && contextRestaurantIds.includes(legacyId)) return legacyId;
+    return contextRestaurantId;
+  }, [contextRestaurantId, routeRestaurantId, searchParams]);
 
-    return contextRestaurantIds[0] || "";
-  }, [contextRestaurantIds, legacyRouteId, routeRestaurantId, searchParams]);
-
-  const { data: couponData, loading, error } = useQuery(GET_COUPONS, {
+  const { data, loading, error } = useQuery(GET_COUPONS, {
     variables: { restaurantId, activeOnly: true, limit: 50, offset: 0 },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
@@ -133,16 +194,16 @@ const CouponPage = () => {
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [savedCoupons, setSavedCoupons] = useState([]);
 
-  const apiCoupons = useMemo(
-    () => (couponData?.coupons ?? []).map(mapCouponToCard),
-    [couponData],
+  const coupons = useMemo(
+    () => (data?.coupons ?? []).map(mapCouponToCard),
+    [data?.coupons],
   );
 
   const filteredCoupons = useMemo(() => {
     return activeTab === "all"
-      ? apiCoupons
-      : apiCoupons.filter((coupon) => coupon.type === activeTab);
-  }, [activeTab, apiCoupons]);
+      ? coupons
+      : coupons.filter((coupon) => coupon.category === activeTab);
+  }, [activeTab, coupons]);
 
   const handleToggleSave = (id) => {
     setSavedCoupons((prev) =>
@@ -150,8 +211,22 @@ const CouponPage = () => {
     );
   };
 
-  const handleOpenDetail = (coupon) => {
-    setSelectedCoupon(coupon);
+  const renderCouponUsage = (coupon) => {
+    if (coupon.usage.percent == null) {
+      return <span className="usage-text">{coupon.usage.label}</span>;
+    }
+
+    return (
+      <div className="usage-area">
+        <div className="usage-bg">
+          <div
+            className="usage-fill"
+            style={{ width: `${coupon.usage.percent}%` }}
+          ></div>
+        </div>
+        <span className="usage-text">{coupon.usage.label}</span>
+      </div>
+    );
   };
 
   const renderCouponContent = () => {
@@ -168,7 +243,7 @@ const CouponPage = () => {
       );
     }
 
-    if (loading && !couponData) {
+    if (loading && !data) {
       return (
         <div className="empty-state">
           <Ticket size={42} />
@@ -193,22 +268,24 @@ const CouponPage = () => {
         <div className="empty-state">
           <Inbox size={42} />
           <h3>Chưa có Coupon phù hợp</h3>
-          <p>Nhà hàng này hiện chưa có coupon đang hoạt động trong nhóm bạn chọn.</p>
+          <p>
+            Nhà hàng này hiện chưa có coupon đang hoạt động trong nhóm bạn chọn.
+          </p>
         </div>
       );
     }
 
     return (
-      <div className="voucher-grid">
+      <div className="coupon-grid">
         {filteredCoupons.map((coupon) => {
           const isSaved = savedCoupons.includes(coupon.id);
           return (
             <div key={coupon.id} className={`ticket-card color-${coupon.color}`}>
               <div className="ticket-left">
                 <div className="ticket-icon">
-                  {coupon.type === "shipping" ? (
+                  {coupon.category === "shipping" ? (
                     <Truck size={28} />
-                  ) : coupon.type === "food" ? (
+                  ) : coupon.category === "food" ? (
                     <Utensils size={28} />
                   ) : (
                     <Gift size={28} />
@@ -221,31 +298,21 @@ const CouponPage = () => {
 
               <div className="ticket-right">
                 <div className="ticket-header">
-                  <span className="tag">{coupon.tag}</span>
+                  <span className="tag">{coupon.categoryLabel}</span>
                   <span className="expiry">HSD: {coupon.expiry}</span>
                 </div>
 
                 <div className="ticket-body">
                   <h4 className="t-title">{coupon.title}</h4>
                   <p className="t-sub">{coupon.subTitle}</p>
-
-                  <div className="progress-area">
-                    <div className="progress-bg">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${coupon.progress}%` }}
-                      ></div>
-                    </div>
-                    <span className="progress-text">
-                      Đã dùng {coupon.progress}%
-                    </span>
-                  </div>
+                  <p className="discount-label">{coupon.discountLabel}</p>
+                  {renderCouponUsage(coupon)}
                 </div>
 
                 <div className="ticket-footer">
                   <button
                     className="btn-detail"
-                    onClick={() => handleOpenDetail(coupon)}
+                    onClick={() => setSelectedCoupon(coupon)}
                   >
                     Điều kiện
                   </button>
@@ -271,8 +338,8 @@ const CouponPage = () => {
   };
 
   return (
-    <div className="voucher-page">
-      <div className="voucher-container">
+    <div className="coupon-page">
+      <div className="coupon-container">
         <div className="dashboard-header">
           <div className="welcome-text">
             <h1>Kho Coupon & Ưu đãi</h1>
@@ -284,8 +351,8 @@ const CouponPage = () => {
                 <Sparkles size={20} />
               </div>
               <div>
-                <span className="value">{EMPTY_STATS.points}</span>
-                <span className="label">Points</span>
+                <span className="value">{coupons.length}</span>
+                <span className="label">Coupon</span>
               </div>
             </div>
             <div className="divider"></div>
@@ -310,14 +377,14 @@ const CouponPage = () => {
         </div>
 
         <div className="categories-wrapper">
-          {CATEGORIES.map((cat) => (
+          {CATEGORIES.map((category) => (
             <button
-              key={cat.id}
-              className={`cat-pill ${activeTab === cat.id ? "active" : ""}`}
-              onClick={() => setActiveTab(cat.id)}
+              key={category.id}
+              className={`cat-pill ${activeTab === category.id ? "active" : ""}`}
+              onClick={() => setActiveTab(category.id)}
             >
-              {cat.icon}
-              <span>{cat.label}</span>
+              {category.icon}
+              <span>{category.label}</span>
             </button>
           ))}
         </div>
@@ -331,10 +398,10 @@ const CouponPage = () => {
 
       {selectedCoupon && (
         <div
-          className="modal-voucher-overlay"
+          className="modal-coupon-overlay"
           onClick={() => setSelectedCoupon(null)}
         >
-          <div className="modal-ticket" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-ticket" onClick={(event) => event.stopPropagation()}>
             <button className="close-btn" onClick={() => setSelectedCoupon(null)}>
               <X size={24} />
             </button>

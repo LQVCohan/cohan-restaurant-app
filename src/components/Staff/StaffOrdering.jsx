@@ -1184,7 +1184,7 @@ export default function StaffOrdering() {
         return;
       }
       if (shouldBlockRemoteDiscount) {
-        alert("Vui lòng áp dụng voucher hợp lệ trước khi gửi POS.");
+        alert("Vui lòng áp dụng coupon hợp lệ trước khi gửi POS.");
         return;
       }
       const payloadItems = pendingItems.map((item) => {
@@ -1847,7 +1847,7 @@ export default function StaffOrdering() {
           discountBreakdown={remoteDiscountBreakdown}
           discountError={
             isRemoteDiscountStale
-              ? "Voucher đã thay đổi hoặc giỏ hàng đã đổi. Vui lòng áp dụng lại."
+              ? "Coupon đã thay đổi hoặc giỏ hàng đã đổi. Vui lòng áp dụng lại."
               : remoteDiscountError
           }
           discountLoading={isPreviewingRemoteDiscount}

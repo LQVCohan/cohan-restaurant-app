@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const source = fs.readFileSync(
   path.resolve(
     process.cwd(),
-    "src/components/Dashboard_Manager/Promotion/components/VoucherModal/VoucherModal.jsx",
+    "src/components/Dashboard_Manager/Promotion/components/CouponModal/CouponModal.jsx",
   ),
   "utf8",
 );

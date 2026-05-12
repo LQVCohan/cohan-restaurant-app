@@ -360,7 +360,7 @@ export default function RightPanel() {
 
     if (!isOffPremise) {
       setDiscountBreakdown(null);
-      setDiscountError("Voucher cho bàn ăn sẽ áp dụng ở bước thanh toán.");
+      setDiscountError("Coupon cho bàn ăn sẽ áp dụng ở bước thanh toán.");
       return;
     }
 
@@ -876,7 +876,7 @@ export default function RightPanel() {
     lines.push(`Tổng cần trả: ${formatPrice(total)}`);
 
     if (discountBreakdown?.voucherCode) {
-      lines.push(`Voucher: ${discountBreakdown.voucherCode}`);
+      lines.push(`Coupon: ${discountBreakdown.voucherCode}`);
     }
 
     const discountReasonLabel = formatDiscountReasonLabel(
@@ -1172,7 +1172,7 @@ export default function RightPanel() {
     if (!v.ok) return;
     if (shouldBlockSaveForDiscount) {
       showNotification(
-        "Vui lòng áp dụng voucher hợp lệ trước khi lưu đơn.",
+        "Vui lòng áp dụng coupon hợp lệ trước khi lưu đơn.",
         "error",
       );
       return;
@@ -1276,13 +1276,13 @@ export default function RightPanel() {
     >
       {isOffPremise && (
         <div className={cls.discountBox}>
-          <div className={cls.discountTitle}>Ưu đãi / voucher</div>
+          <div className={cls.discountTitle}>Ưu đãi / coupon</div>
 
           <div className={cls.discountRow}>
             <input
               className={cls.discountInput}
               value={voucherCode}
-              placeholder="Nhập mã voucher"
+              placeholder="Nhập mã coupon"
               onChange={(event) => setVoucherCode(event.target.value)}
             />
             <button

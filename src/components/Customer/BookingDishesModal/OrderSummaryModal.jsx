@@ -1070,7 +1070,7 @@ const DiscountSection = ({
 }) => (
   <div className="section discount-section">
     <h3 className="section-title">
-      <Receipt size={20} /> Ưu đãi & voucher
+      <Receipt size={20} /> Ưu đãi & coupon
     </h3>
 
     <div className="voucher-row">
@@ -1098,7 +1098,7 @@ const DiscountSection = ({
       </button>
       {!canPreviewDiscount && (
         <div className="discount-message discount-message--warning">
-          <AlertCircle size={16} /> Voucher hiện chỉ áp dụng cho đơn thuộc một
+          <AlertCircle size={16} /> Coupon hiện chỉ áp dụng cho đơn thuộc một
           nhà hàng.
         </div>
       )}
@@ -1112,14 +1112,14 @@ const DiscountSection = ({
 
     {hasUnappliedDiscount && !discountError && (
       <div className="discount-message discount-message--warning">
-        <AlertCircle size={16} /> Voucher đã thay đổi. Vui lòng áp dụng lại
+        <AlertCircle size={16} /> Coupon đã thay đổi. Vui lòng áp dụng lại
         trước khi đặt hàng.
       </div>
     )}
 
     {discountBreakdown?.voucherCode && (
       <div className="discount-message discount-message--success">
-        <CheckCircle size={16} /> Đã áp dụng voucher{" "}
+        <CheckCircle size={16} /> Đã áp dụng coupon{" "}
         <strong>{discountBreakdown.voucherCode}</strong>
       </div>
     )}

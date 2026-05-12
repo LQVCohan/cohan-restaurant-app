@@ -307,7 +307,7 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                         <div className="hm-discount-tags">
                           {discountMeta.voucherCode && (
                             <span className="hm-discount-tag">
-                              Voucher {discountMeta.voucherCode}
+                              Coupon {discountMeta.voucherCode}
                             </span>
                           )}
                           {discountMeta.promotionId && (

@@ -20,9 +20,9 @@ import {
 import StatsCard from "./components/StatsCard/StatsCard";
 import PromotionsGrid from "./components/PromotionsGrid/PromotionsGrid";
 import PromotionModal from "./components/PromotionModal/PromotionModal";
-import VoucherModal from "./components/VoucherModal/VoucherModal";
-import CouponPackageModal from "./components/VoucherPackageModal/VoucherPackageModal";
-import { VOUCHER_CATEGORIES } from "../../../utils/constants";
+import CouponModal from "./components/CouponModal/CouponModal";
+import CouponPackageModal from "./components/CouponPackageModal/CouponPackageModal";
+import { COUPON_CATEGORIES } from "../../../utils/constants";
 import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 
 // --- Hooks ---
@@ -49,31 +49,31 @@ const PromotionManagement = () => {
   } = usePromotions();
 
   const {
-    vouchers,
+    coupons,
     allCoupons,
-    voucherFilters,
-    updateVoucherFilters,
-    addVoucher,
-    updateVoucher,
-    deleteVoucher,
-    duplicateVoucher,
-    packages,
-    allPackages,
-    packageFilters,
-    updatePackageFilters,
-    addPackage,
-    updatePackage,
-    deletePackage,
-    duplicatePackage,
+    couponFilters,
+    updateCouponFilters,
+    addCoupon,
+    updateCoupon,
+    deleteCoupon,
+    duplicateCoupon,
+    couponPackages,
+    allCouponPackages,
+    couponPackageFilters,
+    updateCouponPackageFilters,
+    addCouponPackage,
+    updateCouponPackage,
+    deleteCouponPackage,
+    duplicateCouponPackage,
     resolveStatus,
   } = useCoupons(selectedRestaurantId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [editingVoucher, setEditingVoucher] = useState(null);
-  const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
-  const [editingPackage, setEditingPackage] = useState(null);
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState(null);
+  const [isCouponPackageModalOpen, setIsCouponPackageModalOpen] = useState(false);
+  const [editingCouponPackage, setEditingCouponPackage] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // 'list' | 'grid'
   const [activeTab, setActiveTab] = useState("all");
   const [activeSection, setActiveSection] = useState("promotions");
@@ -128,7 +128,7 @@ const PromotionManagement = () => {
     const restaurantName =
       selectedRestaurant?.name || `Restaurant-${selectedRestaurantId || "all"}`;
 
-    if (activeSection === "vouchers") {
+    if (activeSection === "coupons") {
       return [
         {
           name: "Coupons",
@@ -148,21 +148,21 @@ const PromotionManagement = () => {
               "Trạng thái",
               "Nhà hàng",
             ],
-            ...vouchers.map((voucher) => [
-              voucher.name,
-              voucher.code,
-              VOUCHER_CATEGORIES[voucher.category] || voucher.category,
-              voucher.discountType === "percent"
-                ? `${voucher.discountValue}%`
-                : voucher.discountValue,
-              voucher.minOrderValue,
-              voucher.maxDiscount,
-              voucher.usageLimit,
-              voucher.usageCount,
-              voucher.publishAt,
-              voucher.startDate,
-              voucher.endDate,
-              resolveStatus(voucher),
+            ...coupons.map((coupon) => [
+              coupon.name,
+              coupon.code,
+              COUPON_CATEGORIES[coupon.category] || coupon.category,
+              coupon.discountType === "percent"
+                ? `${coupon.discountValue}%`
+                : coupon.discountValue,
+              coupon.minOrderValue,
+              coupon.maxDiscount,
+              coupon.usageLimit,
+              coupon.usageCount,
+              coupon.publishAt,
+              coupon.startDate,
+              coupon.endDate,
+              resolveStatus(coupon),
               restaurantName,
             ]),
           ],
@@ -170,7 +170,7 @@ const PromotionManagement = () => {
       ];
     }
 
-    if (activeSection === "packages") {
+    if (activeSection === "couponPackages") {
       return [
         {
           name: "CouponPackages",
@@ -186,23 +186,23 @@ const PromotionManagement = () => {
               "Nhà hàng",
               "Điều kiện",
             ],
-            ...packages.map((pkg) => [
-              pkg.name,
-              pkg.code,
-              (pkg.voucherIds || [])
-                .map((voucherId) => {
-                  const voucher = allCoupons.find(
-                    (item) => String(item.id) === String(voucherId),
+            ...couponPackages.map((couponPackage) => [
+              couponPackage.name,
+              couponPackage.code,
+              (couponPackage.couponIds || [])
+                .map((couponId) => {
+                  const coupon = allCoupons.find(
+                    (item) => String(item.id) === String(couponId),
                   );
-                  return voucher?.name || voucherId;
+                  return coupon?.name || couponId;
                 })
                 .join(", "),
-              pkg.publishAt,
-              pkg.startDate,
-              pkg.endDate,
-              resolveStatus(pkg),
+              couponPackage.publishAt,
+              couponPackage.startDate,
+              couponPackage.endDate,
+              resolveStatus(couponPackage),
               restaurantName,
-              (pkg.conditions || []).join(" | "),
+              (couponPackage.conditions || []).join(" | "),
             ]),
           ],
         },
@@ -264,9 +264,9 @@ const PromotionManagement = () => {
     const rows =
       activeSection === "promotions"
         ? promotions
-        : activeSection === "vouchers"
-          ? vouchers
-          : packages;
+        : activeSection === "coupons"
+          ? coupons
+          : couponPackages;
 
     if (!rows.length) return;
 
@@ -279,7 +279,7 @@ const PromotionManagement = () => {
 
   // --- Derived Data (Tính toán số liệu) ---
   const statsData = useMemo(() => {
-    if (activeSection === "vouchers") {
+    if (activeSection === "coupons") {
       const totalUsage = allCoupons.reduce(
         (sum, v) => sum + (v.usageCount || 0),
         0,
@@ -302,20 +302,20 @@ const PromotionManagement = () => {
       };
     }
 
-    if (activeSection === "packages") {
-      const activePackages = allPackages.filter(
-        (pkg) => resolveStatus(pkg) === "active",
+    if (activeSection === "couponPackages") {
+      const activePackages = allCouponPackages.filter(
+        (couponPackage) => resolveStatus(couponPackage) === "active",
       ).length;
-      const totalUsage = allPackages.length;
+      const totalUsage = allCouponPackages.length;
 
       return {
-        totalSavings: allPackages.length * 50000,
+        totalSavings: allCouponPackages.length * 50000,
         usageRate: totalUsage
           ? Math.round((activePackages / totalUsage) * 100)
           : 0,
         totalUsage,
-        hotPromotions: allPackages.filter(
-          (pkg) => resolveStatus(pkg) === "scheduled",
+        hotPromotions: allCouponPackages.filter(
+          (couponPackage) => resolveStatus(couponPackage) === "scheduled",
         ).length,
       };
     }
@@ -340,7 +340,7 @@ const PromotionManagement = () => {
       ),
       hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
     };
-  }, [activeSection, allPromotions, allCoupons, allPackages, resolveStatus]);
+  }, [activeSection, allPromotions, allCoupons, allCouponPackages, resolveStatus]);
 
   // --- Handlers ---
   const handleOpenModal = (promotion = null) => {
@@ -378,61 +378,61 @@ const PromotionManagement = () => {
     }
   };
 
-  const handleOpenVoucherModal = (voucher = null) => {
-    setEditingVoucher(voucher);
-    setIsVoucherModalOpen(true);
+  const handleOpenCouponModal = (coupon = null) => {
+    setEditingCoupon(coupon);
+    setIsCouponModalOpen(true);
   };
 
-  const handleCloseVoucherModal = () => {
-    setIsVoucherModalOpen(false);
-    setEditingVoucher(null);
+  const handleCloseCouponModal = () => {
+    setIsCouponModalOpen(false);
+    setEditingCoupon(null);
   };
 
-  const handleSaveVoucher = async (voucherData) => {
+  const handleSaveCoupon = async (couponData) => {
     try {
-      if (editingVoucher) {
-        await updateVoucher(editingVoucher.id, voucherData);
+      if (editingCoupon) {
+        await updateCoupon(editingCoupon.id, couponData);
       } else {
-        await addVoucher(voucherData);
+        await addCoupon(couponData);
       }
-      handleCloseVoucherModal();
+      handleCloseCouponModal();
     } catch (error) {
       console.error("Khong the luu coupon.", error);
     }
   };
 
-  const handleDeleteVoucher = (id) => {
+  const handleDeleteCoupon = (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa coupon này?")) {
-      deleteVoucher(id);
+      deleteCoupon(id);
     }
   };
 
-  const handleOpenPackageModal = (voucherPackage = null) => {
-    setEditingPackage(voucherPackage);
-    setIsPackageModalOpen(true);
+  const handleOpenCouponPackageModal = (couponPackage = null) => {
+    setEditingCouponPackage(couponPackage);
+    setIsCouponPackageModalOpen(true);
   };
 
-  const handleClosePackageModal = () => {
-    setIsPackageModalOpen(false);
-    setEditingPackage(null);
+  const handleCloseCouponPackageModal = () => {
+    setIsCouponPackageModalOpen(false);
+    setEditingCouponPackage(null);
   };
 
-  const handleSavePackage = async (packageData) => {
+  const handleSaveCouponPackage = async (packageData) => {
     try {
-      if (editingPackage) {
-        await updatePackage(editingPackage.id, packageData);
+      if (editingCouponPackage) {
+        await updateCouponPackage(editingCouponPackage.id, packageData);
       } else {
-        await addPackage(packageData);
+        await addCouponPackage(packageData);
       }
-      handleClosePackageModal();
+      handleCloseCouponPackageModal();
     } catch (error) {
       console.error("Khong the luu goi coupon.", error);
     }
   };
 
-  const handleDeletePackage = (id) => {
+  const handleDeleteCouponPackage = (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa gói Coupon này?")) {
-      deletePackage(id);
+      deleteCouponPackage(id);
     }
   };
 
@@ -472,14 +472,14 @@ const PromotionManagement = () => {
       emptyText: "Thử thay đổi bộ lọc hoặc tạo chương trình mới.",
       createLabel: "Tạo khuyến mãi",
     },
-    vouchers: {
+    coupons: {
       title: "Quản Lý Coupon",
       subtitle:
         "Quản lý coupon theo nhóm món ăn, đặt bàn, đặt món và shipping.",
       emptyText: "Thử thay đổi bộ lọc hoặc tạo coupon mới.",
       createLabel: "Tạo coupon",
     },
-    packages: {
+    couponPackages: {
       title: "Quản Lý Gói Coupon",
       subtitle: "Tạo gói Coupon cho từng nhóm khách hàng.",
       emptyText: "Thử thay đổi bộ lọc hoặc tạo gói Coupon mới.",
@@ -495,11 +495,11 @@ const PromotionManagement = () => {
       updateFilters({ status: tabId });
       return;
     }
-    if (activeSection === "vouchers") {
-      updateVoucherFilters({ status: tabId });
+    if (activeSection === "coupons") {
+      updateCouponFilters({ status: tabId });
       return;
     }
-    updatePackageFilters({ status: tabId });
+    updateCouponPackageFilters({ status: tabId });
   };
 
   const handleClearFilters = () => {
@@ -512,125 +512,127 @@ const PromotionManagement = () => {
       });
       return;
     }
-    if (activeSection === "vouchers") {
-      updateVoucherFilters({ search: "", category: "all", status: "all" });
+    if (activeSection === "coupons") {
+      updateCouponFilters({ search: "", category: "all", status: "all" });
       return;
     }
-    updatePackageFilters({ search: "", status: "all" });
+    updateCouponPackageFilters({ search: "", status: "all" });
   };
 
   const searchValue =
     activeSection === "promotions"
       ? filters.search
-      : activeSection === "vouchers"
-        ? voucherFilters.search
-        : packageFilters.search;
+      : activeSection === "coupons"
+        ? couponFilters.search
+        : couponPackageFilters.search;
 
   const hasActiveFilters =
     activeSection === "promotions"
       ? filters.search || filters.status !== "all"
-      : activeSection === "vouchers"
-        ? voucherFilters.search ||
-          voucherFilters.status !== "all" ||
-          voucherFilters.category !== "all"
-        : packageFilters.search || packageFilters.status !== "all";
+      : activeSection === "coupons"
+        ? couponFilters.search ||
+          couponFilters.status !== "all" ||
+          couponFilters.category !== "all"
+        : couponPackageFilters.search || couponPackageFilters.status !== "all";
 
   const currentCount =
     activeSection === "promotions"
       ? promotions.length
-      : activeSection === "vouchers"
-        ? vouchers.length
-        : packages.length;
+      : activeSection === "coupons"
+        ? coupons.length
+        : couponPackages.length;
 
   const totalCount =
     activeSection === "promotions"
       ? allPromotions.length
-      : activeSection === "vouchers"
+      : activeSection === "coupons"
         ? allCoupons.length
-        : allPackages.length;
+        : allCouponPackages.length;
 
-  const renderVoucherTable = () => (
+  const renderCouponTable = () => (
     <div className="table-responsive">
-      <table className="premium-table voucher-table">
+      <table className="premium-table coupon-table">
         <thead>
-          <th width="25%">Coupon / Mã</th>
-          <th width="15%">Nhóm</th>
-          <th width="16%">Hiệu lực</th>
-          <th width="14%">Giảm giá</th>
-          <th width="14%">Dùng chồng</th>
-          <th width="8%">Trạng thái</th>
-          <th width="8%" className="text-right">
-            Hành động
-          </th>
+          <tr>
+            <th width="25%">Coupon / Mã</th>
+            <th width="15%">Nhóm</th>
+            <th width="16%">Hiệu lực</th>
+            <th width="14%">Giảm giá</th>
+            <th width="14%">Dùng chồng</th>
+            <th width="8%">Trạng thái</th>
+            <th width="8%" className="text-right">
+              Hành động
+            </th>
+          </tr>
         </thead>
         <tbody>
-          {vouchers.map((voucher) => (
-            <tr key={voucher.id}>
+          {coupons.map((coupon) => (
+            <tr key={coupon.id}>
               <td>
-                <div className="fw-bold text-dark mb-1">{voucher.name}</div>
+                <div className="fw-bold text-dark mb-1">{coupon.name}</div>
                 <div className="code-badge">
-                  <Copy size={12} /> {voucher.code}
+                  <Copy size={12} /> {coupon.code}
                 </div>
-                {voucher.publishAt && (
+                {coupon.publishAt && (
                   <div className="text-xs text-secondary mt-1">
-                    Công bố: {formatDate(voucher.publishAt)}
+                    Công bố: {formatDate(coupon.publishAt)}
                   </div>
                 )}
               </td>
               <td className="text-secondary text-sm">
-                {VOUCHER_CATEGORIES[voucher.category] || voucher.category}
+                {COUPON_CATEGORIES[coupon.category] || coupon.category}
               </td>
               <td className="text-secondary text-sm">
-                <div>{formatDate(voucher.startDate)}</div>
-                <div className="text-xs">đến {formatDate(voucher.endDate)}</div>
+                <div>{formatDate(coupon.startDate)}</div>
+                <div className="text-xs">đến {formatDate(coupon.endDate)}</div>
               </td>
               <td className="text-primary font-bold">
-                {voucher.discountType === "percent"
-                  ? `${voucher.discountValue}%`
-                  : `${Number(voucher.discountValue || 0).toLocaleString()}đ`}
+                {coupon.discountType === "percent"
+                  ? `${coupon.discountValue}%`
+                  : `${Number(coupon.discountValue || 0).toLocaleString()}đ`}
               </td>
-              <td>{renderStatusBadge(resolveStatus(voucher))}</td>
               <td className="text-secondary text-sm">
-                <div className="voucher-stack-flags">
-                  {voucher.combinableWithPromotions && (
-                    <span className="voucher-chip">+ Promotion</span>
+                <div className="coupon-stack-flags">
+                  {coupon.combinableWithPromotions && (
+                    <span className="coupon-chip">+ Promotion</span>
                   )}
-                  {voucher.stackable && (
-                    <span className="voucher-chip">+ Coupon</span>
+                  {coupon.stackable && (
+                    <span className="coupon-chip">+ Coupon</span>
                   )}
-                  {voucher.exclusive && (
-                    <span className="voucher-chip voucher-chip-danger">
+                  {coupon.exclusive && (
+                    <span className="coupon-chip coupon-chip-danger">
                       Độc quyền
                     </span>
                   )}
-                  {!voucher.combinableWithPromotions &&
-                    !voucher.stackable &&
-                    !voucher.exclusive && (
+                  {!coupon.combinableWithPromotions &&
+                    !coupon.stackable &&
+                    !coupon.exclusive && (
                       <span className="text-xs text-muted">
                         Không dùng chồng
                       </span>
                     )}
                 </div>
                 <div className="text-xs text-secondary mt-1">
-                  Ưu tiên: {voucher.priority || 0}
+                  Ưu tiên: {coupon.priority || 0}
                 </div>
               </td>
+              <td>{renderStatusBadge(resolveStatus(coupon))}</td>
               <td className="text-right">
                 <div className="action-buttons">
                   <button
-                    onClick={() => duplicateVoucher(voucher.id)}
+                    onClick={() => duplicateCoupon(coupon.id)}
                     title="Nhân bản"
                   >
                     <Copy size={16} />
                   </button>
                   <button
-                    onClick={() => handleOpenVoucherModal(voucher)}
+                    onClick={() => handleOpenCouponModal(coupon)}
                     title="Sửa"
                   >
                     <Edit3 size={16} />
                   </button>
                   <button
-                    onClick={() => handleDeleteVoucher(voucher.id)}
+                    onClick={() => handleDeleteCoupon(coupon.id)}
                     title="Xóa"
                     className="text-danger"
                   >
@@ -645,9 +647,9 @@ const PromotionManagement = () => {
     </div>
   );
 
-  const renderPackageTable = () => (
+  const renderCouponPackageTable = () => (
     <div className="table-responsive">
-      <table className="premium-table voucher-table">
+      <table className="premium-table coupon-table">
         <thead>
           <tr>
             <th width="30%">Gói Coupon / Mã</th>
@@ -660,54 +662,54 @@ const PromotionManagement = () => {
           </tr>
         </thead>
         <tbody>
-          {packages.map((pkg) => (
-            <tr key={pkg.id}>
+          {couponPackages.map((couponPackage) => (
+            <tr key={couponPackage.id}>
               <td>
-                <div className="fw-bold text-dark mb-1">{pkg.name}</div>
+                <div className="fw-bold text-dark mb-1">{couponPackage.name}</div>
                 <div className="code-badge">
-                  <Copy size={12} /> {pkg.code}
+                  <Copy size={12} /> {couponPackage.code}
                 </div>
-                {pkg.publishAt && (
+                {couponPackage.publishAt && (
                   <div className="text-xs text-secondary mt-1">
-                    Công bố: {formatDate(pkg.publishAt)}
+                    Công bố: {formatDate(couponPackage.publishAt)}
                   </div>
                 )}
               </td>
               <td>
-                <div className="voucher-pack-list">
-                  {(pkg.voucherIds || []).map((voucherId) => {
-                    const voucher = allCoupons.find(
-                      (item) => item.id === voucherId,
+                <div className="coupon-pack-list">
+                  {(couponPackage.couponIds || []).map((couponId) => {
+                    const coupon = allCoupons.find(
+                      (item) => item.id === couponId,
                     );
                     return (
-                      <span key={voucherId} className="voucher-chip">
-                        {voucher ? voucher.name : `#${voucherId}`}
+                      <span key={couponId} className="coupon-chip">
+                        {coupon ? coupon.name : `#${couponId}`}
                       </span>
                     );
                   })}
                 </div>
               </td>
               <td className="text-secondary text-sm">
-                <div>{formatDate(pkg.startDate)}</div>
-                <div className="text-xs">đến {formatDate(pkg.endDate)}</div>
+                <div>{formatDate(couponPackage.startDate)}</div>
+                <div className="text-xs">đến {formatDate(couponPackage.endDate)}</div>
               </td>
-              <td>{renderStatusBadge(resolveStatus(pkg))}</td>
+              <td>{renderStatusBadge(resolveStatus(couponPackage))}</td>
               <td className="text-right">
                 <div className="action-buttons">
                   <button
-                    onClick={() => duplicatePackage(pkg.id)}
+                    onClick={() => duplicateCouponPackage(couponPackage.id)}
                     title="Nhân bản"
                   >
                     <Copy size={16} />
                   </button>
                   <button
-                    onClick={() => handleOpenPackageModal(pkg)}
+                    onClick={() => handleOpenCouponPackageModal(couponPackage)}
                     title="Sửa"
                   >
                     <Edit3 size={16} />
                   </button>
                   <button
-                    onClick={() => handleDeletePackage(pkg.id)}
+                    onClick={() => handleDeleteCouponPackage(couponPackage.id)}
                     title="Xóa"
                     className="text-danger"
                   >
@@ -757,8 +759,8 @@ const PromotionManagement = () => {
       <div className="section-tabs">
         {[
           { id: "promotions", label: "Chương trình khuyến mãi" },
-          { id: "vouchers", label: "Coupon" },
-          { id: "packages", label: "Gói Coupon" },
+          { id: "coupons", label: "Coupon" },
+          { id: "couponPackages", label: "Gói Coupon" },
         ].map((section) => (
           <button
             key={section.id}
@@ -771,10 +773,10 @@ const PromotionManagement = () => {
               setViewMode("grid");
               if (section.id === "promotions") {
                 updateFilters({ status: "all" });
-              } else if (section.id === "vouchers") {
-                updateVoucherFilters({ status: "all" });
+              } else if (section.id === "coupons") {
+                updateCouponFilters({ status: "all" });
               } else {
-                updatePackageFilters({ status: "all" });
+                updateCouponPackageFilters({ status: "all" });
               }
             }}
           >
@@ -819,7 +821,7 @@ const PromotionManagement = () => {
                 placeholder={
                   activeSection === "promotions"
                     ? "Tìm kiếm chương trình, mã..."
-                    : activeSection === "vouchers"
+                    : activeSection === "coupons"
                       ? "Tìm kiếm coupon, mã..."
                       : "Tìm kiếm gói Coupon, mã..."
                 }
@@ -830,25 +832,25 @@ const PromotionManagement = () => {
                     updateFilters({ search: value });
                     return;
                   }
-                  if (activeSection === "vouchers") {
-                    updateVoucherFilters({ search: value });
+                  if (activeSection === "coupons") {
+                    updateCouponFilters({ search: value });
                     return;
                   }
-                  updatePackageFilters({ search: value });
+                  updateCouponPackageFilters({ search: value });
                 }}
               />
             </div>
 
-            {activeSection === "vouchers" ? (
+            {activeSection === "coupons" ? (
               <div className="dropdown-filter">
                 <select
-                  value={voucherFilters.category}
+                  value={couponFilters.category}
                   onChange={(event) =>
-                    updateVoucherFilters({ category: event.target.value })
+                    updateCouponFilters({ category: event.target.value })
                   }
                 >
                   <option value="all">Tất cả nhóm</option>
-                  {Object.entries(VOUCHER_CATEGORIES).map(([key, label]) => (
+                  {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
                     </option>
@@ -903,11 +905,11 @@ const PromotionManagement = () => {
                   handleOpenModal();
                   return;
                 }
-                if (activeSection === "vouchers") {
-                  handleOpenVoucherModal();
+                if (activeSection === "coupons") {
+                  handleOpenCouponModal();
                   return;
                 }
-                handleOpenPackageModal();
+                handleOpenCouponPackageModal();
               }}
             >
               <Plus size={18} />
@@ -921,9 +923,9 @@ const PromotionManagement = () => {
           {(
             activeSection === "promotions"
               ? promotions.length === 0
-              : activeSection === "vouchers"
-                ? vouchers.length === 0
-                : packages.length === 0
+              : activeSection === "coupons"
+                ? coupons.length === 0
+                : couponPackages.length === 0
           ) ? (
             <div className="empty-state">
               <Inbox size={48} />
@@ -1025,10 +1027,10 @@ const PromotionManagement = () => {
                     </table>
                   </div>
                 )
-              ) : activeSection === "vouchers" ? (
-                renderVoucherTable()
+              ) : activeSection === "coupons" ? (
+                renderCouponTable()
               ) : (
-                renderPackageTable()
+                renderCouponPackageTable()
               )}
             </>
           )}
@@ -1066,20 +1068,20 @@ const PromotionManagement = () => {
         />
       )}
 
-      {isVoucherModalOpen && (
-        <VoucherModal
-          voucher={editingVoucher}
-          onSave={handleSaveVoucher}
-          onClose={handleCloseVoucherModal}
+      {isCouponModalOpen && (
+        <CouponModal
+          coupon={editingCoupon}
+          onSave={handleSaveCoupon}
+          onClose={handleCloseCouponModal}
         />
       )}
 
-      {isPackageModalOpen && (
+      {isCouponPackageModalOpen && (
         <CouponPackageModal
-          voucherPackage={editingPackage}
+          couponPackage={editingCouponPackage}
           availableCoupons={allCoupons}
-          onSave={handleSavePackage}
-          onClose={handleClosePackageModal}
+          onSave={handleSaveCouponPackage}
+          onClose={handleCloseCouponPackageModal}
         />
       )}
     </div>

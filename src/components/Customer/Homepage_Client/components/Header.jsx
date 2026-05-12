@@ -9,12 +9,13 @@ import { useCustomerNotifications } from "@/context/CustomerNotificationContext"
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useContext(AuthContext) || {};
+  const { user, logout, restaurants = [], refRestaurant = [] } =
+    useContext(AuthContext) || {};
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useCustomerNotifications();
 
   const counts = {
-    vouchers: 3,
+    coupons: 3,
     orders: 2,
     favorites: 0,
     notifications: unreadCount,
@@ -26,6 +27,18 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
   const userMenuRef = useRef(null);
   const notifyRef = useRef(null);
+  const couponRestaurantId = useMemo(() => {
+    const restaurant = [...restaurants, ...refRestaurant].find(Boolean);
+    if (!restaurant) return "";
+    return String(
+      restaurant.id || restaurant._id || restaurant.restaurantId || restaurant,
+    ).trim();
+  }, [restaurants, refRestaurant]);
+
+  const couponPath = couponRestaurantId
+    ? `/coupons/${couponRestaurantId}`
+    : "/restaurants";
+
 
   const goto = (path) => {
     setShowUserMenu(false);
@@ -220,12 +233,12 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     </button>
                     <button
                       className="header__menu-item"
-                      onClick={() => goto(`/vouchers/${user.id}`)}
+                      onClick={() => goto(couponPath)}
                     >
                       <span className="header__item-label">🎟️ Kho Coupon</span>
-                      {counts.vouchers > 0 && (
+                      {counts.coupons > 0 && (
                         <span className="header__item-badge">
-                          {counts.vouchers}
+                          {counts.coupons}
                         </span>
                       )}
                     </button>

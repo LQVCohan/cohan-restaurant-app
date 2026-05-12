@@ -66,7 +66,7 @@ describe("PaymentModal voucher payment flow", () => {
     expect(paymentModalSource).toContain("discountBlocksPayment");
     expect(paymentModalSource).toContain("discountNeedsReapply");
     expect(paymentModalSource).toContain(
-      "Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.",
+      "Vui lòng áp dụng coupon hợp lệ trước khi xác nhận thanh toán.",
     );
   });
 

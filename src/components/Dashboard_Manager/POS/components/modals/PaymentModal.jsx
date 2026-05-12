@@ -288,7 +288,7 @@ function PaymentModal({
   const handleApplyDiscountPreview = useCallback(async () => {
     if (!previewInput) {
       setDiscountBreakdown(null);
-      setDiscountError("Không đủ dữ liệu để kiểm tra voucher.");
+      setDiscountError("Không đủ dữ liệu để kiểm tra coupon.");
       setDiscountNeedsReapply(true);
       return;
     }
@@ -325,7 +325,7 @@ function PaymentModal({
     }
 
     if (discountBlocksPayment) {
-      alert("Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh toán.");
+      alert("Vui lòng áp dụng coupon hợp lệ trước khi xác nhận thanh toán.");
       return;
     }
 
@@ -549,14 +549,14 @@ function PaymentModal({
 
             {isDineIn && (
               <div className={s.group}>
-                <label className={s.label}>Voucher thanh toán</label>
+                <label className={s.label}>Coupon thanh toán</label>
                 <div className={s.voucherRow}>
                   <input
                     type="text"
                     className={s.voucherInput}
                     value={voucherCode}
                     onChange={(e) => setVoucherCode(e.target.value)}
-                    placeholder="Nhập mã voucher"
+                    placeholder="Nhập mã coupon"
                     disabled={busy}
                   />
                   <button
@@ -599,7 +599,7 @@ function PaymentModal({
 
                 {!discountError && discountNeedsReapply && hasVoucherInput && (
                   <div className={s.discountWarning}>
-                    Voucher đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng
+                    Coupon đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng
                     lại.
                   </div>
                 )}
@@ -667,7 +667,7 @@ function PaymentModal({
 
                 {discountBlocksPayment && (
                   <div className={s.discountError}>
-                    Vui lòng áp dụng voucher hợp lệ trước khi xác nhận thanh
+                    Vui lòng áp dụng coupon hợp lệ trước khi xác nhận thanh
                     toán.
                   </div>
                 )}
