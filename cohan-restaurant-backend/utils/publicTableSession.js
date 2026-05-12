@@ -1,8 +1,97 @@
+import jwt from "jsonwebtoken";
+import process from "process";
+
 import { ORDER_KIND } from "./orderLifecycle.js";
+
+export const TABLE_ACCESS_TOKEN_ERROR = "Invalid table access token";
+export const TABLE_ACCESS_TOKEN_PURPOSE = "customer_table";
 
 function toIdString(value) {
   if (!value) return null;
   return String(value);
+}
+
+export function normalizePublicTableCode(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return normalized || null;
+}
+
+function getTableAccessTokenSecret() {
+  const secret = String(
+    process.env.TABLE_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || "",
+  ).trim();
+
+  if (!secret) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  return secret;
+}
+
+function getTableAccessTokenIssuer() {
+  return process.env.JWT_ISSUER || "foodhub-system";
+}
+
+export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) {
+  const normalizedRestaurantId = toIdString(restaurantId);
+  const normalizedTableId = toIdString(tableId);
+
+  if (!normalizedRestaurantId || !normalizedTableId) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  const payload = {
+    p: TABLE_ACCESS_TOKEN_PURPOSE,
+    rid: normalizedRestaurantId,
+    tid: normalizedTableId,
+  };
+
+  const normalizedTableCode = normalizePublicTableCode(tableCode);
+  if (normalizedTableCode) {
+    payload.tc = normalizedTableCode;
+  }
+
+  return jwt.sign(payload, getTableAccessTokenSecret(), {
+    expiresIn: process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "30d",
+    issuer: getTableAccessTokenIssuer(),
+  });
+}
+
+export function verifyTableAccessToken(token) {
+  const rawToken = String(token || "").trim();
+  if (!rawToken) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  try {
+    const payload = jwt.verify(rawToken, getTableAccessTokenSecret(), {
+      issuer: getTableAccessTokenIssuer(),
+    });
+
+    const purpose = String(payload?.p || payload?.purpose || "").trim();
+    const restaurantId = String(payload?.rid || payload?.restaurantId || "").trim();
+    const tableId = String(payload?.tid || payload?.tableId || "").trim();
+
+    if (
+      purpose !== TABLE_ACCESS_TOKEN_PURPOSE ||
+      !restaurantId ||
+      !tableId
+    ) {
+      throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+    }
+
+    return {
+      purpose,
+      restaurantId,
+      tableId,
+      tableCode: normalizePublicTableCode(payload?.tc || payload?.tableCode),
+      expiresAt: payload?.exp
+        ? new Date(Number(payload.exp) * 1000).toISOString()
+        : null,
+    };
+  } catch (_error) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
 }
 
 function mapPublicPayment(payment) {
