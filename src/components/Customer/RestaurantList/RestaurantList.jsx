@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useContext } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Components
 import DiscoveryHero from "./components/DiscoveryHero/DiscoveryHero";
@@ -10,6 +10,7 @@ import RestaurantCard from "./components/RestaurantCard/RestaurantCard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 import { useRestaurants } from "../../../hooks/useRestaurants";
+import { AuthContext } from "../../../context/AuthContext";
 
 // Styles
 import "./RestaurantList.scss";
@@ -51,6 +52,8 @@ const LIMIT = 12;
 const RestaurantList = ({ restaurantFilter }) => {
   // Nhận filter từ props (nếu có từ Router)
   const navigate = useNavigate();
+  const location = useLocation();
+  const { token, isAuthenticated } = useContext(AuthContext) || {};
   const [currentView, setCurrentView] = useState("grid");
 
   // Data States
@@ -185,6 +188,15 @@ const RestaurantList = ({ restaurantFilter }) => {
     navigate(`/restaurant/${restaurantId}/layout`);
   };
 
+  const handleFavoriteAction = (event, restaurantId) => {
+    event?.stopPropagation?.();
+    if (!isAuthenticated || !token) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    handleToggleFavorite(event, restaurantId);
+  };
+
   return (
     <div className="restaurant-list-page">
       {/* 1. DISCOVERY HERO */}
@@ -274,7 +286,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                         restaurant={restaurant}
                         variant={currentView}
                         isFavorited={favorites.has(restaurant.id)}
-                        onToggleFavorite={handleToggleFavorite}
+                        onToggleFavorite={handleFavoriteAction}
                         onMakeReservation={handleMakeReservation}
                         onViewDetails={(id) => navigate(`/restaurant/${id}`)}
                       />

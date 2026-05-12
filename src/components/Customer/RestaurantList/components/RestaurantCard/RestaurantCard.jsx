@@ -74,8 +74,12 @@ const RestaurantCard = ({
         </div>
 
         <button
+          type="button"
           className={`btn-favorite ${isFavorited ? "active" : ""}`}
-          onClick={(e) => onToggleFavorite(e, restaurant.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite?.(e, restaurant.id);
+          }}
           title={isFavorited ? "Bỏ thích" : "Yêu thích"}
         >
           {isFavorited ? "❤️" : "🤍"}
@@ -134,12 +138,14 @@ const RestaurantCard = ({
 
           <div className="buttons-group">
             <button
+              type="button"
               className="btn btn-outline"
               onClick={(e) => onMakeReservation(e, restaurant.id)}
             >
               Đặt bàn
             </button>
             <button
+              type="button"
               className="btn btn-primary"
               onClick={(e) => {
                 e.stopPropagation();

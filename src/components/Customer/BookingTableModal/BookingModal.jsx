@@ -157,6 +157,9 @@ const POLICY_ITEMS = [
   "Nếu có vấn đề, vui lòng gọi số 1900-888-999 hoặc nhắn chatbot để được hỗ trợ.",
 ];
 
+const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BASIC_PHONE_REGEX = /^(0|\+?84)\d{9,10}$/;
+
 /* ───────────────── Main Component ───────────────── */
 const BookingModal = ({
   isOpen,
@@ -352,7 +355,13 @@ const BookingModal = ({
       }
       return newData;
     });
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
+    if (errors[field] || errors.contact) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: null,
+        contact: null,
+      }));
+    }
   };
 
   const handlePartyBtn = (delta) => {
@@ -362,9 +371,22 @@ const BookingModal = ({
 
   const validate = () => {
     const errs = {};
-    if (!formData.customerName?.trim()) errs.customerName = "Vui lòng nhập tên";
-    if (!formData.customerPhone?.trim() && !formData.customerEmail?.trim())
-      errs.contact = "Cần SĐT hoặc Email";
+    const trimmedName = formData.customerName?.trim() || "";
+    const trimmedPhone = formData.customerPhone?.trim() || "";
+    const trimmedEmail = formData.customerEmail?.trim() || "";
+    const normalizedPhone = trimmedPhone.replace(/\s+/g, "");
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
+    if (!trimmedName) errs.customerName = "Vui lòng nhập tên";
+    if (!trimmedPhone && !trimmedEmail) {
+      errs.contact = "Vui lòng nhập email hoặc số điện thoại để nhà hàng xác nhận đặt bàn.";
+    }
+    if (trimmedPhone && !BASIC_PHONE_REGEX.test(normalizedPhone)) {
+      errs.customerPhone = "Số điện thoại không hợp lệ.";
+    }
+    if (trimmedEmail && !BASIC_EMAIL_REGEX.test(normalizedEmail)) {
+      errs.customerEmail = "Email không hợp lệ.";
+    }
     if (!pickedTable?.id) errs.table = "Vui lòng chọn bàn";
     if (!formData.date) errs.date = "Chọn ngày";
     if (!formData.time) errs.time = "Chọn giờ vào";
@@ -551,7 +573,7 @@ const BookingModal = ({
             <div className="bkm-row">
               <InputGroup
                 label="Số điện thoại"
-                error={errors.contact}
+                error={errors.customerPhone || errors.contact}
                 icon={<Phone size={16} />}
               >
                 <input
@@ -563,7 +585,11 @@ const BookingModal = ({
                   }
                 />
               </InputGroup>
-              <InputGroup label="Email nhận vé" icon={<Mail size={16} />}>
+              <InputGroup
+                label="Email nhận vé"
+                error={errors.customerEmail}
+                icon={<Mail size={16} />}
+              >
                 <input
                   type="email"
                   placeholder="name@mail.com"
@@ -785,8 +811,8 @@ const BookingModal = ({
                   key={pkg.id}
                   type="button"
                   className={`package-card ${
-                    selectedPackageId === pkg.id ? "active" : ""
-                  }`}
+                    selectedPackageId === pkg.id ? "active" : ""}
+                  `}
                   onClick={() =>
                     setSelectedPackageId((prev) =>
                       prev === pkg.id ? null : pkg.id
