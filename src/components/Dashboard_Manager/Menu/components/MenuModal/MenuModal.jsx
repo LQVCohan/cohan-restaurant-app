@@ -14,6 +14,7 @@ import {
   FiPlus,
   FiChevronDown,
   FiSave,
+  FiAlertCircle,
 } from "react-icons/fi";
 import "./MenuModal.scss";
 import {
@@ -54,6 +55,7 @@ const MenuModal = ({
   isSubmitting = false,
   createCategoryMenu,
   restaurantId,
+  submitError = "",
 }) => {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
@@ -274,6 +276,28 @@ const MenuModal = ({
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="modal-body">
+            {submitError && (
+              <div
+                role="alert"
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  padding: "12px 14px",
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#b91c1c",
+                }}
+              >
+                <FiAlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                  {submitError}
+                </p>
+              </div>
+            )}
+
             <div className="form-group">
               <label>
                 Tên Menu <span className="req">*</span>
