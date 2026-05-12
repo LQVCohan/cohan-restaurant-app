@@ -20,6 +20,7 @@ import ForYou from "@/components/Customer/ForYou/ForYou";
 import SearchPage from "../pages/SearchPage.jsx";
 import ContactPage from "@/pages/ContactPage.jsx";
 import CheckoutPage from "@/pages/CheckoutPage.jsx";
+import TableCurrentSessionPage from "@/components/Customer/TableCurrentSession/TableCurrentSessionPage";
 import {
   AdminRestaurantInfoManagement,
   ManagerRestaurantInfoManagement,
@@ -163,6 +164,7 @@ const AppRouter = () => (
       <Route path="/restaurants" element={<RestaurantsList />} />
       <Route path="/restaurant/:id" element={<RestaurantDetail />} />
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
+      <Route path="/table/:restaurantId/:tableId" element={<TableCurrentSessionPage />} />
       <Route path="/vr/table/:tableId" element={<VRViewer />} />
       <Route path="/cus-menu" element={<RestaurantMenu />} />
       <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer", "manager", "admin"])} />
