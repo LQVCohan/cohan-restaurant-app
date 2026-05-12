@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { EventLog, Staff, Timesheet } from "../../../models/index.js";
 import {
+  assertPayrollPeriodEditable,
+  findPayrollPeriodOverlap,
+} from "../payroll/payrollLockGuard.service.js";
+import {
   ATTENDANCE_REVIEW_ROLES,
   userCanAccessRestaurant,
   userHasAnyRole,
@@ -20,12 +24,20 @@ const REVIEWABLE_ATTENDANCE_STATUSES = new Set([
   "unscheduled_completed",
 ]);
 
+const BLOCKING_PAYROLL_PERIOD_STATUSES = ["finalized", "locked", "paid"];
+
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new Types.ObjectId(value);
 }
 
 function normalizeRole(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeOvertimeApprovalStatus(value) {
   return String(value || "")
     .trim()
     .toLowerCase();
@@ -119,6 +131,33 @@ function assertAttendanceOvertimeReviewable(timesheet) {
 
   if (Number(timesheet.overtimeMinutes || 0) <= 0) {
     throw new Error("ATTENDANCE_OVERTIME_NOT_FOUND");
+  }
+
+  const overtimeApprovalStatus = normalizeOvertimeApprovalStatus(
+    timesheet.overtimeApprovalStatus,
+  );
+  if (["approved", "rejected"].includes(overtimeApprovalStatus)) {
+    throw new Error("ATTENDANCE_OVERTIME_ALREADY_REVIEWED");
+  }
+  if (overtimeApprovalStatus === "not_required") {
+    throw new Error("ATTENDANCE_OVERTIME_NOT_FOUND");
+  }
+}
+
+async function assertAttendanceOvertimePayrollEditable(timesheet) {
+  const overlap = await findPayrollPeriodOverlap({
+    restaurantId: timesheet?.restaurantId,
+    startDate: timesheet?.workDate,
+    endDate: timesheet?.workDate,
+    statuses: BLOCKING_PAYROLL_PERIOD_STATUSES,
+  });
+
+  if (!overlap) return;
+
+  try {
+    assertPayrollPeriodEditable(overlap);
+  } catch {
+    throw new Error("ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED");
   }
 }
 
@@ -227,6 +266,7 @@ export async function approveAttendanceOvertime({ input, ctx }) {
 
   assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
   assertAttendanceOvertimeReviewable(timesheet);
+  await assertAttendanceOvertimePayrollEditable(timesheet);
 
   const approvedOvertimeMinutes =
     input.approvedOvertimeMinutes == null
@@ -274,6 +314,7 @@ export async function rejectAttendanceOvertime({ input, ctx }) {
 
   assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
   assertAttendanceOvertimeReviewable(timesheet);
+  await assertAttendanceOvertimePayrollEditable(timesheet);
 
   const reviewNote = String(input.reviewNote || input.reason || "").trim();
   if (!reviewNote) {
