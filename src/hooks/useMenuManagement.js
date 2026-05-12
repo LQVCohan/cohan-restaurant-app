@@ -61,6 +61,7 @@ const FRAG_MENU_ITEM = gql`
     status
     avgPrepTimeMin
     point
+    orderCounter
     notes
     createdAt
     updatedAt
