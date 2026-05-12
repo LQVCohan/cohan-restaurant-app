@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Save,
   Plus,
@@ -17,6 +17,145 @@ import "./MenuItemModal.scss";
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
 import { useRecipes } from "../../../../../hooks/useRecipes";
 import useModalDraft from "../../../../../hooks/useModalDraft";
+
+const getGraphQLErrorMessage = (
+  error,
+  fallback = "Không thể lưu món ăn."
+) => {
+  const graphQlMessage = error?.graphQLErrors
+    ?.map((entry) => entry?.message)
+    .filter(Boolean)
+    .join("; ");
+
+  if (graphQlMessage) return graphQlMessage;
+  if (error?.networkError?.result?.errors?.length) {
+    return error.networkError.result.errors
+      .map((entry) => entry?.message)
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  return error?.message || fallback;
+};
+
+const cloneIngredients = (ingredients = []) =>
+  Array.isArray(ingredients)
+    ? ingredients.map((ingredient) => ({
+        ingredientId: ingredient?.ingredientId,
+        qty: Number(ingredient?.qty || 0),
+        unit: ingredient?.unit || ingredient?.baseUnit || "",
+        wastePct: Number(ingredient?.wastePct || 0),
+      }))
+    : [];
+
+const normalizeVariantNameForCompare = (name) =>
+  String(name ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ");
+
+const normalizeDefaultVariant = (variants = []) => {
+  if (!Array.isArray(variants) || !variants.length) return [];
+
+  let defaultIndex = variants.findIndex((variant) => !!variant?.isDefault);
+  if (defaultIndex < 0) defaultIndex = 0;
+
+  return variants.map((variant, index) => ({
+    ...variant,
+    isDefault: index === defaultIndex,
+  }));
+};
+
+const findMatchingExistingVariant = (method, existingVariants = []) => {
+  const methodKey = String(method?.key || "").trim();
+  if (methodKey) {
+    const matchedByKey = existingVariants.find(
+      (variant) => String(variant?.key || "").trim() === methodKey
+    );
+    if (matchedByKey) return matchedByKey;
+  }
+
+  const normalizedName = normalizeVariantNameForCompare(method?.name);
+  if (!normalizedName) return null;
+
+  return (
+    existingVariants.find(
+      (variant) =>
+        normalizeVariantNameForCompare(variant?.name) === normalizedName
+    ) || null
+  );
+};
+
+const validatePreparationMethods = (methods = []) => {
+  if (!Array.isArray(methods) || !methods.length) {
+    throw new Error("Vui lòng thêm ít nhất một biến thể hợp lệ.");
+  }
+
+  return methods.map((method, index) => {
+    const name = String(method?.name || "").trim();
+    if (!name) {
+      throw new Error(`Vui lòng nhập tên cho biến thể #${index + 1}.`);
+    }
+
+    const hasPrice =
+      method?.price !== "" &&
+      method?.price !== null &&
+      method?.price !== undefined;
+    const price = Number(method?.price);
+
+    if (!hasPrice || !Number.isFinite(price) || price < 0) {
+      throw new Error(
+        `Giá của biến thể "${name}" phải là số lớn hơn hoặc bằng 0.`
+      );
+    }
+
+    return {
+      ...method,
+      name,
+      price,
+    };
+  });
+};
+
+const buildRecipeForm = (methods = [], existingVariants = []) => {
+  const normalizedMethods = validatePreparationMethods(methods);
+
+  return {
+    servingVariants: normalizeDefaultVariant(
+      normalizedMethods.map((method, index) => {
+        const existingVariant = findMatchingExistingVariant(
+          method,
+          existingVariants
+        );
+        const fallbackKey =
+          method.name.toLowerCase().replace(/\s+/g, "_") || `sv_${index}`;
+        const mode = method.mode || existingVariant?.mode || "PORTION";
+        const ingredients = Array.isArray(method.ingredients)
+          ? cloneIngredients(method.ingredients)
+          : Array.isArray(existingVariant?.ingredients)
+          ? cloneIngredients(existingVariant.ingredients)
+          : [];
+
+        return {
+          key: method.key || existingVariant?.key || fallbackKey,
+          name: method.name,
+          mode,
+          sellQty: Number(method.sellQty ?? existingVariant?.sellQty ?? 1) || 1,
+          sellUnit:
+            method.sellUnit ||
+            existingVariant?.sellUnit ||
+            (mode === "BY_WEIGHT" ? "kg" : "portion"),
+          ingredients,
+          price: method.price,
+          isDefault: !!method.isDefault,
+        };
+      })
+    ),
+  };
+};
 
 const MenuItemModal = ({
   isOpen,
@@ -40,6 +179,9 @@ const MenuItemModal = ({
 
   const [imgError, setImgError] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
+  const savedMenuItemIdRef = useRef(null);
 
   // --- HELPER: Toast ---
   const pushToast = (text, type = "success") => {
@@ -64,11 +206,31 @@ const MenuItemModal = ({
     useConnection: false,
   });
 
-  const { updateRecipe, loading: recipeLoading } = useRecipes(
+  const { recipes: recipeItems, updateRecipe } = useRecipes(
     restaurantId,
     timeSlot,
     { search: null, categoryId: null }
   );
+
+  const currentRecipeItem = useMemo(
+    () =>
+      Array.isArray(recipeItems) && editId
+        ? recipeItems.find(
+            (item) => String(item?.menuItemId || item?.id) === String(editId)
+          )
+        : null,
+    [recipeItems, editId]
+  );
+
+  const existingServingVariants = useMemo(() => {
+    if (Array.isArray(currentRecipeItem?.servingVariants)) {
+      return currentRecipeItem.servingVariants;
+    }
+    if (Array.isArray(currentItem?.servingVariants)) {
+      return currentItem.servingVariants;
+    }
+    return [];
+  }, [currentRecipeItem, currentItem]);
 
   const defaultMethod = {
     key: "",
@@ -78,8 +240,10 @@ const MenuItemModal = ({
     mode: "PORTION",
     sellQty: 1,
     sellUnit: "portion",
+    ingredients: [],
     isDefault: true,
   };
+
   const isDirty = useMemo(() => {
     const hasValues =
       (formData.name || "").trim() ||
@@ -88,7 +252,10 @@ const MenuItemModal = ({
       (formData.thumbImage || "").trim() ||
       (Array.isArray(formData.preparationMethods) &&
         formData.preparationMethods.some(
-          (m) => (m?.name || "").trim() || m?.price !== "" || m?.cookTime !== ""
+          (m) =>
+            (m?.name || "").trim() ||
+            m?.price !== "" ||
+            m?.cookTime !== ""
         ));
     return !!hasValues;
   }, [formData]);
@@ -98,7 +265,8 @@ const MenuItemModal = ({
     draftIdentity: {
       module: "menu",
       modal: "menu-item-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: editId ? "edit" : "create",
       entityType: "menu-item",
       recordId: editId || null,
@@ -118,31 +286,43 @@ const MenuItemModal = ({
         : [],
     }),
     onRestore: (draft) => setFormData((prev) => ({ ...prev, ...draft })),
-    notify: (message, type) => pushToast(message, type === "error" ? "error" : "success"),
+    notify: (message, type) =>
+      pushToast(message, type === "error" ? "error" : "success"),
   });
 
   // --- EFFECT: Load Data ---
   useEffect(() => {
     if (isOpen) {
       setImgError(false);
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+      savedMenuItemIdRef.current = editId || null;
+
       if (editId && currentItem) {
-        // ... (Logic giữ nguyên phần map data)
-        const svList = Array.isArray(currentItem.servingVariants)
-          ? currentItem.servingVariants
-          : [];
+        const sourceVariants =
+          existingServingVariants.length > 0
+            ? existingServingVariants
+            : Array.isArray(currentItem.servingVariants)
+            ? currentItem.servingVariants
+            : [];
+
         const methods =
-          svList.length > 0
-            ? svList.map((sv) => ({
-                key: sv.key || "",
-                name: sv.name || "",
-                price: typeof sv.price === "number" ? sv.price : "",
-                cookTime: currentItem.avgPrepTimeMin || "",
-                unit: sv.sellUnit || "portion",
-                mode: sv.mode || "PORTION",
-                sellQty: sv.sellQty || 1,
-                sellUnit: sv.sellUnit || "portion",
-                isDefault: !!sv.isDefault,
-              }))
+          sourceVariants.length > 0
+            ? normalizeDefaultVariant(
+                sourceVariants.map((sv) => ({
+                  key: sv.key || "",
+                  name: sv.name || "",
+                  price: typeof sv.price === "number" ? sv.price : "",
+                  cookTime: currentItem.avgPrepTimeMin || "",
+                  mode: sv.mode || "PORTION",
+                  sellQty: sv.sellQty || 1,
+                  sellUnit: sv.sellUnit || "portion",
+                  ingredients: Array.isArray(sv.ingredients)
+                    ? cloneIngredients(sv.ingredients)
+                    : [],
+                  isDefault: !!sv.isDefault,
+                }))
+              )
             : [{ ...defaultMethod }];
 
         setFormData({
@@ -157,7 +337,7 @@ const MenuItemModal = ({
           description: currentItem.description || "",
           preparationMethods: methods,
         });
-      } else {
+      } else if (!editId) {
         setFormData({
           name: "",
           categoryId: "",
@@ -167,11 +347,20 @@ const MenuItemModal = ({
           preparationMethods: [{ ...defaultMethod }],
         });
       }
+    } else {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+      savedMenuItemIdRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, currentItem, isOpen]);
 
   // --- HANDLERS ---
+  const handleRequestClose = () => {
+    if (isSubmitting) return;
+    requestCloseWithDraft(onClose);
+  };
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (field === "thumbImage") setImgError(false);
@@ -180,25 +369,32 @@ const MenuItemModal = ({
   const handlePMChange = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
-      preparationMethods: prev.preparationMethods.map((m, i) =>
-        i === index ? { ...m, [field]: value } : m
+      preparationMethods: prev.preparationMethods.map((method, currentIndex) =>
+        currentIndex === index ? { ...method, [field]: value } : method
       ),
     }));
   };
 
   const addPM = () => {
+    if (isSubmitting) return;
+
     setFormData((prev) => ({
       ...prev,
-      preparationMethods: [...prev.preparationMethods, { ...defaultMethod }],
+      preparationMethods: [
+        ...prev.preparationMethods,
+        { ...defaultMethod, isDefault: false },
+      ],
     }));
   };
 
   const removePM = (index) => {
+    if (isSubmitting) return;
+
     if (formData.preparationMethods.length > 1) {
       setFormData((prev) => ({
         ...prev,
         preparationMethods: prev.preparationMethods.filter(
-          (_, i) => i !== index
+          (_, currentIndex) => currentIndex !== index
         ),
       }));
     } else {
@@ -208,32 +404,51 @@ const MenuItemModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!restaurantId) return pushToast("Lỗi: Thiếu ID nhà hàng", "error");
-    if (!formData.name.trim() || !formData.categoryId)
-      return pushToast("Vui lòng nhập tên và chọn danh mục", "error");
 
-    const validPM = formData.preparationMethods.filter(
-      (m) => m.name.trim() && m.price !== "" && m.price >= 0
-    );
+    if (submitLockRef.current) return;
+    if (!restaurantId) {
+      pushToast("Lỗi: Thiếu ID nhà hàng", "error");
+      return;
+    }
 
-    if (!validPM.length)
-      return pushToast(
-        "Vui lòng nhập Tên và Giá cho ít nhất một biến thể.",
-        "error"
-      );
+    const itemName = String(formData.name || "").trim();
+    if (!itemName) {
+      pushToast("Vui lòng nhập tên món ăn.", "error");
+      return;
+    }
 
-    const cookTimes = validPM
-      .map((m) => parseInt(m.cookTime, 10))
-      .filter((n) => Number.isFinite(n) && n >= 0);
+    const categoryId = String(formData.categoryId || "").trim();
+    if (!categoryId) {
+      pushToast("Vui lòng chọn danh mục món.", "error");
+      return;
+    }
+
+    let normalizedMethods;
+    try {
+      normalizedMethods = validatePreparationMethods(formData.preparationMethods);
+    } catch (error) {
+      pushToast(error.message, "error");
+      return;
+    }
+
+    const cookTimes = normalizedMethods
+      .map((method) => parseInt(method.cookTime, 10))
+      .filter((value) => Number.isFinite(value) && value >= 0);
     const avgPrepTimeMin =
       cookTimes.length > 0
-        ? Math.round(cookTimes.reduce((a, b) => a + b, 0) / cookTimes.length)
+        ? Math.round(
+            cookTimes.reduce((sum, value) => sum + value, 0) /
+              cookTimes.length
+          )
         : undefined;
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
 
     try {
       const menuItemPayload = {
-        name: formData.name,
-        categoryId: formData.categoryId,
+        name: itemName,
+        categoryId,
         status: formData.status,
         description: formData.description,
         ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
@@ -242,49 +457,72 @@ const MenuItemModal = ({
           : {}),
       };
 
-      let targetMenuItemId = editId;
-      if (editId) {
-        await updateMenuItem({ id: editId, ...menuItemPayload });
-      } else {
-        const created = await createMenuItem({
-          ...menuItemPayload,
-          timeSlot,
-        });
-        targetMenuItemId = created?.id;
+      let targetMenuItemId = editId || savedMenuItemIdRef.current || null;
+
+      try {
+        if (targetMenuItemId) {
+          await updateMenuItem({ id: targetMenuItemId, ...menuItemPayload });
+        } else {
+          const created = await createMenuItem({
+            ...menuItemPayload,
+            timeSlot,
+          });
+          targetMenuItemId = created?.id;
+          savedMenuItemIdRef.current = targetMenuItemId || null;
+        }
+      } catch (error) {
+        pushToast(getGraphQLErrorMessage(error), "error");
+        return;
       }
 
-      const recipeForm = {
-        description: formData.description,
-        servingVariants: formData.preparationMethods.map((m, idx) => {
-          const fallbackKey =
-            (m.name || "").toLowerCase().replace(/\s+/g, "_") || `sv_${idx}`;
-          return {
-            key: m.key || fallbackKey,
-            mode: m.mode || "PORTION",
-            sellQty: Number(m.sellQty || 1),
-            sellUnit: m.sellUnit || (m.mode === "BY_WEIGHT" ? "kg" : "portion"),
-            name: m.name,
-            ingredients: [],
-            price: Number(m.price) || 0,
-            isDefault: idx === 0 || m.isDefault,
-          };
-        }),
-      };
+      if (!targetMenuItemId) {
+        pushToast("Không nhận được ID món ăn sau khi lưu.", "error");
+        return;
+      }
 
-      if (targetMenuItemId) {
+      try {
+        const recipeForm = buildRecipeForm(
+          normalizedMethods,
+          existingServingVariants
+        );
         await updateRecipe(targetMenuItemId, recipeForm);
+      } catch (error) {
+        const actionLabel = editId ? "cập nhật" : "tạo";
+        pushToast(
+          `Món đã ${actionLabel} nhưng biến thể/recipe chưa lưu thành công: ${getGraphQLErrorMessage(
+            error,
+            "Không thể lưu recipe."
+          )}`,
+          "error"
+        );
+        return;
       }
 
-      pushToast("Lưu món ăn thành công!", "success");
+      try {
+        await onSave?.();
+      } catch (error) {
+        pushToast(
+          `Đã lưu món và recipe nhưng không thể làm mới danh sách: ${getGraphQLErrorMessage(
+            error,
+            "Không thể làm mới dữ liệu."
+          )}`,
+          "error"
+        );
+        return;
+      }
+
       clearDraft();
-      onSave?.();
-    } catch (err) {
-      console.error(err);
-      pushToast(`Lỗi: ${err.message}`, "error");
+      pushToast(
+        editId ? "Lưu thay đổi món ăn thành công!" : "Tạo món mới thành công!",
+        "success"
+      );
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
-  const isSaving = recipeLoading;
+  const isSaving = isSubmitting;
 
   const renderImagePreview = () => {
     if (formData.thumbImage && !imgError) {
@@ -310,11 +548,11 @@ const MenuItemModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => requestCloseWithDraft(onClose)}
+      onClose={handleRequestClose}
       size="xl"
-      className="menu-item-modal-modern" // Kích hoạt style mới
+      className="menu-item-modal-modern"
     >
-      <Modal.Header onClose={() => requestCloseWithDraft(onClose)}>
+      <Modal.Header onClose={handleRequestClose}>
         {editId ? "Chỉnh sửa món ăn" : "Thêm món mới"}
       </Modal.Header>
 
@@ -324,7 +562,6 @@ const MenuItemModal = ({
           onSubmit={handleSubmit}
           className="modern-form-layout"
         >
-          {/* === CỘT TRÁI: THÔNG TIN CHUNG (NỀN TRẮNG) === */}
           <div className="left-col">
             <h4 className="col-title">
               <Info size={18} /> Thông tin chung
@@ -342,13 +579,14 @@ const MenuItemModal = ({
                 placeholder="Ví dụ: Phở Bò Tái"
                 required
                 autoFocus
+                disabled={isSaving}
               />
             </div>
 
             <div className="row-2-col">
               <div className="form-group">
                 <label>
-                  Danh mục <span className="req">*</span>
+                  Danh mục món <span className="req">*</span>
                 </label>
                 <select
                   className="modern-select"
@@ -357,8 +595,9 @@ const MenuItemModal = ({
                     handleInputChange("categoryId", e.target.value)
                   }
                   required
+                  disabled={isSaving}
                 >
-                  <option value="">-- Chọn --</option>
+                  <option value="">-- Chọn danh mục món --</option>
                   {categories?.map((c) => (
                     <option key={c.id || c._id} value={c.id || c._id}>
                       {c.name}
@@ -373,6 +612,7 @@ const MenuItemModal = ({
                   className="modern-select"
                   value={formData.status}
                   onChange={(e) => handleInputChange("status", e.target.value)}
+                  disabled={isSaving}
                 >
                   <option value="available">Sẵn sàng</option>
                   <option value="unavailable">Tạm hết</option>
@@ -391,6 +631,7 @@ const MenuItemModal = ({
                     handleInputChange("thumbImage", e.target.value)
                   }
                   placeholder="https://example.com/image.jpg"
+                  disabled={isSaving}
                 />
                 {renderImagePreview()}
               </div>
@@ -406,24 +647,29 @@ const MenuItemModal = ({
                   handleInputChange("description", e.target.value)
                 }
                 placeholder="Mô tả ngắn về hương vị, thành phần..."
+                disabled={isSaving}
               />
             </div>
           </div>
 
-          {/* === CỘT PHẢI: BIẾN THỂ (NỀN SLATE DỊU MẮT) === */}
           <div className="right-col">
             <div className="header-action">
               <h4 className="col-title">
                 <ChefHat size={18} /> Biến thể & Giá
               </h4>
-              <button type="button" className="btn-add-variant" onClick={addPM}>
+              <button
+                type="button"
+                className="btn-add-variant"
+                onClick={addPM}
+                disabled={isSaving}
+              >
                 <Plus size={16} /> Thêm mới
               </button>
             </div>
 
             <div className="methods-scroll-container">
               {formData.preparationMethods.map((method, index) => (
-                <div key={index} className="method-card">
+                <div key={method.key || index} className="method-card">
                   <div className="method-card-header">
                     <span className="badge-index">#{index + 1}</span>
                     {formData.preparationMethods.length > 1 && (
@@ -432,6 +678,7 @@ const MenuItemModal = ({
                         className="btn-remove"
                         onClick={() => removePM(index)}
                         title="Xóa biến thể này"
+                        disabled={isSaving}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -452,6 +699,7 @@ const MenuItemModal = ({
                         }
                         placeholder="VD: Size Lớn"
                         required
+                        disabled={isSaving}
                       />
                     </div>
 
@@ -469,6 +717,7 @@ const MenuItemModal = ({
                         placeholder="0"
                         min="0"
                         required
+                        disabled={isSaving}
                       />
                     </div>
 
@@ -485,6 +734,7 @@ const MenuItemModal = ({
                         }
                         placeholder="10"
                         min="0"
+                        disabled={isSaving}
                       />
                     </div>
                   </div>
@@ -494,7 +744,6 @@ const MenuItemModal = ({
           </div>
         </form>
 
-        {/* Toast Notification */}
         <div className="toast-wrapper">
           {toasts.map((t) => (
             <div key={t.id} className={`toast-item ${t.type}`}>
@@ -510,7 +759,12 @@ const MenuItemModal = ({
       </Modal.Body>
 
       <Modal.Footer>
-        <button type="button" className="btn-secondary" onClick={() => requestCloseWithDraft(onClose)}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleRequestClose}
+          disabled={isSaving}
+        >
           Đóng
         </button>
         <button
