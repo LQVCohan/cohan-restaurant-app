@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { EventLog, Staff, Timesheet } from "../../../models/index.js";
-import { ATTENDANCE_REVIEW_ROLES, userCanAccessRestaurant } from "../scheduling/schedulingPermission.service.js";
+import {
+  ATTENDANCE_REVIEW_ROLES,
+  userCanAccessRestaurant,
+  userHasAnyRole,
+} from "../scheduling/schedulingPermission.service.js";
 
 const { Types } = mongoose;
 
@@ -56,8 +60,7 @@ function assertAuthenticated(ctx) {
 function assertCanReviewAttendanceOvertime(ctx, restaurantId) {
   assertAuthenticated(ctx);
 
-  const actorRole = getActorRole(ctx);
-  if (!ATTENDANCE_REVIEW_ROLES.includes(actorRole)) {
+  if (!userHasAnyRole(ctx?.user, ATTENDANCE_REVIEW_ROLES)) {
     throw new Error("FORBIDDEN");
   }
 
@@ -110,11 +113,7 @@ export function buildAttendanceOvertimeState({
     };
   }
 
-  if (
-    !changed &&
-    status === "rejected" &&
-    approved === 0
-  ) {
+  if (!changed && status === "rejected" && approved === 0) {
     return {
       approvedOvertimeMinutes: 0,
       overtimeApprovalStatus: "rejected",
@@ -153,17 +152,45 @@ export function applyAttendanceOvertimeState(timesheet, options = {}) {
   return timesheet;
 }
 
+function mapAttendanceStatus(timesheet) {
+  if (!timesheet?.actualCheckInAt) {
+    return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
+  }
+  if (!timesheet?.actualCheckOutAt) {
+    return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  }
+  if (timesheet?.isOffSchedule) return "unscheduled_completed";
+  const hasLate = Number(timesheet?.latenessMinutes || 0) > 0;
+  const hasEarly = Number(timesheet?.earlyLeaveMinutes || 0) > 0;
+  if (hasLate && hasEarly) return "late_early_leave";
+  if (hasLate) return "late";
+  if (hasEarly) return "early_leave";
+  return "completed";
+}
+
+function mapOffScheduleApprovalStatus(timesheet) {
+  const isOffSchedule = Boolean(timesheet?.isOffSchedule);
+  const storedApproval = String(
+    timesheet?.offScheduleApprovalStatus || "",
+  ).toLowerCase();
+
+  if (!isOffSchedule) return "not_required";
+  if (Boolean(timesheet?.approved)) return "approved";
+  if (storedApproval === "rejected") return "rejected";
+  return "pending";
+}
+
 function assertAttendanceOvertimeReviewable(timesheet) {
   if (!timesheet) {
     throw new Error("TIMESHEET_NOT_FOUND");
   }
 
-  const attendanceStatus = String(timesheet.status || "").toLowerCase();
+  const attendanceStatus = mapAttendanceStatus(timesheet);
   if (!REVIEWABLE_ATTENDANCE_STATUSES.has(attendanceStatus)) {
     if (attendanceStatus === "scheduled_absent") {
       throw new Error("ATTENDANCE_OVERTIME_NO_SHOW_NOT_REVIEWABLE");
     }
-    if (attendanceStatus === "missed_checkout" || !timesheet.actualCheckOutAt) {
+    if (attendanceStatus === "checked_in" || attendanceStatus === "missed_checkout") {
       throw new Error("ATTENDANCE_OVERTIME_MISSED_CHECKOUT_NOT_REVIEWABLE");
     }
     throw new Error("ATTENDANCE_OVERTIME_NOT_REVIEWABLE");
@@ -217,14 +244,29 @@ export async function mapAttendanceRecordWithOvertime(timesheet, staffDoc = null
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
     approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
-    overtimeApprovalStatus:
-      String(timesheet.overtimeApprovalStatus || "not_required") ||
-      "not_required",
+    overtimeApprovalStatus: String(
+      timesheet.overtimeApprovalStatus || "not_required",
+    ),
     overtimeReviewNote: timesheet.overtimeReviewNote || "",
     overtimeReviewedBy: timesheet.overtimeReviewedBy
       ? String(timesheet.overtimeReviewedBy)
       : null,
     overtimeReviewedAt: timesheet.overtimeReviewedAt || null,
+    status: mapAttendanceStatus(timesheet),
+    isOffSchedule: Boolean(timesheet.isOffSchedule),
+    offScheduleApprovalStatus: mapOffScheduleApprovalStatus(timesheet),
+    offScheduleReasonCategory: timesheet.offScheduleReasonCategory || "other",
+    offScheduleReason: timesheet.offScheduleReason || "",
+    offScheduleReviewedBy: timesheet.offScheduleReviewedBy
+      ? String(timesheet.offScheduleReviewedBy)
+      : null,
+    offScheduleReviewedAt: timesheet.offScheduleReviewedAt || null,
+    offScheduleReviewNote: timesheet.offScheduleReviewNote || "",
+    source: timesheet.source || "quick",
+    note: timesheet.note || "",
+    approved: Boolean(timesheet.approved),
+    createdAt: timesheet.createdAt || null,
+    updatedAt: timesheet.updatedAt || null,
   };
 }
 
