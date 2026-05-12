@@ -58,15 +58,24 @@ type PublicRequestTablePaymentResult {
   requestedAt: String
 }
 
+input PublicRequestTablePaymentInput {
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  token: String!
+  note: String
+}
+
 extend type Query {
   publicActiveTableSessionOrders(
     restaurantId: ID!
     tableId: ID!
+    token: String!
   ): PublicActiveTableSessionOrdersResult!
 }
 
 extend type Mutation {
   publicRequestTablePayment(
-    input: RequestTablePaymentInput!
+    input: PublicRequestTablePaymentInput!
   ): PublicRequestTablePaymentResult!
 }
