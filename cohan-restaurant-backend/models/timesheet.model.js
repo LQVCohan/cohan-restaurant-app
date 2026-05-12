@@ -60,16 +60,18 @@ const TimesheetSchema = new Schema(
     approvedOvertimeMinutes: { type: Number, default: 0 },
     overtimeApprovalStatus: {
       type: String,
-      enum: ["none", "pending", "approved", "rejected"],
-      default: "none",
+      enum: ["not_required", "pending", "approved", "rejected"],
+      default: "not_required",
       index: true,
     },
+    overtimeReviewNote: { type: String, default: "" },
+    overtimeReviewedBy: { type: Types.ObjectId, ref: "User", default: null },
+    overtimeReviewedAt: { type: Date, default: null },
     overtimeRequestId: {
       type: Types.ObjectId,
       ref: "OvertimeRequest",
       default: null,
     },
-    overtimeApprovalNote: { type: String, default: "" },
 
     workedMinutes: { type: Number, default: 0 },
     status: {
