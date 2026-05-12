@@ -1,5 +1,11 @@
 // src/pages/Restaurant/MenuManagement/components/MenuModal/MenuModal.jsx
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import {
   FiX,
   FiUploadCloud,
@@ -10,7 +16,10 @@ import {
   FiSave,
 } from "react-icons/fi";
 import "./MenuModal.scss";
-import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../../utils/categoryIconMap";
+import {
+  hasIconInCategoryName,
+  resolveCategoryIcon,
+} from "../../../../../utils/categoryIconMap";
 
 const TIME_SLOTS = [
   { value: "breakfast", label: "Bữa Sáng" },
@@ -18,7 +27,6 @@ const TIME_SLOTS = [
   { value: "dinner", label: "Bữa Tối" },
   { value: "late_night", label: "Ăn Khuya" },
 ];
-
 
 const getCategoryLabelWithIcon = (name = "") => {
   const safeName = String(name || "").trim();
@@ -50,7 +58,6 @@ const MenuModal = ({
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [errors, setErrors] = useState({});
 
-  // Dropdown states
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
   const [quickCatName, setQuickCatName] = useState("");
@@ -61,7 +68,6 @@ const MenuModal = ({
 
   const isEditMode = !!initialData;
 
-  // Load initial data on open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -87,7 +93,6 @@ const MenuModal = ({
     initialSnapshotRef.current = next;
   }, [isOpen, initialData]);
 
-  // Handle click outside dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -108,7 +113,6 @@ const MenuModal = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCatDropdownOpen, quickCatSaving]);
 
-  // Dirty check
   const isDirty = useMemo(() => {
     const snap = initialSnapshotRef.current || INITIAL_STATE;
     const same =
@@ -158,7 +162,7 @@ const MenuModal = ({
     if (!formData.name.trim()) nextErrors.name = "Tên menu là bắt buộc";
     if (!formData.timeSlot) nextErrors.timeSlot = "Khung giờ là bắt buộc";
     if (!formData.categoryMenuId)
-      nextErrors.categoryMenuId = "Vui lòng chọn danh mục gốc";
+      nextErrors.categoryMenuId = "Vui lòng chọn nhóm thực đơn";
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -204,7 +208,6 @@ const MenuModal = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleRequestClose, isOpen]);
 
-  // Quick add new category
   const handleStartAddCat = () => setIsAddingNewCat(true);
 
   const handleCancelAddCat = () => {
@@ -239,7 +242,7 @@ const MenuModal = ({
       setIsAddingNewCat(false);
       setIsCatDropdownOpen(false);
     } catch (err) {
-      alert(err?.message || "Lỗi khi tạo danh mục mới");
+      alert(err?.message || "Lỗi khi tạo nhóm thực đơn mới");
     } finally {
       setQuickCatSaving(false);
     }
@@ -254,8 +257,10 @@ const MenuModal = ({
       role="dialog"
       aria-modal="true"
     >
-      <div className="modern-modal-container" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
+      <div
+        className="modern-modal-container"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>{isEditMode ? "Cập nhật Menu" : "Thêm Menu mới"}</h2>
           <button
@@ -267,10 +272,8 @@ const MenuModal = ({
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="modal-body">
-            {/* Name */}
             <div className="form-group">
               <label>
                 Tên Menu <span className="req">*</span>
@@ -287,9 +290,7 @@ const MenuModal = ({
               {errors.name && <p className="error-text">{errors.name}</p>}
             </div>
 
-            {/* Row: Timeslot + Category Dropdown */}
             <div className="form-row-2">
-              {/* Time Slot */}
               <div className="form-group">
                 <label>
                   Khung giờ <span className="req">*</span>
@@ -312,10 +313,9 @@ const MenuModal = ({
                 )}
               </div>
 
-              {/* CategoryMenu Custom Dropdown */}
               <div className="form-group" ref={catDropdownRef}>
                 <label>
-                  Danh mục gốc <span className="req">*</span>
+                  Nhóm thực đơn <span className="req">*</span>
                 </label>
 
                 <div className="custom-select-wrapper">
@@ -330,7 +330,9 @@ const MenuModal = ({
                     <span
                       className={!selectedCategoryName ? "placeholder" : ""}
                     >
-                      {selectedCategoryName ? getCategoryLabelWithIcon(selectedCategoryName) : "-- Chọn danh mục --"}
+                      {selectedCategoryName
+                        ? getCategoryLabelWithIcon(selectedCategoryName)
+                        : "-- Chọn nhóm thực đơn --"}
                     </span>
                     <FiChevronDown
                       style={{
@@ -346,7 +348,9 @@ const MenuModal = ({
                     <div className="custom-dropdown-menu">
                       <ul className="dropdown-list">
                         {categoryMenus.length === 0 && (
-                          <li className="empty-state">Chưa có danh mục nào</li>
+                          <li className="empty-state">
+                            Chưa có nhóm thực đơn nào
+                          </li>
                         )}
 
                         {categoryMenus.map((cat) => {
@@ -365,7 +369,6 @@ const MenuModal = ({
                         })}
                       </ul>
 
-                      {/* Add New Category Section */}
                       <div className="quick-add-section">
                         {!isAddingNewCat ? (
                           <button
@@ -373,13 +376,13 @@ const MenuModal = ({
                             className="btn-trigger-add"
                             onClick={handleStartAddCat}
                           >
-                            <FiPlus /> Tạo danh mục mới
+                            <FiPlus /> Tạo nhóm thực đơn mới
                           </button>
                         ) : (
                           <div className="inline-add-form">
                             <input
                               type="text"
-                              placeholder="Tên danh mục..."
+                              placeholder="Tên nhóm thực đơn..."
                               value={quickCatName}
                               onChange={(e) => setQuickCatName(e.target.value)}
                               onKeyDown={(e) => {
@@ -423,7 +426,6 @@ const MenuModal = ({
               </div>
             </div>
 
-            {/* Cover Image */}
             <div className="form-group">
               <label>Ảnh bìa (URL)</label>
               <div className="image-input-group">
@@ -456,7 +458,6 @@ const MenuModal = ({
               </div>
             </div>
 
-            {/* Description */}
             <div className="form-group">
               <label>Mô tả ngắn</label>
               <textarea
@@ -469,7 +470,6 @@ const MenuModal = ({
               />
             </div>
 
-            {/* Status Switch */}
             <div className="toggle-wrapper">
               <label className="switch">
                 <input
@@ -488,7 +488,6 @@ const MenuModal = ({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="modal-footer">
             <button
               type="button"

@@ -206,14 +206,14 @@ export const useCategoryManagement = ({
       try {
         const { data } = await createCategoryMut({ variables: { input } });
 
-        showNotification("Tạo danh mục thành công", "success");
+        showNotification("Tạo danh mục món thành công", "success");
 
         refetchCategories?.();
         refetchTopCategories?.();
 
         return data?.createCategory;
       } catch (err) {
-        showNotification(err?.message || "Lỗi tạo danh mục", "error");
+        showNotification(err?.message || "Lỗi tạo danh mục món", "error");
         return null;
       }
     },
@@ -225,14 +225,17 @@ export const useCategoryManagement = ({
       try {
         const { data } = await updateCategoryMut({ variables: { input } });
 
-        showNotification("Cập nhật danh mục thành công", "success");
+        showNotification("Cập nhật danh mục món thành công", "success");
 
         refetchCategories?.();
         refetchTopCategories?.();
 
         return data?.updateCategory;
       } catch (err) {
-        showNotification(err?.message || "Lỗi cập nhật danh mục", "error");
+        showNotification(
+          err?.message || "Lỗi cập nhật danh mục món",
+          "error"
+        );
         return null;
       }
     },
@@ -244,14 +247,14 @@ export const useCategoryManagement = ({
       try {
         await deleteCategoryMut({ variables: { id } });
 
-        showNotification("Đã xóa danh mục", "success");
+        showNotification("Đã xóa danh mục món", "success");
 
         refetchCategories?.();
         refetchTopCategories?.();
 
         return true;
       } catch (err) {
-        showNotification(err?.message || "Lỗi xóa danh mục", "error");
+        showNotification(err?.message || "Lỗi xóa danh mục món", "error");
         return false;
       }
     },
@@ -324,13 +327,13 @@ export const useCategoryManagement = ({
           variables: { input },
         });
 
-        showNotification("Tạo danh mục gốc thành công", "success");
+        showNotification("Tạo nhóm thực đơn thành công", "success");
 
-        refetchCategoryMenus?.(); // chạy nền
+        refetchCategoryMenus?.();
 
         return data?.createCategoryMenu;
       } catch (err) {
-        showNotification(err?.message || "Lỗi tạo danh mục gốc", "error");
+        showNotification(err?.message || "Lỗi tạo nhóm thực đơn", "error");
         return null;
       }
     },
@@ -346,12 +349,15 @@ export const useCategoryManagement = ({
           variables: { input },
         });
 
-        showNotification("Cập nhật danh mục gốc thành công", "success");
+        showNotification("Cập nhật nhóm thực đơn thành công", "success");
 
         refetchCategoryMenus?.();
         return data?.updateCategoryMenu;
       } catch (err) {
-        showNotification(err?.message || "Lỗi cập nhật danh mục gốc", "error");
+        showNotification(
+          err?.message || "Lỗi cập nhật nhóm thực đơn",
+          "error"
+        );
         return null;
       }
     },
@@ -365,12 +371,12 @@ export const useCategoryManagement = ({
       try {
         await deleteCategoryMenuMut({ variables: { id } });
 
-        showNotification("Đã xóa danh mục gốc", "success");
+        showNotification("Đã xóa nhóm thực đơn", "success");
 
         refetchCategoryMenus?.();
         return true;
       } catch (err) {
-        showNotification(err?.message || "Lỗi xóa danh mục gốc", "error");
+        showNotification(err?.message || "Lỗi xóa nhóm thực đơn", "error");
         return false;
       }
     },

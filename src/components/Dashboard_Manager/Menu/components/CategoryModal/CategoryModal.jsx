@@ -12,7 +12,10 @@ import {
   Check,
 } from "lucide-react";
 import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
-import { COMMON_CATEGORY_ICONS, resolveCategoryIcon } from "../../../../../utils/categoryIconMap";
+import {
+  COMMON_CATEGORY_ICONS,
+  resolveCategoryIcon,
+} from "../../../../../utils/categoryIconMap";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
 import "./CategoryModal.scss";
@@ -33,7 +36,9 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isDirty =
     viewMode === "form" &&
-    (formData.name.trim() || formData.description.trim() || (formData.icon || "") !== "🍽️");
+    (formData.name.trim() ||
+      formData.description.trim() ||
+      (formData.icon || "") !== "🍽️");
 
   const { requestCloseWithDraft, clearDraft } = useModalDraft({
     enabled: isOpen && viewMode === "form",
@@ -62,7 +67,6 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     notify: showNotification,
   });
 
-  // Hook giả lập logic (giữ nguyên logic của bạn)
   const {
     categoryMenus,
     categoryMenuLoading,
@@ -86,7 +90,6 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setSearchTerm("");
   }, [isOpen]);
 
-  // --- ACTIONS ---
   const switchToCreate = () => {
     setFormData(INITIAL_FORM);
     setErrors({});
@@ -118,7 +121,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) {
-      newErrors.name = "Vui lòng nhập tên danh mục";
+      newErrors.name = "Vui lòng nhập tên nhóm thực đơn";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -142,7 +145,11 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
         await createCategoryMenu({ restaurantId, ...payload });
       }
       clearDraft();
-      showNotification("Đã xóa dữ liệu nháp sau khi lưu danh mục.", "success", 2200);
+      showNotification(
+        "Đã xóa dữ liệu nháp sau khi lưu nhóm thực đơn.",
+        "success",
+        2200
+      );
       switchToList();
     } catch (err) {
       console.error(err);
@@ -153,7 +160,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa danh mục này?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa nhóm thực đơn này?")) return;
     try {
       await deleteCategoryMenu(id);
     } catch (err) {
@@ -174,15 +181,20 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
       className="modern-category-modal"
     >
       <div className="modal-container">
-        {/* --- VIEW: LIST --- */}
         {viewMode === "list" && (
           <div className="view-section fade-in-slide">
             <div className="modal-header">
               <div className="header-content">
-                <h3>Quản lý Danh mục</h3>
-                <p>Danh sách các nhóm món ăn trong thực đơn</p>
+                <h3>Quản lý Nhóm thực đơn</h3>
+                <p>
+                  Danh sách các nhóm dùng để gom thực đơn theo bộ menu hoặc mục
+                  đích hiển thị
+                </p>
               </div>
-              <button className="btn-close-modal" onClick={() => requestCloseWithDraft(onClose)}>
+              <button
+                className="btn-close-modal"
+                onClick={() => requestCloseWithDraft(onClose)}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -192,14 +204,14 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                 <Search size={18} className="search-icon" />
                 <input
                   type="text"
-                  placeholder="Tìm kiếm danh mục..."
+                  placeholder="Tìm kiếm nhóm thực đơn..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <button className="btn-primary" onClick={switchToCreate}>
                 <Plus size={18} />
-                <span>Thêm mới</span>
+                <span>Thêm nhóm</span>
               </button>
             </div>
 
@@ -214,9 +226,10 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                   <div className="empty-icon-bg">
                     <LayoutGrid size={32} />
                   </div>
-                  <p className="main-text">Chưa có danh mục nào</p>
+                  <p className="main-text">Chưa có nhóm thực đơn nào</p>
                   <p className="sub-text">
-                    Hãy tạo danh mục đầu tiên cho thực đơn của bạn
+                    Hãy tạo nhóm thực đơn đầu tiên để gom các menu cùng chủ đề
+                    hoặc mục đích hiển thị.
                   </p>
                 </div>
               ) : (
@@ -236,14 +249,14 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                         <button
                           className="action-btn edit"
                           onClick={() => switchToEdit(cat)}
-                          title="Chỉnh sửa"
+                          title="Chỉnh sửa nhóm thực đơn"
                         >
                           <Edit3 size={16} />
                         </button>
                         <button
                           className="action-btn delete"
                           onClick={() => handleDelete(cat.id || cat._id)}
-                          title="Xóa"
+                          title="Xóa nhóm thực đơn"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -256,7 +269,6 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
           </div>
         )}
 
-        {/* --- VIEW: FORM --- */}
         {viewMode === "form" && (
           <form onSubmit={handleSubmit} className="view-section fade-in-slide">
             <div className="modal-header with-back">
@@ -265,29 +277,30 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
               </button>
               <div className="header-content">
                 <h3>
-                  {formData.id ? "Cập nhật Danh mục" : "Tạo Danh mục mới"}
+                  {formData.id
+                    ? "Cập nhật Nhóm thực đơn"
+                    : "Tạo Nhóm thực đơn mới"}
                 </h3>
+                <p>Nhóm thực đơn dùng để gom nhiều menu liên quan với nhau.</p>
               </div>
             </div>
 
             <div className="form-body custom-scrollbar">
-              {/* Name Input */}
               <div className="form-group">
                 <label>
-                  Tên danh mục <span className="req">*</span>
+                  Tên nhóm thực đơn <span className="req">*</span>
                 </label>
                 <input
                   type="text"
                   className={errors.name ? "error" : ""}
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="VD: Món Khai Vị, Đồ uống..."
+                  placeholder="VD: Menu gia đình, Combo cuối tuần..."
                   autoFocus
                 />
                 {errors.name && <span className="err-msg">{errors.name}</span>}
               </div>
 
-              {/* Description Input */}
               <div className="form-group">
                 <label>Mô tả ngắn</label>
                 <textarea
@@ -296,11 +309,10 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                   onChange={(e) =>
                     handleInputChange("description", e.target.value)
                   }
-                  placeholder="Mô tả hiển thị bên dưới tên danh mục..."
+                  placeholder="Mô tả hiển thị bên dưới tên nhóm thực đơn..."
                 />
               </div>
 
-              {/* Icon Picker */}
               <div className="form-group">
                 <label>Biểu tượng đại diện</label>
                 <div className="icon-picker-container">
@@ -362,7 +374,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                 ) : (
                   <>
                     <Save size={16} />
-                    {formData.id ? "Lưu thay đổi" : "Tạo mới"}
+                    {formData.id ? "Lưu thay đổi" : "Tạo nhóm"}
                   </>
                 )}
               </button>
