@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { gql, useQuery } from "@apollo/client";
 
 const Q_ACTIVE_MENU_PROMOTIONS = gql`
@@ -34,64 +34,184 @@ const Q_ACTIVE_MENU_PROMOTIONS = gql`
   }
 `;
 
-const normalizePromotionType = (value, discountType) => {
-  const normalized = String(value || "")
-    .trim()
-    .toUpperCase();
+const SUPPORTED_SCOPES = new Set(["item", "category"]);
+const SUPPORTED_PROMOTION_TYPES = new Set(["FIXED", "PERCENTAGE"]);
+const UNSUPPORTED_PROMOTION_TYPES = new Set(["BOGO", "COMBO", "FREESHIP"]);
+const SUPPORTED_DISCOUNT_TYPES = new Set(["AMOUNT", "PERCENT"]);
 
-  if (normalized === "FIXED") return "fixed";
-  if (normalized === "PERCENTAGE") return "percentage";
-
-  return String(discountType || "PERCENT")
-    .trim()
-    .toUpperCase() === "AMOUNT"
-    ? "fixed"
-    : "percentage";
+const normalizeEntityId = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
 };
 
-const normalizeMenuPromotion = (row) => ({
-  id: row?.id || "",
-  name: row?.name || row?.code || "Khuyến mãi",
+const collectCandidateIds = (values = []) => {
+  const seen = new Set();
+
+  return values.reduce((ids, value) => {
+    const normalizedId = normalizeEntityId(value);
+    if (!normalizedId || seen.has(normalizedId)) {
+      return ids;
+    }
+
+    seen.add(normalizedId);
+    ids.push(normalizedId);
+    return ids;
+  }, []);
+};
+
+const getMenuItemCandidateIds = (item = {}) =>
+  collectCandidateIds([
+    item?.id,
+    item?._id,
+    item?.dishId,
+    item?.menuId,
+    item?.menuItemId,
+    item?.menuItem?.id,
+    item?.menuItem?._id,
+  ]);
+
+const getMenuCategoryCandidateIds = (item = {}) =>
+  collectCandidateIds([
+    item?.categoryId,
+    item?.category?.id,
+    item?.category?._id,
+  ]);
+
+const normalizeMenuPromotion = (row = {}) => ({
+  id: normalizeEntityId(row?.id),
+  name: row?.name || row?.code || "Ưu đãi",
   code: row?.code || "",
-  promotionType: row?.promotionType || "",
-  type: normalizePromotionType(row?.promotionType, row?.discountType),
-  scope: String(row?.scope || "").toLowerCase(),
-  discountType:
-    String(row?.discountType || "PERCENT").toUpperCase() === "AMOUNT"
-      ? "fixed"
-      : "percent",
+  promotionType: String(row?.promotionType || "")
+    .trim()
+    .toUpperCase(),
+  scope: String(row?.scope || "")
+    .trim()
+    .toLowerCase(),
+  discountType: String(row?.discountType || "")
+    .trim()
+    .toUpperCase(),
   discountValue: Number(row?.discountValue || 0),
   minOrderValue: Number(row?.minOrderValue || 0),
   maxDiscount: Number(row?.maxDiscount || 0),
-  categoryId: row?.categoryId ? String(row.categoryId) : "",
-  itemId: row?.itemId ? String(row.itemId) : "",
-  level: Number(row?.level || 1),
+  categoryId: normalizeEntityId(row?.categoryId),
+  itemId: normalizeEntityId(row?.itemId),
+  level: Number(row?.level || 0),
   stacking: Boolean(row?.stacking),
+  isActive: Boolean(row?.isActive),
+  startAt: row?.startAt || null,
+  endAt: row?.endAt || null,
 });
+
+const isSupportedDisplayPromotion = (promotion) => {
+  if (!promotion?.id || !SUPPORTED_SCOPES.has(promotion.scope)) {
+    return false;
+  }
+
+  if (UNSUPPORTED_PROMOTION_TYPES.has(promotion.promotionType)) {
+    return false;
+  }
+
+  if (SUPPORTED_PROMOTION_TYPES.has(promotion.promotionType)) {
+    return true;
+  }
+
+  return SUPPORTED_DISCOUNT_TYPES.has(promotion.discountType);
+};
+
+const pickHigherLevelPromotion = (currentPromotion, candidatePromotion) => {
+  if (!currentPromotion) return candidatePromotion;
+
+  const currentLevel = Number(currentPromotion?.level || 0);
+  const candidateLevel = Number(candidatePromotion?.level || 0);
+
+  return candidateLevel > currentLevel ? candidatePromotion : currentPromotion;
+};
+
+const buildPromotionLookup = (promotions, key) =>
+  promotions.reduce((lookup, promotion) => {
+    const targetId = normalizeEntityId(promotion?.[key]);
+    if (!targetId) return lookup;
+
+    lookup[targetId] = pickHigherLevelPromotion(lookup[targetId], promotion);
+    return lookup;
+  }, {});
+
+const findPromotionInLookup = (candidateIds = [], lookup = {}) => {
+  for (const candidateId of candidateIds) {
+    if (lookup[candidateId]) {
+      return lookup[candidateId];
+    }
+  }
+
+  return null;
+};
+
+const selectPromotionForMenuItem = (
+  item,
+  { promotionByItemId = {}, promotionByCategoryId = {} } = {},
+) => {
+  if (!item) return null;
+
+  const itemPromotion = findPromotionInLookup(
+    getMenuItemCandidateIds(item),
+    promotionByItemId,
+  );
+  if (itemPromotion) return itemPromotion;
+
+  return findPromotionInLookup(
+    getMenuCategoryCandidateIds(item),
+    promotionByCategoryId,
+  );
+};
+
+const formatDiscountValue = (value) => {
+  const numericValue = Number(value || 0);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return "0";
+  }
+
+  if (Number.isInteger(numericValue)) {
+    return String(numericValue);
+  }
+
+  return String(Number(numericValue.toFixed(2)));
+};
+
+const formatAmountLabel = (value) =>
+  `${new Intl.NumberFormat("vi-VN").format(Math.round(Number(value || 0)))}đ`;
 
 const getPromotionLabel = (promotion) => {
   if (!promotion) return "";
 
-  if (promotion.discountType === "percent") {
-    return `-${promotion.discountValue}%`;
+  if (
+    promotion.discountType === "PERCENT" ||
+    promotion.promotionType === "PERCENTAGE"
+  ) {
+    return `-${formatDiscountValue(promotion.discountValue)}%`;
   }
 
-  if (promotion.discountValue > 0) {
-    return `Giảm ${promotion.discountValue.toLocaleString("vi-VN")}đ`;
+  if (
+    promotion.discountType === "AMOUNT" ||
+    promotion.promotionType === "FIXED"
+  ) {
+    return `Giảm ${formatAmountLabel(promotion.discountValue)}`;
   }
 
   return "Ưu đãi";
 };
 
-const getPromotionRank = (promotion) => {
-  const scopeWeight = promotion?.scope === "item" ? 1000 : 500;
-  return scopeWeight + Number(promotion?.level || 0);
-};
-
 export const __testables = {
-  normalizeMenuPromotion,
+  buildPromotionLookup,
+  collectCandidateIds,
+  findPromotionInLookup,
+  getMenuCategoryCandidateIds,
+  getMenuItemCandidateIds,
   getPromotionLabel,
-  getPromotionRank,
+  isSupportedDisplayPromotion,
+  normalizeEntityId,
+  normalizeMenuPromotion,
+  pickHigherLevelPromotion,
+  selectPromotionForMenuItem,
 };
 
 export function useActiveMenuPromotions(restaurantId, { skip = false } = {}) {
@@ -110,55 +230,28 @@ export function useActiveMenuPromotions(restaurantId, { skip = false } = {}) {
     () =>
       (data?.promotionsByRestaurant || [])
         .map(normalizeMenuPromotion)
-        .filter(
-          (promotion) =>
-            promotion.id &&
-            ["item", "category"].includes(promotion.scope) &&
-            ["percentage", "fixed"].includes(promotion.type),
-        ),
+        .filter(isSupportedDisplayPromotion),
     [data?.promotionsByRestaurant],
   );
 
-  const promotionByItemId = useMemo(() => {
-    const map = new Map();
+  const promotionByItemId = useMemo(
+    () => buildPromotionLookup(promotions, "itemId"),
+    [promotions],
+  );
 
-    for (const promotion of promotions) {
-      if (!promotion.itemId) continue;
+  const promotionByCategoryId = useMemo(
+    () => buildPromotionLookup(promotions, "categoryId"),
+    [promotions],
+  );
 
-      const current = map.get(promotion.itemId);
-      if (!current || getPromotionRank(promotion) > getPromotionRank(current)) {
-        map.set(promotion.itemId, promotion);
-      }
-    }
-
-    return map;
-  }, [promotions]);
-
-  const promotionByCategoryId = useMemo(() => {
-    const map = new Map();
-
-    for (const promotion of promotions) {
-      if (!promotion.categoryId) continue;
-
-      const current = map.get(promotion.categoryId);
-      if (!current || getPromotionRank(promotion) > getPromotionRank(current)) {
-        map.set(promotion.categoryId, promotion);
-      }
-    }
-
-    return map;
-  }, [promotions]);
-
-  const getPromotionForMenuItem = (item) => {
-    const itemId = String(item?.id || item?._id || item?.menuItemId || "");
-    const categoryId = String(item?.categoryId || item?.category?.id || "");
-
-    return (
-      promotionByItemId.get(itemId) ||
-      promotionByCategoryId.get(categoryId) ||
-      null
-    );
-  };
+  const getPromotionForMenuItem = useCallback(
+    (item) =>
+      selectPromotionForMenuItem(item, {
+        promotionByItemId,
+        promotionByCategoryId,
+      }),
+    [promotionByCategoryId, promotionByItemId],
+  );
 
   return {
     promotions,

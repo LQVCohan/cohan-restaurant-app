@@ -19,9 +19,20 @@ const MenuItemCard = ({ item, onClick }) => {
           onError={handleImageError}
         />
         {item.status === "inactive" && <span className="badge">Hết hàng</span>}
+        {item.promotionLabel && (
+          <span
+            className="menu-item-card__promo-badge"
+            title={item.promotion?.name || "Ưu đãi"}
+          >
+            {item.promotionLabel}
+          </span>
+        )}
       </div>
       <div className="details">
         <h4 title={item.name}>{item.name}</h4>
+        {item.promotion?.name && (
+          <div className="menu-item-card__promo-name">{item.promotion.name}</div>
+        )}
         <p title={item.description}>{item.description}</p>
         {item.servingVariants?.length > 0 && (
           <div className="variants">

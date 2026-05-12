@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import MenuItemCard from "./MenuItemCard";
 import { MOCK_MENU_ITEMS, MOCK_CATEGORIES } from "../menuData"; // Import mock data
+import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import "../styles/MenuDetailView.scss";
 const ITEMS_PER_PAGE = 8;
 
@@ -15,10 +16,13 @@ const MenuDetailView = ({
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
+  const restaurantId = restaurant?.id || restaurant?._id || "";
+  const { getPromotionForMenuItem, getPromotionLabel } =
+    useActiveMenuPromotions(restaurantId);
 
   const filteredItems = useMemo(() => {
     return MOCK_MENU_ITEMS.filter((item) => {
-      const matchRes = item.restaurantId === restaurant.id;
+      const matchRes = item.restaurantId === restaurantId;
       const matchSlot = item.timeSlot ? item.timeSlot === timeSlot : true;
       const matchCat =
         activeCat === "all" ? true : item.categoryId === activeCat;
@@ -26,8 +30,23 @@ const MenuDetailView = ({
         .toLowerCase()
         .includes(search.toLowerCase());
       return matchRes && matchSlot && matchCat && matchSearch;
+    }).map((item) => {
+      const activePromotion = getPromotionForMenuItem(item);
+
+      return {
+        ...item,
+        promotion: activePromotion,
+        promotionLabel: getPromotionLabel(activePromotion),
+      };
     });
-  }, [restaurant.id, timeSlot, activeCat, search]);
+  }, [
+    activeCat,
+    getPromotionForMenuItem,
+    getPromotionLabel,
+    restaurantId,
+    search,
+    timeSlot,
+  ]);
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const currentItems = filteredItems.slice(
