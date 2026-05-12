@@ -150,7 +150,6 @@ function normalizeServingVariants(inputVariants = []) {
       const sellUnit = normalizeSellUnit(mode, raw.sellUnit);
       const sellQty = normalizeSellQty(mode, raw.sellQty);
 
-      // price optional
       let price = raw.price;
       if (price === "" || price === null || price === undefined) price = 0;
       price = Math.max(0, toNum(price, 0));
@@ -167,7 +166,6 @@ function normalizeServingVariants(inputVariants = []) {
 
       const ingredients = rawLines.map(normalizeIngredientLine).filter(Boolean);
 
-      // match BE checks
       if (mode === "PORTION" && sellUnit !== "portion") {
         throw new Error(
           `Variant "${key}": PORTION phải có sellUnit="portion".`
@@ -208,13 +206,11 @@ function mapServingVariantsToFe(servingVariants = []) {
     ? servingVariants.map((sv) => {
         const ingredients = Array.isArray(sv?.ingredients) ? sv.ingredients : [];
 
-        // alias cho UI editor cũ
         const components = ingredients.map((ic) => ({
           ingredientId: ic.ingredientId,
           qty: toNum(ic.qty, 0),
           unit: ic.unit || ic.baseUnit || "g",
           wastePct: toNum(ic.wastePct, 0),
-          // join fields optional
           name: ic.name || "",
           baseUnit: ic.baseUnit || "",
           costPerBaseUnit:
@@ -250,6 +246,10 @@ function mapRecipeToFe(menuItemId, recipe) {
   };
 }
 
+function hasVerifiedRecipeData(recipe) {
+  return !!(recipe?._rawRecipeId || recipe?._rawRecipe);
+}
+
 function mapRowToFe(row) {
   const mi = row?.menuItem || {};
   const r = row?.recipe || null;
@@ -267,7 +267,6 @@ function mapRowToFe(row) {
     thumbImage: mi.thumbImage || null,
     status: mi.status || null,
 
-    // recipe
     servingVariants: mapServingVariantsToFe(r?.servingVariants),
     notes: r?.notes || "",
     isActive: r?.isActive ?? true,
@@ -290,11 +289,11 @@ function buildUpsertInput(restaurantId, menuItemId, form) {
 }
 
 function buildMenuItemPatch(restaurantId, menuItemId, form) {
-  // optional — nếu modal cho sửa menuItem basic
   const patch = {};
   if (typeof form?.name === "string") patch.name = form.name.trim();
-  if (typeof form?.description === "string")
+  if (typeof form?.description === "string") {
     patch.description = form.description.trim();
+  }
   if (form?.categoryId) patch.categoryId = form.categoryId;
 
   const validStatuses = new Set([
@@ -313,9 +312,6 @@ function buildMenuItemPatch(restaurantId, menuItemId, form) {
     : null;
 }
 
-// =========================
-// Hook
-// =========================
 export function useRecipes(
   restaurantId,
   initialTimeSlot = null,
@@ -325,7 +321,6 @@ export function useRecipes(
     return String(value || "").replace(/\s+/g, " ").trim();
   }, []);
 
-  // --- like useIngredients: filters state inside hook
   const [filters, setFilters] = useState({
     search: initialFilters?.search || "",
     categoryId: initialFilters?.categoryId || "",
@@ -373,7 +368,6 @@ export function useRecipes(
     return () => clearTimeout(handle);
   }, [filters.search, normalizeSearchInput]);
 
-  // --- data state
   const [recipes, setRecipes] = useState([]);
   const [pageInfo, setPageInfo] = useState({
     endCursor: null,
@@ -382,10 +376,8 @@ export function useRecipes(
   const [total, setTotal] = useState(0);
   const [recipeDetailsByMenuItemId, setRecipeDetailsByMenuItemId] = useState({});
 
-  // --- local ui state
   const [localError, setLocalError] = useState(null);
 
-  // for loadMore vars
   const lastVarsRef = useRef(null);
   const recipeDetailRequestsRef = useRef({});
 
@@ -437,7 +429,6 @@ export function useRecipes(
     recipeDetailRequestsRef.current = {};
   }, [restaurantId]);
 
-  // auto fetch when restaurantId/filters change (like ingredient)
   useEffect(() => {
     if (!restaurantId) {
       setRecipes([]);
@@ -446,7 +437,6 @@ export function useRecipes(
       return;
     }
 
-    // reset list on filter change
     setRecipes([]);
     setPageInfo({ endCursor: null, hasNextPage: false });
     setTotal(0);
@@ -460,7 +450,6 @@ export function useRecipes(
     runFetch,
   ]);
 
-  // map result -> state
   useEffect(() => {
     const items = listState.data?.menuItemsWithRecipes?.items || [];
     const pi = listState.data?.menuItemsWithRecipes?.pageInfo || {
@@ -482,11 +471,18 @@ export function useRecipes(
       const next = { ...prev };
 
       recipes.forEach((recipe) => {
+        if (!hasVerifiedRecipeData(recipe)) return;
+
         const key = String(recipe?.menuItemId || recipe?.id || "").trim();
         if (!key) return;
 
         const existing = prev[key];
-        if (existing?.status === "loaded") return;
+        if (
+          existing?.status === "loaded" &&
+          hasVerifiedRecipeData(existing?.recipe)
+        ) {
+          return;
+        }
 
         next[key] = {
           status: "loaded",
@@ -500,7 +496,6 @@ export function useRecipes(
     });
   }, [recipes]);
 
-  // like useIngredients safeRefetchAll
   const safeRefetchAll = useCallback(async () => {
     try {
       setLocalError(null);
@@ -522,7 +517,9 @@ export function useRecipes(
       }
 
       const recipeFromList = recipes.find(
-        (recipe) => String(recipe?.menuItemId || recipe?.id) === key
+        (recipe) =>
+          String(recipe?.menuItemId || recipe?.id) === key &&
+          hasVerifiedRecipeData(recipe)
       );
       if (recipeFromList) {
         const loadedEntry = {
@@ -538,7 +535,13 @@ export function useRecipes(
       }
 
       const cached = recipeDetailsByMenuItemId[key];
-      if (cached?.status === "loaded" || cached?.status === "missing") {
+      if (
+        cached?.status === "loaded" &&
+        hasVerifiedRecipeData(cached?.recipe)
+      ) {
+        return cached;
+      }
+      if (cached?.status === "missing") {
         return cached;
       }
       if (
@@ -652,17 +655,16 @@ export function useRecipes(
     normalizeSearchInput,
   ]);
 
-  // ===== optimistic helpers =====
   const applyOptimisticUpsert = useCallback((menuItemId, form) => {
     setRecipes((prev) =>
       prev.map((r) => {
         if (String(r.id) !== String(menuItemId)) return r;
 
-        // optimistic: update menu item basic if provided
         const next = { ...r };
         if (typeof form?.name === "string") next.name = form.name.trim();
-        if (typeof form?.description === "string")
+        if (typeof form?.description === "string") {
           next.description = form.description.trim();
+        }
         if (form?.categoryId) next.categoryId = form.categoryId;
 
         const validStatuses = new Set([
@@ -675,7 +677,6 @@ export function useRecipes(
           next.status = form.status;
         }
 
-        // optimistic: update recipe variants
         try {
           const normalizedVariants = normalizeServingVariants(
             form?.servingVariants || next.servingVariants
@@ -712,14 +713,13 @@ export function useRecipes(
       const key = String(menuItemId || "").trim();
       if (!key) return prev;
 
-      const existing = prev[key] || {
-        status: "loaded",
-        recipe: mapRecipeToFe(key, null),
-        error: null,
-      };
+      const existing = prev[key];
+      if (!(existing?.status === "loaded" && hasVerifiedRecipeData(existing?.recipe))) {
+        return prev;
+      }
 
       const nextRecipe = {
-        ...(existing.recipe || mapRecipeToFe(key, null)),
+        ...existing.recipe,
         id: key,
         menuItemId: key,
         servingVariants: Array.isArray(form?.servingVariants)
@@ -743,7 +743,6 @@ export function useRecipes(
     });
   }, []);
 
-  // ===== CRUD =====
   const addRecipe = useCallback(
     async (form) => {
       if (!restaurantId) throw new Error("restaurantId is required");
@@ -752,16 +751,13 @@ export function useRecipes(
 
       setLocalError(null);
 
-      // optimistic
       applyOptimisticUpsert(menuItemId, form);
 
-      // update menu item (optional)
       const miPatch = buildMenuItemPatch(restaurantId, menuItemId, form);
       if (miPatch) {
         await updateMenuItemMu({ variables: { input: miPatch } });
       }
 
-      // upsert recipe
       const input = buildUpsertInput(restaurantId, menuItemId, form);
       await upsertMu({ variables: { input } });
 
@@ -783,7 +779,6 @@ export function useRecipes(
 
       setLocalError(null);
 
-      // optimistic
       applyOptimisticUpsert(menuItemId, form);
 
       const miPatch = buildMenuItemPatch(restaurantId, menuItemId, form);
@@ -812,7 +807,6 @@ export function useRecipes(
 
       setLocalError(null);
 
-      // optimistic remove recipe only (không xoá menuItem)
       setRecipes((prev) =>
         prev.map((r) =>
           String(r.id) === String(menuItemId)
@@ -826,14 +820,11 @@ export function useRecipes(
             : r
         )
       );
-      setRecipeDetailsByMenuItemId((prev) => ({
-        ...prev,
-        [String(menuItemId)]: {
-          status: "missing",
-          recipe: null,
-          error: null,
-        },
-      }));
+      setRecipeDetailsByMenuItemId((prev) => {
+        const next = { ...prev };
+        delete next[String(menuItemId)];
+        return next;
+      });
 
       await deleteMu({ variables: { restaurantId, menuItemId } });
       await safeRefetchAll();
@@ -841,14 +832,8 @@ export function useRecipes(
     [restaurantId, deleteMu, safeRefetchAll]
   );
 
-  // ===== Optional: client-side filters (nếu bạn muốn) =====
-  const filteredRecipes = useMemo(() => {
-    // server đã filter search/category/timeSlot rồi.
-    // giữ đây để tương tự useIngredients, và sau này nếu muốn filter local thêm.
-    return recipes;
-  }, [recipes]);
+  const filteredRecipes = useMemo(() => recipes, [recipes]);
 
-  // ===== Extra helpers =====
   const getDefaultVariant = useCallback((recipe) => {
     const arr = Array.isArray(recipe?.servingVariants)
       ? recipe.servingVariants
@@ -857,7 +842,6 @@ export function useRecipes(
   }, []);
 
   return {
-    // like useIngredients
     loading,
     error,
 
@@ -880,7 +864,6 @@ export function useRecipes(
     updateRecipe,
     deleteRecipe,
 
-    // helpers exposed (optional)
     genStableKey,
     getDefaultVariant,
   };
