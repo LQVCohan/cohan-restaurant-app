@@ -4,12 +4,29 @@ import { __testables } from "./useActiveMenuPromotions";
 const {
   buildPromotionLookup,
   getPromotionLabel,
+  getMenuCategoryCandidateIds,
+  getMenuItemCandidateIds,
   isSupportedDisplayPromotion,
   normalizeMenuPromotion,
   selectPromotionForMenuItem,
 } = __testables;
 
 describe("useActiveMenuPromotions helpers", () => {
+  it("normalizes promotion target ids to strings", () => {
+    const promotion = normalizeMenuPromotion({
+      id: 1,
+      categoryId: 200,
+      itemId: 100,
+      scope: "ITEM",
+      promotionType: "PERCENTAGE",
+      discountType: "PERCENT",
+    });
+
+    expect(promotion.id).toBe("1");
+    expect(promotion.itemId).toBe("100");
+    expect(promotion.categoryId).toBe("200");
+  });
+
   it("prioritizes item promotion over category promotion for a menu item", () => {
     const promotions = [
       normalizeMenuPromotion({
@@ -43,6 +60,114 @@ describe("useActiveMenuPromotions helpers", () => {
     );
 
     expect(promotion?.id).toBe("promo-item");
+  });
+
+  it("matches item promotions through dishId, menuId, menuItemId, and nested menuItem.id", () => {
+    const promotions = [
+      normalizeMenuPromotion({
+        id: "promo-dish",
+        scope: "ITEM",
+        promotionType: "PERCENTAGE",
+        discountType: "PERCENT",
+        discountValue: 5,
+        itemId: "dish-01",
+      }),
+      normalizeMenuPromotion({
+        id: "promo-menu",
+        scope: "ITEM",
+        promotionType: "PERCENTAGE",
+        discountType: "PERCENT",
+        discountValue: 7,
+        itemId: "menu-02",
+      }),
+      normalizeMenuPromotion({
+        id: "promo-menu-item",
+        scope: "ITEM",
+        promotionType: "FIXED",
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        itemId: "nested-03",
+      }),
+    ];
+    const promotionByItemId = buildPromotionLookup(promotions, "itemId");
+
+    expect(
+      selectPromotionForMenuItem(
+        { dishId: "dish-01" },
+        { promotionByItemId },
+      )?.id,
+    ).toBe("promo-dish");
+    expect(
+      selectPromotionForMenuItem(
+        { menuId: "menu-02" },
+        { promotionByItemId },
+      )?.id,
+    ).toBe("promo-menu");
+    expect(
+      selectPromotionForMenuItem(
+        { menuItemId: "nested-03" },
+        { promotionByItemId },
+      )?.id,
+    ).toBe("promo-menu-item");
+    expect(
+      selectPromotionForMenuItem(
+        { menuItem: { id: "nested-03" } },
+        { promotionByItemId },
+      )?.id,
+    ).toBe("promo-menu-item");
+  });
+
+  it("matches category promotion by nested category.id and category._id", () => {
+    const promotions = [
+      normalizeMenuPromotion({
+        id: "promo-category",
+        scope: "CATEGORY",
+        promotionType: "PERCENTAGE",
+        discountType: "PERCENT",
+        discountValue: 5,
+        categoryId: "cat-01",
+      }),
+    ];
+    const promotionByCategoryId = buildPromotionLookup(promotions, "categoryId");
+
+    expect(
+      selectPromotionForMenuItem(
+        { category: { id: "cat-01" } },
+        { promotionByCategoryId },
+      )?.id,
+    ).toBe("promo-category");
+    expect(
+      selectPromotionForMenuItem(
+        { category: { _id: "cat-01" } },
+        { promotionByCategoryId },
+      )?.id,
+    ).toBe("promo-category");
+  });
+
+  it("collects candidate ids for menu item and category aliases", () => {
+    expect(
+      getMenuItemCandidateIds({
+        id: "menu-1",
+        _id: "menu-1",
+        dishId: "dish-1",
+        menuId: "menu-ref-1",
+        menuItemId: "menu-item-1",
+        menuItem: { id: "nested-1", _id: "nested-2" },
+      }),
+    ).toEqual([
+      "menu-1",
+      "dish-1",
+      "menu-ref-1",
+      "menu-item-1",
+      "nested-1",
+      "nested-2",
+    ]);
+    expect(
+      getMenuCategoryCandidateIds({
+        categoryId: "cat-1",
+        category: { id: "cat-2", _id: "cat-3" },
+      }),
+    ).toEqual(["cat-1", "cat-2", "cat-3"]);
   });
 
   it("keeps only the highest-level promotion inside the same scope", () => {
