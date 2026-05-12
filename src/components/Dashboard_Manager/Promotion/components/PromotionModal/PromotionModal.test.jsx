@@ -70,6 +70,54 @@ describe("PromotionModal", () => {
     });
   });
 
+  it("renders a category filter helper when promotion scope is item", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('select[name="scope"]'), {
+      target: { name: "scope", value: "item" },
+    });
+
+    expect(screen.getByText("Lọc món theo danh mục")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Chỉ dùng để lọc danh sách món, không lưu thành phạm vi áp dụng.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "-- Tất cả danh mục --" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders only one target category select when promotion scope is category", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('select[name="scope"]'), {
+      target: { name: "scope", value: "category" },
+    });
+
+    expect(screen.getByText(/Danh mục áp dụng/)).toBeInTheDocument();
+    expect(screen.queryByText("Lọc món theo danh mục")).not.toBeInTheDocument();
+    expect(document.querySelectorAll('select[name="categoryId"]')).toHaveLength(1);
+  });
+
   it("forces BOGO promotions to capture both the purchased item and the gifted item", async () => {
     const onSave = vi.fn();
 
