@@ -206,11 +206,15 @@ const MenuItemModal = ({
     useConnection: false,
   });
 
-  const { recipes: recipeItems, updateRecipe } = useRecipes(
-    restaurantId,
-    timeSlot,
-    { search: null, categoryId: null }
-  );
+  const {
+    recipes: recipeItems,
+    updateRecipe,
+    ensureRecipeLoaded,
+    recipeDetailsByMenuItemId,
+  } = useRecipes(restaurantId, timeSlot, {
+    search: null,
+    categoryId: null,
+  });
 
   const currentRecipeItem = useMemo(
     () =>
@@ -222,15 +226,34 @@ const MenuItemModal = ({
     [recipeItems, editId]
   );
 
-  const existingServingVariants = useMemo(() => {
-    if (Array.isArray(currentRecipeItem?.servingVariants)) {
-      return currentRecipeItem.servingVariants;
-    }
-    if (Array.isArray(currentItem?.servingVariants)) {
-      return currentItem.servingVariants;
-    }
-    return [];
-  }, [currentRecipeItem, currentItem]);
+  const recipeDetailState = useMemo(
+    () =>
+      editId ? recipeDetailsByMenuItemId[String(editId)] || null : null,
+    [recipeDetailsByMenuItemId, editId]
+  );
+
+  const resolvedRecipeItem = useMemo(
+    () => currentRecipeItem || recipeDetailState?.recipe || null,
+    [currentRecipeItem, recipeDetailState]
+  );
+
+  const existingServingVariants = useMemo(
+    () =>
+      Array.isArray(resolvedRecipeItem?.servingVariants)
+        ? resolvedRecipeItem.servingVariants
+        : [],
+    [resolvedRecipeItem]
+  );
+
+  const recipeGuardStatus = useMemo(() => {
+    if (!editId) return "ready";
+    if (Array.isArray(resolvedRecipeItem?.servingVariants)) return "ready";
+    return recipeDetailState?.status || "idle";
+  }, [editId, resolvedRecipeItem, recipeDetailState]);
+
+  const isRecipeGuardPending =
+    !!editId && ["idle", "loading"].includes(recipeGuardStatus);
+  const isRecipeGuardBlocked = !!editId && recipeGuardStatus === "error";
 
   const defaultMethod = {
     key: "",
@@ -289,6 +312,17 @@ const MenuItemModal = ({
     notify: (message, type) =>
       pushToast(message, type === "error" ? "error" : "success"),
   });
+
+  useEffect(() => {
+    if (!isOpen || !editId || !restaurantId || currentRecipeItem) return;
+    ensureRecipeLoaded(editId);
+  }, [
+    isOpen,
+    editId,
+    restaurantId,
+    currentRecipeItem,
+    ensureRecipeLoaded,
+  ]);
 
   // --- EFFECT: Load Data ---
   useEffect(() => {
@@ -406,6 +440,17 @@ const MenuItemModal = ({
     e.preventDefault();
 
     if (submitLockRef.current) return;
+    if (isRecipeGuardPending) {
+      pushToast("Đang tải dữ liệu recipe, vui lòng chờ thêm một chút.", "error");
+      return;
+    }
+    if (isRecipeGuardBlocked) {
+      pushToast(
+        "Không thể xác minh dữ liệu recipe để lưu an toàn. Vui lòng thử lại.",
+        "error"
+      );
+      return;
+    }
     if (!restaurantId) {
       pushToast("Lỗi: Thiếu ID nhà hàng", "error");
       return;
@@ -523,6 +568,7 @@ const MenuItemModal = ({
   };
 
   const isSaving = isSubmitting;
+  const isSubmitDisabled = isSaving || isRecipeGuardPending || isRecipeGuardBlocked;
 
   const renderImagePreview = () => {
     if (formData.thumbImage && !imgError) {
@@ -771,10 +817,14 @@ const MenuItemModal = ({
           type="submit"
           form="menu-form"
           className="btn-primary"
-          disabled={isSaving}
+          disabled={isSubmitDisabled}
         >
           {isSaving ? (
             "Đang lưu..."
+          ) : isRecipeGuardPending ? (
+            "Đang tải dữ liệu recipe..."
+          ) : isRecipeGuardBlocked ? (
+            "Recipe chưa sẵn sàng"
           ) : (
             <>
               <Save size={18} /> {editId ? "Lưu thay đổi" : "Tạo món mới"}
