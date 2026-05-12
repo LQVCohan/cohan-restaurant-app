@@ -10,7 +10,12 @@ import {
   activeTableSessionLookupFilter,
   childOrdersForSessionFilter,
 } from "../../../utils/orderLifecycle.js";
-import { buildPublicRequestTablePaymentResult } from "../../../utils/publicTableSession.js";
+import {
+  TABLE_ACCESS_TOKEN_ERROR,
+  buildPublicRequestTablePaymentResult,
+  normalizePublicTableCode,
+  verifyTableAccessToken,
+} from "../../../utils/publicTableSession.js";
 
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -60,15 +65,41 @@ function applyRequestPaymentState(order, requestedAt, requestNote) {
   };
 }
 
+function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, tableCode }) {
+  if (
+    !verifiedToken ||
+    verifiedToken.restaurantId !== String(restaurantId) ||
+    verifiedToken.tableId !== String(tableId)
+  ) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  if (
+    verifiedToken.tableCode &&
+    verifiedToken.tableCode !== normalizePublicTableCode(tableCode)
+  ) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+}
+
 export async function publicRequestTablePayment(_parent, { input }, ctx) {
-  const { restaurantId, tableId, note } = input || {};
+  const { restaurantId, tableId, tableCode, token, note } = input || {};
 
   const rid = toId(restaurantId);
   const tid = toId(tableId);
   const requestNote = String(note || "").trim() || null;
+  const normalizedInputTableCode = normalizePublicTableCode(tableCode);
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
+
+  const verifiedToken = verifyTableAccessToken(token);
+  assertTableAccessTokenMatches({
+    verifiedToken,
+    restaurantId: rid,
+    tableId: tid,
+    tableCode: normalizedInputTableCode,
+  });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
     .select({ _id: 1, code: 1 })
@@ -78,7 +109,18 @@ export async function publicRequestTablePayment(_parent, { input }, ctx) {
     throw new Error("Table not found");
   }
 
-  const safeCode = String(table.code || "").trim().toUpperCase() || null;
+  const safeCode = normalizePublicTableCode(table.code);
+
+  if (normalizedInputTableCode && normalizedInputTableCode !== safeCode) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+
+  assertTableAccessTokenMatches({
+    verifiedToken,
+    restaurantId: rid,
+    tableId: tid,
+    tableCode: safeCode,
+  });
 
   const activeSession = await Order.findOne(
     activeTableSessionLookupFilter({
