@@ -26,11 +26,7 @@ const modelMocks = vi.hoisted(() => ({
   Role: {},
   EventLog: { create: vi.fn() },
   Shift: { findOne: vi.fn(), find: vi.fn(), countDocuments: vi.fn() },
-  Timesheet: Object.assign(vi.fn(), {
-    findOne: vi.fn(),
-    find: vi.fn(),
-    findById: vi.fn(),
-  }),
+  Timesheet: vi.fn(),
   LeaveRequest: {},
   LeaveBalance: {},
   PayrollSetting: {},
@@ -149,77 +145,14 @@ vi.mock("../../src/services/payroll/payrollCalculator.service.js", () => ({ buil
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
-    Types: {
-      ObjectId: function ObjectId(value) {
-        this._id = value;
-        this.toString = () => String(value);
-        this.valueOf = () => String(value);
-      },
-    },
+    Types: { ObjectId: function ObjectId(value) { return value; } },
   },
 }));
-
-const OFFICIAL_PUBLICATION_STATUSES = new Set(["published", "active"]);
-const ATTENDANCE_GRACE_MINUTES = 5;
 
 function idOf(value) {
   if (value == null) return "";
   if (typeof value === "object" && value._id) return String(value._id);
   return String(value);
-}
-
-function isOfficialPublicationStatus(status = db.publicationStatus) {
-  return OFFICIAL_PUBLICATION_STATUSES.has(String(status || "").toLowerCase());
-}
-
-function deriveAttendanceStatus(row, isOffSchedule) {
-  if (!row?.actualCheckInAt) {
-    return isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
-  }
-  if (!row?.actualCheckOutAt) {
-    return isOffSchedule ? "unscheduled_checkin" : "checked_in";
-  }
-  if (isOffSchedule) return "unscheduled_completed";
-  const hasLate = Number(row?.latenessMinutes || 0) > 0;
-  const hasEarly = Number(row?.earlyLeaveMinutes || 0) > 0;
-  if (hasLate && hasEarly) return "late_early_leave";
-  if (hasLate) return "late";
-  if (hasEarly) return "early_leave";
-  return "completed";
-}
-
-function normalizeTimesheetRow(row) {
-  if (!row) return null;
-
-  const bindsOfficialShift = Boolean(
-    row.shiftId &&
-      db.shift &&
-      idOf(row.shiftId) === idOf(db.shift._id) &&
-      isOfficialPublicationStatus(),
-  );
-  const isOffSchedule = bindsOfficialShift
-    ? false
-    : Boolean(row.isOffSchedule || row.shiftId);
-  const latenessMinutes =
-    bindsOfficialShift && Number(row.latenessMinutes || 0) <= ATTENDANCE_GRACE_MINUTES
-      ? 0
-      : Number(row.latenessMinutes || 0);
-
-  const normalized = {
-    ...row,
-    shiftId: bindsOfficialShift ? db.shift : null,
-    plannedStartTime: bindsOfficialShift
-      ? row.plannedStartTime || db.shift?.startTime || null
-      : null,
-    plannedEndTime: bindsOfficialShift
-      ? row.plannedEndTime || db.shift?.endTime || null
-      : null,
-    isOffSchedule,
-    latenessMinutes,
-  };
-
-  normalized.status = deriveAttendanceStatus(normalized, isOffSchedule);
-  return normalized;
 }
 
 function queryResult(value) {
@@ -262,26 +195,6 @@ function buildPublication(status = db.publicationStatus) {
     periodEnd: new Date("2026-06-07T23:59:59.999Z"),
     status,
     effectiveStatus: status,
-  };
-}
-
-function toLeanTimesheet(row) {
-  return normalizeTimesheetRow(row);
-}
-
-function findTimesheetById(id) {
-  return db.timesheets.find((timesheet) => idOf(timesheet._id) === idOf(id)) || null;
-}
-
-function populatedTimesheetQuery(value) {
-  const populated = toLeanTimesheet(value);
-  return {
-    populate: vi.fn().mockReturnValue({
-      lean: vi.fn(async () => populated),
-      then: (resolve, reject) => Promise.resolve(populated).then(resolve, reject),
-    }),
-    lean: vi.fn(async () => populated),
-    then: (resolve, reject) => Promise.resolve(populated).then(resolve, reject),
   };
 }
 
@@ -335,9 +248,7 @@ describe("Timesheet binding to official published/active staff shifts", () => {
 
     modelMocks.Shift.findOne.mockImplementation((filter = {}) => {
       const shift = db.shift;
-      if (!shift || !isOfficialPublicationStatus()) {
-        return { sort: vi.fn().mockReturnValue(queryResult(null)) };
-      }
+      if (!shift) return { sort: vi.fn().mockReturnValue(queryResult(null)) };
       const employeeOk = !filter.employeeId || idOf(filter.employeeId) === idOf(shift.employeeId);
       const restaurantOk = !filter.restaurantId || idOf(filter.restaurantId) === idOf(shift.restaurantId);
       const shiftStartsBeforeRangeEnd = !filter.startTime?.$lte || shift.startTime <= filter.startTime.$lte;
@@ -348,7 +259,7 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     modelMocks.Shift.find.mockImplementation(() => queryResult(db.shift ? [db.shift] : []));
     modelMocks.Shift.countDocuments.mockResolvedValue(0);
 
-    modelMocks.Timesheet.findOne.mockImplementation(async (filter = {}) => {
+    modelMocks.Timesheet.findOne = vi.fn(async (filter = {}) => {
       return db.timesheets.find((timesheet) => {
         if (filter.employeeId && idOf(filter.employeeId) !== idOf(timesheet.employeeId)) return false;
         if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
@@ -357,16 +268,12 @@ describe("Timesheet binding to official published/active staff shifts", () => {
         return true;
       }) || null;
     });
-    modelMocks.Timesheet.findById.mockImplementation((id) =>
-      populatedTimesheetQuery(findTimesheetById(id)),
-    );
-    modelMocks.Timesheet.find.mockImplementation((filter = {}) => queryResult(db.timesheets
-      .filter((timesheet) => {
-        if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
-        if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
-        return true;
-      })
-      .map((timesheet) => normalizeTimesheetRow(timesheet))));
+    modelMocks.Timesheet.findById = vi.fn();
+    modelMocks.Timesheet.find = vi.fn((filter = {}) => queryResult(db.timesheets.filter((timesheet) => {
+      if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
+      if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
+      return true;
+    })));
     modelMocks.Timesheet.mockImplementation(function Timesheet(data) {
       Object.assign(this, data);
       attachSave(this);
