@@ -504,10 +504,9 @@ const PromotionModal = ({
                   </div>
                 </div>
 
-                {(formData.scope === "category" ||
-                  formData.scope === "item") && (
+                {formData.scope === "item" && (
                   <div className="form-group full">
-                    <label>Danh mục món</label>
+                    <label>Lọc món theo danh mục</label>
                     <select
                       name="categoryId"
                       onChange={handleInputChange}
@@ -520,6 +519,9 @@ const PromotionModal = ({
                         </option>
                       ))}
                     </select>
+                    <p className="text-xs text-secondary mt-2">
+                      Chỉ dùng để lọc danh sách món, không lưu thành phạm vi áp dụng.
+                    </p>
                   </div>
                 )}
 
