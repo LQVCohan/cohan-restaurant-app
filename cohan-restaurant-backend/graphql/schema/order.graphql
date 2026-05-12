@@ -346,7 +346,7 @@ type DiscountBreakdown {
   shippingDiscount: Int
   totalDiscount: Int!
   discount: Int!
-
+  promotionLines: [DiscountLine!]!
   service: Int!
   serviceRate: Float
   tax: Int!
@@ -362,6 +362,23 @@ type DiscountBreakdown {
   appliedCoupons: [ID!]!
   discountReason: String
 }
+
+type DiscountLine {
+  lineId: String
+  dishId: ID
+  menuId: ID
+  categoryId: ID
+  name: String
+  quantity: Float
+  lineSubtotal: Int!
+  promotionId: ID!
+  promotionName: String
+  promotionScope: String
+  discountType: String
+  discountValue: Float
+  discount: Int!
+}
+
 # =========================================================
 # PAYMENT
 # =========================================================
