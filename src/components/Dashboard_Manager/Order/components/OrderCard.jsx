@@ -17,7 +17,6 @@ import "./OrderCard.scss";
 const mergeDuplicateItems = (items = []) => {
   const merged = new Map();
   for (const it of items) {
-    // Key bao gồm cả modifiers/note để không gộp nhầm món có yêu cầu khác nhau
     const key = `${it.dishId}_${it.method || ""}_${
       it.unit || ""
     }_${JSON.stringify(it.modifiers || [])}`;
@@ -63,13 +62,10 @@ const getOrderStatusLabel = (status) => {
 
 const getBatchTitle = (order) => {
   if (order?.orderType !== "dine_in" || !order?.tableCode) return null;
-
-  if (order?.batchDisplayIndex) {
-    return `Đợt gọi món ${order.batchDisplayIndex}`;
-  }
-
-  return "Đợt gọi món";
+  if (order?.batchDisplayIndex) return `Đợt ${order.batchDisplayIndex}`;
+  return null;
 };
+
 const minutesSince = (createdAt) => {
   if (!createdAt) return 0;
   const d = new Date(createdAt);
@@ -99,44 +95,40 @@ const OrderCard = ({
   onUpdateStatus,
   onViewOrder,
   isFocusMode = false,
-  onViewItem, // Callback khi click vào món
+  onViewItem,
   onRejectOrder,
   isRemoteStaffPending = false,
   onMessageCustomer,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  // Memoize logic gộp món & tính toán
-  const { mergedItems, progress, ageMinutes, statusColorClass } =
-    useMemo(() => {
-      const items = mergeDuplicateItems(order?.items || []);
-      const age = minutesSince(order?.createdAt);
+  const { mergedItems, progress, ageMinutes, statusColorClass } = useMemo(() => {
+    const items = mergeDuplicateItems(order?.items || []);
+    const age = minutesSince(order?.createdAt);
 
-      // Tính % món đã xong
-      const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
-      const doneItems = items.reduce(
-        (sum, it) =>
-          ["ready", "served"].includes(it.status) ? sum + it.quantity : sum,
-        0,
-      );
-      const prog = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
+    const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
+    const doneItems = items.reduce(
+      (sum, it) =>
+        ["ready", "served"].includes(it.status) ? sum + it.quantity : sum,
+      0,
+    );
+    const prog = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
-      // Class màu sắc dựa trên thời gian & trạng thái
-      let colorClass = "normal";
-      if (order?.currentStatus === "cancelled") colorClass = "cancelled";
-      else if (order?.currentStatus === "served") colorClass = "completed";
-      else if (age >= 20) colorClass = "danger";
-      else if (age >= 10) colorClass = "warning";
+    let colorClass = "normal";
+    if (order?.currentStatus === "cancelled") colorClass = "cancelled";
+    else if (order?.currentStatus === "served") colorClass = "completed";
+    else if (age >= 20) colorClass = "danger";
+    else if (age >= 10) colorClass = "warning";
 
-      return {
-        mergedItems: items,
-        progress: prog,
-        ageMinutes: age,
-        statusColorClass: colorClass,
-      };
-    }, [order]);
+    return {
+      mergedItems: items,
+      progress: prog,
+      ageMinutes: age,
+      statusColorClass: colorClass,
+    };
+  }, [order]);
 
-  const MAX_ITEMS = isFocusMode ? 20 : 4; // Focus mode hiển thị nhiều hơn
+  const MAX_ITEMS = isFocusMode ? 20 : 4;
   const visibleItems = mergedItems.slice(0, MAX_ITEMS);
   const remainCount = Math.max(0, mergedItems.length - MAX_ITEMS);
   const customerName =
@@ -163,20 +155,19 @@ const OrderCard = ({
 
   const statusLabel = getOrderStatusLabel(order?.currentStatus);
   const batchTitle = getBatchTitle(order);
-  // Xử lý action an toàn với Loading state
+
   const handleAction = async (e, status) => {
     e.stopPropagation();
     if (isActionLoading || !onUpdateStatus) return;
 
     setIsActionLoading(true);
     try {
-      await onUpdateStatus(order.id, status);
+      await onUpdateStatus(order?.actionOrderId || order?.id, status);
     } finally {
       setIsActionLoading(false);
     }
   };
 
-  /* --- RENDER ACTION BUTTONS --- */
   const renderActions = () => {
     const status = order?.currentStatus;
     if (isActionLoading) {
@@ -214,7 +205,7 @@ const OrderCard = ({
                 className="oc-btn secondary cancel"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onRejectOrder?.(order.id);
+                  onRejectOrder?.(order?.actionOrderId || order?.id);
                 }}
               >
                 Từ chối đơn
@@ -296,10 +287,8 @@ const OrderCard = ({
       } ${statusColorClass} ${order?.currentStatus}`}
       onClick={() => onViewOrder?.(order)}
     >
-      {/* 1. LEFT STATUS STRIP */}
       <div className="oc-status-strip"></div>
 
-      {/* 2. HEADER */}
       <div className="oc-header">
         <div className="oc-header-left">
           <div
@@ -337,7 +326,6 @@ const OrderCard = ({
         </div>
       </div>
 
-      {/* 3. INFO & NOTES */}
       <div className="oc-info-section">
         <div className="oc-guest">
           <User size={12} />
@@ -375,7 +363,6 @@ const OrderCard = ({
         )}
       </div>
 
-      {/* 4. PROGRESS BAR (Chỉ hiện khi đang chế biến) */}
       {order?.currentStatus === "preparing" && (
         <div className="oc-progress-track">
           <div
@@ -385,7 +372,6 @@ const OrderCard = ({
         </div>
       )}
 
-      {/* 5. ITEM LIST */}
       <div className="oc-items-wrapper custom-scrollbar">
         {visibleItems.map((item, idx) => {
           const isDone = ["ready", "served"].includes(item.status);
@@ -401,7 +387,6 @@ const OrderCard = ({
               <div className="qty-badge">{item.quantity}</div>
               <div className="item-content">
                 <div className="item-name">{item.name}</div>
-                {/* Hiển thị modifiers nếu có */}
                 {(item.modifiers?.length > 0 || item.method) && (
                   <div className="item-meta">
                     {item.method && (
@@ -425,7 +410,6 @@ const OrderCard = ({
         )}
       </div>
 
-      {/* 6. FOOTER */}
       <div className="oc-footer">
         <div className="oc-total">
           <span className="label">Tổng tiền</span>
