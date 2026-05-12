@@ -91,6 +91,54 @@ const ADD_CART_ITEM = gql`
   }
 `;
 
+const UPDATE_CART_ITEM = gql`
+  mutation UpdateCartItem($input: UpdateCartItemInput!) {
+    updateCartItem(input: $input) {
+      id
+      totalQuantity
+      totalAmount
+      items {
+        id
+        restaurantId
+        menuItemId
+        name
+        price
+        quantity
+        thumbImage
+        note
+        servingVariantKey
+        holdExpiresAt
+        holdStatus
+      }
+    }
+  }
+`;
+
+const REMOVE_CART_ITEM = gql`
+  mutation RemoveCartItem($input: RemoveCartItemInput!) {
+    removeCartItem(input: $input) {
+      id
+      totalQuantity
+      totalAmount
+      items {
+        id
+        restaurantId
+        menuItemId
+        quantity
+        servingVariantKey
+        holdExpiresAt
+        holdStatus
+      }
+    }
+  }
+`;
+
+const CLEAR_CART = gql`
+  mutation ClearCart($input: ClearCartInput!) {
+    clearCart(input: $input)
+  }
+`;
+
 const RESTAURANT_BY_ID = gql`
   query RestaurantByIdForFoodDetail($id: ID!) {
     restaurant(id: $id) {
@@ -118,11 +166,11 @@ const formatCountdown = (seconds) => {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 };
 
-const getAddCartErrorMessage = (error) =>
+const getCartMutationErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message ||
   error?.networkError?.result?.errors?.[0]?.message ||
   error?.message ||
-  "Không thể giữ món trong giỏ. Vui lòng thử lại.";
+  fallback;
 
 const FoodDetail = () => {
   const { foodId } = useParams();
@@ -135,8 +183,8 @@ const FoodDetail = () => {
     cart,
     addToCart,
     updateQuantity,
+    removeFromCart,
     clearCart,
-    removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
@@ -229,6 +277,12 @@ const FoodDetail = () => {
 
   const [addCartItemMutation, { loading: addingToBackendCart }] =
     useMutation(ADD_CART_ITEM);
+  const [updateCartItemMutation, { loading: updatingBackendCart }] =
+    useMutation(UPDATE_CART_ITEM);
+  const [removeCartItemMutation, { loading: removingBackendCart }] =
+    useMutation(REMOVE_CART_ITEM);
+  const [clearCartMutation, { loading: clearingBackendCart }] =
+    useMutation(CLEAR_CART);
 
   const liveState = liveStateData?.menuItemLiveState;
   const socketRef = useRef(null);
@@ -334,6 +388,9 @@ const FoodDetail = () => {
               ? "Không đủ số lượng"
               : "Thêm vào giỏ";
 
+  const cartActionBusy =
+    updatingBackendCart || removingBackendCart || clearingBackendCart;
+
   const makeCartPayload = () => {
     if (!foundDish) return null;
     const servingVariantKey = selectedServingKey || "portion";
@@ -357,6 +414,7 @@ const FoodDetail = () => {
       method: selectedVariantName,
       quantity,
       restaurantName: restaurant?.name || null,
+      backendCartId: null,
       backendCartItemId: null,
       holdExpiresAt: null,
       holdStatus: null,
@@ -414,9 +472,24 @@ const FoodDetail = () => {
             String(selectedServingKey || "portion"),
       );
 
+      const backendCartId = data?.addCartItem?.id || null;
+      const backendCartItemId = returnedItem?.id || null;
+
+      if (!backendCartId || !backendCartItemId) {
+        try {
+          await refetchLiveState?.();
+        } catch (_refetchError) {
+          // Giữ lỗi đồng bộ dòng giỏ hàng là lỗi chính cần báo cho người dùng.
+        }
+
+        alert("Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thử lại.");
+        return null;
+      }
+
       addToCart({
         ...payload,
-        backendCartItemId: returnedItem?.id || payload.backendCartItemId,
+        backendCartId,
+        backendCartItemId,
         holdExpiresAt: returnedItem?.holdExpiresAt || payload.holdExpiresAt,
         holdStatus: returnedItem?.holdStatus || payload.holdStatus,
         servingVariantKey:
@@ -431,14 +504,20 @@ const FoodDetail = () => {
 
       return {
         ...payload,
-        backendCartItemId: returnedItem?.id || null,
+        backendCartId,
+        backendCartItemId,
         holdExpiresAt: returnedItem?.holdExpiresAt || null,
         holdStatus: returnedItem?.holdStatus || null,
         servingVariantKey:
           returnedItem?.servingVariantKey || payload.servingVariantKey,
       };
     } catch (error) {
-      alert(getAddCartErrorMessage(error));
+      alert(
+        getCartMutationErrorMessage(
+          error,
+          "Không thể giữ món trong giỏ. Vui lòng thử lại.",
+        ),
+      );
       return null;
     }
   };
@@ -454,6 +533,118 @@ const FoodDetail = () => {
     const addedItem = await addCurrentSelectionToBackendCart();
     if (!addedItem) return;
     navigate("/checkout", { state: { from: "/food/" + foodId } });
+  };
+
+  const getPrimaryBackendCartId = () =>
+    cart.find((item) => item.backendCartId)?.backendCartId || null;
+
+  const handleCartUpdateQuantity = async (itemId, delta) => {
+    const item = cart.find((entry) => entry.id === itemId);
+    if (!item) return;
+
+    const nextQuantity = Math.max(
+      1,
+      Number(item.quantity || 1) + Number(delta || 0),
+    );
+    if (nextQuantity === Number(item.quantity || 1)) return;
+
+    if (!item.backendCartId || !item.backendCartItemId) {
+      alert(
+        "Món này chưa được đồng bộ với giỏ hàng máy chủ. Vui lòng thêm lại món.",
+      );
+      return;
+    }
+
+    try {
+      await updateCartItemMutation({
+        variables: {
+          input: {
+            cartId: item.backendCartId,
+            itemId: item.backendCartItemId,
+            quantity: nextQuantity,
+          },
+        },
+      });
+
+      updateQuantity(itemId, delta);
+      await refetchLiveState?.();
+    } catch (error) {
+      alert(
+        getCartMutationErrorMessage(
+          error,
+          "Không thể cập nhật số lượng món. Vui lòng thử lại.",
+        ),
+      );
+    }
+  };
+
+  const handleClearCart = async () => {
+    if (!cart.length) return;
+
+    const backendCartId = getPrimaryBackendCartId();
+    if (!backendCartId) {
+      clearCart();
+      return;
+    }
+
+    try {
+      await clearCartMutation({
+        variables: { input: { cartId: backendCartId } },
+      });
+
+      clearCart();
+      await refetchLiveState?.();
+    } catch (error) {
+      alert(
+        getCartMutationErrorMessage(
+          error,
+          "Không thể xóa giỏ hàng vì chưa trả được món đã giữ. Vui lòng thử lại.",
+        ),
+      );
+    }
+  };
+
+  const handleRemoveRestaurantItems = async (restaurantId) => {
+    const itemsToRemove = (cart || []).filter(
+      (item) => String(item.restaurantId) === String(restaurantId),
+    );
+
+    if (!itemsToRemove.length) return;
+
+    const syncedItems = itemsToRemove.filter(
+      (item) => item.backendCartId && item.backendCartItemId,
+    );
+    const localOnlyItems = itemsToRemove.filter(
+      (item) => !item.backendCartId || !item.backendCartItemId,
+    );
+
+    try {
+      for (const item of syncedItems) {
+        await removeCartItemMutation({
+          variables: {
+            input: {
+              cartId: item.backendCartId,
+              itemId: item.backendCartItemId,
+            },
+          },
+        });
+
+        removeFromCart(item.id);
+      }
+
+      for (const item of localOnlyItems) {
+        removeFromCart(item.id);
+      }
+
+      await refetchLiveState?.();
+    } catch (error) {
+      alert(
+        getCartMutationErrorMessage(
+          error,
+          "Không thể xóa món của nhà hàng này. Vui lòng thử lại.",
+        ),
+      );
+    }
   };
 
   if (menuLoading && !foundDish) {
@@ -750,11 +941,12 @@ const FoodDetail = () => {
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
           cart={cart}
-          onUpdateQuantity={updateQuantity}
+          onUpdateQuantity={handleCartUpdateQuantity}
           totalPrice={getTotalPrice()}
           onCheckoutSuccess={clearCart}
-          onClearCart={clearCart}
-          onRemoveRestaurantItems={removeRestaurantItems}
+          onClearCart={handleClearCart}
+          onRemoveRestaurantItems={handleRemoveRestaurantItems}
+          isBusy={cartActionBusy}
         />
 
         {cart.length > 0 && (
