@@ -75,6 +75,7 @@ function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, t
   }
 
   if (
+    tableCode !== undefined &&
     verifiedToken.tableCode &&
     verifiedToken.tableCode !== normalizePublicTableCode(tableCode)
   ) {
@@ -98,7 +99,7 @@ export async function publicRequestTablePayment(_parent, { input }, ctx) {
     verifiedToken,
     restaurantId: rid,
     tableId: tid,
-    tableCode: normalizedInputTableCode,
+    tableCode: normalizedInputTableCode ?? undefined,
   });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
