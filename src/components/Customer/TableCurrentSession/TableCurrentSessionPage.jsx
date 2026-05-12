@@ -1,0 +1,359 @@
+import React, { useMemo, useState } from "react";
+import { gql } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client/react";
+import { useParams } from "react-router-dom";
+
+import { formatPrice } from "@/utils/formatters";
+
+import "./TableCurrentSessionPage.scss";
+
+const ACTIVE_TABLE_SESSION_ORDERS = gql`
+  query ActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!) {
+    activeTableSessionOrders(restaurantId: $restaurantId, tableId: $tableId) {
+      tableId
+      tableCode
+      session {
+        id
+        orderCode
+        orderKind
+        currentStatus
+        payment {
+          status
+          requestedAt
+        }
+      }
+      orders {
+        id
+        orderCode
+        orderKind
+        currentStatus
+        createdAt
+        note
+        totals {
+          grandTotal
+        }
+        payment {
+          status
+          requestedAt
+        }
+        items {
+          _id
+          name
+          quantity
+          unit
+          servingKey
+          unitPrice
+          modifiersPrice
+          lineSubtotal
+          note
+          status
+        }
+      }
+    }
+  }
+`;
+
+const REQUEST_TABLE_PAYMENT = gql`
+  mutation RequestTablePayment($input: RequestTablePaymentInput!) {
+    requestTablePayment(input: $input) {
+      ok
+      warning
+      readyForPayment
+      message
+      pendingOrderCodes
+      requestedAt
+      session {
+        id
+        payment {
+          status
+          requestedAt
+        }
+      }
+      orders {
+        id
+        payment {
+          status
+          requestedAt
+        }
+      }
+    }
+  }
+`;
+
+const HIDDEN_ORDER_STATUSES = new Set(["completed", "cancelled", "failed"]);
+
+const formatStatusLabel = (status) => {
+  const normalized = String(status || "").trim().toLowerCase();
+  const labels = {
+    pending: "Chờ xác nhận",
+    confirmed: "Đã xác nhận",
+    customer_attached: "Đã gắn khách",
+    preparing: "Đang chuẩn bị",
+    ready: "Sẵn sàng phục vụ",
+    served: "Đã phục vụ",
+    completed: "Đã hoàn tất",
+    cancelled: "Đã hủy",
+    failed: "Thất bại",
+  };
+
+  return labels[normalized] || (normalized ? normalized.replace(/_/g, " ") : "Đang xử lý");
+};
+
+const getItemSubtotal = (item) => {
+  if (item?.lineSubtotal != null) {
+    return Number(item.lineSubtotal) || 0;
+  }
+
+  const unitPrice = Number(item?.unitPrice || 0);
+  const modifiersPrice = Number(item?.modifiersPrice || 0);
+  const quantity = Number(item?.quantity || 0);
+  return (unitPrice + modifiersPrice) * quantity;
+};
+
+const normalizeBatchOrders = (orders = []) => {
+  return [...orders]
+    .filter((order) => {
+      const currentStatus = String(order?.currentStatus || "").trim().toLowerCase();
+      const paymentStatus = String(order?.payment?.status || "").trim().toLowerCase();
+
+      return (
+        order?.orderKind !== "table_session" &&
+        !HIDDEN_ORDER_STATUSES.has(currentStatus) &&
+        paymentStatus !== "paid"
+      );
+    })
+    .sort((left, right) => {
+      const leftTime = left?.createdAt ? new Date(left.createdAt).getTime() : 0;
+      const rightTime = right?.createdAt ? new Date(right.createdAt).getTime() : 0;
+
+      if (leftTime !== rightTime) {
+        return leftTime - rightTime;
+      }
+
+      return String(left?.orderCode || left?.id || "").localeCompare(
+        String(right?.orderCode || right?.id || ""),
+      );
+    });
+};
+
+const TableCurrentSessionPage = () => {
+  const { restaurantId, tableId } = useParams();
+  const [feedback, setFeedback] = useState(null);
+
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useQuery(ACTIVE_TABLE_SESSION_ORDERS, {
+    variables: { restaurantId, tableId },
+    skip: !restaurantId || !tableId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const [requestTablePayment, { loading: requestingPayment }] = useMutation(
+    REQUEST_TABLE_PAYMENT,
+  );
+
+  const tableSessionData = data?.activeTableSessionOrders || null;
+  const batchOrders = useMemo(
+    () => normalizeBatchOrders(tableSessionData?.orders || []),
+    [tableSessionData?.orders],
+  );
+
+  const temporaryTotal = useMemo(
+    () => batchOrders.reduce((sum, order) => sum + Number(order?.totals?.grandTotal || 0), 0),
+    [batchOrders],
+  );
+
+  const paymentRequested = useMemo(() => {
+    const sessionRequested =
+      tableSessionData?.session?.payment?.status === "payment_requested" ||
+      Boolean(tableSessionData?.session?.payment?.requestedAt);
+
+    if (sessionRequested) {
+      return true;
+    }
+
+    return batchOrders.some(
+      (order) =>
+        order?.payment?.status === "payment_requested" ||
+        Boolean(order?.payment?.requestedAt),
+    );
+  }, [batchOrders, tableSessionData?.session]);
+
+  const handleRequestPayment = async () => {
+    setFeedback(null);
+
+    try {
+      const { data: mutationData } = await requestTablePayment({
+        variables: {
+          input: {
+            restaurantId,
+            tableId,
+            tableCode: tableSessionData?.tableCode || null,
+          },
+        },
+      });
+
+      const result = mutationData?.requestTablePayment;
+
+      if (!result?.ok) {
+        setFeedback({
+          type: "error",
+          text: result?.message || "Không thể gửi yêu cầu thanh toán.",
+        });
+        return;
+      }
+
+      if (result.warning === true || (result.pendingOrderCodes || []).length > 0) {
+        setFeedback({
+          type: "warning",
+          text: "Còn món chưa phục vụ xong, nhân viên sẽ kiểm tra lại.",
+        });
+      } else {
+        setFeedback({
+          type: "success",
+          text: "Đã gửi yêu cầu thanh toán. Nhân viên sẽ đến hỗ trợ.",
+        });
+      }
+
+      await refetch();
+    } catch (mutationError) {
+      setFeedback({
+        type: "error",
+        text: mutationError?.message || "Không thể gửi yêu cầu thanh toán.",
+      });
+    }
+  };
+
+  if (loading && !tableSessionData) {
+    return (
+      <div className="customer-table-session-page">
+        <div className="customer-table-session-page__container customer-table-session-page__container--state">
+          <h1>Đang tải thông tin bàn...</h1>
+          <p>Vui lòng chờ trong giây lát.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="customer-table-session-page">
+        <div className="customer-table-session-page__container customer-table-session-page__container--state">
+          <h1>Không tải được thông tin bàn</h1>
+          <p>{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="customer-table-session-page">
+      <div className="customer-table-session-page__container">
+        <header className="customer-table-session-page__header">
+          <div>
+            <p className="customer-table-session-page__eyebrow">Thông tin bàn hiện tại</p>
+            <h1>
+              {tableSessionData?.tableCode
+                ? `Bàn ${tableSessionData.tableCode}`
+                : `Bàn ${tableId}`}
+            </h1>
+          </div>
+          {paymentRequested && (
+            <span className="customer-table-session-page__badge">
+              Đã gọi thanh toán
+            </span>
+          )}
+        </header>
+
+        {feedback && (
+          <div
+            className={`customer-table-session-page__feedback customer-table-session-page__feedback--${feedback.type}`}
+          >
+            {feedback.text}
+          </div>
+        )}
+
+        {!batchOrders.length ? (
+          <div className="customer-table-session-page__empty">
+            <h2>Bàn hiện chưa có món đang phục vụ.</h2>
+            <p>Khi có món mới được ghi nhận, danh sách sẽ hiện tại đây.</p>
+          </div>
+        ) : (
+          <div className="customer-table-session-page__body">
+            <section className="customer-table-session-page__batches">
+              {batchOrders.map((order, index) => (
+                <article key={order.id} className="customer-table-session-page__batch-card">
+                  <div className="customer-table-session-page__batch-header">
+                    <div>
+                      <h2>{`Đợt ${index + 1}`}</h2>
+                      <p>{order.orderCode || `BATCH-${index + 1}`}</p>
+                    </div>
+                    <span className="customer-table-session-page__status-pill">
+                      {formatStatusLabel(order.currentStatus)}
+                    </span>
+                  </div>
+
+                  <ul className="customer-table-session-page__item-list">
+                    {(order.items || []).map((item) => (
+                      <li key={item._id || `${order.id}-${item.name}`} className="customer-table-session-page__item">
+                        <div className="customer-table-session-page__item-main">
+                          <div className="customer-table-session-page__item-row">
+                            <strong>{item.name}</strong>
+                            <span>{formatPrice(getItemSubtotal(item))}</span>
+                          </div>
+                          <div className="customer-table-session-page__item-meta">
+                            <span>Số lượng: {item.quantity}</span>
+                            {item.unit && <span>Đơn vị: {item.unit}</span>}
+                            {item.servingKey && <span>Phần: {item.servingKey}</span>}
+                            {item.status && <span>Trạng thái: {formatStatusLabel(item.status)}</span>}
+                          </div>
+                          {item.note && (
+                            <p className="customer-table-session-page__item-note">
+                              Ghi chú: {item.note}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="customer-table-session-page__batch-total">
+                    <span>Tạm tính đợt</span>
+                    <strong>{formatPrice(order?.totals?.grandTotal || 0)}</strong>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <aside className="customer-table-session-page__summary-card">
+              <div className="customer-table-session-page__summary-row customer-table-session-page__summary-row--muted">
+                <span>Đợt đang phục vụ</span>
+                <strong>{batchOrders.length}</strong>
+              </div>
+              <div className="customer-table-session-page__summary-row customer-table-session-page__summary-row--total">
+                <span>Tạm tính</span>
+                <strong>{formatPrice(temporaryTotal)}</strong>
+              </div>
+              <button
+                type="button"
+                className="customer-table-session-page__cta"
+                disabled={paymentRequested || requestingPayment || !batchOrders.length}
+                onClick={handleRequestPayment}
+              >
+                {requestingPayment ? "Đang gửi yêu cầu..." : "Gọi thanh toán"}
+              </button>
+              <p className="customer-table-session-page__hint">
+                Đây là tạm tính của các đợt gọi món đang phục vụ, không phải hóa đơn đã thanh toán.
+              </p>
+            </aside>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TableCurrentSessionPage;
