@@ -202,7 +202,7 @@ userSchema.pre("validate", function (next) {
 
 userSchema.pre("save", async function (next) {
   try {
-    if (this.isNew && !this.passwordHash) {
+    if (this.isNew && !this.passwordHash && !this.isGuest) {
       const plain = generateRandomPassword(12);
       this._generatedPassword = plain;
       await this.setPassword(plain);
