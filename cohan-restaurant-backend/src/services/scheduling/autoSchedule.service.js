@@ -1,0 +1,202 @@
+import mongoose from "mongoose";
+import { Shift, Staff, SchedulePublication } from "../../../models/index.js";
+import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
+import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toObjectId(value) {
+  if (!value || !mongoose.isValidObjectId(value)) return null;
+  return new mongoose.Types.ObjectId(value);
+}
+
+function toDate(value, fieldName) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) throw new Error(`${fieldName} không hợp lệ.`);
+  return date;
+}
+
+function startOfDay(value) {
+  const d = toDate(value, "Ngày");
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(value) {
+  const d = toDate(value, "Ngày");
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function hoursBetween(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) return 0;
+  return Number(((e.getTime() - s.getTime()) / 3600000).toFixed(2));
+}
+
+function normalizeRole(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeShiftType(value) {
+  return String(value || "morning").trim().toLowerCase();
+}
+
+function getStaffRoleTokens(staff = {}) {
+  return new Set([
+    staff.department,
+    staff.positionTitle,
+    staff.roleName,
+    staff.role?.slug,
+    staff.role?.name,
+    ...(Array.isArray(staff.skills) ? staff.skills : []),
+  ].map(normalizeRole).filter(Boolean));
+}
+
+function staffMatchesRole(staff, requiredRole) {
+  const role = normalizeRole(requiredRole);
+  if (!role) return true;
+  const tokens = getStaffRoleTokens(staff);
+  return tokens.has(role) || [...tokens].some((token) => token.includes(role) || role.includes(token));
+}
+
+function normalizeRequiredRoles(input = {}) {
+  const raw = input.mandatoryShiftRoles || input.requiredRoles || {};
+  if (Array.isArray(raw)) return { default: raw.map(normalizeRole).filter(Boolean) };
+  if (!raw || typeof raw !== "object") return {};
+  return Object.fromEntries(Object.entries(raw).map(([key, value]) => [normalizeShiftType(key), Array.isArray(value) ? value.map(normalizeRole).filter(Boolean) : []]));
+}
+
+function getRequiredRolesForShift(requiredRolesByShift, shiftType) {
+  return requiredRolesByShift[normalizeShiftType(shiftType)] || requiredRolesByShift.default || [];
+}
+
+function parseTimeOnDay(day, timeValue, fallbackHour) {
+  if (timeValue instanceof Date) return new Date(timeValue);
+  const raw = String(timeValue || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return new Date(raw);
+  const [hour = fallbackHour, minute = 0] = raw.split(":").map(Number);
+  const date = new Date(day);
+  date.setHours(Number.isFinite(hour) ? hour : fallbackHour, Number.isFinite(minute) ? minute : 0, 0, 0);
+  return date;
+}
+
+function normalizeTemplates(input) {
+  const configured = input.shiftTemplates || input.shiftConfig || [];
+  const templates = Array.isArray(configured) ? configured : Object.entries(configured || {}).map(([shiftType, cfg]) => ({ shiftType, ...(cfg || {}) }));
+  return templates.length ? templates : [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }];
+}
+
+function buildDemandItems(input) {
+  const periodStart = startOfDay(input.periodStart);
+  const periodEnd = endOfDay(input.periodEnd);
+  const requiredRolesByShift = normalizeRequiredRoles(input);
+  const templates = normalizeTemplates(input);
+  const items = [];
+
+  for (let cursor = new Date(periodStart); cursor <= periodEnd; cursor = new Date(cursor.getTime() + DAY_MS)) {
+    for (const template of templates) {
+      const shiftType = normalizeShiftType(template.shiftType || template.key || template.id);
+      const startTime = parseTimeOnDay(cursor, template.startTime || template.start || template.from, shiftType === "evening" ? 17 : 8);
+      const endTime = parseTimeOnDay(cursor, template.endTime || template.end || template.to, shiftType === "evening" ? 22 : 16);
+      const roles = Array.isArray(template.requiredRoles) && template.requiredRoles.length ? template.requiredRoles.map(normalizeRole).filter(Boolean) : getRequiredRolesForShift(requiredRolesByShift, shiftType);
+      for (const role of roles.length ? roles : [""]) {
+        items.push({ shiftKey: `${startTime.toISOString()}|${endTime.toISOString()}|${shiftType}|${role || "any"}`, shiftType, startTime, endTime, requiredRole: role });
+      }
+    }
+  }
+  return items;
+}
+
+function mapIssue(issue, fallbackCode = "VALIDATION_FAILED") {
+  return {
+    code: issue?.code || fallbackCode,
+    severity: issue?.severity || "error",
+    message: issue?.message || "Không đủ điều kiện xếp ca.",
+    suggestedAction: issue?.suggestedAction || "",
+  };
+}
+
+export async function assertAutoSchedulePeriodCanEdit({ restaurantId, periodStart, periodEnd }) {
+  const publication = await SchedulePublication.findOne({ restaurantId, periodStart: { $lte: endOfDay(periodEnd) }, periodEnd: { $gte: startOfDay(periodStart) } }).lean();
+  if (!publication) return true;
+  const status = resolveScheduleLifecycleStatus({ publication, periodStart: publication.periodStart, periodEnd: publication.periodEnd });
+  if (!["draft", "revision_draft"].includes(status)) throw new Error("Không thể áp dụng chia ca tự động khi lịch đã published/active/locked/closed.");
+  return true;
+}
+
+export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
+  const restaurantId = toObjectId(input.restaurantId);
+  if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+  const periodStart = startOfDay(input.periodStart);
+  const periodEnd = endOfDay(input.periodEnd);
+  const avoidOvertime = input.avoidOvertime !== false;
+  const respectAvailability = input.respectAvailability !== false;
+  const weeklyHoursCap = Number(input.weeklyHoursCap || 0);
+
+  const staffRows = await Staff.find({ userType: "STAFF", restaurantForStaff: restaurantId, $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] }).lean();
+  const existingShifts = await Shift.find({ restaurantId, status: { $ne: "cancelled" }, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart } }).lean();
+  const demandItems = buildDemandItems(input);
+  const plannedHoursByEmployee = new Map();
+  const plannedWindowsByEmployee = new Map();
+  const plannedAssignments = [];
+  const blockedCandidates = [];
+  const items = [];
+  const unfilledRoles = [];
+
+  for (const demand of demandItems) {
+    const candidates = [];
+    for (const staff of staffRows) {
+      if (demand.requiredRole && !staffMatchesRole(staff, demand.requiredRole)) {
+        const issue = { code: "ROLE_MISMATCH", severity: "error", message: "Nhân viên không đúng role bắt buộc." };
+        blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: [issue] });
+        continue;
+      }
+      const employeeKey = String(staff._id);
+      const plannedOverlap = (plannedWindowsByEmployee.get(employeeKey) || []).some((window) => window.startTime < demand.endTime && window.endTime > demand.startTime);
+      if (plannedOverlap) {
+        const issue = { code: "PLANNED_SHIFT_OVERLAP", severity: "error", message: "Nhân viên đã được preview cho ca khác trùng thời gian." };
+        blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: employeeKey, requiredRole: demand.requiredRole, issues: [issue] });
+        continue;
+      }
+      const validation = await validateShiftAssignment({ input: { employeeId: staff._id, restaurantId, shiftType: demand.shiftType, startTime: demand.startTime, endTime: demand.endTime, allowOverride: input.allowOverride, overrideReason: input.overrideReason } });
+      const plannedHours = Number(plannedHoursByEmployee.get(String(staff._id)) || 0);
+      const afterPlanned = Number((Number(validation.metrics?.weeklyHoursAfter || 0) + plannedHours).toFixed(2));
+      const blocking = [...(validation.blockingErrors || [])];
+      if (avoidOvertime && weeklyHoursCap > 0 && afterPlanned > weeklyHoursCap) blocking.push({ code: "WEEKLY_HOURS_CAP_EXCEEDED", severity: "error", message: `Tổng giờ tuần sau khi xếp ca vượt giới hạn ${weeklyHoursCap}h.` });
+      if (respectAvailability && (validation.warnings || []).some((issue) => String(issue.code || "").includes("AVAILABILITY")) && !input.allowOverride) blocking.push({ code: "AVAILABILITY_VIOLATION", severity: "error", message: "Nhân viên không phù hợp availability đã đăng ký." });
+      if (blocking.length) {
+        blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: blocking.map(mapIssue) });
+        continue;
+      }
+      candidates.push({ staff, validation, afterPlanned });
+    }
+
+    candidates.sort((a, b) => Number(b.validation.score || 0) - Number(a.validation.score || 0));
+    const selected = candidates[0] || null;
+    if (!selected) {
+      unfilledRoles.push({ shiftKey: demand.shiftKey, shiftType: demand.shiftType, startTime: demand.startTime, endTime: demand.endTime, requiredRole: demand.requiredRole, reason: "NO_ELIGIBLE_CANDIDATE" });
+      items.push({ ...demand, status: "blocked", employeeId: null, employeeName: null, validationIssues: [{ code: "NO_ELIGIBLE_CANDIDATE", severity: "error", message: "Không có nhân viên đủ điều kiện." }] });
+      continue;
+    }
+    const employeeId = String(selected.staff._id);
+    plannedHoursByEmployee.set(employeeId, Number((Number(plannedHoursByEmployee.get(employeeId) || 0) + hoursBetween(demand.startTime, demand.endTime)).toFixed(2)));
+    plannedWindowsByEmployee.set(employeeId, [
+      ...(plannedWindowsByEmployee.get(employeeId) || []),
+      { startTime: demand.startTime, endTime: demand.endTime },
+    ]);
+    const item = { ...demand, status: selected.validation.warnings?.length ? "warning" : "ready", employeeId, employeeName: selected.staff.fullName || null, score: selected.validation.score || 0, warnings: selected.validation.warnings || [], validationIssues: selected.validation.warnings || [] };
+    items.push(item);
+    plannedAssignments.push(item);
+  }
+
+  const summary = { totalDemand: demandItems.length, recommendedAssignments: plannedAssignments.length, warningAssignments: items.filter((item) => item.status === "warning").length, blockedAssignments: items.filter((item) => item.status === "blocked").length, existingShiftCount: existingShifts.length };
+  const unresolvedCount = unfilledRoles.length;
+  return { items, summary, plannedAssignments, blockedCandidates, unfilledRoles, unresolvedCount, canApply: plannedAssignments.length > 0 && unresolvedCount === 0, warnings: [], validationIssues: unfilledRoles.map((row) => ({ code: row.reason, severity: "error", message: `Thiếu nhân sự cho ${row.requiredRole || row.shiftType}.` })) };
+}
+
+export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
+  const preview = await buildAutoSchedulePreviewBackend(input, ctx);
+  return preview.plannedAssignments.map((item) => ({ employeeId: item.employeeId, restaurantId: input.restaurantId, shiftType: item.shiftType, startTime: item.startTime, endTime: item.endTime, notes: "Auto schedule backend" }));
+}

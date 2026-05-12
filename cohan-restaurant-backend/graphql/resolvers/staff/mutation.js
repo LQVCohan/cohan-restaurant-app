@@ -34,6 +34,15 @@ import {
   validateShiftAssignment,
 } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
+  assertAutoSchedulePeriodCanEdit,
+  buildAutoScheduleCreateInputs,
+  buildAutoSchedulePreviewBackend,
+} from "../../../src/services/scheduling/autoSchedule.service.js";
+import {
+  hasBlockingSchedulePublishIssues,
+  validateScheduleBeforePublish,
+} from "../../../src/services/scheduling/schedulePublishValidation.service.js";
+import {
   approveAttendanceCorrectionRequest as approveAttendanceCorrectionRequestService,
   cancelAttendanceCorrectionRequest as cancelAttendanceCorrectionRequestService,
   createAttendanceCorrectionRequest as createAttendanceCorrectionRequestService,
@@ -999,7 +1008,7 @@ function getBatchErrorMessage(error) {
     "Không thể tạo ca cho nhân viên này."
   );
 }
-export default {
+const mutationResolvers = {
   // =========================
   // CREATE STAFF
   // =========================
@@ -1379,6 +1388,17 @@ export default {
       );
     }
 
+    const publishValidation = await validateScheduleBeforePublish({
+      restaurantId,
+      periodStart,
+      periodEnd,
+      mandatoryShiftRoles: input.mandatoryShiftRoles,
+    });
+    if (hasBlockingSchedulePublishIssues(publishValidation)) {
+      const first = publishValidation.issues.find((issue) => issue.severity === "error");
+      throw new Error(first?.message || "Không thể công bố lịch vì còn lỗi blocking.");
+    }
+
     const existingPublication = await SchedulePublication.findOne({
       restaurantId,
       periodStart,
@@ -1650,6 +1670,31 @@ export default {
       at: new Date(),
     });
     return mapSchedulePublicationOutput(publication);
+  },
+  previewAutoSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
+    return buildAutoSchedulePreviewBackend(input, ctx);
+  },
+  applyAutoSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
+    await assertAutoSchedulePeriodCanEdit({
+      restaurantId,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+    });
+    const rows = await buildAutoScheduleCreateInputs(input, ctx);
+    if (!rows.length) {
+      return { successCount: 0, failedCount: 0, shifts: [], errors: [] };
+    }
+    return mutationResolvers.createStaffShifts(_, { inputs: rows }, ctx);
   },
   createStaffShift: async (_, { input }, ctx) => {
     const shift = await createStaffShiftInternal(input, ctx);
@@ -4101,3 +4146,5 @@ export default {
     return mapLeaveOutput(updated);
   },
 };
+
+export default mutationResolvers;
