@@ -437,7 +437,7 @@ const MenuManagement = () => {
         <div className="mm-header__left">
           <h1 className="mm-title">Quản lý Thực Đơn</h1>
           <p className="mm-subtitle">
-            Thiết lập món ăn, giá bán và danh mục kinh doanh
+            Thiết lập món ăn, danh mục món và nhóm thực đơn
           </p>
         </div>
 
@@ -480,7 +480,7 @@ const MenuManagement = () => {
               className="mm-btn mm-btn--secondary"
               onClick={() => toggleModal("category", true)}
             >
-              <FiFolderPlus /> Danh mục
+              <FiFolderPlus /> Nhóm thực đơn
             </button>
             <button
               className="mm-btn mm-btn--primary"
