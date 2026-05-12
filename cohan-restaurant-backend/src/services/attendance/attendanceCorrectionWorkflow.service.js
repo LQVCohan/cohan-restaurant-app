@@ -11,7 +11,10 @@ import {
   calculateAttendanceMetrics,
   deriveAttendanceStatus,
 } from "./attendanceCalculation.service.js";
-import { applyAttendanceOvertimeState } from "./attendanceOvertimeApproval.service.js";
+import {
+  applyAttendanceOvertimeState,
+  buildAttendanceOvertimeState,
+} from "./attendanceOvertimeState.service.js";
 import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
 import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 import {
@@ -338,7 +341,12 @@ async function resolveExistingTimesheet({
 async function resolveShift(shiftId) {
   const sid = toObjectId(shiftId);
   if (!sid) return null;
-  return Shift.findById(sid).lean();
+  const query = Shift.findById(sid);
+  if (!query) return null;
+  if (typeof query.lean === "function") {
+    return query.lean();
+  }
+  return query;
 }
 
 function assertTimesheetMatchesRequestScope(
@@ -851,7 +859,13 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
   const previousOvertimeMinutes = Number(timesheet?.overtimeMinutes || 0);
 
   if (!timesheet) {
-    timesheet = new Timesheet({
+    const overtimeState = buildAttendanceOvertimeState({
+      overtimeMinutes: metrics.overtimeMinutes,
+      currentStatus: "not_required",
+      approvedOvertimeMinutes: 0,
+    });
+
+    timesheet = await Timesheet.create({
       employeeId: request.employeeId,
       restaurantId: request.restaurantId,
       shiftId: request.shiftId || null,
@@ -861,6 +875,7 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       actualCheckInAt,
       actualCheckOutAt,
       ...metrics,
+      ...overtimeState,
       status: nextStatus,
       isOffSchedule,
       approved: isOffSchedule,
@@ -871,8 +886,9 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       source: "manual_correction",
       note: appendNote("", `Chỉnh công đã duyệt: ${request.reason}`),
     });
-    applyAttendanceOvertimeState(timesheet);
-    await timesheet.save();
+    if (timesheet && typeof timesheet.populate === "function") {
+      await timesheet.populate("shiftId");
+    }
   } else {
     timesheet.actualCheckInAt = actualCheckInAt;
     timesheet.actualCheckOutAt = actualCheckOutAt;
