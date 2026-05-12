@@ -2,6 +2,25 @@ import React, { useState } from "react";
 import { Edit3, Trash2, Utensils, ImageOff, MoreHorizontal } from "lucide-react";
 import "./MenuItemCard.scss";
 
+const STATUS_META = {
+  available: {
+    label: "Sẵn sàng",
+    className: "available",
+  },
+  out_of_stock: {
+    label: "Hết hàng",
+    className: "out-of-stock",
+  },
+  unavailable: {
+    label: "Tạm dừng",
+    className: "unavailable",
+  },
+  hidden: {
+    label: "Ẩn khỏi menu",
+    className: "hidden",
+  },
+};
+
 const MenuItemCard = ({ item, onEdit, onDelete }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -12,10 +31,16 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
       maximumFractionDigits: 0,
     }).format(Number(price || 0));
 
-  const soldCount = Number(item.orderCounter || 0);
+  const rawOrderCounter = item?.orderCounter;
+  const hasSoldCount =
+    rawOrderCounter !== null &&
+    rawOrderCounter !== undefined &&
+    Number.isFinite(Number(rawOrderCounter));
+  const soldCount = hasSoldCount ? Number(rawOrderCounter) : null;
   const variants = Array.isArray(item.servingVariants) ? item.servingVariants : [];
   const visibleMethods = variants.slice(0, 3);
   const remainingCount = Math.max(0, variants.length - 3);
+  const statusMeta = STATUS_META[item?.status] || STATUS_META.unavailable;
 
   const renderImage = () => {
     if (item.thumbImage && !imgError) {
@@ -29,8 +54,7 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
   };
 
   const renderStatusBadge = () => {
-    const isAvailable = item.status === "available";
-    return <div className={`status-badge ${isAvailable ? "available" : "unavailable"}`}>{isAvailable ? "Sẵn sàng" : "Tạm dừng"}</div>;
+    return <div className={`status-badge ${statusMeta.className}`}>{statusMeta.label}</div>;
   };
 
   return (
@@ -38,14 +62,16 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
       <div className="card-image-wrapper">
         {renderImage()}
         <div className="badge-wrapper">{renderStatusBadge()}</div>
-        <div className="sales-overlay">
-          <div className="sales-stat">
-            <div className="stat-info">
-              <span className="label">Đã bán</span>
-              <span className="value">{soldCount} phần</span>
+        {hasSoldCount && (
+          <div className="sales-overlay">
+            <div className="sales-stat">
+              <div className="stat-info">
+                <span className="label">Đã bán</span>
+                <span className="value">{soldCount} phần</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="card-body">
