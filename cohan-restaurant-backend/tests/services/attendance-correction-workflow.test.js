@@ -59,6 +59,15 @@ const ctxManager = {
   user: { id: "507f1f77bcf86cd799439001", roleName: "MANAGER" },
 };
 
+function queryDoc(value) {
+  return {
+    populate: vi.fn().mockReturnThis(),
+    sort: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
+  };
+}
+
 function createRequestDoc(overrides = {}) {
   return {
     _id: "r1",
@@ -90,7 +99,7 @@ describe("attendance correction workflow guards", () => {
       populate: vi.fn().mockReturnThis(),
       sort: vi.fn().mockResolvedValue(null),
     });
-    modelMocks.AttendanceCorrectionRequest.findById.mockResolvedValue(null);
+    modelMocks.AttendanceCorrectionRequest.findById.mockReturnValue(queryDoc(null));
     modelMocks.AttendanceCorrectionRequest.findOne.mockResolvedValue(null);
     modelMocks.AttendanceCorrectionRequest.create.mockImplementation(async (payload) => payload);
     modelMocks.Shift.findById.mockResolvedValue(null);
@@ -165,11 +174,13 @@ describe("attendance correction workflow guards", () => {
       "../../src/services/attendance/attendanceCorrectionWorkflow.service.js"
     );
 
-    modelMocks.AttendanceCorrectionRequest.findById.mockResolvedValue({
-      _id: "r1",
-      restaurantId: "507f1f77bcf86cd799439011",
-      status: "applied",
-    });
+    modelMocks.AttendanceCorrectionRequest.findById.mockReturnValue(
+      queryDoc({
+        _id: "r1",
+        restaurantId: "507f1f77bcf86cd799439011",
+        status: "applied",
+      }),
+    );
 
     await expect(
       approveAttendanceCorrectionRequest({
@@ -237,7 +248,7 @@ describe("attendance correction workflow guards", () => {
     );
 
     const requestDoc = createRequestDoc();
-    modelMocks.AttendanceCorrectionRequest.findById.mockResolvedValue(requestDoc);
+    modelMocks.AttendanceCorrectionRequest.findById.mockReturnValue(queryDoc(requestDoc));
     modelMocks.Timesheet.findById.mockReturnValue({
       populate: vi.fn().mockResolvedValue(null),
     });
@@ -278,8 +289,8 @@ describe("attendance correction workflow guards", () => {
     };
 
     modelMocks.AttendanceCorrectionRequest.findById
-      .mockResolvedValueOnce(requestDoc)
-      .mockResolvedValueOnce(populatedRequest);
+      .mockReturnValueOnce(queryDoc(requestDoc))
+      .mockReturnValueOnce(queryDoc(populatedRequest));
 
     await approveAttendanceCorrectionRequest({
       input: { requestId: "r1", note: "Đủ bằng chứng" },
