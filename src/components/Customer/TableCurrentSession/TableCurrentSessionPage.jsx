@@ -1,15 +1,21 @@
 import React, { useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { formatPrice } from "@/utils/formatters";
 
 import "./TableCurrentSessionPage.scss";
 
+const INVALID_TABLE_LINK_MESSAGE = "Link bàn không hợp lệ hoặc đã hết hạn.";
+
 const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
-  query PublicActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!) {
-    publicActiveTableSessionOrders(restaurantId: $restaurantId, tableId: $tableId) {
+  query PublicActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!, $token: String!) {
+    publicActiveTableSessionOrders(
+      restaurantId: $restaurantId
+      tableId: $tableId
+      token: $token
+    ) {
       tableId
       tableCode
       session {
@@ -54,7 +60,7 @@ const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
 `;
 
 const PUBLIC_REQUEST_TABLE_PAYMENT = gql`
-  mutation PublicRequestTablePayment($input: RequestTablePaymentInput!) {
+  mutation PublicRequestTablePayment($input: PublicRequestTablePaymentInput!) {
     publicRequestTablePayment(input: $input) {
       ok
       warning
@@ -99,6 +105,16 @@ const formatStatusLabel = (status) => {
   return labels[normalized] || (normalized ? normalized.replace(/_/g, " ") : "Đang xử lý");
 };
 
+const getPublicTableErrorText = (inputError) => {
+  const message = String(inputError?.message || "").trim();
+
+  if (!message || message.includes("Invalid table access token")) {
+    return INVALID_TABLE_LINK_MESSAGE;
+  }
+
+  return message;
+};
+
 const getItemSubtotal = (item) => {
   if (item?.lineSubtotal != null) {
     return Number(item.lineSubtotal) || 0;
@@ -138,7 +154,15 @@ const normalizeBatchOrders = (orders = []) => {
 
 const TableCurrentSessionPage = () => {
   const { restaurantId, tableId } = useParams();
+  const [searchParams] = useSearchParams();
   const [feedback, setFeedback] = useState(null);
+
+  const tableAccessToken = useMemo(
+    () => String(searchParams.get("token") || "").trim(),
+    [searchParams],
+  );
+  const hasRouteParams = Boolean(restaurantId && tableId);
+  const hasTableAccessToken = Boolean(tableAccessToken);
 
   const {
     data,
@@ -146,8 +170,8 @@ const TableCurrentSessionPage = () => {
     error,
     refetch,
   } = useQuery(PUBLIC_ACTIVE_TABLE_SESSION_ORDERS, {
-    variables: { restaurantId, tableId },
-    skip: !restaurantId || !tableId,
+    variables: { restaurantId, tableId, token: tableAccessToken },
+    skip: !hasRouteParams || !hasTableAccessToken,
     fetchPolicy: "cache-and-network",
   });
 
@@ -183,6 +207,14 @@ const TableCurrentSessionPage = () => {
   }, [batchOrders, tableSessionData?.session]);
 
   const handleRequestPayment = async () => {
+    if (!hasTableAccessToken) {
+      setFeedback({
+        type: "error",
+        text: INVALID_TABLE_LINK_MESSAGE,
+      });
+      return;
+    }
+
     setFeedback(null);
 
     try {
@@ -192,6 +224,7 @@ const TableCurrentSessionPage = () => {
             restaurantId,
             tableId,
             tableCode: tableSessionData?.tableCode || null,
+            token: tableAccessToken,
           },
         },
       });
@@ -222,10 +255,21 @@ const TableCurrentSessionPage = () => {
     } catch (mutationError) {
       setFeedback({
         type: "error",
-        text: mutationError?.message || "Không thể gửi yêu cầu thanh toán.",
+        text: getPublicTableErrorText(mutationError),
       });
     }
   };
+
+  if (!hasRouteParams || !hasTableAccessToken) {
+    return (
+      <div className="customer-table-session-page">
+        <div className="customer-table-session-page__container customer-table-session-page__container--state">
+          <h1>Không tải được thông tin bàn</h1>
+          <p>{INVALID_TABLE_LINK_MESSAGE}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !tableSessionData) {
     return (
@@ -243,7 +287,7 @@ const TableCurrentSessionPage = () => {
       <div className="customer-table-session-page">
         <div className="customer-table-session-page__container customer-table-session-page__container--state">
           <h1>Không tải được thông tin bàn</h1>
-          <p>{error.message}</p>
+          <p>{getPublicTableErrorText(error)}</p>
         </div>
       </div>
     );

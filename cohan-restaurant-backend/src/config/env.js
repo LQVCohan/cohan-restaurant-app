@@ -72,7 +72,6 @@ export function loadEnv() {
   return loadedFrom;
 }
 
-
 function applyDevelopmentDefaults() {
   normalizeMongoEnvVars();
 
@@ -80,6 +79,20 @@ function applyDevelopmentDefaults() {
 
   if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
     process.env.JWT_SECRET = "dev_jwt_secret_change_me";
+  }
+
+  if (
+    !process.env.TABLE_ACCESS_TOKEN_SECRET ||
+    !String(process.env.TABLE_ACCESS_TOKEN_SECRET).trim()
+  ) {
+    process.env.TABLE_ACCESS_TOKEN_SECRET = process.env.JWT_SECRET;
+  }
+
+  if (
+    !process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN ||
+    !String(process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN).trim()
+  ) {
+    process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN = "30d";
   }
 }
 
