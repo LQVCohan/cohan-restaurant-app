@@ -320,9 +320,9 @@ export default function RightPanel() {
     const nw = [];
     (currentOrder || []).forEach((it) => {
       if (it?.isNew)
-        nw.push(it); // ✅ chỉ isNew mới là món nháp
+        nw.push(it);
       else if (it?.isExisting)
-        ex.push(it); // ✅ còn lại, nếu isExisting thì là đã lưu
+        ex.push(it);
       else nw.push(it);
     });
     return { existingItems: ex, newItems: nw };
@@ -546,6 +546,23 @@ export default function RightPanel() {
       value: totals[key],
       clsName: c,
     }));
+
+  const promotionLineItems = useMemo(
+    () =>
+      Array.isArray(discountBreakdown?.promotionLines)
+        ? discountBreakdown.promotionLines
+            .filter((line) => Number(line?.discount || 0) > 0)
+            .map((line, index) => ({
+              key:
+                line?.lineId ||
+                `${line?.promotionId || "promotion"}_${line?.dishId || line?.menuId || index}`,
+              itemName: line?.name?.trim() || "Món áp dụng",
+              promotionName: line?.promotionName?.trim() || "Khuyến mãi",
+              discount: Math.abs(Number(line?.discount || 0)),
+            }))
+        : [],
+    [discountBreakdown?.promotionLines],
+  );
 
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
   const hasUnservedExistingItems = useMemo(() => {
@@ -815,254 +832,208 @@ export default function RightPanel() {
   const buildPreview = useCallback((items, title) => {
     const lines = [];
     if (title) lines.push(title);
+    lines.push("--------------------------------");
+
     items.forEach((item) => {
       const qty = Number(item.quantity || 0);
       const name = item.name || item.menuItem?.name || "Món";
       const note = item.note ? ` (${item.note})` : "";
       lines.push(`${qty} x ${name}${note}`);
     });
+
+    if (!items.length) {
+      lines.push("Không có món để in");
+    }
+
     return lines.join("\n");
   }, []);
 
-  const tempPreview = useMemo(() => {
-    if (!hasItems) return "Không có món để in.";
-
-    const lines = [buildPreview(currentOrder, "Tạm tính")];
-
-    const subtotal = Number(totals?.subtotal || 0);
-    const discount = Math.max(0, Number(totals?.discount || 0));
-    const service = Math.max(0, Number(totals?.service || 0));
-    const tax = Math.max(0, Number(totals?.tax || 0));
-    const total = Number(totals?.total || totals?.grandTotal || 0);
-
-    lines.push("");
-    lines.push("------------------------------");
-
-    if (subtotal > 0) {
-      lines.push(`Tạm tính: ${formatPrice(subtotal)}`);
-    }
-
-    if (discount > 0) {
-      lines.push(`Giảm giá: -${formatPrice(discount)}`);
-    }
-
-    if (service > 0) {
-      lines.push(`Phí phục vụ: ${formatPrice(service)}`);
-    }
-
-    if (tax > 0) {
-      lines.push(`Thuế: ${formatPrice(tax)}`);
-    }
-
-    lines.push(`Tổng cần trả: ${formatPrice(total)}`);
-
-    if (discountBreakdown?.voucherCode) {
-      lines.push(`Voucher: ${discountBreakdown.voucherCode}`);
-    }
-
-    const discountReasonLabel = formatDiscountReasonLabel(
-      discountBreakdown?.discountReason,
-    );
-
-    if (discountReasonLabel) {
-      lines.push(`Ưu đãi: ${discountReasonLabel}`);
-    }
-
-    return lines.filter(Boolean).join("\n");
-  }, [buildPreview, currentOrder, discountBreakdown, hasItems, totals]);
-
-  const stationPreviews = useMemo(() => {
-    const groups = {};
-    (currentOrder || []).forEach((item) => {
-      const stationId = resolveStationId(item);
-      if (!groups[stationId]) groups[stationId] = [];
-      groups[stationId].push(item);
-    });
-    return PRINT_STATIONS.map((station) => {
-      const items = groups[station.id] || [];
-      const mappedPrinters = (printStations?.[station.id] || [])
-        .map((pid) => printers?.[pid])
-        .filter(Boolean);
-      const fallbackPrinters = mappedPrinters;
-      return {
-        id: station.id,
-        label: station.label,
-        preview: items.length ? buildPreview(items, station.label) : "",
-        printers: fallbackPrinters,
-        items,
-      };
-    });
-  }, [buildPreview, currentOrder, printers, printStations, resolveStationId]);
-
-  const toLocalQueueJob = useCallback(
-    ({ source, statusOverride }) => ({
-      id: source.id,
-      label: source.stationId
-        ? PRINT_STATIONS.find((s) => s.id === source.stationId)?.label ||
-          source.printType
-        : source.printType,
-      printerId: source.printerId || null,
-      printerName: source.printerName || null,
-      count: Number(source?.payload?.count || 0),
-      items: source?.payload?.items || [],
-      table: source?.payload?.table || currentTable?.code || "Đơn",
-      status: statusOverride || source.status || "pending",
-      type: source.printType,
-    }),
-    [currentTable?.code],
+  const tempPreview = useMemo(
+    () => buildPreview(currentOrder || [], `${headerTitle} · Tạm tính`),
+    [buildPreview, currentOrder, headerTitle],
   );
 
-  const persistPrintJobs = useCallback(
-    async ({ mode, status }) => {
-      if (!restaurantId) {
-        showNotification("Thiếu restaurantId để tạo print job.", "error");
-        return [];
-      }
+  const stationPreviews = useMemo(
+    () =>
+      PRINT_STATIONS.filter((station) => station.id !== "cashier").map(
+        (station) => {
+          const stationItems = (currentOrder || []).filter(
+            (item) => resolveStationId(item) === station.id,
+          );
+          const assignedPrinterIds = Array.isArray(printStations?.[station.id])
+            ? printStations[station.id]
+            : [];
+          const stationPrinters = printerList.filter((printer) =>
+            assignedPrinterIds.includes(printer.id),
+          );
 
-      const requests = [];
-      if (mode === "temp") {
-        if (!selectedPrinter) {
-          showNotification("Vui lòng chọn máy in tạm tính.", "warning");
-          return [];
-        }
-        requests.push({
-          printer: selectedPrinter,
-          stationId: "cashier",
-          printType: status === "printing" ? "temp_print_now" : "temp_queue",
-          templateKey: "receipt",
-          payload: {
-            table: currentTable?.code || "Đơn",
-            count: (currentOrder || []).length,
-            items: currentOrder || [],
-          },
-        });
-      } else {
-        stationPreviews.forEach((station) => {
-          if (!station.items.length) return;
-          if (!station.printers.length) {
-            showNotification(
-              `Chưa gán máy in cho ${station.label}.`,
-              "warning",
-            );
-            return;
-          }
-          station.printers.forEach((printer) => {
-            requests.push({
-              printer,
-              stationId: station.id,
-              printType:
-                status === "printing" ? "station_print_now" : "station_queue",
-              templateKey: station.id,
-              payload: {
-                table: currentTable?.code || "Đơn",
-                count: station.items.length,
-                items: station.items,
-              },
-            });
-          });
-        });
-      }
-
-      if (!requests.length) {
-        showNotification("Không có món để in.", "warning");
-        return [];
-      }
-
-      const results = await Promise.all(
-        requests.map(async (req) => {
-          const res = await enqueuePrintJob({
-            variables: {
-              input: {
-                restaurantId,
-                printerId: req.printer?.id || null,
-                stationId: req.stationId,
-                printType: req.printType,
-                templateKey: req.templateKey,
-                payload: req.payload,
-              },
-            },
-          });
-          return toLocalQueueJob({
-            source: res?.data?.enqueuePrintJob || {},
-            statusOverride: status,
-          });
-        }),
-      );
-
-      setPrintQueue((prev) => [...prev, ...results]);
-      return results;
-    },
+          return {
+            id: station.id,
+            label: station.label,
+            printers: stationPrinters,
+            preview: buildPreview(
+              stationItems,
+              `${headerTitle} · ${station.label}`,
+            ),
+            items: stationItems,
+          };
+        },
+      ),
     [
+      buildPreview,
       currentOrder,
-      currentTable?.code,
-      enqueuePrintJob,
-      restaurantId,
-      selectedPrinter,
-      setPrintQueue,
-      showNotification,
-      stationPreviews,
-      toLocalQueueJob,
+      headerTitle,
+      printStations,
+      printerList,
+      resolveStationId,
     ],
   );
 
   const handleAddToQueue = useCallback(
-    async (mode) => {
-      if (!hasItems) return;
-      try {
-        const jobs = await persistPrintJobs({ mode, status: "pending" });
-        if (jobs.length)
-          showNotification("Đã thêm vào hàng đợi in (đã lưu DB).", "success");
-      } catch (err) {
-        showNotification(
-          err?.message || "Không thể enqueue print job vào DB.",
-          "error",
-        );
+    (mode) => {
+      const queueItems =
+        mode === "stations"
+          ? stationPreviews
+              .filter((station) => station.items.length > 0)
+              .map((station) => ({
+                id: `queue_${station.id}_${Date.now()}`,
+                label: station.label,
+                type: "station_ticket",
+                table: headerTitle,
+                printerId: station.printers[0]?.id || null,
+                printerName: station.printers[0]?.name || "Chưa gán",
+                stationId: station.id,
+                payload: { preview: station.preview },
+                count: station.items.length,
+                status: "pending",
+              }))
+          : [
+              {
+                id: `queue_temp_${Date.now()}`,
+                label: "Tạm tính",
+                type: "temp_bill",
+                table: headerTitle,
+                printerId: selectedPrinter?.id || null,
+                printerName: selectedPrinter?.name || "Chưa gán",
+                stationId: "cashier",
+                payload: { preview: tempPreview },
+                count: (currentOrder || []).length,
+                status: "pending",
+              },
+            ];
+
+      if (!queueItems.length) {
+        showNotification("Không có nội dung để thêm vào hàng đợi in.", "warning");
+        return;
       }
+
+      setPrintQueue((prev) => [...(Array.isArray(prev) ? prev : []), ...queueItems]);
+      showNotification("Đã thêm vào hàng đợi in.", "success");
     },
-    [hasItems, persistPrintJobs, showNotification],
+    [
+      currentOrder,
+      headerTitle,
+      selectedPrinter?.id,
+      selectedPrinter?.name,
+      setPrintQueue,
+      showNotification,
+      stationPreviews,
+      tempPreview,
+    ],
   );
 
   const handlePrintNow = useCallback(
     async (mode) => {
-      if (!hasItems) return;
+      if (!restaurantId) {
+        showNotification("Thiếu restaurantId để gửi lệnh in.", "error");
+        return;
+      }
+
+      const jobs =
+        mode === "stations"
+          ? stationPreviews
+              .filter(
+                (station) => station.items.length > 0 && station.printers.length > 0,
+              )
+              .map((station) => ({
+                printerId: station.printers[0].id,
+                stationId: station.id,
+                printType: "station_ticket",
+                templateKey: station.id,
+                payload: {
+                  orderCode: currentOrderCode,
+                  orderType: currentOrderType,
+                  preview: station.preview,
+                },
+              }))
+          : selectedPrinter
+            ? [
+                {
+                  printerId: selectedPrinter.id,
+                  stationId: "cashier",
+                  printType: "temp_bill",
+                  templateKey: "receipt",
+                  payload: {
+                    orderCode: currentOrderCode,
+                    orderType: currentOrderType,
+                    preview: tempPreview,
+                  },
+                },
+              ]
+            : [];
+
+      if (!jobs.length) {
+        showNotification("Chưa có máy in phù hợp để in ngay.", "warning");
+        return;
+      }
+
       try {
-        const jobs = await persistPrintJobs({ mode, status: "printing" });
-        if (jobs.length) {
-          showNotification(
-            mode === "temp"
-              ? "Đang in tạm tính (DB job simulated)..."
-              : "Đang in theo quầy (DB job simulated)...",
-            "info",
-          );
-        }
-      } catch (err) {
-        showNotification(
-          err?.message || "Không thể tạo print job để in ngay.",
-          "error",
+        await Promise.all(
+          jobs.map((job) =>
+            enqueuePrintJob({
+              variables: {
+                input: {
+                  restaurantId,
+                  printerId: job.printerId,
+                  stationId: job.stationId,
+                  printType: job.printType,
+                  templateKey: job.templateKey,
+                  payload: job.payload,
+                },
+              },
+            }),
+          ),
         );
+        showNotification("Đã gửi lệnh in.", "success");
+      } catch (error) {
+        showNotification(error?.message || "Gửi lệnh in thất bại.", "error");
       }
     },
-    [hasItems, persistPrintJobs, showNotification],
+    [
+      currentOrderCode,
+      currentOrderType,
+      enqueuePrintJob,
+      restaurantId,
+      selectedPrinter,
+      showNotification,
+      stationPreviews,
+      tempPreview,
+    ],
   );
 
-  const handleItemClick = (item) => {
-    const modalItemData = {
-      ...item,
-      id: item.dishId || item.id,
-      thumbImage: item.image,
-    };
-    setSelectedDetailItem(modalItemData);
+  const handleItemClick = useCallback((item) => {
+    setSelectedDetailItem(item);
     setDetailModalOpen(true);
-  };
+  }, []);
 
   const validateBeforeConfirm = useCallback(() => {
     if (!hasItems) {
-      showNotification("Đơn đang trống.", "warning");
+      showNotification("Đơn trống.", "error");
       return { ok: false };
     }
 
     if (newItems.length === 0) {
-      showNotification("Không có món mới (draft) để lưu.", "warning");
+      showNotification("Không có món nháp để lưu.", "error");
       return { ok: false };
     }
 
@@ -1311,13 +1282,55 @@ export default function RightPanel() {
           )}
 
           {discountBreakdown && (
-            <div className={cls.discountSuccess}>
-              Đã áp dụng ưu đãi. Tổng giảm{" "}
-              {Number(discountBreakdown.totalDiscount || 0).toLocaleString(
-                "vi-VN",
+            <>
+              <div className={cls.discountSuccess}>
+                Đã áp dụng ưu đãi. Tổng giảm{" "}
+                {Number(discountBreakdown.totalDiscount || 0).toLocaleString(
+                  "vi-VN",
+                )}
+                đ
+              </div>
+              {promotionLineItems.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e5e7eb",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#334155",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Ưu đãi theo món
+                  </div>
+                  {promotionLineItems.map((line) => (
+                    <div
+                      key={line.key}
+                      style={{
+                        fontSize: 13,
+                        color: "#475569",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginTop: 4,
+                      }}
+                    >
+                      <span>
+                        {line.itemName} · {line.promotionName}
+                      </span>
+                      <strong style={{ color: "#16a34a", whiteSpace: "nowrap" }}>
+                        -{formatPrice(line.discount)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
               )}
-              đ
-            </div>
+            </>
           )}
         </div>
       )}
