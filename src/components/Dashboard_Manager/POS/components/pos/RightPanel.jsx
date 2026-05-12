@@ -546,6 +546,25 @@ export default function RightPanel() {
       value: totals[key],
       clsName: c,
     }));
+  const promotionLineItems = useMemo(
+    () =>
+      Array.isArray(discountBreakdown?.promotionLines)
+        ? discountBreakdown.promotionLines
+            .filter((line) => Number(line?.discount || 0) > 0)
+            .map((line, index) => ({
+              key:
+                line?.lineId ||
+                `${line?.promotionId || "promotion"}_${
+                  line?.dishId || line?.menuId || index
+                }`,
+              itemName: String(line?.name || "").trim() || "Món áp dụng",
+              promotionName:
+                String(line?.promotionName || "").trim() || "Khuyến mãi",
+              discount: Math.abs(Number(line?.discount || 0)),
+            }))
+        : [],
+    [discountBreakdown?.promotionLines],
+  );
 
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
   const hasUnservedExistingItems = useMemo(() => {
@@ -1311,13 +1330,62 @@ export default function RightPanel() {
           )}
 
           {discountBreakdown && (
-            <div className={cls.discountSuccess}>
-              Đã áp dụng ưu đãi. Tổng giảm{" "}
-              {Number(discountBreakdown.totalDiscount || 0).toLocaleString(
-                "vi-VN",
+            <>
+              <div className={cls.discountSuccess}>
+                Đã áp dụng ưu đãi. Tổng giảm{" "}
+                {Number(discountBreakdown.totalDiscount || 0).toLocaleString(
+                  "vi-VN",
+                )}
+                đ
+              </div>
+
+              {promotionLineItems.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e5e7eb",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#334155",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Ưu đãi theo món
+                  </div>
+
+                  {promotionLineItems.map((line) => (
+                    <div
+                      key={line.key}
+                      style={{
+                        fontSize: 13,
+                        color: "#475569",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginTop: 4,
+                      }}
+                    >
+                      <span>
+                        {line.itemName} · {line.promotionName}
+                      </span>
+                      <strong
+                        style={{
+                          color: "#16a34a",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        -{formatPrice(line.discount)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
               )}
-              đ
-            </div>
+            </>
           )}
         </div>
       )}

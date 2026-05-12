@@ -12,6 +12,21 @@ export const PREVIEW_ORDER_DISCOUNT = gql`
       shippingDiscount
       totalDiscount
       discount
+      promotionLines {
+        lineId
+        dishId
+        menuId
+        categoryId
+        name
+        quantity
+        lineSubtotal
+        promotionId
+        promotionName
+        promotionScope
+        discountType
+        discountValue
+        discount
+      }
       service
       serviceRate
       tax
