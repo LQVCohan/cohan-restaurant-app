@@ -51,6 +51,24 @@
       font-size: 0.75rem;
       border-bottom-left-radius: 8px;
     }
+    .menu-item-card__promo-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+      box-shadow: 0 6px 14px rgba(239, 68, 68, 0.22);
+    }
   }
 
   .details {
@@ -66,6 +84,14 @@
       font-weight: 700;
       color: #000;
       line-height: 1.4;
+    }
+    .menu-item-card__promo-name {
+      margin-top: -0.25rem;
+      margin-bottom: 0.5rem;
+      color: #dc2626;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
     }
     p {
       margin: 0 0 1rem;
