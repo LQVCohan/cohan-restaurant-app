@@ -34,6 +34,7 @@ function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, t
   }
 
   if (
+    tableCode !== undefined &&
     verifiedToken.tableCode &&
     verifiedToken.tableCode !== normalizePublicTableCode(tableCode)
   ) {
