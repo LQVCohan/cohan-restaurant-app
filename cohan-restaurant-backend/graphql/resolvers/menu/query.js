@@ -4,6 +4,15 @@ import { GraphQLError } from "graphql";
 import { Menu, MenuItem, Category } from "../../../models/index.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 
+const MENU_ITEM_SORTS = new Set([
+  "default",
+  "name_asc",
+  "name_desc",
+  "price_asc",
+  "price_desc",
+]);
+const DEFAULT_MENU_ITEM_SORT = "default";
+
 const toObjectIdOrNull = (id) => {
   try {
     return mongoose.isValidObjectId(id)
@@ -12,6 +21,140 @@ const toObjectIdOrNull = (id) => {
   } catch {
     return null;
   }
+};
+
+const normalizeMenuItemSort = (sort) =>
+  MENU_ITEM_SORTS.has(sort) ? sort : DEFAULT_MENU_ITEM_SORT;
+
+const getMenuItemsListSortSpec = (sort = DEFAULT_MENU_ITEM_SORT) => {
+  switch (normalizeMenuItemSort(sort)) {
+    case "name_desc":
+      return { name: -1, _id: -1 };
+    case "price_asc":
+      return { basePrice: 1, _id: 1 };
+    case "price_desc":
+      return { basePrice: -1, _id: -1 };
+    case "default":
+    case "name_asc":
+    default:
+      return { name: 1, _id: 1 };
+  }
+};
+
+const getMenuItemConnectionSortSpec = (sort = DEFAULT_MENU_ITEM_SORT) => {
+  switch (normalizeMenuItemSort(sort)) {
+    case "name_asc":
+      return { name: 1, _id: 1 };
+    case "name_desc":
+      return { name: -1, _id: -1 };
+    case "price_asc":
+      return { basePrice: 1, _id: 1 };
+    case "price_desc":
+      return { basePrice: -1, _id: -1 };
+    default:
+      return { _id: 1 };
+  }
+};
+
+const encodeMenuItemCursor = (doc, sort = DEFAULT_MENU_ITEM_SORT) => {
+  const normalizedSort = normalizeMenuItemSort(sort);
+  if (!doc?._id) return null;
+
+  if (normalizedSort === DEFAULT_MENU_ITEM_SORT) {
+    return String(doc._id);
+  }
+
+  const payload = {
+    sort: normalizedSort,
+    id: String(doc._id),
+    value:
+      normalizedSort === "name_asc" || normalizedSort === "name_desc"
+        ? doc.name || ""
+        : doc.basePrice ?? null,
+  };
+
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+};
+
+const buildMenuItemCursorCondition = (cursor, sort = DEFAULT_MENU_ITEM_SORT) => {
+  const normalizedSort = normalizeMenuItemSort(sort);
+  if (!cursor) return null;
+
+  if (normalizedSort === DEFAULT_MENU_ITEM_SORT) {
+    const cursorId = toObjectIdOrNull(cursor);
+    return cursorId ? { _id: { $gt: cursorId } } : null;
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(Buffer.from(String(cursor), "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+
+  const cursorId = toObjectIdOrNull(parsed?.id);
+  if (!cursorId) return null;
+
+  if (
+    parsed?.sort &&
+    normalizeMenuItemSort(parsed.sort) !== normalizedSort
+  ) {
+    return null;
+  }
+
+  if (normalizedSort === "name_asc") {
+    const cursorName = typeof parsed?.value === "string" ? parsed.value : "";
+    return {
+      $or: [
+        { name: { $gt: cursorName } },
+        { name: cursorName, _id: { $gt: cursorId } },
+      ],
+    };
+  }
+
+  if (normalizedSort === "name_desc") {
+    const cursorName = typeof parsed?.value === "string" ? parsed.value : "";
+    return {
+      $or: [
+        { name: { $lt: cursorName } },
+        { name: cursorName, _id: { $lt: cursorId } },
+      ],
+    };
+  }
+
+  const rawPrice = parsed?.value;
+  const cursorPrice =
+    rawPrice === null || rawPrice === undefined ? null : Number(rawPrice);
+
+  if (
+    rawPrice !== null &&
+    rawPrice !== undefined &&
+    !Number.isFinite(cursorPrice)
+  ) {
+    return null;
+  }
+
+  if (normalizedSort === "price_asc") {
+    return {
+      $or: [
+        { basePrice: { $gt: cursorPrice } },
+        { basePrice: cursorPrice, _id: { $gt: cursorId } },
+      ],
+    };
+  }
+
+  return {
+    $or: [
+      { basePrice: { $lt: cursorPrice } },
+      { basePrice: cursorPrice, _id: { $lt: cursorId } },
+    ],
+  };
+};
+
+const appendAndCondition = (query, condition) => {
+  if (!condition) return query;
+  query.$and = (query.$and || []).concat([condition]);
+  return query;
 };
 
 export const MenuQuery = {
@@ -33,7 +176,14 @@ export const MenuQuery = {
   // Recipe/servingVariants should be fetched via inventory.menuItemsWithRecipes or type resolvers.
   menuItems: async (
     _p,
-    { restaurantId, timeSlot, categoryId, search, limit = 50 },
+    {
+      restaurantId,
+      timeSlot,
+      categoryId,
+      search,
+      sort = DEFAULT_MENU_ITEM_SORT,
+      limit = 50,
+    },
     ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
@@ -58,9 +208,10 @@ export const MenuQuery = {
     }
 
     const safeLimit = Math.min(Math.max(limit || 50, 1), 500);
+    const normalizedSort = normalizeMenuItemSort(sort);
 
     return MenuItem.find(q)
-      .sort({ name: 1 })
+      .sort(getMenuItemsListSortSpec(normalizedSort))
       .limit(safeLimit)
       .lean({ virtuals: true });
   },
@@ -120,17 +271,16 @@ export const MenuQuery = {
       const cond = {};
       if (hasMin) cond.$gte = filter.minPrice;
       if (hasMax) cond.$lte = filter.maxPrice;
-      q.$and = (q.$and || []).concat([{ basePrice: cond }]);
+      appendAndCondition(q, { basePrice: cond });
     }
 
-    // Cursor-based pagination by _id ascending
-    const cId = cursor ? toObjectIdOrNull(cursor) : null;
-    if (cId) q._id = { $gt: cId };
+    const normalizedSort = normalizeMenuItemSort(filter.sort);
+    appendAndCondition(q, buildMenuItemCursorCondition(cursor, normalizedSort));
 
     const safeLimit = Math.min(Math.max(limit || 20, 1), 200);
 
     const docs = await MenuItem.find(q)
-      .sort({ _id: 1 })
+      .sort(getMenuItemConnectionSortSpec(normalizedSort))
       .limit(safeLimit + 1)
       .lean({ virtuals: true });
 
@@ -138,9 +288,14 @@ export const MenuQuery = {
     const slice = hasNextPage ? docs.slice(0, safeLimit) : docs;
 
     return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+      edges: slice.map((d) => ({
+        node: d,
+        cursor: encodeMenuItemCursor(d, normalizedSort),
+      })),
       pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+        endCursor: slice.length
+          ? encodeMenuItemCursor(slice[slice.length - 1], normalizedSort)
+          : null,
         hasNextPage,
       },
     };
