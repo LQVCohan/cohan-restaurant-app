@@ -124,6 +124,7 @@ const getAttendanceStatus = (record) => {
 const canShowAction = (user, record) => {
   if (!canReviewOvertime(user)) return false;
   if (Number(record?.overtimeMinutes || 0) <= 0) return false;
+  if (getOvertimeStatus(record) !== "pending") return false;
   const attendanceStatus = getAttendanceStatus(record);
   if (["scheduled_absent", "missed_checkout", "checked_in"].includes(attendanceStatus)) {
     return false;
@@ -171,14 +172,18 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
 
   const isBusy = approveOvertimeState.loading || rejectOvertimeState.loading;
 
-  const overtimeRecords = useMemo(() => {
-    const rows = records.filter(
-      (record) =>
-        Number(record?.overtimeMinutes || 0) > 0 ||
-        ["pending", "approved", "rejected"].includes(getOvertimeStatus(record)),
-    );
+  const allOvertimeRecords = useMemo(
+    () =>
+      records.filter(
+        (record) =>
+          Number(record?.overtimeMinutes || 0) > 0 ||
+          ["pending", "approved", "rejected"].includes(getOvertimeStatus(record)),
+      ),
+    [records],
+  );
 
-    const filtered = rows.filter((record) => {
+  const overtimeRecords = useMemo(() => {
+    const filtered = allOvertimeRecords.filter((record) => {
       if (statusFilter === "all") return true;
       return getOvertimeStatus(record) === statusFilter;
     });
@@ -189,24 +194,24 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
       if (leftPending !== rightPending) return leftPending - rightPending;
       return new Date(right.workDate || 0).getTime() - new Date(left.workDate || 0).getTime();
     });
-  }, [records, statusFilter]);
+  }, [allOvertimeRecords, statusFilter]);
 
   const stats = useMemo(() => {
-    const total = overtimeRecords.length;
-    const pending = overtimeRecords.filter(
+    const total = allOvertimeRecords.length;
+    const pending = allOvertimeRecords.filter(
       (record) => getOvertimeStatus(record) === "pending",
     ).length;
-    const approved = overtimeRecords.filter(
+    const approved = allOvertimeRecords.filter(
       (record) => getOvertimeStatus(record) === "approved",
     ).length;
-    const rejected = overtimeRecords.filter(
+    const rejected = allOvertimeRecords.filter(
       (record) => getOvertimeStatus(record) === "rejected",
     ).length;
-    const rawMinutes = overtimeRecords.reduce(
+    const rawMinutes = allOvertimeRecords.reduce(
       (sum, record) => sum + Number(record?.overtimeMinutes || 0),
       0,
     );
-    const approvedMinutes = overtimeRecords.reduce(
+    const approvedMinutes = allOvertimeRecords.reduce(
       (sum, record) => sum + Number(record?.approvedOvertimeMinutes || 0),
       0,
     );
@@ -219,7 +224,7 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
       rawMinutes,
       approvedMinutes,
     };
-  }, [overtimeRecords]);
+  }, [allOvertimeRecords]);
 
   const openDialog = (mode, record) => {
     setDialog(buildDefaultDialog(mode, record));
@@ -439,27 +444,27 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
                       </div>
                     </td>
                     <td className="text-right">
-                      {canAction && status !== "approved" && (
-                        <button
-                          type="button"
-                          className="action-btn approve"
-                          title="Duyệt tăng ca"
-                          disabled={isBusy}
-                          onClick={() => openDialog("approve", record)}
-                        >
-                          ✅
-                        </button>
-                      )}
-                      {canAction && status !== "rejected" && (
-                        <button
-                          type="button"
-                          className="action-btn reject"
-                          title="Từ chối tăng ca"
-                          disabled={isBusy}
-                          onClick={() => openDialog("reject", record)}
-                        >
-                          ⛔
-                        </button>
+                      {canAction && (
+                        <>
+                          <button
+                            type="button"
+                            className="action-btn approve"
+                            title="Duyệt tăng ca"
+                            disabled={isBusy}
+                            onClick={() => openDialog("approve", record)}
+                          >
+                            ✅
+                          </button>
+                          <button
+                            type="button"
+                            className="action-btn reject"
+                            title="Từ chối tăng ca"
+                            disabled={isBusy}
+                            onClick={() => openDialog("reject", record)}
+                          >
+                            ⛔
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
