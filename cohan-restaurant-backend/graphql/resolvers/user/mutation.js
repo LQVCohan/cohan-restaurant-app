@@ -120,11 +120,64 @@ const _computeTypeFromPoints = (points) => {
   return "VIP";
 };
 
+const DUPLICATE_REGISTRATION_ERROR = "Email/Phone/Username already in use";
+const MULTIPLE_GUEST_MATCH_ERROR =
+  "Contact information matches multiple guest profiles. Please contact support.";
+
 const loadUserForGraph = async (userId) =>
   User.findById(userId)
     .populate("role")
     .populate("refRestaurants")
     .lean({ virtuals: true });
+
+const buildAuthPayloadForUser = async (userId) => {
+  const userObj = await User.findById(userId)
+    .populate("role")
+    .lean({ virtuals: true });
+  const token = signToken({ ...userObj, role: userObj.role });
+  const roleName = (userObj.role?.slug || userObj.role?.name || "").toLowerCase();
+
+  return { token, user: { ...userObj, roleName } };
+};
+
+const findGuestMatchForRegistration = async ({ email, phone }) => {
+  const contactLookup = [
+    ...(email ? [{ email }] : []),
+    ...(phone ? [{ phone }] : []),
+  ];
+
+  if (contactLookup.length === 0) {
+    return null;
+  }
+
+  const matchedUsers = await User.find({ $or: contactLookup })
+    .select("_id isGuest userType")
+    .lean();
+
+  if (matchedUsers.some((candidate) => !candidate.isGuest)) {
+    throw new GraphQLError(DUPLICATE_REGISTRATION_ERROR, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const guestMatches = Array.from(
+    new Map(
+      matchedUsers
+        .filter(
+          (candidate) => candidate.isGuest && candidate.userType === "CUSTOMER",
+        )
+        .map((candidate) => [String(candidate._id), candidate]),
+    ).values(),
+  );
+
+  if (guestMatches.length > 1) {
+    throw new GraphQLError(MULTIPLE_GUEST_MATCH_ERROR, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  return guestMatches[0]?._id || null;
+};
 
 export const UserMutation = {
   // ========== Role ==========
@@ -425,36 +478,74 @@ export const UserMutation = {
       }
     }
 
-    const exists = await User.findOne({
-      $or: [
-        { email: email?.toLowerCase().trim() || null },
-        { phone: normalizePhone(phone) || null },
-        { username: username?.toLowerCase().trim() || null },
-      ],
-    }).lean();
+    const normalizedEmail = email?.toLowerCase().trim() || undefined;
+    const normalizedPhone = phone ? normalizePhone(phone.trim()) : undefined;
+    const normalizedUsername = username?.trim().toLowerCase() || undefined;
 
-    if (exists) {
-      throw new GraphQLError("Email/Phone/Username already in use", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+    if (normalizedUsername) {
+      const usernameExists = await User.findOne({
+        username: normalizedUsername,
+      }).lean();
+
+      if (usernameExists) {
+        throw new GraphQLError(DUPLICATE_REGISTRATION_ERROR, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
     }
 
-    const doc = new Customer({
-      fullName: fullName.trim(),
-      username: username?.trim() || undefined,
-      email: email?.toLowerCase().trim() || undefined,
-      phone: phone ? normalizePhone(phone.trim()) : undefined,
-      address: address || undefined,
-      provider,
-      status: status.toLowerCase(),
-      customerType: customerType || "NEW",
-      role: roleId || undefined,
-      loyaltyPoints: 0,
-      totalOrders: 0,
-      totalSpending: 0,
+    const guestMatchId = await findGuestMatchForRegistration({
+      email: normalizedEmail,
+      phone: normalizedPhone,
     });
-    await doc.setPassword(password);
-    await doc.save();
+
+    let doc;
+    if (guestMatchId) {
+      doc = await Customer.findById(guestMatchId);
+      if (!doc || !doc.isGuest) {
+        throw new GraphQLError(DUPLICATE_REGISTRATION_ERROR, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
+      doc.fullName = fullName.trim();
+      doc.username = normalizedUsername || undefined;
+      if (normalizedEmail) {
+        doc.email = normalizedEmail;
+        doc.emailVerified = false;
+      }
+      if (normalizedPhone) {
+        doc.phone = normalizedPhone;
+      }
+      doc.address = address || doc.address;
+      doc.provider = provider;
+      doc.status = status.toLowerCase();
+      doc.customerType = customerType || doc.customerType || "NEW";
+      doc.role = roleId || doc.role;
+      doc.isGuest = false;
+      doc.guestExpiresAt = null;
+      doc.registeredAt = new Date();
+
+      await doc.setPassword(password);
+      await doc.save();
+    } else {
+      doc = new Customer({
+        fullName: fullName.trim(),
+        username: normalizedUsername || undefined,
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        address: address || undefined,
+        provider,
+        status: status.toLowerCase(),
+        customerType: customerType || "NEW",
+        role: roleId || undefined,
+        loyaltyPoints: 0,
+        totalOrders: 0,
+        totalSpending: 0,
+      });
+      await doc.setPassword(password);
+      await doc.save();
+    }
 
     if (
       String(process.env.ENABLE_EMAIL_VERIFICATION ?? "true").toLowerCase() ===
@@ -467,17 +558,7 @@ export const UserMutation = {
       }
     }
 
-    const userObj = await User.findById(doc._id)
-      .populate("role")
-      .lean({ virtuals: true });
-    const token = signToken({ ...userObj, role: userObj.role });
-    const roleName = (
-      userObj.role?.slug ||
-      userObj.role?.name ||
-      ""
-    ).toLowerCase();
-
-    return { token, user: { ...userObj, roleName } };
+    return buildAuthPayloadForUser(doc._id);
   },
 
   // ========== Login ==========
