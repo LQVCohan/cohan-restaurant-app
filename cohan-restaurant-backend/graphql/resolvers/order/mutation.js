@@ -12,6 +12,7 @@ import {
   ModifierGroup,
   CheckoutSession,
   Coupon,
+  Cart,
   Customer,
   User,
   WalletTransaction,
@@ -57,6 +58,7 @@ const RESERVABLE_STATUSES = [
 ];
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 const RANK_POINT_DIVISOR = 1_000_000;
+const ACTIVE_CART_STATUS = "active";
 
 function hasPendingItemWork(order) {
   return (order?.items || []).some((item) =>
@@ -898,6 +900,204 @@ function buildDiscountPricing(pricing = {}) {
   };
 }
 
+function hasCheckoutCartRef(item = {}) {
+  return !!(item?.cartId || item?.cartItemId);
+}
+
+function buildCartHoldOrderCode(cartId, cartItemId) {
+  return `CART:${cartId}:${cartItemId}`;
+}
+
+function buildCartHoldReservationLine(cartItem = {}) {
+  return {
+    menuItemId: cartItem.menuItemId,
+    quantity: Number(cartItem.quantity || 0),
+    servingKey: String(cartItem.servingKey || "").trim() || "portion",
+  };
+}
+
+function computeCartTotals(items = []) {
+  return {
+    totalQuantity: (items || []).reduce(
+      (sum, item) => sum + Number(item?.quantity || 0),
+      0,
+    ),
+    totalAmount: (items || []).reduce(
+      (sum, item) =>
+        sum +
+        Number(item?.quantity || 0) * Number(item?.price || 0),
+      0,
+    ),
+  };
+}
+
+function throwCheckoutCartHoldMismatch() {
+  throw new Error(
+    "Món trong giỏ đã hết hạn hoặc không còn khớp với đơn hàng. Vui lòng kiểm tra lại giỏ.",
+  );
+}
+
+async function validateCheckoutCartHoldsTx({
+  grouped,
+  authUserId,
+  session,
+}) {
+  const refs = [];
+
+  for (const group of grouped.values()) {
+    for (const item of group.items || []) {
+      if (!hasCheckoutCartRef(item)) continue;
+
+      const cartId = String(item?.cartId || "").trim();
+      const cartItemId = String(item?.cartItemId || "").trim();
+
+      if (!cartId || !cartItemId) {
+        throwCheckoutCartHoldMismatch();
+      }
+      if (!mongoose.isValidObjectId(cartId) || !mongoose.isValidObjectId(cartItemId)) {
+        throwCheckoutCartHoldMismatch();
+      }
+
+      refs.push({
+        cartId,
+        cartItemId,
+        item,
+      });
+    }
+  }
+
+  if (!refs.length) return new Map();
+
+  if (!authUserId || !mongoose.isValidObjectId(authUserId)) {
+    throwCheckoutCartHoldMismatch();
+  }
+
+  const seenRefs = new Set();
+  for (const ref of refs) {
+    const key = `${ref.cartId}:${ref.cartItemId}`;
+    if (seenRefs.has(key)) {
+      throwCheckoutCartHoldMismatch();
+    }
+    seenRefs.add(key);
+  }
+
+  const cartIds = [...new Set(refs.map((ref) => ref.cartId))].map(toId);
+  const carts = await Cart.find({
+    _id: { $in: cartIds },
+  }).session(session);
+  const cartMap = new Map(carts.map((cart) => [String(cart._id), cart]));
+  const authUserIdStr = String(authUserId);
+  const now = new Date();
+
+  for (const ref of refs) {
+    const cart = cartMap.get(ref.cartId);
+    if (!cart) {
+      throwCheckoutCartHoldMismatch();
+    }
+    if (String(cart.userId) !== authUserIdStr) {
+      throwCheckoutCartHoldMismatch();
+    }
+    if (cart.status !== ACTIVE_CART_STATUS) {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    const cartItem = cart.items.id(ref.cartItemId);
+    if (!cartItem) {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    if (cartItem.holdStatus && cartItem.holdStatus !== "active") {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    if (!cartItem.holdExpiresAt) {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    const holdExpiresAt = new Date(cartItem.holdExpiresAt);
+    if (
+      Number.isNaN(holdExpiresAt.getTime()) ||
+      holdExpiresAt <= now
+    ) {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    if (String(cartItem.restaurantId) !== String(ref.item.restaurantId)) {
+      throwCheckoutCartHoldMismatch();
+    }
+    if (
+      String(cartItem.menuItemId) !==
+      String(ref.item.dishId || ref.item.menuId || "")
+    ) {
+      throwCheckoutCartHoldMismatch();
+    }
+    if (
+      (String(cartItem.servingKey || "").trim() || "portion") !==
+      (String(ref.item.servingKey || "").trim() || "portion")
+    ) {
+      throwCheckoutCartHoldMismatch();
+    }
+    if (Number(cartItem.quantity || 0) !== Number(ref.item.quantity || 0)) {
+      throwCheckoutCartHoldMismatch();
+    }
+  }
+
+  return cartMap;
+}
+
+async function cancelCheckoutCartHoldsForItemsTx({
+  restaurantId,
+  items,
+  cartMap,
+  warehouseId,
+  session,
+}) {
+  for (const item of items || []) {
+    if (!hasCheckoutCartRef(item)) continue;
+
+    const cart = cartMap.get(String(item.cartId));
+    const cartItem = cart?.items?.id(String(item.cartItemId));
+    if (!cart || !cartItem) {
+      throwCheckoutCartHoldMismatch();
+    }
+
+    await cancelReservationForOrderTx({
+      restaurantId,
+      warehouseId,
+      orderCode: buildCartHoldOrderCode(cart._id, cartItem._id),
+      lines: [buildCartHoldReservationLine(cartItem)],
+      session,
+    });
+  }
+}
+
+function removeCheckedOutItemsFromCartMap({
+  items,
+  cartMap,
+  touchedCartIds,
+}) {
+  const removalsByCart = new Map();
+
+  for (const item of items || []) {
+    if (!hasCheckoutCartRef(item)) continue;
+
+    const cartId = String(item.cartId);
+    const cartItemId = String(item.cartItemId);
+    if (!removalsByCart.has(cartId)) removalsByCart.set(cartId, new Set());
+    removalsByCart.get(cartId).add(cartItemId);
+  }
+
+  for (const [cartId, cartItemIds] of removalsByCart.entries()) {
+    const cart = cartMap.get(cartId);
+    if (!cart) continue;
+
+    cart.items = [...(cart.items || [])].filter(
+      (cartItem) => !cartItemIds.has(String(cartItem._id)),
+    );
+    touchedCartIds.add(cartId);
+  }
+}
+
 function normalizePromotionIds(promotionIds = []) {
   return Array.isArray(promotionIds)
     ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
@@ -1203,21 +1403,7 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
     externalTrackingCode: s.externalTrackingCode || null,
   };
 }
-function buildOrderCustomerContact(customer = {}, shipping = {}) {
-  const c = customer || {};
-  const s = shipping || {};
 
-  const fullName = c.fullName || c.name || s.fullName || s.name || undefined;
-  const email = c.email || s.email || undefined;
-  const phone = c.phone || s.phone || undefined;
-
-  return {
-    fullName,
-    name: fullName,
-    email,
-    phone,
-  };
-}
 function isDuplicateKeyError(error) {
   return (
     error?.code === 11000 || String(error?.message || "").includes("E11000")
@@ -1402,17 +1588,11 @@ export const OrderMutation = {
           );
         }
 
-        const resolvedCustomerUserId = await ensureUserForOrder(
-          userId,
-          effectiveCustomer,
-          { session },
-        );
-
         const parentSessionMeta = await findOrCreateActiveTableSession({
           restaurantId: rid,
           tableId: toId(tableInfo.tableId),
           tableCode: tableInfo.tableCode,
-          userId: resolvedCustomerUserId || userId,
+          userId,
           customerSnapshot: effectiveCustomer,
           session,
         });
@@ -1422,19 +1602,7 @@ export const OrderMutation = {
           parentSession?.customer || effectiveCustomer || null;
         const sessionUserId =
           parentSession?.userId ||
-          resolvedCustomerUserId ||
-          (await ensureUserForOrder(userId, sessionCustomer, { session }));
-
-        if (sessionUserId && !parentSession?.userId) {
-          await Order.updateOne(
-            {
-              _id: parentSession._id,
-              $or: [{ userId: { $exists: false } }, { userId: null }],
-            },
-            { $set: { userId: toId(sessionUserId) } },
-            { session },
-          );
-        }
+          (await ensureUserForOrder(userId, sessionCustomer));
 
         const [order] = await Order.create(
           [
@@ -1564,9 +1732,7 @@ export const OrderMutation = {
       throw new Error("items is required");
 
     const normalizedItems = items.map(normalizeItem);
-    const orderCustomerContact = buildOrderCustomerContact(customer, shipping);
-    const compactCustomer = compactCustomerInput(orderCustomerContact);
-
+    const compactCustomer = compactCustomerInput(customer || {});
     const identity = await resolveCustomerIdentity({
       email: compactCustomer.email,
       phone: compactCustomer.phone,
@@ -1579,8 +1745,10 @@ export const OrderMutation = {
         "Thông tin email và số điện thoại khớp với hai khách khác nhau. Vui lòng xác nhận tạo đơn dạng snapshot-only.",
       );
     }
+    const finalUserId = identity?.conflict
+      ? null
+      : await ensureUserForOrder(userId, compactCustomer);
 
-    let finalUserId = null;
     const prefix = orderType === "delivery" ? "DEL" : "TAKE";
     const effectiveOrderCode = generateOrderCode(prefix, new Date(), null);
 
@@ -1600,9 +1768,6 @@ export const OrderMutation = {
     try {
       await session.withTransaction(async () => {
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
-        finalUserId = identity?.conflict
-          ? null
-          : await ensureUserForOrder(userId, compactCustomer, { session });
         await hydrateOrderItems({
           restaurantId,
           items: normalizedItems,
@@ -2018,17 +2183,37 @@ export const OrderMutation = {
       if (!rid)
         throw new Error("Each checkout item must include valid restaurantId");
       const normalized = normalizeItem(rawItem);
+      normalized.restaurantId = String(rid);
+      const checkoutMenuItemId = String(
+        rawItem?.dishId ||
+          rawItem?.menuId ||
+          normalized?.dishId ||
+          normalized?.menuId ||
+          "",
+      ).trim();
+      if (checkoutMenuItemId) {
+        normalized.dishId = normalized.dishId || checkoutMenuItemId;
+        normalized.menuId = normalized.menuId || checkoutMenuItemId;
+      }
+      if (rawItem?.cartId || rawItem?.cartItemId) {
+        normalized.cartId = String(rawItem?.cartId || "").trim();
+        normalized.cartItemId = String(rawItem?.cartItemId || "").trim();
+      }
       const key = String(rid);
       if (!grouped.has(key)) grouped.set(key, { restaurantId: rid, items: [] });
       grouped.get(key).items.push(normalized);
     }
 
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
-    const checkoutCustomerContact = buildOrderCustomerContact(
-      customer,
-      shipping,
-    );
-    let finalUserId = null;
+    const hasCheckoutCartHoldRefs = items.some(hasCheckoutCartRef);
+    const finalUserId = await ensureUserForOrder(userId, customer);
+    const authUserId = toId(ctx?.user?.id || ctx?.user?._id) || undefined;
+    if (hasCheckoutCartHoldRefs && !authUserId) {
+      throwCheckoutCartHoldMismatch();
+    }
+    const checkoutUserId = hasCheckoutCartHoldRefs
+      ? authUserId
+      : toId(finalUserId) || authUserId;
     const createdOrders = [];
     const checkoutTotals = {
       subtotal: 0,
@@ -2049,11 +2234,13 @@ export const OrderMutation = {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        finalUserId = await ensureUserForOrder(
-          userId,
-          checkoutCustomerContact,
-          { session },
-        );
+        const checkoutCartMap = await validateCheckoutCartHoldsTx({
+          grouped,
+          authUserId,
+          session,
+        });
+        const touchedCartIds = new Set();
+
         for (const g of grouped.values()) {
           await hydrateOrderItems({
             restaurantId: g.restaurantId,
@@ -2093,7 +2280,7 @@ export const OrderMutation = {
             [
               {
                 restaurantId: g.restaurantId,
-                userId: finalUserId ? toId(finalUserId) : undefined,
+                userId: checkoutUserId,
                 orderCode: childOrderCode,
                 parentOrderCode: checkoutCode,
                 orderType,
@@ -2107,7 +2294,7 @@ export const OrderMutation = {
                   {
                     status: "pending",
                     at: new Date(),
-                    byUserId: finalUserId ? toId(finalUserId) : undefined,
+                    byUserId: checkoutUserId,
                     note: `Created from checkout ${checkoutCode}`,
                   },
                 ],
@@ -2135,19 +2322,56 @@ export const OrderMutation = {
           }
 
           const lines = buildInventoryLinesFromItems(g.items);
-          if (lines.length) {
+          const hasCartHoldItems = g.items.some(hasCheckoutCartRef);
+          if (lines.length || hasCartHoldItems) {
             const whId = await resolveWarehouseIdOrDefault(
               g.restaurantId,
               warehouseId,
               session,
             );
-            await reserveForOrderTx({
-              restaurantId: g.restaurantId,
-              warehouseId: whId,
-              orderCode: childOrderCode,
-              lines,
-              session,
-            });
+            if (hasCartHoldItems) {
+              await cancelCheckoutCartHoldsForItemsTx({
+                restaurantId: g.restaurantId,
+                items: g.items,
+                cartMap: checkoutCartMap,
+                warehouseId: whId,
+                session,
+              });
+            }
+            if (lines.length) {
+              await reserveForOrderTx({
+                restaurantId: g.restaurantId,
+                warehouseId: whId,
+                orderCode: childOrderCode,
+                lines,
+                session,
+              });
+            }
+          }
+
+          removeCheckedOutItemsFromCartMap({
+            items: g.items,
+            cartMap: checkoutCartMap,
+            touchedCartIds,
+          });
+        }
+
+        if (touchedCartIds.size) {
+          const now = new Date();
+          for (const cartId of touchedCartIds) {
+            const cart = checkoutCartMap.get(cartId);
+            if (!cart) continue;
+
+            const totals = computeCartTotals(cart.items);
+            cart.totalQuantity = totals.totalQuantity;
+            cart.totalAmount = totals.totalAmount;
+            cart.lastActivityAt = now;
+
+            if (!cart.items.length) {
+              cart.status = "checked_out";
+            }
+
+            await cart.save({ session });
           }
         }
 
@@ -2156,7 +2380,7 @@ export const OrderMutation = {
             {
               checkoutCode,
               idempotencyKey: idempotencyKey || undefined,
-              userId: finalUserId ? toId(finalUserId) : undefined,
+              userId: checkoutUserId,
               customer: customer || undefined,
               orderIds: createdOrders.map((o) => o._id),
               restaurantIds: createdOrders.map((o) => o.restaurantId),
@@ -2168,10 +2392,10 @@ export const OrderMutation = {
         );
 
         if (normalizedPaymentMethod === "wallet") {
-          if (!finalUserId || !mongoose.isValidObjectId(finalUserId)) {
+          if (!checkoutUserId || !mongoose.isValidObjectId(checkoutUserId)) {
             throw new Error("Wallet payment requires an authenticated account");
           }
-          const uid = toId(finalUserId);
+          const uid = toId(checkoutUserId);
           const walletOwner = await User.findById(uid).session(session);
           if (!walletOwner?.wallet || walletOwner.wallet.status !== "active") {
             throw new Error("Wallet is not active");
