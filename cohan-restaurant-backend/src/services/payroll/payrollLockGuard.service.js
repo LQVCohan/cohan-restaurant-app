@@ -10,7 +10,7 @@ export async function findPayrollPeriodOverlap({
   restaurantId,
   startDate,
   endDate,
-  statuses = ["locked", "paid"],
+  statuses = ["finalized", "locked", "paid"],
 }) {
   const rid = toObjectId(restaurantId);
   if (!rid || !startDate || !endDate) return null;
@@ -37,14 +37,14 @@ export async function assertNoLockedPayrollPeriodOverlap({
     employeeId,
     startDate,
     endDate,
-    statuses: ["locked", "paid"],
+    statuses: ["finalized", "locked", "paid"],
   });
 
   if (overlap) {
     if (action === "attendance") {
-      throw new Error("Không thể chỉnh bảng công vì kỳ lương tương ứng đã khóa hoặc đã thanh toán.");
+      throw new Error("Không thể chỉnh bảng công vì kỳ lương tương ứng đã chốt, khóa hoặc đã thanh toán.");
     }
-    throw new Error("Không thể chỉnh dữ liệu hồi tố vì kỳ lương liên quan đã khóa hoặc đã thanh toán. Vui lòng tạo điều chỉnh ở kỳ lương tiếp theo.");
+    throw new Error("Không thể chỉnh dữ liệu hồi tố vì kỳ lương liên quan đã chốt, khóa hoặc đã thanh toán. Vui lòng tạo điều chỉnh ở kỳ lương tiếp theo.");
   }
 }
 

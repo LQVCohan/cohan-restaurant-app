@@ -230,6 +230,30 @@ const formatMinutesValue = (value) => {
   return Number.isFinite(numeric) ? `${numeric} phút` : "--";
 };
 
+const getOvertimeStatusBadge = (record) => {
+  const rawStatus = String(record?.overtimeApprovalStatus || "not_required").toLowerCase();
+  const overtimeMinutes = Number(record?.overtimeMinutes || 0);
+  const approvedMinutes = Number(record?.approvedOvertimeMinutes || 0);
+  const config = {
+    pending: { label: `Chờ duyệt • ${formatMinutesValue(overtimeMinutes)}`, className: "warning", icon: "⏳" },
+    approved: { label: `Đã duyệt • ${formatMinutesValue(approvedMinutes)}`, className: "success", icon: "✅" },
+    rejected: { label: `Từ chối • ${formatMinutesValue(overtimeMinutes)}`, className: "danger", icon: "⛔" },
+    not_required: { label: overtimeMinutes > 0 ? `Chưa cần duyệt • ${formatMinutesValue(overtimeMinutes)}` : "Không tăng ca", className: "neutral", icon: "•" },
+  };
+  const current = config[rawStatus] || config.not_required;
+
+  return (
+    <div className="compact-stack overtime-inline-status">
+      <span className={`status-badge ${current.className}`}>
+        {current.icon} {current.label}
+      </span>
+      {record?.overtimeReviewNote && (
+        <span className="small-muted">{record.overtimeReviewNote}</span>
+      )}
+    </div>
+  );
+};
+
 const renderMetricGroup = (title, values) => (
   <div className="detail-card metric-card">
     <h4>{title}</h4>
@@ -874,13 +898,14 @@ const AttendancePage = () => {
             <table className="attendance-table">
               <thead>
                 <tr>
-                  <th width="24%">Nhân viên</th>
-                  <th width="14%">Ca làm việc</th>
-                  <th width="12%">Giờ vào</th>
-                  <th width="12%">Giờ ra</th>
-                  <th width="14%">Trạng thái</th>
-                  <th width="10%">Nguồn</th>
-                  <th width="14%" className="text-right">
+                  <th width="22%">Nhân viên</th>
+                  <th width="13%">Ca làm việc</th>
+                  <th width="10%">Giờ vào</th>
+                  <th width="10%">Giờ ra</th>
+                  <th width="13%">Trạng thái</th>
+                  <th width="16%">Tăng ca</th>
+                  <th width="8%">Nguồn</th>
+                  <th width="8%" className="text-right">
                     Thao tác
                   </th>
                 </tr>
@@ -888,7 +913,7 @@ const AttendancePage = () => {
               <tbody>
                 {!loading && records.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center">
+                    <td colSpan={8} className="text-center">
                       Không có bản ghi chấm công cho ngày đã chọn.
                     </td>
                   </tr>
@@ -943,6 +968,7 @@ const AttendancePage = () => {
                         </span>
                       </td>
                       <td>{getStatusBadge(displayStatus)}</td>
+                      <td>{getOvertimeStatusBadge(item)}</td>
                       <td>
                         <span className="source-badge">
                           {item.source === "manual_correction"

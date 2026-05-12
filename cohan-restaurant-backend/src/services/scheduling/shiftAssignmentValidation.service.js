@@ -13,7 +13,7 @@ import {
 } from "./schedulingPolicy.service.js";
 import { getLatestStaffPerformanceSnapshot } from "../staffPerformance/staffPerformance.service.js";
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const PART_TIME_LIKE_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal"]);
+const PART_TIME_LIKE_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal", "probation", "contract"]);
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -404,6 +404,46 @@ function computeCandidateScore({
   };
 }
 
+
+function buildAssignmentExplanations({
+  blockingErrors,
+  warnings,
+  availabilityResult,
+  weeklyHoursAfter,
+  effectiveWeeklyCap,
+  scoreResult,
+}) {
+  const reasons = [];
+
+  if (blockingErrors.length) {
+    reasons.push(
+      ...blockingErrors.map((issue) => `Skipped because ${issue.code}: ${issue.message}`),
+    );
+  } else {
+    reasons.push(
+      `Selected candidate because validation passed with score ${scoreResult.score}.`,
+    );
+  }
+
+  if (availabilityResult?.status) {
+    reasons.push(`Availability status: ${availabilityResult.status}.`);
+  }
+
+  if (weeklyHoursAfter <= effectiveWeeklyCap) {
+    reasons.push(
+      `Weekly hours after assignment ${weeklyHoursAfter}h stay within cap ${effectiveWeeklyCap}h.`,
+    );
+  }
+
+  if (warnings.length) {
+    reasons.push(
+      ...warnings.map((issue) => `Warning ${issue.code}: ${issue.message}`),
+    );
+  }
+
+  return reasons;
+}
+
 export async function validateShiftAssignment({ input }) {
   const employeeId = toObjectId(input.employeeId);
   const restaurantId = toObjectId(input.restaurantId);
@@ -420,6 +460,7 @@ export async function validateShiftAssignment({ input }) {
   }
 
   const shiftHours = hoursBetween(startTime, endTime);
+  const isCrossDayShift = ymd(startTime) !== ymd(endTime);
 
   const staff = await Staff.findById(employeeId).lean();
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
@@ -444,6 +485,16 @@ export async function validateShiftAssignment({ input }) {
     endDate: endTime,
     action: "shift",
   });
+
+  if (isCrossDayShift) {
+    pushIssue(warnings, {
+      code: "CROSS_DAY_SHIFT_WARNING",
+      severity: "warning",
+      message: "Ca làm qua ngày, cần kiểm tra bàn giao và chấm công qua đêm.",
+      suggestedAction:
+        "Xác nhận giờ nghỉ, checkout và payroll trước khi công bố lịch.",
+    });
+  }
 
   if (String(staff.employmentStatus || "").toLowerCase() !== "working") {
     pushIssue(blockingErrors, {
@@ -757,6 +808,14 @@ export async function validateShiftAssignment({ input }) {
     score: scoreResult.score,
     blockingErrors,
     warnings,
+    explanations: buildAssignmentExplanations({
+      blockingErrors,
+      warnings,
+      availabilityResult,
+      weeklyHoursAfter,
+      effectiveWeeklyCap,
+      scoreResult,
+    }),
     metrics: {
       shiftHours,
       weeklyHoursBefore: Number(weeklyHoursBefore.toFixed(2)),

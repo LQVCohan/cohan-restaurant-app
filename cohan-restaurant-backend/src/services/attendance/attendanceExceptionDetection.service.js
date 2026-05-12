@@ -3,6 +3,7 @@ import {
   Shift,
   Timesheet,
 } from "../../../models/index.js";
+import { syncAttendancePerformanceIncidents } from "../performance/attendancePerformanceIntegration.service.js";
 
 export const ATTENDANCE_EXCEPTION_TIMEZONE = "Asia/Ho_Chi_Minh";
 export const DEFAULT_NO_SHOW_GRACE_MINUTES = 15;
@@ -147,9 +148,20 @@ async function loadTimesheetsForEligibleShifts({ restaurantId, shiftIds }) {
   return query;
 }
 
+async function syncPerformanceForTimesheet(timesheet) {
+  try {
+    await syncAttendancePerformanceIncidents(timesheet, {
+      actorRole: "system",
+    });
+  } catch (error) {
+    console.warn("Failed to sync attendance performance incidents:", error.message);
+  }
+}
+
 async function createNoShowTimesheet(shift) {
   const record = new Timesheet(buildNoShowPayload(shift));
   await record.save();
+  await syncPerformanceForTimesheet(record);
   return record;
 }
 
@@ -195,6 +207,7 @@ async function ensureNoShowForShift({
   }
 
   await timesheet.save();
+  await syncPerformanceForTimesheet(timesheet);
   return { created: false, updated: true };
 }
 
@@ -227,6 +240,7 @@ async function ensureMissedCheckoutForTimesheet({
     timesheet.plannedEndTime = plannedEndTime;
   }
   await timesheet.save();
+  await syncPerformanceForTimesheet(timesheet);
   return true;
 }
 

@@ -2208,6 +2208,7 @@ type ShiftAssignmentValidationResult {
   score: Int!
   blockingErrors: [ShiftAssignmentIssue!]!
   warnings: [ShiftAssignmentIssue!]!
+  explanations: [String!]!
   metrics: ShiftAssignmentMetrics!
 }
 

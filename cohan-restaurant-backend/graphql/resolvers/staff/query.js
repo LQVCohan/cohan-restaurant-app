@@ -140,6 +140,15 @@ function mapAttendanceRecord(timesheet, staff) {
     latenessMinutes: Number(timesheet.latenessMinutes || 0),
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
+    overtimeApprovalStatus: String(
+      timesheet.overtimeApprovalStatus || "not_required",
+    ),
+    overtimeReviewNote: timesheet.overtimeReviewNote || "",
+    overtimeReviewedBy: timesheet.overtimeReviewedBy
+      ? String(timesheet.overtimeReviewedBy)
+      : null,
+    overtimeReviewedAt: timesheet.overtimeReviewedAt || null,
     status: mapAttendanceStatus(timesheet),
     isOffSchedule,
     offScheduleApprovalStatus: approvalStatus,

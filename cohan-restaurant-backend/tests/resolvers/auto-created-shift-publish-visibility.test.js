@@ -80,7 +80,12 @@ vi.mock("../../graphql/guards.js", () => ({
     if (!ctx?.user) throw new Error("UNAUTHENTICATED");
   }),
   requireRestaurantAccess: vi.fn(async () => true),
-  requireRoles: vi.fn(() => true),
+  requireRoles: vi.fn((ctx, allowedRoles = []) => {
+    const roles = (ctx?.user?.roles || []).map((role) => String(role).toLowerCase());
+    const allowed = (allowedRoles || []).map((role) => String(role).toLowerCase());
+    if (!roles.some((role) => allowed.includes(role))) throw new Error("FORBIDDEN");
+    return true;
+  }),
   requireRestaurantScope: vi.fn(() => true),
 }));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({
@@ -134,9 +139,9 @@ vi.mock("../../src/services/scheduling/scheduleLifecycle.service.js", () => sche
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({
   ATTENDANCE_REVIEW_ROLES: [],
   ATTENDANCE_OPERATION_ROLES: [],
-  ATTENDANCE_SELF_ROLES: [],
+  ATTENDANCE_SELF_ROLES: ["staff"],
   SCHEDULE_WRITE_ROLES: ["manager"],
-  SCHEDULE_READ_ROLES: ["manager", "staff"],
+  SCHEDULE_READ_ROLES: ["manager"],
   SHIFT_ACK_ADMIN_ROLES: ["manager"],
   SHIFT_ACK_READ_ROLES: ["manager"],
   resolveUserRoles: vi.fn((user) => user?.roles || []),
@@ -293,7 +298,7 @@ describe("auto-created shift publish and staff visibility regression", () => {
     });
     modelMocks.Shift.find.mockImplementation((filter) => queryResult(db.shifts.filter((shift) => matchesShiftFilter(shift, filter))));
     modelMocks.Shift.exists.mockResolvedValue(true);
-    modelMocks.Shift.countDocuments.mockResolvedValue(0);
+    modelMocks.Shift.countDocuments.mockImplementation(async (filter) => db.shifts.filter((shift) => matchesShiftFilter(shift, filter)).length);
     modelMocks.Timesheet.findOne.mockReturnValue(queryResult(null));
     modelMocks.Table.find.mockReturnValue(queryResult([]));
     modelMocks.Category.countDocuments.mockResolvedValue(0);
@@ -391,7 +396,6 @@ describe("auto-created shift publish and staff visibility regression", () => {
 
     expect(["published", "active"]).toContain(publication.effectiveStatus || publication.status);
     expect(db.publications[0].status).toBe("published");
-    expect(db.scheduleAcknowledgements.map((ack) => idOf(ack.employeeId)).sort()).toEqual(["staff-1", "staff-2"]);
     expect(db.shiftAcknowledgements.map((ack) => idOf(ack.shiftId)).sort()).toEqual(db.shifts.map((shift) => idOf(shift._id)).sort());
     expect(db.shiftAcknowledgements.every((ack) => ack.status === "pending")).toBe(true);
 

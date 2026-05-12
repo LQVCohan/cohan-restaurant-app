@@ -83,6 +83,7 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import { syncAttendancePerformanceIncidents } from "../../../src/services/performance/attendancePerformanceIntegration.service.js";
 import {
   createPerformanceIncidentOnce,
   applyPerformanceIncidentScore as applyPerformanceIncidentScoreService,
@@ -3595,6 +3596,16 @@ export default {
     record.hours = Number((record.workedMinutes / 60).toFixed(2));
 
     await record.save();
+    try {
+      await syncAttendancePerformanceIncidents(record, {
+        actorId,
+        actorRole: String(
+          ctx?.user?.roleName || ctx?.user?.userType || "",
+        ).toLowerCase(),
+      });
+    } catch (error) {
+      console.warn("Failed to sync attendance performance incidents:", error.message);
+    }
     if (record.isOffSchedule) {
       try {
         await createPerformanceIncidentOnce({
