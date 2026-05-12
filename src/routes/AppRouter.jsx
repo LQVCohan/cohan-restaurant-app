@@ -155,13 +155,13 @@ const AppRouter = () => (
     <Route element={<CustomerLayout />}>
       <Route path="/" element={<Home />} />
       <Route path="/contact" element={<ContactPage />} />
-      <Route path="/search" element={withPrivateRoute(<SearchPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/search" element={<SearchPage />} />
       <Route path="/owner/:id" element={withPrivateRoute(<OwnerProfilePage />, ["manager", "admin"])} />
       <Route path="/for-you" element={<ForYou />} />
       <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
       <Route path="/track-order/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
-      <Route path="/restaurants" element={withPrivateRoute(<RestaurantsList />, ["customer", "manager", "admin"])} />
-      <Route path="/restaurant/:id" element={withPrivateRoute(<RestaurantDetail />, ["customer", "manager", "admin"])} />
+      <Route path="/restaurants" element={<RestaurantsList />} />
+      <Route path="/restaurant/:id" element={<RestaurantDetail />} />
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
       <Route path="/vr/table/:tableId" element={<VRViewer />} />
       <Route path="/cus-menu" element={<RestaurantMenu />} />
