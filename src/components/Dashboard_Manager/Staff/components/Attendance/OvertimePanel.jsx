@@ -14,6 +14,13 @@ const OVERTIME_STATUS_TABS = [
   { key: "rejected", label: "Từ chối" },
 ];
 
+const OVERTIME_ACTION_ERROR_MESSAGES = {
+  ATTENDANCE_OVERTIME_ALREADY_REVIEWED:
+    "⚠️ Bản ghi tăng ca này đã được review trước đó. Vui lòng tải lại danh sách.",
+  ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED:
+    "⚠️ Không thể duyệt hoặc từ chối tăng ca vì kỳ lương tương ứng đã chốt hoặc đã thanh toán.",
+};
+
 const normalizeRole = (value) => String(value || "").trim().toLowerCase();
 
 const getRoleName = (user) =>
@@ -99,6 +106,18 @@ const getOvertimeStatusBadge = (status) => {
   );
 };
 
+const extractOvertimeActionErrorCode = (error) => {
+  const candidates = [
+    error?.graphQLErrors?.[0]?.message,
+    error?.networkError?.result?.errors?.[0]?.message,
+    error?.message,
+  ].filter(Boolean);
+
+  return Object.keys(OVERTIME_ACTION_ERROR_MESSAGES).find((code) =>
+    candidates.some((message) => String(message).includes(code)),
+  );
+};
+
 export const getOvertimeActionErrorMessage = (error, fallback) => {
   if (isForbiddenError(error)) {
     return "❌ Bạn không có quyền thực hiện thao tác này.";
@@ -106,6 +125,12 @@ export const getOvertimeActionErrorMessage = (error, fallback) => {
   if (isUnauthenticatedError(error)) {
     return "⚠️ Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
   }
+
+  const overtimeErrorCode = extractOvertimeActionErrorCode(error);
+  if (overtimeErrorCode) {
+    return OVERTIME_ACTION_ERROR_MESSAGES[overtimeErrorCode];
+  }
+
   return fallback;
 };
 

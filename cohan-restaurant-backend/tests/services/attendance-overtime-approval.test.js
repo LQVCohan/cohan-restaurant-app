@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   EventLog: { create: vi.fn() },
+  PayrollPeriod: { findOne: vi.fn() },
   Staff: { findById: vi.fn() },
   Timesheet: { findById: vi.fn() },
 }));
@@ -81,6 +82,23 @@ function createTimesheet(overrides = {}) {
   };
 }
 
+function createPayrollPeriod(status) {
+  return {
+    _id: `507f1f77bcf86cd7994390${status.length}`,
+    restaurantId: "507f1f77bcf86cd799439099",
+    startDate: new Date("2026-05-01T00:00:00.000Z"),
+    endDate: new Date("2026-05-31T23:59:59.999Z"),
+    status,
+  };
+}
+
+function mockPayrollPeriodLookup(period = null) {
+  const lean = vi.fn().mockResolvedValue(period);
+  const sort = vi.fn().mockReturnValue({ lean });
+  modelMocks.PayrollPeriod.findOne.mockReturnValue({ sort });
+  return { sort, lean };
+}
+
 describe("attendance overtime approval", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -104,6 +122,7 @@ describe("attendance overtime approval", () => {
         avatar: null,
       }),
     });
+    mockPayrollPeriodLookup(null);
   });
 
   it("checkout sau plannedEndTime set overtimeMinutes", async () => {
@@ -189,6 +208,155 @@ describe("attendance overtime approval", () => {
 
     expect(timesheet.overtimeApprovalStatus).toBe("rejected");
     expect(timesheet.approvedOvertimeMinutes).toBe(0);
+    expect(result.overtimeApprovalStatus).toBe("rejected");
+    expect(result.approvedOvertimeMinutes).toBe(0);
+  });
+
+  it.each(["finalized", "locked", "paid"])(
+    "approve bị block khi payroll period %s",
+    async (status) => {
+      const timesheet = createTimesheet();
+      modelMocks.Timesheet.findById.mockReturnValue({
+        populate: vi.fn().mockResolvedValue(timesheet),
+      });
+      mockPayrollPeriodLookup(createPayrollPeriod(status));
+
+      const { approveAttendanceOvertime } = await import(
+        "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+      );
+
+      await expect(
+        approveAttendanceOvertime({
+          input: { timesheetId: timesheet._id },
+          ctx: managerCtx,
+        }),
+      ).rejects.toThrow("ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED");
+      expect(timesheet.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["finalized", "locked", "paid"])(
+    "reject bị block khi payroll period %s",
+    async (status) => {
+      const timesheet = createTimesheet();
+      modelMocks.Timesheet.findById.mockReturnValue({
+        populate: vi.fn().mockResolvedValue(timesheet),
+      });
+      mockPayrollPeriodLookup(createPayrollPeriod(status));
+
+      const { rejectAttendanceOvertime } = await import(
+        "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+      );
+
+      await expect(
+        rejectAttendanceOvertime({
+          input: {
+            timesheetId: timesheet._id,
+            reviewNote: "Kỳ lương đã khóa.",
+          },
+          ctx: managerCtx,
+        }),
+      ).rejects.toThrow("ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED");
+      expect(timesheet.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("approve vẫn được nếu không có PayrollPeriod chứa workDate", async () => {
+    const timesheet = createTimesheet();
+    modelMocks.Timesheet.findById.mockReturnValue({
+      populate: vi.fn().mockResolvedValue(timesheet),
+    });
+    mockPayrollPeriodLookup(null);
+
+    const { approveAttendanceOvertime } = await import(
+      "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+    );
+
+    const result = await approveAttendanceOvertime({
+      input: {
+        timesheetId: timesheet._id,
+        approvedOvertimeMinutes: 30,
+      },
+      ctx: managerCtx,
+    });
+
+    expect(result.approvedOvertimeMinutes).toBe(30);
+    expect(timesheet.save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["approve", "approved"],
+    ["approve", "rejected"],
+    ["reject", "approved"],
+    ["reject", "rejected"],
+  ])(
+    "%s bị block nếu overtimeApprovalStatus đã %s",
+    async (action, currentStatus) => {
+      const timesheet = createTimesheet({ overtimeApprovalStatus: currentStatus });
+      modelMocks.Timesheet.findById.mockReturnValue({
+        populate: vi.fn().mockResolvedValue(timesheet),
+      });
+
+      const service = await import(
+        "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+      );
+
+      const run =
+        action === "approve"
+          ? service.approveAttendanceOvertime({
+              input: { timesheetId: timesheet._id },
+              ctx: managerCtx,
+            })
+          : service.rejectAttendanceOvertime({
+              input: {
+                timesheetId: timesheet._id,
+                reviewNote: "Đã review trước đó.",
+              },
+              ctx: managerCtx,
+            });
+
+      await expect(run).rejects.toThrow("ATTENDANCE_OVERTIME_ALREADY_REVIEWED");
+      expect(timesheet.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("pending vẫn approve được", async () => {
+    const timesheet = createTimesheet({ overtimeApprovalStatus: "pending" });
+    modelMocks.Timesheet.findById.mockReturnValue({
+      populate: vi.fn().mockResolvedValue(timesheet),
+    });
+
+    const { approveAttendanceOvertime } = await import(
+      "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+    );
+
+    const result = await approveAttendanceOvertime({
+      input: { timesheetId: timesheet._id },
+      ctx: managerCtx,
+    });
+
+    expect(result.overtimeApprovalStatus).toBe("approved");
+    expect(result.approvedOvertimeMinutes).toBe(75);
+  });
+
+  it("pending vẫn reject được", async () => {
+    const timesheet = createTimesheet({ overtimeApprovalStatus: "pending" });
+    modelMocks.Timesheet.findById.mockReturnValue({
+      populate: vi.fn().mockResolvedValue(timesheet),
+    });
+
+    const { rejectAttendanceOvertime } = await import(
+      "../../src/services/attendance/attendanceOvertimeApproval.service.js"
+    );
+
+    const result = await rejectAttendanceOvertime({
+      input: {
+        timesheetId: timesheet._id,
+        reviewNote: "Không phù hợp để duyệt.",
+      },
+      ctx: managerCtx,
+    });
+
     expect(result.overtimeApprovalStatus).toBe("rejected");
     expect(result.approvedOvertimeMinutes).toBe(0);
   });

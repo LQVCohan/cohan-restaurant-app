@@ -24,6 +24,24 @@ describe("getOvertimeActionErrorMessage", () => {
     );
   });
 
+  it("returns already reviewed message for overtime re-review attempts", () => {
+    const error = {
+      graphQLErrors: [{ message: "ATTENDANCE_OVERTIME_ALREADY_REVIEWED" }],
+    };
+
+    expect(getOvertimeActionErrorMessage(error, "fallback")).toBe(
+      "⚠️ Bản ghi tăng ca này đã được review trước đó. Vui lòng tải lại danh sách.",
+    );
+  });
+
+  it("returns payroll lock message for locked payroll periods", () => {
+    const error = new Error("ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED");
+
+    expect(getOvertimeActionErrorMessage(error, "fallback")).toBe(
+      "⚠️ Không thể duyệt hoặc từ chối tăng ca vì kỳ lương tương ứng đã chốt hoặc đã thanh toán.",
+    );
+  });
+
   it("returns fallback for non-auth graphql errors", () => {
     const error = { graphQLErrors: [{ extensions: { code: "BAD_USER_INPUT" } }] };
     const fallback = "❌ Hành động thất bại";
