@@ -27,9 +27,14 @@ export const getShippingFeeForDiscountPreview = ({
   return Number.isFinite(fee) && fee > 0 ? fee : 0;
 };
 
-export const mapCartItemToOrderItemInput = (item = {}) => {
+export const mapCartItemToOrderItemInput = (
+  item = {},
+  { includeCartHoldRef = false } = {},
+) => {
   const servingKey =
     item.servingKey ||
+    item.servingVariantKey ||
+    item.variantKey ||
     item.servingVariant?.key ||
     item.selectedServingKey ||
     "portion";
@@ -42,7 +47,7 @@ export const mapCartItemToOrderItemInput = (item = {}) => {
       0,
   );
 
-  return {
+  const payload = {
     dishId: item.dishId || item.menuId || item.id,
     menuId: item.menuId || item.dishId || item.id,
     categoryId: item.categoryId || null,
@@ -69,6 +74,14 @@ export const mapCartItemToOrderItemInput = (item = {}) => {
     note: item.note || item.description || undefined,
     priority: item.priority || "MEDIUM",
   };
+
+  if (includeCartHoldRef) {
+    payload.cartId = item.cartId || item.backendCartId || undefined;
+    payload.cartItemId =
+      item.cartItemId || item.backendCartItemId || undefined;
+  }
+
+  return payload;
 };
 
 export const buildDiscountPricingInput = ({
@@ -95,7 +108,7 @@ export const buildOrderDiscountPreviewInput = ({
 }) => ({
   restaurantId,
   orderType,
-  items: items.map(mapCartItemToOrderItemInput),
+  items: items.map((item) => mapCartItemToOrderItemInput(item)),
   pricing: buildDiscountPricingInput({
     taxRate,
     serviceRate,
