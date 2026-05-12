@@ -153,6 +153,18 @@ const OrderSummaryModal = ({
         modifierGroupIds: it.modifierGroupIds || [],
         menuId: it.menuId,
         categoryId: it.categoryId,
+        cartId: it.cartId || it.backendCartId || null,
+        cartItemId: it.cartItemId || it.backendCartItemId || null,
+        backendCartId: it.backendCartId || it.cartId || null,
+        backendCartItemId: it.backendCartItemId || it.cartItemId || null,
+        holdStatus: it.holdStatus || null,
+        holdExpiresAt: it.holdExpiresAt || null,
+        servingKey:
+          it.servingKey || it.servingVariantKey || it.variantKey || null,
+        servingVariantKey:
+          it.servingVariantKey || it.variantKey || it.servingKey || null,
+        variantKey:
+          it.variantKey || it.servingVariantKey || it.servingKey || null,
       })),
     [items],
   );
@@ -395,12 +407,38 @@ const OrderSummaryModal = ({
     setDiscountError("");
     setDiscountTouched(false);
   }, [canPreviewDiscount]);
+  const validateCartHoldBeforeCheckout = useCallback(() => {
+    for (const item of orderData || []) {
+      const cartId = item.backendCartId || item.cartId;
+      const cartItemId = item.backendCartItemId || item.cartItemId;
+      const hasAnyCartRef = Boolean(cartId || cartItemId);
+
+      if (hasAnyCartRef && (!cartId || !cartItemId)) {
+        return "Một số món chưa được đồng bộ đúng với giỏ hàng. Vui lòng thêm lại món.";
+      }
+
+      if (cartId && cartItemId && item.holdExpiresAt) {
+        const expiresAt = new Date(item.holdExpiresAt);
+        if (!Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date()) {
+          return "Một số món trong giỏ đã hết thời gian giữ. Vui lòng cập nhật lại giỏ.";
+        }
+      }
+    }
+
+    return null;
+  }, [orderData]);
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
       if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
         throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
       }
-      const checkoutItems = orderData.map(mapCartItemToOrderItemInput);
+      const cartHoldError = validateCartHoldBeforeCheckout();
+      if (cartHoldError) {
+        throw new Error(cartHoldError);
+      }
+      const checkoutItems = orderData.map((item) =>
+        mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }),
+      );
 
       const input = {
         orderType: mapDeliveryMethodToOrderType(shipping?.deliveryMethod),
@@ -440,15 +478,16 @@ const OrderSummaryModal = ({
       };
     },
     [
+      canPreviewDiscount,
       voucherCode,
       discountBreakdown,
+      validateCartHoldBeforeCheckout,
       orderData,
       shipping,
       selectedPromotionIds,
       orderInfo.id,
       isAuthenticated,
       createCheckoutOrders,
-      canPreviewDiscount,
     ],
   );
   const payableTotal = getDiscountBreakdownTotal(

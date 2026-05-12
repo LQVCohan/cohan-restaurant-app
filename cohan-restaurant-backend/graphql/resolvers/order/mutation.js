@@ -17,6 +17,7 @@ import {
   WalletTransaction,
   PrintSetting,
   Promotion,
+  Cart,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -302,6 +303,47 @@ function getRemainingReturnableQuantity(item) {
  * - REQUIRED servingKey
  * - BY_WEIGHT requires weightGrams integer (grams)
  * ========================= */
+
+const CART_HOLD_CHECKOUT_ERROR =
+  "Món trong giỏ đã hết hạn hoặc không còn khớp với đơn hàng. Vui lòng kiểm tra lại giỏ.";
+
+function getCheckoutCartRef(item = {}) {
+  const cartId = item.cartId ? String(item.cartId) : "";
+  const cartItemId = item.cartItemId ? String(item.cartItemId) : "";
+  return { cartId, cartItemId, hasRef: Boolean(cartId || cartItemId) };
+}
+
+function normalizeCartHoldServingKey(value) {
+  const key = String(value || "").trim();
+  return key || "portion";
+}
+
+function buildCartHoldOrderCode(cartId, cartItemId) {
+  return `CART:${cartId}:${cartItemId}`;
+}
+
+function assertCartHoldCheckoutAllowed({ item, authUserId }) {
+  const { cartId, cartItemId, hasRef } = getCheckoutCartRef(item);
+
+  if (!hasRef) return null;
+
+  if (!cartId || !cartItemId) {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  if (!authUserId) {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  if (
+    !mongoose.isValidObjectId(cartId) ||
+    !mongoose.isValidObjectId(cartItemId)
+  ) {
+    throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  return { cartId, cartItemId };
+}
 function buildInventoryLineFromItem(it) {
   if (!it) return null;
 
@@ -1974,7 +2016,8 @@ export const OrderMutation = {
       pricing,
       promotionIds,
     } = input || {};
-
+    const authUserId =
+      ctx?.user?._id || ctx?.user?.id || ctx?.currentUser?._id || null;
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
       throw new Error("orderType must be 'takeaway' or 'delivery'");
     }

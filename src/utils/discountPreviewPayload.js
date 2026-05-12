@@ -27,9 +27,14 @@ export const getShippingFeeForDiscountPreview = ({
   return Number.isFinite(fee) && fee > 0 ? fee : 0;
 };
 
-export const mapCartItemToOrderItemInput = (item = {}) => {
+export const mapCartItemToOrderItemInput = (
+  item = {},
+  { includeCartHoldRef = false } = {},
+) => {
   const servingKey =
     item.servingKey ||
+    item.servingVariantKey ||
+    item.variantKey ||
     item.servingVariant?.key ||
     item.selectedServingKey ||
     "portion";
@@ -42,7 +47,7 @@ export const mapCartItemToOrderItemInput = (item = {}) => {
       0,
   );
 
-  return {
+  const payload = {
     dishId: item.dishId || item.menuId || item.id,
     menuId: item.menuId || item.dishId || item.id,
     categoryId: item.categoryId || null,
@@ -69,6 +74,16 @@ export const mapCartItemToOrderItemInput = (item = {}) => {
     note: item.note || item.description || undefined,
     priority: item.priority || "MEDIUM",
   };
+
+  if (includeCartHoldRef) {
+    const cartId = item.backendCartId || item.cartId;
+    const cartItemId = item.backendCartItemId || item.cartItemId;
+
+    if (cartId) payload.cartId = cartId;
+    if (cartItemId) payload.cartItemId = cartItemId;
+  }
+
+  return payload;
 };
 
 export const buildDiscountPricingInput = ({
