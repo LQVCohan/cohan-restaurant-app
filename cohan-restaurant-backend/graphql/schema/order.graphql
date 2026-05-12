@@ -578,6 +578,8 @@ type ActionResultPayload {
 }
 
 input CheckoutCartItemInput {
+  cartId: ID
+  cartItemId: ID
   restaurantId: ID!
   dishId: ID
   menuId: ID
