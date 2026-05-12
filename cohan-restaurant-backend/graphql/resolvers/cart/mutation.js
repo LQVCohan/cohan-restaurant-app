@@ -50,8 +50,35 @@ function computeTotals(items = []) {
   return { totalQuantity, totalAmount };
 }
 
+function normalizeCartHoldIdSegment(value) {
+  if (value == null) throw new GraphQLError("Invalid cart hold identifier");
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint") {
+    return String(value);
+  }
+
+  if (typeof value === "object") {
+    if (typeof value.toHexString === "function") {
+      return value.toHexString();
+    }
+    if (value._id != null && value._id !== value) {
+      return normalizeCartHoldIdSegment(value._id);
+    }
+    if (value.id != null && value.id !== value) {
+      return normalizeCartHoldIdSegment(value.id);
+    }
+  }
+
+  const normalized = String(value);
+  if (normalized && normalized !== "[object Object]") return normalized;
+
+  throw new GraphQLError("Invalid cart hold identifier");
+}
+
 function holdOrderCode(cartId, itemId) {
-  return `CART:${cartId}:${itemId}`;
+  const normalizedCartId = normalizeCartHoldIdSegment(cartId);
+  const normalizedItemId = normalizeCartHoldIdSegment(itemId);
+  return `CART:${normalizedCartId}:${normalizedItemId}`;
 }
 
 function emitInventoryEvent(ctx, payload = {}) {
