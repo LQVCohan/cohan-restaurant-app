@@ -5,6 +5,10 @@ import {
   userCanAccessRestaurant,
   userHasAnyRole,
 } from "../scheduling/schedulingPermission.service.js";
+import {
+  applyAttendanceOvertimeState,
+  buildAttendanceOvertimeState,
+} from "./attendanceOvertimeState.service.js";
 
 const { Types } = mongoose;
 
@@ -67,89 +71,6 @@ function assertCanReviewAttendanceOvertime(ctx, restaurantId) {
   if (!userCanAccessRestaurant(ctx?.user, restaurantId)) {
     throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
   }
-}
-
-export function buildAttendanceOvertimeState({
-  overtimeMinutes,
-  currentStatus,
-  approvedOvertimeMinutes,
-  previousOvertimeMinutes = null,
-  reviewNote = "",
-  reviewedBy = null,
-  reviewedAt = null,
-  preserveApproved = false,
-}) {
-  const overtime = Math.max(Number(overtimeMinutes || 0), 0);
-  const approved = Math.max(Number(approvedOvertimeMinutes || 0), 0);
-  const status = String(currentStatus || "").toLowerCase();
-  const changed =
-    previousOvertimeMinutes !== null &&
-    previousOvertimeMinutes !== undefined &&
-    Number(previousOvertimeMinutes) !== overtime;
-
-  if (overtime <= 0) {
-    return {
-      approvedOvertimeMinutes: 0,
-      overtimeApprovalStatus: "not_required",
-      overtimeReviewNote: "",
-      overtimeReviewedBy: null,
-      overtimeReviewedAt: null,
-    };
-  }
-
-  if (
-    preserveApproved &&
-    !changed &&
-    status === "approved" &&
-    approved > 0 &&
-    approved <= overtime
-  ) {
-    return {
-      approvedOvertimeMinutes: approved,
-      overtimeApprovalStatus: "approved",
-      overtimeReviewNote: String(reviewNote || ""),
-      overtimeReviewedBy: reviewedBy || null,
-      overtimeReviewedAt: reviewedAt || null,
-    };
-  }
-
-  if (!changed && status === "rejected" && approved === 0) {
-    return {
-      approvedOvertimeMinutes: 0,
-      overtimeApprovalStatus: "rejected",
-      overtimeReviewNote: String(reviewNote || ""),
-      overtimeReviewedBy: reviewedBy || null,
-      overtimeReviewedAt: reviewedAt || null,
-    };
-  }
-
-  return {
-    approvedOvertimeMinutes: 0,
-    overtimeApprovalStatus: "pending",
-    overtimeReviewNote: "",
-    overtimeReviewedBy: null,
-    overtimeReviewedAt: null,
-  };
-}
-
-export function applyAttendanceOvertimeState(timesheet, options = {}) {
-  const nextState = buildAttendanceOvertimeState({
-    overtimeMinutes: timesheet?.overtimeMinutes,
-    currentStatus: timesheet?.overtimeApprovalStatus,
-    approvedOvertimeMinutes: timesheet?.approvedOvertimeMinutes,
-    previousOvertimeMinutes: options.previousOvertimeMinutes,
-    reviewNote: timesheet?.overtimeReviewNote,
-    reviewedBy: timesheet?.overtimeReviewedBy,
-    reviewedAt: timesheet?.overtimeReviewedAt,
-    preserveApproved: Boolean(options.preserveApproved),
-  });
-
-  timesheet.approvedOvertimeMinutes = nextState.approvedOvertimeMinutes;
-  timesheet.overtimeApprovalStatus = nextState.overtimeApprovalStatus;
-  timesheet.overtimeReviewNote = nextState.overtimeReviewNote;
-  timesheet.overtimeReviewedBy = nextState.overtimeReviewedBy;
-  timesheet.overtimeReviewedAt = nextState.overtimeReviewedAt;
-  return timesheet;
 }
 
 function mapAttendanceStatus(timesheet) {
@@ -395,3 +316,5 @@ export async function rejectAttendanceOvertime({ input, ctx }) {
 
   return mapAttendanceRecordWithOvertime(timesheet);
 }
+
+export { applyAttendanceOvertimeState, buildAttendanceOvertimeState };
