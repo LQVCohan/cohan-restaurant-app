@@ -713,6 +713,7 @@ const MenuManagement = () => {
         isSubmitting={isSavingMenu}
         createCategoryMenu={createCategoryMenu}
         updateCategoryMenu={updateCategoryMenu}
+        restaurantId={currentRestaurant || null}
         submitError={menuSubmitError}
       />
 
