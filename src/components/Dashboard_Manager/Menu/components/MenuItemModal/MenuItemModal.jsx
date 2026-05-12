@@ -120,6 +120,20 @@ const validatePreparationMethods = (methods = []) => {
   });
 };
 
+const MENU_ITEM_STATUS_OPTIONS = [
+  { value: "available", label: "Sẵn sàng" },
+  { value: "out_of_stock", label: "Hết hàng" },
+  { value: "unavailable", label: "Tạm dừng" },
+  { value: "hidden", label: "Ẩn khỏi menu" },
+];
+
+const MENU_ITEM_STATUS_SET = new Set(
+  MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value)
+);
+
+const normalizeMenuItemStatus = (status) =>
+  MENU_ITEM_STATUS_SET.has(status) ? status : "available";
+
 const buildRecipeForm = (methods = [], existingVariants = []) => {
   const normalizedMethods = validatePreparationMethods(methods);
 
@@ -173,7 +187,7 @@ const MenuItemModal = ({
   const [formData, setFormData] = useState({
     name: "",
     categoryId: "",
-    status: "available",
+    status: normalizeMenuItemStatus(),
     thumbImage: "",
     description: "",
     preparationMethods: [],
@@ -312,7 +326,7 @@ const MenuItemModal = ({
     sanitize: (v) => ({
       name: v?.name || "",
       categoryId: v?.categoryId || "",
-      status: v?.status || "available",
+      status: normalizeMenuItemStatus(v?.status),
       thumbImage: v?.thumbImage || "",
       description: v?.description || "",
       preparationMethods: Array.isArray(v?.preparationMethods)
@@ -380,7 +394,7 @@ const MenuItemModal = ({
             currentItem.category?.id ||
             currentItem.category ||
             "",
-          status: currentItem.status || "available",
+          status: normalizeMenuItemStatus(currentItem.status),
           thumbImage: currentItem.thumbImage || "",
           description: currentItem.description || "",
           preparationMethods: methods,
@@ -389,7 +403,7 @@ const MenuItemModal = ({
         setFormData({
           name: "",
           categoryId: "",
-          status: "available",
+          status: normalizeMenuItemStatus(),
           thumbImage: "",
           description: "",
           preparationMethods: [{ ...defaultMethod }],
@@ -519,7 +533,7 @@ const MenuItemModal = ({
       const menuItemPayload = {
         name: itemName,
         categoryId,
-        status: formData.status,
+        status: normalizeMenuItemStatus(formData.status),
         description: formData.description,
         ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
         ...(formData.thumbImage?.trim()
@@ -684,8 +698,11 @@ const MenuItemModal = ({
                   onChange={(e) => handleInputChange("status", e.target.value)}
                   disabled={isSaving}
                 >
-                  <option value="available">Sẵn sàng</option>
-                  <option value="unavailable">Tạm hết</option>
+                  {MENU_ITEM_STATUS_OPTIONS.map((statusOption) => (
+                    <option key={statusOption.value} value={statusOption.value}>
+                      {statusOption.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
