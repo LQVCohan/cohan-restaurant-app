@@ -149,7 +149,13 @@ vi.mock("../../src/services/payroll/payrollCalculator.service.js", () => ({ buil
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
-    Types: { ObjectId: function ObjectId(value) { return value; } },
+    Types: {
+      ObjectId: function ObjectId(value) {
+        this._id = value;
+        this.toString = () => String(value);
+        this.valueOf = () => String(value);
+      },
+    },
   },
 }));
 
