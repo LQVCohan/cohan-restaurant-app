@@ -198,6 +198,37 @@ function buildPublication(status = db.publicationStatus) {
   };
 }
 
+function findTimesheetById(id) {
+  return db.timesheets.find((timesheet) => idOf(timesheet._id) === idOf(id)) || null;
+}
+
+function cloneTimesheet(timesheet, { populateShift = false } = {}) {
+  if (!timesheet) return null;
+  const cloned = { ...timesheet };
+  if (
+    populateShift &&
+    cloned.shiftId &&
+    db.shift &&
+    idOf(cloned.shiftId) === idOf(db.shift._id)
+  ) {
+    cloned.shiftId = db.shift;
+  }
+  return cloned;
+}
+
+function populatedTimesheetQuery(id, { populateShift = false } = {}) {
+  const result = cloneTimesheet(findTimesheetById(id), { populateShift });
+  return {
+    populate: vi.fn((path) =>
+      path === "shiftId"
+        ? populatedTimesheetQuery(id, { populateShift: true })
+        : populatedTimesheetQuery(id, { populateShift }),
+    ),
+    lean: vi.fn(async () => result),
+    then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
+  };
+}
+
 async function checkInAt(iso, { employeeId = "staff-1", restaurantId = "rest-1" } = {}) {
   vi.setSystemTime(new Date(iso));
   const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
@@ -268,7 +299,7 @@ describe("Timesheet binding to official published/active staff shifts", () => {
         return true;
       }) || null;
     });
-    modelMocks.Timesheet.findById = vi.fn();
+    modelMocks.Timesheet.findById = vi.fn((id) => populatedTimesheetQuery(id));
     modelMocks.Timesheet.find = vi.fn((filter = {}) => queryResult(db.timesheets.filter((timesheet) => {
       if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
       if (filter.employeeId?.$in && !filter.employeeId.$in.map(idOf).includes(idOf(timesheet.employeeId))) return false;
