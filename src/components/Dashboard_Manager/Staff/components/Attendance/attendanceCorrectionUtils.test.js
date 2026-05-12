@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_CORRECTION_REASON_LENGTH,
   buildCreateCorrectionInput,
   buildEvidenceUrls,
   canCancelCorrection,
   canReviewCorrection,
+  getCorrectionTimeRequirements,
   validateCorrectionRequestForm,
 } from "./attendanceCorrectionUtils";
 
@@ -43,6 +45,17 @@ describe("attendanceCorrectionUtils", () => {
     };
 
     expect(canCancelCorrection(manager, request)).toBe(true);
+  });
+
+  it("exposes type-based time requirements", () => {
+    expect(getCorrectionTimeRequirements("wrong_check_in")).toMatchObject({
+      requiresCheckIn: true,
+      requiresCheckOut: false,
+    });
+    expect(getCorrectionTimeRequirements("wrong_check_out")).toMatchObject({
+      requiresCheckIn: false,
+      requiresCheckOut: true,
+    });
   });
 
   it("prefers explicit record.timesheetId when building correction input", () => {
@@ -110,8 +123,34 @@ describe("attendanceCorrectionUtils", () => {
         requestedCheckOutAt: "",
       }),
     ).toMatchObject({
-      reason: expect.any(String),
+      reason: `Vui lòng nhập lý do chỉnh công tối thiểu ${MIN_CORRECTION_REASON_LENGTH} ký tự.`,
       requestedTime: expect.any(String),
+    });
+  });
+
+  it("requires check-in when correction type expects it", () => {
+    expect(
+      validateCorrectionRequestForm({
+        correctionType: "missing_check_in",
+        reason: "Quên check-in đầu ca",
+        requestedCheckInAt: "",
+        requestedCheckOutAt: "2026-05-11T17:00",
+      }),
+    ).toMatchObject({
+      requestedCheckInAt: expect.any(String),
+    });
+  });
+
+  it("requires check-out when correction type expects it", () => {
+    expect(
+      validateCorrectionRequestForm({
+        correctionType: "missing_check_out",
+        reason: "Quên check-out cuối ca",
+        requestedCheckInAt: "2026-05-11T09:00",
+        requestedCheckOutAt: "",
+      }),
+    ).toMatchObject({
+      requestedCheckOutAt: expect.any(String),
     });
   });
 
