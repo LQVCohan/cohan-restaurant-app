@@ -157,6 +157,9 @@ const buildRecipeForm = (methods = [], existingVariants = []) => {
   };
 };
 
+const hasVerifiedRecipeData = (recipeItem) =>
+  !!(recipeItem?._rawRecipeId || recipeItem?._rawRecipe);
+
 const MenuItemModal = ({
   isOpen,
   editId,
@@ -167,7 +170,6 @@ const MenuItemModal = ({
   onSave,
   onClose,
 }) => {
-  // --- STATE ---
   const [formData, setFormData] = useState({
     name: "",
     categoryId: "",
@@ -183,14 +185,12 @@ const MenuItemModal = ({
   const submitLockRef = useRef(false);
   const savedMenuItemIdRef = useRef(null);
 
-  // --- HELPER: Toast ---
   const pushToast = (text, type = "success") => {
     const id = Date.now();
     setToasts((t) => [...t, { id, text, type }]);
     setTimeout(() => setToasts((t) => t.filter((i) => i.id !== id)), 3000);
   };
 
-  // --- DATA LOADING & HOOKS ---
   const currentItem = useMemo(
     () =>
       Array.isArray(menuItems) && editId
@@ -206,11 +206,15 @@ const MenuItemModal = ({
     useConnection: false,
   });
 
-  const { recipes: recipeItems, updateRecipe } = useRecipes(
-    restaurantId,
-    timeSlot,
-    { search: null, categoryId: null }
-  );
+  const {
+    recipes: recipeItems,
+    updateRecipe,
+    ensureRecipeLoaded,
+    recipeDetailsByMenuItemId,
+  } = useRecipes(restaurantId, timeSlot, {
+    search: null,
+    categoryId: null,
+  });
 
   const currentRecipeItem = useMemo(
     () =>
@@ -222,15 +226,45 @@ const MenuItemModal = ({
     [recipeItems, editId]
   );
 
-  const existingServingVariants = useMemo(() => {
-    if (Array.isArray(currentRecipeItem?.servingVariants)) {
-      return currentRecipeItem.servingVariants;
+  const recipeDetailState = useMemo(
+    () => (editId ? recipeDetailsByMenuItemId[String(editId)] || null : null),
+    [recipeDetailsByMenuItemId, editId]
+  );
+
+  const verifiedCurrentRecipeItem = useMemo(
+    () => (hasVerifiedRecipeData(currentRecipeItem) ? currentRecipeItem : null),
+    [currentRecipeItem]
+  );
+
+  const verifiedRecipeItem = useMemo(() => {
+    if (verifiedCurrentRecipeItem) return verifiedCurrentRecipeItem;
+    if (
+      recipeDetailState?.status === "loaded" &&
+      hasVerifiedRecipeData(recipeDetailState?.recipe)
+    ) {
+      return recipeDetailState.recipe;
     }
-    if (Array.isArray(currentItem?.servingVariants)) {
-      return currentItem.servingVariants;
-    }
-    return [];
-  }, [currentRecipeItem, currentItem]);
+    return null;
+  }, [verifiedCurrentRecipeItem, recipeDetailState]);
+
+  const existingServingVariants = useMemo(
+    () =>
+      Array.isArray(verifiedRecipeItem?.servingVariants)
+        ? verifiedRecipeItem.servingVariants
+        : [],
+    [verifiedRecipeItem]
+  );
+
+  const recipeGuardStatus = useMemo(() => {
+    if (!editId) return "ready";
+    if (verifiedRecipeItem) return "ready";
+    if (recipeDetailState?.status === "missing") return "ready";
+    if (recipeDetailState?.status === "error") return "error";
+    return "loading";
+  }, [editId, verifiedRecipeItem, recipeDetailState]);
+
+  const isRecipeGuardPending = !!editId && recipeGuardStatus === "loading";
+  const isRecipeGuardBlocked = !!editId && recipeGuardStatus === "error";
 
   const defaultMethod = {
     key: "",
@@ -290,7 +324,21 @@ const MenuItemModal = ({
       pushToast(message, type === "error" ? "error" : "success"),
   });
 
-  // --- EFFECT: Load Data ---
+  useEffect(() => {
+    if (!isOpen || !editId || !restaurantId || verifiedCurrentRecipeItem) return;
+    if (["loading", "loaded", "missing"].includes(recipeDetailState?.status)) {
+      return;
+    }
+    ensureRecipeLoaded(editId);
+  }, [
+    isOpen,
+    editId,
+    restaurantId,
+    verifiedCurrentRecipeItem,
+    recipeDetailState,
+    ensureRecipeLoaded,
+  ]);
+
   useEffect(() => {
     if (isOpen) {
       setImgError(false);
@@ -355,7 +403,6 @@ const MenuItemModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, currentItem, isOpen]);
 
-  // --- HANDLERS ---
   const handleRequestClose = () => {
     if (isSubmitting) return;
     requestCloseWithDraft(onClose);
@@ -402,10 +449,33 @@ const MenuItemModal = ({
     }
   };
 
+  const handleRetryRecipeLoad = async () => {
+    if (!editId || isSubmitting || isRecipeGuardPending) return;
+
+    const nextState = await ensureRecipeLoaded(editId);
+    if (nextState?.status === "error") {
+      pushToast(
+        `Không thể tải dữ liệu recipe: ${getGraphQLErrorMessage(
+          nextState.error,
+          "Vui lòng thử lại."
+        )}`,
+        "error"
+      );
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (submitLockRef.current) return;
+    if (isRecipeGuardPending) {
+      pushToast("Đang tải dữ liệu recipe, vui lòng chờ thêm một chút.", "error");
+      return;
+    }
+    if (isRecipeGuardBlocked) {
+      await handleRetryRecipeLoad();
+      return;
+    }
     if (!restaurantId) {
       pushToast("Lỗi: Thiếu ID nhà hàng", "error");
       return;
@@ -523,6 +593,7 @@ const MenuItemModal = ({
   };
 
   const isSaving = isSubmitting;
+  const isSubmitDisabled = isSaving || isRecipeGuardPending;
 
   const renderImagePreview = () => {
     if (formData.thumbImage && !imgError) {
@@ -544,7 +615,6 @@ const MenuItemModal = ({
     );
   };
 
-  // --- RENDER ---
   return (
     <Modal
       isOpen={isOpen}
@@ -768,13 +838,18 @@ const MenuItemModal = ({
           Đóng
         </button>
         <button
-          type="submit"
-          form="menu-form"
+          type={isRecipeGuardBlocked ? "button" : "submit"}
+          form={isRecipeGuardBlocked ? undefined : "menu-form"}
           className="btn-primary"
-          disabled={isSaving}
+          disabled={isSubmitDisabled}
+          onClick={isRecipeGuardBlocked ? handleRetryRecipeLoad : undefined}
         >
           {isSaving ? (
             "Đang lưu..."
+          ) : isRecipeGuardPending ? (
+            "Đang tải dữ liệu recipe..."
+          ) : isRecipeGuardBlocked ? (
+            "Thử tải lại recipe"
           ) : (
             <>
               <Save size={18} /> {editId ? "Lưu thay đổi" : "Tạo món mới"}
