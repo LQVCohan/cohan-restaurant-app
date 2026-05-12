@@ -50,8 +50,24 @@ function computeTotals(items = []) {
   return { totalQuantity, totalAmount };
 }
 
+function stringifyCartHoldIdSegment(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") return String(value);
+  if (typeof value?.toHexString === "function") return value.toHexString();
+  if (typeof value?.toString === "function" && value.toString !== Object.prototype.toString) {
+    return value.toString();
+  }
+  if (value?._id != null) return stringifyCartHoldIdSegment(value._id);
+  return String(value);
+}
+
+function createCartItemId() {
+  return stringifyCartHoldIdSegment(new mongoose.Types.ObjectId());
+}
+
 function holdOrderCode(cartId, itemId) {
-  return `CART:${cartId}:${itemId}`;
+  return `CART:${String(cartId)}:${stringifyCartHoldIdSegment(itemId)}`;
 }
 
 function emitInventoryEvent(ctx, payload = {}) {
@@ -227,7 +243,8 @@ export const CartMutation = {
             getCartServingKey(it.servingKey || it.servingVariantKey) === servingKey &&
             String(it.restaurantId) === String(restaurantId)
         );
-        const reservedItemId = existing?._id || new mongoose.Types.ObjectId();
+        const reservedItemId =
+          existing?._id != null ? stringifyCartHoldIdSegment(existing._id) : createCartItemId();
 
         const reserveLines = [
           {
