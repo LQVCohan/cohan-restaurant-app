@@ -86,6 +86,31 @@ describe("backend authorization wrap-up", () => {
   });
 
 
+  it("updateParentRole blocks non-admin from modifying protected parent roles", async () => {
+    const save = vi.fn();
+    modelMocks.ParentRole.findById.mockResolvedValue({
+      _id: "parent-admin",
+      slug: "admin",
+      name: "Admin",
+      description: "Admin parent role",
+      save,
+      toObject: () => ({ _id: "parent-admin" }),
+    });
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    await expect(
+      RoleMutation.updateParentRole(
+        null,
+        { input: { id: "parent-admin", name: "Changed", description: "Changed" } },
+        { user: { id: "u1", roleName: "custom-manager", role: { permissions: [{ code: "role.write" }] } } },
+      ),
+    ).rejects.toThrow("System parent role cannot be modified");
+
+    expect(save).not.toHaveBeenCalled();
+  });
+
+
   it("updateParentRole rejects non-admin permissions outside manager staff whitelist", async () => {
     const save = vi.fn();
     modelMocks.ParentRole.findById.mockResolvedValue({

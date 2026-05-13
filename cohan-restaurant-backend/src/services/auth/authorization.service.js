@@ -18,6 +18,12 @@ export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
   "delivery.update",
   "shift.read",
   "cleaning.read",
+  "inventory.read",
+  "inventory.write",
+  "stock.read",
+  "stock.write",
+  "supplier.read",
+  "supplier.write",
 ]);
 
 export const PROTECTED_SYSTEM_ROLE_SLUGS = Object.freeze([

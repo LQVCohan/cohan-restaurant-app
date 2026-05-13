@@ -219,6 +219,11 @@ export const RoleMutation = {
 
     const pr = await ParentRole.findById(id);
     if (!pr) throw new GraphQLError("ParentRole not found");
+    if (!hasRole(user, ["admin"]) && isProtectedSystemRoleSlug(pr.slug)) {
+      throw new GraphQLError("System parent role cannot be modified", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
 
     if (Array.isArray(permissionIds)) {
       const valid = permissionIds.filter((pid) =>

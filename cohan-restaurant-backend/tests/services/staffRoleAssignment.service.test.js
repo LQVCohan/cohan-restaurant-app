@@ -78,13 +78,21 @@ describe("staffRoleAssignment.service", () => {
     })).rejects.toThrow("Protected system role");
   });
 
-  it("blocks manager from assigning staff roles with permissions outside whitelist", async () => {
-    modelMocks.Staff.findById.mockResolvedValue(staffDoc());
+  it("allows manager to assign storekeeper with inventory, stock, and supplier permissions", async () => {
+    const staff = staffDoc();
+    modelMocks.Staff.findById.mockResolvedValue(staff);
     modelMocks.Role.findById.mockReturnValue(roleQuery({
       _id: "role-storekeeper",
       slug: "storekeeper",
       parentRole: { slug: "staff", permissions: [] },
-      permissions: [{ code: "inventory.write" }],
+      permissions: [
+        { code: "inventory.read" },
+        { code: "inventory.write" },
+        { code: "stock.read" },
+        { code: "stock.write" },
+        { code: "supplier.read" },
+        { code: "supplier.write" },
+      ],
     }));
 
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
@@ -94,7 +102,33 @@ describe("staffRoleAssignment.service", () => {
       staffUserId: "staff-1",
       roleId: "role-storekeeper",
       restaurantId: "restaurant-1",
-    })).rejects.toThrow("Manager cannot assign permissions");
+    })).resolves.toBe(staff);
+    expect(staff.role).toBe("role-storekeeper");
+    expect(staff.save).toHaveBeenCalled();
+  });
+
+  it("blocks manager from assigning roles with sensitive system permissions", async () => {
+    for (const code of ["role.write", "permission.write", "config.write", "system.manage"]) {
+      modelMocks.Staff.findById.mockResolvedValue(staffDoc());
+      modelMocks.Role.findById.mockReturnValue(roleQuery({
+        _id: `role-${code}`,
+        slug: "custom-staff-role",
+        parentRole: { slug: "staff", permissions: [] },
+        permissions: [{ code }],
+      }));
+
+      const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
+
+      await expect(assignStaffRoleWithinRestaurant({
+        actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+        staffUserId: "staff-1",
+        roleId: `role-${code}`,
+        restaurantId: "restaurant-1",
+      })).rejects.toThrow("Manager cannot assign permissions");
+
+      vi.resetModules();
+      vi.clearAllMocks();
+    }
   });
 
   it("allows admin to bypass manager assignment whitelist", async () => {
