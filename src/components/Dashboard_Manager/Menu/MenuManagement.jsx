@@ -12,6 +12,7 @@ import {
   FiClock,
   FiPlus,
   FiFolderPlus,
+  FiTag,
   FiAlertCircle,
   FiTrash2,
 } from "react-icons/fi";
@@ -23,7 +24,8 @@ import Toolbar from "./components/Toolbar/Toolbar";
 import MenuItemCard from "./components/MenuItemCard/MenuItemCard";
 // Modals
 import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
-import CategoryModal from "./components/CategoryModal/CategoryModal";
+import DishCategoryModal from "./components/DishCategoryModal/DishCategoryModal";
+import MenuGroupModal from "./components/MenuGroupModal/MenuGroupModal";
 import PriceEditModal from "./components/PriceEditModal/PriceEditModal";
 import MenuModal from "./components/MenuModal/MenuModal";
 import Modal from "../../common/Modal";
@@ -148,7 +150,8 @@ const MenuManagement = () => {
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
     menu: { isOpen: false, editingMenu: null },
-    category: { isOpen: false },
+    dishCategory: { isOpen: false },
+    menuGroup: { isOpen: false },
     priceEdit: { isOpen: false },
   });
 
@@ -216,6 +219,7 @@ const MenuManagement = () => {
     sort: sortOption,
   });
 
+  const shouldLoadCategoryMenus = modals.menu.isOpen || modals.menuGroup.isOpen;
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
     useCategoryManagement({
       restaurantId: currentRestaurant || null,
@@ -223,7 +227,7 @@ const MenuManagement = () => {
       limit: 8,
       loadCategories: true,
       loadTopCategories: false,
-      loadCategoryMenus: modals.menu.isOpen,
+      loadCategoryMenus: shouldLoadCategoryMenus,
     });
 
   const { updateRecipe } = useRecipes(
@@ -584,7 +588,13 @@ const MenuManagement = () => {
           <div className="mm-actions">
             <button
               className="mm-btn mm-btn--secondary"
-              onClick={() => toggleModal("category", true)}
+              onClick={() => toggleModal("dishCategory", true)}
+            >
+              <FiTag /> Danh mục món
+            </button>
+            <button
+              className="mm-btn mm-btn--secondary"
+              onClick={() => toggleModal("menuGroup", true)}
             >
               <FiFolderPlus /> Nhóm thực đơn
             </button>
@@ -625,7 +635,8 @@ const MenuManagement = () => {
           onSortChange={setSortOption}
           onPriceRangeChange={setPriceRange}
           onBulkPriceEdit={() => toggleModal("priceEdit", true)}
-          onAddCategory={() => toggleModal("category", true)}
+          onAddDishCategory={() => toggleModal("dishCategory", true)}
+          onAddMenuGroup={() => toggleModal("menuGroup", true)}
           categories={categories}
           itemCount={displayItems.length}
           minPrice={priceRange.minPrice ?? ""}
@@ -731,12 +742,23 @@ const MenuManagement = () => {
         timeSlot={selectedTimeSlot || "breakfast"}
       />
 
-      <CategoryModal
+      <DishCategoryModal
         restaurantId={currentRestaurant}
         timeSlot={selectedTimeSlot || "breakfast"}
-        isOpen={modals.category.isOpen}
-        onClose={() => toggleModal("category", false)}
-        onSave={() => toggleModal("category", false)}
+        isOpen={modals.dishCategory.isOpen}
+        onClose={() => toggleModal("dishCategory", false)}
+        onSave={async () => {
+          await refetchItems?.();
+          toggleModal("dishCategory", false);
+        }}
+      />
+
+      <MenuGroupModal
+        restaurantId={currentRestaurant}
+        timeSlot={selectedTimeSlot || "breakfast"}
+        isOpen={modals.menuGroup.isOpen}
+        onClose={() => toggleModal("menuGroup", false)}
+        onSave={() => toggleModal("menuGroup", false)}
       />
 
       <PriceEditModal
