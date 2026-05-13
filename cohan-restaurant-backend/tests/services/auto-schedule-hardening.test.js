@@ -101,6 +101,21 @@ describe("auto schedule backend hardening", () => {
     expect(inputs[0].startTime.toISOString()).toBe(preview.plannedAssignments[0].startTime.toISOString());
   });
 
+  it("apply rejects stale selectedShiftKeys that are not in the regenerated preview", async () => {
+    const { buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
+    const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["kitchen"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }] };
+
+    await expect(buildAutoScheduleCreateInputs({ ...input, selectedShiftKeys: ["stale-shift-key"], allowPartialApply: true })).rejects.toThrow("Một số ca được chọn không còn hợp lệ, vui lòng tạo preview lại.");
+  });
+
+  it("apply rejects selectedShiftKeys that only point to blocked/unfilled items", async () => {
+    const { buildAutoSchedulePreviewBackend, buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
+    const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["bar"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }] };
+    const preview = await buildAutoSchedulePreviewBackend(input);
+
+    await expect(buildAutoScheduleCreateInputs({ ...input, selectedShiftKeys: [preview.items[0].shiftKey], allowPartialApply: true })).rejects.toThrow("Không có ca hợp lệ nào được chọn để áp dụng auto schedule.");
+  });
+
   it("apply is blocked when preview has unresolved roles unless partial apply is explicit", async () => {
     const { buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
     const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["kitchen", "bar"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }] };

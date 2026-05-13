@@ -40,6 +40,13 @@ describe("auto schedule resolver access", () => {
     expect(autoMocks.buildAutoScheduleCreateInputs).not.toHaveBeenCalled();
   });
 
+  it("apply surfaces backend selected key validation errors", async () => {
+    autoMocks.buildAutoScheduleCreateInputs.mockRejectedValueOnce(new Error("Một số ca được chọn không còn hợp lệ, vui lòng tạo preview lại."));
+    const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    await expect(m.applyAutoSchedule(null, { input: { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-24", selectedShiftKeys: ["stale"] } }, { user: { id: "u1" } })).rejects.toThrow("Một số ca được chọn không còn hợp lệ");
+  });
+
   it("publish is blocked when server-side validation finds missing staff/mandatory role", async () => {
     publishMocks.validateScheduleBeforePublish.mockResolvedValueOnce({ ok: false, issues: [{ code: "MANDATORY_ROLE_UNFILLED", severity: "error", message: "Thiếu role bắt buộc kitchen." }] });
     publishMocks.hasBlockingSchedulePublishIssues.mockReturnValueOnce(true);

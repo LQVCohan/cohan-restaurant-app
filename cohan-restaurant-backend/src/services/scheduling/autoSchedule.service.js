@@ -6,6 +6,10 @@ import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AUTO_SCHEDULE_PARTIAL_APPLY_ERROR =
   "Không thể áp dụng auto schedule vì vẫn còn ca/vai trò chưa được xếp đủ.";
+const INVALID_SELECTED_SHIFT_KEYS_ERROR =
+  "Một số ca được chọn không còn hợp lệ, vui lòng tạo preview lại.";
+const NO_SELECTED_ASSIGNMENTS_ERROR =
+  "Không có ca hợp lệ nào được chọn để áp dụng auto schedule.";
 const MIN_OVERRIDE_REASON_LENGTH = 5;
 
 function toObjectId(value) {
@@ -144,10 +148,23 @@ function getSelectedShiftKeySet(input = {}) {
   }
 
   return new Set(
-    input.selectedShiftKeys
-      .map((key) => String(key || "").trim())
-      .filter(Boolean),
+    input.selectedShiftKeys.map((key) => String(key || "").trim()),
   );
+}
+
+function assertSelectedShiftKeysValid(preview, selectedShiftKeySet) {
+  if (!selectedShiftKeySet) return;
+
+  const validShiftKeys = new Set(
+    (preview.items || []).map((item) => String(item.shiftKey || "")),
+  );
+  const invalidKeys = [...selectedShiftKeySet].filter(
+    (key) => !validShiftKeys.has(key),
+  );
+
+  if (invalidKeys.length > 0) {
+    throw new Error(INVALID_SELECTED_SHIFT_KEYS_ERROR);
+  }
 }
 
 function getApplyScopePreview(preview, selectedShiftKeySet) {
@@ -256,7 +273,13 @@ export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
   assertValidOverrideInput(input);
 
   const preview = await buildAutoSchedulePreviewBackend(input, ctx);
-  const applyPreview = getApplyScopePreview(preview, getSelectedShiftKeySet(input));
+  const selectedShiftKeySet = getSelectedShiftKeySet(input);
+  assertSelectedShiftKeysValid(preview, selectedShiftKeySet);
+
+  const applyPreview = getApplyScopePreview(preview, selectedShiftKeySet);
+  if (selectedShiftKeySet && applyPreview.plannedAssignments.length === 0) {
+    throw new Error(NO_SELECTED_ASSIGNMENTS_ERROR);
+  }
   assertPreviewCanApply(applyPreview, input);
 
   return applyPreview.plannedAssignments.map((item) => ({
@@ -272,4 +295,8 @@ export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
   }));
 }
 
-export { AUTO_SCHEDULE_PARTIAL_APPLY_ERROR };
+export {
+  AUTO_SCHEDULE_PARTIAL_APPLY_ERROR,
+  INVALID_SELECTED_SHIFT_KEYS_ERROR,
+  NO_SELECTED_ASSIGNMENTS_ERROR,
+};

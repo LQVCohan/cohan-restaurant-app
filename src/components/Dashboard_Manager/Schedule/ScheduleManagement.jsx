@@ -3815,6 +3815,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return;
     }
 
+    const selectedShiftKeys = Object.keys(selectedAutoShiftKeys).filter(
+      (key) => selectedAutoShiftKeys[key],
+    );
+
+    if (!selectedShiftKeys.length) {
+      const message = "Vui lòng chọn ít nhất một ca hợp lệ để áp dụng.";
+      setAutoScheduleError(message);
+      showNotification(message, "warning");
+      return;
+    }
+
     const inputs = buildAutoScheduleCreateInputs({
       previewItems: autoSchedulePreview.items,
       selectedShiftKeys: selectedAutoShiftKeys,
@@ -3843,18 +3854,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
             allowPartialApply: true,
-            selectedShiftKeys: Object.keys(selectedAutoShiftKeys).filter(
-              (key) => selectedAutoShiftKeys[key],
-            ),
+            selectedShiftKeys,
           },
         },
       });
       const batchResult = response?.data?.applyAutoSchedule || { successCount: 0, failedCount: 0, errors: [] };
-      if (Number(batchResult.successCount || 0) > 0) await refetch();
-      setIsAutoScheduleOpen(false);
-      setSelectedAutoShiftKeys({});
-      setValidatedAutoSchedulePreview(null);
-      showNotification(`Đã áp dụng ${Number(batchResult.successCount || 0)} phân công từ chia ca tự động.`, batchResult.failedCount ? "warning" : "success");
+      const successCount = Number(batchResult.successCount || 0);
+      if (successCount > 0) {
+        await refetch();
+        setIsAutoScheduleOpen(false);
+        setSelectedAutoShiftKeys({});
+        setValidatedAutoSchedulePreview(null);
+        showNotification(`Đã áp dụng ${successCount} phân công từ chia ca tự động.`, batchResult.failedCount ? "warning" : "success");
+        return;
+      }
+
+      const message =
+        (batchResult.errors || []).map((error) => error.message).filter(Boolean).join(" | ") ||
+        "Không có ca hợp lệ nào được áp dụng. Vui lòng kiểm tra lại preview.";
+      setAutoScheduleError(message);
+      showNotification(message, "warning");
       return;
     } catch (error) {
       const message = getGraphQLErrorMessage(error, "Không thể áp dụng chia ca tự động.");
