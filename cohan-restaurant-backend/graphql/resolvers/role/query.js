@@ -1,10 +1,22 @@
-// src/graphql/role/query.js (ví dụ)
-import { Role } from "../../../models/index.js";
-import { requireRole } from "../../../utils/authz.js";
+import { ParentRole, Role } from "../../../models/index.js";
+import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
+
+function mergeEffectivePermissions(roleObject) {
+  const permMap = new Map();
+  for (const p of roleObject.parentRole?.permissions || []) {
+    const key = String(p?._id || p?.id || p?.code || "");
+    if (key) permMap.set(key, p);
+  }
+  for (const p of roleObject.permissions || []) {
+    const key = String(p?._id || p?.id || p?.code || "");
+    if (key) permMap.set(key, p);
+  }
+  return Array.from(permMap.values());
+}
 
 export const RoleQuery = {
-  role: async (_, { search, parentRoleId }, { user }) => {
-    // requireRole(user, ["admin", "manager"]);
+  role: async (_, { search, parentRoleId }, ctx) => {
+    await requireAnyPermission(ctx, ["role.read", "staff.read"]);
 
     const q = {};
 
@@ -16,51 +28,33 @@ export const RoleQuery = {
       ];
     }
 
-    if (parentRoleId) {
-      q.parentRole = parentRoleId;
-    }
+    if (parentRoleId) q.parentRole = parentRoleId;
 
     const roles = await Role.find(q)
-      .populate({
-        path: "permissions",
-      })
-      .populate({
-        path: "parentRole",
-        populate: {
-          path: "permissions",
-        },
-      })
+      .populate("permissions")
+      .populate({ path: "parentRole", populate: { path: "permissions" } })
       .sort({ slug: 1 })
       .exec();
 
-    // Gộp permission của parent + role hiện tại
-    const result = roles.map((r) => {
+    return roles.map((r) => {
       const obj = r.toObject();
-
-      const permMap = new Map();
-
-      // 1) permission từ parentRole
-      if (obj.parentRole && Array.isArray(obj.parentRole.permissions)) {
-        for (const p of obj.parentRole.permissions) {
-          if (!p?._id) continue;
-          permMap.set(String(p._id), p);
-        }
-      }
-
-      // 2) permission từ role hiện tại
-      if (Array.isArray(obj.permissions)) {
-        for (const p of obj.permissions) {
-          if (!p?._id) continue;
-          permMap.set(String(p._id), p);
-        }
-      }
-
-      // Gán lại mảng permissions đã gộp
-      obj.permissions = Array.from(permMap.values());
-
+      obj.permissions = mergeEffectivePermissions(obj);
       return obj;
     });
+  },
 
-    return result;
+  parentRoles: async (_, { search }, ctx) => {
+    await requireAnyPermission(ctx, ["role.read", "staff.read"]);
+
+    const q = {};
+    if (search) {
+      q.$or = [
+        { name: new RegExp(search, "i") },
+        { slug: new RegExp(search, "i") },
+        { description: new RegExp(search, "i") },
+      ];
+    }
+
+    return ParentRole.find(q).populate("permissions").sort({ slug: 1 });
   },
 };

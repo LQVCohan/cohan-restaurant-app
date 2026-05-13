@@ -10,7 +10,10 @@ const modelMocks = vi.hoisted(() => ({
   Restaurant: { find: vi.fn(), aggregate: vi.fn() },
 }));
 
-vi.mock("../../utils/authz.js", () => ({ requireRole: requireRoleMock }));
+vi.mock("../../utils/authz.js", () => ({
+  requireRole: requireRoleMock,
+  hasRole: vi.fn((user, roles) => roles.includes(String(user?.roleName || user?.role || "").toLowerCase())),
+}));
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("mongoose", () => ({
   default: { isValidObjectId: vi.fn(() => true) },
@@ -33,7 +36,7 @@ describe("backend authorization wrap-up", () => {
       RoleMutation.createRole(
         null,
         { input: { name: "X", slug: "x", parentRoleId: "p1", permissionIds: [] } },
-        { user: { id: "u1", role: "manager" } },
+        { user: { id: "u1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN");
 

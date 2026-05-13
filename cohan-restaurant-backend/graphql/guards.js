@@ -53,7 +53,7 @@ async function managerOwnsRestaurant(ctx, restaurantId) {
 
     return Boolean(managed);
   } catch (error) {
-    if (String(error?.message || "").includes('No "Restaurant" export')) {
+    if (String(error?.message || "").includes('No "Restaurant" export') || error?.name === "CastError") {
       return false;
     }
 

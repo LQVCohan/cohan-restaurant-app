@@ -8,6 +8,8 @@ type Permission {
   resource: String!
   createdAt: String
   updatedAt: String
+  isSystem: Boolean
+  isActive: Boolean
 }
 
 input CreatePermissionInput {
@@ -17,6 +19,8 @@ input CreatePermissionInput {
   group: String
   action: String!
   resource: String!
+  isSystem: Boolean
+  isActive: Boolean
 }
 input UpdatePermissionInput {
   id: ID!
@@ -26,6 +30,8 @@ input UpdatePermissionInput {
   action: String
   resource: String
   code: String
+  isSystem: Boolean
+  isActive: Boolean
 }
 
 extend type Query {
@@ -40,4 +46,5 @@ extend type Query {
 extend type Mutation {
   createPermission(input: CreatePermissionInput!): Permission!
   updatePermission(input: UpdatePermissionInput!): Permission!
+  deletePermission(id: ID!): Boolean!
 }

@@ -1,7 +1,10 @@
 import { Permission } from "../../../models/index.js";
+import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 
 export const PermissionQuery = {
-  permissions: async (_, { search, group, resource, action }) => {
+  permissions: async (_, { search, group, resource, action }, ctx) => {
+    await requireAnyPermission(ctx, ["permission.read", "role.read", "staff.read"]);
+
     const q = {};
     if (group) q.group = group.toLowerCase();
     if (resource) q.resource = resource.toLowerCase();
@@ -14,6 +17,6 @@ export const PermissionQuery = {
       ];
     }
 
-    return Permission.find(q).sort({ code: 1 });
+    return Permission.find(q).sort({ group: 1, code: 1 });
   },
 };
