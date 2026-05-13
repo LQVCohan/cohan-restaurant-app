@@ -19,7 +19,6 @@ const guardMocks = vi.hoisted(() => ({
   requireAuth: vi.fn((ctx) => {
     if (!ctx?.user?.id) throw new Error("UNAUTHENTICATED");
   }),
-  requireRestaurantAccess: vi.fn(),
 }));
 
 vi.mock("../models/index.js", () => modelMocks);
@@ -51,7 +50,6 @@ function activeCoupon(overrides = {}) {
 describe("UserCoupon resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    guardMocks.requireRestaurantAccess.mockResolvedValue(true);
   });
 
   it("fails saveCoupon for unauthenticated users", async () => {
@@ -60,7 +58,7 @@ describe("UserCoupon resolvers", () => {
     ).rejects.toThrow("UNAUTHENTICATED");
   });
 
-  it("saves an active coupon for the current user", async () => {
+  it("saves an active coupon for a normal customer without restaurant scope", async () => {
     modelMocks.Coupon.findById.mockResolvedValue(activeCoupon());
     modelMocks.UserCoupon.findOne.mockResolvedValue(null);
     const created = {
@@ -79,10 +77,6 @@ describe("UserCoupon resolvers", () => {
       ctx(),
     );
 
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      ctx(),
-      RESTAURANT_ID,
-    );
     expect(modelMocks.UserCoupon.create).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "saved",
@@ -119,9 +113,9 @@ describe("UserCoupon resolvers", () => {
     ).rejects.toThrow(message);
   });
 
-  it("returns only the current user's saved coupons", async () => {
+  it("filters myCoupons by current user and restaurant without restaurant access", async () => {
     const lean = vi.fn().mockResolvedValue([
-      { id: "uc-1", userId: USER_ID, couponId: COUPON_ID, status: "saved" },
+      { id: "uc-1", userId: USER_ID, couponId: COUPON_ID, restaurantId: RESTAURANT_ID, status: "saved" },
     ]);
     const sort = vi.fn().mockReturnValue({ lean });
     const populate = vi.fn().mockReturnValue({ sort });
@@ -138,7 +132,32 @@ describe("UserCoupon resolvers", () => {
     );
     expect(String(modelMocks.UserCoupon.find.mock.calls[0][0].userId)).toBe(USER_ID);
     expect(String(modelMocks.UserCoupon.find.mock.calls[0][0].restaurantId)).toBe(RESTAURANT_ID);
-    expect(result).toHaveLength(1);
+    expect(result).toEqual([
+      {
+        id: "uc-1",
+        userId: USER_ID,
+        couponId: COUPON_ID,
+        restaurantId: RESTAURANT_ID,
+        status: "saved",
+      },
+    ]);
+  });
+
+  it("does not expose another user's coupons through myCoupons", async () => {
+    const lean = vi.fn().mockResolvedValue([]);
+    const sort = vi.fn().mockReturnValue({ lean });
+    const populate = vi.fn().mockReturnValue({ sort });
+    modelMocks.UserCoupon.find.mockReturnValue({ populate });
+
+    const result = await UserCouponResolvers.Query.myCoupons(
+      {},
+      { restaurantId: RESTAURANT_ID, status: "saved" },
+      ctx(OTHER_USER_ID),
+    );
+
+    expect(String(modelMocks.UserCoupon.find.mock.calls[0][0].userId)).toBe(OTHER_USER_ID);
+    expect(String(modelMocks.UserCoupon.find.mock.calls[0][0].restaurantId)).toBe(RESTAURANT_ID);
+    expect(result).toEqual([]);
   });
 
   it("does not expose another user's saved state through isCouponSaved", async () => {

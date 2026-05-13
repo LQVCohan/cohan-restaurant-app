@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Coupon, UserCoupon } from "../../../models/index.js";
-import { requireAuth, requireRestaurantAccess } from "../../guards.js";
+import { requireAuth } from "../../guards.js";
 
 const SAVED_STATUS = "saved";
 
@@ -76,7 +76,6 @@ const UserCouponResolvers = {
 
       if (restaurantId) {
         const rid = toObjectId(restaurantId, "restaurantId");
-        await requireRestaurantAccess(ctx, rid);
         filter.restaurantId = rid;
       }
 
@@ -109,7 +108,6 @@ const UserCouponResolvers = {
       const coupon = await Coupon.findById(cid);
 
       assertCouponCanBeSaved(coupon);
-      await requireRestaurantAccess(ctx, coupon.restaurantId);
 
       const existing = await UserCoupon.findOne({ userId, couponId: cid });
       if (existing) {

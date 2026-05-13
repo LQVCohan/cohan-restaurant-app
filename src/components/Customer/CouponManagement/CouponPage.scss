@@ -214,6 +214,17 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
   }
 }
 
+.coupon-action-error {
+  margin: -4px 0 16px;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .coupon-grid {
   display: grid;
   grid-template-columns: 1fr;

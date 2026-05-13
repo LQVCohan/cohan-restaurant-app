@@ -199,6 +199,7 @@ const CouponPage = () => {
   });
   const [activeTab, setActiveTab] = useState("all");
   const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [saveActionError, setSaveActionError] = useState("");
   const canSaveCoupons = Boolean(isAuthenticated || user?.id || token);
   const {
     savedCouponIds,
@@ -226,12 +227,23 @@ const CouponPage = () => {
   const handleToggleSave = async (id) => {
     if (!canSaveCoupons) return;
 
-    if (savedCouponIds.includes(id)) {
-      await removeSavedCoupon(id);
-      return;
-    }
+    const isSaved = savedCouponIds.includes(id);
+    setSaveActionError("");
 
-    await saveCoupon(id);
+    try {
+      if (isSaved) {
+        await removeSavedCoupon(id);
+        return;
+      }
+
+      await saveCoupon(id);
+    } catch {
+      setSaveActionError(
+        isSaved
+          ? "Không thể bỏ lưu Coupon. Vui lòng thử lại."
+          : "Không thể lưu Coupon. Vui lòng thử lại.",
+      );
+    }
   };
 
   const renderCouponUsage = (coupon) => {
@@ -421,6 +433,12 @@ const CouponPage = () => {
         <div className="section-title">
           <h3>✨ Coupon dành cho bạn</h3>
         </div>
+
+        {saveActionError && (
+          <p className="coupon-action-error" role="alert">
+            {saveActionError}
+          </p>
+        )}
 
         {renderCouponContent()}
       </div>

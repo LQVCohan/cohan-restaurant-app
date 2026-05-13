@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,6 +126,71 @@ describe("CouponPage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1));
 
     expect(removeSavedCoupon).toHaveBeenCalledWith("coupon-1");
+  });
+
+  it("shows a friendly error when saving fails", async () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    saveCoupon.mockRejectedValueOnce(new Error("network"));
+
+    renderCouponPage({
+      path: "/coupons/restaurant-123",
+      authValue: { isAuthenticated: true, user: { id: "user-1" } },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu ngay" }));
+
+    expect(saveCoupon).toHaveBeenCalledWith("coupon-1");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể lưu Coupon. Vui lòng thử lại.",
+    );
+  });
+
+  it("shows a friendly error when removing a saved coupon fails", async () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    removeSavedCoupon.mockRejectedValueOnce(new Error("network"));
+    useUserCoupons.mockReturnValue({
+      myCoupons: [{ id: "uc-1", couponId: "coupon-1", status: "saved" }],
+      savedCouponIds: ["coupon-1"],
+      loading: false,
+      error: null,
+      saveCoupon,
+      removeSavedCoupon,
+      refetch: vi.fn(),
+    });
+
+    renderCouponPage({
+      path: "/coupons/restaurant-123",
+      authValue: { isAuthenticated: true, user: { id: "user-1" } },
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1));
+
+    expect(removeSavedCoupon).toHaveBeenCalledWith("coupon-1");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể bỏ lưu Coupon. Vui lòng thử lại.",
+    );
+  });
+
+  it("clears a previous save/remove error after a successful retry", async () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    saveCoupon
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ id: "uc-1" });
+
+    renderCouponPage({
+      path: "/coupons/restaurant-123",
+      authValue: { isAuthenticated: true, user: { id: "user-1" } },
+    });
+
+    const saveButton = screen.getByRole("button", { name: "Lưu ngay" });
+    fireEvent.click(saveButton);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
   });
 
   it("prompts unauthenticated users to log in and does not save", () => {
