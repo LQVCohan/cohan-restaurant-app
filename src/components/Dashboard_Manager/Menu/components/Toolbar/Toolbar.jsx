@@ -15,6 +15,7 @@ import {
   FiChevronDown,
   FiSliders,
   FiPauseCircle,
+  FiFolderPlus,
 } from "react-icons/fi";
 import "./Toolbar.scss";
 
@@ -44,6 +45,9 @@ const Toolbar = ({
   onPriceRangeChange,
   onBulkPriceEdit,
   onCreatePromotion,
+  onAddDishCategory,
+  onAddMenuGroup,
+  // Backward compatibility for old callers.
   onAddCategory,
   categories = [],
   itemCount = 0,
@@ -93,6 +97,9 @@ const Toolbar = ({
     }
   };
 
+  const handleAddDishCategory = onAddDishCategory || onAddCategory;
+  const handleAddMenuGroup = onAddMenuGroup || onAddCategory;
+
   return (
     <div className="toolbar-container">
       <div className="toolbar-top">
@@ -138,9 +145,16 @@ const Toolbar = ({
               <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
             </button>
           )}
-          <button className="btn btn-primary" onClick={onAddCategory}>
-            <FiPlus /> <span className="hide-mobile">Nhóm thực đơn</span>
-          </button>
+          {handleAddDishCategory && (
+            <button className="btn btn-secondary" onClick={handleAddDishCategory}>
+              <FiTag /> <span className="hide-mobile">Danh mục món</span>
+            </button>
+          )}
+          {handleAddMenuGroup && (
+            <button className="btn btn-primary" onClick={handleAddMenuGroup}>
+              <FiFolderPlus /> <span className="hide-mobile">Nhóm thực đơn</span>
+            </button>
+          )}
         </div>
       </div>
 
