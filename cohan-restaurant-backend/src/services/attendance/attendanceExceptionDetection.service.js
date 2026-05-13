@@ -1,8 +1,10 @@
 import {
+  PayrollPeriod,
   SchedulePublication,
   Shift,
   Timesheet,
 } from "../../../models/index.js";
+import { syncAttendancePerformanceIncidents } from "../performance/attendancePerformanceIntegration.service.js";
 
 export const ATTENDANCE_EXCEPTION_TIMEZONE = "Asia/Ho_Chi_Minh";
 export const DEFAULT_NO_SHOW_GRACE_MINUTES = 15;
@@ -57,6 +59,27 @@ const isPublishedOrActivePublication = (publication) =>
 
 const isOfficialShiftStatus = (shift) =>
   !IGNORED_SHIFT_STATUSES.has(normalizeStatus(shift?.status));
+
+async function loadLockedPayrollPeriods({ restaurantId, startDate, endDate }) {
+  if (!restaurantId || !startDate || !endDate) return [];
+
+  return PayrollPeriod.find({
+    restaurantId,
+    status: { $in: ["finalized", "locked", "paid"] },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  }).lean();
+}
+
+const shiftOverlapsLockedPayroll = (shift, lockedPayrollPeriods = []) =>
+  lockedPayrollPeriods.some((period) =>
+    overlapsRange(
+      period.startDate,
+      period.endDate,
+      shift.startTime,
+      shift.endTime,
+    ),
+  );
 
 const buildNoShowPayload = (shift) => ({
   employeeId: shift.employeeId,
@@ -147,9 +170,20 @@ async function loadTimesheetsForEligibleShifts({ restaurantId, shiftIds }) {
   return query;
 }
 
+async function syncPerformanceForTimesheet(timesheet) {
+  try {
+    await syncAttendancePerformanceIncidents(timesheet, {
+      actorRole: "system",
+    });
+  } catch (error) {
+    console.warn("Failed to sync attendance performance incidents:", error.message);
+  }
+}
+
 async function createNoShowTimesheet(shift) {
   const record = new Timesheet(buildNoShowPayload(shift));
   await record.save();
+  await syncPerformanceForTimesheet(record);
   return record;
 }
 
@@ -195,6 +229,7 @@ async function ensureNoShowForShift({
   }
 
   await timesheet.save();
+  await syncPerformanceForTimesheet(timesheet);
   return { created: false, updated: true };
 }
 
@@ -227,6 +262,7 @@ async function ensureMissedCheckoutForTimesheet({
     timesheet.plannedEndTime = plannedEndTime;
   }
   await timesheet.save();
+  await syncPerformanceForTimesheet(timesheet);
   return true;
 }
 
@@ -253,15 +289,25 @@ export async function detectAttendanceExceptionsForRange({
     shiftIds: shifts.map((shift) => shift._id),
   });
   const timesheetByShiftId = mapByShiftId(timesheets);
+  const lockedPayrollPeriods = await loadLockedPayrollPeriods({
+    restaurantId,
+    startDate: rangeStart,
+    endDate: rangeEnd,
+  });
 
   const summary = {
     scannedShifts: shifts.length,
     noShowCreated: 0,
     noShowUpdated: 0,
     missedCheckoutUpdated: 0,
+    skippedLockedPayroll: 0,
   };
 
   for (const shift of shifts) {
+    if (shiftOverlapsLockedPayroll(shift, lockedPayrollPeriods)) {
+      summary.skippedLockedPayroll += 1;
+      continue;
+    }
     const timesheet = timesheetByShiftId.get(String(shift._id)) || null;
     const noShowResult = await ensureNoShowForShift({
       shift,
@@ -299,6 +345,8 @@ export const __testables__ = {
   buildNoShowPayload,
   filterShiftsInsideOfficialPublications,
   isPublishedOrActivePublication,
+  loadLockedPayrollPeriods,
+  shiftOverlapsLockedPayroll,
   shouldSkipMissedCheckoutUpdate,
   toUtcOffsetEndOfDay,
   toUtcOffsetStartOfDay,

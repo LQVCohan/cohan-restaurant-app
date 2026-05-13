@@ -1,4 +1,4 @@
-export const normalizeVoucherCode = (value) => {
+export const normalizeCouponCode = (value) => {
   const code = String(value || "")
     .trim()
     .toUpperCase();
@@ -90,12 +90,12 @@ export const buildDiscountPricingInput = ({
   taxRate = 0,
   serviceRate = 0,
   shippingFee = 0,
-  voucherCode = "",
+  couponCode = "",
 }) => ({
   taxRate: Number(taxRate || 0),
   serviceRate: Number(serviceRate || 0),
   shippingFee: Number(shippingFee || 0),
-  voucherCode: normalizeVoucherCode(voucherCode),
+  voucherCode: normalizeCouponCode(couponCode),
 });
 
 export const buildOrderDiscountPreviewInput = ({
@@ -105,7 +105,7 @@ export const buildOrderDiscountPreviewInput = ({
   taxRate = 0,
   serviceRate = 0,
   shippingFee = 0,
-  voucherCode = "",
+  couponCode = "",
   promotionIds = [],
 }) => ({
   restaurantId,
@@ -115,7 +115,7 @@ export const buildOrderDiscountPreviewInput = ({
     taxRate,
     serviceRate,
     shippingFee,
-    voucherCode,
+    couponCode,
   }),
   promotionIds: Array.isArray(promotionIds) ? promotionIds : [],
 });

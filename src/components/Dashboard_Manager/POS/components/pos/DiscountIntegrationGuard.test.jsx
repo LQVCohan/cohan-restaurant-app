@@ -58,7 +58,7 @@ describe("voucher promotion POS integration guards", () => {
     expect(activePromotionsSource).toContain("activeOnly: true");
     expect(activePromotionsSource).toContain('scope === "order"');
     expect(discountDisplaySource).toContain("formatDiscountReasonLabel");
-    expect(discountDisplaySource).toContain("Voucher hợp lệ");
+    expect(discountDisplaySource).toContain("Coupon hợp lệ");
     expect(discountDisplaySource).toContain("Chương trình khuyến mãi");
   });
 });

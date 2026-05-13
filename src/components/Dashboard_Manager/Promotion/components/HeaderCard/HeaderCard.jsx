@@ -53,7 +53,7 @@ const HeaderCard = ({
             <Ticket size={22} />
           </div>
           <div className="stat-content">
-            <span className="label">Tong Voucher</span>
+            <span className="label">Tổng Coupon</span>
             <span className="value">{stats.total}</span>
           </div>
         </div>

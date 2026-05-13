@@ -18,7 +18,7 @@ const OVERTIME_ACTION_ERROR_MESSAGES = {
   ATTENDANCE_OVERTIME_ALREADY_REVIEWED:
     "⚠️ Bản ghi tăng ca này đã được review trước đó. Vui lòng tải lại danh sách.",
   ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED:
-    "⚠️ Không thể duyệt hoặc từ chối tăng ca vì kỳ lương tương ứng đã chốt hoặc đã thanh toán.",
+    "⚠️ Kỳ lương đã chốt/khóa/thanh toán, không thể thay đổi tăng ca.",
 };
 
 const normalizeRole = (value) => String(value || "").trim().toLowerCase();

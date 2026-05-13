@@ -122,12 +122,23 @@ export async function validatePayrollPeriod(periodId, options = {}) {
     },
     isOffSchedule: true,
     approved: { $ne: true },
-    $or: [
-      { workedMinutes: { $gt: 0 } },
-      { hours: { $gt: 0 } },
-      { amount: { $gt: 0 } },
-      { actualCheckInAt: { $exists: true } },
-      { actualCheckOutAt: { $exists: true } },
+    $and: [
+      {
+        $or: [
+          { offScheduleApprovalStatus: { $exists: false } },
+          { offScheduleApprovalStatus: "not_required" },
+          { offScheduleApprovalStatus: "pending" },
+        ],
+      },
+      {
+        $or: [
+          { workedMinutes: { $gt: 0 } },
+          { hours: { $gt: 0 } },
+          { amount: { $gt: 0 } },
+          { actualCheckInAt: { $exists: true } },
+          { actualCheckOutAt: { $exists: true } },
+        ],
+      },
     ],
   })
     .populate("employeeId", "fullName employeeCode")

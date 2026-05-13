@@ -16,7 +16,7 @@ import Modal from "../../common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
 import useCommunication from "../../../hooks/useCommunication";
 import { usePromotions } from "../../../hooks/usePromotions";
-import { useVouchers } from "../../../hooks/useVouchers";
+import { useCoupons } from "../../../hooks/useCoupons";
 import "./PromotionModal.scss";
 
 const CAMPAIGN_LOG_SUBJECT = "__PROMO_CAMPAIGN_LOG__";
@@ -48,7 +48,7 @@ const buildRecipientSet = (customers, targetMode, manualIds, segment) => {
   });
 };
 
-const buildOfferOptions = (promotions, vouchers, packages, restaurantId) => {
+const buildOfferOptions = (promotions, coupons, couponPackages, restaurantId) => {
   const rows = [];
   promotions
     .filter((p) => !restaurantId || String(p.restaurantId) === String(restaurantId))
@@ -62,24 +62,24 @@ const buildOfferOptions = (promotions, vouchers, packages, restaurantId) => {
         code: p.code || "",
       });
     });
-  vouchers.forEach((v) => {
+  coupons.forEach((coupon) => {
     rows.push({
-      id: `voucher:${v.id}`,
-      sourceId: v.id,
-      kind: "voucher",
-      title: v.name,
-      description: v.description || `Mã: ${v.code || "N/A"}`,
-      code: v.code || "",
+      id: `coupon:${coupon.id}`,
+      sourceId: coupon.id,
+      kind: "coupon",
+      title: coupon.name,
+      description: coupon.description || `Mã: ${coupon.code || "N/A"}`,
+      code: coupon.code || "",
     });
   });
-  packages.forEach((pkg) => {
+  couponPackages.forEach((couponPackage) => {
     rows.push({
-      id: `package:${pkg.id}`,
-      sourceId: pkg.id,
-      kind: "package",
-      title: pkg.name,
-      description: pkg.description || `Mã: ${pkg.code || "N/A"}`,
-      code: pkg.code || "",
+      id: `couponPackage:${couponPackage.id}`,
+      sourceId: couponPackage.id,
+      kind: "couponPackage",
+      title: couponPackage.name,
+      description: couponPackage.description || `Mã: ${couponPackage.code || "N/A"}`,
+      code: couponPackage.code || "",
     });
   });
   return rows;
@@ -118,7 +118,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
   );
 
   const { allPromotions, loading: promotionsLoading } = usePromotions();
-  const { allVouchers, allPackages } = useVouchers();
+  const { allCoupons, allCouponPackages } = useCoupons();
   const {
     thread,
     threadLoading,
@@ -128,8 +128,8 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
   } = useCommunication({ restaurantId });
 
   const offerOptions = useMemo(
-    () => buildOfferOptions(allPromotions, allVouchers, allPackages, restaurantId),
-    [allPromotions, allVouchers, allPackages, restaurantId]
+    () => buildOfferOptions(allPromotions, allCoupons, allCouponPackages, restaurantId),
+    [allPromotions, allCoupons, allCouponPackages, restaurantId]
   );
 
   const selectedOffer = useMemo(
@@ -363,7 +363,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
             <div className="step-content">
               {promotionsLoading && <div className="pm-state">Đang tải ưu đãi từ database...</div>}
               {!promotionsLoading && offerOptions.length === 0 && (
-                <div className="pm-state">Không có ưu đãi/voucher nào trong database.</div>
+                <div className="pm-state">Không có ưu đãi/coupon nào trong database.</div>
               )}
               <div className="promo-grid">
                 {offerOptions.map((offer) => (

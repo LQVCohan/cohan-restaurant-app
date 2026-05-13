@@ -51,6 +51,56 @@ export const QUERY_ATTENDANCE_PAGE = gql`
       overtimeReviewedAt
       status
       isOffSchedule
+      offScheduleApprovalStatus
+      offScheduleReasonCategory
+      offScheduleReason
+      offScheduleReviewedBy
+      offScheduleReviewedAt
+      offScheduleReviewNote
+      source
+      note
+      approved
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const QUERY_OFF_SCHEDULE_ATTENDANCES = gql`
+  query OffScheduleAttendances($input: OffScheduleAttendanceFilterInput!) {
+    offScheduleAttendances(input: $input) {
+      id
+      employeeId
+      employeeName
+      employeeCode
+      employeeRole
+      employeeAvatar
+      restaurantId
+      workDate
+      shiftId
+      shiftType
+      plannedStartTime
+      plannedEndTime
+      actualCheckInAt
+      actualCheckOutAt
+      workedMinutes
+      hours
+      latenessMinutes
+      earlyLeaveMinutes
+      overtimeMinutes
+      approvedOvertimeMinutes
+      overtimeApprovalStatus
+      overtimeReviewNote
+      overtimeReviewedBy
+      overtimeReviewedAt
+      status
+      isOffSchedule
+      offScheduleApprovalStatus
+      offScheduleReasonCategory
+      offScheduleReason
+      offScheduleReviewedBy
+      offScheduleReviewedAt
+      offScheduleReviewNote
       source
       note
       approved
@@ -137,6 +187,24 @@ export const buildAttendanceQueryVars = ({
   search: search?.trim() || undefined,
 });
 
+export const buildOffScheduleAttendanceFilter = ({
+  selectedDate,
+  restaurantId,
+  employeeId,
+  search,
+  approvalStatus,
+  onlyPending = true,
+}) => ({
+  restaurantId: restaurantId || undefined,
+  employeeId: employeeId || undefined,
+  startDate: toAttendanceIsoStartOfDay(selectedDate),
+  endDate: toAttendanceIsoEndOfDay(selectedDate),
+  approvalStatus:
+    approvalStatus && approvalStatus !== "all" ? approvalStatus : undefined,
+  onlyPending: Boolean(onlyPending),
+  search: search?.trim() || undefined,
+});
+
 export const buildAttendanceCorrectionFilter = ({
   selectedDate,
   correctionStatus,
@@ -176,6 +244,12 @@ const MUTATION_UPSERT_ATTENDANCE = gql`
       plannedStartTime
       plannedEndTime
       isOffSchedule
+      offScheduleApprovalStatus
+      offScheduleReasonCategory
+      offScheduleReason
+      offScheduleReviewedBy
+      offScheduleReviewedAt
+      offScheduleReviewNote
       note
       source
     }
@@ -256,11 +330,77 @@ const ATTENDANCE_OVERTIME_FIELDS = gql`
     overtimeReviewedAt
     status
     isOffSchedule
+    offScheduleApprovalStatus
+    offScheduleReasonCategory
+    offScheduleReason
+    offScheduleReviewedBy
+    offScheduleReviewedAt
+    offScheduleReviewNote
     source
     note
     approved
     createdAt
     updatedAt
+  }
+`;
+
+const OFF_SCHEDULE_ATTENDANCE_FIELDS = gql`
+  fragment OffScheduleAttendanceFields on StaffAttendanceRecord {
+    id
+    employeeId
+    employeeName
+    employeeCode
+    employeeRole
+    employeeAvatar
+    restaurantId
+    workDate
+    shiftId
+    shiftType
+    plannedStartTime
+    plannedEndTime
+    actualCheckInAt
+    actualCheckOutAt
+    workedMinutes
+    hours
+    latenessMinutes
+    earlyLeaveMinutes
+    overtimeMinutes
+    approvedOvertimeMinutes
+    overtimeApprovalStatus
+    overtimeReviewNote
+    overtimeReviewedBy
+    overtimeReviewedAt
+    status
+    isOffSchedule
+    offScheduleApprovalStatus
+    offScheduleReasonCategory
+    offScheduleReason
+    offScheduleReviewedBy
+    offScheduleReviewedAt
+    offScheduleReviewNote
+    source
+    note
+    approved
+    createdAt
+    updatedAt
+  }
+`;
+
+const MUTATION_APPROVE_OFF_SCHEDULE_ATTENDANCE = gql`
+  ${OFF_SCHEDULE_ATTENDANCE_FIELDS}
+  mutation ApproveOffScheduleAttendance($timesheetId: ID!, $note: String) {
+    approveOffScheduleAttendance(timesheetId: $timesheetId, note: $note) {
+      ...OffScheduleAttendanceFields
+    }
+  }
+`;
+
+const MUTATION_REJECT_OFF_SCHEDULE_ATTENDANCE = gql`
+  ${OFF_SCHEDULE_ATTENDANCE_FIELDS}
+  mutation RejectOffScheduleAttendance($timesheetId: ID!, $note: String) {
+    rejectOffScheduleAttendance(timesheetId: $timesheetId, note: $note) {
+      ...OffScheduleAttendanceFields
+    }
   }
 `;
 
@@ -329,6 +469,7 @@ export default function useAttendanceManagement({
   status,
   search,
   correctionStatus = "all",
+  offScheduleApprovalStatus = "pending",
   restaurantId,
   employeeId,
 } = {}) {
@@ -355,6 +496,20 @@ export default function useAttendanceManagement({
     [correctionStatus, employeeId, restaurantId, search, selectedDate],
   );
 
+
+  const offScheduleFilter = useMemo(
+    () =>
+      buildOffScheduleAttendanceFilter({
+        selectedDate,
+        restaurantId,
+        employeeId,
+        search,
+        approvalStatus: offScheduleApprovalStatus,
+        onlyPending: offScheduleApprovalStatus === "pending",
+      }),
+    [employeeId, offScheduleApprovalStatus, restaurantId, search, selectedDate],
+  );
+
   const { data, loading, error, refetch } = useQuery(QUERY_ATTENDANCE_PAGE, {
     variables: queryVars,
     fetchPolicy: "cache-and-network",
@@ -372,8 +527,27 @@ export default function useAttendanceManagement({
     skip: !correctionFilter.startDate || !correctionFilter.endDate,
   });
 
+
+  const {
+    data: offScheduleData,
+    loading: offScheduleLoading,
+    error: offScheduleError,
+    refetch: refetchOffScheduleAttendances,
+  } = useQuery(QUERY_OFF_SCHEDULE_ATTENDANCES, {
+    variables: { input: offScheduleFilter },
+    fetchPolicy: "cache-and-network",
+    skip:
+      !offScheduleFilter.restaurantId ||
+      !offScheduleFilter.startDate ||
+      !offScheduleFilter.endDate,
+  });
+
   const refreshAttendanceViews = async () =>
-    Promise.allSettled([refetch(), refetchCorrections()]);
+    Promise.allSettled([
+      refetch(),
+      refetchCorrections(),
+      refetchOffScheduleAttendances(),
+    ]);
 
   const [mutateQuickAttendance, mutationState] = useMutation(
     MUTATION_UPSERT_ATTENDANCE,
@@ -401,6 +575,14 @@ export default function useAttendanceManagement({
     MUTATION_REJECT_ATTENDANCE_OVERTIME,
   );
 
+  const [approveOffScheduleAttendance, approveOffScheduleState] = useMutation(
+    MUTATION_APPROVE_OFF_SCHEDULE_ATTENDANCE,
+  );
+
+  const [rejectOffScheduleAttendance, rejectOffScheduleState] = useMutation(
+    MUTATION_REJECT_OFF_SCHEDULE_ATTENDANCE,
+  );
+
   const employees = useMemo(() => data?.staffList || [], [data?.staffList]);
 
   const records = useMemo(
@@ -411,6 +593,11 @@ export default function useAttendanceManagement({
   const correctionRequests = useMemo(
     () => correctionData?.attendanceCorrectionRequests || [],
     [correctionData?.attendanceCorrectionRequests],
+  );
+
+  const offScheduleRecords = useMemo(
+    () => offScheduleData?.offScheduleAttendances || [],
+    [offScheduleData?.offScheduleAttendances],
   );
 
   const stats = useMemo(() => {
@@ -449,20 +636,41 @@ export default function useAttendanceManagement({
     return { total, pending, applied, rejected, cancelled };
   }, [correctionRequests]);
 
+
+  const offScheduleStats = useMemo(() => {
+    const total = offScheduleRecords.length;
+    const pending = offScheduleRecords.filter(
+      (item) => item.offScheduleApprovalStatus === "pending",
+    ).length;
+    const approved = offScheduleRecords.filter(
+      (item) => item.offScheduleApprovalStatus === "approved",
+    ).length;
+    const rejected = offScheduleRecords.filter(
+      (item) => item.offScheduleApprovalStatus === "rejected",
+    ).length;
+
+    return { total, pending, approved, rejected };
+  }, [offScheduleRecords]);
+
   return {
     employees,
     records,
     correctionRequests,
+    offScheduleRecords,
     stats,
     correctionStats,
+    offScheduleStats,
 
     loading,
     error,
     correctionsLoading,
     correctionsError,
+    offScheduleLoading,
+    offScheduleError,
 
     refetch,
     refetchCorrections,
+    refetchOffScheduleAttendances,
     refreshAttendanceViews,
 
     mutateQuickAttendance,
@@ -474,6 +682,8 @@ export default function useAttendanceManagement({
     cancelAttendanceCorrectionRequest,
     approveAttendanceOvertime,
     rejectAttendanceOvertime,
+    approveOffScheduleAttendance,
+    rejectOffScheduleAttendance,
 
     createCorrectionState,
     approveCorrectionState,
@@ -481,5 +691,7 @@ export default function useAttendanceManagement({
     cancelCorrectionState,
     approveOvertimeState,
     rejectOvertimeState,
+    approveOffScheduleState,
+    rejectOffScheduleState,
   };
 }

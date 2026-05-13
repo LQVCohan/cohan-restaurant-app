@@ -57,23 +57,23 @@ export function getDiscountPreviewErrorMessage(error) {
   }
 
   if (code === "BAD_USER_INPUT") {
-    return message || "Voucher hoặc khuyến mãi không hợp lệ.";
+    return message || "Coupon hoặc khuyến mãi không hợp lệ.";
   }
 
   if (/usage limit/i.test(message)) {
-    return "Voucher đã hết lượt sử dụng.";
+    return "Coupon đã hết lượt sử dụng.";
   }
 
   if (/minimum order/i.test(message)) {
-    return "Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher.";
+    return "Đơn hàng chưa đạt giá trị tối thiểu để dùng coupon.";
   }
 
   if (/expired/i.test(message)) {
-    return "Voucher đã hết hạn.";
+    return "Coupon đã hết hạn.";
   }
 
   if (/inactive/i.test(message)) {
-    return "Voucher chưa được kích hoạt hoặc không còn khả dụng.";
+    return "Coupon chưa được kích hoạt hoặc không còn khả dụng.";
   }
 
   return message || "Không thể tính ưu đãi. Vui lòng thử lại.";

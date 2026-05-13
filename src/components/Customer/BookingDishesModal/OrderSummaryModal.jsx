@@ -121,7 +121,7 @@ const OrderSummaryModal = ({
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const [receipt, setReceipt] = useState(null);
-  const [voucherCode, setVoucherCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
@@ -205,7 +205,7 @@ const OrderSummaryModal = ({
       setOrderData(mappedOrderData);
       setShipping(DEFAULT_SHIPPING(prefill));
       setShippingTouched(false);
-      setVoucherCode("");
+      setCouponCode("");
       setSelectedPromotionIds([]);
       setDiscountBreakdown(null);
       setDiscountError("");
@@ -347,7 +347,7 @@ const OrderSummaryModal = ({
       taxRate: ORDER_VAT_RATE,
       serviceRate: 0,
       shippingFee,
-      voucherCode,
+      couponCode,
       promotionIds: selectedPromotionIds,
     });
   }, [
@@ -355,7 +355,7 @@ const OrderSummaryModal = ({
     previewRestaurantId,
     shipping?.deliveryMethod,
     shipping?.shippingFee,
-    voucherCode,
+    couponCode,
     selectedPromotionIds,
   ]);
   const handleApplyDiscountPreview = useCallback(async () => {
@@ -371,7 +371,7 @@ const OrderSummaryModal = ({
     if (!canPreviewDiscount || !previewRestaurantId) {
       setDiscountBreakdown(null);
       setDiscountError(
-        "Voucher hiện chỉ hỗ trợ áp dụng cho đơn thuộc một nhà hàng. Vui lòng tách đơn hoặc bỏ voucher.",
+        "Coupon hiện chỉ hỗ trợ áp dụng cho đơn thuộc một nhà hàng. Vui lòng tách đơn hoặc bỏ coupon.",
       );
       return;
     }
@@ -390,18 +390,18 @@ const OrderSummaryModal = ({
     canPreviewDiscount,
     previewRestaurantId,
   ]);
-  const hasVoucherCode = voucherCode.trim().length > 0;
+  const hasCouponCode = couponCode.trim().length > 0;
   const hasUnappliedDiscount =
-    hasVoucherCode && discountTouched && !discountBreakdown;
+    hasCouponCode && discountTouched && !discountBreakdown;
   const shouldBlockCheckoutForDiscount =
     canPreviewDiscount &&
-    hasVoucherCode &&
+    hasCouponCode &&
     (!discountBreakdown || !!discountError);
 
   useEffect(() => {
     if (canPreviewDiscount) return;
 
-    setVoucherCode("");
+    setCouponCode("");
     setSelectedPromotionIds([]);
     setDiscountBreakdown(null);
     setDiscountError("");
@@ -429,8 +429,8 @@ const OrderSummaryModal = ({
   }, [orderData]);
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
-      if (canPreviewDiscount && voucherCode.trim() && !discountBreakdown) {
-        throw new Error("Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng.");
+      if (canPreviewDiscount && couponCode.trim() && !discountBreakdown) {
+        throw new Error("Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng.");
       }
       const cartHoldError = validateCartHoldBeforeCheckout();
       if (cartHoldError) {
@@ -452,8 +452,8 @@ const OrderSummaryModal = ({
             deliveryMethod: shipping?.deliveryMethod,
             shippingFee: shipping?.shippingFee,
           }),
-          voucherCode:
-            canPreviewDiscount && discountBreakdown ? voucherCode : "",
+          couponCode:
+            canPreviewDiscount && discountBreakdown ? couponCode : "",
         }),
         promotionIds:
           canPreviewDiscount && discountBreakdown ? selectedPromotionIds : [],
@@ -479,7 +479,7 @@ const OrderSummaryModal = ({
     },
     [
       canPreviewDiscount,
-      voucherCode,
+      couponCode,
       discountBreakdown,
       validateCartHoldBeforeCheckout,
       orderData,
@@ -615,8 +615,8 @@ const OrderSummaryModal = ({
             restaurantCount={restaurantCount}
             calcGroupTotals={calcGroupTotals}
             walletBalance={walletBalance}
-            voucherCode={voucherCode}
-            onVoucherCodeChange={setVoucherCode}
+            couponCode={couponCode}
+            onCouponCodeChange={setCouponCode}
             discountBreakdown={discountBreakdown}
             discountError={discountError}
             isPreviewingDiscount={isPreviewingDiscount}
@@ -687,7 +687,7 @@ const OrderSummaryModal = ({
                   : !selectedPaymentMethod
                     ? "Chọn phương thức thanh toán"
                     : shouldBlockCheckoutForDiscount
-                      ? "Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng"
+                      ? "Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng"
                       : undefined
               }
             >
@@ -754,8 +754,8 @@ const SummaryContent = ({
   restaurantCount,
   calcGroupTotals,
   walletBalance,
-  voucherCode,
-  onVoucherCodeChange,
+  couponCode,
+  onCouponCodeChange,
   discountBreakdown,
   discountError,
   isPreviewingDiscount,
@@ -780,8 +780,8 @@ const SummaryContent = ({
       calcGroupTotals={calcGroupTotals}
     />
     <DiscountSection
-      voucherCode={voucherCode}
-      onVoucherCodeChange={onVoucherCodeChange}
+      couponCode={couponCode}
+      onCouponCodeChange={onCouponCodeChange}
       discountBreakdown={discountBreakdown}
       discountError={discountError}
       isPreviewingDiscount={isPreviewingDiscount}
@@ -1059,8 +1059,8 @@ const OrderItems = ({
   );
 };
 const DiscountSection = ({
-  voucherCode,
-  onVoucherCodeChange,
+  couponCode,
+  onCouponCodeChange,
   discountBreakdown,
   discountError,
   isPreviewingDiscount,
@@ -1070,20 +1070,20 @@ const DiscountSection = ({
 }) => (
   <div className="section discount-section">
     <h3 className="section-title">
-      <Receipt size={20} /> Ưu đãi & voucher
+      <Receipt size={20} /> Ưu đãi & coupon
     </h3>
 
-    <div className="voucher-row">
+    <div className="coupon-row">
       <input
         className="form-input"
         type="text"
         placeholder={
           canPreviewDiscount
-            ? "Nhập mã voucher"
-            : "Voucher chưa hỗ trợ cho đơn nhiều nhà hàng"
+            ? "Nhập mã coupon"
+            : "Coupon chưa hỗ trợ cho đơn nhiều nhà hàng"
         }
-        value={voucherCode}
-        onChange={(event) => onVoucherCodeChange(event.target.value)}
+        value={couponCode}
+        onChange={(event) => onCouponCodeChange(event.target.value)}
         disabled={!canPreviewDiscount}
       />
       <button
@@ -1091,14 +1091,14 @@ const DiscountSection = ({
         className="btn btn--secondary"
         onClick={onApplyDiscountPreview}
         disabled={
-          isPreviewingDiscount || !voucherCode.trim() || !canPreviewDiscount
+          isPreviewingDiscount || !couponCode.trim() || !canPreviewDiscount
         }
       >
         {isPreviewingDiscount ? "Đang kiểm tra..." : "Áp dụng"}
       </button>
       {!canPreviewDiscount && (
         <div className="discount-message discount-message--warning">
-          <AlertCircle size={16} /> Voucher hiện chỉ áp dụng cho đơn thuộc một
+          <AlertCircle size={16} /> Coupon hiện chỉ áp dụng cho đơn thuộc một
           nhà hàng.
         </div>
       )}
@@ -1112,14 +1112,14 @@ const DiscountSection = ({
 
     {hasUnappliedDiscount && !discountError && (
       <div className="discount-message discount-message--warning">
-        <AlertCircle size={16} /> Voucher đã thay đổi. Vui lòng áp dụng lại
+        <AlertCircle size={16} /> Coupon đã thay đổi. Vui lòng áp dụng lại
         trước khi đặt hàng.
       </div>
     )}
 
     {discountBreakdown?.voucherCode && (
       <div className="discount-message discount-message--success">
-        <CheckCircle size={16} /> Đã áp dụng voucher{" "}
+        <CheckCircle size={16} /> Đã áp dụng coupon{" "}
         <strong>{discountBreakdown.voucherCode}</strong>
       </div>
     )}
@@ -1268,7 +1268,7 @@ const PriceBreakdown = ({ subtotals, discountBreakdown }) => {
 
           {discountBreakdown.voucherDiscount > 0 && (
             <div className="price-row discount">
-              <span className="price-label">Giảm voucher</span>
+              <span className="price-label">Giảm coupon</span>
               <span className="price-value">
                 -{formatCurrency(discountBreakdown.voucherDiscount)}
               </span>

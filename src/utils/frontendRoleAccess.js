@@ -117,7 +117,7 @@ const ROUTE_ACCESS_RULES = [
     allow: STAFF_SHARED_ROLES,
   },
   { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
-  { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },
+  { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },
 ];
 
 // Role-level route gate only. This does not validate restaurantId ownership.

@@ -27,7 +27,7 @@ export function getStaffOrderingPermissions(
     canRequestItemVoid: canMutateOrder,
     canCaptureProof: canMutateOrder,
     canEditPendingItem: canMutateOrder,
-    canApplyVoucher: isElevated,
+    canApplyCoupon: isElevated,
     canMoveOrMerge: isElevated,
     canCheckout: isElevated || isServer || isCashier,
   };

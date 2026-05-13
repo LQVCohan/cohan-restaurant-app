@@ -1,0 +1,26 @@
+type CouponRedemption {
+  id: ID!
+  couponId: ID!
+  userId: ID
+  restaurantId: ID!
+  orderIds: [ID!]!
+  invoiceId: ID
+  couponCode: String!
+  discountAmount: Float!
+  subtotal: Float!
+  grandTotal: Float!
+  source: String!
+  redeemedAt: DateTime
+  metadata: JSON
+  coupon: Coupon
+}
+
+extend type Query {
+  myCouponRedemptions(restaurantId: ID, couponId: ID): [CouponRedemption!]!
+  couponRedemptionsByRestaurant(
+    restaurantId: ID!
+    couponId: ID
+    limit: Int = 50
+    offset: Int = 0
+  ): [CouponRedemption!]!
+}

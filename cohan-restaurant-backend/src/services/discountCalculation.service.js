@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
-import { Coupon, Promotion } from "../../models/index.js";
+import {
+  Coupon,
+  CouponRedemption,
+  Invoice,
+  Order,
+  Promotion,
+} from "../../models/index.js";
 
 const toNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const roundVnd = (v) => Math.max(0, Math.round(toNum(v, 0)));
@@ -115,10 +121,198 @@ function isExclusive(doc) {
   return Boolean(doc?.exclusive ?? doc?.constraints?.exclusive);
 }
 
+function normalizeConstraintToken(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+export function normalizeConstraintArray(value) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  return [...new Set(source.map(normalizeConstraintToken).filter(Boolean))];
+}
+
+function matchesConstraintValue(allowedValues, actualValue) {
+  if (!allowedValues.length) return true;
+  const normalizedActual = normalizeConstraintToken(actualValue);
+  return Boolean(normalizedActual) && allowedValues.includes(normalizedActual);
+}
+
+export function matchesOrderType(constraints = {}, orderType) {
+  return matchesConstraintValue(
+    normalizeConstraintArray(constraints.orderTypes),
+    orderType,
+  );
+}
+
+export function matchesPaymentMethod(constraints = {}, paymentMethod) {
+  return matchesConstraintValue(
+    normalizeConstraintArray(constraints.paymentMethods),
+    paymentMethod,
+  );
+}
+
+export function matchesCustomerRank(constraints = {}, customerRank) {
+  return matchesConstraintValue(
+    normalizeConstraintArray(constraints.customerRanks),
+    customerRank,
+  );
+}
+
+export async function checkFirstOrderOnly({
+  coupon,
+  userId,
+  restaurantId,
+  session,
+}) {
+  const uid = mongoose.isValidObjectId(userId)
+    ? new mongoose.Types.ObjectId(userId)
+    : null;
+
+  if (!uid) {
+    throw new Error(
+      "Invalid coupon: first-order eligibility requires an authenticated customer",
+    );
+  }
+
+  // Completed paid Order history is the most reliable customer-scoped signal
+  // in POS payment flows because Order.userId stores the customer while an
+  // Invoice may store the payment actor. Invoice history is still checked for
+  // legacy/online flows. If neither exists, fall back to coupon-specific
+  // CouponRedemption history so sparse legacy data still prevents repeated use.
+  const paidOrderCount = await Order.countDocuments({
+    restaurantId,
+    userId: uid,
+    $or: [
+      { "payment.status": { $in: ["paid", "partially_refunded", "refunded"] } },
+      { orderPaymentStatus: "paid" },
+      { currentStatus: "completed", "payment.status": "paid" },
+    ],
+  }).session(session);
+
+  if (paidOrderCount > 0) {
+    throw new Error(
+      "Invalid coupon: only valid for the customer's first order",
+    );
+  }
+
+  const paidInvoiceCount = await Invoice.countDocuments({
+    restaurantId,
+    userId: uid,
+    status: { $in: ["PAID", "PARTIAL"] },
+  }).session(session);
+
+  if (paidInvoiceCount > 0) {
+    throw new Error(
+      "Invalid coupon: only valid for the customer's first order",
+    );
+  }
+
+  const couponRedemptionCount = await CouponRedemption.countDocuments({
+    couponId: coupon._id,
+    userId: uid,
+    restaurantId,
+  }).session(session);
+
+  if (couponRedemptionCount > 0) {
+    throw new Error(
+      "Invalid coupon: only valid for the customer's first order",
+    );
+  }
+}
+
+export async function assertCouponEligibility({
+  coupon,
+  subtotal,
+  userId,
+  restaurantId,
+  orderType,
+  paymentMethod,
+  customerRank,
+  now = new Date(),
+  session,
+}) {
+  if (!coupon || !inWindow(coupon, now)) {
+    throw new Error("Invalid coupon: not found or not active");
+  }
+
+  if (subtotal < Math.max(0, toNum(coupon.minOrderValue))) {
+    throw new Error(
+      `Invalid coupon: minimum order value is ${Math.max(0, toNum(coupon.minOrderValue))}`,
+    );
+  }
+
+  const maxUsage = toNum(coupon.maxUsage);
+  if (maxUsage > 0 && toNum(coupon.used) >= maxUsage) {
+    throw new Error("Invalid coupon: usage limit reached");
+  }
+
+  const constraints = coupon.constraints || {};
+  const orderTypes = normalizeConstraintArray(constraints.orderTypes);
+  if (orderTypes.length && !matchesOrderType(constraints, orderType)) {
+    throw new Error(
+      orderType
+        ? "Invalid coupon: order type is not eligible"
+        : "Invalid coupon: order type is required for this coupon",
+    );
+  }
+
+  const paymentMethods = normalizeConstraintArray(constraints.paymentMethods);
+  if (
+    paymentMethods.length &&
+    !matchesPaymentMethod(constraints, paymentMethod)
+  ) {
+    throw new Error(
+      paymentMethod
+        ? "Invalid coupon: payment method is not eligible"
+        : "Invalid coupon: payment method is required for this coupon",
+    );
+  }
+
+  const customerRanks = normalizeConstraintArray(constraints.customerRanks);
+  if (customerRanks.length && !matchesCustomerRank(constraints, customerRank)) {
+    throw new Error(
+      customerRank
+        ? "Invalid coupon: customer rank is not eligible"
+        : "Invalid coupon: customer rank is required for this coupon",
+    );
+  }
+
+  const uid = mongoose.isValidObjectId(userId)
+    ? new mongoose.Types.ObjectId(userId)
+    : null;
+
+  const perUserLimit = toNum(constraints.perUserLimit, 0);
+  if (perUserLimit > 0) {
+    if (!uid) {
+      throw new Error(
+        "Invalid coupon: authenticated customer is required for per-user limit",
+      );
+    }
+
+    const userRedemptionCount = await CouponRedemption.countDocuments({
+      couponId: coupon._id,
+      userId: uid,
+    }).session(session);
+    if (userRedemptionCount >= perUserLimit) {
+      throw new Error("Invalid coupon: per-user usage limit reached");
+    }
+  }
+
+  if (constraints.firstOrderOnly === true) {
+    await checkFirstOrderOnly({ coupon, userId, restaurantId, session });
+  }
+}
+
 function canStack({ coupon, promotionSelected }) {
   if (!promotionSelected) return true;
 
-  // Cả promotion và voucher đều phải cho phép dùng chồng.
+  // Cả promotion và coupon đều phải cho phép dùng chồng.
   if (!promotionSelected.stacking) return false;
 
   const constraints = coupon?.constraints || {};
@@ -141,6 +335,10 @@ export async function calculateDiscountBreakdown({
   now = new Date(),
   session,
   promotionIds = [],
+  userId,
+  orderType,
+  paymentMethod,
+  customerRank,
 }) {
   const subtotal = roundVnd(
     items.reduce(
@@ -280,15 +478,18 @@ export async function calculateDiscountBreakdown({
       code,
       isActive: true,
     }).session(session);
-    if (!coupon || !inWindow(coupon, now))
-      throw new Error("Invalid voucher: not found or not active");
-    if (subtotal < Math.max(0, toNum(coupon.minOrderValue)))
-      throw new Error(
-        `Invalid voucher: minimum order value is ${Math.max(0, toNum(coupon.minOrderValue))}`,
-      );
-    const maxUsage = toNum(coupon.maxUsage);
-    if (maxUsage > 0 && toNum(coupon.used) >= maxUsage)
-      throw new Error("Invalid voucher: usage limit reached");
+    await assertCouponEligibility({
+      coupon,
+      subtotal,
+      userId,
+      restaurantId: rid,
+      orderType,
+      paymentMethod,
+      customerRank,
+      now,
+      session,
+    });
+
     const appliedPromotionDocs = Array.from(appliedPromotionDocsById.values());
     const hasPromotion = promotionDiscount > 0;
     const couponExclusive = isExclusive(coupon);
@@ -306,13 +507,13 @@ export async function calculateDiscountBreakdown({
 
     if (hasPromotion) {
       if (couponExclusive) {
-        // Voucher độc quyền: giữ voucher, bỏ promotion.
+        // Coupon độc quyền: giữ coupon, bỏ promotion.
         resetAppliedPromotions();
       } else if (promotionExclusive) {
-        // Legacy/backward-compatible: nếu promotion có exclusive thì giữ promotion, bỏ voucher.
+        // Legacy/backward-compatible: nếu promotion có exclusive thì giữ promotion, bỏ coupon.
         shouldApplyVoucher = false;
       } else if (!stackAllowed) {
-        // Không được dùng chồng: voucher code do user nhập được ưu tiên,
+        // Không được dùng chồng: coupon code do user nhập được ưu tiên,
         // promotion tự động/được chọn sẽ bị bỏ.
         resetAppliedPromotions();
       }

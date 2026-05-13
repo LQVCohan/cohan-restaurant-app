@@ -182,6 +182,7 @@ input PublishScheduleInput {
   restaurantId: ID!
   periodStart: DateTime!
   periodEnd: DateTime!
+  mandatoryShiftRoles: JSON
 }
 input ChangePublishedShiftGroupTimeInput {
   restaurantId: ID!
@@ -1009,6 +1010,96 @@ type PayrollValidationResult {
   issues: [PayrollValidationIssue!]!
 }
 
+
+input AutoSchedulePreviewInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  requiredRoles: JSON
+  mandatoryShiftRoles: JSON
+  weeklyHoursCap: Float
+  respectAvailability: Boolean = true
+  avoidOvertime: Boolean = true
+  shiftConfig: JSON
+  shiftTemplates: JSON
+  allowOverride: Boolean = false
+  overrideReason: String
+}
+
+input ApplyAutoScheduleInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  requiredRoles: JSON
+  mandatoryShiftRoles: JSON
+  weeklyHoursCap: Float
+  respectAvailability: Boolean = true
+  avoidOvertime: Boolean = true
+  shiftConfig: JSON
+  shiftTemplates: JSON
+  allowOverride: Boolean = false
+  overrideReason: String
+  allowPartialApply: Boolean = false
+  selectedShiftKeys: [String!]
+}
+
+type AutoScheduleIssue {
+  code: String!
+  severity: String!
+  message: String!
+  suggestedAction: String
+}
+
+type AutoScheduleBlockedCandidate {
+  shiftKey: String!
+  employeeId: ID
+  requiredRole: String
+  issues: [AutoScheduleIssue!]!
+}
+
+type AutoScheduleUnfilledRole {
+  shiftKey: String!
+  shiftType: String!
+  startTime: DateTime!
+  endTime: DateTime!
+  requiredRole: String
+  reason: String!
+}
+
+type AutoSchedulePreviewItem {
+  shiftKey: String!
+  shiftType: String!
+  startTime: DateTime!
+  endTime: DateTime!
+  requiredRole: String
+  status: String!
+  employeeId: ID
+  employeeName: String
+  score: Float
+  warnings: [AutoScheduleIssue!]!
+  validationIssues: [AutoScheduleIssue!]!
+}
+
+type AutoScheduleSummary {
+  totalDemand: Int!
+  recommendedAssignments: Int!
+  warningAssignments: Int!
+  blockedAssignments: Int!
+  existingShiftCount: Int!
+}
+
+type AutoSchedulePreviewPayload {
+  items: [AutoSchedulePreviewItem!]!
+  summary: AutoScheduleSummary!
+  plannedAssignments: [AutoSchedulePreviewItem!]!
+  blockedCandidates: [AutoScheduleBlockedCandidate!]!
+  unfilledRoles: [AutoScheduleUnfilledRole!]!
+  unresolvedCount: Int!
+  canApply: Boolean!
+  warnings: [AutoScheduleIssue!]!
+  validationIssues: [AutoScheduleIssue!]!
+}
+
 type StaffScheduleShift {
   id: ID!
   employeeId: ID!
@@ -1160,6 +1251,11 @@ type StaffAttendanceRecord {
   latenessMinutes: Int!
   earlyLeaveMinutes: Int!
   overtimeMinutes: Int!
+  approvedOvertimeMinutes: Int!
+  overtimeApprovalStatus: String!
+  overtimeReviewNote: String!
+  overtimeReviewedBy: ID
+  overtimeReviewedAt: DateTime
   status: String!
   isOffSchedule: Boolean!
   offScheduleApprovalStatus: String!
@@ -1744,13 +1840,34 @@ input UpsertStaffAttendanceInput {
   offScheduleReason: String
 }
 
+input RunAttendanceExceptionDetectionInput {
+  restaurantId: ID!
+  startDate: DateTime!
+  endDate: DateTime!
+  now: DateTime
+  noShowGraceMinutes: Int
+  missedCheckoutGraceMinutes: Int
+}
+
+type AttendanceExceptionDetectionSummary {
+  scannedShifts: Int!
+  noShowCreated: Int!
+  noShowUpdated: Int!
+  missedCheckoutUpdated: Int!
+  skippedLockedPayroll: Int!
+}
+
 input OffScheduleAttendanceFilterInput {
   restaurantId: ID!
   fromDate: DateTime
   toDate: DateTime
+  startDate: DateTime
+  endDate: DateTime
   status: String
+  approvalStatus: String
   employeeId: ID
   onlyPending: Boolean
+  search: String
 }
 
 input CreateLeaveRequestInput {
@@ -2208,6 +2325,7 @@ type ShiftAssignmentValidationResult {
   score: Int!
   blockingErrors: [ShiftAssignmentIssue!]!
   warnings: [ShiftAssignmentIssue!]!
+  explanations: [String!]!
   metrics: ShiftAssignmentMetrics!
 }
 
@@ -2470,6 +2588,8 @@ type Mutation {
   ): StaffScheduleShift!
 
   deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): Boolean!
+  previewAutoSchedule(input: AutoSchedulePreviewInput!): AutoSchedulePreviewPayload!
+  applyAutoSchedule(input: ApplyAutoScheduleInput!): CreateStaffShiftsPayload!
   publishSchedule(input: PublishScheduleInput!): SchedulePublication!
   lockSchedule(input: LockScheduleInput!): SchedulePublication!
   closeSchedule(input: CloseScheduleInput!): SchedulePublication!
@@ -2608,6 +2728,10 @@ type Mutation {
   upsertStaffAttendance(
     input: UpsertStaffAttendanceInput!
   ): StaffAttendanceRecord!
+
+  runAttendanceExceptionDetection(
+    input: RunAttendanceExceptionDetectionInput!
+  ): AttendanceExceptionDetectionSummary!
   approveOffScheduleAttendance(
     timesheetId: ID!
     note: String

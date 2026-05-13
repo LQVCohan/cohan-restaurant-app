@@ -10,8 +10,8 @@ export const AVAILABILITY_RULE_CODES = {
   FIRST_WEEK_GRACE_MISSING_AVAILABILITY: "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
 };
 
-const PART_TIME_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal"]);
-const ACTIVE_SUBMISSION_STATUSES = new Set(["submitted", "locked", "approved"]);
+const PART_TIME_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal", "probation", "contract"]);
+const ACTIVE_SUBMISSION_STATUSES = new Set(["locked", "approved"]);
 const INACTIVE_SUBMISSION_STATUSES = new Set(["rejected", "cancelled"]);
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 

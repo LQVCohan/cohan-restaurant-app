@@ -5,14 +5,14 @@ import {
   getDiscountBreakdownTotal,
   mapCartItemToOrderItemInput,
   mapDeliveryMethodToOrderType,
-  normalizeVoucherCode,
+  normalizeCouponCode,
 } from "./discountPreviewPayload";
 
 describe("discountPreviewPayload", () => {
-  it("normalizes voucher code", () => {
-    expect(normalizeVoucherCode("  stack10 ")).toBe("STACK10");
-    expect(normalizeVoucherCode("")).toBeNull();
-    expect(normalizeVoucherCode(null)).toBeNull();
+  it("normalizes coupon code", () => {
+    expect(normalizeCouponCode("  stack10 ")).toBe("STACK10");
+    expect(normalizeCouponCode("")).toBeNull();
+    expect(normalizeCouponCode(null)).toBeNull();
   });
 
   it("maps delivery method to order type", () => {
@@ -53,8 +53,8 @@ describe("discountPreviewPayload", () => {
       taxRate: 0.1,
       serviceRate: 0.05,
       shippingFee: 15000,
-      voucherCode: " sale10 ",
-      voucherDiscount: 999999,
+      couponCode: " sale10 ",
+      couponDiscount: 999999,
       promotionDiscount: 999999,
       finalTotal: 1,
     });
@@ -66,7 +66,7 @@ describe("discountPreviewPayload", () => {
       voucherCode: "SALE10",
     });
 
-    expect(pricing).not.toHaveProperty("voucherDiscount");
+    expect(pricing).not.toHaveProperty("couponDiscount");
     expect(pricing).not.toHaveProperty("promotionDiscount");
     expect(pricing).not.toHaveProperty("finalTotal");
   });
@@ -78,7 +78,7 @@ describe("discountPreviewPayload", () => {
       items: [{ dishId: "d1", name: "Món", price: 50000, quantity: 2 }],
       taxRate: 0.1,
       shippingFee: 10000,
-      voucherCode: "v10",
+      couponCode: "v10",
       promotionIds: ["p1"],
     });
 

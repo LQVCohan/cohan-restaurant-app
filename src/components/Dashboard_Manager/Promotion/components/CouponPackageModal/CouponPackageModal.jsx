@@ -8,35 +8,35 @@ import {
   Tag,
   ListChecks,
 } from "lucide-react";
-import { VOUCHER_CATEGORIES } from "../../../../../utils/constants";
-import "./VoucherPackageModal.scss";
+import { COUPON_CATEGORIES } from "../../../../../utils/constants";
+import "./CouponPackageModal.scss";
 
-const buildInitialFormData = (voucherPackage) => ({
-  name: voucherPackage?.name || "",
-  code: voucherPackage?.code || "",
-  description: voucherPackage?.description || "",
-  voucherIds: voucherPackage?.voucherIds || [],
-  startDate: voucherPackage?.startDate || "",
-  endDate: voucherPackage?.endDate || "",
-  publishAt: voucherPackage?.publishAt || "",
-  conditions: voucherPackage?.conditions
-    ? voucherPackage.conditions.join("\n")
+const buildInitialFormData = (couponPackage) => ({
+  name: couponPackage?.name || "",
+  code: couponPackage?.code || "",
+  description: couponPackage?.description || "",
+  couponIds: couponPackage?.couponIds || [],
+  startDate: couponPackage?.startDate || "",
+  endDate: couponPackage?.endDate || "",
+  publishAt: couponPackage?.publishAt || "",
+  conditions: couponPackage?.conditions
+    ? couponPackage.conditions.join("\n")
     : "",
 });
 
-const VoucherPackageModal = ({
-  voucherPackage,
-  availableVouchers,
+const CouponPackageModal = ({
+  couponPackage,
+  availableCoupons,
   onSave,
   onClose,
 }) => {
-  const [formData, setFormData] = useState(buildInitialFormData(voucherPackage));
+  const [formData, setFormData] = useState(buildInitialFormData(couponPackage));
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    setFormData(buildInitialFormData(voucherPackage));
+    setFormData(buildInitialFormData(couponPackage));
     setErrors({});
-  }, [voucherPackage]);
+  }, [couponPackage]);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -44,14 +44,14 @@ const VoucherPackageModal = ({
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleToggleVoucher = (voucherId) => {
+  const handleToggleCoupon = (couponId) => {
     setFormData((prev) => {
-      const exists = prev.voucherIds.includes(voucherId);
+      const exists = prev.couponIds.includes(couponId);
       return {
         ...prev,
-        voucherIds: exists
-          ? prev.voucherIds.filter((id) => id !== voucherId)
-          : [...prev.voucherIds, voucherId],
+        couponIds: exists
+          ? prev.couponIds.filter((id) => id !== couponId)
+          : [...prev.couponIds, couponId],
       };
     });
   };
@@ -62,8 +62,8 @@ const VoucherPackageModal = ({
     if (!formData.code.trim()) nextErrors.code = "Bắt buộc nhập";
     if (!formData.startDate) nextErrors.startDate = "Chọn ngày";
     if (!formData.endDate) nextErrors.endDate = "Chọn ngày";
-    if (formData.voucherIds.length === 0) {
-      nextErrors.voucherIds = "Chọn ít nhất 1 voucher";
+    if (formData.couponIds.length === 0) {
+      nextErrors.couponIds = "Chọn ít nhất 1 coupon";
     }
     if (
       formData.startDate &&
@@ -115,8 +115,8 @@ const VoucherPackageModal = ({
       <div className="premium-modal">
         <div className="modal-header">
           <div className="header-content">
-            <h2>{voucherPackage ? "Chỉnh sửa gói voucher" : "Tạo gói voucher"}</h2>
-            <p>Gộp nhiều voucher vào một gói cho từng nhóm khách hàng.</p>
+            <h2>{couponPackage ? "Chỉnh sửa gói Coupon" : "Tạo gói Coupon"}</h2>
+            <p>Gộp nhiều coupon vào một gói cho từng nhóm khách hàng.</p>
           </div>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
@@ -124,7 +124,7 @@ const VoucherPackageModal = ({
         </div>
 
         <div className="modal-body">
-          <form id="voucherPackageForm" onSubmit={handleSubmit}>
+          <form id="couponPackageForm" onSubmit={handleSubmit}>
             <div className="form-section">
               <h3 className="section-title">
                 <Package size={18} /> Thông tin gói
@@ -132,7 +132,7 @@ const VoucherPackageModal = ({
               <div className="grid-2">
                 <div className="form-group full">
                   <label>
-                    Tên gói voucher <span className="req">*</span>
+                    Tên gói Coupon <span className="req">*</span>
                   </label>
                   <input
                     type="text"
@@ -167,7 +167,7 @@ const VoucherPackageModal = ({
                   <input
                     type="text"
                     name="description"
-                    placeholder="Mô tả lợi ích gói voucher"
+                    placeholder="Mô tả lợi ích gói Coupon"
                     value={formData.description}
                     onChange={handleInputChange}
                   />
@@ -177,29 +177,29 @@ const VoucherPackageModal = ({
 
             <div className="form-section">
               <h3 className="section-title">
-                <ListChecks size={18} /> Chọn voucher trong gói
+                <ListChecks size={18} /> Chọn coupon trong gói
               </h3>
-              <div className="voucher-selection">
-                {availableVouchers.map((voucher) => (
-                  <label key={voucher.id} className="voucher-choice">
+              <div className="coupon-selection">
+                {availableCoupons.map((coupon) => (
+                  <label key={coupon.id} className="coupon-choice">
                     <input
                       type="checkbox"
-                      checked={formData.voucherIds.includes(voucher.id)}
-                      onChange={() => handleToggleVoucher(voucher.id)}
+                      checked={formData.couponIds.includes(coupon.id)}
+                      onChange={() => handleToggleCoupon(coupon.id)}
                     />
                     <div className="choice-content">
-                      <span className="choice-title">{voucher.name}</span>
+                      <span className="choice-title">{coupon.name}</span>
                       <span className="choice-meta">
-                        {voucher.code} ·{" "}
-                        {VOUCHER_CATEGORIES[voucher.category] ||
-                          voucher.category}
+                        {coupon.code} ·{" "}
+                        {COUPON_CATEGORIES[coupon.category] ||
+                          coupon.category}
                       </span>
                     </div>
                   </label>
                 ))}
               </div>
-              {errors.voucherIds && (
-                <span className="err-msg">{errors.voucherIds}</span>
+              {errors.couponIds && (
+                <span className="err-msg">{errors.couponIds}</span>
               )}
             </div>
 
@@ -279,11 +279,11 @@ const VoucherPackageModal = ({
             </button>
             <button
               type="submit"
-              form="voucherPackageForm"
+              form="couponPackageForm"
               className="btn-primary"
             >
               <Save size={18} />
-              {voucherPackage ? "Lưu thay đổi" : "Tạo gói"}
+              {couponPackage ? "Lưu thay đổi" : "Tạo gói"}
             </button>
           </div>
         </div>
@@ -292,4 +292,4 @@ const VoucherPackageModal = ({
   );
 };
 
-export default VoucherPackageModal;
+export default CouponPackageModal;

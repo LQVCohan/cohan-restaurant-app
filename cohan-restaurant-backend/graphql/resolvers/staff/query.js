@@ -42,6 +42,7 @@ import {
 } from "../../../src/services/performance/staffPerformanceReporting.service.js";
 import { getManagerPerformanceDashboard } from "../../../src/services/performance/managerPerformanceDashboard.service.js";
 import { listPerformanceIncidentAppeals } from "../../../src/services/performance/performanceAppeal.service.js";
+import { listOffScheduleAttendances as listOffScheduleAttendancesService } from "../../../src/services/attendance/offScheduleAttendance.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
@@ -110,7 +111,7 @@ function mapAttendanceRecord(timesheet, staff) {
   ).toLowerCase();
   const approvalStatus = !isOffSchedule
     ? "not_required"
-    : Boolean(timesheet.approved)
+    : Boolean(timesheet.approved) || legacyStatus === "approved"
       ? "approved"
       : legacyStatus === "rejected"
         ? "rejected"
@@ -140,6 +141,15 @@ function mapAttendanceRecord(timesheet, staff) {
     latenessMinutes: Number(timesheet.latenessMinutes || 0),
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
+    overtimeApprovalStatus: String(
+      timesheet.overtimeApprovalStatus || "not_required",
+    ),
+    overtimeReviewNote: timesheet.overtimeReviewNote || "",
+    overtimeReviewedBy: timesheet.overtimeReviewedBy
+      ? String(timesheet.overtimeReviewedBy)
+      : null,
+    overtimeReviewedAt: timesheet.overtimeReviewedAt || null,
     status: mapAttendanceStatus(timesheet),
     isOffSchedule,
     offScheduleApprovalStatus: approvalStatus,
@@ -1329,79 +1339,12 @@ export default {
     return mapped.filter((record) => record.status === status);
   },
   offScheduleAttendances: async (_, { input }, ctx) => {
-    if (!ctx?.user) throw new Error("UNAUTHENTICATED");
-    const rid = toObjectId(input?.restaurantId);
-    if (!rid) throw new Error("Invalid restaurantId");
-    const roles = resolveUserRoles(ctx.user);
-    const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
-    const isStaffRole = roles.some((role) =>
-      ATTENDANCE_SELF_ROLES.includes(role),
-    );
-    const canReadAttendance = roles.some((role) =>
-      ATTENDANCE_READ_ROLES.includes(role),
-    );
-    if (!isStaffRole && !canReadAttendance) throw new Error("FORBIDDEN");
-    if (!userCanAccessRestaurant(ctx.user, rid)) {
-      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
-    }
-
-    const query = { restaurantId: rid, isOffSchedule: true };
-    const fromDate = input?.fromDate ? toStartOfDay(input.fromDate) : null;
-    const toDate = input?.toDate ? toEndOfDay(input.toDate) : null;
-    if (fromDate || toDate) {
-      query.workDate = {};
-      if (fromDate) query.workDate.$gte = fromDate;
-      if (toDate) query.workDate.$lte = toDate;
-    }
-
-    const requestedEmployeeId = toObjectId(input?.employeeId);
-    if (isStaffRole) {
-      query.employeeId = toObjectId(actorId);
-    } else if (requestedEmployeeId) {
-      query.employeeId = requestedEmployeeId;
-    }
-
-    const normalizedStatus = String(input?.status || "").toLowerCase();
-    const onlyPending = Boolean(input?.onlyPending);
-    if (onlyPending || normalizedStatus === "pending") {
-      query.approved = { $ne: true };
-      query.$or = [
-        { offScheduleApprovalStatus: { $exists: false } },
-        { offScheduleApprovalStatus: "not_required" },
-        { offScheduleApprovalStatus: "pending" },
-      ];
-    } else if (normalizedStatus === "approved") {
-      query.approved = true;
-      query.offScheduleApprovalStatus = "approved";
-    } else if (normalizedStatus === "rejected") {
-      query.approved = { $ne: true };
-      query.offScheduleApprovalStatus = "rejected";
-    }
-
-    const rows = await Timesheet.find(query)
-      .populate("shiftId")
-      .sort({ workDate: -1, createdAt: -1 })
-      .lean();
-    if (!rows.length) return [];
-
-    const employeeIds = [...new Set(rows.map((r) => String(r.employeeId)))].map(
-      (id) => toObjectId(id),
-    );
-    const staffs = await Staff.find({ _id: { $in: employeeIds } })
-      .populate("role")
-      .select({
-        _id: 1,
-        fullName: 1,
-        employeeCode: 1,
-        positionTitle: 1,
-        roleName: 1,
-        avatarUrl: 1,
-        avatar: 1,
-      })
-      .lean();
-    const staffById = new Map(staffs.map((s) => [String(s._id), s]));
-    return rows.map((record) =>
-      mapAttendanceRecord(record, staffById.get(String(record.employeeId))),
+    const entries = await listOffScheduleAttendancesService({
+      filter: input || {},
+      ctx,
+    });
+    return entries.map(({ record, staff }) =>
+      mapAttendanceRecord(record, staff),
     );
   },
   attendanceCorrectionRequests: async (_, { filter }, ctx) => {

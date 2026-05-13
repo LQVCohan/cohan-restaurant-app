@@ -10,42 +10,63 @@ import {
   ClipboardList,
 } from "lucide-react";
 import {
-  VOUCHER_CATEGORIES,
-  VOUCHER_DISCOUNT_TYPES,
+  COUPON_CATEGORIES,
+  COUPON_DISCOUNT_TYPES,
 } from "../../../../../utils/constants";
-import "./VoucherModal.scss";
+import "./CouponModal.scss";
 
-const buildInitialFormData = (voucher) => ({
-  name: voucher?.name || "",
-  code: voucher?.code || "",
-  category: voucher?.category || "",
-  discountType: voucher?.discountType || "",
-  discountValue: voucher?.discountValue || "",
-  minOrderValue: voucher?.minOrderValue || "",
-  maxDiscount: voucher?.maxDiscount || "",
-  usageLimit: voucher?.usageLimit || "",
-  startDate: voucher?.startDate || "",
-  endDate: voucher?.endDate || "",
-  publishAt: voucher?.publishAt || "",
-  description: voucher?.description || "",
-  conditions: voucher?.conditions ? voucher.conditions.join("\n") : "",
-  stackable: Boolean(voucher?.stackable),
-  combinableWithPromotions: Boolean(voucher?.combinableWithPromotions),
-  exclusive: Boolean(voucher?.exclusive),
+const ORDER_TYPE_OPTIONS = [
+  { value: "dine_in", label: "Dùng tại bàn" },
+  { value: "takeaway", label: "Mang đi" },
+  { value: "delivery", label: "Giao hàng" },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "cash", label: "Tiền mặt" },
+  { value: "card", label: "Thẻ" },
+  { value: "transfer", label: "Chuyển khoản" },
+  { value: "bank_transfer", label: "Ngân hàng" },
+  { value: "e_wallet", label: "Ví điện tử" },
+];
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const buildInitialFormData = (coupon) => ({
+  name: coupon?.name || "",
+  code: coupon?.code || "",
+  category: coupon?.category || "",
+  discountType: coupon?.discountType || "",
+  discountValue: coupon?.discountValue || "",
+  minOrderValue: coupon?.minOrderValue || "",
+  maxDiscount: coupon?.maxDiscount || "",
+  usageLimit: coupon?.usageLimit || "",
+  startDate: coupon?.startDate || "",
+  endDate: coupon?.endDate || "",
+  publishAt: coupon?.publishAt || "",
+  description: coupon?.description || "",
+  conditions: coupon?.conditions ? coupon.conditions.join("\n") : "",
+  stackable: Boolean(coupon?.stackable),
+  combinableWithPromotions: Boolean(coupon?.combinableWithPromotions),
+  exclusive: Boolean(coupon?.exclusive),
   priority:
-    voucher?.priority === 0 || voucher?.priority
-      ? String(voucher.priority)
-      : "0",
+    coupon?.priority === 0 || coupon?.priority ? String(coupon.priority) : "0",
+  perUserLimit:
+    coupon?.perUserLimit === 0 || coupon?.perUserLimit
+      ? String(coupon.perUserLimit)
+      : "",
+  orderTypes: toArray(coupon?.orderTypes),
+  paymentMethods: toArray(coupon?.paymentMethods),
+  firstOrderOnly: Boolean(coupon?.firstOrderOnly),
 });
 
-const VoucherModal = ({ voucher, onSave, onClose }) => {
-  const [formData, setFormData] = useState(buildInitialFormData(voucher));
+const CouponModal = ({ coupon, onSave, onClose }) => {
+  const [formData, setFormData] = useState(buildInitialFormData(coupon));
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    setFormData(buildInitialFormData(voucher));
+    setFormData(buildInitialFormData(coupon));
     setErrors({});
-  }, [voucher]);
+  }, [coupon]);
 
   const handleInputChange = (event) => {
     const { checked, name, type, value } = event.target;
@@ -54,11 +75,24 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const handleMultiCheckboxChange = (fieldName, optionValue) => (event) => {
+    const { checked } = event.target;
+    setFormData((prev) => {
+      const currentValues = toArray(prev[fieldName]);
+      return {
+        ...prev,
+        [fieldName]: checked
+          ? [...new Set([...currentValues, optionValue])]
+          : currentValues.filter((value) => value !== optionValue),
+      };
+    });
+  };
+
   const validateForm = () => {
     const nextErrors = {};
     if (!formData.name.trim()) nextErrors.name = "Bắt buộc nhập";
     if (!formData.code.trim()) nextErrors.code = "Bắt buộc nhập";
-    if (!formData.category) nextErrors.category = "Chọn nhóm voucher";
+    if (!formData.category) nextErrors.category = "Chọn nhóm coupon";
     if (!formData.discountType) nextErrors.discountType = "Chọn loại";
     if (!formData.discountValue) nextErrors.discountValue = "Nhập giá trị";
     if (!formData.startDate) nextErrors.startDate = "Chọn ngày";
@@ -114,6 +148,12 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
       combinableWithPromotions: Boolean(formData.combinableWithPromotions),
       exclusive: Boolean(formData.exclusive),
       priority: formData.priority ? parseInt(formData.priority, 10) : 0,
+      perUserLimit: formData.perUserLimit
+        ? parseInt(formData.perUserLimit, 10)
+        : 0,
+      orderTypes: toArray(formData.orderTypes),
+      paymentMethods: toArray(formData.paymentMethods),
+      firstOrderOnly: Boolean(formData.firstOrderOnly),
     };
 
     onSave(formattedData);
@@ -127,9 +167,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
       <div className="premium-modal">
         <div className="modal-header">
           <div className="header-content">
-            <h2>{voucher ? "Chỉnh sửa voucher" : "Tạo voucher mới"}</h2>
+            <h2>{coupon ? "Chỉnh sửa coupon" : "Tạo coupon mới"}</h2>
             <p>
-              Thiết lập voucher đầy đủ điều kiện, thời gian và lịch xuất bản.
+              Thiết lập coupon đầy đủ điều kiện, thời gian và lịch xuất bản.
             </p>
           </div>
           <button className="btn-close" onClick={onClose}>
@@ -138,20 +178,20 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
         </div>
 
         <div className="modal-body">
-          <form id="voucherForm" onSubmit={handleSubmit}>
+          <form id="couponForm" onSubmit={handleSubmit}>
             <div className="form-section">
               <h3 className="section-title">
-                <FileText size={18} /> Thông tin voucher
+                <FileText size={18} /> Thông tin coupon
               </h3>
               <div className="grid-2">
                 <div className="form-group full">
                   <label>
-                    Tên voucher <span className="req">*</span>
+                    Tên coupon <span className="req">*</span>
                   </label>
                   <input
                     type="text"
                     name="name"
-                    placeholder="VD: Voucher Tết 2025"
+                    placeholder="VD: Coupon Tết 2025"
                     value={formData.name}
                     onChange={handleInputChange}
                     className={errors.name ? "error" : ""}
@@ -163,7 +203,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
 
                 <div className="form-group">
                   <label>
-                    Mã voucher <span className="req">*</span>
+                    Mã coupon <span className="req">*</span>
                   </label>
                   <div className="input-icon-wrapper">
                     <Tag size={16} className="input-icon" />
@@ -180,7 +220,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
 
                 <div className="form-group">
                   <label>
-                    Nhóm voucher <span className="req">*</span>
+                    Nhóm coupon <span className="req">*</span>
                   </label>
                   <select
                     name="category"
@@ -189,7 +229,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     className={errors.category ? "error" : ""}
                   >
                     <option value="">-- Chọn nhóm --</option>
-                    {Object.entries(VOUCHER_CATEGORIES).map(([key, label]) => (
+                    {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
                       <option key={key} value={key}>
                         {label}
                       </option>
@@ -218,7 +258,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     className={errors.discountType ? "error" : ""}
                   >
                     <option value="">-- Loại --</option>
-                    {Object.entries(VOUCHER_DISCOUNT_TYPES).map(
+                    {Object.entries(COUPON_DISCOUNT_TYPES).map(
                       ([key, label]) => (
                         <option key={key} value={key}>
                           {label}
@@ -278,17 +318,90 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     onChange={handleInputChange}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Mỗi khách dùng tối đa</label>
+                  <input
+                    type="number"
+                    name="perUserLimit"
+                    min="0"
+                    placeholder="Không giới hạn"
+                    value={formData.perUserLimit}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
               <div className="form-group full mt-3">
-                <label>Mô tả voucher</label>
+                <label>Mô tả coupon</label>
                 <input
                   type="text"
                   name="description"
-                  placeholder="Mô tả nhanh cho voucher"
+                  placeholder="Mô tả nhanh cho coupon"
                   value={formData.description}
                   onChange={handleInputChange}
                 />
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Điều kiện đủ điều kiện
+              </h3>
+
+              <div className="grid-2">
+                <div className="form-group full">
+                  <label>Loại đơn áp dụng</label>
+                  <div className="checkbox-group">
+                    {ORDER_TYPE_OPTIONS.map((option) => (
+                      <label className="checkbox-row" key={option.value}>
+                        <input
+                          type="checkbox"
+                          name="orderTypes"
+                          value={option.value}
+                          checked={formData.orderTypes.includes(option.value)}
+                          onChange={handleMultiCheckboxChange(
+                            "orderTypes",
+                            option.value,
+                          )}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group full">
+                  <label>Phương thức thanh toán</label>
+                  <div className="checkbox-group">
+                    {PAYMENT_METHOD_OPTIONS.map((option) => (
+                      <label className="checkbox-row" key={option.value}>
+                        <input
+                          type="checkbox"
+                          name="paymentMethods"
+                          value={option.value}
+                          checked={formData.paymentMethods.includes(
+                            option.value,
+                          )}
+                          onChange={handleMultiCheckboxChange(
+                            "paymentMethods",
+                            option.value,
+                          )}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="firstOrderOnly"
+                    checked={Boolean(formData.firstOrderOnly)}
+                    onChange={handleInputChange}
+                  />
+                  <span>Chỉ cho đơn đầu tiên của khách</span>
+                </label>
               </div>
             </div>
             <div className="form-section">
@@ -304,7 +417,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     checked={Boolean(formData.stackable)}
                     onChange={handleInputChange}
                   />
-                  <span>Cho phép dùng chồng với voucher khác</span>
+                  <span>Cho phép dùng chồng với coupon khác</span>
                 </label>
 
                 <label className="checkbox-row">
@@ -324,7 +437,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                     checked={Boolean(formData.exclusive)}
                     onChange={handleInputChange}
                   />
-                  <span>Voucher độc quyền, ưu tiên chặn ưu đãi khác</span>
+                  <span>Coupon độc quyền, ưu tiên chặn ưu đãi khác</span>
                 </label>
 
                 <div className="form-group">
@@ -341,8 +454,8 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
               </div>
 
               <p className="text-xs text-secondary mt-2">
-                Quy tắc dùng chồng voucher sẽ được tính lại khi áp voucher vào
-                đơn hàng.
+                Quy tắc dùng chồng coupon sẽ được tính lại khi áp coupon vào đơn
+                hàng.
               </p>
             </div>
             <div className="form-section">
@@ -378,7 +491,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                   )}
                 </div>
                 <div className="form-group full">
-                  <label>Lịch xuất bản (voucher sắp tới)</label>
+                  <label>Lịch xuất bản (coupon sắp tới)</label>
                   <div className="input-icon-wrapper">
                     <Clock size={16} className="input-icon" />
                     <input
@@ -398,7 +511,7 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
                 <textarea
                   name="conditions"
                   rows="3"
-                  placeholder="- Chỉ áp dụng cho voucher nhóm món ăn"
+                  placeholder="- Chỉ áp dụng cho coupon nhóm món ăn"
                   value={formData.conditions}
                   onChange={handleInputChange}
                 />
@@ -419,9 +532,9 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
             >
               <ClipboardList size={18} /> Lưu nháp
             </button>
-            <button type="submit" form="voucherForm" className="btn-primary">
+            <button type="submit" form="couponForm" className="btn-primary">
               <Save size={18} />
-              {voucher ? "Lưu thay đổi" : "Tạo voucher"}
+              {coupon ? "Lưu thay đổi" : "Tạo coupon"}
             </button>
           </div>
         </div>
@@ -430,4 +543,4 @@ const VoucherModal = ({ voucher, onSave, onClose }) => {
   );
 };
 
-export default VoucherModal;
+export default CouponModal;

@@ -15,6 +15,7 @@ import {
   applyAttendanceOvertimeState,
   buildAttendanceOvertimeState,
 } from "./attendanceOvertimeState.service.js";
+import { syncAttendancePerformanceIncidents } from "../performance/attendancePerformanceIntegration.service.js";
 import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
 import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 import {
@@ -941,6 +942,15 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       after,
     },
   });
+
+  try {
+    await syncAttendancePerformanceIncidents(timesheet, {
+      actorId: reviewActorId,
+      actorRole: getActorRole(ctx),
+    });
+  } catch (error) {
+    console.warn("Failed to sync attendance performance incidents:", error.message);
+  }
 
   return timesheet;
 }

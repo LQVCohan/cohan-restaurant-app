@@ -42,7 +42,52 @@ describe("Payroll runtime correctness", () => {
     expect(pipelineString).toContain("includeInPayroll");
     expect(pipelineString).toContain("$isOffSchedule");
     expect(pipelineString).toContain("$approved");
+    expect(pipelineString).toContain("$offScheduleApprovalStatus");
+    expect(pipelineString).toContain("approved");
     expect(items[0].breakdown.actualWorkDays).toBe(1);
+  });
+
+  it("builds off-schedule payroll gating that excludes pending and rejected but includes approved", async () => {
+    modelMocks.Timesheet.aggregate.mockResolvedValue([]);
+
+    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+
+    const addFields = modelMocks.Timesheet.aggregate.mock.calls[0][0].find((stage) => stage.$addFields);
+    expect(addFields.$addFields.includeInPayroll).toEqual({
+      $or: [
+        { $ne: ["$isOffSchedule", true] },
+        { $eq: ["$approved", true] },
+        { $eq: ["$offScheduleApprovalStatus", "approved"] },
+      ],
+    });
+  });
+
+  it("gates late and early leave minutes by payroll inclusion", async () => {
+    modelMocks.Timesheet.aggregate.mockResolvedValue([]);
+
+    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+
+    const group = modelMocks.Timesheet.aggregate.mock.calls[0][0].find((stage) => stage.$group);
+    expect(group.$group.totalLatenessMinutes).toEqual({
+      $sum: {
+        $cond: [
+          "$includeInPayroll",
+          { $ifNull: ["$latenessMinutes", 0] },
+          0,
+        ],
+      },
+    });
+    expect(group.$group.totalEarlyLeaveMinutes).toEqual({
+      $sum: {
+        $cond: [
+          "$includeInPayroll",
+          { $ifNull: ["$earlyLeaveMinutes", 0] },
+          0,
+        ],
+      },
+    });
   });
 
 });
@@ -94,6 +139,23 @@ describe("Payroll validation correctness", () => {
         employeeId: { _id: "s1", fullName: "A" },
         isOffSchedule: true,
         approved: true,
+        offScheduleApprovalStatus: "approved",
+        workedMinutes: 480,
+      },
+      {
+        _id: "t-off-approved-status",
+        employeeId: { _id: "s1", fullName: "A" },
+        isOffSchedule: true,
+        approved: false,
+        offScheduleApprovalStatus: "approved",
+        workedMinutes: 480,
+      },
+      {
+        _id: "t-off-rejected",
+        employeeId: { _id: "s1", fullName: "A" },
+        isOffSchedule: true,
+        approved: false,
+        offScheduleApprovalStatus: "rejected",
         workedMinutes: 480,
       },
     ];
@@ -114,6 +176,7 @@ describe("Payroll validation correctness", () => {
             (timesheet) =>
               timesheet.isOffSchedule === true &&
               timesheet.approved !== true &&
+              !["approved", "rejected"].includes(timesheet.offScheduleApprovalStatus) &&
               (Number(timesheet.workedMinutes || 0) > 0 || Number(timesheet.hours || 0) > 0 || Number(timesheet.amount || 0) > 0 || Boolean(timesheet.actualCheckInAt) || Boolean(timesheet.actualCheckOutAt)),
           );
         }

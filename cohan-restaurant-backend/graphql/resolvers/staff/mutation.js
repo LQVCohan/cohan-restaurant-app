@@ -34,11 +34,24 @@ import {
   validateShiftAssignment,
 } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
+  assertAutoSchedulePeriodCanEdit,
+  buildAutoScheduleCreateInputs,
+  buildAutoSchedulePreviewBackend,
+} from "../../../src/services/scheduling/autoSchedule.service.js";
+import {
+  hasBlockingSchedulePublishIssues,
+  validateScheduleBeforePublish,
+} from "../../../src/services/scheduling/schedulePublishValidation.service.js";
+import {
   approveAttendanceCorrectionRequest as approveAttendanceCorrectionRequestService,
   cancelAttendanceCorrectionRequest as cancelAttendanceCorrectionRequestService,
   createAttendanceCorrectionRequest as createAttendanceCorrectionRequestService,
   rejectAttendanceCorrectionRequest as rejectAttendanceCorrectionRequestService,
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
+import {
+  approveOffScheduleAttendance as approveOffScheduleAttendanceService,
+  rejectOffScheduleAttendance as rejectOffScheduleAttendanceService,
+} from "../../../src/services/attendance/offScheduleAttendance.service.js";
 import {
   approveOvertimeRequest as approveOvertimeRequestService,
   cancelOvertimeRequest as cancelOvertimeRequestService,
@@ -83,6 +96,8 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import { syncAttendancePerformanceIncidents } from "../../../src/services/performance/attendancePerformanceIntegration.service.js";
+import { runAttendanceExceptionDetectionJob } from "../../../src/jobs/attendanceException.job.js";
 import {
   createPerformanceIncidentOnce,
   applyPerformanceIncidentScore as applyPerformanceIncidentScoreService,
@@ -390,6 +405,15 @@ function mapAttendanceOutput(timesheet, staff) {
     latenessMinutes: Number(timesheet.latenessMinutes || 0),
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    approvedOvertimeMinutes: Number(timesheet.approvedOvertimeMinutes || 0),
+    overtimeApprovalStatus: String(
+      timesheet.overtimeApprovalStatus || "not_required",
+    ),
+    overtimeReviewNote: timesheet.overtimeReviewNote || "",
+    overtimeReviewedBy: timesheet.overtimeReviewedBy
+      ? String(timesheet.overtimeReviewedBy)
+      : null,
+    overtimeReviewedAt: timesheet.overtimeReviewedAt || null,
     status: mapAttendanceStatus(timesheet),
     isOffSchedule,
     offScheduleApprovalStatus,
@@ -998,7 +1022,7 @@ function getBatchErrorMessage(error) {
     "Không thể tạo ca cho nhân viên này."
   );
 }
-export default {
+const mutationResolvers = {
   // =========================
   // CREATE STAFF
   // =========================
@@ -1378,6 +1402,16 @@ export default {
       );
     }
 
+    const publishValidation = await validateScheduleBeforePublish({
+      restaurantId,
+      periodStart,
+      periodEnd,
+    });
+    if (hasBlockingSchedulePublishIssues(publishValidation)) {
+      const first = publishValidation.issues.find((issue) => issue.severity === "error");
+      throw new Error(first?.message || "Không thể công bố lịch vì còn lỗi blocking.");
+    }
+
     const existingPublication = await SchedulePublication.findOne({
       restaurantId,
       periodStart,
@@ -1649,6 +1683,31 @@ export default {
       at: new Date(),
     });
     return mapSchedulePublicationOutput(publication);
+  },
+  previewAutoSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
+    return buildAutoSchedulePreviewBackend(input, ctx);
+  },
+  applyAutoSchedule: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
+    await assertAutoSchedulePeriodCanEdit({
+      restaurantId,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+    });
+    const rows = await buildAutoScheduleCreateInputs(input, ctx);
+    if (!rows.length) {
+      return { successCount: 0, failedCount: 0, shifts: [], errors: [] };
+    }
+    return mutationResolvers.createStaffShifts(_, { inputs: rows }, ctx);
   },
   createStaffShift: async (_, { input }, ctx) => {
     const shift = await createStaffShiftInternal(input, ctx);
@@ -3595,6 +3654,16 @@ export default {
     record.hours = Number((record.workedMinutes / 60).toFixed(2));
 
     await record.save();
+    try {
+      await syncAttendancePerformanceIncidents(record, {
+        actorId,
+        actorRole: String(
+          ctx?.user?.roleName || ctx?.user?.userType || "",
+        ).toLowerCase(),
+      });
+    } catch (error) {
+      console.warn("Failed to sync attendance performance incidents:", error.message);
+    }
     if (record.isOffSchedule) {
       try {
         await createPerformanceIncidentOnce({
@@ -3626,91 +3695,38 @@ export default {
       .lean();
     return mapAttendanceOutput(populated, staff);
   },
-  approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
+
+  runAttendanceExceptionDetection: async (_, { input }, ctx) => {
     requireAuth(ctx);
-    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const tsid = toObjectId(timesheetId);
-    if (!tsid) throw new Error("Invalid timesheetId");
-    const record = await Timesheet.findById(tsid);
-    if (!record) throw new Error("Timesheet not found");
-    await requireRestaurantAccess(ctx, record.restaurantId);
-    if (!record.isOffSchedule)
-      throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
-    if (record.offScheduleApprovalStatus === "rejected") {
-      throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_REJECTED");
-    }
-    if (record.approved && record.offScheduleApprovalStatus === "approved") {
-      const staff = await Staff.findById(record.employeeId).populate("role");
-      return mapAttendanceOutput(record.toObject(), staff);
-    }
-    record.approved = true;
-    record.offScheduleApprovalStatus = "approved";
-    record.offScheduleReviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    record.offScheduleReviewedAt = new Date();
-    record.offScheduleReviewNote = note?.trim() || "";
-    await record.save();
-    try {
-      await createPerformanceIncidentOnce({
-        restaurantId: record.restaurantId,
-        employeeId: record.employeeId,
-        actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
-        actorRole: String(
-          ctx?.user?.roleName || ctx?.user?.userType || "",
-        ).toLowerCase(),
-        sourceType: "off_schedule_attendance",
-        sourceId: String(record._id),
-        eventType: "OFF_SCHEDULE_APPROVED",
-        severity: "info",
-        responsibilityStatus: "no_fault",
-        scoreImpactStatus: "waived",
-        metadata: { reviewNote: record.offScheduleReviewNote || "" },
-      });
-    } catch (error) {
-      console.warn("Failed to log performance incident:", error.message);
-    }
-    const staff = await Staff.findById(record.employeeId).populate("role");
-    return mapAttendanceOutput(record.toObject(), staff);
+    requireRoles(ctx, ["ADMIN", "MANAGER", "HR"]);
+    await requireRestaurantAccess(ctx, input.restaurantId);
+
+    return runAttendanceExceptionDetectionJob({
+      restaurantId: input.restaurantId,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      now: input.now,
+      noShowGraceMinutes: input.noShowGraceMinutes,
+      missedCheckoutGraceMinutes: input.missedCheckoutGraceMinutes,
+      actorId: ctx?.user?.id || ctx?.user?._id || null,
+      triggeredBy: "manual",
+    });
+  },
+  approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
+    const { record, staff } = await approveOffScheduleAttendanceService({
+      timesheetId,
+      note,
+      ctx,
+    });
+    return mapAttendanceOutput(record, staff);
   },
   rejectOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
-    requireAuth(ctx);
-    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const tsid = toObjectId(timesheetId);
-    if (!tsid) throw new Error("Invalid timesheetId");
-    const record = await Timesheet.findById(tsid);
-    if (!record) throw new Error("Timesheet not found");
-    await requireRestaurantAccess(ctx, record.restaurantId);
-    if (!record.isOffSchedule)
-      throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
-    if (record.approved || record.offScheduleApprovalStatus === "approved") {
-      throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_APPROVED");
-    }
-    record.approved = false;
-    record.offScheduleApprovalStatus = "rejected";
-    record.offScheduleReviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    record.offScheduleReviewedAt = new Date();
-    record.offScheduleReviewNote = note?.trim() || "";
-    await record.save();
-    try {
-      await createPerformanceIncidentOnce({
-        restaurantId: record.restaurantId,
-        employeeId: record.employeeId,
-        actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
-        actorRole: String(
-          ctx?.user?.roleName || ctx?.user?.userType || "",
-        ).toLowerCase(),
-        sourceType: "off_schedule_attendance",
-        sourceId: String(record._id),
-        eventType: "OFF_SCHEDULE_REJECTED",
-        severity: "violation",
-        responsibilityStatus: "pending_review",
-        scoreImpactStatus: "eligible",
-        metadata: { reviewNote: record.offScheduleReviewNote || "" },
-      });
-    } catch (error) {
-      console.warn("Failed to log performance incident:", error.message);
-    }
-    const staff = await Staff.findById(record.employeeId).populate("role");
-    return mapAttendanceOutput(record.toObject(), staff);
+    const { record, staff } = await rejectOffScheduleAttendanceService({
+      timesheetId,
+      note,
+      ctx,
+    });
+    return mapAttendanceOutput(record, staff);
   },
 
   createLeaveRequest: async (_, { input }, ctx) => {
@@ -4090,3 +4106,5 @@ export default {
     return mapLeaveOutput(updated);
   },
 };
+
+export default mutationResolvers;

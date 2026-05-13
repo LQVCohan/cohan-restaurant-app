@@ -55,7 +55,7 @@ describe("getDiscountPreviewErrorMessage", () => {
   it("keeps bad user input message", () => {
     expect(
       getDiscountPreviewErrorMessage(
-        gqlError("BAD_USER_INPUT", "Invalid voucher: usage limit reached"),
+        gqlError("BAD_USER_INPUT", "Invalid coupon: usage limit reached"),
       ),
     ).toMatch(/usage limit/i);
   });
@@ -63,7 +63,7 @@ describe("getDiscountPreviewErrorMessage", () => {
   it("maps minimum order message", () => {
     expect(
       getDiscountPreviewErrorMessage({
-        message: "Invalid voucher: minimum order value not met",
+        message: "Invalid coupon: minimum order value not met",
       }),
     ).toMatch(/giá trị tối thiểu/i);
   });

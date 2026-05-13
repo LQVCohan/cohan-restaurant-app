@@ -21,7 +21,7 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
   box-sizing: border-box;
 }
 
-.voucher-page {
+.coupon-page {
   background-color: $bg-page;
   min-height: 100vh;
   color: $text-dark;
@@ -32,7 +32,7 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
   padding-bottom: 24px;
   padding-left: 16px;
   padding-right: 16px;
-  .voucher-container {
+  .coupon-container {
     max-width: 800px;
     margin: 0 auto;
   }
@@ -203,7 +203,7 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
   }
 }
 
-/* --- VOUCHER LIST --- */
+/* --- COUPON LIST --- */
 .section-title {
   margin-bottom: 16px;
   h3 {
@@ -214,7 +214,18 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
   }
 }
 
-.voucher-grid {
+.coupon-action-error {
+  margin: -4px 0 16px;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.coupon-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
@@ -344,26 +355,26 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
       }
     }
 
-    .progress-area {
+    .usage-area {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-bottom: 16px;
 
-      .progress-bg {
+      .usage-bg {
         flex: 1;
         height: 6px;
         background: #e5e7eb;
         border-radius: 4px;
         overflow: hidden;
 
-        .progress-fill {
+        .usage-fill {
           height: 100%;
           background: linear-gradient(90deg, $primary 0%, #ff8c33 100%);
           border-radius: 4px;
         }
       }
-      .progress-text {
+      .usage-text {
         font-size: 12px;
         color: $primary;
         font-weight: 600;
@@ -448,7 +459,7 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
 }
 
 /* --- MODAL POPUP --- */
-.modal-voucher-overlay {
+.modal-coupon-overlay {
   position: fixed;
   top: 0;
   left: 0;

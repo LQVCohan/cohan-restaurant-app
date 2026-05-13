@@ -38,7 +38,7 @@ describe("getOvertimeActionErrorMessage", () => {
     const error = new Error("ATTENDANCE_OVERTIME_PAYROLL_PERIOD_LOCKED");
 
     expect(getOvertimeActionErrorMessage(error, "fallback")).toBe(
-      "⚠️ Không thể duyệt hoặc từ chối tăng ca vì kỳ lương tương ứng đã chốt hoặc đã thanh toán.",
+      "⚠️ Kỳ lương đã chốt/khóa/thanh toán, không thể thay đổi tăng ca.",
     );
   });
 
