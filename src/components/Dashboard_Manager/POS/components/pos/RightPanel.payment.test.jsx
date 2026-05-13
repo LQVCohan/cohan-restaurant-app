@@ -12,8 +12,8 @@ const source = fs.readFileSync(
 );
 
 describe("RightPanel payment completion discount display", () => {
-  it("shows applied voucher or discount after successful payment", () => {
-    expect(source).toContain("appliedVoucherCode");
+  it("shows applied coupon or discount after successful payment", () => {
+    expect(source).toContain("appliedCouponCode");
     expect(source).toContain("invoiceTotals");
     expect(source).toContain("discountAmount");
     expect(source).toContain("discountReason");

@@ -68,14 +68,12 @@ export const COUPON_CATEGORIES = {
   shipping: "Coupon shipping",
 };
 
-export const VOUCHER_CATEGORIES = COUPON_CATEGORIES;
 
 export const COUPON_DISCOUNT_TYPES = {
   percent: "Giảm %",
   fixed: "Giảm tiền",
 };
 
-export const VOUCHER_DISCOUNT_TYPES = COUPON_DISCOUNT_TYPES;
 
 export const STATUS_TYPES = {
   active: "Đang hoạt động",

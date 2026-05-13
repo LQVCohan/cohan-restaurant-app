@@ -65,7 +65,7 @@ function PaymentModal({
   const [method, setMethod] = useState("cash");
   const [paidAmount, setPaidAmount] = useState(0);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [voucherCode, setVoucherCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
@@ -107,7 +107,7 @@ function PaymentModal({
       ),
     [order],
   );
-  const hasVoucherInput = voucherCode.trim().length > 0;
+  const hasCouponInput = couponCode.trim().length > 0;
   const baseTotalAmountVnd = Number(totalAmount || 0);
   const payableTotalVnd = getDiscountBreakdownTotal(
     discountBreakdown,
@@ -133,10 +133,10 @@ function PaymentModal({
       taxRate: 0,
       serviceRate: 0,
       shippingFee: 0,
-      voucherCode,
+      couponCode,
       promotionIds: selectedPromotionIds,
     });
-  }, [restaurantId, isDineIn, order, voucherCode, selectedPromotionIds]);
+  }, [restaurantId, isDineIn, order, couponCode, selectedPromotionIds]);
   const breakdownRows = useMemo(() => {
     const source = discountBreakdown || {
       subtotal: baseTotalAmountVnd,
@@ -192,11 +192,11 @@ function PaymentModal({
     discountBreakdown &&
     !discountNeedsReapply &&
     !discountError &&
-    (hasVoucherInput || selectedPromotionIds.length > 0),
+    (hasCouponInput || selectedPromotionIds.length > 0),
   );
   const discountBlocksPayment = Boolean(
     isDineIn &&
-    hasVoucherInput &&
+    hasCouponInput &&
     (!discountBreakdown || discountNeedsReapply || discountError),
   );
 
@@ -219,7 +219,7 @@ function PaymentModal({
 
   useEffect(() => {
     if (!isDineIn) {
-      setVoucherCode("");
+      setCouponCode("");
       setSelectedPromotionIds([]);
       setDiscountBreakdown(null);
       setDiscountError("");
@@ -233,7 +233,7 @@ function PaymentModal({
     setDiscountBreakdown(null);
     setDiscountError("");
     setDiscountNeedsReapply(
-      Boolean(hasVoucherInput || selectedPromotionIds.length > 0),
+      Boolean(hasCouponInput || selectedPromotionIds.length > 0),
     );
   }, [
     isOpen,
@@ -241,9 +241,9 @@ function PaymentModal({
     orderSignature,
     table?.id,
     table?.code,
-    voucherCode,
+    couponCode,
     selectedPromotionIds,
-    hasVoucherInput,
+    hasCouponInput,
   ]);
 
   const handleSuggestion = (value) =>
@@ -350,7 +350,7 @@ function PaymentModal({
           taxRate: 0,
           serviceRate: 0,
           shippingFee: 0,
-          voucherCode,
+          couponCode,
         });
 
         res = await confirmPayment({
@@ -411,7 +411,7 @@ function PaymentModal({
       change: changeAmount,
       currency: activeCurrency,
       status: "COMPLETED",
-      appliedVoucherCode: hasValidDiscount ? voucherCode.trim() : "",
+      appliedCouponCode: hasValidDiscount ? couponCode.trim() : "",
       promotionIds: hasValidDiscount ? selectedPromotionIds : [],
       payableTotalVnd: authoritativeTotalVnd,
       tenderedAmountVnd: Number(tenderAmountVnd || 0),
@@ -550,12 +550,12 @@ function PaymentModal({
             {isDineIn && (
               <div className={s.group}>
                 <label className={s.label}>Coupon thanh toán</label>
-                <div className={s.voucherRow}>
+                <div className={s.couponRow}>
                   <input
                     type="text"
-                    className={s.voucherInput}
-                    value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value)}
+                    className={s.couponInput}
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
                     placeholder="Nhập mã coupon"
                     disabled={busy}
                   />
@@ -563,7 +563,7 @@ function PaymentModal({
                     type="button"
                     className={s.applyButton}
                     onClick={handleApplyDiscountPreview}
-                    disabled={busy || isPreviewingDiscount || !hasVoucherInput}
+                    disabled={busy || isPreviewingDiscount || !hasCouponInput}
                   >
                     {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
                   </button>
@@ -597,7 +597,7 @@ function PaymentModal({
                   <div className={s.discountError}>{discountError}</div>
                 )}
 
-                {!discountError && discountNeedsReapply && hasVoucherInput && (
+                {!discountError && discountNeedsReapply && hasCouponInput && (
                   <div className={s.discountWarning}>
                     Coupon đã thay đổi hoặc hóa đơn đã đổi. Vui lòng áp dụng
                     lại.

@@ -67,9 +67,9 @@ export default function CartBottomSheet({
   sending = false,
   sendActionLabel = "Gửi Bếp",
   discountEnabled = false,
-  voucherCode = "",
-  onVoucherCodeChange,
-  onApplyVoucher,
+  couponCode = "",
+  onCouponCodeChange,
+  onApplyCoupon,
   discountBreakdown,
   discountError,
   discountLoading = false,
@@ -381,15 +381,15 @@ export default function CartBottomSheet({
                 <div className="staff-discount-row">
                   <input
                     className="staff-discount-input"
-                    value={voucherCode}
+                    value={couponCode}
                     placeholder="Nhập mã coupon"
-                    disabled={!permissions.canApplyVoucher}
+                    disabled={!permissions.canApplyCoupon}
                     onChange={(event) => {
-                      if (!permissions.canApplyVoucher) {
+                      if (!permissions.canApplyCoupon) {
                         alert(NO_PERMISSION_MESSAGE);
                         return;
                       }
-                      onVoucherCodeChange?.(event.target.value);
+                      onCouponCodeChange?.(event.target.value);
                     }}
                   />
                   <button
@@ -397,15 +397,15 @@ export default function CartBottomSheet({
                     type="button"
                     disabled={
                       discountLoading ||
-                      !voucherCode.trim() ||
-                      !permissions.canApplyVoucher
+                      !couponCode.trim() ||
+                      !permissions.canApplyCoupon
                     }
                     onClick={() => {
-                      if (!permissions.canApplyVoucher) {
+                      if (!permissions.canApplyCoupon) {
                         alert(NO_PERMISSION_MESSAGE);
                         return;
                       }
-                      onApplyVoucher?.();
+                      onApplyCoupon?.();
                     }}
                   >
                     <Tag size={16} />{" "}

@@ -26,10 +26,10 @@ describe("OrderSummaryModal discount integration", () => {
     const inputSnippet = getCreateCheckoutInputSnippet(src);
 
     expect(inputSnippet).toMatch(/buildDiscountPricingInput/);
-    expect(inputSnippet).toMatch(/voucherCode/);
+    expect(inputSnippet).toMatch(/couponCode/);
     expect(inputSnippet).toMatch(/promotionIds/);
 
-    expect(inputSnippet).not.toMatch(/voucherDiscount/);
+    expect(inputSnippet).not.toMatch(/couponDiscount/);
     expect(inputSnippet).not.toMatch(/promotionDiscount/);
     expect(inputSnippet).not.toMatch(/discountAmount/);
     expect(inputSnippet).not.toMatch(/finalTotal/);

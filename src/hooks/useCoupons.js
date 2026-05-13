@@ -432,5 +432,3 @@ export const useCoupons = (selectedRestaurantId = "") => {
     resolveStatus,
   };
 };
-
-export const useVouchers = useCoupons;

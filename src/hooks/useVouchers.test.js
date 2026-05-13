@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { __testables, useCoupons, useVouchers } from "./useVouchers";
+import { __testables, useCoupons } from "./useCoupons";
 
 describe("useCoupons input builders", () => {
-  it("keeps useVouchers as a backward-compatible alias", () => {
-    expect(useVouchers).toBe(useCoupons);
+  it("exports the coupon hook directly", () => {
+    expect(typeof useCoupons).toBe("function");
   });
   it("normalizes coupon datetime-local values to ISO in Vietnam timezone", () => {
     const input = __testables.buildCouponInput(
