@@ -342,12 +342,11 @@ export async function buildPayrollItemsForRange({
     {
       $addFields: {
         includeInPayroll: {
-          $not: {
-            $and: [
-              { $eq: ["$isOffSchedule", true] },
-              { $ne: ["$approved", true] },
-            ],
-          },
+          $or: [
+            { $ne: ["$isOffSchedule", true] },
+            { $eq: ["$approved", true] },
+            { $eq: ["$offScheduleApprovalStatus", "approved"] },
+          ],
         },
         approvedOvertimePayableMinutes: {
           $cond: [

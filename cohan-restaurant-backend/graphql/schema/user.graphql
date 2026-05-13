@@ -1251,6 +1251,11 @@ type StaffAttendanceRecord {
   latenessMinutes: Int!
   earlyLeaveMinutes: Int!
   overtimeMinutes: Int!
+  approvedOvertimeMinutes: Int!
+  overtimeApprovalStatus: String!
+  overtimeReviewNote: String!
+  overtimeReviewedBy: ID
+  overtimeReviewedAt: DateTime
   status: String!
   isOffSchedule: Boolean!
   offScheduleApprovalStatus: String!
@@ -1839,9 +1844,13 @@ input OffScheduleAttendanceFilterInput {
   restaurantId: ID!
   fromDate: DateTime
   toDate: DateTime
+  startDate: DateTime
+  endDate: DateTime
   status: String
+  approvalStatus: String
   employeeId: ID
   onlyPending: Boolean
+  search: String
 }
 
 input CreateLeaveRequestInput {
