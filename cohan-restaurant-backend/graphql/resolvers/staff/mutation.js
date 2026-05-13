@@ -97,6 +97,7 @@ import {
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
 import { syncAttendancePerformanceIncidents } from "../../../src/services/performance/attendancePerformanceIntegration.service.js";
+import { runAttendanceExceptionDetectionJob } from "../../../src/jobs/attendanceException.job.js";
 import {
   createPerformanceIncidentOnce,
   applyPerformanceIncidentScore as applyPerformanceIncidentScoreService,
@@ -3693,6 +3694,23 @@ const mutationResolvers = {
       .populate("shiftId")
       .lean();
     return mapAttendanceOutput(populated, staff);
+  },
+
+  runAttendanceExceptionDetection: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ["ADMIN", "MANAGER", "HR"]);
+    await requireRestaurantAccess(ctx, input.restaurantId);
+
+    return runAttendanceExceptionDetectionJob({
+      restaurantId: input.restaurantId,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      now: input.now,
+      noShowGraceMinutes: input.noShowGraceMinutes,
+      missedCheckoutGraceMinutes: input.missedCheckoutGraceMinutes,
+      actorId: ctx?.user?.id || ctx?.user?._id || null,
+      triggeredBy: "manual",
+    });
   },
   approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
     const { record, staff } = await approveOffScheduleAttendanceService({

@@ -1,4 +1,5 @@
 import {
+  PayrollPeriod,
   SchedulePublication,
   Shift,
   Timesheet,
@@ -58,6 +59,27 @@ const isPublishedOrActivePublication = (publication) =>
 
 const isOfficialShiftStatus = (shift) =>
   !IGNORED_SHIFT_STATUSES.has(normalizeStatus(shift?.status));
+
+async function loadLockedPayrollPeriods({ restaurantId, startDate, endDate }) {
+  if (!restaurantId || !startDate || !endDate) return [];
+
+  return PayrollPeriod.find({
+    restaurantId,
+    status: { $in: ["finalized", "locked", "paid"] },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  }).lean();
+}
+
+const shiftOverlapsLockedPayroll = (shift, lockedPayrollPeriods = []) =>
+  lockedPayrollPeriods.some((period) =>
+    overlapsRange(
+      period.startDate,
+      period.endDate,
+      shift.startTime,
+      shift.endTime,
+    ),
+  );
 
 const buildNoShowPayload = (shift) => ({
   employeeId: shift.employeeId,
@@ -267,15 +289,25 @@ export async function detectAttendanceExceptionsForRange({
     shiftIds: shifts.map((shift) => shift._id),
   });
   const timesheetByShiftId = mapByShiftId(timesheets);
+  const lockedPayrollPeriods = await loadLockedPayrollPeriods({
+    restaurantId,
+    startDate: rangeStart,
+    endDate: rangeEnd,
+  });
 
   const summary = {
     scannedShifts: shifts.length,
     noShowCreated: 0,
     noShowUpdated: 0,
     missedCheckoutUpdated: 0,
+    skippedLockedPayroll: 0,
   };
 
   for (const shift of shifts) {
+    if (shiftOverlapsLockedPayroll(shift, lockedPayrollPeriods)) {
+      summary.skippedLockedPayroll += 1;
+      continue;
+    }
     const timesheet = timesheetByShiftId.get(String(shift._id)) || null;
     const noShowResult = await ensureNoShowForShift({
       shift,
@@ -313,6 +345,8 @@ export const __testables__ = {
   buildNoShowPayload,
   filterShiftsInsideOfficialPublications,
   isPublishedOrActivePublication,
+  loadLockedPayrollPeriods,
+  shiftOverlapsLockedPayroll,
   shouldSkipMissedCheckoutUpdate,
   toUtcOffsetEndOfDay,
   toUtcOffsetStartOfDay,
