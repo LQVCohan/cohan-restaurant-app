@@ -1,102 +1,60 @@
 import mongoose from "mongoose";
 import process from "process";
 import dotenv from "dotenv";
-import { Role, ParentRole } from "../models/index.js";
+import { Role, ParentRole, Permission } from "../models/index.js";
 
 dotenv.config();
-
-await mongoose.connect(process.env.MONGO_URI, {
-  dbName: process.env.MONGO_DB,
-});
+await mongoose.connect(process.env.MONGO_URI, { dbName: process.env.MONGO_DB });
 
 const roles = [
-  // Base system roles
-  { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true },
-  { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true },
-  { name: "HR", slug: "hr", parentRole: "hr", isSystem: true },
-  { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true },
-  { name: "Customer", slug: "customer", parentRole: "customer", isSystem: true },
-  { name: "Staff", slug: "staff", parentRole: "staff", isSystem: true },
-
-  // Service
-  { name: "Server", slug: "server", parentRole: "staff", department: "service" },
-  { name: "Supervisor", slug: "supervisor", parentRole: "staff", department: "service" },
-  { name: "Host", slug: "host", parentRole: "staff", department: "service" },
-
-  // Cashier
-  { name: "Cashier", slug: "cashier", parentRole: "staff", department: "cashier" },
-
-  // Kitchen
-  { name: "Chef", slug: "chef", parentRole: "staff", department: "kitchen" },
-  { name: "Cook", slug: "cook", parentRole: "staff", department: "kitchen" },
-  {
-    name: "Kitchen Helper",
-    slug: "kitchen_helper",
-    parentRole: "staff",
-    department: "kitchen",
-  },
-
-  // Cleaning
-  { name: "Cleaner", slug: "cleaner", parentRole: "staff", department: "cleaning" },
-
-  // Delivery
-  { name: "Shipper", slug: "shipper", parentRole: "staff", department: "delivery" },
-
-  // Inventory
-  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory" },
-
-  // Bar
-  { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar" },
+  { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true, permissions: [] },
+  { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true, permissions: [] },
+  { name: "HR", slug: "hr", parentRole: "hr", isSystem: true, permissions: [] },
+  { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true, permissions: [] },
+  { name: "Customer", slug: "customer", parentRole: "customer", isSystem: true, permissions: [] },
+  { name: "Staff", slug: "staff", parentRole: "staff", isSystem: true, permissions: [] },
+  { name: "Server", slug: "server", parentRole: "staff", department: "service", permissions: ["menu.read", "order.read", "order.create", "order.update", "table.read"] },
+  { name: "Supervisor", slug: "supervisor", parentRole: "staff", department: "service", permissions: ["menu.read", "order.read", "order.create", "order.update", "order.cancel", "table.read", "staff.read", "shift.read"] },
+  { name: "Host", slug: "host", parentRole: "staff", department: "service", permissions: ["menu.read", "reservation.read", "table.read"] },
+  { name: "Cashier", slug: "cashier", parentRole: "staff", department: "cashier", permissions: ["order.read", "payment.read", "payment.write", "table.read"] },
+  { name: "Chef", slug: "chef", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read"] },
+  { name: "Cook", slug: "cook", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read"] },
+  { name: "Kitchen Helper", slug: "kitchen_helper", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read"] },
+  { name: "Cleaner", slug: "cleaner", parentRole: "staff", department: "cleaning", permissions: ["cleaning.read"] },
+  { name: "Shipper", slug: "shipper", parentRole: "staff", department: "delivery", permissions: ["delivery.read", "delivery.update"] },
+  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["inventory.read", "inventory.write", "stock.read", "stock.write", "supplier.read", "supplier.write"] },
+  { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar", permissions: ["menu.read", "order.read", "order.create"] },
 ];
 
-async function run() {
-  for (const parentRole of [
-    { name: "Admin", slug: "admin" },
-    { name: "Manager", slug: "manager" },
-    { name: "HR", slug: "hr" },
-    { name: "Accountant", slug: "accountant" },
-    { name: "Customer", slug: "customer" },
-    { name: "Staff", slug: "staff" },
-  ]) {
-    await ParentRole.findOneAndUpdate(
-      { slug: parentRole.slug },
-      { $set: parentRole },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-  }
+async function idsFor(codes) {
+  return (await Permission.find({ code: { $in: codes } }).select("_id").lean()).map((p) => p._id);
+}
 
+async function run() {
   const parentRoles = await ParentRole.find({}).lean();
   const parentRoleBySlug = new Map(parentRoles.map((role) => [role.slug, role]));
 
   for (const role of roles) {
     const parent = parentRoleBySlug.get(role.parentRole);
-    if (!parent) {
-      console.log(`ParentRole not found for role ${role.slug}: ${role.parentRole}`);
-      continue;
-    }
-
-    const update = {
-      name: role.name,
-      slug: role.slug,
-      description: role.description || "",
-      isSystem: Boolean(role.isSystem),
-      parentRole: parent._id,
-      department: role.department || null,
-    };
-
-    const existing = await Role.findOne({ slug: role.slug }).lean();
+    if (!parent) throw new Error(`ParentRole not found for role ${role.slug}: ${role.parentRole}`);
+    const permissions = await idsFor(role.permissions || []);
     await Role.findOneAndUpdate(
       { slug: role.slug },
       {
-        $set: update,
-        $setOnInsert: { permissions: [] },
+        $set: {
+          name: role.name,
+          slug: role.slug,
+          description: role.description || "",
+          isSystem: Boolean(role.isSystem),
+          parentRole: parent._id,
+          department: role.department || null,
+          permissions,
+        },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
-
-    console.log(`${existing ? "Updated" : "Created"} role: ${role.slug}`);
+    console.log(`✓ role: ${role.slug}`);
   }
-
   await mongoose.disconnect();
   console.log("Done Role Seeding");
 }

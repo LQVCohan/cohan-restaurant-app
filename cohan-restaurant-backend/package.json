@@ -17,7 +17,11 @@
     "build": "node -e \"console.log('Backend build step: no transpilation required.')\"",
     "test:watch": "vitest",
     "check:user-email": "node scripts/check-user-by-email.js",
-    "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js"
+    "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js",
+    "seed:permissions": "node scripts/seedPermissions.js",
+    "seed:parent-roles": "node scripts/seedParentRoles.js",
+    "seed:roles": "node scripts/seedRoles.js",
+    "seed:rbac": "npm run seed:permissions && npm run seed:parent-roles && npm run seed:roles"
   },
   "keywords": [],
   "author": "",
