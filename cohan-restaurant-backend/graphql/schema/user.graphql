@@ -1039,6 +1039,7 @@ input ApplyAutoScheduleInput {
   shiftTemplates: JSON
   allowOverride: Boolean = false
   overrideReason: String
+  allowPartialApply: Boolean = false
 }
 
 type AutoScheduleIssue {

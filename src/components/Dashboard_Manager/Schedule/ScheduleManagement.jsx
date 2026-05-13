@@ -3842,6 +3842,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
+            allowPartialApply: false,
           },
         },
       });

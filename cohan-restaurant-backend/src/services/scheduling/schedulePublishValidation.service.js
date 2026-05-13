@@ -42,7 +42,7 @@ export async function validateScheduleBeforePublish({ restaurantId, periodStart,
   if (!rid) throw new Error("restaurantId không hợp lệ.");
   const requiredRoles = normalizeMandatoryShiftRoles(mandatoryShiftRoles);
   const issues = [];
-  const shifts = await Shift.find({ restaurantId: rid, startTime: { $gte: periodStart, $lte: periodEnd }, status: { $ne: "cancelled" } }).lean();
+  const shifts = await Shift.find({ restaurantId: rid, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart }, status: { $ne: "cancelled" } }).lean();
   const employeeIds = [...new Set(shifts.map((shift) => String(shift.employeeId)).filter(Boolean))];
   const staffRows = employeeIds.length ? await Staff.find({ _id: { $in: employeeIds } }).lean() : [];
   const staffById = new Map(staffRows.map((staff) => [String(staff._id), staff]));

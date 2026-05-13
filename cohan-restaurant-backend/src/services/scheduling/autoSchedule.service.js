@@ -4,6 +4,9 @@ import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js"
 import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const AUTO_SCHEDULE_PARTIAL_APPLY_ERROR =
+  "Không thể áp dụng auto schedule vì vẫn còn ca/vai trò chưa được xếp đủ.";
+const MIN_OVERRIDE_REASON_LENGTH = 5;
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -118,6 +121,23 @@ function mapIssue(issue, fallbackCode = "VALIDATION_FAILED") {
   };
 }
 
+function assertValidOverrideInput(input = {}) {
+  if (!input.allowOverride) return;
+
+  const reason = String(input.overrideReason || "").trim();
+  if (reason.length < MIN_OVERRIDE_REASON_LENGTH) {
+    throw new Error("Cần nhập lý do override hợp lệ trước khi áp dụng auto schedule.");
+  }
+}
+
+function assertPreviewCanApply(preview, input = {}) {
+  if (input.allowPartialApply === true) return;
+
+  if (preview?.canApply === false || Number(preview?.unresolvedCount || 0) > 0) {
+    throw new Error(AUTO_SCHEDULE_PARTIAL_APPLY_ERROR);
+  }
+}
+
 export async function assertAutoSchedulePeriodCanEdit({ restaurantId, periodStart, periodEnd }) {
   const publication = await SchedulePublication.findOne({ restaurantId, periodStart: { $lte: endOfDay(periodEnd) }, periodEnd: { $gte: startOfDay(periodStart) } }).lean();
   if (!publication) return true;
@@ -197,6 +217,22 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
 }
 
 export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
+  assertValidOverrideInput(input);
+
   const preview = await buildAutoSchedulePreviewBackend(input, ctx);
-  return preview.plannedAssignments.map((item) => ({ employeeId: item.employeeId, restaurantId: input.restaurantId, shiftType: item.shiftType, startTime: item.startTime, endTime: item.endTime, notes: "Auto schedule backend" }));
+  assertPreviewCanApply(preview, input);
+
+  return preview.plannedAssignments.map((item) => ({
+    employeeId: item.employeeId,
+    restaurantId: input.restaurantId,
+    shiftType: item.shiftType,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    status: "scheduled",
+    notes: "Auto schedule backend",
+    allowOverride: Boolean(input.allowOverride),
+    overrideReason: input.allowOverride ? String(input.overrideReason || "").trim() : undefined,
+  }));
 }
+
+export { AUTO_SCHEDULE_PARTIAL_APPLY_ERROR };
