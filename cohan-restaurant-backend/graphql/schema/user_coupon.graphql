@@ -1,0 +1,26 @@
+type UserCoupon {
+  id: ID!
+  userId: ID!
+  couponId: ID!
+  restaurantId: ID!
+  status: String!
+  savedAt: DateTime
+  usedAt: DateTime
+  orderId: ID
+  invoiceId: ID
+  discountAmount: Float
+  metadata: JSON
+  coupon: Coupon
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+extend type Query {
+  myCoupons(restaurantId: ID, status: String): [UserCoupon!]!
+  isCouponSaved(couponId: ID!): Boolean!
+}
+
+extend type Mutation {
+  saveCoupon(couponId: ID!): UserCoupon!
+  removeSavedCoupon(couponId: ID!): Boolean!
+}

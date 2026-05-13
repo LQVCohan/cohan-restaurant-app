@@ -31,6 +31,7 @@ const files = [
   "event_package.graphql",
   "table_event.graphql",
   "coupon.graphql",
+  "user_coupon.graphql",
   "cart.graphql",
   "search.graphql",
   "shippingTracking.graphql",

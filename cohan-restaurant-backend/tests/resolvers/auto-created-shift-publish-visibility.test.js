@@ -264,9 +264,30 @@ describe("auto-created shift publish and staff visibility regression", () => {
     db.nextShiftAck = 1;
     db.nextScheduleAck = 1;
     db.staff = [
-      { _id: "staff-1", id: "staff-1", userType: "STAFF", fullName: "Auto Staff One", restaurantForStaff: "rest-1" },
-      { _id: "staff-2", id: "staff-2", userType: "STAFF", fullName: "Auto Staff Two", restaurantForStaff: "rest-1" },
-      { _id: "staff-3", id: "staff-3", userType: "STAFF", fullName: "Other Staff", restaurantForStaff: "rest-1" },
+      {
+        _id: "staff-1",
+        id: "staff-1",
+        userType: "STAFF",
+        employmentStatus: "working",
+        fullName: "Auto Staff One",
+        restaurantForStaff: "rest-1",
+      },
+      {
+        _id: "staff-2",
+        id: "staff-2",
+        userType: "STAFF",
+        employmentStatus: "working",
+        fullName: "Auto Staff Two",
+        restaurantForStaff: "rest-1",
+      },
+      {
+        _id: "staff-3",
+        id: "staff-3",
+        userType: "STAFF",
+        employmentStatus: "working",
+        fullName: "Other Staff",
+        restaurantForStaff: "rest-1",
+      },
     ];
 
     modelMocks.Restaurant.exists.mockResolvedValue(true);
