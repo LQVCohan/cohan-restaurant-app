@@ -1,11 +1,12 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthContext } from "@/context/AuthContext";
 import CouponPage from "./CouponPage";
 import { useQuery } from "@apollo/client";
+import useUserCoupons from "@/hooks/useUserCoupons";
 
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
@@ -14,6 +15,27 @@ vi.mock("@apollo/client", async () => {
     useQuery: vi.fn(),
   };
 });
+
+vi.mock("@/hooks/useUserCoupons", () => ({
+  default: vi.fn(),
+}));
+
+const activeCoupon = {
+  id: "coupon-1",
+  name: "Coupon giảm 20%",
+  code: "SAVE20",
+  category: "order",
+  description: "Giảm giá đặt món",
+  discountType: "PERCENT",
+  discountValue: 20,
+  minOrderValue: 100000,
+  maxDiscount: 50000,
+  maxUsage: 100,
+  used: 10,
+  endAt: "2026-12-31T00:00:00.000Z",
+  isActive: true,
+  constraints: {},
+};
 
 const renderCouponPage = ({ path = "/coupons", authValue = {} } = {}) =>
   render(
@@ -28,9 +50,21 @@ const renderCouponPage = ({ path = "/coupons", authValue = {} } = {}) =>
   );
 
 describe("CouponPage", () => {
+  const saveCoupon = vi.fn();
+  const removeSavedCoupon = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
     useQuery.mockReturnValue({ data: { coupons: [] }, loading: false });
+    useUserCoupons.mockReturnValue({
+      myCoupons: [],
+      savedCouponIds: [],
+      loading: false,
+      error: null,
+      saveCoupon,
+      removeSavedCoupon,
+      refetch: vi.fn(),
+    });
   });
 
   it("does not query coupons without a restaurantId", () => {
@@ -43,10 +77,11 @@ describe("CouponPage", () => {
         variables: expect.objectContaining({ restaurantId: "" }),
       }),
     );
+    expect(useUserCoupons).toHaveBeenCalledWith({ restaurantId: "", skip: true });
     expect(screen.getByText("Chọn nhà hàng để xem Coupon")).toBeInTheDocument();
   });
 
-  it("uses the /coupons/:restaurantId route param", () => {
+  it("queries coupons with the /coupons/:restaurantId route param", () => {
     renderCouponPage({ path: "/coupons/restaurant-123" });
 
     expect(useQuery).toHaveBeenCalledWith(
@@ -56,5 +91,53 @@ describe("CouponPage", () => {
         variables: expect.objectContaining({ restaurantId: "restaurant-123" }),
       }),
     );
+  });
+
+  it("calls saveCoupon when an authenticated customer saves a coupon", () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+
+    renderCouponPage({
+      path: "/coupons/restaurant-123",
+      authValue: { isAuthenticated: true, user: { id: "user-1" } },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu ngay" }));
+
+    expect(saveCoupon).toHaveBeenCalledWith("coupon-1");
+  });
+
+  it("shows backend saved state and removes a saved coupon on click", () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useUserCoupons.mockReturnValue({
+      myCoupons: [{ id: "uc-1", couponId: "coupon-1", status: "saved" }],
+      savedCouponIds: ["coupon-1"],
+      loading: false,
+      error: null,
+      saveCoupon,
+      removeSavedCoupon,
+      refetch: vi.fn(),
+    });
+
+    renderCouponPage({
+      path: "/coupons/restaurant-123",
+      authValue: { isAuthenticated: true, user: { id: "user-1" } },
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1));
+
+    expect(removeSavedCoupon).toHaveBeenCalledWith("coupon-1");
+  });
+
+  it("prompts unauthenticated users to log in and does not save", () => {
+    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+
+    renderCouponPage({ path: "/coupons/restaurant-123" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Đăng nhập để lưu Coupon" }),
+    );
+
+    expect(saveCoupon).not.toHaveBeenCalled();
+    expect(removeSavedCoupon).not.toHaveBeenCalled();
   });
 });

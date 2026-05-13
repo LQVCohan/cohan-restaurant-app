@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import useUserCoupons from "@/hooks/useUserCoupons";
 import { COUPON_CATEGORIES } from "@/utils/constants";
 import "./CouponPage.scss";
 
@@ -163,7 +164,13 @@ const mapCouponToCard = (coupon) => {
 const CouponPage = () => {
   const { restaurantId: routeRestaurantId } = useParams();
   const [searchParams] = useSearchParams();
-  const { restaurants = [], refRestaurant = [] } = useContext(AuthContext) || {};
+  const {
+    isAuthenticated = false,
+    restaurants = [],
+    refRestaurant = [],
+    token,
+    user,
+  } = useContext(AuthContext) || {};
 
   const contextRestaurantId = useMemo(
     () =>
@@ -192,7 +199,16 @@ const CouponPage = () => {
   });
   const [activeTab, setActiveTab] = useState("all");
   const [selectedCoupon, setSelectedCoupon] = useState(null);
-  const [savedCoupons, setSavedCoupons] = useState([]);
+  const canSaveCoupons = Boolean(isAuthenticated || user?.id || token);
+  const {
+    savedCouponIds,
+    loading: userCouponsLoading,
+    saveCoupon,
+    removeSavedCoupon,
+  } = useUserCoupons({
+    restaurantId,
+    skip: !restaurantId || !canSaveCoupons,
+  });
 
   const coupons = useMemo(
     () => (data?.coupons ?? []).map(mapCouponToCard),
@@ -200,15 +216,22 @@ const CouponPage = () => {
   );
 
   const filteredCoupons = useMemo(() => {
-    return activeTab === "all"
-      ? coupons
-      : coupons.filter((coupon) => coupon.category === activeTab);
-  }, [activeTab, coupons]);
+    if (activeTab === "all") return coupons;
+    if (activeTab === "saved") {
+      return coupons.filter((coupon) => savedCouponIds.includes(coupon.id));
+    }
+    return coupons.filter((coupon) => coupon.category === activeTab);
+  }, [activeTab, coupons, savedCouponIds]);
 
-  const handleToggleSave = (id) => {
-    setSavedCoupons((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
+  const handleToggleSave = async (id) => {
+    if (!canSaveCoupons) return;
+
+    if (savedCouponIds.includes(id)) {
+      await removeSavedCoupon(id);
+      return;
+    }
+
+    await saveCoupon(id);
   };
 
   const renderCouponUsage = (coupon) => {
@@ -278,7 +301,7 @@ const CouponPage = () => {
     return (
       <div className="coupon-grid">
         {filteredCoupons.map((coupon) => {
-          const isSaved = savedCoupons.includes(coupon.id);
+          const isSaved = savedCouponIds.includes(coupon.id);
           return (
             <div key={coupon.id} className={`ticket-card color-${coupon.color}`}>
               <div className="ticket-left">
@@ -318,9 +341,12 @@ const CouponPage = () => {
                   </button>
                   <button
                     className={`btn-save ${isSaved ? "saved" : ""}`}
+                    disabled={userCouponsLoading}
                     onClick={() => handleToggleSave(coupon.id)}
                   >
-                    {isSaved ? (
+                    {!canSaveCoupons ? (
+                      "Đăng nhập để lưu Coupon"
+                    ) : isSaved ? (
                       <>
                         Đã lưu <Check size={14} />
                       </>
@@ -361,7 +387,7 @@ const CouponPage = () => {
                 <Wallet size={20} />
               </div>
               <div>
-                <span className="value">{savedCoupons.length}</span>
+                <span className="value">{savedCouponIds.length}</span>
                 <span className="label">Đã lưu</span>
               </div>
             </div>
@@ -377,7 +403,10 @@ const CouponPage = () => {
         </div>
 
         <div className="categories-wrapper">
-          {CATEGORIES.map((category) => (
+          {[
+            ...CATEGORIES,
+            { id: "saved", label: "Coupon đã lưu", icon: <Check size={18} /> },
+          ].map((category) => (
             <button
               key={category.id}
               className={`cat-pill ${activeTab === category.id ? "active" : ""}`}
@@ -425,11 +454,14 @@ const CouponPage = () => {
               </div>
               <button
                 className="btn-use-now"
+                disabled={userCouponsLoading}
                 onClick={() => handleToggleSave(selectedCoupon.id)}
               >
-                {savedCoupons.includes(selectedCoupon.id)
-                  ? "Bỏ lưu coupon"
-                  : "Lưu coupon ngay"}
+                {!canSaveCoupons
+                  ? "Đăng nhập để lưu Coupon"
+                  : savedCouponIds.includes(selectedCoupon.id)
+                    ? "Bỏ lưu coupon"
+                    : "Lưu coupon ngay"}
               </button>
             </div>
           </div>
