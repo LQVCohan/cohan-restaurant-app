@@ -3842,7 +3842,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
             respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
-            allowPartialApply: false,
+            allowPartialApply: true,
+            selectedShiftKeys: Object.keys(selectedAutoShiftKeys).filter(
+              (key) => selectedAutoShiftKeys[key],
+            ),
           },
         },
       });

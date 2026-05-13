@@ -5,7 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   Staff: { find: vi.fn() },
   SchedulePublication: { findOne: vi.fn() },
   LeaveRequest: {},
-  SchedulingPolicy: {},
+  SchedulingPolicy: { findOne: vi.fn(), create: vi.fn() },
 }));
 
 const validationMocks = vi.hoisted(() => ({
@@ -45,6 +45,8 @@ describe("auto schedule backend hardening", () => {
     ]));
     modelMocks.Shift.find.mockReturnValue(q([]));
     modelMocks.SchedulePublication.findOne.mockReturnValue(q(null));
+    modelMocks.SchedulingPolicy.findOne.mockResolvedValue({ _id: "policy1", restaurantId: "r1", mandatoryShiftRoles: ["kitchen"], shiftTemplates: [], laborRules: {}, scoringWeights: {}, availabilityRegistrationPolicy: {} });
+    modelMocks.SchedulingPolicy.create.mockResolvedValue({ _id: "policy1", restaurantId: "r1", mandatoryShiftRoles: ["kitchen"], shiftTemplates: [], laborRules: {}, scoringWeights: {}, availabilityRegistrationPolicy: {} });
     validationMocks.validateShiftAssignment.mockResolvedValue(validResult());
   });
 
@@ -85,6 +87,18 @@ describe("auto schedule backend hardening", () => {
     const { buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
     const inputs = await buildAutoScheduleCreateInputs({ restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["kitchen"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }], items: [{ employeeId: "tampered" }] });
     expect(inputs[0].employeeId).toBe("cook1");
+  });
+
+  it("apply only creates backend-validated rows selected by the manager", async () => {
+    const { buildAutoSchedulePreviewBackend, buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
+    const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["kitchen"], afternoon: ["cashier"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }, { shiftType: "afternoon", startTime: "13:00", endTime: "17:00" }] };
+    const preview = await buildAutoSchedulePreviewBackend(input);
+    const selectedShiftKey = preview.plannedAssignments[0].shiftKey;
+
+    const inputs = await buildAutoScheduleCreateInputs({ ...input, selectedShiftKeys: [selectedShiftKey] });
+
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].startTime.toISOString()).toBe(preview.plannedAssignments[0].startTime.toISOString());
   });
 
   it("apply is blocked when preview has unresolved roles unless partial apply is explicit", async () => {
@@ -130,6 +144,19 @@ describe("auto schedule backend hardening", () => {
       endTime: { $gte: new Date("2026-05-18T00:00:00Z") },
     }));
     expect(result.errorCount).toBe(0);
+  });
+
+  it("publish validation loads mandatory roles from scheduling policy when caller does not provide roles", async () => {
+    const overnightShift = { _id: "shift-policy", employeeId: "cash1", restaurantId: "r1", shiftType: "evening", startTime: new Date("2026-05-17T22:00:00Z"), endTime: new Date("2026-05-18T02:00:00Z") };
+    modelMocks.Shift.find.mockReturnValueOnce(q([overnightShift]));
+    modelMocks.Staff.find.mockReturnValueOnce(q([{ _id: oid("cash1"), restaurantForStaff: "r1", department: "cashier", employmentStatus: "working" }]));
+    modelMocks.SchedulingPolicy.findOne.mockResolvedValueOnce({ _id: "policy1", restaurantId: "r1", mandatoryShiftRoles: ["kitchen"], shiftTemplates: [], laborRules: {}, scoringWeights: {}, availabilityRegistrationPolicy: {} });
+    validationMocks.validateShiftAssignment.mockResolvedValueOnce(validResult());
+
+    const { validateScheduleBeforePublish } = await import("../../src/services/scheduling/schedulePublishValidation.service.js");
+    const result = await validateScheduleBeforePublish({ restaurantId: "r1", periodStart: new Date("2026-05-18T00:00:00Z"), periodEnd: new Date("2026-05-24T23:59:59Z") });
+
+    expect(result.issues.some((issue) => issue.code === "MANDATORY_ROLE_MISSING_ON_SHIFT")).toBe(true);
   });
 
   it("publish validation blocks missing mandatory role on overnight shifts", async () => {

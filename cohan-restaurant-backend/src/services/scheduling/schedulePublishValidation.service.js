@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Shift, Staff } from "../../../models/index.js";
+import { getSchedulingPolicy } from "./schedulingPolicy.service.js";
 import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
 
 function toObjectId(value) {
@@ -40,7 +41,10 @@ export function hasBlockingSchedulePublishIssues(result) {
 export async function validateScheduleBeforePublish({ restaurantId, periodStart, periodEnd, mandatoryShiftRoles }) {
   const rid = toObjectId(restaurantId);
   if (!rid) throw new Error("restaurantId không hợp lệ.");
-  const requiredRoles = normalizeMandatoryShiftRoles(mandatoryShiftRoles);
+  const trustedMandatoryShiftRoles = Array.isArray(mandatoryShiftRoles)
+    ? mandatoryShiftRoles
+    : (await getSchedulingPolicy({ restaurantId: rid }))?.mandatoryShiftRoles;
+  const requiredRoles = normalizeMandatoryShiftRoles(trustedMandatoryShiftRoles);
   const issues = [];
   const shifts = await Shift.find({ restaurantId: rid, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart }, status: { $ne: "cancelled" } }).lean();
   const employeeIds = [...new Set(shifts.map((shift) => String(shift.employeeId)).filter(Boolean))];

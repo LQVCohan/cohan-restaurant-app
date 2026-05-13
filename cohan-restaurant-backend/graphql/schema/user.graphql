@@ -1040,6 +1040,7 @@ input ApplyAutoScheduleInput {
   allowOverride: Boolean = false
   overrideReason: String
   allowPartialApply: Boolean = false
+  selectedShiftKeys: [String!]
 }
 
 type AutoScheduleIssue {

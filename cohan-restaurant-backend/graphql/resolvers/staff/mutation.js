@@ -1392,7 +1392,6 @@ const mutationResolvers = {
       restaurantId,
       periodStart,
       periodEnd,
-      mandatoryShiftRoles: input.mandatoryShiftRoles,
     });
     if (hasBlockingSchedulePublishIssues(publishValidation)) {
       const first = publishValidation.issues.find((issue) => issue.severity === "error");

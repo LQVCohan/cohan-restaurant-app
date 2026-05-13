@@ -138,6 +138,42 @@ function assertPreviewCanApply(preview, input = {}) {
   }
 }
 
+function getSelectedShiftKeySet(input = {}) {
+  if (!Array.isArray(input.selectedShiftKeys) || input.selectedShiftKeys.length === 0) {
+    return null;
+  }
+
+  return new Set(
+    input.selectedShiftKeys
+      .map((key) => String(key || "").trim())
+      .filter(Boolean),
+  );
+}
+
+function getApplyScopePreview(preview, selectedShiftKeySet) {
+  if (!selectedShiftKeySet) return preview;
+
+  const selectedItems = (preview.items || []).filter((item) =>
+    selectedShiftKeySet.has(String(item.shiftKey || "")),
+  );
+  const plannedAssignments = (preview.plannedAssignments || []).filter((item) =>
+    selectedShiftKeySet.has(String(item.shiftKey || "")),
+  );
+  const unfilledRoles = (preview.unfilledRoles || []).filter((item) =>
+    selectedShiftKeySet.has(String(item.shiftKey || "")),
+  );
+  const unresolvedCount = selectedItems.filter((item) => !item.employeeId || item.status === "blocked").length + unfilledRoles.length;
+
+  return {
+    ...preview,
+    items: selectedItems,
+    plannedAssignments,
+    unfilledRoles,
+    unresolvedCount,
+    canApply: plannedAssignments.length > 0 && unresolvedCount === 0,
+  };
+}
+
 export async function assertAutoSchedulePeriodCanEdit({ restaurantId, periodStart, periodEnd }) {
   const publication = await SchedulePublication.findOne({ restaurantId, periodStart: { $lte: endOfDay(periodEnd) }, periodEnd: { $gte: startOfDay(periodStart) } }).lean();
   if (!publication) return true;
@@ -220,9 +256,10 @@ export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
   assertValidOverrideInput(input);
 
   const preview = await buildAutoSchedulePreviewBackend(input, ctx);
-  assertPreviewCanApply(preview, input);
+  const applyPreview = getApplyScopePreview(preview, getSelectedShiftKeySet(input));
+  assertPreviewCanApply(applyPreview, input);
 
-  return preview.plannedAssignments.map((item) => ({
+  return applyPreview.plannedAssignments.map((item) => ({
     employeeId: item.employeeId,
     restaurantId: input.restaurantId,
     shiftType: item.shiftType,

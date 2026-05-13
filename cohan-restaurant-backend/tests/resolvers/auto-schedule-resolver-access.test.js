@@ -45,6 +45,7 @@ describe("auto schedule resolver access", () => {
     publishMocks.hasBlockingSchedulePublishIssues.mockReturnValueOnce(true);
     const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(m.publishSchedule(null, { input: { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-24", mandatoryShiftRoles: { morning: ["kitchen"] } } }, { user: { id: "u1" } })).rejects.toThrow("Thiếu role bắt buộc kitchen.");
+    expect(publishMocks.validateScheduleBeforePublish).toHaveBeenCalledWith(expect.not.objectContaining({ mandatoryShiftRoles: expect.anything() }));
     expect(modelMocks.SchedulePublication.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });
