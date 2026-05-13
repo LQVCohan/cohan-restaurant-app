@@ -37,9 +37,11 @@ describe("payment stage discount business coverage", () => {
     expect(snippet).toMatch(/resolvePaymentAmount\(\{/);
     expect(snippet).toMatch(/expectedTotal:\s*payableTotals\.grandTotal/);
     expect(snippet).toMatch(/appliedDiscount/);
-    expect(snippet).toMatch(
-      /incrementCouponUsageOnce\(\{\s*totals:\s*discountTotals,\s*session\s*\}\)/,
-    );
+    expect(snippet).toMatch(/incrementCouponUsageOnce\(\{/);
+    expect(snippet).toMatch(/invoice,/);
+    expect(snippet).toMatch(/orderIds,/);
+    expect(snippet).toMatch(/restaurantId:\s*rid/);
+    expect(snippet).toMatch(/source:\s*"pos"/);
     expect(snippet).not.toMatch(
       /paidAmount != null \? Number\(paidAmount\) : aggregatedTotals\.grandTotal/,
     );
@@ -56,6 +58,9 @@ describe("payment stage discount business coverage", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 
     expect(src).toMatch(/incrementCouponUsageOnce/);
+    expect(src).toMatch(/CouponRedemption\.findOne/);
+    expect(src).toMatch(/CouponRedemption\.create/);
+    expect(src).toMatch(/UserCoupon\.updateOne/);
     expect(src).toMatch(/Coupon\.updateOne/);
     expect(src).toMatch(/\$inc:\s*\{\s*used:\s*1\s*\}/);
     expect(src).toMatch(/\$lt:\s*\[\s*"\$used",\s*"\$maxUsage"\s*\]/);
@@ -133,5 +138,30 @@ describe("payment stage discount business coverage", () => {
     expect(src).toMatch(/discountReason:\s*\{\s*type:\s*String/);
     expect(src).toMatch(/voucherCode:\s*\{\s*type:\s*String/);
     expect(src).toMatch(/promotionId:\s*\{\s*type:\s*Types\.ObjectId/);
+  });
+});
+
+describe("coupon redemption payment integration coverage", () => {
+  it("passes authenticated user into discount calculation for per-user limits", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
+    const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
+
+    expect(src).toMatch(/userId,\n\}\) \{/);
+    expect(tableSnippet).toMatch(/userId:\s*actorId/);
+    expect(orderIdsSnippet).toMatch(/userId:\s*actorId/);
+  });
+
+  it("records redemption after invoice creation and before promotion usage", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
+    const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
+
+    expect(tableSnippet.indexOf("const invoice = await Invoice.create")).toBeLessThan(
+      tableSnippet.indexOf("await incrementCouponUsageOnce"),
+    );
+    expect(orderIdsSnippet.indexOf("const invoice = await Invoice.create")).toBeLessThan(
+      orderIdsSnippet.indexOf("await incrementCouponUsageOnce"),
+    );
   });
 });

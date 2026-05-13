@@ -27,6 +27,7 @@ import supplier from "./supplier/index.js";
 import promotion from "./promotion/index.js";
 import coupon from "./coupon/index.js";
 import userCoupon from "./userCoupon/index.js";
+import couponRedemption from "./couponRedemption/index.js";
 import posCustomer from "./posCustomer/index.js";
 import eventPackage from "./event_package/index.js";
 import tableEvent from "./table_event/index.js";
@@ -64,6 +65,7 @@ export default {
     ...(promotion.Query || {}),
     ...(coupon.Query || {}),
     ...(userCoupon.Query || {}),
+    ...(couponRedemption.Query || {}),
     ...(posCustomer.Query || {}),
     ...(eventPackage.Query || {}),
     ...(tableEvent.Query || {}),
@@ -122,6 +124,9 @@ export default {
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
   ...(userCoupon.UserCoupon ? { UserCoupon: userCoupon.UserCoupon } : {}),
+  ...(couponRedemption.CouponRedemption
+    ? { CouponRedemption: couponRedemption.CouponRedemption }
+    : {}),
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
   ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),

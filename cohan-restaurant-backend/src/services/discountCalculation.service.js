@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Coupon, Promotion } from "../../models/index.js";
+import { Coupon, CouponRedemption, Promotion } from "../../models/index.js";
 
 const toNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const roundVnd = (v) => Math.max(0, Math.round(toNum(v, 0)));
@@ -141,6 +141,7 @@ export async function calculateDiscountBreakdown({
   now = new Date(),
   session,
   promotionIds = [],
+  userId,
 }) {
   const subtotal = roundVnd(
     items.reduce(
@@ -289,6 +290,21 @@ export async function calculateDiscountBreakdown({
     const maxUsage = toNum(coupon.maxUsage);
     if (maxUsage > 0 && toNum(coupon.used) >= maxUsage)
       throw new Error("Invalid voucher: usage limit reached");
+
+    const perUserLimit = toNum(coupon.constraints?.perUserLimit, 0);
+    const uid = mongoose.isValidObjectId(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : null;
+    if (uid && perUserLimit > 0) {
+      const userRedemptionCount = await CouponRedemption.countDocuments({
+        couponId: coupon._id,
+        userId: uid,
+      }).session(session);
+      if (userRedemptionCount >= perUserLimit) {
+        throw new Error("Invalid voucher: per-user usage limit reached");
+      }
+    }
+
     const appliedPromotionDocs = Array.from(appliedPromotionDocsById.values());
     const hasPromotion = promotionDiscount > 0;
     const couponExclusive = isExclusive(coupon);
