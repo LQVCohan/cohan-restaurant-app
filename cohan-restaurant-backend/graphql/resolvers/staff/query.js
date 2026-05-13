@@ -111,7 +111,7 @@ function mapAttendanceRecord(timesheet, staff) {
   ).toLowerCase();
   const approvalStatus = !isOffSchedule
     ? "not_required"
-    : Boolean(timesheet.approved)
+    : Boolean(timesheet.approved) || legacyStatus === "approved"
       ? "approved"
       : legacyStatus === "rejected"
         ? "rejected"

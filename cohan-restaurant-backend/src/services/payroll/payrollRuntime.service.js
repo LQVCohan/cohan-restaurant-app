@@ -371,9 +371,23 @@ export async function buildPayrollItemsForRange({
             $cond: ["$includeInPayroll", { $ifNull: ["$amount", 0] }, 0],
           },
         },
-        totalLatenessMinutes: { $sum: { $ifNull: ["$latenessMinutes", 0] } },
+        totalLatenessMinutes: {
+          $sum: {
+            $cond: [
+              "$includeInPayroll",
+              { $ifNull: ["$latenessMinutes", 0] },
+              0,
+            ],
+          },
+        },
         totalEarlyLeaveMinutes: {
-          $sum: { $ifNull: ["$earlyLeaveMinutes", 0] },
+          $sum: {
+            $cond: [
+              "$includeInPayroll",
+              { $ifNull: ["$earlyLeaveMinutes", 0] },
+              0,
+            ],
+          },
         },
         overtimeNormalMinutes: {
           $sum: {
