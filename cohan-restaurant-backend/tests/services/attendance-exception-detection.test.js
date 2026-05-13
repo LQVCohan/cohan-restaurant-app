@@ -12,9 +12,13 @@ const modelMocks = vi.hoisted(() => ({
   SchedulePublication: { find: vi.fn() },
   Shift: { find: vi.fn() },
   Timesheet: Object.assign(vi.fn(), { find: vi.fn() }),
+  PayrollPeriod: { find: vi.fn() },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/performance/attendancePerformanceIntegration.service.js", () => ({
+  syncAttendancePerformanceIncidents: vi.fn(),
+}));
 
 function idOf(value) {
   if (value == null) return "";
@@ -173,6 +177,10 @@ describe("attendance exception detection service", () => {
       ),
     );
 
+    modelMocks.PayrollPeriod.find.mockReturnValue({
+      lean: vi.fn(async () => []),
+    });
+
     modelMocks.Timesheet.mockImplementation(function Timesheet(data) {
       Object.assign(this, data);
       this._id = this._id || `timesheet-${db.nextTimesheetId++}`;
@@ -249,6 +257,27 @@ describe("attendance exception detection service", () => {
 
     expect(summary.noShowCreated).toBe(0);
     expect(db.timesheets).toHaveLength(0);
+  });
+
+  it("does not scan cancelled or deleted shifts", async () => {
+    db.shifts = [
+      buildShift({ _id: "shift-cancelled", status: "cancelled" }),
+      buildShift({ _id: "shift-deleted", status: "deleted" }),
+    ];
+
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    const summary = await detectAttendanceExceptionsForRange({
+      restaurantId: "rest-1",
+      startDate: "2026-05-11T00:00:00.000Z",
+      endDate: "2026-05-11T23:59:59.999Z",
+      now: "2026-05-11T03:00:00.000Z",
+    });
+
+    expect(summary.scannedShifts).toBe(0);
+    expect(summary.noShowCreated).toBe(0);
   });
 
   it("does not create no-show before grace window", async () => {
@@ -531,6 +560,68 @@ describe("attendance exception detection service", () => {
     expect(db.timesheets[0].actualCheckOutAt.toISOString()).toBe(
       "2026-05-11T10:05:00.000Z",
     );
+  });
+
+  it("does not overwrite manual correction open checkout records", async () => {
+    db.timesheets = [
+      buildTimesheet({
+        actualCheckInAt: new Date("2026-05-11T02:00:00.000Z"),
+        actualCheckOutAt: null,
+        status: "checked_in",
+        source: "manual_correction",
+      }),
+    ];
+
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    const summary = await detectAttendanceExceptionsForRange({
+      restaurantId: "rest-1",
+      startDate: "2026-05-11T00:00:00.000Z",
+      endDate: "2026-05-11T23:59:59.999Z",
+      now: "2026-05-11T12:00:00.000Z",
+    });
+
+    expect(summary.missedCheckoutUpdated).toBe(0);
+    expect(db.timesheets[0].status).toBe("checked_in");
+    expect(db.timesheets[0].save).not.toHaveBeenCalled();
+  });
+
+  it("skips no-show and missed-checkout changes inside finalized, locked, or paid payroll periods", async () => {
+    db.timesheets = [
+      buildTimesheet({
+        actualCheckInAt: new Date("2026-05-11T02:00:00.000Z"),
+        status: "checked_in",
+      }),
+    ];
+    modelMocks.PayrollPeriod.find.mockReturnValue({
+      lean: vi.fn(async () => [
+        {
+          _id: "payroll-locked",
+          restaurantId: "rest-1",
+          status: "locked",
+          startDate: new Date("2026-05-10T17:00:00.000Z"),
+          endDate: new Date("2026-05-11T16:59:59.999Z"),
+        },
+      ]),
+    });
+
+    const { detectAttendanceExceptionsForRange } = await import(
+      "../../src/services/attendance/attendanceExceptionDetection.service.js"
+    );
+
+    const summary = await detectAttendanceExceptionsForRange({
+      restaurantId: "rest-1",
+      startDate: "2026-05-11T00:00:00.000Z",
+      endDate: "2026-05-11T23:59:59.999Z",
+      now: "2026-05-11T12:00:00.000Z",
+    });
+
+    expect(summary.skippedLockedPayroll).toBe(1);
+    expect(summary.missedCheckoutUpdated).toBe(0);
+    expect(db.timesheets[0].status).toBe("checked_in");
+    expect(db.timesheets[0].save).not.toHaveBeenCalled();
   });
 
   it("keeps missed checkout detection idempotent", async () => {

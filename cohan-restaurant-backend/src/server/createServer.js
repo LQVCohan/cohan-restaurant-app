@@ -15,6 +15,7 @@ import { createLoaders } from "../../graphql/loaders/index.js";
 import cron from "node-cron";
 import { autoCancelExpiredReservations, cleanupExpiredTableViewLocks } from "../services/reservationAutoCancel.service.js";
 import { cleanupExpiredCartHolds } from "../services/cartHoldCleanup.service.js";
+import { runAttendanceExceptionDetectionForAllRestaurants } from "../jobs/attendanceException.job.js";
 import {
   predictTableTurnover,
   suggestTableMerge,
@@ -409,6 +410,26 @@ export async function createServer() {
     app.log.info("=== ROUTES ===");
     app.log.info("\n" + app.printRoutes());
   });
+
+  if (process.env.ENABLE_ATTENDANCE_EXCEPTION_JOB === "true") {
+    cron.schedule("*/30 * * * *", async () => {
+      try {
+        const result = await runAttendanceExceptionDetectionForAllRestaurants({
+          triggeredBy: "system",
+        });
+        if (result?.summary?.scannedShifts || result?.failedCount) {
+          app.log.info(
+            `[Attendance Exception Job] status=${result.status} restaurants=${result.restaurantCount} failed=${result.failedCount} scanned=${result.summary.scannedShifts}`
+          );
+        }
+      } catch (err) {
+        app.log.error(
+          { err },
+          "[Attendance Exception Job] Error while detecting attendance exceptions"
+        );
+      }
+    });
+  }
 
   cron.schedule("* * * * *", async () => {
     try {

@@ -1840,6 +1840,23 @@ input UpsertStaffAttendanceInput {
   offScheduleReason: String
 }
 
+input RunAttendanceExceptionDetectionInput {
+  restaurantId: ID!
+  startDate: DateTime!
+  endDate: DateTime!
+  now: DateTime
+  noShowGraceMinutes: Int
+  missedCheckoutGraceMinutes: Int
+}
+
+type AttendanceExceptionDetectionSummary {
+  scannedShifts: Int!
+  noShowCreated: Int!
+  noShowUpdated: Int!
+  missedCheckoutUpdated: Int!
+  skippedLockedPayroll: Int!
+}
+
 input OffScheduleAttendanceFilterInput {
   restaurantId: ID!
   fromDate: DateTime
@@ -2711,6 +2728,10 @@ type Mutation {
   upsertStaffAttendance(
     input: UpsertStaffAttendanceInput!
   ): StaffAttendanceRecord!
+
+  runAttendanceExceptionDetection(
+    input: RunAttendanceExceptionDetectionInput!
+  ): AttendanceExceptionDetectionSummary!
   approveOffScheduleAttendance(
     timesheetId: ID!
     note: String
