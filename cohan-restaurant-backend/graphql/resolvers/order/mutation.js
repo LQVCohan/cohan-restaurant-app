@@ -344,34 +344,28 @@ function assertCartHoldCheckoutAllowed({ item, authUserId }) {
 
   return { cartId, cartItemId };
 }
-function computeCartTotals(items = []) {
-  return {
-    totalQuantity: (items || []).reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0,
-    ),
-    totalAmount: (items || []).reduce(
-      (sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0),
-      0,
-    ),
-  };
-}
 
 async function removeCheckedOutCartItemsTx({ releasedCartItems, session }) {
-  for (const { cart, cartItemId } of releasedCartItems || []) {
-    if (typeof cart.items?.id === "function") {
-      const item = cart.items.id(cartItemId);
-      if (item?.remove) item.remove();
-    } else {
-      cart.items = (cart.items || []).filter(
-        (item) => String(item._id) !== String(cartItemId),
-      );
+  const byCartId = new Map();
+
+  for (const released of releasedCartItems || []) {
+    if (!released?.cart || !released?.cartItemId) continue;
+
+    const cartId = String(released.cart._id);
+    if (!byCartId.has(cartId)) {
+      byCartId.set(cartId, {
+        cart: released.cart,
+        cartItemIds: new Set(),
+      });
     }
 
-    const totals = computeCartTotals(cart.items || []);
-    cart.totalQuantity = totals.totalQuantity;
-    cart.totalAmount = totals.totalAmount;
-    cart.lastActivityAt = new Date();
+    byCartId.get(cartId).cartItemIds.add(String(released.cartItemId));
+  }
+
+  for (const { cart, cartItemIds } of byCartId.values()) {
+    cart.items = (cart.items || []).filter(
+      (item) => !cartItemIds.has(String(item._id)),
+    );
 
     if (!(cart.items || []).length) {
       cart.status = "checked_out";
@@ -1054,6 +1048,7 @@ function normalizePromotionIds(promotionIds = []) {
     ? promotionIds.map((id) => String(id || "").trim()).filter(Boolean)
     : [];
 }
+
 async function incrementCouponUsageOnce({ totals, session }) {
   if (!totals?.couponId) return;
 
@@ -1072,6 +1067,7 @@ async function incrementCouponUsageOnce({ totals, session }) {
     throw new Error("Invalid voucher: usage limit reached");
   }
 }
+
 async function incrementPromotionUsageOnce({ totals, session }) {
   const promotionIds = Array.isArray(totals?.appliedPromotions)
     ? totals.appliedPromotions.map((id) => toId(id)).filter(Boolean)
@@ -1099,6 +1095,7 @@ async function incrementPromotionUsageOnce({ totals, session }) {
     }
   }
 }
+
 function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   const subtotal = Math.round(
     (items || []).reduce((sum, it) => {
@@ -1134,6 +1131,7 @@ function computeTotalsFromHydratedItems(items = [], pricing = {}) {
     voucherCode: safePricing.voucherCode,
   };
 }
+
 async function generateUniqueOrderCode({
   restaurantId,
   tableCode,
@@ -1159,6 +1157,7 @@ async function generateUniqueOrderCode({
 
   return generateOrderCode(source, new Date(), tableCode || null);
 }
+
 /** =========================
  * Find / create orderCode
  * ========================= */
@@ -1354,6 +1353,7 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
     externalTrackingCode: s.externalTrackingCode || null,
   };
 }
+
 function buildOrderCustomerContact(customer = {}, shipping = {}) {
   const c = customer || {};
   const s = shipping || {};
@@ -1369,6 +1369,7 @@ function buildOrderCustomerContact(customer = {}, shipping = {}) {
     phone,
   };
 }
+
 function isDuplicateKeyError(error) {
   return (
     error?.code === 11000 || String(error?.message || "").includes("E11000")
@@ -1659,30 +1660,11 @@ export const OrderMutation = {
             session,
           );
 
-          const releasedCartItems = [];
-
-          for (const entry of entries) {
-            const released = await validateAndReleaseCartHoldTx({
-              entry,
-              restaurantId: restaurantId,
-              warehouseId: whId,
-              authUserId,
-              session,
-            });
-
-            if (released) releasedCartItems.push(released);
-          }
-
           await reserveForOrderTx({
-            restaurantId: restaurantId,
+            restaurantId: rid,
             warehouseId: whId,
             orderCode: childOrderCode,
             lines,
-            session,
-          });
-
-          await removeCheckedOutCartItemsTx({
-            releasedCartItems,
             session,
           });
         }
@@ -2258,7 +2240,7 @@ export const OrderMutation = {
           const normalizedItems = entries.map((entry) => entry.orderItem);
 
           await hydrateOrderItems({
-            restaurantId: restaurantId,
+            restaurantId,
             items: normalizedItems,
             session,
           });
