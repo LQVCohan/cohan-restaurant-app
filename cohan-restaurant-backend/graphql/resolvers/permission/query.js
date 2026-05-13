@@ -3,7 +3,7 @@ import { requireAnyPermission } from "../../../src/services/auth/authorization.s
 
 export const PermissionQuery = {
   permissions: async (_, { search, group, resource, action }, ctx) => {
-    await requireAnyPermission(ctx, ["permission.read", "role.read", "staff.read"]);
+    await requireAnyPermission(ctx, ["permission.read", "role.read"]);
 
     const q = {};
     if (group) q.group = group.toLowerCase();

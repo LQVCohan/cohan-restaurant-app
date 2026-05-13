@@ -16,7 +16,7 @@ function mergeEffectivePermissions(roleObject) {
 
 export const RoleQuery = {
   role: async (_, { search, parentRoleId }, ctx) => {
-    await requireAnyPermission(ctx, ["role.read", "staff.read"]);
+    await requireAnyPermission(ctx, ["role.read"]);
 
     const q = {};
 
@@ -44,7 +44,7 @@ export const RoleQuery = {
   },
 
   parentRoles: async (_, { search }, ctx) => {
-    await requireAnyPermission(ctx, ["role.read", "staff.read"]);
+    await requireAnyPermission(ctx, ["role.read"]);
 
     const q = {};
     if (search) {

@@ -32,10 +32,10 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "restaurant.read", "menu.read", "menu.write", "order.read", "order.create",
     "order.update", "order.cancel", "payment.read", "staff.read", "staff.write",
     "shift.read", "shift.manage", "table.read", "report.read", "dashboard.read",
-    "role.read", "permission.read",
+    "inventory.read", "promotion.read", "coupon.read", "role.read", "permission.read",
   ],
-  hr: ["staff.read", "shift.read", "report.read"],
-  accountant: ["payment.read", "report.read", "report.export"],
+  hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
+  accountant: ["payment.read", "report.read", "report.export", "payroll.read"],
 });
 
 function getLegacyRolePermissionCodes(user) {

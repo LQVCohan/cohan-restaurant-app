@@ -44,6 +44,47 @@ describe("backend authorization wrap-up", () => {
     expect(modelMocks.Role.create).not.toHaveBeenCalled();
   });
 
+  it("createRole blocks non-admin from using protected parent roles", async () => {
+    modelMocks.ParentRole.findById.mockResolvedValue({ _id: "parent-admin", slug: "admin" });
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    await expect(
+      RoleMutation.createRole(
+        null,
+        { input: { name: "Escalated", slug: "escalated", parentRoleId: "parent-admin", permissionIds: [] } },
+        { user: { id: "u1", roleName: "custom-manager", role: { permissions: [{ code: "role.write" }] } } },
+      ),
+    ).rejects.toThrow("Protected parent role cannot be used by non-admin");
+
+    expect(modelMocks.Role.findOne).not.toHaveBeenCalled();
+    expect(modelMocks.Role.create).not.toHaveBeenCalled();
+  });
+
+  it("updateRole blocks non-admin from switching to protected parent roles", async () => {
+    const save = vi.fn();
+    modelMocks.Role.findById.mockResolvedValue({
+      _id: "role-1",
+      slug: "server",
+      isSystem: false,
+      save,
+      toObject: () => ({ _id: "role-1" }),
+    });
+    modelMocks.ParentRole.findById.mockResolvedValue({ _id: "parent-manager", slug: "manager" });
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    await expect(
+      RoleMutation.updateRole(
+        null,
+        { input: { id: "role-1", parentRoleId: "parent-manager" } },
+        { user: { id: "u1", roleName: "custom-manager", role: { permissions: [{ code: "role.write" }] } } },
+      ),
+    ).rejects.toThrow("Protected parent role cannot be used by non-admin");
+
+    expect(save).not.toHaveBeenCalled();
+  });
+
 
   it("updateParentRole rejects non-admin permissions outside manager staff whitelist", async () => {
     const save = vi.fn();

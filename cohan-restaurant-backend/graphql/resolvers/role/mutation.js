@@ -8,6 +8,14 @@ import {
 } from "../../../src/services/auth/authorization.service.js";
 import mongoose from "mongoose";
 
+function assertNonAdminCanUseParentRole(user, parentRole) {
+  if (!hasRole(user, ["admin"]) && isProtectedSystemRoleSlug(parentRole?.slug)) {
+    throw new GraphQLError("Protected parent role cannot be used by non-admin", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+}
+
 export const RoleMutation = {
   /* =====================================
    * ROLE CRUD
@@ -31,6 +39,7 @@ export const RoleMutation = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    assertNonAdminCanUseParentRole(user, parentRole);
 
     // --- Slug xử lý như cũ ---
     const slug = (rest.slug || "").toLowerCase().trim();
@@ -103,6 +112,7 @@ export const RoleMutation = {
             extensions: { code: "BAD_USER_INPUT" },
           });
         }
+        assertNonAdminCanUseParentRole(user, parentRole);
         r.parentRole = parentRole._id;
       }
     }
