@@ -142,14 +142,54 @@ describe("payment stage discount business coverage", () => {
 });
 
 describe("coupon redemption payment integration coverage", () => {
-  it("passes authenticated user into discount calculation for per-user limits", () => {
+  it("resolves coupon redemption user from payable order customers", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+
+    expect(src).toMatch(/function resolveCouponRedemptionUserIdFromOrders/);
+    expect(src).toMatch(/order\?\.userId\?\._id \|\| order\?\.userId\?\.id \|\| order\?\.userId/);
+    expect(src).toMatch(/userIdsByString\.set\(String\(userId\), userId\)/);
+    expect(src).toMatch(/userIdsByString\.size === 1[\s\S]*: null/);
+  });
+
+  it("passes resolved customer user into discount calculation and redemption", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
     const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
     const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
 
-    expect(src).toMatch(/userId,\n\}\) \{/);
-    expect(tableSnippet).toMatch(/userId:\s*actorId/);
-    expect(orderIdsSnippet).toMatch(/userId:\s*actorId/);
+    expect(tableSnippet).toMatch(
+      /const redemptionUserId = resolveCouponRedemptionUserIdFromOrders\(payOrders\)/,
+    );
+    expect(orderIdsSnippet).toMatch(
+      /const redemptionUserId = resolveCouponRedemptionUserIdFromOrders\(orders\)/,
+    );
+    expect(tableSnippet).toMatch(/userId:\s*redemptionUserId/);
+    expect(orderIdsSnippet).toMatch(/userId:\s*redemptionUserId/);
+  });
+
+  it("does not use POS actorId for coupon per-user enforcement", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
+    const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
+
+    expect(tableSnippet).not.toMatch(/userId:\s*actorId/);
+    expect(orderIdsSnippet).not.toMatch(/userId:\s*actorId/);
+    expect(tableSnippet).toMatch(/"payment\.paidBy": actorId/);
+    expect(orderIdsSnippet).toMatch(/"payment\.paidBy": actorId/);
+  });
+
+  it("documents null redemption user for walk-in or mixed-customer POS orders", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+
+    expect(src).toMatch(/if \(!userId\) continue/);
+    expect(src).toMatch(/return userIdsByString\.size === 1[\s\S]*: null/);
+    expect(src).toMatch(/if \(redemptionUserId\) \{[\s\S]*UserCoupon\.updateOne/);
+  });
+
+  it("uses Coupon terminology for new per-user limit errors", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+
+    expect(src).toMatch(/Invalid coupon: per-user usage limit reached/);
+    expect(src).not.toMatch(/Invalid voucher: per-user usage limit reached/);
   });
 
   it("records redemption after invoice creation and before promotion usage", () => {

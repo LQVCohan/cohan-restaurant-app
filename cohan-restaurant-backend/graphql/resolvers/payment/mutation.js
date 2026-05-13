@@ -64,6 +64,23 @@ function toId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function resolveCouponRedemptionUserIdFromOrders(orders = []) {
+  const userIdsByString = new Map();
+
+  for (const order of orders || []) {
+    const candidate =
+      order?.userId?._id || order?.userId?.id || order?.userId;
+    const userId = toId(candidate);
+    if (!userId) continue;
+
+    userIdsByString.set(String(userId), userId);
+  }
+
+  return userIdsByString.size === 1
+    ? Array.from(userIdsByString.values())[0]
+    : null;
+}
+
 function applyRequestPaymentState(order, fields) {
   return {
     ...order,
@@ -326,7 +343,7 @@ async function incrementCouponUsageOnce({
       userId: redemptionUserId,
     }).session(session);
     if (userRedemptionCount >= perUserLimit) {
-      throw new Error("Invalid voucher: per-user usage limit reached");
+      throw new Error("Invalid coupon: per-user usage limit reached");
     }
   }
 
@@ -869,6 +886,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
+  const redemptionUserId = resolveCouponRedemptionUserIdFromOrders(payOrders);
+
   const {
     totals: payableTotals,
     discountTotals,
@@ -879,7 +898,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     aggregatedTotals,
     pricing,
     promotionIds,
-    userId: actorId,
+    userId: redemptionUserId,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
@@ -977,7 +996,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       invoice,
       orderIds,
       restaurantId: rid,
-      userId: actorId,
+      userId: redemptionUserId,
       redeemedAt: now,
       // Existing table payment mutation is the POS flow.
       source: "pos",
@@ -1228,6 +1247,8 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     };
   }
 
+  const redemptionUserId = resolveCouponRedemptionUserIdFromOrders(orders);
+
   const {
     totals: payableTotals,
     discountTotals,
@@ -1238,7 +1259,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     aggregatedTotals,
     pricing,
     promotionIds,
-    userId: actorId,
+    userId: redemptionUserId,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
@@ -1336,7 +1357,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
       invoice,
       orderIds: activeOrderIds,
       restaurantId: rid,
-      userId: actorId,
+      userId: redemptionUserId,
       redeemedAt: now,
       // Existing order payment mutation is the POS flow.
       source: "pos",

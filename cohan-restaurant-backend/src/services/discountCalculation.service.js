@@ -301,7 +301,7 @@ export async function calculateDiscountBreakdown({
         userId: uid,
       }).session(session);
       if (userRedemptionCount >= perUserLimit) {
-        throw new Error("Invalid voucher: per-user usage limit reached");
+        throw new Error("Invalid coupon: per-user usage limit reached");
       }
     }
 

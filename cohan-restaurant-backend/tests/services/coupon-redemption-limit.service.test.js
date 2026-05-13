@@ -11,6 +11,7 @@ describe("coupon per-user redemption limit", () => {
     expect(src).toMatch(/constraints\?\.perUserLimit/);
     expect(src).toMatch(/CouponRedemption\.countDocuments\(\{[\s\S]*couponId: coupon\._id,[\s\S]*userId: uid/);
     expect(src).toMatch(/if \(uid && perUserLimit > 0\)/);
-    expect(src).toMatch(/per-user usage limit reached/);
+    expect(src).toMatch(/Invalid coupon: per-user usage limit reached/);
+    expect(src).not.toMatch(/Invalid voucher: per-user usage limit reached/);
   });
 });
