@@ -12,7 +12,9 @@ import {
   Restaurant,
   PaymentSession,
   Coupon,
+  CouponRedemption,
   Promotion,
+  UserCoupon,
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
@@ -60,6 +62,23 @@ function isReadyForPayment(order) {
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
+}
+
+function resolveCouponRedemptionUserIdFromOrders(orders = []) {
+  const userIdsByString = new Map();
+
+  for (const order of orders || []) {
+    const candidate =
+      order?.userId?._id || order?.userId?.id || order?.userId;
+    const userId = toId(candidate);
+    if (!userId) continue;
+
+    userIdsByString.set(String(userId), userId);
+  }
+
+  return userIdsByString.size === 1
+    ? Array.from(userIdsByString.values())[0]
+    : null;
 }
 
 function applyRequestPaymentState(order, fields) {
@@ -291,12 +310,46 @@ function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
   };
 }
 
-async function incrementCouponUsageOnce({ totals, session }) {
+async function incrementCouponUsageOnce({
+  totals,
+  session,
+  invoice,
+  orderIds = [],
+  restaurantId,
+  userId,
+  redeemedAt = new Date(),
+  source = "pos",
+}) {
   if (!totals?.couponId) return;
+
+  const couponId = toId(totals.couponId);
+  if (!couponId) return;
+
+  const invoiceId = toId(invoice?._id || invoice?.id);
+  const existingRedemption = invoiceId
+    ? await CouponRedemption.findOne({ invoiceId, couponId }).session(session)
+    : null;
+
+  if (existingRedemption) {
+    return;
+  }
+
+  const redemptionUserId = toId(userId);
+  const coupon = await Coupon.findById(couponId).session(session);
+  const perUserLimit = Number(coupon?.constraints?.perUserLimit || 0);
+  if (redemptionUserId && perUserLimit > 0) {
+    const userRedemptionCount = await CouponRedemption.countDocuments({
+      couponId,
+      userId: redemptionUserId,
+    }).session(session);
+    if (userRedemptionCount >= perUserLimit) {
+      throw new Error("Invalid coupon: per-user usage limit reached");
+    }
+  }
 
   const updateResult = await Coupon.updateOne(
     {
-      _id: totals.couponId,
+      _id: couponId,
       $expr: {
         $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }],
       },
@@ -307,6 +360,58 @@ async function incrementCouponUsageOnce({ totals, session }) {
 
   if (!updateResult.modifiedCount) {
     throw new Error("Invalid voucher: usage limit reached");
+  }
+
+  const redemptionOrderIds = (orderIds || [])
+    .map((id) => toId(id))
+    .filter(Boolean);
+  const couponCode = String(totals.voucherCode || coupon?.code || "")
+    .trim()
+    .toUpperCase();
+
+  await CouponRedemption.create(
+    [
+      {
+        couponId,
+        userId: redemptionUserId,
+        restaurantId,
+        orderIds: redemptionOrderIds,
+        invoiceId,
+        couponCode,
+        discountAmount: Number(
+          totals.voucherDiscount ?? totals.couponDiscount ?? 0,
+        ),
+        subtotal: Number(totals.subtotal || 0),
+        grandTotal: Number(totals.grandTotal || 0),
+        source,
+        redeemedAt,
+        metadata: {
+          discountReason: totals.discountReason || null,
+          appliedCoupons: Array.isArray(totals.appliedCoupons)
+            ? totals.appliedCoupons.map(String)
+            : [],
+        },
+      },
+    ],
+    { session },
+  );
+
+  if (redemptionUserId) {
+    await UserCoupon.updateOne(
+      { userId: redemptionUserId, couponId, status: "saved" },
+      {
+        $set: {
+          status: "used",
+          usedAt: redeemedAt,
+          orderId: redemptionOrderIds[0] || null,
+          invoiceId,
+          discountAmount: Number(
+            totals.voucherDiscount ?? totals.couponDiscount ?? 0,
+          ),
+        },
+      },
+      { session },
+    );
   }
 }
 async function incrementPromotionUsageOnce({ totals, session }) {
@@ -342,6 +447,7 @@ async function calculatePaymentTotalsWithOptionalDiscount({
   aggregatedTotals,
   pricing,
   promotionIds,
+  userId,
 }) {
   const hasDiscount = hasPaymentDiscountSelection({ pricing, promotionIds });
 
@@ -364,6 +470,7 @@ async function calculatePaymentTotalsWithOptionalDiscount({
     items: discountItems,
     pricing: buildPaymentDiscountPricing({ pricing, aggregatedTotals }),
     promotionIds: normalizePromotionIds(promotionIds),
+    userId,
   });
 
   return {
@@ -779,6 +886,8 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     };
   }
 
+  const redemptionUserId = resolveCouponRedemptionUserIdFromOrders(payOrders);
+
   const {
     totals: payableTotals,
     discountTotals,
@@ -789,6 +898,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     aggregatedTotals,
     pricing,
     promotionIds,
+    userId: redemptionUserId,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
@@ -880,7 +990,17 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
       ],
       { session },
     ).then((r) => r[0]);
-    await incrementCouponUsageOnce({ totals: discountTotals, session });
+    await incrementCouponUsageOnce({
+      totals: discountTotals,
+      session,
+      invoice,
+      orderIds,
+      restaurantId: rid,
+      userId: redemptionUserId,
+      redeemedAt: now,
+      // Existing table payment mutation is the POS flow.
+      source: "pos",
+    });
     await incrementPromotionUsageOnce({ totals: discountTotals, session });
     await Order.updateMany(
       { _id: { $in: orderIds } },
@@ -1127,6 +1247,8 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     };
   }
 
+  const redemptionUserId = resolveCouponRedemptionUserIdFromOrders(orders);
+
   const {
     totals: payableTotals,
     discountTotals,
@@ -1137,6 +1259,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     aggregatedTotals,
     pricing,
     promotionIds,
+    userId: redemptionUserId,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
@@ -1228,7 +1351,17 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
       { session },
     ).then((r) => r[0]);
 
-    await incrementCouponUsageOnce({ totals: discountTotals, session });
+    await incrementCouponUsageOnce({
+      totals: discountTotals,
+      session,
+      invoice,
+      orderIds: activeOrderIds,
+      restaurantId: rid,
+      userId: redemptionUserId,
+      redeemedAt: now,
+      // Existing order payment mutation is the POS flow.
+      source: "pos",
+    });
     await incrementPromotionUsageOnce({ totals: discountTotals, session });
     await Order.updateMany(
       { _id: { $in: activeOrderIds } },
