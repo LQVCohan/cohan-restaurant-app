@@ -68,8 +68,7 @@ function resolveCouponRedemptionUserIdFromOrders(orders = []) {
   const userIdsByString = new Map();
 
   for (const order of orders || []) {
-    const candidate =
-      order?.userId?._id || order?.userId?.id || order?.userId;
+    const candidate = order?.userId?._id || order?.userId?.id || order?.userId;
     const userId = toId(candidate);
     if (!userId) continue;
 
@@ -243,6 +242,16 @@ function buildPaymentDiscountPricing({ pricing = {}, aggregatedTotals = {} }) {
   };
 }
 
+function resolveSharedOrderType(orders = []) {
+  const orderTypes = new Set(
+    (orders || [])
+      .map((order) => String(order?.orderType || "").trim())
+      .filter(Boolean),
+  );
+
+  return orderTypes.size === 1 ? Array.from(orderTypes)[0] : null;
+}
+
 function buildDiscountItemsFromOrders(orders = []) {
   return orders.flatMap((order) =>
     (order.items || [])
@@ -359,7 +368,7 @@ async function incrementCouponUsageOnce({
   );
 
   if (!updateResult.modifiedCount) {
-    throw new Error("Invalid voucher: usage limit reached");
+    throw new Error("Invalid coupon: usage limit reached");
   }
 
   const redemptionOrderIds = (orderIds || [])
@@ -448,6 +457,7 @@ async function calculatePaymentTotalsWithOptionalDiscount({
   pricing,
   promotionIds,
   userId,
+  paymentMethod,
 }) {
   const hasDiscount = hasPaymentDiscountSelection({ pricing, promotionIds });
 
@@ -471,6 +481,8 @@ async function calculatePaymentTotalsWithOptionalDiscount({
     pricing: buildPaymentDiscountPricing({ pricing, aggregatedTotals }),
     promotionIds: normalizePromotionIds(promotionIds),
     userId,
+    paymentMethod,
+    orderType: resolveSharedOrderType(orders),
   });
 
   return {
@@ -899,6 +911,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
     pricing,
     promotionIds,
     userId: redemptionUserId,
+    paymentMethod: normMethod,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();
@@ -1260,6 +1273,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
     pricing,
     promotionIds,
     userId: redemptionUserId,
+    paymentMethod: normMethod,
   });
 
   const now = paidAt ? dayjs(paidAt).toDate() : new Date();

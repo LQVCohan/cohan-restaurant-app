@@ -60,6 +60,25 @@ const CATEGORIES = [
   { id: "order", label: "Đặt món", icon: <Gift size={18} /> },
 ];
 
+const ORDER_TYPE_LABELS = {
+  dine_in: "Dùng tại bàn",
+  takeaway: "Mang đi",
+  delivery: "Giao hàng",
+};
+
+const PAYMENT_METHOD_LABELS = {
+  cash: "Tiền mặt",
+  card: "Thẻ",
+  transfer: "Chuyển khoản",
+  bank_transfer: "Chuyển khoản",
+  e_wallet: "Ví điện tử",
+};
+
+const normalizeConstraintArray = (value) =>
+  Array.isArray(value)
+    ? value.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
 const normalizeRestaurantId = (restaurant) => {
   if (!restaurant) return "";
   return String(
@@ -67,12 +86,14 @@ const normalizeRestaurantId = (restaurant) => {
   ).trim();
 };
 
-const formatCurrency = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+const formatCurrency = (value) =>
+  `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "Không giới hạn";
 
-const getCouponCategory = (coupon) => String(coupon.category || "order").toLowerCase();
+const getCouponCategory = (coupon) =>
+  String(coupon.category || "order").toLowerCase();
 
 const getCouponColor = (category) => {
   if (category === "shipping") return "blue";
@@ -114,7 +135,9 @@ const buildConditionLines = (coupon) => {
   const usage = buildUsage(coupon);
   lines.push(usage.label + ".");
 
-  lines.push(`Hiệu lực: ${formatDate(coupon.startAt)} - ${formatDate(coupon.endAt)}.`);
+  lines.push(
+    `Hiệu lực: ${formatDate(coupon.startAt)} - ${formatDate(coupon.endAt)}.`,
+  );
 
   if (constraints.stackable) {
     lines.push("Có thể dùng chồng với coupon khác.");
@@ -126,6 +149,33 @@ const buildConditionLines = (coupon) => {
 
   if (constraints.exclusive) {
     lines.push("Coupon độc quyền, có thể chặn ưu đãi khác.");
+  }
+
+  const perUserLimit = Number(constraints.perUserLimit || 0);
+  if (perUserLimit > 0) {
+    lines.push(`Mỗi khách dùng tối đa ${perUserLimit} lần.`);
+  }
+
+  const orderTypes = normalizeConstraintArray(constraints.orderTypes);
+  if (orderTypes.length) {
+    lines.push(
+      `Chỉ áp dụng cho: ${orderTypes
+        .map((type) => ORDER_TYPE_LABELS[type] || type)
+        .join(" / ")}.`,
+    );
+  }
+
+  const paymentMethods = normalizeConstraintArray(constraints.paymentMethods);
+  if (paymentMethods.length) {
+    lines.push(
+      `Phương thức thanh toán: ${paymentMethods
+        .map((method) => PAYMENT_METHOD_LABELS[method] || method)
+        .join(" / ")}.`,
+    );
+  }
+
+  if (constraints.firstOrderOnly) {
+    lines.push("Chỉ cho đơn đầu tiên.");
   }
 
   if (Array.isArray(constraints.conditions)) {
@@ -146,9 +196,11 @@ const mapCouponToCard = (coupon) => {
     code: coupon.code,
     category,
     categoryLabel: COUPON_CATEGORIES[category] || category,
-    title: coupon.name || (isPercent
-      ? `Giảm ${coupon.discountValue}%`
-      : `Giảm ${formatCurrency(coupon.discountValue)}`),
+    title:
+      coupon.name ||
+      (isPercent
+        ? `Giảm ${coupon.discountValue}%`
+        : `Giảm ${formatCurrency(coupon.discountValue)}`),
     subTitle: coupon.description || "Ưu đãi áp dụng theo điều kiện",
     discountLabel: isPercent
       ? `Giảm ${coupon.discountValue}%`
@@ -315,7 +367,10 @@ const CouponPage = () => {
         {filteredCoupons.map((coupon) => {
           const isSaved = savedCouponIds.includes(coupon.id);
           return (
-            <div key={coupon.id} className={`ticket-card color-${coupon.color}`}>
+            <div
+              key={coupon.id}
+              className={`ticket-card color-${coupon.color}`}
+            >
               <div className="ticket-left">
                 <div className="ticket-icon">
                   {coupon.category === "shipping" ? (
@@ -448,8 +503,14 @@ const CouponPage = () => {
           className="modal-coupon-overlay"
           onClick={() => setSelectedCoupon(null)}
         >
-          <div className="modal-ticket" onClick={(event) => event.stopPropagation()}>
-            <button className="close-btn" onClick={() => setSelectedCoupon(null)}>
+          <div
+            className="modal-ticket"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="close-btn"
+              onClick={() => setSelectedCoupon(null)}
+            >
               <X size={24} />
             </button>
             <div className="modal-header-bg">

@@ -15,6 +15,22 @@ import {
 } from "../../../../../utils/constants";
 import "./CouponModal.scss";
 
+const ORDER_TYPE_OPTIONS = [
+  { value: "dine_in", label: "Dùng tại bàn" },
+  { value: "takeaway", label: "Mang đi" },
+  { value: "delivery", label: "Giao hàng" },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "cash", label: "Tiền mặt" },
+  { value: "card", label: "Thẻ" },
+  { value: "transfer", label: "Chuyển khoản" },
+  { value: "bank_transfer", label: "Ngân hàng" },
+  { value: "e_wallet", label: "Ví điện tử" },
+];
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
 const buildInitialFormData = (coupon) => ({
   name: coupon?.name || "",
   code: coupon?.code || "",
@@ -33,9 +49,14 @@ const buildInitialFormData = (coupon) => ({
   combinableWithPromotions: Boolean(coupon?.combinableWithPromotions),
   exclusive: Boolean(coupon?.exclusive),
   priority:
-    coupon?.priority === 0 || coupon?.priority
-      ? String(coupon.priority)
-      : "0",
+    coupon?.priority === 0 || coupon?.priority ? String(coupon.priority) : "0",
+  perUserLimit:
+    coupon?.perUserLimit === 0 || coupon?.perUserLimit
+      ? String(coupon.perUserLimit)
+      : "",
+  orderTypes: toArray(coupon?.orderTypes),
+  paymentMethods: toArray(coupon?.paymentMethods),
+  firstOrderOnly: Boolean(coupon?.firstOrderOnly),
 });
 
 const CouponModal = ({ coupon, onSave, onClose }) => {
@@ -52,6 +73,19 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
     const nextValue = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleMultiCheckboxChange = (fieldName, optionValue) => (event) => {
+    const { checked } = event.target;
+    setFormData((prev) => {
+      const currentValues = toArray(prev[fieldName]);
+      return {
+        ...prev,
+        [fieldName]: checked
+          ? [...new Set([...currentValues, optionValue])]
+          : currentValues.filter((value) => value !== optionValue),
+      };
+    });
   };
 
   const validateForm = () => {
@@ -114,6 +148,12 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
       combinableWithPromotions: Boolean(formData.combinableWithPromotions),
       exclusive: Boolean(formData.exclusive),
       priority: formData.priority ? parseInt(formData.priority, 10) : 0,
+      perUserLimit: formData.perUserLimit
+        ? parseInt(formData.perUserLimit, 10)
+        : 0,
+      orderTypes: toArray(formData.orderTypes),
+      paymentMethods: toArray(formData.paymentMethods),
+      firstOrderOnly: Boolean(formData.firstOrderOnly),
     };
 
     onSave(formattedData);
@@ -278,6 +318,17 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
                     onChange={handleInputChange}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Mỗi khách dùng tối đa</label>
+                  <input
+                    type="number"
+                    name="perUserLimit"
+                    min="0"
+                    placeholder="Không giới hạn"
+                    value={formData.perUserLimit}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
               <div className="form-group full mt-3">
@@ -289,6 +340,68 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
                   value={formData.description}
                   onChange={handleInputChange}
                 />
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Điều kiện đủ điều kiện
+              </h3>
+
+              <div className="grid-2">
+                <div className="form-group full">
+                  <label>Loại đơn áp dụng</label>
+                  <div className="checkbox-group">
+                    {ORDER_TYPE_OPTIONS.map((option) => (
+                      <label className="checkbox-row" key={option.value}>
+                        <input
+                          type="checkbox"
+                          name="orderTypes"
+                          value={option.value}
+                          checked={formData.orderTypes.includes(option.value)}
+                          onChange={handleMultiCheckboxChange(
+                            "orderTypes",
+                            option.value,
+                          )}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group full">
+                  <label>Phương thức thanh toán</label>
+                  <div className="checkbox-group">
+                    {PAYMENT_METHOD_OPTIONS.map((option) => (
+                      <label className="checkbox-row" key={option.value}>
+                        <input
+                          type="checkbox"
+                          name="paymentMethods"
+                          value={option.value}
+                          checked={formData.paymentMethods.includes(
+                            option.value,
+                          )}
+                          onChange={handleMultiCheckboxChange(
+                            "paymentMethods",
+                            option.value,
+                          )}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="firstOrderOnly"
+                    checked={Boolean(formData.firstOrderOnly)}
+                    onChange={handleInputChange}
+                  />
+                  <span>Chỉ cho đơn đầu tiên của khách</span>
+                </label>
               </div>
             </div>
             <div className="form-section">
@@ -341,8 +454,8 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
               </div>
 
               <p className="text-xs text-secondary mt-2">
-                Quy tắc dùng chồng coupon sẽ được tính lại khi áp coupon vào
-                đơn hàng.
+                Quy tắc dùng chồng coupon sẽ được tính lại khi áp coupon vào đơn
+                hàng.
               </p>
             </div>
             <div className="form-section">

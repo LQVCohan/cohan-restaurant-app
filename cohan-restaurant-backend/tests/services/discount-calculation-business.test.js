@@ -2,13 +2,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import mongoose from "mongoose";
 vi.mock("../../models/index.js", () => ({
   Coupon: { findOne: vi.fn() },
+  CouponRedemption: { countDocuments: vi.fn() },
+  Invoice: { countDocuments: vi.fn() },
+  Order: { countDocuments: vi.fn() },
   Promotion: {
     find: vi.fn(),
     findOne: vi.fn(),
   },
 }));
 
-import { Coupon, Promotion } from "../../models/index.js";
+import {
+  Coupon,
+  CouponRedemption,
+  Invoice,
+  Order,
+  Promotion,
+} from "../../models/index.js";
 import { calculateDiscountBreakdown } from "../../src/services/discountCalculation.service.js";
 
 const chain = (doc) => ({ session: () => Promise.resolve(doc) });
@@ -20,9 +29,184 @@ const rid = new mongoose.Types.ObjectId();
 beforeEach(() => {
   vi.clearAllMocks();
   Promotion.find.mockReturnValue(chainList([]));
+  CouponRedemption.countDocuments.mockReturnValue(chain(0));
+  Invoice.countDocuments.mockReturnValue(chain(0));
+  Order.countDocuments.mockReturnValue(chain(0));
 });
 
 describe("discount calculation business", () => {
+  it("allows coupon when order type matches constraint", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { orderTypes: ["delivery"] },
+      }),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "A" },
+      orderType: "delivery",
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("rejects coupon when order type does not match constraint", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { orderTypes: ["delivery"] },
+      }),
+    );
+
+    await expect(
+      calculateDiscountBreakdown({
+        restaurantId: rid,
+        items: [{ lineSubtotal: 100000 }],
+        pricing: { voucherCode: "A" },
+        orderType: "dine_in",
+      }),
+    ).rejects.toThrow(/Invalid coupon: order type is not eligible/);
+  });
+
+  it("allows coupon when payment method matches constraint", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { paymentMethods: ["card"] },
+      }),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "A" },
+      paymentMethod: "card",
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("rejects coupon when payment method does not match constraint", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { paymentMethods: ["cash"] },
+      }),
+    );
+
+    await expect(
+      calculateDiscountBreakdown({
+        restaurantId: rid,
+        items: [{ lineSubtotal: 100000 }],
+        pricing: { voucherCode: "A" },
+        paymentMethod: "card",
+      }),
+    ).rejects.toThrow(/Invalid coupon: payment method is not eligible/);
+  });
+
+  it("rejects first-order-only coupon when userId is missing", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { firstOrderOnly: true },
+      }),
+    );
+
+    await expect(
+      calculateDiscountBreakdown({
+        restaurantId: rid,
+        items: [{ lineSubtotal: 100000 }],
+        pricing: { voucherCode: "A" },
+      }),
+    ).rejects.toThrow(
+      /Invalid coupon: first-order eligibility requires an authenticated customer/,
+    );
+  });
+
+  it("rejects first-order-only coupon when customer has paid order history", async () => {
+    const userId = new mongoose.Types.ObjectId();
+    Order.countDocuments.mockReturnValue(chain(1));
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { firstOrderOnly: true },
+      }),
+    );
+
+    await expect(
+      calculateDiscountBreakdown({
+        restaurantId: rid,
+        userId,
+        items: [{ lineSubtotal: 100000 }],
+        pricing: { voucherCode: "A" },
+      }),
+    ).rejects.toThrow(
+      /Invalid coupon: only valid for the customer's first order/,
+    );
+  });
+
+  it("enforces per-user limit after eligibility refactor", async () => {
+    const userId = new mongoose.Types.ObjectId();
+    CouponRedemption.countDocuments.mockReturnValue(chain(2));
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        constraints: { perUserLimit: 2 },
+      }),
+    );
+
+    await expect(
+      calculateDiscountBreakdown({
+        restaurantId: rid,
+        userId,
+        items: [{ lineSubtotal: 100000 }],
+        pricing: { voucherCode: "A" },
+      }),
+    ).rejects.toThrow(/Invalid coupon: per-user usage limit reached/);
+  });
+
+  it("treats missing constraint arrays as unrestricted", async () => {
+    Coupon.findOne.mockReturnValue(
+      chain({
+        _id: "c1",
+        isActive: true,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+      }),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "A" },
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
   it("rejects expired coupon", async () => {
     Coupon.findOne.mockReturnValue(
       chain({ isActive: true, code: "A", endAt: new Date("2020-01-01") }),

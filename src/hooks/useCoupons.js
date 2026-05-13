@@ -114,6 +114,18 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeConstraintArray = (value) => {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  return [
+    ...new Set(source.map((item) => String(item || "").trim()).filter(Boolean)),
+  ];
+};
+
 const resolveStatus = (item) => {
   if (item.status === "draft") return "draft";
   const now = new Date();
@@ -156,6 +168,11 @@ const normalizeCoupon = (item) => ({
   ),
   exclusive: toBoolean(item.constraints?.exclusive, false),
   priority: toNumber(item.constraints?.priority, 0),
+  perUserLimit: toNumber(item.constraints?.perUserLimit, 0),
+  orderTypes: normalizeConstraintArray(item.constraints?.orderTypes),
+  paymentMethods: normalizeConstraintArray(item.constraints?.paymentMethods),
+  firstOrderOnly: toBoolean(item.constraints?.firstOrderOnly, false),
+  customerRanks: normalizeConstraintArray(item.constraints?.customerRanks),
   isActive: Boolean(item.isActive),
   restaurantId: item.restaurantId || "",
 });
@@ -194,6 +211,11 @@ const buildCouponInput = (couponData, restaurantId) => ({
     combinableWithPromotions: Boolean(couponData.combinableWithPromotions),
     exclusive: Boolean(couponData.exclusive),
     priority: Number(couponData.priority || 0),
+    perUserLimit: Number(couponData.perUserLimit || 0),
+    orderTypes: normalizeConstraintArray(couponData.orderTypes),
+    paymentMethods: normalizeConstraintArray(couponData.paymentMethods),
+    firstOrderOnly: Boolean(couponData.firstOrderOnly),
+    customerRanks: normalizeConstraintArray(couponData.customerRanks),
   },
   publishAt: couponData.publishAt
     ? toVietnamDateTimeISO(couponData.publishAt)
@@ -228,6 +250,7 @@ const buildCouponPackageInput = (couponPackageData, restaurantId) => ({
 export const __testables = {
   buildCouponInput,
   buildCouponPackageInput,
+  normalizeConstraintArray,
   normalizeCoupon,
   normalizeCouponPackage,
   resolveStatus,

@@ -56,6 +56,11 @@ describe("useCoupons input builders", () => {
       combinableWithPromotions: true,
       exclusive: false,
       priority: 2,
+      perUserLimit: 0,
+      orderTypes: [],
+      paymentMethods: [],
+      firstOrderOnly: false,
+      customerRanks: [],
     });
   });
   it("normalizes coupon stacking constraints from coupon constraints", () => {
