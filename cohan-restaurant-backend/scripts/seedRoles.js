@@ -22,7 +22,7 @@ const roles = [
   { name: "Kitchen Helper", slug: "kitchen_helper", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read"] },
   { name: "Cleaner", slug: "cleaner", parentRole: "staff", department: "cleaning", permissions: ["cleaning.read"] },
   { name: "Shipper", slug: "shipper", parentRole: "staff", department: "delivery", permissions: ["delivery.read", "delivery.update"] },
-  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["restaurant.read"] },
+  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["inventory.read", "inventory.write", "stock.read", "stock.write", "supplier.read", "supplier.write"] },
   { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar", permissions: ["menu.read", "order.read", "order.create"] },
 ];
 

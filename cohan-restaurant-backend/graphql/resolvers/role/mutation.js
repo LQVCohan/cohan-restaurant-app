@@ -223,6 +223,7 @@ export const RoleMutation = {
         { _id: { $in: valid } },
         { _id: 1, code: 1 }
       ).lean();
+      if (!hasRole(user, ["admin"])) assertManagerAssignablePermissionCodes(perms.map((p) => p.code));
       pr.permissions = perms.map((p) => p._id);
     }
 

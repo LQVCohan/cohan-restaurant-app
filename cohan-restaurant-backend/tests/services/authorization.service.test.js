@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   getUserEffectivePermissions,
@@ -34,6 +35,11 @@ describe("authorization.service RBAC", () => {
 
     const codes = (await getUserEffectivePermissions(user)).map((p) => p.code).sort();
     expect(codes).toEqual(["menu.read", "order.create", "order.read"]);
+  });
+
+
+  it("does not give manager global role.write through legacy/default permissions", async () => {
+    expect(await hasPermission({ id: "manager-1", roleName: "manager" }, "role.write")).toBe(false);
   });
 
   it("forbids staff from role/permission administration APIs", async () => {
@@ -77,4 +83,12 @@ describe("authorization.service RBAC", () => {
     expect(await hasPermission(ctx.user, "staff.write")).toBe(false);
     await expect(requireRestaurantPermission(ctx, RESTAURANT_ID, "staff.write")).rejects.toThrow("FORBIDDEN");
   });
+  it("seeds storekeeper with inventory, stock, and supplier permissions", () => {
+    const seedRoles = fs.readFileSync(new URL("../../scripts/seedRoles.js", import.meta.url), "utf8");
+    expect(seedRoles).toContain('slug: "storekeeper"');
+    expect(seedRoles).toContain('"inventory.read"');
+    expect(seedRoles).toContain('"stock.write"');
+    expect(seedRoles).toContain('"supplier.read"');
+  });
+
 });
