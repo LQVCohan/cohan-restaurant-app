@@ -77,7 +77,10 @@ describe("CouponPage", () => {
         variables: expect.objectContaining({ restaurantId: "" }),
       }),
     );
-    expect(useUserCoupons).toHaveBeenCalledWith({ restaurantId: "", skip: true });
+    expect(useUserCoupons).toHaveBeenCalledWith({
+      restaurantId: "",
+      skip: true,
+    });
     expect(screen.getByText("Chọn nhà hàng để xem Coupon")).toBeInTheDocument();
   });
 
@@ -94,7 +97,10 @@ describe("CouponPage", () => {
   });
 
   it("calls saveCoupon when an authenticated customer saves a coupon", () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
 
     renderCouponPage({
       path: "/coupons/restaurant-123",
@@ -107,7 +113,10 @@ describe("CouponPage", () => {
   });
 
   it("shows backend saved state and removes a saved coupon on click", () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
     useUserCoupons.mockReturnValue({
       myCoupons: [{ id: "uc-1", couponId: "coupon-1", status: "saved" }],
       savedCouponIds: ["coupon-1"],
@@ -123,13 +132,18 @@ describe("CouponPage", () => {
       authValue: { isAuthenticated: true, user: { id: "user-1" } },
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1),
+    );
 
     expect(removeSavedCoupon).toHaveBeenCalledWith("coupon-1");
   });
 
   it("shows a friendly error when saving fails", async () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
     saveCoupon.mockRejectedValueOnce(new Error("network"));
 
     renderCouponPage({
@@ -146,7 +160,10 @@ describe("CouponPage", () => {
   });
 
   it("shows a friendly error when removing a saved coupon fails", async () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
     removeSavedCoupon.mockRejectedValueOnce(new Error("network"));
     useUserCoupons.mockReturnValue({
       myCoupons: [{ id: "uc-1", couponId: "coupon-1", status: "saved" }],
@@ -163,7 +180,9 @@ describe("CouponPage", () => {
       authValue: { isAuthenticated: true, user: { id: "user-1" } },
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /^Đã lưu$/i }).at(-1),
+    );
 
     expect(removeSavedCoupon).toHaveBeenCalledWith("coupon-1");
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -172,7 +191,10 @@ describe("CouponPage", () => {
   });
 
   it("clears a previous save/remove error after a successful retry", async () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
     saveCoupon
       .mockRejectedValueOnce(new Error("network"))
       .mockResolvedValueOnce({ id: "uc-1" });
@@ -193,8 +215,44 @@ describe("CouponPage", () => {
     });
   });
 
+  it("displays advanced eligibility conditions in coupon details", () => {
+    useQuery.mockReturnValue({
+      data: {
+        coupons: [
+          {
+            ...activeCoupon,
+            constraints: {
+              perUserLimit: 2,
+              orderTypes: ["dine_in", "takeaway", "delivery"],
+              paymentMethods: ["cash", "card", "e_wallet"],
+              firstOrderOnly: true,
+            },
+          },
+        ],
+      },
+      loading: false,
+    });
+
+    renderCouponPage({ path: "/coupons/restaurant-123" });
+    fireEvent.click(screen.getByRole("button", { name: "Điều kiện" }));
+
+    expect(
+      screen.getByText("Mỗi khách dùng tối đa 2 lần."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Chỉ áp dụng cho: Dùng tại bàn / Mang đi / Giao hàng."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Phương thức thanh toán: Tiền mặt / Thẻ / Ví điện tử."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Chỉ cho đơn đầu tiên.")).toBeInTheDocument();
+  });
+
   it("prompts unauthenticated users to log in and does not save", () => {
-    useQuery.mockReturnValue({ data: { coupons: [activeCoupon] }, loading: false });
+    useQuery.mockReturnValue({
+      data: { coupons: [activeCoupon] },
+      loading: false,
+    });
 
     renderCouponPage({ path: "/coupons/restaurant-123" });
 

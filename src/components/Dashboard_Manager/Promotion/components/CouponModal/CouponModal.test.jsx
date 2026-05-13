@@ -28,4 +28,27 @@ describe("Coupon modal stacking config", () => {
     expect(source).toContain("exclusive: Boolean(formData.exclusive)");
     expect(source).toContain("priority: formData.priority");
   });
+
+  it("initializes advanced eligibility fields when editing an existing Coupon", () => {
+    expect(source).toContain("perUserLimit:");
+    expect(source).toContain("coupon?.perUserLimit");
+    expect(source).toContain("orderTypes: toArray(coupon?.orderTypes)");
+    expect(source).toContain("paymentMethods: toArray(coupon?.paymentMethods)");
+    expect(source).toContain("firstOrderOnly: Boolean(coupon?.firstOrderOnly)");
+  });
+
+  it("submits advanced eligibility fields", () => {
+    expect(source).toContain('name="perUserLimit"');
+    expect(source).toContain('name="orderTypes"');
+    expect(source).toContain('name="paymentMethods"');
+    expect(source).toContain('name="firstOrderOnly"');
+    expect(source).toContain("perUserLimit: formData.perUserLimit");
+    expect(source).toContain("orderTypes: toArray(formData.orderTypes)");
+    expect(source).toContain(
+      "paymentMethods: toArray(formData.paymentMethods)",
+    );
+    expect(source).toContain(
+      "firstOrderOnly: Boolean(formData.firstOrderOnly)",
+    );
+  });
 });

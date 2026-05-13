@@ -146,7 +146,9 @@ describe("coupon redemption payment integration coverage", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 
     expect(src).toMatch(/function resolveCouponRedemptionUserIdFromOrders/);
-    expect(src).toMatch(/order\?\.userId\?\._id \|\| order\?\.userId\?\.id \|\| order\?\.userId/);
+    expect(src).toMatch(
+      /order\?\.userId\?\._id \|\| order\?\.userId\?\.id \|\| order\?\.userId/,
+    );
     expect(src).toMatch(/userIdsByString\.set\(String\(userId\), userId\)/);
     expect(src).toMatch(/userIdsByString\.size === 1[\s\S]*: null/);
   });
@@ -166,6 +168,17 @@ describe("coupon redemption payment integration coverage", () => {
     expect(orderIdsSnippet).toMatch(/userId:\s*redemptionUserId/);
   });
 
+  it("passes payment method and shared order type context to discount calculation", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+    const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
+    const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
+
+    expect(src).toMatch(/function resolveSharedOrderType/);
+    expect(src).toMatch(/orderType:\s*resolveSharedOrderType\(orders\)/);
+    expect(tableSnippet).toMatch(/paymentMethod:\s*normMethod/);
+    expect(orderIdsSnippet).toMatch(/paymentMethod:\s*normMethod/);
+  });
+
   it("does not use POS actorId for coupon per-user enforcement", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
     const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
@@ -182,7 +195,9 @@ describe("coupon redemption payment integration coverage", () => {
 
     expect(src).toMatch(/if \(!userId\) continue/);
     expect(src).toMatch(/return userIdsByString\.size === 1[\s\S]*: null/);
-    expect(src).toMatch(/if \(redemptionUserId\) \{[\s\S]*UserCoupon\.updateOne/);
+    expect(src).toMatch(
+      /if \(redemptionUserId\) \{[\s\S]*UserCoupon\.updateOne/,
+    );
   });
 
   it("uses Coupon terminology for new per-user limit errors", () => {
@@ -197,11 +212,11 @@ describe("coupon redemption payment integration coverage", () => {
     const tableSnippet = getFunctionSnippet(src, "payOrdersByTableId");
     const orderIdsSnippet = getFunctionSnippet(src, "payOrdersByOrderIds");
 
-    expect(tableSnippet.indexOf("const invoice = await Invoice.create")).toBeLessThan(
-      tableSnippet.indexOf("await incrementCouponUsageOnce"),
-    );
-    expect(orderIdsSnippet.indexOf("const invoice = await Invoice.create")).toBeLessThan(
-      orderIdsSnippet.indexOf("await incrementCouponUsageOnce"),
-    );
+    expect(
+      tableSnippet.indexOf("const invoice = await Invoice.create"),
+    ).toBeLessThan(tableSnippet.indexOf("await incrementCouponUsageOnce"));
+    expect(
+      orderIdsSnippet.indexOf("const invoice = await Invoice.create"),
+    ).toBeLessThan(orderIdsSnippet.indexOf("await incrementCouponUsageOnce"));
   });
 });
