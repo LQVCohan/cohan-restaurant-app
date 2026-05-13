@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { __testables } from "./useVouchers";
+import { __testables, useCoupons } from "./useCoupons";
 
-describe("useVouchers input builders", () => {
-  it("normalizes voucher datetime-local values to ISO in Vietnam timezone", () => {
+describe("useCoupons input builders", () => {
+  it("exports the coupon hook directly", () => {
+    expect(typeof useCoupons).toBe("function");
+  });
+  it("normalizes coupon datetime-local values to ISO in Vietnam timezone", () => {
     const input = __testables.buildCouponInput(
       {
-        name: "Voucher food",
+        name: "Coupon food",
         code: "FOOD10",
         category: "food",
         discountType: "percent",
@@ -29,10 +32,10 @@ describe("useVouchers input builders", () => {
       }),
     );
   });
-  it("preserves voucher stacking constraints in coupon input", () => {
+  it("preserves coupon stacking constraints in coupon input", () => {
     const input = __testables.buildCouponInput(
       {
-        name: "Voucher stack",
+        name: "Coupon stack",
         code: "STACK10",
         category: "order",
         discountType: "percent",
@@ -55,10 +58,10 @@ describe("useVouchers input builders", () => {
       priority: 2,
     });
   });
-  it("normalizes voucher stacking constraints from coupon constraints", () => {
-    const voucher = __testables.normalizeVoucher({
+  it("normalizes coupon stacking constraints from coupon constraints", () => {
+    const coupon = __testables.normalizeCoupon({
       id: "coupon-1",
-      name: "Voucher stack",
+      name: "Coupon stack",
       code: "STACK10",
       discountType: "PERCENT",
       discountValue: 10,
@@ -71,7 +74,7 @@ describe("useVouchers input builders", () => {
       },
     });
 
-    expect(voucher).toEqual(
+    expect(coupon).toEqual(
       expect.objectContaining({
         conditions: ["Ap dung don tu 100k"],
         stackable: true,
@@ -81,12 +84,12 @@ describe("useVouchers input builders", () => {
       }),
     );
   });
-  it("keeps voucher package ids and normalizes datetime-local values for package mutations", () => {
-    const input = __testables.buildPackageInput(
+  it("keeps coupon package ids and normalizes datetime-local values for package mutations", () => {
+    const input = __testables.buildCouponPackageInput(
       {
         name: "Goi VIP",
         code: "VIP-01",
-        voucherIds: ["voucher-1", "voucher-2"],
+        couponIds: ["coupon-1", "coupon-2"],
         publishAt: "2026-05-01T09:00",
         startDate: "2026-05-01T10:00",
         endDate: "2026-05-05T22:00",
@@ -98,7 +101,7 @@ describe("useVouchers input builders", () => {
     expect(input).toEqual(
       expect.objectContaining({
         restaurantId: "restaurant-1",
-        voucherIds: ["voucher-1", "voucher-2"],
+        voucherIds: ["coupon-1", "coupon-2"],
         publishAt: "2026-05-01T02:00:00.000Z",
         startAt: "2026-05-01T03:00:00.000Z",
         endAt: "2026-05-05T15:00:00.000Z",

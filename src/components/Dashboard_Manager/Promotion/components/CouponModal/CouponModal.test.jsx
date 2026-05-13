@@ -6,13 +6,13 @@ import { describe, expect, it } from "vitest";
 const source = fs.readFileSync(
   path.resolve(
     process.cwd(),
-    "src/components/Dashboard_Manager/Promotion/components/VoucherModal/VoucherModal.jsx",
+    "src/components/Dashboard_Manager/Promotion/components/CouponModal/CouponModal.jsx",
   ),
   "utf8",
 );
 
-describe("VoucherModal stacking config", () => {
-  it("exposes voucher stacking controls", () => {
+describe("Coupon modal stacking config", () => {
+  it("exposes coupon stacking controls", () => {
     expect(source).toContain("Cấu hình dùng chồng");
     expect(source).toContain('name="stackable"');
     expect(source).toContain('name="combinableWithPromotions"');

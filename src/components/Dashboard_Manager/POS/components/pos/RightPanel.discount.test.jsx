@@ -56,10 +56,10 @@ describe("RightPanel discount integration", () => {
     expect(saveOrderCall).not.toMatch(/discountAmount:/);
   });
 
-  it("does not enable voucher preview for dine-in send-to-kitchen flow", () => {
+  it("does not enable coupon preview for dine-in send-to-kitchen flow", () => {
     const src = fs.readFileSync(SRC, "utf8");
 
     expect(src).toMatch(/isOffPremise/);
-    expect(src).toMatch(/Voucher cho bàn ăn sẽ áp dụng ở bước thanh toán/);
+    expect(src).toMatch(/Coupon cho bàn ăn sẽ áp dụng ở bước thanh toán/);
   });
 });

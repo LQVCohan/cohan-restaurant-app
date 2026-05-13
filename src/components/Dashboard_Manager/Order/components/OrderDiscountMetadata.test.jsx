@@ -21,7 +21,7 @@ describe("Order discount metadata display", () => {
     expect(historyModalSource).toContain("formatDiscountReasonLabel");
     expect(historyModalSource).toContain("getOrderDiscountMeta");
     expect(historyModalSource).toContain("hm-card__discount");
-    expect(historyModalSource).toContain("Voucher");
+    expect(historyModalSource).toContain("Coupon");
     expect(historyModalSource).toContain("Promotion");
   });
 

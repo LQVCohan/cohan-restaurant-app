@@ -793,7 +793,7 @@ const OrderModal = ({
                 <div className="discount-meta-tags">
                   {totals.voucherCode && (
                     <span className="discount-meta-tag">
-                      Voucher {totals.voucherCode}
+                      Coupon {totals.voucherCode}
                     </span>
                   )}
                   {totals.promotionId && (

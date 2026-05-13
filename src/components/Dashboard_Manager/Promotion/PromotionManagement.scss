@@ -413,13 +413,13 @@ $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
       }
 
-      .voucher-pack-list {
+      .coupon-pack-list {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
       }
 
-      .voucher-chip {
+      .coupon-chip {
         display: inline-flex;
         align-items: center;
         padding: 0.15rem 0.45rem;
@@ -521,14 +521,14 @@ $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   padding-top: 0.125rem;
   padding-bottom: 0.125rem;
 }
-.voucher-stack-flags {
+.coupon-stack-flags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
 }
 
-.voucher-chip-danger {
+.coupon-chip-danger {
   background: #fef2f2;
   border-color: #fecaca;
   color: #b91c1c;

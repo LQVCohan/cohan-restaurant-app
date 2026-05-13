@@ -3,7 +3,7 @@ export function formatDiscountReasonLabel(reason) {
   if (!raw) return "";
 
   if (/^coupon:/i.test(raw)) {
-    return "Voucher hợp lệ";
+    return "Coupon hợp lệ";
   }
 
   if (/^promotion:/i.test(raw)) {
@@ -11,7 +11,7 @@ export function formatDiscountReasonLabel(reason) {
   }
 
   if (/^voucher:/i.test(raw)) {
-    return "Voucher hợp lệ";
+    return "Coupon hợp lệ";
   }
 
   return raw;

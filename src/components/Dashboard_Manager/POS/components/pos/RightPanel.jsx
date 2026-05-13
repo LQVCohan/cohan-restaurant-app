@@ -263,7 +263,7 @@ export default function RightPanel() {
   const [isPrintQueueOpen, setPrintQueueOpen] = useState(false);
   const [printMode, setPrintMode] = useState("temp");
   const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
-  const [voucherCode, setVoucherCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
@@ -342,7 +342,7 @@ export default function RightPanel() {
         taxRate: 0,
         serviceRate: 0,
         shippingFee: discountShippingFee,
-        voucherCode,
+        couponCode,
         promotionIds: selectedPromotionIds,
       }),
     [
@@ -350,7 +350,7 @@ export default function RightPanel() {
       currentOrderType,
       newItems,
       discountShippingFee,
-      voucherCode,
+      couponCode,
       selectedPromotionIds,
     ],
   );
@@ -360,7 +360,7 @@ export default function RightPanel() {
 
     if (!isOffPremise) {
       setDiscountBreakdown(null);
-      setDiscountError("Voucher cho bàn ăn sẽ áp dụng ở bước thanh toán.");
+      setDiscountError("Coupon cho bàn ăn sẽ áp dụng ở bước thanh toán.");
       return;
     }
 
@@ -524,9 +524,9 @@ export default function RightPanel() {
       }
     : finalTotals || {};
   const totals = totalsForDisplay;
-  const hasVoucherCode = voucherCode.trim().length > 0;
+  const hasCouponCode = couponCode.trim().length > 0;
   const hasPromotionSelection = selectedPromotionIds.length > 0;
-  const hasDiscountSelection = hasVoucherCode || hasPromotionSelection;
+  const hasDiscountSelection = hasCouponCode || hasPromotionSelection;
 
   const shouldBlockSaveForDiscount =
     isOffPremise &&
@@ -654,8 +654,8 @@ export default function RightPanel() {
       const invoiceTotals = invoice?.totals || {};
       const invoiceNumber = invoice?.number || invoice?.id;
 
-      const appliedVoucherCode =
-        payload?.appliedVoucherCode ||
+      const appliedCouponCode =
+        payload?.appliedCouponCode ||
         invoiceTotals?.voucherCode ||
         invoice?.meta?.voucherCode ||
         "";
@@ -677,11 +677,11 @@ export default function RightPanel() {
         showNotification(`Hóa đơn: ${invoiceNumber}`, "info");
       }
 
-      if (discountAmount > 0 || appliedVoucherCode || discountReason) {
+      if (discountAmount > 0 || appliedCouponCode || discountReason) {
         const parts = [];
 
-        if (appliedVoucherCode) {
-          parts.push(`Voucher ${appliedVoucherCode}`);
+        if (appliedCouponCode) {
+          parts.push(`Coupon ${appliedCouponCode}`);
         }
 
         if (discountAmount > 0) {
@@ -876,7 +876,7 @@ export default function RightPanel() {
     lines.push(`Tổng cần trả: ${formatPrice(total)}`);
 
     if (discountBreakdown?.voucherCode) {
-      lines.push(`Voucher: ${discountBreakdown.voucherCode}`);
+      lines.push(`Coupon: ${discountBreakdown.voucherCode}`);
     }
 
     const discountReasonLabel = formatDiscountReasonLabel(
@@ -1172,7 +1172,7 @@ export default function RightPanel() {
     if (!v.ok) return;
     if (shouldBlockSaveForDiscount) {
       showNotification(
-        "Vui lòng áp dụng voucher hợp lệ trước khi lưu đơn.",
+        "Vui lòng áp dụng coupon hợp lệ trước khi lưu đơn.",
         "error",
       );
       return;
@@ -1194,7 +1194,7 @@ export default function RightPanel() {
                 taxRate: 0,
                 serviceRate: 0,
                 shippingFee: discountShippingFee,
-                voucherCode,
+                couponCode,
               })
             : {},
         promotionIds:
@@ -1276,20 +1276,20 @@ export default function RightPanel() {
     >
       {isOffPremise && (
         <div className={cls.discountBox}>
-          <div className={cls.discountTitle}>Ưu đãi / voucher</div>
+          <div className={cls.discountTitle}>Ưu đãi / coupon</div>
 
           <div className={cls.discountRow}>
             <input
               className={cls.discountInput}
-              value={voucherCode}
-              placeholder="Nhập mã voucher"
-              onChange={(event) => setVoucherCode(event.target.value)}
+              value={couponCode}
+              placeholder="Nhập mã coupon"
+              onChange={(event) => setCouponCode(event.target.value)}
             />
             <button
               type="button"
               className={cls.smallBtn}
               onClick={handleApplyDiscountPreview}
-              disabled={isPreviewingDiscount || !voucherCode.trim()}
+              disabled={isPreviewingDiscount || !couponCode.trim()}
             >
               {isPreviewingDiscount ? "Đang kiểm..." : "Áp dụng"}
             </button>
@@ -1323,9 +1323,9 @@ export default function RightPanel() {
             <div className={cls.discountError}>{discountError}</div>
           )}
 
-          {voucherCode && !discountBreakdown && !discountError && (
+          {couponCode && !discountBreakdown && !discountError && (
             <div className={cls.discountWarning}>
-              Vui lòng áp dụng voucher trước khi lưu đơn.
+              Vui lòng áp dụng coupon trước khi lưu đơn.
             </div>
           )}
 

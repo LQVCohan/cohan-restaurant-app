@@ -26,27 +26,27 @@ describe("OrderSummaryModal discount integration", () => {
     const inputSnippet = getCreateCheckoutInputSnippet(src);
 
     expect(inputSnippet).toMatch(/buildDiscountPricingInput/);
-    expect(inputSnippet).toMatch(/voucherCode/);
+    expect(inputSnippet).toMatch(/couponCode/);
     expect(inputSnippet).toMatch(/promotionIds/);
 
-    expect(inputSnippet).not.toMatch(/voucherDiscount/);
+    expect(inputSnippet).not.toMatch(/couponDiscount/);
     expect(inputSnippet).not.toMatch(/promotionDiscount/);
     expect(inputSnippet).not.toMatch(/discountAmount/);
     expect(inputSnippet).not.toMatch(/finalTotal/);
     expect(inputSnippet).not.toMatch(/grandTotal/);
   });
 
-  it("blocks stale voucher checkout when preview is required", () => {
+  it("blocks stale coupon checkout when preview is required", () => {
     const src = readSource();
 
     expect(src).toMatch(/shouldBlockCheckoutForDiscount/);
-    expect(src).toMatch(/Vui lòng áp dụng voucher hợp lệ trước khi đặt hàng/);
+    expect(src).toMatch(/Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng/);
   });
 
-  it("disables voucher preview for multi restaurant cart", () => {
+  it("disables coupon preview for multi restaurant cart", () => {
     const src = readSource();
 
     expect(src).toMatch(/canPreviewDiscount/);
-    expect(src).toMatch(/Voucher hiện chỉ áp dụng cho đơn thuộc một\s+nhà hàng\./);
+    expect(src).toMatch(/Coupon hiện chỉ áp dụng cho đơn thuộc một\s+nhà hàng\./);
   });
 });
