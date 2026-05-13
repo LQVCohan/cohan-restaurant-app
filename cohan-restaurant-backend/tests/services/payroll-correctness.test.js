@@ -63,6 +63,33 @@ describe("Payroll runtime correctness", () => {
     });
   });
 
+  it("gates late and early leave minutes by payroll inclusion", async () => {
+    modelMocks.Timesheet.aggregate.mockResolvedValue([]);
+
+    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+
+    const group = modelMocks.Timesheet.aggregate.mock.calls[0][0].find((stage) => stage.$group);
+    expect(group.$group.totalLatenessMinutes).toEqual({
+      $sum: {
+        $cond: [
+          "$includeInPayroll",
+          { $ifNull: ["$latenessMinutes", 0] },
+          0,
+        ],
+      },
+    });
+    expect(group.$group.totalEarlyLeaveMinutes).toEqual({
+      $sum: {
+        $cond: [
+          "$includeInPayroll",
+          { $ifNull: ["$earlyLeaveMinutes", 0] },
+          0,
+        ],
+      },
+    });
+  });
+
 });
 
 describe("Payroll validation correctness", () => {

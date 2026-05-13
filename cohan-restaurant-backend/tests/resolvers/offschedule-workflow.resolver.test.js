@@ -44,6 +44,51 @@ describe('off-schedule workflow visibility', () => {
     expect(rows[0].offScheduleApprovalStatus).toBe('pending');
   });
 
+  it('maps legacy approved off-schedule status as approved when approved flag is false', async () => {
+    modelMocks.Timesheet.find.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      sort: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 't-legacy-approved',
+          employeeId: '507f1f77bcf86cd799439012',
+          restaurantId: '507f1f77bcf86cd799439011',
+          workDate: new Date(),
+          isOffSchedule: true,
+          approved: false,
+          offScheduleApprovalStatus: 'approved',
+        },
+      ]),
+    });
+    modelMocks.Staff.find.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        { _id: '507f1f77bcf86cd799439012', fullName: 'Staff One' },
+      ]),
+    });
+
+    const rows = await Query.offScheduleAttendances(
+      {},
+      {
+        input: {
+          restaurantId: '507f1f77bcf86cd799439011',
+          approvalStatus: 'approved',
+          employeeId: '507f1f77bcf86cd799439012',
+        },
+      },
+      {
+        user: {
+          id: '507f1f77bcf86cd799439015',
+          userType: 'MANAGER',
+          restaurantForStaff: '507f1f77bcf86cd799439011',
+        },
+      },
+    );
+
+    expect(rows[0].offScheduleApprovalStatus).toBe('approved');
+  });
+
   it('manager can approve off-schedule attendance', async () => {
     const save = vi.fn();
     modelMocks.Timesheet.findById.mockResolvedValue({ _id: 't1', employeeId: '507f1f77bcf86cd799439012', restaurantId: '507f1f77bcf86cd799439011', isOffSchedule: true, approved: false, offScheduleApprovalStatus: 'pending', save, toObject() { return this; } });
