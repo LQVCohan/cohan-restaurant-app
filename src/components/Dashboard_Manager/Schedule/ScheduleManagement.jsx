@@ -622,6 +622,61 @@ const CREATE_STAFF_SHIFTS = gql`
     }
   }
 `;
+const PREVIEW_AUTO_SCHEDULE = gql`
+  mutation PreviewAutoSchedule($input: AutoSchedulePreviewInput!) {
+    previewAutoSchedule(input: $input) {
+      unresolvedCount
+      canApply
+      summary {
+        totalDemand
+        recommendedAssignments
+        warningAssignments
+        blockedAssignments
+        existingShiftCount
+      }
+      items {
+        shiftKey
+        shiftType
+        startTime
+        endTime
+        requiredRole
+        status
+        employeeId
+        employeeName
+        score
+        validationIssues { code severity message suggestedAction }
+        warnings { code severity message suggestedAction }
+      }
+      blockedCandidates {
+        shiftKey
+        employeeId
+        requiredRole
+        issues { code severity message suggestedAction }
+      }
+      unfilledRoles {
+        shiftKey
+        shiftType
+        startTime
+        endTime
+        requiredRole
+        reason
+      }
+      validationIssues { code severity message suggestedAction }
+      warnings { code severity message suggestedAction }
+    }
+  }
+`;
+
+const APPLY_AUTO_SCHEDULE = gql`
+  mutation ApplyAutoSchedule($input: ApplyAutoScheduleInput!) {
+    applyAutoSchedule(input: $input) {
+      successCount
+      failedCount
+      shifts { id employeeId employeeName restaurantId shiftType startTime endTime status notes }
+      errors { index employeeId message code }
+    }
+  }
+`;
 const UPDATE_STAFF_SHIFT = gql`
   mutation UpdateStaffShift($shiftId: ID!, $input: UpdateStaffShiftInput!) {
     updateStaffShift(shiftId: $shiftId, input: $input) {
@@ -1565,6 +1620,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [createShifts] = useMutation(CREATE_STAFF_SHIFTS);
+  const [previewAutoScheduleBackend] = useMutation(PREVIEW_AUTO_SCHEDULE);
+  const [applyAutoScheduleBackend] = useMutation(APPLY_AUTO_SCHEDULE);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
   const [changePublishedShiftGroupTime, { loading: changingShiftGroupTime }] =
@@ -3519,6 +3576,42 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setIsValidatingAutoSchedule(false);
     }
   };
+
+  const mapBackendAutoSchedulePreview = (payload) => {
+    const items = (payload?.items || []).map((item) => ({
+      ...item,
+      canApply: Boolean(item.employeeId && item.status !== "blocked"),
+      unresolvedCount: item.employeeId ? 0 : 1,
+      plannedAssignments: item.employeeId
+        ? [
+            {
+              staffId: item.employeeId,
+              fullName: item.employeeName,
+              role: item.requiredRole || item.shiftType,
+              validationScore: item.score,
+              warnings: item.warnings || [],
+              requiresOverride: (item.warnings || []).length > 0,
+            },
+          ]
+        : [],
+      unfilledRoles: item.employeeId
+        ? []
+        : [{ role: item.requiredRole || item.shiftType, reason: "NO_ELIGIBLE_CANDIDATE" }],
+      blockedCandidates: (payload?.blockedCandidates || []).filter(
+        (row) => row.shiftKey === item.shiftKey,
+      ),
+    }));
+
+    return {
+      ...payload,
+      items,
+      summary: {
+        ...(payload?.summary || {}),
+        totalShiftGroups: Number(payload?.summary?.totalDemand || items.length),
+        unresolvedShifts: Number(payload?.unresolvedCount || 0),
+      },
+    };
+  };
   const handleGenerateAutoSchedule = async () => {
     if (readOnly) return;
 
@@ -3547,123 +3640,36 @@ const ScheduleManagement = ({ readOnly = false }) => {
       Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1),
     );
 
-    const contextStart = startOfWeek(today, { weekStartsOn: 1 });
-    const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
-
     try {
-      const [
-        staffResult,
-        assistantResult,
-        leaveResult,
-        shiftResult,
-        availabilityWindowResult,
-      ] = await Promise.all([
-        refetchStaffList({
-          restaurantId: effectiveRestaurantId || undefined,
-        }),
-        loadSchedulingAssistant({
-          variables: {
+      const backendResult = await previewAutoScheduleBackend({
+        variables: {
+          input: {
             restaurantId: effectiveRestaurantId,
-            horizonDays: Number(autoScheduleConfig.horizonDays || 1),
-            timezone: SCHEDULING_TIMEZONE,
+            periodStart: today.toISOString(),
+            periodEnd: analysisEnd.toISOString(),
+            requiredRoles: autoScheduleConfig.requiredRoles,
+            weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
+            respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
+            avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
+            shiftConfig: configuredShiftTypes,
           },
-        }),
-        loadLeaveRequests({
-          variables: {
-            filter: {
-              restaurantId: effectiveRestaurantId,
-              startDate: today.toISOString(),
-              endDate: analysisEnd.toISOString(),
-            },
-          },
-        }),
-        loadAssistantContextShifts({
-          variables: {
-            restaurantId: effectiveRestaurantId,
-            startDate: contextStart.toISOString(),
-            endDate: contextEnd.toISOString(),
-          },
-        }),
-        loadAvailabilityWindows({
-          variables: {
-            restaurantId: effectiveRestaurantId,
-            from: contextStart.toISOString(),
-            to: contextEnd.toISOString(),
-          },
-        }),
-      ]);
-
-      const nextAssistantPayload =
-        assistantResult?.data?.staffSchedulingAssistant || null;
-      const nextLeaveRows = leaveResult?.data?.leaveRequests || [];
-      const nextShiftRows = shiftResult?.data?.staffShifts || [];
-      const nextAvailabilityWindows =
-        availabilityWindowResult?.data?.availabilityWindows || [];
-      const availabilitySubmissionResults = await Promise.all(
-        nextAvailabilityWindows.map((windowRow) =>
-          loadAvailabilitySubmissions({
-            variables: {
-              windowId: windowRow.id,
-              restaurantId: effectiveRestaurantId,
-            },
-          }),
-        ),
-      );
-      const nextAvailabilitySubmissions = availabilitySubmissionResults.flatMap(
-        (result) => result?.data?.staffAvailabilitySubmissions || [],
-      );
-      const nextAssistantForPreview = mergeAssistantWithRequiredRoles(
-        nextAssistantPayload,
-        autoScheduleConfig.requiredRoles,
-      );
-      setAssistantPayload(nextAssistantPayload);
-      setAssistantLeaveRows(nextLeaveRows);
-      setAssistantShiftRows(nextShiftRows);
-      setAssistantAvailabilityWindows(nextAvailabilityWindows);
-      setAssistantAvailabilitySubmissions(nextAvailabilitySubmissions);
-
-      const nextStaffList = staffResult?.data?.staffList || rawStaffList;
-
-      const nextRawPreview = buildAutoSchedulePreview({
-        assistant: nextAssistantForPreview,
-        staffList: nextStaffList,
-        existingShiftRows: nextShiftRows,
-        leaveRequests: nextLeaveRows,
-        availabilityWindows: nextAvailabilityWindows,
-        availabilitySubmissions: nextAvailabilitySubmissions,
-        weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
-        respectAvailability: autoScheduleConfig.respectAvailability,
-        avoidOvertime: autoScheduleConfig.avoidOvertime,
-        shiftConfig: configuredShiftTypes,
+        },
       });
-
-      const nextValidatedPreview =
-        await validateAutoSchedulePreview(nextRawPreview);
-
+      const nextValidatedPreview = mapBackendAutoSchedulePreview(
+        backendResult?.data?.previewAutoSchedule,
+      );
       setValidatedAutoSchedulePreview(nextValidatedPreview);
-
-      const readyCount = Number(
-        nextValidatedPreview?.summary?.recommendedAssignments || 0,
-      );
-      const warningCount = Number(
-        nextValidatedPreview?.summary?.warningAssignments || 0,
-      );
-      const blockedCount = Number(
-        nextValidatedPreview?.summary?.blockedAssignments || 0,
-      );
-
-      if (readyCount <= 0) {
-        showNotification(
-          "Đã tạo preview nhưng chưa có phân công nào đủ điều kiện áp dụng.",
-          "warning",
-        );
-        return;
-      }
-
+      const readyCount = Number(nextValidatedPreview?.summary?.recommendedAssignments || 0);
+      const warningCount = Number(nextValidatedPreview?.summary?.warningAssignments || 0);
+      const blockedCount = Number(nextValidatedPreview?.summary?.blockedAssignments || 0);
       showNotification(
-        `Đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
-        warningCount > 0 ? "warning" : "success",
+        readyCount <= 0
+          ? "Đã tạo preview nhưng chưa có phân công nào đủ điều kiện áp dụng."
+          : `Đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
+        readyCount <= 0 || warningCount > 0 ? "warning" : "success",
       );
+      return;
+
     } catch (error) {
       const message =
         error?.message || "Không thể tạo preview chia ca tự động.";
@@ -3809,6 +3815,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return;
     }
 
+    const selectedShiftKeys = Object.keys(selectedAutoShiftKeys).filter(
+      (key) => selectedAutoShiftKeys[key],
+    );
+
+    if (!selectedShiftKeys.length) {
+      const message = "Vui lòng chọn ít nhất một ca hợp lệ để áp dụng.";
+      setAutoScheduleError(message);
+      showNotification(message, "warning");
+      return;
+    }
+
     const inputs = buildAutoScheduleCreateInputs({
       previewItems: autoSchedulePreview.items,
       selectedShiftKeys: selectedAutoShiftKeys,
@@ -3824,119 +3841,44 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsApplyingAutoSchedule(true);
     setAutoScheduleError("");
 
-    const validationFailedRows = [];
-
     try {
-      const batchInputs = [];
-      for (const input of inputs) {
-        try {
-          const override = await validateShiftAssignmentOrThrow({
-            employeeId: input.employeeId,
-            shiftType: input.shiftType,
-            startTime: input.startTime,
-            endTime: input.endTime,
-          });
-
-          batchInputs.push({
-            ...input,
-            allowOverride: Boolean(override.allowOverride),
-            overrideReason: override.overrideReason || undefined,
-          });
-        } catch (error) {
-          validationFailedRows.push({
-            input,
-            message: getGraphQLErrorMessage(
-              error,
-              error?.message || "Không thể tạo ca.",
-            ),
-          });
-        }
-      }
-
-      let response = null;
-      if (batchInputs.length > 0) {
-        try {
-          response = await createShifts({
-            variables: {
-              inputs: batchInputs,
-            },
-          });
-        } catch (error) {
-          const message = getGraphQLErrorMessage(error, "Không thể áp dụng chia ca tự động.");
-
-          setAutoScheduleError(message);
-          showNotification(message, "error");
-          return;
-        }
-      }
-
-      const batchResult = response?.data?.createStaffShifts || {
-        successCount: 0,
-        failedCount: batchInputs.length,
-        errors: [],
-      };
-
+      const response = await applyAutoScheduleBackend({
+        variables: {
+          input: {
+            restaurantId: effectiveRestaurantId,
+            periodStart: autoSchedulePreview.items?.[0]?.startTime,
+            periodEnd: autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]?.endTime,
+            requiredRoles: autoScheduleConfig.requiredRoles,
+            weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
+            respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
+            avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
+            shiftConfig: configuredShiftTypes,
+            allowPartialApply: true,
+            selectedShiftKeys,
+          },
+        },
+      });
+      const batchResult = response?.data?.applyAutoSchedule || { successCount: 0, failedCount: 0, errors: [] };
       const successCount = Number(batchResult.successCount || 0);
-      const batchFailedRows = (batchResult.errors || []).map((error) => ({
-        input: batchInputs[error.index] || null,
-        message: error.message,
-      }));
-      const failedRows = [...validationFailedRows, ...batchFailedRows];
-
       if (successCount > 0) {
         await refetch();
-      }
-
-      const missingRoleLines = getMissingRoleSummaryForSelectedPreview();
-
-      if (successCount > 0 && failedRows.length === 0) {
         setIsAutoScheduleOpen(false);
         setSelectedAutoShiftKeys({});
         setValidatedAutoSchedulePreview(null);
-
-        const missingText = missingRoleLines.length
-          ? ` Còn thiếu: ${missingRoleLines.join(" | ")}`
-          : "";
-
-        showNotification(
-          `Đã áp dụng ${successCount} phân công từ chia ca tự động.${missingText}`,
-          missingRoleLines.length ? "warning" : "success",
-        );
-
+        showNotification(`Đã áp dụng ${successCount} phân công từ chia ca tự động.`, batchResult.failedCount ? "warning" : "success");
         return;
       }
 
-      if (successCount > 0 && failedRows.length > 0) {
-        const failText = failedRows
-          .slice(0, 3)
-          .map((row) => row.message)
-          .join(" | ");
-
-        setAutoScheduleError(
-          `Đã lưu ${successCount} phân công, ${failedRows.length} phân công lỗi. ${failText}`,
-        );
-
-        showNotification(
-          `Đã lưu ${successCount} phân công, ${failedRows.length} phân công lỗi.`,
-          "warning",
-        );
-
-        return;
-      }
-
-      const failText = failedRows
-        .slice(0, 3)
-        .map((row) => row.message)
-        .join(" | ");
-
-      if (batchInputs.length === 0 && validationFailedRows.length > 0) {
-        setAutoScheduleError(failText || "Không thể áp dụng gợi ý chia ca.");
-        showNotification(failText || "Không thể áp dụng gợi ý chia ca.", "warning");
-        return;
-      }
-
-      setAutoScheduleError(failText || "Không thể áp dụng gợi ý chia ca.");
-      showNotification(failText || "Không thể áp dụng gợi ý chia ca.", "error");
+      const message =
+        (batchResult.errors || []).map((error) => error.message).filter(Boolean).join(" | ") ||
+        "Không có ca hợp lệ nào được áp dụng. Vui lòng kiểm tra lại preview.";
+      setAutoScheduleError(message);
+      showNotification(message, "warning");
+      return;
+    } catch (error) {
+      const message = getGraphQLErrorMessage(error, "Không thể áp dụng chia ca tự động.");
+      setAutoScheduleError(message);
+      showNotification(message, "error");
     } finally {
       setIsApplyingAutoSchedule(false);
     }
