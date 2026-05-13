@@ -33,7 +33,7 @@ describe('Permission + Reservation + Order resolver integration', () => {
     modelMocks.Permission.find.mockReturnValue({ sort: async () => fake });
     const { PermissionQuery } = await import('../../graphql/resolvers/permission/query.js');
 
-    const result = await PermissionQuery.permissions(null, { group: 'ORDER' });
+    const result = await PermissionQuery.permissions(null, { group: 'ORDER' }, { user: { id: 'manager-1', roleName: 'manager' } });
 
     expect(result).toEqual(fake);
     expect(modelMocks.Permission.find).toHaveBeenCalledWith({ group: 'order' });

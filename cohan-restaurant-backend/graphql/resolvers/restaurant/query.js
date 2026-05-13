@@ -177,16 +177,16 @@ async function restaurantsByManager(
   };
 }
 
-/** Các nhà hàng tham chiếu theo user.refRestaurant */
+/** Các nhà hàng tham chiếu theo user.refRestaurants */
 async function refRestaurants(_, { userId }) {
   if (!mongoose.isValidObjectId(userId)) {
     throw badInput("Invalid userId");
   }
 
-  const user = await User.findById(userId).select("refRestaurant").lean();
+  const user = await User.findById(userId).select("refRestaurants").lean();
   if (!user) throw notFound("User not found");
 
-  const ref = Array.isArray(user.refRestaurant) ? user.refRestaurant : [];
+  const ref = Array.isArray(user.refRestaurants) ? user.refRestaurants : [];
   if (ref.length === 0) return [];
 
   // Chuẩn hoá về ObjectId, loại phần tử rỗng/trùng

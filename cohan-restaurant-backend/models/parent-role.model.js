@@ -17,12 +17,14 @@ const parentRoleSchema = BaseSchemaModel({
   },
 
   // Danh sách permission _id
-  permissionIds: [
+  permissions: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Permission",
     },
   ],
+
+  description: { type: String, trim: true },
 });
 
 // Index để tối ưu query theo slug
