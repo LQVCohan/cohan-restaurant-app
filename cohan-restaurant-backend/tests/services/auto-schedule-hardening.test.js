@@ -57,6 +57,12 @@ describe("auto schedule backend hardening", () => {
     const { buildAutoSchedulePreviewBackend } = await import("../../src/services/scheduling/autoSchedule.service.js");
     const preview = await buildAutoSchedulePreviewBackend({ restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { morning: ["kitchen"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }] });
     expect(preview.plannedAssignments).toHaveLength(0);
+    const validationInput = validationMocks.validateShiftAssignment.mock.calls[0][0].input;
+    expect(String(validationInput.employeeId)).toBe("cook1");
+    expect(String(validationInput.restaurantId)).toBe("r1");
+    expect(validationInput.shiftType).toBe("morning");
+    expect(validationInput.startTime).toBeInstanceOf(Date);
+    expect(validationInput.endTime).toBeInstanceOf(Date);
     expect(preview.blockedCandidates.some((row) => row.issues.some((issue) => issue.code === "SHIFT_OVERLAP"))).toBe(true);
   });
 
@@ -81,6 +87,32 @@ describe("auto schedule backend hardening", () => {
     const preview = await buildAutoSchedulePreviewBackend({ restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", weeklyHoursCap: 40, avoidOvertime: true, requiredRoles: { morning: ["kitchen"] }, shiftTemplates: [{ shiftType: "morning", startTime: "08:00", endTime: "12:00" }] });
     expect(preview.plannedAssignments).toHaveLength(0);
     expect(preview.blockedCandidates.some((row) => row.issues.some((issue) => issue.code === "WEEKLY_HOURS_CAP_EXCEEDED"))).toBe(true);
+  });
+
+  it("uses template.type to resolve shift type for preview and apply", async () => {
+    const { buildAutoSchedulePreviewBackend, buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
+    const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { afternoon: ["cashier"] }, shiftTemplates: [{ type: "afternoon", label: "Ca chiều", startTime: "13:00", endTime: "17:00" }] };
+
+    const preview = await buildAutoSchedulePreviewBackend(input);
+    const rows = await buildAutoScheduleCreateInputs(input);
+
+    expect(preview.items[0].shiftType).toBe("afternoon");
+    expect(rows[0].shiftType).toBe("afternoon");
+  });
+
+  it("supports overnight templates by rolling endTime to the next day", async () => {
+    const { buildAutoSchedulePreviewBackend, buildAutoScheduleCreateInputs } = await import("../../src/services/scheduling/autoSchedule.service.js");
+    const input = { restaurantId: "r1", periodStart: "2026-05-18", periodEnd: "2026-05-18", requiredRoles: { night: ["kitchen"] }, shiftTemplates: [{ type: "night", startTime: "22:00", endTime: "06:00" }] };
+
+    const preview = await buildAutoSchedulePreviewBackend(input);
+    const rows = await buildAutoScheduleCreateInputs(input);
+    const item = preview.items[0];
+    const durationHours = (new Date(item.endTime).getTime() - new Date(item.startTime).getTime()) / 3600000;
+
+    expect(item.shiftType).toBe("night");
+    expect(new Date(item.endTime).getTime()).toBeGreaterThan(new Date(item.startTime).getTime());
+    expect(durationHours).toBe(8);
+    expect(new Date(rows[0].endTime).getUTCDate()).toBe(new Date(rows[0].startTime).getUTCDate() + 1);
   });
 
   it("apply rebuilds preview server-side instead of trusting client preview data", async () => {

@@ -104,9 +104,12 @@ function buildDemandItems(input) {
 
   for (let cursor = new Date(periodStart); cursor <= periodEnd; cursor = new Date(cursor.getTime() + DAY_MS)) {
     for (const template of templates) {
-      const shiftType = normalizeShiftType(template.shiftType || template.key || template.id);
+      const shiftType = normalizeShiftType(template.shiftType || template.type || template.key || template.id);
       const startTime = parseTimeOnDay(cursor, template.startTime || template.start || template.from, shiftType === "evening" ? 17 : 8);
       const endTime = parseTimeOnDay(cursor, template.endTime || template.end || template.to, shiftType === "evening" ? 22 : 16);
+      if (endTime <= startTime) {
+        endTime.setDate(endTime.getDate() + 1);
+      }
       const roles = Array.isArray(template.requiredRoles) && template.requiredRoles.length ? template.requiredRoles.map(normalizeRole).filter(Boolean) : getRequiredRolesForShift(requiredRolesByShift, shiftType);
       for (const role of roles.length ? roles : [""]) {
         items.push({ shiftKey: `${startTime.toISOString()}|${endTime.toISOString()}|${shiftType}|${role || "any"}`, shiftType, startTime, endTime, requiredRole: role });
