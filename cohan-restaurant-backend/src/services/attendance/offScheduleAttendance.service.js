@@ -209,6 +209,9 @@ export async function rejectOffScheduleAttendance({ timesheetId, note, ctx }) {
   if (record.approved || status === "approved") {
     throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_APPROVED");
   }
+  if (status === "rejected") {
+    throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_REJECTED");
+  }
 
   record.approved = false;
   record.offScheduleApprovalStatus = "rejected";

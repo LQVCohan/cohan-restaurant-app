@@ -186,6 +186,43 @@ describe("off-schedule attendance service", () => {
     expect(save).toHaveBeenCalled();
   });
 
+
+  it("does not reject an already rejected off-schedule attendance", async () => {
+    const save = vi.fn();
+    const record = {
+      _id: TIMESHEET_ID,
+      employeeId: STAFF_ID,
+      restaurantId: RESTAURANT_ID,
+      workDate: new Date("2026-04-10"),
+      isOffSchedule: true,
+      approved: false,
+      offScheduleApprovalStatus: "rejected",
+      offScheduleReviewedBy: STAFF_ID,
+      offScheduleReviewedAt: new Date("2026-04-11"),
+      offScheduleReviewNote: "already rejected",
+      save,
+      toObject() {
+        return { ...this };
+      },
+    };
+    modelMocks.Timesheet.findById.mockResolvedValue(record);
+
+    const { rejectOffScheduleAttendance } = await import(
+      "../../src/services/attendance/offScheduleAttendance.service.js"
+    );
+
+    await expect(
+      rejectOffScheduleAttendance({
+        timesheetId: TIMESHEET_ID,
+        note: "try overwrite",
+        ctx: ctx(MANAGER_ID, "MANAGER"),
+      }),
+    ).rejects.toThrow("OFF_SCHEDULE_ATTENDANCE_ALREADY_REJECTED");
+
+    expect(save).not.toHaveBeenCalled();
+    expect(record.offScheduleReviewNote).toBe("already rejected");
+  });
+
   it.each(["finalized", "locked", "paid"])(
     "does not approve or reject attendance inside a %s payroll period",
     async (status) => {

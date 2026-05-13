@@ -21,6 +21,21 @@ describe('off-schedule workflow visibility', () => {
     modelMocks.PayrollPeriod.findOne.mockReturnValue({ sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
   });
 
+
+  it("keeps existing attendance/performance query resolvers registered", () => {
+    expect(Query.attendanceCorrectionRequests).toBeTypeOf("function");
+    expect(Query.attendanceCorrectionRequest).toBeTypeOf("function");
+    expect(Query.staffPerformanceSummary).toBeTypeOf("function");
+    expect(Query.staffPerformanceSummaries).toBeTypeOf("function");
+    expect(Query.staffPerformanceScoreAdjustments).toBeTypeOf("function");
+    expect(Query.staffPerformanceScoreTimeline).toBeTypeOf("function");
+    expect(Query.performanceIncidents).toBeTypeOf("function");
+    expect(Query.performanceIncidentAppeals).toBeTypeOf("function");
+    expect(Query.managerIncidentReviewQueue).toBeTypeOf("function");
+    expect(Query.managerIncidentReviewQueueSummary).toBeTypeOf("function");
+    expect(Query.managerPerformanceDashboard).toBeTypeOf("function");
+  });
+
   it('staff query only returns own off-schedule records', async () => {
     modelMocks.Timesheet.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: 't1', employeeId: '507f1f77bcf86cd799439012', restaurantId: 'r1', workDate: new Date(), isOffSchedule: true, approved: false }]) });
     modelMocks.Staff.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: '507f1f77bcf86cd799439012', fullName: 'Staff One' }]) });

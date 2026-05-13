@@ -1343,7 +1343,69 @@ export default {
       filter: input || {},
       ctx,
     });
-    return entries.map(({ record, staff }) => mapAttendanceRecord(record, staff));
+    return entries.map(({ record, staff }) =>
+      mapAttendanceRecord(record, staff),
+    );
+  },
+  attendanceCorrectionRequests: async (_, { filter }, ctx) => {
+    return listAttendanceCorrectionRequests({
+      filter: filter || {},
+      ctx,
+    });
+  },
+
+  attendanceCorrectionRequest: async (_, { id }, ctx) => {
+    return getAttendanceCorrectionRequest({
+      id,
+      ctx,
+    });
+  },
+
+  staffPerformanceSummary: async (_, { input }, ctx) => {
+    return getStaffPerformanceSummary(input, ctx?.user);
+  },
+  staffPerformanceSummaries: async (_, { input }, ctx) => {
+    return listStaffPerformanceSummaries(input, ctx?.user);
+  },
+  staffPerformanceScoreAdjustments: async (_, { input }, ctx) => {
+    return listStaffPerformanceScoreAdjustments(input, ctx?.user);
+  },
+  staffPerformanceScoreTimeline: async (_, { input }, ctx) => {
+    return getStaffPerformanceScoreTimeline(input, ctx?.user);
+  },
+  performanceIncidents: async (_, { filter }, ctx) => {
+    requireAuth(ctx);
+    const input = { ...(filter || {}) };
+    const restaurantId = input.restaurantId;
+    if (!restaurantId || !userCanAccessRestaurant(ctx.user, restaurantId)) {
+      throw new Error("FORBIDDEN");
+    }
+    const roles = resolveUserRoles(ctx.user);
+    const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
+    if (roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role))) {
+      if (input.employeeId && String(input.employeeId) !== actorId)
+        throw new Error("FORBIDDEN");
+      input.employeeId = actorId;
+    } else if (!roles.some((role) => ATTENDANCE_READ_ROLES.includes(role))) {
+      throw new Error("FORBIDDEN");
+    }
+    return listPerformanceIncidentsService(input);
+  },
+  performanceIncidentAppeals: async (_, { filter }, ctx) => {
+    requireAuth(ctx);
+    return listPerformanceIncidentAppeals(filter || {}, ctx.user);
+  },
+  managerIncidentReviewQueue: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return listManagerIncidentReviewQueue(input, ctx.user);
+  },
+  managerIncidentReviewQueueSummary: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return getManagerIncidentReviewQueueSummary(input, ctx.user);
+  },
+  managerPerformanceDashboard: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return getManagerPerformanceDashboard(input, ctx.user);
   },
   leaveRequests: async (_, { filter = {} }, ctx) => {
     requireAuth(ctx);
