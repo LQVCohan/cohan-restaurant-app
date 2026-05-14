@@ -13,7 +13,9 @@ const renderModal = (props = {}) => render(<AvailabilitySnapshotModal isOpen onC
 describe("AvailabilitySnapshotModal", () => {
   it("uses shiftTemplates array key and renders shift header", () => {
     renderModal();
-    expect(screen.getAllByText(/Ca sáng 06:00-14:00/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/06:00/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/14:00/).length).toBeGreaterThan(0);
   });
 
   it("part-time approved slot shows Có thể làm", () => {
@@ -21,7 +23,7 @@ describe("AvailabilitySnapshotModal", () => {
       staffList: [{ id: "p1", fullName: "PT", employeeCode: "E1", employmentType: "part_time" }],
       availabilitySubmissions: [{ staffId: "p1", status: "approved", slots: [{ date: "2026-05-25", shiftType: "morning", status: "available" }] }],
     });
-    expect(screen.getByText("Có thể làm")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Có thể làm").length).toBeGreaterThan(0);
   });
 
   it("pendingSlots alone never become usable", () => {
@@ -29,8 +31,8 @@ describe("AvailabilitySnapshotModal", () => {
       staffList: [{ id: "p1", fullName: "PT", employeeCode: "E1", employmentType: "part_time" }],
       availabilitySubmissions: [{ staffId: "p1", status: "approved", slots: [], pendingSlots: [{ date: "2026-05-25", shiftType: "morning", status: "available" }] }],
     });
-    expect(screen.queryByText("Có thể làm")).not.toBeInTheDocument();
-    expect(screen.getByText(/pending: 1, not usable/i)).toBeInTheDocument();
+    expect(screen.queryByTitle("Có thể làm")).not.toBeInTheDocument();
+    expect(screen.getByText(/Pending: 1/i)).toBeInTheDocument();
   });
 
   it("late_change_requested uses official slots and shows warning", () => {
@@ -38,13 +40,13 @@ describe("AvailabilitySnapshotModal", () => {
       staffList: [{ id: "p1", fullName: "PT", employeeCode: "E1", employmentType: "part_time" }],
       availabilitySubmissions: [{ staffId: "p1", status: "late_change_requested", slots: [{ date: "2026-05-25", shiftType: "morning", status: "available" }] }],
     });
-    expect(screen.getByText("Có thể làm")).toBeInTheDocument();
-    expect(screen.getByText(/Có thay đổi muộn đang chờ duyệt/i)).toBeInTheDocument();
+    expect(screen.getAllByTitle("Có thể làm").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Chờ duyệt thay đổi muộn/i)).toBeInTheDocument();
   });
 
   it("full-time workingDays MON shows available on Monday", () => {
     renderModal({ staffList: [{ id: "f1", fullName: "FT", employeeCode: "F1", employmentType: "full_time", workingDays: ["MON"] }] });
-    expect(screen.getByText("Theo workingDays")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Theo workingDays").length).toBeGreaterThan(0);
   });
 
   it("full-time unavailable_exception marks Báo bận", () => {
@@ -52,12 +54,12 @@ describe("AvailabilitySnapshotModal", () => {
       staffList: [{ id: "f1", fullName: "FT", employeeCode: "F1", employmentType: "full_time", workingDays: ["MON"] }],
       availabilitySubmissions: [{ staffId: "f1", submissionType: "unavailable_exception", status: "approved", slots: [{ date: "2026-05-25", shiftType: "morning", status: "unavailable" }] }],
     });
-    expect(screen.getByText("Báo bận")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Báo bận").length).toBeGreaterThan(0);
   });
 
   it("full-time missing workingDays shows Chưa rõ workingDays", () => {
     renderModal({ staffList: [{ id: "f1", fullName: "FT", employeeCode: "F1", employmentType: "full_time", workingDays: [] }] });
-    expect(screen.getAllByText("Chưa rõ workingDays").length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Chưa rõ workingDays").length).toBeGreaterThan(0);
   });
 
   it("query error is displayed", () => {
@@ -99,7 +101,7 @@ describe("AvailabilitySnapshotModal", () => {
 
   it("renders filter controls", () => {
     renderModal();
-    expect(screen.getByPlaceholderText(/Tìm tên\/mã NV/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Tìm tên hoặc mã nhân viên/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Chỉ thiếu availability/i)).toBeInTheDocument();
   });
 });

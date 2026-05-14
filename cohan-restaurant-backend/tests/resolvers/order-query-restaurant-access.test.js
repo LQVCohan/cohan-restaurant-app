@@ -73,7 +73,7 @@ describe("OrderQuery restaurant access guard", () => {
     const result = await OrderQuery.order(
       null,
       { id: "bad-id" },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(result).toBeNull();
@@ -90,7 +90,7 @@ describe("OrderQuery restaurant access guard", () => {
     const result = await OrderQuery.order(
       null,
       { id: "valid-order-1" },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(result).toBeNull();
@@ -108,7 +108,7 @@ describe("OrderQuery restaurant access guard", () => {
     const result = await OrderQuery.order(
       null,
       { id: "valid-order-2" },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe("OrderQuery restaurant access guard", () => {
       OrderQuery.order(
         null,
         { id: "valid-order-3" },
-        { user: { id: "staff-1" } },
+        { user: { id: "staff-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
@@ -152,7 +152,7 @@ describe("OrderQuery restaurant access guard", () => {
     const result = await OrderQuery.ordersByRestaurantNow(
       null,
       { restaurantId: "valid-r1", limit: 1 },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -179,7 +179,7 @@ describe("OrderQuery restaurant access guard", () => {
       OrderQuery.ordersByRestaurantNow(
         null,
         { restaurantId: "valid-r2", limit: 10 },
-        { user: { id: "staff-1" } },
+        { user: { id: "staff-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
@@ -204,7 +204,7 @@ describe("OrderQuery restaurant access guard", () => {
     const res = await OrderQuery.managerDashboard(
       null,
       { restaurantId: "valid-r3", range: "week" },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -221,7 +221,7 @@ describe("OrderQuery restaurant access guard", () => {
     await OrderQuery.reportsOverview(
       null,
       { restaurantId: "valid-r4", limit: 20 },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe("OrderQuery restaurant access guard", () => {
     await OrderQuery.orders(
       null,
       { filter: { restaurantId: "valid-r5" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -255,7 +255,7 @@ describe("OrderQuery restaurant access guard", () => {
     await OrderQuery.orders(
       null,
       { filter: { status: "pending" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRoles).toHaveBeenCalledWith(
@@ -276,7 +276,7 @@ describe("OrderQuery restaurant access guard", () => {
       OrderQuery.orders(
         null,
         { filter: { status: "pending" }, limit: 10, offset: 0 },
-        { user: { id: "staff-1" } },
+        { user: { id: "staff-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN");
 
@@ -296,7 +296,7 @@ describe("OrderQuery restaurant access guard", () => {
     await OrderQuery.orders(
       null,
       { filter: { restaurantId: "valid-r5" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
@@ -316,7 +316,7 @@ describe("OrderQuery restaurant access guard", () => {
       OrderQuery.orders(
         null,
         { filter: { restaurantId: "bad-id" }, limit: 10, offset: 0 },
-        { user: { id: "manager-1" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("Invalid restaurantId");
 
@@ -339,7 +339,7 @@ describe("OrderQuery restaurant access guard", () => {
     const out = await OrderQuery.activeTableSessionOrders(
       null,
       { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1" } },
+      { user: { id: "m1", roleName: "manager" } },
     );
     expect(out.orders.map((o) => o._id)).toEqual(["child-1"]);
   });
@@ -359,7 +359,7 @@ describe("OrderQuery restaurant access guard", () => {
     const out = await OrderQuery.activeTableSessionOrders(
       null,
       { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1" } },
+      { user: { id: "m1", roleName: "manager" } },
     );
     expect(out.orders.map((o) => o._id)).toEqual(["legacy-1"]);
   });
@@ -378,7 +378,7 @@ describe("OrderQuery restaurant access guard", () => {
     const out = await OrderQuery.activeTableSessionOrders(
       null,
       { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1" } },
+      { user: { id: "m1", roleName: "manager" } },
     );
     expect(out.orders).toEqual([]);
   });
@@ -402,7 +402,7 @@ describe("OrderQuery restaurant access guard", () => {
     const out = await OrderQuery.activeTableSessionOrders(
       null,
       { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1" } },
+      { user: { id: "m1", roleName: "manager" } },
     );
     expect(out.orders.map((o) => o._id)).toEqual(["child-2"]);
   });

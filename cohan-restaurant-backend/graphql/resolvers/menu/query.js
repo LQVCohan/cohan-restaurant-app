@@ -2,7 +2,9 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Menu, MenuItem, Category } from "../../../models/index.js";
-import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireRoles } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MENU_ITEM_SORTS = new Set([
   "default",
@@ -157,19 +159,31 @@ const appendAndCondition = (query, condition) => {
   return query;
 };
 
+function isInternalMenuQuery(args = {}) {
+  const status = args?.status || args?.filter?.status;
+  return Boolean(
+    args?.includeInactive ||
+      args?.adminOnly ||
+      ["draft", "unavailable", "out_of_stock", "hidden"].includes(String(status || "").toLowerCase()),
+  );
+}
+
+function applyPublicMenuItemFilter(query) {
+  if (!query.status) query.status = "available";
+  return query;
+}
+
 export const MenuQuery = {
-  menus: async (_p, { restaurantId }, ctx) => {
+  menus: async (_p, { restaurantId }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
-    return Menu.find({ restaurantId })
+    return Menu.find({ restaurantId, isActive: true })
       .sort({ timeSlot: 1 })
       .lean({ virtuals: true });
   },
 
-  menu: async (_p, { restaurantId, timeSlot }, ctx) => {
+  menu: async (_p, { restaurantId, timeSlot }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return null;
-    await requireRestaurantAccess(ctx, restaurantId);
-    return Menu.findOne({ restaurantId, timeSlot }).lean({ virtuals: true });
+    return Menu.findOne({ restaurantId, timeSlot, isActive: true }).lean({ virtuals: true });
   },
 
   // Note: menuItems here returns MenuItem only (no recipe populate).
@@ -184,15 +198,13 @@ export const MenuQuery = {
       sort = DEFAULT_MENU_ITEM_SORT,
       limit = 50,
     },
-    ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
 
-    const q = { restaurantId };
+    const q = applyPublicMenuItemFilter({ restaurantId });
 
     if (timeSlot) {
-      const menu = await Menu.findOne({ restaurantId, timeSlot })
+      const menu = await Menu.findOne({ restaurantId, timeSlot, isActive: true })
         .select({ _id: 1 })
         .lean();
       if (!menu) return [];
@@ -228,15 +240,21 @@ export const MenuQuery = {
         pageInfo: { endCursor: null, hasNextPage: false },
       };
     }
-    await requireRestaurantAccess(ctx, filter.restaurantId);
+    const internalQuery = isInternalMenuQuery({ filter });
+    if (internalQuery) {
+      await requireRestaurantPermission(ctx, filter.restaurantId, PERMISSIONS.MENU_READ);
+    }
 
-    const q = { restaurantId: filter.restaurantId };
+    const q = internalQuery
+      ? { restaurantId: filter.restaurantId }
+      : applyPublicMenuItemFilter({ restaurantId: filter.restaurantId });
 
     // timeSlot -> menuId
     if (filter.timeSlot) {
       const m = await Menu.findOne({
         restaurantId: filter.restaurantId,
         timeSlot: filter.timeSlot,
+        ...(!internalQuery ? { isActive: true } : {}),
       })
         .select({ _id: 1 })
         .lean();
@@ -304,21 +322,20 @@ export const MenuQuery = {
   topMenuItems: async (
     _p,
     { limit = 8, restaurantId, categoryId, categoryName, timeSlot },
-    ctx
+    ctx,
   ) => {
     const LIM = Math.min(Math.max(limit, 1), 200);
 
     const q = {};
     if (restaurantId) {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
-      await requireRestaurantAccess(ctx, restaurantId);
       q.restaurantId = restaurantId;
     } else {
       requireRoles(ctx, ["ADMIN"]);
     }
 
     if (timeSlot) {
-      const menuFilter = { timeSlot };
+      const menuFilter = { timeSlot, isActive: true };
       if (q.restaurantId) {
         menuFilter.restaurantId = q.restaurantId;
       }
@@ -344,6 +361,8 @@ export const MenuQuery = {
 
       q.categoryId = { $in: matchedIds };
     }
+
+    applyPublicMenuItemFilter(q);
 
     return MenuItem.find(q)
       .sort({ rate: -1, orderCounter: -1, createdAt: -1, _id: 1 })

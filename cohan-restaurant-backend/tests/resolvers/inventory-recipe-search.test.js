@@ -87,7 +87,7 @@ describe("Inventory recipe search", () => {
       restaurantId: "67a1f8f6a2df3b17f0c12345",
       search: "banh pho",
       first: 30,
-    }, { user: { id: "u1" } });
+    }, { user: { id: "u1", roleName: "manager" } });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].menuItem.name).toBe("Bánh Phở Bò");
@@ -104,7 +104,7 @@ describe("Inventory recipe search", () => {
       restaurantId: "67a1f8f6a2df3b17f0c12345",
       search: "sv_default",
       first: 30,
-    }, { user: { id: "u1" } });
+    }, { user: { id: "u1", roleName: "manager" } });
 
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);

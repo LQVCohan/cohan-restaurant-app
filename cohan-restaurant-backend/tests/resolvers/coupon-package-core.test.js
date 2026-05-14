@@ -48,7 +48,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.Coupon.findById.mockReturnValue(mockLeanQuery({ id: "coupon-1", name: "Voucher food", restaurantId: "restaurant-1" }));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    const result = await CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", category: "food", discountType: "PERCENT", discountValue: 10, publishAt: "2026-05-01T03:00:00.000Z", startAt: "2026-05-01T03:00:00.000Z", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { roleName: "manager" } });
+    const result = await CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", category: "food", discountType: "PERCENT", discountValue: 10, publishAt: "2026-05-01T03:00:00.000Z", startAt: "2026-05-01T03:00:00.000Z", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(result).toEqual(expect.objectContaining({ id: "coupon-1", restaurantId: "restaurant-1" }));
   });
@@ -56,20 +56,20 @@ describe("Coupon and voucher package core flows", () => {
   it("rejects invalid DateTime input early for coupon create", async () => {
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "PERCENT", discountValue: 10, startAt: "not-a-date", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { roleName: "manager" } })).rejects.toThrow("Invalid startAt");
+    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "PERCENT", discountValue: 10, startAt: "not-a-date", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Invalid startAt");
     expect(modelMocks.Coupon.create).not.toHaveBeenCalled();
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
   });
 
   it("rejects percent discount outside 1..100", async () => {
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
-    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "PERCENT", discountValue: 101, restaurantId: "restaurant-1" } }, { user: { roleName: "manager" } })).rejects.toThrow("PERCENT discountValue must be between 1 and 100");
+    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "PERCENT", discountValue: 101, restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("PERCENT discountValue must be between 1 and 100");
     expect(modelMocks.Coupon.create).not.toHaveBeenCalled();
   });
 
   it("rejects negative coupon limits and values", async () => {
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
-    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "AMOUNT", discountValue: 10, minOrderValue: -1, restaurantId: "restaurant-1" } }, { user: { roleName: "manager" } })).rejects.toThrow("minOrderValue, maxDiscount, and maxUsage must not be negative");
+    await expect(CouponMutation.createCoupon(null, { input: { name: "Voucher food", code: "FOOD10", discountType: "AMOUNT", discountValue: 10, minOrderValue: -1, restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("minOrderValue, maxDiscount, and maxUsage must not be negative");
   });
 
   it("createCoupon calls requireRestaurantAccess before Coupon.create", async () => {
@@ -77,7 +77,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.Coupon.findById.mockReturnValue(mockLeanQuery({ id: "coupon-1" }));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, { user: { roleName: "manager" } });
+    await CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.Coupon.create).toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe("Coupon and voucher package core flows", () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    await expect(CouponMutation.createCoupon(null, { input: { name: "A", code: "C", discountValue: 10, restaurantId: "r1" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Forbidden");
     expect(modelMocks.Coupon.create).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.Coupon.findByIdAndUpdate.mockResolvedValue({ _id: "coupon-1" });
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await CouponMutation.updateCoupon(null, { id: "coupon-1", input: { name: "A", code: "C", discountValue: 10, restaurantId: "other-r" } }, { user: { roleName: "manager" } });
+    await CouponMutation.updateCoupon(null, { id: "coupon-1", input: { name: "A", code: "C", discountValue: 10, restaurantId: "other-r" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(modelMocks.Coupon.findByIdAndUpdate).toHaveBeenCalledWith("coupon-1", expect.objectContaining({ restaurantId: expect.objectContaining({ value: "existing-r" }) }), { new: true });
   });
@@ -106,7 +106,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.Coupon.findByIdAndUpdate.mockResolvedValue(null);
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.updateCoupon(null, { id: "coupon-1", input: { name: "A", code: "C", discountValue: 10, restaurantId: "other-r" } }, { user: { roleName: "manager" } })).rejects.toThrow("Coupon not found");
+    await expect(CouponMutation.updateCoupon(null, { id: "coupon-1", input: { name: "A", code: "C", discountValue: 10, restaurantId: "other-r" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Coupon not found");
   });
 
   it("deleteCoupon denied => Coupon.deleteOne not called", async () => {
@@ -114,7 +114,7 @@ describe("Coupon and voucher package core flows", () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.deleteCoupon(null, { id: "coupon-1" }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    await expect(CouponMutation.deleteCoupon(null, { id: "coupon-1" }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Forbidden");
     expect(modelMocks.Coupon.deleteOne).not.toHaveBeenCalled();
   });
 
@@ -123,7 +123,7 @@ describe("Coupon and voucher package core flows", () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.toggleCoupon(null, { id: "coupon-1", isActive: true }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    await expect(CouponMutation.toggleCoupon(null, { id: "coupon-1", isActive: true }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Forbidden");
     expect(modelMocks.Coupon.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
@@ -132,7 +132,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.Coupon.findByIdAndUpdate.mockResolvedValue(null);
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.toggleCoupon(null, { id: "coupon-1", isActive: true }, { user: { roleName: "manager" } })).rejects.toThrow("Coupon not found");
+    await expect(CouponMutation.toggleCoupon(null, { id: "coupon-1", isActive: true }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Coupon not found");
   });
 
   it("returns voucher packages with non-null id after create", async () => {
@@ -140,7 +140,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.VoucherPackage.findById.mockReturnValue(mockLeanQuery({ id: "package-1", name: "Goi VIP", restaurantId: "restaurant-1", voucherIds: ["coupon-1"] }));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    const result = await CouponMutation.createVoucherPackage(null, { input: { name: "Goi VIP", code: "VIP-01", voucherIds: ["coupon-1"], startAt: "2026-05-01T03:00:00.000Z", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { roleName: "manager" } });
+    const result = await CouponMutation.createVoucherPackage(null, { input: { name: "Goi VIP", code: "VIP-01", voucherIds: ["coupon-1"], startAt: "2026-05-01T03:00:00.000Z", endAt: "2026-05-05T15:00:00.000Z", restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(result).toEqual(expect.objectContaining({ id: "package-1", restaurantId: "restaurant-1", voucherIds: ["coupon-1"] }));
   });
@@ -150,7 +150,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.VoucherPackage.findById.mockReturnValue(mockLeanQuery({ id: "package-1" }));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await CouponMutation.createVoucherPackage(null, { input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "r1" } }, { user: { roleName: "manager" } });
+    await CouponMutation.createVoucherPackage(null, { input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "r1" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.VoucherPackage.create).toHaveBeenCalled();
@@ -161,7 +161,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.VoucherPackage.findByIdAndUpdate.mockResolvedValue({ _id: "package-1" });
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await CouponMutation.updateVoucherPackage(null, { id: "package-1", input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "other-r" } }, { user: { roleName: "manager" } });
+    await CouponMutation.updateVoucherPackage(null, { id: "package-1", input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "other-r" } }, { user: { id: "manager-1", roleName: "manager" } });
 
     expect(modelMocks.VoucherPackage.findByIdAndUpdate).toHaveBeenCalledWith("package-1", expect.objectContaining({ restaurantId: expect.objectContaining({ value: "existing-r" }) }), { new: true });
   });
@@ -171,7 +171,7 @@ describe("Coupon and voucher package core flows", () => {
     modelMocks.VoucherPackage.findByIdAndUpdate.mockResolvedValue(null);
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.updateVoucherPackage(null, { id: "package-1", input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "other-r" } }, { user: { roleName: "manager" } })).rejects.toThrow("Voucher package not found");
+    await expect(CouponMutation.updateVoucherPackage(null, { id: "package-1", input: { name: "P", code: "P1", voucherIds: ["v1"], restaurantId: "other-r" } }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Voucher package not found");
   });
 
   it("deleteVoucherPackage denied => VoucherPackage.deleteOne not called", async () => {
@@ -179,7 +179,7 @@ describe("Coupon and voucher package core flows", () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("Forbidden"));
     const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
 
-    await expect(CouponMutation.deleteVoucherPackage(null, { id: "package-1" }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
+    await expect(CouponMutation.deleteVoucherPackage(null, { id: "package-1" }, { user: { id: "manager-1", roleName: "manager" } })).rejects.toThrow("Forbidden");
     expect(modelMocks.VoucherPackage.deleteOne).not.toHaveBeenCalled();
   });
 });

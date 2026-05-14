@@ -56,7 +56,7 @@ describe("Inventory ingredient search", () => {
         search: "S",
         limit: 50,
       },
-      { user: { id: "u1" } }
+      { user: { id: "u1", roleName: "manager" } }
     );
 
     expect(result.map((it) => it.name)).toEqual(["Sả"]);
@@ -84,7 +84,7 @@ describe("Inventory ingredient search", () => {
         search: "banh pho",
         limit: 50,
       },
-      { user: { id: "u1" } }
+      { user: { id: "u1", roleName: "manager" } }
     );
 
     expect(result.map((it) => it.name)).toEqual(["Bánh Phở"]);
@@ -112,7 +112,7 @@ describe("Inventory ingredient search", () => {
         search: "s",
         limit: 50,
       },
-      { user: { id: "u1" } }
+      { user: { id: "u1", roleName: "manager" } }
     );
 
     expect(result.map((it) => it._id)).toEqual(["1", "2"]);

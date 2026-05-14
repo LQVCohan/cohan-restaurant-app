@@ -34,6 +34,8 @@ import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
   ORDER_KIND,
   SPLIT_STATUS,
@@ -57,6 +59,12 @@ const RESERVABLE_STATUSES = [
   "customer_attached",
 ];
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
+
+async function requireOrderPermission(ctx, order, permissionCode) {
+  const restaurantId = order?.restaurantId;
+  if (!restaurantId) throw new Error("Invalid restaurantId");
+  await requireRestaurantPermission(ctx, restaurantId, permissionCode);
+}
 const RANK_POINT_DIVISOR = 1_000_000;
 
 function hasPendingItemWork(order) {
@@ -1477,6 +1485,7 @@ export const OrderMutation = {
 
     const rid = toId(restaurantId);
     if (!rid) throw new Error("restaurantId is required");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_CREATE);
     if (!Array.isArray(items) || items.length === 0)
       throw new Error("items is required");
 
@@ -1878,6 +1887,10 @@ export const OrderMutation = {
       clientMeta,
     } = input || {};
 
+    const rid = toId(restaurantId);
+    if (!rid) throw new Error("restaurantId is required");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_CREATE);
+
     if (idempotencyKey) {
       const existing = await Order.findOne({
         restaurantId: toId(restaurantId),
@@ -1924,6 +1937,7 @@ export const OrderMutation = {
     const { id, restaurantId, note, warehouseId } = input || {};
     const order = await Order.findById(id);
     if (!order) throw new Error("Order not found");
+    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
     if (
       restaurantId &&
       String(order.restaurantId) !== String(toId(restaurantId))
@@ -1972,6 +1986,7 @@ export const OrderMutation = {
       throw new Error("orderId and restaurantId are required");
     const order = await Order.findById(orderId).lean();
     if (!order) throw new Error("Order not found");
+    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
     if (String(order.restaurantId) !== String(toId(restaurantId)))
       throw new Error("Order not found");
     if (order.currentStatus !== "confirmed")
@@ -1999,6 +2014,7 @@ export const OrderMutation = {
       throw new Error("reason is required");
     const order = await Order.findById(id);
     if (!order) throw new Error("Order not found");
+    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_CANCEL);
     if (
       restaurantId &&
       String(order.restaurantId) !== String(toId(restaurantId))
@@ -2029,6 +2045,7 @@ export const OrderMutation = {
       throw new Error("restaurantId and orderIds are required");
     }
     const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
     const actorId = toId(ctx?.user?.id || ctx?.user?._id);
     const ids = orderIds.map((id) => toId(id)).filter(Boolean);
     const orders = await Order.find({ restaurantId: rid, _id: { $in: ids } });
@@ -2066,6 +2083,7 @@ export const OrderMutation = {
     if (!restaurantId || !tableCode)
       throw new Error("restaurantId and tableCode are required");
     const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
     const actorId = toId(ctx?.user?.id || ctx?.user?._id);
     const orders = await Order.find({
       restaurantId: rid,
@@ -2104,6 +2122,7 @@ export const OrderMutation = {
     const { restaurantId, orderId, orderItemId, note } = input || {};
     if (!restaurantId || !orderId || !orderItemId)
       throw new Error("restaurantId/orderId/orderItemId are required");
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.ORDER_UPDATE);
     await emitOrderEvent(ctx, restaurantId, "ORDER_ITEM_REMINDER", {
       orderId,
       orderItemId,
@@ -2942,6 +2961,7 @@ export const OrderMutation = {
       await session.withTransaction(async () => {
         order = await Order.findOne(filter).session(session);
         if (!order) throw new Error("Order not found");
+        await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
 
         prevStatus = order.currentStatus;
 
@@ -3076,6 +3096,7 @@ export const OrderMutation = {
       await session.withTransaction(async () => {
         order = await Order.findOne(filter).session(session);
         if (!order) throw new Error("Order not found");
+        await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
 
         const idx = order.items.findIndex(
           (it, i) =>
@@ -3199,6 +3220,7 @@ export const OrderMutation = {
 
     const order = await Order.findOne(filter);
     if (!order) throw new Error("Order not found");
+    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
 
     const idx = order.items.findIndex(
       (it, i) =>
@@ -3276,6 +3298,7 @@ export const OrderMutation = {
     const rid = toId(restaurantId);
     const oid = toId(orderId);
     if (!rid || !oid) throw new Error("Missing/invalid fields");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_CANCEL);
 
     const session = await mongoose.startSession();
 

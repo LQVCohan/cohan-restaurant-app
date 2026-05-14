@@ -94,7 +94,7 @@ describe("payment resolvers restaurant access guards", () => {
 
   it("financeDashboard calls requireRestaurantAccess before finance queries", async () => {
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
-    const ctx = { user: { id: "u1" } };
+    const ctx = { user: { id: "u1", roleName: "manager" } };
 
     const input = {
       restaurantId: "valid-r1",
@@ -121,7 +121,7 @@ describe("payment resolvers restaurant access guards", () => {
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
 
     await expect(
-      PaymentQuery.financeDashboard(null, { input: { restaurantId: "valid-r1" } }, { user: { id: "u1" } }),
+      PaymentQuery.financeDashboard(null, { input: { restaurantId: "valid-r1" } }, { user: { id: "u1", roleName: "manager" } }),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
     expect(modelMocks.Cashflow.find).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe("payment resolvers restaurant access guards", () => {
       payOrdersByOrderIds(
         null,
         { input: { restaurantId: "valid-r1", orderIds: ["valid-order-1", "bad-id"], method: "cash" } },
-        {},
+        { user: { id: "u1", roleName: "manager" } },
       ),
     ).rejects.toThrow("Invalid orderIds");
 
@@ -182,7 +182,7 @@ describe("payment resolvers restaurant access guards", () => {
             method: "cash",
           },
         },
-        { user: { id: "u1" } },
+        { user: { id: "u1", roleName: "manager" } },
       ),
     ).rejects.toThrow("Invalid orderIds");
 
@@ -208,7 +208,7 @@ describe("payment resolvers restaurant access guards", () => {
     modelMocks.Order.findById.mockReturnValue(leanResult({ _id: "valid-o1", restaurantId: "valid-r1" }));
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
 
-    await PaymentQuery.paymentTransactionsByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1" } });
+    await PaymentQuery.paymentTransactionsByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1", roleName: "manager" } });
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.PaymentTransaction.find).toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe("payment resolvers restaurant access guards", () => {
     const result = await PaymentQuery.paymentTransactionsByOrder(
       null,
       { orderId: "valid-o1" },
-      { user: { id: "u1" } },
+      { user: { id: "u1", roleName: "manager" } },
     );
 
     expect(result).toEqual([]);
@@ -235,7 +235,7 @@ describe("payment resolvers restaurant access guards", () => {
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
 
     await expect(
-      PaymentQuery.paymentTransactionsByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1" } }),
+      PaymentQuery.paymentTransactionsByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1", roleName: "manager" } }),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
     expect(modelMocks.PaymentTransaction.find).not.toHaveBeenCalled();
@@ -245,7 +245,7 @@ describe("payment resolvers restaurant access guards", () => {
     modelMocks.Order.findById.mockReturnValue(leanResult({ _id: "valid-o1", restaurantId: "valid-r1" }));
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
 
-    await PaymentQuery.invoicesByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1" } });
+    await PaymentQuery.invoicesByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1", roleName: "manager" } });
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.Invoice.find).toHaveBeenCalled();
@@ -258,7 +258,7 @@ describe("payment resolvers restaurant access guards", () => {
     const result = await PaymentQuery.invoicesByOrder(
       null,
       { orderId: "valid-o1" },
-      { user: { id: "u1" } },
+      { user: { id: "u1", roleName: "manager" } },
     );
 
     expect(result).toEqual([]);
@@ -272,7 +272,7 @@ describe("payment resolvers restaurant access guards", () => {
     const { PaymentQuery } = await import("../../graphql/resolvers/payment/query.js");
 
     await expect(
-      PaymentQuery.invoicesByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1" } }),
+      PaymentQuery.invoicesByOrder(null, { orderId: "valid-o1" }, { user: { id: "u1", roleName: "manager" } }),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
     expect(modelMocks.Invoice.find).not.toHaveBeenCalled();

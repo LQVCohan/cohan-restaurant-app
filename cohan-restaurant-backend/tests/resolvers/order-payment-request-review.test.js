@@ -66,6 +66,7 @@ describe("payment request + confirm guards", () => {
       id: "65f000000000000000000777",
       _id: "65f000000000000000000777",
       roles: ["manager"],
+      roleName: "manager",
       refRestaurants: ["65f000000000000000000099"],
     },
   };
@@ -89,7 +90,7 @@ describe("payment request + confirm guards", () => {
     await OrderMutation.requestPaymentForOrder(
       null,
       { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } },
-      { user: { _id: "65f000000000000000000777" } },
+      { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } },
     );
 
     expect(order.payment.status).toBe("payment_requested");
@@ -106,7 +107,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.find.mockResolvedValue([order]);
 
     await expect(
-      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { _id: "u1" } }),
+      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } }),
     ).rejects.toThrow("Không thể yêu cầu thanh toán khi còn món chưa phục vụ xong.");
     expect(order.save).not.toHaveBeenCalled();
   });
@@ -117,7 +118,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.find.mockResolvedValue([order]);
 
     await expect(
-      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { _id: "u1" } }),
+      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } }),
     ).rejects.toThrow("Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
     expect(order.save).not.toHaveBeenCalled();
   });
@@ -291,7 +292,7 @@ describe("payment request + confirm guards", () => {
 
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) }).mockResolvedValueOnce([paidOrder]);
 
-    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", restaurantId: "65f000000000000000000099" } });
+    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } });
 
     expect(modelMocks.Order.updateMany).toHaveBeenCalled();
     const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];

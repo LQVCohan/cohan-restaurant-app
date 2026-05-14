@@ -19,7 +19,9 @@ import TableCustomer from "../../../models/tableCustomer.model.js";
 import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
-import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireRoles } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
   activeTableSessionLookupFilter,
   childOrdersForSessionFilter,
@@ -98,7 +100,7 @@ async function requireQueryRestaurantAccess(ctx, restaurantId) {
     throw new Error("Invalid restaurantId");
   }
   const rid = toId(restaurantId);
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_READ);
   return rid;
 }
 
@@ -239,7 +241,7 @@ export const OrderQuery = {
       throw new Error("Invalid restaurantId");
     }
 
-    await requireRestaurantAccess(ctx, order.restaurantId);
+    await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_READ);
     return order;
   },
   async previewOrderDiscount(_, { input }, ctx) {
@@ -280,7 +282,7 @@ export const OrderQuery = {
       if (!mongoose.isValidObjectId(filter.restaurantId)) {
         throw new Error("Invalid restaurantId");
       }
-      await requireRestaurantAccess(ctx, baseQ.restaurantId);
+      await requireRestaurantPermission(ctx, baseQ.restaurantId, PERMISSIONS.ORDER_READ);
     } else {
       requireRoles(ctx, ["ADMIN"]);
     }

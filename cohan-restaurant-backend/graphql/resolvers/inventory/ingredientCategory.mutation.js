@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Ingredient, IngredientCategory, EventLog } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 import {
   classifyCategoryFromName,
@@ -220,7 +221,7 @@ export default {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
-    await requireRestaurantAccess(ctx, input.restaurantId);
+    await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const name = toEnglishCategoryName(input?.name);
     if (!name) throw new GraphQLError("Category name is required");
     const slug = slugify(name);
@@ -244,7 +245,7 @@ export default {
 
     const current = await IngredientCategory.findById(id);
     if (!current) throw new GraphQLError("Ingredient category not found");
-    await requireRestaurantAccess(ctx, current.restaurantId);
+    await requireRestaurantPermission(ctx, current.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const session = await mongoose.startSession();
     try {
@@ -289,7 +290,7 @@ export default {
     if (!mongoose.isValidObjectId(id)) return false;
     const doc = await IngredientCategory.findById(id).lean();
     if (!doc) return false;
-    await requireRestaurantAccess(ctx, doc.restaurantId);
+    await requireRestaurantPermission(ctx, doc.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     await IngredientCategory.deleteOne({ _id: id });
     return true;
   },
@@ -299,7 +300,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
     return runIngredientCategorySync(restaurantId, ctx);
   },
 
@@ -308,7 +309,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const report = await runIngredientCategorySync(restaurantId, ctx);
     return report.categories;
   },

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Promotion } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function clamp(value, min, max) {
   const n = Number(value);
@@ -22,7 +23,9 @@ export const PromotionQuery = {
     const safeOffset = Math.max(0, Number(offset) || 0);
 
     const rid = new mongoose.Types.ObjectId(restaurantId);
-    await requireRestaurantAccess(ctx, rid);
+    if (!activeOnly) {
+      await requireRestaurantPermission(ctx, rid, PERMISSIONS.PROMOTION_READ);
+    }
 
     const query = { restaurantId: rid };
 

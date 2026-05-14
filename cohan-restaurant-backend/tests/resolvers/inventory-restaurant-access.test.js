@@ -56,7 +56,7 @@ describe("inventory restaurant access guards", () => {
 
   it("warehouses calls guard before find", async () => {
     const query = (await import("../../graphql/resolvers/inventory/warehouse.query.js")).default;
-    await query.warehouses(null, { restaurantId: "valid-r1" }, {});
+    await query.warehouses(null, { restaurantId: "valid-r1" }, { user: { id: "u1", roleName: "manager" } });
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.Warehouse.find).toHaveBeenCalled();
   });
@@ -77,9 +77,9 @@ describe("inventory restaurant access guards", () => {
 
   it("updateWarehouse guards existing restaurant and ignores restaurantId patch", async () => {
     const mutation = (await import("../../graphql/resolvers/inventory/warehouse.mutation.js")).default;
-    await mutation.updateWarehouse(null, { input: { id: "valid-w1", restaurantId: "valid-r2", name: "N" } }, {});
+    await mutation.updateWarehouse(null, { input: { id: "valid-w1", restaurantId: "valid-r2", name: "N" } }, { user: { id: "u1", roleName: "manager" } });
     expect(modelMocks.Warehouse.findById).toHaveBeenCalledWith("valid-w1");
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith({}, "valid-r1");
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith({ user: { id: "u1", roleName: "manager" } }, "valid-r1");
     expect(modelMocks.Warehouse.findByIdAndUpdate).toHaveBeenCalledWith(
       "valid-w1",
       { $set: { name: "N" } },

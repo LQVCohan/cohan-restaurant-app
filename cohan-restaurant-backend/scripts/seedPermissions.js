@@ -54,6 +54,7 @@ export const permissions = [
   ["kitchen.read", "Xem bếp", "kitchen", "Xem món đang chế biến"],
   ["kitchen.write", "Quản lý bếp", "kitchen", "Cập nhật trạng thái món trong bếp"],
   ["table.read", "Xem bàn", "table", "Xem sơ đồ và trạng thái bàn"],
+  ["table.write", "Quản lý bàn", "table", "Tạo, sửa, xóa và cập nhật trạng thái bàn"],
   ["cleaning.read", "Xem vệ sinh", "cleaning", "Xem nhiệm vụ dọn dẹp"],
   ["delivery.read", "Xem giao hàng", "delivery", "Xem danh sách đơn giao hàng"],
   ["delivery.update", "Cập nhật giao hàng", "delivery", "Cập nhật trạng thái giao hàng"],

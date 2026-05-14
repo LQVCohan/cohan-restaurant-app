@@ -7,6 +7,8 @@ import {
   Restaurant,
   RestaurantCategoryIndex,
 } from "../../../models/index.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -111,8 +113,10 @@ async function assertCanMutateRestaurant(user, restaurantDoc) {
 /* ========== Mutations ========== */
 
 /** Tạo nhà hàng */
-async function createRestaurant(_, { input }, { user }) {
+async function createRestaurant(_, { input }, ctx) {
+  const { user } = ctx || {};
   if (!user) throw forbidden("Unauthorized");
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   const admin = isAdmin(user);
   if (!admin) throw forbidden("Admin only");
 
@@ -134,12 +138,14 @@ async function createRestaurant(_, { input }, { user }) {
 }
 
 /** Cập nhật nhà hàng (không đổi manager qua đây) */
-async function updateRestaurant(_, { id, input }, { user }) {
+async function updateRestaurant(_, { id, input }, ctx) {
+  const { user } = ctx || {};
   if (!user) throw forbidden("Unauthorized");
   const _id = toObjectId(id);
 
   const doc = await Restaurant.findById(_id);
   if (!doc) throw notFound("Restaurant not found");
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   await assertCanMutateRestaurant(user, doc);
 
   const { managerId, ...rest } = input || {}; // chặn đổi manager ở mutation này
@@ -152,7 +158,9 @@ async function updateRestaurant(_, { id, input }, { user }) {
 }
 
 /** Xoá nhà hàng */
-async function deleteRestaurant(_, { id }, { user }) {
+async function deleteRestaurant(_, { id }, ctx) {
+  const { user } = ctx || {};
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   if (!isAdmin(user)) throw forbidden("Admin only");
   const _id = toObjectId(id);
 
@@ -164,7 +172,9 @@ async function deleteRestaurant(_, { id }, { user }) {
 }
 
 /** Cập nhật manager nhà hàng (Admin only) */
-async function updateRestaurantManager(_, { input }, { user }) {
+async function updateRestaurantManager(_, { input }, ctx) {
+  const { user } = ctx || {};
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   if (!isAdmin(user)) throw forbidden("Admin only");
 
   const { restaurantId, managerId } = input || {};
@@ -187,7 +197,8 @@ async function updateRestaurantManager(_, { input }, { user }) {
   return doc.toObject();
 }
 
-async function updateRestaurantCategoryIndex(_, { input }, { user }) {
+async function updateRestaurantCategoryIndex(_, { input }, ctx) {
+  const { user } = ctx || {};
   if (!user) throw forbidden("Unauthorized");
   const admin = isAdmin(user);
   const manager = await isManager(user);
@@ -201,6 +212,7 @@ async function updateRestaurantCategoryIndex(_, { input }, { user }) {
   const rId = toObjectId(restaurantId);
   const doc = await Restaurant.findById(rId);
   if (!doc) throw notFound("Restaurant not found");
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   if (!admin) await assertCanMutateRestaurant(user, doc);
 
   const validCategoryIds = categoryIds

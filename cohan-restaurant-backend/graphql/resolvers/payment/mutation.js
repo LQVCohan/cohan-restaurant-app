@@ -18,7 +18,8 @@ import {
 } from "../../../models/index.js";
 import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
 import {
   INACTIVE_ORDER_STATUSES,
@@ -516,7 +517,7 @@ export const requestTablePayment = async (_parent, { input }, ctx) => {
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
 
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
 
   const activeSession = await Order.findOne(
     activeTableSessionLookupFilter({
@@ -688,7 +689,7 @@ export const clearTablePaymentRequest = async (_parent, { input }, ctx) => {
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
 
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
 
   const activeSession = await Order.findOne(
     activeTableSessionLookupFilter({
@@ -758,7 +759,7 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
   if (!rid) throw new Error("Invalid restaurantId");
   if (!tid) throw new Error("Invalid tableId");
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
 
   const normMethod = String(method || "").toLowerCase();
   if (
@@ -1160,7 +1161,7 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
   const actorId = toId(ctx?.user?.id || ctx?.user?._id);
 
   const rawOrderIds = Array.isArray(orderIds) ? orderIds : [];
@@ -1503,7 +1504,7 @@ export const updateRestaurantPaymentSettings = async (
 
   const rid = toId(input?.restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
-  await requireRestaurantAccess(ctx, rid);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
 
   const providers = Array.isArray(input?.providers) ? input.providers : [];
   const normalizedProviders = providers

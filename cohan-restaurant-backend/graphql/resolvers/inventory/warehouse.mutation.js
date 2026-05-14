@@ -2,7 +2,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Warehouse, StockItem } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function normalizeDupKeyError(err) {
   if (err?.code === 11000) return new GraphQLError("Duplicate warehouse");
@@ -14,7 +15,7 @@ export default {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
-    await requireRestaurantAccess(ctx, input.restaurantId);
+    await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     try {
       const created = await Warehouse.create(input);
@@ -33,7 +34,7 @@ export default {
     const existing = await Warehouse.findById(id).lean();
     if (!existing) throw new GraphQLError("Warehouse not found");
 
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     delete patch.restaurantId;
 
     try {
@@ -58,7 +59,7 @@ export default {
     const existing = await Warehouse.findById(id).lean();
     if (!existing) return false;
 
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const count = await StockItem.countDocuments({ warehouseId: id });
     if (count > 0)

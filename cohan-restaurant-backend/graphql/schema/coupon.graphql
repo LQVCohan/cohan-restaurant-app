@@ -46,7 +46,7 @@ extend type Query {
     now: DateTime
   ): [Coupon!]!
   couponByCode(code: String!, restaurantId: ID): Coupon
-  voucherPackages(restaurantId: ID): [VoucherPackage!]!
+  voucherPackages(restaurantId: ID, activeOnly: Boolean = true, now: DateTime): [VoucherPackage!]!
 }
 
 input CouponInput {
