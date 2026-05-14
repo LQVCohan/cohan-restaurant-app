@@ -189,6 +189,76 @@ export const QUERY_VALIDATE_PAYROLL_PERIOD = gql`
   }
 `;
 
+const PAYROLL_READINESS_ISSUE_FIELDS = gql`
+  fragment PayrollReadinessIssueFields on PayrollReadinessIssue {
+    code
+    severity
+    message
+    employeeId
+    employeeName
+    employeeCode
+    sourceType
+    sourceId
+    suggestedAction
+    targetRoute
+  }
+`;
+
+export const QUERY_PAYROLL_READINESS = gql`
+  ${PAYROLL_READINESS_ISSUE_FIELDS}
+  query PayrollReadiness($periodId: ID!) {
+    payrollReadiness(periodId: $periodId) {
+      periodId
+      restaurantId
+      status
+      readyToFinalize
+      blockingCount
+      warningCount
+      sections {
+        schedule {
+          status
+          blockingCount
+          warningCount
+          metrics
+          issues {
+            ...PayrollReadinessIssueFields
+          }
+        }
+        attendance {
+          status
+          blockingCount
+          warningCount
+          metrics
+          issues {
+            ...PayrollReadinessIssueFields
+          }
+        }
+        approvals {
+          status
+          blockingCount
+          warningCount
+          metrics
+          issues {
+            ...PayrollReadinessIssueFields
+          }
+        }
+        payroll {
+          status
+          blockingCount
+          warningCount
+          metrics
+          issues {
+            ...PayrollReadinessIssueFields
+          }
+        }
+      }
+      issues {
+        ...PayrollReadinessIssueFields
+      }
+    }
+  }
+`;
+
 export const QUERY_MY_PAYSLIPS = gql`
   query MyPayslips($limit: Int = 12) {
     myPayslips(limit: $limit) {
@@ -617,6 +687,11 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
   });
+  const readinessQuery = useQuery(QUERY_PAYROLL_READINESS, {
+    variables: { periodId: effectivePeriodId },
+    skip: !effectivePeriodId,
+    fetchPolicy: "network-only",
+  });
   const payslipQuery = useQuery(QUERY_PAYROLL_PAYSLIP, {
     variables: { periodId: effectivePeriodId, employeeId: undefined },
     skip: true,
@@ -715,10 +790,15 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     refetchPayrollPeriodDetail: detailQuery.refetch,
     refetchSettings: settingsQuery.refetch,
     validationResult: validationQuery.data?.validatePayrollPeriod || null,
+    payrollReadiness: readinessQuery.data?.payrollReadiness || null,
+    readinessLoading: readinessQuery.loading,
+    readinessError: readinessQuery.error,
     payrollPayslip: payslipQuery.data?.payrollPayslip || null,
     payrollPayments: paymentsQuery.data?.payrollPayments || [],
     payrollExportRows: exportRowsQuery.data?.payrollExportRows || [],
     refetchValidation: validationQuery.refetch,
+    refetchPayrollReadiness: readinessQuery.refetch,
+    refetchReadiness: readinessQuery.refetch,
     refetchPayrollPayslip: payslipQuery.refetch,
     refetchPayrollPayments: paymentsQuery.refetch,
     refetchPayrollExportRows: exportRowsQuery.refetch,
