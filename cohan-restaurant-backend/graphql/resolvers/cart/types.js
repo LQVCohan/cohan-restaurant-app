@@ -41,3 +41,7 @@ export const CartItemFieldResolvers = {
     return MenuItem.findById(parent.menuItemId).lean({ virtuals: true });
   },
 };
+
+export const MenuAvailabilityWatchFieldResolvers = {
+  id: (parent) => (parent?._id ? String(parent._id) : parent?.id || null),
+};
