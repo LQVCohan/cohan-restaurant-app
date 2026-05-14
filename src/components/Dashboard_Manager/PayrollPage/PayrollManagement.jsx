@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
+import PayrollPayslipModal, { getPayrollPaymentErrorMessage } from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
 import { getPayrollActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
 import "./PayrollManagement.scss";
 
@@ -13,6 +14,60 @@ const getDefaultRange = () => {
     end: thisMonth.toISOString().split("T")[0],
   };
 };
+
+
+export function escapeCsvValue(value) {
+  const text = String(value ?? "");
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+export function downloadCsv(filename, rows, columns) {
+  const header = columns.map((column) => escapeCsvValue(column.label)).join(",");
+  const body = rows
+    .map((row) => columns.map((column) => escapeCsvValue(row[column.key])).join(","))
+    .join("\n");
+
+  const blob = new Blob([`\uFEFF${header}\n${body}`], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+const PAYROLL_EXPORT_COLUMNS = [
+  "employeeCode",
+  "employeeName",
+  "department",
+  "role",
+  "baseSalary",
+  "actualWorkDays",
+  "totalHours",
+  "overtimeNormalHours",
+  "overtimeWeekendHours",
+  "overtimeHolidayHours",
+  "nightHours",
+  "grossIncome",
+  "allowance",
+  "bonus",
+  "deduction",
+  "insuranceTotal",
+  "personalIncomeTax",
+  "netSalary",
+  "paidAmount",
+  "remainingAmount",
+  "status",
+].map((key) => ({ key, label: key }));
+
+const sanitizeFilenamePart = (value) =>
+  String(value || "payroll").replace(/[^a-zA-Z0-9-_]+/g, "_").replace(/^_+|_+$/g, "");
 
 const PAYROLL_SETTINGS_DEFAULTS = {
   standardWorkDaysPerMonth: 26,
@@ -320,7 +375,14 @@ const PayrollManagement = () => {
   const [sortBy, setSortBy] = useState("net_desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showPayslip, setShowPayslip] = useState(null);
+  const [selectedPayslipEmployeeId, setSelectedPayslipEmployeeId] = useState("");
+  const [payslipLoading, setPayslipLoading] = useState(false);
+  const [paymentMutationLoading, setPaymentMutationLoading] = useState(false);
+  const [showBatchPayment, setShowBatchPayment] = useState(false);
+  const [batchPaymentLoading, setBatchPaymentLoading] = useState(false);
+  const [batchPaymentError, setBatchPaymentError] = useState("");
+  const [batchPaymentResult, setBatchPaymentResult] = useState(null);
+  const [batchPaymentForm, setBatchPaymentForm] = useState({ method: "cash", paidAt: new Date().toISOString().slice(0, 16), note: "" });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -345,12 +407,21 @@ const PayrollManagement = () => {
     recalculatePeriod,
     finalizePeriod,
     lockPeriod,
-    markPaid,
+    markPayrollItemPaid,
+    batchMarkPayrollPaid,
+    payrollPayslip,
+    payrollPayments,
+    refetchPayrollPayslip,
+    refetchPayrollPayments,
+    refetchPayrollExportRows,
     updateSettings,
     upsertAdjustment,
     validationResult,
     refetchValidation,
     refetchDetail,
+    refetchPayrollPeriodDetail,
+    refetchPeriods,
+    refetchPayrollPeriods,
     refetchSettings,
   } = usePayroll({
     periodId: selectedPeriodId || undefined,
@@ -430,6 +501,24 @@ const PayrollManagement = () => {
 
   const displayedPeriod = periodDetail?.period || null;
   const periodStatus = displayedPeriod?.status || "draft";
+  const canPayInPeriod = ["finalized", "paid"].includes(periodStatus);
+  const isPeriodLocked = periodStatus === "locked";
+  const selectedPayableItems = useMemo(
+    () => payrollItems.filter((item) => selectedIds.includes(item.id) && item.status !== "paid"),
+    [payrollItems, selectedIds],
+  );
+  const hasBatchPayableSelection = selectedPayableItems.length > 0 && canPayInPeriod && !isPeriodLocked;
+  const modalPayslip =
+    String(payrollPayslip?.employee?.id || payrollPayslip?.item?.id || "") === String(selectedPayslipEmployeeId)
+      ? payrollPayslip
+      : null;
+  const modalPayments = useMemo(
+    () =>
+      (payrollPayments || []).filter(
+        (payment) => !selectedPayslipEmployeeId || String(payment.employeeId) === String(selectedPayslipEmployeeId),
+      ),
+    [payrollPayments, selectedPayslipEmployeeId],
+  );
   const hasRealItems = payrollItems.length > 0;
   const currentAppliedPeriod = useMemo(
     () =>
@@ -470,8 +559,11 @@ const PayrollManagement = () => {
   };
 
   const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(filteredData.map((i) => i.id));
-    else setSelectedIds([]);
+    if (e.target.checked) {
+      setSelectedIds(filteredData.filter((item) => item.status !== "paid").map((item) => item.id));
+    } else {
+      setSelectedIds([]);
+    }
   };
 
   const handleSelectRow = (id) => {
@@ -518,6 +610,89 @@ const PayrollManagement = () => {
       }
     } catch (err) {
       alert(getPayrollActionErrorMessage(err, `Không thể thiết lập kỳ lương: ${err?.message || "Lỗi không xác định"}`));
+    }
+  };
+
+  const handleOpenPayslip = async (employeeId) => {
+    if (!selectedPeriodId || !employeeId) return;
+    setSelectedPayslipEmployeeId(employeeId);
+    setPayslipLoading(true);
+    try {
+      await Promise.all([
+        refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId }),
+        refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId }),
+      ].filter(Boolean));
+    } catch (err) {
+      alert(getPayrollActionErrorMessage(err, "Không tải được phiếu lương."));
+    } finally {
+      setPayslipLoading(false);
+    }
+  };
+
+  const handleSingleMarkPaid = async (input) => {
+    setPaymentMutationLoading(true);
+    try {
+      return await markPayrollItemPaid(input);
+    } finally {
+      setPaymentMutationLoading(false);
+    }
+  };
+
+  const handlePaidSuccess = async () => {
+    const employeeId = selectedPayslipEmployeeId;
+    await Promise.all([
+      employeeId ? refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId }) : null,
+      employeeId ? refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId }) : null,
+      refetchPayrollPeriodDetail?.() || refetchDetail?.(),
+      refetchPayrollPeriods?.() || refetchPeriods?.(),
+    ].filter(Boolean));
+    alert("✅ Đã thanh toán phiếu lương.");
+  };
+
+  const handleExportCsv = async () => {
+    if (!selectedPeriodId) return;
+    try {
+      const result = await refetchPayrollExportRows?.({ periodId: selectedPeriodId });
+      const rows = result?.data?.payrollExportRows || [];
+      const periodName = displayedPeriod?.name || periodDetail?.period?.name || selectedPeriodId;
+      const today = new Date().toISOString().slice(0, 10);
+      downloadCsv(`payroll_${sanitizeFilenamePart(periodName)}_${today}.csv`, rows, PAYROLL_EXPORT_COLUMNS);
+    } catch (err) {
+      alert(getPayrollActionErrorMessage(err, "Không thể xuất CSV bảng lương."));
+    }
+  };
+
+  const openBatchPaymentModal = () => {
+    if (!hasBatchPayableSelection) return;
+    setBatchPaymentError("");
+    setBatchPaymentResult(null);
+    setBatchPaymentForm({ method: "cash", paidAt: new Date().toISOString().slice(0, 16), note: "" });
+    setShowBatchPayment(true);
+  };
+
+  const handleBatchPaymentSubmit = async () => {
+    setBatchPaymentLoading(true);
+    setBatchPaymentError("");
+    setBatchPaymentResult(null);
+    try {
+      const result = await batchMarkPayrollPaid({
+        periodId: selectedPeriodId,
+        employeeIds: selectedPayableItems.map((item) => item.id),
+        method: batchPaymentForm.method || "cash",
+        paidAt: batchPaymentForm.paidAt ? new Date(batchPaymentForm.paidAt).toISOString() : new Date().toISOString(),
+        note: batchPaymentForm.note,
+      });
+      const payload = result?.data?.batchMarkPayrollPaid || {};
+      setBatchPaymentResult(payload);
+      await Promise.all([
+        refetchPayrollPeriodDetail?.() || refetchDetail?.(),
+        refetchPayrollPeriods?.() || refetchPeriods?.(),
+      ].filter(Boolean));
+      setSelectedIds([]);
+    } catch (err) {
+      setBatchPaymentError(getPayrollPaymentErrorMessage(err));
+    } finally {
+      setBatchPaymentLoading(false);
     }
   };
 
@@ -608,7 +783,7 @@ const PayrollManagement = () => {
     }
   };
   const handleApplyAdjustment = async () => {
-    if (!showPayslip?.id || !selectedPeriodId) return;
+    if (!selectedPayslipEmployeeId || !selectedPeriodId) return;
     const amount = Number(adjustmentAmount || 0);
     if (!(amount > 0)) return;
     if (["deduction", "advance", "other_deduction"].includes(adjustmentType) && !String(adjustmentNote || "").trim()) {
@@ -620,7 +795,7 @@ const PayrollManagement = () => {
         variables: {
           input: {
             periodId: selectedPeriodId,
-            employeeId: showPayslip.id,
+            employeeId: selectedPayslipEmployeeId,
             type: adjustmentType,
             amount,
             note: adjustmentNote,
@@ -671,7 +846,8 @@ const PayrollManagement = () => {
           </select>
           <button className="btn btn-white" data-testid="payroll-settings-open" onClick={handleOpenSettings}>⚙️ Cấu hình</button>
           <button className="btn btn-white" onClick={handleExportExcel}>📥 Xuất Excel</button>
-          <button className="btn btn-primary" onClick={async () => {
+          <button className="btn btn-white" onClick={handleExportCsv} disabled={!selectedPeriodId || periodStatus === "draft"}>Xuất CSV</button>
+          <button className="btn btn-primary" disabled={periodStatus !== "draft"} onClick={async () => {
             try {
               await recalculatePeriod({ variables: { periodId: selectedPeriodId } });
               alert("✅ Đã tính lại bảng lương.");
@@ -695,7 +871,7 @@ const PayrollManagement = () => {
             <button className="btn btn-white" onClick={() => { setShowValidationPanel(true); refetchValidation?.(); }}>Kiểm tra trước khi chốt</button>
             <button className="btn btn-white" disabled={periodStatus !== "draft" || Number(validationResult?.errorCount || 0) > 0} onClick={async () => { try { await finalizePeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã chốt kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể chốt kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Chốt kỳ</button>
             <button className="btn btn-white" disabled={periodStatus !== "finalized"} onClick={async () => { try { await lockPeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã khóa kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể khóa kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Khóa kỳ</button>
-            <button className="btn btn-primary" disabled={periodStatus !== "locked"} onClick={async () => { try { await markPaid({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã xác nhận trả lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể xác nhận trả lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Xác nhận đã trả</button>
+            <button className="btn btn-primary" data-testid="batch-payroll-paid-open" disabled={!hasBatchPayableSelection} onClick={openBatchPaymentModal}>Thanh toán đã chọn ({selectedPayableItems.length})</button>
           </div>
         </div>
       )}
@@ -753,7 +929,7 @@ const PayrollManagement = () => {
           <table className="payroll-table">
             <thead>
               <tr>
-                <th className="center"><input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === filteredData.length && filteredData.length > 0} /></th>
+                <th className="center"><input type="checkbox" onChange={handleSelectAll} disabled={!canPayInPeriod || isPeriodLocked} checked={selectedIds.length === filteredData.filter((item) => item.status !== "paid").length && filteredData.some((item) => item.status !== "paid")} /></th>
                 <th className="sticky-left">Nhân viên</th>
                 <th>Lương CB</th>
                 <th className="center">Công</th>
@@ -764,13 +940,14 @@ const PayrollManagement = () => {
                 <th className="text-right">Khấu Trừ (-)</th>
                 <th className="text-right">Thực Lĩnh</th>
                 <th className="center">Trạng thái</th>
+                <th className="center">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={11} className="table-empty">Đang tải dữ liệu bảng lương...</td></tr>}
+              {loading && <tr><td colSpan={12} className="table-empty">Đang tải dữ liệu bảng lương...</td></tr>}
               {!loading && filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="table-empty">
+                  <td colSpan={12} className="table-empty">
                     {!currentPeriodId && !hasRealItems
                       ? "Chưa có kỳ lương đang áp dụng. Hãy thiết lập kỳ lương để bắt đầu."
                       : "Không có dữ liệu phù hợp."}
@@ -779,9 +956,10 @@ const PayrollManagement = () => {
               )}
               {!loading && filteredData.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
+                const isRowPayable = item.status !== "paid";
                 return (
-                  <tr key={item.id} className={isSelected ? "selected" : ""} onClick={() => setShowPayslip(item)}>
-                    <td className="center" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} /></td>
+                  <tr key={item.id} className={isSelected ? "selected" : ""}>
+                    <td className="center" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected} disabled={!isRowPayable || isPeriodLocked || !canPayInPeriod} onChange={() => handleSelectRow(item.id)} /></td>
                     <td className="sticky-left">
                       <div className="emp-cell"><div className="avatar">{item.name?.charAt(0) || "N"}</div><div><div className="name">{item.name}</div><div className="sub">{item.code || "—"} • {item.department}</div></div></div>
                     </td>
@@ -794,6 +972,7 @@ const PayrollManagement = () => {
                     <td className="text-right text-danger">-{formatCurrency(item.totalDeduction)}</td>
                     <td className="text-right net-cell"><strong>{formatCurrency(item.netSalary)}</strong></td>
                     <td className="center"><div className="status-badge-wrapper">{getStatusBadge(item.status)}</div></td>
+                    <td className="center"><button className="btn btn-white" type="button" onClick={() => handleOpenPayslip(item.id)}>Xem phiếu lương</button></td>
                   </tr>
                 );
               })}
@@ -802,20 +981,69 @@ const PayrollManagement = () => {
         </div>
       </div>
 
-      {showPayslip && (
-        <PayslipModal
-          data={showPayslip}
-          period={periodDetail?.period}
-          onClose={() => setShowPayslip(null)}
-          formatCurrency={formatCurrency}
-          adjustmentType={adjustmentType}
-          setAdjustmentType={setAdjustmentType}
-          adjustmentAmount={adjustmentAmount}
-          setAdjustmentAmount={setAdjustmentAmount}
-          adjustmentNote={adjustmentNote}
-          setAdjustmentNote={setAdjustmentNote}
-          onApplyAdjustment={handleApplyAdjustment}
+      {selectedPayslipEmployeeId && (
+        <PayrollPayslipModal
+          open={Boolean(selectedPayslipEmployeeId)}
+          onClose={() => setSelectedPayslipEmployeeId("")}
+          periodId={selectedPeriodId}
+          employeeId={selectedPayslipEmployeeId}
+          payrollPayslip={modalPayslip}
+          payrollPayments={modalPayments}
+          markPayrollItemPaid={handleSingleMarkPaid}
+          loading={payslipLoading || paymentMutationLoading}
+          onPaidSuccess={handlePaidSuccess}
         />
+      )}
+
+      {showBatchPayment && (
+        <div className="modal-overlay" data-testid="batch-payroll-paid-modal" onClick={() => !batchPaymentLoading && setShowBatchPayment(false)}>
+          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Thanh toán đã chọn</h3>
+              <button className="close-btn" type="button" onClick={() => setShowBatchPayment(false)}>x</button>
+            </div>
+            <div className="modal-body">
+              <p>Bạn đang thanh toán <strong>{selectedPayableItems.length}</strong> nhân viên.</p>
+              {batchPaymentError && <div className="settings-modal-state settings-modal-state--error">{batchPaymentError}</div>}
+              {batchPaymentResult && (
+                <div className="settings-modal-state" data-testid="batch-payroll-paid-result">
+                  Thành công: <strong>{batchPaymentResult.successCount || 0}</strong> | Lỗi: <strong>{batchPaymentResult.failedCount || 0}</strong>
+                  {!!batchPaymentResult.errors?.length && (
+                    <ul>
+                      {batchPaymentResult.errors.map((err) => (
+                        <li key={`${err.employeeId}-${err.code}`}>{err.employeeId}: {err.code} - {err.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <div className="settings-form-grid">
+                <label className="settings-field">
+                  <span>Phương thức</span>
+                  <select value={batchPaymentForm.method} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, method: e.target.value }))}>
+                    <option value="cash">cash</option>
+                    <option value="bank_transfer">bank_transfer</option>
+                    <option value="card">card</option>
+                  </select>
+                </label>
+                <label className="settings-field">
+                  <span>Ngày thanh toán</span>
+                  <input type="datetime-local" value={batchPaymentForm.paidAt} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, paidAt: e.target.value }))} />
+                </label>
+                <label className="settings-field">
+                  <span>Ghi chú</span>
+                  <textarea rows={3} value={batchPaymentForm.note} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, note: e.target.value }))} />
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={() => setShowBatchPayment(false)}>Đóng</button>
+              <button className="btn btn-primary" data-testid="batch-payroll-paid-submit" type="button" disabled={batchPaymentLoading || selectedPayableItems.length === 0} onClick={handleBatchPaymentSubmit}>
+                {batchPaymentLoading ? "Đang thanh toán..." : "Xác nhận thanh toán"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showSettings && (
