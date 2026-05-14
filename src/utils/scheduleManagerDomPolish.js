@@ -1,9 +1,23 @@
 const getText = (node) => node?.textContent?.replace(/\s+/g, " ").trim() || "";
 
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
 const extractMatch = (text, regex, fallback = "") => {
   const match = text.match(regex);
   return match?.[1]?.trim() || fallback;
 };
+
+const cleanValue = (value, fallback = "") =>
+  String(value || fallback)
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,:])/g, "$1")
+    .trim();
 
 const getInitials = (name) => {
   const words = String(name || "")
@@ -13,6 +27,30 @@ const getInitials = (name) => {
   if (!words.length) return "!";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return `${words[0][0] || ""}${words[words.length - 1][0] || ""}`.toUpperCase();
+};
+
+const SHIFT_LABELS = {
+  morning: "Ca sáng",
+  afternoon: "Ca chiều",
+  evening: "Ca tối",
+  night: "Ca đêm",
+  full_day: "Cả ngày",
+};
+
+const formatShiftLabel = (rawShift) => {
+  const value = cleanValue(rawShift, "Ca cần xử lý");
+  const match = value.match(/^([a-z_]+),\s*(.*)$/i);
+  if (!match) return value;
+  const type = match[1].toLowerCase();
+  const rest = match[2];
+  return `${SHIFT_LABELS[type] || type} · ${rest}`;
+};
+
+const normalizeStatus = (rawStatus) => {
+  const status = cleanValue(rawStatus, "Cần xử lý");
+  return status
+    .replace(/^Đã chấp nhận lý do$/i, "Đã chấp nhận lý do")
+    .replace(/^Không duyệt lý do$/i, "Không duyệt lý do");
 };
 
 const isDeclinedBlockText = (text) =>
@@ -60,13 +98,32 @@ const findDeclinedBlock = () => {
   return candidates.sort((a, b) => getText(a).length - getText(b).length)[0];
 };
 
+const extractDeclinedInfo = (text) => {
+  const count = cleanValue(
+    extractMatch(text, /Ca bị từ chối\s*\((\d+)\)/i, "1"),
+    "1",
+  );
+  const employee = cleanValue(
+    extractMatch(text, /Nhân viên:\s*(.*?)(?=Ca:|Lý do:|Ghi chú:|Trạng thái xử lý:|ID:|$)/i, "Nhân viên"),
+    "Nhân viên",
+  );
+  const shift = formatShiftLabel(
+    extractMatch(text, /Ca:\s*(.*?)(?=Lý do:|Ghi chú:|Trạng thái xử lý:|ID:|$)/i, "Ca cần xử lý"),
+  );
+  const reason = cleanValue(
+    extractMatch(text, /Lý do:\s*(.*?)(?=Ghi chú:|Trạng thái xử lý:|ID:|Lý do hợp lệ|Nhân viên vẫn|Mở ca để xử lý|$)/i, "Chưa có lý do"),
+    "Chưa có lý do",
+  );
+  const status = normalizeStatus(
+    extractMatch(text, /Trạng thái xử lý:\s*(.*?)(?=ID:|Lý do hợp lệ|Nhân viên vẫn|Mở ca để xử lý|$)/i, "Cần xử lý"),
+  );
+
+  return { count, employee, shift, reason, status };
+};
+
 const buildActionCenter = (source) => {
   const text = getText(source);
-  const count = extractMatch(text, /Ca bị từ chối\s*\((\d+)\)/i, "1");
-  const employee = extractMatch(text, /Nhân viên:\s*(.*?)(?:\s+Ca:|\s+Lý do:|$)/i, "Nhân viên");
-  const shift = extractMatch(text, /Ca:\s*(.*?)(?:\s+Lý do:|\s+Ghi chú:|$)/i, "Ca cần xử lý");
-  const reason = extractMatch(text, /Lý do:\s*(.*?)(?:\s+Ghi chú:|\s+Trạng thái xử lý:|$)/i, "Chưa có lý do");
-  const status = extractMatch(text, /Trạng thái xử lý:\s*(.*?)(?:\s+ID:|\s+Lý do hợp lệ|\s+Nhân viên|$)/i, "Cần xử lý");
+  const { count, employee, shift, reason, status } = extractDeclinedInfo(text);
   const originalButton = findOpenShiftButton() ||
     Array.from(source.querySelectorAll("button")).find((button) =>
       getText(button).includes("Mở ca để xử lý"),
@@ -83,20 +140,20 @@ const buildActionCenter = (source) => {
         <h3 class="schedule-action-center__title">Ca bị từ chối cần quản lý xem lại</h3>
         <p class="schedule-action-center__subtitle">Hiển thị gọn các yêu cầu ảnh hưởng tới lịch tuần này. Chi tiết kỹ thuật được ẩn khỏi màn hình chính.</p>
       </div>
-      <span class="schedule-action-center__count">${count} yêu cầu</span>
+      <span class="schedule-action-center__count">${escapeHtml(count)} yêu cầu</span>
     </div>
     <div class="schedule-action-center__body">
       <div class="schedule-action-center__primary">
         <div class="schedule-action-center__person">
-          <span class="schedule-action-center__avatar">${getInitials(employee)}</span>
+          <span class="schedule-action-center__avatar">${escapeHtml(getInitials(employee))}</span>
           <div>
-            <strong>${employee}</strong>
-            <span>${shift}</span>
+            <strong>${escapeHtml(employee)}</strong>
+            <span>${escapeHtml(shift)}</span>
           </div>
         </div>
         <div class="schedule-action-center__meta">
-          <span class="schedule-action-center__pill schedule-action-center__pill--reason">Lý do: ${reason}</span>
-          <span class="schedule-action-center__pill schedule-action-center__pill--status">${status}</span>
+          <span class="schedule-action-center__pill schedule-action-center__pill--reason">Lý do: ${escapeHtml(reason)}</span>
+          <span class="schedule-action-center__pill schedule-action-center__pill--status">${escapeHtml(status)}</span>
         </div>
       </div>
       <div class="schedule-action-center__action"></div>
