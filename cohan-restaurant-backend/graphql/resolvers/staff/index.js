@@ -1,13 +1,14 @@
 import staffQuery from "./query.js";
+import payrollReadinessQuery from "./payrollReadiness.query.js";
 import staffMutation from "./mutation.js";
+
 const resolvers = {
   Query: {
     ...staffQuery,
-    // ... các Query khác
+    ...payrollReadinessQuery,
   },
   Mutation: {
     ...staffMutation,
-    // ... các Mutation khác
   },
 };
 
