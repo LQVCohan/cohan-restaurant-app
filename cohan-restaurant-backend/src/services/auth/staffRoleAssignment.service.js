@@ -6,6 +6,7 @@ import {
   isProtectedSystemRoleSlug,
   requireRestaurantPermission,
 } from "./authorization.service.js";
+import { logRbacAudit } from "../audit/rbacAudit.service.js";
 
 function toId(value) {
   if (!value) return "";
@@ -22,9 +23,7 @@ function parentRoleSlug(role) {
 }
 
 function effectivePermissionCodes(role) {
-  const parentPermissions = Array.isArray(role?.parentRole?.permissions)
-    ? role.parentRole.permissions
-    : [];
+  const parentPermissions = Array.isArray(role?.parentRole?.permissions) ? role.parentRole.permissions : [];
   const rolePermissions = Array.isArray(role?.permissions) ? role.permissions : [];
   return [...parentPermissions, ...rolePermissions]
     .map((permission) => String(permission?.code || permission || "").trim().toLowerCase())
@@ -33,6 +32,22 @@ function effectivePermissionCodes(role) {
 
 function forbidden(message = "FORBIDDEN") {
   return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } });
+}
+
+function roleSnapshot(role) {
+  if (!role) return null;
+  return {
+    id: toId(role),
+    name: role.name,
+    slug: role.slug,
+    parentRole: role.parentRole
+      ? { id: toId(role.parentRole), name: role.parentRole.name, slug: role.parentRole.slug }
+      : null,
+  };
+}
+
+function actorScope(actor) {
+  return hasRole(actor, ["admin"]) ? "admin" : "manager";
 }
 
 export function assertAssignableStaffRole({ actor, role }) {
@@ -48,7 +63,7 @@ export function assertAssignableStaffRole({ actor, role }) {
   return true;
 }
 
-export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, roleId, restaurantId }) {
+export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, roleId, restaurantId, ctx }) {
   await requireRestaurantPermission({ user: actor }, restaurantId, "staff.write");
 
   const staff = await Staff.findById(staffUserId);
@@ -67,8 +82,27 @@ export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, role
 
   assertAssignableStaffRole({ actor, role });
 
+  const beforeRole = roleSnapshot(staff.role);
   staff.role = role._id;
   await staff.save();
+
+  await logRbacAudit({
+    ctx: ctx || { user: actor },
+    action: "STAFF_ROLE_ASSIGNED",
+    targetType: "User",
+    targetId: staff._id,
+    targetName: staff.fullName || staff.employeeCode || staff.email || null,
+    restaurantId,
+    before: { role: beforeRole },
+    after: { role: roleSnapshot(role) },
+    metadata: {
+      assignedRoleId: toId(role),
+      assignedRoleSlug: role?.slug || null,
+      actorScope: actorScope(actor),
+      restaurantId: toId(restaurantId),
+    },
+  });
+
   await staff.populate?.(["role", "refRestaurants"]);
   return staff;
 }
