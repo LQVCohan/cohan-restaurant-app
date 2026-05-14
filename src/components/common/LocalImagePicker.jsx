@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import LocalImageView from "./LocalImageView";
+import { useAvatarUploadLocal } from "../../hooks/useAvatarUploadLocal";
 import {
   getLocalImageStats,
   LOCAL_IMAGE_VARIANTS,
@@ -15,6 +16,29 @@ const formatBytes = (bytes = 0) => {
   return `${(value / 1024 / 1024).toFixed(1)}MB`;
 };
 
+const getSyncedFileName = (saved) => {
+  const baseName = String(saved?.originalName || "menu-image")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "menu-image";
+
+  const extension = String(saved?.mimeType || "image/webp").includes("jpeg")
+    ? "jpg"
+    : "webp";
+
+  return `${baseName}.${extension}`;
+};
+
+const createPreviewUploadFile = (saved) => {
+  const blob = saved?.previewBlob || saved?.thumbBlob;
+  if (!blob) return null;
+
+  return new File([blob], getSyncedFileName(saved), {
+    type: saved.mimeType || blob.type || "image/webp",
+    lastModified: Date.now(),
+  });
+};
+
 const LocalImagePicker = ({
   value,
   onChange,
@@ -27,8 +51,10 @@ const LocalImagePicker = ({
   previewVariant = LOCAL_IMAGE_VARIANTS.PREVIEW,
   allowUrl = true,
   urlPlaceholder = "https://example.com/image.jpg hoặc local-image://...",
+  syncToServer = true,
 }) => {
   const inputRef = useRef(null);
+  const { upload } = useAvatarUploadLocal();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [statsText, setStatsText] = useState("");
@@ -49,16 +75,35 @@ const LocalImagePicker = ({
 
     try {
       const saved = await saveLocalImage(file, { ownerKey, purpose });
-      onChange?.(saved.uri);
+      let nextValue = saved.uri;
+      let syncMessage = "";
 
       const stats = await getLocalImageStats(saved.uri);
       if (stats) {
         const optimizedBytes =
           Number(stats.thumbSize || 0) + Number(stats.previewSize || 0);
-        setStatsText(
-          `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`,
-        );
+        syncMessage = `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`;
       }
+
+      if (syncToServer) {
+        const uploadFile = createPreviewUploadFile(saved);
+        if (uploadFile) {
+          try {
+            setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đang đồng bộ lên server...`);
+            const remoteUrl = await upload(uploadFile);
+            if (remoteUrl) {
+              nextValue = remoteUrl;
+              syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`;
+            }
+          } catch (uploadError) {
+            syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Upload server lỗi, tạm dùng ảnh local.`;
+            setError(uploadError?.message || "Không thể đồng bộ ảnh lên server.");
+          }
+        }
+      }
+
+      onChange?.(nextValue);
+      setStatsText(syncMessage || "Đã tối ưu ảnh.");
     } catch (err) {
       setError(err?.message || "Không thể lưu ảnh cục bộ.");
     } finally {
@@ -112,7 +157,7 @@ const LocalImagePicker = ({
             ) : (
               <UploadCloud size={16} />
             )}
-            {isSaving ? "Đang tối ưu..." : label}
+            {isSaving ? "Đang tối ưu/đồng bộ..." : label}
           </button>
 
           {value && (
