@@ -2,7 +2,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { StockItem, StockMovement, Ingredient } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 export default {
   receiveStock: async (
@@ -35,7 +36,7 @@ export default {
       throw new GraphQLError("costPerBaseUnit is required and must be > 0");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
 
     const session = await mongoose.startSession();
     try {
@@ -109,7 +110,7 @@ export default {
       throw new GraphQLError("Invalid ids");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
 
     const update = { $set: { restaurantId, warehouseId, ingredientId } };
     if (typeof onHand === "number" && Number.isFinite(onHand))
@@ -144,7 +145,7 @@ export default {
       throw new GraphQLError("qty must be a non-zero number");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
 
     const session = await mongoose.startSession();
     try {
@@ -204,7 +205,7 @@ export default {
       throw new GraphQLError("qty must be > 0");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
 
     const session = await mongoose.startSession();
     try {

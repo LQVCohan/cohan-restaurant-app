@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { consumeForOrderTx } from "../../../src/services/inventory.service.js";
 import { Warehouse } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   if (!mongoose.isValidObjectId(restaurantId)) {
@@ -81,7 +82,7 @@ export default {
     }
 
     try {
-      await requireRestaurantAccess(ctx, restaurantId);
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,

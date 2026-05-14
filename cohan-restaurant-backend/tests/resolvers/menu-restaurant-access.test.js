@@ -51,25 +51,26 @@ describe("menu restaurant access guards", () => {
     modelMocks.Recipe.find.mockResolvedValue([]);
   });
 
-  it("menus denied does not call Menu.find", async () => {
+  it("menus is public browsing and filters active menus without requiring restaurant access", async () => {
     const query = (await import("../../graphql/resolvers/menu/query.js")).MenuQuery;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
-    await expect(query.menus(null, { restaurantId: "valid-r1" }, {})).rejects.toThrow();
-    expect(modelMocks.Menu.find).not.toHaveBeenCalled();
+    await expect(query.menus(null, { restaurantId: "valid-r1" }, {})).resolves.toEqual([]);
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({ restaurantId: "valid-r1", isActive: true });
   });
 
-  it("menuItems denied does not call Menu.findOne or MenuItem.find", async () => {
+  it("menuItems is public browsing and filters available items without requiring restaurant access", async () => {
     const query = (await import("../../graphql/resolvers/menu/query.js")).MenuQuery;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
-    await expect(query.menuItems(null, { restaurantId: "valid-r1", timeSlot: "lunch" }, {})).rejects.toThrow();
-    expect(modelMocks.Menu.findOne).not.toHaveBeenCalled();
-    expect(modelMocks.MenuItem.find).not.toHaveBeenCalled();
+    await expect(query.menuItems(null, { restaurantId: "valid-r1", timeSlot: "lunch" }, {})).resolves.toEqual([]);
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.MenuItem.find).toHaveBeenCalledWith({ restaurantId: "valid-r1", status: "available", menuId: "valid-m1" });
   });
 
-  it("menuItemsConnection denied does not call Menu/MenuItem queries", async () => {
+  it("menuItemsConnection requires restaurant access for internal status queries", async () => {
     const query = (await import("../../graphql/resolvers/menu/query.js")).MenuQuery;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
-    await expect(query.menuItemsConnection(null, { filter: { restaurantId: "valid-r1" } }, {})).rejects.toThrow();
+    await expect(query.menuItemsConnection(null, { filter: { restaurantId: "valid-r1", status: "hidden" } }, {})).rejects.toThrow();
     expect(modelMocks.Menu.findOne).not.toHaveBeenCalled();
     expect(modelMocks.MenuItem.find).not.toHaveBeenCalled();
   });

@@ -33,7 +33,7 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-const ctx = { user: { id: "u1" } };
+const ctx = { user: { id: "u1", roleName: "manager" } };
 const forbidden = new Error("FORBIDDEN_SCOPE");
 const q = { select: vi.fn(() => ({ lean: vi.fn(async () => null) })) };
 

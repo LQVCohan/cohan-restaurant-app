@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { IngredientCategory, EventLog } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -13,7 +14,7 @@ export default {
     ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     const q = { restaurantId };
     if (!includeInactive) q.isActive = true;
@@ -29,7 +30,7 @@ export default {
 
   ingredientCategorySyncLogs: async (_p, { restaurantId, limit = 10 }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     const docs = await EventLog.find({
       restaurantId,

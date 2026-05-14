@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Recipe, MenuItem, Menu } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function toObjectIdOrNull(v) {
   if (!v) return null;
@@ -88,7 +89,7 @@ export default {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
       return null;
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     return Recipe.findOne({ restaurantId, menuItemId })
       .select({ __v: 0 })
@@ -98,7 +99,7 @@ export default {
   recipesByMenuItems: async (_p, { restaurantId, menuItemIds }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     const ids = (menuItemIds || []).filter(mongoose.isValidObjectId);
     if (!ids.length) return [];
@@ -139,7 +140,7 @@ export default {
       };
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     // 1) Lấy menu theo timeSlot hoặc tất cả
     let menus = [];

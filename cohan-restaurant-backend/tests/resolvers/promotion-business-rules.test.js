@@ -60,7 +60,7 @@ describe("PromotionMutation business rules", () => {
             endAt: "2026-05-05T15:00:00.000Z",
           },
         },
-        { user: { roleName: "manager" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       );
     } catch (error) {
       thrownError = error;
@@ -104,7 +104,7 @@ describe("PromotionMutation business rules", () => {
           endAt: "2026-05-05T15:00:00.000Z",
         },
       },
-      { user: { roleName: "manager" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(modelMocks.Promotion.create).toHaveBeenCalledWith(

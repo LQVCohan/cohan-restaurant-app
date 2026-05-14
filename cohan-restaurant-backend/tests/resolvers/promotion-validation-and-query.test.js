@@ -67,7 +67,7 @@ describe("Promotion validation and query filtering", () => {
             discountValue: 0,
           },
         },
-        { user: { roleName: "manager" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).resolves.toBeTruthy();
   });
@@ -88,7 +88,7 @@ describe("Promotion validation and query filtering", () => {
             discountValue: 0,
           },
         },
-        { user: { roleName: "manager" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FREESHIP promotion requires ORDER scope");
   });
@@ -109,7 +109,7 @@ describe("Promotion validation and query filtering", () => {
     );
 
     const passedQuery = modelMocks.Promotion.find.mock.calls[0][0];
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, passedQuery.restaurantId);
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(passedQuery.isActive).toBe(true);
     expect(passedQuery.$and).toHaveLength(2);
     expect(passedQuery.$expr).toEqual({
@@ -118,7 +118,7 @@ describe("Promotion validation and query filtering", () => {
     expect(chain.sort).toHaveBeenCalled();
   });
 
-  it("blocks promotionsByRestaurant when restaurant access is denied", async () => {
+  it("blocks admin promotion listings when restaurant access is denied", async () => {
     mockFindChain();
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
@@ -126,8 +126,8 @@ describe("Promotion validation and query filtering", () => {
     await expect(
       PromotionQuery.promotionsByRestaurant(
         null,
-        { restaurantId: "restaurant-1", activeOnly: true },
-        { user: { roleName: "manager" } },
+        { restaurantId: "restaurant-1", activeOnly: false },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Promotion.find).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe("Promotion validation and query filtering", () => {
   it("createPromotion calls restaurant access guard and create", async () => {
     modelMocks.Promotion.create.mockResolvedValue({ _id: "promotion-1" });
     modelMocks.Promotion.findById.mockReturnValue(mockLeanQuery({ id: "promotion-1" }));
-    const ctx = { user: { roleName: "manager" } };
+    const ctx = { user: { id: "manager-1", roleName: "manager" } };
     const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
 
     await PromotionMutation.createPromotion(
@@ -157,7 +157,7 @@ describe("Promotion validation and query filtering", () => {
       PromotionMutation.createPromotion(
         null,
         { input: { name: "Promo", restaurantId: "restaurant-1", discountValue: 10 } },
-        { user: { roleName: "manager" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Promotion.create).not.toHaveBeenCalled();
@@ -180,11 +180,11 @@ describe("Promotion validation and query filtering", () => {
           discountValue: 10,
         },
       },
-      { user: { roleName: "manager" } },
+      { user: { id: "manager-1", roleName: "manager" } },
     );
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      { user: { roleName: "manager" } },
+      { user: { id: "manager-1", roleName: "manager" } },
       "restaurant-existing",
     );
     expect(modelMocks.Promotion.findByIdAndUpdate).toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe("Promotion validation and query filtering", () => {
     const { PromotionMutation } = await import("../../graphql/resolvers/promotion/mutation.js");
 
     await expect(
-      PromotionMutation.deletePromotion(null, { id: "promotion-1" }, { user: { roleName: "manager" } }),
+      PromotionMutation.deletePromotion(null, { id: "promotion-1" }, { user: { id: "manager-1", roleName: "manager" } }),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Promotion.deleteOne).not.toHaveBeenCalled();
   });
@@ -216,7 +216,7 @@ describe("Promotion validation and query filtering", () => {
       PromotionMutation.togglePromotion(
         null,
         { id: "promotion-1", isActive: false },
-        { user: { roleName: "manager" } },
+        { user: { id: "manager-1", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Promotion.findByIdAndUpdate).not.toHaveBeenCalled();

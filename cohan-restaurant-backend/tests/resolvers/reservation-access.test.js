@@ -82,7 +82,7 @@ describe('Reservation access hardening', () => {
     requireRestaurantAccess.mockRejectedValueOnce(new Error('FORBIDDEN_SCOPE'));
     const { ReservationQuery } = await import('../../graphql/resolvers/reservation/query.js');
 
-    await expect(ReservationQuery.reservation(null, { id: 'valid-rsv' }, { user: { roleName: 'manager' } }))
+    await expect(ReservationQuery.reservation(null, { id: 'valid-rsv' }, { user: { id: 'm1', roleName: 'manager' } }))
       .rejects.toThrow('FORBIDDEN_SCOPE');
   });
 
@@ -90,7 +90,7 @@ describe('Reservation access hardening', () => {
     requireRestaurantAccess.mockRejectedValueOnce(new Error('FORBIDDEN_SCOPE'));
     const { ReservationQuery } = await import('../../graphql/resolvers/reservation/query.js');
 
-    await expect(ReservationQuery.confirmedReservationByTable(null, { restaurantId: 'valid-r1', tableId: 'valid-t1' }, { user: { roleName: 'manager' } }))
+    await expect(ReservationQuery.confirmedReservationByTable(null, { restaurantId: 'valid-r1', tableId: 'valid-t1' }, { user: { id: 'm1', roleName: 'manager' } }))
       .rejects.toThrow('FORBIDDEN_SCOPE');
     expect(modelMocks.Reservation.findOne).not.toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe('Reservation access hardening', () => {
     modelMocks.Reservation.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
     const { ReservationQuery } = await import('../../graphql/resolvers/reservation/query.js');
 
-    await ReservationQuery.confirmedReservationByTable(null, { restaurantId: 'valid-r1', tableId: 'valid-t1' }, { user: { roleName: 'manager' } });
+    await ReservationQuery.confirmedReservationByTable(null, { restaurantId: 'valid-r1', tableId: 'valid-t1' }, { user: { id: 'm1', roleName: 'manager' } });
 
     expect(requireRestaurantAccess).toHaveBeenCalled();
     expect(modelMocks.Reservation.findOne).toHaveBeenCalled();

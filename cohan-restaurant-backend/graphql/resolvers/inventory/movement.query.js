@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { StockMovement } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -41,7 +42,7 @@ export default {
   , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_READ);
 
     const q = { restaurantId };
 
@@ -94,7 +95,7 @@ export default {
       };
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_READ);
 
     const match = { restaurantId };
     if (warehouseId && mongoose.isValidObjectId(warehouseId))

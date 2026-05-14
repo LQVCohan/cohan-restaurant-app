@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Promotion } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const toObjId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -130,7 +131,7 @@ export const PromotionMutation = {
     requireRole(user, ["admin", "manager"]);
     const payload = sanitizeInput(input);
     validatePromotionPayload(payload);
-    await requireRestaurantAccess(ctx, payload.restaurantId);
+    await requireRestaurantPermission(ctx, payload.restaurantId, PERMISSIONS.PROMOTION_WRITE);
     const created = await Promotion.create(payload);
     return (await loadPromotionForOutput(created._id)) || created;
   },
@@ -146,7 +147,7 @@ export const PromotionMutation = {
       throw new GraphQLError("Invalid promotion restaurant");
     }
 
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.PROMOTION_WRITE);
 
     const payload = sanitizeInput(input);
     validatePromotionPayload(payload);
@@ -163,7 +164,7 @@ export const PromotionMutation = {
 
     const existing = await Promotion.findById(id).lean();
     if (!existing) return false;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.PROMOTION_WRITE);
 
     const rs = await Promotion.deleteOne({ _id: id });
     return rs.deletedCount > 0;
@@ -176,7 +177,7 @@ export const PromotionMutation = {
 
     const existing = await Promotion.findById(id).lean();
     if (!existing) throw new GraphQLError("Promotion not found");
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.PROMOTION_WRITE);
 
     const updated = await Promotion.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true });
     if (!updated) throw new GraphQLError("Promotion not found");
