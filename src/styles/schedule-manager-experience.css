@@ -260,13 +260,26 @@
 .manager-page-shell--schedules .schedule-board {
   padding: 0.95rem 1.1rem 1.3rem !important;
   gap: 0.9rem !important;
+  background:
+    linear-gradient(180deg, rgba(244, 247, 251, 0.25), rgba(244, 247, 251, 0.95));
 }
 
 .manager-page-shell--schedules .schedule-day-column {
-  border-radius: 18px !important;
+  position: relative;
+  border-radius: 20px !important;
   border-color: rgba(226,232,240,0.94) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
   box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 12px 28px rgba(15,23,42,0.045) !important;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
+}
+
+.manager-page-shell--schedules .schedule-day-column::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), rgba(148, 163, 184, 0));
 }
 
 .manager-page-shell--schedules .schedule-day-column:hover {
@@ -275,24 +288,108 @@
   box-shadow: 0 2px 4px rgba(15,23,42,0.05), 0 18px 42px rgba(15,23,42,0.075) !important;
 }
 
+.manager-page-shell--schedules .day-header {
+  min-height: 66px !important;
+  padding: 0.78rem 0.82rem !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
 .manager-page-shell--schedules .day-header.today {
   background: linear-gradient(135deg, #eef2ff, #ffffff) !important;
   box-shadow: inset 3px 0 0 #4f46e5;
 }
 
+.manager-page-shell--schedules .day-header.today::after {
+  content: "Hôm nay";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.32rem;
+  width: max-content;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 0.14rem 0.42rem;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.manager-page-shell--schedules .day-name {
+  color: #334155 !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.manager-page-shell--schedules .day-date {
+  color: #0f172a !important;
+  font-size: 0.94rem !important;
+  font-weight: 900 !important;
+  margin-top: 0.18rem;
+}
+
+.manager-page-shell--schedules .shift-count {
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .day-body {
+  padding: 0.72rem !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
 .manager-page-shell--schedules .add-shift-btn,
 .manager-page-shell--schedules .empty-shift-slot {
-  border-radius: 14px !important;
+  border-radius: 15px !important;
 }
 
-.manager-page-shell--schedules .add-shift-btn {
-  background: linear-gradient(135deg, #fff, #f8fafc) !important;
+.manager-page-shell--schedules .add-shift-btn,
+.manager-page-shell--schedules .empty-shift-slot button,
+.manager-page-shell--schedules button.empty-shift-slot {
+  min-height: 2.75rem !important;
+  border: 1px dashed #cbd5e1 !important;
+  background:
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  color: #475569 !important;
+  font-weight: 850 !important;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
-.manager-page-shell--schedules .add-shift-btn:hover {
+.manager-page-shell--schedules .add-shift-btn::before,
+.manager-page-shell--schedules .empty-shift-slot button::before,
+.manager-page-shell--schedules button.empty-shift-slot::before {
+  content: "+";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-right: 0.32rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.manager-page-shell--schedules .add-shift-btn:hover,
+.manager-page-shell--schedules .empty-shift-slot button:hover,
+.manager-page-shell--schedules button.empty-shift-slot:hover {
+  transform: translateY(-1px);
   background: #eef2ff !important;
   border-color: #818cf8 !important;
   color: #3730a3 !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
 }
 
 /* Shift cards must always show the next action */
