@@ -10,6 +10,7 @@ import "./styles/schedule-insights-polish.css";
 import "./styles/add-shift-modal-polish.css";
 import "./styles/schedule-board-polish.css";
 import "./styles/schedule-publish-polish.css";
+import "./styles/availability-registration-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import NotificationProvider from "./context/NotificationProvider";
