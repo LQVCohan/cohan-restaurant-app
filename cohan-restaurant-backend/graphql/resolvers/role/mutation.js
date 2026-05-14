@@ -6,6 +6,7 @@ import {
   isProtectedSystemRoleSlug,
   requirePermission,
 } from "../../../src/services/auth/authorization.service.js";
+import { logRbacAudit } from "../../../src/services/audit/rbacAudit.service.js";
 import mongoose from "mongoose";
 import { loadRoleForRbacResponse } from "./rbacRoleResponse.js";
 
@@ -17,12 +18,23 @@ function assertNonAdminCanUseParentRole(user, parentRole) {
   }
 }
 
+function roleName(role) {
+  return role?.name || role?.slug || undefined;
+}
+
+function permissionsChanged(before = {}, after = {}) {
+  const normalize = (values = []) =>
+    values.map((value) => String(value?._id || value?.id || value || "")).sort();
+  return JSON.stringify(normalize(before.permissions)) !== JSON.stringify(normalize(after.permissions));
+}
+
 export const RoleMutation = {
   /* =====================================
    * ROLE CRUD
    * ===================================== */
 
-  createRole: async (_, { input }, { user }) => {
+  createRole: async (_, { input }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const { permissionIds = [], parentRoleId, ...rest } = input;
@@ -82,10 +94,21 @@ export const RoleMutation = {
       isSystem: false,
     });
 
+    await logRbacAudit({
+      ctx,
+      action: "ROLE_CREATED",
+      targetType: "Role",
+      targetId: doc._id,
+      targetName: roleName(doc),
+      after: doc,
+      metadata: { parentRoleId, permissionIds },
+    });
+
     return loadRoleForRbacResponse(doc._id);
   },
 
-  updateRole: async (_, { input }, { user }) => {
+  updateRole: async (_, { input }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const { id, permissionIds, parentRoleId, ...rest } = input;
@@ -96,6 +119,8 @@ export const RoleMutation = {
       throw new GraphQLError("System role cannot be modified", {
         extensions: { code: "FORBIDDEN" },
       });
+
+    const before = typeof r.toObject === "function" ? r.toObject() : { ...r };
 
     // --- Update parentRole nếu truyền lên ---
     if (parentRoleId !== undefined) {
@@ -141,10 +166,24 @@ export const RoleMutation = {
     // slug thường không cho đổi, nhưng nếu em muốn thì thêm vào đây
 
     await r.save();
+    const after = typeof r.toObject === "function" ? r.toObject() : { ...r };
+    const changedPermissions = Array.isArray(permissionIds) || permissionsChanged(before, after);
+    await logRbacAudit({
+      ctx,
+      action: changedPermissions ? "ROLE_PERMISSION_UPDATED" : "ROLE_UPDATED",
+      targetType: "Role",
+      targetId: r._id,
+      targetName: roleName(r),
+      before,
+      after,
+      metadata: { changedPermissions, parentRoleChanged: parentRoleId !== undefined },
+    });
+
     return loadRoleForRbacResponse(r._id);
   },
 
-  deleteRole: async (_, { id }, { user }) => {
+  deleteRole: async (_, { id }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const r = await Role.findById(id).lean();
@@ -163,6 +202,14 @@ export const RoleMutation = {
       });
 
     await Role.findByIdAndDelete(id);
+    await logRbacAudit({
+      ctx,
+      action: "ROLE_DELETED",
+      targetType: "Role",
+      targetId: r._id,
+      targetName: roleName(r),
+      before: r,
+    });
     return true;
   },
 
@@ -170,7 +217,8 @@ export const RoleMutation = {
    * PARENT ROLE CRUD
    * ===================================== */
 
-  createParentRole: async (_, { input }, { user }) => {
+  createParentRole: async (_, { input }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const { permissionIds = [], ...rest } = input;
@@ -211,10 +259,21 @@ export const RoleMutation = {
       permissions: permObjectIds,
     });
 
+    await logRbacAudit({
+      ctx,
+      action: "PARENT_ROLE_CREATED",
+      targetType: "ParentRole",
+      targetId: doc._id,
+      targetName: roleName(doc),
+      after: doc,
+      metadata: { permissionIds },
+    });
+
     return doc.toObject();
   },
 
-  updateParentRole: async (_, { input }, { user }) => {
+  updateParentRole: async (_, { input }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const { id, permissionIds, ...rest } = input;
@@ -226,6 +285,8 @@ export const RoleMutation = {
         extensions: { code: "FORBIDDEN" },
       });
     }
+
+    const before = typeof pr.toObject === "function" ? pr.toObject() : { ...pr };
 
     if (Array.isArray(permissionIds)) {
       const valid = permissionIds.filter((pid) =>
@@ -249,10 +310,23 @@ export const RoleMutation = {
     // slug thường không cho sửa, nếu cần thì thêm validate giống create
 
     await pr.save();
+    const after = typeof pr.toObject === "function" ? pr.toObject() : { ...pr };
+    await logRbacAudit({
+      ctx,
+      action: "PARENT_ROLE_UPDATED",
+      targetType: "ParentRole",
+      targetId: pr._id,
+      targetName: roleName(pr),
+      before,
+      after,
+      metadata: { changedPermissions: Array.isArray(permissionIds) },
+    });
+
     return pr.toObject();
   },
 
-  deleteParentRole: async (_, { id }, { user }) => {
+  deleteParentRole: async (_, { id }, ctx) => {
+    const { user } = ctx;
     await requirePermission({ user }, "role.write");
 
     const pr = await ParentRole.findById(id).lean();
@@ -272,6 +346,14 @@ export const RoleMutation = {
     }
 
     await ParentRole.findByIdAndDelete(id);
+    await logRbacAudit({
+      ctx,
+      action: "PARENT_ROLE_DELETED",
+      targetType: "ParentRole",
+      targetId: pr._id,
+      targetName: roleName(pr),
+      before: pr,
+    });
     return true;
   },
 };
