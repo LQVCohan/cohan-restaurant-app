@@ -2,9 +2,7 @@ import React, { useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import LocalImageView from "./LocalImageView";
 import {
-  deleteLocalImage,
   getLocalImageStats,
-  isLocalImageUri,
   LOCAL_IMAGE_VARIANTS,
   saveLocalImage,
 } from "../../utils/localImageStore";
@@ -50,18 +48,15 @@ const LocalImagePicker = ({
     setStatsText("");
 
     try {
-      if (value && isLocalImageUri(value)) {
-        deleteLocalImage(value).catch(() => {});
-      }
-
       const saved = await saveLocalImage(file, { ownerKey, purpose });
       onChange?.(saved.uri);
 
       const stats = await getLocalImageStats(saved.uri);
       if (stats) {
-        const optimizedBytes = Number(stats.thumbSize || 0) + Number(stats.previewSize || 0);
+        const optimizedBytes =
+          Number(stats.thumbSize || 0) + Number(stats.previewSize || 0);
         setStatsText(
-          `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`
+          `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`,
         );
       }
     } catch (err) {
@@ -73,9 +68,8 @@ const LocalImagePicker = ({
 
   const handleClear = () => {
     if (disabled || isSaving) return;
-    if (value && isLocalImageUri(value)) {
-      deleteLocalImage(value).catch(() => {});
-    }
+    // Không xóa blob ngay tại đây vì ảnh cũ có thể đang được menu/món đã lưu sử dụng.
+    // Cleanup dài hạn được xử lý bởi pruneLocalImages/deleteStaleLocalImages trong localImageStore.
     onChange?.("");
     setStatsText("");
     setError("");
@@ -113,7 +107,11 @@ const LocalImagePicker = ({
             onClick={handlePickFile}
             disabled={disabled || isSaving}
           >
-            {isSaving ? <Loader2 size={16} className="lip-spin" /> : <UploadCloud size={16} />}
+            {isSaving ? (
+              <Loader2 size={16} className="lip-spin" />
+            ) : (
+              <UploadCloud size={16} />
+            )}
             {isSaving ? "Đang tối ưu..." : label}
           </button>
 
@@ -124,7 +122,7 @@ const LocalImagePicker = ({
               onClick={handleClear}
               disabled={disabled || isSaving}
             >
-              <X size={16} /> Xóa ảnh
+              <X size={16} /> Xóa ảnh khỏi form
             </button>
           )}
         </div>
