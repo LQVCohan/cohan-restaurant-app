@@ -197,7 +197,6 @@
     .staff-avatars {
       display: flex;
       align-items: center;
-      gap: -4px; /* Avatar chồng nhẹ lên nhau */
 
       .avatar-dot {
         width: 24px;
@@ -211,6 +210,10 @@
         justify-content: center;
         border: 2px solid white;
         font-weight: 600;
+        margin-left: -6px;
+        &:first-child {
+          margin-left: 0;
+        }
       }
       .avatar-more {
         font-size: 0.7rem;

@@ -106,16 +106,14 @@ const AutoScheduleModal = ({
             <Sparkles size={20} />
           </div>
           <div className="banner-copy">
-            <strong>Scheduling assistant dùng dữ liệu thật từ backend</strong>
+            <strong>Trợ lý chia ca tự động</strong>
             <p>
-              Hệ thống phân tích forecast, staff, lịch hiện có rồi tạo preview
-              trước khi áp dụng. Luồng này chỉ bổ sung ca còn thiếu, không tự
-              xóa lịch đang có.
+              Hệ thống phân tích nhu cầu vận hành, nhân sự, lịch hiện có và
+              policy để tạo preview trước khi áp dụng.
             </p>
             <p>
-              Chia ca tự động chỉ áp dụng các phân công vượt qua kiểm tra policy.
-              Vai trò còn thiếu cần được quản lý xử lý thủ công. Thời gian ca lấy
-              từ cài đặt ca làm việc.
+              Chỉ các phân công hợp lệ mới được lưu. Ca còn thiếu người sẽ được
+              đánh dấu để quản lý bổ sung thủ công.
             </p>
           </div>
         </div>

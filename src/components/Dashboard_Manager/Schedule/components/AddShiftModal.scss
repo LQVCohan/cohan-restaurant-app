@@ -110,7 +110,6 @@
     }
   }
 
-
   /* --- 3. Staff Selector --- */
   .staff-selector {
     border: 1px solid var(--m-border, #e2e8f0);
@@ -403,5 +402,60 @@
     width: 15px;
     height: 15px;
     accent-color: #2563eb;
+  }
+}
+/* Premium form polish */
+.add-modal-content {
+  .shift-info-box {
+    border-radius: 16px;
+    background: linear-gradient(135deg, #eef2ff 0%, #ffffff 52%, #f8fafc 100%);
+    border-color: #c7d2fe;
+  }
+
+  .job-grid .job-checkbox {
+    border-radius: 14px;
+    min-height: 48px;
+  }
+
+  .job-grid .job-checkbox.checked {
+    box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
+  }
+
+  .staff-selector {
+    border-radius: 16px;
+    background: #f8fafc;
+  }
+
+  .staff-list {
+    border-radius: 14px !important;
+  }
+
+  .staff-item {
+    min-height: 58px;
+  }
+
+  .staff-item.selected {
+    box-shadow: inset 3px 0 0 #4f46e5;
+  }
+
+  .salary {
+    border-radius: 999px !important;
+    font-weight: 750;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), #ffffff);
+    backdrop-filter: blur(8px);
+    z-index: 2;
+  }
+
+  .actions .btn-submit {
+    border-radius: 999px;
+  }
+
+  .actions .btn-cancel {
+    border-radius: 999px;
   }
 }

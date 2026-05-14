@@ -147,7 +147,9 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
           )}
         </div>
         {/* Nút hành động ẩn (chỉ hiện khi hover card cha bên CSS) */}
-        <div className="hover-action">Chi tiết &rarr;</div>
+        <div className="hover-action" aria-hidden="true">
+          Xem chi tiết →
+        </div>
       </div>
     </div>
   );

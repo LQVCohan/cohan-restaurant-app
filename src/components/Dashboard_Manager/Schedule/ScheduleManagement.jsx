@@ -72,7 +72,46 @@ const SCHEDULE_STATUS_LABELS = {
   revision_draft: "Đang chỉnh sửa lại",
   closed: "Đã đóng",
 };
+const ScheduleLegend = () => {
+  const roles = [
+    { label: "Phục vụ", className: "job-blue" },
+    { label: "Bếp", className: "job-indigo" },
+    { label: "Thu ngân", className: "job-teal" },
+    { label: "Pha chế", className: "job-pink" },
+    { label: "Đón khách", className: "job-orange" },
+    { label: "Vệ sinh / Kho", className: "job-gray" },
+  ];
 
+  return (
+    <div className="schedule-legend" aria-label="Chú giải lịch làm việc">
+      <div className="legend-group">
+        <span className="legend-title">Trạng thái</span>
+        <span className="legend-item">
+          <span className="status-dot success" />
+          Đủ người
+        </span>
+        <span className="legend-item">
+          <span className="status-dot danger" />
+          Thiếu người
+        </span>
+        <span className="legend-item">
+          <span className="status-dot warning" />
+          Cần xử lý
+        </span>
+      </div>
+
+      <div className="legend-group">
+        <span className="legend-title">Vai trò</span>
+        {roles.map((role) => (
+          <span key={role.label} className="legend-item">
+            <span className={`job-dot ${role.className}`} />
+            {role.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
 const GET_SCHEDULE_PUBLICATION = gql`
   query SchedulePublication(
     $restaurantId: ID!
@@ -644,14 +683,29 @@ const PREVIEW_AUTO_SCHEDULE = gql`
         employeeId
         employeeName
         score
-        validationIssues { code severity message suggestedAction }
-        warnings { code severity message suggestedAction }
+        validationIssues {
+          code
+          severity
+          message
+          suggestedAction
+        }
+        warnings {
+          code
+          severity
+          message
+          suggestedAction
+        }
       }
       blockedCandidates {
         shiftKey
         employeeId
         requiredRole
-        issues { code severity message suggestedAction }
+        issues {
+          code
+          severity
+          message
+          suggestedAction
+        }
       }
       unfilledRoles {
         shiftKey
@@ -661,8 +715,18 @@ const PREVIEW_AUTO_SCHEDULE = gql`
         requiredRole
         reason
       }
-      validationIssues { code severity message suggestedAction }
-      warnings { code severity message suggestedAction }
+      validationIssues {
+        code
+        severity
+        message
+        suggestedAction
+      }
+      warnings {
+        code
+        severity
+        message
+        suggestedAction
+      }
     }
   }
 `;
@@ -672,8 +736,23 @@ const APPLY_AUTO_SCHEDULE = gql`
     applyAutoSchedule(input: $input) {
       successCount
       failedCount
-      shifts { id employeeId employeeName restaurantId shiftType startTime endTime status notes }
-      errors { index employeeId message code }
+      shifts {
+        id
+        employeeId
+        employeeName
+        restaurantId
+        shiftType
+        startTime
+        endTime
+        status
+        notes
+      }
+      errors {
+        index
+        employeeId
+        message
+        code
+      }
     }
   }
 `;
@@ -1276,7 +1355,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
   const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] =
     useState(false);
-  const [isAvailabilitySnapshotOpen, setIsAvailabilitySnapshotOpen] = useState(false);
+  const [isAvailabilitySnapshotOpen, setIsAvailabilitySnapshotOpen] =
+    useState(false);
   const lastAvailabilityTargetPublicationKeyRef = useRef("");
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
@@ -3596,7 +3676,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
         : [],
       unfilledRoles: item.employeeId
         ? []
-        : [{ role: item.requiredRole || item.shiftType, reason: "NO_ELIGIBLE_CANDIDATE" }],
+        : [
+            {
+              role: item.requiredRole || item.shiftType,
+              reason: "NO_ELIGIBLE_CANDIDATE",
+            },
+          ],
       blockedCandidates: (payload?.blockedCandidates || []).filter(
         (row) => row.shiftKey === item.shiftKey,
       ),
@@ -3649,7 +3734,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
             periodEnd: analysisEnd.toISOString(),
             requiredRoles: autoScheduleConfig.requiredRoles,
             weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
-            respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
+            respectAvailability: Boolean(
+              autoScheduleConfig.respectAvailability,
+            ),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
           },
@@ -3659,9 +3746,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
         backendResult?.data?.previewAutoSchedule,
       );
       setValidatedAutoSchedulePreview(nextValidatedPreview);
-      const readyCount = Number(nextValidatedPreview?.summary?.recommendedAssignments || 0);
-      const warningCount = Number(nextValidatedPreview?.summary?.warningAssignments || 0);
-      const blockedCount = Number(nextValidatedPreview?.summary?.blockedAssignments || 0);
+      const readyCount = Number(
+        nextValidatedPreview?.summary?.recommendedAssignments || 0,
+      );
+      const warningCount = Number(
+        nextValidatedPreview?.summary?.warningAssignments || 0,
+      );
+      const blockedCount = Number(
+        nextValidatedPreview?.summary?.blockedAssignments || 0,
+      );
       showNotification(
         readyCount <= 0
           ? "Đã tạo preview nhưng chưa có phân công nào đủ điều kiện áp dụng."
@@ -3669,7 +3762,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
         readyCount <= 0 || warningCount > 0 ? "warning" : "success",
       );
       return;
-
     } catch (error) {
       const message =
         error?.message || "Không thể tạo preview chia ca tự động.";
@@ -3847,10 +3939,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
           input: {
             restaurantId: effectiveRestaurantId,
             periodStart: autoSchedulePreview.items?.[0]?.startTime,
-            periodEnd: autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]?.endTime,
+            periodEnd:
+              autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]
+                ?.endTime,
             requiredRoles: autoScheduleConfig.requiredRoles,
             weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
-            respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
+            respectAvailability: Boolean(
+              autoScheduleConfig.respectAvailability,
+            ),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
             allowPartialApply: true,
@@ -3858,25 +3954,38 @@ const ScheduleManagement = ({ readOnly = false }) => {
           },
         },
       });
-      const batchResult = response?.data?.applyAutoSchedule || { successCount: 0, failedCount: 0, errors: [] };
+      const batchResult = response?.data?.applyAutoSchedule || {
+        successCount: 0,
+        failedCount: 0,
+        errors: [],
+      };
       const successCount = Number(batchResult.successCount || 0);
       if (successCount > 0) {
         await refetch();
         setIsAutoScheduleOpen(false);
         setSelectedAutoShiftKeys({});
         setValidatedAutoSchedulePreview(null);
-        showNotification(`Đã áp dụng ${successCount} phân công từ chia ca tự động.`, batchResult.failedCount ? "warning" : "success");
+        showNotification(
+          `Đã áp dụng ${successCount} phân công từ chia ca tự động.`,
+          batchResult.failedCount ? "warning" : "success",
+        );
         return;
       }
 
       const message =
-        (batchResult.errors || []).map((error) => error.message).filter(Boolean).join(" | ") ||
+        (batchResult.errors || [])
+          .map((error) => error.message)
+          .filter(Boolean)
+          .join(" | ") ||
         "Không có ca hợp lệ nào được áp dụng. Vui lòng kiểm tra lại preview.";
       setAutoScheduleError(message);
       showNotification(message, "warning");
       return;
     } catch (error) {
-      const message = getGraphQLErrorMessage(error, "Không thể áp dụng chia ca tự động.");
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể áp dụng chia ca tự động.",
+      );
       setAutoScheduleError(message);
       showNotification(message, "error");
     } finally {
@@ -4390,12 +4499,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
             closingAvailabilityWindow
           }
           error={
-          managerAvailabilityWindowsError ||
-          managerAvailabilitySubmissionsError ||
-          availabilityWindowsState.error ||
-          availabilitySubmissionsState.error ||
-          null
-        }
+            managerAvailabilityWindowsError ||
+            managerAvailabilitySubmissionsError ||
+            availabilityWindowsState.error ||
+            availabilitySubmissionsState.error ||
+            null
+          }
           onCreateWindow={handleCreateOrOpenAvailabilityWindow}
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
@@ -4542,6 +4651,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </div>
         </section>
       ) : null}
+
+      <ScheduleLegend />
 
       {!effectiveRestaurantId ? (
         <div className="schedule-empty-state">
@@ -4768,11 +4879,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
         weekStart={currentWeekStart}
         weekEnd={currentWeekEnd}
         staffList={staff}
-        availabilityWindows={managerAvailabilityWindowsData?.availabilityWindows || []}
+        availabilityWindows={
+          managerAvailabilityWindowsData?.availabilityWindows || []
+        }
         availabilitySubmissions={managerScheduleWeekSubmissions}
         shiftTemplates={schedulingPolicy?.shiftTemplates}
         shiftRules={configuredShiftTypes}
-        loading={availabilityWindowsState.loading || availabilitySubmissionsState.loading}
+        loading={
+          availabilityWindowsState.loading ||
+          availabilitySubmissionsState.loading
+        }
         error={
           managerAvailabilityWindowsError ||
           managerAvailabilitySubmissionsError ||

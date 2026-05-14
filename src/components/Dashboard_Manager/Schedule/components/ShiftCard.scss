@@ -285,3 +285,36 @@
     opacity: 0.5;
   }
 }
+/* Professional card polish */
+.shift-card {
+  border-radius: 14px;
+  padding: 0.78rem;
+}
+
+.shift-card .time-badge {
+  border-radius: 999px !important;
+}
+
+.shift-card .staff-summary {
+  margin-top: 0.1rem;
+}
+
+.shift-card .staff-coverage {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.shift-card .staff-coverage.text-good {
+  background: #ecfdf5;
+}
+
+.shift-card .staff-coverage.text-danger {
+  background: #fef2f2;
+}
+
+.shift-card .hover-action {
+  opacity: 1;
+  transform: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
