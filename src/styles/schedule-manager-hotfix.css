@@ -1,0 +1,112 @@
+/* =========================================================
+   SCHEDULE MANAGER HOTFIX
+   Loaded last. This file targets legacy/raw schedule blocks that
+   do not yet expose semantic class names.
+   ========================================================= */
+
+/* The declined-acknowledgement block currently renders as a raw panel
+   between the header and toolbar. Until JSX is refactored, force it to
+   read as a compact manager action card. */
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) {
+  position: relative !important;
+  margin: 0.75rem 1.35rem 0 !important;
+  padding: 0.9rem 1rem 0.95rem 3.2rem !important;
+  min-height: auto !important;
+  max-height: 168px !important;
+  overflow: hidden !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 1.45rem 1.35rem, rgba(249, 115, 22, 0.2), transparent 1.6rem),
+    linear-gradient(135deg, #fff7ed 0%, #ffffff 58%, #ffffff 100%) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.055) !important;
+  color: #334155 !important;
+  font-size: 0.83rem !important;
+  line-height: 1.42 !important;
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel)::before {
+  content: "!";
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #ea580c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.25rem;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0), #ffffff 72%);
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) > :first-child {
+  margin-top: 0 !important;
+  color: #7c2d12 !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.015em;
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) p,
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) div,
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) span {
+  font-size: 0.82rem !important;
+  line-height: 1.42 !important;
+}
+
+/* Hide technical IDs and low-level helper text in the main manager view. */
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) small,
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) code,
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) pre {
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) button {
+  position: relative !important;
+  z-index: 2 !important;
+  min-height: 2.35rem !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #9a3412 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  padding: 0 0.95rem !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+}
+
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) button:hover:not(:disabled) {
+  background: #ea580c !important;
+  border-color: #ea580c !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+/* Make technical raw lines less visually dominant if they still remain. */
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) [class*="id"],
+.manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) [class*="meta"] {
+  opacity: 0.45 !important;
+  font-size: 0.72rem !important;
+}
+
+@media (max-width: 768px) {
+  .manager-page-shell--schedules .schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+    max-height: 220px !important;
+  }
+}
