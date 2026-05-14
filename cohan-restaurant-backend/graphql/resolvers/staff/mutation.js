@@ -76,6 +76,10 @@ import {
 } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
+import {
+  batchMarkPayrollPaid as batchMarkPayrollPaidService,
+  markPayrollItemPaid as markPayrollItemPaidService,
+} from "../../../src/services/payroll/payrollPayment.service.js";
 import { getPayrollPolicyForDate } from "../../../src/config/payrollPolicy.vn.js";
 import {
   mapSchedulePublicationOutput,
@@ -3116,47 +3120,86 @@ const mutationResolvers = {
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
     await requireRestaurantAccess(ctx, period.restaurantId);
-    if (!["locked", "paid"].includes(period.status)) {
-      throw new Error("Chỉ có thể thanh toán kỳ lương đã khóa.");
+    if (period.status === "draft") throw new Error("PAYROLL_PERIOD_NOT_FINALIZED");
+    if (period.status === "locked") throw new Error("PAYROLL_PERIOD_LOCKED");
+
+    let targetEmployeeIds = Array.isArray(employeeIds) ? employeeIds.filter(Boolean) : [];
+    if (!targetEmployeeIds.length) {
+      const unpaidItems = await PayrollItem.find({
+        periodId: period._id,
+        status: { $ne: "paid" },
+      })
+        .select({ employeeId: 1 })
+        .lean();
+      targetEmployeeIds = unpaidItems.map((item) => String(item.employeeId));
     }
 
-    const query = { periodId: period._id };
-    if (Array.isArray(employeeIds) && employeeIds.length) {
-      query.employeeId = {
-        $in: employeeIds.map((id) => payrollToObjectId(id)).filter(Boolean),
-      };
-    }
-
-    await PayrollItem.updateMany(query, {
-      $set: {
-        status: "paid",
-        paidAt: new Date(),
-        paidBy: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
-      },
+    const result = await batchMarkPayrollPaidService({
+      input: { periodId, employeeIds: targetEmployeeIds },
+      actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
     });
-    const remain = await PayrollItem.countDocuments({
-      periodId: period._id,
-      status: { $ne: "paid" },
-    });
-    if (remain === 0) {
-      period.status = "paid";
-      period.paidAt = new Date();
-      period.paidBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
-      await period.save();
+    if (result.failedCount > 0) {
+      const firstError = result.errors?.[0];
+      throw new Error(
+        firstError?.code || "PAYROLL_BATCH_MARK_PAID_PARTIAL_FAILED",
+      );
     }
     const detail = await getPeriodDetail(periodId);
-    await PayrollPeriod.findByIdAndUpdate(period._id, {
-      $set: { statsSnapshot: detail.stats },
-    });
     await logPayrollEvent({
       ctx,
       restaurantId: period.restaurantId,
       verb: "payroll.period.markPaid",
       objectKind: "PayrollPeriod",
       objectId: period._id,
-      meta: { employeeIds },
+      meta: { employeeIds: targetEmployeeIds },
     });
     return detail.period;
+  },
+
+  markPayrollItemPaid: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.period.markPaid");
+    const period = await PayrollPeriod.findById(input.periodId);
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    const item = await markPayrollItemPaidService({
+      input,
+      actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+    });
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.item.markPaid",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      meta: { employeeId: input.employeeId, amount: input.amount || null },
+    });
+    return item;
+  },
+
+  batchMarkPayrollPaid: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.period.markPaid");
+    const period = await PayrollPeriod.findById(input.periodId);
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    const result = await batchMarkPayrollPaidService({
+      input,
+      actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+    });
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.batch.markPaid",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      meta: {
+        requestedCount: input.employeeIds?.length || 0,
+        successCount: result.successCount,
+        failedCount: result.failedCount,
+      },
+    });
+    return result;
   },
 
   updatePayrollSettings: async (_, { input }, ctx) => {
