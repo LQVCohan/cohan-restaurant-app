@@ -35,7 +35,7 @@ import * as printSetting from "./printSetting/index.js";
 import search from "./search/index.js";
 import communication from "./communication/index.js";
 import availability from "./availability/index.js";
-
+import auditLog from "./audit_log/index.js";
 export default {
   ...baseResolvers,
 
@@ -72,6 +72,7 @@ export default {
     ...(printSetting.Query || {}),
     ...(communication.Query || {}),
     ...(availability.Query || {}),
+    ...(auditLog.Query || {}),
   },
 
   Mutation: {
@@ -139,4 +140,5 @@ export default {
   ...(attendanceOvertime.StaffAttendanceRecord
     ? { StaffAttendanceRecord: attendanceOvertime.StaffAttendanceRecord }
     : {}),
+  ...(auditLog.AuditLog ? { AuditLog: auditLog.AuditLog } : {}),
 };

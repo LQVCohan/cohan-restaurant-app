@@ -43,7 +43,9 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
     rawOrderCounter !== undefined &&
     Number.isFinite(Number(rawOrderCounter));
   const soldCount = hasSoldCount ? Number(rawOrderCounter) : null;
-  const variants = Array.isArray(item.servingVariants) ? item.servingVariants : [];
+  const variants = Array.isArray(item.servingVariants)
+    ? item.servingVariants
+    : [];
   const visibleMethods = variants.slice(0, 3);
   const remainingCount = Math.max(0, variants.length - 3);
   const statusMeta = STATUS_META[item?.status] || STATUS_META.unavailable;
@@ -79,7 +81,7 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
   };
 
   return (
-    <div className="menu-item-card" onClick={onEdit}>
+    <div className="menu-item-card" onClick={onEdit || undefined}>
       <div className="card-image-wrapper">
         {renderImage()}
         <div className="badge-wrapper">{renderStatusBadge()}</div>
@@ -115,7 +117,9 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
             {variants.length === 0 ? (
               <div className="variant-row single">
                 <span>Giá cơ bản</span>
-                <span className="price">{formatPrice(item.basePrice || 0)}</span>
+                <span className="price">
+                  {formatPrice(item.basePrice || 0)}
+                </span>
               </div>
             ) : (
               visibleMethods.map((m) => (
@@ -137,29 +141,37 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
         </div>
       </div>
 
-      <div className="card-actions">
-        <button
-          className="action-btn edit"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit?.();
-          }}
-          title="Chỉnh sửa món & biến thể"
-        >
-          <Edit3 size={16} /> <span>Chỉnh sửa</span>
-        </button>
-        <div className="divider"></div>
-        <button
-          className="action-btn delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete?.();
-          }}
-          title="Xóa món ăn"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+      {(onEdit || onDelete) && (
+        <div className="card-actions">
+          {onEdit && (
+            <button
+              className="action-btn edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.();
+              }}
+              title="Chỉnh sửa món & biến thể"
+            >
+              <Edit3 size={16} /> <span>Chỉnh sửa</span>
+            </button>
+          )}
+
+          {onEdit && onDelete && <div className="divider"></div>}
+
+          {onDelete && (
+            <button
+              className="action-btn delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              title="Xóa món ăn"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

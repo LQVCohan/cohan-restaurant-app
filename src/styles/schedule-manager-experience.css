@@ -158,30 +158,31 @@
   font-weight: 850;
 }
 
-/* Availability panel: keep it useful, but do not let it dominate the calendar */
+/* Availability panel: compact manager card, no inner scroll trap */
 .manager-page-shell--schedules .schedule-availability-panel {
   margin: 0.85rem 1.35rem 0 !important;
   border-radius: 18px !important;
   border: 1px solid rgba(226, 232, 240, 0.92) !important;
   background: rgba(255,255,255,0.96) !important;
   box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 14px 32px rgba(15,23,42,0.045) !important;
-  max-height: 235px;
-  overflow: auto;
-  transition: max-height 0.22s ease, box-shadow 0.22s ease;
+  max-height: none !important;
+  overflow: visible !important;
+  transition: box-shadow 0.22s ease;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel:hover,
 .manager-page-shell--schedules .schedule-availability-panel:focus-within {
-  max-height: 72vh;
-  box-shadow: 0 18px 50px rgba(15,23,42,0.09) !important;
+  max-height: none !important;
+  overflow: visible !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 14px 32px rgba(15,23,42,0.045) !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: rgba(255,255,255,0.98);
-  backdrop-filter: blur(10px);
+  position: relative;
+  top: auto;
+  z-index: 1;
+  background: transparent;
+  backdrop-filter: none;
   padding-bottom: 0.65rem;
   border-bottom: 1px solid #eef2f7;
 }
@@ -195,15 +196,36 @@
   line-height: 1.35;
 }
 
-.manager-page-shell--schedules .schedule-availability-panel__summary,
-.manager-page-shell--schedules .metrics-grid {
+.manager-page-shell--schedules .schedule-availability-panel__summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 0.55rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary > div:nth-child(n + 4) {
+  display: none !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__summary > div,
 .manager-page-shell--schedules .metrics-grid > span {
   border-radius: 13px !important;
   background: #f8fafc !important;
+}
+
+/* Hide secondary availability explanation on the main schedule page. Details stay behind action buttons/modals. */
+.manager-page-shell--schedules .schedule-availability-panel__summary ~ .schedule-availability-panel__empty,
+.manager-page-shell--schedules .schedule-availability-panel__summary ~ .schedule-availability-panel__submissions,
+.manager-page-shell--schedules .schedule-availability-panel__summary ~ .schedule-availability-panel__hint {
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions {
+  margin-top: 0.7rem !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+.manager-page-shell--schedules .metrics-grid {
+  gap: 0.55rem !important;
 }
 
 /* Detailed stats: useful for report, but visually contained */
@@ -339,9 +361,12 @@
 }
 
 @media (max-width: 1100px) {
-  .manager-page-shell--schedules .schedule-availability-panel,
   .manager-page-shell--schedules .schedule-insights-panel {
-    max-height: 280px;
+    max-height: 220px;
+  }
+
+  .manager-page-shell--schedules .schedule-availability-panel__summary {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -361,8 +386,132 @@
     margin-right: 1rem !important;
   }
 
-  .manager-page-shell--schedules .schedule-availability-panel,
   .manager-page-shell--schedules .schedule-insights-panel {
-    max-height: 55vh;
+    max-height: 220px;
+  }
+}
+
+/* =========================================================
+   MANAGER ACTION CENTER POLISH
+   Keep schedule page focused on decision-making, not debug text.
+   ========================================================= */
+
+.manager-page-shell--schedules .schedule-feedback {
+  position: relative;
+  max-height: none !important;
+  overflow: visible !important;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem 1rem;
+  padding: 0.9rem 1rem 0.9rem 3.2rem !important;
+  border-color: #fed7aa !important;
+  background:
+    radial-gradient(circle at 1.4rem 1.4rem, rgba(249, 115, 22, 0.18), transparent 1.6rem),
+    linear-gradient(135deg, #fff7ed 0%, #ffffff 58%, #ffffff 100%) !important;
+}
+
+.manager-page-shell--schedules .schedule-feedback::before {
+  content: "!";
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #ea580c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.manager-page-shell--schedules .schedule-feedback h3,
+.manager-page-shell--schedules .schedule-feedback h4,
+.manager-page-shell--schedules .schedule-feedback > strong:first-child,
+.manager-page-shell--schedules .schedule-feedback > b:first-child {
+  margin: 0 0 0.28rem !important;
+  color: #7c2d12 !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.015em;
+}
+
+.manager-page-shell--schedules .schedule-feedback p,
+.manager-page-shell--schedules .schedule-feedback div {
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.42;
+}
+
+.manager-page-shell--schedules .schedule-feedback small,
+.manager-page-shell--schedules .schedule-feedback code,
+.manager-page-shell--schedules .schedule-feedback pre {
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-feedback button {
+  min-height: 2.35rem;
+  border: 1px solid #fed7aa !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #9a3412 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  padding: 0 0.95rem !important;
+  white-space: nowrap;
+}
+
+.manager-page-shell--schedules .schedule-feedback button:hover:not(:disabled) {
+  background: #ea580c !important;
+  border-color: #ea580c !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+/* Make week navigation icons visible and intentional. */
+.manager-page-shell--schedules .date-navigation .nav-btn,
+.manager-page-shell--schedules .schedule-toolbar .date-navigation .nav-btn {
+  background: #ffffff !important;
+  border-color: #dbe3ef !important;
+  color: #475569 !important;
+}
+
+.manager-page-shell--schedules .date-navigation .nav-btn svg,
+.manager-page-shell--schedules .schedule-toolbar .date-navigation .nav-btn svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  color: currentColor !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+}
+
+.manager-page-shell--schedules .date-navigation .nav-btn:hover,
+.manager-page-shell--schedules .schedule-toolbar .date-navigation .nav-btn:hover {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+  color: #4338ca !important;
+}
+
+/* Keep the availability summary short on desktop so the calendar stays visible. */
+.manager-page-shell--schedules .schedule-availability-panel {
+  padding-bottom: 0.85rem;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions button {
+  border-radius: 999px !important;
+  font-weight: 850 !important;
+}
+
+@media (max-width: 768px) {
+  .manager-page-shell--schedules .schedule-feedback {
+    grid-template-columns: 1fr;
+    padding-left: 3.2rem !important;
+  }
+
+  .manager-page-shell--schedules .schedule-feedback button {
+    width: 100%;
   }
 }

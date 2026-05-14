@@ -216,11 +216,14 @@ $cms-radius: 12px;
     cursor: pointer;
     position: relative;
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.06);
 
     &:hover {
       transform: translateY(-3px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      box-shadow:
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
         0 4px 6px -2px rgba(0, 0, 0, 0.05);
       border-color: $cms-slate-300;
       .cms-toolbar {
@@ -232,7 +235,8 @@ $cms-radius: 12px;
 
     &.cms-active {
       border-color: $cms-indigo-600;
-      box-shadow: 0 0 0 2px $cms-indigo-100,
+      box-shadow:
+        0 0 0 2px $cms-indigo-100,
         0 10px 15px -3px rgba($cms-indigo-600, 0.15);
       background: $cms-white;
 
@@ -443,6 +447,17 @@ $cms-radius: 12px;
         }
         span {
           white-space: nowrap;
+        }
+        &.is-disabled,
+        &:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          pointer-events: auto;
+
+          &:hover {
+            background: transparent;
+            color: $cms-slate-500;
+          }
         }
       }
       .cms-div {

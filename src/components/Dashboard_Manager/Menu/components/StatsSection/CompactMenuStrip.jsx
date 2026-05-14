@@ -57,6 +57,7 @@ const CompactMenuStrip = ({
   onEditMenu,
   onDeleteMenu,
   onToggleMenuActive,
+  onCopyMenu,
   activeMenuId,
   onSelectMenu,
 }) => {
@@ -66,6 +67,9 @@ const CompactMenuStrip = ({
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const canDeleteMenu = typeof onDeleteMenu === "function";
   const canToggleMenuActive = typeof onToggleMenuActive === "function";
+  const canAddMenu = typeof onAddMenu === "function";
+  const canEditMenu = typeof onEditMenu === "function";
+  const canCopyMenu = typeof onCopyMenu === "function";
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
       const firstId = menus[0].id;
@@ -133,9 +137,11 @@ const CompactMenuStrip = ({
                   <FiChevronRight />
                 </button>
               </div>
-              <button className="cms-btn-add" onClick={() => onAddMenu?.()}>
-                <FiPlus /> <span className="text">Tạo thực đơn</span>
-              </button>
+              {canAddMenu && (
+                <button className="cms-btn-add" onClick={() => onAddMenu()}>
+                  <FiPlus /> <span className="text">Tạo thực đơn</span>
+                </button>
+              )}
             </>
           )}
 
@@ -244,17 +250,21 @@ const CompactMenuStrip = ({
                     </div>
 
                     <div className="cms-toolbar">
-                      <button
-                        className="cms-tool-btn is-edit"
-                        title="Chỉnh sửa thực đơn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditMenu?.(menu);
-                        }}
-                      >
-                        <FiEdit3 /> <span>Sửa</span>
-                      </button>
-                      <div className="cms-div"></div>
+                      {canEditMenu && (
+                        <>
+                          <button
+                            className="cms-tool-btn is-edit"
+                            title="Chỉnh sửa thực đơn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditMenu(menu);
+                            }}
+                          >
+                            <FiEdit3 /> <span>Sửa</span>
+                          </button>
+                          <div className="cms-div"></div>
+                        </>
+                      )}
 
                       {canToggleMenuActive && (
                         <button
@@ -276,13 +286,18 @@ const CompactMenuStrip = ({
                         </button>
                       )}
 
-                      <button
-                        className="cms-tool-btn"
-                        title="Sao chép thực đơn"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <FiCopy />
-                      </button>
+                      {canCopyMenu && (
+                        <button
+                          className="cms-tool-btn"
+                          title="Sao chép thực đơn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCopyMenu(menu);
+                          }}
+                        >
+                          <FiCopy />
+                        </button>
+                      )}
                       {canDeleteMenu && (
                         <button
                           className="cms-tool-btn is-delete"
@@ -300,8 +315,8 @@ const CompactMenuStrip = ({
                 );
               })}
 
-            {!menusLoading && (
-              <div className="cms-card cms-ghost" onClick={() => onAddMenu?.()}>
+            {!menusLoading && canAddMenu && (
+              <div className="cms-card cms-ghost" onClick={() => onAddMenu()}>
                 <div className="cms-ghost-inner">
                   <div className="cms-ghost-circle">
                     <FiPlus size={24} />

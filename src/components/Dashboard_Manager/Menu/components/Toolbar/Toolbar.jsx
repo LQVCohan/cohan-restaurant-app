@@ -137,22 +137,28 @@ const Toolbar = ({
             </button>
           </div>
 
-          <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
-            <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
-          </button>
+          {onBulkPriceEdit && (
+            <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
+              <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
+            </button>
+          )}
           {onCreatePromotion && (
             <button className="btn btn-secondary" onClick={onCreatePromotion}>
               <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
             </button>
           )}
           {handleAddDishCategory && (
-            <button className="btn btn-secondary" onClick={handleAddDishCategory}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleAddDishCategory}
+            >
               <FiTag /> <span className="hide-mobile">Danh mục món</span>
             </button>
           )}
           {handleAddMenuGroup && (
             <button className="btn btn-primary" onClick={handleAddMenuGroup}>
-              <FiFolderPlus /> <span className="hide-mobile">Nhóm thực đơn</span>
+              <FiFolderPlus />{" "}
+              <span className="hide-mobile">Nhóm thực đơn</span>
             </button>
           )}
         </div>
@@ -230,14 +236,18 @@ const Toolbar = ({
             type="number"
             placeholder="Thấp nhất"
             value={priceRange.min}
-            onChange={(e) => setPriceRange((p) => ({ ...p, min: e.target.value }))}
+            onChange={(e) =>
+              setPriceRange((p) => ({ ...p, min: e.target.value }))
+            }
           />
           <span className="separator">-</span>
           <input
             type="number"
             placeholder="Cao nhất"
             value={priceRange.max}
-            onChange={(e) => setPriceRange((p) => ({ ...p, max: e.target.value }))}
+            onChange={(e) =>
+              setPriceRange((p) => ({ ...p, max: e.target.value }))
+            }
           />
           <button className="btn-apply" onClick={handlePriceRangeSubmit}>
             Áp dụng
@@ -266,7 +276,8 @@ const Toolbar = ({
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
-              Giá: {formatCurrency(minPrice) || "0"} - {formatCurrency(maxPrice) || "∞"}
+              Giá: {formatCurrency(minPrice) || "0"} -{" "}
+              {formatCurrency(maxPrice) || "∞"}
               <FiX
                 onClick={() => {
                   setPriceRange({ min: "", max: "" });
