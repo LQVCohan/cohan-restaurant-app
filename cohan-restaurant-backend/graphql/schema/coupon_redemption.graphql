@@ -14,8 +14,28 @@ type CouponRedemption {
   metadata: JSON
   coupon: Coupon
 }
+type CouponAnalyticsTopCoupon {
+  couponId: ID!
+  couponCode: String
+  couponName: String
+  usageCount: Int!
+  totalDiscount: Float!
+}
 
+type CouponAnalytics {
+  totalCoupons: Int!
+  activeCoupons: Int!
+  savedCoupons: Int!
+  usedCoupons: Int!
+  totalRedemptions: Int!
+  totalDiscountAmount: Float!
+  usageRate: Float!
+  expiringSoon: Int!
+  nearUsageLimit: Int!
+  topCoupons: [CouponAnalyticsTopCoupon!]!
+}
 extend type Query {
+  couponAnalyticsByRestaurant(restaurantId: ID!): CouponAnalytics!
   myCouponRedemptions(restaurantId: ID, couponId: ID): [CouponRedemption!]!
   couponRedemptionsByRestaurant(
     restaurantId: ID!

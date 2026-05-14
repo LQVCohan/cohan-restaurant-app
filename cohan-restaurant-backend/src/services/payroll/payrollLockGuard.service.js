@@ -54,3 +54,21 @@ export function assertPayrollPeriodEditable(period) {
     throw new Error("Không thể tính lại hoặc ghi đè dữ liệu vì kỳ lương đã được chốt.");
   }
 }
+
+
+export function assertPayrollPeriodCanMarkPaid(period) {
+  if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+  const status = String(period.status || "draft");
+  if (status === "draft") throw new Error("PAYROLL_PERIOD_NOT_FINALIZED");
+  if (status === "locked") throw new Error("PAYROLL_PERIOD_LOCKED");
+  if (!["finalized", "paid"].includes(status)) {
+    throw new Error("PAYROLL_PERIOD_NOT_PAYABLE");
+  }
+}
+
+export function assertPayrollPeriodAllowsManualItemEdit(period) {
+  if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+  if (["paid", "locked"].includes(String(period.status || ""))) {
+    throw new Error("PAYROLL_ITEM_EDIT_LOCKED");
+  }
+}

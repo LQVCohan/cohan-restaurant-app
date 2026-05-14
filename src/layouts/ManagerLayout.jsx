@@ -18,6 +18,7 @@ import StorageManagement from "../components/Dashboard_Manager/Storage/StorageMa
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
+import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByRole, isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
@@ -45,6 +46,7 @@ const VALID_MANAGER_PAGES = new Set([
   "reviews",
   "print-management",
   "restaurant-info-management",
+  "rbac",
 ]);
 
 const resolveInitialManagerPage = () => {
@@ -80,6 +82,7 @@ const MANAGER_PAGE_ROLE_ACCESS = {
   setting: ["admin"],
   backup: ["admin"],
   "print-management": ["admin", "manager"],
+  rbac: ["admin", "manager"],
 };
 
 const PAGE_CONFIG = {
@@ -184,6 +187,12 @@ const PAGE_CONFIG = {
     description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ",
     icon: "🏪",
     keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"],
+  },
+  rbac: {
+    title: "Phân quyền nhân viên",
+    description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên",
+    icon: "🛡️",
+    keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"],
   },
   settings: {
     title: "Cài đặt",
@@ -339,6 +348,8 @@ const ManagerLayout = () => {
         return <PrintManagement />;
       case "restaurant-info-management":
         return <ManagerRestaurantInfoManagement />;
+      case "rbac":
+        return <RbacManagement />;
       default:
         return <div>Content not found</div>;
     }

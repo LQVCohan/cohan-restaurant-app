@@ -207,6 +207,76 @@ export const QUERY_MY_PAYSLIP = gql`
   }
 `;
 
+
+export const QUERY_PAYROLL_PAYSLIP = gql`
+  query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
+    payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
+      remainingAmount
+      canMarkPaid
+      canEdit
+      period { id status startDate endDate paidAt }
+      employee { id name code role department avatar }
+      item {
+        id payrollItemId name code role department netSalary totalIncome totalDeduction status paidAt
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours
+        grossIncome allowance bonus deduction insuranceTotal personalIncomeTax warningMessages
+      }
+      breakdown {
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours
+        grossIncome allowance bonus deduction insuranceTotal personalIncomeTax netSalary
+      }
+      payments { id amount method paidAt note referenceCode }
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PAYMENTS = gql`
+  query PayrollPayments($periodId: ID!, $employeeId: ID) {
+    payrollPayments(periodId: $periodId, employeeId: $employeeId) {
+      id
+      periodId
+      employeeId
+      payrollItemId
+      amount
+      method
+      paidAt
+      note
+      referenceCode
+      createdBy
+      createdAt
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_EXPORT_ROWS = gql`
+  query PayrollExportRows($periodId: ID!) {
+    payrollExportRows(periodId: $periodId) {
+      employeeId
+      employeeCode
+      employeeName
+      department
+      role
+      baseSalary
+      actualWorkDays
+      totalHours
+      overtimeNormalHours
+      overtimeWeekendHours
+      overtimeHolidayHours
+      nightHours
+      grossIncome
+      allowance
+      bonus
+      deduction
+      insuranceTotal
+      personalIncomeTax
+      netSalary
+      paidAmount
+      remainingAmount
+      status
+    }
+  }
+`;
+
 export const QUERY_PAYROLL_CONTEXT = gql`
   query PayrollContextMe {
     me {
@@ -350,6 +420,30 @@ export const MUT_MARK_PAID = gql`
   }
 `;
 
+
+export const MUT_MARK_PAYROLL_ITEM_PAID = gql`
+  mutation MarkPayrollItemPaid($input: MarkPayrollItemPaidInput!) {
+    markPayrollItemPaid(input: $input) {
+      id
+      payrollItemId
+      status
+      paidAt
+      netSalary
+    }
+  }
+`;
+
+export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
+  mutation BatchMarkPayrollPaid($input: BatchMarkPayrollPaidInput!) {
+    batchMarkPayrollPaid(input: $input) {
+      successCount
+      failedCount
+      items { id payrollItemId status paidAt netSalary }
+      errors { employeeId code message }
+    }
+  }
+`;
+
 export const MUT_UPDATE_SETTINGS = gql`
   mutation UpdatePayrollSettings($input: PayrollSettingsInput!) {
     updatePayrollSettings(input: $input) {
@@ -428,6 +522,21 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
   });
+  const payslipQuery = useQuery(QUERY_PAYROLL_PAYSLIP, {
+    variables: { periodId: effectivePeriodId, employeeId: undefined },
+    skip: true,
+    fetchPolicy: "network-only",
+  });
+  const paymentsQuery = useQuery(QUERY_PAYROLL_PAYMENTS, {
+    variables: { periodId: effectivePeriodId },
+    skip: !effectivePeriodId,
+    fetchPolicy: "cache-and-network",
+  });
+  const exportRowsQuery = useQuery(QUERY_PAYROLL_EXPORT_ROWS, {
+    variables: { periodId: effectivePeriodId },
+    skip: !effectivePeriodId,
+    fetchPolicy: "cache-and-network",
+  });
   const hasSnapshotItems = Boolean(detailQuery.data?.payrollPeriodDetail?.items?.length);
   const canQueryOverviewByRange = Boolean(startDate && endDate);
   const overviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
@@ -448,6 +557,8 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const [finalizePeriod] = useMutation(MUT_FINALIZE_PERIOD);
   const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
   const [markPaid] = useMutation(MUT_MARK_PAID);
+  const [markPayrollItemPaid] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
+  const [batchMarkPayrollPaid] = useMutation(MUT_BATCH_MARK_PAYROLL_PAID);
   const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
   const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
   const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
@@ -482,12 +593,20 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     refetchDetail: detailQuery.refetch,
     refetchSettings: settingsQuery.refetch,
     validationResult: validationQuery.data?.validatePayrollPeriod || null,
+    payrollPayslip: payslipQuery.data?.payrollPayslip || null,
+    payrollPayments: paymentsQuery.data?.payrollPayments || [],
+    payrollExportRows: exportRowsQuery.data?.payrollExportRows || [],
     refetchValidation: validationQuery.refetch,
+    refetchPayrollPayslip: payslipQuery.refetch,
+    refetchPayrollPayments: paymentsQuery.refetch,
+    refetchPayrollExportRows: exportRowsQuery.refetch,
     createPeriod,
     recalculatePeriod,
     finalizePeriod,
     lockPeriod,
     markPaid,
+    markPayrollItemPaid,
+    batchMarkPayrollPaid,
     updateSettings,
     upsertAdjustment,
     deleteAdjustment,
