@@ -2431,6 +2431,12 @@ input StaffReportsInput {
   compareEndDate: DateTime
 }
 
+input AssignStaffRoleInput {
+  staffUserId: ID!
+  roleId: ID!
+  restaurantId: ID!
+}
+
 # =========================
 # Queries
 # =========================
@@ -2694,6 +2700,12 @@ type Mutation {
 
   createStaff(input: CreateUserInput!): User!
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
+  assignStaffRole(input: AssignStaffRoleInput!): User!
+  assignStaffRoleWithinRestaurant(
+    staffUserId: ID!
+    roleId: ID!
+    restaurantId: ID!
+  ): User!
   deleteStaff(userId: ID!): Boolean!
   setStaffEmploymentStatus(
     userId: ID!

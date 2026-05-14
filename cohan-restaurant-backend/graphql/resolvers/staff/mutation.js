@@ -114,6 +114,8 @@ import {
   reverseScoreForAcceptedAppeal as reverseScoreForAcceptedAppealService,
 } from "../../../src/services/performance/performanceAppeal.service.js";
 
+import { assignStaffRoleWithinRestaurant } from "../../../src/services/auth/staffRoleAssignment.service.js";
+
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
@@ -1023,6 +1025,26 @@ function getBatchErrorMessage(error) {
   );
 }
 const mutationResolvers = {
+  assignStaffRole: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return assignStaffRoleWithinRestaurant({
+      actor: ctx.user,
+      staffUserId: input.staffUserId,
+      roleId: input.roleId,
+      restaurantId: input.restaurantId,
+    });
+  },
+
+  assignStaffRoleWithinRestaurant: async (_, args, ctx) => {
+    requireAuth(ctx);
+    return assignStaffRoleWithinRestaurant({
+      actor: ctx.user,
+      staffUserId: args.staffUserId,
+      roleId: args.roleId,
+      restaurantId: args.restaurantId,
+    });
+  },
+
   // =========================
   // CREATE STAFF
   // =========================
