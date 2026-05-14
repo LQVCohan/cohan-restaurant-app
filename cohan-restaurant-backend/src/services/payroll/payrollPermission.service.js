@@ -6,10 +6,10 @@ const ACTION_ROLE_MAP = {
   "payroll.period.recalculate": ["ADMIN", "ACCOUNTANT"],
   "payroll.period.finalize": ["ADMIN", "ACCOUNTANT"],
   "payroll.period.lock": ["ADMIN", "ACCOUNTANT"],
-  "payroll.period.markPaid": ["ADMIN", "ACCOUNTANT"],
+  "payroll.period.markPaid": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
   "payroll.adjustment.write": ["ADMIN", "ACCOUNTANT"],
-  "payroll.payslip.self": ["STAFF", "ADMIN", "ACCOUNTANT"],
-  "payroll.export": ["ADMIN", "ACCOUNTANT", "HR"],
+  "payroll.payslip.self": ["STAFF", "ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
+  "payroll.export": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
 };
 
 export function hasPayrollPermission(ctx, action) {

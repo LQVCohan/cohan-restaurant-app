@@ -968,6 +968,147 @@ type PayrollPeriod {
   stats: PayrollStats!
 }
 
+
+type StaffBasicInfo {
+  id: ID!
+  name: String!
+  code: String
+  role: String
+  department: String
+  avatar: String
+}
+
+type PayrollBreakdown {
+  baseSalary: Float!
+  workDays: Float!
+  actualWorkDays: Float!
+  totalHours: Float!
+  hourlyRate: Float!
+  allowance: Float!
+  bonus: Float!
+  otherAddition: Float!
+  overtime: Float!
+  overtimeNormal: Float!
+  overtimeWeekend: Float!
+  overtimeHoliday: Float!
+  nightShiftExtra: Float!
+  overtimeHours: Float!
+  overtimeNormalHours: Float!
+  overtimeWeekendHours: Float!
+  overtimeHolidayHours: Float!
+  nightHours: Float!
+  overtimeNightHours: Float!
+  deduction: Float!
+  otherDeduction: Float!
+  advance: Float!
+  insuranceSocial: Float!
+  insuranceHealth: Float!
+  insuranceUnemployment: Float!
+  insuranceTotal: Float!
+  insuranceEmployerTotal: Float!
+  personalIncomeTax: Float!
+  grossIncome: Float!
+  coefficient: Float!
+  totalIncome: Float!
+  totalDeduction: Float!
+  netSalary: Float!
+  policyCode: String
+  policyEffectiveFrom: String
+  regionCode: String
+  minimumWageMonthly: Float!
+  minimumWageHourly: Float!
+  minimumWageViolation: Boolean!
+  insuranceEligible: Boolean!
+  lateMinutes: Float!
+  earlyLeaveMinutes: Float!
+  unpaidLeaveDays: Float!
+  paidLeaveDays: Float!
+  scheduleShiftCount: Float!
+  manualAdjustmentTotal: Float!
+}
+
+type PayrollPayment {
+  id: ID!
+  periodId: ID!
+  restaurantId: ID!
+  employeeId: ID!
+  payrollItemId: ID!
+  amount: Float!
+  method: String
+  paidAt: DateTime
+  note: String
+  referenceCode: String
+  createdBy: ID
+  createdAt: DateTime
+}
+
+type PayrollPayslip {
+  period: PayrollPeriod!
+  employee: StaffBasicInfo!
+  item: StaffPayrollItem!
+  breakdown: PayrollBreakdown!
+  payments: [PayrollPayment!]!
+  remainingAmount: Float!
+  canMarkPaid: Boolean!
+  canEdit: Boolean!
+}
+
+type PayrollExportRow {
+  employeeId: ID!
+  employeeCode: String
+  employeeName: String!
+  department: String
+  role: String
+  baseSalary: Float!
+  actualWorkDays: Float!
+  totalHours: Float!
+  overtimeNormalHours: Float!
+  overtimeWeekendHours: Float!
+  overtimeHolidayHours: Float!
+  nightHours: Float!
+  grossIncome: Float!
+  allowance: Float!
+  bonus: Float!
+  deduction: Float!
+  insuranceTotal: Float!
+  personalIncomeTax: Float!
+  netSalary: Float!
+  paidAmount: Float!
+  remainingAmount: Float!
+  status: String!
+}
+
+type PayrollBatchError {
+  employeeId: ID!
+  code: String!
+  message: String!
+}
+
+type BatchPayrollPaymentResult {
+  successCount: Int!
+  failedCount: Int!
+  items: [StaffPayrollItem!]!
+  errors: [PayrollBatchError!]!
+}
+
+input MarkPayrollItemPaidInput {
+  periodId: ID!
+  employeeId: ID!
+  amount: Float
+  method: String
+  paidAt: DateTime
+  note: String
+  referenceCode: String
+}
+
+input BatchMarkPayrollPaidInput {
+  periodId: ID!
+  employeeIds: [ID!]!
+  method: String
+  paidAt: DateTime
+  note: String
+}
+
 type PayrollPeriodDetail {
   period: PayrollPeriod!
   settings: PayrollSettings!
@@ -2519,6 +2660,9 @@ type Query {
   payrollPeriods(restaurantId: ID, limit: Int = 12): [PayrollPeriod!]!
   payrollPeriodDetail(periodId: ID!): PayrollPeriodDetail
   payrollSettings(restaurantId: ID): PayrollSettings
+  payrollPayslip(periodId: ID!, employeeId: ID!): PayrollPayslip!
+  payrollPayments(periodId: ID!, employeeId: ID): [PayrollPayment!]!
+  payrollExportRows(periodId: ID!): [PayrollExportRow!]!
   validatePayrollPeriod(periodId: ID!): PayrollValidationResult!
   myPayslips(limit: Int = 12): [StaffPayrollItem!]!
   myPayslip(periodId: ID!): StaffPayrollItem
@@ -2718,6 +2862,8 @@ type Mutation {
   finalizePayrollPeriod(periodId: ID!): PayrollPeriod!
   lockPayrollPeriod(periodId: ID!): PayrollPeriod!
   markPayrollPeriodPaid(periodId: ID!, employeeIds: [ID!]): PayrollPeriod!
+  markPayrollItemPaid(input: MarkPayrollItemPaidInput!): StaffPayrollItem!
+  batchMarkPayrollPaid(input: BatchMarkPayrollPaidInput!): BatchPayrollPaymentResult!
   updatePayrollSettings(input: PayrollSettingsInput!): PayrollSettings!
   upsertPayrollAdjustment(input: PayrollAdjustmentInput!): StaffPayrollItem!
   deletePayrollAdjustment(
