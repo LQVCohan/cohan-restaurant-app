@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Cart, Warehouse } from "../../models/index.js";
 import { cancelReservationForOrderTx } from "./inventory.service.js";
+import { notifyAvailabilityWatchersForMenuItem } from "./menuAvailabilityWatch.service.js";
 
 const ABUSE_WARN_THRESHOLD = 3;
 const ABUSE_BLOCK_THRESHOLD = 8;
@@ -58,6 +59,25 @@ function buildReleaseEvent(cart, item) {
 function emitInventoryReleased(io, event) {
   if (!io || !event?.restaurantId) return;
   io.to(`restaurant_${event.restaurantId}`).emit("inventoryEvents", event);
+}
+
+async function notifyWatchersAfterRelease(io, event, logger) {
+  if (!event?.restaurantId || !event?.menuItemId) return;
+  try {
+    await notifyAvailabilityWatchersForMenuItem({
+      io,
+      restaurantId: event.restaurantId,
+      menuItemId: event.menuItemId,
+      servingKey: event.servingVariantKey,
+      source: "cart_hold_timeout",
+    });
+  } catch (err) {
+    if (logger?.warn) {
+      logger.warn({ err, event }, "[CartHold Cleanup] Failed to notify menu availability watchers");
+      return;
+    }
+    console.warn("[CartHold Cleanup] Failed to notify menu availability watchers", err?.message || err);
+  }
 }
 
 function logCleanupError(logger, payload) {
@@ -160,7 +180,10 @@ export async function cleanupExpiredCartHolds(io, logger = console) {
         summary.cartsTouched += 1;
         summary.released += cartReleasedCount;
         summary.releasedQuantity += cartReleasedQuantity;
-        for (const event of releaseEvents) emitInventoryReleased(io, event);
+        for (const event of releaseEvents) {
+          emitInventoryReleased(io, event);
+          await notifyWatchersAfterRelease(io, event, logger);
+        }
       }
     } catch (err) {
       summary.failed += 1;
