@@ -1,0 +1,242 @@
+/* =========================================================
+   DECLINED SHIFT REVIEW POLISH
+   Manager review panel for rejected / declined assigned shifts.
+   ========================================================= */
+
+.manager-page-shell--schedules .declined-shift-review-panel {
+  margin: 0.85rem 1.35rem 0 !important;
+  padding: 0.92rem !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22rem),
+    linear-gradient(180deg, #ffffff 0%, #fffaf5 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 16px 36px rgba(15, 23, 42, 0.052) !important;
+}
+
+.manager-page-shell--schedules .declined-shift-review-panel h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  margin: 0 0 0.72rem !important;
+  color: #0f172a !important;
+  font-size: 1rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.manager-page-shell--schedules .declined-shift-review-panel h3::before {
+  content: "!";
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #ea580c;
+  font-size: 0.85rem;
+  font-weight: 950;
+}
+
+.manager-page-shell--schedules .declined-shift-review-panel > p {
+  margin: 0.38rem 0 !important;
+  padding: 0.62rem 0.72rem !important;
+  border-radius: 15px !important;
+  border: 1px dashed #fed7aa !important;
+  background: #fff7ed !important;
+  color: #9a3412 !important;
+  font-size: 0.8rem !important;
+  font-weight: 820 !important;
+  line-height: 1.38 !important;
+}
+
+.manager-page-shell--schedules .declined-shift-review-item {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.46rem 0.72rem !important;
+  margin-top: 0.62rem !important;
+  padding: 0.82rem !important;
+  border-radius: 18px !important;
+  border: 1px solid #fed7aa !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 22px rgba(249, 115, 22, 0.06) !important;
+  overflow: hidden;
+}
+
+.manager-page-shell--schedules .declined-shift-review-item::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f97316;
+}
+
+.manager-page-shell--schedules .declined-shift-review-item > div:not(.decline-action-row):not(.decline-helper-block) {
+  color: #475569 !important;
+  font-size: 0.78rem !important;
+  font-weight: 780 !important;
+  line-height: 1.36 !important;
+}
+
+.manager-page-shell--schedules .declined-shift-review-item strong {
+  color: #0f172a !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .decline-status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 1.45rem !important;
+  border-radius: 999px !important;
+  padding: 0.18rem 0.52rem !important;
+  border: 1px solid #dbe3ef !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.68rem !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.manager-page-shell--schedules .decline-status-badge.valid {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .decline-status-badge.invalid {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+}
+
+.manager-page-shell--schedules .decline-status-badge.unknown {
+  border-color: #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.manager-page-shell--schedules .decline-status-badge.late {
+  border-color: #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .debug-ids {
+  grid-column: 1 / -1 !important;
+  width: max-content;
+  max-width: 100%;
+  padding: 0.2rem 0.48rem !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  font-size: 0.68rem !important;
+  font-weight: 780 !important;
+}
+
+.manager-page-shell--schedules .decline-action-row {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.46rem !important;
+  padding-top: 0.58rem !important;
+  margin-top: 0.12rem !important;
+  border-top: 1px solid #ffedd5 !important;
+}
+
+.manager-page-shell--schedules .decline-action-row button,
+.manager-page-shell--schedules .decline-helper-block button {
+  min-height: 2.16rem !important;
+  border-radius: 999px !important;
+  padding: 0 0.78rem !important;
+  border: 1px solid #fed7aa !important;
+  background: #ffffff !important;
+  color: #c2410c !important;
+  font-size: 0.78rem !important;
+  font-weight: 950 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.manager-page-shell--schedules .decline-action-row button:hover:not(:disabled),
+.manager-page-shell--schedules .decline-helper-block button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #fb923c !important;
+  background: #fff7ed !important;
+}
+
+.manager-page-shell--schedules .decline-action-row button:first-child {
+  border-color: #bbf7d0 !important;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .decline-action-row button:first-child:hover:not(:disabled) {
+  border-color: #10b981 !important;
+  background: #dcfce7 !important;
+}
+
+.manager-page-shell--schedules .decline-action-row button:disabled,
+.manager-page-shell--schedules .decline-helper-block button:disabled {
+  opacity: 0.58 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.manager-page-shell--schedules .decline-helper-block {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  gap: 0.36rem !important;
+  margin-top: 0.2rem !important;
+  padding: 0.66rem 0.72rem !important;
+  border-radius: 15px !important;
+  border: 1px solid #bbf7d0 !important;
+  background: #f0fdf4 !important;
+}
+
+.manager-page-shell--schedules .decline-helper-block small,
+.manager-page-shell--schedules .declined-shift-review-item > small:not(.debug-ids) {
+  grid-column: 1 / -1 !important;
+  color: #64748b !important;
+  font-size: 0.74rem !important;
+  font-weight: 780 !important;
+  line-height: 1.36 !important;
+}
+
+.manager-page-shell--schedules .decline-helper-block button {
+  width: max-content !important;
+  border-color: #a5b4fc !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .decline-inline-error {
+  grid-column: 1 / -1 !important;
+  padding: 0.48rem 0.56rem !important;
+  border-radius: 12px !important;
+  border: 1px solid #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+  font-size: 0.74rem !important;
+  font-weight: 850 !important;
+}
+
+@media (max-width: 900px) {
+  .manager-page-shell--schedules .declined-shift-review-item {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .manager-page-shell--schedules .declined-shift-review-panel {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+    padding: 0.82rem !important;
+  }
+
+  .manager-page-shell--schedules .decline-action-row button,
+  .manager-page-shell--schedules .decline-helper-block button {
+    width: 100% !important;
+  }
+}
