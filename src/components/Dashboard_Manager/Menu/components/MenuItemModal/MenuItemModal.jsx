@@ -3,7 +3,6 @@ import {
   Save,
   Plus,
   Trash2,
-  Image as ImageIcon,
   ChefHat,
   DollarSign,
   Clock,
@@ -12,6 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
+import LocalImagePicker from "../../../../common/LocalImagePicker";
 import "./MenuItemModal.scss";
 
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
@@ -609,26 +609,6 @@ const MenuItemModal = ({
   const isSaving = isSubmitting;
   const isSubmitDisabled = isSaving || isRecipeGuardPending;
 
-  const renderImagePreview = () => {
-    if (formData.thumbImage && !imgError) {
-      return (
-        <div className="img-preview loaded">
-          <img
-            src={formData.thumbImage}
-            alt="Preview"
-            onError={() => setImgError(true)}
-          />
-        </div>
-      );
-    }
-    return (
-      <div className="img-preview placeholder">
-        <ImageIcon size={20} className="icon" />
-        <span>URL Ảnh</span>
-      </div>
-    );
-  };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -708,20 +688,17 @@ const MenuItemModal = ({
             </div>
 
             <div className="form-group">
-              <label>Hình ảnh (URL)</label>
-              <div className="image-input-wrapper">
-                <input
-                  type="text"
-                  className="modern-input"
-                  value={formData.thumbImage}
-                  onChange={(e) =>
-                    handleInputChange("thumbImage", e.target.value)
-                  }
-                  placeholder="https://example.com/image.jpg"
-                  disabled={isSaving}
-                />
-                {renderImagePreview()}
-              </div>
+              <label>Hình ảnh món</label>
+              <LocalImagePicker
+                value={formData.thumbImage || ""}
+                onChange={(value) => handleInputChange("thumbImage", value)}
+                disabled={isSaving}
+                ownerKey={editId || savedMenuItemIdRef.current || restaurantId || "menu-item-draft"}
+                purpose="menu-item-thumb"
+                label="Chọn ảnh món"
+                placeholder="Chưa có ảnh món"
+                helperText="Ảnh sẽ được resize thành bản thumb 320px và preview 960px để tải nhanh, tốn ít bộ nhớ."
+              />
             </div>
 
             <div className="form-group">
