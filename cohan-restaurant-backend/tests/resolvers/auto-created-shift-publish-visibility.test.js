@@ -292,7 +292,20 @@ describe("auto-created shift publish and staff visibility regression", () => {
 
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.Staff.findById.mockImplementation((id) => queryResult(db.staff.find((row) => idOf(row._id) === idOf(id)) || null));
-    modelMocks.Staff.find.mockImplementation(() => queryResult(db.staff));
+    modelMocks.Staff.find.mockImplementation((filter = {}) => {
+      const ids = Array.isArray(filter?._id?.$in)
+        ? filter._id.$in.map(idOf)
+        : [];
+
+      const rows = db.staff
+        .filter((staff) => !ids.length || ids.includes(idOf(staff._id)))
+        .map((staff) => ({
+          ...staff,
+          employmentStatus: staff.employmentStatus || "working",
+        }));
+
+      return queryResult(rows);
+    });
     modelMocks.SchedulePublication.findOne.mockImplementation((filter) => queryResult(publicationForFilter(filter)));
     modelMocks.SchedulePublication.find.mockImplementation((filter) => queryResult(db.publications.filter((publication) => {
       if (filter?.restaurantId && idOf(filter.restaurantId) !== idOf(publication.restaurantId)) return false;
