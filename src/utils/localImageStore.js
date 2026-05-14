@@ -10,6 +10,8 @@ const THUMB_QUALITY = 0.72;
 const PREVIEW_QUALITY = 0.78;
 const WEBP_MIME = "image/webp";
 const JPEG_MIME = "image/jpeg";
+const DEFAULT_MAX_RECORDS = 350;
+const DEFAULT_MAX_TOTAL_BYTES = 90 * 1024 * 1024;
 
 let dbPromise = null;
 let webpSupportPromise = null;
@@ -18,7 +20,9 @@ const isBrowser = () => typeof window !== "undefined" && "indexedDB" in window;
 
 const openLocalMediaDb = () => {
   if (!isBrowser()) {
-    return Promise.reject(new Error("IndexedDB is not available in this environment."));
+    return Promise.reject(
+      new Error("IndexedDB is not available in this environment."),
+    );
   }
 
   if (dbPromise) return dbPromise;
@@ -49,8 +53,10 @@ const openLocalMediaDb = () => {
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Cannot open local media database."));
-    request.onblocked = () => reject(new Error("Local media database is blocked by another tab."));
+    request.onerror = () =>
+      reject(request.error || new Error("Cannot open local media database."));
+    request.onblocked = () =>
+      reject(new Error("Local media database is blocked by another tab."));
   });
 
   return dbPromise;
@@ -64,8 +70,10 @@ const runStore = async (mode, executor) => {
     let result;
 
     tx.oncomplete = () => resolve(result);
-    tx.onerror = () => reject(tx.error || new Error("IndexedDB transaction failed."));
-    tx.onabort = () => reject(tx.error || new Error("IndexedDB transaction aborted."));
+    tx.onerror = () =>
+      reject(tx.error || new Error("IndexedDB transaction failed."));
+    tx.onabort = () =>
+      reject(tx.error || new Error("IndexedDB transaction aborted."));
 
     try {
       result = executor(store);
@@ -82,7 +90,8 @@ const readStore = async (executor) => {
     const store = tx.objectStore(IMAGE_STORE);
 
     tx.onerror = () => reject(tx.error || new Error("IndexedDB read failed."));
-    tx.onabort = () => reject(tx.error || new Error("IndexedDB read aborted."));
+    tx.onabort = () =>
+      reject(tx.error || new Error("IndexedDB read aborted."));
 
     try {
       executor(store, resolve, reject);
@@ -91,6 +100,11 @@ const readStore = async (executor) => {
     }
   });
 };
+
+const getRecordTotalBytes = (record = {}) =>
+  Number(record.thumbSize || record.thumbBlob?.size || 0) +
+  Number(record.previewSize || record.previewBlob?.size || 0) +
+  Number(record.blob?.size || 0);
 
 export const isLocalImageUri = (value) =>
   typeof value === "string" && value.startsWith(LOCAL_IMAGE_PREFIX);
@@ -110,7 +124,9 @@ export const validateImageFile = (file, options = {}) => {
     throw new Error("File được chọn không phải là ảnh.");
   }
   if (file.size > maxSizeBytes) {
-    throw new Error(`Ảnh gốc không được vượt quá ${Math.round(maxSizeBytes / 1024 / 1024)}MB.`);
+    throw new Error(
+      `Ảnh gốc không được vượt quá ${Math.round(maxSizeBytes / 1024 / 1024)}MB.`,
+    );
   }
 };
 
@@ -125,7 +141,7 @@ const supportsWebp = () => {
     canvas.toBlob(
       (blob) => resolve(!!blob && blob.type === WEBP_MIME),
       WEBP_MIME,
-      0.7
+      0.7,
     );
   });
 
@@ -170,7 +186,7 @@ const canvasToBlob = (canvas, mimeType, quality) =>
         else reject(new Error("Không thể nén ảnh."));
       },
       mimeType,
-      quality
+      quality,
     );
   });
 
@@ -231,6 +247,89 @@ export const optimizeImageFile = async (file, options = {}) => {
   }
 };
 
+export const listLocalImages = async ({ purpose, ownerKey } = {}) => {
+  const records = await readStore((store, resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () =>
+      reject(request.error || new Error("Cannot list local images."));
+  });
+
+  return records.filter((record) => {
+    if (purpose && record.purpose !== purpose) return false;
+    if (ownerKey && record.ownerKey !== ownerKey) return false;
+    return true;
+  });
+};
+
+export const deleteLocalImage = async (uriOrId) => {
+  const id = getLocalImageId(uriOrId);
+  if (!id) return;
+  await runStore("readwrite", (store) => store.delete(id));
+};
+
+export const deleteLocalImages = async (uriOrIds = []) => {
+  const ids = Array.from(new Set(uriOrIds.map(getLocalImageId).filter(Boolean)));
+  if (!ids.length) return 0;
+
+  await runStore("readwrite", (store) => {
+    ids.forEach((id) => store.delete(id));
+  });
+
+  return ids.length;
+};
+
+export const pruneLocalImages = async ({
+  maxRecords = DEFAULT_MAX_RECORDS,
+  maxTotalBytes = DEFAULT_MAX_TOTAL_BYTES,
+  keepIds = [],
+  purpose,
+} = {}) => {
+  const keepSet = new Set(keepIds.map(getLocalImageId).filter(Boolean));
+  const records = await listLocalImages({ purpose });
+
+  const sorted = [...records].sort(
+    (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+  );
+
+  let totalBytes = sorted.reduce((sum, record) => sum + getRecordTotalBytes(record), 0);
+  const deleteIds = [];
+  let remainingCount = sorted.length;
+
+  for (const record of sorted) {
+    if (remainingCount <= maxRecords && totalBytes <= maxTotalBytes) break;
+    if (keepSet.has(record.id)) continue;
+
+    deleteIds.push(record.id);
+    totalBytes -= getRecordTotalBytes(record);
+    remainingCount -= 1;
+  }
+
+  await deleteLocalImages(deleteIds);
+  return {
+    deletedCount: deleteIds.length,
+    remainingCount,
+    totalBytes,
+  };
+};
+
+export const deleteStaleLocalImages = async ({
+  olderThanMs = 30 * 24 * 60 * 60 * 1000,
+  purpose,
+  keepIds = [],
+} = {}) => {
+  const keepSet = new Set(keepIds.map(getLocalImageId).filter(Boolean));
+  const cutoff = Date.now() - olderThanMs;
+  const records = await listLocalImages({ purpose });
+  const staleIds = records
+    .filter((record) => !keepSet.has(record.id))
+    .filter((record) => new Date(record.updatedAt || record.createdAt || 0).getTime() < cutoff)
+    .map((record) => record.id);
+
+  await deleteLocalImages(staleIds);
+  return staleIds.length;
+};
+
 export const saveLocalImage = async (file, metadata = {}) => {
   const optimized = await optimizeImageFile(file, metadata);
 
@@ -269,6 +368,17 @@ export const saveLocalImage = async (file, metadata = {}) => {
 
   await runStore("readwrite", (store) => store.put(record));
 
+  pruneLocalImages({
+    maxRecords: metadata.maxRecords || DEFAULT_MAX_RECORDS,
+    maxTotalBytes: metadata.maxTotalBytes || DEFAULT_MAX_TOTAL_BYTES,
+    keepIds: [id, ...(metadata.keepIds || [])],
+  }).catch(() => {});
+
+  deleteStaleLocalImages({
+    olderThanMs: metadata.staleAfterMs || 30 * 24 * 60 * 60 * 1000,
+    keepIds: [id, ...(metadata.keepIds || [])],
+  }).catch(() => {});
+
   return {
     ...record,
     uri: toLocalImageUri(id),
@@ -282,19 +392,16 @@ export const getLocalImage = async (uriOrId) => {
   return readStore((store, resolve, reject) => {
     const request = store.get(id);
     request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(request.error || new Error("Cannot read local image."));
+    request.onerror = () =>
+      reject(request.error || new Error("Cannot read local image."));
   });
-};
-
-export const deleteLocalImage = async (uriOrId) => {
-  const id = getLocalImageId(uriOrId);
-  if (!id) return;
-  await runStore("readwrite", (store) => store.delete(id));
 };
 
 const getVariantBlob = (record, variant = "preview") => {
   if (!record) return null;
-  if (variant === "thumb") return record.thumbBlob || record.previewBlob || record.blob || null;
+  if (variant === "thumb") {
+    return record.thumbBlob || record.previewBlob || record.blob || null;
+  }
   return record.previewBlob || record.thumbBlob || record.blob || null;
 };
 
@@ -314,6 +421,7 @@ export const getLocalImageStats = async (uriOrId) => {
     originalSize: record.originalSize || record.size || 0,
     thumbSize: record.thumbSize || record.thumbBlob?.size || 0,
     previewSize: record.previewSize || record.previewBlob?.size || 0,
+    totalStoredBytes: getRecordTotalBytes(record),
     savedBytes:
       (record.originalSize || record.size || 0) -
       ((record.thumbSize || record.thumbBlob?.size || 0) +
