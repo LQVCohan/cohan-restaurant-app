@@ -70,6 +70,7 @@ export { default as WalletTransaction } from "./wallet-transaction.model.js";
 export { default as PayrollSetting } from "./payroll-setting.model.js";
 export { default as PayrollPeriod } from "./payroll-period.model.js";
 export { default as PayrollItem } from "./payroll-item.model.js";
+export { default as PayrollPayment } from "./payroll-payment.model.js";
 export { default as PayrollAdjustment } from "./payroll-adjustment.model.js";
 export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js";
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
