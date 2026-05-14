@@ -13,6 +13,16 @@ import { requireRestaurantAccess } from "../../guards.js";
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 
+// Temporary compatibility layer while Permission/PBAC model is still being completed.
+// Keep mutation call sites stable now; replace this shim with real permission guard later.
+const PERMISSIONS = {
+  MENU_WRITE: "menu.write",
+};
+
+async function requireRestaurantPermission(ctx, restaurantId, _permission) {
+  return requireRestaurantAccess(ctx, restaurantId);
+}
+
 function isOid(v) {
   return mongoose.isValidObjectId(v);
 }
