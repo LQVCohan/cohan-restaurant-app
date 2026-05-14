@@ -156,8 +156,8 @@ export async function requireAnyPermission(ctx, permissionCodes) {
 
 export async function requireRestaurantPermission(ctx, restaurantId, permissionCode) {
   requireAuth(ctx);
-  await requirePermission(ctx, permissionCode);
   await requireRestaurantAccess(ctx, restaurantId);
+  await requirePermission(ctx, permissionCode);
   return true;
 }
 
