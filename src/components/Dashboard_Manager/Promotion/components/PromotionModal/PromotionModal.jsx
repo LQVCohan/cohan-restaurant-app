@@ -606,11 +606,6 @@ const PromotionModal = ({
                     {errors.giftItemId && (
                       <span className="err-msg">{errors.giftItemId}</span>
                     )}
-                    <p className="text-xs text-secondary mt-2">
-                      Khi thanh toán, hệ thống sẽ giảm tiền trên dòng món tặng
-                      nếu bill có đủ món mua. Ví dụ: mua 1 món A tặng 1 món B,
-                      bill có 2 món A và 2 món B thì giảm tiền 2 món B.
-                    </p>
                   </div>
                 )}
               </div>
