@@ -6,6 +6,14 @@ type AuditLog {
   action: String!
   byUserId: ID
   diff: JSON
+  actorId: ID
+  actorName: String
+  actorRole: String
+  module: String
+  targetType: String
+  targetId: ID
+  targetName: String
+  metadata: JSON
   createdAt: DateTime
   updatedAt: DateTime
 }
