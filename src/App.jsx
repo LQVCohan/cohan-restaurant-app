@@ -9,6 +9,7 @@ import "./styles/Globals.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import GlobalMenuAvailabilityPrompt from "./components/common/GlobalMenuAvailabilityPrompt";
+import FoodDetailAvailabilityGlobalMount from "./components/Customer/Food/FoodDetailAvailabilityGlobalMount";
 import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
@@ -22,6 +23,7 @@ function App() {
             <CustomerNotificationProvider>
               <CartProvider>
                 <AppRouter />
+                <FoodDetailAvailabilityGlobalMount />
                 <GlobalMenuAvailabilityPrompt />
               </CartProvider>
             </CustomerNotificationProvider>
