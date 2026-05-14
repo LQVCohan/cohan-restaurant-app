@@ -1,0 +1,12 @@
+/* Remove full-width gradient line above schedule header. It looked like a loading/progress bar. */
+.manager-page-shell--schedules .schedule-header::before {
+  content: none !important;
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-header {
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.08), transparent 24rem),
+    radial-gradient(circle at 100% 0, rgba(16, 185, 129, 0.055), transparent 22rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
