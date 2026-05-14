@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Pencil,
   PackagePlus,
@@ -11,10 +11,14 @@ import {
 } from "lucide-react";
 
 import Modal from "../../../../common/Modal";
+import { AuthContext } from "../../../../../context/AuthContext";
 import { formatPrice } from "../../../../../utils/formatters";
 import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
-import { NO_PERMISSION_MESSAGE } from "../../../../../utils/frontendPermissionAccess";
+import {
+  hasPermission,
+  NO_PERMISSION_MESSAGE,
+} from "../../../../../utils/frontendPermissionAccess";
 import "./IngredientCard.scss";
 
 const IngredientCard = ({
@@ -29,6 +33,9 @@ const IngredientCard = ({
   currency = "VND",
   usdToVndRate = 26000,
 }) => {
+  const { user } = useContext(AuthContext);
+  const canWriteInventory = hasPermission(user, "inventory.write");
+  const canWriteStock = hasPermission(user, "stock.write");
   const baseUnit = ingredient.baseUnit || ingredient.unit || "";
   const statusObj = getStockStatus ? getStockStatus(ingredient) : null;
 
@@ -37,12 +44,13 @@ const IngredientCard = ({
     return { text: "—", class: "status-unknown" };
   }, [statusObj]);
 
-  const canEdit = typeof onEdit === "function";
-  const canAddStock = typeof onAddStock === "function";
+  const canEdit = canWriteInventory && typeof onEdit === "function";
+  const canAddStock = canWriteStock && typeof onAddStock === "function";
   const canShowUsage = typeof onShowUsage === "function";
-  const canDelete = typeof onDelete === "function";
+  const canDelete = canWriteInventory && typeof onDelete === "function";
   const canUpdateCost =
-    typeof onUpdateCostPerBaseUnit === "function" || typeof onEdit === "function";
+    canWriteInventory &&
+    (typeof onUpdateCostPerBaseUnit === "function" || typeof onEdit === "function");
 
   // --- Price Modal State ---
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
