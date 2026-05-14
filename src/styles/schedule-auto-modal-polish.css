@@ -13,58 +13,71 @@
   --auto-success: #10b981;
   --auto-warning: #f59e0b;
   --auto-danger: #ef4444;
-  gap: 0.85rem !important;
+  gap: 0.78rem !important;
+  padding-top: 0.05rem;
 }
 
 /* Hero banner: make the assistant feel like a guided workflow */
 .auto-schedule-body .auto-banner {
   align-items: center;
-  padding: 0.9rem 1rem !important;
+  padding: 0.78rem 0.95rem !important;
   border-radius: 18px !important;
   border-color: #c7d2fe !important;
   background:
-    radial-gradient(circle at 2rem 1.6rem, rgba(79, 70, 229, 0.18), transparent 2.2rem),
+    radial-gradient(circle at 2rem 1.5rem, rgba(79, 70, 229, 0.18), transparent 2.2rem),
     linear-gradient(135deg, #eef2ff 0%, #ffffff 62%, #f8fafc 100%) !important;
   box-shadow: 0 10px 26px rgba(79, 70, 229, 0.08);
+  min-height: auto !important;
+  overflow: visible !important;
 }
 
 .auto-schedule-body .auto-banner .banner-icon {
-  width: 2.45rem !important;
-  height: 2.45rem !important;
-  border-radius: 14px !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 13px !important;
   background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
   box-shadow: 0 12px 22px rgba(79, 70, 229, 0.22);
 }
 
 .auto-schedule-body .auto-banner .banner-copy strong {
   color: #1e1b4b !important;
-  font-size: 0.98rem !important;
+  font-size: 0.94rem !important;
   font-weight: 900 !important;
   letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 .auto-schedule-body .auto-banner .banner-copy p {
-  margin-top: 0.22rem !important;
+  margin-top: 0.2rem !important;
   color: #475569 !important;
-  font-size: 0.82rem !important;
-  line-height: 1.42 !important;
+  font-size: 0.8rem !important;
+  line-height: 1.36 !important;
 }
 
 /* Config cards: reduce the empty-column feeling */
 .auto-schedule-body .auto-config-grid {
-  grid-template-columns: 0.92fr 0.92fr 1.16fr !important;
+  grid-template-columns: 0.9fr 0.9fr 1.2fr !important;
   gap: 0.78rem !important;
-  align-items: stretch !important;
+  align-items: start !important;
 }
 
 .auto-schedule-body .config-card {
   position: relative;
-  padding: 0.9rem !important;
+  padding: 0.82rem !important;
   border-radius: 18px !important;
   border-color: rgba(226, 232, 240, 0.96) !important;
   background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 24px rgba(15, 23, 42, 0.045);
   overflow: hidden;
+}
+
+.auto-schedule-body .auto-config-grid > .config-card:not(.role-required-card) {
+  min-height: 0 !important;
+  align-self: start !important;
+}
+
+.auto-schedule-body .auto-config-grid > .config-card:not(.role-required-card) .config-hint {
+  max-width: 22rem;
 }
 
 .auto-schedule-body .config-card::before {
@@ -76,24 +89,24 @@
 }
 
 .auto-schedule-body .config-card .config-head {
-  margin-bottom: 0.65rem !important;
+  margin-bottom: 0.58rem !important;
   color: #0f172a !important;
-  font-size: 0.92rem !important;
+  font-size: 0.9rem !important;
   font-weight: 900 !important;
   letter-spacing: -0.01em;
 }
 
 .auto-schedule-body .config-card label {
-  gap: 0.28rem !important;
-  margin-bottom: 0.54rem !important;
+  gap: 0.26rem !important;
+  margin-bottom: 0.48rem !important;
   color: #64748b !important;
-  font-size: 0.78rem !important;
+  font-size: 0.77rem !important;
   font-weight: 750 !important;
 }
 
 .auto-schedule-body .config-card select,
 .auto-schedule-body .config-card input[type="number"] {
-  height: 2.35rem !important;
+  height: 2.3rem !important;
   border-radius: 12px !important;
   border-color: #cbd5e1 !important;
   background: #ffffff !important;
@@ -110,25 +123,31 @@
 }
 
 .auto-schedule-body .config-hint {
-  font-size: 0.74rem !important;
-  line-height: 1.42 !important;
+  font-size: 0.73rem !important;
+  line-height: 1.38 !important;
 }
 
 /* Required roles should look like selectable chips, not plain checkboxes */
 .auto-schedule-body .role-required-card {
   background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  align-self: start !important;
+}
+
+.auto-schedule-body .role-required-card .config-head {
+  margin-bottom: 0.5rem !important;
 }
 
 .auto-schedule-body .required-role-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 0.5rem !important;
+  gap: 0.42rem !important;
+  margin-top: 0.42rem !important;
 }
 
 .auto-schedule-body .role-check-row {
-  min-height: 2.55rem !important;
+  min-height: 2.32rem !important;
   justify-content: center;
-  gap: 0.38rem !important;
-  padding: 0.45rem 0.55rem !important;
+  gap: 0.34rem !important;
+  padding: 0.38rem 0.48rem !important;
   border-radius: 14px !important;
   border-color: #e2e8f0 !important;
   background: #f8fafc !important;
@@ -147,49 +166,55 @@
 }
 
 .auto-schedule-body .role-check-row span {
-  font-size: 0.76rem !important;
+  font-size: 0.74rem !important;
   font-weight: 850 !important;
 }
 
 .auto-schedule-body .required-role-warning {
-  margin-top: 0.55rem !important;
+  margin-top: 0.48rem !important;
   border-radius: 12px;
   background: #fff7ed;
   border: 1px solid #fed7aa;
-  padding: 0.5rem 0.6rem;
+  padding: 0.45rem 0.55rem;
   color: #9a3412 !important;
-  font-size: 0.72rem !important;
+  font-size: 0.7rem !important;
+  line-height: 1.32 !important;
 }
 
 /* Action strip: make Analyze & Preview the real CTA */
 .auto-schedule-body .auto-actions-strip {
-  position: sticky;
-  bottom: 4.4rem;
+  position: relative;
+  bottom: auto;
   z-index: 5;
-  margin-top: -0.15rem;
-  padding: 0.65rem 0.72rem;
+  margin-top: -0.05rem;
+  padding: 0.55rem 0.62rem;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
 }
 
 .auto-schedule-body .auto-actions-strip .assistant-meta {
   gap: 0.38rem !important;
   color: #64748b !important;
-  font-size: 0.76rem !important;
+  font-size: 0.74rem !important;
   font-weight: 700;
 }
 
+.auto-schedule-body .auto-actions-strip .btn-primary {
+  min-width: 12rem;
+  justify-content: center;
+}
+
 .auto-schedule-body .meta-pill {
-  padding: 0.22rem 0.5rem !important;
-  font-size: 0.72rem !important;
+  padding: 0.2rem 0.48rem !important;
+  font-size: 0.7rem !important;
 }
 
 .auto-schedule-body .btn-primary,
 .auto-schedule-footer .btn-primary {
-  min-height: 2.38rem !important;
+  min-height: 2.32rem !important;
   border-radius: 999px !important;
   background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
   color: #ffffff !important;
@@ -205,7 +230,7 @@
 
 .auto-schedule-body .btn-secondary,
 .auto-schedule-footer .btn-secondary {
-  min-height: 2.38rem !important;
+  min-height: 2.32rem !important;
   border-radius: 999px !important;
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
@@ -316,7 +341,7 @@
   bottom: 0;
   z-index: 10;
   margin: 0 -1rem -1rem;
-  padding: 0.75rem 1rem;
+  padding: 0.72rem 1rem;
   border-top: 1px solid #e2e8f0;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
