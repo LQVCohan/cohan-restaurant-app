@@ -23,6 +23,8 @@ import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
 } from "../../../../../utils/frontendRoleAccess";
+import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
+import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./CompactMenuStrip.scss";
 
@@ -206,7 +208,12 @@ const CompactMenuStrip = ({
                       <div className="cms-card-top">
                         <div className="cms-img-box">
                           {menu.coverImage ? (
-                            <img src={menu.coverImage} alt={menu.name} />
+                            <LocalImageView
+                              src={menu.coverImage}
+                              alt={menu.name}
+                              variant={LOCAL_IMAGE_VARIANTS.THUMB}
+                              fallback={<div className="cms-placeholder">🍽️</div>}
+                            />
                           ) : (
                             <div className="cms-placeholder">🍽️</div>
                           )}
