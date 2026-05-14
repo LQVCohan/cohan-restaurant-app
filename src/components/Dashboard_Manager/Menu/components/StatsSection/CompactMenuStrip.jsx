@@ -1,5 +1,5 @@
 // src/pages/Restaurant/MenuManagement/components/CompactMenuStrip/CompactMenuStrip.jsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -16,10 +16,16 @@ import {
   FiChevronDown,
   FiEye,
   FiEyeOff,
+  FiActivity,
 } from "react-icons/fi";
+import { AuthContext } from "../../../../../context/AuthContext";
+import {
+  MENU_MANAGEMENT_ACTIONS,
+  canAccessMenuManagementAction,
+} from "../../../../../utils/frontendRoleAccess";
+import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./CompactMenuStrip.scss";
 
-// Không thay đổi config, chỉ đổi tên class bên dưới
 const SLOT_CONFIG = {
   breakfast: {
     label: "Sáng",
@@ -61,8 +67,11 @@ const CompactMenuStrip = ({
   activeMenuId,
   onSelectMenu,
 }) => {
+  const auth = useContext(AuthContext);
   const scrollRef = useRef(null);
   const [internalActiveId, setInternalActiveId] = useState(null);
+  const [historyMenu, setHistoryMenu] = useState(null);
+
   const currentActiveId =
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const canDeleteMenu = typeof onDeleteMenu === "function";
@@ -70,6 +79,11 @@ const CompactMenuStrip = ({
   const canAddMenu = typeof onAddMenu === "function";
   const canEditMenu = typeof onEditMenu === "function";
   const canCopyMenu = typeof onCopyMenu === "function";
+  const canViewHistory = canAccessMenuManagementAction(
+    auth?.user,
+    MENU_MANAGEMENT_ACTIONS.VIEW
+  );
+
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
       const firstId = menus[0].id;
@@ -95,242 +109,267 @@ const CompactMenuStrip = ({
   const totalMenus = menus.length;
 
   return (
-    <div className={`cms-container ${isCollapsed ? "is-collapsed" : ""}`}>
-      <div className="cms-header">
-        <div className="cms-info">
-          <div className="cms-icon-box">
-            <FiLayers size={22} />
+    <>
+      <div className={`cms-container ${isCollapsed ? "is-collapsed" : ""}`}>
+        <div className="cms-header">
+          <div className="cms-info">
+            <div className="cms-icon-box">
+              <FiLayers size={22} />
+            </div>
+            <div className="cms-title-box">
+              <h3>Quản Lý Thực Đơn</h3>
+              {!isCollapsed && (
+                <>
+                  {menusLoading ? (
+                    <p>Đang tải danh sách...</p>
+                  ) : (
+                    <p>
+                      Đã tạo <strong>{totalMenus}</strong> thực đơn theo khung giờ
+                      và nhóm thực đơn
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-          <div className="cms-title-box">
-            <h3>Quản Lý Thực Đơn</h3>
+
+          <div className="cms-actions">
             {!isCollapsed && (
               <>
-                {menusLoading ? (
-                  <p>Đang tải danh sách...</p>
-                ) : (
-                  <p>
-                    Đã tạo <strong>{totalMenus}</strong> thực đơn theo khung giờ
-                    và nhóm thực đơn
-                  </p>
+                <div className="cms-nav-group">
+                  <button
+                    className="cms-nav-btn"
+                    onClick={() => scroll("left")}
+                    disabled={menus.length === 0}
+                  >
+                    <FiChevronLeft />
+                  </button>
+                  <button
+                    className="cms-nav-btn"
+                    onClick={() => scroll("right")}
+                    disabled={menus.length === 0}
+                  >
+                    <FiChevronRight />
+                  </button>
+                </div>
+                {canAddMenu && (
+                  <button className="cms-btn-add" onClick={() => onAddMenu()}>
+                    <FiPlus /> <span className="text">Tạo thực đơn</span>
+                  </button>
                 )}
               </>
             )}
+
+            <button
+              className="cms-btn-toggle"
+              onClick={() => onToggleCollapse?.()}
+              title={isCollapsed ? "Mở rộng" : "Thu gọn"}
+            >
+              {isCollapsed ? (
+                <FiChevronDown size={20} />
+              ) : (
+                <FiChevronUp size={20} />
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="cms-actions">
-          {!isCollapsed && (
-            <>
-              <div className="cms-nav-group">
-                <button
-                  className="cms-nav-btn"
-                  onClick={() => scroll("left")}
-                  disabled={menus.length === 0}
-                >
-                  <FiChevronLeft />
-                </button>
-                <button
-                  className="cms-nav-btn"
-                  onClick={() => scroll("right")}
-                  disabled={menus.length === 0}
-                >
-                  <FiChevronRight />
-                </button>
-              </div>
-              {canAddMenu && (
-                <button className="cms-btn-add" onClick={() => onAddMenu()}>
-                  <FiPlus /> <span className="text">Tạo thực đơn</span>
-                </button>
-              )}
-            </>
-          )}
+        {!isCollapsed && menusError && (
+          <div className="cms-error-msg">Lỗi: {menusError.message}</div>
+        )}
 
-          <button
-            className="cms-btn-toggle"
-            onClick={() => onToggleCollapse?.()}
-            title={isCollapsed ? "Mở rộng" : "Thu gọn"}
-          >
-            {isCollapsed ? (
-              <FiChevronDown size={20} />
-            ) : (
-              <FiChevronUp size={20} />
-            )}
-          </button>
-        </div>
-      </div>
+        {!isCollapsed && (
+          <div className="cms-viewport">
+            <div className="cms-track" ref={scrollRef}>
+              {!menusLoading &&
+                menus.map((menu) => {
+                  const slotStyle =
+                    SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
+                  const isActive = currentActiveId === menu.id;
+                  const itemCount =
+                    typeof menu.itemCount === "number" ? menu.itemCount : 0;
+                  const rating =
+                    typeof menu.rating === "number" ? menu.rating : null;
+                  const revenue = menu.revenue || null;
+                  const categoryName = menu.categoryMenu?.name;
 
-      {!isCollapsed && menusError && (
-        <div className="cms-error-msg">Lỗi: {menusError.message}</div>
-      )}
+                  return (
+                    <div
+                      key={menu.id}
+                      className={`cms-card ${isActive ? "cms-active" : ""} ${
+                        menu.isActive === false ? "cms-disabled" : ""
+                      }`}
+                      onClick={() => handleCardClick(menu)}
+                    >
+                      {isActive && <div className="cms-indicator"></div>}
 
-      {!isCollapsed && (
-        <div className="cms-viewport">
-          <div className="cms-track" ref={scrollRef}>
-            {!menusLoading &&
-              menus.map((menu) => {
-                const slotStyle =
-                  SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
-                const isActive = currentActiveId === menu.id;
-                const itemCount =
-                  typeof menu.itemCount === "number" ? menu.itemCount : 0;
-                const rating =
-                  typeof menu.rating === "number" ? menu.rating : null;
-                const revenue = menu.revenue || null;
-                const categoryName = menu.categoryMenu?.name;
-
-                return (
-                  <div
-                    key={menu.id}
-                    className={`cms-card ${isActive ? "cms-active" : ""} ${
-                      menu.isActive === false ? "cms-disabled" : ""
-                    }`}
-                    onClick={() => handleCardClick(menu)}
-                  >
-                    {isActive && <div className="cms-indicator"></div>}
-
-                    <div className="cms-card-top">
-                      <div className="cms-img-box">
-                        {menu.coverImage ? (
-                          <img src={menu.coverImage} alt={menu.name} />
-                        ) : (
-                          <div className="cms-placeholder">🍽️</div>
-                        )}
-                        {categoryName && (
-                          <span className="cms-cate-badge">
-                            Nhóm thực đơn: {categoryName}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="cms-badges">
-                        <span
-                          className="cms-slot-tag"
-                          style={{
-                            color: slotStyle.color,
-                            background: slotStyle.bg,
-                            borderColor: slotStyle.border,
-                          }}
-                        >
-                          <FiClock size={10} style={{ marginRight: 4 }} />{" "}
-                          {slotStyle.label}
-                        </span>
-                        {menu.isActive === false && (
-                          <span className="cms-status-off">Đang ẩn</span>
-                        )}
-                      </div>
-
-                      <button
-                        className="cms-more-btn"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <FiMoreVertical />
-                      </button>
-                    </div>
-
-                    <div className="cms-card-body">
-                      <h3 title={menu.name}>{menu.name}</h3>
-                      <p className="cms-desc">
-                        {menu.description || "Chưa có mô tả..."}
-                      </p>
-
-                      <div className="cms-stats">
-                        <div className="cms-stat-item" title="Số món">
-                          <FiLayers className="ic" />{" "}
-                          <strong>{itemCount}</strong>
+                      <div className="cms-card-top">
+                        <div className="cms-img-box">
+                          {menu.coverImage ? (
+                            <img src={menu.coverImage} alt={menu.name} />
+                          ) : (
+                            <div className="cms-placeholder">🍽️</div>
+                          )}
+                          {categoryName && (
+                            <span className="cms-cate-badge">
+                              Nhóm thực đơn: {categoryName}
+                            </span>
+                          )}
                         </div>
-                        <div className="cms-stat-item" title="Đánh giá">
-                          <FiStar className="ic star" />{" "}
-                          <strong>{rating ?? "--"}</strong>
-                        </div>
-                        <div className="cms-stat-item" title="Doanh thu">
-                          <FiTrendingUp className="ic grow" />{" "}
-                          <strong>{revenue || "--"}</strong>
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className="cms-toolbar">
-                      {canEditMenu && (
-                        <>
-                          <button
-                            className="cms-tool-btn is-edit"
-                            title="Chỉnh sửa thực đơn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditMenu(menu);
+                        <div className="cms-badges">
+                          <span
+                            className="cms-slot-tag"
+                            style={{
+                              color: slotStyle.color,
+                              background: slotStyle.bg,
+                              borderColor: slotStyle.border,
                             }}
                           >
-                            <FiEdit3 /> <span>Sửa</span>
+                            <FiClock size={10} style={{ marginRight: 4 }} />{" "}
+                            {slotStyle.label}
+                          </span>
+                          {menu.isActive === false && (
+                            <span className="cms-status-off">Đang ẩn</span>
+                          )}
+                        </div>
+
+                        <button
+                          className="cms-more-btn"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FiMoreVertical />
+                        </button>
+                      </div>
+
+                      <div className="cms-card-body">
+                        <h3 title={menu.name}>{menu.name}</h3>
+                        <p className="cms-desc">
+                          {menu.description || "Chưa có mô tả..."}
+                        </p>
+
+                        <div className="cms-stats">
+                          <div className="cms-stat-item" title="Số món">
+                            <FiLayers className="ic" />{" "}
+                            <strong>{itemCount}</strong>
+                          </div>
+                          <div className="cms-stat-item" title="Đánh giá">
+                            <FiStar className="ic star" />{" "}
+                            <strong>{rating ?? "--"}</strong>
+                          </div>
+                          <div className="cms-stat-item" title="Doanh thu">
+                            <FiTrendingUp className="ic grow" />{" "}
+                            <strong>{revenue || "--"}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="cms-toolbar">
+                        {canEditMenu && (
+                          <>
+                            <button
+                              className="cms-tool-btn is-edit"
+                              title="Chỉnh sửa thực đơn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditMenu(menu);
+                              }}
+                            >
+                              <FiEdit3 /> <span>Sửa</span>
+                            </button>
+                            <div className="cms-div"></div>
+                          </>
+                        )}
+
+                        {canToggleMenuActive && (
+                          <button
+                            className={`cms-tool-btn ${
+                              menu.isActive === false ? "is-show" : "is-hide"
+                            }`}
+                            title={
+                              menu.isActive === false
+                                ? "Bật lại thực đơn"
+                                : "Ẩn thực đơn"
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleMenuActive(menu);
+                            }}
+                          >
+                            {menu.isActive === false ? <FiEye /> : <FiEyeOff />}
+                            <span>{menu.isActive === false ? "Bật" : "Ẩn"}</span>
                           </button>
-                          <div className="cms-div"></div>
-                        </>
-                      )}
+                        )}
 
-                      {canToggleMenuActive && (
-                        <button
-                          className={`cms-tool-btn ${
-                            menu.isActive === false ? "is-show" : "is-hide"
-                          }`}
-                          title={
-                            menu.isActive === false
-                              ? "Bật lại thực đơn"
-                              : "Ẩn thực đơn"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleMenuActive(menu);
-                          }}
-                        >
-                          {menu.isActive === false ? <FiEye /> : <FiEyeOff />}
-                          <span>{menu.isActive === false ? "Bật" : "Ẩn"}</span>
-                        </button>
-                      )}
+                        {canCopyMenu && (
+                          <button
+                            className="cms-tool-btn"
+                            title="Sao chép thực đơn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCopyMenu(menu);
+                            }}
+                          >
+                            <FiCopy />
+                          </button>
+                        )}
 
-                      {canCopyMenu && (
-                        <button
-                          className="cms-tool-btn"
-                          title="Sao chép thực đơn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCopyMenu(menu);
-                          }}
-                        >
-                          <FiCopy />
-                        </button>
-                      )}
-                      {canDeleteMenu && (
-                        <button
-                          className="cms-tool-btn is-delete"
-                          title="Ẩn thực đơn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteMenu(menu);
-                          }}
-                        >
-                          <FiTrash2 />
-                        </button>
-                      )}
+                        {canViewHistory && (
+                          <button
+                            className="cms-tool-btn is-history"
+                            title="Xem lịch sử thay đổi"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHistoryMenu(menu);
+                            }}
+                          >
+                            <FiActivity />
+                          </button>
+                        )}
+
+                        {canDeleteMenu && (
+                          <button
+                            className="cms-tool-btn is-delete"
+                            title="Ẩn thực đơn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteMenu(menu);
+                            }}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-            {!menusLoading && canAddMenu && (
-              <div className="cms-card cms-ghost" onClick={() => onAddMenu()}>
-                <div className="cms-ghost-inner">
-                  <div className="cms-ghost-circle">
-                    <FiPlus size={24} />
+              {!menusLoading && canAddMenu && (
+                <div className="cms-card cms-ghost" onClick={() => onAddMenu()}>
+                  <div className="cms-ghost-inner">
+                    <div className="cms-ghost-circle">
+                      <FiPlus size={24} />
+                    </div>
+                    <h4>Thêm thực đơn</h4>
                   </div>
-                  <h4>Thêm thực đơn</h4>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="cms-spacer"></div>
+              <div className="cms-spacer"></div>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+
+      <AuditLogModal
+        isOpen={!!historyMenu}
+        onClose={() => setHistoryMenu(null)}
+        restaurantId={historyMenu?.restaurantId}
+        entity="Menu"
+        entityId={historyMenu?.id || historyMenu?._id}
+        title={`Lịch sử menu: ${historyMenu?.name || "Thực đơn"}`}
+      />
+    </>
   );
 };
 
