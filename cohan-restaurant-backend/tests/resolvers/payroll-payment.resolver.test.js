@@ -68,6 +68,30 @@ describe("payroll payment resolvers", () => {
     expect(paymentServices.markPayrollItemPaid).toHaveBeenCalledWith(expect.objectContaining({ input }));
   });
 
+
+  it("markPayrollPeriodPaid throws when underlying batch result has failedCount", async () => {
+    modelMocks.PayrollPeriod.findById.mockResolvedValueOnce({
+      _id: "p1",
+      restaurantId: "r1",
+      status: "finalized",
+    });
+    paymentServices.batchMarkPayrollPaid.mockResolvedValueOnce({
+      successCount: 1,
+      failedCount: 1,
+      items: [{ id: "s1" }],
+      errors: [{ employeeId: "s2", code: "ALREADY_PAID", message: "ALREADY_PAID" }],
+    });
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    await expect(
+      mutation.markPayrollPeriodPaid(
+        null,
+        { periodId: "p1", employeeIds: ["s1", "s2"] },
+        { user: { id: "admin", userType: "ADMIN" } },
+      ),
+    ).rejects.toThrow("ALREADY_PAID");
+  });
+
   it("payment history validates employee item scope", async () => {
     modelMocks.PayrollPeriod.findById.mockReturnValueOnce(periodChain({ _id: "p1", restaurantId: "r1" }));
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;

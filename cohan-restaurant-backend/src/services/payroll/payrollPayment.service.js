@@ -166,7 +166,11 @@ export async function getPayrollPayslip({ periodId, employeeId }) {
   };
 }
 
-export async function markPayrollItemPaid({ input, actorId = null }) {
+export async function markPayrollItemPaid({
+  input,
+  actorId = null,
+  refreshPeriod = true,
+}) {
   const period = await getPeriodInScope(input.periodId);
   assertPayrollPeriodCanMarkPaid(period);
   const item = await getItemForPayment(period, input.employeeId);
@@ -206,7 +210,9 @@ export async function markPayrollItemPaid({ input, actorId = null }) {
     update.paidBy = actorId || null;
   }
   const updated = await PayrollItem.findByIdAndUpdate(item._id, { $set: update }, { new: true });
-  await refreshPeriodPaymentState(period, actorId);
+  if (refreshPeriod) {
+    await refreshPeriodPaymentState(period, actorId);
+  }
   return mapPayrollDocToGql(updated || item);
 }
 
@@ -228,6 +234,7 @@ export async function batchMarkPayrollPaid({ input, actorId = null }) {
           note: input.note,
         },
         actorId,
+        refreshPeriod: false,
       });
       items.push(item);
     } catch (err) {
@@ -238,6 +245,8 @@ export async function batchMarkPayrollPaid({ input, actorId = null }) {
       });
     }
   }
+
+  await refreshPeriodPaymentState(period, actorId);
 
   return {
     successCount: items.length,

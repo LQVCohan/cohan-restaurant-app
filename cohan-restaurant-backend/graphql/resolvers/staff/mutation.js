@@ -11,7 +11,6 @@ import {
   PayrollSetting,
   PayrollPeriod,
   PayrollItem,
-  PayrollPayment,
   PayrollAdjustment,
   EmployeeCodeCounter,
   Notification,
@@ -3080,10 +3079,16 @@ const mutationResolvers = {
       targetEmployeeIds = unpaidItems.map((item) => String(item.employeeId));
     }
 
-    await batchMarkPayrollPaidService({
+    const result = await batchMarkPayrollPaidService({
       input: { periodId, employeeIds: targetEmployeeIds },
       actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
     });
+    if (result.failedCount > 0) {
+      const firstError = result.errors?.[0];
+      throw new Error(
+        firstError?.code || "PAYROLL_BATCH_MARK_PAID_PARTIAL_FAILED",
+      );
+    }
     const detail = await getPeriodDetail(periodId);
     await logPayrollEvent({
       ctx,

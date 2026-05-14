@@ -13,7 +13,6 @@ import {
   Restaurant,
   PayrollPeriod,
   PayrollItem,
-  PayrollPayment,
   SchedulePublication,
   EventLog,
   ShiftAcknowledgement,
