@@ -1,5 +1,6 @@
 // src/pages/Restaurant/MenuManagement/components/CompactMenuStrip/CompactMenuStrip.jsx
 import React, { useContext, useEffect, useRef, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -27,6 +28,45 @@ import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./CompactMenuStrip.scss";
+
+const MENU_FIELDS = gql`
+  fragment CompactMenuFields on Menu {
+    id
+    restaurantId
+    timeSlot
+    name
+    description
+    coverImage
+    isActive
+    createdAt
+    updatedAt
+    itemCount
+    categoryMenu {
+      id
+      name
+      description
+      isActive
+    }
+  }
+`;
+
+const MENUS_QUERY = gql`
+  query Menus($restaurantId: ID!) {
+    menus(restaurantId: $restaurantId) {
+      ...CompactMenuFields
+    }
+  }
+  ${MENU_FIELDS}
+`;
+
+const COPY_MENU_MUTATION = gql`
+  mutation CopyMenu($input: CopyMenuInput!) {
+    copyMenu(input: $input) {
+      ...CompactMenuFields
+    }
+  }
+  ${MENU_FIELDS}
+`;
 
 const SLOT_CONFIG = {
   breakfast: {
@@ -56,6 +96,7 @@ const SLOT_CONFIG = {
 };
 
 const TIME_SLOT_VALUES = new Set(Object.keys(SLOT_CONFIG));
+const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
 
 const getHeaderTimeSlotSelect = () => {
   if (typeof document === "undefined") return null;
@@ -82,6 +123,28 @@ const dispatchNativeSelectChange = (select, value) => {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
+const buildCopyMenuName = (sourceMenu, menus = []) => {
+  const baseName = `${sourceMenu?.name || "Menu"} (bản sao)`;
+  const existingNames = new Set(
+    menus.map((menu) => String(menu?.name || "").trim().toLowerCase()),
+  );
+
+  let candidate = baseName;
+  let counter = 2;
+
+  while (existingNames.has(candidate.trim().toLowerCase())) {
+    candidate = `${baseName} ${counter}`;
+    counter += 1;
+  }
+
+  return candidate;
+};
+
+const getSuggestedCopyTimeSlot = (menus = []) => {
+  const usedSlots = new Set(menus.map((menu) => menu.timeSlot));
+  return TIME_SLOT_ORDER.find((slot) => !usedSlots.has(slot)) || null;
+};
+
 const CompactMenuStrip = ({
   menus = [],
   menusLoading = false,
@@ -100,6 +163,23 @@ const CompactMenuStrip = ({
   const scrollRef = useRef(null);
   const [internalActiveId, setInternalActiveId] = useState(null);
   const [historyMenu, setHistoryMenu] = useState(null);
+  const [copyError, setCopyError] = useState("");
+  const [copyingMenuId, setCopyingMenuId] = useState(null);
+
+  const [copyMenuMutation] = useMutation(COPY_MENU_MUTATION, {
+    update(cache, { data }) {
+      const copied = data?.copyMenu;
+      if (!copied?.restaurantId) return;
+      cache.updateQuery(
+        { query: MENUS_QUERY, variables: { restaurantId: copied.restaurantId } },
+        (prev) => {
+          if (!prev?.menus) return { menus: [copied] };
+          const exists = prev.menus.some((menu) => menu.id === copied.id);
+          return exists ? prev : { menus: [...prev.menus, copied] };
+        },
+      );
+    },
+  });
 
   const currentActiveId =
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
@@ -145,6 +225,53 @@ const CompactMenuStrip = ({
 
     const select = getHeaderTimeSlotSelect();
     dispatchNativeSelectChange(select, menu.timeSlot);
+  };
+
+  const handleCopyMenu = async (menu) => {
+    if (!menu?.restaurantId || !menu?.id || copyingMenuId) return;
+
+    const targetTimeSlot = getSuggestedCopyTimeSlot(menus);
+    if (!targetTimeSlot) {
+      setCopyError(
+        "Không thể sao chép vì nhà hàng này đã có đủ 4 thực đơn theo khung giờ.",
+      );
+      return;
+    }
+
+    setCopyError("");
+    setCopyingMenuId(menu.id);
+
+    try {
+      const { data } = await copyMenuMutation({
+        variables: {
+          input: {
+            restaurantId: menu.restaurantId,
+            sourceMenuId: menu.id,
+            targetTimeSlot,
+            name: buildCopyMenuName(menu, menus),
+            description: menu.description || null,
+            coverImage: menu.coverImage || null,
+            categoryMenuId: menu.categoryMenu?.id || null,
+            isActive: false,
+            copyItems: true,
+            copyRecipes: true,
+          },
+        },
+      });
+
+      const copied = data?.copyMenu;
+      if (copied?.timeSlot) {
+        setInternalActiveId(copied.id);
+        const select = getHeaderTimeSlotSelect();
+        dispatchNativeSelectChange(select, copied.timeSlot);
+      }
+    } catch (error) {
+      setCopyError(
+        error?.message || "Không thể sao chép thực đơn. Vui lòng thử lại.",
+      );
+    } finally {
+      setCopyingMenuId(null);
+    }
   };
 
   const scroll = (direction) => {
@@ -227,6 +354,9 @@ const CompactMenuStrip = ({
         {!isCollapsed && menusError && (
           <div className="cms-error-msg">Lỗi: {menusError.message}</div>
         )}
+        {!isCollapsed && copyError && (
+          <div className="cms-error-msg">Lỗi: {copyError}</div>
+        )}
 
         {!isCollapsed && (
           <div className="cms-viewport">
@@ -242,6 +372,7 @@ const CompactMenuStrip = ({
                     typeof menu.rating === "number" ? menu.rating : null;
                   const revenue = menu.revenue || null;
                   const categoryName = menu.categoryMenu?.name;
+                  const isCopying = copyingMenuId === menu.id;
 
                   return (
                     <div
@@ -359,13 +490,15 @@ const CompactMenuStrip = ({
                         {canCopyMenu && (
                           <button
                             className="cms-tool-btn"
-                            title="Sao chép thực đơn"
+                            title="Sao chép thực đơn kèm món và recipe"
+                            disabled={!!copyingMenuId}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onCopyMenu(menu);
+                              handleCopyMenu(menu);
                             }}
                           >
                             <FiCopy />
+                            {isCopying && <span>...</span>}
                           </button>
                         )}
 
