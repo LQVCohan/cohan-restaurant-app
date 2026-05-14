@@ -45,6 +45,16 @@ function buildFilter(filter = {}) {
   return query;
 }
 
+function buildRbacFilter(filter = {}) {
+  const query = { module: "rbac" };
+  if (filter.restaurantId) query.restaurantId = filter.restaurantId;
+  if (filter.action) query.action = String(filter.action).trim();
+  if (filter.targetType) query.targetType = String(filter.targetType).trim();
+  if (filter.targetId) query.targetId = filter.targetId;
+  if (filter.actorId) query.actorId = filter.actorId;
+  return query;
+}
+
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
@@ -71,6 +81,20 @@ export default {
         items,
         total,
       };
+    },
+
+    rbacAuditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
+      if (filter?.restaurantId) {
+        await requireRestaurantAccess(ctx, filter.restaurantId);
+      } else {
+        requireRoles(ctx, ["ADMIN"]);
+      }
+
+      return AuditLog.find(buildRbacFilter(filter))
+        .sort({ createdAt: -1 })
+        .skip(normalizeOffset(offset))
+        .limit(normalizeLimit(limit))
+        .lean({ virtuals: true });
     },
   },
 
