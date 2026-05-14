@@ -118,64 +118,66 @@ const AutoScheduleModal = ({
           </div>
         </div>
 
-        <div className="auto-config-grid">
-          <div className="config-card">
-            <div className="config-head">
-              <CalendarRange size={16} />
-              <span>Phạm vi assistant</span>
+        <div className="auto-config-grid auto-config-grid--workflow">
+          <div className="auto-config-left">
+            <div className="config-card">
+              <div className="config-head">
+                <CalendarRange size={16} />
+                <span>Phạm vi assistant</span>
+              </div>
+              <label>
+                <span>Số ngày tới</span>
+                <select
+                  value={config.horizonDays}
+                  onChange={(event) =>
+                    onConfigChange({
+                      ...config,
+                      horizonDays: Number(event.target.value),
+                    })
+                  }
+                  disabled={generating || applying}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((value) => (
+                    <option key={value} value={value}>
+                      {value} ngày
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="config-hint">
+                Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
+                ngày tiếp theo.
+              </p>
             </div>
-            <label>
-              <span>Số ngày tới</span>
-              <select
-                value={config.horizonDays}
-                onChange={(event) =>
-                  onConfigChange({
-                    ...config,
-                    horizonDays: Number(event.target.value),
-                  })
-                }
-                disabled={generating || applying}
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((value) => (
-                  <option key={value} value={value}>
-                    {value} ngày
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="config-hint">
-              Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
-              ngày tiếp theo.
-            </p>
+
+            <div className="config-card">
+              <div className="config-head">
+                <Clock3 size={16} />
+                <span>Giới hạn giờ làm</span>
+              </div>
+              <label>
+                <span>Giờ tối đa mỗi tuần</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="80"
+                  value={config.weeklyHoursCap}
+                  onChange={(event) =>
+                    onConfigChange({
+                      ...config,
+                      weeklyHoursCap: Number(event.target.value || 40),
+                    })
+                  }
+                  disabled={generating || applying}
+                />
+              </label>
+              <p className="config-hint">
+                Preview và apply sẽ chặn nhân sự vượt ngưỡng giờ/tuần này.
+              </p>
+            </div>
           </div>
 
-          <div className="config-card">
-            <div className="config-head">
-              <Clock3 size={16} />
-              <span>Giới hạn giờ làm</span>
-            </div>
-            <label>
-              <span>Giờ tối đa mỗi tuần</span>
-              <input
-                type="number"
-                min="1"
-                max="80"
-                value={config.weeklyHoursCap}
-                onChange={(event) =>
-                  onConfigChange({
-                    ...config,
-                    weeklyHoursCap: Number(event.target.value || 40),
-                  })
-                }
-                disabled={generating || applying}
-              />
-            </label>
-            <p className="config-hint">
-              Preview và apply sẽ chặn nhân sự vượt ngưỡng giờ/tuần này.
-            </p>
-          </div>
-
-          <div className="config-card">
+          <div className="config-card auto-config-constraints">
             <div className="config-head">
               <Settings2 size={16} />
               <span>Ràng buộc áp dụng</span>
