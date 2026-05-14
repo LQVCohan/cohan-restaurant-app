@@ -14,6 +14,8 @@ import {
   FiClock,
   FiChevronUp,
   FiChevronDown,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
 import "./CompactMenuStrip.scss";
 
@@ -54,6 +56,7 @@ const CompactMenuStrip = ({
   onAddMenu,
   onEditMenu,
   onDeleteMenu,
+  onToggleMenuActive,
   activeMenuId,
   onSelectMenu,
 }) => {
@@ -62,7 +65,7 @@ const CompactMenuStrip = ({
   const currentActiveId =
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const canDeleteMenu = typeof onDeleteMenu === "function";
-
+  const canToggleMenuActive = typeof onToggleMenuActive === "function";
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
       const firstId = menus[0].id;
@@ -226,13 +229,16 @@ const CompactMenuStrip = ({
 
                       <div className="cms-stats">
                         <div className="cms-stat-item" title="Số món">
-                          <FiLayers className="ic" /> <strong>{itemCount}</strong>
+                          <FiLayers className="ic" />{" "}
+                          <strong>{itemCount}</strong>
                         </div>
                         <div className="cms-stat-item" title="Đánh giá">
-                          <FiStar className="ic star" /> <strong>{rating ?? "--"}</strong>
+                          <FiStar className="ic star" />{" "}
+                          <strong>{rating ?? "--"}</strong>
                         </div>
                         <div className="cms-stat-item" title="Doanh thu">
-                          <FiTrendingUp className="ic grow" /> <strong>{revenue || "--"}</strong>
+                          <FiTrendingUp className="ic grow" />{" "}
+                          <strong>{revenue || "--"}</strong>
                         </div>
                       </div>
                     </div>
@@ -249,8 +255,30 @@ const CompactMenuStrip = ({
                         <FiEdit3 /> <span>Sửa</span>
                       </button>
                       <div className="cms-div"></div>
+
+                      {canToggleMenuActive && (
+                        <button
+                          className={`cms-tool-btn ${
+                            menu.isActive === false ? "is-show" : "is-hide"
+                          }`}
+                          title={
+                            menu.isActive === false
+                              ? "Bật lại thực đơn"
+                              : "Ẩn thực đơn"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleMenuActive(menu);
+                          }}
+                        >
+                          {menu.isActive === false ? <FiEye /> : <FiEyeOff />}
+                          <span>{menu.isActive === false ? "Bật" : "Ẩn"}</span>
+                        </button>
+                      )}
+
                       <button
                         className="cms-tool-btn"
+                        title="Sao chép thực đơn"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <FiCopy />
@@ -258,7 +286,7 @@ const CompactMenuStrip = ({
                       {canDeleteMenu && (
                         <button
                           className="cms-tool-btn is-delete"
-                          title="Xóa thực đơn"
+                          title="Ẩn thực đơn"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeleteMenu(menu);

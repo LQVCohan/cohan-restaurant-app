@@ -73,7 +73,7 @@ const TIME_SLOT_LABELS = {
 
 const getGraphQLErrorMessage = (
   error,
-  fallbackMessage = "Đã xảy ra lỗi không xác định."
+  fallbackMessage = "Đã xảy ra lỗi không xác định.",
 ) => {
   const graphQlMessage = error?.graphQLErrors
     ?.map((entry) => entry?.message)
@@ -157,6 +157,7 @@ const MenuManagement = () => {
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
   const [menuSubmitError, setMenuSubmitError] = useState("");
+  const [isTogglingMenu, setIsTogglingMenu] = useState(false);
   const [isSavingPriceEdit, setIsSavingPriceEdit] = useState(false);
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeletingItem, setIsDeletingItem] = useState(false);
@@ -178,7 +179,7 @@ const MenuManagement = () => {
 
   const managerRestaurants = useMemo(
     () => mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [],
-    [mgrData]
+    [mgrData],
   );
 
   useEffect(() => {
@@ -236,12 +237,12 @@ const MenuManagement = () => {
     {
       search: null,
       categoryId: null,
-    }
+    },
   );
 
   const menuItemsById = useMemo(
     () => new Map((items || []).map((item) => [String(item.id), item])),
-    [items]
+    [items],
   );
 
   const getMenuItemLabel = useCallback(
@@ -249,7 +250,7 @@ const MenuManagement = () => {
       if (fallbackName) return fallbackName;
       return menuItemsById.get(String(itemId))?.name || `Món #${itemId}`;
     },
-    [menuItemsById]
+    [menuItemsById],
   );
 
   const toggleModal = (name, isOpen = true, data = null) => {
@@ -283,13 +284,45 @@ const MenuManagement = () => {
       toggleModal("menu", false);
     } catch (err) {
       setMenuSubmitError(
-        getGraphQLErrorMessage(err, "Không thể lưu menu. Vui lòng thử lại.")
+        getGraphQLErrorMessage(err, "Không thể lưu menu. Vui lòng thử lại."),
       );
     } finally {
       setIsSavingMenu(false);
     }
   };
+  const handleToggleMenuActive = async (menu) => {
+    if (!currentRestaurant || !menu?.timeSlot || isTogglingMenu) return;
 
+    const nextIsActive = menu.isActive === false;
+
+    setIsTogglingMenu(true);
+    setMenuSubmitError("");
+
+    try {
+      await ensureMenu({
+        restaurantId: currentRestaurant,
+        timeSlot: menu.timeSlot,
+        name: menu.name,
+        description: menu.description || null,
+        coverImage: menu.coverImage || null,
+        categoryMenuId: menu.categoryMenuId || menu.categoryMenu?.id || null,
+        isActive: nextIsActive,
+      });
+
+      await refetchMenus?.();
+    } catch (err) {
+      setMenuSubmitError(
+        getGraphQLErrorMessage(
+          err,
+          nextIsActive
+            ? "Không thể bật lại thực đơn. Vui lòng thử lại."
+            : "Không thể ẩn thực đơn. Vui lòng thử lại.",
+        ),
+      );
+    } finally {
+      setIsTogglingMenu(false);
+    }
+  };
   const handleRequestDeleteItem = useCallback((item) => {
     if (!item?.id) return;
 
@@ -325,17 +358,20 @@ const MenuManagement = () => {
       } catch (error) {
         const message = getGraphQLErrorMessage(
           error,
-          "Không thể tải lại danh sách món ăn."
+          "Không thể tải lại danh sách món ăn.",
         );
 
         setDeletingItem(null);
         setDeleteListRefreshError(
-          `Đã xóa món "${itemName}" nhưng không thể tải lại danh sách: ${message}`
+          `Đã xóa món "${itemName}" nhưng không thể tải lại danh sách: ${message}`,
         );
       }
     } catch (error) {
       setDeleteError(
-        getGraphQLErrorMessage(error, "Không thể xóa món ăn. Vui lòng thử lại.")
+        getGraphQLErrorMessage(
+          error,
+          "Không thể xóa món ăn. Vui lòng thử lại.",
+        ),
       );
     } finally {
       deleteItemSubmitRef.current = false;
@@ -381,7 +417,7 @@ const MenuManagement = () => {
             });
 
             const updatedIds = new Set(
-              (result?.items || []).map((item) => String(item.id))
+              (result?.items || []).map((item) => String(item.id)),
             );
 
             targetIds.forEach((itemId) => {
@@ -400,7 +436,7 @@ const MenuManagement = () => {
           } catch (error) {
             const message = getGraphQLErrorMessage(
               error,
-              "Không thể lưu thay đổi giá."
+              "Không thể lưu thay đổi giá.",
             );
 
             targetIds.forEach((itemId) => {
@@ -429,7 +465,7 @@ const MenuManagement = () => {
           } catch (error) {
             const message = getGraphQLErrorMessage(
               error,
-              "Không thể lưu thay đổi giá."
+              "Không thể lưu thay đổi giá.",
             );
             const itemName = getMenuItemLabel(update.itemId, update.itemName);
 
@@ -452,7 +488,7 @@ const MenuManagement = () => {
         } catch (error) {
           const message = getGraphQLErrorMessage(
             error,
-            "Không thể tải lại dữ liệu món ăn."
+            "Không thể tải lại dữ liệu món ăn.",
           );
 
           if (!successCount && failures.length === 0) {
@@ -482,7 +518,7 @@ const MenuManagement = () => {
       refetchItems,
       selectedTimeSlot,
       updateRecipe,
-    ]
+    ],
   );
 
   const displayItems = useMemo(
@@ -493,7 +529,7 @@ const MenuManagement = () => {
           categories.find((c) => c.id === item.categoryId)?.name ||
           item.categoryName,
       })),
-    [items, categories]
+    [items, categories],
   );
 
   const inlineAlertStyle = {
@@ -617,7 +653,8 @@ const MenuManagement = () => {
           onToggleCollapse={() => setIsStatsCollapsed((s) => !s)}
           onAddMenu={() => toggleModal("menu", true)}
           onEditMenu={(menu) => toggleModal("menu", true, menu)}
-          onDeleteMenu={undefined}
+          onToggleMenuActive={handleToggleMenuActive}
+          onDeleteMenu={handleToggleMenuActive}
         />
       </section>
 
@@ -646,7 +683,10 @@ const MenuManagement = () => {
         <div className="mm-body__content">
           {deleteListRefreshError && (
             <div role="alert" style={inlineAlertStyle}>
-              <FiAlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+              <FiAlertCircle
+                size={18}
+                style={{ flexShrink: 0, marginTop: 2 }}
+              />
               <p style={{ margin: 0, lineHeight: 1.5 }}>
                 {deleteListRefreshError}
               </p>
@@ -791,7 +831,10 @@ const MenuManagement = () => {
             </p>
 
             {deleteError && (
-              <div role="alert" style={{ ...inlineAlertStyle, marginBottom: 0 }}>
+              <div
+                role="alert"
+                style={{ ...inlineAlertStyle, marginBottom: 0 }}
+              >
                 <FiAlertCircle
                   size={18}
                   style={{ flexShrink: 0, marginTop: 2 }}
