@@ -137,6 +137,7 @@ export const RoleMutation = {
     // --- Update các field khác ---
     if (rest.name !== undefined) r.name = rest.name;
     if (rest.description !== undefined) r.description = rest.description;
+    if (rest.department !== undefined) r.department = rest.department;
     // slug thường không cho đổi, nhưng nếu em muốn thì thêm vào đây
 
     await r.save();

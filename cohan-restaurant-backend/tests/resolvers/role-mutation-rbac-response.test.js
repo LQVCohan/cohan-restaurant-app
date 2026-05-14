@@ -84,6 +84,7 @@ describe("RoleMutation RBAC response shape", () => {
       isSystem: false,
       permissions: [],
       parentRole: "parent-service",
+      department: "service",
       save,
     };
 
@@ -103,10 +104,11 @@ describe("RoleMutation RBAC response shape", () => {
 
     const role = await RoleMutation.updateRole(
       null,
-      { input: { id: "role-server", name: "Server updated", parentRoleId: "parent-service", permissionIds: ["permission-direct"] } },
+      { input: { id: "role-server", name: "Server updated", department: "kitchen", parentRoleId: "parent-service", permissionIds: ["permission-direct"] } },
       adminCtx,
     );
 
+    expect(roleDocument.department).toBe("kitchen");
     expect(save).toHaveBeenCalledTimes(1);
     expectRbacRoleResponse(role);
   });
