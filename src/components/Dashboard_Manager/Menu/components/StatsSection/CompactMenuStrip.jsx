@@ -55,6 +55,33 @@ const SLOT_CONFIG = {
   },
 };
 
+const TIME_SLOT_VALUES = new Set(Object.keys(SLOT_CONFIG));
+
+const getHeaderTimeSlotSelect = () => {
+  if (typeof document === "undefined") return null;
+
+  return Array.from(document.querySelectorAll("select.mm-select")).find(
+    (select) =>
+      Array.from(select.options || []).some((option) =>
+        TIME_SLOT_VALUES.has(option.value),
+      ),
+  );
+};
+
+const dispatchNativeSelectChange = (select, value) => {
+  if (!select || !TIME_SLOT_VALUES.has(value)) return;
+
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLSelectElement.prototype,
+    "value",
+  )?.set;
+
+  if (setter) setter.call(select, value);
+  else select.value = value;
+
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+};
+
 const CompactMenuStrip = ({
   menus = [],
   menusLoading = false,
@@ -83,7 +110,7 @@ const CompactMenuStrip = ({
   const canCopyMenu = typeof onCopyMenu === "function";
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
-    MENU_MANAGEMENT_ACTIONS.VIEW
+    MENU_MANAGEMENT_ACTIONS.VIEW,
   );
 
   useEffect(() => {
@@ -94,9 +121,30 @@ const CompactMenuStrip = ({
     }
   }, [menus, currentActiveId, activeMenuId, onSelectMenu]);
 
+  useEffect(() => {
+    const select = getHeaderTimeSlotSelect();
+    if (!select) return undefined;
+
+    const syncActiveMenuFromFilter = () => {
+      const selectedMenu = menus.find((menu) => menu.timeSlot === select.value);
+      if (selectedMenu) setInternalActiveId(selectedMenu.id);
+    };
+
+    syncActiveMenuFromFilter();
+    select.addEventListener("change", syncActiveMenuFromFilter);
+    return () => select.removeEventListener("change", syncActiveMenuFromFilter);
+  }, [menus]);
+
   const handleCardClick = (menu) => {
     setInternalActiveId(menu.id);
-    onSelectMenu?.(menu);
+
+    if (typeof onSelectMenu === "function") {
+      onSelectMenu(menu);
+      return;
+    }
+
+    const select = getHeaderTimeSlotSelect();
+    dispatchNativeSelectChange(select, menu.timeSlot);
   };
 
   const scroll = (direction) => {
