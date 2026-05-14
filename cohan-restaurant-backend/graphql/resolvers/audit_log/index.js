@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { AuditLog } from "../../../models/index.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { hasRole } from "../../../utils/authz.js";
 
 const MAX_LIMIT = 100;
 
@@ -55,6 +56,16 @@ function buildRbacFilter(filter = {}) {
   return query;
 }
 
+function ensureRbacAuditAccess(ctx, filter = {}) {
+  if (hasRole(ctx?.user, ["admin"])) return;
+  if (!hasRole(ctx?.user, ["manager"])) {
+    throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+  }
+  if (!filter?.restaurantId) {
+    throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+  }
+}
+
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
@@ -84,12 +95,8 @@ export default {
     },
 
     rbacAuditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
-      if (filter?.restaurantId) {
-        await requireRestaurantAccess(ctx, filter.restaurantId);
-      } else {
-        requireRoles(ctx, ["ADMIN"]);
-      }
-
+      ensureRbacAuditAccess(ctx, filter);
+      if (filter?.restaurantId) await requireRestaurantAccess(ctx, filter.restaurantId);
       return AuditLog.find(buildRbacFilter(filter))
         .sort({ createdAt: -1 })
         .skip(normalizeOffset(offset))
