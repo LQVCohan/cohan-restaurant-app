@@ -3,16 +3,31 @@
    ========================================= */
 
 .shift-card {
-  background-color: var(--m-bg-surface, #ffffff);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   border: 1px solid var(--m-border, #e2e8f0);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  border-radius: 15px;
+  padding: 0.72rem;
+  margin-bottom: 0.72rem;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.045),
+    0 8px 18px rgba(15, 23, 42, 0.04);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: transparent;
+  }
 
   /* --- Variants --- */
 
@@ -20,14 +35,23 @@
   &.critical {
     border-left: 3px solid var(--m-danger, #ef4444);
 
+    &::after {
+      background: linear-gradient(90deg, #ef4444, rgba(239, 68, 68, 0));
+    }
+
     .alert-icon {
       color: var(--m-danger, #ef4444);
       animation: pulse 2s infinite;
     }
 
+    .staff-coverage.text-danger {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
     &:hover {
-      border-color: var(--m-danger, #ef4444);
-      background-color: #fef2f2; /* Red-50 */
+      border-color: #fecaca;
+      background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
     }
   }
 
@@ -35,9 +59,18 @@
   &.optimal {
     border-left: 3px solid var(--m-success, #10b981);
 
+    &::after {
+      background: linear-gradient(90deg, #10b981, rgba(16, 185, 129, 0));
+    }
+
+    .staff-coverage.text-good {
+      background: #ecfdf5;
+      color: #047857;
+    }
+
     &:hover {
-      border-color: var(--m-primary, #4f46e5);
-      background-color: #f8fafc;
+      border-color: #a7f3d0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fffb 100%);
     }
   }
 
@@ -46,43 +79,51 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.68rem;
 
     .time-badge {
       display: flex;
       align-items: center;
       gap: 0.35rem;
-      font-size: 0.75rem;
-      font-weight: 700;
+      font-size: 0.74rem;
+      font-weight: 850;
       color: var(--m-text-main, #0f172a);
-      background-color: var(--m-bg-body, #f1f5f9);
-      padding: 0.2rem 0.5rem;
-      border-radius: 0.25rem;
-      font-variant-numeric: tabular-nums; /* Căn thẳng hàng số */
+      background-color: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+
+      svg {
+        width: 0.78rem;
+        height: 0.78rem;
+        color: #64748b;
+      }
     }
   }
 
   /* --- Body: Avatars --- */
   .card-body {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.68rem;
 
     .staff-visuals {
       display: flex;
       align-items: center;
       min-width: 0;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.42rem;
 
       .avatar-wrapper {
-        width: 1.55rem;
-        height: 1.55rem;
-        min-width: 1.55rem;
+        width: 1.62rem;
+        height: 1.62rem;
+        min-width: 1.62rem;
         border-radius: 999px;
         border: 2px solid var(--m-bg-surface, #fff);
         overflow: hidden;
         margin-left: -0.35rem;
         position: relative;
         flex-shrink: 0;
-        transition: transform 0.2s;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -95,6 +136,7 @@
         &:hover {
           transform: translateY(-3px);
           z-index: 10;
+          box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
         }
 
         &.staff-avatar {
@@ -134,7 +176,7 @@
           text-align: center;
           font-size: 0.58rem;
           line-height: 1;
-          font-weight: 800;
+          font-weight: 900;
           letter-spacing: -0.02em;
           white-space: nowrap;
         }
@@ -150,7 +192,7 @@
           background-color: #e2e8f0;
           color: #475569;
           font-size: 0.62rem;
-          font-weight: 800;
+          font-weight: 900;
         }
 
         &.ghost {
@@ -158,7 +200,7 @@
           border: 1px dashed #cbd5e1;
           color: #94a3b8;
           font-size: 0.75rem;
-          font-weight: 700;
+          font-weight: 800;
         }
       }
     }
@@ -170,10 +212,11 @@
       min-width: 0;
       max-width: 100%;
       font-size: 0.68rem;
-      font-weight: 600;
+      font-weight: 760;
       line-height: 1.2;
       white-space: nowrap;
       overflow: hidden;
+      margin-top: 0.1rem;
 
       .staff-count,
       .staff-coverage {
@@ -186,10 +229,14 @@
         color: var(--m-text-main, #0f172a);
       }
 
+      .staff-coverage {
+        padding: 0.1rem 0.42rem;
+        border-radius: 999px;
+      }
+
       .staff-coverage::before {
-        content: "·";
-        margin-right: 0.25rem;
-        color: #94a3b8;
+        content: "";
+        margin-right: 0;
       }
 
       .text-sub {
@@ -198,12 +245,12 @@
 
       .text-danger {
         color: var(--m-danger, #ef4444);
-        font-weight: 700;
+        font-weight: 850;
       }
 
       .text-good {
         color: var(--m-success, #10b981);
-        font-weight: 700;
+        font-weight: 850;
       }
     }
   }
@@ -216,17 +263,18 @@
     min-height: 1rem;
     height: auto;
     gap: 0.35rem;
+
     .job-dots {
       display: flex;
       gap: 0.25rem;
       align-items: center;
 
       .job-dot {
-        width: 0.5rem;
-        height: 0.5rem;
+        width: 0.48rem;
+        height: 0.48rem;
         border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
 
-        /* Màu sắc cho từng job (dùng biến CSS nếu muốn, ở đây dùng mã màu cứng cho nhanh) */
         &.job-purple {
           background-color: #a855f7;
         }
@@ -254,24 +302,29 @@
         font-size: 0.65rem;
         color: #94a3b8;
         line-height: 1;
+        font-weight: 800;
       }
     }
 
     .hover-action {
       font-size: 0.7rem;
-      font-weight: 600;
+      font-weight: 850;
       color: var(--m-primary, #4f46e5);
-      opacity: 0;
-      transform: translateX(-5px);
-      transition: all 0.2s;
+      opacity: 1;
+      transform: none;
+      transition: color 0.18s ease;
+      white-space: nowrap;
     }
   }
 
-  /* Hiệu ứng khi hover vào cả card */
   &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.06),
+      0 14px 28px rgba(15, 23, 42, 0.09);
+
     .hover-action {
-      opacity: 1;
-      transform: translateX(0);
+      color: #3730a3;
     }
   }
 }
@@ -284,37 +337,4 @@
   50% {
     opacity: 0.5;
   }
-}
-/* Professional card polish */
-.shift-card {
-  border-radius: 14px;
-  padding: 0.78rem;
-}
-
-.shift-card .time-badge {
-  border-radius: 999px !important;
-}
-
-.shift-card .staff-summary {
-  margin-top: 0.1rem;
-}
-
-.shift-card .staff-coverage {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-}
-
-.shift-card .staff-coverage.text-good {
-  background: #ecfdf5;
-}
-
-.shift-card .staff-coverage.text-danger {
-  background: #fef2f2;
-}
-
-.shift-card .hover-action {
-  opacity: 1;
-  transform: none;
-  font-size: 0.72rem;
-  font-weight: 800;
 }
