@@ -33,7 +33,7 @@ function requireRestaurantIdForCouponLookup(restaurantId) {
 }
 
 export const CouponQuery = {
-  async coupons(_, { restaurantId, activeOnly = false, limit = 50, offset = 0, now } = {}, ctx) {
+  async coupons(_, { restaurantId, activeOnly = true, limit = 50, offset = 0, now } = {}, ctx) {
     const activeQuery = buildActiveQuery(activeOnly, now);
 
     if (restaurantId) {

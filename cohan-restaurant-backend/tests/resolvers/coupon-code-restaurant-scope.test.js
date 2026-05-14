@@ -73,12 +73,26 @@ describe("coupon query restaurant scoping", () => {
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(modelMocks.Coupon.findOne).not.toHaveBeenCalled();
   });
-  it("coupons with restaurantId calls requireRestaurantAccess and Coupon.find", async () => {
+  it("coupons with restaurantId defaults to active public browsing", async () => {
     modelMocks.Coupon.find.mockReturnValue(mockFindChain([]));
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
     const ctx = { user: { roleName: "manager" } };
 
     await CouponQuery.coupons(null, { restaurantId: "valid-r1" }, ctx);
+
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Coupon.find).toHaveBeenCalledWith(expect.objectContaining({
+      restaurantId: expect.objectContaining({ value: "valid-r1" }),
+      isActive: true,
+    }));
+  });
+
+  it("coupons activeOnly false requires restaurant permission", async () => {
+    modelMocks.Coupon.find.mockReturnValue(mockFindChain([]));
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+    const ctx = { user: { id: "manager-1", roleName: "manager" } };
+
+    await CouponQuery.coupons(null, { restaurantId: "valid-r1", activeOnly: false }, ctx);
 
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, expect.objectContaining({ value: "valid-r1" }));
     expect(modelMocks.Coupon.find).toHaveBeenCalled();

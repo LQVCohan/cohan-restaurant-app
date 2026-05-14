@@ -142,10 +142,6 @@ function requireAuth(ctx) {
   }
 }
 
-function hasPermissionMetadata(user) {
-  return Boolean(user?.role || user?.roleName || user?.userType);
-}
-
 export async function requirePermission(ctx, permissionCode) {
   requireAuth(ctx);
   if (!(await hasPermission(ctx.user, permissionCode))) throw forbidden();
@@ -160,10 +156,6 @@ export async function requireAnyPermission(ctx, permissionCodes) {
 
 export async function requireRestaurantPermission(ctx, restaurantId, permissionCode) {
   await requireRestaurantAccess(ctx, restaurantId);
-  // Real GraphQL contexts include authenticated user + role metadata after requireRestaurantAccess.
-  // Keep older resolver tests/legacy guarded call sites that mock only restaurant scope compatible.
-  if (!ctx?.user?.id && !ctx?.user?._id) return true;
-  if (!hasPermissionMetadata(ctx?.user)) return true;
   await requirePermission(ctx, permissionCode);
   return true;
 }
