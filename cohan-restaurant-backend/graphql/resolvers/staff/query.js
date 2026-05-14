@@ -56,6 +56,11 @@ import {
 import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
+import {
+  buildPayrollExportRows,
+  getPayrollPayslip,
+  listPayrollPayments,
+} from "../../../src/services/payroll/payrollPayment.service.js";
 import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 import {
   requireAuth,
@@ -894,6 +899,56 @@ export default {
       await requireRestaurantAccess(ctx, period.restaurantId);
     }
     return getPeriodDetail(periodId);
+  },
+
+  payrollPayslip: async (_, { periodId, employeeId }, ctx) => {
+    requireAuth(ctx);
+    const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
+    const isSelf = actorId && String(employeeId) === actorId;
+    if (isSelf) {
+      assertPayrollPermission(ctx, "payroll.payslip.self");
+    } else {
+      assertPayrollPermission(ctx, "payroll.view");
+    }
+    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    const payslip = await getPayrollPayslip({ periodId, employeeId });
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.payslip.view",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      meta: { employeeId: String(employeeId) },
+    });
+    return payslip;
+  },
+
+  payrollPayments: async (_, { periodId, employeeId }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, employeeId ? "payroll.view" : "payroll.export");
+    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    if (employeeId) {
+      const item = await PayrollItem.findOne({
+        periodId: period._id,
+        restaurantId: period.restaurantId,
+        employeeId: payrollToObjectId(employeeId),
+      }).select({ _id: 1 }).lean();
+      if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
+    }
+    return listPayrollPayments({ periodId, employeeId });
+  },
+
+  payrollExportRows: async (_, { periodId }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.export");
+    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    return buildPayrollExportRows({ periodId });
   },
 
   payrollSettings: async (_, { restaurantId }, ctx) => {

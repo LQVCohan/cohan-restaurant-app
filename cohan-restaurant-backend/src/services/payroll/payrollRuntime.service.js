@@ -82,11 +82,22 @@ function isWeekendWorkDate(row, settings) {
 
   return weekendSet.has(getWeekdayCode(row.workDate));
 }
-function parseClockOnDate(dateValue, clockText) {
+function parseClockOnDate(dateValue, clockText, timezoneOffsetMinutes = 420) {
   const [hour = "0", minute = "0"] = String(clockText || "00:00").split(":");
-  const date = new Date(dateValue);
-  date.setHours(Number(hour), Number(minute), 0, 0);
-  return date;
+  const source = new Date(dateValue);
+  const local = new Date(source.getTime() + timezoneOffsetMinutes * 60000);
+  return new Date(
+    Date.UTC(
+      local.getUTCFullYear(),
+      local.getUTCMonth(),
+      local.getUTCDate(),
+      Number(hour),
+      Number(minute),
+      0,
+      0,
+    ) -
+      timezoneOffsetMinutes * 60000,
+  );
 }
 
 function calculateNightOverlapMinutes(row, settings) {
@@ -98,8 +109,9 @@ function calculateNightOverlapMinutes(row, settings) {
   const nightStartText = settings?.nightShiftStart || "22:00";
   const nightEndText = settings?.nightShiftEnd || "06:00";
 
-  let nightStart = parseClockOnDate(checkIn, nightStartText);
-  let nightEnd = parseClockOnDate(checkIn, nightEndText);
+  const timezoneOffsetMinutes = Number(settings?.timezoneOffsetMinutes ?? 420);
+  let nightStart = parseClockOnDate(checkIn, nightStartText, timezoneOffsetMinutes);
+  let nightEnd = parseClockOnDate(checkIn, nightEndText, timezoneOffsetMinutes);
 
   if (nightEnd <= nightStart) {
     nightEnd.setDate(nightEnd.getDate() + 1);
