@@ -1,0 +1,129 @@
+.local-image-picker {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.lip-preview {
+  min-height: 112px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.lip-preview img {
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  object-fit: cover;
+  display: block;
+}
+
+.lip-preview-placeholder {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+  padding: 10px;
+}
+
+.lip-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lip-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.lip-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.lip-btn-primary {
+  background: #b89365;
+  color: #ffffff;
+}
+
+.lip-btn-primary:hover:not(:disabled) {
+  background: #a57c4f;
+}
+
+.lip-btn-ghost {
+  background: #ffffff;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.lip-btn-ghost:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.lip-url-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: 0;
+  color: #0f172a;
+}
+
+.lip-url-input:focus {
+  border-color: #b89365;
+  box-shadow: 0 0 0 3px rgba(184, 147, 101, 0.14);
+}
+
+.lip-helper {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.lip-error {
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.lip-spin {
+  animation: lip-spin 0.8s linear infinite;
+}
+
+@keyframes lip-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .local-image-picker {
+    grid-template-columns: 1fr;
+  }
+}
