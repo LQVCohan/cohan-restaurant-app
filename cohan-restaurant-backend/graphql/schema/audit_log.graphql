@@ -1,0 +1,30 @@
+type AuditLog {
+  id: ID!
+  entity: String!
+  entityId: ID!
+  action: String!
+  byUserId: ID
+  diff: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuditLogFilterInput {
+  entity: String
+  entityId: ID
+  action: String
+  byUserId: ID
+}
+
+type AuditLogConnection {
+  items: [AuditLog!]!
+  total: Int!
+}
+
+extend type Query {
+  auditLogs(
+    filter: AuditLogFilterInput
+    limit: Int = 50
+    offset: Int = 0
+  ): AuditLogConnection!
+}
