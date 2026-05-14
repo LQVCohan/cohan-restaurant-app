@@ -81,12 +81,15 @@ export const resolveAccessRoleName = (userOrRole) => {
 };
 
 export const isAdminRole = (role) => ADMIN_ROLES.has(resolveUserRoleName(role));
-export const isManagerRole = (role) => MANAGER_ROLES.has(resolveUserRoleName(role));
+export const isManagerRole = (role) =>
+  MANAGER_ROLES.has(resolveUserRoleName(role));
 export const isHrRole = (role) => HR_ROLES.has(resolveUserRoleName(role));
-export const isAccountantRole = (role) => ACCOUNTANT_ROLES.has(resolveUserRoleName(role));
+export const isAccountantRole = (role) =>
+  ACCOUNTANT_ROLES.has(resolveUserRoleName(role));
 export const isStaffOperationalRole = (role) =>
   STAFF_OPERATIONAL_ROLES.has(resolveUserRoleName(role));
-export const isCustomerRole = (role) => CUSTOMER_ROLES.has(resolveUserRoleName(role));
+export const isCustomerRole = (role) =>
+  CUSTOMER_ROLES.has(resolveUserRoleName(role));
 
 export const hasStaffOrderAccess = (role) =>
   STAFF_ORDER_ROLES.includes(resolveUserRoleName(role));
@@ -105,7 +108,13 @@ export const getDefaultPathForRole = (userOrRole) => {
 };
 
 const SHARED_USER_ALLOW = [
-  ...new Set(["customer", "admin", "manager", "hr", ...STAFF_OPERATIONAL_ROLES]),
+  ...new Set([
+    "customer",
+    "admin",
+    "manager",
+    "hr",
+    ...STAFF_OPERATIONAL_ROLES,
+  ]),
 ];
 
 // NOTE: public customer pages are protected in AppRouter only when wrapped by PrivateRoute.
@@ -117,7 +126,10 @@ const ROUTE_ACCESS_RULES = [
     allow: STAFF_SHARED_ROLES,
   },
   { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
-  { test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-order)(\/|$)/, allow: ["customer", "admin", "manager"] },
+  {
+    test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-order)(\/|$)/,
+    allow: ["customer", "admin", "manager"],
+  },
 ];
 
 // Role-level route gate only. This does not validate restaurantId ownership.
@@ -141,14 +153,57 @@ export const filterNavigationByRole = (items, userOrRole) => {
     .map((item) => {
       if (Array.isArray(item.items)) {
         const childItems = item.items.filter((child) => {
-          if (!Array.isArray(child.roles) || child.roles.length === 0) return true;
+          if (!Array.isArray(child.roles) || child.roles.length === 0)
+            return true;
           return child.roles.map(normalizeRoleName).includes(normalizedRole);
         });
         return childItems.length > 0 ? { ...item, items: childItems } : null;
       }
 
       if (!Array.isArray(item.roles) || item.roles.length === 0) return item;
-      return item.roles.map(normalizeRoleName).includes(normalizedRole) ? item : null;
+      return item.roles.map(normalizeRoleName).includes(normalizedRole)
+        ? item
+        : null;
     })
     .filter(Boolean);
+};
+export const MENU_MANAGEMENT_ACTIONS = {
+  VIEW: "menu.view",
+  CREATE_ITEM: "menu.create_item",
+  UPDATE_ITEM: "menu.update_item",
+  DELETE_ITEM: "menu.delete_item",
+  UPDATE_PRICE: "menu.update_price",
+  MANAGE_DISH_CATEGORY: "menu.manage_dish_category",
+  MANAGE_MENU_GROUP: "menu.manage_menu_group",
+  CREATE_MENU: "menu.create_menu",
+  UPDATE_MENU: "menu.update_menu",
+  TOGGLE_MENU: "menu.toggle_menu",
+  COPY_MENU: "menu.copy_menu",
+};
+
+const MENU_MANAGEMENT_ACTION_ROLE_MAP = {
+  [MENU_MANAGEMENT_ACTIONS.VIEW]: ["admin", "manager", "hr", "accountant"],
+  [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.CREATE_ITEM]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.DELETE_ITEM]: ["admin", "manager"],
+
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE]: ["admin", "manager"],
+
+  [MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP]: ["admin", "manager"],
+
+  [MENU_MANAGEMENT_ACTIONS.CREATE_MENU]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_MENU]: ["admin", "manager"],
+  [MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU]: ["admin", "manager"],
+};
+
+export const canAccessMenuManagementAction = (userOrRole, action) => {
+  const normalizedRole = resolveUserRoleName(userOrRole);
+  if (!normalizedRole || !action) return false;
+
+  const allowedRoles = MENU_MANAGEMENT_ACTION_ROLE_MAP[action];
+  if (!Array.isArray(allowedRoles)) return false;
+
+  return allowedRoles.includes(normalizedRole);
 };

@@ -1,9 +1,14 @@
 // src/graphql/resolvers/menu/mutation.js (CLEAN + UPDATED for Recipe-based pricing)
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
-import { Menu, MenuItem, Restaurant, Recipe } from "../../../models/index.js";
-import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  Menu,
+  MenuItem,
+  Restaurant,
+  Recipe,
+  AuditLog,
+} from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
@@ -25,6 +30,36 @@ function assertStatus(status) {
   if (!MENU_ITEM_STATUS.includes(status)) {
     throw new GraphQLError("Invalid status");
   }
+}
+
+function getActorId(ctx) {
+  return ctx?.user?.id || ctx?.user?._id || null;
+}
+
+async function writeAuditLog({
+  entity,
+  entityId,
+  action,
+  ctx,
+  diff = {},
+  session = null,
+}) {
+  if (!entity || !entityId || !action) return;
+
+  const payload = {
+    entity,
+    entityId,
+    action,
+    byUserId: getActorId(ctx),
+    diff,
+  };
+
+  if (session) {
+    await AuditLog.create([payload], { session });
+    return;
+  }
+
+  await AuditLog.create(payload);
 }
 
 function roundWith(n, roundTo = 0) {
@@ -88,7 +123,7 @@ export const MenuMutation = {
     if (coverImage !== undefined) patch.coverImage = coverImage;
     if (typeof isActive === "boolean") patch.isActive = isActive;
     if (categoryMenuId !== undefined) patch.categoryMenuId = categoryMenuId;
-
+    const beforeMenu = await Menu.findOne({ restaurantId, timeSlot }).lean();
     const doc = await Menu.findOneAndUpdate(
       { restaurantId, timeSlot },
       {
@@ -100,9 +135,34 @@ export const MenuMutation = {
         },
         ...(Object.keys(patch).length ? { $set: patch } : {}),
       },
-      { new: true, upsert: true, runValidators: true }
+      { new: true, upsert: true, runValidators: true },
     ).lean({ virtuals: true });
-
+    await writeAuditLog({
+      entity: "Menu",
+      entityId: doc._id || doc.id,
+      action: beforeMenu ? "update" : "create",
+      ctx,
+      diff: {
+        restaurantId,
+        timeSlot,
+        before: beforeMenu
+          ? {
+              name: beforeMenu.name,
+              description: beforeMenu.description,
+              coverImage: beforeMenu.coverImage,
+              isActive: beforeMenu.isActive,
+              categoryMenuId: beforeMenu.categoryMenuId,
+            }
+          : null,
+        after: {
+          name: doc.name,
+          description: doc.description,
+          coverImage: doc.coverImage,
+          isActive: doc.isActive,
+          categoryMenuId: doc.categoryMenuId,
+        },
+      },
+    });
     return doc;
   },
 
@@ -180,7 +240,7 @@ export const MenuMutation = {
               isActive: true,
             },
           },
-          { new: true, upsert: true, runValidators: true, session }
+          { new: true, upsert: true, runValidators: true, session },
         );
 
         // 2) create menu item (basePrice only cached/display)
@@ -205,12 +265,12 @@ export const MenuMutation = {
               // byWeight: deprecated - derived from recipe variant mode
             },
           ],
-          { session }
+          { session },
         ).then((rows) => rows[0]);
 
         // 3) auto-create recipe with a default servingVariant
         const defaultVariant = buildDefaultVariantFromBasePrice(
-          basePriceNum ?? 0
+          basePriceNum ?? 0,
         );
 
         await Recipe.create(
@@ -223,7 +283,7 @@ export const MenuMutation = {
               isActive: true,
             },
           ],
-          { session }
+          { session },
         );
 
         // 4) sync basePrice from recipe (min variant price)
@@ -231,13 +291,27 @@ export const MenuMutation = {
         await MenuItem.updateOne(
           { _id: createdMenuItem._id },
           { $set: { basePrice: minPrice } },
-          { session }
+          { session },
         );
       });
 
       const doc = await MenuItem.findById(createdMenuItem._id).lean({
         virtuals: true,
         getters: true,
+      });
+      await writeAuditLog({
+        entity: "MenuItem",
+        entityId: doc._id || doc.id,
+        action: "create",
+        ctx,
+        diff: {
+          restaurantId: doc.restaurantId,
+          menuId: doc.menuId,
+          categoryId: doc.categoryId,
+          name: doc.name,
+          basePrice: doc.basePrice,
+          status: doc.status,
+        },
       });
       return doc;
     } catch (err) {
@@ -250,9 +324,7 @@ export const MenuMutation = {
   updateMenuItem: async (_, { input }, ctx) => {
     const { id } = input || {};
     if (!isOid(id)) throw new GraphQLError("Invalid id");
-    const existing = await MenuItem.findById(id)
-      .select({ restaurantId: 1 })
-      .lean();
+    const existing = await MenuItem.findById(id).lean();
     if (!existing) throw new GraphQLError("MenuItem not found");
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
 
@@ -361,7 +433,40 @@ export const MenuMutation = {
           .lean({ virtuals: true, getters: true })
           .session(session);
       });
-
+      await writeAuditLog({
+        entity: "MenuItem",
+        entityId: updatedItem._id || updatedItem.id,
+        action: "update",
+        ctx,
+        diff: {
+          before: {
+            categoryId: existing.categoryId,
+            name: existing.name,
+            description: existing.description,
+            thumbImage: existing.thumbImage,
+            basePrice: existing.basePrice,
+            status: existing.status,
+            avgPrepTimeMin: existing.avgPrepTimeMin,
+            point: existing.point,
+            rate: existing.rate,
+            orderCounter: existing.orderCounter,
+            notes: existing.notes,
+          },
+          after: {
+            categoryId: updatedItem.categoryId,
+            name: updatedItem.name,
+            description: updatedItem.description,
+            thumbImage: updatedItem.thumbImage,
+            basePrice: updatedItem.basePrice,
+            status: updatedItem.status,
+            avgPrepTimeMin: updatedItem.avgPrepTimeMin,
+            point: updatedItem.point,
+            rate: updatedItem.rate,
+            orderCounter: updatedItem.orderCounter,
+            notes: updatedItem.notes,
+          },
+        },
+      });
       return updatedItem;
     } catch (err) {
       throw new GraphQLError(err?.message || "updateMenuItem failed");
@@ -372,9 +477,7 @@ export const MenuMutation = {
 
   deleteMenuItem: async (_, { id }, ctx) => {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
-    const existing = await MenuItem.findById(id)
-      .select({ restaurantId: 1 })
-      .lean();
+    const existing = await MenuItem.findById(id).lean();
     if (!existing) return true;
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
 
@@ -390,6 +493,21 @@ export const MenuMutation = {
         }).session(session);
 
         await MenuItem.deleteOne({ _id: item._id }).session(session);
+        await writeAuditLog({
+          entity: "MenuItem",
+          entityId: item._id,
+          action: "delete",
+          ctx,
+          session,
+          diff: {
+            restaurantId: item.restaurantId,
+            menuId: item.menuId,
+            categoryId: item.categoryId,
+            name: item.name,
+            basePrice: item.basePrice,
+            status: item.status,
+          },
+        });
       });
 
       return true;
@@ -423,7 +541,8 @@ export const MenuMutation = {
 
     if (input.point !== undefined) {
       const n = toNumOrUndef(input.point);
-      if (n !== undefined && n < 0) throw new GraphQLError("point must be >= 0");
+      if (n !== undefined && n < 0)
+        throw new GraphQLError("point must be >= 0");
       patch.point = n;
     }
 
@@ -445,7 +564,7 @@ export const MenuMutation = {
     const doc = await MenuItem.findOneAndUpdate(
       { _id: menuItemId, restaurantId },
       Object.keys(patch).length ? { $set: patch } : {},
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).lean({ virtuals: true });
 
     if (!doc) throw new GraphQLError("MenuItem not found");
@@ -455,19 +574,28 @@ export const MenuMutation = {
   toggleMenuItemStatus: async (_, { id, status }, ctx) => {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
     assertStatus(status);
-    const existing = await MenuItem.findById(id)
-      .select({ restaurantId: 1 })
-      .lean();
+    const existing = await MenuItem.findById(id).lean();
     if (!existing) throw new GraphQLError("MenuItem not found");
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
 
     const item = await MenuItem.findByIdAndUpdate(
       id,
       { $set: { status } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).lean({ virtuals: true });
 
     if (!item) throw new GraphQLError("MenuItem not found");
+    await writeAuditLog({
+      entity: "MenuItem",
+      entityId: item._id || item.id,
+      action: "update",
+      ctx,
+      diff: {
+        field: "status",
+        before: existing.status,
+        after: item.status,
+      },
+    });
     return item;
   },
 
@@ -542,7 +670,7 @@ export const MenuMutation = {
       }).lean();
 
       const recipeByMenuItemId = new Map(
-        recipes.map((r) => [String(r.menuItemId), r])
+        recipes.map((r) => [String(r.menuItemId), r]),
       );
 
       const recipeOps = [];
@@ -610,7 +738,28 @@ export const MenuMutation = {
             virtuals: true,
           })
         : [];
-
+      if (updatedItems.length) {
+        await Promise.all(
+          updatedItems.map((item) =>
+            writeAuditLog({
+              entity: "MenuItem",
+              entityId: item._id || item.id,
+              action: "update",
+              ctx,
+              diff: {
+                type: "bulk_price_update",
+                restaurantId,
+                timeSlot,
+                mode,
+                value: vNum,
+                roundTo,
+                floorZero,
+                basePriceAfter: item.basePrice,
+              },
+            }),
+          ),
+        );
+      }
       return {
         updatedCount: updatedItems.length,
         items: updatedItems,
