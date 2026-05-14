@@ -1,0 +1,42 @@
+type PayrollReadiness {
+  periodId: ID!
+  restaurantId: ID!
+  status: String!
+  readyToFinalize: Boolean!
+  blockingCount: Int!
+  warningCount: Int!
+  sections: PayrollReadinessSections!
+  issues: [PayrollReadinessIssue!]!
+}
+
+type PayrollReadinessSections {
+  schedule: PayrollReadinessSection!
+  attendance: PayrollReadinessSection!
+  approvals: PayrollReadinessSection!
+  payroll: PayrollReadinessSection!
+}
+
+type PayrollReadinessSection {
+  status: String
+  blockingCount: Int!
+  warningCount: Int!
+  metrics: JSON
+  issues: [PayrollReadinessIssue!]!
+}
+
+type PayrollReadinessIssue {
+  code: String!
+  severity: String!
+  message: String!
+  employeeId: ID
+  employeeName: String
+  employeeCode: String
+  sourceType: String
+  sourceId: ID
+  suggestedAction: String
+  targetRoute: String
+}
+
+extend type Query {
+  payrollReadiness(periodId: ID!): PayrollReadiness!
+}
