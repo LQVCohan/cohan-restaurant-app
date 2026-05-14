@@ -1,0 +1,136 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const modelMocks = vi.hoisted(() => ({
+  Role: {
+    findOne: vi.fn(),
+    create: vi.fn(),
+    findById: vi.fn(),
+  },
+  User: {},
+  Permission: { find: vi.fn() },
+  ParentRole: { findById: vi.fn() },
+}));
+
+vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../utils/authz.js", () => ({
+  hasRole: vi.fn((user, roles) => roles.includes(String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase())),
+}));
+vi.mock("mongoose", () => ({
+  default: { isValidObjectId: vi.fn(() => true) },
+}));
+
+const adminCtx = { user: { id: "admin-1", roleName: "admin" } };
+const inheritedPermission = { _id: "permission-inherited", id: "permission-inherited", code: "order.read" };
+const directPermission = { _id: "permission-direct", id: "permission-direct", code: "order.create" };
+const parentRole = {
+  _id: "parent-service",
+  id: "parent-service",
+  slug: "service",
+  name: "Service",
+  permissions: [inheritedPermission],
+};
+
+function roleQueryResult(role) {
+  return {
+    populate: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(role),
+  };
+}
+
+function expectRbacRoleResponse(role) {
+  expect(role.parentRole).toMatchObject({ slug: "service" });
+  expect(role.directPermissions.map((permission) => permission.code)).toEqual(["order.create"]);
+  expect(role.permissions.map((permission) => permission.code).sort()).toEqual(["order.create", "order.read"]);
+}
+
+describe("RoleMutation RBAC response shape", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    modelMocks.Role.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.Permission.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([directPermission]) });
+    modelMocks.ParentRole.findById.mockResolvedValue(parentRole);
+  });
+
+  it("createRole returns parentRole, directPermissions, and effective permissions", async () => {
+    const createdRoleId = "role-created";
+    modelMocks.Role.create.mockResolvedValue({ _id: createdRoleId });
+    modelMocks.Role.findById.mockReturnValueOnce(roleQueryResult({
+      _id: createdRoleId,
+      id: createdRoleId,
+      slug: "server",
+      name: "Server",
+      isSystem: false,
+      parentRole,
+      permissions: [directPermission],
+    }));
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    const role = await RoleMutation.createRole(
+      null,
+      { input: { name: "Server", slug: "server", parentRoleId: "parent-service", permissionIds: ["permission-direct"] } },
+      adminCtx,
+    );
+
+    expectRbacRoleResponse(role);
+  });
+
+  it("updateRole returns parentRole, directPermissions, and effective permissions", async () => {
+    const save = vi.fn();
+    const roleDocument = {
+      _id: "role-server",
+      slug: "server",
+      isSystem: false,
+      permissions: [],
+      parentRole: "parent-service",
+      save,
+    };
+
+    modelMocks.Role.findById
+      .mockResolvedValueOnce(roleDocument)
+      .mockReturnValueOnce(roleQueryResult({
+        _id: "role-server",
+        id: "role-server",
+        slug: "server",
+        name: "Server",
+        isSystem: false,
+        parentRole,
+        permissions: [directPermission],
+      }));
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    const role = await RoleMutation.updateRole(
+      null,
+      { input: { id: "role-server", name: "Server updated", parentRoleId: "parent-service", permissionIds: ["permission-direct"] } },
+      adminCtx,
+    );
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expectRbacRoleResponse(role);
+  });
+
+  it("updateRole still blocks system/protected roles before saving", async () => {
+    const save = vi.fn();
+    modelMocks.Role.findById.mockResolvedValue({
+      _id: "role-admin",
+      slug: "admin",
+      isSystem: true,
+      save,
+    });
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    await expect(
+      RoleMutation.updateRole(
+        null,
+        { input: { id: "role-admin", name: "Admin updated", permissionIds: ["permission-direct"] } },
+        adminCtx,
+      ),
+    ).rejects.toThrow("System role cannot be modified");
+
+    expect(save).not.toHaveBeenCalled();
+    expect(modelMocks.Permission.find).not.toHaveBeenCalled();
+  });
+});

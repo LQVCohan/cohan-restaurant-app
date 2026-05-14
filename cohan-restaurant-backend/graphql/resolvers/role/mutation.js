@@ -7,6 +7,7 @@ import {
   requirePermission,
 } from "../../../src/services/auth/authorization.service.js";
 import mongoose from "mongoose";
+import { loadRoleForRbacResponse } from "./rbacRoleResponse.js";
 
 function assertNonAdminCanUseParentRole(user, parentRole) {
   if (!hasRole(user, ["admin"]) && isProtectedSystemRoleSlug(parentRole?.slug)) {
@@ -81,7 +82,7 @@ export const RoleMutation = {
       isSystem: false,
     });
 
-    return doc.toObject();
+    return loadRoleForRbacResponse(doc._id);
   },
 
   updateRole: async (_, { input }, { user }) => {
@@ -139,7 +140,7 @@ export const RoleMutation = {
     // slug thường không cho đổi, nhưng nếu em muốn thì thêm vào đây
 
     await r.save();
-    return r.toObject();
+    return loadRoleForRbacResponse(r._id);
   },
 
   deleteRole: async (_, { id }, { user }) => {

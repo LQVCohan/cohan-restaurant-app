@@ -146,6 +146,12 @@ function RoleManagement({
   const [form, setForm] = useState(emptyRoleForm);
   const [status, setStatus] = useState(null);
   const readOnly = !isAdmin;
+  const selectedRoleSlug = String(selectedRole?.slug || "").toLowerCase();
+  const isProtectedSelectedRole =
+    mode === "edit" &&
+    selectedRole &&
+    (selectedRole.isSystem || protectedRoleSlugs.has(selectedRoleSlug));
+  const formLocked = readOnly || Boolean(isProtectedSelectedRole);
   const selectedParentRole = parentRoles.find((parentRole) => parentRole.id === form.parentRoleId) || null;
 
   useEffect(() => {
@@ -204,7 +210,7 @@ function RoleManagement({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (readOnly || saving) return;
+    if (formLocked || saving) return;
     setStatus(null);
 
     const input = {
@@ -246,6 +252,11 @@ function RoleManagement({
             Manager chỉ được gán vai trò cho nhân viên trong nhà hàng, không được chỉnh cấu hình vai trò toàn hệ thống.
           </p>
         ) : null}
+        {isProtectedSelectedRole ? (
+          <p className="rbac-status rbac-status--warning">
+            Vai trò hệ thống chỉ được xem, không được chỉnh sửa.
+          </p>
+        ) : null}
         <div className="rbac-action-row">
           <button type="button" onClick={startEdit} className={mode === "edit" ? "is-active" : ""}>Sửa vai trò đang chọn</button>
           <button type="button" onClick={startCreate} className={mode === "create" ? "is-active" : ""} disabled={readOnly}>Tạo vai trò mới</button>
@@ -273,26 +284,26 @@ function RoleManagement({
           <h3>{mode === "create" ? "Tạo vai trò mới" : "Sửa vai trò"}</h3>
           <span>{selectedRole?.isSystem && mode === "edit" ? "Vai trò hệ thống" : "Vai trò tuỳ chỉnh"}</span>
         </div>
-        <form onSubmit={handleSubmit} className="rbac-role-form" aria-disabled={readOnly}>
+        <form onSubmit={handleSubmit} className="rbac-role-form" aria-disabled={formLocked}>
           <div className="rbac-form-grid">
             <label>
               Tên vai trò
-              <input value={form.name} onChange={(event) => changeField("name", event.target.value)} disabled={readOnly} required />
+              <input value={form.name} onChange={(event) => changeField("name", event.target.value)} disabled={formLocked} required />
             </label>
             <label>
               Mã vai trò
-              <input value={form.slug} onChange={(event) => changeField("slug", event.target.value)} disabled={readOnly || mode === "edit"} required />
+              <input value={form.slug} onChange={(event) => changeField("slug", event.target.value)} disabled={formLocked || mode === "edit"} required />
             </label>
             <label>
               Bộ phận
-              <select value={form.department} onChange={(event) => changeField("department", event.target.value)} disabled={readOnly}>
+              <select value={form.department} onChange={(event) => changeField("department", event.target.value)} disabled={formLocked}>
                 <option value="">Không giới hạn</option>
                 {departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
               </select>
             </label>
             <label>
               Nhóm vai trò
-              <select value={form.parentRoleId} onChange={(event) => changeField("parentRoleId", event.target.value)} disabled={readOnly} required>
+              <select value={form.parentRoleId} onChange={(event) => changeField("parentRoleId", event.target.value)} disabled={formLocked} required>
                 <option value="">Chọn nhóm vai trò</option>
                 {parentRoles.map((parentRole) => <option key={parentRole.id} value={parentRole.id}>{roleLabel(parentRole)} · {parentRole.slug}</option>)}
               </select>
@@ -300,13 +311,13 @@ function RoleManagement({
           </div>
           <label>
             Mô tả
-            <textarea value={form.description} onChange={(event) => changeField("description", event.target.value)} disabled={readOnly} rows={3} />
+            <textarea value={form.description} onChange={(event) => changeField("description", event.target.value)} disabled={formLocked} rows={3} />
           </label>
 
           <div className="rbac-permission-checklist">
             <h4>Quyền hạn gán trực tiếp</h4>
             {Object.entries(permissionsByGroup || {}).map(([group, permissions]) => (
-              <fieldset key={group} disabled={readOnly}>
+              <fieldset key={group} disabled={formLocked}>
                 <legend>{group}</legend>
                 {permissions.map((permission) => (
                   <label key={permission.id} className="rbac-checkbox-row">
@@ -328,7 +339,7 @@ function RoleManagement({
             <PermissionChipList title="Quyền hiệu lực cuối cùng" permissions={effectivePermissions} />
           </div>
 
-          <button type="submit" disabled={readOnly || saving || !form.name || !form.slug || !form.parentRoleId || (mode === "edit" && !selectedRole)}>
+          <button type="submit" disabled={formLocked || saving || !form.name || !form.slug || !form.parentRoleId || (mode === "edit" && !selectedRole)}>
             {saving ? "Đang lưu..." : mode === "create" ? "Tạo vai trò" : "Lưu thay đổi"}
           </button>
         </form>

@@ -1,18 +1,6 @@
 import { ParentRole, Role } from "../../../models/index.js";
 import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
-
-function mergeEffectivePermissions(roleObject) {
-  const permMap = new Map();
-  for (const p of roleObject.parentRole?.permissions || []) {
-    const key = String(p?._id || p?.id || p?.code || "");
-    if (key) permMap.set(key, p);
-  }
-  for (const p of roleObject.permissions || []) {
-    const key = String(p?._id || p?.id || p?.code || "");
-    if (key) permMap.set(key, p);
-  }
-  return Array.from(permMap.values());
-}
+import { normalizeRoleForRbacResponse } from "./rbacRoleResponse.js";
 
 export const RoleQuery = {
   role: async (_, { search, parentRoleId }, ctx) => {
@@ -36,12 +24,7 @@ export const RoleQuery = {
       .sort({ slug: 1 })
       .exec();
 
-    return roles.map((r) => {
-      const obj = r.toObject();
-      obj.directPermissions = obj.permissions || [];
-      obj.permissions = mergeEffectivePermissions(obj);
-      return obj;
-    });
+    return roles.map((r) => normalizeRoleForRbacResponse(r.toObject()));
   },
 
   parentRoles: async (_, { search }, ctx) => {

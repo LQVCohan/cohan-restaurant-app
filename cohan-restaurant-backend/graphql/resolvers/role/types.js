@@ -1,4 +1,5 @@
 import { User, Permission, ParentRole } from "../../../models/index.js";
+import { mergeEffectivePermissions } from "./rbacRoleResponse.js";
 
 async function findPermissions(permissionRefs = []) {
   if (!permissionRefs?.length) return [];
@@ -7,24 +8,16 @@ async function findPermissions(permissionRefs = []) {
   });
 }
 
-function permissionKey(permission) {
-  return String(permission?._id || permission?.id || permission?.code || "");
-}
-
-function mergePermissions(...permissionGroups) {
-  const permissionMap = new Map();
-  for (const group of permissionGroups) {
-    for (const permission of group || []) {
-      const key = permissionKey(permission);
-      if (key) permissionMap.set(key, permission);
-    }
-  }
-  return Array.from(permissionMap.values());
-}
-
 export default {
   Role: {
     id: (p) => p.id ?? String(p._id),
+    parentRole: async (parent) => {
+      if (!parent.parentRole) return null;
+      if (typeof parent.parentRole === "object" && (parent.parentRole.name || parent.parentRole.slug)) {
+        return parent.parentRole;
+      }
+      return ParentRole.findById(parent.parentRole).populate("permissions").lean({ virtuals: true });
+    },
     users: async (parent) => {
       return User.find({ role: parent._id }).lean();
     },
@@ -33,7 +26,7 @@ export default {
       return findPermissions(parent.permissions);
     },
     permissions: async (parent) => {
-      if (parent.permissions && parent.parentRole?.permissions) return parent.permissions;
+      if (parent.directPermissions) return parent.permissions || [];
 
       const directPermissions = await findPermissions(parent.permissions);
       let inheritedPermissions = [];
@@ -44,7 +37,7 @@ export default {
         inheritedPermissions = parentRole?.permissions || [];
       }
 
-      return mergePermissions(inheritedPermissions, directPermissions);
+      return mergeEffectivePermissions({ parentRole: { permissions: inheritedPermissions }, permissions: directPermissions });
     },
   },
 };
