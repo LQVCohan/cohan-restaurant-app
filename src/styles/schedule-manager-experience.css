@@ -160,11 +160,12 @@
 
 /* Availability panel: compact manager card, no inner scroll trap */
 .manager-page-shell--schedules .schedule-availability-panel {
-  margin: 0.85rem 1.35rem 0 !important;
+  margin: 0.72rem 1.35rem 0 !important;
+  padding: 0.78rem 0.9rem !important;
   border-radius: 18px !important;
   border: 1px solid rgba(226, 232, 240, 0.92) !important;
   background: rgba(255,255,255,0.96) !important;
-  box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 14px 32px rgba(15,23,42,0.045) !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 12px 28px rgba(15,23,42,0.04) !important;
   max-height: none !important;
   overflow: visible !important;
   transition: box-shadow 0.22s ease;
@@ -174,7 +175,7 @@
 .manager-page-shell--schedules .schedule-availability-panel:focus-within {
   max-height: none !important;
   overflow: visible !important;
-  box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 14px 32px rgba(15,23,42,0.045) !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.035), 0 14px 32px rgba(15,23,42,0.055) !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__header {
@@ -183,22 +184,30 @@
   z-index: 1;
   background: transparent;
   backdrop-filter: none;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 0 !important;
+  border-bottom: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 0.8rem;
+  align-items: start;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__header h3 {
-  font-size: 0.95rem !important;
+  font-size: 0.92rem !important;
+  margin: 0 !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__header p {
-  font-size: 0.8rem !important;
-  line-height: 1.35;
+  font-size: 0.78rem !important;
+  line-height: 1.32;
+  margin: 0.18rem 0 0 !important;
+  color: #64748b !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__summary {
+  margin-top: 0.65rem !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 0.55rem !important;
+  gap: 0.5rem !important;
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__summary > div:nth-child(n + 4) {
@@ -207,8 +216,15 @@
 
 .manager-page-shell--schedules .schedule-availability-panel__summary > div,
 .manager-page-shell--schedules .metrics-grid > span {
+  min-height: 3rem !important;
   border-radius: 13px !important;
   background: #f8fafc !important;
+  padding: 0.48rem 0.62rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary span,
+.manager-page-shell--schedules .schedule-availability-panel__summary small {
+  font-size: 0.72rem !important;
 }
 
 /* Hide secondary availability explanation on the main schedule page. Details stay behind action buttons/modals. */
@@ -219,9 +235,20 @@
 }
 
 .manager-page-shell--schedules .schedule-availability-panel__actions {
-  margin-top: 0.7rem !important;
+  margin-top: 0.62rem !important;
   padding-top: 0 !important;
   border-top: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.45rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions button {
+  min-height: 2.12rem !important;
+  border-radius: 999px !important;
+  font-size: 0.8rem !important;
+  font-weight: 850 !important;
+  padding: 0 0.78rem !important;
 }
 
 .manager-page-shell--schedules .metrics-grid {
@@ -590,16 +617,6 @@
   background: #eef2ff !important;
   border-color: #a5b4fc !important;
   color: #4338ca !important;
-}
-
-/* Keep the availability summary short on desktop so the calendar stays visible. */
-.manager-page-shell--schedules .schedule-availability-panel {
-  padding-bottom: 0.85rem;
-}
-
-.manager-page-shell--schedules .schedule-availability-panel__actions button {
-  border-radius: 999px !important;
-  font-weight: 850 !important;
 }
 
 @media (max-width: 768px) {
