@@ -485,6 +485,11 @@ const PromotionModal = ({
                     <option value="category">Theo danh mục</option>
                     <option value="item">Theo món</option>
                   </select>
+                  <p className="text-xs text-secondary mt-2">
+                    Khi thanh toán, hệ thống sẽ giảm tiền trên dòng món tặng nếu
+                    bill có đủ món mua. Ví dụ: mua 1 món A tặng 1 món B, bill có
+                    2 món A và 2 món B thì giảm tiền 2 món B.
+                  </p>
                 </div>
 
                 <div className="form-group">
@@ -520,7 +525,8 @@ const PromotionModal = ({
                       ))}
                     </select>
                     <p className="text-xs text-secondary mt-2">
-                      Chỉ dùng để lọc danh sách món, không lưu thành phạm vi áp dụng.
+                      Chỉ dùng để lọc danh sách món, không lưu thành phạm vi áp
+                      dụng.
                     </p>
                   </div>
                 )}
@@ -600,6 +606,11 @@ const PromotionModal = ({
                     {errors.giftItemId && (
                       <span className="err-msg">{errors.giftItemId}</span>
                     )}
+                    <p className="text-xs text-secondary mt-2">
+                      Khi thanh toán, hệ thống sẽ giảm tiền trên dòng món tặng
+                      nếu bill có đủ món mua. Ví dụ: mua 1 món A tặng 1 món B,
+                      bill có 2 món A và 2 món B thì giảm tiền 2 món B.
+                    </p>
                   </div>
                 )}
               </div>

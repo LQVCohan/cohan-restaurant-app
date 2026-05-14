@@ -727,6 +727,66 @@ describe("discount calculation business", () => {
       discount: 5000,
     });
   });
+  it("applies BOGO promotion by discounting gift item lines", async () => {
+    const restaurantId = new mongoose.Types.ObjectId();
+    const buyItemId = new mongoose.Types.ObjectId();
+    const giftItemId = new mongoose.Types.ObjectId();
+
+    const promotion = {
+      _id: new mongoose.Types.ObjectId(),
+      restaurantId,
+      name: "Mua phở tặng trà",
+      promotionType: "BOGO",
+      scope: "ITEM",
+      itemId: buyItemId,
+      giftItemId,
+      buyQuantity: 1,
+      getQuantity: 1,
+      minOrderValue: 0,
+      isActive: true,
+      startAt: new Date(Date.now() - 1000),
+      endAt: new Date(Date.now() + 86400000),
+      level: 1,
+    };
+
+    Promotion.find.mockReturnValue({
+      session: vi.fn().mockResolvedValue([promotion]),
+    });
+
+    Coupon.findOne.mockReturnValue({
+      session: vi.fn().mockResolvedValue(null),
+    });
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId,
+      items: [
+        {
+          _id: "line-buy",
+          menuItemId: buyItemId,
+          name: "Phở bò",
+          quantity: 2,
+          lineSubtotal: 100000,
+        },
+        {
+          _id: "line-gift",
+          menuItemId: giftItemId,
+          name: "Trà đá",
+          quantity: 2,
+          lineSubtotal: 20000,
+        },
+      ],
+      pricing: {},
+    });
+
+    expect(result.promotionDiscount).toBe(20000);
+    expect(result.totalDiscount).toBe(20000);
+    expect(result.appliedPromotions).toContain(String(promotion._id));
+    expect(result.promotionLines[0]).toMatchObject({
+      promotionType: "BOGO",
+      freeQuantity: 2,
+      discount: 20000,
+    });
+  });
 
   it("prefers item-level promotion over category-level promotion for the same item", async () => {
     Coupon.findOne.mockReturnValue(chain(null));
@@ -781,6 +841,176 @@ describe("discount calculation business", () => {
       promotionId: "promo-icecream",
       promotionScope: "ITEM",
       discount: 5000,
+    });
+  });
+
+  it("applies BOGO promotion by discounting gift item lines", async () => {
+    Coupon.findOne.mockReturnValue(chain(null));
+    Promotion.findOne.mockReturnValue(chain(null));
+
+    Promotion.find.mockReturnValue(
+      chainList([
+        {
+          _id: "promo-bogo-pho-tra",
+          name: "Mua phở tặng trà",
+          isActive: true,
+          scope: "ITEM",
+          itemId: "item-pho",
+          giftItemId: "item-tra",
+          promotionType: "BOGO",
+          buyQuantity: 1,
+          getQuantity: 1,
+          minOrderValue: 0,
+          level: 1,
+          startAt: new Date(Date.now() - 1000),
+          endAt: new Date(Date.now() + 86400000),
+        },
+      ]),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      promotionIds: [],
+      items: [
+        {
+          _id: "line-pho",
+          dishId: "item-pho",
+          menuItemId: "item-pho",
+          name: "Phở bò",
+          quantity: 2,
+          lineSubtotal: 100000,
+        },
+        {
+          _id: "line-tra",
+          dishId: "item-tra",
+          menuItemId: "item-tra",
+          name: "Trà đá",
+          quantity: 2,
+          lineSubtotal: 20000,
+        },
+      ],
+      pricing: {},
+    });
+
+    expect(result.promotionDiscount).toBe(20000);
+    expect(result.totalDiscount).toBe(20000);
+    expect(result.appliedPromotions).toEqual(["promo-bogo-pho-tra"]);
+    expect(result.promotionLines).toHaveLength(1);
+    expect(result.promotionLines[0]).toMatchObject({
+      lineId: "line-tra",
+      dishId: "item-tra",
+      name: "Trà đá",
+      promotionId: "promo-bogo-pho-tra",
+      promotionName: "Mua phở tặng trà",
+      promotionScope: "ITEM",
+      promotionType: "BOGO",
+      buyQuantity: 1,
+      getQuantity: 1,
+      freeQuantity: 2,
+      discountType: "BOGO",
+      discount: 20000,
+    });
+  });
+  it("does not apply BOGO when gift item is not present in the order", async () => {
+    Coupon.findOne.mockReturnValue(chain(null));
+    Promotion.findOne.mockReturnValue(chain(null));
+
+    Promotion.find.mockReturnValue(
+      chainList([
+        {
+          _id: "promo-bogo-pho-tra",
+          name: "Mua phở tặng trà",
+          isActive: true,
+          scope: "ITEM",
+          itemId: "item-pho",
+          giftItemId: "item-tra",
+          promotionType: "BOGO",
+          buyQuantity: 1,
+          getQuantity: 1,
+          minOrderValue: 0,
+          level: 1,
+          startAt: new Date(Date.now() - 1000),
+          endAt: new Date(Date.now() + 86400000),
+        },
+      ]),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      promotionIds: [],
+      items: [
+        {
+          _id: "line-pho",
+          dishId: "item-pho",
+          menuItemId: "item-pho",
+          name: "Phở bò",
+          quantity: 2,
+          lineSubtotal: 100000,
+        },
+      ],
+      pricing: {},
+    });
+
+    expect(result.promotionDiscount).toBe(0);
+    expect(result.totalDiscount).toBe(0);
+    expect(result.appliedPromotions).toEqual([]);
+    expect(result.promotionLines).toEqual([]);
+  });
+  it("caps BOGO discount by actual gift item quantity in the order", async () => {
+    Coupon.findOne.mockReturnValue(chain(null));
+    Promotion.findOne.mockReturnValue(chain(null));
+
+    Promotion.find.mockReturnValue(
+      chainList([
+        {
+          _id: "promo-bogo-pho-tra",
+          name: "Mua phở tặng trà",
+          isActive: true,
+          scope: "ITEM",
+          itemId: "item-pho",
+          giftItemId: "item-tra",
+          promotionType: "BOGO",
+          buyQuantity: 1,
+          getQuantity: 1,
+          minOrderValue: 0,
+          level: 1,
+          startAt: new Date(Date.now() - 1000),
+          endAt: new Date(Date.now() + 86400000),
+        },
+      ]),
+    );
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      promotionIds: [],
+      items: [
+        {
+          _id: "line-pho",
+          dishId: "item-pho",
+          menuItemId: "item-pho",
+          name: "Phở bò",
+          quantity: 3,
+          lineSubtotal: 150000,
+        },
+        {
+          _id: "line-tra",
+          dishId: "item-tra",
+          menuItemId: "item-tra",
+          name: "Trà đá",
+          quantity: 1,
+          lineSubtotal: 10000,
+        },
+      ],
+      pricing: {},
+    });
+
+    expect(result.promotionDiscount).toBe(10000);
+    expect(result.totalDiscount).toBe(10000);
+    expect(result.appliedPromotions).toEqual(["promo-bogo-pho-tra"]);
+    expect(result.promotionLines).toHaveLength(1);
+    expect(result.promotionLines[0]).toMatchObject({
+      freeQuantity: 1,
+      discount: 10000,
     });
   });
 });

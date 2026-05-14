@@ -21,6 +21,10 @@ function normalizePromotionType(value) {
     .toUpperCase();
 }
 
+function isBogoPromotion(promotion) {
+  return normalizePromotionType(promotion?.promotionType) === "BOGO";
+}
+
 function isDirectDiscountPromotion(promotion) {
   const promotionType = normalizePromotionType(promotion?.promotionType);
   const discountType = String(promotion?.discountType || "")
@@ -37,19 +41,7 @@ function promotionMatchesItem(promotion, item) {
   const scope = normalizeScope(promotion?.scope);
 
   if (scope === "ITEM") {
-    const promotionItemId = promotion?.itemId ? String(promotion.itemId) : "";
-    const candidateItemIds = [
-      item?.id,
-      item?._id,
-      item?.dishId,
-      item?.menuItemId,
-      item?.menuItem?.id,
-      item?.menuItem?._id,
-    ]
-      .filter(Boolean)
-      .map(String);
-
-    return promotionItemId && candidateItemIds.includes(promotionItemId);
+    return itemMatchesMenuItemId(item, promotion?.itemId);
   }
 
   if (scope === "CATEGORY") {
@@ -72,6 +64,26 @@ function promotionMatchesItem(promotion, item) {
   return false;
 }
 
+function getItemCandidateIds(item) {
+  return [
+    item?.id,
+    item?._id,
+    item?.dishId,
+    item?.menuId,
+    item?.menuItemId,
+    item?.menuItem?.id,
+    item?.menuItem?._id,
+  ]
+    .filter(Boolean)
+    .map(String);
+}
+
+function itemMatchesMenuItemId(item, menuItemId) {
+  const targetId = menuItemId ? String(menuItemId) : "";
+  if (!targetId) return false;
+  return getItemCandidateIds(item).includes(targetId);
+}
+
 function getLinePromotionRank(promotion) {
   const scope = normalizeScope(promotion?.scope);
   const scopeWeight = scope === "ITEM" ? 1000 : scope === "CATEGORY" ? 500 : 0;
@@ -87,6 +99,102 @@ function getBestLinePromotionForItem(promotions, item) {
     null
   );
 }
+
+function calculateBogoPromotionDiscount({ promotion, items = [] }) {
+  if (!promotion || !isBogoPromotion(promotion)) {
+    return {
+      discount: 0,
+      lines: [],
+    };
+  }
+
+  const buyQuantity = Math.max(1, toNum(promotion.buyQuantity, 1));
+  const getQuantity = Math.max(1, toNum(promotion.getQuantity, 1));
+
+  const buyItemId = promotion.itemId ? String(promotion.itemId) : "";
+  const giftItemId = promotion.giftItemId ? String(promotion.giftItemId) : "";
+
+  if (!buyItemId || !giftItemId) {
+    return {
+      discount: 0,
+      lines: [],
+    };
+  }
+
+  let purchasedQuantity = 0;
+  const giftLines = [];
+
+  for (const item of items || []) {
+    const status = String(item?.status || "");
+    if (status === "cancelled" || status === "returned") continue;
+
+    const quantity = getLineQuantity(item);
+    if (quantity <= 0) continue;
+
+    if (itemMatchesMenuItemId(item, buyItemId)) {
+      purchasedQuantity += quantity;
+    }
+
+    if (itemMatchesMenuItemId(item, giftItemId)) {
+      giftLines.push(item);
+    }
+  }
+
+  const freeQuantityLimit =
+    Math.floor(purchasedQuantity / buyQuantity) * getQuantity;
+  if (freeQuantityLimit <= 0 || !giftLines.length) {
+    return {
+      discount: 0,
+      lines: [],
+    };
+  }
+
+  let remainingFreeQuantity = freeQuantityLimit;
+  let totalDiscount = 0;
+  const lines = [];
+
+  for (const giftLine of giftLines) {
+    if (remainingFreeQuantity <= 0) break;
+
+    const lineQuantity = getLineQuantity(giftLine);
+    const unitPrice = getUnitPriceFromLine(giftLine);
+    if (lineQuantity <= 0 || unitPrice <= 0) continue;
+
+    const freeQuantity = Math.min(lineQuantity, remainingFreeQuantity);
+    const lineDiscount = roundVnd(unitPrice * freeQuantity);
+
+    if (lineDiscount <= 0) continue;
+
+    remainingFreeQuantity -= freeQuantity;
+    totalDiscount += lineDiscount;
+
+    lines.push({
+      lineId: giftLine?._id ? String(giftLine._id) : giftLine?.lineId || "",
+      dishId: giftLine?.dishId || null,
+      menuId: giftLine?.menuId || null,
+      categoryId: giftLine?.categoryId || null,
+      name: giftLine?.name || "",
+      quantity: lineQuantity,
+      lineSubtotal: getLineSubtotal(giftLine),
+      promotionId: String(promotion._id),
+      promotionName: promotion.name || promotion.code || "Mua tặng",
+      promotionScope: "ITEM",
+      promotionType: "BOGO",
+      buyQuantity,
+      getQuantity,
+      freeQuantity,
+      discountType: "BOGO",
+      discountValue: 0,
+      discount: lineDiscount,
+    });
+  }
+
+  return {
+    discount: roundVnd(totalDiscount),
+    lines,
+  };
+}
+
 function inWindow(doc, now) {
   return (
     (!doc.publishAt || doc.publishAt <= now) &&
@@ -111,6 +219,23 @@ function calcDiscountAmount({
     amount = toNum(discountValue);
   }
   return Math.min(base, roundVnd(amount));
+}
+
+function getLineQuantity(item) {
+  const quantity = toNum(item?.quantity, 0);
+  return quantity > 0 ? quantity : 0;
+}
+
+function getLineSubtotal(item) {
+  return roundVnd(item?.lineSubtotal);
+}
+
+function getUnitPriceFromLine(item) {
+  const quantity = getLineQuantity(item);
+  const lineSubtotal = getLineSubtotal(item);
+
+  if (quantity <= 0 || lineSubtotal <= 0) return 0;
+  return lineSubtotal / quantity;
 }
 
 function getPriority(doc) {
@@ -369,7 +494,7 @@ export async function calculateDiscountBreakdown({
     (promotion) =>
       promotion &&
       inWindow(promotion, now) &&
-      isDirectDiscountPromotion(promotion) &&
+      (isDirectDiscountPromotion(promotion) || isBogoPromotion(promotion)) &&
       subtotal >= Math.max(0, toNum(promotion.minOrderValue)),
   );
   const promotionLines = [];
@@ -384,7 +509,10 @@ export async function calculateDiscountBreakdown({
     const lineSubtotal = roundVnd(item?.lineSubtotal);
     if (lineSubtotal <= 0) continue;
 
-    const promotion = getBestLinePromotionForItem(eligibleLinePromotions, item);
+    const promotion = getBestLinePromotionForItem(
+      eligibleLinePromotions.filter(isDirectDiscountPromotion),
+      item,
+    );
     if (!promotion) continue;
 
     const discount = calcDiscountAmount({
@@ -414,6 +542,21 @@ export async function calculateDiscountBreakdown({
       discountValue: toNum(promotion.discountValue),
       discount,
     });
+  }
+  const eligibleBogoPromotions = eligibleLinePromotions.filter(isBogoPromotion);
+
+  for (const promotion of eligibleBogoPromotions) {
+    const { discount, lines } = calculateBogoPromotionDiscount({
+      promotion,
+      items,
+    });
+
+    if (discount <= 0) continue;
+
+    linePromotionDiscount += discount;
+    appliedPromotionIds.add(String(promotion._id));
+    appliedPromotionDocsById.set(String(promotion._id), promotion);
+    promotionLines.push(...lines);
   }
   let selectedPromotion = null;
   if (promotionIds?.length) {

@@ -35,7 +35,9 @@ describe("PromotionModal", () => {
       />,
     );
 
-    const restaurantSelect = document.querySelector('select[name="restaurantId"]');
+    const restaurantSelect = document.querySelector(
+      'select[name="restaurantId"]',
+    );
 
     fireEvent.change(document.querySelector('input[name="name"]'), {
       target: { name: "name", value: "Mung le" },
@@ -115,7 +117,9 @@ describe("PromotionModal", () => {
 
     expect(screen.getByText(/Danh mục áp dụng/)).toBeInTheDocument();
     expect(screen.queryByText("Lọc món theo danh mục")).not.toBeInTheDocument();
-    expect(document.querySelectorAll('select[name="categoryId"]')).toHaveLength(1);
+    expect(document.querySelectorAll('select[name="categoryId"]')).toHaveLength(
+      1,
+    );
   });
 
   it("forces BOGO promotions to capture both the purchased item and the gifted item", async () => {
@@ -180,7 +184,30 @@ describe("PromotionModal", () => {
       );
     });
   });
+  it("explains how BOGO promotion is applied during payment", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
 
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "bogo" },
+    });
+
+    expect(
+      screen.getByText(/hệ thống sẽ giảm tiền trên dòng món tặng/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/bill có 2 món A và 2 món B thì giảm tiền 2 món B/i),
+    ).toBeInTheDocument();
+  });
   it("shows the promotion restaurant when editing an existing record", () => {
     render(
       <PromotionModal
@@ -204,10 +231,16 @@ describe("PromotionModal", () => {
       />,
     );
 
-    const restaurantSelect = document.querySelector('select[name="restaurantId"]');
+    const restaurantSelect = document.querySelector(
+      'select[name="restaurantId"]',
+    );
 
-    expect(screen.getByRole("option", { name: "Chi nhanh Quan 1" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Chi nhanh Phu Nhuan" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Chi nhanh Quan 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Chi nhanh Phu Nhuan" }),
+    ).toBeInTheDocument();
     expect(restaurantSelect.value).toBe("restaurant-2");
   });
 });
