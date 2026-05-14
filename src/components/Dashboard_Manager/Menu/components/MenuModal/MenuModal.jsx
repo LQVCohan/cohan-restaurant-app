@@ -8,15 +8,14 @@ import React, {
 } from "react";
 import {
   FiX,
-  FiUploadCloud,
   FiCheck,
-  FiImage,
   FiPlus,
   FiChevronDown,
   FiSave,
   FiAlertCircle,
 } from "react-icons/fi";
 import "./MenuModal.scss";
+import LocalImagePicker from "../../../../common/LocalImagePicker";
 import {
   hasIconInCategoryName,
   resolveCategoryIcon,
@@ -178,6 +177,10 @@ const MenuModal = ({
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleCoverImageChange = (value) => {
+    setFormData((prev) => ({ ...prev, coverImage: value || "" }));
   };
 
   const handleSelectCategory = (catId) => {
@@ -542,35 +545,17 @@ const MenuModal = ({
             </div>
 
             <div className="form-group">
-              <label>Ảnh bìa (URL)</label>
-              <div className="image-input-group">
-                <div className="input-with-icon">
-                  <FiUploadCloud />
-                  <input
-                    type="url"
-                    name="coverImage"
-                    className="modern-input"
-                    value={formData.coverImage || ""}
-                    onChange={handleFieldChange}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
-
-                <div className="img-preview-box">
-                  {formData.coverImage ? (
-                    <img
-                      src={formData.coverImage}
-                      alt="Preview"
-                      onError={(e) => {
-                        e.target.src =
-                          "https://via.placeholder.com/120?text=Error";
-                      }}
-                    />
-                  ) : (
-                    <FiImage className="placeholder-icon" />
-                  )}
-                </div>
-              </div>
+              <label>Ảnh bìa</label>
+              <LocalImagePicker
+                value={formData.coverImage || ""}
+                onChange={handleCoverImageChange}
+                disabled={isSubmitting}
+                ownerKey={formData.id || restaurantId || "menu-draft"}
+                purpose="menu-cover"
+                label="Chọn ảnh bìa"
+                placeholder="Chưa có ảnh bìa"
+                helperText="Ảnh sẽ được resize thành bản thumb 320px và preview 960px để tải nhanh, tốn ít bộ nhớ."
+              />
             </div>
 
             <div className="form-group">
