@@ -1,0 +1,249 @@
+/* =========================================================
+   DAILY + MONTH SCHEDULE VIEW POLISH
+   Keeps day/month views consistent with weekly manager board.
+   ========================================================= */
+
+.manager-page-shell--schedules .daily-view-horizontal {
+  margin: 0.95rem 1.35rem 1.2rem !important;
+  min-height: 460px !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.07), transparent 24rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 16px 38px rgba(15, 23, 42, 0.055) !important;
+  overflow: hidden !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-header {
+  height: 54px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-header .label-col {
+  width: 138px !important;
+  background: linear-gradient(135deg, #eef2ff, #ffffff) !important;
+  color: #3730a3 !important;
+  font-size: 0.8rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.045em !important;
+  text-transform: uppercase !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-header .time-scale .time-mark {
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  border-left-color: #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body {
+  background: #ffffff !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .grid-background .label-placeholder {
+  width: 138px !important;
+  background: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .grid-background .grid-lines .line {
+  border-left-color: #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .timeline-row {
+  min-height: 108px !important;
+  height: 108px !important;
+  border-bottom-color: #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .timeline-row .row-label {
+  width: 138px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .timeline-row .row-label .icon {
+  width: 2.15rem !important;
+  height: 2.15rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 14px !important;
+  background: #eef2ff !important;
+  font-size: 1.08rem !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .timeline-row .row-label span {
+  color: #0f172a !important;
+  font-size: 0.78rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .timeline-body .timeline-row .row-track {
+  padding: 12px 0 !important;
+}
+
+.manager-page-shell--schedules .daily-view-horizontal .empty-state {
+  margin: 1rem !important;
+  border-radius: 18px !important;
+  border: 1px dashed #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-style: normal !important;
+  font-size: 0.86rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal {
+  top: 12px !important;
+  bottom: 12px !important;
+  min-width: 92px !important;
+  border-radius: 16px !important;
+  padding: 0.58rem !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal.success {
+  background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%) !important;
+  border: 1px solid #bbf7d0 !important;
+  border-left: 4px solid #10b981 !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal.warning {
+  background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%) !important;
+  border: 1px solid #fed7aa !important;
+  border-left: 4px solid #f97316 !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 16px 30px rgba(79, 70, 229, 0.12) !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal .shift-content {
+  gap: 0.34rem !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal .time-badge {
+  width: max-content;
+  max-width: 100%;
+  padding: 0.2rem 0.42rem !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #334155 !important;
+  font-size: 0.66rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal .staff-avatars .avatar-dot {
+  width: 24px !important;
+  height: 24px !important;
+  background: linear-gradient(135deg, #4f46e5, #2563eb) !important;
+  color: #ffffff !important;
+  font-size: 0.68rem !important;
+  font-weight: 950 !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.16) !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal .avatar-more {
+  min-width: 24px !important;
+  height: 24px !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.66rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .shift-item-horizontal .warning-badge {
+  width: max-content;
+  max-width: 100%;
+  padding: 0.18rem 0.38rem !important;
+  border-radius: 999px !important;
+  background: #ffedd5 !important;
+  color: #c2410c !important;
+  font-size: 0.66rem !important;
+  font-weight: 950 !important;
+}
+
+/* Month view polish */
+.manager-page-shell--schedules .schedule-board.month-board {
+  margin-top: 0.95rem !important;
+  grid-template-columns: repeat(7, minmax(130px, 1fr)) !important;
+  gap: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .month-board .schedule-day-column {
+  min-height: 160px !important;
+  border-radius: 17px !important;
+}
+
+.manager-page-shell--schedules .month-board .day-header {
+  min-height: 3.35rem !important;
+  padding: 0.62rem 0.72rem !important;
+}
+
+.manager-page-shell--schedules .month-board .day-body {
+  padding: 0.62rem !important;
+  gap: 0.42rem !important;
+}
+
+.manager-page-shell--schedules .month-board .day-summary-pill {
+  min-height: 1.85rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  padding: 0.2rem 0.52rem !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+.manager-page-shell--schedules .month-board .shift-card-anchor {
+  transform-origin: center !important;
+}
+
+.manager-page-shell--schedules .month-board .shift-card,
+.manager-page-shell--schedules .month-board .schedule-shift-card {
+  min-height: 3rem !important;
+  border-radius: 13px !important;
+}
+
+.manager-page-shell--schedules .month-board .more-shifts-btn {
+  min-height: 2rem !important;
+  width: 100% !important;
+  border-radius: 13px !important;
+  border: 1px solid #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+@media (max-width: 1180px) {
+  .manager-page-shell--schedules .schedule-board.month-board {
+    grid-template-columns: repeat(4, minmax(160px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .manager-page-shell--schedules .daily-view-horizontal {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+    overflow-x: auto !important;
+  }
+
+  .manager-page-shell--schedules .daily-view-horizontal .timeline-header,
+  .manager-page-shell--schedules .daily-view-horizontal .timeline-body {
+    min-width: 760px !important;
+  }
+
+  .manager-page-shell--schedules .schedule-board.month-board {
+    grid-template-columns: 1fr !important;
+  }
+}
