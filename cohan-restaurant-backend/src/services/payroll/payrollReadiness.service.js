@@ -11,8 +11,11 @@ import {
 } from "../../../models/index.js";
 import { validatePayrollPeriod } from "./payrollValidation.service.js";
 
+const EXISTS = "$" + "exists";
 const READY_SCHEDULE_STATUSES = ["published", "active", "locked", "closed"];
 const PENDING_OVERTIME_STATUSES = ["pending_employee_confirmation", "pending_approval", "approved"];
+const APPROVAL_VALIDATION_CODES = new Set(["OVERTIME_REQUEST_NOT_COMPLETED", "UNAPPROVED_OVERTIME", "OFF_SCHEDULE_ATTENDANCE_PENDING_APPROVAL", "ATTENDANCE_CORRECTION_PENDING"]);
+const WORKED_OFF_SCHEDULE_EVIDENCE_FILTER = { $or: [{ workedMinutes: { $gt: 0 } }, { hours: { $gt: 0 } }, { amount: { $gt: 0 } }, { actualCheckInAt: { [EXISTS]: true } }, { actualCheckOutAt: { [EXISTS]: true } }] };
 const toOid = (v) => (v && mongoose.isValidObjectId(v) ? new mongoose.Types.ObjectId(v) : null);
 const id = (v) => (v ? String(v._id || v.id || v) : null);
 const dayStart = (v) => { const d = new Date(v); d.setHours(0, 0, 0, 0); return d; };
@@ -68,7 +71,7 @@ async function checkSchedule({ restaurantId, start, end }) {
   if (pending) add(s, { code: "SCHEDULE_ACK_PENDING", severity: "warning", sourceType: "schedule_acknowledgement", message: "Còn nhân viên chưa xác nhận lịch làm việc.", targetRoute: "schedule" });
   if (changed) add(s, { code: "SCHEDULE_CHANGED_AFTER_ACK", severity: "warning", sourceType: "schedule_acknowledgement", message: "Có lịch đã thay đổi sau khi nhân viên xác nhận.", targetRoute: "schedule" });
 
-  const declined = await ShiftAcknowledgement.find({ restaurantId, periodEnd: { $gte: start }, periodStart: { $lte: end }, status: "declined", $or: [{ declineClassification: { $exists: false } }, { declineClassification: "unknown" }, { declineClassification: null }] }).populate("employeeId", "fullName employeeCode").lean();
+  const declined = await ShiftAcknowledgement.find({ restaurantId, periodEnd: { $gte: start }, periodStart: { $lte: end }, status: "declined", $or: [{ declineClassification: { [EXISTS]: false } }, { declineClassification: "unknown" }, { declineClassification: null }] }).populate("employeeId", "fullName employeeCode").lean();
   s.metrics.unreviewedDeclinedShiftCount = declined.length;
   declined.forEach((x) => add(s, { code: "SHIFT_DECLINE_UNREVIEWED", severity: "error", message: "Có ca làm bị từ chối nhưng chưa được quản lý xử lý.", ...emp(x.employeeId), sourceType: "shift_acknowledgement", sourceId: id(x._id), targetRoute: "schedule" }));
   return close(s);
@@ -102,13 +105,22 @@ async function checkApprovals({ restaurantId, start, end }) {
   const s = emptySection();
   const [corrections, offSchedule, overtimeRequests, overtimeTimesheets] = await Promise.all([
     AttendanceCorrectionRequest.find({ restaurantId, status: "pending", workDate: { $gte: start, $lte: end } }).populate("employeeId", "fullName employeeCode").lean(),
-    Timesheet.find({ restaurantId, workDate: { $gte: start, $lte: end }, isOffSchedule: true, approved: { $ne: true }, offScheduleApprovalStatus: { $in: ["not_required", "pending", null] } }).populate("employeeId", "fullName employeeCode").lean(),
+    Timesheet.find({
+      restaurantId,
+      workDate: { $gte: start, $lte: end },
+      isOffSchedule: true,
+      approved: { $ne: true },
+      $and: [
+        { $or: [{ offScheduleApprovalStatus: { [EXISTS]: false } }, { offScheduleApprovalStatus: "not_required" }, { offScheduleApprovalStatus: "pending" }, { offScheduleApprovalStatus: null }] },
+        WORKED_OFF_SCHEDULE_EVIDENCE_FILTER,
+      ],
+    }).populate("employeeId", "fullName employeeCode").lean(),
     OvertimeRequest.find({ restaurantId, workDate: { $gte: start, $lte: end }, status: { $in: PENDING_OVERTIME_STATUSES } }).populate("employeeId", "fullName employeeCode").lean(),
     Timesheet.find({ restaurantId, workDate: { $gte: start, $lte: end }, overtimeMinutes: { $gt: 0 }, overtimeApprovalStatus: "pending" }).populate("employeeId", "fullName employeeCode").lean(),
   ]);
   Object.assign(s.metrics, { pendingAttendanceCorrectionCount: corrections.length, pendingOffScheduleAttendanceCount: offSchedule.length, pendingOvertimeRequestCount: overtimeRequests.length, pendingOvertimeTimesheetCount: overtimeTimesheets.length });
-  corrections.forEach((x) => add(s, { code: "ATTENDANCE_CORRECTION_PENDING", severity: "error", message: "Còn đơn sửa công chưa duyệt.", ...emp(x.employeeId), sourceType: "attendance_correction", sourceId: id(x._id), targetRoute: "attendance-corrections" }));
-  offSchedule.forEach((x) => add(s, { code: "OFF_SCHEDULE_ATTENDANCE_PENDING", severity: "error", message: "Còn công ngoài lịch chưa được duyệt.", ...emp(x.employeeId), sourceType: "off_schedule_attendance", sourceId: id(x._id), targetRoute: "attendance/off-schedule" }));
+  corrections.forEach((x) => add(s, { code: "ATTENDANCE_CORRECTION_PENDING", severity: "error", message: "Còn đơn sửa công chưa duyệt.", ...emp(x.employeeId), sourceType: "attendance_correction", sourceId: id(x._id), targetRoute: "attendance_correction" }));
+  offSchedule.forEach((x) => add(s, { code: "OFF_SCHEDULE_ATTENDANCE_PENDING", severity: "error", message: "Còn công ngoài lịch chưa được duyệt.", ...emp(x.employeeId), sourceType: "off_schedule_attendance", sourceId: id(x._id), targetRoute: "off_schedule" }));
   const ot = (x, sourceType) => add(s, { code: "OVERTIME_PENDING", severity: "error", message: "Còn tăng ca chưa được duyệt.", ...emp(x.employeeId), sourceType, sourceId: id(x._id), targetRoute: "overtime" });
   overtimeRequests.forEach((x) => ot(x, "overtime"));
   overtimeTimesheets.forEach((x) => ot(x, "timesheet_overtime"));
@@ -118,9 +130,14 @@ async function checkApprovals({ restaurantId, start, end }) {
 async function checkPayroll(periodId) {
   const s = emptySection();
   const validation = await validatePayrollPeriod(periodId);
-  const issues = (validation?.issues || []).map((x) => issue({ targetRoute: "payroll", ...x }));
+  const issues = (validation?.issues || [])
+    .filter((x) => !APPROVAL_VALIDATION_CODES.has(x.code))
+    .map((x) => issue({ targetRoute: "payroll", ...x }));
   s.issues.push(...issues);
-  s.metrics = { validationErrorCount: Number(validation?.errorCount || issues.filter((x) => x.severity === "error").length), validationWarningCount: Number(validation?.warningCount || issues.filter((x) => x.severity === "warning").length) };
+  s.metrics = {
+    validationErrorCount: issues.filter((x) => x.severity === "error").length,
+    validationWarningCount: issues.filter((x) => x.severity === "warning").length,
+  };
   s.status = s.metrics.validationErrorCount ? "blocked" : s.metrics.validationWarningCount ? "warning" : "ready";
   return close(s);
 }
