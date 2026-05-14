@@ -17,7 +17,6 @@
   padding-top: 0.05rem;
 }
 
-/* Hero banner: make the assistant feel like a guided workflow */
 .auto-schedule-body .auto-banner {
   align-items: center;
   padding: 0.78rem 0.95rem !important;
@@ -54,27 +53,32 @@
   line-height: 1.36 !important;
 }
 
-/* Config cards: workflow layout */
-.auto-schedule-body .auto-config-grid {
-  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr) !important;
-  grid-template-rows: auto auto !important;
+/* Explicit JSX columns. This avoids CSS-grid row spanning creating dead whitespace. */
+.auto-schedule-body .auto-config-grid--workflow {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(360px, 1.22fr) !important;
+  grid-template-rows: auto !important;
   gap: 0.72rem !important;
   align-items: start !important;
 }
 
-.auto-schedule-body .auto-config-grid > .config-card:nth-child(1) {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
+.auto-schedule-body .auto-config-left {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.72rem !important;
+  min-width: 0;
 }
 
-.auto-schedule-body .auto-config-grid > .config-card:nth-child(2) {
-  grid-column: 1 !important;
-  grid-row: 2 !important;
+.auto-schedule-body .auto-config-constraints {
+  min-width: 0;
+  align-self: start !important;
 }
 
-.auto-schedule-body .auto-config-grid > .role-required-card {
-  grid-column: 2 !important;
-  grid-row: 1 / span 2 !important;
+.auto-schedule-body .auto-config-grid--workflow > .config-card,
+.auto-schedule-body .auto-config-grid--workflow > .auto-config-left,
+.auto-schedule-body .auto-config-grid--workflow > .auto-config-constraints {
+  grid-column: auto !important;
+  grid-row: auto !important;
 }
 
 .auto-schedule-body .config-card {
@@ -87,12 +91,12 @@
   overflow: hidden;
 }
 
-.auto-schedule-body .auto-config-grid > .config-card:not(.role-required-card) {
+.auto-schedule-body .auto-config-left > .config-card {
   min-height: 0 !important;
-  align-self: start !important;
+  align-self: stretch !important;
 }
 
-.auto-schedule-body .auto-config-grid > .config-card:not(.role-required-card) .config-hint {
+.auto-schedule-body .auto-config-left .config-hint {
   max-width: 22rem;
 }
 
@@ -143,10 +147,10 @@
   line-height: 1.38 !important;
 }
 
-/* Required roles should look like selectable chips, not plain checkboxes */
 .auto-schedule-body .role-required-card {
   background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
   align-self: start !important;
+  box-shadow: none !important;
 }
 
 .auto-schedule-body .role-required-card .config-head {
@@ -197,7 +201,6 @@
   line-height: 1.32 !important;
 }
 
-/* Action strip: make Analyze & Preview the real CTA */
 .auto-schedule-body .auto-actions-strip {
   position: relative;
   bottom: auto;
@@ -264,7 +267,6 @@
   background: #f8fafc !important;
 }
 
-/* Preview summary: more dashboard-like */
 .auto-schedule-body .summary-grid {
   gap: 0.65rem !important;
 }
@@ -304,7 +306,6 @@
   font-size: 1.05rem !important;
 }
 
-/* Preview cards */
 .auto-schedule-body .preview-head {
   padding-top: 0.2rem;
 }
@@ -369,14 +370,8 @@
 }
 
 @media (max-width: 1024px) {
-  .auto-schedule-body .auto-config-grid {
+  .auto-schedule-body .auto-config-grid--workflow {
     grid-template-columns: 1fr !important;
-  }
-
-  .auto-schedule-body .auto-config-grid > .config-card,
-  .auto-schedule-body .auto-config-grid > .role-required-card {
-    grid-column: auto !important;
-    grid-row: auto !important;
   }
 
   .auto-schedule-body .auto-actions-strip {
