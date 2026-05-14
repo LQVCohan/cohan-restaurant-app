@@ -7,7 +7,8 @@ import {
   MenuItem,
   StockMovement,
 } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 const ACTIVE_MENU_ITEM_STATUSES = ["available"];
 
 async function purgeExpiredIngredientsByRestaurant(restaurantId) {
@@ -53,7 +54,7 @@ function buildIngredientSearchSortKey(item, normalizedQuery) {
 export default {
   ingredients: async (_p, { restaurantId, search, limit, includeDeleted = false }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
     await purgeExpiredIngredientsByRestaurant(restaurantId);
 
     const normalizedSearch = normalizeSearchText(search);
@@ -112,13 +113,13 @@ export default {
     if (!mongoose.isValidObjectId(id)) return null;
     const existing = await Ingredient.findById(id).select({ restaurantId: 1 }).lean();
     if (!existing) return null;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_READ);
     return Ingredient.findById(id).select({ __v: 0 }).lean({ virtuals: true });
   },
 
   ingredientTrash: async (_p, { restaurantId, limit = 200 }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
     await purgeExpiredIngredientsByRestaurant(restaurantId);
     return Ingredient.find({
       restaurantId,
@@ -141,7 +142,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     const rid = new mongoose.Types.ObjectId(String(restaurantId));
     const LIM = Math.min(Math.max(limit || 8, 1), 20);
@@ -260,7 +261,7 @@ export default {
       throw new GraphQLError("Invalid ingredientId");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     const LIM = Math.min(Math.max(limit || 5, 1), 20);
 
@@ -311,7 +312,7 @@ export default {
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     if (!mongoose.isValidObjectId(ingredientId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
     // Tìm các recipe có chứa ingredientId
     const recipes = await Recipe.find({

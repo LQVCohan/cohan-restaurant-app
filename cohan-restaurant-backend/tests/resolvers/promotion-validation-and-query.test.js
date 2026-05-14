@@ -109,7 +109,7 @@ describe("Promotion validation and query filtering", () => {
     );
 
     const passedQuery = modelMocks.Promotion.find.mock.calls[0][0];
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, passedQuery.restaurantId);
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(passedQuery.isActive).toBe(true);
     expect(passedQuery.$and).toHaveLength(2);
     expect(passedQuery.$expr).toEqual({
@@ -118,7 +118,7 @@ describe("Promotion validation and query filtering", () => {
     expect(chain.sort).toHaveBeenCalled();
   });
 
-  it("blocks promotionsByRestaurant when restaurant access is denied", async () => {
+  it("blocks admin promotion listings when restaurant access is denied", async () => {
     mockFindChain();
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
@@ -126,7 +126,7 @@ describe("Promotion validation and query filtering", () => {
     await expect(
       PromotionQuery.promotionsByRestaurant(
         null,
-        { restaurantId: "restaurant-1", activeOnly: true },
+        { restaurantId: "restaurant-1", activeOnly: false },
         { user: { roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");

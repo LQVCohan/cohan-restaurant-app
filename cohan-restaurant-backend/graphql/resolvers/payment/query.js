@@ -9,7 +9,8 @@ import {
   Order,
 } from "../../../models/index.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const toObjectId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -137,7 +138,7 @@ export const PaymentQuery = {
     if (!order) return [];
     const orderRestaurantId = toObjectId(order.restaurantId);
     if (!orderRestaurantId) throw new Error("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, orderRestaurantId);
+    await requireRestaurantPermission(ctx, orderRestaurantId, PERMISSIONS.PAYMENT_READ);
 
     return PaymentTransaction.find({
       $or: [{ orderId: id }, { orderIds: id }],
@@ -153,7 +154,7 @@ export const PaymentQuery = {
     if (!order) return [];
     const orderRestaurantId = toObjectId(order.restaurantId);
     if (!orderRestaurantId) throw new Error("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, orderRestaurantId);
+    await requireRestaurantPermission(ctx, orderRestaurantId, PERMISSIONS.PAYMENT_READ);
 
     return Invoice.find({
       $or: [{ orderId: id }, { orderIds: id }],
@@ -166,7 +167,7 @@ export const PaymentQuery = {
     const { restaurantId, range, dateFrom, dateTo } = input || {};
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, rid);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
 
     const { from, to, mode, format } = resolveDateRange({ range, dateFrom, dateTo });
     const cashflowFilter = {

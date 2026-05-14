@@ -8,7 +8,8 @@ import {
   Recipe,
   MenuItem,
 } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function normalizeDupKeyError(err) {
   // Mongo duplicate key
@@ -249,7 +250,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
 
-    await requireRestaurantAccess(ctx, input.restaurantId);
+    await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     try {
       const categoryRef = await resolveIngredientCategoryRef({
@@ -288,7 +289,7 @@ export default {
         .lean();
 
       if (!ing) throw new GraphQLError("Ingredient not found");
-      await requireRestaurantAccess(ctx, ing.restaurantId);
+      await requireRestaurantPermission(ctx, ing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
       delete patch.restaurantId;
 
       // 2) Check ingredient đang được dùng trong order nào không (active orders)
@@ -357,7 +358,7 @@ export default {
     if (!ing) return false;
     if (ing.deletedAt) return true;
 
-    await requireRestaurantAccess(ctx, ing.restaurantId);
+    await requireRestaurantPermission(ctx, ing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     await purgeExpiredIngredientsByRestaurant(ing.restaurantId);
 
     const activeMenuItems = await findBlockingActiveMenuItems({
@@ -411,7 +412,7 @@ export default {
       );
     }
 
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const restored = await Ingredient.findOneAndUpdate(
       {
@@ -441,7 +442,7 @@ export default {
       .lean();
     if (!existing) return false;
 
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const res = await Ingredient.deleteOne({
       _id: id,
@@ -469,7 +470,7 @@ export default {
       });
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const rid = new mongoose.Types.ObjectId(String(restaurantId));
     const iid = new mongoose.Types.ObjectId(String(ingredientId));

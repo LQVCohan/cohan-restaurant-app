@@ -9,7 +9,8 @@ import {
   PaymentTransaction,
   EventLog,
 } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
@@ -77,7 +78,7 @@ async function requireReservationManagerOrOwner(ctx, reservation) {
   if (!canManageReservation(ctx, reservation.userId)) {
     throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
   }
-  await requireRestaurantAccess(ctx, reservation.restaurantId);
+  await requireRestaurantPermission(ctx, reservation.restaurantId, PERMISSIONS.RESERVATION_UPDATE);
   return "manager";
 }
 
@@ -606,7 +607,7 @@ export const ReservationMutation = {
     if (!(role.includes("staff") || role.includes("manager") || role.includes("admin"))) {
       throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
     }
-    await requireRestaurantAccess(ctx, current.restaurantId);
+    await requireRestaurantPermission(ctx, current.restaurantId, PERMISSIONS.RESERVATION_UPDATE);
 
     if (input.status) current.status = input.status;
     if (input.depositStatus) current.depositStatus = input.depositStatus;
@@ -729,7 +730,7 @@ export const ReservationMutation = {
     if (!canManageReservation(ctx, current.userId)) {
       throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
     }
-    await requireRestaurantAccess(ctx, current.restaurantId);
+    await requireRestaurantPermission(ctx, current.restaurantId, PERMISSIONS.RESERVATION_UPDATE);
     current.status = "no_show";
     await current.save();
     await updateTableStatusByReservation(current.tableId);

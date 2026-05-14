@@ -104,28 +104,33 @@ describe("coupon query restaurant scoping", () => {
     expect(modelMocks.Coupon.find).not.toHaveBeenCalled();
   });
 
-  it("couponByCode calls requireRestaurantAccess before findOne", async () => {
+  it("couponByCode is public but remains restaurant-scoped and active-only", async () => {
     modelMocks.Coupon.findOne.mockReturnValue(mockLeanQuery({ id: "coupon-1" }));
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
     const ctx = { user: { roleName: "manager" } };
 
     await CouponQuery.couponByCode(null, { code: " food10 ", restaurantId: "valid-r2" }, ctx);
 
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, expect.objectContaining({ value: "valid-r2" }));
-    expect(modelMocks.Coupon.findOne).toHaveBeenCalledWith({
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.Coupon.findOne).toHaveBeenCalledWith(expect.objectContaining({
       code: "FOOD10",
       restaurantId: expect.objectContaining({ value: "valid-r2" }),
-    });
+      isActive: true,
+    }));
   });
 
-  it("voucherPackages with restaurantId calls requireRestaurantAccess", async () => {
+  it("voucherPackages with restaurantId is public but filters active packages", async () => {
     modelMocks.VoucherPackage.find.mockReturnValue(mockFindChain([]));
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
     const ctx = { user: { roleName: "manager" } };
 
     await CouponQuery.voucherPackages(null, { restaurantId: "valid-r3" }, ctx);
 
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(ctx, expect.objectContaining({ value: "valid-r3" }));
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith({
+      restaurantId: expect.objectContaining({ value: "valid-r3" }),
+      isActive: true,
+    });
   });
 
   it("voucherPackages without restaurantId calls requireRoles ADMIN", async () => {

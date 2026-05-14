@@ -1,7 +1,9 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Coupon, VoucherPackage } from "../../../models/index.js";
-import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireRoles } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -37,7 +39,9 @@ export const CouponQuery = {
     if (restaurantId) {
       const rid = toObjectId(restaurantId);
       if (!rid) throw new GraphQLError("Invalid restaurantId");
-      await requireRestaurantAccess(ctx, rid);
+      if (!activeOnly) {
+        await requireRestaurantPermission(ctx, rid, PERMISSIONS.COUPON_READ);
+      }
       return Coupon.find({ restaurantId: rid, ...activeQuery })
         .sort({ createdAt: -1 })
         .skip(offset)
@@ -58,16 +62,18 @@ export const CouponQuery = {
     if (!norm) return null;
 
     const rid = requireRestaurantIdForCouponLookup(restaurantId);
-    await requireRestaurantAccess(ctx, rid);
-    return Coupon.findOne({ code: norm, restaurantId: rid }).lean({ virtuals: true });
+    return Coupon.findOne({
+      code: norm,
+      restaurantId: rid,
+      ...buildActiveQuery(true),
+    }).lean({ virtuals: true });
   },
 
   async voucherPackages(_, { restaurantId } = {}, ctx) {
     if (restaurantId) {
       const rid = toObjectId(restaurantId);
       if (!rid) throw new GraphQLError("Invalid restaurantId");
-      await requireRestaurantAccess(ctx, rid);
-      return VoucherPackage.find({ restaurantId: rid })
+      return VoucherPackage.find({ restaurantId: rid, isActive: true })
         .sort({ level: 1, createdAt: -1 })
         .lean({ virtuals: true });
     }
