@@ -16,6 +16,7 @@ import "./styles/declined-shift-review-polish.css";
 import "./styles/schedule-daily-month-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
+import GlobalMenuAvailabilityPrompt from "./components/common/GlobalMenuAvailabilityPrompt";
 import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
@@ -29,6 +30,7 @@ function App() {
             <CustomerNotificationProvider>
               <CartProvider>
                 <AppRouter />
+                <GlobalMenuAvailabilityPrompt />
               </CartProvider>
             </CustomerNotificationProvider>
             <NotificationContainer />
