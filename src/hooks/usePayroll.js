@@ -59,6 +59,14 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
         defaultDeduction
         notes
         updatedAt
+        weekendDays
+        holidayDates
+        nightShiftStart
+        nightShiftEnd
+        nightShiftAllowanceRate
+        enablePersonalIncomeTax
+        personalIncomeTaxRate
+        personalIncomeTaxFreeThreshold
       }
       stats {
         totalPayroll
@@ -145,6 +153,14 @@ export const QUERY_PAYROLL_SETTINGS = gql`
       allowPaidLeaveInWorkDays
       defaultBonus
       defaultDeduction
+      weekendDays
+      holidayDates
+      nightShiftStart
+      nightShiftEnd
+      nightShiftAllowanceRate
+      enablePersonalIncomeTax
+      personalIncomeTaxRate
+      personalIncomeTaxFreeThreshold
       notes
       updatedAt
     }
@@ -207,25 +223,79 @@ export const QUERY_MY_PAYSLIP = gql`
   }
 `;
 
-
 export const QUERY_PAYROLL_PAYSLIP = gql`
   query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
     payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
       remainingAmount
       canMarkPaid
       canEdit
-      period { id name status startDate endDate paidAt }
-      employee { id name code role department avatar }
+      period {
+        id
+        name
+        status
+        startDate
+        endDate
+        paidAt
+      }
+      employee {
+        id
+        name
+        code
+        role
+        department
+        avatar
+      }
       item {
-        id payrollItemId name code role department netSalary totalIncome totalDeduction status paidAt
-        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours
-        grossIncome allowance bonus deduction insuranceTotal personalIncomeTax warningMessages
+        id
+        payrollItemId
+        name
+        code
+        role
+        department
+        netSalary
+        totalIncome
+        totalDeduction
+        status
+        paidAt
+        baseSalary
+        actualWorkDays
+        totalHours
+        overtimeNormalHours
+        overtimeWeekendHours
+        overtimeHolidayHours
+        nightHours
+        grossIncome
+        allowance
+        bonus
+        deduction
+        insuranceTotal
+        personalIncomeTax
+        warningMessages
       }
       breakdown {
-        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours
-        grossIncome allowance bonus deduction insuranceTotal personalIncomeTax netSalary
+        baseSalary
+        actualWorkDays
+        totalHours
+        overtimeNormalHours
+        overtimeWeekendHours
+        overtimeHolidayHours
+        nightHours
+        grossIncome
+        allowance
+        bonus
+        deduction
+        insuranceTotal
+        personalIncomeTax
+        netSalary
       }
-      payments { id amount method paidAt note referenceCode }
+      payments {
+        id
+        amount
+        method
+        paidAt
+        note
+        referenceCode
+      }
     }
   }
 `;
@@ -282,7 +352,7 @@ export const QUERY_PAYROLL_CONTEXT = gql`
     me {
       id
       restaurantForStaff
-          }
+    }
   }
 `;
 
@@ -420,7 +490,6 @@ export const MUT_MARK_PAID = gql`
   }
 `;
 
-
 export const MUT_MARK_PAYROLL_ITEM_PAID = gql`
   mutation MarkPayrollItemPaid($input: MarkPayrollItemPaidInput!) {
     markPayrollItemPaid(input: $input) {
@@ -438,8 +507,18 @@ export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
     batchMarkPayrollPaid(input: $input) {
       successCount
       failedCount
-      items { id payrollItemId status paidAt netSalary }
-      errors { employeeId code message }
+      items {
+        id
+        payrollItemId
+        status
+        paidAt
+        netSalary
+      }
+      errors {
+        employeeId
+        code
+        message
+      }
     }
   }
 `;
@@ -461,6 +540,14 @@ export const MUT_UPDATE_SETTINGS = gql`
       allowPaidLeaveInWorkDays
       defaultBonus
       defaultDeduction
+      weekendDays
+      holidayDates
+      nightShiftStart
+      nightShiftEnd
+      nightShiftAllowanceRate
+      enablePersonalIncomeTax
+      personalIncomeTaxRate
+      personalIncomeTaxFreeThreshold
       notes
       updatedAt
     }
@@ -481,8 +568,16 @@ export const MUT_UPSERT_ADJUSTMENT = gql`
 `;
 
 export const MUT_DELETE_ADJUSTMENT = gql`
-  mutation DeletePayrollAdjustment($periodId: ID!, $employeeId: ID!, $adjustmentId: ID!) {
-    deletePayrollAdjustment(periodId: $periodId, employeeId: $employeeId, adjustmentId: $adjustmentId) {
+  mutation DeletePayrollAdjustment(
+    $periodId: ID!
+    $employeeId: ID!
+    $adjustmentId: ID!
+  ) {
+    deletePayrollAdjustment(
+      periodId: $periodId
+      employeeId: $employeeId
+      adjustmentId: $adjustmentId
+    ) {
       id
       totalIncome
       totalDeduction
@@ -537,7 +632,9 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
   });
-  const hasSnapshotItems = Boolean(detailQuery.data?.payrollPeriodDetail?.items?.length);
+  const hasSnapshotItems = Boolean(
+    detailQuery.data?.payrollPeriodDetail?.items?.length,
+  );
   const canQueryOverviewByRange = Boolean(startDate && endDate);
   const overviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
     variables: {
@@ -551,30 +648,44 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   });
 
   const [createPeriod] = useMutation(MUT_CREATE_PERIOD, {
-    refetchQueries: [{ query: QUERY_PAYROLL_PERIODS, variables: { restaurantId: restaurantId || undefined, limit: 24 } }],
+    refetchQueries: [
+      {
+        query: QUERY_PAYROLL_PERIODS,
+        variables: { restaurantId: restaurantId || undefined, limit: 24 },
+      },
+    ],
   });
   const [recalculatePeriod] = useMutation(MUT_RECALC_PERIOD);
   const [finalizePeriod] = useMutation(MUT_FINALIZE_PERIOD);
   const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
   const [markPaid] = useMutation(MUT_MARK_PAID);
   const [markPayrollItemPaidMutation] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
-  const [batchMarkPayrollPaidMutation] = useMutation(MUT_BATCH_MARK_PAYROLL_PAID);
+  const [batchMarkPayrollPaidMutation] = useMutation(
+    MUT_BATCH_MARK_PAYROLL_PAID,
+  );
   const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
   const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
   const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
 
   const markPayrollItemPaid = (inputOrOptions) => {
-    if (inputOrOptions?.variables) return markPayrollItemPaidMutation(inputOrOptions);
-    return markPayrollItemPaidMutation({ variables: { input: inputOrOptions } });
+    if (inputOrOptions?.variables)
+      return markPayrollItemPaidMutation(inputOrOptions);
+    return markPayrollItemPaidMutation({
+      variables: { input: inputOrOptions },
+    });
   };
 
   const batchMarkPayrollPaid = (inputOrOptions) => {
-    if (inputOrOptions?.variables) return batchMarkPayrollPaidMutation(inputOrOptions);
-    return batchMarkPayrollPaidMutation({ variables: { input: inputOrOptions } });
+    if (inputOrOptions?.variables)
+      return batchMarkPayrollPaidMutation(inputOrOptions);
+    return batchMarkPayrollPaidMutation({
+      variables: { input: inputOrOptions },
+    });
   };
 
   return {
-    loading: periodsQuery.loading || detailQuery.loading || overviewQuery.loading,
+    loading:
+      periodsQuery.loading || detailQuery.loading || overviewQuery.loading,
     settingsLoading: settingsQuery.loading,
     error: periodsQuery.error || detailQuery.error || overviewQuery.error,
     settingsError: settingsQuery.error,
@@ -585,10 +696,9 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       detailQuery.data?.payrollPeriodDetail?.stats ||
       overviewQuery.data?.staffPayrollOverview?.stats ||
       null,
-    payrollItems:
-      detailQuery.data?.payrollPeriodDetail?.items?.length
-        ? detailQuery.data?.payrollPeriodDetail?.items
-        : (overviewQuery.data?.staffPayrollOverview?.items || []),
+    payrollItems: detailQuery.data?.payrollPeriodDetail?.items?.length
+      ? detailQuery.data?.payrollPeriodDetail?.items
+      : overviewQuery.data?.staffPayrollOverview?.items || [],
     payrollSettings:
       settingsQuery.data?.payrollSettings ||
       detailQuery.data?.payrollPeriodDetail?.settings ||

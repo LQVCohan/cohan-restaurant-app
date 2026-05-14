@@ -601,7 +601,7 @@ $bg-body: #f8fafc;
         }
       }
 
-        .details-grid {
+      .details-grid {
         display: grid;
         gap: 2rem;
         grid-template-columns: 1fr; // 1 cột cho dễ nhìn
@@ -726,4 +726,17 @@ $bg-body: #f8fafc;
     transform: translateY(0);
     opacity: 1;
   }
+}
+.settings-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
+.settings-inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
 }

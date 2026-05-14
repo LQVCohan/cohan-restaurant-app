@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
-import PayrollPayslipModal, { getPayrollPaymentErrorMessage } from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
+import PayrollPayslipModal, {
+  getPayrollPaymentErrorMessage,
+} from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
 import { getPayrollActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
 import "./PayrollManagement.scss";
 
@@ -15,7 +17,6 @@ const getDefaultRange = () => {
   };
 };
 
-
 export function escapeCsvValue(value) {
   const text = String(value ?? "");
   if (/[",\n\r]/.test(text)) {
@@ -25,9 +26,13 @@ export function escapeCsvValue(value) {
 }
 
 export function downloadCsv(filename, rows, columns) {
-  const header = columns.map((column) => escapeCsvValue(column.label)).join(",");
+  const header = columns
+    .map((column) => escapeCsvValue(column.label))
+    .join(",");
   const body = rows
-    .map((row) => columns.map((column) => escapeCsvValue(row[column.key])).join(","))
+    .map((row) =>
+      columns.map((column) => escapeCsvValue(row[column.key])).join(","),
+    )
     .join("\n");
 
   const blob = new Blob([`\uFEFF${header}\n${body}`], {
@@ -67,7 +72,9 @@ const PAYROLL_EXPORT_COLUMNS = [
 ].map((key) => ({ key, label: key }));
 
 const sanitizeFilenamePart = (value) =>
-  String(value || "payroll").replace(/[^a-zA-Z0-9-_]+/g, "_").replace(/^_+|_+$/g, "");
+  String(value || "payroll")
+    .replace(/[^a-zA-Z0-9-_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
 const PAYROLL_SETTINGS_DEFAULTS = {
   standardWorkDaysPerMonth: 26,
@@ -81,6 +88,14 @@ const PAYROLL_SETTINGS_DEFAULTS = {
   defaultAllowance: 0,
   defaultBonus: 0,
   defaultDeduction: 0,
+  weekendDays: ["SUN"],
+  holidayDates: [],
+  nightShiftStart: "22:00",
+  nightShiftEnd: "06:00",
+  nightShiftAllowanceRate: 0.3,
+  enablePersonalIncomeTax: false,
+  personalIncomeTaxRate: 0,
+  personalIncomeTaxFreeThreshold: 0,
   allowPaidLeaveInWorkDays: true,
   notes: "",
 };
@@ -99,9 +114,47 @@ const PAYROLL_SETTINGS_FIELDS = [
   "defaultDeduction",
 ];
 
+const WEEKDAY_OPTIONS = [
+  { value: "MON", label: "Thứ 2" },
+  { value: "TUE", label: "Thứ 3" },
+  { value: "WED", label: "Thứ 4" },
+  { value: "THU", label: "Thứ 5" },
+  { value: "FRI", label: "Thứ 6" },
+  { value: "SAT", label: "Thứ 7" },
+  { value: "SUN", label: "Chủ nhật" },
+];
+
+const PAYROLL_ADVANCED_NUMBER_FIELDS = [
+  "nightShiftAllowanceRate",
+  "personalIncomeTaxRate",
+  "personalIncomeTaxFreeThreshold",
+];
+
 const buildPayrollSettingsForm = (settings) => ({
   ...PAYROLL_SETTINGS_DEFAULTS,
   ...settings,
+  weekendDays: Array.isArray(settings?.weekendDays)
+    ? settings.weekendDays
+    : PAYROLL_SETTINGS_DEFAULTS.weekendDays,
+  holidayDates: Array.isArray(settings?.holidayDates)
+    ? settings.holidayDates.map((value) => String(value).slice(0, 10))
+    : PAYROLL_SETTINGS_DEFAULTS.holidayDates,
+  nightShiftStart:
+    settings?.nightShiftStart ?? PAYROLL_SETTINGS_DEFAULTS.nightShiftStart,
+  nightShiftEnd:
+    settings?.nightShiftEnd ?? PAYROLL_SETTINGS_DEFAULTS.nightShiftEnd,
+  nightShiftAllowanceRate:
+    settings?.nightShiftAllowanceRate ??
+    PAYROLL_SETTINGS_DEFAULTS.nightShiftAllowanceRate,
+  enablePersonalIncomeTax:
+    settings?.enablePersonalIncomeTax ??
+    PAYROLL_SETTINGS_DEFAULTS.enablePersonalIncomeTax,
+  personalIncomeTaxRate:
+    settings?.personalIncomeTaxRate ??
+    PAYROLL_SETTINGS_DEFAULTS.personalIncomeTaxRate,
+  personalIncomeTaxFreeThreshold:
+    settings?.personalIncomeTaxFreeThreshold ??
+    PAYROLL_SETTINGS_DEFAULTS.personalIncomeTaxFreeThreshold,
   allowPaidLeaveInWorkDays:
     settings?.allowPaidLeaveInWorkDays ??
     PAYROLL_SETTINGS_DEFAULTS.allowPaidLeaveInWorkDays,
@@ -122,7 +175,7 @@ const escapeXml = (value) =>
 const CRC_TABLE = new Uint32Array(256).map((_, index) => {
   let c = index;
   for (let bit = 0; bit < 8; bit += 1) {
-    c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
   }
   return c >>> 0;
 });
@@ -188,7 +241,10 @@ const createZipBuffer = (files) => {
     offset += localHeader.length;
   });
 
-  const centralSize = centralDirectory.reduce((sum, row) => sum + row.length, 0);
+  const centralSize = centralDirectory.reduce(
+    (sum, row) => sum + row.length,
+    0,
+  );
   const endRecord = new Uint8Array(22);
   const endView = new DataView(endRecord.buffer);
   writeU32(endView, 0, 0x06054b50);
@@ -296,12 +352,14 @@ const PayrollSettingsModal = ({
           )}
           {!loading && !hasPersistedSettings && (
             <div className="settings-modal-state">
-              Chưa có cấu hình lương trong dữ liệu. Hệ thống sẽ tạo mới khi bạn lưu.
+              Chưa có cấu hình lương trong dữ liệu. Hệ thống sẽ tạo mới khi bạn
+              lưu.
             </div>
           )}
           {loadError && (
             <div className="settings-modal-state settings-modal-state--error">
-              Không tải được cấu hình hiện tại. Bạn vẫn có thể nhập và lưu cấu hình mới.
+              Không tải được cấu hình hiện tại. Bạn vẫn có thể nhập và lưu cấu
+              hình mới.
             </div>
           )}
           {saveError && (
@@ -324,7 +382,83 @@ const PayrollSettingsModal = ({
                 />
               </label>
             ))}
+            <div className="settings-field">
+              <span>Ngày cuối tuần</span>
+              <div className="settings-checkbox-group">
+                {WEEKDAY_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="settings-inline-checkbox"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(form.weekendDays || []).includes(option.value)}
+                      onChange={(e) => {
+                        const current = new Set(form.weekendDays || []);
+                        if (e.target.checked) current.add(option.value);
+                        else current.delete(option.value);
+                        setField("weekendDays", Array.from(current));
+                      }}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <label className="settings-field">
+              <span>Ngày lễ, mỗi dòng một ngày YYYY-MM-DD</span>
+              <textarea
+                rows={4}
+                value={(form.holidayDates || []).join("\n")}
+                onChange={(e) =>
+                  setField(
+                    "holidayDates",
+                    e.target.value
+                      .split(/\n|,/)
+                      .map((value) => value.trim())
+                      .filter(Boolean),
+                  )
+                }
+                placeholder={"2026-01-01\n2026-04-30\n2026-05-01"}
+              />
+            </label>
+            <label className="settings-field">
+              <span>Bắt đầu ca đêm</span>
+              <input
+                type="time"
+                value={form.nightShiftStart || "22:00"}
+                onChange={(e) => setField("nightShiftStart", e.target.value)}
+              />
+            </label>
 
+            <label className="settings-field">
+              <span>Kết thúc ca đêm</span>
+              <input
+                type="time"
+                value={form.nightShiftEnd || "06:00"}
+                onChange={(e) => setField("nightShiftEnd", e.target.value)}
+              />
+            </label>
+            {PAYROLL_ADVANCED_NUMBER_FIELDS.map((field) => (
+              <label key={field} className="settings-field">
+                <span>{field}</span>
+                <input
+                  type="number"
+                  value={form[field]}
+                  onChange={(e) => setField(field, Number(e.target.value || 0))}
+                />
+              </label>
+            ))}
+            <label className="settings-field settings-field--checkbox">
+              <input
+                type="checkbox"
+                checked={Boolean(form.enablePersonalIncomeTax)}
+                onChange={(e) =>
+                  setField("enablePersonalIncomeTax", e.target.checked)
+                }
+              />
+              <span>Bật tính thuế TNCN</span>
+            </label>
             <label className="settings-field settings-field--checkbox">
               <input
                 type="checkbox"
@@ -355,7 +489,19 @@ const PayrollSettingsModal = ({
             data-testid="payroll-settings-save"
             type="button"
             disabled={isSaving}
-            onClick={() => onSave(form)}
+            onClick={() =>
+              onSave({
+                ...form,
+                weekendDays: Array.from(new Set(form.weekendDays || [])),
+                holidayDates: Array.from(
+                  new Set(
+                    (form.holidayDates || [])
+                      .map((value) => String(value).trim())
+                      .filter(Boolean),
+                  ),
+                ),
+              })
+            }
           >
             {isSaving ? "Đang lưu..." : "Lưu cấu hình"}
           </button>
@@ -375,14 +521,19 @@ const PayrollManagement = () => {
   const [sortBy, setSortBy] = useState("net_desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  const [selectedPayslipEmployeeId, setSelectedPayslipEmployeeId] = useState("");
+  const [selectedPayslipEmployeeId, setSelectedPayslipEmployeeId] =
+    useState("");
   const [payslipLoading, setPayslipLoading] = useState(false);
   const [paymentMutationLoading, setPaymentMutationLoading] = useState(false);
   const [showBatchPayment, setShowBatchPayment] = useState(false);
   const [batchPaymentLoading, setBatchPaymentLoading] = useState(false);
   const [batchPaymentError, setBatchPaymentError] = useState("");
   const [batchPaymentResult, setBatchPaymentResult] = useState(null);
-  const [batchPaymentForm, setBatchPaymentForm] = useState({ method: "cash", paidAt: new Date().toISOString().slice(0, 16), note: "" });
+  const [batchPaymentForm, setBatchPaymentForm] = useState({
+    method: "cash",
+    paidAt: new Date().toISOString().slice(0, 16),
+    note: "",
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -425,7 +576,9 @@ const PayrollManagement = () => {
     refetchSettings,
   } = usePayroll({
     periodId: selectedPeriodId || undefined,
-    startDate: dateRange.start ? new Date(dateRange.start).toISOString() : undefined,
+    startDate: dateRange.start
+      ? new Date(dateRange.start).toISOString()
+      : undefined,
     endDate: dateRange.end ? new Date(dateRange.end).toISOString() : undefined,
   });
 
@@ -472,7 +625,9 @@ const PayrollManagement = () => {
   };
 
   const departmentOptions = useMemo(() => {
-    const set = new Set(payrollItems.map((item) => item.department).filter(Boolean));
+    const set = new Set(
+      payrollItems.map((item) => item.department).filter(Boolean),
+    );
     return ["all", ...Array.from(set)];
   }, [payrollItems]);
 
@@ -482,17 +637,33 @@ const PayrollManagement = () => {
       const matchDept = deptFilter === "all" || item.department === deptFilter;
       const q = searchQuery.toLowerCase();
       const matchSearch =
-        String(item.name || "").toLowerCase().includes(q) ||
-        String(item.code || "").toLowerCase().includes(q);
-      const matchEmployee = !employeeFilterId || String(item.id) === String(employeeFilterId);
+        String(item.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.code || "")
+          .toLowerCase()
+          .includes(q);
+      const matchEmployee =
+        !employeeFilterId || String(item.id) === String(employeeFilterId);
       return matchTab && matchDept && matchSearch && matchEmployee;
     });
-    if (sortBy === "name_asc") list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
-    else if (sortBy === "name_desc") list.sort((a, b) => String(b.name).localeCompare(String(a.name)));
-    else if (sortBy === "net_asc") list.sort((a, b) => Number(a.netSalary || 0) - Number(b.netSalary || 0));
-    else list.sort((a, b) => Number(b.netSalary || 0) - Number(a.netSalary || 0));
+    if (sortBy === "name_asc")
+      list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    else if (sortBy === "name_desc")
+      list.sort((a, b) => String(b.name).localeCompare(String(a.name)));
+    else if (sortBy === "net_asc")
+      list.sort((a, b) => Number(a.netSalary || 0) - Number(b.netSalary || 0));
+    else
+      list.sort((a, b) => Number(b.netSalary || 0) - Number(a.netSalary || 0));
     return list;
-  }, [payrollItems, activeTab, deptFilter, employeeFilterId, searchQuery, sortBy]);
+  }, [
+    payrollItems,
+    activeTab,
+    deptFilter,
+    employeeFilterId,
+    searchQuery,
+    sortBy,
+  ]);
 
   const stats = useMemo(() => {
     if (payrollStats) return payrollStats;
@@ -504,18 +675,25 @@ const PayrollManagement = () => {
   const canPayInPeriod = ["finalized", "paid"].includes(periodStatus);
   const isPeriodLocked = periodStatus === "locked";
   const selectedPayableItems = useMemo(
-    () => payrollItems.filter((item) => selectedIds.includes(item.id) && item.status !== "paid"),
+    () =>
+      payrollItems.filter(
+        (item) => selectedIds.includes(item.id) && item.status !== "paid",
+      ),
     [payrollItems, selectedIds],
   );
-  const hasBatchPayableSelection = selectedPayableItems.length > 0 && canPayInPeriod && !isPeriodLocked;
+  const hasBatchPayableSelection =
+    selectedPayableItems.length > 0 && canPayInPeriod && !isPeriodLocked;
   const modalPayslip =
-    String(payrollPayslip?.employee?.id || payrollPayslip?.item?.id || "") === String(selectedPayslipEmployeeId)
+    String(payrollPayslip?.employee?.id || payrollPayslip?.item?.id || "") ===
+    String(selectedPayslipEmployeeId)
       ? payrollPayslip
       : null;
   const modalPayments = useMemo(
     () =>
       (payrollPayments || []).filter(
-        (payment) => !selectedPayslipEmployeeId || String(payment.employeeId) === String(selectedPayslipEmployeeId),
+        (payment) =>
+          !selectedPayslipEmployeeId ||
+          String(payment.employeeId) === String(selectedPayslipEmployeeId),
       ),
     [payrollPayments, selectedPayslipEmployeeId],
   );
@@ -560,7 +738,11 @@ const PayrollManagement = () => {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(filteredData.filter((item) => item.status !== "paid").map((item) => item.id));
+      setSelectedIds(
+        filteredData
+          .filter((item) => item.status !== "paid")
+          .map((item) => item.id),
+      );
     } else {
       setSelectedIds([]);
     }
@@ -609,7 +791,12 @@ const PayrollManagement = () => {
         setSelectedPeriodId(id);
       }
     } catch (err) {
-      alert(getPayrollActionErrorMessage(err, `Không thể thiết lập kỳ lương: ${err?.message || "Lỗi không xác định"}`));
+      alert(
+        getPayrollActionErrorMessage(
+          err,
+          `Không thể thiết lập kỳ lương: ${err?.message || "Lỗi không xác định"}`,
+        ),
+      );
     }
   };
 
@@ -618,10 +805,12 @@ const PayrollManagement = () => {
     setSelectedPayslipEmployeeId(employeeId);
     setPayslipLoading(true);
     try {
-      await Promise.all([
-        refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId }),
-        refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId }),
-      ].filter(Boolean));
+      await Promise.all(
+        [
+          refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId }),
+          refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId }),
+        ].filter(Boolean),
+      );
     } catch (err) {
       alert(getPayrollActionErrorMessage(err, "Không tải được phiếu lương."));
     } finally {
@@ -640,25 +829,40 @@ const PayrollManagement = () => {
 
   const handlePaidSuccess = async () => {
     const employeeId = selectedPayslipEmployeeId;
-    await Promise.all([
-      employeeId ? refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId }) : null,
-      employeeId ? refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId }) : null,
-      refetchPayrollPeriodDetail?.() || refetchDetail?.(),
-      refetchPayrollPeriods?.() || refetchPeriods?.(),
-    ].filter(Boolean));
+    await Promise.all(
+      [
+        employeeId
+          ? refetchPayrollPayslip?.({ periodId: selectedPeriodId, employeeId })
+          : null,
+        employeeId
+          ? refetchPayrollPayments?.({ periodId: selectedPeriodId, employeeId })
+          : null,
+        refetchPayrollPeriodDetail?.() || refetchDetail?.(),
+        refetchPayrollPeriods?.() || refetchPeriods?.(),
+      ].filter(Boolean),
+    );
     alert("✅ Đã thanh toán phiếu lương.");
   };
 
   const handleExportCsv = async () => {
     if (!selectedPeriodId) return;
     try {
-      const result = await refetchPayrollExportRows?.({ periodId: selectedPeriodId });
+      const result = await refetchPayrollExportRows?.({
+        periodId: selectedPeriodId,
+      });
       const rows = result?.data?.payrollExportRows || [];
-      const periodName = displayedPeriod?.name || periodDetail?.period?.name || selectedPeriodId;
+      const periodName =
+        displayedPeriod?.name || periodDetail?.period?.name || selectedPeriodId;
       const today = new Date().toISOString().slice(0, 10);
-      downloadCsv(`payroll_${sanitizeFilenamePart(periodName)}_${today}.csv`, rows, PAYROLL_EXPORT_COLUMNS);
+      downloadCsv(
+        `payroll_${sanitizeFilenamePart(periodName)}_${today}.csv`,
+        rows,
+        PAYROLL_EXPORT_COLUMNS,
+      );
     } catch (err) {
-      alert(getPayrollActionErrorMessage(err, "Không thể xuất CSV bảng lương."));
+      alert(
+        getPayrollActionErrorMessage(err, "Không thể xuất CSV bảng lương."),
+      );
     }
   };
 
@@ -666,7 +870,11 @@ const PayrollManagement = () => {
     if (!hasBatchPayableSelection) return;
     setBatchPaymentError("");
     setBatchPaymentResult(null);
-    setBatchPaymentForm({ method: "cash", paidAt: new Date().toISOString().slice(0, 16), note: "" });
+    setBatchPaymentForm({
+      method: "cash",
+      paidAt: new Date().toISOString().slice(0, 16),
+      note: "",
+    });
     setShowBatchPayment(true);
   };
 
@@ -679,15 +887,19 @@ const PayrollManagement = () => {
         periodId: selectedPeriodId,
         employeeIds: selectedPayableItems.map((item) => item.id),
         method: batchPaymentForm.method || "cash",
-        paidAt: batchPaymentForm.paidAt ? new Date(batchPaymentForm.paidAt).toISOString() : new Date().toISOString(),
+        paidAt: batchPaymentForm.paidAt
+          ? new Date(batchPaymentForm.paidAt).toISOString()
+          : new Date().toISOString(),
         note: batchPaymentForm.note,
       });
       const payload = result?.data?.batchMarkPayrollPaid || {};
       setBatchPaymentResult(payload);
-      await Promise.all([
-        refetchPayrollPeriodDetail?.() || refetchDetail?.(),
-        refetchPayrollPeriods?.() || refetchPeriods?.(),
-      ].filter(Boolean));
+      await Promise.all(
+        [
+          refetchPayrollPeriodDetail?.() || refetchDetail?.(),
+          refetchPayrollPeriods?.() || refetchPeriods?.(),
+        ].filter(Boolean),
+      );
       setSelectedIds([]);
     } catch (err) {
       setBatchPaymentError(getPayrollPaymentErrorMessage(err));
@@ -786,7 +998,10 @@ const PayrollManagement = () => {
     if (!selectedPayslipEmployeeId || !selectedPeriodId) return;
     const amount = Number(adjustmentAmount || 0);
     if (!(amount > 0)) return;
-    if (["deduction", "advance", "other_deduction"].includes(adjustmentType) && !String(adjustmentNote || "").trim()) {
+    if (
+      ["deduction", "advance", "other_deduction"].includes(adjustmentType) &&
+      !String(adjustmentNote || "").trim()
+    ) {
       alert("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
       return;
     }
@@ -825,36 +1040,83 @@ const PayrollManagement = () => {
           <div className="cycle-picker-compact">
             <div className="input-group">
               <span className="label">Từ:</span>
-              <input type="date" name="start" value={dateRange.start} onChange={handleDateChange} />
+              <input
+                type="date"
+                name="start"
+                value={dateRange.start}
+                onChange={handleDateChange}
+              />
             </div>
             <span className="arrow">➝</span>
             <div className="input-group">
               <span className="label">Đến:</span>
-              <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} />
+              <input
+                type="date"
+                name="end"
+                value={dateRange.end}
+                onChange={handleDateChange}
+              />
             </div>
-            <button className="btn btn-white" data-testid="payroll-period-setup" onClick={handleCreatePeriod}>Thiết lập kỳ lương</button>
+            <button
+              className="btn btn-white"
+              data-testid="payroll-period-setup"
+              onClick={handleCreatePeriod}
+            >
+              Thiết lập kỳ lương
+            </button>
           </div>
         </div>
 
         <div className="right-actions">
-          <select className="filter-select" value={selectedPeriodId} onChange={(e) => handleSelectPeriod(e.target.value)}>
+          <select
+            className="filter-select"
+            value={selectedPeriodId}
+            onChange={(e) => handleSelectPeriod(e.target.value)}
+          >
             {periods.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name || `${formatDate(p.startDate)} - ${formatDate(p.endDate)}`} ({p.status})
+                {p.name ||
+                  `${formatDate(p.startDate)} - ${formatDate(p.endDate)}`}{" "}
+                ({p.status})
               </option>
             ))}
           </select>
-          <button className="btn btn-white" data-testid="payroll-settings-open" onClick={handleOpenSettings}>⚙️ Cấu hình</button>
-          <button className="btn btn-white" onClick={handleExportExcel}>📥 Xuất Excel</button>
-          <button className="btn btn-white" onClick={handleExportCsv} disabled={!selectedPeriodId || periodStatus === "draft"}>Xuất CSV</button>
-          <button className="btn btn-primary" disabled={periodStatus !== "draft"} onClick={async () => {
-            try {
-              await recalculatePeriod({ variables: { periodId: selectedPeriodId } });
-              alert("✅ Đã tính lại bảng lương.");
-            } catch (err) {
-              alert(getPayrollActionErrorMessage(err, `❌ Không thể tính lại bảng lương: ${err?.message || "Lỗi không xác định"}`));
-            }
-          }}>
+          <button
+            className="btn btn-white"
+            data-testid="payroll-settings-open"
+            onClick={handleOpenSettings}
+          >
+            ⚙️ Cấu hình
+          </button>
+          <button className="btn btn-white" onClick={handleExportExcel}>
+            📥 Xuất Excel
+          </button>
+          <button
+            className="btn btn-white"
+            onClick={handleExportCsv}
+            disabled={!selectedPeriodId || periodStatus === "draft"}
+          >
+            Xuất CSV
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={periodStatus !== "draft"}
+            onClick={async () => {
+              try {
+                await recalculatePeriod({
+                  variables: { periodId: selectedPeriodId },
+                });
+                alert("✅ Đã tính lại bảng lương.");
+              } catch (err) {
+                alert(
+                  getPayrollActionErrorMessage(
+                    err,
+                    `❌ Không thể tính lại bảng lương: ${err?.message || "Lỗi không xác định"}`,
+                  ),
+                );
+              }
+            }}
+          >
             🔄 Tính lại
           </button>
         </div>
@@ -863,31 +1125,123 @@ const PayrollManagement = () => {
       {periodDetail?.period && (
         <div className="metrics-strip" style={{ marginBottom: 12 }}>
           <div className="metric-group">
-            <div className="metric-item"><span className="label">Kỳ đang áp dụng</span><span className="value">{formatDate(periodDetail.period.startDate)} - {formatDate(periodDetail.period.endDate)}</span></div>
+            <div className="metric-item">
+              <span className="label">Kỳ đang áp dụng</span>
+              <span className="value">
+                {formatDate(periodDetail.period.startDate)} -{" "}
+                {formatDate(periodDetail.period.endDate)}
+              </span>
+            </div>
             <div className="separator"></div>
-            <div className="metric-item"><span className="label">Trạng thái kỳ</span><span className="value">{getStatusBadge(periodDetail.period.status)}</span></div>
+            <div className="metric-item">
+              <span className="label">Trạng thái kỳ</span>
+              <span className="value">
+                {getStatusBadge(periodDetail.period.status)}
+              </span>
+            </div>
           </div>
           <div className="right-actions" style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-white" onClick={() => { setShowValidationPanel(true); refetchValidation?.(); }}>Kiểm tra trước khi chốt</button>
-            <button className="btn btn-white" disabled={periodStatus !== "draft" || Number(validationResult?.errorCount || 0) > 0} onClick={async () => { try { await finalizePeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã chốt kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể chốt kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Chốt kỳ</button>
-            <button className="btn btn-white" disabled={periodStatus !== "finalized"} onClick={async () => { try { await lockPeriod({ variables: { periodId: selectedPeriodId } }); alert("✅ Đã khóa kỳ lương."); } catch (err) { alert(getPayrollActionErrorMessage(err, `❌ Không thể khóa kỳ lương: ${err?.message || "Lỗi không xác định"}`)); } }}>Khóa kỳ</button>
-            <button className="btn btn-primary" data-testid="batch-payroll-paid-open" disabled={!hasBatchPayableSelection} onClick={openBatchPaymentModal}>Thanh toán đã chọn ({selectedPayableItems.length})</button>
+            <button
+              className="btn btn-white"
+              onClick={() => {
+                setShowValidationPanel(true);
+                refetchValidation?.();
+              }}
+            >
+              Kiểm tra trước khi chốt
+            </button>
+            <button
+              className="btn btn-white"
+              disabled={
+                periodStatus !== "draft" ||
+                Number(validationResult?.errorCount || 0) > 0
+              }
+              onClick={async () => {
+                try {
+                  await finalizePeriod({
+                    variables: { periodId: selectedPeriodId },
+                  });
+                  alert("✅ Đã chốt kỳ lương.");
+                } catch (err) {
+                  alert(
+                    getPayrollActionErrorMessage(
+                      err,
+                      `❌ Không thể chốt kỳ lương: ${err?.message || "Lỗi không xác định"}`,
+                    ),
+                  );
+                }
+              }}
+            >
+              Chốt kỳ
+            </button>
+            <button
+              className="btn btn-white"
+              disabled={periodStatus !== "finalized"}
+              onClick={async () => {
+                try {
+                  await lockPeriod({
+                    variables: { periodId: selectedPeriodId },
+                  });
+                  alert("✅ Đã khóa kỳ lương.");
+                } catch (err) {
+                  alert(
+                    getPayrollActionErrorMessage(
+                      err,
+                      `❌ Không thể khóa kỳ lương: ${err?.message || "Lỗi không xác định"}`,
+                    ),
+                  );
+                }
+              }}
+            >
+              Khóa kỳ
+            </button>
+            <button
+              className="btn btn-primary"
+              data-testid="batch-payroll-paid-open"
+              disabled={!hasBatchPayableSelection}
+              onClick={openBatchPaymentModal}
+            >
+              Thanh toán đã chọn ({selectedPayableItems.length})
+            </button>
           </div>
         </div>
       )}
 
       <div className="metrics-strip">
         <div className="metric-group">
-          <div className="metric-item"><span className="label">Tổng quỹ lương</span><span className="value highlight">{formatCurrency(stats.totalPayroll)}</span></div>
+          <div className="metric-item">
+            <span className="label">Tổng quỹ lương</span>
+            <span className="value highlight">
+              {formatCurrency(stats.totalPayroll)}
+            </span>
+          </div>
           <div className="separator"></div>
-          <div className="metric-item"><span className="label">Đã chi trả</span><span className="value success">{formatCurrency(stats.paidAmount)}</span></div>
+          <div className="metric-item">
+            <span className="label">Đã chi trả</span>
+            <span className="value success">
+              {formatCurrency(stats.paidAmount)}
+            </span>
+          </div>
           <div className="separator"></div>
-          <div className="metric-item"><span className="label">Còn lại</span><span className="value danger">{formatCurrency(stats.remaining)}</span></div>
+          <div className="metric-item">
+            <span className="label">Còn lại</span>
+            <span className="value danger">
+              {formatCurrency(stats.remaining)}
+            </span>
+          </div>
         </div>
 
         <div className="progress-section">
-          <div className="progress-info"><span>Tiến độ giải ngân</span><strong>{stats.progress}%</strong></div>
-          <div className="progress-track"><div className="progress-fill" style={{ width: `${stats.progress}%` }}></div></div>
+          <div className="progress-info">
+            <span>Tiến độ giải ngân</span>
+            <strong>{stats.progress}%</strong>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{ width: `${stats.progress}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
@@ -896,40 +1250,79 @@ const PayrollManagement = () => {
           <div className="left-controls">
             <div className="workflow-tabs">
               {["all", "draft", "finalized", "locked", "paid"].map((tab) => (
-                <button key={tab} className={`tab-btn ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
+                <button
+                  key={tab}
+                  className={`tab-btn ${activeTab === tab ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab)}
+                >
                   {tab === "all" ? "Tất cả" : tab}
                 </button>
               ))}
             </div>
           </div>
           <div className="right-controls">
-            <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+            <select
+              className="filter-select"
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+            >
               {departmentOptions.map((dep) => (
-                <option key={dep} value={dep}>{dep === "all" ? "🏢 Tất cả phòng ban" : dep}</option>
+                <option key={dep} value={dep}>
+                  {dep === "all" ? "🏢 Tất cả phòng ban" : dep}
+                </option>
               ))}
             </select>
-            <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <select
+              className="filter-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
               <option value="net_desc">💰 Thực lĩnh giảm dần</option>
               <option value="net_asc">💰 Thực lĩnh tăng dần</option>
               <option value="name_asc">🔤 Tên A→Z</option>
               <option value="name_desc">🔤 Tên Z→A</option>
             </select>
-            <div className="search-box"><span className="icon">🔍</span><input type="text" placeholder="Tìm tên, mã NV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+            <div className="search-box">
+              <span className="icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Tìm tên, mã NV..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             {employeeFilterId && (
-              <button className="btn btn-white" onClick={() => setEmployeeFilterId("")}>
+              <button
+                className="btn btn-white"
+                onClick={() => setEmployeeFilterId("")}
+              >
                 Bỏ lọc nhân viên
               </button>
             )}
           </div>
         </div>
 
-        {error && <div className="table-empty">Không tải được dữ liệu bảng lương.</div>}
+        {error && (
+          <div className="table-empty">Không tải được dữ liệu bảng lương.</div>
+        )}
 
         <div className="table-responsive">
           <table className="payroll-table">
             <thead>
               <tr>
-                <th className="center"><input type="checkbox" onChange={handleSelectAll} disabled={!canPayInPeriod || isPeriodLocked} checked={selectedIds.length === filteredData.filter((item) => item.status !== "paid").length && filteredData.some((item) => item.status !== "paid")} /></th>
+                <th className="center">
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    disabled={!canPayInPeriod || isPeriodLocked}
+                    checked={
+                      selectedIds.length ===
+                        filteredData.filter((item) => item.status !== "paid")
+                          .length &&
+                      filteredData.some((item) => item.status !== "paid")
+                    }
+                  />
+                </th>
                 <th className="sticky-left">Nhân viên</th>
                 <th>Lương CB</th>
                 <th className="center">Công</th>
@@ -944,7 +1337,13 @@ const PayrollManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={12} className="table-empty">Đang tải dữ liệu bảng lương...</td></tr>}
+              {loading && (
+                <tr>
+                  <td colSpan={12} className="table-empty">
+                    Đang tải dữ liệu bảng lương...
+                  </td>
+                </tr>
+              )}
               {!loading && filteredData.length === 0 && (
                 <tr>
                   <td colSpan={12} className="table-empty">
@@ -954,28 +1353,80 @@ const PayrollManagement = () => {
                   </td>
                 </tr>
               )}
-              {!loading && filteredData.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                const isRowPayable = item.status !== "paid";
-                return (
-                  <tr key={item.id} className={isSelected ? "selected" : ""}>
-                    <td className="center" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected} disabled={!isRowPayable || isPeriodLocked || !canPayInPeriod} onChange={() => handleSelectRow(item.id)} /></td>
-                    <td className="sticky-left">
-                      <div className="emp-cell"><div className="avatar">{item.name?.charAt(0) || "N"}</div><div><div className="name">{item.name}</div><div className="sub">{item.code || "—"} • {item.department}</div></div></div>
-                    </td>
-                    <td>{formatCurrency(item.baseSalary)}</td>
-                    <td className="center"><span className="work-tag">{item.actualWorkDays}/{item.workDays}</span></td>
-                    <td className="text-right">{formatCurrency(item.overtime)}</td>
-                    <td className="text-right">{item.lateMinutes || 0} / {item.earlyLeaveMinutes || 0} phút</td>
-                    <td className="text-right">{item.unpaidLeaveDays || 0} ngày</td>
-                    <td className="text-right text-success">+{formatCurrency(item.totalIncome)}</td>
-                    <td className="text-right text-danger">-{formatCurrency(item.totalDeduction)}</td>
-                    <td className="text-right net-cell"><strong>{formatCurrency(item.netSalary)}</strong></td>
-                    <td className="center"><div className="status-badge-wrapper">{getStatusBadge(item.status)}</div></td>
-                    <td className="center"><button className="btn btn-white" type="button" onClick={() => handleOpenPayslip(item.id)}>Xem phiếu lương</button></td>
-                  </tr>
-                );
-              })}
+              {!loading &&
+                filteredData.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  const isRowPayable = item.status !== "paid";
+                  return (
+                    <tr key={item.id} className={isSelected ? "selected" : ""}>
+                      <td
+                        className="center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={
+                            !isRowPayable || isPeriodLocked || !canPayInPeriod
+                          }
+                          onChange={() => handleSelectRow(item.id)}
+                        />
+                      </td>
+                      <td className="sticky-left">
+                        <div className="emp-cell">
+                          <div className="avatar">
+                            {item.name?.charAt(0) || "N"}
+                          </div>
+                          <div>
+                            <div className="name">{item.name}</div>
+                            <div className="sub">
+                              {item.code || "—"} • {item.department}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{formatCurrency(item.baseSalary)}</td>
+                      <td className="center">
+                        <span className="work-tag">
+                          {item.actualWorkDays}/{item.workDays}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        {formatCurrency(item.overtime)}
+                      </td>
+                      <td className="text-right">
+                        {item.lateMinutes || 0} / {item.earlyLeaveMinutes || 0}{" "}
+                        phút
+                      </td>
+                      <td className="text-right">
+                        {item.unpaidLeaveDays || 0} ngày
+                      </td>
+                      <td className="text-right text-success">
+                        +{formatCurrency(item.totalIncome)}
+                      </td>
+                      <td className="text-right text-danger">
+                        -{formatCurrency(item.totalDeduction)}
+                      </td>
+                      <td className="text-right net-cell">
+                        <strong>{formatCurrency(item.netSalary)}</strong>
+                      </td>
+                      <td className="center">
+                        <div className="status-badge-wrapper">
+                          {getStatusBadge(item.status)}
+                        </div>
+                      </td>
+                      <td className="center">
+                        <button
+                          className="btn btn-white"
+                          type="button"
+                          onClick={() => handleOpenPayslip(item.id)}
+                        >
+                          Xem phiếu lương
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -996,22 +1447,46 @@ const PayrollManagement = () => {
       )}
 
       {showBatchPayment && (
-        <div className="modal-overlay" data-testid="batch-payroll-paid-modal" onClick={() => !batchPaymentLoading && setShowBatchPayment(false)}>
+        <div
+          className="modal-overlay"
+          data-testid="batch-payroll-paid-modal"
+          onClick={() => !batchPaymentLoading && setShowBatchPayment(false)}
+        >
           <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Thanh toán đã chọn</h3>
-              <button className="close-btn" type="button" onClick={() => setShowBatchPayment(false)}>x</button>
+              <button
+                className="close-btn"
+                type="button"
+                onClick={() => setShowBatchPayment(false)}
+              >
+                x
+              </button>
             </div>
             <div className="modal-body">
-              <p>Bạn đang thanh toán <strong>{selectedPayableItems.length}</strong> nhân viên.</p>
-              {batchPaymentError && <div className="settings-modal-state settings-modal-state--error">{batchPaymentError}</div>}
+              <p>
+                Bạn đang thanh toán{" "}
+                <strong>{selectedPayableItems.length}</strong> nhân viên.
+              </p>
+              {batchPaymentError && (
+                <div className="settings-modal-state settings-modal-state--error">
+                  {batchPaymentError}
+                </div>
+              )}
               {batchPaymentResult && (
-                <div className="settings-modal-state" data-testid="batch-payroll-paid-result">
-                  Thành công: <strong>{batchPaymentResult.successCount || 0}</strong> | Lỗi: <strong>{batchPaymentResult.failedCount || 0}</strong>
+                <div
+                  className="settings-modal-state"
+                  data-testid="batch-payroll-paid-result"
+                >
+                  Thành công:{" "}
+                  <strong>{batchPaymentResult.successCount || 0}</strong> | Lỗi:{" "}
+                  <strong>{batchPaymentResult.failedCount || 0}</strong>
                   {!!batchPaymentResult.errors?.length && (
                     <ul>
                       {batchPaymentResult.errors.map((err) => (
-                        <li key={`${err.employeeId}-${err.code}`}>{err.employeeId}: {err.code} - {err.message}</li>
+                        <li key={`${err.employeeId}-${err.code}`}>
+                          {err.employeeId}: {err.code} - {err.message}
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -1020,7 +1495,15 @@ const PayrollManagement = () => {
               <div className="settings-form-grid">
                 <label className="settings-field">
                   <span>Phương thức</span>
-                  <select value={batchPaymentForm.method} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, method: e.target.value }))}>
+                  <select
+                    value={batchPaymentForm.method}
+                    onChange={(e) =>
+                      setBatchPaymentForm((prev) => ({
+                        ...prev,
+                        method: e.target.value,
+                      }))
+                    }
+                  >
                     <option value="cash">cash</option>
                     <option value="bank_transfer">bank_transfer</option>
                     <option value="card">card</option>
@@ -1028,18 +1511,52 @@ const PayrollManagement = () => {
                 </label>
                 <label className="settings-field">
                   <span>Ngày thanh toán</span>
-                  <input type="datetime-local" value={batchPaymentForm.paidAt} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, paidAt: e.target.value }))} />
+                  <input
+                    type="datetime-local"
+                    value={batchPaymentForm.paidAt}
+                    onChange={(e) =>
+                      setBatchPaymentForm((prev) => ({
+                        ...prev,
+                        paidAt: e.target.value,
+                      }))
+                    }
+                  />
                 </label>
                 <label className="settings-field">
                   <span>Ghi chú</span>
-                  <textarea rows={3} value={batchPaymentForm.note} onChange={(e) => setBatchPaymentForm((prev) => ({ ...prev, note: e.target.value }))} />
+                  <textarea
+                    rows={3}
+                    value={batchPaymentForm.note}
+                    onChange={(e) =>
+                      setBatchPaymentForm((prev) => ({
+                        ...prev,
+                        note: e.target.value,
+                      }))
+                    }
+                  />
                 </label>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" type="button" onClick={() => setShowBatchPayment(false)}>Đóng</button>
-              <button className="btn btn-primary" data-testid="batch-payroll-paid-submit" type="button" disabled={batchPaymentLoading || selectedPayableItems.length === 0} onClick={handleBatchPaymentSubmit}>
-                {batchPaymentLoading ? "Đang thanh toán..." : "Xác nhận thanh toán"}
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setShowBatchPayment(false)}
+              >
+                Đóng
+              </button>
+              <button
+                className="btn btn-primary"
+                data-testid="batch-payroll-paid-submit"
+                type="button"
+                disabled={
+                  batchPaymentLoading || selectedPayableItems.length === 0
+                }
+                onClick={handleBatchPaymentSubmit}
+              >
+                {batchPaymentLoading
+                  ? "Đang thanh toán..."
+                  : "Xác nhận thanh toán"}
               </button>
             </div>
           </div>
@@ -1058,21 +1575,44 @@ const PayrollManagement = () => {
         />
       )}
       {showValidationPanel && (
-        <div className="modal-overlay" onClick={() => setShowValidationPanel(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowValidationPanel(false)}
+        >
           <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Kiểm tra trước khi chốt</h3>
-              <button className="close-btn" onClick={() => setShowValidationPanel(false)}>x</button>
+              <button
+                className="close-btn"
+                onClick={() => setShowValidationPanel(false)}
+              >
+                x
+              </button>
             </div>
             <div className="modal-body">
-              <p>Lỗi: <strong>{validationResult?.errorCount || 0}</strong> | Cảnh báo: <strong>{validationResult?.warningCount || 0}</strong></p>
+              <p>
+                Lỗi: <strong>{validationResult?.errorCount || 0}</strong> | Cảnh
+                báo: <strong>{validationResult?.warningCount || 0}</strong>
+              </p>
               <div style={{ maxHeight: 320, overflow: "auto" }}>
                 {(validationResult?.issues || []).map((issue, idx) => (
-                  <div key={`${issue.code}-${idx}`} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
-                    <strong>[{issue.severity}] {issue.code}</strong>
+                  <div
+                    key={`${issue.code}-${idx}`}
+                    style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}
+                  >
+                    <strong>
+                      [{issue.severity}] {issue.code}
+                    </strong>
                     <div>{issue.message}</div>
-                    {issue.employeeName && <div>Nhân viên: {issue.employeeName} ({issue.employeeCode || "-"})</div>}
-                    {issue.suggestedAction && <div>Gợi ý: {issue.suggestedAction}</div>}
+                    {issue.employeeName && (
+                      <div>
+                        Nhân viên: {issue.employeeName} (
+                        {issue.employeeCode || "-"})
+                      </div>
+                    )}
+                    {issue.suggestedAction && (
+                      <div>Gợi ý: {issue.suggestedAction}</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1102,38 +1642,85 @@ const PayslipModal = ({
       <div className="modal-header">
         <div className="brand">
           <h3>PHIẾU LƯƠNG</h3>
-          <span>Kỳ: {period ? `${new Date(period.startDate).toLocaleDateString("vi-VN")} - ${new Date(period.endDate).toLocaleDateString("vi-VN")}` : "--"}</span>
+          <span>
+            Kỳ:{" "}
+            {period
+              ? `${new Date(period.startDate).toLocaleDateString("vi-VN")} - ${new Date(period.endDate).toLocaleDateString("vi-VN")}`
+              : "--"}
+          </span>
         </div>
-        <button className="close-btn" onClick={onClose}>✕</button>
+        <button className="close-btn" onClick={onClose}>
+          ✕
+        </button>
       </div>
       <div className="modal-body">
         <div className="emp-summary">
           <div className="left">
             <h4>{data.name}</h4>
-            <p>{data.code} - {data.role}</p>
+            <p>
+              {data.code} - {data.role}
+            </p>
             <p>{data.department}</p>
             <p>Ca kế hoạch: {data.scheduleShiftCount || 0}</p>
-            <p>Đi muộn: {data.lateMinutes || 0} phút | Về sớm: {data.earlyLeaveMinutes || 0} phút</p>
-            <p>Nghỉ có lương: {data.paidLeaveDays || 0} ngày | Nghỉ không lương: {data.unpaidLeaveDays || 0} ngày</p>
+            <p>
+              Đi muộn: {data.lateMinutes || 0} phút | Về sớm:{" "}
+              {data.earlyLeaveMinutes || 0} phút
+            </p>
+            <p>
+              Nghỉ có lương: {data.paidLeaveDays || 0} ngày | Nghỉ không lương:{" "}
+              {data.unpaidLeaveDays || 0} ngày
+            </p>
           </div>
-          <div className="right"><div className="net-total-box"><span>Thực Lĩnh:</span><h2>{formatCurrency(data.netSalary)}</h2></div></div>
+          <div className="right">
+            <div className="net-total-box">
+              <span>Thực Lĩnh:</span>
+              <h2>{formatCurrency(data.netSalary)}</h2>
+            </div>
+          </div>
         </div>
 
         <div className="details-grid">
           <div className="section">
             <h5 className="section-title income">Thu nhập</h5>
-            <div className="row"><span>Lương cơ bản</span><span>{formatCurrency(data.baseSalary)}</span></div>
-            <div className="row"><span>Phụ cấp</span><span>{formatCurrency(data.allowance)}</span></div>
-            <div className="row"><span>Thưởng</span><span>{formatCurrency(data.bonus)}</span></div>
-            <div className="row"><span>OT</span><span>{formatCurrency(data.overtime)}</span></div>
-            <div className="row total text-success"><strong>Tổng thu nhập</strong><strong>{formatCurrency(data.totalIncome)}</strong></div>
+            <div className="row">
+              <span>Lương cơ bản</span>
+              <span>{formatCurrency(data.baseSalary)}</span>
+            </div>
+            <div className="row">
+              <span>Phụ cấp</span>
+              <span>{formatCurrency(data.allowance)}</span>
+            </div>
+            <div className="row">
+              <span>Thưởng</span>
+              <span>{formatCurrency(data.bonus)}</span>
+            </div>
+            <div className="row">
+              <span>OT</span>
+              <span>{formatCurrency(data.overtime)}</span>
+            </div>
+            <div className="row total text-success">
+              <strong>Tổng thu nhập</strong>
+              <strong>{formatCurrency(data.totalIncome)}</strong>
+            </div>
           </div>
           <div className="section">
             <h5 className="section-title deduction">Khấu trừ</h5>
-            <div className="row"><span>BH bắt buộc</span><span>{formatCurrency(data.insuranceTotal)}</span></div>
-            <div className="row"><span>Khấu trừ khác</span><span>{formatCurrency(data.otherDeduction)}</span></div>
-            <div className="row"><span>Tổng khấu trừ</span><span>{formatCurrency(data.totalDeduction)}</span></div>
-            <div className="row total text-danger"><strong>Thực lĩnh</strong><strong>{formatCurrency(data.netSalary)}</strong></div>
+            <div className="row">
+              <span>BH bắt buộc</span>
+              <span>{formatCurrency(data.insuranceTotal)}</span>
+            </div>
+            <div className="row">
+              <span>Khấu trừ khác</span>
+              <span>{formatCurrency(data.otherDeduction)}</span>
+            </div>
+            <div className="row">
+              <span>Tổng khấu trừ</span>
+              <span>{formatCurrency(data.totalDeduction)}</span>
+            </div>
+            <div className="row total text-danger">
+              <strong>Thực lĩnh</strong>
+              <strong>{formatCurrency(data.netSalary)}</strong>
+            </div>
           </div>
         </div>
 
@@ -1141,8 +1728,19 @@ const PayslipModal = ({
           Điều chỉnh thủ công: {formatCurrency(data.manualAdjustmentTotal || 0)}
         </div>
 
-        <div className="formula-note" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <select value={adjustmentType} onChange={(e) => setAdjustmentType(e.target.value)}>
+        <div
+          className="formula-note"
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <select
+            value={adjustmentType}
+            onChange={(e) => setAdjustmentType(e.target.value)}
+          >
             <option value="bonus">Thưởng</option>
             <option value="allowance">Phụ cấp</option>
             <option value="deduction">Khấu trừ</option>
@@ -1150,15 +1748,33 @@ const PayslipModal = ({
             <option value="other_addition">Cộng khác</option>
             <option value="other_deduction">Trừ khác</option>
           </select>
-          <input type="number" placeholder="Số tiền" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)} />
-          <input type="text" placeholder="Ghi chú" value={adjustmentNote} onChange={(e) => setAdjustmentNote(e.target.value)} />
-          <button className="btn btn-primary" onClick={onApplyAdjustment}>Áp dụng điều chỉnh</button>
+          <input
+            type="number"
+            placeholder="Số tiền"
+            value={adjustmentAmount}
+            onChange={(e) => setAdjustmentAmount(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Ghi chú"
+            value={adjustmentNote}
+            onChange={(e) => setAdjustmentNote(e.target.value)}
+          />
+          <button className="btn btn-primary" onClick={onApplyAdjustment}>
+            Áp dụng điều chỉnh
+          </button>
         </div>
 
-        {!!data.warningMessages?.length && <div className="formula-note">⚠️ {data.warningMessages.join(" | ")}</div>}
+        {!!data.warningMessages?.length && (
+          <div className="formula-note">
+            ⚠️ {data.warningMessages.join(" | ")}
+          </div>
+        )}
       </div>
       <div className="modal-footer">
-        <button className="btn btn-secondary" onClick={onClose}>Đóng</button>
+        <button className="btn btn-secondary" onClick={onClose}>
+          Đóng
+        </button>
       </div>
     </div>
   </div>
