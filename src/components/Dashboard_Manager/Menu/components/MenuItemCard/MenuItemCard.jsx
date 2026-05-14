@@ -6,6 +6,7 @@ import {
   Utensils,
   ImageOff,
   MoreHorizontal,
+  AlertTriangle,
 } from "lucide-react";
 import { AuthContext } from "../../../../../context/AuthContext";
 import {
@@ -13,37 +14,21 @@ import {
   canAccessMenuManagementAction,
 } from "../../../../../utils/frontendRoleAccess";
 import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
+import { getMenuItemAvailability } from "../../../../../utils/menuItemAvailability";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./MenuItemCard.scss";
-
-const STATUS_META = {
-  available: {
-    label: "Sẵn sàng",
-    className: "available",
-  },
-  out_of_stock: {
-    label: "Hết hàng",
-    className: "out-of-stock",
-  },
-  unavailable: {
-    label: "Tạm dừng",
-    className: "unavailable",
-  },
-  hidden: {
-    label: "Ẩn khỏi menu",
-    className: "hidden",
-  },
-};
 
 const MenuItemCard = ({ item, onEdit, onDelete }) => {
   const auth = useContext(AuthContext);
   const [imgError, setImgError] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  const availability = getMenuItemAvailability(item);
+
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
-    MENU_MANAGEMENT_ACTIONS.VIEW
+    MENU_MANAGEMENT_ACTIONS.VIEW,
   );
 
   const formatPrice = (price) =>
@@ -64,7 +49,6 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
     : [];
   const visibleMethods = variants.slice(0, 3);
   const remainingCount = Math.max(0, variants.length - 3);
-  const statusMeta = STATUS_META[item?.status] || STATUS_META.unavailable;
 
   const renderFallbackImage = () => (
     <div className="placeholder-img">
@@ -93,13 +77,14 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
 
   const renderStatusBadge = () => {
     return (
-      <div className={`status-badge ${statusMeta.className}`}>
-        {statusMeta.label}
+      <div className={`status-badge ${availability.badgeClassName}`}>
+        {availability.label}
       </div>
     );
   };
 
   const hasActions = onEdit || onDelete || canViewHistory;
+  const primaryWarning = availability.warnings?.[0];
 
   return (
     <>
@@ -128,6 +113,13 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
               {item.name}
             </h3>
           </div>
+
+          {primaryWarning && (
+            <div className="availability-warning" title={primaryWarning}>
+              <AlertTriangle size={14} />
+              <span>{primaryWarning}</span>
+            </div>
+          )}
 
           <div className="variants-list">
             <div className="list-header">
