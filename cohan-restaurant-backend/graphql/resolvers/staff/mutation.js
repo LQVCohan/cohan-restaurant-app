@@ -3721,7 +3721,28 @@ const mutationResolvers = {
       offScheduleReason,
     };
 
-    const record = (await Timesheet.findOne(query)) || new Timesheet(defaults);
+    let record = null;
+    if (normalizedAction === "check_out") {
+      const openTimesheetQuery = {
+        employeeId,
+        restaurantId,
+        actualCheckInAt: { $ne: null },
+        actualCheckOutAt: null,
+      };
+      if (assignedShift?._id) {
+        record = await Timesheet.findOne({
+          ...openTimesheetQuery,
+          shiftId: assignedShift._id,
+        });
+      }
+      if (!record) {
+        record = await Timesheet.findOne(openTimesheetQuery);
+      }
+    }
+
+    if (!record) {
+      record = (await Timesheet.findOne(query)) || new Timesheet(defaults);
+    }
     record.employeeId = employeeId;
     record.restaurantId = restaurantId;
     record.workDate = workDate;
