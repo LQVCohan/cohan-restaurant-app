@@ -1,0 +1,317 @@
+/* =========================================================
+   SCHEDULE TOOLBAR POLISH
+   View switcher, date navigation, filters and primary actions.
+   ========================================================= */
+
+.manager-page-shell--schedules .schedule-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 12 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.85rem !important;
+  margin: 0.85rem 1.35rem 0 !important;
+  padding: 0.72rem 0.82rem !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(12px) saturate(1.05) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 14px 32px rgba(15, 23, 42, 0.055) !important;
+}
+
+.manager-page-shell--schedules .schedule-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 20px 0 0 20px;
+  background: linear-gradient(180deg, #4f46e5, #22c55e);
+}
+
+.manager-page-shell--schedules .toolbar-left,
+.manager-page-shell--schedules .toolbar-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  min-width: 0 !important;
+}
+
+.manager-page-shell--schedules .toolbar-left {
+  flex: 0 0 auto !important;
+}
+
+.manager-page-shell--schedules .toolbar-right {
+  justify-content: flex-end !important;
+  flex: 1 1 auto !important;
+  flex-wrap: wrap !important;
+}
+
+.manager-page-shell--schedules .view-toggles {
+  display: inline-grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.22rem !important;
+  padding: 0.24rem !important;
+  border: 1px solid #dbe3ef !important;
+  border-radius: 16px !important;
+  background: #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .view-toggles button {
+  min-height: 2.15rem !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: #475569 !important;
+  padding: 0 0.7rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+  transition: color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.manager-page-shell--schedules .view-toggles button:hover {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.58) !important;
+}
+
+.manager-page-shell--schedules .view-toggles button.active {
+  color: #4338ca !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 18px rgba(15, 23, 42, 0.055) !important;
+}
+
+.manager-page-shell--schedules .date-navigation {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  min-height: 2.55rem !important;
+  padding: 0.22rem !important;
+  border: 1px solid #dbe3ef !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+}
+
+.manager-page-shell--schedules .date-navigation .nav-btn {
+  width: 2.05rem !important;
+  height: 2.05rem !important;
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.manager-page-shell--schedules .date-navigation .nav-btn:hover {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .date-navigation .week-label {
+  min-width: 16rem !important;
+  text-align: center !important;
+  color: #0f172a !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.015em !important;
+  white-space: nowrap !important;
+}
+
+.manager-page-shell--schedules .toolbar-right select {
+  height: 2.35rem !important;
+  min-width: 150px !important;
+  max-width: 210px !important;
+  border-radius: 14px !important;
+  border: 1px solid #dbe3ef !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  padding: 0 2rem 0 0.78rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 850 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+}
+
+.manager-page-shell--schedules .toolbar-right select:focus {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+  outline: none !important;
+}
+
+.manager-page-shell--schedules .toolbar-right button,
+.manager-page-shell--schedules .toolbar-right .schedule-status-badge {
+  min-height: 2.35rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.38rem !important;
+  border-radius: 999px !important;
+  padding: 0 0.85rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.manager-page-shell--schedules .toolbar-right button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.manager-page-shell--schedules .btn-availability-snapshot {
+  border: 1px solid #dbe3ef !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+}
+
+.manager-page-shell--schedules .btn-availability-snapshot:hover:not(:disabled) {
+  border-color: #a5b4fc !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+}
+
+.manager-page-shell--schedules .btn-auto-schedule {
+  border: 1px solid #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.1) !important;
+}
+
+.manager-page-shell--schedules .btn-auto-schedule:hover:not(:disabled) {
+  background: #e0e7ff !important;
+  border-color: #818cf8 !important;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.16) !important;
+}
+
+.manager-page-shell--schedules .btn-publish {
+  border: 1px solid #1d4ed8 !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2) !important;
+}
+
+.manager-page-shell--schedules .btn-publish:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.26) !important;
+}
+
+.manager-page-shell--schedules .btn-reopen-schedule {
+  border: 1px solid #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.manager-page-shell--schedules .btn-reopen-schedule:hover:not(:disabled) {
+  border-color: #fb923c !important;
+  background: #ffedd5 !important;
+}
+
+.manager-page-shell--schedules .toolbar-right button:disabled,
+.manager-page-shell--schedules .toolbar-right select:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.manager-page-shell--schedules .schedule-status-badge {
+  border: 1px solid #dbe3ef !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+.manager-page-shell--schedules .schedule-status-badge.published,
+.manager-page-shell--schedules .schedule-status-badge.active,
+.manager-page-shell--schedules .schedule-status-badge.is-published {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .schedule-status-badge.draft,
+.manager-page-shell--schedules .schedule-status-badge.revision_draft,
+.manager-page-shell--schedules .schedule-status-badge.is-draft {
+  border-color: #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-reminder {
+  margin: 0.72rem 1.35rem 0 !important;
+  padding: 0.78rem 0.9rem !important;
+  border-radius: 18px !important;
+  border: 1px solid #fed7aa !important;
+  background: linear-gradient(180deg, #fffaf5 0%, #ffffff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 24px rgba(249, 115, 22, 0.08) !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-reminder .reminder-content strong {
+  color: #7c2d12 !important;
+  font-size: 0.9rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-reminder .reminder-content p {
+  color: #9a3412 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.38 !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-reminder button {
+  min-height: 2.25rem !important;
+  border-radius: 999px !important;
+  background: #f97316 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0 0.92rem !important;
+  font-weight: 950 !important;
+  box-shadow: 0 10px 22px rgba(249, 115, 22, 0.22) !important;
+}
+
+@media (max-width: 1280px) {
+  .manager-page-shell--schedules .schedule-toolbar {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .manager-page-shell--schedules .toolbar-left,
+  .manager-page-shell--schedules .toolbar-right {
+    width: 100% !important;
+  }
+
+  .manager-page-shell--schedules .toolbar-right {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-page-shell--schedules .schedule-toolbar,
+  .manager-page-shell--schedules .schedule-publish-reminder {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+  }
+
+  .manager-page-shell--schedules .toolbar-left {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .manager-page-shell--schedules .date-navigation,
+  .manager-page-shell--schedules .view-toggles {
+    width: 100% !important;
+  }
+
+  .manager-page-shell--schedules .date-navigation .week-label {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .manager-page-shell--schedules .toolbar-right select,
+  .manager-page-shell--schedules .toolbar-right button,
+  .manager-page-shell--schedules .toolbar-right .schedule-status-badge {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
