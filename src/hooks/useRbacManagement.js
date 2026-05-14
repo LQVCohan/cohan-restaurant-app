@@ -59,7 +59,7 @@ const STAFF_ROLE_FIELDS = gql`
 `;
 
 export const RBAC_MANAGEMENT_QUERY = gql`
-  query RbacManagementData($restaurantId: ID) {
+  query RbacManagementData($restaurantId: ID, $includeStaffList: Boolean!, $includeAllRestaurants: Boolean!) {
     permissions {
       id
       code
@@ -91,8 +91,16 @@ export const RBAC_MANAGEMENT_QUERY = gql`
         isActive
       }
     }
-    staffList(restaurantId: $restaurantId) {
+    staffList(restaurantId: $restaurantId) @include(if: $includeStaffList) {
       ...RbacStaffRoleFields
+    }
+    restaurants(limit: 100) @include(if: $includeAllRestaurants) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
     }
   }
   ${ROLE_FIELDS}
@@ -110,10 +118,17 @@ export const ASSIGN_STAFF_ROLE_MUTATION = gql`
 
 const normalizeGroup = (permission) => permission?.group || permission?.resource || "Khác";
 
-export function useRbacManagement(restaurantId) {
+export function useRbacManagement(restaurantId, options = {}) {
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const includeStaffList = Boolean(restaurantId);
+  const includeAllRestaurants = Boolean(options.includeAllRestaurants);
+
   const { data, loading, error, refetch } = useQuery(RBAC_MANAGEMENT_QUERY, {
-    variables: { restaurantId: restaurantId || null },
+    variables: {
+      restaurantId: restaurantId || null,
+      includeStaffList,
+      includeAllRestaurants,
+    },
     fetchPolicy: "cache-and-network",
   });
 
@@ -125,6 +140,7 @@ export function useRbacManagement(restaurantId) {
   const permissions = data?.permissions || [];
   const parentRoles = data?.parentRoles || [];
   const staff = data?.staffList || [];
+  const allRestaurants = (data?.restaurants?.edges || []).map((edge) => edge.node).filter(Boolean);
 
   const selectedRole = useMemo(() => {
     if (selectedRoleId) return roles.find((role) => role.id === selectedRoleId) || null;
@@ -146,12 +162,14 @@ export function useRbacManagement(restaurantId) {
     permissionsByGroup,
     parentRoles,
     staff,
+    allRestaurants,
     selectedRole,
     selectedRoleId: selectedRoleId || selectedRole?.id || "",
     setSelectedRoleId,
     loading,
     error,
     refetch,
+    includeStaffList,
     assignStaffRole,
     assigning: assignState.loading,
     assignError: assignState.error,

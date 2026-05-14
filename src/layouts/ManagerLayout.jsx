@@ -189,10 +189,10 @@ const PAGE_CONFIG = {
     keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"],
   },
   rbac: {
-    title: "Phân quyền RBAC",
-    description: "Xem role, permission và gán role nhân viên theo phạm vi nhà hàng",
+    title: "Phân quyền nhân viên",
+    description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên",
     icon: "🛡️",
-    keywords: ["rbac", "role", "permission", "phân quyền", "nhân viên"],
+    keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"],
   },
   settings: {
     title: "Cài đặt",

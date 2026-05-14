@@ -22,6 +22,7 @@
 
 .rbac-hero h2,
 .rbac-card h3,
+.rbac-permission-group h4,
 .rbac-selected-role h4 {
   margin: 0;
 }
@@ -30,6 +31,12 @@
   margin: 8px 0 0;
   color: #64748b;
   max-width: 840px;
+}
+
+.rbac-hero small {
+  display: inline-block;
+  margin-top: 8px;
+  color: #64748b;
 }
 
 .rbac-eyebrow {
@@ -73,6 +80,18 @@
 .rbac-permission-groups {
   display: grid;
   gap: 12px;
+}
+
+.rbac-permission-group {
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.rbac-permission-group h4 {
+  margin-bottom: 12px;
+  color: #0f172a;
 }
 
 .rbac-role-row {
@@ -164,6 +183,10 @@
   color: #1d4ed8;
 }
 
+.rbac-assignment .rbac-status {
+  margin-bottom: 12px;
+}
+
 .rbac-status--success {
   background: #ecfdf5;
   color: #047857;
@@ -172,6 +195,16 @@
 .rbac-status--error {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.rbac-status--warning {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.rbac-status--info {
+  background: #f8fafc;
+  color: #475569;
 }
 
 @media (max-width: 1024px) {
