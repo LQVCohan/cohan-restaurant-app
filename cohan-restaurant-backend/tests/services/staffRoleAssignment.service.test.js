@@ -151,4 +151,40 @@ describe("staffRoleAssignment.service", () => {
     })).resolves.toBe(staff);
     expect(staff.role).toBe("role-storekeeper");
   });
+
+  it("blocks manager from assigning staff in another restaurant", async () => {
+    modelMocks.Staff.findById.mockResolvedValue(staffDoc({ restaurantForStaff: "restaurant-2" }));
+    modelMocks.Role.findById.mockReturnValue(roleQuery({
+      _id: "role-server",
+      slug: "server",
+      parentRole: { slug: "staff", permissions: [] },
+      permissions: [{ code: "order.read" }],
+    }));
+
+    const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
+
+    await expect(assignStaffRoleWithinRestaurant({
+      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      staffUserId: "staff-1",
+      roleId: "role-server",
+      restaurantId: "restaurant-1",
+    })).rejects.toThrow("Staff does not belong to this restaurant");
+  });
+
+  it("blocks staff and customers before assignment", async () => {
+    const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
+
+    for (const actor of [
+      { id: "staff-actor", roleName: "staff", refRestaurants: ["restaurant-1"] },
+      { id: "customer-actor", roleName: "customer", refRestaurants: ["restaurant-1"] },
+    ]) {
+      await expect(assignStaffRoleWithinRestaurant({
+        actor,
+        staffUserId: "staff-1",
+        roleId: "role-server",
+        restaurantId: "restaurant-1",
+      })).rejects.toThrow("FORBIDDEN");
+    }
+  });
+
 });
