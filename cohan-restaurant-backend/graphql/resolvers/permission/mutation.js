@@ -4,6 +4,7 @@ import {
   normalizePermissionCode,
   requirePermission,
 } from "../../../src/services/auth/authorization.service.js";
+import { logRbacAudit } from "../../../src/services/audit/rbacAudit.service.js";
 
 function buildPermissionPayload(input) {
   const action = input.action?.toLowerCase().trim();
@@ -15,6 +16,12 @@ function buildPermissionPayload(input) {
     resource,
     group: input.group?.toLowerCase().trim(),
   };
+}
+
+function snapshot(doc) {
+  if (!doc) return null;
+  if (typeof doc.toObject === "function") return doc.toObject({ virtuals: true });
+  return { ...doc };
 }
 
 export const PermissionMutation = {
@@ -29,6 +36,14 @@ export const PermissionMutation = {
       });
     }
     const doc = await Permission.create(payload);
+    await logRbacAudit({
+      ctx,
+      action: "PERMISSION_CREATED",
+      targetType: "Permission",
+      targetId: doc._id,
+      targetName: doc.name || doc.code,
+      after: doc,
+    });
     return doc.toObject();
   },
 
@@ -37,6 +52,8 @@ export const PermissionMutation = {
 
     const p = await Permission.findById(input.id);
     if (!p) throw new GraphQLError("Permission not found");
+
+    const before = snapshot(p);
 
     if (input.name !== undefined) p.name = input.name;
     if (input.description !== undefined) p.description = input.description;
@@ -49,6 +66,19 @@ export const PermissionMutation = {
     else if (input.action || input.resource) p.code = `${p.resource}.${p.action}`.toLowerCase();
 
     await p.save();
+    const after = snapshot(p);
+    await logRbacAudit({
+      ctx,
+      action: before?.isActive !== false && after?.isActive === false
+        ? "PERMISSION_DEACTIVATED"
+        : "PERMISSION_UPDATED",
+      targetType: "Permission",
+      targetId: p._id,
+      targetName: p.name || p.code,
+      before,
+      after,
+      metadata: { deactivated: before?.isActive !== false && after?.isActive === false },
+    });
     return p.toObject();
   },
 
