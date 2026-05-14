@@ -82,11 +82,32 @@ function isWeekendWorkDate(row, settings) {
 
   return weekendSet.has(getWeekdayCode(row.workDate));
 }
-function parseClockOnDate(dateValue, clockText) {
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+const DEFAULT_PAYROLL_TIMEZONE_OFFSET_MINUTES = 7 * 60;
+
+function parseClockMinutes(clockText) {
   const [hour = "0", minute = "0"] = String(clockText || "00:00").split(":");
-  const date = new Date(dateValue);
-  date.setHours(Number(hour), Number(minute), 0, 0);
-  return date;
+  return Number(hour) * 60 + Number(minute);
+}
+
+function resolvePayrollTimezoneOffsetMinutes(settings) {
+  const configuredOffset = Number(
+    settings?.timezoneOffsetMinutes ??
+      settings?.utcOffsetMinutes ??
+      settings?.payrollTimezoneOffsetMinutes,
+  );
+
+  if (Number.isFinite(configuredOffset)) return configuredOffset;
+  return DEFAULT_PAYROLL_TIMEZONE_OFFSET_MINUTES;
+}
+
+function toOffsetDayStart(dateValue, offsetMinutes) {
+  const shifted = new Date(
+    new Date(dateValue).getTime() + offsetMinutes * MINUTE_MS,
+  );
+  shifted.setUTCHours(0, 0, 0, 0);
+  return new Date(shifted.getTime() - offsetMinutes * MINUTE_MS);
 }
 
 function calculateNightOverlapMinutes(row, settings) {
@@ -95,23 +116,36 @@ function calculateNightOverlapMinutes(row, settings) {
 
   if (!checkIn || !checkOut || checkOut <= checkIn) return 0;
 
-  const nightStartText = settings?.nightShiftStart || "22:00";
-  const nightEndText = settings?.nightShiftEnd || "06:00";
+  const nightStartMinutes = parseClockMinutes(
+    settings?.nightShiftStart || "22:00",
+  );
+  const nightEndMinutes = parseClockMinutes(settings?.nightShiftEnd || "06:00");
+  const wrapsMidnight = nightEndMinutes <= nightStartMinutes;
+  const offsetMinutes = resolvePayrollTimezoneOffsetMinutes(settings);
 
-  let nightStart = parseClockOnDate(checkIn, nightStartText);
-  let nightEnd = parseClockOnDate(checkIn, nightEndText);
+  const firstDayStart = toOffsetDayStart(checkIn, offsetMinutes);
+  const lastDayStart = toOffsetDayStart(checkOut, offsetMinutes);
+  let overlap = 0;
 
-  if (nightEnd <= nightStart) {
-    nightEnd.setDate(nightEnd.getDate() + 1);
+  for (
+    let dayStart = firstDayStart.getTime() - DAY_MS;
+    dayStart <= lastDayStart.getTime();
+    dayStart += DAY_MS
+  ) {
+    const windowStart = dayStart + nightStartMinutes * MINUTE_MS;
+    const windowEnd =
+      dayStart +
+      nightEndMinutes * MINUTE_MS +
+      (wrapsMidnight ? DAY_MS : 0);
+
+    overlap += Math.max(
+      0,
+      Math.min(checkOut.getTime(), windowEnd) -
+        Math.max(checkIn.getTime(), windowStart),
+    );
   }
 
-  const overlap = Math.max(
-    0,
-    Math.min(checkOut.getTime(), nightEnd.getTime()) -
-      Math.max(checkIn.getTime(), nightStart.getTime()),
-  );
-
-  return Math.round(overlap / 60000);
+  return Math.round(overlap / MINUTE_MS);
 }
 function inferRegionCodeFromRestaurant(restaurant) {
   const manual = String(restaurant?.payrollRegionCode || "")

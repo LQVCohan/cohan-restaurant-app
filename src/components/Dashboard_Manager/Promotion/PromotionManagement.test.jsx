@@ -7,12 +7,18 @@ import { usePromotions } from "@/hooks/usePromotions";
 import { useCoupons } from "@/hooks/useCoupons";
 import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
 
+const useCouponAnalytics = vi.hoisted(() => vi.fn());
+
 vi.mock("@/hooks/usePromotions", () => ({
   usePromotions: vi.fn(),
 }));
 
 vi.mock("@/hooks/useCoupons", () => ({
   useCoupons: vi.fn(),
+}));
+
+vi.mock("@/hooks/useCouponAnalytics", () => ({
+  useCouponAnalytics,
 }));
 
 vi.mock("@/utils/xlsxWorkbook", () => ({
@@ -161,6 +167,23 @@ describe("PromotionManagement", () => {
     updatePromotion.mockResolvedValue("restaurant-2");
     usePromotions.mockReturnValue(buildPromotionHookValue());
     useCoupons.mockReturnValue(buildCouponHookValue());
+    useCouponAnalytics.mockReturnValue({
+      analytics: {
+        totalCoupons: 0,
+        activeCoupons: 0,
+        savedCoupons: 0,
+        usedCoupons: 0,
+        totalRedemptions: 0,
+        totalDiscountAmount: 0,
+        usageRate: 0,
+        expiringSoon: 0,
+        nearUsageLimit: 0,
+        topCoupons: [],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
   });
 
   it("renders the real restaurant selector and updates the promotion filter", () => {

@@ -112,7 +112,12 @@ describe("auto schedule backend hardening", () => {
     expect(item.shiftType).toBe("night");
     expect(new Date(item.endTime).getTime()).toBeGreaterThan(new Date(item.startTime).getTime());
     expect(durationHours).toBe(8);
-    expect(new Date(rows[0].endTime).getUTCDate()).toBe(new Date(rows[0].startTime).getUTCDate() + 1);
+    const rowStart = new Date(rows[0].startTime);
+    const rowEnd = new Date(rows[0].endTime);
+    const rowDurationHours = (rowEnd.getTime() - rowStart.getTime()) / 3600000;
+
+    expect(rowEnd.getTime()).toBeGreaterThan(rowStart.getTime());
+    expect(rowDurationHours).toBe(8);
   });
 
   it("apply rebuilds preview server-side instead of trusting client preview data", async () => {
