@@ -1,0 +1,553 @@
+/* =========================================================
+   AVAILABILITY REGISTRATION PANEL POLISH
+   Manager workflow for staff availability registration windows.
+   ========================================================= */
+
+.manager-page-shell--schedules .schedule-availability-panel {
+  margin: 0.85rem 1.35rem !important;
+  padding: 0.92rem !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.055), transparent 24rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 16px 38px rgba(15, 23, 42, 0.055) !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__header {
+  align-items: flex-start !important;
+  gap: 0.8rem !important;
+  padding-bottom: 0.82rem !important;
+  margin-bottom: 0.82rem !important;
+  border-bottom: 1px solid #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__header h3 {
+  gap: 0.45rem !important;
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 1rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__header h3 svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  padding: 0.18rem;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__header p {
+  margin: 0.22rem 0 0 !important;
+  color: #64748b !important;
+  font-size: 0.8rem !important;
+  line-height: 1.36 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__status {
+  align-self: flex-start !important;
+  min-width: max-content;
+  padding: 0.34rem 0.64rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbe3ef !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__status.is-open {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__status.is-closed,
+.manager-page-shell--schedules .schedule-availability-panel__status.is-locked,
+.manager-page-shell--schedules .schedule-availability-panel__status.is-used_for_schedule {
+  border-color: #dbeafe !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__status.is-draft,
+.manager-page-shell--schedules .schedule-availability-panel__status.is-expired {
+  border-color: #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.manager-page-shell--schedules .btn-collapse-panel.icon-only {
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbe3ef !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.manager-page-shell--schedules .btn-collapse-panel.icon-only:hover {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__compact-summary,
+.manager-page-shell--schedules .schedule-availability-panel__summary {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__compact-summary span,
+.manager-page-shell--schedules .schedule-availability-panel__summary > div,
+.manager-page-shell--schedules .metrics-grid span {
+  position: relative;
+  min-height: 3.3rem;
+  padding: 0.62rem 0.72rem !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  overflow: hidden;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary > div::before,
+.manager-page-shell--schedules .metrics-grid span::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #cbd5e1;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary > div:nth-child(1)::before,
+.manager-page-shell--schedules .metrics-grid span:nth-child(1)::before {
+  background: #4f46e5;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary > div:nth-child(2)::before,
+.manager-page-shell--schedules .metrics-grid span:nth-child(5)::before {
+  background: #10b981;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary span {
+  display: block !important;
+  color: #64748b !important;
+  font-size: 0.68rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.045em !important;
+  text-transform: uppercase !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary strong {
+  display: block !important;
+  margin-top: 0.24rem !important;
+  color: #0f172a !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+  line-height: 1.25 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.48rem !important;
+  margin-top: 0.72rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions button {
+  min-height: 2.22rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbe3ef !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  padding: 0 0.78rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #a5b4fc !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__actions button:disabled {
+  opacity: 0.58 !important;
+  cursor: not-allowed !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__empty {
+  margin-top: 0.72rem !important;
+  padding: 0.72rem 0.82rem !important;
+  border-radius: 16px !important;
+  border: 1px dashed #cbd5e1 !important;
+  background: rgba(248, 250, 252, 0.8) !important;
+  color: #475569 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__empty h4 {
+  margin: 0 0 0.25rem !important;
+  color: #0f172a !important;
+  font-size: 0.9rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__empty p {
+  margin: 0.18rem 0 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.42 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__empty button {
+  margin-top: 0.58rem !important;
+  min-height: 2.25rem !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0 0.95rem !important;
+  font-weight: 950 !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.22) !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__submissions {
+  margin-top: 0.82rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__submissions h4,
+.manager-page-shell--schedules .schedule-availability-panel__submission-detail-header h4 {
+  margin: 0 0 0.58rem !important;
+  color: #0f172a !important;
+  font-size: 0.92rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.manager-page-shell--schedules .metrics-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.52rem !important;
+}
+
+.manager-page-shell--schedules .metrics-grid span {
+  min-height: 2.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  color: #334155 !important;
+  font-size: 0.76rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__submission-detail {
+  margin-top: 0.82rem !important;
+  padding: 0.82rem !important;
+  border-radius: 18px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035) !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__submission-detail-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.7rem !important;
+  padding-bottom: 0.62rem !important;
+  margin-bottom: 0.62rem !important;
+  border-bottom: 1px solid #edf2f7 !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__submission-detail-header span {
+  padding: 0.22rem 0.54rem !important;
+  border-radius: 999px !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-list {
+  display: grid !important;
+  gap: 0.62rem !important;
+  max-height: min(55vh, 520px) !important;
+  overflow: auto !important;
+  padding-right: 0.2rem !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card {
+  padding: 0.78rem !important;
+  border-radius: 17px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__top {
+  align-items: flex-start !important;
+  gap: 0.7rem !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__top strong {
+  color: #0f172a !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__top span:not(.availability-submission-status) {
+  color: #64748b !important;
+  font-size: 0.74rem !important;
+  font-weight: 760 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-status {
+  min-width: max-content;
+  padding: 0.24rem 0.55rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.68rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-status.is-approved,
+.manager-page-shell--schedules .availability-submission-status.is-locked {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-status.is-late_change_requested,
+.manager-page-shell--schedules .availability-submission-status.is-pending {
+  border-color: #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.manager-page-shell--schedules .availability-submission-status.is-rejected {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__meta {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.38rem !important;
+  margin: 0.52rem 0 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__meta span {
+  padding: 0.2rem 0.48rem !important;
+  border-radius: 999px !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.7rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__slots {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.32rem !important;
+  margin-top: 0.48rem !important;
+}
+
+.manager-page-shell--schedules .availability-submission-card__slots > strong {
+  width: 100%;
+  color: #0f172a !important;
+  font-size: 0.76rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-slot {
+  border-radius: 999px !important;
+  padding: 0.22rem 0.5rem !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.68rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-slot.is-available,
+.manager-page-shell--schedules .availability-submission-slot.is-preferred {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .availability-submission-slot.is-unavailable {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__hint {
+  margin: 0.55rem 0 0 !important;
+  color: #64748b !important;
+  font-size: 0.76rem !important;
+  line-height: 1.38 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal {
+  width: min(820px, 94vw) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 34px 90px rgba(15, 23, 42, 0.32) !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  overflow: hidden !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__header {
+  padding: 1rem 1.1rem !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__header h3 {
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 1.12rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__header p {
+  margin: 0.25rem 0 0 !important;
+  color: #64748b !important;
+  font-size: 0.82rem !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__explain,
+.manager-page-shell--schedules .availability-policy-modal__grid {
+  padding: 0.9rem 1.1rem 0 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__explain {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__explain > div {
+  padding: 0.72rem !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__explain strong {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__explain span {
+  display: block !important;
+  margin-top: 0.18rem !important;
+  color: #64748b !important;
+  font-size: 0.76rem !important;
+  line-height: 1.36 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__grid label {
+  display: grid !important;
+  gap: 0.35rem !important;
+  color: #334155 !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__grid select,
+.manager-page-shell--schedules .availability-policy-modal__grid input {
+  height: 2.32rem !important;
+  border-radius: 13px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  padding: 0 0.62rem !important;
+  color: #0f172a !important;
+  font-size: 0.82rem !important;
+  font-weight: 760 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__grid small {
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  line-height: 1.35 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.55rem !important;
+  margin-top: 0.9rem !important;
+  padding: 0.82rem 1.1rem !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__actions button {
+  min-height: 2.3rem !important;
+  border-radius: 999px !important;
+  padding: 0 0.95rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .availability-policy-modal__actions .btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.22) !important;
+}
+
+@media (max-width: 1020px) {
+  .manager-page-shell--schedules .schedule-availability-panel__compact-summary,
+  .manager-page-shell--schedules .schedule-availability-panel__summary,
+  .manager-page-shell--schedules .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .manager-page-shell--schedules .schedule-availability-panel {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+    padding: 0.82rem !important;
+  }
+
+  .manager-page-shell--schedules .schedule-availability-panel__header {
+    flex-direction: column !important;
+  }
+
+  .manager-page-shell--schedules .schedule-availability-panel__compact-summary,
+  .manager-page-shell--schedules .schedule-availability-panel__summary,
+  .manager-page-shell--schedules .metrics-grid,
+  .manager-page-shell--schedules .availability-policy-modal__explain,
+  .manager-page-shell--schedules .availability-policy-modal__grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-page-shell--schedules .availability-policy-modal__actions {
+    flex-direction: column !important;
+  }
+
+  .manager-page-shell--schedules .availability-policy-modal__actions button {
+    width: 100% !important;
+  }
+}
