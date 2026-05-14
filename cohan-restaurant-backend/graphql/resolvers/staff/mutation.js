@@ -198,7 +198,7 @@ async function loadStaffForRestaurant(employeeId, restaurantId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-            restaurantForStaff: 1,
+      restaurantForStaff: 1,
       fullName: 1,
       employeeCode: 1,
     })
@@ -312,8 +312,11 @@ async function ensureShiftAcknowledgement({
 }
 
 async function assertShiftAcknowledgementPublicationActive(ackDoc) {
-  if (!ackDoc?.publicationId) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_PUBLISHED");
-  const publication = await SchedulePublication.findById(ackDoc.publicationId).lean();
+  if (!ackDoc?.publicationId)
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_PUBLISHED");
+  const publication = await SchedulePublication.findById(
+    ackDoc.publicationId,
+  ).lean();
   if (!publication || !["published", "active"].includes(publication.status)) {
     throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_PUBLISHED");
   }
@@ -647,7 +650,6 @@ function mapLeaveOutput(row) {
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
-
 
 function formatLeaveTypeLabel(leaveType) {
   const map = {
@@ -986,7 +988,7 @@ async function loadStaffScope(staffId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-            restaurantForStaff: 1,
+      restaurantForStaff: 1,
       refRestaurants: 1,
       role: 1,
       employmentStatus: 1,
@@ -1035,18 +1037,24 @@ const mutationResolvers = {
     input.userType = normalizedUserType;
 
     if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
-      const err = new Error("primaryRestaurantId has been removed; use restaurantForStaff");
+      const err = new Error(
+        "primaryRestaurantId has been removed; use restaurantForStaff",
+      );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
     if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
-      const err = new Error("refRestaurantIds is not allowed for staff; use restaurantForStaff");
+      const err = new Error(
+        "refRestaurantIds is not allowed for staff; use restaurantForStaff",
+      );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
     const restaurantAccessId = input.restaurantForStaff || null;
     if (!mongoose.isValidObjectId(restaurantAccessId)) {
-      throw new Error("restaurantForStaff is required and must be a valid ObjectId");
+      throw new Error(
+        "restaurantForStaff is required and must be a valid ObjectId",
+      );
     }
     await requireRestaurantAccess(ctx, restaurantAccessId);
 
@@ -1074,11 +1082,7 @@ const mutationResolvers = {
 
     const roleId = roleDoc._id;
 
-    const {
-      password,
-      employeeCode: _ignoredEmployeeCode,
-      ...rest
-    } = input;
+    const { password, employeeCode: _ignoredEmployeeCode, ...rest } = input;
 
     const doc = {
       ...rest,
@@ -1179,12 +1183,16 @@ const mutationResolvers = {
       await requireStaffMutationAccess(ctx, userId);
     const targetRestaurantIds = [];
     if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
-      const err = new Error("primaryRestaurantId has been removed; use restaurantForStaff");
+      const err = new Error(
+        "primaryRestaurantId has been removed; use restaurantForStaff",
+      );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
     if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
-      const err = new Error("refRestaurantIds is not allowed for staff; use restaurantForStaff");
+      const err = new Error(
+        "refRestaurantIds is not allowed for staff; use restaurantForStaff",
+      );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
@@ -1235,8 +1243,15 @@ const mutationResolvers = {
       });
     }
 
-    const hasRestaurantForStaffInput = Object.prototype.hasOwnProperty.call(input, "restaurantForStaff");
-    if (hasRestaurantForStaffInput && input.restaurantForStaff && !mongoose.isValidObjectId(input.restaurantForStaff)) {
+    const hasRestaurantForStaffInput = Object.prototype.hasOwnProperty.call(
+      input,
+      "restaurantForStaff",
+    );
+    if (
+      hasRestaurantForStaffInput &&
+      input.restaurantForStaff &&
+      !mongoose.isValidObjectId(input.restaurantForStaff)
+    ) {
       throw new Error("Invalid restaurantForStaff");
     }
 
@@ -1294,7 +1309,7 @@ const mutationResolvers = {
           department: before.department,
           employmentType: before.employmentType,
           employmentStatus: before.employmentStatus,
-                    role: before.role ? String(before.role) : null,
+          role: before.role ? String(before.role) : null,
         },
         after: {
           fullName: staff.fullName,
@@ -1303,7 +1318,7 @@ const mutationResolvers = {
           department: staff.department,
           employmentType: staff.employmentType,
           employmentStatus: staff.employmentStatus,
-                    role: staff.role ? String(staff.role._id || staff.role) : null,
+          role: staff.role ? String(staff.role._id || staff.role) : null,
         },
       },
     });
@@ -1408,8 +1423,12 @@ const mutationResolvers = {
       periodEnd,
     });
     if (hasBlockingSchedulePublishIssues(publishValidation)) {
-      const first = publishValidation.issues.find((issue) => issue.severity === "error");
-      throw new Error(first?.message || "Không thể công bố lịch vì còn lỗi blocking.");
+      const first = publishValidation.issues.find(
+        (issue) => issue.severity === "error",
+      );
+      throw new Error(
+        first?.message || "Không thể công bố lịch vì còn lỗi blocking.",
+      );
     }
 
     const existingPublication = await SchedulePublication.findOne({
@@ -2653,7 +2672,8 @@ const mutationResolvers = {
     doc.reasonCategory = reasonCategory || "other";
     doc.reason = normalizedReason;
     doc.respondedAt = now;
-    doc.declineClassification = now > new Date(doc.deadlineAt) ? "late" : "unknown";
+    doc.declineClassification =
+      now > new Date(doc.deadlineAt) ? "late" : "unknown";
     await doc.save();
     // TODO: integrate ScheduleIncident service:
     // - valid decline => EMPLOYEE_VALID_DECLINE (neutral responsibility)
@@ -2668,7 +2688,9 @@ const mutationResolvers = {
     const doc = await ShiftAcknowledgement.findOne({ shiftId, employeeId });
     assertAcknowledgementCanRespond(doc, employeeId);
     await assertShiftAcknowledgementPublicationActive(doc);
-    const response = String(input?.response || "").trim().toLowerCase();
+    const response = String(input?.response || "")
+      .trim()
+      .toLowerCase();
     if (response === "accept") {
       doc.status = "accepted";
       doc.reason = "";
@@ -2680,17 +2702,23 @@ const mutationResolvers = {
     }
     if (response === "decline") {
       const reason = String(input?.reason || "").trim();
-      if (reason.length < 5) throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
-      const reasonCategory = String(input?.reasonCategory || "").trim().toLowerCase();
+      if (reason.length < 5)
+        throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
+      const reasonCategory = String(input?.reasonCategory || "")
+        .trim()
+        .toLowerCase();
       if (!reasonCategory || reasonCategory === "no_reason") {
-        throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_CATEGORY_REQUIRED");
+        throw new Error(
+          "SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_CATEGORY_REQUIRED",
+        );
       }
       const now = new Date();
       doc.status = "declined";
       doc.reason = reason;
       doc.reasonCategory = reasonCategory;
       doc.respondedAt = now;
-      doc.declineClassification = now > new Date(doc.deadlineAt) ? "late" : "unknown";
+      doc.declineClassification =
+        now > new Date(doc.deadlineAt) ? "late" : "unknown";
       await doc.save();
       return doc;
     }
@@ -2702,11 +2730,14 @@ const mutationResolvers = {
     const doc = await ShiftAcknowledgement.findById(input?.acknowledgementId);
     if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
     await requireRestaurantAccess(ctx, String(doc.restaurantId));
-    if (doc.status !== "declined") throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_DECLINED");
+    if (doc.status !== "declined")
+      throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_DECLINED");
     if (doc.declineClassification === "late") {
       throw new Error("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
     }
-    const classification = String(input?.classification || "").trim().toLowerCase();
+    const classification = String(input?.classification || "")
+      .trim()
+      .toLowerCase();
     if (!["valid", "invalid"].includes(classification)) {
       throw new Error("SHIFT_ACKNOWLEDGEMENT_REVIEW_CLASSIFICATION_INVALID");
     }
@@ -2716,7 +2747,11 @@ const mutationResolvers = {
       restaurantId: doc.restaurantId,
       actorUserId,
       verb: "schedule.shift_ack_decline_reviewed",
-      object: { kind: "ShiftAcknowledgement", id: doc._id, code: String(doc.shiftId) },
+      object: {
+        kind: "ShiftAcknowledgement",
+        id: doc._id,
+        code: String(doc.shiftId),
+      },
       status: "success",
       source: "schedule-management",
       meta: { classification, reviewNote: String(input?.reviewNote || "") },
@@ -2805,7 +2840,7 @@ const mutationResolvers = {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-                restaurantForStaff: 1,
+        restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -2834,9 +2869,7 @@ const mutationResolvers = {
     assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(
-      input.restaurantId ||
-        actor.restaurantForStaff ||
-        null,
+      input.restaurantId || actor.restaurantForStaff || null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3109,9 +3142,7 @@ const mutationResolvers = {
     assertPayrollPermission(ctx, "payroll.settings.update");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(
-      input.restaurantId ||
-        actor.restaurantForStaff ||
-        null,
+      input.restaurantId || actor.restaurantForStaff || null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3235,7 +3266,7 @@ const mutationResolvers = {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-                restaurantForStaff: 1,
+        restaurantForStaff: 1,
         refRestaurants: 1,
       })
       .lean();
@@ -3309,8 +3340,9 @@ const mutationResolvers = {
   approveAttendanceCorrectionRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
-      .select({ _id: 1, restaurantId: 1 });
+    const existing = await AttendanceCorrectionRequest.findById(
+      input?.requestId,
+    ).select({ _id: 1, restaurantId: 1 });
     if (!existing) throw new Error("Attendance correction request not found");
     await requireRestaurantAccess(ctx, existing.restaurantId);
     return approveAttendanceCorrectionRequestService({ input, ctx });
@@ -3319,8 +3351,9 @@ const mutationResolvers = {
   rejectAttendanceCorrectionRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const existing = await AttendanceCorrectionRequest.findById(input?.requestId)
-      .select({ _id: 1, restaurantId: 1 });
+    const existing = await AttendanceCorrectionRequest.findById(
+      input?.requestId,
+    ).select({ _id: 1, restaurantId: 1 });
     if (!existing) throw new Error("Attendance correction request not found");
     await requireRestaurantAccess(ctx, existing.restaurantId);
     return rejectAttendanceCorrectionRequestService({ input, ctx });
@@ -3328,7 +3361,9 @@ const mutationResolvers = {
 
   cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
     requireAuth(ctx);
-    const existing = await AttendanceCorrectionRequest.findById(requestId).select({
+    const existing = await AttendanceCorrectionRequest.findById(
+      requestId,
+    ).select({
       _id: 1,
       employeeId: 1,
       restaurantId: 1,
@@ -3388,7 +3423,10 @@ const mutationResolvers = {
   },
   reviewPerformanceIncidentAppeal: async (_, { input }, ctx) => {
     requireAuth(ctx);
-    const appeal = await getPerformanceIncidentAppealById(input.appealId, ctx?.user);
+    const appeal = await getPerformanceIncidentAppealById(
+      input.appealId,
+      ctx?.user,
+    );
     await requireRestaurantAccess(ctx, appeal.restaurantId);
     if (isSelf(ctx, appeal.employeeId)) throw new Error("FORBIDDEN");
     return reviewPerformanceIncidentAppeal(input, ctx?.user);
@@ -3428,7 +3466,10 @@ const mutationResolvers = {
       resolvedEmployeeId = resolvedEmployeeId || String(timesheet.employeeId);
       resolvedRestaurantId =
         resolvedRestaurantId || String(timesheet.restaurantId);
-      if (shift && String(shift.restaurantId) !== String(timesheet.restaurantId))
+      if (
+        shift &&
+        String(shift.restaurantId) !== String(timesheet.restaurantId)
+      )
         throw new Error("SHIFT_TIMESHEET_RESTAURANT_MISMATCH");
       if (shift && String(shift.employeeId) !== String(timesheet.employeeId))
         throw new Error("SHIFT_TIMESHEET_EMPLOYEE_MISMATCH");
@@ -3464,8 +3505,12 @@ const mutationResolvers = {
 
   confirmOvertimeRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
-    const request = await OvertimeRequest.findById(input?.requestId)
-      .select({ _id: 1, employeeId: 1, restaurantId: 1, status: 1 });
+    const request = await OvertimeRequest.findById(input?.requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+      status: 1,
+    });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (!isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     return confirmOvertimeRequestService({ input, ctx });
@@ -3474,8 +3519,11 @@ const mutationResolvers = {
   approveOvertimeRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const request = await OvertimeRequest.findById(input?.requestId)
-      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    const request = await OvertimeRequest.findById(input?.requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     await requireRestaurantAccess(ctx, request.restaurantId);
@@ -3485,8 +3533,11 @@ const mutationResolvers = {
   rejectOvertimeRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const request = await OvertimeRequest.findById(input?.requestId)
-      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    const request = await OvertimeRequest.findById(input?.requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     await requireRestaurantAccess(ctx, request.restaurantId);
@@ -3495,8 +3546,11 @@ const mutationResolvers = {
 
   cancelOvertimeRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
-    const request = await OvertimeRequest.findById(input?.requestId)
-      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    const request = await OvertimeRequest.findById(input?.requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (!isSelf(ctx, request.employeeId)) {
       requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
@@ -3508,8 +3562,11 @@ const mutationResolvers = {
   completeOvertimeRequest: async (_, { input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const request = await OvertimeRequest.findById(input?.requestId)
-      .select({ _id: 1, employeeId: 1, restaurantId: 1 });
+    const request = await OvertimeRequest.findById(input?.requestId).select({
+      _id: 1,
+      employeeId: 1,
+      restaurantId: 1,
+    });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     await requireRestaurantAccess(ctx, request.restaurantId);
@@ -3662,7 +3719,10 @@ const mutationResolvers = {
         ).toLowerCase(),
       });
     } catch (error) {
-      console.warn("Failed to sync attendance performance incidents:", error.message);
+      console.warn(
+        "Failed to sync attendance performance incidents:",
+        error.message,
+      );
     }
     if (record.isOffSchedule) {
       try {
@@ -3742,7 +3802,7 @@ const mutationResolvers = {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-                restaurantForStaff: 1,
+        restaurantForStaff: 1,
         refRestaurants: 1,
         fullName: 1,
         employeeCode: 1,
@@ -3756,7 +3816,9 @@ const mutationResolvers = {
     if (!employee || employee.userType !== "STAFF" || employee.deletedAt)
       throw new Error("Staff not found");
 
-    const restaurantId = toObjectId(input.restaurantId || resolveStaffRestaurantId(employee));
+    const restaurantId = toObjectId(
+      input.restaurantId || resolveStaffRestaurantId(employee),
+    );
     if (!restaurantId) throw new Error("Invalid employeeId or restaurantId");
     if (!staffBelongsToRestaurant(employee, restaurantId)) {
       throw new Error("Staff does not belong to restaurant");
@@ -3868,7 +3930,8 @@ const mutationResolvers = {
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
     await requireRestaurantAccess(ctx, request.restaurantId);
-    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId))
+      throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -3962,7 +4025,8 @@ const mutationResolvers = {
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
     await requireRestaurantAccess(ctx, request.restaurantId);
-    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId))
+      throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -4049,7 +4113,8 @@ const mutationResolvers = {
       .lean();
     if (!request) throw new Error("Leave request not found");
     await requireRestaurantAccess(ctx, request.restaurantId);
-    if (isSelf(ctx, request.employeeId?._id || request.employeeId)) throw new Error("FORBIDDEN");
+    if (isSelf(ctx, request.employeeId?._id || request.employeeId))
+      throw new Error("FORBIDDEN");
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId: request.restaurantId,
       employeeId: request.employeeId?._id || request.employeeId,
@@ -4061,8 +4126,9 @@ const mutationResolvers = {
     if (!request.replacementManagerId)
       throw new Error("Leave request does not require replacement");
     const isAssignedReplacement =
-      String(request.replacementManagerId._id || request.replacementManagerId) ===
-      String(actorId);
+      String(
+        request.replacementManagerId._id || request.replacementManagerId,
+      ) === String(actorId);
     if (!isAssignedReplacement) {
       requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
       await requireRestaurantAccess(ctx, request.restaurantId);
