@@ -1,0 +1,356 @@
+/* =========================================================
+   SCHEDULE RULES MODAL POLISH
+   Manager-facing scheduling settings, loaded after component SCSS.
+   ========================================================= */
+
+.shift-rules-modal {
+  --rules-primary: #4f46e5;
+  --rules-primary-dark: #3730a3;
+  --rules-primary-soft: #eef2ff;
+  --rules-border: #e2e8f0;
+  --rules-text: #0f172a;
+  --rules-muted: #64748b;
+  --rules-success: #10b981;
+  --rules-warning: #f59e0b;
+  --rules-danger: #ef4444;
+}
+
+.shift-rules-modal .shift-rules-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 0.28rem !important;
+  padding: 0.28rem !important;
+  margin-bottom: 0.85rem !important;
+  border: 1px solid #dbe3ef;
+  border-radius: 15px !important;
+  background: #edf2f7 !important;
+}
+
+.shift-rules-modal .shift-rules-tabs button {
+  min-height: 2.35rem;
+  border-radius: 12px !important;
+  font-size: 0.82rem;
+  font-weight: 900 !important;
+  color: #475569 !important;
+  transition: transform 0.16s ease, color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.shift-rules-modal .shift-rules-tabs button:hover {
+  color: #111827 !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+}
+
+.shift-rules-modal .shift-rules-tabs button.active {
+  background: #ffffff !important;
+  color: #4338ca !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 18px rgba(15, 23, 42, 0.055) !important;
+}
+
+.shift-rules-modal .policy-banner,
+.shift-rules-modal .scoring-help-banner {
+  position: relative;
+  padding: 0.78rem 0.95rem 0.78rem 3.15rem !important;
+  border-radius: 18px !important;
+  border-color: #c7d2fe !important;
+  background:
+    radial-gradient(circle at 1.55rem 1.35rem, rgba(79, 70, 229, 0.16), transparent 1.8rem),
+    linear-gradient(135deg, #eef2ff 0%, #ffffff 65%, #f8fafc 100%) !important;
+  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.07);
+  margin-bottom: 0.82rem !important;
+}
+
+.shift-rules-modal .policy-banner > svg,
+.shift-rules-modal .scoring-help-banner > svg {
+  position: absolute;
+  left: 1rem;
+  top: 0.95rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #4f46e5;
+}
+
+.shift-rules-modal .policy-banner strong,
+.shift-rules-modal .scoring-help-banner strong {
+  color: #1e1b4b !important;
+  font-size: 0.93rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.015em;
+}
+
+.shift-rules-modal .policy-banner span,
+.shift-rules-modal .scoring-help-banner span {
+  color: #475569 !important;
+  font-size: 0.79rem !important;
+  line-height: 1.38 !important;
+}
+
+/* Shift frame tab */
+.shift-rules-modal .shift-rules-toolbar {
+  padding: 0.72rem !important;
+  border-radius: 18px !important;
+  border-color: #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.shift-rules-modal .toolbar-title strong {
+  font-size: 0.93rem !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .toolbar-title span {
+  font-size: 0.78rem !important;
+  line-height: 1.36;
+}
+
+.shift-rules-modal .smart-count-actions button,
+.shift-rules-modal .shift-rule-actions button {
+  height: 2.18rem !important;
+  border-radius: 999px !important;
+  font-size: 0.8rem !important;
+  font-weight: 850 !important;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.shift-rules-modal .smart-count-actions button:hover:not(:disabled),
+.shift-rules-modal .shift-rule-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+  color: #4338ca !important;
+}
+
+.shift-rules-modal .shift-rule-list {
+  gap: 0.65rem !important;
+}
+
+.shift-rules-modal .shift-rule-row {
+  grid-template-columns: minmax(220px, 1fr) 120px 120px !important;
+  padding: 0.72rem !important;
+  border-radius: 16px !important;
+  border-color: #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+}
+
+.shift-rules-modal .shift-rule-row .rule-icon {
+  border-radius: 12px !important;
+  background: #eef2ff !important;
+  color: #4f46e5;
+}
+
+.shift-rules-modal .shift-rule-row strong {
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .shift-rule-row input,
+.shift-rules-modal .rule-card input[type="number"],
+.shift-rules-modal .rule-card select,
+.shift-rules-modal .score-card input[type="number"] {
+  height: 2.25rem !important;
+  border-radius: 12px !important;
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+.shift-rules-modal .shift-rule-row input:focus,
+.shift-rules-modal .rule-card input[type="number"]:focus,
+.shift-rules-modal .rule-card select:focus,
+.shift-rules-modal .score-card input[type="number"]:focus {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+/* Labor policy tab */
+.shift-rules-modal .rules-grid {
+  gap: 0.72rem !important;
+}
+
+.shift-rules-modal .rule-card {
+  position: relative;
+  padding: 0.82rem !important;
+  border-radius: 18px !important;
+  border-color: rgba(226, 232, 240, 0.96) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 22px rgba(15, 23, 42, 0.035);
+  overflow: hidden;
+}
+
+.shift-rules-modal .rule-card::before,
+.shift-rules-modal .score-card::before,
+.shift-rules-modal .mandatory-roles-box::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.42), rgba(79, 70, 229, 0));
+}
+
+.shift-rules-modal .rule-card .rule-card-header strong,
+.shift-rules-modal .rule-card strong {
+  font-size: 0.91rem !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .rule-card p {
+  font-size: 0.78rem !important;
+  line-height: 1.36 !important;
+}
+
+.shift-rules-modal .rule-card .inline-fields {
+  gap: 0.55rem !important;
+}
+
+.shift-rules-modal .switch-row.standalone,
+.shift-rules-modal .toggle-row {
+  border-radius: 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.shift-rules-modal .switch-row input,
+.shift-rules-modal .toggle-row input,
+.shift-rules-modal .mandatory-role-chip input {
+  accent-color: #4f46e5 !important;
+}
+
+.shift-rules-modal .mandatory-roles-box {
+  position: relative;
+  margin-top: 0.8rem !important;
+  padding: 0.82rem !important;
+  border-radius: 18px !important;
+  border-color: #dbeafe !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  overflow: hidden;
+}
+
+.shift-rules-modal .mandatory-roles-header strong {
+  color: #1e1b4b !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .mandatory-role-options {
+  gap: 0.42rem !important;
+}
+
+.shift-rules-modal .mandatory-role-chip {
+  min-height: 2rem;
+  border-radius: 999px !important;
+  font-size: 0.78rem !important;
+  font-weight: 820 !important;
+  background: #ffffff !important;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.shift-rules-modal .mandatory-role-chip:hover {
+  transform: translateY(-1px);
+  border-color: #a5b4fc !important;
+  background: #eef2ff !important;
+}
+
+.shift-rules-modal .mandatory-role-chip.active {
+  border-color: #818cf8 !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+}
+
+/* Scoring tab */
+.shift-rules-modal .scoring-presets {
+  gap: 0.62rem !important;
+  margin-bottom: 0.72rem !important;
+}
+
+.shift-rules-modal .scoring-presets button {
+  padding: 0.72rem !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+}
+
+.shift-rules-modal .scoring-presets button strong {
+  font-size: 0.86rem !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .scoring-presets button span {
+  font-size: 0.73rem !important;
+}
+
+.shift-rules-modal .scoring-total-box {
+  padding: 0.72rem 0.85rem !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 1.2rem 1rem, rgba(79, 70, 229, 0.12), transparent 1.8rem),
+    linear-gradient(135deg, #f5f7ff 0%, #ffffff 100%) !important;
+}
+
+.shift-rules-modal .scoring-grid.enhanced {
+  gap: 0.72rem !important;
+}
+
+.shift-rules-modal .score-card {
+  position: relative;
+  padding: 0.82rem !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+  overflow: hidden;
+}
+
+.shift-rules-modal .score-card.penalty::before {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.55), rgba(249, 115, 22, 0));
+}
+
+.shift-rules-modal .score-card .score-card-header strong {
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
+}
+
+.shift-rules-modal .score-card p,
+.shift-rules-modal .score-impact {
+  font-size: 0.76rem !important;
+  line-height: 1.34 !important;
+}
+
+.shift-rules-modal .score-card .score-value {
+  height: 1.9rem !important;
+  min-width: 2.25rem !important;
+}
+
+.shift-rules-modal .score-card .score-range-row {
+  grid-template-columns: 1fr 4.4rem !important;
+  gap: 0.58rem !important;
+}
+
+.shift-rules-modal .score-card input[type="range"] {
+  accent-color: #4f46e5 !important;
+}
+
+.shift-rules-modal .score-meta-row span {
+  font-size: 0.68rem !important;
+  padding: 0.24rem 0.48rem !important;
+}
+
+.shift-rules-modal .policy-save-success,
+.shift-rules-modal .shift-rule-errors,
+.shift-rules-modal .policy-loading {
+  border-radius: 14px !important;
+}
+
+@media (max-width: 900px) {
+  .shift-rules-modal .shift-rules-tabs {
+    grid-template-columns: 1fr !important;
+  }
+
+  .shift-rules-modal .rules-grid,
+  .shift-rules-modal .scoring-grid.enhanced,
+  .shift-rules-modal .scoring-presets {
+    grid-template-columns: 1fr !important;
+  }
+
+  .shift-rules-modal .shift-rule-row {
+    grid-template-columns: 1fr !important;
+  }
+}

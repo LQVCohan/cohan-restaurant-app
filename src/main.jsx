@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import "./styles/schedule-manager-experience.css";
 import "./styles/schedule-action-center.css";
 import "./styles/schedule-auto-modal-polish.css";
+import "./styles/schedule-rules-modal-polish.css";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { initScheduleManagerDomPolish } from "./utils/scheduleManagerDomPolish.js";
 
