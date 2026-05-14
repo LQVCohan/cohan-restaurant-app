@@ -141,10 +141,10 @@ describe("coupon query restaurant scoping", () => {
     await CouponQuery.voucherPackages(null, { restaurantId: "valid-r3" }, ctx);
 
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith({
+    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith(expect.objectContaining({
       restaurantId: expect.objectContaining({ value: "valid-r3" }),
       isActive: true,
-    });
+    }));
   });
 
   it("voucherPackages without restaurantId calls requireRoles ADMIN", async () => {

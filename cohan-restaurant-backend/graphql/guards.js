@@ -62,10 +62,14 @@ async function managerOwnsRestaurant(ctx, restaurantId) {
 }
 
 export function requireAuth(ctx) {
-  if (!ctx?.user?.id) {
+  const userId = ctx?.user?.id || ctx?.user?._id;
+  if (!userId) {
     const err = new Error("UNAUTHENTICATED");
     err.statusCode = 401;
     throw err;
+  }
+  if (!ctx.user.id && ctx.user._id) {
+    ctx.user.id = ctx.user._id;
   }
 }
 

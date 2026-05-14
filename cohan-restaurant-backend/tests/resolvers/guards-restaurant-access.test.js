@@ -24,6 +24,16 @@ describe("requireRestaurantAccess", () => {
     expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
   });
 
+
+  it("accepts _id-only authenticated contexts and normalizes ctx.user.id", async () => {
+    const { requireAuth, requireRestaurantAccess } = await import("../../graphql/guards.js");
+    const ctx = { user: { _id: "manager-a", roles: ["manager"], restaurantId: "r1" } };
+
+    expect(() => requireAuth(ctx)).not.toThrow();
+    expect(ctx.user.id).toBe("manager-a");
+    await expect(requireRestaurantAccess(ctx, "r1")).resolves.toBeUndefined();
+  });
+
   it("allows manager when Restaurant.managerId matches", async () => {
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");

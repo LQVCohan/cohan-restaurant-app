@@ -145,4 +145,30 @@ describe("public/customer permission flows", () => {
       "coupon.read",
     );
   });
+
+  it("lets public customers browse active voucher packages without coupon.read", async () => {
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+
+    await CouponQuery.voucherPackages(null, { restaurantId: "valid-r1", activeOnly: true }, {});
+
+    expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith(expect.objectContaining({ isActive: true }));
+  });
+
+  it("requires coupon.read for inactive/admin voucher package listings", async () => {
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+
+    await CouponQuery.voucherPackages(
+      null,
+      { restaurantId: "valid-r1", activeOnly: false },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "coupon.read",
+    );
+  });
+
 });

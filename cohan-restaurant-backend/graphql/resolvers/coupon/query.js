@@ -24,6 +24,19 @@ function buildActiveQuery(activeOnly, now) {
   };
 }
 
+function buildVoucherPackageActiveQuery(activeOnly, now) {
+  if (!activeOnly) return {};
+  const nowDate = now ? new Date(now) : new Date();
+  return {
+    isActive: true,
+    $and: [
+      { $or: [{ publishAt: { $exists: false } }, { publishAt: null }, { publishAt: { $lte: nowDate } }] },
+      { $or: [{ startAt: { $exists: false } }, { startAt: null }, { startAt: { $lte: nowDate } }] },
+      { $or: [{ endAt: { $exists: false } }, { endAt: null }, { endAt: { $gte: nowDate } }] },
+    ],
+  };
+}
+
 function requireRestaurantIdForCouponLookup(restaurantId) {
   const rid = toObjectId(restaurantId);
   if (!rid) {
@@ -69,17 +82,22 @@ export const CouponQuery = {
     }).lean({ virtuals: true });
   },
 
-  async voucherPackages(_, { restaurantId } = {}, ctx) {
+  async voucherPackages(_, { restaurantId, activeOnly = true, now } = {}, ctx) {
+    const activeQuery = buildVoucherPackageActiveQuery(activeOnly, now);
+
     if (restaurantId) {
       const rid = toObjectId(restaurantId);
       if (!rid) throw new GraphQLError("Invalid restaurantId");
-      return VoucherPackage.find({ restaurantId: rid, isActive: true })
+      if (!activeOnly) {
+        await requireRestaurantPermission(ctx, rid, PERMISSIONS.COUPON_READ);
+      }
+      return VoucherPackage.find({ restaurantId: rid, ...activeQuery })
         .sort({ level: 1, createdAt: -1 })
         .lean({ virtuals: true });
     }
 
     requireRoles(ctx, ["ADMIN"]);
-    return VoucherPackage.find({})
+    return VoucherPackage.find(activeQuery)
       .sort({ level: 1, createdAt: -1 })
       .lean({ virtuals: true });
   },
