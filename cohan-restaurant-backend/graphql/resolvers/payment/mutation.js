@@ -309,6 +309,7 @@ function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
     requestedPromotionIds: normalizePromotionIds(promotionIds),
     discountReason: discountTotals?.discountReason || null,
     promotionDiscount: Number(discountTotals?.promotionDiscount || 0),
+    shippingDiscount: Number(discountTotals?.shippingDiscount || 0),
     voucherDiscount: Number(
       discountTotals?.voucherDiscount ?? discountTotals?.couponDiscount ?? 0,
     ),

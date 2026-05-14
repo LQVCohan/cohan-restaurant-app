@@ -25,6 +25,10 @@ function isBogoPromotion(promotion) {
   return normalizePromotionType(promotion?.promotionType) === "BOGO";
 }
 
+function isFreeshipPromotion(promotion) {
+  return normalizePromotionType(promotion?.promotionType) === "FREESHIP";
+}
+
 function isDirectDiscountPromotion(promotion) {
   const promotionType = normalizePromotionType(promotion?.promotionType);
   const discountType = String(promotion?.discountType || "")
@@ -576,23 +580,35 @@ export async function calculateDiscountBreakdown({
             p &&
             normalizeScope(p.scope) === "ORDER" &&
             inWindow(p, now) &&
-            isDirectDiscountPromotion(p) &&
+            (isDirectDiscountPromotion(p) || isFreeshipPromotion(p)) &&
             subtotal >= Math.max(0, toNum(p.minOrderValue)),
         )
         .sort((a, b) => getPriority(b) - getPriority(a))[0] || null;
   }
   let orderPromotionDiscount = 0;
+  let shippingDiscount = 0;
   if (selectedPromotion) {
-    const orderPromotionBase = Math.max(0, subtotal - linePromotionDiscount);
+    if (isFreeshipPromotion(selectedPromotion)) {
+      shippingDiscount = shippingFee;
+      if (toNum(selectedPromotion.maxDiscount) > 0) {
+        shippingDiscount = Math.min(
+          shippingFee,
+          toNum(selectedPromotion.maxDiscount),
+        );
+      }
+      shippingDiscount = roundVnd(shippingDiscount);
+    } else {
+      const orderPromotionBase = Math.max(0, subtotal - linePromotionDiscount);
 
-    orderPromotionDiscount = calcDiscountAmount({
-      discountType: selectedPromotion.discountType,
-      discountValue: selectedPromotion.discountValue,
-      subtotal: orderPromotionBase,
-      maxDiscount: selectedPromotion.maxDiscount,
-    });
+      orderPromotionDiscount = calcDiscountAmount({
+        discountType: selectedPromotion.discountType,
+        discountValue: selectedPromotion.discountValue,
+        subtotal: orderPromotionBase,
+        maxDiscount: selectedPromotion.maxDiscount,
+      });
+    }
 
-    if (orderPromotionDiscount > 0) {
+    if (orderPromotionDiscount > 0 || shippingDiscount > 0) {
       appliedPromotionIds.add(String(selectedPromotion._id));
       appliedPromotionDocsById.set(
         String(selectedPromotion._id),
@@ -606,6 +622,7 @@ export async function calculateDiscountBreakdown({
     promotionDiscount = 0;
     linePromotionDiscount = 0;
     orderPromotionDiscount = 0;
+    shippingDiscount = 0;
     promotionLines.length = 0;
     appliedPromotionIds.clear();
     appliedPromotionDocsById.clear();
@@ -634,7 +651,7 @@ export async function calculateDiscountBreakdown({
     });
 
     const appliedPromotionDocs = Array.from(appliedPromotionDocsById.values());
-    const hasPromotion = promotionDiscount > 0;
+    const hasPromotion = promotionDiscount > 0 || shippingDiscount > 0;
     const couponExclusive = isExclusive(coupon);
     const promotionExclusive = appliedPromotionDocs.some((promotion) =>
       isExclusive(promotion),
@@ -676,13 +693,16 @@ export async function calculateDiscountBreakdown({
   }
 
   const service = roundVnd(subtotal * serviceRate);
-  const totalDiscount = Math.min(
+  const itemAndOrderDiscount = Math.min(
     subtotal + service,
     promotionDiscount + voucherDiscount,
   );
-  const beforeTax = Math.max(0, subtotal + service - totalDiscount);
+  const totalDiscount = itemAndOrderDiscount + shippingDiscount;
+  const beforeTax = Math.max(0, subtotal + service - itemAndOrderDiscount);
   const tax = roundVnd(beforeTax * taxRate);
-  const grandTotal = roundVnd(beforeTax + tax + shippingFee);
+  const grandTotal = roundVnd(
+    beforeTax + tax + shippingFee - shippingDiscount,
+  );
 
   return {
     subtotal,
@@ -690,7 +710,7 @@ export async function calculateDiscountBreakdown({
     promotionDiscount,
     voucherDiscount,
     couponDiscount: voucherDiscount,
-    shippingDiscount: 0,
+    shippingDiscount,
     totalDiscount,
     finalTotal: grandTotal,
     appliedPromotions: Array.from(appliedPromotionIds),

@@ -366,6 +366,11 @@ const PromotionModal = ({
                       <DollarSign className="input-icon" size={16} />
                       <input disabled type="text" value="Miễn phí vận chuyển" />
                     </div>
+                    <p className="field-hint">
+                      Khi thanh toán đơn giao hàng, hệ thống sẽ giảm trực tiếp
+                      phí vận chuyển. Nếu có giới hạn giảm tối đa, số tiền
+                      freeship sẽ không vượt quá giới hạn đó.
+                    </p>
                   </div>
                 ) : (
                   <>
