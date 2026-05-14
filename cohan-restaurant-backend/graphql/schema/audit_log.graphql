@@ -1,8 +1,8 @@
 type AuditLog {
   id: ID!
   restaurantId: ID
-  entity: String!
-  entityId: ID!
+  entity: String
+  entityId: ID
   action: String!
   byUserId: ID
   diff: JSON
