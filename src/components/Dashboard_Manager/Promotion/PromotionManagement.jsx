@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -14,6 +14,11 @@ import {
   Trash2,
   Inbox,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import {
+  hasPermission,
+  NO_PERMISSION_MESSAGE,
+} from "@/utils/frontendPermissionAccess";
 import { useCouponAnalytics } from "../../../hooks/useCouponAnalytics";
 // --- Components ---
 // Giả định bạn đã lưu các file này từ các bước trước
@@ -33,6 +38,9 @@ import { useCoupons } from "../../../hooks/useCoupons";
 import "./PromotionManagement.scss";
 
 const PromotionManagement = () => {
+  const { user } = useContext(AuthContext);
+  const canWritePromotion = hasPermission(user, "promotion.write");
+  const canWriteCoupon = hasPermission(user, "coupon.write");
   const {
     promotions,
     allPromotions,
@@ -342,8 +350,24 @@ const PromotionManagement = () => {
     };
   }, [activeSection, allPromotions, allCouponPackages, resolveStatus]);
 
+  const couponActionTitle = canWriteCoupon ? undefined : NO_PERMISSION_MESSAGE;
+  const promotionActionTitle = canWritePromotion ? undefined : NO_PERMISSION_MESSAGE;
+  const canWriteCurrentSection =
+    activeSection === "promotions" ? canWritePromotion : canWriteCoupon;
+
+  const runCouponWriteAction = (action) => {
+    if (!canWriteCoupon) return;
+    action?.();
+  };
+
+  const runPromotionWriteAction = (action) => {
+    if (!canWritePromotion) return;
+    action?.();
+  };
+
   // --- Handlers ---
   const handleOpenModal = (promotion = null) => {
+    if (!canWritePromotion) return;
     setEditingPromotion(promotion);
     setIsModalOpen(true);
   };
@@ -354,6 +378,7 @@ const PromotionManagement = () => {
   };
 
   const handleSavePromotion = async (promotionData) => {
+    if (!canWritePromotion) return;
     try {
       const targetRestaurantId = editingPromotion
         ? await updatePromotion(editingPromotion.id, promotionData)
@@ -373,12 +398,14 @@ const PromotionManagement = () => {
   };
 
   const handleDelete = (id) => {
+    if (!canWritePromotion) return;
     if (window.confirm("Bạn có chắc chắn muốn xóa khuyến mãi này?")) {
       deletePromotion(id);
     }
   };
 
   const handleOpenCouponModal = (coupon = null) => {
+    if (!canWriteCoupon) return;
     setEditingCoupon(coupon);
     setIsCouponModalOpen(true);
   };
@@ -389,6 +416,7 @@ const PromotionManagement = () => {
   };
 
   const handleSaveCoupon = async (couponData) => {
+    if (!canWriteCoupon) return;
     try {
       if (editingCoupon) {
         await updateCoupon(editingCoupon.id, couponData);
@@ -402,12 +430,14 @@ const PromotionManagement = () => {
   };
 
   const handleDeleteCoupon = (id) => {
+    if (!canWriteCoupon) return;
     if (window.confirm("Bạn có chắc chắn muốn xóa coupon này?")) {
       deleteCoupon(id);
     }
   };
 
   const handleOpenCouponPackageModal = (couponPackage = null) => {
+    if (!canWriteCoupon) return;
     setEditingCouponPackage(couponPackage);
     setIsCouponPackageModalOpen(true);
   };
@@ -418,6 +448,7 @@ const PromotionManagement = () => {
   };
 
   const handleSaveCouponPackage = async (packageData) => {
+    if (!canWriteCoupon) return;
     try {
       if (editingCouponPackage) {
         await updateCouponPackage(editingCouponPackage.id, packageData);
@@ -431,6 +462,7 @@ const PromotionManagement = () => {
   };
 
   const handleDeleteCouponPackage = (id) => {
+    if (!canWriteCoupon) return;
     if (window.confirm("Bạn có chắc chắn muốn xóa gói Coupon này?")) {
       deleteCouponPackage(id);
     }
@@ -620,20 +652,23 @@ const PromotionManagement = () => {
               <td className="text-right">
                 <div className="action-buttons">
                   <button
-                    onClick={() => duplicateCoupon(coupon.id)}
-                    title="Nhân bản"
+                    onClick={() => runCouponWriteAction(() => duplicateCoupon(coupon.id))}
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Nhân bản"}
                   >
                     <Copy size={16} />
                   </button>
                   <button
                     onClick={() => handleOpenCouponModal(coupon)}
-                    title="Sửa"
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Sửa"}
                   >
                     <Edit3 size={16} />
                   </button>
                   <button
                     onClick={() => handleDeleteCoupon(coupon.id)}
-                    title="Xóa"
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Xóa"}
                     className="text-danger"
                   >
                     <Trash2 size={16} />
@@ -701,20 +736,25 @@ const PromotionManagement = () => {
               <td className="text-right">
                 <div className="action-buttons">
                   <button
-                    onClick={() => duplicateCouponPackage(couponPackage.id)}
-                    title="Nhân bản"
+                    onClick={() =>
+                      runCouponWriteAction(() => duplicateCouponPackage(couponPackage.id))
+                    }
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Nhân bản"}
                   >
                     <Copy size={16} />
                   </button>
                   <button
                     onClick={() => handleOpenCouponPackageModal(couponPackage)}
-                    title="Sửa"
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Sửa"}
                   >
                     <Edit3 size={16} />
                   </button>
                   <button
                     onClick={() => handleDeleteCouponPackage(couponPackage.id)}
-                    title="Xóa"
+                    disabled={!canWriteCoupon}
+                    title={couponActionTitle || "Xóa"}
                     className="text-danger"
                   >
                     <Trash2 size={16} />
@@ -940,6 +980,7 @@ const PromotionManagement = () => {
             <button
               className="btn-primary"
               onClick={() => {
+                if (!canWriteCurrentSection) return;
                 if (activeSection === "promotions") {
                   handleOpenModal();
                   return;
@@ -950,12 +991,20 @@ const PromotionManagement = () => {
                 }
                 handleOpenCouponPackageModal();
               }}
+              disabled={!canWriteCurrentSection}
+              title={canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE}
             >
               <Plus size={18} />
               <span>{currentSection.createLabel}</span>
             </button>
           </div>
         </div>
+
+        {!canWriteCurrentSection && (
+          <p className="text-xs text-secondary mt-2" title={NO_PERMISSION_MESSAGE}>
+            {NO_PERMISSION_MESSAGE}
+          </p>
+        )}
 
         {/* C. Content Body */}
         <div className="content-body">
@@ -979,7 +1028,9 @@ const PromotionManagement = () => {
                     promotions={promotions}
                     onEdit={handleOpenModal}
                     onDelete={handleDelete}
-                    onDuplicate={duplicatePromotion}
+                    onDuplicate={(id) =>
+                      runPromotionWriteAction(() => duplicatePromotion(id))
+                    }
                   />
                 ) : (
                   <div className="table-responsive">
@@ -1040,20 +1091,25 @@ const PromotionManagement = () => {
                             <td className="text-right">
                               <div className="action-buttons">
                                 <button
-                                  onClick={() => duplicatePromotion(item.id)}
-                                  title="Nhân bản"
+                                  onClick={() =>
+                                    runPromotionWriteAction(() => duplicatePromotion(item.id))
+                                  }
+                                  disabled={!canWritePromotion}
+                                  title={promotionActionTitle || "Nhân bản"}
                                 >
                                   <Copy size={16} />
                                 </button>
                                 <button
                                   onClick={() => handleOpenModal(item)}
-                                  title="Sửa"
+                                  disabled={!canWritePromotion}
+                                  title={promotionActionTitle || "Sửa"}
                                 >
                                   <Edit3 size={16} />
                                 </button>
                                 <button
                                   onClick={() => handleDelete(item.id)}
-                                  title="Xóa"
+                                  disabled={!canWritePromotion}
+                                  title={promotionActionTitle || "Xóa"}
                                   className="text-danger"
                                 >
                                   <Trash2 size={16} />
@@ -1095,7 +1151,7 @@ const PromotionManagement = () => {
       </div>
 
       {/* 4. MODAL */}
-      {isModalOpen && (
+      {isModalOpen && canWritePromotion && (
         <PromotionModal
           promotion={editingPromotion}
           restaurants={promotionRestaurants}
@@ -1107,7 +1163,7 @@ const PromotionManagement = () => {
         />
       )}
 
-      {isCouponModalOpen && (
+      {isCouponModalOpen && canWriteCoupon && (
         <CouponModal
           coupon={editingCoupon}
           onSave={handleSaveCoupon}
@@ -1115,7 +1171,7 @@ const PromotionManagement = () => {
         />
       )}
 
-      {isCouponPackageModalOpen && (
+      {isCouponPackageModalOpen && canWriteCoupon && (
         <CouponPackageModal
           couponPackage={editingCouponPackage}
           availableCoupons={allCoupons}

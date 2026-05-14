@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PromotionManagement from "./PromotionManagement";
+import { AuthContext } from "@/context/AuthContext";
 import { usePromotions } from "@/hooks/usePromotions";
 import { useCoupons } from "@/hooks/useCoupons";
 import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
@@ -72,6 +73,46 @@ vi.mock("./components/PromotionModal/PromotionModal", () => ({
 const updateFilters = vi.fn();
 const addPromotion = vi.fn();
 const updatePromotion = vi.fn();
+
+const managerWithPromotionPermissions = {
+  role: {
+    permissions: [
+      { code: "promotion.write" },
+      { code: "coupon.write" },
+      { code: "promotion.read" },
+      { code: "coupon.read" },
+    ],
+  },
+};
+
+const readOnlyPromotionUser = {
+  role: {
+    permissions: [{ code: "promotion.read" }, { code: "coupon.read" }],
+  },
+};
+
+const renderPromotionManagement = (user = managerWithPromotionPermissions) =>
+  render(
+    <AuthContext.Provider value={{ user }}>
+      <PromotionManagement />
+    </AuthContext.Provider>,
+  );
+
+const sampleCoupon = {
+  id: "coupon-1",
+  name: "Coupon Stack",
+  code: "STACK10",
+  category: "food",
+  discountType: "percent",
+  discountValue: 10,
+  startDate: "2026-05-01T10:00",
+  endDate: "2026-05-31T10:00",
+  publishAt: "",
+  combinableWithPromotions: true,
+  stackable: true,
+  exclusive: false,
+  priority: 2,
+};
 
 const buildPromotionHookValue = (overrides = {}) => ({
   promotions: [
@@ -186,8 +227,15 @@ describe("PromotionManagement", () => {
     });
   });
 
+  it("renders without an AuthContext provider and disables mutation affordances", () => {
+    const { container } = render(<PromotionManagement />);
+
+    expect(screen.getByText("Quản Lý Khuyến Mãi")).toBeInTheDocument();
+    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+  });
+
   it("renders the real restaurant selector and updates the promotion filter", () => {
-    render(<PromotionManagement />);
+    renderPromotionManagement();
 
     const selector = screen.getByLabelText("Chon nha hang khuyen mai");
 
@@ -200,7 +248,7 @@ describe("PromotionManagement", () => {
   });
 
   it("passes restaurant, category, and item data into the promotion modal", () => {
-    const { container } = render(<PromotionManagement />);
+    const { container } = renderPromotionManagement();
 
     fireEvent.click(container.querySelector(".filter-toolbar .btn-primary"));
 
@@ -219,7 +267,7 @@ describe("PromotionManagement", () => {
   });
 
   it("syncs the restaurant filter after saving a promotion for another restaurant", async () => {
-    const { container } = render(<PromotionManagement />);
+    const { container } = renderPromotionManagement();
 
     fireEvent.click(container.querySelector(".filter-toolbar .btn-primary"));
     fireEvent.click(screen.getByRole("button", { name: "Luu promotion mock" }));
@@ -235,7 +283,7 @@ describe("PromotionManagement", () => {
   });
 
   it("exports promotions to a real xlsx workbook instead of showing a placeholder alert", () => {
-    render(<PromotionManagement />);
+    renderPromotionManagement();
 
     fireEvent.click(screen.getByRole("button", { name: /Xuất/i }));
 
@@ -253,48 +301,27 @@ describe("PromotionManagement", () => {
     );
   });
 
+  it("disables promotion mutation buttons when promotion.write is missing", () => {
+    const { container } = renderPromotionManagement(readOnlyPromotionUser);
+
+    fireEvent.click(screen.getByTitle("Xem danh sách"));
+
+    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+    container
+      .querySelectorAll(".premium-table .action-buttons button")
+      .forEach((button) => expect(button).toBeDisabled());
+  });
+
   it("renders Coupon stack flags under Dùng chồng and status under Trạng thái", () => {
     useCoupons.mockReturnValue(
       buildCouponHookValue({
-        coupons: [
-          {
-            id: "coupon-1",
-            name: "Coupon Stack",
-            code: "STACK10",
-            category: "food",
-            discountType: "percent",
-            discountValue: 10,
-            startDate: "2026-05-01T10:00",
-            endDate: "2026-05-31T10:00",
-            publishAt: "",
-            combinableWithPromotions: true,
-            stackable: true,
-            exclusive: false,
-            priority: 2,
-          },
-        ],
-        allCoupons: [
-          {
-            id: "coupon-1",
-            name: "Coupon Stack",
-            code: "STACK10",
-            category: "food",
-            discountType: "percent",
-            discountValue: 10,
-            startDate: "2026-05-01T10:00",
-            endDate: "2026-05-31T10:00",
-            publishAt: "",
-            combinableWithPromotions: true,
-            stackable: true,
-            exclusive: false,
-            priority: 2,
-          },
-        ],
+        coupons: [sampleCoupon],
+        allCoupons: [sampleCoupon],
         resolveStatus: vi.fn(() => "active"),
       }),
     );
 
-    render(<PromotionManagement />);
+    renderPromotionManagement();
     fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
 
     const row = screen.getByText("Coupon Stack").closest("tr");
@@ -303,6 +330,24 @@ describe("PromotionManagement", () => {
     expect(cells[4]).toHaveTextContent("+ Promotion");
     expect(cells[4]).toHaveTextContent("+ Coupon");
     expect(cells[5]).toHaveTextContent("Đang chạy");
+  });
+
+  it("disables coupon mutation buttons when coupon.write is missing", () => {
+    useCoupons.mockReturnValue(
+      buildCouponHookValue({
+        coupons: [sampleCoupon],
+        allCoupons: [sampleCoupon],
+        resolveStatus: vi.fn(() => "active"),
+      }),
+    );
+
+    const { container } = renderPromotionManagement(readOnlyPromotionUser);
+    fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
+
+    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+    container
+      .querySelectorAll(".coupon-table .action-buttons button")
+      .forEach((button) => expect(button).toBeDisabled());
   });
 
   it("loads package data for the selected restaurant and resolves coupon names from real hook data", () => {
@@ -344,7 +389,7 @@ describe("PromotionManagement", () => {
       }),
     );
 
-    render(<PromotionManagement />);
+    renderPromotionManagement();
 
     fireEvent.click(screen.getByRole("button", { name: "Gói Coupon" }));
 
