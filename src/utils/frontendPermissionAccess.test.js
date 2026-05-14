@@ -76,4 +76,22 @@ describe("frontendPermissionAccess", () => {
     ]);
     expect(hasAnyPermission({ roleName: "customer" }, ["menu.read", "promotion.read"])).toBe(false);
   });
+
+  it("requires role.write or permission.write for RBAC role create and update controls", () => {
+    const reader = { role: { permissions: [{ code: "role.read" }] } };
+    const roleWriter = { role: { permissions: [{ code: "role.write" }] } };
+    const permissionWriter = { role: { permissions: [{ code: "permission.write" }] } };
+
+    expect(hasAnyPermission(reader, ["role.write", "permission.write"])).toBe(false);
+    expect(hasAnyPermission(roleWriter, ["role.write", "permission.write"])).toBe(true);
+    expect(hasAnyPermission(permissionWriter, ["role.write", "permission.write"])).toBe(true);
+  });
+
+  it("requires staff.write for RBAC staff role assignment controls", () => {
+    const reader = { role: { permissions: [{ code: "staff.read" }] } };
+    const writer = { role: { permissions: [{ code: "staff.write" }] } };
+
+    expect(hasPermission(reader, "staff.write")).toBe(false);
+    expect(hasPermission(writer, "staff.write")).toBe(true);
+  });
 });
