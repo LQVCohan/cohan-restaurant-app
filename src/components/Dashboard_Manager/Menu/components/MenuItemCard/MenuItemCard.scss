@@ -291,6 +291,9 @@ $radius: 12px;
         &.edit {
           color: $primary;
         }
+        &.history {
+          color: #2563eb;
+        }
         &.delete {
           color: $danger;
         }
