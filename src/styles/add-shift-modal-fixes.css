@@ -1,0 +1,54 @@
+/* Final AddShiftModal fixes loaded after schedule-manager-experience.css */
+
+@media (min-width: 900px) {
+  .add-modal-content {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) !important;
+    align-items: start !important;
+    gap: 0.78rem !important;
+  }
+
+  .add-modal-content > .shift-info-box,
+  .add-modal-content > .published-change-warning,
+  .add-modal-content > .submit-error,
+  .add-modal-content > .actions {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+
+  .add-modal-content > .form-group {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  .add-modal-content > .form-group:has(.job-grid) {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+
+  .add-modal-content > .form-group:has(.staff-selector) {
+    grid-column: 2 !important;
+    grid-row: 3 / span 2 !important;
+  }
+
+  .add-modal-content > .form-group:has(.note-input):not(:has(.published-check-row)) {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+  }
+
+  .add-modal-content > .form-group:has(.published-check-row) {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
+.manager-page-shell--schedules .add-shift-btn::before,
+.manager-page-shell--schedules .empty-shift-slot button::before,
+.manager-page-shell--schedules button.empty-shift-slot::before {
+  content: none !important;
+  display: none !important;
+}
+
+.manager-page-shell--schedules .add-shift-btn {
+  gap: 0.25rem !important;
+}
