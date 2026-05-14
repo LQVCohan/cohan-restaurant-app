@@ -6,6 +6,10 @@ import {
   reserveForOrderTx,
   cancelReservationForOrderTx,
 } from "../../../src/services/inventory.service.js";
+import {
+  notifyAvailabilityWatchersForMenuItem,
+  publishMenuItemOutOfStock,
+} from "../../../src/services/menuAvailabilityWatch.service.js";
 
 const HOLD_TTL_MS = 5 * 60 * 1000;
 const ABUSE_BLOCK_THRESHOLD = 8;
@@ -18,6 +22,10 @@ function unauthenticated() {
 
 function forbidden() {
   return new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
+}
+
+function outOfStockError(message) {
+  return new GraphQLError(message, { extensions: { code: "OUT_OF_STOCK" } });
 }
 
 function requireAuthUser(ctx) {
@@ -82,6 +90,36 @@ function holdOrderCode(cartId, itemId) {
 function emitInventoryEvent(ctx, payload = {}) {
   if (!ctx?.io || !payload?.restaurantId) return;
   ctx.io.to(`restaurant_${payload.restaurantId}`).emit("inventoryEvents", payload);
+}
+
+async function publishOutOfStock(ctx, { restaurantId, menuItemId, servingKey, source }) {
+  try {
+    await publishMenuItemOutOfStock({
+      io: ctx?.io,
+      restaurantId,
+      menuItemId,
+      servingKey,
+      source,
+      reason: "reserve_failed",
+    });
+  } catch (err) {
+    console.warn("[Cart] Failed to publish out-of-stock event", err?.message || err);
+  }
+}
+
+async function notifyWatchersFromReleaseEvent(ctx, event) {
+  if (!event?.restaurantId || !event?.menuItemId) return;
+  try {
+    await notifyAvailabilityWatchersForMenuItem({
+      io: ctx?.io,
+      restaurantId: event.restaurantId,
+      menuItemId: event.menuItemId,
+      servingKey: event.servingVariantKey,
+      source: event.reason || "cart_release",
+    });
+  } catch (err) {
+    console.warn("[Cart] Failed to notify availability watchers", err?.message || err);
+  }
 }
 
 async function resolveWarehouseIdOrDefault(restaurantId, session) {
@@ -272,7 +310,13 @@ export const CartMutation = {
             session,
           });
         } catch (e) {
-          throw new GraphQLError("Món đã hết hàng hoặc không đủ tồn kho để giữ chỗ.");
+          await publishOutOfStock(ctx, {
+            restaurantId,
+            menuItemId,
+            servingKey,
+            source: "cart_add",
+          });
+          throw outOfStockError("Món đã hết hàng hoặc không đủ tồn kho để giữ chỗ.");
         }
 
         const now = new Date();
@@ -387,7 +431,13 @@ export const CartMutation = {
               session,
             });
           } catch (e) {
-            throw new GraphQLError("Món đã hết hàng hoặc không đủ tồn kho để tăng số lượng.");
+            await publishOutOfStock(ctx, {
+              restaurantId,
+              menuItemId: it.menuItemId,
+              servingKey,
+              source: "cart_update",
+            });
+            throw outOfStockError("Món đã hết hàng hoặc không đủ tồn kho để tăng số lượng.");
           }
         } else if (delta < 0) {
           const restaurantId = it.restaurantId;
@@ -440,6 +490,7 @@ export const CartMutation = {
     }
 
     emitInventoryEvent(ctx, eventPayload);
+    await notifyWatchersFromReleaseEvent(ctx, eventPayload);
     return after;
   },
 
@@ -457,12 +508,14 @@ export const CartMutation = {
     if (!it) throw new GraphQLError("Cart item not found");
 
     const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
-    const warehouseId = await resolveWarehouseIdOrDefault(it.restaurantId);
+    const restaurantId = it.restaurantId;
+    const menuItemId = it.menuItemId;
+    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
     await cancelReservationForOrderTx({
-      restaurantId: it.restaurantId,
+      restaurantId,
       warehouseId,
       orderCode: holdOrderCode(cart._id, itemId),
-      lines: [{ menuItemId: it.menuItemId, quantity: it.quantity, servingKey }],
+      lines: [{ menuItemId, quantity: it.quantity, servingKey }],
     });
 
     it.remove();
@@ -474,13 +527,16 @@ export const CartMutation = {
 
     await cart.save();
 
-    emitInventoryEvent(ctx, {
+    const eventPayload = {
       type: "INVENTORY_RELEASED",
-      restaurantId: String(it.restaurantId),
-      menuItemId: String(it.menuItemId),
+      restaurantId: String(restaurantId),
+      menuItemId: String(menuItemId),
       servingVariantKey: servingKey,
       reason: "remove_item",
-    });
+    };
+
+    emitInventoryEvent(ctx, eventPayload);
+    await notifyWatchersFromReleaseEvent(ctx, eventPayload);
 
     return cart.toObject({ virtuals: true });
   },
@@ -526,7 +582,10 @@ export const CartMutation = {
       await session.endSession();
     }
 
-    for (const event of releaseEvents) emitInventoryEvent(ctx, event);
+    for (const event of releaseEvents) {
+      emitInventoryEvent(ctx, event);
+      await notifyWatchersFromReleaseEvent(ctx, event);
+    }
     return true;
   },
 
@@ -574,7 +633,10 @@ export const CartMutation = {
       await session.endSession();
     }
 
-    for (const event of releaseEvents) emitInventoryEvent(ctx, event);
+    for (const event of releaseEvents) {
+      emitInventoryEvent(ctx, event);
+      await notifyWatchersFromReleaseEvent(ctx, event);
+    }
     return true;
   },
 };
