@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   Role: { findById: vi.fn() },
   Staff: { findById: vi.fn() },
   Restaurant: { exists: vi.fn() },
+  AuditLog: { create: vi.fn().mockResolvedValue({ _id: "audit-1" }) },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -33,6 +34,7 @@ describe("staffRoleAssignment.service", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
   });
 
   it("allows manager with staff.write in restaurant scope to assign a whitelisted staff role", async () => {
@@ -57,6 +59,7 @@ describe("staffRoleAssignment.service", () => {
     expect(result).toBe(staff);
     expect(staff.role).toBe("role-server");
     expect(staff.save).toHaveBeenCalled();
+    expect(modelMocks.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "STAFF_ROLE_ASSIGNED", restaurantId: undefined }));
   });
 
   it("blocks manager from assigning protected system roles to staff", async () => {
@@ -186,5 +189,4 @@ describe("staffRoleAssignment.service", () => {
       })).rejects.toThrow("FORBIDDEN");
     }
   });
-
 });
