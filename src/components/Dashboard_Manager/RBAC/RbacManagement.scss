@@ -217,3 +217,152 @@
     flex-direction: column;
   }
 }
+
+.rbac-tabs,
+.rbac-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rbac-tabs button,
+.rbac-action-row button,
+.rbac-role-form button {
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  padding: 0 16px;
+  background: #fff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rbac-tabs button.is-active,
+.rbac-action-row button.is-active,
+.rbac-role-form button[type="submit"] {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.rbac-tabs button:disabled,
+.rbac-action-row button:disabled,
+.rbac-role-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rbac-grid--management {
+  grid-template-columns: minmax(260px, 0.7fr) minmax(420px, 1.3fr);
+}
+
+.rbac-role-list--compact {
+  margin-top: 16px;
+  max-height: 620px;
+  overflow: auto;
+}
+
+.rbac-role-form,
+.rbac-form-grid,
+.rbac-permission-checklist {
+  display: grid;
+  gap: 14px;
+}
+
+.rbac-form-grid {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.rbac-role-form label,
+.rbac-role-form fieldset {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.rbac-role-form input,
+.rbac-role-form select,
+.rbac-role-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #0f172a;
+}
+
+.rbac-role-form textarea {
+  resize: vertical;
+}
+
+.rbac-role-form fieldset {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.rbac-role-form legend {
+  padding: 0 6px;
+  color: #0f172a;
+}
+
+.rbac-checkbox-row {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px !important;
+  padding: 8px 0;
+  font-weight: 500 !important;
+}
+
+.rbac-checkbox-row input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.rbac-checkbox-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.rbac-checkbox-row small {
+  color: #64748b;
+}
+
+.rbac-permission-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rbac-permission-summary {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.rbac-permission-summary h4 {
+  margin: 0 0 10px;
+}
+
+.rbac-chip--inherited {
+  color: #7c2d12;
+  background: #ffedd5;
+  border-color: #fed7aa;
+}
+
+.rbac-chip--direct {
+  color: #065f46;
+  background: #d1fae5;
+  border-color: #a7f3d0;
+}
+
+@media (max-width: 1024px) {
+  .rbac-grid--management,
+  .rbac-form-grid,
+  .rbac-permission-columns {
+    grid-template-columns: 1fr;
+  }
+}
