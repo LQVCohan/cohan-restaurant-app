@@ -36,7 +36,10 @@ import { gql, useQuery } from "@apollo/client";
 import useMenuManagement from "../../../hooks/useMenuManagement";
 import { useCategoryManagement } from "../../../hooks/useCategoryManagement";
 import { useRecipes } from "../../../hooks/useRecipes";
-
+import {
+  MENU_MANAGEMENT_ACTIONS,
+  canAccessMenuManagementAction,
+} from "../../../utils/frontendRoleAccess";
 /* ========== QUERY ========== */
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
@@ -70,7 +73,7 @@ const TIME_SLOT_LABELS = {
   dinner: "Bữa Tối (Dinner)",
   late_night: "Ăn Khuya (Late Night)",
 };
-
+const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
 const getGraphQLErrorMessage = (
   error,
   fallbackMessage = "Đã xảy ra lỗi không xác định.",
@@ -140,7 +143,61 @@ const buildPriceEditError = ({ successCount, failures }) => {
 const MenuManagement = () => {
   const auth = useContext(AuthContext);
   const managerId = auth?.user?.id;
+  const currentUser = auth?.user;
 
+  const canViewMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.VIEW,
+  );
+
+  const canCreateMenuItem = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.CREATE_ITEM,
+  );
+
+  const canUpdateMenuItem = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
+  );
+
+  const canDeleteMenuItem = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.DELETE_ITEM,
+  );
+
+  const canUpdatePrice = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE,
+  );
+
+  const canManageDishCategory = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY,
+  );
+
+  const canManageMenuGroup = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP,
+  );
+
+  const canCreateMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.CREATE_MENU,
+  );
+
+  const canUpdateMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.UPDATE_MENU,
+  );
+
+  const canToggleMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU,
+  );
+  const canCopyMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.COPY_MENU,
+  );
   // --- LOCAL STATE ---
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
@@ -219,7 +276,64 @@ const MenuManagement = () => {
     useConnection: true,
     sort: sortOption,
   });
+  const buildCopyMenuName = useCallback(
+    (sourceMenu) => {
+      const baseName = `${sourceMenu?.name || "Menu"} (bản sao)`;
+      const existingNames = new Set(
+        (menus || []).map((menu) =>
+          String(menu?.name || "")
+            .trim()
+            .toLowerCase(),
+        ),
+      );
 
+      let candidate = baseName;
+      let counter = 2;
+
+      while (existingNames.has(candidate.trim().toLowerCase())) {
+        candidate = `${baseName} ${counter}`;
+        counter += 1;
+      }
+
+      return candidate;
+    },
+    [menus],
+  );
+  const getSuggestedCopyTimeSlot = useCallback(() => {
+    const usedSlots = new Set((menus || []).map((menu) => menu.timeSlot));
+    return TIME_SLOT_ORDER.find((slot) => !usedSlots.has(slot)) || null;
+  }, [menus]);
+  const handleCopyMenu = useCallback(
+    (menu) => {
+      if (!menu) return;
+
+      const suggestedTimeSlot = getSuggestedCopyTimeSlot();
+
+      if (!suggestedTimeSlot) {
+        setMenuSubmitError(
+          "Không thể sao chép vì nhà hàng này đã có đủ 4 thực đơn theo khung giờ. Hãy chỉnh sửa menu hiện có hoặc ẩn một menu trước.",
+        );
+        return;
+      }
+
+      const copyDraft = {
+        __mode: "copy",
+        isCopyDraft: true,
+        sourceMenuId: menu.id || menu._id || null,
+
+        id: null,
+        name: buildCopyMenuName(menu),
+        description: menu.description || "",
+        timeSlot: suggestedTimeSlot,
+        categoryMenuId: menu.categoryMenuId || menu.categoryMenu?.id || "",
+        coverImage: menu.coverImage || "",
+        isActive: false,
+      };
+
+      toggleModal("menu", true, copyDraft);
+    },
+    [buildCopyMenuName, getSuggestedCopyTimeSlot],
+  );
   const shouldLoadCategoryMenus = modals.menu.isOpen || modals.menuGroup.isOpen;
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
     useCategoryManagement({
@@ -268,8 +382,25 @@ const MenuManagement = () => {
 
   const handleSubmitMenu = async (form) => {
     if (!currentRestaurant) return;
+
     setMenuSubmitError("");
+
+    const isCreatingMenu = !form?.id;
+    const hasMenuInSelectedSlot = (menus || []).some((menu) => {
+      const sameSlot = menu?.timeSlot === form.timeSlot;
+      const sameMenu = form?.id && String(menu?.id) === String(form.id);
+      return sameSlot && !sameMenu;
+    });
+
+    if (isCreatingMenu && hasMenuInSelectedSlot) {
+      setMenuSubmitError(
+        "Khung giờ này đã có thực đơn. Vui lòng chọn khung giờ còn trống để tạo bản sao hoặc tạo menu mới.",
+      );
+      return;
+    }
+
     setIsSavingMenu(true);
+
     try {
       await ensureMenu({
         restaurantId: currentRestaurant,
@@ -280,6 +411,7 @@ const MenuManagement = () => {
         categoryMenuId: form.categoryMenuId || null,
         isActive: form.isActive || false,
       });
+
       await refetchMenus?.();
       toggleModal("menu", false);
     } catch (err) {
@@ -576,7 +708,13 @@ const MenuManagement = () => {
         <FiAlertCircle /> {mgrError.message}
       </div>
     );
-
+  if (!canViewMenu) {
+    return (
+      <div className="mm-state-box error">
+        <FiAlertCircle /> Bạn không có quyền truy cập màn hình quản lý thực đơn.
+      </div>
+    );
+  }
   return (
     <div className="mm-page-container">
       <header className="mm-header">
@@ -622,24 +760,32 @@ const MenuManagement = () => {
           </div>
 
           <div className="mm-actions">
-            <button
-              className="mm-btn mm-btn--secondary"
-              onClick={() => toggleModal("dishCategory", true)}
-            >
-              <FiTag /> Danh mục món
-            </button>
-            <button
-              className="mm-btn mm-btn--secondary"
-              onClick={() => toggleModal("menuGroup", true)}
-            >
-              <FiFolderPlus /> Nhóm thực đơn
-            </button>
-            <button
-              className="mm-btn mm-btn--primary"
-              onClick={() => toggleModal("menuItem", true)}
-            >
-              <FiPlus /> Thêm món
-            </button>
+            {canManageDishCategory && (
+              <button
+                className="mm-btn mm-btn--secondary"
+                onClick={() => toggleModal("dishCategory", true)}
+              >
+                <FiTag /> Danh mục món
+              </button>
+            )}
+
+            {canManageMenuGroup && (
+              <button
+                className="mm-btn mm-btn--secondary"
+                onClick={() => toggleModal("menuGroup", true)}
+              >
+                <FiFolderPlus /> Nhóm thực đơn
+              </button>
+            )}
+
+            {canCreateMenuItem && (
+              <button
+                className="mm-btn mm-btn--primary"
+                onClick={() => toggleModal("menuItem", true)}
+              >
+                <FiPlus /> Thêm món
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -651,10 +797,19 @@ const MenuManagement = () => {
           menusError={menusError}
           isCollapsed={isStatsCollapsed}
           onToggleCollapse={() => setIsStatsCollapsed((s) => !s)}
-          onAddMenu={() => toggleModal("menu", true)}
-          onEditMenu={(menu) => toggleModal("menu", true, menu)}
-          onToggleMenuActive={handleToggleMenuActive}
-          onDeleteMenu={handleToggleMenuActive}
+          onAddMenu={
+            canCreateMenu ? () => toggleModal("menu", true) : undefined
+          }
+          onEditMenu={
+            canUpdateMenu
+              ? (menu) => toggleModal("menu", true, menu)
+              : undefined
+          }
+          onToggleMenuActive={
+            canToggleMenu ? handleToggleMenuActive : undefined
+          }
+          onDeleteMenu={undefined}
+          onCopyMenu={canCopyMenu ? handleCopyMenu : undefined}
         />
       </section>
 
@@ -671,9 +826,19 @@ const MenuManagement = () => {
           sortOption={sortOption}
           onSortChange={setSortOption}
           onPriceRangeChange={setPriceRange}
-          onBulkPriceEdit={() => toggleModal("priceEdit", true)}
-          onAddDishCategory={() => toggleModal("dishCategory", true)}
-          onAddMenuGroup={() => toggleModal("menuGroup", true)}
+          onBulkPriceEdit={
+            canUpdatePrice ? () => toggleModal("priceEdit", true) : undefined
+          }
+          onAddDishCategory={
+            canManageDishCategory
+              ? () => toggleModal("dishCategory", true)
+              : undefined
+          }
+          onAddMenuGroup={
+            canManageMenuGroup
+              ? () => toggleModal("menuGroup", true)
+              : undefined
+          }
           categories={categories}
           itemCount={displayItems.length}
           minPrice={priceRange.minPrice ?? ""}
@@ -716,12 +881,14 @@ const MenuManagement = () => {
               <p>
                 Thực đơn của bạn đang trống hoặc không tìm thấy kết quả phù hợp.
               </p>
-              <button
-                className="mm-btn mm-btn--primary"
-                onClick={() => toggleModal("menuItem", true)}
-              >
-                Thêm món ngay
-              </button>
+              {canCreateMenuItem && (
+                <button
+                  className="mm-btn mm-btn--primary"
+                  onClick={() => toggleModal("menuItem", true)}
+                >
+                  Thêm món ngay
+                </button>
+              )}
             </div>
           )}
 
@@ -732,8 +899,16 @@ const MenuManagement = () => {
                   <MenuItemCard
                     key={item.id}
                     item={item}
-                    onEdit={() => toggleModal("menuItem", true, item.id)}
-                    onDelete={() => handleRequestDeleteItem(item)}
+                    onEdit={
+                      canUpdateMenuItem
+                        ? () => toggleModal("menuItem", true, item.id)
+                        : undefined
+                    }
+                    onDelete={
+                      canDeleteMenuItem
+                        ? () => handleRequestDeleteItem(item)
+                        : undefined
+                    }
                     viewMode={currentView}
                   />
                 ))}

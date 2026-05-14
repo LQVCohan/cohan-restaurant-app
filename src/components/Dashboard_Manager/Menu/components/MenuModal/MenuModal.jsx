@@ -38,7 +38,7 @@ const getCategoryLabelWithIcon = (name = "") => {
 
 const getErrorMessage = (
   error,
-  fallbackMessage = "Không thể tạo nhóm thực đơn mới."
+  fallbackMessage = "Không thể tạo nhóm thực đơn mới.",
 ) => {
   const graphQlMessage = error?.graphQLErrors
     ?.map((entry) => entry?.message)
@@ -90,13 +90,17 @@ const MenuModal = ({
   const initialSnapshotRef = useRef(INITIAL_STATE);
   const catDropdownRef = useRef(null);
 
-  const isEditMode = !!initialData;
+  const isCopyMode =
+    initialData?.__mode === "copy" || initialData?.isCopyDraft === true;
 
+  const isEditMode = Boolean(
+    initialData && !isCopyMode && (initialData.id || initialData._id),
+  );
   useEffect(() => {
     if (!isOpen) return;
 
     const next = {
-      id: initialData?.id || initialData?._id || null,
+      id: isCopyMode ? null : initialData?.id || initialData?._id || null,
       name: initialData?.name ?? "",
       description: initialData?.description ?? "",
       timeSlot: initialData?.timeSlot ?? "breakfast",
@@ -117,7 +121,7 @@ const MenuModal = ({
     setQuickCatError("");
     setShowDiscardConfirm(false);
     initialSnapshotRef.current = next;
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, isCopyMode]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -159,7 +163,7 @@ const MenuModal = ({
 
   const selectedCategoryName = useMemo(() => {
     const found = categoryMenus.find(
-      (c) => (c.id || c._id) === formData.categoryMenuId
+      (c) => (c.id || c._id) === formData.categoryMenuId,
     );
     return found ? found.name : "";
   }, [categoryMenus, formData.categoryMenuId]);
@@ -280,7 +284,9 @@ const MenuModal = ({
     }
 
     if (!createCategoryMenu) {
-      setQuickCatError("Không thể tạo nhóm thực đơn lúc này. Vui lòng thử lại.");
+      setQuickCatError(
+        "Không thể tạo nhóm thực đơn lúc này. Vui lòng thử lại.",
+      );
       return;
     }
 
@@ -307,7 +313,10 @@ const MenuModal = ({
       setQuickCatError("");
     } catch (err) {
       setQuickCatError(
-        getErrorMessage(err, "Không thể tạo nhóm thực đơn mới. Vui lòng thử lại.")
+        getErrorMessage(
+          err,
+          "Không thể tạo nhóm thực đơn mới. Vui lòng thử lại.",
+        ),
       );
     } finally {
       setQuickCatSaving(false);
@@ -328,7 +337,13 @@ const MenuModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2>{isEditMode ? "Cập nhật Menu" : "Thêm Menu mới"}</h2>
+          <h2>
+            {isCopyMode
+              ? "Sao chép Menu"
+              : isEditMode
+                ? "Cập nhật Menu"
+                : "Thêm Menu mới"}
+          </h2>
           <button
             type="button"
             className="btn-close"
@@ -355,7 +370,10 @@ const MenuModal = ({
                   color: "#b91c1c",
                 }}
               >
-                <FiAlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+                <FiAlertCircle
+                  size={18}
+                  style={{ flexShrink: 0, marginTop: 2 }}
+                />
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
                   {submitError}
                 </p>
@@ -601,7 +619,13 @@ const MenuModal = ({
               disabled={isSubmitting}
             >
               <FiSave />
-              <span>{isEditMode ? "Lưu thay đổi" : "Tạo Menu"}</span>
+              <span>
+                {isCopyMode
+                  ? "Tạo từ bản sao"
+                  : isEditMode
+                    ? "Lưu thay đổi"
+                    : "Tạo Menu"}
+              </span>
             </button>
           </div>
         </form>
