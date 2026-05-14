@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
 /**
- * Hook kết nối socket.io để lắng nghe các sự kiện order realtime.
+ * Hook kết nối socket.io để lắng nghe các sự kiện order + inventory realtime.
  *
  * @param {string} restaurantId - ID của nhà hàng
  * @param {object} handlers - Các callback cho từng loại event
@@ -11,7 +11,11 @@ import { io } from "socket.io-client";
  * @param {function} handlers.onUpdated - Khi đơn hàng được cập nhật
  * @param {function} handlers.onStatusChanged - Khi thay đổi trạng thái
  * @param {function} handlers.onCancelled - Khi đơn hàng bị hủy
- * @param {function} handlers.onAny - Callback chung cho mọi event
+ * @param {function} handlers.onInventoryEvent - Khi tồn kho/menu availability thay đổi
+ * @param {function} handlers.onMenuItemOutOfStock - Khi món hết khả dụng
+ * @param {function} handlers.onMenuItemAvailableAgain - Khi món khả dụng lại
+ * @param {function} handlers.onMenuAvailabilityNotification - Khi watcher được notify
+ * @param {function} handlers.onAny - Callback chung cho mọi order event
  */
 export default function useSocketOrder(restaurantId, handlers = {}) {
   const socketRef = useRef(null);
@@ -45,7 +49,7 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
     // Lắng nghe order event
     socket.on("orderEvents", (evt) => {
       if (!evt?.type || !evt?.order) return;
-      console.log("📡 [SOCKET.IO] Event received:", evt);
+      console.log("📡 [SOCKET.IO] Order event received:", evt);
 
       // Callback tổng quát
       if (typeof handlers.onAny === "function") handlers.onAny(evt);
@@ -64,6 +68,34 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
         case "ORDER_CANCELLED":
           handlers.onCancelled?.(evt.order);
           break;
+        default:
+          break;
+      }
+    });
+
+    socket.on("inventoryEvents", (evt) => {
+      if (!evt?.type) return;
+      console.log("📡 [SOCKET.IO] Inventory event received:", evt);
+      handlers.onInventoryEvent?.(evt);
+
+      switch (evt.type) {
+        case "MENU_ITEM_OUT_OF_STOCK":
+          handlers.onMenuItemOutOfStock?.(evt);
+          break;
+        case "MENU_ITEM_AVAILABLE_AGAIN":
+          handlers.onMenuItemAvailableAgain?.(evt);
+          break;
+        default:
+          break;
+      }
+    });
+
+    socket.on("menuAvailabilityNotifications", (evt) => {
+      if (!evt?.type) return;
+      console.log("📡 [SOCKET.IO] Menu availability notification received:", evt);
+      handlers.onMenuAvailabilityNotification?.(evt);
+      if (evt.type === "MENU_ITEM_AVAILABLE_AGAIN") {
+        handlers.onMenuItemAvailableAgain?.(evt);
       }
     });
 
