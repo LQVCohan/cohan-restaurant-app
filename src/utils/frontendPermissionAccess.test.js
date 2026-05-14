@@ -94,4 +94,30 @@ describe("frontendPermissionAccess", () => {
     expect(hasPermission(reader, "staff.write")).toBe(false);
     expect(hasPermission(writer, "staff.write")).toBe(true);
   });
+
+  it("requires coupon.write for coupon and voucher package write controls", () => {
+    const reader = { role: { permissions: [{ code: "coupon.read" }] } };
+    const writer = { role: { permissions: [{ code: "coupon.write" }] } };
+
+    expect(hasPermission(reader, "coupon.write")).toBe(false);
+    expect(hasPermission(writer, "coupon.write")).toBe(true);
+  });
+
+  it("requires inventory.write or stock.write for inventory and stock write controls", () => {
+    const reader = { role: { permissions: [{ code: "inventory.read" }, { code: "stock.read" }] } };
+    const inventoryWriter = { role: { permissions: [{ code: "inventory.write" }] } };
+    const stockWriter = { role: { permissions: [{ code: "stock.write" }] } };
+
+    expect(hasAnyPermission(reader, ["inventory.write", "stock.write"])).toBe(false);
+    expect(hasAnyPermission(inventoryWriter, ["inventory.write", "stock.write"])).toBe(true);
+    expect(hasAnyPermission(stockWriter, ["inventory.write", "stock.write"])).toBe(true);
+  });
+
+  it("requires payment.write for payment mutation controls", () => {
+    const reader = { role: { permissions: [{ code: "payment.read" }] } };
+    const writer = { role: { permissions: [{ code: "payment.write" }] } };
+
+    expect(hasPermission(reader, "payment.write")).toBe(false);
+    expect(hasPermission(writer, "payment.write")).toBe(true);
+  });
 });
