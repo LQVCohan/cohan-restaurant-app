@@ -16,6 +16,7 @@ import "./styles/declined-shift-review-polish.css";
 import "./styles/schedule-daily-month-polish.css";
 import "./styles/schedule-header-kpi-polish.css";
 import "./styles/schedule-header-line-fix.css";
+import "./styles/schedule-board-jumper-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import GlobalMenuAvailabilityPrompt from "./components/common/GlobalMenuAvailabilityPrompt";
