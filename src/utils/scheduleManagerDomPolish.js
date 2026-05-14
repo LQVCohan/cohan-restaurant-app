@@ -5,7 +5,7 @@ const escapeHtml = (value) =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
 const extractMatch = (text, regex, fallback = "") => {
@@ -56,6 +56,11 @@ const normalizeStatus = (rawStatus) => {
 const isDeclinedBlockText = (text) =>
   text.includes("Ca bị từ chối") &&
   (text.includes("Nhân viên:") || text.includes("Mở ca để xử lý"));
+
+const findScheduleRoot = () =>
+  document.querySelector(".manager-page-shell--schedules") ||
+  document.querySelector(".schedule-container") ||
+  null;
 
 const findOpenShiftButton = () =>
   Array.from(document.querySelectorAll("button")).find((button) =>
@@ -124,7 +129,8 @@ const extractDeclinedInfo = (text) => {
 const buildActionCenter = (source) => {
   const text = getText(source);
   const { count, employee, shift, reason, status } = extractDeclinedInfo(text);
-  const originalButton = findOpenShiftButton() ||
+  const originalButton =
+    findOpenShiftButton() ||
     Array.from(source.querySelectorAll("button")).find((button) =>
       getText(button).includes("Mở ca để xử lý"),
     );
@@ -186,6 +192,113 @@ const applyScheduleActionCenter = () => {
   source.dataset.actionCenterSource = "true";
 };
 
+const getCurrentViewLabel = (root) => {
+  const active = root.querySelector(".view-toggles button.active");
+  const text = getText(active).toLowerCase();
+  if (text.includes("ngày")) return "Ngày đang xem";
+  if (text.includes("tháng")) return "Tháng đang xem";
+  return "Tuần đang xem";
+};
+
+const getNavigationButton = (root, direction) => {
+  const buttons = Array.from(root.querySelectorAll(".schedule-toolbar .date-navigation .nav-btn"));
+  if (!buttons.length) return null;
+  return direction === "prev" ? buttons[0] : buttons[buttons.length - 1];
+};
+
+const buildBoardWeekJumper = () => {
+  const node = document.createElement("div");
+  node.className = "schedule-board-week-jumper";
+  node.dataset.domPolish = "true";
+  node.innerHTML = `
+    <div class="schedule-board-week-jumper__label">
+      <span class="schedule-board-week-jumper__eyebrow">Điều hướng nhanh</span>
+      <strong></strong>
+    </div>
+    <div class="schedule-board-week-jumper__actions">
+      <button type="button" class="schedule-board-week-jumper__btn" data-week-jump="prev" aria-label="Xem kỳ trước">‹ Trước</button>
+      <button type="button" class="schedule-board-week-jumper__btn schedule-board-week-jumper__btn--primary" data-week-jump="next" aria-label="Xem kỳ sau">Sau ›</button>
+    </div>
+  `;
+
+  node.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-week-jump]");
+    if (!button) return;
+    const root = findScheduleRoot();
+    if (!root) return;
+    getNavigationButton(root, button.dataset.weekJump)?.click();
+  });
+
+  return node;
+};
+
+const applyScheduleBoardWeekJumper = () => {
+  const root = findScheduleRoot();
+  if (!root) return;
+
+  const toolbarNav = root.querySelector(".schedule-toolbar .date-navigation");
+  const scheduleBoard = root.querySelector(".schedule-board, .daily-view-horizontal");
+  const legend = root.querySelector(".schedule-legend");
+  const anchor = legend || scheduleBoard;
+  const existing = root.querySelector(".schedule-board-week-jumper[data-dom-polish='true']");
+
+  if (!toolbarNav || !anchor) {
+    existing?.remove();
+    return;
+  }
+
+  const jumper = existing || buildBoardWeekJumper();
+  const label = getText(toolbarNav.querySelector(".week-label")) || "Kỳ đang xem";
+  const viewLabel = getCurrentViewLabel(root);
+  const title = jumper.querySelector("strong");
+  const eyebrow = jumper.querySelector(".schedule-board-week-jumper__eyebrow");
+  if (title) title.textContent = label;
+  if (eyebrow) eyebrow.textContent = viewLabel;
+
+  if (!existing || jumper.nextElementSibling !== anchor) {
+    anchor.parentNode?.insertBefore(jumper, anchor);
+  }
+};
+
+const shouldKeepAvailabilityPanelExpanded = (panel) => {
+  const text = getText(panel);
+  return [
+    "Chưa có kỳ đăng ký",
+    "Tạo kỳ đăng ký",
+    "Không thể tải kỳ đăng ký",
+    "Nên mở đăng ký",
+    "Hôm nay nên hoàn tất",
+  ].some((phrase) => text.includes(phrase));
+};
+
+const collapseOptionalSchedulePanelsOnce = () => {
+  const root = findScheduleRoot();
+  if (!root || root.dataset.optionalPanelsInitialCollapsed === "true") return;
+
+  const availabilityPanel = root.querySelector(".schedule-availability-panel");
+  if (!availabilityPanel) return;
+
+  const hideSubmissionsButton = Array.from(
+    availabilityPanel.querySelectorAll("button"),
+  ).find((button) => getText(button).includes("Ẩn submissions"));
+  hideSubmissionsButton?.click();
+
+  const collapseButton = availabilityPanel.querySelector(".btn-collapse-panel.icon-only");
+  const isAlreadyCollapsed =
+    String(collapseButton?.getAttribute("aria-label") || "").includes("Mở rộng") ||
+    String(collapseButton?.getAttribute("title") || "").includes("Mở rộng");
+
+  if (
+    collapseButton &&
+    !isAlreadyCollapsed &&
+    !shouldKeepAvailabilityPanelExpanded(availabilityPanel)
+  ) {
+    collapseButton.click();
+  }
+
+  root.dataset.optionalPanelsInitialCollapsed = "true";
+};
+
 export const initScheduleManagerDomPolish = () => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
 
@@ -195,6 +308,8 @@ export const initScheduleManagerDomPolish = () => {
     frameId = window.requestAnimationFrame(() => {
       try {
         applyScheduleActionCenter();
+        applyScheduleBoardWeekJumper();
+        collapseOptionalSchedulePanelsOnce();
       } catch (error) {
         if (import.meta?.env?.DEV) {
           console.warn("Schedule manager DOM polish failed", error);
@@ -206,6 +321,7 @@ export const initScheduleManagerDomPolish = () => {
   run();
   window.setTimeout(run, 250);
   window.setTimeout(run, 900);
+  window.setTimeout(run, 1600);
 
   const observer = new MutationObserver(run);
 
