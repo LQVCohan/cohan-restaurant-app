@@ -21,7 +21,8 @@ import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/Prin
 import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
-import { filterNavigationByRole, isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
+import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
+import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",
@@ -59,166 +60,59 @@ const resolveInitialManagerPage = () => {
   return "dashboard";
 };
 
-
-const MANAGER_PAGE_ROLE_ACCESS = {
-  dashboard: ["admin", "manager", "hr", "accountant"],
-  analytics: ["admin", "manager"],
-  orders: ["admin", "manager"],
-  menu: ["admin", "manager"],
-  inventory: ["admin", "manager"],
-  tables: ["admin", "manager"],
-  "restaurant-info-management": ["admin", "manager"],
-  staff: ["admin", "manager", "hr"],
-  schedules: ["admin", "manager"],
-  payroll: ["admin", "manager", "accountant"],
-  customers: ["admin", "manager"],
-  "customer-analytics": ["admin", "manager"],
-  promotions: ["admin", "manager"],
-  reviews: ["admin", "manager"],
-  reports: ["admin", "manager"],
-  finance: ["admin", "manager", "accountant"],
-  settings: ["admin"],
-  rates: ["admin"],
-  setting: ["admin"],
-  backup: ["admin"],
-  "print-management": ["admin", "manager"],
-  rbac: ["admin", "manager"],
+const MANAGER_PAGE_PERMISSION_ACCESS = {
+  dashboard: ["dashboard.read", "report.read"],
+  analytics: ["report.read"],
+  orders: ["order.read"],
+  menu: ["menu.read"],
+  inventory: ["inventory.read", "stock.read"],
+  tables: ["table.read"],
+  "restaurant-info-management": ["restaurant.read"],
+  staff: ["staff.read"],
+  schedules: ["shift.read"],
+  payroll: ["payroll.read"],
+  customers: ["customer.read", "staff.read"],
+  "customer-analytics": ["report.read"],
+  promotions: ["promotion.read", "coupon.read"],
+  reviews: ["review.read", "report.read"],
+  reports: ["report.read"],
+  finance: ["payment.read"],
+  settings: ["system.manage"],
+  rates: ["system.manage"],
+  setting: ["system.manage"],
+  backup: ["system.manage"],
+  "print-management": ["print.read", "report.read"],
+  rbac: ["role.read", "permission.read", "staff.write"],
 };
 
 const PAGE_CONFIG = {
-  dashboard: {
-    title: "Tổng quan",
-    description: "Tổng quan hiệu suất và số liệu vận hành nhà hàng",
-    icon: "📊",
-    keywords: ["overview", "thống kê", "kpi", "doanh thu", "dashboard"],
-  },
-  tables: {
-    title: "Quản lý bàn",
-    description: "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ",
-    icon: "🪑",
-    keywords: ["bàn", "table", "đặt bàn", "sơ đồ"],
-  },
-  orders: {
-    title: "Quản lý đơn hàng",
-    description: "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán",
-    icon: "🧾",
-    keywords: ["order", "đơn", "timeline", "thanh toán"],
-  },
-  menu: {
-    title: "Quản lý menu",
-    description: "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ",
-    icon: "🍜",
-    keywords: ["món", "menu", "giá", "danh mục"],
-  },
-  inventory: {
-    title: "Quản lý kho",
-    description: "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu",
-    icon: "📦",
-    keywords: ["kho", "inventory", "nguyên liệu", "tồn"],
-  },
-  staff: {
-    title: "Quản lý nhân viên",
-    description: "Danh sách nhân viên, vai trò, trạng thái và phân công",
-    icon: "👥",
-    keywords: ["staff", "nhân viên", "vai trò", "quyền"],
-  },
-  customers: {
-    title: "Quản lý khách hàng",
-    description: "Thông tin khách, hạng thành viên, điểm và hành vi mua",
-    icon: "🧑‍🤝‍🧑",
-    keywords: ["khách hàng", "loyalty", "rank", "điểm"],
-  },
-  "customer-analytics": {
-    title: "Phân tích khách hàng",
-    description: "Phân tích nhóm khách, món phổ biến và mức độ gắn bó",
-    icon: "📈",
-    keywords: ["analytics", "phân tích", "khách", "insight"],
-  },
-  analytics: {
-    title: "Phân tích kinh doanh",
-    description: "Theo dõi xu hướng doanh thu và đề xuất tối ưu vận hành",
-    icon: "🧠",
-    keywords: ["analyst", "ai", "chiến lược", "dự báo"],
-  },
-  reports: {
-    title: "Báo cáo",
-    description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ",
-    icon: "📑",
-    keywords: ["report", "báo cáo", "xuất file", "csv"],
-  },
-  finance: {
-    title: "Tài chính",
-    description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát",
-    icon: "💰",
-    keywords: ["finance", "thu", "chi", "công nợ", "profit"],
-  },
-  schedules: {
-    title: "Lịch làm việc",
-    description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự",
-    icon: "📅",
-    keywords: ["schedule", "ca làm", "shift", "lịch"],
-  },
-  promotions: {
-    title: "Khuyến mãi",
-    description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực",
-    icon: "🎁",
-    keywords: ["promotion", "coupon", "discount", "khuyến mãi"],
-  },
-  payroll: {
-    title: "Bảng lương",
-    description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên",
-    icon: "💼",
-    keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"],
-  },
-  reviews: {
-    title: "Đánh giá khách hàng",
-    description: "Xem đánh giá, phản hồi và kiểm duyệt nội dung review",
-    icon: "⭐",
-    keywords: ["review", "đánh giá", "rating", "feedback"],
-  },
-  "print-management": {
-    title: "Quản lý in ấn",
-    description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job",
-    icon: "🖨️",
-    keywords: ["print", "máy in", "phiếu bếp", "queue"],
-  },
-  "restaurant-info-management": {
-    title: "Thông tin nhà hàng",
-    description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ",
-    icon: "🏪",
-    keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"],
-  },
-  rbac: {
-    title: "Phân quyền nhân viên",
-    description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên",
-    icon: "🛡️",
-    keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"],
-  },
-  settings: {
-    title: "Cài đặt",
-    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
-    icon: "⚙️",
-    keywords: ["settings", "cài đặt"],
-  },
-  rates: {
-    title: "Cài đặt",
-    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
-    icon: "⚙️",
-    keywords: ["settings", "cài đặt"],
-  },
-  setting: {
-    title: "Cài đặt",
-    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
-    icon: "⚙️",
-    keywords: ["settings", "cài đặt"],
-  },
-  backup: {
-    title: "Cài đặt",
-    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
-    icon: "⚙️",
-    keywords: ["backup", "sao lưu"],
-  },
+  dashboard: { title: "Tổng quan", description: "Tổng quan hiệu suất và số liệu vận hành nhà hàng", icon: "📊", keywords: ["overview", "thống kê", "kpi", "doanh thu", "dashboard"] },
+  tables: { title: "Quản lý bàn", description: "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", icon: "🪑", keywords: ["bàn", "table", "đặt bàn", "sơ đồ"] },
+  orders: { title: "Quản lý đơn hàng", description: "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", icon: "🧾", keywords: ["order", "đơn", "timeline", "thanh toán"] },
+  menu: { title: "Quản lý menu", description: "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", icon: "🍜", keywords: ["món", "menu", "giá", "danh mục"] },
+  inventory: { title: "Quản lý kho", description: "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu", icon: "📦", keywords: ["kho", "inventory", "nguyên liệu", "tồn"] },
+  staff: { title: "Quản lý nhân viên", description: "Danh sách nhân viên, vai trò, trạng thái và phân công", icon: "👥", keywords: ["staff", "nhân viên", "vai trò", "quyền"] },
+  customers: { title: "Quản lý khách hàng", description: "Thông tin khách, hạng thành viên, điểm và hành vi mua", icon: "🧑‍🤝‍🧑", keywords: ["khách hàng", "loyalty", "rank", "điểm"] },
+  "customer-analytics": { title: "Phân tích khách hàng", description: "Phân tích nhóm khách, món phổ biến và mức độ gắn bó", icon: "📈", keywords: ["analytics", "phân tích", "khách", "insight"] },
+  analytics: { title: "Phân tích kinh doanh", description: "Theo dõi xu hướng doanh thu và đề xuất tối ưu vận hành", icon: "🧠", keywords: ["analyst", "ai", "chiến lược", "dự báo"] },
+  reports: { title: "Báo cáo", description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ", icon: "📑", keywords: ["report", "báo cáo", "xuất file", "csv"] },
+  finance: { title: "Tài chính", description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", icon: "💰", keywords: ["finance", "thu", "chi", "công nợ", "profit"] },
+  schedules: { title: "Lịch làm việc", description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", icon: "📅", keywords: ["schedule", "ca làm", "shift", "lịch"] },
+  promotions: { title: "Khuyến mãi", description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", icon: "🎁", keywords: ["promotion", "coupon", "discount", "khuyến mãi"] },
+  payroll: { title: "Bảng lương", description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", icon: "💼", keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"] },
+  reviews: { title: "Đánh giá khách hàng", description: "Xem đánh giá, phản hồi và kiểm duyệt nội dung review", icon: "⭐", keywords: ["review", "đánh giá", "rating", "feedback"] },
+  "print-management": { title: "Quản lý in ấn", description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job", icon: "🖨️", keywords: ["print", "máy in", "phiếu bếp", "queue"] },
+  "restaurant-info-management": { title: "Thông tin nhà hàng", description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", icon: "🏪", keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"] },
+  rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
+  settings: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
+  rates: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
+  setting: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
+  backup: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["backup", "sao lưu"] },
 };
+
+const PermissionFallback = () => (
+  <div className="manager-page-shell__empty">Bạn không có quyền truy cập chức năng này.</div>
+);
 
 const ManagerLayout = () => {
   const { user } = useContext(AuthContext);
@@ -227,50 +121,39 @@ const ManagerLayout = () => {
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
   const allowedPages = useMemo(() => {
-    const navItems = Object.entries(MANAGER_PAGE_ROLE_ACCESS).map(([id, roles]) => ({ id, roles }));
-    return new Set(filterNavigationByRole(navItems, roleName).map((item) => item.id));
-  }, [roleName]);
+    const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
+    return new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
+  }, [user]);
 
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash?.replace("#", "");
-      if (hash && validPages.has(hash) && allowedPages.has(hash)) {
-        setCurrentPage(hash);
-      }
+      if (hash && validPages.has(hash)) setCurrentPage(hash);
     };
 
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [allowedPages, validPages]);
+  }, [validPages]);
 
   useEffect(() => {
-    if (validPages.has(currentPage) && allowedPages.has(currentPage)) {
+    if (validPages.has(currentPage)) {
       localStorage.setItem("manager.currentPage", currentPage);
-      if (window.location.hash !== `#${currentPage}`) {
-        history.replaceState(null, "", `#${currentPage}`);
-      }
+      if (window.location.hash !== `#${currentPage}`) history.replaceState(null, "", `#${currentPage}`);
     }
-  }, [allowedPages, currentPage, validPages]);
-  // Close sidebar on window resize
+  }, [currentPage, validPages]);
+
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 768 && sidebarOpen) {
-        setSidebarOpen(false);
-      }
+      if (window.innerWidth <= 768 && sidebarOpen) setSidebarOpen(false);
     };
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [sidebarOpen]);
 
-  const toggleSidebar = () => {
-    setSidebarOpen((prev) => !prev);
-  };
-
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setSidebarOpen(false);
 
   const preferredFallbackPage = useMemo(() => {
     if (isHrRole(roleName)) return "staff";
@@ -280,7 +163,7 @@ const ManagerLayout = () => {
   }, [roleName]);
 
   useEffect(() => {
-    if (allowedPages.has(currentPage)) return;
+    if (allowedPages.has(currentPage) || window.location.hash) return;
 
     const nextPage = allowedPages.has(preferredFallbackPage)
       ? preferredFallbackPage
@@ -305,77 +188,44 @@ const ManagerLayout = () => {
         })),
     [allowedPages]
   );
-  const renderContent = () => {
-    switch (currentPage) {
-      case "dashboard":
-        return <Dashboard />;
-      case "tables":
-        return <TableManagement />;
-      case "orders":
-        return <OrderManagement />;
-      case "menu":
-        return <MenuManagement />;
-      case "inventory":
-        return <StorageManagement />;
-      case "staff":
-        return <StaffManagement />;
-      case "customers":
-        return <CustomerManagement />;
-      case "customer-analytics":
-        return <CustomerAnalyticsPage />;
-      case "analytics":
-        return <ManagerAnalyst />;
 
-      // case "transactions": return <Transactions />;
-      case "reports":
-        return <ReportsManagement />;
-      case "finance":
-        return <FinanceDashboard />;
+  const renderContent = () => {
+    if (!allowedPages.has(currentPage)) return <PermissionFallback />;
+
+    switch (currentPage) {
+      case "dashboard": return <Dashboard />;
+      case "tables": return <TableManagement />;
+      case "orders": return <OrderManagement />;
+      case "menu": return <MenuManagement />;
+      case "inventory": return <StorageManagement />;
+      case "staff": return <StaffManagement />;
+      case "customers": return <CustomerManagement />;
+      case "customer-analytics": return <CustomerAnalyticsPage />;
+      case "analytics": return <ManagerAnalyst />;
+      case "reports": return <ReportsManagement />;
+      case "finance": return <FinanceDashboard />;
       case "settings":
       case "rates":
       case "setting":
-      case "backup":
-        return <div>Đang phát triển…</div>;
-      case "schedules":
-        return <ScheduleManagement />;
-      case "promotions":
-        return <PromotionManagement />;
-      case "payroll":
-        return <PayrollManagement />;
-      case "reviews":
-        return <ReviewManagement />;
-      case "print-management":
-        return <PrintManagement />;
-      case "restaurant-info-management":
-        return <ManagerRestaurantInfoManagement />;
-      case "rbac":
-        return <RbacManagement />;
-      default:
-        return <div>Content not found</div>;
+      case "backup": return <div>Đang phát triển…</div>;
+      case "schedules": return <ScheduleManagement />;
+      case "promotions": return <PromotionManagement />;
+      case "payroll": return <PayrollManagement />;
+      case "reviews": return <ReviewManagement />;
+      case "print-management": return <PrintManagement />;
+      case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
+      case "rbac": return <RbacManagement />;
+      default: return <div>Content not found</div>;
     }
   };
 
   return (
     <div className={`manager-layout ${sidebarOpen ? "sidebar-open" : ""}`}>
-      {/* Sidebar Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}
-          onClick={closeSidebar}
-        />
-      )}
+      {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} />}
 
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={closeSidebar}
-        onPageChange={setCurrentPage}
-        activeItem={currentPage}
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
 
-      {/* Main Content Area */}
       <div className="manager-layout__main">
-        {/* Header */}
         <div className="manager-layout__header">
           <Header
             pageTitle={PAGE_CONFIG[currentPage]?.title || "Trang quản trị"}
@@ -391,11 +241,8 @@ const ManagerLayout = () => {
           />
         </div>
 
-        {/* Content */}
         <main className="manager-layout__content">
-          <section
-            className={`manager-page-shell manager-page-shell--${currentPage}`}
-          >
+          <section className={`manager-page-shell manager-page-shell--${currentPage}`}>
             <div className="manager-page-shell__body">{renderContent()}</div>
           </section>
         </main>
