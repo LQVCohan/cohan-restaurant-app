@@ -1,6 +1,11 @@
 // src/components/Dashboard_Manager/Storage/layout/WarehouseStatus/WarehouseStatus.jsx
-import React from "react";
+import React, { useContext } from "react";
 import { CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import {
+  hasAnyPermission,
+  NO_PERMISSION_MESSAGE,
+} from "@/utils/frontendPermissionAccess";
 import "./WarehouseStatus.scss";
 
 /**
@@ -9,8 +14,10 @@ import "./WarehouseStatus.scss";
  * (Danh sách các mặt hàng dưới định mức)
  */
 const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
+  const { user } = useContext(AuthContext);
   const warnings = Array.isArray(lowStockItems) ? lowStockItems : [];
   const isSafe = warnings.length === 0;
+  const canWriteStock = hasAnyPermission(user, ["stock.write", "inventory.write"]);
 
   return (
     <div className={`warehouse-status-wrapper ${isSafe ? "safe" : "warning"}`}>
@@ -51,7 +58,19 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
             ))}
           </ul>
           <div className="dropdown-footer">
-            <button onClick={onCreatePO}>Tạo phiếu nhập ngay</button>
+            {!canWriteStock ? (
+              <p className="text-xs text-secondary">{NO_PERMISSION_MESSAGE}</p>
+            ) : null}
+            <button
+              onClick={() => {
+                if (!canWriteStock) return;
+                onCreatePO?.();
+              }}
+              disabled={!canWriteStock}
+              title={!canWriteStock ? NO_PERMISSION_MESSAGE : undefined}
+            >
+              Tạo phiếu nhập ngay
+            </button>
           </div>
         </div>
       )}
