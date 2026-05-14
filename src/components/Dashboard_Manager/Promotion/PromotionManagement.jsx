@@ -14,7 +14,7 @@ import {
   Trash2,
   Inbox,
 } from "lucide-react";
-
+import { useCouponAnalytics } from "../../../hooks/useCouponAnalytics";
 // --- Components ---
 // Giả định bạn đã lưu các file này từ các bước trước
 import StatsCard from "./components/StatsCard/StatsCard";
@@ -67,12 +67,17 @@ const PromotionManagement = () => {
     duplicateCouponPackage,
     resolveStatus,
   } = useCoupons(selectedRestaurantId);
-
+  const {
+    analytics: couponAnalytics,
+    loading: couponAnalyticsLoading,
+    error: couponAnalyticsError,
+  } = useCouponAnalytics(selectedRestaurantId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
-  const [isCouponPackageModalOpen, setIsCouponPackageModalOpen] = useState(false);
+  const [isCouponPackageModalOpen, setIsCouponPackageModalOpen] =
+    useState(false);
   const [editingCouponPackage, setEditingCouponPackage] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // 'list' | 'grid'
   const [activeTab, setActiveTab] = useState("all");
@@ -142,6 +147,10 @@ const PromotionManagement = () => {
               "Giảm tối đa",
               "Lượt dùng",
               "Đã dùng",
+              "Mỗi khách tối đa",
+              "Loại đơn",
+              "Phương thức thanh toán",
+              "Đơn đầu tiên",
               "Công bố",
               "Bắt đầu",
               "Kết thúc",
@@ -159,6 +168,10 @@ const PromotionManagement = () => {
               coupon.maxDiscount,
               coupon.usageLimit,
               coupon.usageCount,
+              coupon.perUserLimit || "",
+              (coupon.orderTypes || []).join(", "),
+              (coupon.paymentMethods || []).join(", "),
+              coupon.firstOrderOnly ? "Có" : "Không",
               coupon.publishAt,
               coupon.startDate,
               coupon.endDate,
@@ -280,25 +293,11 @@ const PromotionManagement = () => {
   // --- Derived Data (Tính toán số liệu) ---
   const statsData = useMemo(() => {
     if (activeSection === "coupons") {
-      const totalUsage = allCoupons.reduce(
-        (sum, v) => sum + (v.usageCount || 0),
-        0,
-      );
-      const totalLimit = allCoupons.reduce(
-        (sum, v) => sum + (v.usageLimit || 0),
-        0,
-      );
-      const totalSavings = allCoupons.reduce(
-        (sum, v) => sum + (v.discountValue || 0) * (v.usageCount || 0),
-        0,
-      );
-
       return {
-        totalSavings,
-        usageRate: totalLimit ? Math.round((totalUsage / totalLimit) * 100) : 0,
-        totalUsage,
-        hotPromotions: allCoupons.filter((v) => (v.usageCount || 0) > 100)
-          .length,
+        totalSavings: Number(couponAnalytics.totalDiscountAmount || 0),
+        usageRate: Number(couponAnalytics.usageRate || 0),
+        totalUsage: Number(couponAnalytics.totalRedemptions || 0),
+        hotPromotions: Number(couponAnalytics.topCoupons?.length || 0),
       };
     }
 
@@ -306,17 +305,18 @@ const PromotionManagement = () => {
       const activePackages = allCouponPackages.filter(
         (couponPackage) => resolveStatus(couponPackage) === "active",
       ).length;
-      const totalUsage = allCouponPackages.length;
+
+      const scheduledPackages = allCouponPackages.filter(
+        (couponPackage) => resolveStatus(couponPackage) === "scheduled",
+      ).length;
 
       return {
-        totalSavings: allCouponPackages.length * 50000,
-        usageRate: totalUsage
-          ? Math.round((activePackages / totalUsage) * 100)
+        totalSavings: 0,
+        usageRate: allCouponPackages.length
+          ? Math.round((activePackages / allCouponPackages.length) * 100)
           : 0,
-        totalUsage,
-        hotPromotions: allCouponPackages.filter(
-          (couponPackage) => resolveStatus(couponPackage) === "scheduled",
-        ).length,
+        totalUsage: allCouponPackages.length,
+        hotPromotions: scheduledPackages,
       };
     }
 
@@ -340,7 +340,7 @@ const PromotionManagement = () => {
       ),
       hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
     };
-  }, [activeSection, allPromotions, allCoupons, allCouponPackages, resolveStatus]);
+  }, [activeSection, allPromotions, allCouponPackages, resolveStatus]);
 
   // --- Handlers ---
   const handleOpenModal = (promotion = null) => {
@@ -665,7 +665,9 @@ const PromotionManagement = () => {
           {couponPackages.map((couponPackage) => (
             <tr key={couponPackage.id}>
               <td>
-                <div className="fw-bold text-dark mb-1">{couponPackage.name}</div>
+                <div className="fw-bold text-dark mb-1">
+                  {couponPackage.name}
+                </div>
                 <div className="code-badge">
                   <Copy size={12} /> {couponPackage.code}
                 </div>
@@ -691,7 +693,9 @@ const PromotionManagement = () => {
               </td>
               <td className="text-secondary text-sm">
                 <div>{formatDate(couponPackage.startDate)}</div>
-                <div className="text-xs">đến {formatDate(couponPackage.endDate)}</div>
+                <div className="text-xs">
+                  đến {formatDate(couponPackage.endDate)}
+                </div>
               </td>
               <td>{renderStatusBadge(resolveStatus(couponPackage))}</td>
               <td className="text-right">
@@ -723,7 +727,32 @@ const PromotionManagement = () => {
       </table>
     </div>
   );
+  const statsLabels = useMemo(() => {
+    if (activeSection === "couponPackages") {
+      return {
+        savings: "Tiết kiệm đã ghi nhận",
+        usage: "Tỷ lệ đang chạy",
+        total: "Tổng gói Coupon",
+        hot: "Gói sắp tới",
+      };
+    }
 
+    if (activeSection === "coupons") {
+      return {
+        savings: "Tiết kiệm thực tế",
+        usage: "Tỷ lệ sử dụng",
+        total: "Lượt dùng Coupon",
+        hot: "Top Coupon",
+      };
+    }
+
+    return {
+      savings: "Tiết kiệm cho KH",
+      usage: "Tỷ lệ sử dụng",
+      total: "Tổng lượt dùng",
+      hot: "Đang thịnh hành",
+    };
+  }, [activeSection]);
   return (
     <div className="promotion-manager-page">
       {/* 1. HEADER */}
@@ -787,8 +816,18 @@ const PromotionManagement = () => {
 
       {/* 2. STATS */}
       <section className="stats-section">
-        <StatsCard stats={statsData} />
+        <StatsCard stats={statsData} labels={statsLabels} />
       </section>
+      {activeSection === "coupons" && couponAnalyticsError && (
+        <p className="text-xs text-danger mt-2">
+          Chưa tải được thống kê Coupon, đang hiển thị dữ liệu danh sách.
+        </p>
+      )}
+      {activeSection === "coupons" && couponAnalyticsLoading && (
+        <p className="text-xs text-secondary mt-2">
+          Đang cập nhật thống kê Coupon...
+        </p>
+      )}
 
       {/* 3. MAIN CONTENT CARD */}
       <div className="main-content-card">
