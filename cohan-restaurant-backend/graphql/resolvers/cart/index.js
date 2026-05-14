@@ -1,7 +1,12 @@
 // src/graphql/resolvers/cart/index.js
 import { CartQuery } from "./query.js";
 import { CartMutation } from "./mutation.js";
-import { CartFieldResolvers, CartItemFieldResolvers } from "./types.js";
+import { CartAvailabilityWatchMutation } from "./availabilityWatchMutation.js";
+import {
+  CartFieldResolvers,
+  CartItemFieldResolvers,
+  MenuAvailabilityWatchFieldResolvers,
+} from "./types.js";
 
 export default {
   Query: {
@@ -9,6 +14,7 @@ export default {
   },
   Mutation: {
     ...CartMutation,
+    ...CartAvailabilityWatchMutation,
   },
 
   Cart: {
@@ -16,5 +22,8 @@ export default {
   },
   CartItem: {
     ...CartItemFieldResolvers,
+  },
+  MenuAvailabilityWatch: {
+    ...MenuAvailabilityWatchFieldResolvers,
   },
 };
