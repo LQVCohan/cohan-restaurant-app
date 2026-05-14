@@ -26,6 +26,15 @@ input AuditLogFilterInput {
   byUserId: ID
 }
 
+input AuditLogFilter {
+  action: String
+  module: String
+  targetType: String
+  targetId: ID
+  actorId: ID
+  restaurantId: ID
+}
+
 type AuditLogConnection {
   items: [AuditLog!]!
   total: Int!
@@ -37,4 +46,9 @@ extend type Query {
     limit: Int = 50
     offset: Int = 0
   ): AuditLogConnection!
+  rbacAuditLogs(
+    filter: AuditLogFilter
+    limit: Int = 50
+    offset: Int = 0
+  ): [AuditLog!]!
 }
