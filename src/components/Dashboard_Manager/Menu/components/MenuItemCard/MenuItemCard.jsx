@@ -12,6 +12,8 @@ import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
 } from "../../../../../utils/frontendRoleAccess";
+import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
+import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./MenuItemCard.scss";
 
@@ -64,26 +66,29 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
   const remainingCount = Math.max(0, variants.length - 3);
   const statusMeta = STATUS_META[item?.status] || STATUS_META.unavailable;
 
+  const renderFallbackImage = () => (
+    <div className="placeholder-img">
+      {item.status === "out_of_stock" ? (
+        <ImageOff size={28} />
+      ) : (
+        <Utensils size={28} />
+      )}
+    </div>
+  );
+
   const renderImage = () => {
     if (item.thumbImage && !imgError) {
       return (
-        <img
+        <LocalImageView
           src={item.thumbImage}
           alt={item.name}
+          variant={LOCAL_IMAGE_VARIANTS.THUMB}
+          fallback={renderFallbackImage()}
           onError={() => setImgError(true)}
-          loading="lazy"
         />
       );
     }
-    return (
-      <div className="placeholder-img">
-        {item.status === "out_of_stock" ? (
-          <ImageOff size={28} />
-        ) : (
-          <Utensils size={28} />
-        )}
-      </div>
-    );
+    return renderFallbackImage();
   };
 
   const renderStatusBadge = () => {
