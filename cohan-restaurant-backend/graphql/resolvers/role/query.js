@@ -38,6 +38,7 @@ export const RoleQuery = {
 
     return roles.map((r) => {
       const obj = r.toObject();
+      obj.directPermissions = obj.permissions || [];
       obj.permissions = mergeEffectivePermissions(obj);
       return obj;
     });
