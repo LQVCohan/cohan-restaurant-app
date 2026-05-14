@@ -66,6 +66,7 @@ const CompactMenuStrip = ({
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const canDeleteMenu = typeof onDeleteMenu === "function";
   const canToggleMenuActive = typeof onToggleMenuActive === "function";
+  const canAddMenu = typeof onAddMenu === "function";
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
       const firstId = menus[0].id;
@@ -133,9 +134,11 @@ const CompactMenuStrip = ({
                   <FiChevronRight />
                 </button>
               </div>
-              <button className="cms-btn-add" onClick={() => onAddMenu?.()}>
-                <FiPlus /> <span className="text">Tạo thực đơn</span>
-              </button>
+              {canAddMenu && (
+                <button className="cms-btn-add" onClick={() => onAddMenu()}>
+                  <FiPlus /> <span className="text">Tạo thực đơn</span>
+                </button>
+              )}
             </>
           )}
 
@@ -300,8 +303,8 @@ const CompactMenuStrip = ({
                 );
               })}
 
-            {!menusLoading && (
-              <div className="cms-card cms-ghost" onClick={() => onAddMenu?.()}>
+            {!menusLoading && canAddMenu && (
+              <div className="cms-card cms-ghost" onClick={() => onAddMenu()}>
                 <div className="cms-ghost-inner">
                   <div className="cms-ghost-circle">
                     <FiPlus size={24} />
