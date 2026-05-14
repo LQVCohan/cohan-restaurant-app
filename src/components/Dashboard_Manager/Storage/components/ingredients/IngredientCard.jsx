@@ -14,6 +14,7 @@ import Modal from "../../../../common/Modal";
 import { formatPrice } from "../../../../../utils/formatters";
 import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
+import { NO_PERMISSION_MESSAGE } from "../../../../../utils/frontendPermissionAccess";
 import "./IngredientCard.scss";
 
 const IngredientCard = ({
@@ -40,6 +41,8 @@ const IngredientCard = ({
   const canAddStock = typeof onAddStock === "function";
   const canShowUsage = typeof onShowUsage === "function";
   const canDelete = typeof onDelete === "function";
+  const canUpdateCost =
+    typeof onUpdateCostPerBaseUnit === "function" || typeof onEdit === "function";
 
   // --- Price Modal State ---
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
@@ -48,6 +51,7 @@ const IngredientCard = ({
 
   const openPriceModal = (e) => {
     e?.stopPropagation();
+    if (!canUpdateCost) return;
     setPriceInput(
       String(
         convertCurrencyAmount(
@@ -76,6 +80,7 @@ const IngredientCard = ({
   }, [activeCurrency, ingredient?.costPerBaseUnit, isPriceModalOpen, usdToVndRate]);
 
   const handleSavePrice = async () => {
+    if (!canUpdateCost) return;
     const numericPrice = Number(priceInput);
     if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
     const vndPrice = convertCurrencyAmount(
@@ -135,13 +140,16 @@ const IngredientCard = ({
 
             {/* Cost Price (Clickable) */}
             <div
-              className="il-stat-box il-stat-box--interactive"
+              className={`il-stat-box ${canUpdateCost ? "il-stat-box--interactive" : ""}`}
               onClick={openPriceModal}
-              title="Nhấp để cập nhật giá nhập"
+              title={canUpdateCost ? "Nhấp để cập nhật giá nhập" : NO_PERMISSION_MESSAGE}
+              aria-disabled={!canUpdateCost}
             >
               <div className="il-stat-label">
                 Giá nhập{" "}
-                <Pencil size={10} style={{ marginLeft: 4, opacity: 0.5 }} />
+                {canUpdateCost && (
+                  <Pencil size={10} style={{ marginLeft: 4, opacity: 0.5 }} />
+                )}
               </div>
               <div className="il-stat-value-group">
                 <span className="il-stat-value il-text-price">
@@ -170,7 +178,7 @@ const IngredientCard = ({
                 onEdit?.(ingredient);
               }}
               disabled={!canEdit}
-              title={canEdit ? "Chỉnh sửa thông tin" : "Tính năng chưa khả dụng"}
+              title={canEdit ? "Chỉnh sửa thông tin" : NO_PERMISSION_MESSAGE}
             >
               <Pencil size={16} />
             </button>
@@ -183,7 +191,7 @@ const IngredientCard = ({
                 onAddStock?.(ingredient.id);
               }}
               disabled={!canAddStock}
-              title={canAddStock ? "Nhập thêm hàng" : "Tính năng chưa khả dụng"}
+              title={canAddStock ? "Nhập thêm hàng" : NO_PERMISSION_MESSAGE}
             >
               <PackagePlus size={16} />
             </button>
@@ -211,7 +219,7 @@ const IngredientCard = ({
                 onDelete?.(ingredient.id);
               }}
               disabled={!canDelete}
-              title={canDelete ? "Xóa nguyên liệu" : "Tính năng chưa khả dụng"}
+              title={canDelete ? "Xóa nguyên liệu" : NO_PERMISSION_MESSAGE}
             >
               <Trash2 size={16} />
             </button>
@@ -252,7 +260,12 @@ const IngredientCard = ({
             >
               Hủy
             </button>
-            <button className="il-btn-primary" onClick={handleSavePrice}>
+            <button
+              className="il-btn-primary"
+              onClick={handleSavePrice}
+              disabled={!canUpdateCost}
+              title={canUpdateCost ? "Lưu giá" : NO_PERMISSION_MESSAGE}
+            >
               Lưu giá
             </button>
           </Modal.Footer>
