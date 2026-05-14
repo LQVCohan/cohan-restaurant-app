@@ -13,6 +13,7 @@ import "./styles/schedule-publish-polish.css";
 import "./styles/availability-registration-polish.css";
 import "./styles/schedule-toolbar-polish.css";
 import "./styles/declined-shift-review-polish.css";
+import "./styles/schedule-daily-month-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import NotificationProvider from "./context/NotificationProvider";
