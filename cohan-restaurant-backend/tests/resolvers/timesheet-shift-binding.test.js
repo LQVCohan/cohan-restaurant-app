@@ -330,6 +330,8 @@ describe("Timesheet binding to official published/active staff shifts", () => {
         if (filter.restaurantId && idOf(filter.restaurantId) !== idOf(timesheet.restaurantId)) return false;
         if (filter.shiftId && idOf(filter.shiftId) !== idOf(timesheet.shiftId)) return false;
         if (filter.isOffSchedule != null && Boolean(filter.isOffSchedule) !== Boolean(timesheet.isOffSchedule)) return false;
+        if (filter.actualCheckOutAt === null && timesheet.actualCheckOutAt != null) return false;
+        if (filter.actualCheckInAt?.$ne === null && timesheet.actualCheckInAt == null) return false;
         return true;
       }) || null;
     });
