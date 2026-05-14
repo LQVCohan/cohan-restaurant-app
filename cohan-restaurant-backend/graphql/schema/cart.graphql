@@ -50,6 +50,37 @@ type Cart {
   user: User
 }
 
+type MenuAvailabilityWatch {
+  id: ID!
+  restaurantId: ID!
+  menuItemId: ID!
+  servingKey: String
+  desiredQuantity: Int
+  userId: ID
+  tableId: ID
+  tableCode: String
+  source: String
+  status: String!
+  reason: String
+  note: String
+  lastOutOfStockAt: DateTime
+  notifiedAt: DateTime
+  expiresAt: DateTime!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RegisterMenuAvailabilityWatchPayload {
+  watch: MenuAvailabilityWatch
+  alreadyAvailable: Boolean!
+  message: String!
+}
+
+type CancelMenuAvailabilityWatchPayload {
+  ok: Boolean!
+  watch: MenuAvailabilityWatch
+}
+
 # --------------------------
 # INPUT TYPES
 # --------------------------
@@ -89,6 +120,25 @@ input ClearCartInput {
   cartId: ID!
 }
 
+input RegisterMenuAvailabilityWatchInput {
+  restaurantId: ID!
+  menuItemId: ID!
+  servingKey: String
+  desiredQuantity: Int
+  userId: ID
+  tableId: ID
+  tableCode: String
+  source: String
+  reason: String
+  note: String
+  expiresAt: DateTime
+  clientMeta: JSON
+}
+
+input CancelMenuAvailabilityWatchInput {
+  watchId: ID!
+}
+
 # --------------------------
 # QUERY
 # --------------------------
@@ -109,6 +159,8 @@ extend type Mutation {
   removeCartItem(input: RemoveCartItemInput!): Cart!
   clearCart(input: ClearCartInput!): Boolean!
   releaseMyCartHolds(input: ReleaseMyCartHoldsInput): Boolean!
+  registerMenuAvailabilityWatch(input: RegisterMenuAvailabilityWatchInput!): RegisterMenuAvailabilityWatchPayload!
+  cancelMenuAvailabilityWatch(input: CancelMenuAvailabilityWatchInput!): CancelMenuAvailabilityWatchPayload!
 }
 
 
