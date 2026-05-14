@@ -147,6 +147,47 @@
   line-height: 1.38 !important;
 }
 
+.auto-schedule-body .auto-workflow-card {
+  background:
+    radial-gradient(circle at 1.2rem 1rem, rgba(79, 70, 229, 0.12), transparent 1.6rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.auto-schedule-body .auto-workflow-card ol {
+  display: grid;
+  gap: 0.44rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auto-schedule-body .auto-workflow-card li {
+  display: grid;
+  grid-template-columns: 1.38rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.auto-schedule-body .auto-workflow-card li strong {
+  width: 1.38rem;
+  height: 1.38rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.auto-schedule-body .auto-workflow-card li span {
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 760;
+  line-height: 1.28;
+}
+
 .auto-schedule-body .role-required-card {
   background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
   align-self: start !important;
@@ -164,10 +205,10 @@
 }
 
 .auto-schedule-body .role-check-row {
-  min-height: 2.32rem !important;
+  min-height: 2.22rem !important;
   justify-content: center;
   gap: 0.34rem !important;
-  padding: 0.38rem 0.48rem !important;
+  padding: 0.34rem 0.48rem !important;
   border-radius: 14px !important;
   border-color: #e2e8f0 !important;
   background: #f8fafc !important;
@@ -186,18 +227,18 @@
 }
 
 .auto-schedule-body .role-check-row span {
-  font-size: 0.74rem !important;
+  font-size: 0.73rem !important;
   font-weight: 850 !important;
 }
 
 .auto-schedule-body .required-role-warning {
-  margin-top: 0.48rem !important;
+  margin-top: 0.46rem !important;
   border-radius: 12px;
   background: #fff7ed;
   border: 1px solid #fed7aa;
-  padding: 0.45rem 0.55rem;
+  padding: 0.42rem 0.55rem;
   color: #9a3412 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.69rem !important;
   line-height: 1.32 !important;
 }
 
