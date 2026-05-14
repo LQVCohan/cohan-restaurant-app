@@ -23,10 +23,28 @@ type AuditLogConnection {
   total: Int!
 }
 
+input CopyMenuInput {
+  restaurantId: ID!
+  sourceMenuId: ID
+  sourceTimeSlot: TimeSlot
+  targetTimeSlot: TimeSlot!
+  name: String
+  description: String
+  coverImage: String
+  categoryMenuId: ID
+  isActive: Boolean
+  copyItems: Boolean = true
+  copyRecipes: Boolean = true
+}
+
 extend type Query {
   auditLogs(
     filter: AuditLogFilterInput
     limit: Int = 50
     offset: Int = 0
   ): AuditLogConnection!
+}
+
+extend type Mutation {
+  copyMenu(input: CopyMenuInput!): Menu!
 }
