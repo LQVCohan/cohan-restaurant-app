@@ -6,6 +6,7 @@ type Role {
   department: DepartmentType
   isSystem: Boolean
   parentRole: ParentRole
+  directPermissions: [Permission!]!
   permissions: [Permission!]!
   users: [User!]!
   createdAt: String

@@ -214,7 +214,7 @@ export const QUERY_PAYROLL_PAYSLIP = gql`
       remainingAmount
       canMarkPaid
       canEdit
-      period { id status startDate endDate paidAt }
+      period { id name status startDate endDate paidAt }
       employee { id name code role department avatar }
       item {
         id payrollItemId name code role department netSalary totalIncome totalDeduction status paidAt
@@ -557,11 +557,21 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const [finalizePeriod] = useMutation(MUT_FINALIZE_PERIOD);
   const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
   const [markPaid] = useMutation(MUT_MARK_PAID);
-  const [markPayrollItemPaid] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
-  const [batchMarkPayrollPaid] = useMutation(MUT_BATCH_MARK_PAYROLL_PAID);
+  const [markPayrollItemPaidMutation] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
+  const [batchMarkPayrollPaidMutation] = useMutation(MUT_BATCH_MARK_PAYROLL_PAID);
   const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
   const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
   const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
+
+  const markPayrollItemPaid = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return markPayrollItemPaidMutation(inputOrOptions);
+    return markPayrollItemPaidMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const batchMarkPayrollPaid = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return batchMarkPayrollPaidMutation(inputOrOptions);
+    return batchMarkPayrollPaidMutation({ variables: { input: inputOrOptions } });
+  };
 
   return {
     loading: periodsQuery.loading || detailQuery.loading || overviewQuery.loading,
@@ -590,7 +600,9 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       meQuery.data?.me?.restaurantForStaff ||
       null,
     refetchPeriods: periodsQuery.refetch,
+    refetchPayrollPeriods: periodsQuery.refetch,
     refetchDetail: detailQuery.refetch,
+    refetchPayrollPeriodDetail: detailQuery.refetch,
     refetchSettings: settingsQuery.refetch,
     validationResult: validationQuery.data?.validatePayrollPeriod || null,
     payrollPayslip: payslipQuery.data?.payrollPayslip || null,

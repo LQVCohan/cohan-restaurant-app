@@ -26,6 +26,17 @@ const ROLE_FIELDS = gql`
         isActive
       }
     }
+    directPermissions {
+      id
+      code
+      name
+      description
+      group
+      resource
+      action
+      isSystem
+      isActive
+    }
     permissions {
       id
       code
@@ -116,6 +127,25 @@ export const ASSIGN_STAFF_ROLE_MUTATION = gql`
   ${STAFF_ROLE_FIELDS}
 `;
 
+
+export const CREATE_ROLE_MUTATION = gql`
+  mutation CreateRole($input: CreateRoleInput!) {
+    createRole(input: $input) {
+      ...RbacRoleFields
+    }
+  }
+  ${ROLE_FIELDS}
+`;
+
+export const UPDATE_ROLE_MUTATION = gql`
+  mutation UpdateRole($input: UpdateRoleInput!) {
+    updateRole(input: $input) {
+      ...RbacRoleFields
+    }
+  }
+  ${ROLE_FIELDS}
+`;
+
 const normalizeGroup = (permission) => permission?.group || permission?.resource || "Khác";
 
 export function useRbacManagement(restaurantId, options = {}) {
@@ -133,6 +163,14 @@ export function useRbacManagement(restaurantId, options = {}) {
   });
 
   const [assignStaffRole, assignState] = useMutation(ASSIGN_STAFF_ROLE_MUTATION, {
+    onCompleted: () => refetch(),
+  });
+
+  const [createRole, createRoleState] = useMutation(CREATE_ROLE_MUTATION, {
+    onCompleted: () => refetch(),
+  });
+
+  const [updateRole, updateRoleState] = useMutation(UPDATE_ROLE_MUTATION, {
     onCompleted: () => refetch(),
   });
 
@@ -173,5 +211,11 @@ export function useRbacManagement(restaurantId, options = {}) {
     assignStaffRole,
     assigning: assignState.loading,
     assignError: assignState.error,
+    createRole,
+    creatingRole: createRoleState.loading,
+    createRoleError: createRoleState.error,
+    updateRole,
+    updatingRole: updateRoleState.loading,
+    updateRoleError: updateRoleState.error,
   };
 }
