@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PayrollManagement from "./PayrollManagement";
 import usePayroll from "@/hooks/usePayroll";
 
@@ -292,5 +292,157 @@ describe("PayrollManagement payroll period setup", () => {
     });
 
     expect(refetchSettings).toHaveBeenCalled();
+  });
+});
+
+describe("PayrollManagement payroll payment UI", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    global.URL.createObjectURL = vi.fn(() => "blob:payroll");
+    global.URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const finalizedPayrollItems = [
+    {
+      id: "emp-1",
+      name: "Nguyen A",
+      code: "NV001",
+      department: "Kitchen",
+      role: "Chef",
+      baseSalary: 6000000,
+      actualWorkDays: 24,
+      workDays: 26,
+      totalHours: 192,
+      overtime: 300000,
+      totalIncome: 6500000,
+      totalDeduction: 1000000,
+      netSalary: 5500000,
+      status: "finalized",
+    },
+    {
+      id: "emp-2",
+      name: "Tran B",
+      code: "NV002",
+      department: "Service",
+      baseSalary: 5000000,
+      actualWorkDays: 25,
+      workDays: 26,
+      totalHours: 200,
+      overtime: 0,
+      totalIncome: 5000000,
+      totalDeduction: 500000,
+      netSalary: 4500000,
+      status: "finalized",
+    },
+  ];
+
+  const buildFinalizedHookValue = (overrides = {}) =>
+    buildHookValue({
+      periods: [{ id: "period-1", name: "Ky 1", status: "finalized", startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" }],
+      periodDetail: { period: { id: "period-1", name: "Ky 1", status: "finalized", startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" } },
+      payrollItems: finalizedPayrollItems,
+      payrollPayslip: {
+        remainingAmount: 1500000,
+        canMarkPaid: true,
+        period: { id: "period-1", name: "Ky 1", status: "finalized", startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" },
+        employee: { id: "emp-1", name: "Nguyen A", code: "NV001", department: "Kitchen", role: "Chef" },
+        item: { netSalary: 5500000, status: "finalized" },
+        breakdown: { netSalary: 5500000, baseSalary: 6000000 },
+      },
+      payrollPayments: [{ id: "pay-1", employeeId: "emp-1", amount: 4000000, method: "cash", paidAt: "2026-05-01T00:00:00.000Z", note: "Đợt 1", referenceCode: "REF-1" }],
+      refetchPayrollPayslip: vi.fn().mockResolvedValue({}),
+      refetchPayrollPayments: vi.fn().mockResolvedValue({}),
+      refetchPayrollPeriodDetail: vi.fn().mockResolvedValue({}),
+      refetchPayrollPeriods: vi.fn().mockResolvedValue({}),
+      markPayrollItemPaid: vi.fn().mockResolvedValue({}),
+      batchMarkPayrollPaid: vi.fn().mockResolvedValue({ data: { batchMarkPayrollPaid: { successCount: 2, failedCount: 0, errors: [] } } }),
+      refetchPayrollExportRows: vi.fn().mockResolvedValue({ data: { payrollExportRows: [{ employeeCode: "NV001", employeeName: "Nguyen A", status: "finalized" }] } }),
+      ...overrides,
+    });
+
+  it("renders payslip action and opens the payslip modal", async () => {
+    usePayroll.mockReturnValue(buildFinalizedHookValue());
+
+    render(<PayrollManagement />);
+
+    expect(screen.getAllByText("Xem phiếu lương")).toHaveLength(2);
+    fireEvent.click(screen.getAllByText("Xem phiếu lương")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payroll-payslip-modal")).toBeInTheDocument();
+      expect(screen.getByText("REF-1")).toBeInTheDocument();
+    });
+  });
+
+  it("calls batch mark paid with selected employee ids", async () => {
+    const batchMarkPayrollPaid = vi.fn().mockResolvedValue({ data: { batchMarkPayrollPaid: { successCount: 2, failedCount: 0, errors: [] } } });
+    usePayroll.mockReturnValue(buildFinalizedHookValue({ batchMarkPayrollPaid }));
+
+    render(<PayrollManagement />);
+
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    fireEvent.click(screen.getAllByRole("checkbox")[2]);
+    fireEvent.click(screen.getByTestId("batch-payroll-paid-open"));
+    fireEvent.click(screen.getByTestId("batch-payroll-paid-submit"));
+
+    await waitFor(() => {
+      expect(batchMarkPayrollPaid).toHaveBeenCalledWith(expect.objectContaining({
+        periodId: "period-1",
+        employeeIds: ["emp-1", "emp-2"],
+        method: "cash",
+      }));
+    });
+  });
+
+  it("shows partial batch failure errors", async () => {
+    usePayroll.mockReturnValue(buildFinalizedHookValue({
+      batchMarkPayrollPaid: vi.fn().mockResolvedValue({ data: { batchMarkPayrollPaid: { successCount: 1, failedCount: 1, errors: [{ employeeId: "emp-2", code: "PAYROLL_PAYMENT_OVERPAY", message: "Overpay" }] } } }),
+    }));
+
+    render(<PayrollManagement />);
+
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    fireEvent.click(screen.getByTestId("batch-payroll-paid-open"));
+    fireEvent.click(screen.getByTestId("batch-payroll-paid-submit"));
+
+    expect(await screen.findByText(/PAYROLL_PAYMENT_OVERPAY/)).toBeInTheDocument();
+  });
+
+  it("exports CSV from payrollExportRows", async () => {
+    const linkClick = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tagName) => {
+      const element = originalCreateElement(tagName);
+      if (tagName === "a") element.click = linkClick;
+      return element;
+    });
+    const refetchPayrollExportRows = vi.fn().mockResolvedValue({ data: { payrollExportRows: [{ employeeCode: "NV001", employeeName: "Nguyen, A", status: "finalized" }] } });
+    usePayroll.mockReturnValue(buildFinalizedHookValue({ refetchPayrollExportRows }));
+
+    render(<PayrollManagement />);
+
+    fireEvent.click(screen.getByText("Xuất CSV"));
+
+    await waitFor(() => {
+      expect(refetchPayrollExportRows).toHaveBeenCalledWith({ periodId: "period-1" });
+      expect(linkClick).toHaveBeenCalled();
+    });
+  });
+
+  it("disables payment actions for locked periods", () => {
+    usePayroll.mockReturnValue(buildFinalizedHookValue({
+      periods: [{ id: "period-1", name: "Ky 1", status: "locked", startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" }],
+      periodDetail: { period: { id: "period-1", name: "Ky 1", status: "locked", startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" } },
+    }));
+
+    render(<PayrollManagement />);
+
+    expect(screen.getByTestId("batch-payroll-paid-open")).toBeDisabled();
+    expect(screen.getAllByRole("checkbox")[1]).toBeDisabled();
   });
 });
