@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthProvider";
 import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
 import "./styles/Globals.scss";
+import "./styles/schedule-insights-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import NotificationProvider from "./context/NotificationProvider";
