@@ -73,7 +73,7 @@ const TIME_SLOT_LABELS = {
   dinner: "Bữa Tối (Dinner)",
   late_night: "Ăn Khuya (Late Night)",
 };
-
+const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
 const getGraphQLErrorMessage = (
   error,
   fallbackMessage = "Đã xảy ra lỗi không xác định.",
@@ -194,6 +194,10 @@ const MenuManagement = () => {
     currentUser,
     MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU,
   );
+  const canCopyMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.COPY_MENU,
+  );
   // --- LOCAL STATE ---
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
@@ -218,7 +222,62 @@ const MenuManagement = () => {
   const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
   const priceEditSubmitRef = useRef(false);
   const deleteItemSubmitRef = useRef(false);
+  const buildCopyMenuName = useCallback(
+    (sourceMenu) => {
+      const baseName = `${sourceMenu?.name || "Menu"} (bản sao)`;
+      const existingNames = new Set(
+        (menus || []).map((menu) =>
+          String(menu?.name || "")
+            .trim()
+            .toLowerCase(),
+        ),
+      );
 
+      let candidate = baseName;
+      let counter = 2;
+
+      while (existingNames.has(candidate.trim().toLowerCase())) {
+        candidate = `${baseName} ${counter}`;
+        counter += 1;
+      }
+
+      return candidate;
+    },
+    [menus],
+  );
+  const getSuggestedCopyTimeSlot = useCallback(
+    (sourceTimeSlot) => {
+      const usedSlots = new Set((menus || []).map((menu) => menu.timeSlot));
+      const availableSlot = TIME_SLOT_ORDER.find(
+        (slot) => !usedSlots.has(slot),
+      );
+
+      return availableSlot || sourceTimeSlot || "breakfast";
+    },
+    [menus],
+  );
+  const handleCopyMenu = useCallback(
+    (menu) => {
+      if (!menu) return;
+
+      const copyDraft = {
+        __mode: "copy",
+        isCopyDraft: true,
+        sourceMenuId: menu.id || menu._id || null,
+
+        id: null,
+        name: buildCopyMenuName(menu),
+        description: menu.description || "",
+        timeSlot: getSuggestedCopyTimeSlot(menu.timeSlot),
+        categoryMenuId: menu.categoryMenuId || menu.categoryMenu?.id || "",
+        coverImage: menu.coverImage || "",
+        isActive: false,
+      };
+
+      toggleModal("menu", true, copyDraft);
+    },
+    [buildCopyMenuName, getSuggestedCopyTimeSlot],
+  );
   /* --- DATA FETCHING --- */
   const {
     data: mgrData,
@@ -730,6 +789,7 @@ const MenuManagement = () => {
             canToggleMenu ? handleToggleMenuActive : undefined
           }
           onDeleteMenu={undefined}
+          onCopyMenu={canCopyMenu ? handleCopyMenu : undefined}
         />
       </section>
 

@@ -178,11 +178,12 @@ export const MENU_MANAGEMENT_ACTIONS = {
   CREATE_MENU: "menu.create_menu",
   UPDATE_MENU: "menu.update_menu",
   TOGGLE_MENU: "menu.toggle_menu",
+  COPY_MENU: "menu.copy_menu",
 };
 
 const MENU_MANAGEMENT_ACTION_ROLE_MAP = {
   [MENU_MANAGEMENT_ACTIONS.VIEW]: ["admin", "manager", "hr", "accountant"],
-
+  [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["admin", "manager"],
   [MENU_MANAGEMENT_ACTIONS.CREATE_ITEM]: ["admin", "manager"],
   [MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM]: ["admin", "manager"],
   [MENU_MANAGEMENT_ACTIONS.DELETE_ITEM]: ["admin", "manager"],

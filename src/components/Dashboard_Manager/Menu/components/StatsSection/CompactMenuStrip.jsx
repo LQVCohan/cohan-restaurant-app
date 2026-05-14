@@ -57,8 +57,10 @@ const CompactMenuStrip = ({
   onEditMenu,
   onDeleteMenu,
   onToggleMenuActive,
+  onCopyMenu,
   activeMenuId,
   onSelectMenu,
+  onCopyMenu,
 }) => {
   const scrollRef = useRef(null);
   const [internalActiveId, setInternalActiveId] = useState(null);
@@ -67,6 +69,8 @@ const CompactMenuStrip = ({
   const canDeleteMenu = typeof onDeleteMenu === "function";
   const canToggleMenuActive = typeof onToggleMenuActive === "function";
   const canAddMenu = typeof onAddMenu === "function";
+  const canEditMenu = typeof onEditMenu === "function";
+  const canCopyMenu = typeof onCopyMenu === "function";
   useEffect(() => {
     if (menus.length > 0 && !currentActiveId && !activeMenuId) {
       const firstId = menus[0].id;
@@ -247,17 +251,21 @@ const CompactMenuStrip = ({
                     </div>
 
                     <div className="cms-toolbar">
-                      <button
-                        className="cms-tool-btn is-edit"
-                        title="Chỉnh sửa thực đơn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditMenu?.(menu);
-                        }}
-                      >
-                        <FiEdit3 /> <span>Sửa</span>
-                      </button>
-                      <div className="cms-div"></div>
+                      {canEditMenu && (
+                        <>
+                          <button
+                            className="cms-tool-btn is-edit"
+                            title="Chỉnh sửa thực đơn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditMenu(menu);
+                            }}
+                          >
+                            <FiEdit3 /> <span>Sửa</span>
+                          </button>
+                          <div className="cms-div"></div>
+                        </>
+                      )}
 
                       {canToggleMenuActive && (
                         <button
@@ -279,13 +287,18 @@ const CompactMenuStrip = ({
                         </button>
                       )}
 
-                      <button
-                        className="cms-tool-btn"
-                        title="Sao chép thực đơn"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <FiCopy />
-                      </button>
+                      {canCopyMenu && (
+                        <button
+                          className="cms-tool-btn"
+                          title="Sao chép thực đơn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCopyMenu(menu);
+                          }}
+                        >
+                          <FiCopy />
+                        </button>
+                      )}
                       {canDeleteMenu && (
                         <button
                           className="cms-tool-btn is-delete"
