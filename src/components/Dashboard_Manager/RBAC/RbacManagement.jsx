@@ -1,7 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
-import { isAdminRole, isManagerRole } from "@/utils/frontendRoleAccess";
 import { useRbacManagement } from "@/hooks/useRbacManagement";
+import {
+  hasAnyPermission,
+  hasPermission,
+  NO_PERMISSION_MESSAGE,
+} from "@/utils/frontendPermissionAccess";
 import "./RbacManagement.scss";
 
 const getGraphQLErrorMessage = (error, fallback) => {
@@ -140,12 +144,12 @@ function RoleManagement({
   createRole,
   updateRole,
   saving,
-  isAdmin,
+  canWriteRoles,
 }) {
   const [mode, setMode] = useState("edit");
   const [form, setForm] = useState(emptyRoleForm);
   const [status, setStatus] = useState(null);
-  const readOnly = !isAdmin;
+  const readOnly = !canWriteRoles;
   const selectedRoleSlug = String(selectedRole?.slug || "").toLowerCase();
   const isProtectedSelectedRole =
     mode === "edit" &&
@@ -198,6 +202,7 @@ function RoleManagement({
   };
 
   const startCreate = () => {
+    if (!canWriteRoles) return;
     setMode("create");
     setForm(emptyRoleForm);
     setStatus(null);
@@ -245,11 +250,11 @@ function RoleManagement({
       <section className="rbac-card">
         <div className="rbac-card__header">
           <h3>Quản lý vai trò</h3>
-          <span>{readOnly ? "Chỉ xem" : "Admin"}</span>
+          <span>{readOnly ? "Chỉ xem" : "Có quyền ghi"}</span>
         </div>
         {readOnly ? (
           <p className="rbac-status rbac-status--warning">
-            Manager chỉ được gán vai trò cho nhân viên trong nhà hàng, không được chỉnh cấu hình vai trò toàn hệ thống.
+            {NO_PERMISSION_MESSAGE}
           </p>
         ) : null}
         {isProtectedSelectedRole ? (
@@ -259,7 +264,7 @@ function RoleManagement({
         ) : null}
         <div className="rbac-action-row">
           <button type="button" onClick={startEdit} className={mode === "edit" ? "is-active" : ""}>Sửa vai trò đang chọn</button>
-          <button type="button" onClick={startCreate} className={mode === "create" ? "is-active" : ""} disabled={readOnly}>Tạo vai trò mới</button>
+          <button type="button" onClick={startCreate} className={mode === "create" ? "is-active" : ""} disabled={readOnly} title={readOnly ? NO_PERMISSION_MESSAGE : undefined}>Tạo vai trò mới</button>
         </div>
         <div className="rbac-role-list rbac-role-list--compact">
           {roles.map((role) => (
@@ -339,7 +344,7 @@ function RoleManagement({
             <PermissionChipList title="Quyền hiệu lực cuối cùng" permissions={effectivePermissions} />
           </div>
 
-          <button type="submit" disabled={formLocked || saving || !form.name || !form.slug || !form.parentRoleId || (mode === "edit" && !selectedRole)}>
+          <button type="submit" disabled={formLocked || saving || !form.name || !form.slug || !form.parentRoleId || (mode === "edit" && !selectedRole)} title={formLocked ? NO_PERMISSION_MESSAGE : undefined}>
             {saving ? "Đang lưu..." : mode === "create" ? "Tạo vai trò" : "Lưu thay đổi"}
           </button>
         </form>
@@ -358,6 +363,7 @@ function StaffRoleAssignment({
   assignStaffRole,
   assigning,
   staffListEnabled,
+  canAssignRole,
 }) {
   const [staffUserId, setStaffUserId] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -378,7 +384,7 @@ function StaffRoleAssignment({
   const hasRestaurantSelected = Boolean(selectedRestaurantId);
   const hasStaff = staff.length > 0;
   const hasAssignableRoles = assignableRoles.length > 0;
-  const formDisabled = assigning || !hasRestaurantSelected || !hasStaff || !hasAssignableRoles;
+  const formDisabled = assigning || !canAssignRole || !hasRestaurantSelected || !hasStaff || !hasAssignableRoles;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -403,6 +409,9 @@ function StaffRoleAssignment({
         <span>Backend kiểm tra quyền bắt buộc</span>
       </div>
 
+      {!canAssignRole ? (
+        <p className="rbac-status rbac-status--warning">{NO_PERMISSION_MESSAGE}</p>
+      ) : null}
       {!hasRestaurants ? (
         <p className="rbac-status rbac-status--warning">
           Chưa có nhà hàng để gán vai trò. Vui lòng kiểm tra tài khoản quản lý hoặc tạo nhà hàng trước.
@@ -439,7 +448,7 @@ function StaffRoleAssignment({
             value={staffUserId}
             onChange={(event) => setStaffUserId(event.target.value)}
             required
-            disabled={!hasRestaurantSelected || !hasStaff}
+            disabled={!canAssignRole || !hasRestaurantSelected || !hasStaff}
           >
             <option value="">Chọn nhân viên</option>
             {staff.map((member) => (
@@ -455,7 +464,7 @@ function StaffRoleAssignment({
             value={roleId}
             onChange={(event) => setRoleId(event.target.value)}
             required
-            disabled={!hasRestaurantSelected || !hasAssignableRoles}
+            disabled={!canAssignRole || !hasRestaurantSelected || !hasAssignableRoles}
           >
             <option value="">Chọn vai trò</option>
             {assignableRoles.map((role) => (
@@ -463,7 +472,7 @@ function StaffRoleAssignment({
             ))}
           </select>
         </label>
-        <button type="submit" disabled={formDisabled || !staffUserId || !roleId}>
+        <button type="submit" disabled={formDisabled || !staffUserId || !roleId} title={!canAssignRole ? NO_PERMISSION_MESSAGE : undefined}>
           {assigning ? "Đang gán vai trò..." : "Gán vai trò"}
         </button>
       </form>
@@ -477,21 +486,23 @@ function StaffRoleAssignment({
 
 export default function RbacManagement() {
   const { user, restaurants = [] } = useContext(AuthContext);
-  const roleName = user?.roleName || user?.role?.slug;
-  const isAdmin = isAdminRole(roleName);
+  const canViewRbac = hasAnyPermission(user, ["role.read", "permission.read", "staff.write"]);
+  const canWriteRoles = hasAnyPermission(user, ["role.write", "permission.write"]);
+  const canAssignRole = hasPermission(user, "staff.write");
+  const canSeeAllRestaurants = hasPermission(user, "*") || hasPermission(user, "system.manage");
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurants?.[0]?.id || "");
-  const rbac = useRbacManagement(selectedRestaurantId, { includeAllRestaurants: isAdmin });
+  const rbac = useRbacManagement(selectedRestaurantId, { includeAllRestaurants: canSeeAllRestaurants });
 
   const restaurantOptions = useMemo(() => {
-    const source = isAdmin && rbac.allRestaurants.length ? rbac.allRestaurants : restaurants;
+    const source = canSeeAllRestaurants && rbac.allRestaurants.length ? rbac.allRestaurants : restaurants;
     const map = new Map();
     for (const restaurant of source || []) {
       const id = String(restaurant?.id || restaurant?._id || "");
       if (id) map.set(id, { id, name: restaurant?.name || "Nhà hàng chưa đặt tên" });
     }
     return Array.from(map.values());
-  }, [isAdmin, rbac.allRestaurants, restaurants]);
+  }, [canSeeAllRestaurants, rbac.allRestaurants, restaurants]);
 
   useEffect(() => {
     if (selectedRestaurantId || !restaurantOptions.length) return;
@@ -504,8 +515,7 @@ export default function RbacManagement() {
     if (!stillAvailable) setSelectedRestaurantId(restaurantOptions[0]?.id || "");
   }, [restaurantOptions, selectedRestaurantId]);
 
-  const canManage = isAdmin || isManagerRole(roleName);
-  if (!canManage) {
+  if (!canViewRbac) {
     return <div className="rbac-page"><p className="rbac-empty">Bạn không có quyền xem màn hình phân quyền nhân viên.</p></div>;
   }
 
@@ -556,6 +566,7 @@ export default function RbacManagement() {
           assignStaffRole={rbac.assignStaffRole}
           assigning={rbac.assigning}
           staffListEnabled={rbac.includeStaffList}
+          canAssignRole={canAssignRole}
         />
       ) : null}
 
@@ -570,7 +581,7 @@ export default function RbacManagement() {
           createRole={rbac.createRole}
           updateRole={rbac.updateRole}
           saving={rbac.creatingRole || rbac.updatingRole}
-          isAdmin={isAdmin}
+          canWriteRoles={canWriteRoles}
         />
       ) : null}
     </div>

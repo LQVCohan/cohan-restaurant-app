@@ -5,6 +5,8 @@
 // Restaurant-scoped access must still be checked on the backend, e.g.
 // requireRestaurantAccess(ctx, restaurantId).
 
+import { hasAnyPermission, hasPermission } from "./frontendPermissionAccess";
+
 export const ADMIN_ROLES = new Set(["admin"]);
 export const MANAGER_ROLES = new Set(["manager"]);
 export const HR_ROLES = new Set(["hr"]);
@@ -181,29 +183,22 @@ export const MENU_MANAGEMENT_ACTIONS = {
   COPY_MENU: "menu.copy_menu",
 };
 
-const MENU_MANAGEMENT_ACTION_ROLE_MAP = {
-  [MENU_MANAGEMENT_ACTIONS.VIEW]: ["admin", "manager", "hr", "accountant"],
-  [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.CREATE_ITEM]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.DELETE_ITEM]: ["admin", "manager"],
-
-  [MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE]: ["admin", "manager"],
-
-  [MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP]: ["admin", "manager"],
-
-  [MENU_MANAGEMENT_ACTIONS.CREATE_MENU]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.UPDATE_MENU]: ["admin", "manager"],
-  [MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU]: ["admin", "manager"],
-};
+const MENU_WRITE_ACTIONS = new Set([
+  MENU_MANAGEMENT_ACTIONS.COPY_MENU,
+  MENU_MANAGEMENT_ACTIONS.CREATE_ITEM,
+  MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
+  MENU_MANAGEMENT_ACTIONS.DELETE_ITEM,
+  MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE,
+  MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY,
+  MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP,
+  MENU_MANAGEMENT_ACTIONS.CREATE_MENU,
+  MENU_MANAGEMENT_ACTIONS.UPDATE_MENU,
+  MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU,
+]);
 
 export const canAccessMenuManagementAction = (userOrRole, action) => {
-  const normalizedRole = resolveUserRoleName(userOrRole);
-  if (!normalizedRole || !action) return false;
-
-  const allowedRoles = MENU_MANAGEMENT_ACTION_ROLE_MAP[action];
-  if (!Array.isArray(allowedRoles)) return false;
-
-  return allowedRoles.includes(normalizedRole);
+  if (!action) return false;
+  if (action === MENU_MANAGEMENT_ACTIONS.VIEW) return hasPermission(userOrRole, "menu.read");
+  if (MENU_WRITE_ACTIONS.has(action)) return hasAnyPermission(userOrRole, ["menu.write"]);
+  return false;
 };
