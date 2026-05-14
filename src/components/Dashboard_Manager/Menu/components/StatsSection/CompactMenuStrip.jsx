@@ -60,7 +60,6 @@ const CompactMenuStrip = ({
   onCopyMenu,
   activeMenuId,
   onSelectMenu,
-  onCopyMenu,
 }) => {
   const scrollRef = useRef(null);
   const [internalActiveId, setInternalActiveId] = useState(null);

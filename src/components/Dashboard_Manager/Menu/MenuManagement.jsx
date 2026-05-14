@@ -222,62 +222,7 @@ const MenuManagement = () => {
   const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
   const priceEditSubmitRef = useRef(false);
   const deleteItemSubmitRef = useRef(false);
-  const buildCopyMenuName = useCallback(
-    (sourceMenu) => {
-      const baseName = `${sourceMenu?.name || "Menu"} (bản sao)`;
-      const existingNames = new Set(
-        (menus || []).map((menu) =>
-          String(menu?.name || "")
-            .trim()
-            .toLowerCase(),
-        ),
-      );
 
-      let candidate = baseName;
-      let counter = 2;
-
-      while (existingNames.has(candidate.trim().toLowerCase())) {
-        candidate = `${baseName} ${counter}`;
-        counter += 1;
-      }
-
-      return candidate;
-    },
-    [menus],
-  );
-  const getSuggestedCopyTimeSlot = useCallback(
-    (sourceTimeSlot) => {
-      const usedSlots = new Set((menus || []).map((menu) => menu.timeSlot));
-      const availableSlot = TIME_SLOT_ORDER.find(
-        (slot) => !usedSlots.has(slot),
-      );
-
-      return availableSlot || sourceTimeSlot || "breakfast";
-    },
-    [menus],
-  );
-  const handleCopyMenu = useCallback(
-    (menu) => {
-      if (!menu) return;
-
-      const copyDraft = {
-        __mode: "copy",
-        isCopyDraft: true,
-        sourceMenuId: menu.id || menu._id || null,
-
-        id: null,
-        name: buildCopyMenuName(menu),
-        description: menu.description || "",
-        timeSlot: getSuggestedCopyTimeSlot(menu.timeSlot),
-        categoryMenuId: menu.categoryMenuId || menu.categoryMenu?.id || "",
-        coverImage: menu.coverImage || "",
-        isActive: false,
-      };
-
-      toggleModal("menu", true, copyDraft);
-    },
-    [buildCopyMenuName, getSuggestedCopyTimeSlot],
-  );
   /* --- DATA FETCHING --- */
   const {
     data: mgrData,
@@ -331,7 +276,64 @@ const MenuManagement = () => {
     useConnection: true,
     sort: sortOption,
   });
+  const buildCopyMenuName = useCallback(
+    (sourceMenu) => {
+      const baseName = `${sourceMenu?.name || "Menu"} (bản sao)`;
+      const existingNames = new Set(
+        (menus || []).map((menu) =>
+          String(menu?.name || "")
+            .trim()
+            .toLowerCase(),
+        ),
+      );
 
+      let candidate = baseName;
+      let counter = 2;
+
+      while (existingNames.has(candidate.trim().toLowerCase())) {
+        candidate = `${baseName} ${counter}`;
+        counter += 1;
+      }
+
+      return candidate;
+    },
+    [menus],
+  );
+  const getSuggestedCopyTimeSlot = useCallback(() => {
+    const usedSlots = new Set((menus || []).map((menu) => menu.timeSlot));
+    return TIME_SLOT_ORDER.find((slot) => !usedSlots.has(slot)) || null;
+  }, [menus]);
+  const handleCopyMenu = useCallback(
+    (menu) => {
+      if (!menu) return;
+
+      const suggestedTimeSlot = getSuggestedCopyTimeSlot();
+
+      if (!suggestedTimeSlot) {
+        setMenuSubmitError(
+          "Không thể sao chép vì nhà hàng này đã có đủ 4 thực đơn theo khung giờ. Hãy chỉnh sửa menu hiện có hoặc ẩn một menu trước.",
+        );
+        return;
+      }
+
+      const copyDraft = {
+        __mode: "copy",
+        isCopyDraft: true,
+        sourceMenuId: menu.id || menu._id || null,
+
+        id: null,
+        name: buildCopyMenuName(menu),
+        description: menu.description || "",
+        timeSlot: suggestedTimeSlot,
+        categoryMenuId: menu.categoryMenuId || menu.categoryMenu?.id || "",
+        coverImage: menu.coverImage || "",
+        isActive: false,
+      };
+
+      toggleModal("menu", true, copyDraft);
+    },
+    [buildCopyMenuName, getSuggestedCopyTimeSlot],
+  );
   const shouldLoadCategoryMenus = modals.menu.isOpen || modals.menuGroup.isOpen;
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
     useCategoryManagement({
