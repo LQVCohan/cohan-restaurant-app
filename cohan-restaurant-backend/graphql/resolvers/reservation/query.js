@@ -1,7 +1,8 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Reservation } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function badInput(msg) {
   return new GraphQLError(msg, { extensions: { code: "BAD_USER_INPUT" } });
@@ -31,7 +32,7 @@ export const ReservationQuery = {
       if (!doc) return null;
       if (isReservationOwner(ctx, doc)) return doc;
       if (isAdminOrStaffLike(ctx)) {
-        await requireRestaurantAccess(ctx, doc.restaurantId);
+        await requireRestaurantPermission(ctx, doc.restaurantId, PERMISSIONS.RESERVATION_READ);
         return doc;
       }
       throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
@@ -72,7 +73,7 @@ export const ReservationQuery = {
 
     const rId = toObjectId(restaurantId);
     const tId = toObjectId(tableId);
-    await requireRestaurantAccess(ctx, rId);
+    await requireRestaurantPermission(ctx, rId, PERMISSIONS.RESERVATION_READ);
     const activeStatuses = ["pending_payment", "confirmed", "seated", "pending_change"];
 
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);

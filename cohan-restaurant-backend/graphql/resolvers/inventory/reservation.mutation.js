@@ -9,7 +9,8 @@ import {
 } from "../../../src/services/inventory.service.js";
 
 import { Warehouse } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   if (!mongoose.isValidObjectId(restaurantId)) {
@@ -90,7 +91,7 @@ export default {
   reserveForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
-      await requireRestaurantAccess(ctx, restaurantId);
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId
@@ -112,7 +113,7 @@ export default {
   commitReservationForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
-      await requireRestaurantAccess(ctx, restaurantId);
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId
@@ -134,7 +135,7 @@ export default {
   cancelReservationForOrder: async (_p, { input }, ctx) => {
     try {
       const { restaurantId, orderCode, lines } = validateBaseInput(input);
-      await requireRestaurantAccess(ctx, restaurantId);
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
       const warehouseId = await resolveWarehouseIdOrDefault(
         restaurantId,
         input?.warehouseId

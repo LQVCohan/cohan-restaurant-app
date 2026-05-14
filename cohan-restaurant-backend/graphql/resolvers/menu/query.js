@@ -2,7 +2,9 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Menu, MenuItem, Category } from "../../../models/index.js";
-import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireRoles } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MENU_ITEM_SORTS = new Set([
   "default",
@@ -160,7 +162,7 @@ const appendAndCondition = (query, condition) => {
 export const MenuQuery = {
   menus: async (_p, { restaurantId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_READ);
     return Menu.find({ restaurantId })
       .sort({ timeSlot: 1 })
       .lean({ virtuals: true });
@@ -168,7 +170,7 @@ export const MenuQuery = {
 
   menu: async (_p, { restaurantId, timeSlot }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return null;
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_READ);
     return Menu.findOne({ restaurantId, timeSlot }).lean({ virtuals: true });
   },
 
@@ -187,7 +189,7 @@ export const MenuQuery = {
     ctx
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_READ);
 
     const q = { restaurantId };
 
@@ -228,7 +230,7 @@ export const MenuQuery = {
         pageInfo: { endCursor: null, hasNextPage: false },
       };
     }
-    await requireRestaurantAccess(ctx, filter.restaurantId);
+    await requireRestaurantPermission(ctx, filter.restaurantId, PERMISSIONS.MENU_READ);
 
     const q = { restaurantId: filter.restaurantId };
 
@@ -311,7 +313,7 @@ export const MenuQuery = {
     const q = {};
     if (restaurantId) {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
-      await requireRestaurantAccess(ctx, restaurantId);
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_READ);
       q.restaurantId = restaurantId;
     } else {
       requireRoles(ctx, ["ADMIN"]);

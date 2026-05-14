@@ -1,7 +1,9 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Coupon, VoucherPackage } from "../../../models/index.js";
-import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireRoles } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -37,7 +39,7 @@ export const CouponQuery = {
     if (restaurantId) {
       const rid = toObjectId(restaurantId);
       if (!rid) throw new GraphQLError("Invalid restaurantId");
-      await requireRestaurantAccess(ctx, rid);
+      await requireRestaurantPermission(ctx, rid, PERMISSIONS.COUPON_READ);
       return Coupon.find({ restaurantId: rid, ...activeQuery })
         .sort({ createdAt: -1 })
         .skip(offset)
@@ -58,7 +60,7 @@ export const CouponQuery = {
     if (!norm) return null;
 
     const rid = requireRestaurantIdForCouponLookup(restaurantId);
-    await requireRestaurantAccess(ctx, rid);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.COUPON_READ);
     return Coupon.findOne({ code: norm, restaurantId: rid }).lean({ virtuals: true });
   },
 
@@ -66,7 +68,7 @@ export const CouponQuery = {
     if (restaurantId) {
       const rid = toObjectId(restaurantId);
       if (!rid) throw new GraphQLError("Invalid restaurantId");
-      await requireRestaurantAccess(ctx, rid);
+      await requireRestaurantPermission(ctx, rid, PERMISSIONS.COUPON_READ);
       return VoucherPackage.find({ restaurantId: rid })
         .sort({ level: 1, createdAt: -1 })
         .lean({ virtuals: true });

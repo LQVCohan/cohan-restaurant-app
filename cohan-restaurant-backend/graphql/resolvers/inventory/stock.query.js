@@ -1,7 +1,8 @@
 // src/graphql/resolvers/inventory/stockItem.query.js
 import mongoose from "mongoose";
 import { StockItem, Ingredient, Supply } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 export default {
   stockItems: async (
@@ -10,7 +11,7 @@ export default {
   , ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_READ);
 
     const q = { restaurantId, ingredientId: { $exists: true, $ne: null } };
 
@@ -51,7 +52,7 @@ export default {
   supplyStockItems: async (_p, { restaurantId, supplyId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_READ);
 
     const q = { restaurantId, supplyId: { $exists: true, $ne: null } };
     if (supplyId && mongoose.isValidObjectId(supplyId)) {
