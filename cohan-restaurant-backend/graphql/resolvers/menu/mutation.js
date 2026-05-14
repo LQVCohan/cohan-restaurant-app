@@ -37,6 +37,7 @@ function getActorId(ctx) {
 }
 
 async function writeAuditLog({
+  restaurantId = null,
   entity,
   entityId,
   action,
@@ -47,6 +48,7 @@ async function writeAuditLog({
   if (!entity || !entityId || !action) return;
 
   const payload = {
+    restaurantId,
     entity,
     entityId,
     action,
@@ -138,6 +140,7 @@ export const MenuMutation = {
       { new: true, upsert: true, runValidators: true },
     ).lean({ virtuals: true });
     await writeAuditLog({
+      restaurantId,
       entity: "Menu",
       entityId: doc._id || doc.id,
       action: beforeMenu ? "update" : "create",
@@ -300,6 +303,7 @@ export const MenuMutation = {
         getters: true,
       });
       await writeAuditLog({
+        restaurantId,
         entity: "MenuItem",
         entityId: doc._id || doc.id,
         action: "create",
@@ -434,6 +438,7 @@ export const MenuMutation = {
           .session(session);
       });
       await writeAuditLog({
+        restaurantId: existing.restaurantId,
         entity: "MenuItem",
         entityId: updatedItem._id || updatedItem.id,
         action: "update",
@@ -494,6 +499,7 @@ export const MenuMutation = {
 
         await MenuItem.deleteOne({ _id: item._id }).session(session);
         await writeAuditLog({
+          restaurantId: item.restaurantId,
           entity: "MenuItem",
           entityId: item._id,
           action: "delete",
@@ -560,7 +566,10 @@ export const MenuMutation = {
         throw new GraphQLError("orderCounter must be >= 0");
       patch.orderCounter = n;
     }
-
+    const beforeItem = await MenuItem.findOne({
+      _id: menuItemId,
+      restaurantId,
+    }).lean();
     const doc = await MenuItem.findOneAndUpdate(
       { _id: menuItemId, restaurantId },
       Object.keys(patch).length ? { $set: patch } : {},
@@ -568,6 +577,36 @@ export const MenuMutation = {
     ).lean({ virtuals: true });
 
     if (!doc) throw new GraphQLError("MenuItem not found");
+    await writeAuditLog({
+      restaurantId,
+      entity: "MenuItem",
+      entityId: doc._id || doc.id,
+      action: "update",
+      ctx,
+      diff: {
+        type: "basic_update",
+        before: beforeItem
+          ? {
+              name: beforeItem.name,
+              description: beforeItem.description,
+              categoryId: beforeItem.categoryId,
+              status: beforeItem.status,
+              point: beforeItem.point,
+              rate: beforeItem.rate,
+              orderCounter: beforeItem.orderCounter,
+            }
+          : null,
+        after: {
+          name: doc.name,
+          description: doc.description,
+          categoryId: doc.categoryId,
+          status: doc.status,
+          point: doc.point,
+          rate: doc.rate,
+          orderCounter: doc.orderCounter,
+        },
+      },
+    });
     return doc;
   },
 
@@ -586,6 +625,7 @@ export const MenuMutation = {
 
     if (!item) throw new GraphQLError("MenuItem not found");
     await writeAuditLog({
+      restaurantId: existing.restaurantId,
       entity: "MenuItem",
       entityId: item._id || item.id,
       action: "update",
@@ -742,6 +782,7 @@ export const MenuMutation = {
         await Promise.all(
           updatedItems.map((item) =>
             writeAuditLog({
+              restaurantId: item.restaurantId,
               entity: "MenuItem",
               entityId: item._id || item.id,
               action: "update",

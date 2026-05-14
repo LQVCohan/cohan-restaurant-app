@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { AuditLog } from "../../../models/index.js";
-import { requireAuth } from "../../guards.js";
+import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 
 const MAX_LIMIT = 100;
 
@@ -23,7 +23,11 @@ function normalizeOffset(offset) {
 
 function buildFilter(filter = {}) {
   const query = {};
-
+  if (filter.restaurantId) {
+    if (!isOid(filter.restaurantId))
+      throw new GraphQLError("Invalid restaurantId");
+    query.restaurantId = filter.restaurantId;
+  }
   if (filter.entity) query.entity = String(filter.entity).trim();
 
   if (filter.action) query.action = String(filter.action).trim();
@@ -44,7 +48,11 @@ function buildFilter(filter = {}) {
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
-      requireAuth(ctx);
+      if (filter?.restaurantId) {
+        await requireRestaurantAccess(ctx, filter.restaurantId);
+      } else {
+        requireRoles(ctx, ["ADMIN"]);
+      }
 
       const query = buildFilter(filter);
       const safeLimit = normalizeLimit(limit);

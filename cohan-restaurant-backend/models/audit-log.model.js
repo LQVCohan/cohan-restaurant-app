@@ -4,6 +4,7 @@ import BaseSchemaModel from "./baseSchemaModel.js";
 
 const AuditLogSchema = BaseSchemaModel({
   entity: { type: String, required: true },
+  restaurantId: { type: Types.ObjectId, ref: "Restaurant", index: true },
   entityId: { type: Types.ObjectId, required: true },
   action: {
     type: String,

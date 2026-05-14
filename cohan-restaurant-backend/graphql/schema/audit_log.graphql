@@ -1,5 +1,6 @@
 type AuditLog {
   id: ID!
+  restaurantId: ID
   entity: String!
   entityId: ID!
   action: String!
@@ -10,6 +11,7 @@ type AuditLog {
 }
 
 input AuditLogFilterInput {
+  restaurantId: ID
   entity: String
   entityId: ID
   action: String
