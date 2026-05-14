@@ -19,19 +19,198 @@ describe("Payroll runtime correctness", () => {
     vi.resetModules();
     vi.clearAllMocks();
 
-    modelMocks.Staff.find.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: "s1", fullName: "A", employeeCode: "E1", baseSalary: 10000000 }]) });
-    modelMocks.Shift.find.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
+    modelMocks.Staff.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: "s1",
+          fullName: "A",
+          employeeCode: "E1",
+          baseSalary: 10000000,
+        },
+      ]),
+    });
+    modelMocks.Shift.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+
+    modelMocks.Timesheet.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+
     modelMocks.LeaveRequest.aggregate.mockResolvedValue([]);
-    modelMocks.PayrollAdjustment.find.mockResolvedValue([]);
-    modelMocks.Restaurant.findById.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue({ address: { city: "Ha Noi" } }) });
-    modelMocks.PayrollSetting.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+
+    modelMocks.PayrollAdjustment.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.Restaurant.findById.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ address: { city: "Ha Noi" } }),
+    });
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    });
   });
+  it("classifies approved overtime as holiday, weekend, normal and night work from settings", async () => {
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        restaurantId: "507f1f77bcf86cd799439011",
+        standardWorkDaysPerMonth: 26,
+        standardHoursPerDay: 8,
+        overtimeMultiplierWeekday: 1.5,
+        overtimeMultiplierWeekend: 2,
+        overtimeMultiplierHoliday: 3,
+        latenessPenaltyPerMinute: 0,
+        earlyLeavePenaltyPerMinute: 0,
+        unpaidLeaveDeductionPerDay: 0,
+        defaultAllowance: 0,
+        defaultBonus: 0,
+        defaultDeduction: 0,
+        weekendDays: ["SAT"],
+        holidayDates: ["2026-04-30"],
+        nightShiftStart: "22:00",
+        nightShiftEnd: "06:00",
+        nightShiftAllowanceRate: 0.3,
+        enablePersonalIncomeTax: false,
+        personalIncomeTaxRate: 0,
+        personalIncomeTaxFreeThreshold: 0,
+        allowPaidLeaveInWorkDays: true,
+      }),
+    });
 
+    modelMocks.Timesheet.aggregate.mockResolvedValue([
+      {
+        _id: "s1",
+        totalHours: 24,
+        totalWage: 100,
+        totalAmount: 100,
+        totalLatenessMinutes: 0,
+        totalEarlyLeaveMinutes: 0,
+        workedDateKeys: ["2026-04-10", "2026-04-11", "2026-04-30"],
+      },
+    ]);
+
+    modelMocks.Timesheet.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        {
+          employeeId: "s1",
+          workDate: new Date("2026-04-10T12:00:00+07:00"),
+          actualCheckInAt: new Date("2026-04-10T22:00:00+07:00"),
+          actualCheckOutAt: new Date("2026-04-11T06:00:00+07:00"),
+          isOffSchedule: false,
+          overtimeApprovalStatus: "approved",
+          approvedOvertimeMinutes: 60,
+        },
+        {
+          employeeId: "s1",
+          workDate: new Date("2026-04-11T12:00:00+07:00"),
+          actualCheckInAt: new Date("2026-04-11T09:00:00+07:00"),
+          actualCheckOutAt: new Date("2026-04-11T18:00:00+07:00"),
+          isOffSchedule: false,
+          overtimeApprovalStatus: "approved",
+          approvedOvertimeMinutes: 120,
+        },
+        {
+          employeeId: "s1",
+          workDate: new Date("2026-04-30T00:00:00.000Z"),
+          actualCheckInAt: new Date("2026-04-30T09:00:00+07:00"),
+          actualCheckOutAt: new Date("2026-04-30T18:00:00+07:00"),
+          isOffSchedule: false,
+          overtimeApprovalStatus: "approved",
+          approvedOvertimeMinutes: 180,
+        },
+      ]),
+    });
+
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+
+    const items = await buildPayrollItemsForRange({
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
+
+    const breakdown = items[0].breakdown;
+
+    expect(breakdown.overtimeNormalHours).toBe(1);
+    expect(breakdown.overtimeWeekendHours).toBe(2);
+    expect(breakdown.overtimeHolidayHours).toBe(3);
+    expect(breakdown.nightHours).toBe(8);
+    expect(breakdown.overtimeNightHours).toBe(1);
+  });
+  it("excludes pending or rejected off-schedule rows from overtime and night breakdown", async () => {
+    modelMocks.Timesheet.aggregate.mockResolvedValue([
+      {
+        _id: "s1",
+        totalHours: 0,
+        totalWage: 0,
+        totalAmount: 0,
+        totalLatenessMinutes: 0,
+        totalEarlyLeaveMinutes: 0,
+        workedDateKeys: [],
+      },
+    ]);
+
+    modelMocks.Timesheet.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        {
+          employeeId: "s1",
+          workDate: new Date("2026-04-10T00:00:00.000Z"),
+          actualCheckInAt: new Date("2026-04-10T22:00:00+07:00"),
+          actualCheckOutAt: new Date("2026-04-11T06:00:00+07:00"),
+          isOffSchedule: true,
+          approved: false,
+          offScheduleApprovalStatus: "rejected",
+          overtimeApprovalStatus: "approved",
+          approvedOvertimeMinutes: 120,
+        },
+      ]),
+    });
+
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+
+    const items = await buildPayrollItemsForRange({
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
+
+    const breakdown = items[0].breakdown;
+
+    expect(breakdown.overtimeNormalHours).toBe(0);
+    expect(breakdown.overtimeWeekendHours).toBe(0);
+    expect(breakdown.overtimeHolidayHours).toBe(0);
+    expect(breakdown.nightHours).toBe(0);
+    expect(breakdown.overtimeNightHours).toBe(0);
+  });
   it("builds pipeline to use approved overtime minutes and explicit off-schedule include gating", async () => {
-    modelMocks.Timesheet.aggregate.mockResolvedValue([{ _id: "s1", totalHours: 8, totalAmount: 100, overtimeNormalMinutes: 60, overtimeWeekendMinutes: 60, overtimeHolidayMinutes: 0, nightMinutes: 0, overtimeNightMinutes: 0, workedDateKeys: ["2026-04-06"] }]);
+    modelMocks.Timesheet.aggregate.mockResolvedValue([
+      {
+        _id: "s1",
+        totalHours: 8,
+        totalAmount: 100,
+        overtimeNormalMinutes: 60,
+        overtimeWeekendMinutes: 60,
+        overtimeHolidayMinutes: 0,
+        nightMinutes: 0,
+        overtimeNightMinutes: 0,
+        workedDateKeys: ["2026-04-06"],
+      },
+    ]);
 
-    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
-    const items = await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+    const items = await buildPayrollItemsForRange({
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
 
     const pipeline = modelMocks.Timesheet.aggregate.mock.calls[0][0];
     const pipelineString = JSON.stringify(pipeline);
@@ -50,10 +229,17 @@ describe("Payroll runtime correctness", () => {
   it("builds off-schedule payroll gating that excludes pending and rejected but includes approved", async () => {
     modelMocks.Timesheet.aggregate.mockResolvedValue([]);
 
-    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
-    await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
 
-    const addFields = modelMocks.Timesheet.aggregate.mock.calls[0][0].find((stage) => stage.$addFields);
+    const addFields = modelMocks.Timesheet.aggregate.mock.calls[0][0].find(
+      (stage) => stage.$addFields,
+    );
     expect(addFields.$addFields.includeInPayroll).toEqual({
       $or: [
         { $ne: ["$isOffSchedule", true] },
@@ -66,57 +252,108 @@ describe("Payroll runtime correctness", () => {
   it("gates late and early leave minutes by payroll inclusion", async () => {
     modelMocks.Timesheet.aggregate.mockResolvedValue([]);
 
-    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
-    await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
 
-    const group = modelMocks.Timesheet.aggregate.mock.calls[0][0].find((stage) => stage.$group);
+    const group = modelMocks.Timesheet.aggregate.mock.calls[0][0].find(
+      (stage) => stage.$group,
+    );
     expect(group.$group.totalLatenessMinutes).toEqual({
       $sum: {
-        $cond: [
-          "$includeInPayroll",
-          { $ifNull: ["$latenessMinutes", 0] },
-          0,
-        ],
+        $cond: ["$includeInPayroll", { $ifNull: ["$latenessMinutes", 0] }, 0],
       },
     });
     expect(group.$group.totalEarlyLeaveMinutes).toEqual({
       $sum: {
-        $cond: [
-          "$includeInPayroll",
-          { $ifNull: ["$earlyLeaveMinutes", 0] },
-          0,
-        ],
+        $cond: ["$includeInPayroll", { $ifNull: ["$earlyLeaveMinutes", 0] }, 0],
       },
     });
   });
-
 });
 
 describe("Payroll validation correctness", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    modelMocks.PayrollPeriod.findById.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "p1", restaurantId: "507f1f77bcf86cd799439011", startDate: new Date("2026-04-01"), endDate: new Date("2026-04-30") }) });
-    modelMocks.OvertimeRequest.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
-    modelMocks.PayrollSetting.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    modelMocks.PayrollItem.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "i1", employeeId: "s1", breakdown: { baseSalary: 1, workDays: 26 } }]) });
-    modelMocks.Staff.find.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
-    modelMocks.Shift.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
-    modelMocks.LeaveRequest.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
-    modelMocks.PayrollAdjustment.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
-    modelMocks.AttendanceCorrectionRequest.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: "c1", employeeId: { _id: "s1", fullName: "A" } }]) });
+    modelMocks.PayrollPeriod.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "p1",
+        restaurantId: "507f1f77bcf86cd799439011",
+        startDate: new Date("2026-04-01"),
+        endDate: new Date("2026-04-30"),
+      }),
+    });
+    modelMocks.OvertimeRequest.find.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    });
+    modelMocks.PayrollItem.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: "i1",
+          employeeId: "s1",
+          breakdown: { baseSalary: 1, workDays: 26 },
+        },
+      ]),
+    });
+    modelMocks.Staff.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.Shift.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.Timesheet.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.LeaveRequest.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.PayrollAdjustment.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.AttendanceCorrectionRequest.find.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      lean: vi
+        .fn()
+        .mockResolvedValue([
+          { _id: "c1", employeeId: { _id: "s1", fullName: "A" } },
+        ]),
+    });
   });
 
   it("adds blocking issues for pending off-schedule attendance and unapproved overtime", async () => {
     let call = 0;
-    modelMocks.Timesheet.find.mockImplementation(() => ({ populate: vi.fn().mockReturnThis(), lean: vi.fn().mockImplementation(async () => {
-      call += 1;
-      if (call === 1) return [{ _id: "t-ot", employeeId: { _id: "s1", fullName: "A" } }];
-      if (call === 2) return [{ _id: "t-off", employeeId: { _id: "s1", fullName: "A" }, isOffSchedule: true, approved: false }];
-      return [];
-    }) }));
+    modelMocks.Timesheet.find.mockImplementation(() => ({
+      populate: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockImplementation(async () => {
+        call += 1;
+        if (call === 1)
+          return [{ _id: "t-ot", employeeId: { _id: "s1", fullName: "A" } }];
+        if (call === 2)
+          return [
+            {
+              _id: "t-off",
+              employeeId: { _id: "s1", fullName: "A" },
+              isOffSchedule: true,
+              approved: false,
+            },
+          ];
+        return [];
+      }),
+    }));
 
-    const { validatePayrollPeriod } = await import("../../src/services/payroll/payrollValidation.service.js");
+    const { validatePayrollPeriod } =
+      await import("../../src/services/payroll/payrollValidation.service.js");
     const result = await validatePayrollPeriod("p1");
     const codes = result.issues.map((i) => i.code);
 
@@ -167,7 +404,9 @@ describe("Payroll validation correctness", () => {
           return approvedTimesheets.filter(
             (timesheet) =>
               Number(timesheet.overtimeMinutes || 0) > 0 &&
-              (timesheet.approvedOvertimeMinutes == null || Number(timesheet.approvedOvertimeMinutes) <= 0 || timesheet.overtimeApprovalStatus !== "approved"),
+              (timesheet.approvedOvertimeMinutes == null ||
+                Number(timesheet.approvedOvertimeMinutes) <= 0 ||
+                timesheet.overtimeApprovalStatus !== "approved"),
           );
         }
 
@@ -176,8 +415,14 @@ describe("Payroll validation correctness", () => {
             (timesheet) =>
               timesheet.isOffSchedule === true &&
               timesheet.approved !== true &&
-              !["approved", "rejected"].includes(timesheet.offScheduleApprovalStatus) &&
-              (Number(timesheet.workedMinutes || 0) > 0 || Number(timesheet.hours || 0) > 0 || Number(timesheet.amount || 0) > 0 || Boolean(timesheet.actualCheckInAt) || Boolean(timesheet.actualCheckOutAt)),
+              !["approved", "rejected"].includes(
+                timesheet.offScheduleApprovalStatus,
+              ) &&
+              (Number(timesheet.workedMinutes || 0) > 0 ||
+                Number(timesheet.hours || 0) > 0 ||
+                Number(timesheet.amount || 0) > 0 ||
+                Boolean(timesheet.actualCheckInAt) ||
+                Boolean(timesheet.actualCheckOutAt)),
           );
         }
 
@@ -185,7 +430,8 @@ describe("Payroll validation correctness", () => {
       }),
     }));
 
-    const { validatePayrollPeriod } = await import("../../src/services/payroll/payrollValidation.service.js");
+    const { validatePayrollPeriod } =
+      await import("../../src/services/payroll/payrollValidation.service.js");
     const result = await validatePayrollPeriod("p1");
     const codes = result.issues.map((i) => i.code);
 
