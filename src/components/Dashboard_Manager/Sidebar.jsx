@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from "react";
 import "./Styles/Sidebar.scss";
 import { AuthContext } from "@/context/AuthContext";
-import { filterNavigationByRole } from "@/utils/frontendRoleAccess";
+import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
 const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
@@ -10,20 +10,20 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
     {
       title: "Tổng quan",
       items: [
-        { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", roles: ["admin", "manager", "hr", "accountant"] },
-        { id: "analytics", icon: "📈", label: "Phân tích", page: "Phân tích", roles: ["admin", "manager"] },
+        { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", permissions: ["dashboard.read", "report.read"] },
+        { id: "analytics", icon: "📈", label: "Phân tích", page: "Phân tích", permissions: ["report.read"] },
       ],
     },
     {
       title: "Quản lý",
       items: [
-        { id: "orders", roles: ["admin", "manager"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
-        { id: "menu", roles: ["admin", "manager"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
-        { id: "inventory", roles: ["admin", "manager"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
-        { id: "tables", roles: ["admin", "manager"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
+        { id: "orders", permissions: ["order.read"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
+        { id: "menu", permissions: ["menu.read"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
+        { id: "inventory", permissions: ["inventory.read", "stock.read"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
+        { id: "tables", permissions: ["table.read"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
         {
           id: "restaurant-info-management",
-          roles: ["admin", "manager"],
+          permissions: ["restaurant.read"],
           icon: "🏪",
           label: "Quản lý thông tin nhà hàng",
           page: "Quản lý thông tin nhà hàng",
@@ -33,18 +33,18 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
     {
       title: "Nhân sự",
       items: [
-        { id: "staff", roles: ["admin", "manager", "hr"], icon: "👥", label: "Nhân viên", page: "Nhân viên" },
-        { id: "rbac", roles: ["admin", "manager"], icon: "🛡️", label: "Phân quyền nhân viên", page: "Phân quyền nhân viên" },
+        { id: "staff", permissions: ["staff.read"], icon: "👥", label: "Nhân viên", page: "Nhân viên" },
+        { id: "rbac", permissions: ["role.read", "permission.read", "staff.write"], icon: "🛡️", label: "Phân quyền nhân viên", page: "Phân quyền nhân viên" },
         {
           id: "schedules",
-          roles: ["admin", "manager"],
+          permissions: ["shift.read"],
           icon: "📅",
           label: "Lịch làm việc",
           page: "Lịch làm việc",
         },
         {
           id: "payroll",
-          roles: ["admin", "manager", "accountant"],
+          permissions: ["payroll.read"],
           icon: "💰",
           label: "Lương thưởng",
           page: "Lương thưởng",
@@ -56,26 +56,26 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "customers",
-          roles: ["admin", "manager"],
+          permissions: ["customer.read", "staff.read"],
           icon: "👤",
           label: "Khách hàng",
           page: "Khách hàng",
         },
         {
           id: "customer-analytics",
-          roles: ["admin", "manager"],
+          permissions: ["report.read"],
           icon: "🧠",
           label: "Phân tích người dùng",
           page: "Phân tích người dùng",
         },
         {
           id: "promotions",
-          roles: ["admin", "manager"],
+          permissions: ["promotion.read", "coupon.read"],
           icon: "🎁",
           label: "Khuyến mãi",
           page: "Chương trình khuyến mãi",
         },
-        { id: "reviews", roles: ["admin", "manager"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
+        { id: "reviews", permissions: ["review.read", "report.read"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
       ],
     },
     {
@@ -83,12 +83,12 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "reports",
-          roles: ["admin", "manager"],
+          permissions: ["report.read"],
           icon: "📊",
           label: "Báo cáo tổng hợp",
           page: "Báo cáo",
         },
-        { id: "finance", roles: ["admin", "manager", "accountant"], icon: "💳", label: "Tài chính", page: "Tài chính" },
+        { id: "finance", permissions: ["payment.read"], icon: "💳", label: "Tài chính", page: "Tài chính" },
       ],
     },
     {
@@ -97,7 +97,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
         { id: "settings", roles: ["admin"], icon: "⚙️", label: "Cài đặt", page: "Cài đặt" },
         {
           id: "print-management",
-          roles: ["admin", "manager"],
+          permissions: ["print.read", "report.read"],
           icon: "🖨️",
           label: "Quản lý in ấn",
           page: "Quản lý in ấn",
@@ -108,7 +108,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
   ];
 
 
-  const visibleSections = filterNavigationByRole(navigationSections, user?.roleName || user?.role?.slug);
+  const visibleSections = filterNavigationByPermissionAccess(navigationSections, user);
 
   // Handle navigation item click
   const handleItemClick = (item) => {
