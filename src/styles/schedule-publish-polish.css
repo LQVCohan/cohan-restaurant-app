@@ -1,0 +1,311 @@
+/* =========================================================
+   SCHEDULE PUBLISH / REOPEN POLISH
+   Final manager confirmation dialogs for publishing schedules.
+   ========================================================= */
+
+.manager-page-shell--schedules .publish-confirm-backdrop {
+  background: rgba(15, 23, 42, 0.58) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-card,
+.manager-page-shell--schedules .schedule-publish-modal {
+  width: min(860px, 94vw) !important;
+  max-height: min(86vh, 760px) !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 34px 90px rgba(15, 23, 42, 0.32) !important;
+  overflow: hidden !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-icon {
+  width: 3rem !important;
+  height: 3rem !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
+  color: #4f46e5 !important;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.18) !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-content {
+  padding: 1.05rem !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-content h3,
+.manager-page-shell--schedules .schedule-publish-modal__header h3 {
+  margin: 0 !important;
+  color: #0f172a !important;
+  font-size: 1.22rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-content p,
+.manager-page-shell--schedules .schedule-publish-modal__header p {
+  color: #64748b !important;
+  font-size: 0.84rem !important;
+  line-height: 1.45 !important;
+  font-weight: 680 !important;
+}
+
+.manager-page-shell--schedules .publish-warning-groups {
+  display: grid !important;
+  gap: 0.72rem !important;
+  max-height: min(48vh, 390px) !important;
+  overflow: auto !important;
+  padding-right: 0.2rem !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group {
+  position: relative;
+  padding: 0.82rem !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 24px rgba(249, 115, 22, 0.07) !important;
+  overflow: hidden;
+}
+
+.manager-page-shell--schedules .publish-warning-group::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f97316;
+}
+
+.manager-page-shell--schedules .publish-warning-group:has(.critical),
+.manager-page-shell--schedules .publish-warning-group.critical {
+  border-color: #fecaca !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%) !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group:has(.critical)::before,
+.manager-page-shell--schedules .publish-warning-group.critical::before {
+  background: #ef4444;
+}
+
+.manager-page-shell--schedules .publish-warning-group__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.8rem !important;
+  margin-bottom: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group__header h4 {
+  margin: 0 !important;
+  color: #7c2d12 !important;
+  font-size: 0.9rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group__header span,
+.manager-page-shell--schedules .publish-minhours-more {
+  min-width: 1.85rem;
+  text-align: center;
+  border-radius: 999px !important;
+  padding: 0.2rem 0.5rem !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+  border: 1px solid #fed7aa !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: 1.55rem minmax(0, 1fr) !important;
+  gap: 0.52rem !important;
+  align-items: start !important;
+  padding: 0.56rem 0.62rem !important;
+  border-radius: 14px !important;
+  border: 1px solid #ffedd5 !important;
+  background: rgba(255, 247, 237, 0.75) !important;
+  color: #7c2d12 !important;
+  text-align: left !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.manager-page-shell--schedules .publish-issue-row + .publish-issue-row {
+  margin-top: 0.42rem !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row:hover,
+.manager-page-shell--schedules .publish-issue-row:focus-visible {
+  transform: translateY(-1px);
+  border-color: #fb923c !important;
+  box-shadow: 0 10px 22px rgba(249, 115, 22, 0.12) !important;
+  outline: none !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row.critical,
+.manager-page-shell--schedules .publish-issue-row.danger {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #991b1b !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row.compact {
+  grid-template-columns: minmax(0, 1fr) !important;
+  background: #ffffff !important;
+}
+
+.manager-page-shell--schedules .publish-issue-icon {
+  width: 1.55rem !important;
+  height: 1.55rem !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffedd5 !important;
+  color: #ea580c !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row strong {
+  display: block !important;
+  color: inherit !important;
+  font-size: 0.8rem !important;
+  font-weight: 950 !important;
+  line-height: 1.28 !important;
+}
+
+.manager-page-shell--schedules .publish-issue-row span {
+  display: block !important;
+  margin-top: 0.1rem !important;
+  color: currentColor !important;
+  opacity: 0.86 !important;
+  font-size: 0.73rem !important;
+  line-height: 1.34 !important;
+  font-weight: 720 !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group__toggle {
+  margin-top: 0.56rem !important;
+  height: 2rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #fed7aa !important;
+  background: #ffffff !important;
+  color: #c2410c !important;
+  padding: 0 0.72rem !important;
+  font-size: 0.76rem !important;
+  font-weight: 900 !important;
+}
+
+.manager-page-shell--schedules .publish-warning-group__toggle:hover {
+  background: #fff7ed !important;
+  border-color: #fb923c !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-error {
+  margin-top: 0.7rem !important;
+  padding: 0.6rem 0.7rem !important;
+  border-radius: 14px !important;
+  background: #fff1f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #991b1b !important;
+  font-size: 0.78rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-modal__footer,
+.manager-page-shell--schedules .publish-confirm-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.8rem !important;
+  padding-top: 0.85rem !important;
+  margin-top: 0.85rem !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.48rem !important;
+  color: #334155 !important;
+  font-size: 0.8rem !important;
+  font-weight: 820 !important;
+  line-height: 1.35 !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-row input,
+.manager-page-shell--schedules .time-change-reason input {
+  accent-color: #4f46e5 !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-actions button,
+.manager-page-shell--schedules .schedule-publish-modal__footer button {
+  min-height: 2.3rem !important;
+  border-radius: 999px !important;
+  font-size: 0.82rem !important;
+  font-weight: 950 !important;
+  padding: 0 0.95rem !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-actions .btn-secondary,
+.manager-page-shell--schedules .schedule-publish-modal__footer .btn-secondary {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-actions .btn-primary,
+.manager-page-shell--schedules .schedule-publish-modal__footer .btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  border-color: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.22) !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-actions .btn-primary:hover:not(:disabled),
+.manager-page-shell--schedules .schedule-publish-modal__footer .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca, #3730a3) !important;
+}
+
+.manager-page-shell--schedules .time-change-reason {
+  display: grid !important;
+  gap: 0.42rem !important;
+  margin-top: 0.72rem !important;
+  color: #0f172a !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+}
+
+.manager-page-shell--schedules .time-change-reason span {
+  color: #ef4444 !important;
+}
+
+.manager-page-shell--schedules .time-change-reason textarea {
+  min-height: 5.2rem !important;
+  resize: vertical !important;
+  border-radius: 15px !important;
+  border: 1px solid #dbe3ef !important;
+  background: #ffffff !important;
+  padding: 0.66rem 0.72rem !important;
+  color: #0f172a !important;
+  font-size: 0.82rem !important;
+  font-weight: 760 !important;
+}
+
+.manager-page-shell--schedules .time-change-reason textarea:focus {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+  outline: none !important;
+}
+
+@media (max-width: 720px) {
+  .manager-page-shell--schedules .schedule-publish-modal__footer,
+  .manager-page-shell--schedules .publish-confirm-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .manager-page-shell--schedules .publish-confirm-actions button,
+  .manager-page-shell--schedules .schedule-publish-modal__footer button {
+    width: 100% !important;
+  }
+}
