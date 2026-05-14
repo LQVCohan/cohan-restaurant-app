@@ -382,8 +382,25 @@ const MenuManagement = () => {
 
   const handleSubmitMenu = async (form) => {
     if (!currentRestaurant) return;
+
     setMenuSubmitError("");
+
+    const isCreatingMenu = !form?.id;
+    const hasMenuInSelectedSlot = (menus || []).some((menu) => {
+      const sameSlot = menu?.timeSlot === form.timeSlot;
+      const sameMenu = form?.id && String(menu?.id) === String(form.id);
+      return sameSlot && !sameMenu;
+    });
+
+    if (isCreatingMenu && hasMenuInSelectedSlot) {
+      setMenuSubmitError(
+        "Khung giờ này đã có thực đơn. Vui lòng chọn khung giờ còn trống để tạo bản sao hoặc tạo menu mới.",
+      );
+      return;
+    }
+
     setIsSavingMenu(true);
+
     try {
       await ensureMenu({
         restaurantId: currentRestaurant,
@@ -394,6 +411,7 @@ const MenuManagement = () => {
         categoryMenuId: form.categoryMenuId || null,
         isActive: form.isActive || false,
       });
+
       await refetchMenus?.();
       toggleModal("menu", false);
     } catch (err) {
