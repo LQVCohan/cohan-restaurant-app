@@ -175,6 +175,27 @@ const AutoScheduleModal = ({
                 Preview và apply sẽ chặn nhân sự vượt ngưỡng giờ/tuần này.
               </p>
             </div>
+
+            <div className="config-card auto-workflow-card">
+              <div className="config-head">
+                <Sparkles size={16} />
+                <span>Quy trình áp dụng</span>
+              </div>
+              <ol>
+                <li>
+                  <strong>1</strong>
+                  <span>Phân tích nhu cầu và xung đột lịch.</span>
+                </li>
+                <li>
+                  <strong>2</strong>
+                  <span>Manager chọn ca hợp lệ trong preview.</span>
+                </li>
+                <li>
+                  <strong>3</strong>
+                  <span>Lưu phân công và giữ cảnh báo ca còn thiếu.</span>
+                </li>
+              </ol>
+            </div>
           </div>
 
           <div className="config-card auto-config-constraints">
