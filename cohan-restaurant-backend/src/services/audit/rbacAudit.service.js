@@ -48,6 +48,10 @@ function idToObjectId(value) {
   return undefined;
 }
 
+function hasSafeFields(source) {
+  return SAFE_FIELDS.some((field) => source[field] !== undefined);
+}
+
 function simplifyValue(value) {
   if (Array.isArray(value)) return value.map(simplifyValue);
   if (!value || typeof value !== "object") return value;
@@ -70,7 +74,8 @@ export function sanitizeAuditPayload(payload) {
   if (!source || typeof source !== "object") return source ?? null;
 
   const output = {};
-  for (const field of SAFE_FIELDS) {
+  const fields = hasSafeFields(source) ? SAFE_FIELDS : Object.keys(source);
+  for (const field of fields) {
     if (source[field] === undefined) continue;
     if (SENSITIVE_KEYS.has(field)) continue;
     const key = field === "_id" ? "id" : field;
@@ -132,7 +137,7 @@ export async function logRbacAudit({
       restaurantId: normalizedRestaurantId,
       before: sanitizedBefore,
       after: sanitizedAfter,
-      metadata: sanitizeAuditPayload(metadata) || metadata || undefined,
+      metadata: metadata === undefined ? undefined : sanitizeAuditPayload(metadata),
       ipAddress: getIp(ctx),
       userAgent: getUserAgent(ctx),
       entity: targetType,
