@@ -13,7 +13,14 @@
   .add-modal-content > .submit-error,
   .add-modal-content > .actions {
     grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+  }
+
+  .add-modal-content > .shift-info-box {
+    grid-row: 1 !important;
+  }
+
+  .add-modal-content > .published-change-warning {
+    grid-row: 2 !important;
   }
 
   .add-modal-content > .form-group {
@@ -38,7 +45,20 @@
 
   .add-modal-content > .form-group:has(.published-check-row) {
     grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+    grid-row: 5 !important;
+  }
+
+  .add-modal-content > .submit-error {
+    grid-row: 98 !important;
+  }
+
+  .add-modal-content > .actions {
+    grid-row: 99 !important;
+    align-self: end !important;
+  }
+
+  .add-modal-content .staff-list {
+    max-height: 330px !important;
   }
 }
 
