@@ -2,7 +2,7 @@
 title: FoodHub Order Flow – Customer to POS Integration
 author: PT SHOP
 tags: [order, menu, POS, restaurant, inventory]
-lastUpdated: 2025-10-26
+lastUpdated: 2026-05-15
 ---
 
 # 🍽️ FoodHub Order Flow – Customer to POS Integration
@@ -10,7 +10,7 @@ lastUpdated: 2025-10-26
 ## 1. Tổng quan ý tưởng
 
 Hệ thống cho phép **khách hàng trong nhà hàng** đặt món trực tiếp thông qua **ứng dụng di động**, hoặc nhân viên order giúp trên cùng hệ thống.  
-Toàn bộ quy trình đảm bảo **menu theo từng buổi**, **đồng bộ kho nguyên liệu**, **cảnh báo hết món**, và **tích hợp POS → bếp/bar/grill** trong thời gian thực.
+Toàn bộ quy trình đảm bảo **menu theo từng buổi**, **đồng bộ kho nguyên liệu**, **cảnh báo hết món**, **tích hợp POS → bếp/bar/grill** trong thời gian thực, và **FCFS theo thời điểm backend giữ tồn kho thành công**.
 
 ---
 
@@ -102,6 +102,8 @@ Toàn bộ quy trình đảm bảo **menu theo từng buổi**, **đồng bộ k
 - Ẩn món khỏi menu khách hàng.
 - Gửi thông báo:
   > “Món [Tên món] tạm thời hết nguyên liệu.”
+- Cho phép khách/POS đăng ký:
+  > “Nhắc tôi khi món có lại.”
 
 ---
 
@@ -109,11 +111,12 @@ Toàn bộ quy trình đảm bảo **menu theo từng buổi**, **đồng bộ k
 
 ### 🕒 Giữ hàng (reservation):
 
-- Món trong **giỏ hàng** được giữ trong **10 phút**.
-- Nếu sau 10 phút không order:
+- Món trong **giỏ hàng** được giữ trong **5 phút**.
+- Nếu sau 5 phút không order:
 - Tự động hoàn trả nguyên liệu về kho.
 - Ghi log penalty (để tránh spam giữ hàng).
-- Món không thể được “giữ lại” lại ngay lập tức.
+- Khi món khả dụng trở lại, hệ thống thông báo cho các khách/bàn đã chọn nhắc.
+- Hệ thống chỉ nhắc, **không tự động giữ món lại** cho người chờ.
 
 ---
 
