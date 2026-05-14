@@ -6,6 +6,7 @@ import {
   ApolloLink,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { onError } from "@apollo/client/link/error";
 import { readStorageValue } from "@/lib/browserStorage";
 
 /* ---------------- HTTP link ---------------- */
@@ -31,8 +32,51 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
+function dispatchOutOfStockPrompt({ operation, graphQLError }) {
+  if (typeof window === "undefined") return;
+
+  const input = operation?.variables?.input || {};
+  const hasUsefulContext = Boolean(
+    input.restaurantId &&
+      (input.menuItemId ||
+        input.dishId ||
+        (Array.isArray(input.items) && input.items.length > 0)),
+  );
+
+  if (!hasUsefulContext) return;
+
+  window.dispatchEvent(
+    new CustomEvent("menu-availability:out-of-stock", {
+      detail: {
+        operationName: operation?.operationName || null,
+        variables: operation?.variables || {},
+        message:
+          graphQLError?.message ||
+          "Món vừa hết khả dụng hoặc không đủ tồn kho để giữ chỗ.",
+      },
+    }),
+  );
+}
+
+const errorLink = onError(({ graphQLErrors, operation }) => {
+  const outOfStockError = (graphQLErrors || []).find((error) => {
+    const code = error?.extensions?.code;
+    const message = String(error?.message || "").toLowerCase();
+    return (
+      code === "OUT_OF_STOCK" ||
+      message.includes("hết hàng") ||
+      message.includes("không đủ tồn kho") ||
+      message.includes("out of stock")
+    );
+  });
+
+  if (outOfStockError) {
+    dispatchOutOfStockPrompt({ operation, graphQLError: outOfStockError });
+  }
+});
+
 /* ---------------- Link + Cache ---------------- */
-const link = ApolloLink.from([authLink, httpLink]);
+const link = ApolloLink.from([errorLink, authLink, httpLink]);
 
 const cache = new InMemoryCache({
   typePolicies: {
