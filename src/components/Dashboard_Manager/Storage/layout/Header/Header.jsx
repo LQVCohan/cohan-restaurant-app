@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/layout/Header/Header.jsx
-import React from "react";
+import React, { useContext } from "react";
 import {
   Package,
   Upload,
@@ -12,6 +12,11 @@ import {
   Loader2,
   Coins,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import {
+  hasAnyPermission,
+  NO_PERMISSION_MESSAGE,
+} from "@/utils/frontendPermissionAccess";
 import "./Header.scss";
 
 /**
@@ -42,6 +47,9 @@ const Header = ({
   activeTab = "ingredients",
   ingredientActions = null,
 }) => {
+  const { user } = useContext(AuthContext);
+  const canWriteInventory = hasAnyPermission(user, ["inventory.write", "stock.write"]);
+  const disabledWriteTitle = canWriteInventory ? undefined : NO_PERMISSION_MESSAGE;
   const [rateInput, setRateInput] = React.useState(String(manualRate || 26000));
 
   React.useEffect(() => {
@@ -51,7 +59,10 @@ const Header = ({
   // Handlers giữ nguyên
   const isIngredientTab = activeTab === "ingredients";
 
-  const handleImportData = () => ingredientActions?.import?.();
+  const handleImportData = () => {
+    if (!canWriteInventory) return;
+    ingredientActions?.import?.();
+  };
   const handleExportData = () => {
     if (!ingredientActions) return;
     const asCsv = window.confirm(
@@ -103,7 +114,8 @@ const Header = ({
           <button
             className="sm-btn secondary"
             onClick={handleImportData}
-            disabled={!isIngredientTab || ingredientActions?.busy}
+            disabled={!isIngredientTab || ingredientActions?.busy || !canWriteInventory}
+            title={disabledWriteTitle || "Nhập dữ liệu"}
           >
             <Upload size={18} /> <span className="hide-on-mobile">Nhập</span>
           </button>
@@ -123,6 +135,12 @@ const Header = ({
           </button>
         </div>
       </div>
+
+      {!canWriteInventory ? (
+        <p className="text-xs text-secondary" title={NO_PERMISSION_MESSAGE}>
+          {NO_PERMISSION_MESSAGE}
+        </p>
+      ) : null}
 
       {/* --- Bottom Section: Filters --- */}
       <div className="sm-header-filters">
