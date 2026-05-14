@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Calendar,
   Clock,
@@ -8,6 +8,11 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import {
+  hasPermission,
+  NO_PERMISSION_MESSAGE,
+} from "@/utils/frontendPermissionAccess";
 
 import "./PromotionCard.scss";
 
@@ -82,43 +87,52 @@ const getStatusInfo = (promotion) => {
 };
 
 const PromotionCard = ({ promotion, onEdit, onDelete, onDuplicate }) => {
+  const { user } = useContext(AuthContext);
   const status = getStatusInfo(promotion);
   const discount = formatPromotionValue(promotion);
+  const canWritePromotion = hasPermission(user, "promotion.write");
+  const actionTitle = canWritePromotion ? undefined : NO_PERMISSION_MESSAGE;
+
+  const runWriteAction = (event, action) => {
+    event.stopPropagation();
+    if (!canWritePromotion) return;
+    action?.();
+  };
 
   return (
     <div className="promotion-card">
       <div className="card-actions">
         <button
           className="action-btn duplicate"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDuplicate();
-          }}
-          title="Nhân bản"
+          onClick={(event) => runWriteAction(event, onDuplicate)}
+          disabled={!canWritePromotion}
+          title={actionTitle || "Nhân bản"}
         >
           <Copy size={16} />
         </button>
         <button
           className="action-btn edit"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEdit();
-          }}
-          title="Chỉnh sửa"
+          onClick={(event) => runWriteAction(event, onEdit)}
+          disabled={!canWritePromotion}
+          title={actionTitle || "Chỉnh sửa"}
         >
           <Edit2 size={16} />
         </button>
         <button
           className="action-btn delete"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete();
-          }}
-          title="Xóa"
+          onClick={(event) => runWriteAction(event, onDelete)}
+          disabled={!canWritePromotion}
+          title={actionTitle || "Xóa"}
         >
           <Trash2 size={16} />
         </button>
       </div>
+
+      {!canWritePromotion ? (
+        <p className="text-xs text-secondary" title={NO_PERMISSION_MESSAGE}>
+          {NO_PERMISSION_MESSAGE}
+        </p>
+      ) : null}
 
       <div className="card-header">
         <span className={`status-badge ${status.class}`}>{status.label}</span>
