@@ -1,5 +1,8 @@
 const SCHEDULE_ROOT_SELECTOR = ".manager-page-shell--schedules";
 const HYDRATING_CLASS = "schedule-polish-hydrating";
+const FIRST_WEEK_GRACE_SESSION_KEY = "schedule.firstWeekGrace.seen";
+
+const getText = (node) => node?.textContent?.replace(/\s+/g, " ").trim() || "";
 
 const hasScheduleCriticalShell = (root) =>
   Boolean(
@@ -9,9 +12,36 @@ const hasScheduleCriticalShell = (root) =>
         root?.querySelector(".daily-view-horizontal")),
   );
 
+const getScheduleReminderNodes = (root) =>
+  Array.from(root?.querySelectorAll(".schedule-publish-reminder") || []);
+
+const hideRepeatedFirstWeekGraceReminder = (root) => {
+  if (!root || typeof window === "undefined") return;
+
+  const reminders = getScheduleReminderNodes(root).filter((node) =>
+    getText(node).includes("Tuần đầu sử dụng hệ thống"),
+  );
+
+  if (!reminders.length) return;
+
+  const hasSeen = window.sessionStorage?.getItem(FIRST_WEEK_GRACE_SESSION_KEY) === "1";
+
+  reminders.forEach((node) => {
+    if (hasSeen) {
+      node.classList.add("schedule-first-week-grace-hidden");
+    } else {
+      node.classList.remove("schedule-first-week-grace-hidden");
+    }
+  });
+
+  if (!hasSeen) {
+    window.sessionStorage?.setItem(FIRST_WEEK_GRACE_SESSION_KEY, "1");
+  }
+};
+
 export const initScheduleHydrationPolish = ({
-  minDelay = 720,
-  maxDelay = 1400,
+  minDelay = 900,
+  maxDelay = 1750,
 } = {}) => {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return undefined;
@@ -32,12 +62,15 @@ export const initScheduleHydrationPolish = ({
     const currentRoot = getRoot();
     currentRoot?.classList.remove(HYDRATING_CLASS);
     currentRoot?.removeAttribute("data-schedule-hydrating");
+    hideRepeatedFirstWeekGraceReminder(currentRoot);
   };
 
   const tryFinish = () => {
     if (disposed || !minDelayPassed) return;
     const currentRoot = getRoot();
     if (!currentRoot) return;
+
+    hideRepeatedFirstWeekGraceReminder(currentRoot);
 
     if (hasScheduleCriticalShell(currentRoot)) {
       clearHydration();
@@ -49,6 +82,7 @@ export const initScheduleHydrationPolish = ({
     if (!currentRoot) return false;
     currentRoot.classList.add(HYDRATING_CLASS);
     currentRoot.setAttribute("data-schedule-hydrating", "true");
+    hideRepeatedFirstWeekGraceReminder(currentRoot);
     return true;
   };
 
