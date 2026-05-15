@@ -28,7 +28,6 @@ function buildRbacFilter(filter = {}) {
 }
 
 async function assertRbacAuditAccess(ctx, filter = {}) {
-  await requireAnyPermission(ctx, ["role.read", "permission.read"]);
   if (hasRole(ctx?.user, ["admin"])) {
     requireRoles(ctx, ["ADMIN"]);
     return;
@@ -39,6 +38,7 @@ async function assertRbacAuditAccess(ctx, filter = {}) {
     throw err;
   }
   await requireRestaurantAccess(ctx, filter.restaurantId);
+  await requireAnyPermission(ctx, ["role.read", "permission.read", "staff.write"]);
 }
 
 export async function rbacAuditLogs(_, { filter = {}, limit = 50, offset = 0 }, ctx) {
