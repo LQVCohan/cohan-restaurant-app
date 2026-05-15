@@ -158,6 +158,12 @@ const M_COPY_MENU = gql`
   ${FRAG_MENU}
 `;
 
+const M_DELETE_MENU = gql`
+  mutation DeleteMenu($id: ID!, $force: Boolean = false) {
+    deleteMenu(id: $id, force: $force)
+  }
+`;
+
 const M_CREATE_ITEM = gql`
   mutation CreateMenuItem($input: CreateMenuItemInput!) {
     createMenuItem(input: $input) {
@@ -475,6 +481,20 @@ export default function useMenuManagement({
     },
   });
 
+  const [deleteMenuMut] = useMutation(M_DELETE_MENU, {
+    update(cache, _result, { variables }) {
+      const id = variables?.id;
+      if (!id) return;
+      const qVars = { restaurantId };
+      cache.updateQuery({ query: Q_MENUS, variables: qVars }, (prev) => {
+        if (!prev?.menus) return prev;
+        return { menus: prev.menus.filter((menu) => menu.id !== id) };
+      });
+      cache.evict({ id: cache.identify({ __typename: "Menu", id }) });
+      cache.gc();
+    },
+  });
+
   const [createItemMut] = useMutation(M_CREATE_ITEM, {
     update(cache, { data }) {
       const created = data?.createMenuItem;
@@ -660,6 +680,14 @@ export default function useMenuManagement({
     [copyMenuMut, restaurantId]
   );
 
+  const deleteMenu = useCallback(
+    async ({ id, force = false }) => {
+      const { data } = await deleteMenuMut({ variables: { id, force } });
+      return !!data?.deleteMenu;
+    },
+    [deleteMenuMut]
+  );
+
   const createMenuItem = useCallback(
     async (input) => {
       const payload = {
@@ -802,6 +830,7 @@ export default function useMenuManagement({
     // mutations
     ensureMenu,
     copyMenu,
+    deleteMenu,
     createMenuItem,
     updateMenuItem,
     deleteMenuItem,
