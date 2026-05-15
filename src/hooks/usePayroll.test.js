@@ -114,27 +114,30 @@ describe("usePayroll payment APIs", () => {
     expect(batchMarkPayrollPaidMutation).toHaveBeenCalledWith({ variables: { input: expect.objectContaining({ employeeIds: ["emp-1"], note: "batch" }) } });
   });
 
-  it("refetches readiness before finalizing payroll", async () => {
+  it("refetches readiness for the requested selected period before finalizing payroll", async () => {
+    refetchPayrollReadiness.mockResolvedValueOnce({
+      data: { payrollReadiness: { periodId: "period-2", readyToFinalize: true } },
+    });
     const { result } = renderHook(() => usePayroll({ periodId: "period-1" }));
 
-    await result.current.finalizePeriod({ variables: { periodId: "period-1" } });
+    await result.current.finalizePeriod({ variables: { periodId: "period-2" } });
 
     expect(useMutation).toHaveBeenCalledWith(MUT_FINALIZE_PERIOD);
-    expect(refetchPayrollReadiness).toHaveBeenCalledWith({ periodId: "period-1" });
-    expect(finalizePeriodMutation).toHaveBeenCalledWith({ variables: { periodId: "period-1" } });
+    expect(refetchPayrollReadiness).toHaveBeenCalledWith({ periodId: "period-2" });
+    expect(finalizePeriodMutation).toHaveBeenCalledWith({ variables: { periodId: "period-2" } });
   });
 
   it("does not call finalize mutation when readiness blocks finalization", async () => {
     refetchPayrollReadiness.mockResolvedValueOnce({
-      data: { payrollReadiness: { periodId: "period-1", readyToFinalize: false } },
+      data: { payrollReadiness: { periodId: "period-2", readyToFinalize: false } },
     });
     const { result } = renderHook(() => usePayroll({ periodId: "period-1" }));
 
     await expect(
-      result.current.finalizePeriod({ variables: { periodId: "period-1" } }),
+      result.current.finalizePeriod({ variables: { periodId: "period-2" } }),
     ).rejects.toThrow("PAYROLL_PERIOD_NOT_READY");
 
-    expect(refetchPayrollReadiness).toHaveBeenCalledWith({ periodId: "period-1" });
+    expect(refetchPayrollReadiness).toHaveBeenCalledWith({ periodId: "period-2" });
     expect(finalizePeriodMutation).not.toHaveBeenCalled();
   });
 });
