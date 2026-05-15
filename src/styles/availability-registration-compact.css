@@ -1,0 +1,106 @@
+/* =========================================================
+   AVAILABILITY REGISTRATION COMPACT
+   Keeps the registration panel manager-friendly when the window is
+   closed/locked and no immediate action is required.
+   ========================================================= */
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window {
+  padding: 0.82rem !important;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.04), transparent 22rem),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__header {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 0.72rem !important;
+  padding-bottom: 0.6rem !important;
+  margin-bottom: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__header h3 {
+  font-size: 0.94rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__header p {
+  display: inline !important;
+  margin-right: 0.5rem !important;
+  font-size: 0.76rem !important;
+  color: #64748b !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__summary > div {
+  min-height: 2.95rem !important;
+  padding: 0.52rem 0.68rem !important;
+  border-radius: 14px !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__summary > div:nth-child(n + 4) {
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__actions {
+  margin-top: 0.56rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__actions button {
+  min-height: 2.05rem !important;
+  padding: 0 0.68rem !important;
+  font-size: 0.74rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__empty,
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__submissions,
+.manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__hint {
+  display: none !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-collapsed {
+  padding: 0.76rem 0.82rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-collapsed .schedule-availability-panel__header {
+  padding-bottom: 0.58rem !important;
+  margin-bottom: 0.58rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-collapsed .schedule-availability-panel__compact-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel.is-collapsed .schedule-availability-panel__compact-summary span {
+  min-height: 2.65rem !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.5rem 0.64rem !important;
+  border-radius: 14px !important;
+  color: #334155 !important;
+  font-size: 0.75rem !important;
+  font-weight: 860 !important;
+}
+
+@media (max-width: 1100px) {
+  .manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__summary,
+  .manager-page-shell--schedules .schedule-availability-panel.is-collapsed .schedule-availability-panel__compact-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__header {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-page-shell--schedules .schedule-availability-panel.is-compact-window .schedule-availability-panel__summary,
+  .manager-page-shell--schedules .schedule-availability-panel.is-collapsed .schedule-availability-panel__compact-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
