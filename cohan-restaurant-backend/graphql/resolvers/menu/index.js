@@ -6,11 +6,13 @@ import { MenuMutation } from "./mutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
 import { DeleteMenuMutation } from "./deleteMutation.js";
 import { CategoryMenu, Recipe, MenuItem, Order } from "../../../models/index.js";
+import { getMenuItemInventoryAvailability } from "../../../src/services/menuItemInventoryAvailability.service.js";
 
 const BILLABLE_ORDER_STATUSES = ["served", "completed"];
 const BILLABLE_ITEM_STATUSES = ["served", "ready", "preparing", "pending"];
 
 const getMenuId = (parent) => parent?._id || parent?.id;
+const getMenuItemId = (parent) => parent?._id || parent?.id;
 
 async function getMenuOrderStats(parent) {
   const menuId = getMenuId(parent);
@@ -82,6 +84,14 @@ async function getMenuRating(parent) {
   return result[0]?.rating ?? null;
 }
 
+async function getItemAvailability(parent) {
+  if (parent?._inventoryAvailability) return parent._inventoryAvailability;
+
+  const restaurantId = parent?.restaurantId;
+  const menuItemId = getMenuItemId(parent);
+  return getMenuItemInventoryAvailability({ restaurantId, menuItemId });
+}
+
 export default {
   Query: {
     ...MenuQuery,
@@ -99,7 +109,7 @@ export default {
         return parent.recipe.servingVariants;
       }
 
-      const menuItemId = parent._id || parent.id;
+      const menuItemId = getMenuItemId(parent);
       if (!menuItemId || !mongoose.isValidObjectId(menuItemId)) return [];
 
       const filter = { menuItemId };
@@ -115,6 +125,28 @@ export default {
         .lean();
 
       return recipe?.servingVariants || [];
+    },
+    async inventoryStatus(parent) {
+      const availability = await getItemAvailability(parent);
+      return availability.inventoryStatus || "ERROR";
+    },
+    async maxAvailable(parent) {
+      const availability = await getItemAvailability(parent);
+      return Number.isFinite(Number(availability.maxAvailable))
+        ? Math.max(0, Math.floor(Number(availability.maxAvailable)))
+        : 0;
+    },
+    async stockWarnings(parent) {
+      const availability = await getItemAvailability(parent);
+      return Array.isArray(availability.stockWarnings)
+        ? availability.stockWarnings
+        : [];
+    },
+    async stockShortages(parent) {
+      const availability = await getItemAvailability(parent);
+      return Array.isArray(availability.stockShortages)
+        ? availability.stockShortages
+        : [];
     },
   },
 
