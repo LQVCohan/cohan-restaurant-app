@@ -220,7 +220,7 @@ const ManagerLayout = () => {
   };
 
   return (
-    <div className={`manager-layout ${sidebarOpen ? "sidebar-open" : ""}`}>
+    <div className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}>
       {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} />}
 
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
