@@ -18,9 +18,22 @@ import ScheduleManagement from "./ScheduleManagement";
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search || "");
-    const focus = params.get("focus");
-    if (focus) setReadinessFocus(focus);
+    const applyFocus = () => {
+      const params = new URLSearchParams(window.location.search || "");
+      const focus = params.get("focus");
+      if (focus) setReadinessFocus(focus);
+    };
+
+    applyFocus();
+
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "schedules") return;
+      applyFocus();
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
   }, []);
 
   useLayoutEffect(() => {

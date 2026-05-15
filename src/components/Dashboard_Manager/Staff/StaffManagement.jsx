@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
@@ -53,6 +53,15 @@ const getStaffFocusParams = () => {
   };
 };
 
+const getStaffNavigationQuery = () => {
+  const params = new URLSearchParams(window.location.search || "");
+  return {
+    staffPage: params.get("staffPage") || "",
+    employeeId: params.get("employeeId") || "",
+    employeeName: params.get("employeeName") || "",
+  };
+};
+
 const STAFF_SUB_PAGES = new Set([
   "dashboard",
   "attendance",
@@ -71,17 +80,35 @@ const StaffManagement = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
+  const [navigationQueryVersion, setNavigationQueryVersion] = useState(0);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search || "");
-    const nextStaffPage = params.get("staffPage");
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "staff") return;
 
-    if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
-      setCurrentPage(nextStaffPage);
+      const nextStaffPage =
+        event?.detail?.query?.staffPage || getStaffNavigationQuery().staffPage;
+
+      if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
+        setCurrentPage(nextStaffPage);
+      }
+
+      setNavigationQueryVersion((value) => value + 1);
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+  }, []);
+
+  useEffect(() => {
+    const { staffPage } = getStaffNavigationQuery();
+
+    if (staffPage && STAFF_SUB_PAGES.has(staffPage)) {
+      setCurrentPage(staffPage);
     }
-  }, [location.search]);
+  }, [navigationQueryVersion]);
 
   const [modals, setModals] = useState({
     addEmployee: false,
@@ -409,7 +436,7 @@ const StaffManagement = () => {
       });
       window.setTimeout(() => setFocusedEmployeeId(""), 3000);
     }
-  }, [mappedStaff, location.search]);
+  }, [mappedStaff, navigationQueryVersion]);
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {

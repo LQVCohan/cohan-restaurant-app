@@ -206,6 +206,16 @@ const ManagerLayout = () => {
         "",
         buildManagerNavigationUrl({ page, query }),
       );
+
+      window.dispatchEvent(
+        new CustomEvent("manager:navigation-query", {
+          detail: {
+            page,
+            query,
+            source: event?.detail?.source || "manager:navigate",
+          },
+        }),
+      );
     };
 
     window.addEventListener("manager:navigate", handleManagerNavigate);

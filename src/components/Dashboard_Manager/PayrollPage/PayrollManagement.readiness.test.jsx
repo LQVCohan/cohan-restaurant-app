@@ -160,6 +160,28 @@ describe("PayrollManagement readiness panel", () => {
     expect(screen.getByText("Chốt kỳ")).toBeDisabled();
   });
 
+  it("dispatches manager:navigate and skips alert for non-payroll readiness issue", () => {
+    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: blockedReadiness }));
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+
+    render(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Kiểm tra trước khi chốt"));
+
+    fireEvent.click(screen.getByText("Duyệt công ngoài lịch"));
+
+    const navCall = dispatchSpy.mock.calls.find(([arg]) => arg?.type === "manager:navigate");
+    expect(navCall).toBeTruthy();
+    expect(navCall[0].detail).toMatchObject({
+      page: "staff",
+      query: {
+        staffPage: "attendance",
+        attendanceTab: "off_schedule",
+        offScheduleStatus: "pending",
+      },
+    });
+    expect(window.alert).not.toHaveBeenCalled();
+  });
+
   it("finalizes the currently selected period rather than the current applied period", async () => {
     const finalizePeriod = vi.fn().mockResolvedValue({});
     usePayroll.mockReturnValue(
