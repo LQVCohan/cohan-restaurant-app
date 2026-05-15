@@ -22,6 +22,7 @@ export { default as StockMovement } from "./stock-movement.model.js";
 export { default as StockItem } from "./stockItem.model.js";
 export { default as Supplier } from "./supplier.model.js";
 export { default as Reservation } from "./reservation.model.js";
+export { default as ReservationSlotLock } from "./reservation-slot-lock.model.js";
 export { default as AvailabilityLock } from "./availability-lock.model.js";
 export { default as MenuAvailabilityWatch } from "./menu-availability-watch.model.js";
 export { default as Order } from "./order.model.js";
