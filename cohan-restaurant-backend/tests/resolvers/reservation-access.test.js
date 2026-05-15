@@ -13,6 +13,13 @@ const modelMocks = vi.hoisted(() => ({
   User: { findById: vi.fn() },
   PaymentTransaction: { create: vi.fn() },
   EventLog: { log: vi.fn() },
+  ReservationSlotLock: {
+    findOne: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) })),
+    findOneAndUpdate: vi.fn().mockResolvedValue({ _id: 'slotLock1' }),
+    updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
+    find: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })),
+    exists: vi.fn().mockResolvedValue(false),
+  },
 }));
 
 vi.mock('../../models/index.js', () => modelMocks);

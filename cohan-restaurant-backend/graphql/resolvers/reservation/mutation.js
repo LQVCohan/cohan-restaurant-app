@@ -11,6 +11,12 @@ import {
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  calcReservationEnd,
+  confirmReservationSlot,
+  holdReservationSlot,
+  releaseReservationSlot,
+} from "../../../src/services/reservationAvailability.service.js";
 
 const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
@@ -52,10 +58,6 @@ function normalizeDuration({ durationMinutes, isUnlimitedTime }) {
   return Math.floor(d);
 }
 
-function calcEnd(start, durationMinutes, isUnlimitedTime) {
-  if (isUnlimitedTime) return null;
-  return new Date(start.getTime() + durationMinutes * 60 * 1000);
-}
 
 function userRole(ctx) {
   return String(ctx?.user?.roleName || ctx?.user?.role || "").toLowerCase();
@@ -113,7 +115,7 @@ function validateOpenClose(restaurant, arrival, durationMinutes, isUnlimitedTime
   }
 
   if (!isUnlimitedTime) {
-    const end = calcEnd(arrival, durationMinutes, false);
+    const end = calcReservationEnd(arrival, durationMinutes, false);
     if (end > close) {
       throw new GraphQLError("Thời lượng sử dụng vượt quá giờ đóng cửa", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -124,7 +126,7 @@ function validateOpenClose(restaurant, arrival, durationMinutes, isUnlimitedTime
 
 async function ensureNoTableConflict({ tableId, timeTo, durationMinutes, isUnlimitedTime, exceptId = null, session = null }) {
   const start = new Date(timeTo);
-  const end = calcEnd(start, durationMinutes, isUnlimitedTime);
+  const end = calcReservationEnd(start, durationMinutes, isUnlimitedTime);
 
   const q = {
     tableId: toObjectId(tableId, "tableId"),
@@ -138,7 +140,7 @@ async function ensureNoTableConflict({ tableId, timeTo, durationMinutes, isUnlim
 
   for (const c of candidates) {
     const cStart = new Date(c.timeTo);
-    const cEnd = calcEnd(cStart, Number(c.durationMinutes || 60), !!c.isUnlimitedTime);
+    const cEnd = calcReservationEnd(cStart, Number(c.durationMinutes || 60), !!c.isUnlimitedTime);
 
     if (isUnlimitedTime || c.isUnlimitedTime) {
       const latestStart = cStart > start ? cStart : start;
@@ -403,6 +405,25 @@ export const ReservationMutation = {
           { session }
         ).then((x) => x[0]);
 
+        const reservationEnd =
+          calcReservationEnd(arrival, durationMinutes, isUnlimitedTime) ||
+          new Date(arrival.getTime() + 24 * 60 * 60 * 1000);
+
+        await holdReservationSlot({
+          restaurantId: created.restaurantId,
+          tableId: created.tableId,
+          userId,
+          reservationId: created._id,
+          slotStart: arrival,
+          slotEnd: reservationEnd,
+          holdMinutes: created.status === "pending_payment" ? 10 : 60,
+          session,
+        });
+
+        if (created.status === "confirmed") {
+          await confirmReservationSlot({ reservationId: created._id, session });
+        }
+
         const updateTableResult = await Table.updateOne(
           { _id: created.tableId, status: { $nin: ["offline", "occupied", "cleaning"] } },
           { $set: { status: created.status === "pending_payment" ? "payment_pending" : "reserved" }, $unset: { viewLock: 1 } },
@@ -616,6 +637,12 @@ export const ReservationMutation = {
     if (input.paymentReference) current.paymentReference = input.paymentReference;
 
     await current.save();
+    if (["confirmed", "seated"].includes(current.status)) {
+      await confirmReservationSlot({ reservationId: current._id });
+    }
+    if (["cancelled", "completed", "no_show"].includes(current.status)) {
+      await releaseReservationSlot({ reservationId: current._id, reason: current.status });
+    }
     await updateTableStatusByReservation(current.tableId);
     return current;
   },
@@ -657,8 +684,10 @@ export const ReservationMutation = {
     await reservation.save();
 
     if (pStatus === "paid") {
+      await confirmReservationSlot({ reservationId: reservation._id });
       await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "reserved" } });
-    } else if (pStatus === "failed") {
+    } else if (pStatus === "failed" || pStatus === "cancelled") {
+      await releaseReservationSlot({ reservationId: reservation._id, reason: pStatus });
       await updateTableStatusByReservation(reservation.tableId);
     } else {
       await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "payment_pending" } });
@@ -707,6 +736,7 @@ export const ReservationMutation = {
     current.status = "cancelled";
     if (current.depositStatus === "pending") current.depositStatus = "cancelled";
     await current.save();
+    await releaseReservationSlot({ reservationId: current._id, reason: "cancelled" });
     await updateTableStatusByReservation(current.tableId);
     await EventLog.log({
       restaurantId: current.restaurantId,
@@ -733,6 +763,7 @@ export const ReservationMutation = {
     await requireRestaurantPermission(ctx, current.restaurantId, PERMISSIONS.RESERVATION_UPDATE);
     current.status = "no_show";
     await current.save();
+    await releaseReservationSlot({ reservationId: current._id, reason: "no_show" });
     await updateTableStatusByReservation(current.tableId);
     return current;
   },
