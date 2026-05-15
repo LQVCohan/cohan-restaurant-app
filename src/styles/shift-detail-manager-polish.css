@@ -136,10 +136,14 @@
 
 .shift-detail-content .assigned-list {
   max-height: 232px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
 }
 
 .shift-detail-content .candidate-list {
   max-height: 255px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
 }
 
 .shift-detail-content .staff-row {
@@ -225,6 +229,7 @@
   z-index: 2 !important;
   opacity: 1 !important;
   clear: both !important;
+  position: relative !important;
 }
 
 .shift-detail-content .schedule-log-section .section-header {
@@ -253,6 +258,21 @@
 
 .shift-detail-content .modal-footer-actions {
   gap: 0.58rem !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+}
+
+.shift-detail-content .readonly-notice,
+.shift-detail-content .read-only-notice,
+.shift-detail-content .readonly-hint {
+  margin-top: 0.58rem !important;
+  padding: 0.56rem 0.68rem !important;
+  border-radius: 12px !important;
+  border: 1px solid #dbeafe !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-size: 0.75rem !important;
+  font-weight: 780 !important;
 }
 
 .shift-detail-content .modal-footer-actions .btn-close:first-child:not(:disabled) {
@@ -285,6 +305,7 @@
     position: relative !important;
     top: auto !important;
     align-self: start !important;
+    z-index: 3 !important;
   }
 
   .shift-detail-content > .schedule-log-section,
