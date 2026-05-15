@@ -57,6 +57,10 @@ type Menu {
   updatedAt: DateTime
   categoryMenu: CategoryMenu
   itemCount: Int!
+  revenue: Float!
+  orderCount: Int!
+  soldItemCount: Float!
+  rating: Float
 }
 
 input MenuItemFilter {
