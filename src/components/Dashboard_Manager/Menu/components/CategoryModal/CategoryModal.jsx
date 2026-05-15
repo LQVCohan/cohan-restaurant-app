@@ -51,10 +51,10 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
       modal: "category-modal",
       route: typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: formData.id ? "edit" : "create",
-      entityType: "category",
+      entityType: "category-menu",
       recordId: formData.id || null,
       context: timeSlot || "all-day",
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: formData,
     isDirty,
@@ -109,7 +109,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setFormData({
       id: cat.id || cat._id,
       name: cat.name || "",
-      icon: resolveCategoryIcon(cat.name || ""),
+      icon: cat.icon || resolveCategoryIcon(cat.name || ""),
       description: cat.description || "",
     });
     setErrors({});
@@ -148,8 +148,8 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     try {
       const payload = {
         name: formData.name.trim(),
+        icon: formData.icon || "🍽️",
         description: formData.description?.trim() || null,
-        // icon: formData.icon (Nếu BE hỗ trợ lưu icon thì thêm vào đây)
       };
 
       if (formData.id) {
@@ -331,7 +331,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                     return (
                       <div key={categoryId} className="category-item-card">
                         <div className="card-visual">
-                          <span>{resolveCategoryIcon(cat.name || "")}</span>
+                          <span>{cat.icon || resolveCategoryIcon(cat.name || "")}</span>
                         </div>
                         <div className="card-info">
                           <span className="cat-name">{cat.name}</span>

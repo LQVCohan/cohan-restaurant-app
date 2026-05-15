@@ -5,7 +5,7 @@ import Dashboard from "../components/Dashboard_Manager/Dashboard";
 import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
 import ReportsManagement from "../components/Dashboard_Manager/Reports/ReportsManagement";
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
-import ScheduleManagement from "../components/Dashboard_Manager/Schedule/ScheduleManagement";
+import ScheduleManagementPage from "../components/Dashboard_Manager/Schedule/ScheduleManagementPage";
 import OrderManagement from "../components/Dashboard_Manager/Order/OrderManagement";
 import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
@@ -208,7 +208,7 @@ const ManagerLayout = () => {
       case "rates":
       case "setting":
       case "backup": return <div>Đang phát triển…</div>;
-      case "schedules": return <ScheduleManagement />;
+      case "schedules": return <ScheduleManagementPage />;
       case "promotions": return <PromotionManagement />;
       case "payroll": return <PayrollManagement />;
       case "reviews": return <ReviewManagement />;

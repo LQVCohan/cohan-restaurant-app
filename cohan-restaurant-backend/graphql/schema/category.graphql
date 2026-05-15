@@ -3,6 +3,7 @@ type Category {
   restaurantId: ID
   timeSlot: TimeSlot
   name: String!
+  icon: String
   order: Int
   isActive: Boolean
   menuItemCount: Int!
@@ -14,6 +15,7 @@ input CreateCategoryInput {
   restaurantId: ID
   timeSlot: TimeSlot
   name: String!
+  icon: String
   order: Int
 }
 
@@ -21,6 +23,7 @@ type CategoryMenu {
   id: ID!
   restaurantId: ID!
   name: String!
+  icon: String
   description: String
   coverImage: String
   isActive: Boolean
@@ -31,6 +34,7 @@ type CategoryMenu {
 input UpdateCategoryInput {
   id: ID!
   name: String
+  icon: String
   order: Int
   isActive: Boolean
 }
@@ -56,6 +60,7 @@ extend type Query {
 input CreateCategoryMenuInput {
   restaurantId: ID!
   name: String!
+  icon: String
   description: String
   coverImage: String
   isActive: Boolean
@@ -64,6 +69,7 @@ input CreateCategoryMenuInput {
 input UpdateCategoryMenuInput {
   id: ID!
   name: String
+  icon: String
   description: String
   coverImage: String
   isActive: Boolean

@@ -22,12 +22,22 @@ const buildInitialFormData = (promotion, fallbackRestaurantId = "") => {
     name: promotion?.name || "",
     code: promotion?.code || "",
     type: initialType,
-    scope: initialType === "bogo" ? "item" : promotion?.scope || "order",
+    scope: initialType === "bogo" ? "item" : initialType === "combo" ? "order" : promotion?.scope || "order",
     categoryId: promotion?.categoryId || "",
     itemId: promotion?.itemId || "",
     giftItemId: promotion?.giftItemId || "",
     buyQuantity: promotion?.buyQuantity || 1,
     getQuantity: promotion?.getQuantity || 1,
+    comboItems: Array.isArray(promotion?.comboItems) && promotion.comboItems.length
+      ? promotion.comboItems.map((item) => ({
+          itemId: item?.itemId || "",
+          quantity: item?.quantity || 1,
+        }))
+      : [
+          { itemId: "", quantity: 1 },
+          { itemId: "", quantity: 1 },
+        ],
+    discountType: promotion?.discountType || "percent",
     discountValue:
       promotion?.discountValue === 0 ? "0" : promotion?.discountValue || "",
     minOrderValue: promotion?.minOrderValue || "",
@@ -102,6 +112,13 @@ const PromotionModal = ({
       if (name === "type") {
         if (value === "bogo") {
           next.scope = "item";
+        } else if (value === "combo") {
+          next.scope = "order";
+          next.itemId = "";
+          next.categoryId = "";
+          next.giftItemId = "";
+          next.buyQuantity = 1;
+          next.getQuantity = 1;
         } else {
           next.giftItemId = "";
           next.buyQuantity = 1;
@@ -112,6 +129,9 @@ const PromotionModal = ({
       if (name === "scope") {
         if (prev.type === "bogo" && value !== "item") {
           next.scope = "item";
+        }
+        if (prev.type === "combo" && value !== "order") {
+          next.scope = "order";
         }
         if (value !== "category") {
           next.categoryId = "";
@@ -133,6 +153,33 @@ const PromotionModal = ({
     }
   };
 
+  const handleComboItemChange = (index, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      comboItems: prev.comboItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }));
+    setErrors((prev) => ({ ...prev, comboItems: "" }));
+  };
+
+  const handleAddComboItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      comboItems: [...prev.comboItems, { itemId: "", quantity: 1 }],
+    }));
+  };
+
+  const handleRemoveComboItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      comboItems:
+        prev.comboItems.length > 2
+          ? prev.comboItems.filter((_, itemIndex) => itemIndex !== index)
+          : prev.comboItems,
+    }));
+  };
+
   const validateForm = () => {
     const nextErrors = {};
 
@@ -149,6 +196,19 @@ const PromotionModal = ({
       formData.startDate >= formData.endDate
     ) {
       nextErrors.endDate = "Ngày kết thúc không hợp lệ";
+    }
+
+    if (formData.type === "combo") {
+      const validComboItems = formData.comboItems.filter(
+        (item) => item.itemId && toNumber(item.quantity) >= 1,
+      );
+      const uniqueItemIds = new Set(validComboItems.map((item) => item.itemId));
+
+      if (validComboItems.length < 2) {
+        nextErrors.comboItems = "Combo cần ít nhất 2 món";
+      } else if (uniqueItemIds.size !== validComboItems.length) {
+        nextErrors.comboItems = "Không chọn trùng món trong combo";
+      }
     }
 
     if (formData.scope === "category" && !formData.categoryId) {
@@ -200,6 +260,17 @@ const PromotionModal = ({
         formData.type === "bogo" ? toNumber(formData.buyQuantity, 1) : 0,
       getQuantity:
         formData.type === "bogo" ? toNumber(formData.getQuantity, 1) : 0,
+      comboItems:
+        formData.type === "combo"
+          ? formData.comboItems
+              .filter((item) => item.itemId && toNumber(item.quantity) >= 1)
+              .map((item) => ({
+                itemId: item.itemId,
+                quantity: toNumber(item.quantity, 1),
+              }))
+          : [],
+      scope: formData.type === "combo" ? "order" : formData.scope,
+      giftItemId: formData.type === "combo" ? null : formData.giftItemId,
       conditions: formData.conditions
         .split("\n")
         .map((line) => line.trim())
@@ -366,7 +437,56 @@ const PromotionModal = ({
                       <DollarSign className="input-icon" size={16} />
                       <input disabled type="text" value="Miễn phí vận chuyển" />
                     </div>
+                    <p className="field-hint">
+                      Khi thanh toán đơn giao hàng, hệ thống sẽ giảm trực tiếp
+                      phí vận chuyển. Nếu có giới hạn giảm tối đa, số tiền
+                      freeship sẽ không vượt quá giới hạn đó.
+                    </p>
                   </div>
+                ) : formData.type === "combo" ? (
+                  <>
+                    <div className="form-group">
+                      <label>Kiểu giảm</label>
+                      <select
+                        name="discountType"
+                        onChange={handleInputChange}
+                        value={formData.discountType}
+                      >
+                        <option value="percent">Phần trăm</option>
+                        <option value="fixed">Số tiền</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        Mức giảm <span className="req">*</span>
+                      </label>
+                      <input
+                        className={errors.discountValue ? "error" : ""}
+                        min="0"
+                        name="discountValue"
+                        onChange={handleInputChange}
+                        placeholder="0"
+                        type="number"
+                        value={formData.discountValue}
+                      />
+                      {errors.discountValue && (
+                        <span className="err-msg">{errors.discountValue}</span>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label>Giảm tối đa</label>
+                      <input
+                        min="0"
+                        name="maxDiscount"
+                        onChange={handleInputChange}
+                        placeholder="Không giới hạn"
+                        type="number"
+                        value={formData.maxDiscount}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div className="form-group">
@@ -476,7 +596,7 @@ const PromotionModal = ({
                 <div className="form-group">
                   <label>Phạm vi</label>
                   <select
-                    disabled={formData.type === "bogo"}
+                    disabled={formData.type === "bogo" || formData.type === "combo"}
                     name="scope"
                     onChange={handleInputChange}
                     value={formData.scope}
@@ -485,11 +605,13 @@ const PromotionModal = ({
                     <option value="category">Theo danh mục</option>
                     <option value="item">Theo món</option>
                   </select>
-                  <p className="text-xs text-secondary mt-2">
-                    Khi thanh toán, hệ thống sẽ giảm tiền trên dòng món tặng nếu
-                    bill có đủ món mua. Ví dụ: mua 1 món A tặng 1 món B, bill có
-                    2 món A và 2 món B thì giảm tiền 2 món B.
-                  </p>
+                  {formData.type === "bogo" && (
+                    <p className="text-xs text-secondary mt-2">
+                      Khi thanh toán, hệ thống sẽ giảm tiền trên dòng món tặng nếu
+                      bill có đủ món mua. Ví dụ: mua 1 món A tặng 1 món B, bill có
+                      2 món A và 2 món B thì giảm tiền 2 món B.
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -579,6 +701,66 @@ const PromotionModal = ({
                     {errors.itemId && (
                       <span className="err-msg">{errors.itemId}</span>
                     )}
+                  </div>
+                )}
+
+                {formData.type === "combo" && (
+                  <div className="form-group full">
+                    <label>
+                      Món trong combo <span className="req">*</span>
+                    </label>
+                    <p className="field-hint">
+                      Khi thanh toán, hệ thống chỉ giảm combo nếu bill có đủ tất
+                      cả món trong combo. Số lượt combo được tính theo món có số
+                      lượng ít nhất so với yêu cầu.
+                    </p>
+                    <div className="combo-items-editor">
+                      {formData.comboItems.map((comboItem, index) => (
+                        <div className="combo-item-row" key={`combo-item-${index}`}>
+                          <select
+                            aria-label={`Món combo ${index + 1}`}
+                            onChange={(event) =>
+                              handleComboItemChange(index, "itemId", event.target.value)
+                            }
+                            value={comboItem.itemId}
+                          >
+                            <option value="">-- Chọn món --</option>
+                            {menuItems.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            aria-label={`Số lượng món combo ${index + 1}`}
+                            min="1"
+                            onChange={(event) =>
+                              handleComboItemChange(index, "quantity", event.target.value)
+                            }
+                            type="number"
+                            value={comboItem.quantity}
+                          />
+                          <button
+                            className="btn-ghost"
+                            disabled={formData.comboItems.length <= 2}
+                            onClick={() => handleRemoveComboItem(index)}
+                            type="button"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {errors.comboItems && (
+                      <span className="err-msg">{errors.comboItems}</span>
+                    )}
+                    <button
+                      className="btn-secondary mt-2"
+                      onClick={handleAddComboItem}
+                      type="button"
+                    >
+                      Thêm món
+                    </button>
                   </div>
                 )}
 

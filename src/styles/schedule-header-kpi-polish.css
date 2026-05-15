@@ -1,0 +1,336 @@
+/* =========================================================
+   SCHEDULE HEADER + KPI POLISH
+   First-screen dashboard treatment for manager schedule page.
+   ========================================================= */
+
+.manager-page-shell--schedules .schedule-header {
+  position: relative !important;
+  margin: 0 !important;
+  padding: 1.2rem 1.35rem 1rem !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.92) !important;
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.1), transparent 24rem),
+    radial-gradient(circle at 100% 0, rgba(16, 185, 129, 0.075), transparent 22rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  overflow: hidden !important;
+}
+
+.manager-page-shell--schedules .schedule-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #4f46e5, #22c55e, #0ea5e9);
+}
+
+.manager-page-shell--schedules .schedule-header .header-top {
+  position: relative;
+  z-index: 1;
+  align-items: flex-start !important;
+  gap: 1rem !important;
+  margin-bottom: 0.95rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .title-group {
+  min-width: 0 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .eyebrow-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.38rem !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .eyebrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 1.55rem !important;
+  border-radius: 999px !important;
+  padding: 0.18rem 0.56rem !important;
+  border: 1px solid #dbe3ef !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  color: #4338ca !important;
+  font-size: 0.7rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.045em !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .dot-divider {
+  color: #94a3b8 !important;
+  font-weight: 900 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .title-group h1 {
+  margin: 0 !important;
+  color: #07111f !important;
+  font-size: clamp(1.55rem, 2.4vw, 2rem) !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.055em !important;
+  line-height: 1.04 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .title-group .subtitle {
+  max-width: 720px !important;
+  margin-top: 0.38rem !important;
+  color: #64748b !important;
+  font-size: 0.88rem !important;
+  line-height: 1.45 !important;
+  font-weight: 680 !important;
+}
+
+.manager-page-shell--schedules .header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+}
+
+.manager-page-shell--schedules .header-actions button {
+  min-height: 2.45rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #dbe3ef !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #334155 !important;
+  padding: 0 0.82rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 8px 18px rgba(15, 23, 42, 0.035) !important;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.manager-page-shell--schedules .header-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #a5b4fc !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 24px rgba(79, 70, 229, 0.12) !important;
+}
+
+.manager-page-shell--schedules .header-actions button:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+.manager-page-shell--schedules .schedule-settings-trigger {
+  padding-right: 0.9rem !important;
+}
+
+.manager-page-shell--schedules .schedule-settings-trigger .user-info {
+  display: grid !important;
+  gap: 0.02rem !important;
+  text-align: left !important;
+}
+
+.manager-page-shell--schedules .schedule-settings-trigger .user-info .name {
+  color: #0f172a !important;
+  font-size: 0.76rem !important;
+  font-weight: 950 !important;
+  line-height: 1.08 !important;
+}
+
+.manager-page-shell--schedules .schedule-settings-trigger .user-info .role {
+  color: #64748b !important;
+  font-size: 0.66rem !important;
+  font-weight: 820 !important;
+  line-height: 1.08 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-grid.compact {
+  position: relative;
+  z-index: 1;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.72rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card {
+  position: relative !important;
+  min-height: 5.15rem !important;
+  padding: 0.86rem !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(226, 232, 240, 0.96) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 14px 32px rgba(15, 23, 42, 0.052) !important;
+  overflow: hidden !important;
+  text-align: left !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease !important;
+}
+
+.manager-page-shell--schedules .schedule-header button.kpi-card {
+  cursor: pointer !important;
+}
+
+.manager-page-shell--schedules .schedule-header button.kpi-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: #a5b4fc !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.045), 0 18px 38px rgba(79, 70, 229, 0.115) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #cbd5e1;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action::before {
+  background: #f97316;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action.has-alert {
+  border-color: #fed7aa !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.hours::before {
+  background: #2563eb;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.money::before {
+  background: #10b981;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.status::before {
+  background: #4f46e5;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-icon {
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  min-width: 2.1rem !important;
+  border-radius: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action .kpi-icon {
+  background: #fff7ed !important;
+  color: #ea580c !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.hours .kpi-icon {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.money .kpi-icon {
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.status .kpi-icon {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content {
+  min-width: 0 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .label {
+  color: #64748b !important;
+  font-size: 0.68rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.055em !important;
+  text-transform: uppercase !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .value {
+  display: block !important;
+  margin-top: 0.16rem !important;
+  color: #0f172a !important;
+  font-size: clamp(1.05rem, 1.65vw, 1.34rem) !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.08 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .hint,
+.manager-page-shell--schedules .schedule-header .status-subtext {
+  display: block !important;
+  margin-top: 0.22rem !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 760 !important;
+  line-height: 1.28 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .status-chip {
+  width: max-content !important;
+  max-width: 100% !important;
+  min-height: 1.7rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  padding: 0.22rem 0.58rem !important;
+  margin-top: 0.2rem !important;
+  border: 1px solid #dbe3ef !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.manager-page-shell--schedules .schedule-header .status-chip.published,
+.manager-page-shell--schedules .schedule-header .status-chip.active,
+.manager-page-shell--schedules .schedule-header .status-chip.is-published {
+  border-color: #bbf7d0 !important;
+  background: #dcfce7 !important;
+  color: #047857 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .status-chip.draft,
+.manager-page-shell--schedules .schedule-header .status-chip.revision_draft,
+.manager-page-shell--schedules .schedule-header .status-chip.is-draft {
+  border-color: #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+.manager-page-shell--schedules .schedule-header .status-chip.cancelled,
+.manager-page-shell--schedules .schedule-header .status-chip.locked,
+.manager-page-shell--schedules .schedule-header .status-chip.is-locked {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+}
+
+@media (max-width: 1180px) {
+  .manager-page-shell--schedules .schedule-header .kpi-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .manager-page-shell--schedules .schedule-header {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .manager-page-shell--schedules .schedule-header .header-top {
+    flex-direction: column !important;
+  }
+
+  .manager-page-shell--schedules .header-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .manager-page-shell--schedules .header-actions button {
+    flex: 1 1 auto !important;
+  }
+
+  .manager-page-shell--schedules .schedule-header .kpi-grid.compact {
+    grid-template-columns: 1fr !important;
+  }
+}

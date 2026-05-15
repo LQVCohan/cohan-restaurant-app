@@ -1,3 +1,14 @@
+"""Món bắt buộc trong khuyến mãi combo"""
+type ComboPromotionItem {
+  itemId: ID!
+  quantity: Int!
+}
+
+input ComboPromotionItemInput {
+  itemId: ID!
+  quantity: Int!
+}
+
 """Khuyến mãi cho nhà hàng"""
 type Promotion {
   id: ID!
@@ -14,6 +25,7 @@ type Promotion {
   discountValue: Float
   buyQuantity: Int
   getQuantity: Int
+  comboItems: [ComboPromotionItem!]
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
@@ -29,7 +41,39 @@ type Promotion {
   updatedAt: DateTime
 }
 
+
+type PromotionAnalyticsTopPromotion {
+  promotionId: ID!
+  promotionName: String
+  promotionCode: String
+  promotionType: String
+  usageCount: Int!
+  totalDiscount: Float!
+}
+
+type PromotionAnalyticsByType {
+  promotionType: String!
+  usageCount: Int!
+  totalDiscount: Float!
+}
+
+type PromotionAnalytics {
+  totalPromotions: Int!
+  activePromotions: Int!
+  scheduledPromotions: Int!
+  expiredPromotions: Int!
+  totalRedemptions: Int!
+  totalPromotionDiscount: Float!
+  totalShippingDiscount: Float!
+  totalDiscountAmount: Float!
+  usageRate: Float!
+  topPromotions: [PromotionAnalyticsTopPromotion!]!
+  byType: [PromotionAnalyticsByType!]!
+}
+
 extend type Query {
+  promotionAnalyticsByRestaurant(restaurantId: ID!): PromotionAnalytics!
+
   promotionsByRestaurant(
     restaurantId: ID!
     activeOnly: Boolean = true
@@ -53,6 +97,7 @@ input PromotionInput {
   discountValue: Float!
   buyQuantity: Int
   getQuantity: Int
+  comboItems: [ComboPromotionItemInput!]
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int

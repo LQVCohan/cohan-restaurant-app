@@ -30,6 +30,12 @@ const PromotionSchema = new Schema(
     discountValue: { type: Number, required: true },
     buyQuantity: { type: Number, default: 0, min: 0 },
     getQuantity: { type: Number, default: 0, min: 0 },
+    comboItems: [
+      {
+        itemId: { type: Types.ObjectId, ref: "MenuItem", required: true },
+        quantity: { type: Number, default: 1, min: 1 },
+      },
+    ],
     minOrderValue: { type: Number, default: 0 },
     maxDiscount: { type: Number, default: 0 },
     usageLimit: { type: Number, default: 0 },

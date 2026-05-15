@@ -1,0 +1,88 @@
+/* Secondary week/day/month navigator placed near the schedule board. */
+.manager-page-shell--schedules .schedule-board-week-jumper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0.78rem 1.35rem 0;
+  padding: 0.62rem 0.72rem;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 12px 26px rgba(15, 23, 42, 0.05);
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__label {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__eyebrow {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__label strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: 0 0 auto;
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__btn {
+  min-height: 2.15rem;
+  border-radius: 999px;
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  color: #334155;
+  padding: 0 0.78rem;
+  font-size: 0.78rem;
+  font-weight: 950;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__btn:hover {
+  transform: translateY(-1px);
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  color: #3730a3;
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.1);
+}
+
+.manager-page-shell--schedules .schedule-board-week-jumper__btn--primary {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+@media (max-width: 720px) {
+  .manager-page-shell--schedules .schedule-board-week-jumper {
+    margin-left: 1rem;
+    margin-right: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manager-page-shell--schedules .schedule-board-week-jumper__actions {
+    width: 100%;
+  }
+
+  .manager-page-shell--schedules .schedule-board-week-jumper__btn {
+    flex: 1 1 0;
+  }
+}

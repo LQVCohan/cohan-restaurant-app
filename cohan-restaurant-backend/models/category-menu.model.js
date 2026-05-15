@@ -16,6 +16,12 @@ const categoryMenuSchema = BaseSchemaModel({
     trim: true,
   },
 
+  icon: {
+    type: String,
+    trim: true,
+    default: "🍽️",
+  },
+
   description: {
     type: String,
     trim: true,

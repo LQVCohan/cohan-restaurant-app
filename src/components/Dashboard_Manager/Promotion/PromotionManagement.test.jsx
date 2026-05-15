@@ -9,6 +9,8 @@ import { useCoupons } from "@/hooks/useCoupons";
 import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
 
 const useCouponAnalytics = vi.hoisted(() => vi.fn());
+const usePromotionAnalytics = vi.hoisted(() => vi.fn());
+const statsCardMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/usePromotions", () => ({
   usePromotions: vi.fn(),
@@ -22,12 +24,19 @@ vi.mock("@/hooks/useCouponAnalytics", () => ({
   useCouponAnalytics,
 }));
 
+vi.mock("@/hooks/usePromotionAnalytics", () => ({
+  usePromotionAnalytics,
+}));
+
 vi.mock("@/utils/xlsxWorkbook", () => ({
   downloadXlsxWorkbook: vi.fn(),
 }));
 
 vi.mock("./components/StatsCard/StatsCard", () => ({
-  default: () => <div data-testid="promotion-stats-card" />,
+  default: (props) => {
+    statsCardMock(props);
+    return <div data-testid="promotion-stats-card" />;
+  },
 }));
 
 vi.mock("./components/PromotionsGrid/PromotionsGrid", () => ({
@@ -225,6 +234,24 @@ describe("PromotionManagement", () => {
       error: null,
       refetch: vi.fn(),
     });
+    usePromotionAnalytics.mockReturnValue({
+      analytics: {
+        totalPromotions: 0,
+        activePromotions: 0,
+        scheduledPromotions: 0,
+        expiredPromotions: 0,
+        totalRedemptions: 0,
+        totalPromotionDiscount: 0,
+        totalShippingDiscount: 0,
+        totalDiscountAmount: 0,
+        usageRate: 0,
+        topPromotions: [],
+        byType: [],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
   });
 
   it("renders without an AuthContext provider and disables mutation affordances", () => {
@@ -396,4 +423,110 @@ describe("PromotionManagement", () => {
     expect(screen.getByText("Goi VIP")).toBeInTheDocument();
     expect(screen.getByText("Coupon Mon Chinh")).toBeInTheDocument();
   });
+
+  it("uses real promotion analytics values for promotion StatsCard", () => {
+    usePromotionAnalytics.mockReturnValue({
+      analytics: {
+        totalPromotions: 4,
+        activePromotions: 2,
+        scheduledPromotions: 1,
+        expiredPromotions: 1,
+        totalRedemptions: 7,
+        totalPromotionDiscount: 30000,
+        totalShippingDiscount: 12000,
+        totalDiscountAmount: 42000,
+        usageRate: 175,
+        topPromotions: [{ promotionId: "promo-1" }, { promotionId: "promo-2" }],
+        byType: [],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPromotionManagement();
+
+    expect(statsCardMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stats: {
+          totalSavings: 42000,
+          usageRate: 175,
+          totalUsage: 7,
+          hotPromotions: 2,
+        },
+        labels: expect.objectContaining({
+          savings: "Tiết kiệm thực tế",
+          total: "Lượt dùng Promotion",
+          hot: "Top Promotion",
+        }),
+      }),
+    );
+  });
+
+  it("keeps coupon analytics values for the Coupon section", () => {
+    useCouponAnalytics.mockReturnValue({
+      analytics: {
+        totalCoupons: 1,
+        activeCoupons: 1,
+        savedCoupons: 0,
+        usedCoupons: 0,
+        totalRedemptions: 9,
+        totalDiscountAmount: 90000,
+        usageRate: 90,
+        expiringSoon: 0,
+        nearUsageLimit: 0,
+        topCoupons: [{ couponId: "coupon-1" }],
+      },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPromotionManagement();
+    fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
+
+    expect(statsCardMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stats: {
+          totalSavings: 90000,
+          usageRate: 90,
+          totalUsage: 9,
+          hotPromotions: 1,
+        },
+        labels: expect.objectContaining({
+          total: "Lượt dùng Coupon",
+          hot: "Top Coupon",
+        }),
+      }),
+    );
+  });
+
+  it("does not crash when promotion analytics is loading or errors", () => {
+    usePromotionAnalytics.mockReturnValue({
+      analytics: {
+        totalPromotions: 0,
+        activePromotions: 0,
+        scheduledPromotions: 0,
+        expiredPromotions: 0,
+        totalRedemptions: 0,
+        totalPromotionDiscount: 0,
+        totalShippingDiscount: 0,
+        totalDiscountAmount: 0,
+        usageRate: 0,
+        topPromotions: [],
+        byType: [],
+      },
+      loading: true,
+      error: new Error("network"),
+      refetch: vi.fn(),
+    });
+
+    renderPromotionManagement();
+
+    expect(screen.getByText("Đang cập nhật thống kê Promotion...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Chưa tải được thống kê Promotion, đang hiển thị giá trị mặc định."),
+    ).toBeInTheDocument();
+  });
+
 });

@@ -9,6 +9,7 @@ const categorySchema = BaseSchemaModel({
     required: false,
   },
   name: { type: String, required: true, trim: true },
+  icon: { type: String, trim: true, default: "🍽️" },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   menuItemCount: { type: Number, default: 0, min: 0 },

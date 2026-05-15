@@ -80,7 +80,7 @@ const DishCategoryModal = ({
       entityType: "dish-category",
       recordId: formData.id || null,
       context: timeSlot || "all-day",
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: formData,
     isDirty,
@@ -129,7 +129,7 @@ const DishCategoryModal = ({
     setFormData({
       id: getCategoryId(category),
       name: category?.name || "",
-      icon: resolveCategoryIcon(category?.name || ""),
+      icon: category?.icon || resolveCategoryIcon(category?.name || ""),
       order: Number(category?.order ?? 1000),
       isActive: category?.isActive !== false,
     });
@@ -175,6 +175,7 @@ const DishCategoryModal = ({
         restaurantId,
         timeSlot,
         name: formData.name.trim(),
+        icon: formData.icon || "🍽️",
         order: Number(formData.order || 0),
         isActive: formData.isActive !== false,
       };
@@ -219,227 +220,206 @@ const DishCategoryModal = ({
   const handleConfirmDelete = async () => {
     if (!pendingDeleteCategory?.id || isDeletingCategory) return;
 
-    if (pendingDeleteCategory.menuItemCount > 0) {
-      setDeleteError(
-        `Danh mục đang có ${pendingDeleteCategory.menuItemCount} món. Hãy chuyển món sang danh mục khác trước khi xóa.`
-      );
-      return;
-    }
-
     setIsDeletingCategory(true);
     setDeleteError("");
-
     try {
-      const deleted = await deleteCategory(pendingDeleteCategory.id);
-      if (!deleted) {
-        setDeleteError(
-          `Không thể xóa danh mục "${pendingDeleteCategory.name}". Vui lòng thử lại.`
-        );
+      const ok = await deleteCategory(pendingDeleteCategory.id);
+      if (!ok) {
+        setDeleteError("Không thể xóa danh mục món. Vui lòng thử lại.");
         return;
       }
+
       await refetchAll?.();
       onSave?.();
       setPendingDeleteCategory(null);
     } catch (error) {
-      setDeleteError(
-        error?.message ||
-          `Không thể xóa danh mục "${pendingDeleteCategory.name}". Vui lòng thử lại.`
-      );
+      setDeleteError(error?.message || "Không thể xóa danh mục món.");
     } finally {
       setIsDeletingCategory(false);
     }
   };
 
+  const handleClose = () => {
+    if (viewMode === "form") {
+      requestCloseWithDraft(onClose);
+      return;
+    }
+    onClose?.();
+  };
+
+  const renderIconPicker = () => (
+    <div className="dc-icon-picker">
+      {COMMON_CATEGORY_ICONS.map((icon) => (
+        <button
+          key={icon}
+          type="button"
+          className={`dc-icon-btn ${formData.icon === icon ? "active" : ""}`}
+          onClick={() => handleInputChange("icon", icon)}
+          aria-label={`Chọn icon ${icon}`}
+        >
+          {icon}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => requestCloseWithDraft(onClose)}
-      size="md"
+      onClose={handleClose}
+      size="lg"
       className="dish-category-modal"
     >
-      <div className="dcm-container">
-        {viewMode === "list" && (
-          <div className="dcm-view">
-            <div className="dcm-header">
-              <div>
-                <h3>Quản lý Danh mục món</h3>
-                <p>Nhóm các món ăn như Khai vị, Món chính, Đồ uống hoặc Tráng miệng.</p>
-              </div>
-              <button className="dcm-close" onClick={() => requestCloseWithDraft(onClose)}>
-                <X size={20} />
-              </button>
-            </div>
+      <Modal.Header>
+        {viewMode === "form" ? (
+          <button type="button" className="dc-back-btn" onClick={switchToList}>
+            <ArrowLeft size={18} />
+          </button>
+        ) : null}
+        <span>{viewMode === "form" ? "Danh mục món" : "Quản lý danh mục món"}</span>
+      </Modal.Header>
 
-            <div className="dcm-toolbar">
-              <div className="dcm-search">
-                <Search size={18} />
+      <Modal.Body>
+        {viewMode === "list" ? (
+          <div className="dc-list-view">
+            <div className="dc-toolbar">
+              <div className="dc-search">
+                <Search size={16} />
                 <input
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Tìm danh mục món..."
                 />
               </div>
-              <button className="dcm-primary" onClick={switchToCreate}>
-                <Plus size={18} /> Thêm danh mục
+              <button type="button" className="dc-primary-btn" onClick={switchToCreate}>
+                <Plus size={16} /> Thêm danh mục
               </button>
             </div>
 
             {categoriesError && (
-              <div className="dcm-alert dcm-alert--danger">
-                <AlertCircle size={18} /> {categoriesError.message}
+              <div className="dc-alert error">
+                <AlertCircle size={16} /> {categoriesError.message}
               </div>
             )}
 
-            {pendingDeleteCategory && (
-              <div className="dcm-delete-card" role="alertdialog" aria-live="polite">
-                <AlertCircle size={18} />
-                <div className="dcm-delete-card__content">
-                  <strong>Xóa danh mục món</strong>
-                  <p>
-                    Bạn có chắc chắn muốn xóa
-                    <b>{` ${pendingDeleteCategory.name}`}</b>?
-                  </p>
-                  {pendingDeleteCategory.menuItemCount > 0 && (
-                    <small>
-                      Danh mục này đang có {pendingDeleteCategory.menuItemCount} món.
-                    </small>
-                  )}
-                  {deleteError && <div className="dcm-error">{deleteError}</div>}
-                </div>
-                <div className="dcm-delete-card__actions">
-                  <button onClick={handleCancelDelete} disabled={isDeletingCategory}>
-                    Hủy
-                  </button>
-                  <button
-                    className="danger"
-                    onClick={handleConfirmDelete}
-                    disabled={isDeletingCategory}
-                  >
-                    {isDeletingCategory ? "Đang xóa..." : "Xóa"}
-                  </button>
-                </div>
+            {categoriesLoading ? (
+              <div className="dc-empty">Đang tải danh mục...</div>
+            ) : filteredCategories.length === 0 ? (
+              <div className="dc-empty">
+                <Tags size={34} />
+                <strong>Chưa có danh mục món</strong>
+                <span>Tạo danh mục để nhóm các món trong menu.</span>
               </div>
-            )}
-
-            <div className="dcm-list">
-              {categoriesLoading ? (
-                <div className="dcm-state">Đang tải danh mục món...</div>
-              ) : filteredCategories.length === 0 ? (
-                <div className="dcm-empty">
-                  <Tags size={34} />
-                  <strong>Chưa có danh mục món</strong>
-                  <span>Tạo danh mục đầu tiên để thêm món vào đúng nhóm.</span>
-                </div>
-              ) : (
-                filteredCategories.map((category) => {
-                  const id = getCategoryId(category);
-                  return (
-                    <div className="dcm-card" key={id}>
-                      <div className="dcm-card__icon">
-                        {resolveCategoryIcon(category?.name || "")}
-                      </div>
-                      <div className="dcm-card__info">
-                        <strong>{category?.name}</strong>
-                        <span>
-                          {Number(category?.menuItemCount || 0)} món · Thứ tự {category?.order ?? 0}
-                          {category?.isActive === false ? " · Tạm ẩn" : ""}
-                        </span>
-                      </div>
-                      <div className="dcm-card__actions">
-                        <button onClick={() => switchToEdit(category)} title="Sửa danh mục">
-                          <Edit3 size={16} />
-                        </button>
-                        <button onClick={() => handleRequestDelete(category)} title="Xóa danh mục">
-                          <Trash2 size={16} />
-                        </button>
+            ) : (
+              <div className="dc-category-list">
+                {filteredCategories.map((category) => (
+                  <div key={getCategoryId(category)} className="dc-category-row">
+                    <div className="dc-category-main">
+                      <span className="dc-category-icon">
+                        {category?.icon || resolveCategoryIcon(category?.name || "")}
+                      </span>
+                      <div>
+                        <strong>{category.name}</strong>
+                        <small>
+                          {Number(category.menuItemCount || 0)} món · Thứ tự {category.order ?? 0}
+                        </small>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    <div className="dc-row-actions">
+                      <button type="button" onClick={() => switchToEdit(category)}>
+                        <Edit3 size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => handleRequestDelete(category)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        ) : (
+          <form className="dc-form" onSubmit={handleSubmit}>
+            {errors.submit && <div className="dc-alert error">{errors.submit}</div>}
 
-        {viewMode === "form" && (
-          <form className="dcm-view" onSubmit={handleSubmit}>
-            <div className="dcm-header dcm-header--form">
-              <button type="button" className="dcm-back" onClick={switchToList}>
-                <ArrowLeft size={20} />
-              </button>
-              <div>
-                <h3>{formData.id ? "Cập nhật danh mục món" : "Tạo danh mục món"}</h3>
-                <p>Danh mục này dùng để phân loại món trong khung giờ đang chọn.</p>
-              </div>
+            <div className="dc-form-group">
+              <label>Tên danh mục món</label>
+              <input
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Ví dụ: Món chính, Đồ uống, Tráng miệng..."
+              />
+              {errors.name && <small className="dc-error-text">{errors.name}</small>}
             </div>
 
-            <div className="dcm-form-body">
-              <div className="dcm-form-group">
-                <label>Tên danh mục món *</label>
-                <input
-                  value={formData.name}
-                  onChange={(event) => handleInputChange("name", event.target.value)}
-                  placeholder="VD: Món chính, Đồ uống, Tráng miệng..."
-                  autoFocus
-                />
-                {errors.name && <span>{errors.name}</span>}
-              </div>
-
-              <div className="dcm-form-row">
-                <div className="dcm-form-group">
-                  <label>Thứ tự hiển thị</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.order}
-                    onChange={(event) => handleInputChange("order", event.target.value)}
-                  />
-                  {errors.order && <span>{errors.order}</span>}
-                </div>
-
-                <label className="dcm-toggle">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive !== false}
-                    onChange={(event) =>
-                      handleInputChange("isActive", event.target.checked)
-                    }
-                  />
-                  <span>Kích hoạt</span>
-                </label>
-              </div>
-
-              <div className="dcm-form-group">
-                <label>Biểu tượng gợi ý</label>
-                <div className="dcm-icon-picker">
-                  {COMMON_CATEGORY_ICONS.map((icon) => (
-                    <button
-                      type="button"
-                      key={icon}
-                      className={formData.icon === icon ? "active" : ""}
-                      onClick={() => handleInputChange("icon", icon)}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-                <small>Biểu tượng hiện chỉ dùng để hỗ trợ nhận diện nhanh trên giao diện.</small>
-              </div>
-
-              {errors.submit && <div className="dcm-alert dcm-alert--danger">{errors.submit}</div>}
+            <div className="dc-form-group">
+              <label>Icon</label>
+              {renderIconPicker()}
             </div>
 
-            <div className="dcm-footer">
-              <button type="button" onClick={switchToList} disabled={isSubmitting}>
-                Hủy
+            <div className="dc-form-group">
+              <label>Thứ tự</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.order}
+                onChange={(e) => handleInputChange("order", e.target.value)}
+              />
+              {errors.order && <small className="dc-error-text">{errors.order}</small>}
+            </div>
+
+            <label className="dc-check-row">
+              <input
+                type="checkbox"
+                checked={formData.isActive !== false}
+                onChange={(e) => handleInputChange("isActive", e.target.checked)}
+              />
+              <span>Kích hoạt danh mục</span>
+            </label>
+
+            <div className="dc-footer-actions">
+              <button type="button" className="dc-ghost-btn" onClick={switchToList}>
+                <X size={16} /> Hủy
               </button>
-              <button className="dcm-primary" type="submit" disabled={isSubmitting}>
+              <button type="submit" className="dc-primary-btn" disabled={isSubmitting}>
                 <Save size={16} /> {isSubmitting ? "Đang lưu..." : "Lưu danh mục"}
               </button>
             </div>
           </form>
         )}
-      </div>
+
+        {pendingDeleteCategory && (
+          <div className="dc-confirm-layer">
+            <div className="dc-confirm-card">
+              <AlertCircle size={22} />
+              <h3>Xóa danh mục món?</h3>
+              <p>
+                Bạn sắp xóa <strong>{pendingDeleteCategory.name}</strong>. Nếu danh mục đang có món,
+                hệ thống sẽ chặn để tránh mất liên kết dữ liệu.
+              </p>
+              {deleteError && <div className="dc-alert error">{deleteError}</div>}
+              <div className="dc-confirm-actions">
+                <button type="button" onClick={handleCancelDelete} disabled={isDeletingCategory}>
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeletingCategory}
+                >
+                  {isDeletingCategory ? "Đang xóa..." : "Xóa"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal.Body>
     </Modal>
   );
 };

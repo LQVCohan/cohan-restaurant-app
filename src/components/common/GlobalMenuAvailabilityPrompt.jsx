@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Bell, X } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, Clock3, X } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import useMenuAvailabilityWatch from "@/hooks/useMenuAvailabilityWatch";
 import "./GlobalMenuAvailabilityPrompt.scss";
@@ -34,6 +34,13 @@ function normalizePayload(detail) {
     : detail?.operationName?.toLowerCase?.().includes("table")
       ? "pos"
       : "online";
+  const itemName =
+    input.name ||
+    firstItem?.name ||
+    firstItem?.dishName ||
+    detail?.menuItemName ||
+    detail?.name ||
+    "Món đã chọn";
 
   return {
     restaurantId,
@@ -43,6 +50,7 @@ function normalizePayload(detail) {
     tableId: input.tableId || null,
     tableCode: input.tableCode || null,
     source,
+    itemName,
     message:
       detail?.message ||
       "Món vừa được khách khác giữ hoặc đã hết khả dụng.",
@@ -54,6 +62,8 @@ export default function GlobalMenuAvailabilityPrompt() {
   const { registerWatch, registering } = useMenuAvailabilityWatch();
   const [payload, setPayload] = useState(null);
   const [statusText, setStatusText] = useState("");
+  const [statusTone, setStatusTone] = useState("warning");
+  const [registered, setRegistered] = useState(false);
 
   useEffect(() => {
     const onOutOfStock = (event) => {
@@ -61,6 +71,8 @@ export default function GlobalMenuAvailabilityPrompt() {
       if (!normalized.restaurantId || !normalized.menuItemId) return;
       setPayload(normalized);
       setStatusText("");
+      setStatusTone("warning");
+      setRegistered(false);
     };
 
     window.addEventListener(EVENT_NAME, onOutOfStock);
@@ -82,10 +94,13 @@ export default function GlobalMenuAvailabilityPrompt() {
   const handleClose = () => {
     setPayload(null);
     setStatusText("");
+    setStatusTone("warning");
+    setRegistered(false);
   };
 
   const handleRegister = async () => {
     if (!canRegister) {
+      setStatusTone("error");
       setStatusText("Vui lòng đăng nhập hoặc chọn đúng bàn để nhận nhắc khi món có lại.");
       return;
     }
@@ -104,16 +119,19 @@ export default function GlobalMenuAvailabilityPrompt() {
     });
 
     if (!result.success) {
+      setStatusTone("error");
       setStatusText(result.message || "Không thể đăng ký nhắc món.");
       return;
     }
 
+    setRegistered(true);
+    setStatusTone("success");
     setStatusText(result.data?.message || "Đã đăng ký nhắc khi món có lại.");
   };
 
   return (
     <div className="global-menu-availability-prompt" role="dialog" aria-live="polite">
-      <div className="global-menu-availability-prompt__card">
+      <div className={`global-menu-availability-prompt__card ${registered ? "is-success" : ""}`}>
         <button
           type="button"
           className="global-menu-availability-prompt__close"
@@ -124,24 +142,36 @@ export default function GlobalMenuAvailabilityPrompt() {
         </button>
 
         <div className="global-menu-availability-prompt__icon">
-          <Bell size={22} />
+          {registered ? <CheckCircle2 size={22} /> : <AlertTriangle size={22} />}
         </div>
 
         <div className="global-menu-availability-prompt__content">
-          <h3>Món vừa hết khả dụng</h3>
-          <p>{statusText || payload.message}</p>
-          <p className="global-menu-availability-prompt__hint">
-            Hệ thống chỉ nhắc khi món có lại, không tự động giữ món thay bạn.
+          <div className="global-menu-availability-prompt__eyebrow">
+            <span>{registered ? "Đã ghi nhận yêu cầu nhắc" : "Tồn kho thay đổi"}</span>
+            <span>{payload.source === "pos" ? "POS" : "Online"}</span>
+          </div>
+          <h3>{registered ? "Sẽ nhắc khi món có lại" : `${payload.itemName} vừa hết khả dụng`}</h3>
+          <p className={`global-menu-availability-prompt__message is-${statusTone}`}>
+            {statusText || payload.message}
           </p>
+          <div className="global-menu-availability-prompt__meta">
+            <span>
+              <Clock3 size={14} /> Không tự động giữ món
+            </span>
+            <span>SL: {payload.desiredQuantity}</span>
+          </div>
         </div>
 
         <div className="global-menu-availability-prompt__actions">
           <button type="button" className="secondary" onClick={handleClose}>
-            Bỏ qua
+            {registered ? "Đã hiểu" : "Bỏ qua"}
           </button>
-          <button type="button" onClick={handleRegister} disabled={registering}>
-            {registering ? "Đang đăng ký..." : "Nhắc tôi khi có lại"}
-          </button>
+          {!registered ? (
+            <button type="button" onClick={handleRegister} disabled={registering}>
+              <Bell size={15} />
+              {registering ? "Đang đăng ký..." : "Nhắc tôi khi có lại"}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

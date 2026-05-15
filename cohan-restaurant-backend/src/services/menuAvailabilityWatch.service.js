@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-import { MenuAvailabilityWatch, MenuItem } from "../../models/index.js";
+import { MenuAvailabilityWatch, MenuItem, Warehouse } from "../../models/index.js";
+import { checkAvailabilityForLinesTx } from "./inventory.service.js";
 
 const DEFAULT_WATCH_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -44,6 +45,53 @@ function resolveExpiresAt(value) {
   return new Date(Date.now() + DEFAULT_WATCH_TTL_MS);
 }
 
+async function resolveDefaultWarehouseId(restaurantId, session = null) {
+  let q = Warehouse.findOne({ restaurantId, isActive: true }).sort({
+    createdAt: 1,
+    _id: 1,
+  });
+  if (session) q = q.session(session);
+  const warehouse = await q.lean();
+  return warehouse?._id || null;
+}
+
+async function isMenuItemActuallyAvailable({
+  restaurantId,
+  menuItemId,
+  servingKey,
+  quantity = 1,
+  session = null,
+}) {
+  const rid = toId(restaurantId);
+  const mid = toId(menuItemId);
+  if (!rid || !mid) return false;
+
+  const warehouseId = await resolveDefaultWarehouseId(rid, session);
+  if (!warehouseId) return false;
+
+  try {
+    const availability = await checkAvailabilityForLinesTx({
+      restaurantId: rid,
+      warehouseId,
+      lines: [
+        {
+          menuItemId: mid,
+          quantity: Math.max(1, Number(quantity || 1)),
+          servingKey: normalizeServingKey(servingKey),
+        },
+      ],
+      session,
+    });
+    return Boolean(availability?.isAvailable);
+  } catch (error) {
+    console.warn(
+      "[MenuAvailabilityWatch] Availability check failed",
+      error?.message || error,
+    );
+    return false;
+  }
+}
+
 export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
   const restaurantId = toId(input.restaurantId);
   const menuItemId = toId(input.menuItemId);
@@ -58,6 +106,26 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
   }
 
   const servingKey = normalizeServingKey(input.servingKey);
+  const desiredQuantity = Math.max(1, Number(input.desiredQuantity || 1));
+  const availableNow = await isMenuItemActuallyAvailable({
+    restaurantId,
+    menuItemId,
+    servingKey,
+    quantity: desiredQuantity,
+  });
+
+  if (availableNow) {
+    await MenuItem.updateOne(
+      { _id: menuItemId, restaurantId, status: "out_of_stock" },
+      { $set: { status: "available" } },
+    );
+    return {
+      watch: null,
+      alreadyAvailable: true,
+      message: "Món hiện đã có thể đặt lại.",
+    };
+  }
+
   const now = new Date();
   const source = ["online", "dine_in", "pos", "staff_remote", "other"].includes(String(input.source || ""))
     ? String(input.source)
@@ -75,7 +143,7 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
     },
     {
       $set: {
-        desiredQuantity: Math.max(1, Number(input.desiredQuantity || 1)),
+        desiredQuantity,
         source,
         reason: String(input.reason || "out_of_stock"),
         note: String(input.note || ""),
@@ -153,7 +221,7 @@ export async function publishMenuItemOutOfStock({ io, restaurantId, menuItemId, 
 export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, menuItemId, servingKey, source = "inventory_released", maxWatchers = 50 }) {
   const rid = toId(restaurantId);
   const mid = toId(menuItemId);
-  if (!rid || !mid) return { notified: 0 };
+  if (!rid || !mid) return { notified: 0, skipped: 0 };
 
   const now = new Date();
   const normalizedServingKey = normalizeServingKey(servingKey);
@@ -169,13 +237,29 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
     .lean({ virtuals: true });
 
   let notified = 0;
+  let skipped = 0;
   for (const watch of watchers) {
+    const available = await isMenuItemActuallyAvailable({
+      restaurantId: rid,
+      menuItemId: mid,
+      servingKey: normalizedServingKey,
+      quantity: watch.desiredQuantity || 1,
+    });
+
+    if (!available) {
+      skipped += 1;
+      continue;
+    }
+
     const updated = await MenuAvailabilityWatch.findOneAndUpdate(
       { _id: watch._id, status: "watching" },
       { $set: { status: "notified", notifiedAt: now } },
       { new: true },
     ).lean({ virtuals: true });
-    if (!updated) continue;
+    if (!updated) {
+      skipped += 1;
+      continue;
+    }
 
     const payload = {
       type: "MENU_ITEM_AVAILABLE_AGAIN",
@@ -203,10 +287,11 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
       servingVariantKey: normalizedServingKey,
       source,
       notified,
+      skipped,
     });
   }
 
-  return { notified };
+  return { notified, skipped };
 }
 
 export async function expireOldMenuAvailabilityWatches() {

@@ -10,6 +10,7 @@ const schemaDir = __dirname;
 const files = [
   "base.graphql",
   "user.graphql",
+  "payrollReadiness.graphql",
   "restaurant.graphql",
   "role.graphql",
   "permission.graphql",

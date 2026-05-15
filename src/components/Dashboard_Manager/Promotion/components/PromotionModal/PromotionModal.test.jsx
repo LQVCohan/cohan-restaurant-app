@@ -184,6 +184,31 @@ describe("PromotionModal", () => {
       );
     });
   });
+
+  it("shows helper text when selecting freeship type", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "freeship" },
+    });
+
+    expect(
+      screen.getByText(/hệ thống sẽ giảm trực tiếp phí vận chuyển/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/freeship sẽ không vượt quá giới hạn đó/i),
+    ).toBeInTheDocument();
+  });
+
   it("explains how BOGO promotion is applied during payment", () => {
     render(
       <PromotionModal
@@ -208,6 +233,193 @@ describe("PromotionModal", () => {
       screen.getByText(/bill có 2 món A và 2 món B thì giảm tiền 2 món B/i),
     ).toBeInTheDocument();
   });
+
+  it("shows combo helper text when selecting combo type", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "combo" },
+    });
+
+    expect(
+      screen.getByText(/hệ thống chỉ giảm combo nếu bill có đủ tất cả món/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Số lượt combo được tính theo món có số lượng ít nhất/i),
+    ).toBeInTheDocument();
+  });
+
+  it("requires at least 2 combo items", async () => {
+    const onSave = vi.fn();
+
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={onSave}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]'), {
+      target: { name: "name", value: "Combo pho" },
+    });
+    fireEvent.change(document.querySelector('input[name="code"]'), {
+      target: { name: "code", value: "COMBO-PHO" },
+    });
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "combo" },
+    });
+    fireEvent.change(document.querySelector('input[name="discountValue"]'), {
+      target: { name: "discountValue", value: "10000" },
+    });
+    fireEvent.change(document.querySelector('input[name="startDate"]'), {
+      target: { name: "startDate", value: "2026-05-01T10:00" },
+    });
+    fireEvent.change(document.querySelector('input[name="endDate"]'), {
+      target: { name: "endDate", value: "2026-05-05T22:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Món combo 1"), {
+      target: { value: "item-1" },
+    });
+
+    fireEvent.click(document.querySelector('button[form="promoForm"]'));
+
+    expect(await screen.findByText("Combo cần ít nhất 2 món")).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("submits comboItems with itemId and quantity", async () => {
+    const onSave = vi.fn();
+
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={onSave}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]'), {
+      target: { name: "name", value: "Combo pho tra" },
+    });
+    fireEvent.change(document.querySelector('input[name="code"]'), {
+      target: { name: "code", value: "COMBO-PHO" },
+    });
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "combo" },
+    });
+    fireEvent.change(document.querySelector('select[name="discountType"]'), {
+      target: { name: "discountType", value: "fixed" },
+    });
+    fireEvent.change(document.querySelector('input[name="discountValue"]'), {
+      target: { name: "discountValue", value: "10000" },
+    });
+    fireEvent.change(document.querySelector('input[name="startDate"]'), {
+      target: { name: "startDate", value: "2026-05-01T10:00" },
+    });
+    fireEvent.change(document.querySelector('input[name="endDate"]'), {
+      target: { name: "endDate", value: "2026-05-05T22:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Món combo 1"), {
+      target: { value: "item-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Số lượng món combo 1"), {
+      target: { value: "1" },
+    });
+    fireEvent.change(screen.getByLabelText("Món combo 2"), {
+      target: { value: "item-3" },
+    });
+    fireEvent.change(screen.getByLabelText("Số lượng món combo 2"), {
+      target: { value: "2" },
+    });
+
+    fireEvent.click(document.querySelector('button[form="promoForm"]'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "combo",
+          discountType: "fixed",
+          comboItems: [
+            { itemId: "item-1", quantity: 1 },
+            { itemId: "item-3", quantity: 2 },
+          ],
+        }),
+      );
+    });
+  });
+
+  it("forces combo scope to order and clears gift item", async () => {
+    const onSave = vi.fn();
+
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={onSave}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]'), {
+      target: { name: "name", value: "Combo order" },
+    });
+    fireEvent.change(document.querySelector('input[name="code"]'), {
+      target: { name: "code", value: "COMBO-ORDER" },
+    });
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "combo" },
+    });
+    fireEvent.change(document.querySelector('input[name="discountValue"]'), {
+      target: { name: "discountValue", value: "10" },
+    });
+    fireEvent.change(document.querySelector('input[name="startDate"]'), {
+      target: { name: "startDate", value: "2026-05-01T10:00" },
+    });
+    fireEvent.change(document.querySelector('input[name="endDate"]'), {
+      target: { name: "endDate", value: "2026-05-05T22:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Món combo 1"), {
+      target: { value: "item-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Món combo 2"), {
+      target: { value: "item-2" },
+    });
+
+    const scopeSelect = document.querySelector('select[name="scope"]');
+    expect(scopeSelect).toBeDisabled();
+    expect(scopeSelect.value).toBe("order");
+
+    fireEvent.click(document.querySelector('button[form="promoForm"]'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scope: "order",
+          giftItemId: null,
+          productId: null,
+        }),
+      );
+    });
+  });
+
   it("shows the promotion restaurant when editing an existing record", () => {
     render(
       <PromotionModal

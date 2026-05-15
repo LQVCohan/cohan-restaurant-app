@@ -149,6 +149,21 @@ const M_ENSURE_MENU = gql`
   ${FRAG_MENU}
 `;
 
+const M_COPY_MENU = gql`
+  mutation CopyMenu($input: CopyMenuInput!) {
+    copyMenu(input: $input) {
+      ...MenuFields
+    }
+  }
+  ${FRAG_MENU}
+`;
+
+const M_DELETE_MENU = gql`
+  mutation DeleteMenu($id: ID!, $force: Boolean = false) {
+    deleteMenu(id: $id, force: $force)
+  }
+`;
+
 const M_CREATE_ITEM = gql`
   mutation CreateMenuItem($input: CreateMenuItemInput!) {
     createMenuItem(input: $input) {
@@ -174,7 +189,7 @@ const M_DELETE_ITEM = gql`
 `;
 
 const M_TOGGLE_STATUS = gql`
-  mutation ToggleMenuItemStatus($id: ID!, $status: String!) {
+  mutation ToggleMenuItemStatus($id: ID!, $status: MenuItemStatus!) {
     toggleMenuItemStatus(id: $id, status: $status) {
       id
       status
@@ -453,6 +468,33 @@ export default function useMenuManagement({
     },
   });
 
+  const [copyMenuMut] = useMutation(M_COPY_MENU, {
+    update(cache, { data }) {
+      const copied = data?.copyMenu;
+      if (!copied) return;
+      const qVars = { restaurantId };
+      cache.updateQuery({ query: Q_MENUS, variables: qVars }, (prev) => {
+        if (!prev?.menus) return prev;
+        const exists = prev.menus.some((m) => m.id === copied.id);
+        return exists ? prev : { menus: [...prev.menus, copied] };
+      });
+    },
+  });
+
+  const [deleteMenuMut] = useMutation(M_DELETE_MENU, {
+    update(cache, _result, { variables }) {
+      const id = variables?.id;
+      if (!id) return;
+      const qVars = { restaurantId };
+      cache.updateQuery({ query: Q_MENUS, variables: qVars }, (prev) => {
+        if (!prev?.menus) return prev;
+        return { menus: prev.menus.filter((menu) => menu.id !== id) };
+      });
+      cache.evict({ id: cache.identify({ __typename: "Menu", id }) });
+      cache.gc();
+    },
+  });
+
   const [createItemMut] = useMutation(M_CREATE_ITEM, {
     update(cache, { data }) {
       const created = data?.createMenuItem;
@@ -620,6 +662,32 @@ export default function useMenuManagement({
     [ensureMenuMut, restaurantId]
   );
 
+  const copyMenu = useCallback(
+    async (input) => {
+      const { data } = await copyMenuMut({
+        variables: {
+          input: {
+            restaurantId,
+            copyItems: true,
+            copyRecipes: true,
+            isActive: false,
+            ...input,
+          },
+        },
+      });
+      return data?.copyMenu || null;
+    },
+    [copyMenuMut, restaurantId]
+  );
+
+  const deleteMenu = useCallback(
+    async ({ id, force = false }) => {
+      const { data } = await deleteMenuMut({ variables: { id, force } });
+      return !!data?.deleteMenu;
+    },
+    [deleteMenuMut]
+  );
+
   const createMenuItem = useCallback(
     async (input) => {
       const payload = {
@@ -761,6 +829,8 @@ export default function useMenuManagement({
 
     // mutations
     ensureMenu,
+    copyMenu,
+    deleteMenu,
     createMenuItem,
     updateMenuItem,
     deleteMenuItem,

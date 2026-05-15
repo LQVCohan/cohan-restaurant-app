@@ -6,15 +6,10 @@ import { AuthProvider } from "./context/AuthProvider";
 import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
 import "./styles/Globals.scss";
-import "./styles/schedule-insights-polish.css";
-import "./styles/add-shift-modal-polish.css";
-import "./styles/schedule-board-polish.css";
-import "./styles/schedule-publish-polish.css";
-import "./styles/availability-registration-polish.css";
-import "./styles/schedule-toolbar-polish.css";
-import "./styles/declined-shift-review-polish.css";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
+import GlobalMenuAvailabilityPrompt from "./components/common/GlobalMenuAvailabilityPrompt";
+import FoodDetailAvailabilityGlobalMount from "./components/Customer/Food/FoodDetailAvailabilityGlobalMount";
 import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
@@ -28,6 +23,8 @@ function App() {
             <CustomerNotificationProvider>
               <CartProvider>
                 <AppRouter />
+                <FoodDetailAvailabilityGlobalMount />
+                <GlobalMenuAvailabilityPrompt />
               </CartProvider>
             </CustomerNotificationProvider>
             <NotificationContainer />
