@@ -3,6 +3,19 @@ import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
+export const MENU_AVAILABILITY_SOCKET_EVENT = "menu-availability:socket-event";
+
+function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
+  if (typeof window === "undefined" || !evt?.type) return;
+  window.dispatchEvent(
+    new CustomEvent(MENU_AVAILABILITY_SOCKET_EVENT, {
+      detail: {
+        channel,
+        event: evt,
+      },
+    }),
+  );
+}
 
 /**
  * Hook kết nối socket.io để lắng nghe các sự kiện order + inventory realtime.
@@ -74,6 +87,7 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
       if (!evt?.type) return;
       const h = getHandlers();
       console.log("📡 [SOCKET.IO] Inventory event received:", evt);
+      broadcastMenuAvailabilityEvent(evt, "inventory");
 
       h.onInventoryEvent?.(evt);
 
@@ -93,6 +107,7 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
       if (!evt?.type) return;
       const h = getHandlers();
       console.log("📡 [SOCKET.IO] Menu availability notification received:", evt);
+      broadcastMenuAvailabilityEvent(evt, "notification");
 
       h.onMenuAvailabilityNotification?.(evt);
       if (evt.type === "MENU_ITEM_AVAILABLE_AGAIN") {
