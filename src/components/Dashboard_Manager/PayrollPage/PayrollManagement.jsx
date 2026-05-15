@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
+import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
 import PayrollPayslipModal, {
   getPayrollPaymentErrorMessage,
 } from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
@@ -568,7 +569,11 @@ const PayrollManagement = () => {
     updateSettings,
     upsertAdjustment,
     validationResult,
+    payrollReadiness,
+    readinessLoading,
+    readinessError,
     refetchValidation,
+    refetchPayrollReadiness,
     refetchDetail,
     refetchPayrollPeriodDetail,
     refetchPeriods,
@@ -672,6 +677,8 @@ const PayrollManagement = () => {
 
   const displayedPeriod = periodDetail?.period || null;
   const periodStatus = displayedPeriod?.status || "draft";
+  const readinessBlocksFinalize =
+    payrollReadiness?.readyToFinalize === false;
   const canPayInPeriod = ["finalized", "paid"].includes(periodStatus);
   const isPeriodLocked = periodStatus === "locked";
   const selectedPayableItems = useMemo(
@@ -994,6 +1001,26 @@ const PayrollManagement = () => {
       setSettingsSaving(false);
     }
   };
+
+  const handleOpenReadinessPanel = async () => {
+    setShowValidationPanel(true);
+
+    const tasks = [];
+    if (refetchPayrollReadiness) tasks.push(refetchPayrollReadiness());
+    if (refetchValidation) tasks.push(refetchValidation());
+
+    await Promise.allSettled(tasks);
+  };
+
+  const handleGoToReadinessIssue = (issue) => {
+    console.log("Payroll readiness issue", issue);
+    alert(
+      issue?.suggestedAction ||
+        issue?.message ||
+        "Vui lòng xử lý lỗi trước khi chốt lương.",
+    );
+  };
+
   const handleApplyAdjustment = async () => {
     if (!selectedPayslipEmployeeId || !selectedPeriodId) return;
     const amount = Number(adjustmentAmount || 0);
@@ -1143,10 +1170,7 @@ const PayrollManagement = () => {
           <div className="right-actions" style={{ display: "flex", gap: 8 }}>
             <button
               className="btn btn-white"
-              onClick={() => {
-                setShowValidationPanel(true);
-                refetchValidation?.();
-              }}
+              onClick={handleOpenReadinessPanel}
             >
               Kiểm tra trước khi chốt
             </button>
@@ -1154,7 +1178,8 @@ const PayrollManagement = () => {
               className="btn btn-white"
               disabled={
                 periodStatus !== "draft" ||
-                Number(validationResult?.errorCount || 0) > 0
+                Number(validationResult?.errorCount || 0) > 0 ||
+                readinessBlocksFinalize
               }
               onClick={async () => {
                 try {
@@ -1163,6 +1188,17 @@ const PayrollManagement = () => {
                   });
                   alert("✅ Đã chốt kỳ lương.");
                 } catch (err) {
+                  const message = String(err?.message || err?.code || "");
+
+                  if (message.includes("PAYROLL_PERIOD_NOT_READY")) {
+                    setShowValidationPanel(true);
+                    await refetchPayrollReadiness?.();
+                    alert(
+                      "Kỳ lương chưa sẵn sàng chốt. Vui lòng xử lý các lỗi trong bảng kiểm tra trước khi chốt.",
+                    );
+                    return;
+                  }
+
                   alert(
                     getPayrollActionErrorMessage(
                       err,
@@ -1205,6 +1241,22 @@ const PayrollManagement = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {readinessBlocksFinalize && (
+        <p className="payroll-action-hint payroll-action-hint--error">
+          Kỳ lương chưa sẵn sàng chốt. Vui lòng xử lý các lỗi trong bảng kiểm tra.
+        </p>
+      )}
+
+      {showValidationPanel && (
+        <PayrollReadinessPanel
+          readiness={payrollReadiness}
+          loading={readinessLoading}
+          error={readinessError}
+          onRefresh={handleOpenReadinessPanel}
+          onGoToIssue={handleGoToReadinessIssue}
+        />
       )}
 
       <div className="metrics-strip">
@@ -1573,52 +1625,6 @@ const PayrollManagement = () => {
           onClose={handleCloseSettings}
           onSave={handleSaveSettings}
         />
-      )}
-      {showValidationPanel && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowValidationPanel(false)}
-        >
-          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Kiểm tra trước khi chốt</h3>
-              <button
-                className="close-btn"
-                onClick={() => setShowValidationPanel(false)}
-              >
-                x
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>
-                Lỗi: <strong>{validationResult?.errorCount || 0}</strong> | Cảnh
-                báo: <strong>{validationResult?.warningCount || 0}</strong>
-              </p>
-              <div style={{ maxHeight: 320, overflow: "auto" }}>
-                {(validationResult?.issues || []).map((issue, idx) => (
-                  <div
-                    key={`${issue.code}-${idx}`}
-                    style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}
-                  >
-                    <strong>
-                      [{issue.severity}] {issue.code}
-                    </strong>
-                    <div>{issue.message}</div>
-                    {issue.employeeName && (
-                      <div>
-                        Nhân viên: {issue.employeeName} (
-                        {issue.employeeCode || "-"})
-                      </div>
-                    )}
-                    {issue.suggestedAction && (
-                      <div>Gợi ý: {issue.suggestedAction}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
