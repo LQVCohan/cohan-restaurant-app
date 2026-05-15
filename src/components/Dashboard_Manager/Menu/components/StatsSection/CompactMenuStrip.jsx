@@ -37,6 +37,10 @@ const MENU_FIELDS = gql`
     coverImage
     isActive
     itemCount
+    revenue
+    orderCount
+    soldItemCount
+    rating
     categoryMenu {
       id
       name
@@ -117,6 +121,14 @@ const errorText = (error, fallback) =>
   error?.graphQLErrors?.map((entry) => entry?.message).filter(Boolean).join("; ") ||
   error?.message ||
   fallback;
+
+const formatCompactRevenue = (value) => {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "--";
+  if (number >= 1000000) return `${(number / 1000000).toFixed(1)}tr`;
+  if (number >= 1000) return `${Math.round(number / 1000)}k`;
+  return String(Math.round(number));
+};
 
 const CompactMenuStrip = ({
   menus = [],
@@ -324,7 +336,7 @@ const CompactMenuStrip = ({
                       <div className="cms-stats">
                         <div className="cms-stat-item" title="Số món"><FiLayers className="ic" /> <strong>{menu.itemCount || 0}</strong></div>
                         <div className="cms-stat-item" title="Đánh giá"><FiStar className="ic star" /> <strong>{menu.rating ?? "--"}</strong></div>
-                        <div className="cms-stat-item" title="Doanh thu"><FiTrendingUp className="ic grow" /> <strong>{menu.revenue || "--"}</strong></div>
+                        <div className="cms-stat-item" title={`Đơn: ${menu.orderCount || 0} · Đã bán: ${menu.soldItemCount || 0}`}><FiTrendingUp className="ic grow" /> <strong>{formatCompactRevenue(menu.revenue)}</strong></div>
                       </div>
                     </div>
                     <div className="cms-toolbar">

@@ -12,6 +12,7 @@ import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
 import MenuItemModal from "../modals/MenuItemModal";
 import { useActiveMenuPromotions } from "@/hooks/useActiveMenuPromotions";
+import { MENU_AVAILABILITY_SOCKET_EVENT } from "@/hooks/useSocketOrder";
 const SEARCH_SUGGESTIONS = gql`
   query PosSearchSuggestions($query: String!, $timeSlot: TimeSlot) {
     searchSuggestions(query: $query, timeSlot: $timeSlot, limitPerType: 6) {
@@ -44,6 +45,10 @@ const SearchIcon = () => (
   </svg>
 );
 
+function getMenuItemIdFromAvailabilityEvent(evt) {
+  return evt?.menuItemId || evt?.menuId || evt?.dishId || null;
+}
+
 export default function CenterPanel() {
   const {
     restaurantId,
@@ -61,8 +66,46 @@ export default function CenterPanel() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [availabilityOverrides, setAvailabilityOverrides] = useState({});
   const hideTimerRef = useRef(null);
   const suggestionRequestRef = useRef(0);
+
+  useEffect(() => {
+    const handleAvailabilityEvent = (event) => {
+      const evt = event?.detail?.event;
+      if (!evt?.type) return;
+      if (evt.restaurantId && restaurantId && String(evt.restaurantId) !== String(restaurantId)) {
+        return;
+      }
+      const menuItemId = getMenuItemIdFromAvailabilityEvent(evt);
+      if (!menuItemId) return;
+
+      if (evt.type === "MENU_ITEM_OUT_OF_STOCK") {
+        setAvailabilityOverrides((prev) => ({
+          ...prev,
+          [String(menuItemId)]: {
+            status: "out_of_stock",
+            reason: evt.reason || "reserve_failed",
+            updatedAt: Date.now(),
+          },
+        }));
+      }
+
+      if (evt.type === "MENU_ITEM_AVAILABLE_AGAIN") {
+        setAvailabilityOverrides((prev) => ({
+          ...prev,
+          [String(menuItemId)]: {
+            status: "available",
+            reason: evt.source || "available_again",
+            updatedAt: Date.now(),
+          },
+        }));
+      }
+    };
+
+    window.addEventListener(MENU_AVAILABILITY_SOCKET_EVENT, handleAvailabilityEvent);
+    return () => window.removeEventListener(MENU_AVAILABILITY_SOCKET_EVENT, handleAvailabilityEvent);
+  }, [restaurantId]);
 
   const recentKey = useMemo(
     () => `pos_recent_searches_${restaurantId || "na"}`,
@@ -190,6 +233,11 @@ export default function CenterPanel() {
       const cookingOption = defaultVariant?.name || "";
       const activePromotion = getPromotionForMenuItem(it);
       const promotionLabel = getPromotionLabel(activePromotion);
+      const availabilityOverride = availabilityOverrides[String(it.id)] || null;
+      const baseStatus = String(it.status || it.availabilityStatus || "").toLowerCase();
+      const isOutOfStock =
+        availabilityOverride?.status === "out_of_stock" ||
+        (!availabilityOverride && ["out_of_stock", "unavailable", "sold_out"].includes(baseStatus));
       return {
         ...it,
         _displayPrice: displayPrice,
@@ -201,15 +249,18 @@ export default function CenterPanel() {
         _defaultCooking: cookingOption,
         _promotion: activePromotion,
         _promotionLabel: promotionLabel,
+        _availabilityOverride: availabilityOverride,
+        _isOutOfStock: isOutOfStock,
       };
     });
-  }, [filteredMenu, getPromotionForMenuItem, getPromotionLabel]);
+  }, [filteredMenu, getPromotionForMenuItem, getPromotionLabel, availabilityOverrides]);
 
   // Modal logic
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
   const openModal = useCallback((item) => {
+    if (item?._isOutOfStock) return;
     setSelectedItem(item);
     setModalOpen(true);
   }, []);
@@ -226,7 +277,7 @@ export default function CenterPanel() {
 
   const addMenuItemToOrder = useCallback(
     (menuItem, options = {}) => {
-      if (!menuItem) return;
+      if (!menuItem || menuItem?._isOutOfStock) return;
 
       const {
         variant = null,
@@ -513,15 +564,17 @@ export default function CenterPanel() {
                   : null;
             const thumb = item.thumbImage;
             const emoji = item.emoji || "🍽️";
+            const isOutOfStock = Boolean(item._isOutOfStock);
 
             return (
               <div
                 key={item.id}
-                className={cls.card}
+                className={`${cls.card} ${isOutOfStock ? cls.cardOutOfStock : ""}`}
                 data-menu-id={item.id}
                 onClick={() => openModal(item)}
                 role="button"
-                tabIndex={0}
+                tabIndex={isOutOfStock ? -1 : 0}
+                aria-disabled={isOutOfStock}
                 onKeyDown={(e) => e.key === "Enter" && openModal(item)}
               >
                 {/* Image Area */}
@@ -536,7 +589,13 @@ export default function CenterPanel() {
                   ) : (
                     <div className={cls.cardPlaceholder}>{emoji}</div>
                   )}
-                  {item._promotionLabel && (
+                  {isOutOfStock && (
+                    <div className={cls.stockBadge}>Hết món</div>
+                  )}
+                  {!isOutOfStock && item._availabilityOverride?.status === "available" && (
+                    <div className={cls.availableBadge}>Có lại</div>
+                  )}
+                  {item._promotionLabel && !isOutOfStock && (
                     <div
                       className={cls.promoBadge}
                       title={item._promotion?.name || "Ưu đãi"}
@@ -545,29 +604,32 @@ export default function CenterPanel() {
                     </div>
                   )}
                   {/* Quick Add Overlay Button */}
-                  <div
-                    className={cls.overlayAdd}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const variant =
-                        item._defaultVariant ||
-                        (Array.isArray(item._variants) &&
-                        item._variants.length === 1
-                          ? item._variants[0]
-                          : null);
+                  {!isOutOfStock && (
+                    <div
+                      className={cls.overlayAdd}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const variant =
+                          item._defaultVariant ||
+                          (Array.isArray(item._variants) &&
+                          item._variants.length === 1
+                            ? item._variants[0]
+                            : null);
 
-                      if (!variant && item._priceRange) {
-                        openModal(item);
-                        return;
-                      }
+                        if (!variant && item._priceRange) {
+                          openModal(item);
+                          return;
+                        }
 
-                      addMenuItemToOrder(item, { variant });
-                    }}
-                    role="button"
-                    tabIndex={-1}
-                  >
-                    <span>+</span>
-                  </div>
+                        addMenuItemToOrder(item, { variant });
+                      }}
+                      role="button"
+                      tabIndex={-1}
+                      title="Thêm nhanh"
+                    >
+                      <span>+</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Content Area */}
@@ -575,11 +637,14 @@ export default function CenterPanel() {
                   <h3 className={cls.cardName} title={item.name}>
                     {item.name}
                   </h3>
-                  {item._promotion?.name && (
+                  {item._promotion?.name && !isOutOfStock && (
                     <div className={cls.promoName}>{item._promotion.name}</div>
                   )}
                   {item.description && (
                     <p className={cls.cardDesc}>{item.description}</p>
+                  )}
+                  {isOutOfStock && (
+                    <div className={cls.stockHint}>Có thể đăng ký nhắc từ banner phía trên khi khách vẫn muốn món này.</div>
                   )}
 
                   <div className={cls.cardFooter}>
