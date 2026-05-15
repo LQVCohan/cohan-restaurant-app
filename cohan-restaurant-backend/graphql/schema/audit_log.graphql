@@ -47,4 +47,5 @@ extend type Query {
 
 extend type Mutation {
   copyMenu(input: CopyMenuInput!): Menu!
+  deleteMenu(id: ID!, force: Boolean = false): Boolean!
 }
