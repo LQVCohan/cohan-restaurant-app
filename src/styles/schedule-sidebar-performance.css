@@ -1,64 +1,15 @@
 /* =========================================================
    SCHEDULE SIDEBAR PERFORMANCE
-   Schedule board is expensive to relayout. When the manager
-   sidebar opens, move the viewport with GPU transform instead
-   of resizing/reflowing the schedule board.
+
+   Temporarily disabled.
+
+   The previous optimization used :has(), root-level transform,
+   width overrides, paint containment, and content-visibility on the
+   schedule page. It made sidebar animation smoother, but could hide
+   the whole Schedule screen after reload/devtools viewport changes
+   while GraphQL requests still completed successfully.
+
+   Keep this file as a safe no-op so imports do not break. The next
+   sidebar optimization should be implemented with an explicit layout
+   class instead of :has() and without moving/hiding the page root.
    ========================================================= */
-
-@media (min-width: 769px) {
-  .manager-layout:has(.manager-page-shell--schedules) {
-    --schedule-sidebar-width: 280px;
-  }
-
-  .manager-layout:has(.manager-page-shell--schedules) .sidebar {
-    transform: translate3d(-100%, 0, 0);
-    will-change: transform;
-    contain: layout paint style;
-    backface-visibility: hidden;
-  }
-
-  .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .sidebar {
-    transform: translate3d(0, 0, 0) !important;
-  }
-
-  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__main {
-    margin-left: 0 !important;
-    transform: translate3d(0, 0, 0);
-    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-    will-change: transform;
-  }
-
-  .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .manager-layout__main {
-    margin-left: 0 !important;
-    transform: translate3d(var(--schedule-sidebar-width), 0, 0);
-  }
-
-  .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .manager-layout__header,
-  .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .manager-layout__content,
-  .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .header {
-    left: 0 !important;
-    width: 100vw !important;
-  }
-
-  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__header,
-  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__content,
-  .manager-layout:has(.manager-page-shell--schedules) .header {
-    transition: none !important;
-  }
-
-  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__content {
-    contain: paint;
-  }
-
-  .manager-page-shell--schedules .schedule-board,
-  .manager-page-shell--schedules .schedule-availability-panel,
-  .manager-page-shell--schedules .schedule-action-center,
-  .manager-page-shell--schedules .schedule-insights-panel {
-    contain: layout paint style;
-  }
-
-  .manager-page-shell--schedules .schedule-board {
-    content-visibility: auto;
-    contain-intrinsic-size: 760px;
-  }
-}
