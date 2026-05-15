@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import usePayroll from "@/hooks/usePayroll";
-import PayrollManagement from "./PayrollManagement";
+import PayrollManagement from "./PayrollManagement.jsx";
 import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
 
 const BLOCKED_FINALIZE_HINT =
