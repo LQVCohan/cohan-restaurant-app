@@ -12,7 +12,7 @@ import TableManagement from "../components/Dashboard_Manager/Table/TableManageme
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
 import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
-import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
+import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagementWithReadiness";
 import "./ManagerLayout.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
