@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import useAttendanceManagement, {
   toAttendanceIsoStartOfDay,
@@ -435,6 +435,7 @@ const AttendancePage = () => {
   const [quickId, setQuickId] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [activeView, setActiveView] = useState("attendance");
+  const [readinessFocus, setReadinessFocus] = useState(null);
   const [selectedCorrectionRecord, setSelectedCorrectionRecord] =
     useState(null);
   const [correctionForm, setCorrectionForm] = useState(null);
@@ -444,6 +445,55 @@ const AttendancePage = () => {
   const [expandedCorrectionId, setExpandedCorrectionId] = useState(null);
 
   const { user } = useContext(AuthContext);
+
+  const applyReadinessFocusFromQuery = useCallback(() => {
+    const params = new URLSearchParams(window.location.search || "");
+    const attendanceTab = params.get("attendanceTab");
+    const status = params.get("status");
+    const employeeId = params.get("employeeId");
+
+    if (attendanceTab || status || employeeId) {
+      setReadinessFocus({
+        attendanceTab,
+        status,
+        employeeId,
+        correctionStatus: params.get("correctionStatus"),
+        offScheduleStatus: params.get("offScheduleStatus"),
+        overtimeStatus: params.get("overtimeStatus"),
+      });
+
+      if (attendanceTab === "corrections") {
+        setActiveView("corrections");
+      } else if (attendanceTab === "off_schedule") {
+        setActiveView("attendance");
+        setFilterStatus("unscheduled_checkin");
+      } else if (attendanceTab === "overtime") {
+        setActiveView("overtime");
+      } else {
+        setActiveView("attendance");
+      }
+
+      if (status) setFilterStatus(status);
+      if (params.get("correctionStatus")) {
+        setCorrectionStatus(params.get("correctionStatus"));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    applyReadinessFocusFromQuery();
+
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "staff") return;
+      if (event?.detail?.query?.staffPage !== "attendance") return;
+      applyReadinessFocusFromQuery();
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+  }, [applyReadinessFocusFromQuery]);
+
 
   const userRestaurantId =
     user?.restaurantForStaff || user?.refRestaurants?.[0]?.id || null;

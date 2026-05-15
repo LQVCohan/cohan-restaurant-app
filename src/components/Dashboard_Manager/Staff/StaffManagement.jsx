@@ -53,6 +53,24 @@ const getStaffFocusParams = () => {
   };
 };
 
+const getStaffNavigationQuery = () => {
+  const params = new URLSearchParams(window.location.search || "");
+  return {
+    staffPage: params.get("staffPage") || "",
+    employeeId: params.get("employeeId") || "",
+    employeeName: params.get("employeeName") || "",
+  };
+};
+
+const STAFF_SUB_PAGES = new Set([
+  "dashboard",
+  "attendance",
+  "leave",
+  "schedule",
+  "performance",
+  "reports",
+]);
+
 const StaffManagement = () => {
   // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -62,7 +80,35 @@ const StaffManagement = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
+  const [navigationQueryVersion, setNavigationQueryVersion] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "staff") return;
+
+      const nextStaffPage =
+        event?.detail?.query?.staffPage || getStaffNavigationQuery().staffPage;
+
+      if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
+        setCurrentPage(nextStaffPage);
+      }
+
+      setNavigationQueryVersion((value) => value + 1);
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+  }, []);
+
+  useEffect(() => {
+    const { staffPage } = getStaffNavigationQuery();
+
+    if (staffPage && STAFF_SUB_PAGES.has(staffPage)) {
+      setCurrentPage(staffPage);
+    }
+  }, [navigationQueryVersion]);
 
   const [modals, setModals] = useState({
     addEmployee: false,
@@ -390,7 +436,7 @@ const StaffManagement = () => {
       });
       window.setTimeout(() => setFocusedEmployeeId(""), 3000);
     }
-  }, [mappedStaff]);
+  }, [mappedStaff, navigationQueryVersion]);
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {

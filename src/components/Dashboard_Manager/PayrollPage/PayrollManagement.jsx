@@ -6,6 +6,7 @@ import PayrollPayslipModal, {
   getPayrollPaymentErrorMessage,
 } from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
 import { getPayrollActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
+import { dispatchPayrollReadinessNavigation } from "@/utils/payrollReadinessRouting";
 import "./PayrollManagement.scss";
 
 const getDefaultRange = () => {
@@ -1013,12 +1014,15 @@ const PayrollManagement = () => {
   };
 
   const handleGoToReadinessIssue = (issue) => {
-    console.log("Payroll readiness issue", issue);
-    alert(
-      issue?.suggestedAction ||
-        issue?.message ||
-        "Vui lòng xử lý lỗi trước khi chốt lương.",
-    );
+    const action = dispatchPayrollReadinessNavigation(issue);
+
+    if (action.page === "payroll") {
+      alert(
+        issue?.suggestedAction ||
+          issue?.message ||
+          "Vui lòng xử lý lỗi trước khi chốt lương.",
+      );
+    }
   };
 
   const handleApplyAdjustment = async () => {

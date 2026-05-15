@@ -5,7 +5,7 @@ import StaffManagement from "./StaffManagement";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
-  return { ...actual, useNavigate: () => vi.fn() };
+  return { ...actual, useNavigate: () => vi.fn(), useLocation: () => ({ search: "" }) };
 });
 
 vi.mock("@apollo/client", async () => {
@@ -66,6 +66,7 @@ vi.mock("./components/PageNavigation", () => ({
     <div>
       <button onClick={() => onPageChange("dashboard")}>Dashboard</button>
       <button onClick={() => onPageChange("reports")}>Báo cáo</button>
+      <button onClick={() => onPageChange("attendance")}>Chấm công</button>
     </div>
   ),
 }));
@@ -96,9 +97,34 @@ vi.mock("./components/modals", () => ({
   WorkHistoryModal: () => null,
 }));
 
-describe("StaffManagement reports tab", () => {
+describe("StaffManagement navigation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null, "", "/manager#staff");
+  });
+
+  it("responds to manager:navigation-query and opens attendance subpage", async () => {
+    render(<StaffManagement />);
+
+    window.history.replaceState(
+      null,
+      "",
+      "/manager?staffPage=attendance&attendanceTab=off_schedule#staff",
+    );
+
+    window.dispatchEvent(
+      new CustomEvent("manager:navigation-query", {
+        detail: {
+          page: "staff",
+          query: {
+            staffPage: "attendance",
+            attendanceTab: "off_schedule",
+          },
+        },
+      }),
+    );
+
+    expect(await screen.findByText("Attendance Page")).toBeInTheDocument();
   });
 
   it("renders the staff reports page when the reports tab is selected", async () => {

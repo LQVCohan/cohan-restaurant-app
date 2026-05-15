@@ -11,3 +11,13 @@
 @import "./schedule-header-line-fix.css";
 @import "./schedule-board-jumper-polish.css";
 @import "./schedule-hydration-polish.css";
+
+.schedule-readiness-focus-banner {
+  margin: 0 0 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
