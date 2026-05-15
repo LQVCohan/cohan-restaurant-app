@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useLayoutEffect } from "react";
 import { apolloClient } from "@/apollo/client";
 import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
@@ -14,12 +14,12 @@ import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.j
 import ScheduleManagement from "./ScheduleManagement";
 
 const ScheduleManagementPage = () => {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const apolloCleanup = installScheduleApolloPerformancePatch(apolloClient);
     const hydrationCleanup = initScheduleHydrationPolish?.();
     const domPolishTimer = window.setTimeout(() => {
       window.__scheduleDomPolishCleanup = initScheduleManagerDomPolish?.();
-    }, 760);
+    }, 520);
 
     return () => {
       window.clearTimeout(domPolishTimer);
