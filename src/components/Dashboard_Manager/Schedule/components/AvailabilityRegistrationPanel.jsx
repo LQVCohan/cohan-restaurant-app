@@ -168,6 +168,20 @@ export default function AvailabilityRegistrationPanel({
     hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
   const canViewSubmissions = hasWindow && selectedRestaurantId && !loading;
   const manualActionsDisabled = registrationMode === "auto";
+  const shouldUseCompactClosedView =
+    hasWindow &&
+    !collapsed &&
+    !showSubmissions &&
+    !error &&
+    !reopenBlockedReason &&
+    ["closed", "locked", "used_for_schedule"].includes(windowStatus);
+  const panelClassName = [
+    "schedule-availability-panel",
+    collapsed ? "is-collapsed" : "",
+    shouldUseCompactClosedView ? "is-compact-window" : "",
+    hasWindow ? "has-window" : "no-window",
+    `is-window-${windowStatus}`,
+  ].filter(Boolean).join(" ");
 
   const openPolicyModal = () => {
     setPolicyDraft({
@@ -181,7 +195,7 @@ export default function AvailabilityRegistrationPanel({
     setIsPolicyModalOpen(true);
   };
   return (
-    <section className="schedule-availability-panel">
+    <section className={panelClassName}>
       <div className="schedule-availability-panel__header">
         <div>
           <h3>
@@ -558,70 +572,3 @@ export default function AvailabilityRegistrationPanel({
                 <strong>Tự động</strong>
                 <span>Hệ thống tự tính effectiveStatus theo openAt/closeAt.</span>
               </div>
-              <div>
-                <strong>Thủ công</strong>
-                <span>Chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</span>
-              </div>
-            </div>
-            <div className="availability-policy-modal__grid">
-              <label>
-                Chế độ đăng ký
-                <select
-                  value={policyDraft.availabilityRegistrationMode}
-                  onChange={(event) =>
-                    setPolicyDraft((prev) => ({
-                      ...prev,
-                      availabilityRegistrationMode: event.target.value,
-                    }))}
-                >
-                  <option value="manual">Thủ công</option>
-                  <option value="auto">Tự động</option>
-                </select>
-              </label>
-              <label>
-                Ngày mở đăng ký (offset theo target week)
-                <input type="number" value={policyDraft.availabilityOpenDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenDayOffset: Number(event.target.value) }))} placeholder="-7" />
-              </label>
-              <label>
-                Giờ mở đăng ký
-                <input type="time" value={policyDraft.availabilityOpenTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenTime: event.target.value }))} />
-              </label>
-              <label>
-                Ngày đóng đăng ký (offset theo target week)
-                <input type="number" value={policyDraft.availabilityCloseDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseDayOffset: Number(event.target.value) }))} placeholder="-1" />
-              </label>
-              <label>
-                Giờ đóng đăng ký
-                <input type="time" value={policyDraft.availabilityCloseTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseTime: event.target.value }))} />
-              </label>
-              <label>
-                Thay đổi sau khi đóng đăng ký
-                <select
-                  value={policyDraft.lateChangeRequiresApproval ? "yes" : "no"}
-                  onChange={(event) => setPolicyDraft((prev) => ({ ...prev, lateChangeRequiresApproval: event.target.value === "yes" }))}
-                >
-                  <option value="yes">Cho phép gửi yêu cầu chờ duyệt</option>
-                  <option value="no">Không cho gửi sau khi đóng</option>
-                </select>
-                <small>
-                  {policyDraft.lateChangeRequiresApproval
-                    ? "Nhân viên gửi sau khi đóng sẽ vào trạng thái chờ review, quản lý duyệt/từ chối."
-                    : "Sau khi đóng kỳ đăng ký, nhân viên không thể gửi hoặc cập nhật đăng ký."}
-                </small>
-              </label>
-            </div>
-            <div className="availability-policy-modal__actions">
-              <button type="button" className="btn-secondary" onClick={() => setIsPolicyModalOpen(false)} disabled={policySaving}>Hủy</button>
-              <button type="button" className="btn-primary" disabled={policySaving} onClick={async () => {
-                await onUpdateAvailabilityPolicy?.(policyDraft);
-                setIsPolicyModalOpen(false);
-              }}>
-                {policySaving ? "Đang lưu..." : "Lưu cấu hình"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
