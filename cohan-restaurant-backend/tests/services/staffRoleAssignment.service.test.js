@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   Role: { findById: vi.fn() },
   Staff: { findById: vi.fn() },
   Restaurant: { exists: vi.fn() },
+  AuditLog: { create: vi.fn().mockResolvedValue({ _id: "audit-1" }) },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -33,15 +34,19 @@ describe("staffRoleAssignment.service", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
   });
 
   it("allows manager with staff.write in restaurant scope to assign a whitelisted staff role", async () => {
-    const staff = staffDoc();
+    const staff = staffDoc({
+      role: { _id: "role-old", name: "Old role", slug: "old", parentRole: { _id: "parent-old", name: "Old parent", slug: "staff" } },
+    });
     modelMocks.Staff.findById.mockResolvedValue(staff);
     modelMocks.Role.findById.mockReturnValue(roleQuery({
       _id: "role-server",
       slug: "server",
-      parentRole: { slug: "staff", permissions: [] },
+      name: "Server",
+      parentRole: { _id: "parent-staff", slug: "staff", name: "Staff", permissions: [] },
       permissions: [{ code: "menu.read" }, { code: "order.create" }],
     }));
 
@@ -57,6 +62,35 @@ describe("staffRoleAssignment.service", () => {
     expect(result).toBe(staff);
     expect(staff.role).toBe("role-server");
     expect(staff.save).toHaveBeenCalled();
+    expect(staff.populate).toHaveBeenCalledWith({ path: "role", populate: { path: "parentRole" } });
+    expect(modelMocks.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      action: "STAFF_ROLE_ASSIGNED",
+      module: "rbac",
+      targetType: "User",
+      before: expect.objectContaining({ role: expect.objectContaining({ slug: "old" }) }),
+      after: expect.objectContaining({ role: expect.objectContaining({ slug: "server" }) }),
+    }));
+  });
+
+  it("does not fail assignment when audit logging fails", async () => {
+    const staff = staffDoc();
+    modelMocks.AuditLog.create.mockRejectedValue(new Error("audit down"));
+    modelMocks.Staff.findById.mockResolvedValue(staff);
+    modelMocks.Role.findById.mockReturnValue(roleQuery({
+      _id: "role-server",
+      slug: "server",
+      parentRole: { slug: "staff", permissions: [] },
+      permissions: [{ code: "order.read" }],
+    }));
+
+    const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
+
+    await expect(assignStaffRoleWithinRestaurant({
+      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      staffUserId: "staff-1",
+      roleId: "role-server",
+      restaurantId: "restaurant-1",
+    })).resolves.toBe(staff);
   });
 
   it("blocks manager from assigning protected system roles to staff", async () => {
@@ -128,6 +162,7 @@ describe("staffRoleAssignment.service", () => {
 
       vi.resetModules();
       vi.clearAllMocks();
+      modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     }
   });
 
@@ -186,5 +221,4 @@ describe("staffRoleAssignment.service", () => {
       })).rejects.toThrow("FORBIDDEN");
     }
   });
-
 });
