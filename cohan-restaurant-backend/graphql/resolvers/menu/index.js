@@ -5,6 +5,7 @@ import { MenuQuery } from "./query.js";
 import { MenuMutation } from "./mutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
 import { DeleteMenuMutation } from "./deleteMutation.js";
+import { InventorySyncMenuMutation } from "./inventorySyncMutation.js";
 import { CategoryMenu, Recipe, MenuItem, Order } from "../../../models/index.js";
 import { getMenuItemInventoryAvailability } from "../../../src/services/menuItemInventoryAvailability.service.js";
 
@@ -101,6 +102,7 @@ export default {
     ...MenuMutation,
     ...CopyMenuMutation,
     ...DeleteMenuMutation,
+    ...InventorySyncMenuMutation,
   },
 
   MenuItem: {
