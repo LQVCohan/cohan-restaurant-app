@@ -162,11 +162,33 @@ describe("PayrollManagement readiness panel", () => {
 
   it("finalizes the currently selected period rather than the current applied period", async () => {
     const finalizePeriod = vi.fn().mockResolvedValue({});
-    usePayroll.mockReturnValue(buildHookValue({ finalizePeriod }));
+    usePayroll.mockReturnValue(
+      buildHookValue({
+        finalizePeriod,
+        periods: [
+          {
+            id: "period-1",
+            name: "Ky 1",
+            restaurantId: "restaurant-1",
+            startDate: "2026-04-01T00:00:00.000Z",
+            endDate: "2026-04-30T00:00:00.000Z",
+            status: "paid",
+          },
+          {
+            id: "period-2",
+            name: "Ky 2",
+            restaurantId: "restaurant-1",
+            startDate: "2026-05-01T00:00:00.000Z",
+            endDate: "2026-05-31T00:00:00.000Z",
+            status: "draft",
+          },
+        ],
+      }),
+    );
 
     render(<PayrollManagement />);
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "period-2" } });
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "period-2" } });
     fireEvent.click(screen.getByText("Chốt kỳ"));
 
     await waitFor(() => {
