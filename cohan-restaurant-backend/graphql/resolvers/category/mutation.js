@@ -6,12 +6,13 @@ import { requireRestaurantAccess } from "../../guards.js";
 
 export const CategoryMutation = {
   createCategory: async (_, { input }, ctx) => {
-    const { restaurantId, name, order = 0 } = input;
+    const { restaurantId, name, icon = "🍽️", order = 0 } = input;
     if (restaurantId == null) throw new GraphQLError("restaurantId is required");
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     await requireRestaurantAccess(ctx, restaurantId);
 
     const normalizedName = String(name || "").trim();
+    const normalizedIcon = String(icon || "🍽️").trim() || "🍽️";
 
     const doc = await Category.findOneAndUpdate(
       {
@@ -22,6 +23,7 @@ export const CategoryMutation = {
         $setOnInsert: {
           restaurantId: restaurantId || null,
           name: normalizedName,
+          icon: normalizedIcon,
           order,
           isActive: true,
         },
@@ -39,6 +41,7 @@ export const CategoryMutation = {
     await requireRestaurantAccess(ctx, c.restaurantId);
 
     if (input.name !== undefined) c.name = input.name;
+    if (input.icon !== undefined) c.icon = String(input.icon || "🍽️").trim() || "🍽️";
     if (input.order !== undefined) c.order = input.order;
     if (input.isActive !== undefined) c.isActive = !!input.isActive;
 
@@ -63,6 +66,7 @@ export const CategoryMutation = {
     const {
       restaurantId,
       name,
+      icon = "🍽️",
       description,
       coverImage,
       isActive = true,
@@ -73,6 +77,7 @@ export const CategoryMutation = {
     const doc = await CategoryMenu.create({
       restaurantId,
       name,
+      icon: String(icon || "🍽️").trim() || "🍽️",
       description,
       coverImage,
       isActive,
@@ -87,6 +92,7 @@ export const CategoryMutation = {
     await requireRestaurantAccess(ctx, cm.restaurantId);
 
     if (input.name !== undefined) cm.name = input.name;
+    if (input.icon !== undefined) cm.icon = String(input.icon || "🍽️").trim() || "🍽️";
     if (input.description !== undefined) cm.description = input.description;
     if (input.coverImage !== undefined) cm.coverImage = input.coverImage;
     if (input.isActive !== undefined) cm.isActive = !!input.isActive;
