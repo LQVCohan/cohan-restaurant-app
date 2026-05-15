@@ -51,11 +51,38 @@ export const initScheduleHydrationPolish = ({
   let minDelayPassed = false;
   let hydrationFinished = false;
   let root = null;
+  let bodyObserver = null;
+  let rootObserver = null;
   const timeoutIds = [];
+
+  const disconnectBodyObserver = () => {
+    bodyObserver?.disconnect();
+    bodyObserver = null;
+  };
 
   const getRoot = () => {
     root = document.querySelector(SCHEDULE_ROOT_SELECTOR) || root;
     return root;
+  };
+
+  const observeRoot = () => {
+    const currentRoot = getRoot();
+    if (!currentRoot || rootObserver) return;
+
+    disconnectBodyObserver();
+    rootObserver = new MutationObserver(() => {
+      if (hydrationFinished) {
+        hideRepeatedFirstWeekGraceReminder(currentRoot);
+        return;
+      }
+      boot();
+      tryFinish();
+    });
+
+    rootObserver.observe(currentRoot, {
+      childList: true,
+      subtree: true,
+    });
   };
 
   const clearHydration = () => {
@@ -73,6 +100,7 @@ export const initScheduleHydrationPolish = ({
     const currentRoot = getRoot();
     if (!currentRoot) return;
 
+    observeRoot();
     hideRepeatedFirstWeekGraceReminder(currentRoot);
 
     if (hasScheduleCriticalShell(currentRoot)) {
@@ -84,33 +112,37 @@ export const initScheduleHydrationPolish = ({
     if (hydrationFinished) return false;
     const currentRoot = getRoot();
     if (!currentRoot) return false;
+    observeRoot();
     currentRoot.classList.add(HYDRATING_CLASS);
     currentRoot.setAttribute("data-schedule-hydrating", "true");
     hideRepeatedFirstWeekGraceReminder(currentRoot);
     return true;
   };
 
-  const boot = () => {
+  function boot() {
     if (disposed || hydrationFinished) return;
     if (!markHydrating()) return;
     tryFinish();
-  };
+  }
 
   boot();
 
-  const observer = new MutationObserver(() => {
-    if (hydrationFinished) {
-      hideRepeatedFirstWeekGraceReminder(getRoot());
-      return;
-    }
-    boot();
-    tryFinish();
-  });
+  if (!getRoot()) {
+    bodyObserver = new MutationObserver(() => {
+      if (getRoot()) {
+        observeRoot();
+        boot();
+        tryFinish();
+      }
+    });
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+    bodyObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  } else {
+    observeRoot();
+  }
 
   timeoutIds.push(
     window.setTimeout(() => {
@@ -129,7 +161,9 @@ export const initScheduleHydrationPolish = ({
   return () => {
     disposed = true;
     timeoutIds.forEach((id) => window.clearTimeout(id));
-    observer.disconnect();
+    disconnectBodyObserver();
+    rootObserver?.disconnect();
+    rootObserver = null;
     root?.classList.remove(HYDRATING_CLASS);
     root?.removeAttribute("data-schedule-hydrating");
     root?.removeAttribute("data-schedule-hydrated");
