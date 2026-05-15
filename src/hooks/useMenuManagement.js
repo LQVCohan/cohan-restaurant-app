@@ -233,6 +233,22 @@ const M_BULK_PRICE = gql`
   ${FRAG_MENU_ITEM}
 `;
 
+const M_SYNC_INVENTORY_STATUSES = gql`
+  mutation SyncMenuItemInventoryStatuses(
+    $input: SyncMenuItemInventoryStatusesInput!
+  ) {
+    syncMenuItemInventoryStatuses(input: $input) {
+      checkedCount
+      updatedCount
+      warnings
+      items {
+        ...MenuItemFields
+      }
+    }
+  }
+  ${FRAG_MENU_ITEM}
+`;
+
 /* ======================= Helpers ======================= */
 
 const TIME_SLOT_OPTIONS = [
@@ -615,6 +631,7 @@ export default function useMenuManagement({
 
   const [updateBasicMut] = useMutation(M_UPDATE_BASIC);
   const [bulkPriceMut] = useMutation(M_BULK_PRICE);
+  const [syncInventoryStatusesMut] = useMutation(M_SYNC_INVENTORY_STATUSES);
 
   const [
     loadTopItems,
@@ -772,6 +789,30 @@ export default function useMenuManagement({
     [bulkPriceMut]
   );
 
+  const syncMenuItemInventoryStatuses = useCallback(
+    async (input = {}) => {
+      const { data } = await syncInventoryStatusesMut({
+        variables: {
+          input: {
+            restaurantId,
+            timeSlot: selectedTimeSlot || null,
+            recoverOutOfStock: true,
+            dryRun: false,
+            ...input,
+          },
+        },
+      });
+      await refetchItems();
+      return data?.syncMenuItemInventoryStatuses || {
+        checkedCount: 0,
+        updatedCount: 0,
+        items: [],
+        warnings: [],
+      };
+    },
+    [restaurantId, selectedTimeSlot, syncInventoryStatusesMut, refetchItems]
+  );
+
   const fetchMoreItems = useCallback(async () => {
     if (!useConnection) return null;
     if (!pageInfo?.hasNextPage) return null;
@@ -852,6 +893,7 @@ export default function useMenuManagement({
     toggleMenuItemStatus,
     updateMenuItemBasic,
     bulkUpdateMenuItemPrices,
+    syncMenuItemInventoryStatuses,
 
     // top items
     loadTopItems,
