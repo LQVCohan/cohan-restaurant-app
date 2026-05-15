@@ -51,6 +51,9 @@ const PayrollManagementWithReadiness = () => {
 
   useEffect(() => {
     updateFinalizeButtons(readinessBlocksFinalize);
+    if (readinessBlocksFinalize) {
+      setShowReadinessPanel(true);
+    }
     return () => updateFinalizeButtons(false);
   }, [readinessBlocksFinalize]);
 
