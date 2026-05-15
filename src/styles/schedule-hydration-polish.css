@@ -1,0 +1,66 @@
+/* =========================================================
+   SCHEDULE HYDRATION POLISH
+   Masks unstable first-render states while GraphQL data hydrates.
+   ========================================================= */
+
+@keyframes scheduleHydrationShimmer {
+  0% {
+    transform: translateX(-34%);
+  }
+  100% {
+    transform: translateX(34%);
+  }
+}
+
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-availability-panel,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-insights-panel,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-board,
+.manager-page-shell--schedules.schedule-polish-hydrating .daily-view-horizontal {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 150px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-availability-panel > *,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-insights-panel > *,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-board > *,
+.manager-page-shell--schedules.schedule-polish-hydrating .daily-view-horizontal > * {
+  opacity: 0 !important;
+}
+
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-availability-panel::before,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-insights-panel::before,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-board::before,
+.manager-page-shell--schedules.schedule-polish-hydrating .daily-view-horizontal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.76) 48%, transparent 100%),
+    radial-gradient(circle at 24px 28px, #e0e7ff 0 9px, transparent 10px),
+    linear-gradient(#e2e8f0, #e2e8f0) 56px 22px / 180px 11px no-repeat,
+    linear-gradient(#eef2f7, #eef2f7) 56px 44px / min(520px, 58%) 9px no-repeat,
+    linear-gradient(#f1f5f9, #f1f5f9) 24px 86px / calc(100% - 48px) 52px no-repeat,
+    linear-gradient(#f8fafc, #f8fafc);
+  animation: scheduleHydrationShimmer 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-board::before {
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.76) 48%, transparent 100%),
+    repeating-linear-gradient(90deg, #f8fafc 0 13.5%, #eef2f7 13.5% 14%, #f8fafc 14% 14.2%),
+    linear-gradient(#e2e8f0, #e2e8f0) 24px 22px / 130px 11px no-repeat,
+    linear-gradient(#eef2f7, #eef2f7) 24px 58px / 88px 58px no-repeat,
+    linear-gradient(#eef2f7, #eef2f7) 18% 58px / 88px 58px no-repeat,
+    linear-gradient(#eef2f7, #eef2f7) 34% 58px / 88px 58px no-repeat,
+    linear-gradient(#f8fafc, #f8fafc);
+}
+
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-action-center,
+.manager-page-shell--schedules.schedule-polish-hydrating .schedule-board-week-jumper {
+  display: none !important;
+}
