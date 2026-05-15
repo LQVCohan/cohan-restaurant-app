@@ -240,7 +240,18 @@ const M_SYNC_INVENTORY_STATUSES = gql`
     syncMenuItemInventoryStatuses(input: $input) {
       checkedCount
       updatedCount
+      toOutOfStockCount
+      toAvailableCount
       warnings
+      changes {
+        menuItemId
+        menuItemName
+        beforeStatus
+        afterStatus
+        inventoryStatus
+        maxAvailable
+        stockWarnings
+      }
       items {
         ...MenuItemFields
       }
@@ -802,13 +813,17 @@ export default function useMenuManagement({
           },
         },
       });
-      await refetchItems();
-      return data?.syncMenuItemInventoryStatuses || {
+      const result = data?.syncMenuItemInventoryStatuses || {
         checkedCount: 0,
         updatedCount: 0,
+        toOutOfStockCount: 0,
+        toAvailableCount: 0,
         items: [],
         warnings: [],
+        changes: [],
       };
+      if (!input?.dryRun) await refetchItems();
+      return result;
     },
     [restaurantId, selectedTimeSlot, syncInventoryStatusesMut, refetchItems]
   );

@@ -46,7 +46,15 @@ export const InventorySyncMenuMutation = {
     if (Array.isArray(menuItemIds) && menuItemIds.length) {
       const validIds = menuItemIds.filter(isOid);
       if (!validIds.length) {
-        return { checkedCount: 0, updatedCount: 0, items: [], warnings: [] };
+        return {
+          checkedCount: 0,
+          updatedCount: 0,
+          toOutOfStockCount: 0,
+          toAvailableCount: 0,
+          items: [],
+          warnings: [],
+          changes: [],
+        };
       }
       query._id = { $in: validIds };
     }
@@ -57,8 +65,11 @@ export const InventorySyncMenuMutation = {
         return {
           checkedCount: 0,
           updatedCount: 0,
+          toOutOfStockCount: 0,
+          toAvailableCount: 0,
           items: [],
           warnings: [`Không tìm thấy menu cho khung giờ ${timeSlot}.`],
+          changes: [],
         };
       }
       query.menuId = menu._id;
@@ -84,9 +95,7 @@ export const InventorySyncMenuMutation = {
         continue;
       }
 
-      if (availability.inventoryStatus === "NOT_TRACKED") {
-        continue;
-      }
+      if (availability.inventoryStatus === "NOT_TRACKED") continue;
 
       const nextStatus = buildStatusPatch({
         currentStatus: item.status,
@@ -96,12 +105,23 @@ export const InventorySyncMenuMutation = {
 
       if (!nextStatus || nextStatus === item.status) continue;
 
-      updates.push({
-        item,
-        nextStatus,
-        availability,
-      });
+      updates.push({ item, nextStatus, availability });
     }
+
+    const changes = updates.map(({ item, nextStatus, availability }) => ({
+      menuItemId: String(item._id),
+      menuItemName: item.name || null,
+      beforeStatus: item.status,
+      afterStatus: nextStatus,
+      inventoryStatus: availability.inventoryStatus || "ERROR",
+      maxAvailable: Number.isFinite(Number(availability.maxAvailable))
+        ? Math.max(0, Math.floor(Number(availability.maxAvailable)))
+        : 0,
+      stockWarnings: Array.isArray(availability.stockWarnings) ? availability.stockWarnings : [],
+    }));
+
+    const toOutOfStockCount = changes.filter((c) => c.afterStatus === "out_of_stock").length;
+    const toAvailableCount = changes.filter((c) => c.afterStatus === "available").length;
 
     if (!dryRun && updates.length) {
       await MenuItem.bulkWrite(
@@ -134,15 +154,18 @@ export const InventorySyncMenuMutation = {
     }
 
     const changedIds = updates.map(({ item }) => item._id);
-    const changedItems = changedIds.length
+    const changedItems = !dryRun && changedIds.length
       ? await MenuItem.find({ _id: { $in: changedIds } }).lean({ virtuals: true })
       : [];
 
     return {
       checkedCount: items.length,
       updatedCount: updates.length,
+      toOutOfStockCount,
+      toAvailableCount,
       items: changedItems,
       warnings,
+      changes,
     };
   },
 };

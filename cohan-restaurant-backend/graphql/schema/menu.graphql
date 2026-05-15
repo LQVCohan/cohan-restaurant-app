@@ -177,11 +177,24 @@ input SyncMenuItemInventoryStatusesInput {
   dryRun: Boolean = false
 }
 
+type MenuItemInventorySyncChange {
+  menuItemId: ID!
+  menuItemName: String
+  beforeStatus: MenuItemStatus!
+  afterStatus: MenuItemStatus!
+  inventoryStatus: MenuItemInventoryStatus!
+  maxAvailable: Int!
+  stockWarnings: [String!]!
+}
+
 type SyncMenuItemInventoryStatusesResult {
   checkedCount: Int!
   updatedCount: Int!
+  toOutOfStockCount: Int!
+  toAvailableCount: Int!
   items: [MenuItem!]!
   warnings: [String!]!
+  changes: [MenuItemInventorySyncChange!]!
 }
 
 """
