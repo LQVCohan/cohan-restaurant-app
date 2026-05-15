@@ -32,6 +32,59 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
+function makeClientIdempotencyKey(operationName = "order") {
+  const randomPart =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${operationName}:${randomPart}`;
+}
+
+function shouldAttachIdempotency(operationName = "") {
+  return [
+    "CreateOrderForTable",
+    "CreateOffPremiseOrder",
+    "CreateStaffRemoteOrder",
+    "CreateCheckoutOrders",
+  ].includes(operationName);
+}
+
+const idempotencyLink = new ApolloLink((operation, forward) => {
+  const operationName = operation?.operationName || "";
+  const input = operation?.variables?.input;
+
+  if (shouldAttachIdempotency(operationName) && input && typeof input === "object") {
+    const hasTopLevelKey = Boolean(input.idempotencyKey);
+    const hasClientMetaKey = Boolean(input.clientMeta?.idempotencyKey);
+    if (!hasTopLevelKey && !hasClientMetaKey) {
+      const key = makeClientIdempotencyKey(operationName);
+      const nextInput = {
+        ...input,
+        ...(operationName === "CreateCheckoutOrders" ? { idempotencyKey: key } : {}),
+        clientMeta: {
+          ...(input.clientMeta || {}),
+          idempotencyKey: key,
+          source:
+            input.clientMeta?.source ||
+            (operationName === "CreateOrderForTable"
+              ? "pos_dine_in"
+              : operationName === "CreateStaffRemoteOrder"
+                ? "staff_remote"
+                : operationName === "CreateCheckoutOrders"
+                  ? "customer_checkout"
+                  : "off_premise"),
+        },
+      };
+      operation.variables = {
+        ...operation.variables,
+        input: nextInput,
+      };
+    }
+  }
+
+  return forward(operation);
+});
+
 function dispatchOutOfStockPrompt({ operation, graphQLError }) {
   if (typeof window === "undefined") return;
 
@@ -76,7 +129,7 @@ const errorLink = onError(({ graphQLErrors, operation }) => {
 });
 
 /* ---------------- Link + Cache ---------------- */
-const link = ApolloLink.from([errorLink, authLink, httpLink]);
+const link = ApolloLink.from([errorLink, idempotencyLink, authLink, httpLink]);
 
 const cache = new InMemoryCache({
   typePolicies: {
