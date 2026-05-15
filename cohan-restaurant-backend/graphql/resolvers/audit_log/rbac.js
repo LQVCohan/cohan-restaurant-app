@@ -19,6 +19,11 @@ function normalizeOffset(offset) {
 
 function buildRbacFilter(filter = {}) {
   const query = { module: "rbac" };
+  if (filter.module && String(filter.module).trim() !== "rbac") {
+    const err = new Error("rbacAuditLogs only supports module rbac");
+    err.extensions = { code: "BAD_USER_INPUT" };
+    throw err;
+  }
   if (filter.restaurantId) query.restaurantId = filter.restaurantId;
   if (filter.targetId) query.targetId = filter.targetId;
   if (filter.actorId) query.actorId = filter.actorId;
