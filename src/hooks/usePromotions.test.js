@@ -63,4 +63,70 @@ describe("usePromotions buildPromotionInput", () => {
     );
     expect(input).not.toHaveProperty("menuId");
   });
+  it("buildPromotionInput preserves comboItems for combo promotions", () => {
+    const input = __testables.buildPromotionInput(
+      {
+        name: "Combo burger",
+        code: "COMBO10",
+        type: "combo",
+        scope: "item",
+        itemId: "should-clear",
+        giftItemId: "gift-should-clear",
+        discountType: "fixed",
+        discountValue: 10000,
+        comboItems: [
+          { itemId: "burger", quantity: 1 },
+          { itemId: "coke", quantity: 2 },
+        ],
+        startDate: "2026-05-01T10:00",
+        endDate: "2026-05-05T22:00",
+        status: "active",
+      },
+      "restaurant-1",
+    );
+
+    expect(input).toEqual(
+      expect.objectContaining({
+        promotionType: "COMBO",
+        scope: "ORDER",
+        itemId: null,
+        giftItemId: null,
+        buyQuantity: 0,
+        getQuantity: 0,
+        discountType: "AMOUNT",
+        discountValue: 10000,
+        comboItems: [
+          { itemId: "burger", quantity: 1 },
+          { itemId: "coke", quantity: 2 },
+        ],
+      }),
+    );
+  });
+});
+
+describe("usePromotions normalizePromotion", () => {
+  it("preserves comboItems from API", () => {
+    const normalized = __testables.normalizePromotion({
+      id: "promo-combo",
+      name: "Combo burger",
+      promotionType: "COMBO",
+      discountType: "AMOUNT",
+      comboItems: [
+        { itemId: "burger", quantity: 1 },
+        { itemId: "coke", quantity: 2 },
+      ],
+      isActive: true,
+    });
+
+    expect(normalized).toEqual(
+      expect.objectContaining({
+        type: "combo",
+        discountType: "fixed",
+        comboItems: [
+          { itemId: "burger", quantity: 1 },
+          { itemId: "coke", quantity: 2 },
+        ],
+      }),
+    );
+  });
 });
