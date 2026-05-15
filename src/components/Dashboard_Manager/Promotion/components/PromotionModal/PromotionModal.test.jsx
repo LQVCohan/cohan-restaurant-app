@@ -184,6 +184,31 @@ describe("PromotionModal", () => {
       );
     });
   });
+
+  it("shows helper text when selecting freeship type", () => {
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "freeship" },
+    });
+
+    expect(
+      screen.getByText(/hệ thống sẽ giảm trực tiếp phí vận chuyển/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/freeship sẽ không vượt quá giới hạn đó/i),
+    ).toBeInTheDocument();
+  });
+
   it("explains how BOGO promotion is applied during payment", () => {
     render(
       <PromotionModal

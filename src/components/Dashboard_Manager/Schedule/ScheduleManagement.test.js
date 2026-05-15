@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildVisibleScheduleInsights } from "./ScheduleManagement";
+import { buildVisibleScheduleInsights } from "./utils/scheduleInsights";
 
 const baseShift = {
   id: "shift-1",
