@@ -112,6 +112,8 @@
 }
 
 .shift-detail-content .section-block {
+  position: relative !important;
+  z-index: 1 !important;
   border: 1px solid rgba(226, 232, 240, 0.95) !important;
 }
 
@@ -130,6 +132,14 @@
 .shift-detail-content .assigned-list,
 .shift-detail-content .candidate-list {
   padding-right: 0.14rem !important;
+}
+
+.shift-detail-content .assigned-list {
+  max-height: 232px !important;
+}
+
+.shift-detail-content .candidate-list {
+  max-height: 255px !important;
 }
 
 .shift-detail-content .staff-row {
@@ -212,7 +222,13 @@
 }
 
 .shift-detail-content .schedule-log-section {
-  opacity: 0.96 !important;
+  z-index: 2 !important;
+  opacity: 1 !important;
+  clear: both !important;
+}
+
+.shift-detail-content .schedule-log-section .section-header {
+  align-items: center !important;
 }
 
 .shift-detail-content .schedule-log-collapsed-hint {
@@ -223,6 +239,16 @@
   color: #64748b !important;
   font-size: 0.78rem !important;
   font-weight: 820 !important;
+}
+
+.shift-detail-content > .empty-placeholder {
+  grid-column: 1 / -1 !important;
+  padding: 0.82rem 1rem !important;
+  border: 1px dashed rgba(148, 163, 184, 0.58) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  color: #475569 !important;
+  text-align: center !important;
+  font-weight: 880 !important;
 }
 
 .shift-detail-content .modal-footer-actions {
@@ -256,8 +282,15 @@
 
 @media (min-width: 900px) {
   .shift-detail-content .add-section {
-    position: sticky !important;
-    top: 0.75rem !important;
+    position: relative !important;
+    top: auto !important;
+    align-self: start !important;
+  }
+
+  .shift-detail-content > .schedule-log-section,
+  .shift-detail-content > .empty-placeholder,
+  .shift-detail-content > .modal-footer-actions {
+    grid-column: 1 / -1 !important;
   }
 }
 
