@@ -5,7 +5,7 @@ import StaffManagement from "./StaffManagement";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
-  return { ...actual, useNavigate: () => vi.fn() };
+  return { ...actual, useNavigate: () => vi.fn(), useLocation: () => ({ search: "" }) };
 });
 
 vi.mock("@apollo/client", async () => {

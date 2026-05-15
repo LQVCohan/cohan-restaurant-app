@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
@@ -53,6 +53,15 @@ const getStaffFocusParams = () => {
   };
 };
 
+const STAFF_SUB_PAGES = new Set([
+  "dashboard",
+  "attendance",
+  "leave",
+  "schedule",
+  "performance",
+  "reports",
+]);
+
 const StaffManagement = () => {
   // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -63,6 +72,16 @@ const StaffManagement = () => {
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const nextStaffPage = params.get("staffPage");
+
+    if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
+      setCurrentPage(nextStaffPage);
+    }
+  }, [location.search]);
 
   const [modals, setModals] = useState({
     addEmployee: false,
@@ -390,7 +409,7 @@ const StaffManagement = () => {
       });
       window.setTimeout(() => setFocusedEmployeeId(""), 3000);
     }
-  }, [mappedStaff]);
+  }, [mappedStaff, location.search]);
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {

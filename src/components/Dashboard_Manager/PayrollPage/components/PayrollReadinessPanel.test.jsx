@@ -89,8 +89,28 @@ describe("PayrollReadinessPanel", () => {
     const onGoToIssue = vi.fn();
     render(<PayrollReadinessPanel readiness={buildReadiness()} onGoToIssue={onGoToIssue} />);
 
-    fireEvent.click(screen.getAllByText("Xem nơi cần xử lý")[0]);
+    fireEvent.click(screen.getByText("Đi tới lịch làm việc"));
     expect(onGoToIssue).toHaveBeenCalledWith(blockingIssue);
+  });
+
+  it("shows mapped label for off-schedule issues", () => {
+    const readiness = buildReadiness({
+      sections: {
+        schedule: emptySection,
+        attendance: {
+          status: "blocked",
+          blockingCount: 1,
+          warningCount: 0,
+          metrics: {},
+          issues: [{ ...blockingIssue, code: "OFF_SCHEDULE_ATTENDANCE_PENDING" }],
+        },
+        approvals: emptySection,
+        payroll: emptySection,
+      },
+    });
+
+    render(<PayrollReadinessPanel readiness={readiness} onGoToIssue={vi.fn()} />);
+    expect(screen.getByText("Duyệt công ngoài lịch")).toBeInTheDocument();
   });
 
   it("calls refresh from ready state", () => {

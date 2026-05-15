@@ -1,5 +1,6 @@
 import React from "react";
 import "./PayrollReadinessPanel.scss";
+import { getPayrollReadinessIssueAction } from "@/utils/payrollReadinessRouting";
 
 const SECTION_ORDER = ["schedule", "attendance", "approvals", "payroll"];
 
@@ -28,7 +29,10 @@ function getSectionState(section) {
   return "ready";
 }
 
-const PayrollReadinessIssue = ({ issue, onGoToIssue }) => (
+const PayrollReadinessIssue = ({ issue, onGoToIssue }) => {
+  const action = getPayrollReadinessIssueAction(issue);
+
+  return (
   <div className={`payroll-readiness-issue payroll-readiness-issue--${issue.severity || "info"}`}>
     <div className="payroll-readiness-issue__main">
       <strong>{SEVERITY_LABELS[issue.severity] || issue.severity || "Thông tin"}</strong>
@@ -53,11 +57,12 @@ const PayrollReadinessIssue = ({ issue, onGoToIssue }) => (
         className="payroll-readiness-issue__action"
         onClick={() => onGoToIssue(issue)}
       >
-        Xem nơi cần xử lý
+        {action.label}
       </button>
     )}
   </div>
-);
+  );
+};
 
 const PayrollReadinessPanel = ({
   readiness,

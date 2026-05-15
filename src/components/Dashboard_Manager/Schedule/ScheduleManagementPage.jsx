@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, memo } from "react";
+import React, { useLayoutEffect, useEffect, useState, memo } from "react";
 import { apolloClient } from "@/apollo/client";
 import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
@@ -16,6 +16,13 @@ import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.j
 import ScheduleManagement from "./ScheduleManagement";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
+  const [readinessFocus, setReadinessFocus] = useState("");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search || "");
+    const focus = params.get("focus");
+    if (focus) setReadinessFocus(focus);
+  }, []);
+
   useLayoutEffect(() => {
     const apolloCleanup = installScheduleApolloPerformancePatch(apolloClient);
     const hydrationCleanup = initScheduleHydrationPolish?.();
@@ -34,7 +41,16 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
     };
   }, []);
 
-  return <ScheduleManagement />;
+  return (
+    <>
+      {readinessFocus && (
+        <div className="schedule-readiness-focus-banner" role="status">
+          Đang mở lịch làm việc để xử lý lỗi từ kiểm tra bảng lương: {readinessFocus}
+        </div>
+      )}
+      <ScheduleManagement />
+    </>
+  );
 });
 
 export default ScheduleManagementPage;

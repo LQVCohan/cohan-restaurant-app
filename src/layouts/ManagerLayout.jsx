@@ -60,6 +60,18 @@ const resolveInitialManagerPage = () => {
   return "dashboard";
 };
 
+const buildManagerNavigationUrl = ({ page, query = {} }) => {
+  const params = new URLSearchParams();
+
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    params.set(key, String(value));
+  });
+
+  const search = params.toString() ? `?${params.toString()}` : "";
+  return `${window.location.pathname}${search}#${page}`;
+};
+
 const MANAGER_PAGE_PERMISSION_ACCESS = {
   dashboard: ["dashboard.read", "report.read"],
   analytics: ["report.read"],
@@ -139,7 +151,13 @@ const ManagerLayout = () => {
   useEffect(() => {
     if (validPages.has(currentPage)) {
       localStorage.setItem("manager.currentPage", currentPage);
-      if (window.location.hash !== `#${currentPage}`) history.replaceState(null, "", `#${currentPage}`);
+      if (window.location.hash !== `#${currentPage}`) {
+        history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}#${currentPage}`,
+        );
+      }
     }
   }, [currentPage, validPages]);
 
@@ -171,6 +189,29 @@ const ManagerLayout = () => {
 
     if (nextPage !== currentPage) setCurrentPage(nextPage);
   }, [allowedPages, currentPage, preferredFallbackPage]);
+
+  useEffect(() => {
+    const handleManagerNavigate = (event) => {
+      const page = event?.detail?.page;
+      const query = event?.detail?.query || {};
+      if (!page || !validPages.has(page)) return;
+      if (!allowedPages.has(page)) return;
+
+      setCurrentPage(page);
+      setSidebarOpen(false);
+      localStorage.setItem("manager.currentPage", page);
+
+      history.replaceState(
+        null,
+        "",
+        buildManagerNavigationUrl({ page, query }),
+      );
+    };
+
+    window.addEventListener("manager:navigate", handleManagerNavigate);
+    return () =>
+      window.removeEventListener("manager:navigate", handleManagerNavigate);
+  }, [allowedPages, validPages]);
 
   const managerSearchItems = useMemo(
     () =>
