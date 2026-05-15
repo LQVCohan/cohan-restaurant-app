@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
 import { MenuMutation } from "./mutation.js";
+import { CopyMenuMutation } from "./copyMutation.js";
 import { CategoryMenu, Recipe, MenuItem } from "../../../models/index.js";
 
 export default {
@@ -12,6 +13,7 @@ export default {
 
   Mutation: {
     ...MenuMutation,
+    ...CopyMenuMutation,
   },
 
   MenuItem: {
