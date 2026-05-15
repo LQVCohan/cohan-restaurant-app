@@ -270,6 +270,8 @@ extend type Mutation {
   bulkUpdateMenuItemPrices(input: BulkPriceUpdateInput!): BulkPriceUpdateResult!
 
   ensureMenu(input: EnsureMenuInput!): Menu!
+  copyMenu(input: CopyMenuInput!): Menu!
+  deleteMenu(id: ID!, force: Boolean = false): Boolean!
 
   createMenuItem(input: CreateMenuItemInput!): MenuItem!
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
