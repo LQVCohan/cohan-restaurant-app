@@ -325,6 +325,30 @@ $radius-md: 0.75rem;
   }
 }
 
+.cardOutOfStock {
+  cursor: not-allowed;
+  border-color: #fecaca;
+  background: #f8fafc;
+
+  &:hover {
+    transform: none;
+    box-shadow: $shadow-sm;
+    border-color: #fecaca;
+  }
+
+  .cardImg,
+  .cardPlaceholder {
+    filter: grayscale(0.35);
+    opacity: 0.55;
+  }
+
+  .cardName,
+  .priceTag,
+  .cardDesc {
+    color: #94a3b8;
+  }
+}
+
 /* Image Section */
 .cardImageWrapper {
   width: 100%;
@@ -370,6 +394,44 @@ $radius-md: 0.75rem;
   transform: scale(0.8);
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.stockBadge,
+.availableBadge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+}
+
+.stockBadge {
+  background: #dc2626;
+}
+
+.availableBadge {
+  background: #16a34a;
+}
+
+.stockHint {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 /* Content Section */
