@@ -26,3 +26,16 @@ npm run dev --prefix cohan-restaurant-backend
   - `/health/ready`
 - Metrics endpoint:
   - `/metrics`
+
+
+## Coupon/Promotion demo seed (graduation)
+- Run seed data (idempotent):
+```bash
+npm run seed:demo:coupon-promotion --prefix cohan-restaurant-backend
+```
+- Expected context:
+  - Existing restaurant data (or set `DEMO_RESTAURANT_ID`).
+  - Existing menu items are recommended for full BOGO/Combo showcase (especially Pho/Tea naming).
+- Recommended first demo scenario: `ACTIVE10` coupon, then continue with BOGO -> Freeship -> Combo -> analytics check.
+- Full report: `docs/coupon-promotion-final-report.md`
+- Step checklist: `docs/coupon-promotion-demo-checklist.md`
