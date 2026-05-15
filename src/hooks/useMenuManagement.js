@@ -16,6 +16,10 @@ const FRAG_MENU = gql`
     createdAt
     updatedAt
     itemCount
+    revenue
+    orderCount
+    soldItemCount
+    rating
     categoryMenu {
       id
       name
