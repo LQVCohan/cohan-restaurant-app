@@ -1,6 +1,7 @@
 import { AuditLog } from "../../../models/index.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { hasRole } from "../../../utils/authz.js";
+import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MAX_LIMIT = 100;
 
@@ -28,6 +29,7 @@ function buildRbacFilter(filter = {}) {
 }
 
 async function assertRbacAuditAccess(ctx, filter = {}) {
+  await requireAnyPermission(ctx, ["role.read", "permission.read"]);
   if (hasRole(ctx?.user, ["admin"])) {
     requireRoles(ctx, ["ADMIN"]);
     return;
