@@ -1,11 +1,24 @@
 .notice {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
   border-bottom: 1px solid #fed7aa;
-  background: #fff7ed;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff 100%);
+}
+
+.iconWrap {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ea580c;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  flex-shrink: 0;
 }
 
 .copy {
@@ -15,47 +28,77 @@
   min-width: 0;
 }
 
-.badge {
+.badgeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.badge,
+.tableTag {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 0.2rem 0.55rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.badge {
   border: 1px solid #fdba74;
   background: #ffedd5;
   color: #c2410c;
-  font-size: 0.72rem;
-  font-weight: 800;
   text-transform: uppercase;
 }
 
-.message {
+.tableTag {
+  border: 1px solid #fed7aa;
+  background: #fff;
   color: #9a3412;
-  font-size: 0.9rem;
-  font-weight: 700;
-  line-height: 1.4;
 }
 
-.meta {
-  color: #c2410c;
-  font-size: 0.78rem;
+.orderMeta {
+  color: #9a3412;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.message {
+  color: #7c2d12;
+  font-size: 0.86rem;
+  font-weight: 700;
   line-height: 1.35;
 }
 
+.meta {
+  color: #b45309;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
 .clearButton {
-  flex-shrink: 0;
   border: 1px solid #fdba74;
   border-radius: 999px;
   background: #fff;
   color: #9a3412;
-  padding: 0.55rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 700;
+  padding: 0.5rem 0.88rem;
+  font-size: 0.8rem;
+  font-weight: 800;
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .clearButton:hover:not(:disabled) {
@@ -69,13 +112,27 @@
   cursor: not-allowed;
 }
 
+.spinner {
+  animation: rotateLoading 0.8s linear infinite;
+}
+
+@keyframes rotateLoading {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 960px) {
   .notice {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: auto 1fr;
   }
 
   .clearButton {
+    grid-column: 1 / -1;
     width: 100%;
+    justify-content: center;
   }
 }

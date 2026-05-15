@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Lock, Store, Unlock } from "lucide-react";
 import styles from "./POSLayout.module.scss";
 import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
@@ -96,7 +97,13 @@ export default function POSLayout() {
     <div className={styles.page}>
       <div className={styles.restaurantBar}>
         <div className={styles.restaurantBarInfo}>
-          <span className={styles.restaurantBarLabel}>Nhà hàng POS</span>
+          <div className={styles.restaurantHead}>
+            <span className={styles.restaurantBarLabel}><Store size={16} /> Nhà hàng POS</span>
+            <span className={`${styles.statusBadge} ${isLocked ? styles.badgeLocked : styles.badgeLive}`}>
+              <CheckCircle2 size={13} />
+              {isLocked ? "Nhà hàng đã khóa" : "POS đang hoạt động"}
+            </span>
+          </div>
 
           <select
             className={styles.restaurantSelect}
@@ -112,6 +119,9 @@ export default function POSLayout() {
               </option>
             ))}
           </select>
+          <div className={styles.restaurantHint}>
+            Đang chọn: <strong>{selectedRestaurant?.name || "Chưa chọn"}</strong>
+          </div>
         </div>
 
         <button
@@ -120,6 +130,7 @@ export default function POSLayout() {
           onClick={handleToggleLock}
           disabled={!restaurantId}
         >
+          {isLocked ? <Unlock size={15} /> : <Lock size={15} />}
           {isLocked ? "Đổi nhà hàng" : "Khóa nhà hàng"}
         </button>
       </div>

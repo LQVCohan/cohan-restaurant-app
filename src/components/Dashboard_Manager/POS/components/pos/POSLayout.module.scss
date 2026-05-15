@@ -18,6 +18,118 @@
   flex-direction: column;
 }
 
+.restaurantBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem 0;
+  box-sizing: border-box;
+}
+
+.restaurantBarInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.restaurantHead {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.restaurantBarLabel {
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.badgeLive {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.badgeLocked {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.restaurantSelect {
+  min-width: 280px;
+  max-width: 420px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.restaurantSelect:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.restaurantHint {
+  color: #475569;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.lockButton {
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+  background: #0f172a;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lockButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lockButton.locked {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.emptyState {
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: #fff7ed;
+  color: #9a3412;
+  font-weight: 700;
+  border: 1px solid #fed7aa;
+}
+
 /* 3 cột ngang */
 .shell {
   flex: 1 1 auto;
@@ -62,14 +174,11 @@
     0 8px 20px rgba(15, 23, 42, 0.04);
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden; /* để phần con tự scroll */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* --------- responsive --------- */
-
-/* tablet: để rightPanel rơi xuống dưới */
 @media (max-width: 1024px) {
   .shell {
     flex-direction: column;
@@ -85,258 +194,26 @@
     height: 55vh;
   }
 }
-.restaurantBar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem 0;
-  box-sizing: border-box;
-}
 
-.restaurantBarInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.restaurantBarLabel {
-  font-weight: 700;
-  color: #0f172a;
-  white-space: nowrap;
-}
-
-.restaurantSelect {
-  min-width: 280px;
-  max-width: 420px;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background: #fff;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.restaurantSelect:disabled {
-  background: #f8fafc;
-  color: #64748b;
-  cursor: not-allowed;
-}
-
-.restaurantHint {
-  color: #475569;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.lockButton {
-  border: 0;
-  border-radius: 0.75rem;
-  padding: 0.6rem 0.9rem;
-  font-weight: 700;
-  background: #0f172a;
-  color: #fff;
-  cursor: pointer;
-}
-
-.lockButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.lockButton.locked {
-  background: #f59e0b;
-  color: #111827;
-}
-
-.emptyState {
-  margin: 1rem;
-  padding: 1.25rem;
-  border-radius: 1rem;
-  background: #fff7ed;
-  color: #9a3412;
-  font-weight: 700;
-  border: 1px solid #fed7aa;
-}
-
-.menuAvailabilityNotice {
-  margin: 0.8rem 1rem 0;
-  padding: 0.95rem 1rem;
-  border-radius: 1.15rem;
-  background:
-    linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(255, 255, 255, 0.98)),
-    #fff;
-  border: 1px solid #fed7aa;
-  color: #7c2d12;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.85rem;
-  align-items: center;
-  box-shadow: 0 12px 34px rgba(154, 52, 18, 0.1);
-  animation: posAvailabilitySlideIn 0.2s ease-out;
-
-  strong {
-    display: block;
-    color: #9a3412;
-    font-size: 0.98rem;
-    margin: 0.15rem 0 0.2rem;
+@media (max-width: 768px) {
+  .restaurantBar {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 0.7rem;
   }
 
-  p {
-    margin: 0;
-    font-size: 0.86rem;
-    line-height: 1.4;
-    color: #7c2d12;
-  }
-}
-
-.menuAvailabilityNotice_success {
-  background:
-    linear-gradient(135deg, rgba(236, 253, 245, 0.96), rgba(255, 255, 255, 0.98)),
-    #fff;
-  border-color: #bbf7d0;
-  color: #14532d;
-
-  .menuAvailabilityNoticeIcon {
-    background: #dcfce7;
-    color: #16a34a;
+  .restaurantSelect {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
-  .menuAvailabilityNoticeMeta span {
-    background: #dcfce7;
-    color: #15803d;
+  .restaurantHint {
+    white-space: normal;
   }
 
-  strong,
-  p {
-    color: #14532d;
-  }
-}
-
-.menuAvailabilityNotice_error {
-  background:
-    linear-gradient(135deg, rgba(254, 242, 242, 0.96), rgba(255, 255, 255, 0.98)),
-    #fff;
-  border-color: #fecaca;
-
-  .menuAvailabilityNoticeIcon {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-
-  .menuAvailabilityNoticeMeta span {
-    background: #fee2e2;
-    color: #b91c1c;
-  }
-
-  strong,
-  p {
-    color: #7f1d1d;
-  }
-}
-
-.menuAvailabilityNoticeIcon {
-  width: 42px;
-  height: 42px;
-  border-radius: 0.9rem;
-  background: #ffedd5;
-  color: #ea580c;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 18px rgba(234, 88, 12, 0.12);
-}
-
-.menuAvailabilityNoticeBody {
-  min-width: 0;
-}
-
-.menuAvailabilityNoticeMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 0.18rem 0.5rem;
-    background: rgba(251, 146, 60, 0.14);
-    color: #9a3412;
-    font-size: 0.7rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-  }
-}
-
-.menuAvailabilityNoticeActions {
-  display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  align-items: center;
-
-  button {
-    border: 0;
-    border-radius: 999px;
-    padding: 0.6rem 0.85rem;
-    font-weight: 800;
-    cursor: pointer;
-    background: #f97316;
-    color: #fff;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    box-shadow: 0 8px 18px rgba(249, 115, 22, 0.2);
-    transition: all 0.18s ease;
-
-    &:hover:not(:disabled) {
-      background: #ea580c;
-      transform: translateY(-1px);
-    }
-  }
-
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-}
-
-.menuAvailabilityNoticeClose {
-  background: rgba(255, 255, 255, 0.86) !important;
-  color: #9a3412 !important;
-  box-shadow: none !important;
-  border: 1px solid rgba(251, 146, 60, 0.22) !important;
-
-  &:hover {
-    background: #fff !important;
-  }
-}
-
-@keyframes posAvailabilitySlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 720px) {
-  .menuAvailabilityNotice {
-    grid-template-columns: auto 1fr;
-    align-items: flex-start;
-  }
-
-  .menuAvailabilityNoticeActions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+  .lockButton {
+    justify-content: center;
+    width: 100%;
   }
 }
