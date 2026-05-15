@@ -140,7 +140,6 @@ describe("payment stage discount business coverage", () => {
     expect(src).toMatch(/promotionId:\s*\{\s*type:\s*Types\.ObjectId/);
   });
 });
-
 describe("coupon redemption payment integration coverage", () => {
   it("resolves coupon redemption user from payable order customers", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
