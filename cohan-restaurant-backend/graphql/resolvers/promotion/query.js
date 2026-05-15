@@ -34,6 +34,132 @@ function addToBucket(map, key, usageDelta, discountDelta) {
   map.set(safeKey, current);
 }
 
+function toPositiveNumber(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function normalizeBreakdownRows(meta = {}) {
+  return Array.isArray(meta.appliedPromotionBreakdown)
+    ? meta.appliedPromotionBreakdown
+        .map((row) => ({
+          promotionId: toObjectIdString(row?.promotionId),
+          promotionType: String(row?.promotionType || "").toUpperCase(),
+          source: String(row?.source || "").toLowerCase(),
+          discountAmount: toPositiveNumber(row?.discountAmount),
+        }))
+        .filter((row) => row.promotionId && row.discountAmount > 0)
+    : [];
+}
+
+function aggregateExactBreakdown({
+  rows,
+  promotionMap,
+  topPromotionMap,
+  byTypeMap,
+}) {
+  const byPromotion = new Map();
+
+  for (const row of rows) {
+    const current = byPromotion.get(row.promotionId) || {
+      promotionType: row.promotionType,
+      totalDiscount: 0,
+      shippingDiscount: 0,
+      promotionDiscount: 0,
+    };
+
+    const isShipping = row.source === "shipping";
+    current.totalDiscount += row.discountAmount;
+    current.shippingDiscount += isShipping ? row.discountAmount : 0;
+    current.promotionDiscount += isShipping ? 0 : row.discountAmount;
+
+    if (!current.promotionType) {
+      current.promotionType = String(
+        promotionMap.get(row.promotionId)?.promotionType || "",
+      ).toUpperCase();
+    }
+
+    byPromotion.set(row.promotionId, current);
+  }
+
+  let promotionDiscountTotal = 0;
+  let shippingDiscountTotal = 0;
+
+  for (const [promotionId, row] of byPromotion.entries()) {
+    const promotionType =
+      row.promotionType ||
+      String(promotionMap.get(promotionId)?.promotionType || "").toUpperCase();
+
+    promotionDiscountTotal += row.promotionDiscount;
+    shippingDiscountTotal += row.shippingDiscount;
+
+    addToBucket(topPromotionMap, promotionId, 1, row.totalDiscount);
+    addToBucket(byTypeMap, promotionType, 1, row.totalDiscount);
+  }
+
+  return {
+    redemptions: byPromotion.size,
+    promotionDiscountTotal,
+    shippingDiscountTotal,
+  };
+}
+
+function aggregateLegacyMetadata({
+  meta,
+  promotionMap,
+  topPromotionMap,
+  byTypeMap,
+}) {
+  const appliedPromotionIds = Array.isArray(meta.appliedPromotions)
+    ? meta.appliedPromotions.map(toObjectIdString).filter(Boolean)
+    : [];
+
+  if (!appliedPromotionIds.length) {
+    return {
+      redemptions: 0,
+      promotionDiscountTotal: 0,
+      shippingDiscountTotal: 0,
+    };
+  }
+
+  const promotionDiscount = toPositiveNumber(meta.promotionDiscount);
+  const shippingDiscount = toPositiveNumber(meta.shippingDiscount);
+
+  const shippingPromotionIds = appliedPromotionIds.filter((promotionId) => {
+    const promotionType = String(
+      promotionMap.get(promotionId)?.promotionType || "",
+    ).toUpperCase();
+    return promotionType === "FREESHIP";
+  });
+  const nonShippingPromotionIds = appliedPromotionIds.filter(
+    (promotionId) => !shippingPromotionIds.includes(promotionId),
+  );
+
+  const promotionShare = nonShippingPromotionIds.length
+    ? promotionDiscount / nonShippingPromotionIds.length
+    : promotionDiscount / appliedPromotionIds.length;
+  const shippingShare = shippingPromotionIds.length
+    ? shippingDiscount / shippingPromotionIds.length
+    : 0;
+
+  for (const promotionId of appliedPromotionIds) {
+    const promotion = promotionMap.get(promotionId);
+    const promotionType = promotion?.promotionType || "";
+    const discountShare = shippingPromotionIds.includes(promotionId)
+      ? shippingShare
+      : promotionShare;
+
+    addToBucket(topPromotionMap, promotionId, 1, discountShare);
+    addToBucket(byTypeMap, promotionType, 1, discountShare);
+  }
+
+  return {
+    redemptions: appliedPromotionIds.length,
+    promotionDiscountTotal: promotionDiscount,
+    shippingDiscountTotal: shippingDiscount,
+  };
+}
+
 export const PromotionQuery = {
   async promotionAnalyticsByRestaurant(_, { restaurantId }, ctx) {
     if (!mongoose.isValidObjectId(restaurantId)) {
@@ -79,42 +205,24 @@ export const PromotionQuery = {
 
     for (const invoice of invoices || []) {
       const meta = invoice?.meta || {};
-      const appliedPromotionIds = Array.isArray(meta.appliedPromotions)
-        ? meta.appliedPromotions.map(toObjectIdString).filter(Boolean)
-        : [];
-      if (!appliedPromotionIds.length) continue;
+      const exactRows = normalizeBreakdownRows(meta);
+      const aggregate = exactRows.length
+        ? aggregateExactBreakdown({
+            rows: exactRows,
+            promotionMap,
+            topPromotionMap,
+            byTypeMap,
+          })
+        : aggregateLegacyMetadata({
+            meta,
+            promotionMap,
+            topPromotionMap,
+            byTypeMap,
+          });
 
-      const promotionDiscount = Math.max(0, Number(meta.promotionDiscount || 0));
-      const shippingDiscount = Math.max(0, Number(meta.shippingDiscount || 0));
-      totalPromotionDiscount += promotionDiscount;
-      totalShippingDiscount += shippingDiscount;
-      totalRedemptions += appliedPromotionIds.length;
-
-      const shippingPromotionIds = appliedPromotionIds.filter((promotionId) => {
-        const promotionType = String(promotionMap.get(promotionId)?.promotionType || "").toUpperCase();
-        return promotionType === "FREESHIP";
-      });
-      const nonShippingPromotionIds = appliedPromotionIds.filter(
-        (promotionId) => !shippingPromotionIds.includes(promotionId),
-      );
-
-      const promotionShare = nonShippingPromotionIds.length
-        ? promotionDiscount / nonShippingPromotionIds.length
-        : promotionDiscount / appliedPromotionIds.length;
-      const shippingShare = shippingPromotionIds.length
-        ? shippingDiscount / shippingPromotionIds.length
-        : 0;
-
-      for (const promotionId of appliedPromotionIds) {
-        const promotion = promotionMap.get(promotionId);
-        const promotionType = promotion?.promotionType || "";
-        const discountShare = shippingPromotionIds.includes(promotionId)
-          ? shippingShare
-          : promotionShare;
-
-        addToBucket(topPromotionMap, promotionId, 1, discountShare);
-        addToBucket(byTypeMap, promotionType, 1, discountShare);
-      }
+      totalRedemptions += aggregate.redemptions;
+      totalPromotionDiscount += aggregate.promotionDiscountTotal;
+      totalShippingDiscount += aggregate.shippingDiscountTotal;
     }
 
     const topPromotions = Array.from(topPromotionMap.entries())
