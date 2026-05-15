@@ -75,6 +75,9 @@ export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, role
     throw forbidden("Staff does not belong to this restaurant");
   }
 
+  await staff.populate?.({ path: "role", populate: { path: "parentRole" } });
+  const beforeRole = roleSnapshot(staff.role);
+
   const role = await Role.findById(roleId)
     .populate("permissions")
     .populate({ path: "parentRole", populate: { path: "permissions" } })
@@ -82,7 +85,6 @@ export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, role
 
   assertAssignableStaffRole({ actor, role });
 
-  const beforeRole = roleSnapshot(staff.role);
   staff.role = role._id;
   await staff.save();
 
