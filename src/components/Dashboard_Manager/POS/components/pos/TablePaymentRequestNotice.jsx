@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
+import { AlertTriangle, BellRing, Loader2 } from "lucide-react";
 import { usePos } from "@/context/PosContext";
 import { useNotification } from "@/hooks/useNotification";
 import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
@@ -51,10 +52,7 @@ export default function TablePaymentRequestNotice() {
     [data, loading],
   );
 
-  const livePaymentRequests = useMemo(
-    () => normalizePosPaymentRequests(data),
-    [data],
-  );
+  const livePaymentRequests = useMemo(() => normalizePosPaymentRequests(data), [data]);
 
   const tablePaymentRequestMap = useMemo(
     () => buildTablePaymentRequestMap(livePaymentRequests),
@@ -67,6 +65,13 @@ export default function TablePaymentRequestNotice() {
     if (!tableCode) return null;
     return tablePaymentRequestMap.get(tableCode) || null;
   }, [currentOrderType, currentTable?.code, tablePaymentRequestMap]);
+
+  const orderIds = useMemo(() => {
+    if (!Array.isArray(activeTablePaymentRequest?.orderIds)) return [];
+    return activeTablePaymentRequest.orderIds
+      .map((id) => String(id || "").trim())
+      .filter(Boolean);
+  }, [activeTablePaymentRequest?.orderIds]);
 
   const refreshPaymentRequestState = useCallback(async () => {
     if (!restaurantId) return;
@@ -129,10 +134,7 @@ export default function TablePaymentRequestNotice() {
 
   const handleClearTablePaymentRequest = useCallback(async () => {
     if (!restaurantId || !currentTable?.id || !currentTable?.code) {
-      showNotification(
-        "Thiếu thông tin bàn để hủy yêu cầu thanh toán.",
-        "error",
-      );
+      showNotification("Thiếu thông tin bàn để hủy yêu cầu thanh toán.", "error");
       return;
     }
 
@@ -150,15 +152,11 @@ export default function TablePaymentRequestNotice() {
 
       const result = mutationData?.clearTablePaymentRequest;
       if (!result?.ok) {
-        throw new Error(
-          result?.message || "Không thể hủy yêu cầu thanh toán.",
-        );
+        throw new Error(result?.message || "Không thể hủy yêu cầu thanh toán.");
       }
 
       if (Array.isArray(activeTablePaymentRequest?.orderIds)) {
-        activeTablePaymentRequest.orderIds.forEach((orderId) =>
-          clearPaymentRequest?.(orderId),
-        );
+        activeTablePaymentRequest.orderIds.forEach((orderId) => clearPaymentRequest?.(orderId));
       }
 
       await refreshPaymentRequestState();
@@ -171,10 +169,7 @@ export default function TablePaymentRequestNotice() {
         "success",
       );
     } catch (error) {
-      showNotification(
-        error?.message || "Không thể hủy yêu cầu thanh toán.",
-        "error",
-      );
+      showNotification(error?.message || "Không thể hủy yêu cầu thanh toán.", "error");
     }
   }, [
     restaurantId,
@@ -189,25 +184,32 @@ export default function TablePaymentRequestNotice() {
     showNotification,
   ]);
 
-  if (
-    currentOrderType !== "dine_in" ||
-    !currentTable?.code ||
-    !activeTablePaymentRequest
-  ) {
+  if (currentOrderType !== "dine_in" || !currentTable?.code || !activeTablePaymentRequest) {
     return null;
   }
 
   return (
     <div className={styles.notice} role="status" aria-live="polite">
+      <div className={styles.iconWrap} aria-hidden="true">
+        <BellRing size={18} />
+      </div>
+
       <div className={styles.copy}>
-        <div className={styles.badge}>Yêu cầu thanh toán</div>
+        <div className={styles.badgeRow}>
+          <span className={styles.badge}>Yêu cầu thanh toán</span>
+          <span className={styles.tableTag}>Bàn {currentTable.code}</span>
+        </div>
+
+        {!!orderIds.length && (
+          <div className={styles.orderMeta}>Order: {orderIds.join(", ")}</div>
+        )}
+
         <div className={styles.message}>
-          Khách đã gọi thanh toán. Không thêm món mới nếu chưa xác nhận với
-          khách.
+          Khách đã yêu cầu thanh toán. Không nên thêm món mới nếu chưa xác nhận với khách.
         </div>
         <div className={styles.meta}>
-          Đây chỉ là trạng thái cảnh báo nghiệp vụ, chưa phải thanh toán thành
-          công.
+          <AlertTriangle size={14} />
+          <span>Đây là cảnh báo nghiệp vụ, chưa phải thanh toán thành công.</span>
         </div>
       </div>
 
@@ -217,7 +219,13 @@ export default function TablePaymentRequestNotice() {
         onClick={handleClearTablePaymentRequest}
         disabled={clearingPaymentRequest}
       >
-        {clearingPaymentRequest ? "Đang hủy..." : "Hủy yêu cầu"}
+        {clearingPaymentRequest ? (
+          <>
+            <Loader2 size={15} className={styles.spinner} /> Đang hủy...
+          </>
+        ) : (
+          "Hủy yêu cầu"
+        )}
       </button>
     </div>
   );
