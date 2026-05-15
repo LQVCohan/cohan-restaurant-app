@@ -269,6 +269,7 @@
 .auto-schedule-body .auto-actions-strip .btn-primary {
   min-width: 12rem;
   justify-content: center;
+  align-self: center;
 }
 
 .auto-schedule-body .meta-pill {
@@ -349,6 +350,7 @@
 
 .auto-schedule-body .preview-head {
   padding-top: 0.2rem;
+  margin-bottom: 0.32rem !important;
 }
 
 .auto-schedule-body .preview-head h4 {
@@ -368,6 +370,18 @@
 .auto-schedule-body .preview-item.blocked {
   border-color: #fecaca !important;
   background: linear-gradient(180deg, #fff 0%, #fffafa 100%) !important;
+}
+
+.auto-schedule-body .validation-warning,
+.auto-schedule-body .preview-warning {
+  margin-top: 0.4rem !important;
+  padding: 0.48rem 0.6rem !important;
+  border-radius: 12px !important;
+  border: 1px solid #fed7aa !important;
+  background: #fff7ed !important;
+  color: #9a3412 !important;
+  font-size: 0.73rem !important;
+  line-height: 1.35 !important;
 }
 
 .auto-schedule-body .preview-toggle {

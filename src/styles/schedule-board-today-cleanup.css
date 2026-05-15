@@ -75,6 +75,21 @@
     linear-gradient(180deg, rgba(238, 242, 255, 0.28), rgba(255, 255, 255, 0) 42%) !important;
 }
 
+.manager-page-shell--schedules .day-header.today + .day-body::before {
+  content: "Ưu tiên theo dõi";
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.55rem;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(199, 210, 254, 0.85);
+  background: rgba(255, 255, 255, 0.86);
+  color: #4f46e5;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
 .manager-page-shell--schedules .add-shift-btn::before {
   content: none !important;
   display: none !important;
@@ -83,6 +98,14 @@
 .manager-page-shell--schedules .add-shift-btn {
   justify-content: center !important;
   letter-spacing: -0.01em !important;
+}
+
+.manager-page-shell--schedules .empty-shift-slot {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(148, 163, 184, 0.1), transparent 35%),
+    repeating-linear-gradient(135deg, rgba(226, 232, 240, 0.28) 0 1px, transparent 1px 8px),
+    #f8fafc !important;
+  color: #64748b !important;
 }
 
 .manager-page-shell--schedules .day-header.today + .day-body .add-shift-btn {
