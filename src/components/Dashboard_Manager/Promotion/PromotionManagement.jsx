@@ -20,6 +20,7 @@ import {
   NO_PERMISSION_MESSAGE,
 } from "@/utils/frontendPermissionAccess";
 import { useCouponAnalytics } from "../../../hooks/useCouponAnalytics";
+import { usePromotionAnalytics } from "../../../hooks/usePromotionAnalytics";
 // --- Components ---
 // Giả định bạn đã lưu các file này từ các bước trước
 import StatsCard from "./components/StatsCard/StatsCard";
@@ -80,6 +81,11 @@ const PromotionManagement = () => {
     loading: couponAnalyticsLoading,
     error: couponAnalyticsError,
   } = useCouponAnalytics(selectedRestaurantId);
+  const {
+    analytics: promotionAnalytics,
+    loading: promotionAnalyticsLoading,
+    error: promotionAnalyticsError,
+  } = usePromotionAnalytics(selectedRestaurantId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
@@ -135,6 +141,30 @@ const PromotionManagement = () => {
       (menuItem) => String(menuItem.id) === String(promotion.giftItemId || ""),
     );
     return item?.name || promotion.giftItemId;
+  };
+
+  const resolveComboItemsLabel = (promotion) => {
+    if (!Array.isArray(promotion.comboItems) || !promotion.comboItems.length) {
+      return "";
+    }
+
+    return promotion.comboItems
+      .map((comboItem) => {
+        const item = menuItems.find(
+          (menuItem) => String(menuItem.id) === String(comboItem.itemId || ""),
+        );
+        const name = item?.name || comboItem.itemId;
+        const quantity = Number(comboItem.quantity || 1);
+        return quantity > 1 ? `${name} x${quantity}` : name;
+      })
+      .join(", ");
+  };
+
+  const resolvePromotionDiscountKind = (promotion) => {
+    if (promotion.type === "freeship") return "FREESHIP";
+    if (promotion.type === "bogo") return "BOGO";
+    if (promotion.type === "combo") return promotion.discountType === "fixed" ? "COMBO_FIXED" : "COMBO_PERCENT";
+    return promotion.discountType === "fixed" ? "FIXED" : "PERCENTAGE";
   };
 
   const buildExportSheets = () => {
@@ -241,6 +271,9 @@ const PromotionManagement = () => {
             "Phạm vi",
             "Đối tượng áp dụng",
             "Món tặng",
+            "Combo items",
+            "Freeship giảm",
+            "Loại giảm",
             "Mua",
             "Tặng",
             "Giảm giá",
@@ -262,6 +295,9 @@ const PromotionManagement = () => {
             promotion.scope,
             resolvePromotionTargetLabel(promotion),
             resolveGiftItemLabel(promotion),
+            promotion.type === "combo" ? resolveComboItemsLabel(promotion) : "",
+            promotion.type === "freeship" ? "Có" : "",
+            resolvePromotionDiscountKind(promotion),
             promotion.buyQuantity,
             promotion.getQuantity,
             formatPromotionValue(promotion),
@@ -329,26 +365,12 @@ const PromotionManagement = () => {
     }
 
     return {
-      totalSavings: allPromotions.reduce((sum, p) => {
-        const usage = Number(p.usageCount || 0);
-        const discountValue = Number(p.discountValue || 0);
-        const perUsage =
-          p.type === "percentage"
-            ? Math.min(
-                (Number(p.minOrderValue || 0) * discountValue) / 100,
-                Number(p.maxDiscount || Number.MAX_SAFE_INTEGER),
-              )
-            : discountValue;
-        return sum + Math.max(0, perUsage) * usage;
-      }, 0),
-      usageRate: 45,
-      totalUsage: allPromotions.reduce(
-        (sum, p) => sum + (p.usageCount || 0),
-        0,
-      ),
-      hotPromotions: allPromotions.filter((p) => p.usageCount > 100).length, // Ví dụ logic
+      totalSavings: Number(promotionAnalytics.totalDiscountAmount || 0),
+      usageRate: Number(promotionAnalytics.usageRate || 0),
+      totalUsage: Number(promotionAnalytics.totalRedemptions || 0),
+      hotPromotions: Number(promotionAnalytics.topPromotions?.length || 0),
     };
-  }, [activeSection, allPromotions, allCouponPackages, resolveStatus]);
+  }, [activeSection, couponAnalytics, promotionAnalytics, allCouponPackages, resolveStatus]);
 
   const couponActionTitle = canWriteCoupon ? undefined : NO_PERMISSION_MESSAGE;
   const promotionActionTitle = canWritePromotion ? undefined : NO_PERMISSION_MESSAGE;
@@ -787,10 +809,10 @@ const PromotionManagement = () => {
     }
 
     return {
-      savings: "Tiết kiệm cho KH",
+      savings: "Tiết kiệm thực tế",
       usage: "Tỷ lệ sử dụng",
-      total: "Tổng lượt dùng",
-      hot: "Đang thịnh hành",
+      total: "Lượt dùng Promotion",
+      hot: "Top Promotion",
     };
   }, [activeSection]);
   return (
@@ -866,6 +888,16 @@ const PromotionManagement = () => {
       {activeSection === "coupons" && couponAnalyticsLoading && (
         <p className="text-xs text-secondary mt-2">
           Đang cập nhật thống kê Coupon...
+        </p>
+      )}
+      {activeSection === "promotions" && promotionAnalyticsError && (
+        <p className="text-xs text-danger mt-2">
+          Chưa tải được thống kê Promotion, đang hiển thị giá trị mặc định.
+        </p>
+      )}
+      {activeSection === "promotions" && promotionAnalyticsLoading && (
+        <p className="text-xs text-secondary mt-2">
+          Đang cập nhật thống kê Promotion...
         </p>
       )}
 
