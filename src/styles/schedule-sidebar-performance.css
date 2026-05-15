@@ -1,10 +1,15 @@
 /* =========================================================
    SCHEDULE SIDEBAR PERFORMANCE
-   Schedule board is expensive to relayout. Keep it static when
-   the manager sidebar opens; let the sidebar overlay instead.
+   Schedule board is expensive to relayout. When the manager
+   sidebar opens, move the viewport with GPU transform instead
+   of resizing/reflowing the schedule board.
    ========================================================= */
 
 @media (min-width: 769px) {
+  .manager-layout:has(.manager-page-shell--schedules) {
+    --schedule-sidebar-width: 280px;
+  }
+
   .manager-layout:has(.manager-page-shell--schedules) .sidebar {
     transform: translate3d(-100%, 0, 0);
     will-change: transform;
@@ -16,9 +21,16 @@
     transform: translate3d(0, 0, 0) !important;
   }
 
+  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__main {
+    margin-left: 0 !important;
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    will-change: transform;
+  }
+
   .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .manager-layout__main {
     margin-left: 0 !important;
-    transition: none !important;
+    transform: translate3d(var(--schedule-sidebar-width), 0, 0);
   }
 
   .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .manager-layout__header,
@@ -26,6 +38,11 @@
   .manager-layout.sidebar-open:has(.manager-page-shell--schedules) .header {
     left: 0 !important;
     width: 100vw !important;
+  }
+
+  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__header,
+  .manager-layout:has(.manager-page-shell--schedules) .manager-layout__content,
+  .manager-layout:has(.manager-page-shell--schedules) .header {
     transition: none !important;
   }
 
