@@ -1,11 +1,21 @@
 type AuditLog {
   id: ID!
   restaurantId: ID
-  entity: String!
-  entityId: ID!
+  entity: String
+  entityId: ID
   action: String!
   byUserId: ID
   diff: JSON
+  actorId: ID
+  actorName: String
+  actorRole: String
+  module: String
+  targetType: String
+  targetId: ID
+  targetName: String
+  before: JSON
+  after: JSON
+  metadata: JSON
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -16,6 +26,15 @@ input AuditLogFilterInput {
   entityId: ID
   action: String
   byUserId: ID
+}
+
+input AuditLogFilter {
+  action: String
+  module: String
+  targetType: String
+  targetId: ID
+  actorId: ID
+  restaurantId: ID
 }
 
 type AuditLogConnection {
@@ -43,9 +62,9 @@ extend type Query {
     limit: Int = 50
     offset: Int = 0
   ): AuditLogConnection!
-}
-
-extend type Mutation {
-  copyMenu(input: CopyMenuInput!): Menu!
-  deleteMenu(id: ID!, force: Boolean = false): Boolean!
+  rbacAuditLogs(
+    filter: AuditLogFilter
+    limit: Int = 50
+    offset: Int = 0
+  ): [AuditLog!]!
 }

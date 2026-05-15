@@ -36,6 +36,7 @@ import search from "./search/index.js";
 import communication from "./communication/index.js";
 import availability from "./availability/index.js";
 import auditLog from "./audit_log/index.js";
+import { rbacAuditLogs } from "./audit_log/rbac.js";
 export default {
   ...baseResolvers,
 
@@ -73,6 +74,7 @@ export default {
     ...(communication.Query || {}),
     ...(availability.Query || {}),
     ...(auditLog.Query || {}),
+    rbacAuditLogs,
   },
 
   Mutation: {

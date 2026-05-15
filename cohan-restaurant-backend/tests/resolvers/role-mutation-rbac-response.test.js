@@ -9,6 +9,7 @@ const modelMocks = vi.hoisted(() => ({
   User: {},
   Permission: { find: vi.fn() },
   ParentRole: { findById: vi.fn() },
+  AuditLog: { create: vi.fn().mockResolvedValue({ _id: "audit-1" }) },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -16,7 +17,7 @@ vi.mock("../../utils/authz.js", () => ({
   hasRole: vi.fn((user, roles) => roles.includes(String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase())),
 }));
 vi.mock("mongoose", () => ({
-  default: { isValidObjectId: vi.fn(() => true) },
+  default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: vi.fn((value) => value) } },
 }));
 
 const adminCtx = { user: { id: "admin-1", roleName: "admin" } };
@@ -47,12 +48,13 @@ describe("RoleMutation RBAC response shape", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     modelMocks.Role.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
     modelMocks.Permission.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([directPermission]) });
     modelMocks.ParentRole.findById.mockResolvedValue(parentRole);
   });
 
-  it("createRole returns parentRole, directPermissions, and effective permissions", async () => {
+  it("createRole returns parentRole, directPermissions, effective permissions, and logs audit", async () => {
     const createdRoleId = "role-created";
     modelMocks.Role.create.mockResolvedValue({ _id: createdRoleId });
     modelMocks.Role.findById.mockReturnValueOnce(roleQueryResult({
@@ -74,9 +76,10 @@ describe("RoleMutation RBAC response shape", () => {
     );
 
     expectRbacRoleResponse(role);
+    expect(modelMocks.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "ROLE_CREATED", module: "rbac", targetType: "Role" }));
   });
 
-  it("updateRole returns parentRole, directPermissions, and effective permissions", async () => {
+  it("updateRole returns parentRole, directPermissions, effective permissions, and logs audit", async () => {
     const save = vi.fn();
     const roleDocument = {
       _id: "role-server",
@@ -111,6 +114,40 @@ describe("RoleMutation RBAC response shape", () => {
     expect(roleDocument.department).toBe("kitchen");
     expect(save).toHaveBeenCalledTimes(1);
     expectRbacRoleResponse(role);
+    expect(modelMocks.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "ROLE_PERMISSION_UPDATED", module: "rbac", targetType: "Role" }));
+  });
+
+  it("updateRole audit failure does not fail the mutation", async () => {
+    const save = vi.fn();
+    const roleDocument = {
+      _id: "role-server",
+      slug: "server",
+      isSystem: false,
+      permissions: [],
+      parentRole: "parent-service",
+      department: "service",
+      save,
+    };
+    modelMocks.AuditLog.create.mockRejectedValue(new Error("audit down"));
+    modelMocks.Role.findById
+      .mockResolvedValueOnce(roleDocument)
+      .mockReturnValueOnce(roleQueryResult({
+        _id: "role-server",
+        id: "role-server",
+        slug: "server",
+        name: "Server",
+        isSystem: false,
+        parentRole,
+        permissions: [directPermission],
+      }));
+
+    const { RoleMutation } = await import("../../graphql/resolvers/role/mutation.js");
+
+    await expect(RoleMutation.updateRole(
+      null,
+      { input: { id: "role-server", permissionIds: ["permission-direct"] } },
+      adminCtx,
+    )).resolves.toMatchObject({ slug: "server" });
   });
 
   it("updateRole still blocks system/protected roles before saving", async () => {
@@ -134,5 +171,6 @@ describe("RoleMutation RBAC response shape", () => {
 
     expect(save).not.toHaveBeenCalled();
     expect(modelMocks.Permission.find).not.toHaveBeenCalled();
+    expect(modelMocks.AuditLog.create).not.toHaveBeenCalled();
   });
 });
