@@ -465,7 +465,8 @@ const AttendancePage = () => {
       if (attendanceTab === "corrections") {
         setActiveView("corrections");
       } else if (attendanceTab === "off_schedule") {
-        setActiveView("off_schedule");
+        setActiveView("attendance");
+        setFilterStatus("unscheduled_checkin");
       } else if (attendanceTab === "overtime") {
         setActiveView("overtime");
       } else {

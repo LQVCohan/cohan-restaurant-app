@@ -155,7 +155,7 @@ const ManagerLayout = () => {
         history.replaceState(
           null,
           "",
-          `${window.location.pathname}${window.location.search}#${currentPage}`,
+          `${window.location.pathname}#${currentPage}`,
         );
       }
     }

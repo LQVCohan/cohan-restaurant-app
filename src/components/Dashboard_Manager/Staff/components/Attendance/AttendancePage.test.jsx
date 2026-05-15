@@ -62,6 +62,9 @@ describe("getAttendanceActionErrorMessage", () => {
     const error = { graphQLErrors: [{ extensions: { code: "BAD_USER_INPUT" } }] };
     expect(getAttendanceActionErrorMessage(error, "fallback")).toBe("fallback");
   });
+
+
+
 });
 
 describe("AttendancePage readiness navigation", () => {
@@ -86,4 +89,7 @@ describe("AttendancePage readiness navigation", () => {
 
     expect(await screen.findByText("Overtime Panel")).toBeInTheDocument();
   });
+
+
+
 });
