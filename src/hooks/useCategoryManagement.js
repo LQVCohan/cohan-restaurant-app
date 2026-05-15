@@ -12,6 +12,7 @@ const GET_CATEGORIES = gql`
     categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
       id
       name
+      icon
       order
       isActive
       menuItemCount
@@ -26,6 +27,7 @@ const CREATE_CATEGORY = gql`
     createCategory(input: $input) {
       id
       name
+      icon
       order
       isActive
     }
@@ -37,6 +39,7 @@ const UPDATE_CATEGORY = gql`
     updateCategory(input: $input) {
       id
       name
+      icon
       order
       isActive
     }
@@ -66,6 +69,7 @@ const TOP_CATEGORIES_BY_RESTAURANT = gql`
     ) {
       id
       name
+      icon
       menuItemCount
     }
   }
@@ -76,6 +80,7 @@ const TOP_GLOBAL_CATEGORIES = gql`
     topGlobalCategoriesByMenuItemCount(timeSlot: $timeSlot, limit: $limit) {
       id
       name
+      icon
       menuItemCount
     }
   }
@@ -90,6 +95,7 @@ const GET_CATEGORY_MENUS = gql`
     categoryMenus(restaurantId: $restaurantId) {
       id
       name
+      icon
       description
       coverImage
       isActive
@@ -104,6 +110,7 @@ const CREATE_CATEGORY_MENU = gql`
     createCategoryMenu(input: $input) {
       id
       name
+      icon
       description
       coverImage
       isActive
@@ -116,6 +123,7 @@ const UPDATE_CATEGORY_MENU = gql`
     updateCategoryMenu(input: $input) {
       id
       name
+      icon
       description
       coverImage
       isActive
@@ -217,7 +225,7 @@ export const useCategoryManagement = ({
         return null;
       }
     },
-    [createCategoryMut, refetchCategories, refetchTopCategories]
+    [createCategoryMut, refetchCategories, refetchTopCategories, showNotification]
   );
 
   const updateCategory = useCallback(
@@ -239,7 +247,7 @@ export const useCategoryManagement = ({
         return null;
       }
     },
-    [updateCategoryMut, refetchCategories, refetchTopCategories]
+    [updateCategoryMut, refetchCategories, refetchTopCategories, showNotification]
   );
 
   const deleteCategory = useCallback(
@@ -258,7 +266,7 @@ export const useCategoryManagement = ({
         return false;
       }
     },
-    [deleteCategoryMut, refetchCategories, refetchTopCategories]
+    [deleteCategoryMut, refetchCategories, refetchTopCategories, showNotification]
   );
 
   /* ---------------------------------------
@@ -293,6 +301,7 @@ export const useCategoryManagement = ({
         __typename: "CategoryMenu",
         id: "optimistic-" + Math.random().toString(36).slice(2),
         name: input.name,
+        icon: input.icon || "🍽️",
         description: input.description || null,
         coverImage: input.coverImage || null,
         isActive: true,
@@ -337,7 +346,7 @@ export const useCategoryManagement = ({
         return null;
       }
     },
-    [createCategoryMenuMut, refetchCategoryMenus]
+    [createCategoryMenuMut, refetchCategoryMenus, showNotification]
   );
 
   const [updateCategoryMenuMut] = useMutation(UPDATE_CATEGORY_MENU);
@@ -361,7 +370,7 @@ export const useCategoryManagement = ({
         return null;
       }
     },
-    [updateCategoryMenuMut, refetchCategoryMenus]
+    [updateCategoryMenuMut, refetchCategoryMenus, showNotification]
   );
 
   const [deleteCategoryMenuMut] = useMutation(DELETE_CATEGORY_MENU);
@@ -380,7 +389,7 @@ export const useCategoryManagement = ({
         return false;
       }
     },
-    [deleteCategoryMenuMut, refetchCategoryMenus]
+    [deleteCategoryMenuMut, refetchCategoryMenus, showNotification]
   );
 
   /* ---------------------------------------
