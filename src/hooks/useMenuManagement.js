@@ -63,6 +63,17 @@ const FRAG_MENU_ITEM = gql`
     mediaAssetIds
 
     status
+    inventoryStatus
+    maxAvailable
+    stockWarnings
+    stockShortages {
+      ingredientId
+      ingredientName
+      available
+      required
+      missing
+      unit
+    }
     avgPrepTimeMin
     point
     rate
