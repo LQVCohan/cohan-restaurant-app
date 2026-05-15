@@ -2,29 +2,27 @@
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
+
 /**
  * Hook kết nối socket.io để lắng nghe các sự kiện order + inventory realtime.
+ * Handlers được lưu bằng ref để tránh stale closure khi state của component thay đổi.
  *
  * @param {string} restaurantId - ID của nhà hàng
  * @param {object} handlers - Các callback cho từng loại event
- * @param {function} handlers.onCreated - Khi đơn hàng mới được tạo
- * @param {function} handlers.onUpdated - Khi đơn hàng được cập nhật
- * @param {function} handlers.onStatusChanged - Khi thay đổi trạng thái
- * @param {function} handlers.onCancelled - Khi đơn hàng bị hủy
- * @param {function} handlers.onInventoryEvent - Khi tồn kho/menu availability thay đổi
- * @param {function} handlers.onMenuItemOutOfStock - Khi món hết khả dụng
- * @param {function} handlers.onMenuItemAvailableAgain - Khi món khả dụng lại
- * @param {function} handlers.onMenuAvailabilityNotification - Khi watcher được notify
- * @param {function} handlers.onAny - Callback chung cho mọi order event
  */
 export default function useSocketOrder(restaurantId, handlers = {}) {
   const socketRef = useRef(null);
+  const handlersRef = useRef(handlers);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    handlersRef.current = handlers || {};
+  }, [handlers]);
 
-    // Kết nối socket
-    const socket = io("http://localhost:4000", {
+  useEffect(() => {
+    if (!restaurantId) return undefined;
+
+    const socket = io(SOCKET_URL, {
       transports: ["websocket"],
       reconnection: true,
       reconnectionDelay: 2000,
@@ -32,7 +30,8 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
     });
     socketRef.current = socket;
 
-    // Khi connect xong, join vào room nhà hàng
+    const getHandlers = () => handlersRef.current || {};
+
     socket.on("connect", () => {
       console.log(`[SOCKET.IO] Connected (${socket.id})`);
       socket.emit("joinRestaurant", restaurantId);
@@ -46,27 +45,25 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
       console.error("[SOCKET.IO] Connection error:", err.message);
     });
 
-    // Lắng nghe order event
     socket.on("orderEvents", (evt) => {
       if (!evt?.type || !evt?.order) return;
+      const h = getHandlers();
       console.log("📡 [SOCKET.IO] Order event received:", evt);
 
-      // Callback tổng quát
-      if (typeof handlers.onAny === "function") handlers.onAny(evt);
+      h.onAny?.(evt);
 
-      // Tùy loại event
       switch (evt.type) {
         case "ORDER_CREATED":
-          handlers.onCreated?.(evt.order);
+          h.onCreated?.(evt.order);
           break;
         case "ORDER_UPDATED":
-          handlers.onUpdated?.(evt.order);
+          h.onUpdated?.(evt.order);
           break;
         case "ORDER_STATUS_CHANGED":
-          handlers.onStatusChanged?.(evt.order);
+          h.onStatusChanged?.(evt.order);
           break;
         case "ORDER_CANCELLED":
-          handlers.onCancelled?.(evt.order);
+          h.onCancelled?.(evt.order);
           break;
         default:
           break;
@@ -75,15 +72,17 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
 
     socket.on("inventoryEvents", (evt) => {
       if (!evt?.type) return;
+      const h = getHandlers();
       console.log("📡 [SOCKET.IO] Inventory event received:", evt);
-      handlers.onInventoryEvent?.(evt);
+
+      h.onInventoryEvent?.(evt);
 
       switch (evt.type) {
         case "MENU_ITEM_OUT_OF_STOCK":
-          handlers.onMenuItemOutOfStock?.(evt);
+          h.onMenuItemOutOfStock?.(evt);
           break;
         case "MENU_ITEM_AVAILABLE_AGAIN":
-          handlers.onMenuItemAvailableAgain?.(evt);
+          h.onMenuItemAvailableAgain?.(evt);
           break;
         default:
           break;
@@ -92,16 +91,19 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
 
     socket.on("menuAvailabilityNotifications", (evt) => {
       if (!evt?.type) return;
+      const h = getHandlers();
       console.log("📡 [SOCKET.IO] Menu availability notification received:", evt);
-      handlers.onMenuAvailabilityNotification?.(evt);
+
+      h.onMenuAvailabilityNotification?.(evt);
       if (evt.type === "MENU_ITEM_AVAILABLE_AGAIN") {
-        handlers.onMenuItemAvailableAgain?.(evt);
+        h.onMenuItemAvailableAgain?.(evt);
       }
     });
 
     return () => {
       console.log("[SOCKET.IO] Disconnecting...");
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [restaurantId]);
 
