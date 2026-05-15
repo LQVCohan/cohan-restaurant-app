@@ -320,11 +320,18 @@ export const initScheduleManagerDomPolish = () => {
   activeScheduleDomPolishCleanup?.();
 
   let frameId = 0;
+  let observer = null;
+  let bodyObserver = null;
   const timeoutIds = [];
   let disposed = false;
+  let lastRunAt = 0;
 
   const run = () => {
     if (disposed) return;
+    const now = performance.now();
+    if (now - lastRunAt < 120) return;
+    lastRunAt = now;
+
     window.cancelAnimationFrame(frameId);
     frameId = window.requestAnimationFrame(() => {
       if (disposed) return;
@@ -340,30 +347,48 @@ export const initScheduleManagerDomPolish = () => {
     });
   };
 
+  const observeScheduleRoot = () => {
+    const root = findScheduleRoot();
+    if (!root || observer) return false;
+
+    bodyObserver?.disconnect();
+    bodyObserver = null;
+
+    observer = new MutationObserver(run);
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    return true;
+  };
+
   const scheduleRun = (delay) => {
-    const id = window.setTimeout(run, delay);
+    const id = window.setTimeout(() => {
+      observeScheduleRoot();
+      run();
+    }, delay);
     timeoutIds.push(id);
   };
 
+  if (!observeScheduleRoot()) {
+    bodyObserver = new MutationObserver(() => {
+      if (observeScheduleRoot()) run();
+    });
+    bodyObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
   run();
-  scheduleRun(250);
+  scheduleRun(300);
   scheduleRun(900);
-  scheduleRun(1600);
-
-  const observer = new MutationObserver(run);
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
 
   const cleanup = () => {
     if (disposed) return;
     disposed = true;
     window.cancelAnimationFrame(frameId);
     timeoutIds.forEach((id) => window.clearTimeout(id));
-    observer.disconnect();
+    observer?.disconnect();
+    bodyObserver?.disconnect();
     cleanupInjectedScheduleDom();
     if (activeScheduleDomPolishCleanup === cleanup) {
       activeScheduleDomPolishCleanup = null;
