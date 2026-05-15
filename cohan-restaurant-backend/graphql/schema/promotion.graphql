@@ -65,7 +65,7 @@ input PromotionInput {
   discountValue: Float!
   buyQuantity: Int
   getQuantity: Int
-  comboItems: [ComboPromotionItem!]
+  comboItems: [ComboPromotionItemInput!]
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
