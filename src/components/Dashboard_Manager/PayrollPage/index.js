@@ -1,2 +1,2 @@
-export { default } from "./PayrollManagementWithReadiness";
+export { default } from "./PayrollManagement.jsx";
 export * from "./PayrollManagement.jsx";
