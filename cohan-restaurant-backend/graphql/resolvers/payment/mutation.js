@@ -293,6 +293,91 @@ function resolvePaymentAmount({ paidAmount, expectedTotal, appliedDiscount }) {
   return amount;
 }
 
+
+export function normalizePromotionBreakdownLine(line = {}) {
+  const promotionId = String(line?.promotionId || "").trim();
+  if (!promotionId) return null;
+
+  const numberOrZero = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const numberOrNull = (value) => {
+    if (value == null || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  return {
+    promotionId,
+    promotionName: String(line?.promotionName || ""),
+    promotionType: String(line?.promotionType || ""),
+    promotionScope: String(line?.promotionScope || ""),
+    discountType: String(line?.discountType || ""),
+    discountValue: numberOrZero(line?.discountValue),
+    discountAmount: numberOrZero(line?.discountAmount ?? line?.discount),
+    source: ["line", "order", "shipping"].includes(line?.source) ? line.source : "line",
+    lineId: line?.lineId ? String(line.lineId) : null,
+    itemName: line?.itemName ? String(line.itemName) : null,
+    quantity: numberOrNull(line?.quantity),
+    comboCount: numberOrNull(line?.comboCount),
+    comboBase: numberOrNull(line?.comboBase),
+    freeQuantity: numberOrNull(line?.freeQuantity),
+  };
+}
+
+export function buildAppliedPromotionBreakdown(discountTotals = {}) {
+  const promotionLines = Array.isArray(discountTotals?.promotionLines)
+    ? discountTotals.promotionLines
+    : [];
+
+  const breakdown = promotionLines
+    .map((line) => {
+      const promotionType = String(line?.promotionType || "").toUpperCase();
+      const source = promotionType === "COMBO" ? "order" : "line";
+      return normalizePromotionBreakdownLine({
+        ...line,
+        source,
+        discountAmount: Number(line?.discount || 0),
+      });
+    })
+    .filter(Boolean);
+
+  const shippingDiscount = Math.max(0, Number(discountTotals?.shippingDiscount || 0));
+  if (shippingDiscount > 0) {
+    const appliedPromotionDetails = Array.isArray(discountTotals?.appliedPromotionDetails)
+      ? discountTotals.appliedPromotionDetails
+      : [];
+    const shippingPromotion = appliedPromotionDetails.find(
+      (promotion) => String(promotion?.promotionType || "").toUpperCase() === "FREESHIP",
+    );
+
+    if (shippingPromotion) {
+      breakdown.push(
+        normalizePromotionBreakdownLine({
+          promotionId: shippingPromotion?.promotionId || shippingPromotion?._id || shippingPromotion?.id,
+          promotionName: shippingPromotion?.promotionName || shippingPromotion?.name || "",
+          promotionType: shippingPromotion?.promotionType || "FREESHIP",
+          promotionScope: shippingPromotion?.promotionScope || "",
+          discountType: shippingPromotion?.discountType || "",
+          discountValue: shippingPromotion?.discountValue || 0,
+          discountAmount: shippingDiscount,
+          source: "shipping",
+          lineId: null,
+          itemName: null,
+          quantity: null,
+          comboCount: null,
+          comboBase: null,
+          freeQuantity: null,
+        }),
+      );
+    }
+  }
+
+  return breakdown.filter(Boolean);
+}
+
 function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
   if (!appliedDiscount) return undefined;
 
@@ -304,7 +389,9 @@ function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
       ? discountTotals.appliedCoupons.map(String)
       : [],
     appliedPromotions: Array.isArray(discountTotals?.appliedPromotions)
-      ? discountTotals.appliedPromotions.map(String)
+      ? discountTotals.appliedPromotions.map((promotion) =>
+          typeof promotion === "string" ? promotion : String(promotion?.promotionId || promotion?._id || promotion?.id || ""),
+        ).filter(Boolean)
       : [],
     requestedPromotionIds: normalizePromotionIds(promotionIds),
     discountReason: discountTotals?.discountReason || null,
@@ -318,6 +405,10 @@ function buildInvoiceMeta({ appliedDiscount, discountTotals, promotionIds }) {
     ),
     subtotal: Number(discountTotals?.subtotal || 0),
     grandTotal: Number(discountTotals?.grandTotal || 0),
+    promotionLines: Array.isArray(discountTotals?.promotionLines)
+      ? discountTotals.promotionLines.map((line) => normalizePromotionBreakdownLine({ ...line, source: "line", discountAmount: Number(line?.discount || 0) })).filter(Boolean)
+      : [],
+    appliedPromotionBreakdown: buildAppliedPromotionBreakdown(discountTotals),
   };
 }
 

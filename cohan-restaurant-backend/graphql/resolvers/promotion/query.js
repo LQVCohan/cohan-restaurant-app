@@ -88,8 +88,37 @@ export const PromotionQuery = {
       const shippingDiscount = Math.max(0, Number(meta.shippingDiscount || 0));
       totalPromotionDiscount += promotionDiscount;
       totalShippingDiscount += shippingDiscount;
-      totalRedemptions += appliedPromotionIds.length;
 
+      const exactBreakdown = Array.isArray(meta.appliedPromotionBreakdown)
+        ? meta.appliedPromotionBreakdown
+            .map((row) => ({
+              promotionId: toObjectIdString(row?.promotionId),
+              promotionType: String(row?.promotionType || ""),
+              discountAmount: Math.max(0, Number(row?.discountAmount || 0)),
+            }))
+            .filter((row) => row.promotionId)
+        : [];
+
+      if (exactBreakdown.length > 0) {
+        const uniqueUsage = new Set(exactBreakdown.map((row) => row.promotionId));
+        totalRedemptions += uniqueUsage.size;
+
+        for (const promotionId of uniqueUsage) {
+          addToBucket(topPromotionMap, promotionId, 1, 0);
+          const promotion = promotionMap.get(promotionId);
+          addToBucket(byTypeMap, promotion?.promotionType || "", 1, 0);
+        }
+
+        for (const row of exactBreakdown) {
+          const promotion = promotionMap.get(row.promotionId);
+          const promotionType = row.promotionType || promotion?.promotionType || "";
+          addToBucket(topPromotionMap, row.promotionId, 0, row.discountAmount);
+          addToBucket(byTypeMap, promotionType, 0, row.discountAmount);
+        }
+        continue;
+      }
+
+      totalRedemptions += appliedPromotionIds.length;
       const shippingPromotionIds = appliedPromotionIds.filter((promotionId) => {
         const promotionType = String(promotionMap.get(promotionId)?.promotionType || "").toUpperCase();
         return promotionType === "FREESHIP";
