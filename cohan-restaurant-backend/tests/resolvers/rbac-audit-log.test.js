@@ -69,10 +69,10 @@ describe("rbacAuditLogs resolver", () => {
     await expect(rbacAuditLogs(null, { filter: { restaurantId: "restaurant-2" }, limit: 50, offset: 0 }, managerCtx)).rejects.toThrow("FORBIDDEN");
   });
 
-  it("does not allow module override through rbacAuditLogs", async () => {
+  it("rejects module override through rbacAuditLogs", async () => {
     const { rbacAuditLogs } = await import("../../graphql/resolvers/audit_log/rbac.js");
-    await rbacAuditLogs(null, { filter: { module: "order" }, limit: 50, offset: 0 }, adminCtx);
-    expect(modelMocks.AuditLog.find).toHaveBeenCalledWith({ module: "rbac" });
+    await expect(rbacAuditLogs(null, { filter: { module: "order" }, limit: 50, offset: 0 }, adminCtx)).rejects.toThrow("rbacAuditLogs only supports module rbac");
+    expect(modelMocks.AuditLog.find).not.toHaveBeenCalled();
   });
 
   it("blocks staff and customers", async () => {
