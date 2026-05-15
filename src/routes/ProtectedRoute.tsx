@@ -72,6 +72,16 @@ function SessionNetworkWarning({
   );
 }
 
+const shouldBlockForNetworkRecovery = ({
+  token,
+  sessionState,
+  user,
+}: {
+  token: string | null;
+  sessionState?: string;
+  user: UserLike | null;
+}) => Boolean(token && sessionState === "network_unstable" && !user);
+
 /** ---- ProtectedRoute ----
  * - Yêu cầu đã đăng nhập
  * - Nếu chưa → chuyển /login (lưu from)
@@ -95,7 +105,7 @@ export default function ProtectedRoute(): JSX.Element {
 
   if (loading) return <LoadingScreen />;
 
-  if (token && sessionState === "network_unstable") {
+  if (shouldBlockForNetworkRecovery({ token, sessionState, user })) {
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
@@ -132,7 +142,7 @@ export function RequireRole({
 
   if (loading) return <LoadingScreen />;
 
-  if (token && sessionState === "network_unstable") {
+  if (shouldBlockForNetworkRecovery({ token, sessionState, user })) {
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
