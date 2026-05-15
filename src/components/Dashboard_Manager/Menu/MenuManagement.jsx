@@ -706,7 +706,7 @@ const MenuManagement = () => {
           `- out_of_stock → available: ${dryRunResult.toAvailableCount || 0}\n\n` +
           "Bạn có chắc muốn đồng bộ tồn kho ngay bây giờ?",
       );
-      if (!confirmed) return dryRunResult;
+      if (!confirmed) return null;
 
       return syncMenuItemInventoryStatuses({
         restaurantId,
