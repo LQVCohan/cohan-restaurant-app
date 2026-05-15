@@ -28,6 +28,10 @@ const Q_PROMOTIONS = gql`
       discountValue
       buyQuantity
       getQuantity
+      comboItems {
+        itemId
+        quantity
+      }
       minOrderValue
       maxDiscount
       usageLimit
@@ -124,6 +128,12 @@ const normalizePromotion = (row) => ({
   discountValue: Number(row.discountValue || 0),
   buyQuantity: Number(row.buyQuantity || 0),
   getQuantity: Number(row.getQuantity || 0),
+  comboItems: Array.isArray(row.comboItems)
+    ? row.comboItems.map((item) => ({
+        itemId: item?.itemId || "",
+        quantity: Number(item?.quantity || 1),
+      }))
+    : [],
   minOrderValue: Number(row.minOrderValue || 0),
   maxDiscount: Number(row.maxDiscount || 0),
   startDate: formatVietnamDateTimeLocal(row.startAt),
@@ -142,10 +152,23 @@ const buildPromotionInput = (data, restaurantId) => {
   const targetRestaurantId = String(data?.restaurantId || restaurantId || "").trim();
   const type = String(data?.type || "percentage").trim().toLowerCase();
   const scope = String(
-    data?.scope || (data?.itemId ? "item" : data?.categoryId ? "category" : "order"),
+    type === "combo"
+      ? "order"
+      : data?.scope || (data?.itemId ? "item" : data?.categoryId ? "category" : "order"),
   )
     .trim()
     .toLowerCase();
+  const discountType = String(data?.discountType || "")
+    .trim()
+    .toLowerCase();
+  const comboItems = Array.isArray(data?.comboItems)
+    ? data.comboItems
+        .map((item) => ({
+          itemId: String(item?.itemId || "").trim(),
+          quantity: Number(item?.quantity || 0),
+        }))
+        .filter((item) => item.itemId && item.quantity >= 1)
+    : [];
 
   return {
     name: String(data?.name || "").trim(),
@@ -170,13 +193,17 @@ const buildPromotionInput = (data, restaurantId) => {
     itemId: scope === "item" ? data?.itemId || null : null,
     giftItemId:
       type === "bogo" ? data?.giftItemId || data?.productId || null : null,
-    discountType: type === "fixed" ? "AMOUNT" : "PERCENT",
+    discountType:
+      type === "fixed" || (type === "combo" && discountType === "fixed")
+        ? "AMOUNT"
+        : "PERCENT",
     discountValue:
       type === "bogo" || type === "freeship"
         ? 0
         : Number(data?.discountValue || 0),
     buyQuantity: type === "bogo" ? Number(data?.buyQuantity || 1) : 0,
     getQuantity: type === "bogo" ? Number(data?.getQuantity || 1) : 0,
+    ...(type === "combo" ? { comboItems } : {}),
     minOrderValue: Number(data?.minOrderValue || 0),
     maxDiscount: Number(data?.maxDiscount || 0),
     usageLimit: Number(data?.usageLimit || 0),

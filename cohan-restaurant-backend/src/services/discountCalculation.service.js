@@ -29,6 +29,10 @@ function isFreeshipPromotion(promotion) {
   return normalizePromotionType(promotion?.promotionType) === "FREESHIP";
 }
 
+function isComboPromotion(promotion) {
+  return normalizePromotionType(promotion?.promotionType) === "COMBO";
+}
+
 function isDirectDiscountPromotion(promotion) {
   const promotionType = normalizePromotionType(promotion?.promotionType);
   const discountType = String(promotion?.discountType || "")
@@ -196,6 +200,113 @@ function calculateBogoPromotionDiscount({ promotion, items = [] }) {
   return {
     discount: roundVnd(totalDiscount),
     lines,
+  };
+}
+
+
+function calculateComboPromotionDiscount({ promotion, items = [] }) {
+  if (!promotion || !isComboPromotion(promotion)) {
+    return { discount: 0, lines: [] };
+  }
+
+  const comboItems = Array.isArray(promotion.comboItems)
+    ? promotion.comboItems
+        .map((comboItem) => ({
+          itemId: comboItem?.itemId ? String(comboItem.itemId) : "",
+          quantity: Math.max(1, Math.floor(toNum(comboItem?.quantity, 0))),
+        }))
+        .filter((comboItem) => comboItem.itemId && comboItem.quantity >= 1)
+    : [];
+
+  if (comboItems.length < 2) {
+    return { discount: 0, lines: [] };
+  }
+
+  const orderItemsById = new Map();
+
+  for (const item of items || []) {
+    const status = String(item?.status || "");
+    if (status === "cancelled" || status === "returned") continue;
+
+    const quantity = getLineQuantity(item);
+    const unitPrice = getUnitPriceFromLine(item);
+    if (quantity <= 0 || unitPrice <= 0) continue;
+
+    for (const itemId of new Set(getItemCandidateIds(item))) {
+      const current = orderItemsById.get(itemId) || {
+        quantity: 0,
+        weightedSubtotal: 0,
+      };
+      current.quantity += quantity;
+      current.weightedSubtotal += unitPrice * quantity;
+      orderItemsById.set(itemId, current);
+    }
+  }
+
+  let comboCount = Infinity;
+  const resolvedComboItems = [];
+
+  for (const comboItem of comboItems) {
+    const orderItem = orderItemsById.get(comboItem.itemId);
+    const orderQuantity = orderItem?.quantity || 0;
+    const possibleCount = Math.floor(orderQuantity / comboItem.quantity);
+    comboCount = Math.min(comboCount, possibleCount);
+
+    resolvedComboItems.push({
+      itemId: comboItem.itemId,
+      quantity: comboItem.quantity,
+      orderQuantity,
+      unitPrice: orderQuantity > 0 ? orderItem.weightedSubtotal / orderQuantity : 0,
+    });
+  }
+
+  if (!Number.isFinite(comboCount) || comboCount <= 0) {
+    return { discount: 0, lines: [] };
+  }
+
+  const comboBase = roundVnd(
+    resolvedComboItems.reduce(
+      (sum, comboItem) => sum + comboItem.quantity * comboItem.unitPrice,
+      0,
+    ) * comboCount,
+  );
+
+  const discountType = String(promotion.discountType || "").toUpperCase();
+  const discount = calcDiscountAmount({
+    discountType,
+    discountValue:
+      discountType === "AMOUNT"
+        ? toNum(promotion.discountValue) * comboCount
+        : promotion.discountValue,
+    subtotal: comboBase,
+    maxDiscount: promotion.maxDiscount,
+  });
+
+  if (discount <= 0) {
+    return { discount: 0, lines: [] };
+  }
+
+  return {
+    discount,
+    lines: [
+      {
+        promotionId: String(promotion._id),
+        promotionName: promotion.name || promotion.code || "Combo",
+        promotionScope: "ORDER",
+        promotionType: "COMBO",
+        comboCount,
+        comboItems: resolvedComboItems.map((comboItem) => ({
+          itemId: comboItem.itemId,
+          quantity: comboItem.quantity,
+          orderQuantity: comboItem.orderQuantity,
+          unitPrice: roundVnd(comboItem.unitPrice),
+        })),
+        comboBase,
+        discountType: promotion.discountType,
+        discountValue: toNum(promotion.discountValue),
+        discount,
+      },
+    ],
   };
 }
 
@@ -580,7 +691,7 @@ export async function calculateDiscountBreakdown({
             p &&
             normalizeScope(p.scope) === "ORDER" &&
             inWindow(p, now) &&
-            (isDirectDiscountPromotion(p) || isFreeshipPromotion(p)) &&
+            (isDirectDiscountPromotion(p) || isFreeshipPromotion(p) || isComboPromotion(p)) &&
             subtotal >= Math.max(0, toNum(p.minOrderValue)),
         )
         .sort((a, b) => getPriority(b) - getPriority(a))[0] || null;
@@ -597,6 +708,13 @@ export async function calculateDiscountBreakdown({
         );
       }
       shippingDiscount = roundVnd(shippingDiscount);
+    } else if (isComboPromotion(selectedPromotion)) {
+      const { discount, lines } = calculateComboPromotionDiscount({
+        promotion: selectedPromotion,
+        items,
+      });
+      orderPromotionDiscount += discount;
+      promotionLines.push(...lines);
     } else {
       const orderPromotionBase = Math.max(0, subtotal - linePromotionDiscount);
 

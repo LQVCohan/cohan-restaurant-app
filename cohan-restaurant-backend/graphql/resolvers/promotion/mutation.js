@@ -33,6 +33,15 @@ const normalizeScope = (value) => {
   return "ORDER";
 };
 
+const sanitizeComboItems = (items = []) => {
+  if (!Array.isArray(items)) return [];
+
+  return items.map((item) => ({
+    itemId: toObjId(item?.itemId),
+    quantity: Number(item?.quantity || 0),
+  }));
+};
+
 const sanitizeInput = (input = {}) => ({
   name: input.name?.trim(),
   code: input.code ? String(input.code).trim().toUpperCase() : null,
@@ -47,6 +56,7 @@ const sanitizeInput = (input = {}) => ({
   discountValue: Number(input.discountValue || 0),
   buyQuantity: Number(input.buyQuantity || 0),
   getQuantity: Number(input.getQuantity || 0),
+  comboItems: sanitizeComboItems(input.comboItems),
   minOrderValue: Number(input.minOrderValue || 0),
   maxDiscount: Number(input.maxDiscount || 0),
   usageLimit: Number(input.usageLimit || 0),
@@ -102,6 +112,44 @@ const validatePromotionPayload = (payload) => {
     if (payload.buyQuantity <= 0 || payload.getQuantity <= 0) {
       throw new GraphQLError("BOGO promotion requires buyQuantity and getQuantity");
     }
+    return;
+  }
+
+
+  if (payload.promotionType === "COMBO") {
+    if (payload.scope !== "ORDER") {
+      throw new GraphQLError("COMBO promotion requires ORDER scope");
+    }
+    if (!Array.isArray(payload.comboItems) || payload.comboItems.length < 2) {
+      throw new GraphQLError("COMBO promotion requires at least 2 comboItems");
+    }
+
+    const seenItemIds = new Set();
+    for (const comboItem of payload.comboItems) {
+      const itemId = comboItem?.itemId ? String(comboItem.itemId) : "";
+      if (!itemId) {
+        throw new GraphQLError("COMBO promotion requires itemId for each combo item");
+      }
+      if (!Number.isFinite(comboItem.quantity) || comboItem.quantity < 1) {
+        throw new GraphQLError("COMBO promotion requires quantity >= 1 for each combo item");
+      }
+      if (seenItemIds.has(itemId)) {
+        throw new GraphQLError("COMBO promotion does not allow duplicate comboItems");
+      }
+      seenItemIds.add(itemId);
+    }
+
+    const discountType = String(payload.discountType || "").trim().toUpperCase();
+    if (!["PERCENT", "AMOUNT"].includes(discountType)) {
+      throw new GraphQLError("COMBO promotion requires discountType PERCENT or AMOUNT");
+    }
+    if (payload.discountValue <= 0) {
+      throw new GraphQLError("COMBO promotion requires discountValue > 0");
+    }
+
+    payload.giftItemId = null;
+    payload.buyQuantity = 0;
+    payload.getQuantity = 0;
     return;
   }
 

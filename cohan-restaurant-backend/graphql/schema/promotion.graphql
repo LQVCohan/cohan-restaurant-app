@@ -1,3 +1,14 @@
+"""Món bắt buộc trong khuyến mãi combo"""
+type ComboPromotionItem {
+  itemId: ID!
+  quantity: Int!
+}
+
+input ComboPromotionItemInput {
+  itemId: ID!
+  quantity: Int!
+}
+
 """Khuyến mãi cho nhà hàng"""
 type Promotion {
   id: ID!
@@ -14,6 +25,7 @@ type Promotion {
   discountValue: Float
   buyQuantity: Int
   getQuantity: Int
+  comboItems: [ComboPromotionItem!]
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
@@ -53,6 +65,7 @@ input PromotionInput {
   discountValue: Float!
   buyQuantity: Int
   getQuantity: Int
+  comboItems: [ComboPromotionItem!]
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
