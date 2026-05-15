@@ -25,6 +25,14 @@ enum MenuItemSort {
   price_desc
 }
 
+enum MenuItemInventoryStatus {
+  NOT_TRACKED
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  ERROR
+}
+
 input BulkPriceUpdateTarget {
   categoryId: ID
   menuItemIds: [ID!]
@@ -84,6 +92,15 @@ type MenuItemConnection {
   pageInfo: PageInfo!
 }
 
+type MenuItemStockShortage {
+  ingredientId: ID!
+  ingredientName: String
+  available: Float!
+  required: Float!
+  missing: Float!
+  unit: String
+}
+
 type MenuItem {
   id: ID!
   restaurantId: ID!
@@ -114,6 +131,10 @@ type MenuItem {
   mediaAssetIds: [ID!]
 
   status: MenuItemStatus!
+  inventoryStatus: MenuItemInventoryStatus!
+  maxAvailable: Int!
+  stockWarnings: [String!]!
+  stockShortages: [MenuItemStockShortage!]!
   avgPrepTimeMin: Int
   point: Int
   rate: Float
