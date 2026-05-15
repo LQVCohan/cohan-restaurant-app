@@ -21,7 +21,8 @@
     "seed:permissions": "node scripts/seedPermissions.js",
     "seed:parent-roles": "node scripts/seedParentRoles.js",
     "seed:roles": "node scripts/seedRoles.js",
-    "seed:rbac": "npm run seed:permissions && npm run seed:parent-roles && npm run seed:roles"
+    "seed:rbac": "npm run seed:permissions && npm run seed:parent-roles && npm run seed:roles",
+    "seed:demo:coupon-promotion": "node scripts/seedCouponPromotionDemo.js"
   },
   "keywords": [],
   "author": "",
