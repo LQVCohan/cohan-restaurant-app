@@ -7,7 +7,6 @@ vi.mock("@/context/AuthContext", () => ({
   AuthContext: React.createContext({ user: { restaurantForStaff: "r1" } }),
 }));
 
-
 vi.mock("./OvertimePanel", () => ({
   default: () => <div>Overtime Panel</div>,
 }));
@@ -62,9 +61,6 @@ describe("getAttendanceActionErrorMessage", () => {
     const error = { graphQLErrors: [{ extensions: { code: "BAD_USER_INPUT" } }] };
     expect(getAttendanceActionErrorMessage(error, "fallback")).toBe("fallback");
   });
-
-
-
 });
 
 describe("AttendancePage readiness navigation", () => {
@@ -90,6 +86,32 @@ describe("AttendancePage readiness navigation", () => {
     expect(await screen.findByText("Overtime Panel")).toBeInTheDocument();
   });
 
+  it("routes off-schedule readiness to attendance table instead of overtime", async () => {
+    render(<AttendancePage />);
 
+    window.history.replaceState(
+      null,
+      "",
+      "/manager?staffPage=attendance&attendanceTab=off_schedule&employeeId=e01#staff",
+    );
 
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("manager:navigation-query", {
+          detail: {
+            page: "staff",
+            query: {
+              staffPage: "attendance",
+              attendanceTab: "off_schedule",
+              employeeId: "e01",
+            },
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByText("Bảng công")).toBeInTheDocument();
+    expect(screen.getByText("Ngoài lịch")).toBeInTheDocument();
+    expect(screen.queryByText("Overtime Panel")).not.toBeInTheDocument();
+  });
 });
