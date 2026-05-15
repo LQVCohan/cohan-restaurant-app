@@ -17,7 +17,7 @@ const ReservationSlotLockSchema = BaseSchemaModel(
       enum: ["holding", "confirmed", "released", "expired", "cancelled"],
       default: "holding",
     },
-    expiresAt: { type: Date, required: true },
+    expiresAt: { type: Date, index: true },
   },
   { collection: "reservation_slot_locks" }
 );
