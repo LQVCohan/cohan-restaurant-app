@@ -23,7 +23,6 @@ function buildRbacFilter(filter = {}) {
   if (filter.targetId) query.targetId = filter.targetId;
   if (filter.actorId) query.actorId = filter.actorId;
   if (filter.action) query.action = String(filter.action).trim();
-  if (filter.module) query.module = String(filter.module).trim();
   if (filter.targetType) query.targetType = String(filter.targetType).trim();
   return query;
 }
