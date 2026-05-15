@@ -40,6 +40,7 @@ import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
 } from "../../../utils/frontendRoleAccess";
+import { MENU_ITEM_INVENTORY_STATUS } from "../../../utils/menuItemAvailability";
 /* ========== QUERY ========== */
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
@@ -203,6 +204,7 @@ const MenuManagement = () => {
   const [currentView, setCurrentView] = useState("grid");
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
   const [sortOption, setSortOption] = useState("default");
+  const [inventoryFilter, setInventoryFilter] = useState("all");
 
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
@@ -269,6 +271,7 @@ const MenuManagement = () => {
     refetchItems,
     deleteMenuItem,
     bulkUpdateMenuItemPrices,
+    syncMenuItemInventoryStatuses,
   } = useMenuManagement({
     restaurantId: currentRestaurant || null,
     defaultTimeSlot: "breakfast",
@@ -654,14 +657,65 @@ const MenuManagement = () => {
   );
 
   const displayItems = useMemo(
-    () =>
-      (items || []).map((item) => ({
+    () => {
+      const mapped = (items || []).map((item) => ({
         ...item,
         categoryName:
           categories.find((c) => c.id === item.categoryId)?.name ||
           item.categoryName,
-      })),
-    [items, categories],
+      }));
+      if (inventoryFilter === "all") return mapped;
+      return mapped.filter((item) => {
+        const warnings = Array.isArray(item.stockWarnings) ? item.stockWarnings : [];
+        const hasRecipe = Array.isArray(item.servingVariants) && item.servingVariants.length > 0;
+        if (inventoryFilter === "low_stock") {
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK;
+        }
+        if (inventoryFilter === "out_of_stock") {
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK;
+        }
+        if (inventoryFilter === "needs_check") {
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR;
+        }
+        if (inventoryFilter === "not_tracked") {
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || !hasRecipe || warnings.some((w) => /chưa tracking recipe/i.test(String(w)));
+        }
+        return true;
+      });
+    },
+    [items, categories, inventoryFilter],
+  );
+
+  const handleSyncInventory = useCallback(
+    async ({ restaurantId, timeSlot }) => {
+      const dryRunResult = await syncMenuItemInventoryStatuses({
+        restaurantId,
+        timeSlot,
+        recoverOutOfStock: true,
+        dryRun: true,
+      });
+
+      if (!dryRunResult?.updatedCount) {
+        window.alert("Không có món nào cần cập nhật.");
+        return dryRunResult;
+      }
+
+      const confirmed = window.confirm(
+        `Sẽ cập nhật ${dryRunResult.updatedCount} món.\n` +
+          `- available → out_of_stock: ${dryRunResult.toOutOfStockCount || 0}\n` +
+          `- out_of_stock → available: ${dryRunResult.toAvailableCount || 0}\n\n` +
+          "Bạn có chắc muốn đồng bộ tồn kho ngay bây giờ?",
+      );
+      if (!confirmed) return dryRunResult;
+
+      return syncMenuItemInventoryStatuses({
+        restaurantId,
+        timeSlot,
+        recoverOutOfStock: true,
+        dryRun: false,
+      });
+    },
+    [syncMenuItemInventoryStatuses],
   );
 
   const inlineAlertStyle = {
@@ -810,6 +864,7 @@ const MenuManagement = () => {
           }
           onDeleteMenu={undefined}
           onCopyMenu={canCopyMenu ? handleCopyMenu : undefined}
+          onSyncInventory={handleSyncInventory}
         />
       </section>
 
@@ -846,6 +901,23 @@ const MenuManagement = () => {
         />
 
         <div className="mm-body__content">
+          <div className="mm-inventory-quick-filters" style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            {[
+              ["all", "Tất cả"],
+              ["low_stock", "Sắp hết"],
+              ["out_of_stock", "Hết nguyên liệu"],
+              ["needs_check", "Cần kiểm kho"],
+              ["not_tracked", "Chưa tracking recipe"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                className={`mm-btn mm-btn--secondary ${inventoryFilter === key ? "active" : ""}`}
+                onClick={() => setInventoryFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {deleteListRefreshError && (
             <div role="alert" style={inlineAlertStyle}>
               <FiAlertCircle

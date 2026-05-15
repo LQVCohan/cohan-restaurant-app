@@ -93,22 +93,6 @@ const DELETE_MENU_MUTATION = gql`
   }
 `;
 
-const SYNC_INVENTORY_MUTATION = gql`
-  mutation SyncMenuItemInventoryStatuses(
-    $input: SyncMenuItemInventoryStatusesInput!
-  ) {
-    syncMenuItemInventoryStatuses(input: $input) {
-      checkedCount
-      updatedCount
-      warnings
-      items {
-        ...CompactMenuItemInventoryFields
-      }
-    }
-  }
-  ${SYNC_MENU_ITEM_FIELDS}
-`;
-
 const SLOT_CONFIG = {
   breakfast: {
     label: "Sáng",
@@ -215,6 +199,7 @@ const CompactMenuStrip = ({
   onCopyMenu,
   activeMenuId,
   onSelectMenu,
+  onSyncInventory,
 }) => {
   const auth = useContext(AuthContext);
   const scrollRef = useRef(null);
@@ -259,8 +244,6 @@ const CompactMenuStrip = ({
     },
   });
 
-  const [syncInventoryMutation] = useMutation(SYNC_INVENTORY_MUTATION);
-
   const canAddMenu = typeof onAddMenu === "function";
   const canEditMenu = typeof onEditMenu === "function";
   const canToggleMenuActive = typeof onToggleMenuActive === "function";
@@ -268,10 +251,9 @@ const CompactMenuStrip = ({
   const canDeleteMenu =
     typeof onDeleteMenu === "function" ||
     canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.UPDATE_MENU);
-  const canSyncInventory = canAccessMenuManagementAction(
-    auth?.user,
-    MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
-  );
+  const canSyncInventory =
+    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM) &&
+    typeof onSyncInventory === "function";
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
     MENU_MANAGEMENT_ACTIONS.VIEW,
@@ -343,7 +325,7 @@ const CompactMenuStrip = ({
   };
 
   const handleSyncInventory = async () => {
-    if (!restaurantId || isSyncingInventory) return;
+    if (!restaurantId || isSyncingInventory || typeof onSyncInventory !== "function") return;
     const timeSlot = getSelectedHeaderTimeSlot() || menus[0]?.timeSlot || "breakfast";
 
     setIsSyncingInventory(true);
@@ -351,18 +333,8 @@ const CompactMenuStrip = ({
     setActionMessage("");
 
     try {
-      const { data } = await syncInventoryMutation({
-        variables: {
-          input: {
-            restaurantId,
-            timeSlot,
-            recoverOutOfStock: true,
-            dryRun: false,
-          },
-        },
-      });
-
-      const result = data?.syncMenuItemInventoryStatuses;
+      const result = await onSyncInventory({ restaurantId, timeSlot });
+      if (!result) return;
       const warningText = result?.warnings?.length
         ? ` Có ${result.warnings.length} cảnh báo cần kiểm tra.`
         : "";

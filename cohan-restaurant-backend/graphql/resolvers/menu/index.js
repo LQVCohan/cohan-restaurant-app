@@ -16,6 +16,7 @@ const getMenuId = (parent) => parent?._id || parent?.id;
 const getMenuItemId = (parent) => parent?._id || parent?.id;
 
 async function getMenuOrderStats(parent) {
+  if (parent?._menuOrderStats) return parent._menuOrderStats;
   const menuId = getMenuId(parent);
   const restaurantId = parent?.restaurantId;
 
@@ -59,7 +60,9 @@ async function getMenuOrderStats(parent) {
     },
   ]);
 
-  return result[0] || { revenue: 0, orderCount: 0, soldItemCount: 0 };
+  const stats = result[0] || { revenue: 0, orderCount: 0, soldItemCount: 0 };
+  if (parent) parent._menuOrderStats = stats;
+  return stats;
 }
 
 async function getMenuRating(parent) {
@@ -90,7 +93,9 @@ async function getItemAvailability(parent) {
 
   const restaurantId = parent?.restaurantId;
   const menuItemId = getMenuItemId(parent);
-  return getMenuItemInventoryAvailability({ restaurantId, menuItemId });
+  const availability = await getMenuItemInventoryAvailability({ restaurantId, menuItemId });
+  if (parent) parent._inventoryAvailability = availability;
+  return availability;
 }
 
 export default {
