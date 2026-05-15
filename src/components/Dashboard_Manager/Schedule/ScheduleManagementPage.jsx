@@ -8,6 +8,7 @@ import "@/styles/availability-snapshot-polish.css";
 import "@/styles/shift-detail-polish.css";
 import "@/styles/add-shift-modal-fixes.css";
 import "@/styles/schedule-polish.css";
+import "@/styles/schedule-sidebar-performance.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
