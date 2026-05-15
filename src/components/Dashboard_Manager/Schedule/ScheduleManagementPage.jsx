@@ -6,6 +6,7 @@ import "@/styles/schedule-auto-modal-polish.css";
 import "@/styles/schedule-rules-modal-polish.css";
 import "@/styles/availability-snapshot-polish.css";
 import "@/styles/shift-detail-polish.css";
+import "@/styles/shift-detail-manager-polish.css";
 import "@/styles/add-shift-modal-fixes.css";
 import "@/styles/schedule-polish.css";
 import "@/styles/schedule-sidebar-performance.css";
