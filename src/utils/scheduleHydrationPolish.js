@@ -40,8 +40,8 @@ const hideRepeatedFirstWeekGraceReminder = (root) => {
 };
 
 export const initScheduleHydrationPolish = ({
-  minDelay = 900,
-  maxDelay = 1750,
+  minDelay = 620,
+  maxDelay = 1250,
 } = {}) => {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return undefined;
@@ -49,6 +49,7 @@ export const initScheduleHydrationPolish = ({
 
   let disposed = false;
   let minDelayPassed = false;
+  let hydrationFinished = false;
   let root = null;
   const timeoutIds = [];
 
@@ -59,14 +60,16 @@ export const initScheduleHydrationPolish = ({
 
   const clearHydration = () => {
     if (disposed) return;
+    hydrationFinished = true;
     const currentRoot = getRoot();
     currentRoot?.classList.remove(HYDRATING_CLASS);
     currentRoot?.removeAttribute("data-schedule-hydrating");
+    currentRoot?.setAttribute("data-schedule-hydrated", "true");
     hideRepeatedFirstWeekGraceReminder(currentRoot);
   };
 
   const tryFinish = () => {
-    if (disposed || !minDelayPassed) return;
+    if (disposed || hydrationFinished || !minDelayPassed) return;
     const currentRoot = getRoot();
     if (!currentRoot) return;
 
@@ -78,6 +81,7 @@ export const initScheduleHydrationPolish = ({
   };
 
   const markHydrating = () => {
+    if (hydrationFinished) return false;
     const currentRoot = getRoot();
     if (!currentRoot) return false;
     currentRoot.classList.add(HYDRATING_CLASS);
@@ -87,7 +91,7 @@ export const initScheduleHydrationPolish = ({
   };
 
   const boot = () => {
-    if (disposed) return;
+    if (disposed || hydrationFinished) return;
     if (!markHydrating()) return;
     tryFinish();
   };
@@ -95,6 +99,10 @@ export const initScheduleHydrationPolish = ({
   boot();
 
   const observer = new MutationObserver(() => {
+    if (hydrationFinished) {
+      hideRepeatedFirstWeekGraceReminder(getRoot());
+      return;
+    }
     boot();
     tryFinish();
   });
@@ -124,5 +132,6 @@ export const initScheduleHydrationPolish = ({
     observer.disconnect();
     root?.classList.remove(HYDRATING_CLASS);
     root?.removeAttribute("data-schedule-hydrating");
+    root?.removeAttribute("data-schedule-hydrated");
   };
 };
