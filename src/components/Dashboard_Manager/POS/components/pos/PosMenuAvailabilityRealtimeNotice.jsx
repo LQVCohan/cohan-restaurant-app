@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { AlertTriangle, Bell, CheckCircle2, X } from "lucide-react";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import { useNotification } from "@/hooks/useNotification";
 import useMenuAvailabilityWatch from "@/hooks/useMenuAvailabilityWatch";
@@ -19,22 +20,26 @@ export default function PosMenuAvailabilityRealtimeNotice({ restaurantId }) {
   const { registerWatch, registering } = useMenuAvailabilityWatch();
   const [latestOutOfStock, setLatestOutOfStock] = useState(null);
   const [statusText, setStatusText] = useState("");
+  const [tone, setTone] = useState("warning");
+
+  const tableLabel = currentTable?.code || currentTable?.name || currentTable?.id || currentTable?._id || "chưa chọn bàn";
 
   const canRegisterForCurrentTable = useMemo(() => {
     return Boolean(
       latestOutOfStock?.menuItemId &&
         restaurantId &&
         currentOrderType === "dine_in" &&
-        (currentTable?.id || currentTable?.code),
+        (currentTable?.id || currentTable?._id || currentTable?.code),
     );
-  }, [latestOutOfStock?.menuItemId, restaurantId, currentOrderType, currentTable?.id, currentTable?.code]);
+  }, [latestOutOfStock?.menuItemId, restaurantId, currentOrderType, currentTable?.id, currentTable?._id, currentTable?.code]);
 
   useSocketOrder(restaurantId, {
     onMenuItemOutOfStock: (evt) => {
       setLatestOutOfStock(evt);
       setStatusText("");
+      setTone("warning");
       showNotification(
-        `⚠️ ${getItemLabel(evt)} vừa hết khả dụng. Nếu bàn/POS đang chọn món này, hãy đăng ký nhắc khi có lại.`,
+        `⚠️ ${getItemLabel(evt)} vừa hết khả dụng. Có thể đăng ký nhắc cho bàn hiện tại.`,
         "warning",
       );
     },
@@ -45,6 +50,7 @@ export default function PosMenuAvailabilityRealtimeNotice({ restaurantId }) {
       ) {
         setLatestOutOfStock(null);
         setStatusText("");
+        setTone("warning");
       }
       showNotification(
         `✅ ${getItemLabel(evt)} đã khả dụng lại. Có thể báo cho bàn đang chờ đặt lại.`,
@@ -65,7 +71,8 @@ export default function PosMenuAvailabilityRealtimeNotice({ restaurantId }) {
 
   const handleRegisterForTable = async () => {
     if (!canRegisterForCurrentTable) {
-      setStatusText("Vui lòng chọn bàn dine-in trước khi đăng ký nhắc.");
+      setTone("error");
+      setStatusText("Vui lòng chọn bàn dine-in trước khi đăng ký nhắc món.");
       return;
     }
 
@@ -82,34 +89,55 @@ export default function PosMenuAvailabilityRealtimeNotice({ restaurantId }) {
     });
 
     if (!result.success) {
+      setTone("error");
       setStatusText(result.message || "Không thể đăng ký nhắc cho bàn này.");
       return;
     }
 
+    setTone("success");
     setStatusText(result.data?.message || "Đã đăng ký nhắc cho bàn này.");
   };
 
   if (!latestOutOfStock) return null;
 
+  const registered = tone === "success";
+
   return (
-    <div className={styles.menuAvailabilityNotice}>
-      <div>
-        <strong>{getItemLabel(latestOutOfStock)} vừa hết khả dụng</strong>
+    <div className={`${styles.menuAvailabilityNotice} ${styles[`menuAvailabilityNotice_${tone}`] || ""}`}>
+      <div className={styles.menuAvailabilityNoticeIcon}>
+        {registered ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+      </div>
+
+      <div className={styles.menuAvailabilityNoticeBody}>
+        <div className={styles.menuAvailabilityNoticeMeta}>
+          <span>{registered ? "Đã đăng ký nhắc" : "Món vừa hết"}</span>
+          <span>Bàn: {tableLabel}</span>
+        </div>
+        <strong>{getItemLabel(latestOutOfStock)}</strong>
         <p>
           {statusText ||
-            "Nếu khách của bàn hiện tại vẫn muốn món này, hãy đăng ký nhắc. Khi món có lại, hệ thống chỉ báo lại và không tự giữ món."}
+            "Nếu khách vẫn muốn món này, hãy đăng ký nhắc cho bàn hiện tại. Khi món có lại, hệ thống chỉ thông báo và không tự giữ món."}
         </p>
       </div>
 
       <div className={styles.menuAvailabilityNoticeActions}>
+        {!registered ? (
+          <button
+            type="button"
+            onClick={handleRegisterForTable}
+            disabled={registering || !canRegisterForCurrentTable}
+          >
+            <Bell size={15} />
+            {registering ? "Đang đăng ký..." : "Nhắc bàn này"}
+          </button>
+        ) : null}
         <button
           type="button"
-          onClick={handleRegisterForTable}
-          disabled={registering || !canRegisterForCurrentTable}
+          className={styles.menuAvailabilityNoticeClose}
+          onClick={() => setLatestOutOfStock(null)}
+          aria-label="Đóng cảnh báo món hết"
         >
-          {registering ? "Đang đăng ký..." : "Nhắc bàn này"}
-        </button>
-        <button type="button" onClick={() => setLatestOutOfStock(null)}>
+          <X size={16} />
           Đóng
         </button>
       </div>
