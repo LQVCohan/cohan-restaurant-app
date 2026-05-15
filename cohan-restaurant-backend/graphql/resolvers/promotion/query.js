@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Promotion } from "../../../models/index.js";
+import { Invoice, Promotion } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
@@ -9,7 +9,153 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Math.floor(n)));
 }
 
+function toObjectIdString(value) {
+  if (!value) return "";
+  if (typeof value === "object" && value._id) return String(value._id);
+  if (typeof value === "object" && value.id) return String(value.id);
+  return String(value);
+}
+
+function getPromotionStatus(promotion, now) {
+  if (!promotion?.isActive) return "draft";
+  const startAt = promotion.startAt ? new Date(promotion.startAt).getTime() : null;
+  const endAt = promotion.endAt ? new Date(promotion.endAt).getTime() : null;
+
+  if (Number.isFinite(startAt) && startAt > now.getTime()) return "scheduled";
+  if (Number.isFinite(endAt) && endAt < now.getTime()) return "expired";
+  return "active";
+}
+
+function addToBucket(map, key, usageDelta, discountDelta) {
+  const safeKey = String(key || "");
+  const current = map.get(safeKey) || { usageCount: 0, totalDiscount: 0 };
+  current.usageCount += usageDelta;
+  current.totalDiscount += discountDelta;
+  map.set(safeKey, current);
+}
+
 export const PromotionQuery = {
+  async promotionAnalyticsByRestaurant(_, { restaurantId }, ctx) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PROMOTION_READ);
+
+    const now = new Date();
+    const promotions = await Promotion.find({ restaurantId: rid })
+      .select("_id name code promotionType isActive startAt endAt")
+      .lean();
+
+    const promotionMap = new Map(
+      (promotions || []).map((promotion) => [toObjectIdString(promotion._id || promotion.id), promotion]),
+    );
+
+    const statusCounts = (promotions || []).reduce(
+      (counts, promotion) => {
+        const status = getPromotionStatus(promotion, now);
+        if (status === "active") counts.activePromotions += 1;
+        if (status === "scheduled") counts.scheduledPromotions += 1;
+        if (status === "expired") counts.expiredPromotions += 1;
+        return counts;
+      },
+      { activePromotions: 0, scheduledPromotions: 0, expiredPromotions: 0 },
+    );
+
+    const invoices = await Invoice.find({
+      restaurantId: rid,
+      status: "PAID",
+      "meta.appliedPromotions": { $exists: true, $ne: [] },
+    })
+      .select("meta")
+      .lean();
+
+    let totalRedemptions = 0;
+    let totalPromotionDiscount = 0;
+    let totalShippingDiscount = 0;
+    const topPromotionMap = new Map();
+    const byTypeMap = new Map();
+
+    for (const invoice of invoices || []) {
+      const meta = invoice?.meta || {};
+      const appliedPromotionIds = Array.isArray(meta.appliedPromotions)
+        ? meta.appliedPromotions.map(toObjectIdString).filter(Boolean)
+        : [];
+      if (!appliedPromotionIds.length) continue;
+
+      const promotionDiscount = Math.max(0, Number(meta.promotionDiscount || 0));
+      const shippingDiscount = Math.max(0, Number(meta.shippingDiscount || 0));
+      totalPromotionDiscount += promotionDiscount;
+      totalShippingDiscount += shippingDiscount;
+      totalRedemptions += appliedPromotionIds.length;
+
+      const shippingPromotionIds = appliedPromotionIds.filter((promotionId) => {
+        const promotionType = String(promotionMap.get(promotionId)?.promotionType || "").toUpperCase();
+        return promotionType === "FREESHIP";
+      });
+      const nonShippingPromotionIds = appliedPromotionIds.filter(
+        (promotionId) => !shippingPromotionIds.includes(promotionId),
+      );
+
+      const promotionShare = nonShippingPromotionIds.length
+        ? promotionDiscount / nonShippingPromotionIds.length
+        : promotionDiscount / appliedPromotionIds.length;
+      const shippingShare = shippingPromotionIds.length
+        ? shippingDiscount / shippingPromotionIds.length
+        : 0;
+
+      for (const promotionId of appliedPromotionIds) {
+        const promotion = promotionMap.get(promotionId);
+        const promotionType = promotion?.promotionType || "";
+        const discountShare = shippingPromotionIds.includes(promotionId)
+          ? shippingShare
+          : promotionShare;
+
+        addToBucket(topPromotionMap, promotionId, 1, discountShare);
+        addToBucket(byTypeMap, promotionType, 1, discountShare);
+      }
+    }
+
+    const topPromotions = Array.from(topPromotionMap.entries())
+      .map(([promotionId, row]) => {
+        const promotion = promotionMap.get(promotionId);
+        return {
+          promotionId,
+          promotionName: promotion?.name || "",
+          promotionCode: promotion?.code || "",
+          promotionType: promotion?.promotionType || "",
+          usageCount: Number(row.usageCount || 0),
+          totalDiscount: Number(row.totalDiscount || 0),
+        };
+      })
+      .sort((a, b) => b.usageCount - a.usageCount || b.totalDiscount - a.totalDiscount)
+      .slice(0, 5);
+
+    const byType = Array.from(byTypeMap.entries())
+      .map(([promotionType, row]) => ({
+        promotionType,
+        usageCount: Number(row.usageCount || 0),
+        totalDiscount: Number(row.totalDiscount || 0),
+      }))
+      .sort((a, b) => b.usageCount - a.usageCount || b.totalDiscount - a.totalDiscount);
+
+    const totalPromotions = promotions?.length || 0;
+    const totalDiscountAmount = totalPromotionDiscount + totalShippingDiscount;
+
+    return {
+      totalPromotions,
+      ...statusCounts,
+      totalRedemptions,
+      totalPromotionDiscount,
+      totalShippingDiscount,
+      totalDiscountAmount,
+      usageRate: totalPromotions ? Math.round((totalRedemptions / totalPromotions) * 100) : 0,
+      topPromotions,
+      byType,
+    };
+  },
+
   async promotionsByRestaurant(
     _,
     { restaurantId, activeOnly = true, limit = 20, offset = 0, now },

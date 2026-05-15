@@ -41,7 +41,39 @@ type Promotion {
   updatedAt: DateTime
 }
 
+
+type PromotionAnalyticsTopPromotion {
+  promotionId: ID!
+  promotionName: String
+  promotionCode: String
+  promotionType: String
+  usageCount: Int!
+  totalDiscount: Float!
+}
+
+type PromotionAnalyticsByType {
+  promotionType: String!
+  usageCount: Int!
+  totalDiscount: Float!
+}
+
+type PromotionAnalytics {
+  totalPromotions: Int!
+  activePromotions: Int!
+  scheduledPromotions: Int!
+  expiredPromotions: Int!
+  totalRedemptions: Int!
+  totalPromotionDiscount: Float!
+  totalShippingDiscount: Float!
+  totalDiscountAmount: Float!
+  usageRate: Float!
+  topPromotions: [PromotionAnalyticsTopPromotion!]!
+  byType: [PromotionAnalyticsByType!]!
+}
+
 extend type Query {
+  promotionAnalyticsByRestaurant(restaurantId: ID!): PromotionAnalytics!
+
   promotionsByRestaurant(
     restaurantId: ID!
     activeOnly: Boolean = true
