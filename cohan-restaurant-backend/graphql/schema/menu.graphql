@@ -169,6 +169,21 @@ input CopyMenuInput {
   copyRecipes: Boolean = true
 }
 
+input SyncMenuItemInventoryStatusesInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot
+  menuItemIds: [ID!]
+  recoverOutOfStock: Boolean = true
+  dryRun: Boolean = false
+}
+
+type SyncMenuItemInventoryStatusesResult {
+  checkedCount: Int!
+  updatedCount: Int!
+  items: [MenuItem!]!
+  warnings: [String!]!
+}
+
 """
 Create: vẫn dùng timeSlot để BE suy ra menuId (vì model yêu cầu menuId).
 """
@@ -307,6 +322,9 @@ extend type Mutation {
   ensureMenu(input: EnsureMenuInput!): Menu!
   copyMenu(input: CopyMenuInput!): Menu!
   deleteMenu(id: ID!, force: Boolean = false): Boolean!
+  syncMenuItemInventoryStatuses(
+    input: SyncMenuItemInventoryStatusesInput!
+  ): SyncMenuItemInventoryStatusesResult!
 
   createMenuItem(input: CreateMenuItemInput!): MenuItem!
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
