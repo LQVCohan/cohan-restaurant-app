@@ -294,7 +294,7 @@ function resolvePaymentAmount({ paidAmount, expectedTotal, appliedDiscount }) {
 }
 
 
-function normalizePromotionBreakdownLine(line = {}) {
+export function normalizePromotionBreakdownLine(line = {}) {
   const promotionId = String(line?.promotionId || "").trim();
   if (!promotionId) return null;
 
@@ -327,7 +327,7 @@ function normalizePromotionBreakdownLine(line = {}) {
   };
 }
 
-function buildAppliedPromotionBreakdown(discountTotals = {}) {
+export function buildAppliedPromotionBreakdown(discountTotals = {}) {
   const promotionLines = Array.isArray(discountTotals?.promotionLines)
     ? discountTotals.promotionLines
     : [];
@@ -346,10 +346,10 @@ function buildAppliedPromotionBreakdown(discountTotals = {}) {
 
   const shippingDiscount = Math.max(0, Number(discountTotals?.shippingDiscount || 0));
   if (shippingDiscount > 0) {
-    const appliedPromotions = Array.isArray(discountTotals?.appliedPromotions)
-      ? discountTotals.appliedPromotions
+    const appliedPromotionDetails = Array.isArray(discountTotals?.appliedPromotionDetails)
+      ? discountTotals.appliedPromotionDetails
       : [];
-    const shippingPromotion = appliedPromotions.find(
+    const shippingPromotion = appliedPromotionDetails.find(
       (promotion) => String(promotion?.promotionType || "").toUpperCase() === "FREESHIP",
     );
 

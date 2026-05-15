@@ -119,6 +119,15 @@ describe("payment stage discount business coverage", () => {
     );
   });
 
+
+  it("buildAppliedPromotionBreakdown uses appliedPromotionDetails for FREESHIP metadata", () => {
+    const src = readFile(PAYMENT_MUTATION_PATH);
+
+    expect(src).toMatch(/const appliedPromotionDetails = Array\.isArray\(discountTotals\?\.appliedPromotionDetails\)/);
+    expect(src).toMatch(/promotionType \|\| "FREESHIP"/);
+    expect(src).toMatch(/source:\s*"shipping"/);
+  });
+
   it("invoice totals are persisted from payableTotals", () => {
     const src = readFile(PAYMENT_MUTATION_PATH);
 
