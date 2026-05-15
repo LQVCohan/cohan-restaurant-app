@@ -69,11 +69,16 @@
 }
 
 .rbac-card__header span,
+.rbac-card__header p,
 .rbac-note,
 .rbac-empty,
 .rbac-selected-role p,
 .rbac-selected-role small {
   color: #64748b;
+}
+
+.rbac-card__header p {
+  margin: 4px 0 0;
 }
 
 .rbac-role-list,
@@ -154,7 +159,9 @@
 
 .rbac-form select,
 .rbac-form button,
-.rbac-hero button {
+.rbac-hero button,
+.rbac-audit-filters select,
+.rbac-audit-log .rbac-card__header button {
   min-height: 42px;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
@@ -162,7 +169,8 @@
 }
 
 .rbac-form button,
-.rbac-hero button {
+.rbac-hero button,
+.rbac-audit-log .rbac-card__header button {
   border-color: #2563eb;
   color: #fff;
   background: #2563eb;
@@ -171,7 +179,8 @@
 }
 
 .rbac-form button:disabled,
-.rbac-hero button:disabled {
+.rbac-hero button:disabled,
+.rbac-audit-log .rbac-card__header button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -205,17 +214,6 @@
 .rbac-status--info {
   background: #f8fafc;
   color: #475569;
-}
-
-@media (max-width: 1024px) {
-  .rbac-grid--roles,
-  .rbac-form {
-    grid-template-columns: 1fr;
-  }
-
-  .rbac-hero {
-    flex-direction: column;
-  }
 }
 
 .rbac-tabs,
@@ -359,10 +357,80 @@
   border-color: #a7f3d0;
 }
 
+.rbac-audit-log {
+  display: grid;
+  gap: 16px;
+}
+
+.rbac-audit-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.rbac-audit-filters label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.rbac-audit-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+
+.rbac-audit-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.rbac-audit-table th,
+.rbac-audit-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rbac-audit-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rbac-audit-table td small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+}
+
+.rbac-action-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 @media (max-width: 1024px) {
+  .rbac-grid--roles,
+  .rbac-form,
   .rbac-grid--management,
   .rbac-form-grid,
-  .rbac-permission-columns {
+  .rbac-permission-columns,
+  .rbac-audit-filters {
     grid-template-columns: 1fr;
+  }
+
+  .rbac-hero {
+    flex-direction: column;
   }
 }

@@ -118,6 +118,27 @@ export const RBAC_MANAGEMENT_QUERY = gql`
   ${STAFF_ROLE_FIELDS}
 `;
 
+export const RBAC_AUDIT_LOGS_QUERY = gql`
+  query RbacAuditLogs($filter: AuditLogFilter, $limit: Int, $offset: Int) {
+    rbacAuditLogs(filter: $filter, limit: $limit, offset: $offset) {
+      id
+      createdAt
+      action
+      actorId
+      actorName
+      actorRole
+      module
+      targetType
+      targetId
+      targetName
+      restaurantId
+      before
+      after
+      metadata
+    }
+  }
+`;
+
 export const ASSIGN_STAFF_ROLE_MUTATION = gql`
   mutation AssignStaffRole($input: AssignStaffRoleInput!) {
     assignStaffRole(input: $input) {
@@ -126,7 +147,6 @@ export const ASSIGN_STAFF_ROLE_MUTATION = gql`
   }
   ${STAFF_ROLE_FIELDS}
 `;
-
 
 export const CREATE_ROLE_MUTATION = gql`
   mutation CreateRole($input: CreateRoleInput!) {
@@ -150,8 +170,21 @@ const normalizeGroup = (permission) => permission?.group || permission?.resource
 
 export function useRbacManagement(restaurantId, options = {}) {
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [auditLogFilters, setAuditLogFilters] = useState({ action: "", targetType: "" });
+  const [auditLogLimit, setAuditLogLimit] = useState(50);
   const includeStaffList = Boolean(restaurantId);
   const includeAllRestaurants = Boolean(options.includeAllRestaurants);
+  const canViewGlobalAuditLogs = Boolean(options.canViewGlobalAuditLogs);
+  const auditRestaurantId = restaurantId || options.auditRestaurantId || "";
+  const auditFilter = useMemo(() => {
+    const filter = {};
+    if (auditLogFilters.action) filter.action = auditLogFilters.action;
+    if (auditLogFilters.targetType) filter.targetType = auditLogFilters.targetType;
+    if (!canViewGlobalAuditLogs && auditRestaurantId) filter.restaurantId = auditRestaurantId;
+    if (canViewGlobalAuditLogs && auditLogFilters.restaurantId) filter.restaurantId = auditLogFilters.restaurantId;
+    return filter;
+  }, [auditLogFilters, auditRestaurantId, canViewGlobalAuditLogs]);
+  const shouldSkipAuditLogs = Boolean(options.skipAuditLogs) || (!canViewGlobalAuditLogs && !auditRestaurantId);
 
   const { data, loading, error, refetch } = useQuery(RBAC_MANAGEMENT_QUERY, {
     variables: {
@@ -162,16 +195,40 @@ export function useRbacManagement(restaurantId, options = {}) {
     fetchPolicy: "cache-and-network",
   });
 
+  const {
+    data: auditLogsData,
+    loading: auditLogsLoading,
+    error: auditLogsError,
+    refetch: refetchAuditLogs,
+  } = useQuery(RBAC_AUDIT_LOGS_QUERY, {
+    variables: {
+      filter: auditFilter,
+      limit: auditLogLimit,
+      offset: 0,
+    },
+    skip: shouldSkipAuditLogs,
+    fetchPolicy: "cache-and-network",
+  });
+
   const [assignStaffRole, assignState] = useMutation(ASSIGN_STAFF_ROLE_MUTATION, {
-    onCompleted: () => refetch(),
+    onCompleted: () => {
+      refetch();
+      if (!shouldSkipAuditLogs) refetchAuditLogs?.();
+    },
   });
 
   const [createRole, createRoleState] = useMutation(CREATE_ROLE_MUTATION, {
-    onCompleted: () => refetch(),
+    onCompleted: () => {
+      refetch();
+      if (!shouldSkipAuditLogs) refetchAuditLogs?.();
+    },
   });
 
   const [updateRole, updateRoleState] = useMutation(UPDATE_ROLE_MUTATION, {
-    onCompleted: () => refetch(),
+    onCompleted: () => {
+      refetch();
+      if (!shouldSkipAuditLogs) refetchAuditLogs?.();
+    },
   });
 
   const roles = data?.role || [];
@@ -217,5 +274,14 @@ export function useRbacManagement(restaurantId, options = {}) {
     updateRole,
     updatingRole: updateRoleState.loading,
     updateRoleError: updateRoleState.error,
+    auditLogs: auditLogsData?.rbacAuditLogs || [],
+    auditLogsLoading,
+    auditLogsError,
+    auditLogFilters,
+    setAuditLogFilters,
+    auditLogLimit,
+    setAuditLogLimit,
+    refetchAuditLogs,
+    auditLogsSkipped: shouldSkipAuditLogs,
   };
 }
