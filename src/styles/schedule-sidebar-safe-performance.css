@@ -1,0 +1,33 @@
+/* =========================================================
+   SAFE SCHEDULE SIDEBAR PERFORMANCE
+
+   Do not use :has(), content-visibility or root paint containment here.
+   This only removes expensive animated reflow on the Schedule page.
+   Sidebar still opens normally, but content/header snap once instead of
+   animating left/width/margin over many frames.
+   ========================================================= */
+
+@media (min-width: 769px) {
+  .manager-layout--schedules.sidebar-open .manager-layout__main,
+  .manager-layout--schedules.sidebar-open .manager-layout__header,
+  .manager-layout--schedules.sidebar-open .manager-layout__content,
+  .manager-layout--schedules.sidebar-open .header {
+    transition: none !important;
+  }
+
+  .manager-layout--schedules .manager-layout__main,
+  .manager-layout--schedules .manager-layout__header,
+  .manager-layout--schedules .manager-layout__content,
+  .manager-layout--schedules .header {
+    will-change: auto !important;
+  }
+
+  .manager-layout--schedules .sidebar {
+    transform: translate3d(-100%, 0, 0) !important;
+  }
+
+  .manager-layout--schedules .sidebar.sidebar-open,
+  .manager-layout--schedules.sidebar-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+  }
+}
