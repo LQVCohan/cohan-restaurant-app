@@ -299,13 +299,35 @@ const collapseOptionalSchedulePanelsOnce = () => {
   root.dataset.optionalPanelsInitialCollapsed = "true";
 };
 
+let activeScheduleDomPolishCleanup = null;
+
+const cleanupInjectedScheduleDom = () => {
+  document
+    .querySelectorAll(".schedule-action-center[data-dom-polish='true'], .schedule-board-week-jumper[data-dom-polish='true']")
+    .forEach((node) => node.remove());
+
+  document.querySelectorAll(".schedule-action-source-hidden").forEach((node) => {
+    node.classList.remove("schedule-action-source-hidden");
+    delete node.dataset.actionCenterSource;
+  });
+};
+
 export const initScheduleManagerDomPolish = () => {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
+  if (typeof window === "undefined" || typeof document === "undefined" || !document.body) {
+    return undefined;
+  }
+
+  activeScheduleDomPolishCleanup?.();
 
   let frameId = 0;
+  const timeoutIds = [];
+  let disposed = false;
+
   const run = () => {
+    if (disposed) return;
     window.cancelAnimationFrame(frameId);
     frameId = window.requestAnimationFrame(() => {
+      if (disposed) return;
       try {
         applyScheduleActionCenter();
         applyScheduleBoardWeekJumper();
@@ -318,10 +340,15 @@ export const initScheduleManagerDomPolish = () => {
     });
   };
 
+  const scheduleRun = (delay) => {
+    const id = window.setTimeout(run, delay);
+    timeoutIds.push(id);
+  };
+
   run();
-  window.setTimeout(run, 250);
-  window.setTimeout(run, 900);
-  window.setTimeout(run, 1600);
+  scheduleRun(250);
+  scheduleRun(900);
+  scheduleRun(1600);
 
   const observer = new MutationObserver(run);
 
@@ -330,4 +357,19 @@ export const initScheduleManagerDomPolish = () => {
     subtree: true,
     characterData: true,
   });
+
+  const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    window.cancelAnimationFrame(frameId);
+    timeoutIds.forEach((id) => window.clearTimeout(id));
+    observer.disconnect();
+    cleanupInjectedScheduleDom();
+    if (activeScheduleDomPolishCleanup === cleanup) {
+      activeScheduleDomPolishCleanup = null;
+    }
+  };
+
+  activeScheduleDomPolishCleanup = cleanup;
+  return cleanup;
 };
