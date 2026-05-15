@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { AlertTriangle, Bell, CheckCircle2, Clock3 } from "lucide-react";
 import useMenuAvailabilityWatch from "../../../hooks/useMenuAvailabilityWatch";
+import "./FoodAvailabilityWatchPanel.scss";
 
 export default function FoodAvailabilityWatchPanel({
   restaurantId,
