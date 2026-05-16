@@ -49,12 +49,14 @@ export default {
     const before = await Review.findById(id);
     if (!before) throw new Error("Review not found");
     const patch = { ...input, updatedBy: ctx?.user?.id || null };
-    if (Object.hasOwn(input || {}, "staffId")) {
-      Object.assign(patch, await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: before.restaurantId }));
-    }
-    delete patch.restaurantId; delete patch.createdBy; delete patch.updatedBy; delete patch.reactions; delete patch.helpfulCount;
     if (isOwner(ctx, before)) delete patch.status;
     else { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, before.restaurantId); }
+    if (Object.hasOwn(input || {}, "staffId")) {
+      Object.assign(patch, await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: before.restaurantId }));
+    } else {
+      delete patch.staffName;
+    }
+    delete patch.restaurantId; delete patch.createdBy; delete patch.updatedBy; delete patch.reactions; delete patch.helpfulCount;
     const updated = await Review.findByIdAndUpdate(id, patch, { new: true });
     await logReviewEvent({ review: updated, verb: "review.update", ctx, diff: { before: { rating: before.rating, title: before.title, content: before.content, status: before.status }, after: { rating: updated.rating, title: updated.title, content: updated.content, status: updated.status } } });
     return updated;
