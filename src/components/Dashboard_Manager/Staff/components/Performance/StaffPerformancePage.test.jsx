@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFormulaScore,
+  buildAdjustmentHistoryItems,
   formatDelta,
   formatCustomerRating,
   getWeightedContribution,
@@ -127,5 +128,19 @@ describe("adjustment display helpers", () => {
   it("shows signed delta text", () => {
     expect(formatDelta(5)).toBe("+5");
     expect(formatDelta(-5)).toBe("-5");
+  });
+
+  it("builds adjustment history from incidents and appeals", () => {
+    const items = buildAdjustmentHistoryItems(
+      [{ id: "a1", scoreDelta: -5, previousScore: 90, newScore: 85, reason: "Đi trễ", createdAt: "2026-05-10T10:00:00.000Z" }],
+      [{ id: "p1", status: "accepted", scoreReversalDelta: 3, scoreReversalNote: "Chấp nhận khiếu nại", scoreReversedAt: "2026-05-11T10:00:00.000Z" }],
+    );
+    expect(items).toHaveLength(2);
+    expect(items[0].scoreDelta).toBe(3);
+    expect(items[1].scoreDelta).toBe(-5);
+  });
+
+  it("returns empty when no adjustment data", () => {
+    expect(buildAdjustmentHistoryItems([], [])).toEqual([]);
   });
 });
