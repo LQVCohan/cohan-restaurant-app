@@ -16,23 +16,13 @@ const GET_CATEGORIES = gql`
   }
 `;
 
-const GET_MENU_ITEMS_BY_CATEGORY = gql`
+const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
   query GetMenuItemsForCustomerMenu(
-    $restaurantId: ID!
-    $timeSlot: TimeSlot!
-    $categoryId: ID!
+    $filter: MenuItemFilter!
     $limit: Int = 100
     $cursor: ID
   ) {
-    menuItemsConnection(
-      limit: $limit
-      cursor: $cursor
-      filter: {
-        restaurantId: $restaurantId
-        timeSlot: $timeSlot
-        categoryId: $categoryId
-      }
-    ) {
+    menuItemsConnection(limit: $limit, cursor: $cursor, filter: $filter) {
       edges {
         node {
           id
@@ -84,7 +74,7 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
   const categories = useMemo(
     () =>
       [...(categoriesData?.categories || [])]
-        .filter((cat) => cat?.id)
+        .filter((cat) => cat?.id && cat.isActive !== false)
         .sort((a, b) => (a.order || 0) - (b.order || 0)),
     [categoriesData?.categories],
   );
@@ -94,21 +84,24 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     setCurrentPage(1);
   }, [timeSlot]);
 
-  const queryCategoryId = activeCat === "all" ? categories[0]?.id : activeCat;
+  const menuItemFilter = useMemo(
+    () => ({
+      restaurantId,
+      timeSlot,
+      ...(activeCat !== "all" ? { categoryId: activeCat } : {}),
+    }),
+    [activeCat, restaurantId, timeSlot],
+  );
 
   const { data: menuData, loading: menuLoading, error: menuError } = useQuery(
-    GET_MENU_ITEMS_BY_CATEGORY,
+    GET_MENU_ITEMS_FOR_CUSTOMER_MENU,
     {
-      variables: queryCategoryId
-        ? {
-            restaurantId,
-            timeSlot,
-            categoryId: queryCategoryId,
-            limit: 100,
-            cursor: null,
-          }
-        : undefined,
-      skip: !restaurantId || !queryCategoryId,
+      variables: {
+        filter: menuItemFilter,
+        limit: 100,
+        cursor: null,
+      },
+      skip: !restaurantId,
       fetchPolicy: "network-only",
     },
   );
@@ -151,8 +144,7 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     setCurrentPage(1);
   }, [timeSlot, activeCat, search, rawMenuItems.length]);
 
-  const isLoading = categoriesLoading || menuLoading;
-  const hasError = categoriesError || menuError;
+  const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
 
   return (
     <div className="fade-in">
@@ -208,10 +200,15 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
       <div className="grid-container">
         <div className="category-filter">
           <div className="pills">
+            {categoriesError && (
+              <div style={{ color: "#d97706", fontSize: "0.9rem", padding: "0.25rem 0.5rem" }}>
+                Không tải được danh mục. Đang hiển thị theo "Tất cả".
+              </div>
+            )}
             <button
               className={activeCat === "all" ? "active" : ""}
               onClick={() => setActiveCat("all")}
-              disabled={!categories.length}
+
             >
               Tất cả
             </button>
@@ -231,7 +228,7 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
             Đang tải thực đơn...
           </div>
-        ) : hasError ? (
+        ) : menuError ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#d32f2f" }}>
             Không thể tải thực đơn. Vui lòng thử lại.
           </div>
