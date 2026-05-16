@@ -128,6 +128,7 @@ const formatContributionScore = (value) => {
   const n = Number(value || 0);
   return `${Math.round(n * 100) / 100}`;
 };
+const ADJUSTMENT_TOLERANCE = 0.01;
 
 export const resolveComponentWeight = (component, defaultWeight) => {
   const componentWeight = Number(component?.weight);
@@ -140,6 +141,22 @@ export const getWeightedContribution = (score, weight) => {
   const safeWeight = Number(weight);
   if (!Number.isFinite(safeScore) || !Number.isFinite(safeWeight)) return 0;
   return (safeScore * safeWeight) / 100;
+};
+
+export const calculateFormulaScore = (snapshot = {}) =>
+  PERFORMANCE_FORMULA_ITEMS.reduce((total, item) => {
+    const component = snapshot?.[item.key];
+    const componentWeight = resolveComponentWeight(component, item.weight);
+    return total + getWeightedContribution(component?.score, componentWeight);
+  }, 0);
+
+export const shouldDisplayAdjustment = (delta, tolerance = ADJUSTMENT_TOLERANCE) =>
+  Math.abs(Number(delta) || 0) >= tolerance;
+
+export const formatDelta = (value) => {
+  const delta = Number(value) || 0;
+  const absText = formatContributionScore(Math.abs(delta));
+  return `${delta >= 0 ? "+" : "-"}${absText}`;
 };
 
 const safeFactorNumber = (value, fallback = 0) => {
@@ -344,6 +361,10 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
 
   const level = getScoreLevel(snapshot?.finalPerformanceScore || 0);
   const customerRating = formatCustomerRating(snapshot?.factors);
+  const formulaScore = calculateFormulaScore(snapshot);
+  const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
+  const adjustmentDelta = finalPerformanceScore - formulaScore;
+  const hasAdjustment = shouldDisplayAdjustment(adjustmentDelta);
 
   return (
     <aside className="performance-detail-panel">
@@ -415,8 +436,23 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
                 );
               })}
               <li className="total">
-                <span>Tổng</span>
-                <strong>{scoreText(snapshot.finalPerformanceScore)}</strong>
+                <span>Điểm theo công thức</span>
+                <strong>{formatContributionScore(formulaScore)} điểm</strong>
+              </li>
+              {hasAdjustment ? (
+                <li>
+                  <span>Điều chỉnh incident/appeal</span>
+                  <strong>{formatDelta(adjustmentDelta)} điểm</strong>
+                </li>
+              ) : (
+                <li>
+                  <span>Điều chỉnh incident/appeal</span>
+                  <strong>Không có điều chỉnh</strong>
+                </li>
+              )}
+              <li className="total">
+                <span>Điểm cuối</span>
+                <strong>{scoreText(finalPerformanceScore)}</strong>
               </li>
             </ul>
           </div>

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateFormulaScore,
+  formatDelta,
   formatCustomerRating,
   getWeightedContribution,
   resolveComponentWeight,
+  shouldDisplayAdjustment,
 } from "./StaffPerformancePage";
 
 describe("formatCustomerRating", () => {
@@ -79,5 +82,50 @@ describe("resolveComponentWeight", () => {
 
   it("does not crash with missing component and falls back safely", () => {
     expect(resolveComponentWeight(undefined, 20)).toBe(20);
+  });
+});
+
+describe("calculateFormulaScore", () => {
+  it("calculates formula score using component scores and weights", () => {
+    const snapshot = {
+      productivity: { score: 80, weight: 25 },
+      punctuality: { score: 90, weight: 25 },
+      quality: { score: 70, weight: 20 },
+      managerReview: { score: 85, weight: 20 },
+      compliance: { score: 100, weight: 10 },
+    };
+
+    expect(calculateFormulaScore(snapshot)).toBe(83.5);
+  });
+
+  it("does not crash when components are missing", () => {
+    expect(calculateFormulaScore({ productivity: { score: 80 } })).toBe(20);
+    expect(calculateFormulaScore({})).toBe(0);
+  });
+
+  it("supports deriving delta from final score and formula score", () => {
+    const snapshot = {
+      productivity: { score: 85, weight: 25 },
+      punctuality: { score: 85, weight: 25 },
+      quality: { score: 85, weight: 20 },
+      managerReview: { score: 85, weight: 20 },
+      compliance: { score: 85, weight: 10 },
+    };
+    const formulaScore = calculateFormulaScore(snapshot);
+    const adjustmentDelta = 80 - formulaScore;
+    expect(formulaScore).toBe(85);
+    expect(adjustmentDelta).toBe(-5);
+  });
+});
+
+describe("adjustment display helpers", () => {
+  it("hides adjustment when delta is smaller than tolerance", () => {
+    expect(shouldDisplayAdjustment(0.009)).toBe(false);
+    expect(shouldDisplayAdjustment(-0.009)).toBe(false);
+  });
+
+  it("shows signed delta text", () => {
+    expect(formatDelta(5)).toBe("+5");
+    expect(formatDelta(-5)).toBe("-5");
   });
 });
