@@ -114,6 +114,34 @@ const getAvatarColor = (name = "?") => {
 };
 
 const scoreText = (value) => `${Math.round(Number(value || 0))}/100`;
+const safeFactorNumber = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+export const formatCustomerRating = (factors = {}) => {
+  const staffRateCount = safeFactorNumber(factors?.staffRateCount, 0);
+  if (staffRateCount <= 0) {
+    return {
+      hasRating: false,
+      label: "Chưa có đánh giá khách hàng",
+      hint: "Đây là dữ liệu tham khảo, không tự động ảnh hưởng điểm manager.",
+    };
+  }
+
+  const staffRate = safeFactorNumber(factors?.staffRate, 0);
+  const customerRatingScore = safeFactorNumber(
+    factors?.customerRatingScore,
+    staffRate * 20,
+  );
+  const normalizedRate = Math.round(staffRate * 100) / 100;
+  const normalizedScore = Math.round(customerRatingScore * 100) / 100;
+
+  return {
+    hasRating: true,
+    label: `Đánh giá khách hàng: ${normalizedRate}/5 (${staffRateCount} lượt)`,
+    hint: `Quy đổi tham khảo: ${normalizedScore}/100`,
+  };
+};
 
 const buildSnapshotByEmployee = (snapshots = []) =>
   snapshots.reduce((acc, snapshot) => {
@@ -128,6 +156,7 @@ const getRestaurantName = (restaurantList, restaurantId) =>
 const ReviewModal = ({
   isOpen,
   employee,
+  snapshot,
   restaurantId,
   periodStart,
   periodEnd,
@@ -155,6 +184,7 @@ const ReviewModal = ({
   }, [isOpen, employee?.id]);
 
   if (!isOpen || !employee) return null;
+  const customerRating = formatCustomerRating(snapshot?.factors);
 
   const updateField = (field, value) => {
     setForm((prev) => ({
@@ -199,6 +229,14 @@ const ReviewModal = ({
         </div>
 
         <form className="review-form" onSubmit={handleSubmit}>
+          <div className="factor-box">
+            <strong>Tham khảo đánh giá khách hàng</strong>
+            <div className="factor-grid">
+              <span>{customerRating.label}</span>
+              {customerRating.hasRating ? <span>{customerRating.hint}</span> : null}
+            </div>
+            {!customerRating.hasRating ? <p>{customerRating.hint}</p> : null}
+          </div>
           {[
             {
               key: "managerRatingScore",
@@ -276,6 +314,7 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
   if (!snapshot && !employee) return null;
 
   const level = getScoreLevel(snapshot?.finalPerformanceScore || 0);
+  const customerRating = formatCustomerRating(snapshot?.factors);
 
   return (
     <aside className="performance-detail-panel">
@@ -335,6 +374,10 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
               <span>Về sớm: {snapshot.factors?.earlyEvents ?? 0}</span>
               <span>Vắng: {snapshot.factors?.absenceEvents ?? 0}</span>
               <span>Chỉnh công: {snapshot.factors?.correctionsCount ?? 0}</span>
+            </div>
+            <div className="factor-grid">
+              <span>{customerRating.label}</span>
+              {customerRating.hasRating ? <span>{customerRating.hint}</span> : null}
             </div>
           </div>
         </>
@@ -823,6 +866,7 @@ const StaffPerformancePage = ({
       <ReviewModal
         isOpen={Boolean(reviewEmployee)}
         employee={reviewEmployee}
+        snapshot={snapshotByEmployee[String(reviewEmployee?.id)] || null}
         restaurantId={effectiveRestaurantId}
         periodStart={periodStart}
         periodEnd={periodEnd}
