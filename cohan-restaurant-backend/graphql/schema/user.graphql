@@ -2582,6 +2582,13 @@ input AssignStaffRoleInput {
 # Queries
 # =========================
 
+type PublicStaffOption {
+  id: ID!
+  fullName: String!
+  positionTitle: String
+  avatarUrl: String
+}
+
 type Query {
   scheduleChangeLogs(
     restaurantId: ID!
@@ -2648,6 +2655,7 @@ type Query {
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
 
   staff(id: ID!): User
+  publicRestaurantStaff(restaurantId: ID!): [PublicStaffOption!]!
   staffList(
     restaurantId: ID
     roleId: ID
