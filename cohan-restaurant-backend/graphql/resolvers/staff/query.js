@@ -336,6 +336,34 @@ export default {
   },
 
   // =========================
+  // PUBLIC RESTAURANT STAFF OPTIONS
+  // =========================
+
+  publicRestaurantStaff: async (_, { restaurantId }, ctx) => {
+    requireAuth(ctx);
+    const rid = toObjectId(restaurantId);
+    if (!rid && !restaurantId) return [];
+
+    const filter = {
+      userType: "STAFF",
+      deletedAt: null,
+      restaurantForStaff: rid || restaurantId,
+    };
+
+    const list = await Staff.find(filter)
+      .select({ _id: 1, fullName: 1, positionTitle: 1, avatarUrl: 1 })
+      .sort({ fullName: 1 })
+      .lean();
+
+    return list.map((item) => ({
+      id: String(item._id),
+      fullName: item.fullName || "",
+      positionTitle: item.positionTitle || "",
+      avatarUrl: item.avatarUrl || "",
+    }));
+  },
+
+  // =========================
   // GET STAFF LIST
   // =========================
   staffList: async (

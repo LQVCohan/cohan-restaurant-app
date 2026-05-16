@@ -51,13 +51,13 @@ const CREATE_REVIEW = gql`
   }
 `;
 
-const GET_RESTAURANT_STAFF = gql`
-  query GetRestaurantStaff($restaurantId: ID!) {
-    staffList(restaurantId: $restaurantId) {
+const GET_PUBLIC_RESTAURANT_STAFF = gql`
+  query GetPublicRestaurantStaff($restaurantId: ID!) {
+    publicRestaurantStaff(restaurantId: $restaurantId) {
       id
       fullName
-      isDeleted
-      userType
+      positionTitle
+      avatarUrl
     }
   }
 `;
@@ -89,6 +89,7 @@ const ReviewsSection = ({ restaurantId }) => {
   const [showWriteReview, setShowWriteReview] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "", staffId: "" });
   const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
   const minRating = filterRating === "all" ? undefined : Number(filterRating);
 
@@ -109,7 +110,7 @@ const ReviewsSection = ({ restaurantId }) => {
     skip: !restaurantId,
   });
 
-  const { data: staffData } = useQuery(GET_RESTAURANT_STAFF, {
+  const { data: staffData } = useQuery(GET_PUBLIC_RESTAURANT_STAFF, {
     variables: { restaurantId },
     skip: !restaurantId,
     fetchPolicy: "cache-first",
@@ -199,11 +200,12 @@ const ReviewsSection = ({ restaurantId }) => {
   };
 
   const staffOptions = useMemo(
-    () => (staffData?.staffList || []).filter((staff) => staff?.userType === "STAFF" && !staff?.isDeleted),
+    () => staffData?.publicRestaurantStaff || [],
     [staffData],
   );
 
   const handleSubmitReview = async () => {
+    setSubmitSuccess("");
     if (!newReview.content.trim()) {
       setSubmitError("Vui lòng nhập nội dung đánh giá.");
       return;
@@ -228,8 +230,8 @@ const ReviewsSection = ({ restaurantId }) => {
           },
         },
       });
-      setShowWriteReview(false);
       setNewReview({ rating: 5, title: "", content: "", staffId: "" });
+      setSubmitSuccess("Đánh giá đã được gửi và đang chờ duyệt.");
     } catch (error) {
       setSubmitError(error.message || "Không thể gửi đánh giá.");
     }
@@ -399,21 +401,21 @@ const ReviewsSection = ({ restaurantId }) => {
             <div className="modal-content">
               <div className="form-group">
                 <label>Điểm đánh giá</label>
-                <select value={newReview.rating} onChange={(e) => setNewReview((prev) => ({ ...prev, rating: Number(e.target.value) }))}>
+                <select aria-label="Điểm đánh giá" value={newReview.rating} onChange={(e) => setNewReview((prev) => ({ ...prev, rating: Number(e.target.value) }))}>
                   {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} sao</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label>Tiêu đề</label>
-                <input value={newReview.title} onChange={(e) => setNewReview((prev) => ({ ...prev, title: e.target.value }))} />
+                <input aria-label="Tiêu đề" value={newReview.title} onChange={(e) => setNewReview((prev) => ({ ...prev, title: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label>Nội dung đánh giá</label>
-                <textarea rows={4} value={newReview.content} onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))} />
+                <textarea aria-label="Nội dung đánh giá" rows={4} value={newReview.content} onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label>Nhân viên phục vụ (không bắt buộc)</label>
-                <select value={newReview.staffId} onChange={(e) => setNewReview((prev) => ({ ...prev, staffId: e.target.value }))}>
+                <select aria-label="Nhân viên phục vụ (không bắt buộc)" value={newReview.staffId} onChange={(e) => setNewReview((prev) => ({ ...prev, staffId: e.target.value }))}>
                   <option value="">Chọn nhân viên nếu muốn đánh giá trực tiếp</option>
                   {staffOptions.map((staff) => (
                     <option key={staff.id} value={staff.id}>{staff.fullName}</option>
@@ -422,6 +424,7 @@ const ReviewsSection = ({ restaurantId }) => {
                 <small>Đánh giá này chỉ là dữ liệu tham khảo cho quản lý khi đánh giá hiệu suất.</small>
               </div>
               {submitError ? <p style={{ color: "#dc2626" }}>{submitError}</p> : null}
+              {submitSuccess ? <p style={{ color: "#15803d" }}>{submitSuccess}</p> : null}
               <button className="btn btn--primary" disabled={creatingReview} onClick={handleSubmitReview}>
                 {creatingReview ? "Đang gửi..." : "Gửi đánh giá"}
               </button>
