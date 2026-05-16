@@ -613,6 +613,24 @@
         background: #f8fafc;
         color: #64748b;
       }
+
+      .detail-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .print-btn {
+        width: auto;
+        height: 34px;
+        padding: 0 0.75rem;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #0f172a;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
     }
 
     .detail-score-card {

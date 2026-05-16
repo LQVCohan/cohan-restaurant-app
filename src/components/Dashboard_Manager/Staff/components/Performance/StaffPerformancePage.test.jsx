@@ -7,7 +7,12 @@ import {
   getWeightedContribution,
   resolveComponentWeight,
   shouldDisplayAdjustment,
+  buildPerformanceReportData,
+  escapeHtml,
+  buildPerformanceReportHtml,
+  openPerformanceReportPrintWindow,
 } from "./StaffPerformancePage";
+import { vi } from "vitest";
 
 describe("formatCustomerRating", () => {
   it("shows X/5 and review count when rating exists", () => {
@@ -142,5 +147,81 @@ describe("adjustment display helpers", () => {
 
   it("returns empty when no adjustment data", () => {
     expect(buildAdjustmentHistoryItems([], [])).toEqual([]);
+  });
+});
+
+describe("buildPerformanceReportData", () => {
+  it("uses employee.fullName as fallback when snapshot employeeName is missing", () => {
+    const report = buildPerformanceReportData({
+      snapshot: {},
+      employee: { fullName: "Nguyen Van A", name: "A" },
+    });
+    expect(report.employeeName).toBe("Nguyen Van A");
+  });
+
+  it("includes customer rating when available", () => {
+    const report = buildPerformanceReportData({
+      snapshot: {
+        employeeName: "An",
+        periodStart: "2026-05-01",
+        periodEnd: "2026-05-31",
+        finalPerformanceScore: 87,
+        productivity: { score: 90, weight: 25 },
+        punctuality: { score: 90, weight: 25 },
+        quality: { score: 80, weight: 20 },
+        managerReview: { score: 85, weight: 20 },
+        compliance: { score: 85, weight: 10 },
+        factors: { staffRate: 4.5, staffRateCount: 20, customerRatingScore: 90 },
+      },
+      adjustmentHistory: [],
+    });
+    expect(report.customerRating.hasRating).toBe(true);
+    expect(report.customerRating.label).toContain("4.5/5");
+  });
+
+  it("returns empty state when adjustment history missing", () => {
+    const report = buildPerformanceReportData({ snapshot: {}, adjustmentHistory: [] });
+    expect(report.adjustmentHistory).toEqual([]);
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes html special characters", () => {
+    expect(escapeHtml('<img src=x onerror=alert(1)>')).toBe(
+      "&lt;img src=x onerror=alert(1)&gt;",
+    );
+  });
+});
+
+describe("buildPerformanceReportHtml", () => {
+  it("does not include raw html from adjustment reason", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [{ scoreDelta: -2, reason: "<script>alert(1)</script>", createdAt: "2026-05-12T10:00:00.000Z" }],
+    });
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).not.toContain("<script>alert(1)</script>");
+  });
+});
+
+describe("openPerformanceReportPrintWindow", () => {
+  it("opens a usable print window and severs opener", () => {
+    const fakeWindow = { opener: "present" };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow);
+    const result = openPerformanceReportPrintWindow();
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "width=900,height=700");
+    expect(result).toBe(fakeWindow);
+    expect(fakeWindow.opener).toBeNull();
+    openSpy.mockRestore();
   });
 });
