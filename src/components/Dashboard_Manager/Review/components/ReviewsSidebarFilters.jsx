@@ -141,6 +141,19 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
           <option value="unverified">Chưa xác thực</option>
         </select>
       </div>
+
+      <div className="reviews-sidebar__group">
+        <label className="reviews-sidebar__label">Gắn nhân viên</label>
+        <select
+          className="reviews-sidebar__select"
+          value={filters.staffAssigned || ""}
+          onChange={handleSelectChange("staffAssigned")}
+        >
+          <option value="">Tất cả</option>
+          <option value="with-staff">Có gắn nhân viên</option>
+          <option value="without-staff">Không gắn nhân viên</option>
+        </select>
+      </div>
     </aside>
   );
 };

@@ -77,6 +77,8 @@ const GET_REVIEWS = gql`
         restaurantName
         customerId
         customerName
+        staffId
+        staffName
         customerAvatar
         rating
         title
@@ -141,6 +143,8 @@ const normalizeReview = (review) => ({
   restaurant_name: review.restaurantName,
   customer_id: review.customerId,
   customer_name: review.customerName,
+  staff_id: review.staffId || null,
+  staff_name: review.staffName || "",
   customer_avatar: review.customerAvatar,
   rating: review.rating,
   title: review.title || "(Không tiêu đề)",
@@ -171,6 +175,7 @@ const ReviewManagement = () => {
     image: "",
     restaurant: "",
     verified: "",
+    staffAssigned: "",
     sort: "newest",
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -269,6 +274,13 @@ const ReviewManagement = () => {
       list = list.filter((r) => !r.verified_purchase);
     }
 
+    if (filters.staffAssigned === "with-staff") {
+      list = list.filter((r) => Boolean(r.staff_id));
+    }
+    if (filters.staffAssigned === "without-staff") {
+      list = list.filter((r) => !r.staff_id);
+    }
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       list = list.filter(
@@ -276,6 +288,7 @@ const ReviewManagement = () => {
           (r.customer_name || "").toLowerCase().includes(term) ||
           (r.title || "").toLowerCase().includes(term) ||
           (r.content || "").toLowerCase().includes(term) ||
+          (r.staff_name || "").toLowerCase().includes(term) ||
           (r.target_name || "").toLowerCase().includes(term) ||
           (r.restaurant_name || "").toLowerCase().includes(term),
       );
@@ -341,18 +354,27 @@ const ReviewManagement = () => {
   );
 
   const handleExport = () => {
-    const csv = filteredReviews
-      .map((r) =>
-        [
-          r.id,
-          r.customer_name,
-          r.rating,
-          `"${r.title}"`,
-          `"${r.content}"`,
-          new Date(r.created_at).toLocaleString("vi-VN"),
-        ].join(","),
-      )
-      .join("\n");
+    const header = [
+      "ID",
+      "Khách hàng",
+      "Nhân viên được đánh giá",
+      "Đánh giá",
+      "Tiêu đề",
+      "Nội dung",
+      "Thời gian",
+    ].join(",");
+    const rows = filteredReviews.map((r) =>
+      [
+        r.id,
+        r.customer_name,
+        `"${r.staff_name || "Không gắn nhân viên"}"`,
+        r.rating,
+        `"${r.title}"`,
+        `"${r.content}"`,
+        new Date(r.created_at).toLocaleString("vi-VN"),
+      ].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -399,7 +421,7 @@ const ReviewManagement = () => {
                     <input
                       type="text"
                       className="reviews-content-header__search-box-input"
-                      placeholder="Tìm khách hàng, tiêu đề, nội dung..."
+                      placeholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />

@@ -10,6 +10,8 @@ const GET_REVIEW_DETAIL = gql`
       targetName
       restaurantId
       customerName
+      staffId
+      staffName
       customerAvatar
       rating
       title
@@ -152,6 +154,13 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
 
               <h4 style={{ marginBottom: 6 }}>{detail?.title || review?.title}</h4>
               <p style={{ marginBottom: 10 }}>{detail?.content || review?.content}</p>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Nhân viên được khách đánh giá:</strong>{" "}
+                {detail?.staffName || review?.staff_name || "Không gắn nhân viên"}
+              </p>
+              <p style={{ marginBottom: 12, fontStyle: "italic", color: "#4b5563" }}>
+                Review đã duyệt sẽ được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+              </p>
 
               {!!images?.length && (
                 <div className="reviews-modal__image-preview">
