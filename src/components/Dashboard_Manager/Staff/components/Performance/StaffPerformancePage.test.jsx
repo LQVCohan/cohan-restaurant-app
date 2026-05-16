@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatCustomerRating } from "./StaffPerformancePage";
+import {
+  formatCustomerRating,
+  getWeightedContribution,
+  resolveComponentWeight,
+} from "./StaffPerformancePage";
 
 describe("formatCustomerRating", () => {
   it("shows X/5 and review count when rating exists", () => {
@@ -48,5 +52,32 @@ describe("formatCustomerRating", () => {
     });
 
     expect(result.hint).toBe("Quy đổi tham khảo: 0/100");
+  });
+});
+
+
+describe("getWeightedContribution", () => {
+  it("returns weighted contribution for a valid score", () => {
+    expect(getWeightedContribution(80, 25)).toBe(20);
+    expect(getWeightedContribution(80, 30)).toBe(24);
+  });
+
+  it("returns 0 when score is missing", () => {
+    expect(getWeightedContribution(undefined, 25)).toBe(0);
+  });
+});
+
+
+describe("resolveComponentWeight", () => {
+  it("uses snapshot component weight when present", () => {
+    expect(resolveComponentWeight({ weight: 30 }, 25)).toBe(30);
+  });
+
+  it("falls back to default item weight when component weight is missing", () => {
+    expect(resolveComponentWeight({}, 25)).toBe(25);
+  });
+
+  it("does not crash with missing component and falls back safely", () => {
+    expect(resolveComponentWeight(undefined, 20)).toBe(20);
   });
 });
