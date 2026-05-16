@@ -3,6 +3,7 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../scheduling/schedulingPermission.service.js";
+import { resolvePerformanceLevel } from "../staffPerformance/staffPerformance.service.js";
 
 export const PERFORMANCE_READ_ROLES = ["ADMIN", "MANAGER", "HR", "ACCOUNTANT"];
 export const PERFORMANCE_REVIEW_ROLES = ["ADMIN", "MANAGER", "HR"];
@@ -223,7 +224,10 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
           periodStart,
           periodEnd,
         },
-        $set: { finalPerformanceScore: newScore },
+        $set: {
+          finalPerformanceScore: newScore,
+          performanceLevel: resolvePerformanceLevel(newScore),
+        },
       },
       { new: true, upsert: true },
     );

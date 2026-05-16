@@ -120,7 +120,7 @@ function weightedFinalScore(components) {
   return clampScore(raw);
 }
 
-function performanceLevel(score) {
+export function resolvePerformanceLevel(score) {
   const n = Number(score || 0);
 
   if (n >= 90) return "excellent";
@@ -414,7 +414,7 @@ async function calculateSnapshotForEmployee({
       $set: {
         ...components,
         finalPerformanceScore,
-        performanceLevel: performanceLevel(finalPerformanceScore),
+        performanceLevel: resolvePerformanceLevel(finalPerformanceScore),
         factors: {
           orderCount,
           peerMaxOrderCount: benchmark.maxOrders,
