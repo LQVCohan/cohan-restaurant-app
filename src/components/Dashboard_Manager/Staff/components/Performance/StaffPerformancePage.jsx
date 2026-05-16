@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import {
   Award,
   BarChart3,
@@ -129,6 +130,35 @@ const formatContributionScore = (value) => {
   return `${Math.round(n * 100) / 100}`;
 };
 const ADJUSTMENT_TOLERANCE = 0.01;
+const GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY = gql`
+  query StaffPerformanceAdjustmentHistory(
+    $adjustmentInput: StaffPerformanceScoreAdjustmentFilterInput!
+    $appealFilter: PerformanceIncidentAppealFilterInput!
+  ) {
+    staffPerformanceScoreAdjustments(input: $adjustmentInput) {
+      id
+      incidentId
+      scoreDelta
+      previousScore
+      newScore
+      reason
+      note
+      createdAt
+    }
+    performanceIncidentAppeals(filter: $appealFilter) {
+      id
+      incidentId
+      reason
+      status
+      scoreReversalId
+      scoreReversedAt
+      scoreReversalDelta
+      scoreReversalNote
+      reviewedAt
+      createdAt
+    }
+  }
+`;
 
 export const resolveComponentWeight = (component, defaultWeight) => {
   const componentWeight = Number(component?.weight);
@@ -158,6 +188,29 @@ export const formatDelta = (value) => {
   const absText = formatContributionScore(Math.abs(delta));
   return `${delta >= 0 ? "+" : "-"}${absText}`;
 };
+export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
+  [
+    ...(adjustments || []).map((item) => ({
+      id: `adj-${item.id}`,
+      type: "incident",
+      scoreDelta: Number(item.scoreDelta || 0),
+      previousScore: item.previousScore,
+      newScore: item.newScore,
+      reason: item.reason || item.note || "Incident điều chỉnh điểm",
+      createdAt: item.createdAt || null,
+    })),
+    ...(appeals || [])
+      .filter((appeal) => appeal?.status === "accepted" && Number(appeal?.scoreReversalDelta || 0) !== 0)
+      .map((appeal) => ({
+        id: `apl-${appeal.id}`,
+        type: "appeal",
+        scoreDelta: Number(appeal.scoreReversalDelta || 0),
+        previousScore: null,
+        newScore: null,
+        reason: appeal.scoreReversalNote || appeal.reason || "Appeal được chấp nhận",
+        createdAt: appeal.scoreReversedAt || appeal.reviewedAt || appeal.createdAt || null,
+      })),
+  ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
 const safeFactorNumber = (value, fallback = 0) => {
   if (value === null || value === undefined || value === "") return fallback;
@@ -365,6 +418,26 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
   const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
   const adjustmentDelta = finalPerformanceScore - formulaScore;
   const hasAdjustment = shouldDisplayAdjustment(adjustmentDelta);
+  const employeeId = snapshot?.employeeId || employee?.id;
+  const restaurantId = snapshot?.restaurantId || employee?.restaurantForStaff;
+  const periodStart = snapshot?.periodStart;
+  const periodEnd = snapshot?.periodEnd;
+  const { data: historyData } = useQuery(GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY, {
+    skip: !snapshot || !employeeId || !restaurantId || !periodStart || !periodEnd,
+    variables: {
+      adjustmentInput: { restaurantId, employeeId, fromDate: periodStart, toDate: periodEnd },
+      appealFilter: { restaurantId, employeeId, fromDate: periodStart, toDate: periodEnd },
+    },
+    fetchPolicy: "cache-and-network",
+  });
+  const adjustmentHistory = useMemo(
+    () =>
+      buildAdjustmentHistoryItems(
+        historyData?.staffPerformanceScoreAdjustments || [],
+        historyData?.performanceIncidentAppeals || [],
+      ),
+    [historyData?.staffPerformanceScoreAdjustments, historyData?.performanceIncidentAppeals],
+  );
 
   return (
     <aside className="performance-detail-panel">
@@ -471,6 +544,29 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
               <span>{customerRating.label}</span>
               {customerRating.hasRating ? <span>{customerRating.hint}</span> : null}
             </div>
+          </div>
+          <div className="adjustment-history-card">
+            <strong>Lịch sử điều chỉnh điểm</strong>
+            {adjustmentHistory.length === 0 ? (
+              <p>Không có điều chỉnh điểm.</p>
+            ) : (
+              <ul>
+                {adjustmentHistory.map((item) => (
+                  <li key={item.id}>
+                    <div>
+                      <strong>{formatDelta(item.scoreDelta)} điểm</strong>
+                      <span>{item.reason}</span>
+                      <small>{formatDate(item.createdAt)}</small>
+                    </div>
+                    {Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? (
+                      <em>
+                        {formatContributionScore(item.previousScore)} → {formatContributionScore(item.newScore)}
+                      </em>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </>
       ) : (
