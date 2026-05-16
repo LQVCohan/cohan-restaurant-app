@@ -7,6 +7,7 @@ import {
   getWeightedContribution,
   resolveComponentWeight,
   shouldDisplayAdjustment,
+  buildPerformanceReportData,
 } from "./StaffPerformancePage";
 
 describe("formatCustomerRating", () => {
@@ -142,5 +143,32 @@ describe("adjustment display helpers", () => {
 
   it("returns empty when no adjustment data", () => {
     expect(buildAdjustmentHistoryItems([], [])).toEqual([]);
+  });
+});
+
+describe("buildPerformanceReportData", () => {
+  it("includes customer rating when available", () => {
+    const report = buildPerformanceReportData({
+      snapshot: {
+        employeeName: "An",
+        periodStart: "2026-05-01",
+        periodEnd: "2026-05-31",
+        finalPerformanceScore: 87,
+        productivity: { score: 90, weight: 25 },
+        punctuality: { score: 90, weight: 25 },
+        quality: { score: 80, weight: 20 },
+        managerReview: { score: 85, weight: 20 },
+        compliance: { score: 85, weight: 10 },
+        factors: { staffRate: 4.5, staffRateCount: 20, customerRatingScore: 90 },
+      },
+      adjustmentHistory: [],
+    });
+    expect(report.customerRating.hasRating).toBe(true);
+    expect(report.customerRating.label).toContain("4.5/5");
+  });
+
+  it("returns empty state when adjustment history missing", () => {
+    const report = buildPerformanceReportData({ snapshot: {}, adjustmentHistory: [] });
+    expect(report.adjustmentHistory).toEqual([]);
   });
 });
