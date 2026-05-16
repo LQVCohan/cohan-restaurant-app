@@ -287,6 +287,7 @@ async function calculateSnapshotForEmployee({
             staffId: employeeId,
             restaurantId,
             createdAt: { $gte: periodStart, $lte: periodEnd },
+            status: "published",
             rating: { $gte: 1, $lte: 5 },
           },
         },

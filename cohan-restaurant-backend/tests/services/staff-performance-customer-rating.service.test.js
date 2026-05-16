@@ -99,6 +99,32 @@ describe("staffPerformance customer rating factors", () => {
     expect(update.factors.customerRatingScore).toBe(84);
   });
 
+  it("filters only published (visible) reviews in aggregate pipeline", async () => {
+    mocks.customerReviewAggregate.mockResolvedValue([{ averageRating: 4, totalReviews: 2 }]);
+
+    await recalculateStaffPerformanceSnapshots({
+      input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-15" },
+      ctx: { user: { id: "m1", roleName: "manager", fullName: "Manager" } },
+    });
+
+    const pipeline = mocks.customerReviewAggregate.mock.calls[0][0];
+    expect(pipeline[0].$match.status).toBe("published");
+  });
+
+  it("ignores pending/hidden/rejected reviews and counts only published", async () => {
+    mocks.customerReviewAggregate.mockResolvedValue([{ averageRating: 5, totalReviews: 1 }]);
+
+    await recalculateStaffPerformanceSnapshots({
+      input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-15" },
+      ctx: { user: { id: "m1", roleName: "manager", fullName: "Manager" } },
+    });
+
+    const update = mocks.snapshotFindOneAndUpdate.mock.calls[0][1].$set;
+    expect(update.factors.staffRateCount).toBe(1);
+    expect(update.factors.staffRate).toBe(5);
+    expect(update.factors.customerRatingScore).toBe(100);
+  });
+
   it("does not change finalPerformanceScore when only customer review data changes", async () => {
     mocks.customerReviewAggregate.mockResolvedValueOnce([]);
     await recalculateStaffPerformanceSnapshots({
