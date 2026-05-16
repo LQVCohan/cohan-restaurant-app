@@ -1,15 +1,18 @@
 // src/components/Customer/RestaurantMenu/components/MenuItemCard.jsx
 import React from "react";
 import { formatCurrency } from "../../../../utils/formatters";
+import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
 const MenuItemCard = ({ item, onClick }) => {
+  const availability = getMenuItemAvailability(item);
+  const isOrderable = canCustomerOrderMenuItem(item);
   const handleImageError = (e) => {
     e.target.src = "https://placehold.co/600x400/e2e8f0/94a3b8?text=Food+Image";
   };
   return (
     <div
-      className={`item-card ${item.status === "inactive" ? "inactive" : ""}`}
-      onClick={() => item.status !== "inactive" && onClick(item)}
+      className={`item-card ${!isOrderable ? "inactive" : ""}`}
+      onClick={() => onClick(item)}
     >
       <div className="thumb">
         <img
@@ -18,7 +21,7 @@ const MenuItemCard = ({ item, onClick }) => {
           loading="lazy"
           onError={handleImageError}
         />
-        {item.status === "inactive" && <span className="badge">Hết hàng</span>}
+        {!isOrderable && <span className="badge">{availability.label}</span>}
         {item.promotionLabel && (
           <span
             className="menu-item-card__promo-badge"
@@ -43,7 +46,15 @@ const MenuItemCard = ({ item, onClick }) => {
         )}
         <div className="bottom">
           <span className="price">{formatCurrency(item.basePrice)}</span>
-          <button className="add-btn">+</button>
+          <button
+            className="add-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(item);
+            }}
+          >
+            Xem
+          </button>
         </div>
       </div>
     </div>
