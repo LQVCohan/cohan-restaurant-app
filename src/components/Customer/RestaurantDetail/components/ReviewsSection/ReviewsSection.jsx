@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 import "./ReviewsSection.scss";
@@ -41,6 +41,27 @@ const GET_RESTAURANT_REVIEWS = gql`
   }
 `;
 
+
+
+const CREATE_REVIEW = gql`
+  mutation CreateReview($input: ReviewInput!) {
+    createReview(input: $input) {
+      id
+    }
+  }
+`;
+
+const GET_RESTAURANT_STAFF = gql`
+  query GetRestaurantStaff($restaurantId: ID!) {
+    staffList(restaurantId: $restaurantId) {
+      id
+      fullName
+      isDeleted
+      userType
+    }
+  }
+`;
+
 const GET_RESTAURANT_REVIEW_STATS = gql`
   query GetRestaurantReviewStats($restaurantId: ID!) {
     reviewStats(restaurantId: $restaurantId, targetType: "restaurant") {
@@ -66,6 +87,8 @@ const ReviewsSection = ({ restaurantId }) => {
   const [sortBy, setSortBy] = useState("newest");
   const [filterRating, setFilterRating] = useState("all");
   const [showWriteReview, setShowWriteReview] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "", staffId: "" });
+  const [submitError, setSubmitError] = useState("");
 
   const minRating = filterRating === "all" ? undefined : Number(filterRating);
 
@@ -84,6 +107,19 @@ const ReviewsSection = ({ restaurantId }) => {
   const { data: statsData } = useQuery(GET_RESTAURANT_REVIEW_STATS, {
     variables: { restaurantId },
     skip: !restaurantId,
+  });
+
+  const { data: staffData } = useQuery(GET_RESTAURANT_STAFF, {
+    variables: { restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "cache-first",
+  });
+  const [createReview, { loading: creatingReview }] = useMutation(CREATE_REVIEW, {
+    refetchQueries: [
+      { query: GET_RESTAURANT_REVIEWS, variables: { restaurantId, minRating: undefined, maxRating: 5, limit: 100, skip: 0 } },
+      { query: GET_RESTAURANT_REVIEW_STATS, variables: { restaurantId } },
+    ],
+    awaitRefetchQueries: true,
   });
 
   const reviews = useMemo(() => {
@@ -160,6 +196,43 @@ const ReviewsSection = ({ restaurantId }) => {
         ⭐
       </span>
     ));
+  };
+
+  const staffOptions = useMemo(
+    () => (staffData?.staffList || []).filter((staff) => staff?.userType === "STAFF" && !staff?.isDeleted),
+    [staffData],
+  );
+
+  const handleSubmitReview = async () => {
+    if (!newReview.content.trim()) {
+      setSubmitError("Vui lòng nhập nội dung đánh giá.");
+      return;
+    }
+
+    const selectedStaff = staffOptions.find((staff) => staff.id === newReview.staffId);
+
+    try {
+      setSubmitError("");
+      await createReview({
+        variables: {
+          input: {
+            targetType: "restaurant",
+            targetId: restaurantId,
+            restaurantId,
+            customerName: "Khách hàng",
+            rating: Number(newReview.rating),
+            title: newReview.title.trim(),
+            content: newReview.content.trim(),
+            staffId: selectedStaff?.id || null,
+            staffName: selectedStaff?.fullName || "",
+          },
+        },
+      });
+      setShowWriteReview(false);
+      setNewReview({ rating: 5, title: "", content: "", staffId: "" });
+    } catch (error) {
+      setSubmitError(error.message || "Không thể gửi đánh giá.");
+    }
   };
 
   if (loading) {
@@ -324,12 +397,33 @@ const ReviewsSection = ({ restaurantId }) => {
               </button>
             </div>
             <div className="modal-content">
-              <p>Tính năng viết đánh giá sẽ được cập nhật sớm!</p>
-              <button
-                className="btn btn--primary"
-                onClick={() => setShowWriteReview(false)}
-              >
-                Đóng
+              <div className="form-group">
+                <label>Điểm đánh giá</label>
+                <select value={newReview.rating} onChange={(e) => setNewReview((prev) => ({ ...prev, rating: Number(e.target.value) }))}>
+                  {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} sao</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Tiêu đề</label>
+                <input value={newReview.title} onChange={(e) => setNewReview((prev) => ({ ...prev, title: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Nội dung đánh giá</label>
+                <textarea rows={4} value={newReview.content} onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Nhân viên phục vụ (không bắt buộc)</label>
+                <select value={newReview.staffId} onChange={(e) => setNewReview((prev) => ({ ...prev, staffId: e.target.value }))}>
+                  <option value="">Chọn nhân viên nếu muốn đánh giá trực tiếp</option>
+                  {staffOptions.map((staff) => (
+                    <option key={staff.id} value={staff.id}>{staff.fullName}</option>
+                  ))}
+                </select>
+                <small>Đánh giá này chỉ là dữ liệu tham khảo cho quản lý khi đánh giá hiệu suất.</small>
+              </div>
+              {submitError ? <p style={{ color: "#dc2626" }}>{submitError}</p> : null}
+              <button className="btn btn--primary" disabled={creatingReview} onClick={handleSubmitReview}>
+                {creatingReview ? "Đang gửi..." : "Gửi đánh giá"}
               </button>
             </div>
           </div>
