@@ -23,6 +23,10 @@ const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
     $cursor: ID
   ) {
     menuItemsConnection(limit: $limit, cursor: $cursor, filter: $filter) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
       edges {
         node {
           id
@@ -110,6 +114,8 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     const edges = menuData?.menuItemsConnection?.edges || [];
     return edges.map((edge) => edge.node).filter(Boolean);
   }, [menuData]);
+
+  const menuPageInfo = menuData?.menuItemsConnection?.pageInfo;
 
   const itemsWithPromotion = useMemo(
     () =>
@@ -238,6 +244,11 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           </div>
         ) : (
           <>
+            {menuPageInfo?.hasNextPage && (
+              <div style={{ textAlign: "center", color: "#6b7280", marginBottom: "0.75rem" }}>
+                Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.
+              </div>
+            )}
             <div
               className={`grid-container menu-grid ${viewMode === "list" ? "list-view" : ""}`}
               style={{ padding: 0 }}
