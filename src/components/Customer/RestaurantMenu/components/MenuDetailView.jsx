@@ -5,7 +5,7 @@ import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotio
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuDetailView.scss";
 
-const GET_CATEGORIES = gql`
+export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
     categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
       id
@@ -16,7 +16,7 @@ const GET_CATEGORIES = gql`
   }
 `;
 
-const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
+export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
   query GetMenuItemsForCustomerMenu(
     $filter: MenuItemFilter!
     $limit: Int = 100
