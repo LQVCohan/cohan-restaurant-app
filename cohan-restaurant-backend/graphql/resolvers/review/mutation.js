@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { Review, ReviewReaction } from "../../../models/index.js";
+import { Review, ReviewReaction, User } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { logReviewEvent } from "../../../utils/logReview.js";
 
@@ -17,11 +17,29 @@ function isOwner(ctx, doc) {
   return uid && String(doc?.createdBy || doc?.userId) === String(uid);
 }
 function forbidden(message = "Forbidden") { return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } }); }
+function invalidStaffError() {
+  return new GraphQLError("Nhân viên không hợp lệ cho nhà hàng này.", { extensions: { code: "BAD_USER_INPUT" } });
+}
+
+async function normalizeReviewStaff({ staffId, restaurantId }) {
+  if (!staffId) return { staffId: null, staffName: "" };
+  const staff = await User.findOne({
+    _id: staffId,
+    userType: "STAFF",
+    deletedAt: null,
+    restaurantForStaff: restaurantId,
+  })
+    .select("_id fullName")
+    .lean();
+  if (!staff) throw invalidStaffError();
+  return { staffId: staff._id, staffName: staff.fullName || "" };
+}
 
 export default {
   createReview: async (_, { input }, ctx) => {
     if (!ctx?.user?.id) throw new GraphQLError("Login required", { extensions: { code: "UNAUTHENTICATED" } });
     const payload = { ...input, status: "pending", createdBy: ctx.user.id };
+    Object.assign(payload, await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: payload.restaurantId }));
     delete payload.updatedBy;
     const created = await Review.create(payload);
     await logReviewEvent({ review: created, verb: "review.create", ctx, meta: { rating: created.rating } });
@@ -31,6 +49,9 @@ export default {
     const before = await Review.findById(id);
     if (!before) throw new Error("Review not found");
     const patch = { ...input, updatedBy: ctx?.user?.id || null };
+    if (Object.hasOwn(input || {}, "staffId")) {
+      Object.assign(patch, await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: before.restaurantId }));
+    }
     delete patch.restaurantId; delete patch.createdBy; delete patch.updatedBy; delete patch.reactions; delete patch.helpfulCount;
     if (isOwner(ctx, before)) delete patch.status;
     else { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, before.restaurantId); }
