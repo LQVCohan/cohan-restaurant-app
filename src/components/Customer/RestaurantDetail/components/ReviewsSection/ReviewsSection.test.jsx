@@ -51,4 +51,28 @@ describe("ReviewsSection staff tagging", () => {
     expect(createReviewMock.mock.calls[0][0].variables.input.staffName).toBe("");
     expect(screen.getByText("Đánh giá đã được gửi và đang chờ duyệt.")).toBeInTheDocument();
   });
+
+  it("shows error and not success when mutation resolves with GraphQL errors", async () => {
+    render(<ReviewsSection restaurantId="r1" />);
+    fireEvent.click(screen.getByRole("button", { name: /viết đánh giá/i }));
+    fireEvent.change(screen.getByLabelText("Nội dung đánh giá"), { target: { value: "Ổn" } });
+    createReviewMock.mockResolvedValueOnce({ errors: [{ message: "Lỗi GraphQL" }], data: null });
+
+    fireEvent.click(screen.getByRole("button", { name: /gửi đánh giá/i }));
+
+    expect(await screen.findByText("Lỗi GraphQL")).toBeInTheDocument();
+    expect(screen.queryByText("Đánh giá đã được gửi và đang chờ duyệt.")).not.toBeInTheDocument();
+  });
+
+  it("shows error when mutation succeeds without createReview id", async () => {
+    render(<ReviewsSection restaurantId="r1" />);
+    fireEvent.click(screen.getByRole("button", { name: /viết đánh giá/i }));
+    fireEvent.change(screen.getByLabelText("Nội dung đánh giá"), { target: { value: "Ổn" } });
+    createReviewMock.mockResolvedValueOnce({ data: { createReview: null } });
+
+    fireEvent.click(screen.getByRole("button", { name: /gửi đánh giá/i }));
+
+    expect(await screen.findByText("Không thể gửi đánh giá.")).toBeInTheDocument();
+    expect(screen.queryByText("Đánh giá đã được gửi và đang chờ duyệt.")).not.toBeInTheDocument();
+  });
 });

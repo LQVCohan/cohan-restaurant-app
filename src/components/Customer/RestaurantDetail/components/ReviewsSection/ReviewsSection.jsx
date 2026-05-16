@@ -215,7 +215,7 @@ const ReviewsSection = ({ restaurantId }) => {
 
     try {
       setSubmitError("");
-      await createReview({
+      const result = await createReview({
         variables: {
           input: {
             targetType: "restaurant",
@@ -230,6 +230,17 @@ const ReviewsSection = ({ restaurantId }) => {
           },
         },
       });
+
+      if (result?.errors?.length) {
+        setSubmitError(result.errors[0]?.message || "Không thể gửi đánh giá.");
+        return;
+      }
+
+      if (!result?.data?.createReview?.id) {
+        setSubmitError("Không thể gửi đánh giá.");
+        return;
+      }
+
       setNewReview({ rating: 5, title: "", content: "", staffId: "" });
       setSubmitSuccess("Đánh giá đã được gửi và đang chờ duyệt.");
     } catch (error) {

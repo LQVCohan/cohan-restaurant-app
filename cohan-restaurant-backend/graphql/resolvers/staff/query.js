@@ -339,8 +339,7 @@ export default {
   // PUBLIC RESTAURANT STAFF OPTIONS
   // =========================
 
-  publicRestaurantStaff: async (_, { restaurantId }, ctx) => {
-    requireAuth(ctx);
+  publicRestaurantStaff: async (_, { restaurantId }) => {
     const rid = toObjectId(restaurantId);
     if (!rid && !restaurantId) return [];
 
