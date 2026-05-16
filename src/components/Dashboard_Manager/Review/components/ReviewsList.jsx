@@ -140,6 +140,13 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
             <div className="reviews-review-card__content">
               <h3 className="reviews-review-card__title">{review.title}</h3>
               <p className="reviews-review-card__text">{review.content}</p>
+              <p className="reviews-review-card__text">
+                <strong>Nhân viên được đánh giá:</strong>{" "}
+                {review.staff_name || "Không gắn nhân viên"}
+              </p>
+              <p className="reviews-review-card__text" style={{ fontStyle: "italic" }}>
+                Review đã duyệt sẽ được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+              </p>
 
               {images.length > 0 && (
                 <div className="reviews-review-card__images">
