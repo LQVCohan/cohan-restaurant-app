@@ -275,10 +275,10 @@ const ReviewManagement = () => {
     }
 
     if (filters.staffAssigned === "with-staff") {
-      list = list.filter((r) => Boolean(r.staff_name));
+      list = list.filter((r) => Boolean(r.staff_id));
     }
     if (filters.staffAssigned === "without-staff") {
-      list = list.filter((r) => !r.staff_name);
+      list = list.filter((r) => !r.staff_id);
     }
 
     if (searchTerm.trim()) {
