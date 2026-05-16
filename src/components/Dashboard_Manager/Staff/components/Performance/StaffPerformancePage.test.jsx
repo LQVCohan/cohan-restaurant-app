@@ -20,4 +20,33 @@ describe("formatCustomerRating", () => {
     expect(result.hasRating).toBe(false);
     expect(result.label).toBe("Chưa có đánh giá khách hàng");
   });
+
+  it("falls back to staffRate * 20 when customerRatingScore is null", () => {
+    const result = formatCustomerRating({
+      staffRate: 4.2,
+      staffRateCount: 5,
+      customerRatingScore: null,
+    });
+
+    expect(result.hint).toBe("Quy đổi tham khảo: 84/100");
+  });
+
+  it("falls back to staffRate * 20 when customerRatingScore is undefined", () => {
+    const result = formatCustomerRating({
+      staffRate: 4.2,
+      staffRateCount: 5,
+    });
+
+    expect(result.hint).toBe("Quy đổi tham khảo: 84/100");
+  });
+
+  it("keeps explicit customerRatingScore = 0", () => {
+    const result = formatCustomerRating({
+      staffRate: 4.2,
+      staffRateCount: 5,
+      customerRatingScore: 0,
+    });
+
+    expect(result.hint).toBe("Quy đổi tham khảo: 0/100");
+  });
 });

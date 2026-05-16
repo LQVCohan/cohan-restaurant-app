@@ -115,6 +115,7 @@ const getAvatarColor = (name = "?") => {
 
 const scoreText = (value) => `${Math.round(Number(value || 0))}/100`;
 const safeFactorNumber = (value, fallback = 0) => {
+  if (value === null || value === undefined || value === "") return fallback;
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
