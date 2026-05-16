@@ -1,9 +1,61 @@
-// src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx
 import React, { useState, useMemo, useEffect } from "react";
+import { gql, useQuery } from "@apollo/client";
 import MenuItemCard from "./MenuItemCard";
-import { MOCK_MENU_ITEMS, MOCK_CATEGORIES } from "../menuData"; // Import mock data
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
+import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuDetailView.scss";
+
+export const GET_CATEGORIES = gql`
+  query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
+    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+      id
+      name
+      order
+      isActive
+    }
+  }
+`;
+
+export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
+  query GetMenuItemsForCustomerMenu(
+    $filter: MenuItemFilter!
+    $limit: Int = 100
+    $cursor: ID
+  ) {
+    menuItemsConnection(limit: $limit, cursor: $cursor, filter: $filter) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      edges {
+        node {
+          id
+          restaurantId
+          menuId
+          categoryId
+          name
+          description
+          basePrice
+          byWeight
+          thumbImage
+          status
+          avgPrepTimeMin
+          inventoryStatus
+          stockWarnings
+          servingVariants {
+            key
+            mode
+            yieldQty
+            yieldUnit
+            name
+            price
+          }
+        }
+      }
+    }
+  }
+`;
+
 const ITEMS_PER_PAGE = 8;
 
 const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
@@ -16,33 +68,77 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
 
-  const filteredItems = useMemo(() => {
-    return MOCK_MENU_ITEMS.filter((item) => {
-      const matchRes = item.restaurantId === restaurantId;
-      const matchSlot = item.timeSlot ? item.timeSlot === timeSlot : true;
-      const matchCat =
-        activeCat === "all" ? true : item.categoryId === activeCat;
-      const matchSearch = item.name
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      return matchRes && matchSlot && matchCat && matchSearch;
-    }).map((item) => {
-      const activePromotion = getPromotionForMenuItem(item);
-
-      return {
-        ...item,
-        promotion: activePromotion,
-        promotionLabel: getPromotionLabel(activePromotion),
-      };
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError } =
+    useQuery(GET_CATEGORIES, {
+      variables: { restaurantId, timeSlot },
+      skip: !restaurantId,
+      fetchPolicy: "network-only",
     });
-  }, [
-    activeCat,
-    getPromotionForMenuItem,
-    getPromotionLabel,
-    restaurantId,
-    search,
-    timeSlot,
-  ]);
+
+  const categories = useMemo(
+    () =>
+      [...(categoriesData?.categories || [])]
+        .filter((cat) => cat?.id && cat.isActive !== false)
+        .sort((a, b) => (a.order || 0) - (b.order || 0)),
+    [categoriesData?.categories],
+  );
+
+  useEffect(() => {
+    setActiveCat("all");
+    setCurrentPage(1);
+  }, [timeSlot]);
+
+  const menuItemFilter = useMemo(
+    () => ({
+      restaurantId,
+      timeSlot,
+      ...(activeCat !== "all" ? { categoryId: activeCat } : {}),
+    }),
+    [activeCat, restaurantId, timeSlot],
+  );
+
+  const { data: menuData, loading: menuLoading, error: menuError } = useQuery(
+    GET_MENU_ITEMS_FOR_CUSTOMER_MENU,
+    {
+      variables: {
+        filter: menuItemFilter,
+        limit: 100,
+        cursor: null,
+      },
+      skip: !restaurantId,
+      fetchPolicy: "network-only",
+    },
+  );
+
+  const rawMenuItems = useMemo(() => {
+    const edges = menuData?.menuItemsConnection?.edges || [];
+    return edges.map((edge) => edge.node).filter(Boolean);
+  }, [menuData]);
+
+  const menuPageInfo = menuData?.menuItemsConnection?.pageInfo;
+
+  const itemsWithPromotion = useMemo(
+    () =>
+      rawMenuItems.map((item) => {
+        const activePromotion = getPromotionForMenuItem(item);
+        return {
+          ...item,
+          promotion: activePromotion,
+          promotionLabel: getPromotionLabel(activePromotion),
+        };
+      }),
+    [getPromotionForMenuItem, getPromotionLabel, rawMenuItems],
+  );
+
+  const filteredItems = useMemo(() => {
+    const lowerSearch = search.trim().toLowerCase();
+    return itemsWithPromotion.filter((item) => {
+      if (!shouldShowMenuItemToCustomer(item)) return false;
+      if (activeCat !== "all" && item.categoryId !== activeCat) return false;
+      if (!lowerSearch) return true;
+      return String(item.name || "").toLowerCase().includes(lowerSearch);
+    });
+  }, [activeCat, itemsWithPromotion, search]);
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const currentItems = filteredItems.slice(
@@ -52,7 +148,9 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [timeSlot, activeCat, search]);
+  }, [timeSlot, activeCat, search, rawMenuItems.length]);
+
+  const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
 
   return (
     <div className="fade-in">
@@ -108,13 +206,19 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
       <div className="grid-container">
         <div className="category-filter">
           <div className="pills">
+            {categoriesError && (
+              <div style={{ color: "#d97706", fontSize: "0.9rem", padding: "0.25rem 0.5rem" }}>
+                Không tải được danh mục. Đang hiển thị theo "Tất cả".
+              </div>
+            )}
             <button
               className={activeCat === "all" ? "active" : ""}
               onClick={() => setActiveCat("all")}
+
             >
               Tất cả
             </button>
-            {MOCK_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat.id}
                 className={activeCat === cat.id ? "active" : ""}
@@ -126,34 +230,36 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           </div>
         </div>
 
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
+            Đang tải thực đơn...
+          </div>
+        ) : menuError ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "#d32f2f" }}>
+            Không thể tải thực đơn. Vui lòng thử lại.
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
             Không tìm thấy món nào.
           </div>
         ) : (
           <>
+            {menuPageInfo?.hasNextPage && (
+              <div style={{ textAlign: "center", color: "#6b7280", marginBottom: "0.75rem" }}>
+                Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.
+              </div>
+            )}
             <div
-              className={`grid-container menu-grid ${
-                viewMode === "list" ? "list-view" : ""
-              }`}
+              className={`grid-container menu-grid ${viewMode === "list" ? "list-view" : ""}`}
               style={{ padding: 0 }}
             >
               {currentItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  onClick={(clickedItem) => {
-                    onOpenFoodDetail?.(clickedItem?.id);
-                  }}
-                />
+                <MenuItemCard key={item.id} item={item} onClick={(clickedItem) => onOpenFoodDetail?.(clickedItem?.id)} />
               ))}
             </div>
             {totalPages > 1 && (
               <div className="pagination">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
                   &lt;
                 </button>
                 {Array.from({ length: totalPages }).map((_, idx) => (
@@ -165,10 +271,7 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                     {idx + 1}
                   </button>
                 ))}
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
                   &gt;
                 </button>
               </div>
