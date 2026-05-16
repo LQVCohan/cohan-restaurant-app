@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import {
   AttendanceCorrectionRequest,
   Order,
+  Review,
   Shift,
   Staff,
   StaffPerformanceReview,
@@ -245,7 +246,7 @@ async function calculateSnapshotForEmployee({
     throw new Error("Không tìm thấy nhân viên.");
   }
 
-  const [timesheets, shiftsCount, correctionsCount, review, benchmark] =
+  const [timesheets, shiftsCount, correctionsCount, review, benchmark, customerRatingAgg] =
     await Promise.all([
       Timesheet.find({
         employeeId,
@@ -280,7 +281,31 @@ async function calculateSnapshotForEmployee({
         periodStart,
         periodEnd,
       }),
+      Review.aggregate([
+        {
+          $match: {
+            staffId: employeeId,
+            restaurantId,
+            createdAt: { $gte: periodStart, $lte: periodEnd },
+            rating: { $gte: 1, $lte: 5 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+            totalReviews: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
+
+  const staffRateRaw = Number(customerRatingAgg?.[0]?.averageRating || 0);
+  const staffRate = Number.isFinite(staffRateRaw)
+    ? Math.round(staffRateRaw * 100) / 100
+    : 0;
+  const staffRateCount = Number(customerRatingAgg?.[0]?.totalReviews || 0);
+  const customerRatingScore = clampScore(staffRate * 20, 0);
 
   const orderCount = benchmark.byEmployeeId.get(String(employeeId)) || 0;
 
@@ -402,6 +427,7 @@ async function calculateSnapshotForEmployee({
           correctionsCount,
           staffRate,
           staffRateCount,
+          customerRatingScore,
           hasManagerReview: Boolean(review),
         },
         generatedBy: actorId,

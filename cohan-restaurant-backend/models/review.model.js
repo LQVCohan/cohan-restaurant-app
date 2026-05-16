@@ -56,6 +56,15 @@ const ReviewSchema = BaseSchemaModel({
     type: String,
     default: "",
   },
+  staffId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+  staffName: {
+    type: String,
+    default: "",
+  },
 
   // Review content
   rating: { type: Number, min: 1, max: 5, required: true },
