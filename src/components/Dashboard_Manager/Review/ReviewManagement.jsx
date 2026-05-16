@@ -354,19 +354,27 @@ const ReviewManagement = () => {
   );
 
   const handleExport = () => {
-    const csv = filteredReviews
-      .map((r) =>
-        [
-          r.id,
-          r.customer_name,
-          `"${r.staff_name || "Không gắn nhân viên"}"`,
-          r.rating,
-          `"${r.title}"`,
-          `"${r.content}"`,
-          new Date(r.created_at).toLocaleString("vi-VN"),
-        ].join(","),
-      )
-      .join("\n");
+    const header = [
+      "ID",
+      "Khách hàng",
+      "Nhân viên được đánh giá",
+      "Đánh giá",
+      "Tiêu đề",
+      "Nội dung",
+      "Thời gian",
+    ].join(",");
+    const rows = filteredReviews.map((r) =>
+      [
+        r.id,
+        r.customer_name,
+        `"${r.staff_name || "Không gắn nhân viên"}"`,
+        r.rating,
+        `"${r.title}"`,
+        `"${r.content}"`,
+        new Date(r.created_at).toLocaleString("vi-VN"),
+      ].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
