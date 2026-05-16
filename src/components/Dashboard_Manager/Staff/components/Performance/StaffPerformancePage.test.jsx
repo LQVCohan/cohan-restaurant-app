@@ -10,7 +10,9 @@ import {
   buildPerformanceReportData,
   escapeHtml,
   buildPerformanceReportHtml,
+  openPerformanceReportPrintWindow,
 } from "./StaffPerformancePage";
+import { vi } from "vitest";
 
 describe("formatCustomerRating", () => {
   it("shows X/5 and review count when rating exists", () => {
@@ -209,5 +211,17 @@ describe("buildPerformanceReportHtml", () => {
     });
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
+  });
+});
+
+describe("openPerformanceReportPrintWindow", () => {
+  it("opens a usable print window and severs opener", () => {
+    const fakeWindow = { opener: "present" };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(fakeWindow);
+    const result = openPerformanceReportPrintWindow();
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "width=900,height=700");
+    expect(result).toBe(fakeWindow);
+    expect(fakeWindow.opener).toBeNull();
+    openSpy.mockRestore();
   });
 });

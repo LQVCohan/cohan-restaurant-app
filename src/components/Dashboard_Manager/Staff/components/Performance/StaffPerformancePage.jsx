@@ -314,6 +314,13 @@ export const buildPerformanceReportHtml = (reportData) => `
       <h3>Lịch sử điều chỉnh điểm</h3>
       ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
       </body></html>`;
+export const openPerformanceReportPrintWindow = () => {
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (printWindow) {
+    printWindow.opener = null;
+  }
+  return printWindow;
+};
 
 const buildSnapshotByEmployee = (snapshots = []) =>
   snapshots.reduce((acc, snapshot) => {
@@ -520,7 +527,7 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
       restaurantName: snapshot?.restaurantName || employee?.restaurantName || "Nhà hàng hiện tại",
     });
     const html = buildPerformanceReportHtml(reportData);
-    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+    const printWindow = openPerformanceReportPrintWindow();
     if (!printWindow) return;
     printWindow.document.write(html);
     printWindow.document.close();
