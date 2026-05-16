@@ -166,6 +166,19 @@ function showNotification(msg) {
   window.alert(msg);
 }
 
+
+function getModerationSuccessMessage(review, status) {
+  if (status === "published") {
+    return review?.staff_id
+      ? "Đã duyệt đánh giá. Đánh giá này sẽ được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo."
+      : "Đã duyệt đánh giá";
+  }
+
+  return status === "reported"
+    ? "Đã chuyển về trạng thái bị báo cáo"
+    : "Đã chuyển đánh giá sang trạng thái ẩn";
+}
+
 const ReviewManagement = () => {
   const [currentTab, setCurrentTab] = useState("all");
   const [filters, setFilters] = useState({
@@ -342,13 +355,7 @@ const ReviewManagement = () => {
     async (review, status) => {
       await setReviewStatus({ variables: { id: review.id, status } });
       await refetch();
-      showNotification(
-        status === "published"
-          ? "Đã duyệt đánh giá"
-          : status === "reported"
-            ? "Đã chuyển về trạng thái bị báo cáo"
-            : "Đã chuyển đánh giá sang trạng thái ẩn",
-      );
+      showNotification(getModerationSuccessMessage(review, status));
     },
     [refetch, setReviewStatus],
   );
