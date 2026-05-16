@@ -241,6 +241,13 @@ export const formatCustomerRating = (factors = {}) => {
     hint: `Quy đổi tham khảo: ${normalizedScore}/100`,
   };
 };
+export const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 export const buildPerformanceReportData = ({
   snapshot = {},
   employee = null,
@@ -251,7 +258,7 @@ export const buildPerformanceReportData = ({
   const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
   const adjustmentDelta = finalPerformanceScore - formulaScore;
   const customerRating = formatCustomerRating(snapshot?.factors);
-  const employeeName = snapshot?.employeeName || employee?.name || "Nhân viên";
+  const employeeName = snapshot?.employeeName || employee?.fullName || employee?.name || "Nhân viên";
   const periodLabel = `${formatDate(snapshot?.periodStart)} - ${formatDate(snapshot?.periodEnd)}`;
   const performanceLevel = getScoreLevel(snapshot?.finalPerformanceScore || 0)?.label || "--";
   const formulaBreakdown = PERFORMANCE_FORMULA_ITEMS.map((item) => {
@@ -282,6 +289,31 @@ export const buildPerformanceReportData = ({
     adjustmentHistory,
   };
 };
+export const buildPerformanceReportHtml = (reportData) => `
+      <html><head><title>Báo cáo hiệu suất - ${escapeHtml(reportData.employeeName)}</title></head><body>
+      <h2>Báo cáo hiệu suất nhân viên</h2>
+      <p><strong>Tên nhân viên:</strong> ${escapeHtml(reportData.employeeName)}</p>
+      <p><strong>Kỳ đánh giá:</strong> ${escapeHtml(reportData.periodLabel)}</p>
+      <p><strong>Nhà hàng:</strong> ${escapeHtml(reportData.restaurantName)}</p>
+      <p><strong>Điểm cuối:</strong> ${scoreText(reportData.finalPerformanceScore)}</p>
+      <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
+      <h3>Công thức tính điểm</h3>
+      <p>productivity 25% · punctuality 25% · quality 20% · managerReview 20% · compliance 10%</p>
+      <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
+      <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
+      ${reportData.formulaBreakdown.map((item) => `<tr><td>${escapeHtml(item.label)}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
+      </table>
+      <h3>Tổng hợp điểm</h3>
+      <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
+      <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
+      <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <h3>Đánh giá khách hàng</h3>
+      <p>${escapeHtml(reportData.customerRating.label)}</p>
+      ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
+      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo, không tự động thay đổi điểm hiệu suất.</em></p>
+      <h3>Lịch sử điều chỉnh điểm</h3>
+      ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
+      </body></html>`;
 
 const buildSnapshotByEmployee = (snapshots = []) =>
   snapshots.reduce((acc, snapshot) => {
@@ -487,31 +519,7 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
       adjustmentHistory,
       restaurantName: snapshot?.restaurantName || employee?.restaurantName || "Nhà hàng hiện tại",
     });
-    const html = `
-      <html><head><title>Báo cáo hiệu suất - ${reportData.employeeName}</title></head><body>
-      <h2>Báo cáo hiệu suất nhân viên</h2>
-      <p><strong>Tên nhân viên:</strong> ${reportData.employeeName}</p>
-      <p><strong>Kỳ đánh giá:</strong> ${reportData.periodLabel}</p>
-      <p><strong>Nhà hàng:</strong> ${reportData.restaurantName}</p>
-      <p><strong>Điểm cuối:</strong> ${scoreText(reportData.finalPerformanceScore)}</p>
-      <p><strong>Xếp loại:</strong> ${reportData.performanceLevel}</p>
-      <h3>Công thức tính điểm</h3>
-      <p>productivity 25% · punctuality 25% · quality 20% · managerReview 20% · compliance 10%</p>
-      <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
-      <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
-      ${reportData.formulaBreakdown.map((item) => `<tr><td>${item.label}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
-      </table>
-      <h3>Tổng hợp điểm</h3>
-      <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
-      <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
-      <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
-      <h3>Đánh giá khách hàng</h3>
-      <p>${reportData.customerRating.label}</p>
-      ${reportData.customerRating.hasRating ? `<p>${reportData.customerRating.hint}</p>` : ""}
-      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo, không tự động thay đổi điểm hiệu suất.</em></p>
-      <h3>Lịch sử điều chỉnh điểm</h3>
-      ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${item.reason} · ${formatDate(item.createdAt)}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
-      </body></html>`;
+    const html = buildPerformanceReportHtml(reportData);
     const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
     if (!printWindow) return;
     printWindow.document.write(html);

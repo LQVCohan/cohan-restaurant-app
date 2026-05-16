@@ -8,6 +8,8 @@ import {
   resolveComponentWeight,
   shouldDisplayAdjustment,
   buildPerformanceReportData,
+  escapeHtml,
+  buildPerformanceReportHtml,
 } from "./StaffPerformancePage";
 
 describe("formatCustomerRating", () => {
@@ -147,6 +149,14 @@ describe("adjustment display helpers", () => {
 });
 
 describe("buildPerformanceReportData", () => {
+  it("uses employee.fullName as fallback when snapshot employeeName is missing", () => {
+    const report = buildPerformanceReportData({
+      snapshot: {},
+      employee: { fullName: "Nguyen Van A", name: "A" },
+    });
+    expect(report.employeeName).toBe("Nguyen Van A");
+  });
+
   it("includes customer rating when available", () => {
     const report = buildPerformanceReportData({
       snapshot: {
@@ -170,5 +180,34 @@ describe("buildPerformanceReportData", () => {
   it("returns empty state when adjustment history missing", () => {
     const report = buildPerformanceReportData({ snapshot: {}, adjustmentHistory: [] });
     expect(report.adjustmentHistory).toEqual([]);
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes html special characters", () => {
+    expect(escapeHtml('<img src=x onerror=alert(1)>')).toBe(
+      "&lt;img src=x onerror=alert(1)&gt;",
+    );
+  });
+});
+
+describe("buildPerformanceReportHtml", () => {
+  it("does not include raw html from adjustment reason", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [{ scoreDelta: -2, reason: "<script>alert(1)</script>", createdAt: "2026-05-12T10:00:00.000Z" }],
+    });
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).not.toContain("<script>alert(1)</script>");
   });
 });
