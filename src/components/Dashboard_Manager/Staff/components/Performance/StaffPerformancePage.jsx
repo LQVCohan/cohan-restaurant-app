@@ -129,6 +129,12 @@ const formatContributionScore = (value) => {
   return `${Math.round(n * 100) / 100}`;
 };
 
+export const resolveComponentWeight = (component, defaultWeight) => {
+  const componentWeight = Number(component?.weight);
+  if (Number.isFinite(componentWeight)) return componentWeight;
+  return Number(defaultWeight) || 0;
+};
+
 export const getWeightedContribution = (score, weight) => {
   const safeScore = Number(score);
   const safeWeight = Number(weight);
@@ -392,12 +398,17 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
             <strong>Breakdown điểm theo trọng số</strong>
             <ul>
               {PERFORMANCE_FORMULA_ITEMS.map((item) => {
-                const componentScore = snapshot?.[item.key]?.score;
-                const contribution = getWeightedContribution(componentScore, item.weight);
+                const component = snapshot?.[item.key];
+                const componentScore = component?.score;
+                const componentWeight = resolveComponentWeight(component, item.weight);
+                const contribution = getWeightedContribution(
+                  componentScore,
+                  componentWeight,
+                );
                 return (
                   <li key={item.key}>
                     <span>
-                      {item.label}: {scoreText(componentScore)} × {formatPercent(item.weight)}
+                      {item.label}: {scoreText(componentScore)} × {formatPercent(componentWeight)}
                     </span>
                     <strong>{formatContributionScore(contribution)} điểm</strong>
                   </li>
