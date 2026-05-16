@@ -76,6 +76,15 @@ const COMPONENT_META = {
   },
 };
 
+
+
+const PERFORMANCE_FORMULA_ITEMS = [
+  { key: "productivity", label: "Năng suất", weight: 25 },
+  { key: "punctuality", label: "Đúng giờ", weight: 25 },
+  { key: "quality", label: "Chất lượng", weight: 20 },
+  { key: "managerReview", label: "Đánh giá quản lý", weight: 20 },
+  { key: "compliance", label: "Tuân thủ", weight: 10 },
+];
 const toDateInput = (date) => {
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "";
@@ -114,6 +123,19 @@ const getAvatarColor = (name = "?") => {
 };
 
 const scoreText = (value) => `${Math.round(Number(value || 0))}/100`;
+const formatPercent = (value) => `${Math.round(Number(value || 0))}%`;
+const formatContributionScore = (value) => {
+  const n = Number(value || 0);
+  return `${Math.round(n * 100) / 100}`;
+};
+
+export const getWeightedContribution = (score, weight) => {
+  const safeScore = Number(score);
+  const safeWeight = Number(weight);
+  if (!Number.isFinite(safeScore) || !Number.isFinite(safeWeight)) return 0;
+  return (safeScore * safeWeight) / 100;
+};
+
 const safeFactorNumber = (value, fallback = 0) => {
   if (value === null || value === undefined || value === "") return fallback;
   const n = Number(value);
@@ -125,7 +147,7 @@ export const formatCustomerRating = (factors = {}) => {
     return {
       hasRating: false,
       label: "Chưa có đánh giá khách hàng",
-      hint: "Đây là dữ liệu tham khảo, không tự động ảnh hưởng điểm manager.",
+      hint: "Đánh giá khách hàng không tự động thay đổi điểm hiệu suất. Quản lý có thể dùng thông tin này để cân nhắc khi nhập đánh giá.",
     };
   }
 
@@ -364,6 +386,28 @@ const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
                 </div>
               );
             })}
+          </div>
+
+          <div className="score-formula-card">
+            <strong>Breakdown điểm theo trọng số</strong>
+            <ul>
+              {PERFORMANCE_FORMULA_ITEMS.map((item) => {
+                const componentScore = snapshot?.[item.key]?.score;
+                const contribution = getWeightedContribution(componentScore, item.weight);
+                return (
+                  <li key={item.key}>
+                    <span>
+                      {item.label}: {scoreText(componentScore)} × {formatPercent(item.weight)}
+                    </span>
+                    <strong>{formatContributionScore(contribution)} điểm</strong>
+                  </li>
+                );
+              })}
+              <li className="total">
+                <span>Tổng</span>
+                <strong>{scoreText(snapshot.finalPerformanceScore)}</strong>
+              </li>
+            </ul>
           </div>
 
           <div className="factor-box">
@@ -611,6 +655,28 @@ const StaffPerformancePage = ({
           </button>
         </div>
       </section>
+
+      <details className="performance-formula-panel">
+        <summary>Cách tính điểm hiệu suất</summary>
+        <p>Điểm hiệu suất = tổng điểm thành phần theo trọng số:</p>
+        <ul>
+          {PERFORMANCE_FORMULA_ITEMS.map((item) => (
+            <li key={item.key}>
+              {item.label}: {formatPercent(item.weight)}
+            </li>
+          ))}
+        </ul>
+        <pre>{`finalScore =
+productivity * 25%
++ punctuality * 25%
++ quality * 20%
++ managerReview * 20%
++ compliance * 10%`}</pre>
+        <p className="formula-note">
+          Đánh giá khách hàng không tự động thay đổi điểm hiệu suất. Quản lý có
+          thể dùng thông tin này để cân nhắc khi nhập đánh giá.
+        </p>
+      </details>
 
       <section className="performance-controls">
         <div className="control-group">
