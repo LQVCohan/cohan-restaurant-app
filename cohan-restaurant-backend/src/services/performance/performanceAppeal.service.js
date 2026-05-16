@@ -3,6 +3,7 @@ import { PerformanceIncident, PerformanceIncidentAppeal, StaffPerformanceScoreAd
 import { PERFORMANCE_READ_ROLES, PERFORMANCE_REVIEW_ROLES, PERFORMANCE_SELF_ROLES } from "./performanceIncident.service.js";
 import { resolveUserRoles, userCanAccessRestaurant } from "../scheduling/schedulingPermission.service.js";
 import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
+import { resolvePerformanceLevel } from "../staffPerformance/staffPerformance.service.js";
 
 const OPEN_STATUSES = ["submitted", "under_review", "needs_more_info"];
 const REVIEW_STATUSES = ["under_review", "needs_more_info", "accepted", "rejected"];
@@ -103,6 +104,7 @@ export async function reverseScoreForAcceptedAppeal({ appealId, actor, reversalD
     metadata: { incidentEventType: incident.eventType, incidentScoreDelta: Number(incident.scoreDelta || 0), originalAdjustmentScoreDelta: Number(originalAdjustment.scoreDelta || 0), appealReason: appeal.reason || "", decisionReason: appeal.decisionReason || "" },
   });
   snapshot.finalPerformanceScore = newScore;
+  snapshot.performanceLevel = resolvePerformanceLevel(newScore);
   await snapshot.save();
 
   appeal.scoreReversalStatus = "reversed"; appeal.scoreReversalId = reversal._id; appeal.scoreReversedBy = actor._id || actor.id; appeal.scoreReversedAt = now; appeal.scoreReversalNote = cleanNote; appeal.scoreReversalDelta = delta;

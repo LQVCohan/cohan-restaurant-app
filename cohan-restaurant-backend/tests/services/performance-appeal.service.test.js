@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   snapshotFindOne: vi.fn(),
   resolveUserRoles: vi.fn(() => ["STAFF"]),
   userCanAccessRestaurant: vi.fn(() => true),
+  resolvePerformanceLevel: vi.fn((score) => (score >= 90 ? "excellent" : score >= 80 ? "good" : score >= 65 ? "average" : score >= 50 ? "needs_attention" : "poor")),
 }));
 
 vi.mock("../../models/index.js", () => ({
@@ -25,6 +26,9 @@ vi.mock("../../models/index.js", () => ({
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({
   resolveUserRoles: mocks.resolveUserRoles,
   userCanAccessRestaurant: mocks.userCanAccessRestaurant,
+}));
+vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({
+  resolvePerformanceLevel: mocks.resolvePerformanceLevel,
 }));
 
 import { createPerformanceIncidentAppeal, reviewPerformanceIncidentAppeal, reverseScoreForAcceptedAppeal } from "../../src/services/performance/performanceAppeal.service.js";
@@ -65,14 +69,36 @@ describe("performanceAppeal.service", () => {
     mocks.appealFindById.mockResolvedValue({ _id: "a1", incidentId: "i1", restaurantId: "r1", status: "accepted", save: appealSave });
     mocks.incidentFindById.mockResolvedValue({ _id: "i1", restaurantId: "r1", employeeId: "e1", occurredAt: "2026-04-10T00:00:00.000Z", scoreImpactStatus: "applied", scoreDelta: -5, save: incidentSave, scoreAdjustmentId: "adj1" });
     mocks.adjustmentFindById.mockResolvedValue({ _id: "adj1", scoreDelta: -5 });
-    mocks.snapshotFindOne.mockResolvedValue({ finalPerformanceScore: 90, save: snapshotSave });
+    const snapshot = { finalPerformanceScore: 90, performanceLevel: "excellent", productivity: { score: 77 }, save: snapshotSave };
+    mocks.snapshotFindOne.mockResolvedValue(snapshot);
     mocks.reversalCreate.mockResolvedValue({ _id: "rev1" });
 
     await expect(reverseScoreForAcceptedAppeal({ appealId: "a1", actor: { id: "m1" }, reversalDelta: 6, note: "n" })).rejects.toThrow("PERFORMANCE_REVERSAL_DELTA_EXCEEDS_ORIGINAL");
     await expect(reverseScoreForAcceptedAppeal({ appealId: "a1", actor: { id: "m1" }, reversalDelta: 2, note: "" })).rejects.toThrow("REVERSAL_NOTE_REQUIRED");
     await expect(reverseScoreForAcceptedAppeal({ appealId: "a1", actor: { id: "m1" }, reversalDelta: 2, note: "reverse" })).resolves.toBeTruthy();
     expect(snapshotSave).toHaveBeenCalled();
+    expect(snapshot.finalPerformanceScore).toBe(92);
+    expect(snapshot.performanceLevel).toBe("excellent");
+    expect(snapshot.productivity.score).toBe(77);
     expect(appealSave).toHaveBeenCalled();
     expect(incidentSave).toHaveBeenCalled();
+  });
+
+  it("reversal clamps score to 100 and syncs performanceLevel", async () => {
+    mocks.resolveUserRoles.mockReturnValue(["MANAGER"]);
+    const appealSave = vi.fn();
+    const incidentSave = vi.fn();
+    const snapshotSave = vi.fn();
+    const snapshot = { finalPerformanceScore: 99, performanceLevel: "good", save: snapshotSave };
+    mocks.appealFindById.mockResolvedValue({ _id: "a1", incidentId: "i1", restaurantId: "r1", status: "accepted", save: appealSave });
+    mocks.incidentFindById.mockResolvedValue({ _id: "i1", restaurantId: "r1", employeeId: "e1", occurredAt: "2026-04-10T00:00:00.000Z", scoreImpactStatus: "applied", scoreDelta: -5, save: incidentSave, scoreAdjustmentId: "adj1" });
+    mocks.adjustmentFindById.mockResolvedValue({ _id: "adj1", scoreDelta: -5 });
+    mocks.snapshotFindOne.mockResolvedValue(snapshot);
+    mocks.reversalCreate.mockResolvedValue({ _id: "rev1" });
+
+    await reverseScoreForAcceptedAppeal({ appealId: "a1", actor: { id: "m1" }, reversalDelta: 5, note: "reverse all" });
+    expect(snapshot.finalPerformanceScore).toBe(100);
+    expect(snapshot.performanceLevel).toBe("excellent");
+    expect(snapshotSave).toHaveBeenCalled();
   });
 });
