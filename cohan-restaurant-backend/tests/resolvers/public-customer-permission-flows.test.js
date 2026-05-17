@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   Menu: { find: vi.fn(), findOne: vi.fn() },
-  MenuItem: { find: vi.fn() },
+  MenuItem: { find: vi.fn(), aggregate: vi.fn() },
   Category: { find: vi.fn() },
   Promotion: { find: vi.fn() },
   Coupon: { find: vi.fn(), findOne: vi.fn() },
@@ -169,6 +169,36 @@ describe("public/customer permission flows", () => {
       expect.anything(),
       "coupon.read",
     );
+  });
+
+  it("lets public customers query customerMenuCategories with active + sorted + orderable categories only", async () => {
+    const { CategoryQuery } = await import("../../graphql/resolvers/category/query.js");
+
+    modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
+    modelMocks.Category.find.mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          { _id: "valid-c2", id: "valid-c2", name: "B", order: 1, isActive: true },
+          { _id: "valid-c1", id: "valid-c1", name: "A", order: 1, isActive: true },
+        ]),
+      }),
+    });
+    modelMocks.MenuItem.aggregate.mockResolvedValue([
+      { _id: "valid-c1", count: 3 },
+      { _id: "valid-c2", count: 1 },
+      { _id: "valid-c3", count: 99 },
+    ]);
+
+    const rows = await CategoryQuery.customerMenuCategories(
+      null,
+      { restaurantId: "valid-r1", timeSlot: "lunch" },
+      {},
+    );
+
+    expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(rows.map((x) => x.id || String(x._id))).toEqual(["valid-c2", "valid-c1"]);
+    expect(rows.every((x) => x.isActive !== false)).toBe(true);
+    expect(rows.every((x) => x.menuItemCount > 0)).toBe(true);
   });
 
 });

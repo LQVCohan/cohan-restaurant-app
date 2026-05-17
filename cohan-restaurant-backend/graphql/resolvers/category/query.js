@@ -93,7 +93,56 @@ async function refreshRestaurantCategoryIndexes(timeSlot) {
   }
 }
 
+
+const buildPublicMenuItemMatch = (restaurantObjectId, menuId) => ({
+  restaurantId: restaurantObjectId,
+  menuId,
+  status: "available",
+});
+
 export const CategoryQuery = {
+  customerMenuCategories: async (_, { restaurantId, timeSlot }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    const restaurantObjectId =
+      typeof restaurantId === "string"
+        ? new mongoose.Types.ObjectId(restaurantId)
+        : restaurantId;
+
+    const menu = await Menu.findOne({ restaurantId, timeSlot, isActive: true }).lean();
+    if (!menu) return [];
+
+    const categories = await Category.find({
+      restaurantId: restaurantObjectId,
+      isActive: { $ne: false },
+    })
+      .sort({ order: 1, name: 1 })
+      .lean({ virtuals: true });
+
+    if (!categories.length) return [];
+
+    const counts = await MenuItem.aggregate([
+      {
+        $match: buildPublicMenuItemMatch(restaurantObjectId, menu._id),
+      },
+      {
+        $group: { _id: "$categoryId", count: { $sum: 1 } },
+      },
+    ]);
+
+    const countMap = counts.reduce((acc, cur) => {
+      acc[String(cur._id)] = cur.count;
+      return acc;
+    }, {});
+
+    return categories
+      .filter((cat) => (countMap[String(cat._id)] || 0) > 0)
+      .map((cat) => ({
+        ...cat,
+        timeSlot: timeSlot || null,
+        menuItemCount: countMap[String(cat._id)] || 0,
+      }));
+  },
+
   categories: async (_, { restaurantId, timeSlot }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     await requireRestaurantAccess(ctx, restaurantId);

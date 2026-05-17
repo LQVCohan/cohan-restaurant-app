@@ -41,6 +41,7 @@ input UpdateCategoryInput {
 
 extend type Query {
   categories(restaurantId: ID!, timeSlot: TimeSlot!): [Category!]!
+  customerMenuCategories(restaurantId: ID!, timeSlot: TimeSlot!): [Category!]!
 
   topCategoriesByMenuItemCount(
     restaurantId: ID!

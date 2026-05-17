@@ -7,7 +7,7 @@ import "../styles/MenuDetailView.scss";
 
 export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
-    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+    customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
       id
       name
       order
@@ -77,10 +77,10 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
 
   const categories = useMemo(
     () =>
-      [...(categoriesData?.categories || [])]
+      [...(categoriesData?.customerMenuCategories || [])]
         .filter((cat) => cat?.id && cat.isActive !== false)
         .sort((a, b) => (a.order || 0) - (b.order || 0)),
-    [categoriesData?.categories],
+    [categoriesData?.customerMenuCategories],
   );
 
   useEffect(() => {
