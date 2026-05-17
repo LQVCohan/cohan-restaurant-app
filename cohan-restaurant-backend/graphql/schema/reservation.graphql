@@ -96,6 +96,11 @@ input RejectReservationChangeInput {
   reason: String
 }
 
+input CheckInReservationInput {
+  reservationId: ID!
+  note: String
+}
+
 extend type Query {
   reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
@@ -113,6 +118,7 @@ extend type Mutation {
   requestReservationChange(input: RequestReservationChangeInput!): Reservation!
   approveReservationChange(input: ApproveReservationChangeInput!): Reservation!
   rejectReservationChange(input: RejectReservationChangeInput!): Reservation!
+  checkInReservation(input: CheckInReservationInput!): Reservation!
 }
 
 
