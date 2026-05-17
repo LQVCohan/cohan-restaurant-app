@@ -101,7 +101,7 @@ const OrderSummaryModal = ({
   onClose,
   items = [],
   restaurantId,
-  onSuccess,
+  onSuccess, // Called after orders are persisted; parent should clear cart but not necessarily close.
 }) => {
   const { user, isAuthenticated } = useContext(AuthContext);
   const walletBalance = Number(user?.wallet?.balance || 0);
@@ -526,6 +526,10 @@ const OrderSummaryModal = ({
 
   const handleConfirmPayment = async () => {
     setCheckoutError("");
+    if (!orderData.length) {
+      setCheckoutError("Giỏ hàng đang trống.");
+      return;
+    }
     if (!isShippingValid) {
       setShippingTouched(true);
       return;
@@ -604,7 +608,7 @@ const OrderSummaryModal = ({
   const renderContent = () => {
     switch (currentView) {
       case "success":
-        return <SuccessScreen onNewOrder={() => onClose()} />;
+        return <SuccessScreen onContinueBrowsing={onClose} />;
       case "qr":
         return (
           <QRPaymentScreen
@@ -630,6 +634,7 @@ const OrderSummaryModal = ({
             restaurantCount={restaurantCount}
             calcGroupTotals={calcGroupTotals}
             walletBalance={walletBalance}
+            isAuthenticated={isAuthenticated}
             couponCode={couponCode}
             onCouponCodeChange={setCouponCode}
             discountBreakdown={discountBreakdown}
@@ -649,7 +654,7 @@ const OrderSummaryModal = ({
         return (
           <Modal.Footer>
             <button className="btn btn--primary" onClick={() => onClose()}>
-              Đặt hàng mới
+              Tiếp tục xem món
             </button>
           </Modal.Footer>
         );
@@ -1399,6 +1404,7 @@ const PaymentMethods = ({
   onSelect,
   walletBalance,
   amount,
+  isAuthenticated,
 }) => (
   <div className="section">
     <h3 className="section-title">
@@ -1438,8 +1444,13 @@ const PaymentMethods = ({
       </div>
 
       <div
-        className={`payment-method-card ${selectedMethod === "wallet" ? "selected" : ""}`}
-        onClick={() => onSelect("wallet")}
+        className={`payment-method-card ${selectedMethod === "wallet" ? "selected" : ""} ${!isAuthenticated ? "disabled" : ""}`}
+        onClick={() => {
+          if (!isAuthenticated) return;
+          onSelect("wallet");
+        }}
+        role="button"
+        aria-disabled={!isAuthenticated}
       >
         <div className="payment-icon">
           <Wallet size={28} />
@@ -1448,7 +1459,7 @@ const PaymentMethods = ({
           <h4 className="payment-name">Ví nội bộ</h4>
           <p className="payment-desc">
             Số dư {formatCurrency(walletBalance)} ·{" "}
-            {walletBalance >= amount ? "Đủ thanh toán" : "Không đủ số dư"}
+            {!isAuthenticated ? "Đăng nhập để dùng ví nội bộ" : walletBalance >= amount ? "Đủ thanh toán" : "Không đủ số dư"}
           </p>
         </div>
         <div className="check-circle">
@@ -1459,19 +1470,18 @@ const PaymentMethods = ({
   </div>
 );
 
-const SuccessScreen = ({ onNewOrder }) => (
+const SuccessScreen = ({ onContinueBrowsing }) => (
   <div className="section text-center">
     <div className="success-screen">
       <div className="success-icon-large">
         <CheckCircle size={64} />
       </div>
-      <h3 className="success-title">Đặt hàng thành công!</h3>
+      <h3 className="success-title">Đặt đơn thành công</h3>
       <p className="success-message">
-        Cảm ơn bạn đã đặt hàng tại FoodHub. Nhà hàng đang chuẩn bị món và sẽ
-        giao đến bạn trong thời gian sớm nhất.
+        Cảm ơn bạn. Đơn hàng của bạn đã được tạo.
       </p>
-      <button className="btn btn--primary mt-4" onClick={onNewOrder}>
-        Hoàn tất & Đóng
+      <button className="btn btn--primary mt-4" onClick={onContinueBrowsing}>
+        Tiếp tục xem món
       </button>
     </div>
   </div>
