@@ -105,6 +105,7 @@ extend type Query {
   reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
+  activeReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }
 
 extend type Mutation {

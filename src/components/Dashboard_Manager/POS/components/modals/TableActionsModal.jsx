@@ -107,7 +107,7 @@ function TableActionsModalCore({
 
   const { changeOrderStatusByCode, updateOrderCustomerByCode } =
     useOrderManagement();
-  const { findConfirmedByTable } = useReservation();
+  const { findConfirmedByTable, checkInReservation, approveReservationChange, rejectReservationChange } = useReservation();
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
   const [
     loadTableCustomer,
@@ -180,6 +180,7 @@ function TableActionsModalCore({
     useLazyQuery(GET_CUSTOMERS_FOR_TABLE_INFO, { fetchPolicy: "network-only" });
 
   const [busy, setBusy] = useState({});
+  const [activeReservation, setActiveReservation] = useState(null);
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
 
   const setCustIfChanged = (patch) => {
@@ -396,6 +397,7 @@ function TableActionsModalCore({
             tableId: table.id,
           });
           const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
+          setActiveReservation(r || null);
           if (r && !cancelled) {
             const { date, time } = isoToDateTimeParts(r.timeTo);
             const nextCust = {
@@ -475,6 +477,17 @@ function TableActionsModalCore({
     table?.code,
     table?.status,
   ]);
+
+  const mapReservationError = (message = "") => {
+    if (message.includes("TABLE_SESSION_CONFLICT")) return "Bàn đang có phiên phục vụ khác, không thể check-in.";
+    if (message.includes("TABLE_TIME_CONFLICT")) return "Khung giờ mới bị trùng với đặt bàn khác.";
+    if (message.includes("TABLE_SLOT_HELD")) return "Khung giờ này đang được giữ bởi khách khác.";
+    if (message.includes("TABLE_UNAVAILABLE")) return "Bàn chưa sẵn sàng để nhận khách.";
+    if (message.includes("CAPACITY_EXCEEDED")) return "Số khách vượt sức chứa bàn.";
+    if (message.includes("RESERVATION_CHANGE_NOT_PENDING")) return "Yêu cầu thay đổi không còn ở trạng thái chờ duyệt.";
+    if (message.includes("RESERVATION_NOT_CONFIRMED")) return "Chỉ reservation đã xác nhận mới được check-in.";
+    return message || "Thao tác reservation thất bại.";
+  };
 
   const matchedTableCustomer = useMemo(
     () => tableCustomerData?.tableCustomer || null,
@@ -1434,6 +1447,66 @@ function TableActionsModalCore({
               >
                 Lưu thông tin khách
               </button>
+            </div>
+          </div>
+
+          <div className={s.group}>
+            <div className={s.label}>Đặt bàn / Reservation</div>
+            {activeReservation ? (
+              <div className={s.reservationInfo}>
+                <div>Mã: <b>{activeReservation.orderCode || activeReservation.id}</b></div>
+                <div>Khách: {activeReservation.customerName || "-"}</div>
+                <div>SĐT: {activeReservation.customerPhone || "-"}</div>
+                <div>Số khách: {activeReservation.partySize || "-"}</div>
+                <div>Giờ đặt: {activeReservation.timeTo ? new Date(activeReservation.timeTo).toLocaleString("vi-VN") : "-"}</div>
+                <div>Trạng thái: {activeReservation.status || "-"}</div>
+                <div>Yêu cầu đổi: {activeReservation.changeRequestType || "-"} / {activeReservation.changeRequestStatus || "-"}</div>
+                <div>Giờ yêu cầu mới: {activeReservation.requestedTimeTo ? new Date(activeReservation.requestedTimeTo).toLocaleString("vi-VN") : "-"}</div>
+                <div>Bàn yêu cầu mới: {activeReservation.requestedTableId || "-"}</div>
+              </div>
+            ) : (
+              <div className={s.hint}>Chưa có đặt bàn đang hoạt động cho bàn này.</div>
+            )}
+            <div className={s.actionsEnd}>
+              {activeReservation?.status === "confirmed" && (
+                <button className={`${s.btn} ${s.primary}`} disabled={busy.checkInReservation} onClick={async () => {
+                  setBusyKey("checkInReservation", true);
+                  const res = await checkInReservation(activeReservation.id);
+                  setBusyKey("checkInReservation", false);
+                  if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
+                  setActiveReservation(res.data || activeReservation);
+                  const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                  if (latest?.success) setActiveReservation(latest.data || null);
+                  showNotification?.("Check-in reservation thành công.", "success");
+                  onUpdated?.();
+                }}>Check-in khách đặt bàn</button>
+              )}
+              {(activeReservation?.status === "pending_change" || activeReservation?.changeRequestStatus === "requested") && (
+                <>
+                  <button className={`${s.btn} ${s.ghost}`} disabled={busy.approveReservationChange} onClick={async () => {
+                    setBusyKey("approveReservationChange", true);
+                    const res = await approveReservationChange(activeReservation.id);
+                    setBusyKey("approveReservationChange", false);
+                    if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
+                    setActiveReservation(res.data || activeReservation);
+                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                    if (latest?.success) setActiveReservation(latest.data || null);
+                    onUpdated?.();
+                    showNotification?.("Đã duyệt thay đổi đặt bàn.", "success");
+                  }}>Duyệt thay đổi</button>
+                  <button className={`${s.btn} ${s.danger}`} disabled={busy.rejectReservationChange} onClick={async () => {
+                    setBusyKey("rejectReservationChange", true);
+                    const res = await rejectReservationChange(activeReservation.id, "Nhà hàng chưa thể đáp ứng thay đổi này.");
+                    setBusyKey("rejectReservationChange", false);
+                    if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
+                    setActiveReservation(res.data || activeReservation);
+                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                    if (latest?.success) setActiveReservation(latest.data || null);
+                    onUpdated?.();
+                    showNotification?.("Đã từ chối thay đổi đặt bàn.", "success");
+                  }}>Từ chối thay đổi</button>
+                </>
+              )}
             </div>
           </div>
         </div>

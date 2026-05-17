@@ -27,6 +27,36 @@ function isReservationOwner(ctx, reservation) {
 }
 
 export const ReservationQuery = {
+  async activeReservationByTable(_, { restaurantId, tableId }, ctx) {
+    if (!restaurantId || !tableId)
+      throw badInput("restaurantId and tableId are required");
+    const rId = toObjectId(restaurantId);
+    const tId = toObjectId(tableId);
+    await requireRestaurantPermission(ctx, rId, PERMISSIONS.RESERVATION_READ);
+    const activeStatuses = ["pending_payment", "confirmed", "seated", "pending_change"];
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const pendingChange = await Reservation.findOne({
+      restaurantId: rId,
+      tableId: tId,
+      status: "pending_change",
+      timeTo: { $gte: twoHoursAgo },
+    }).sort({ timeTo: 1, _id: 1 }).lean({ virtuals: true });
+    if (pendingChange) return pendingChange;
+    let doc = await Reservation.findOne({
+      restaurantId: rId,
+      tableId: tId,
+      status: { $in: activeStatuses },
+      timeTo: { $gte: twoHoursAgo },
+    }).sort({ timeTo: 1, _id: 1 }).lean({ virtuals: true });
+    if (!doc) {
+      doc = await Reservation.findOne({
+        restaurantId: rId,
+        tableId: tId,
+        status: { $in: activeStatuses },
+      }).sort({ timeTo: -1, _id: -1 }).lean({ virtuals: true });
+    }
+    return doc || null;
+  },
   async reservation(_, { id, orderCode }, ctx) {
     const authorize = async (doc) => {
       if (!doc) return null;
@@ -68,35 +98,6 @@ export const ReservationQuery = {
   },
 
   async confirmedReservationByTable(_, { restaurantId, tableId }, ctx) {
-    if (!restaurantId || !tableId)
-      throw badInput("restaurantId and tableId are required");
-
-    const rId = toObjectId(restaurantId);
-    const tId = toObjectId(tableId);
-    await requireRestaurantPermission(ctx, rId, PERMISSIONS.RESERVATION_READ);
-    const activeStatuses = ["pending_payment", "confirmed", "seated", "pending_change"];
-
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-
-    let doc = await Reservation.findOne({
-      restaurantId: rId,
-      tableId: tId,
-      status: { $in: activeStatuses },
-      timeTo: { $gte: twoHoursAgo },
-    })
-      .sort({ timeTo: 1, _id: 1 })
-      .lean({ virtuals: true });
-
-    if (!doc) {
-      doc = await Reservation.findOne({
-        restaurantId: rId,
-        tableId: tId,
-        status: { $in: activeStatuses },
-      })
-        .sort({ timeTo: -1, _id: -1 })
-        .lean({ virtuals: true });
-    }
-
-    return doc || null;
+    return ReservationQuery.activeReservationByTable(_, { restaurantId, tableId }, ctx);
   },
 };
