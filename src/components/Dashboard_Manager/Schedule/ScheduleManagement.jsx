@@ -1209,25 +1209,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     schedulingPolicy?.firstWeekGracePolicy?.enabled,
   );
   const isSunday = currentDate.getDay() === 0;
-  const managerNextWeekWindow = useMemo(() => {
-    const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
-    return (
-      windows.find((item) => {
-        const start = new Date(item.periodStart);
-        const end = new Date(item.periodEnd);
-        return (
-          start.getTime() === nextWeekStart.getTime() &&
-          end.getTime() === nextWeekEnd.getTime()
-        );
-      }) || null
-    );
-  }, [
-    nextWeekStart,
-    nextWeekEnd,
-    managerAvailabilityWindowsData?.availabilityWindows,
-  ]);
-  const shouldRemindNextWeekRegistration =
-    !isSunday && !managerNextWeekWindow?.id;
 
   const handleStartSchedulingOperations = async () => {
     if (!effectiveRestaurantId) return;
@@ -1383,6 +1364,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId,
   });
+  const managerNextWeekWindow = useMemo(() => {
+    const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
+    return (
+      windows.find((item) => {
+        const start = new Date(item.periodStart);
+        const end = new Date(item.periodEnd);
+        return (
+          start.getTime() === nextWeekStart.getTime() &&
+          end.getTime() === nextWeekEnd.getTime()
+        );
+      }) || null
+    );
+  }, [
+    nextWeekStart,
+    nextWeekEnd,
+    managerAvailabilityWindowsData?.availabilityWindows,
+  ]);
+  const shouldRemindNextWeekRegistration =
+    !isSunday && !managerNextWeekWindow?.id;
+
   const managerCurrentWindow = useMemo(() => {
     const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
     return (
