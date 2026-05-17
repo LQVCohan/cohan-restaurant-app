@@ -882,7 +882,7 @@ const PromotionManagement = () => {
       </section>
       {activeSection === "coupons" && couponAnalyticsError && (
         <p className="text-xs text-danger mt-2">
-          Chưa tải được thống kê Coupon, đang hiển thị dữ liệu danh sách.
+          Chưa tải được thống kê Coupon. Vui lòng thử lại, dữ liệu danh sách vẫn hiển thị bình thường.
         </p>
       )}
       {activeSection === "coupons" && couponAnalyticsLoading && (
