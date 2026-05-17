@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BellRing, CalendarClock, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import useSocketReservation, { RESERVATION_EVENT_TYPES } from "@/hooks/useSocketReservation";
 import { useNotification } from "@/hooks/useNotification";
 import styles from "./POSLayout.module.scss";
 
 const MAX_ACTIVITY_ITEMS = 5;
+const RESERVED_TABLE_BADGE_STYLE_ID = "pos-reservation-reserved-table-badge-style";
 
 function getReservation(evt) {
   return evt?.reservation || evt?.reservations?.[0] || null;
@@ -144,10 +145,49 @@ const toneColorMap = {
   info: "#1d4ed8",
 };
 
+function ensureReservedTableBadgeStyle() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(RESERVED_TABLE_BADGE_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = RESERVED_TABLE_BADGE_STYLE_ID;
+  style.textContent = `
+    [class*="tableItem"][data-status="reserved"] {
+      padding-bottom: 2.35rem !important;
+    }
+    [class*="tableItem"][data-status="reserved"]::after {
+      content: "Có đặt bàn";
+      position: absolute;
+      left: 0.65rem;
+      bottom: 0.58rem;
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      max-width: calc(100% - 1.3rem);
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid #fbbf24;
+      background: rgba(255, 251, 235, 0.94);
+      color: #92400e;
+      font-size: 0.66rem;
+      font-weight: 950;
+      letter-spacing: 0.01em;
+      box-shadow: 0 6px 14px rgba(217, 119, 6, 0.14);
+      pointer-events: none;
+      z-index: 1;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export default function PosReservationRealtimeNotice({ restaurantId }) {
   const { showNotification } = useNotification();
   const [latestEvent, setLatestEvent] = useState(null);
   const [activities, setActivities] = useState([]);
+
+  useEffect(() => {
+    ensureReservedTableBadgeStyle();
+  }, []);
 
   const notice = useMemo(() => {
     return latestEvent ? buildNotice(latestEvent) : null;
