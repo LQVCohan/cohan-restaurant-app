@@ -985,7 +985,6 @@ const FoodDetail = () => {
           cart={cart}
           onUpdateQuantity={updateCartItemQuantity}
           totalPrice={getTotalPrice()}
-          onCheckoutSuccess={clearCart}
           onClearCart={clearCustomerCart}
           onRemoveRestaurantItems={removeRestaurantScopedItems}
           onRemoveItem={removeCartLineItem}

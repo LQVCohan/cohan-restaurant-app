@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import "../../../../styles/Homepage/Cart.scss";
-import OrderSummaryModal from "../../BookingDishesModal/OrderSummaryModal";
+import { useLocation, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 
@@ -97,22 +97,16 @@ const Cart = ({
   cart,
   onUpdateQuantity,
   totalPrice,
-  onCheckoutSuccess,
   onClearCart,
   onRemoveRestaurantItems,
   onRemoveItem,
-  autoOpenCheckout = false,
   isBusy = false,
   busyItemIds,
   busyRestaurantIds,
   isClearing = false,
 }) => {
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  useEffect(() => {
-    if (isOpen && autoOpenCheckout) {
-      setIsOrderModalOpen(true);
-    }
-  }, [isOpen, autoOpenCheckout]);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const formatVND = useCallback(
     (v) => (v || 0).toLocaleString("vi-VN") + "đ",
@@ -179,7 +173,7 @@ const Cart = ({
             <button
               className="cart-header__clear"
               onClick={() => onClearCart?.()}
-              disabled={clearingBusy || globalBusy}
+              disabled={clearingBusy || globalBusy || !cart?.length}
             >
               Xóa tất cả
             </button>
@@ -225,10 +219,11 @@ const Cart = ({
             <button
               className="cart-checkout-btn"
               onClick={() => {
-                if (clearingBusy || globalBusy) return;
-                setIsOrderModalOpen(true);
+                if (clearingBusy || globalBusy || !cart?.length) return;
+                const from = `${location.pathname}${location.search || ""}` || "cart";
+                navigate("/checkout", { state: { from } });
               }}
-              disabled={clearingBusy || globalBusy}
+              disabled={clearingBusy || globalBusy || !cart?.length}
             >
               Đặt đơn ngay
             </button>
@@ -236,12 +231,6 @@ const Cart = ({
         )}
       </div>
 
-      <OrderSummaryModal
-        isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
-        items={cart}
-        onSuccess={onCheckoutSuccess}
-      />
     </>
   );
 };
