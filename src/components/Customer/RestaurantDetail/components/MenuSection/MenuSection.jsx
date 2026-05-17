@@ -354,7 +354,19 @@ const MenuSection = ({ restaurantId }) => {
                 const displayPrice = currentVariant?.price ?? item.basePrice;
 
                 return (
-                  <div key={item.id} className="dish-card-horizontal" onClick={() => openFoodDetail(item)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openFoodDetail(item); } }}>
+                  <div
+                    key={item.id}
+                    className="dish-card-horizontal"
+                    onClick={() => openFoodDetail(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openFoodDetail(item);
+                      }
+                    }}
+                  >
                     <div className="dish-img-wrapper">
                       <img src={img} alt={item.name} loading="lazy" />
                     </div>
@@ -379,7 +391,11 @@ const MenuSection = ({ restaurantId }) => {
 
                       <div className="info-bottom">
                         {/* KHU VỰC CHỌN CÁCH CHẾ BIẾN / BIẾN THỂ */}
-                        <div className="variant-control">
+                        <div
+                          className="variant-control"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
                           {variants.length > 1 ? (
                             <div className="custom-select-wrapper">
                               <select

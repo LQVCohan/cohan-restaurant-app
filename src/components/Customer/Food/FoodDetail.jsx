@@ -580,7 +580,9 @@ const FoodDetail = () => {
   const handleBuyNow = async () => {
     const addedItem = await addCurrentSelectionToBackendCart();
     if (!addedItem) return;
-    navigate("/checkout", { state: { from: "/food/" + foodId } });
+
+    const returnPath = `${location.pathname}${location.search || ""}`;
+    navigate("/checkout", { state: { from: returnPath } });
   };
 
   const getPrimaryBackendCartId = () =>
