@@ -1209,9 +1209,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     schedulingPolicy?.firstWeekGracePolicy?.enabled,
   );
   const isSunday = currentDate.getDay() === 0;
-  const managerNextWeekWindow = null;
-  const shouldRemindNextWeekRegistration =
-    !isSunday && !managerNextWeekWindow?.id;
 
   const handleStartSchedulingOperations = async () => {
     if (!effectiveRestaurantId) return;
@@ -1367,6 +1364,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId,
   });
+  const managerNextWeekWindow = useMemo(() => {
+    const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
+    return (
+      windows.find((item) => {
+        const start = new Date(item.periodStart);
+        const end = new Date(item.periodEnd);
+        return (
+          start.getTime() === nextWeekStart.getTime() &&
+          end.getTime() === nextWeekEnd.getTime()
+        );
+      }) || null
+    );
+  }, [
+    nextWeekStart,
+    nextWeekEnd,
+    managerAvailabilityWindowsData?.availabilityWindows,
+  ]);
+  const shouldRemindNextWeekRegistration =
+    !isSunday && !managerNextWeekWindow?.id;
+
   const managerCurrentWindow = useMemo(() => {
     const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
     return (
@@ -1963,14 +1980,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const dangers = dedupedIssues.filter(
       (issue) => String(issue.level || "").toLowerCase() === "danger",
     );
-    const pendingAcknowledgements = 0;
+    const acknowledgementSummary =
+      ackSummaryData?.scheduleAcknowledgementSummary || null;
+    const pendingAcknowledgements = Number(
+      acknowledgementSummary?.pendingCount || 0,
+    );
     return {
       warnings,
       dangers,
       pendingAcknowledgements,
       topIssues: [...dangers, ...warnings].slice(0, 8),
     };
-  }, [scheduleInsights?.issues]);
+  }, [
+    scheduleInsights?.issues,
+    ackSummaryData?.scheduleAcknowledgementSummary,
+  ]);
   const groupPublishWarnings = (issues = []) => {
     const requiredRoleIssues = [];
     const missingStaffIssues = [];
@@ -2695,7 +2719,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         );
       }
 
-      if (scheduleLifecycleStatus !== "draft") {
+      if (!["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
         throw new Error(
           "Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.",
         );
