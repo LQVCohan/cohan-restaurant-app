@@ -18,7 +18,8 @@ const GET_CUSTOMER_RESTAURANTS = gql`
       name
       cuisineType
       avgRating
-      reviewCount
+      orderCount
+      reservationCount
       coverImage
       avatar
       address {
@@ -39,7 +40,8 @@ const GET_CUSTOMER_RESTAURANT_BY_ID = gql`
       name
       cuisineType
       avgRating
-      reviewCount
+      orderCount
+      reservationCount
       coverImage
       avatar
       address {
@@ -82,7 +84,12 @@ const normalizeRestaurant = (restaurant) => ({
     typeof restaurant?.avgRating === "number"
       ? Number(restaurant.avgRating).toFixed(1)
       : "5.0",
-  reviews: typeof restaurant?.reviewCount === "number" ? restaurant.reviewCount : 0,
+  reviews:
+    typeof restaurant?.reservationCount === "number"
+      ? restaurant.reservationCount
+      : typeof restaurant?.orderCount === "number"
+        ? restaurant.orderCount
+        : 0,
   address: formatAddress(restaurant?.address),
 });
 
