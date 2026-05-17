@@ -6,6 +6,7 @@ import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
 import { formatCurrency } from "../../../utils/formatters";
+import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
 
 // Components Con
 import RestaurantCard from "./components/RestaurantCard";

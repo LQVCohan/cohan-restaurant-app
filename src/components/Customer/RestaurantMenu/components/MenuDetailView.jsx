@@ -153,6 +153,45 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     setCurrentPage(1);
   }, [timeSlot, activeCat, search, rawMenuItems.length]);
 
+  const handleLoadMore = async () => {
+    if (!menuPageInfo?.hasNextPage || !menuPageInfo?.endCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setLoadMoreError("");
+
+    try {
+      await fetchMore({
+        variables: {
+          filter: menuItemFilter,
+          limit: 100,
+          cursor: menuPageInfo.endCursor,
+        },
+        updateQuery: (prev, { fetchMoreResult }) => {
+          if (!fetchMoreResult?.menuItemsConnection) return prev;
+
+          const prevEdges = prev?.menuItemsConnection?.edges || [];
+          const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
+          const seen = new Set(prevEdges.map((edge) => edge?.node?.id).filter(Boolean));
+          const merged = [...prevEdges, ...nextEdges.filter((edge) => !seen.has(edge?.node?.id))];
+
+          return {
+            menuItemsConnection: {
+              ...fetchMoreResult.menuItemsConnection,
+              edges: merged,
+              __typename:
+                prev?.menuItemsConnection?.__typename ||
+                fetchMoreResult.menuItemsConnection.__typename,
+            },
+          };
+        },
+      });
+    } catch (_error) {
+      setLoadMoreError("Không thể tải thêm món. Vui lòng thử lại.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
 
   return (
@@ -292,34 +331,13 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
               </div>
             )}
             {menuPageInfo?.hasNextPage && (
-              <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <div className="menu-load-more-wrap">
                 <button
                   type="button"
-                  onClick={() =>
-                    fetchMore({
-                      variables: {
-                        filter: menuItemFilter,
-                        limit: 100,
-                        cursor: menuPageInfo?.endCursor,
-                      },
-                      updateQuery: (prev, { fetchMoreResult }) => {
-                        if (!fetchMoreResult?.menuItemsConnection) return prev;
-                        const prevEdges = prev?.menuItemsConnection?.edges || [];
-                        const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
-                        const seen = new Set(prevEdges.map((e) => e?.node?.id));
-                        const merged = [...prevEdges, ...nextEdges.filter((e) => !seen.has(e?.node?.id))];
-                        return {
-                          menuItemsConnection: {
-                            ...fetchMoreResult.menuItemsConnection,
-                            edges: merged,
-                            __typename: prev?.menuItemsConnection?.__typename,
-                          },
-                        };
-                      },
-                    })
-                  }
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
                 >
-                  Tải thêm món
+                  {isLoadingMore ? "Đang tải thêm..." : "Tải thêm món"}
                 </button>
               </div>
             )}
