@@ -195,11 +195,21 @@ const FoodDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const preloadedDish = location.state?.dish || null;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const restaurantIdFromQuery = searchParams.get("restaurantId");
+  const timeSlotFromQuery = searchParams.get("timeSlot");
+  const categoryIdFromQuery = searchParams.get("categoryId");
   const restaurantIdFromState =
-    location.state?.restaurantId || preloadedDish?.restaurantId || null;
-  const timeSlotFromState = location.state?.timeSlot || null;
+    location.state?.restaurantId ||
+    preloadedDish?.restaurantId ||
+    restaurantIdFromQuery ||
+    null;
+  const timeSlotFromState = location.state?.timeSlot || timeSlotFromQuery || null;
   const categoryIdFromState =
-    location.state?.categoryId || preloadedDish?.categoryId || null;
+    location.state?.categoryId ||
+    preloadedDish?.categoryId ||
+    categoryIdFromQuery ||
+    null;
   const { user } = useContext(AuthContext) || {};
 
   const {
