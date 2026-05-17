@@ -121,6 +121,7 @@ const MenuModal = ({
     setQuickCatSaving(false);
     setQuickCatError("");
     setShowDiscardConfirm(false);
+    setImageSyncStatus("idle");
     initialSnapshotRef.current = next;
   }, [isOpen, initialData, isCopyMode]);
 

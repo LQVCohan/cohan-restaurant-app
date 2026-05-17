@@ -358,6 +358,7 @@ const MenuItemModal = ({
   useEffect(() => {
     if (isOpen) {
       setImgError(false);
+      setImageSyncStatus("idle");
       setIsSubmitting(false);
       submitLockRef.current = false;
       savedMenuItemIdRef.current = editId || null;
