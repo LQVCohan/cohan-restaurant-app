@@ -160,6 +160,146 @@
 .menuAvailabilityNoticeActions button { border: 1px solid #cbd5e1; background: #fff; border-radius: 0.6rem; padding: 0.4rem 0.65rem; font-weight: 700; cursor: pointer; }
 .menuAvailabilityNoticeClose { border: 0; background: transparent; color: #64748b; font-size: 1.1rem; cursor: pointer; }
 
+.reservationRealtimeNotice {
+  margin: 0.75rem 1rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid #bfdbfe;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98)),
+    #fff;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.85rem;
+  align-items: center;
+  color: #1e3a8a;
+  box-shadow: 0 12px 34px rgba(30, 58, 138, 0.08);
+  animation: menuAvailabilityNoticeSlideIn 180ms ease-out;
+
+  strong {
+    display: block;
+    color: #172554;
+    font-size: 0.98rem;
+    margin: 0.12rem 0 0.2rem;
+  }
+
+  p {
+    margin: 0;
+    color: #1e40af;
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+}
+
+.reservationRealtimeNotice_success {
+  border-color: #bbf7d0;
+  background:
+    linear-gradient(135deg, rgba(236, 253, 245, 0.96), rgba(255, 255, 255, 0.98)),
+    #fff;
+  color: #14532d;
+
+  .reservationRealtimeNoticeIcon,
+  .reservationRealtimeNoticeMeta > span {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  strong,
+  p {
+    color: #14532d;
+  }
+}
+
+.reservationRealtimeNotice_warning {
+  border-color: #fde68a;
+  background:
+    linear-gradient(135deg, rgba(255, 251, 235, 0.96), rgba(255, 255, 255, 0.98)),
+    #fff;
+  color: #92400e;
+
+  .reservationRealtimeNoticeIcon,
+  .reservationRealtimeNoticeMeta > span {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  strong,
+  p {
+    color: #92400e;
+  }
+}
+
+.reservationRealtimeNotice_danger {
+  border-color: #fecaca;
+  background:
+    linear-gradient(135deg, rgba(254, 242, 242, 0.96), rgba(255, 255, 255, 0.98)),
+    #fff;
+  color: #7f1d1d;
+
+  .reservationRealtimeNoticeIcon,
+  .reservationRealtimeNoticeMeta > span {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  strong,
+  p {
+    color: #7f1d1d;
+  }
+}
+
+.reservationRealtimeNoticeIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 0.9rem;
+  background: #dbeafe;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.reservationRealtimeNoticeBody {
+  min-width: 0;
+}
+
+.reservationRealtimeNoticeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.5rem;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.7rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+}
+
+.reservationRealtimeNoticeClose {
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1e40af;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: #fff;
+    transform: translateY(-1px);
+  }
+}
+
 /* 3 cột ngang */
 .shell {
   flex: 1 1 auto;
@@ -246,12 +386,16 @@
     justify-content: center;
     width: 100%;
   }
-  .menuAvailabilityNotice {
+  .menuAvailabilityNotice,
+  .reservationRealtimeNotice {
     grid-template-columns: 1fr;
     align-items: flex-start;
   }
   .menuAvailabilityNoticeActions {
     width: 100%;
     justify-content: flex-start;
+  }
+  .reservationRealtimeNoticeClose {
+    width: 100%;
   }
 }
