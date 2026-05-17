@@ -905,16 +905,16 @@ const FoodDetail = () => {
               <span className="current-price">{formatPrice(currentUnitPrice)}</span>
             </div>
 
-            <div className="promo-box">
+            <div className="availability-box info">
               <div className="promo-title">
                 <Tag size={16} /> Ưu đãi áp dụng:
               </div>
               <ul className="promo-list">{activePromotion ? <li>{activePromotion.name} ({promotionLabel})</li> : <li>Hiện chưa có ưu đãi áp dụng cho món này.</li>}</ul>
             </div>
-            {!customerVisible && <div className="promo-box"><div className="promo-title">Món hiện không hiển thị cho khách.</div></div>}
-            {availability?.customerMessage && <div className="promo-box"><div className="promo-title">{availability.customerMessage}</div></div>}
+            {!customerVisible && <div className="availability-box info"><div className="promo-title">Món hiện không hiển thị cho khách.</div></div>}
+            {availability?.customerMessage && <div className="availability-box info"><div className="promo-title">{availability.customerMessage}</div></div>}
 
-            <div className="promo-box">
+            <div className="availability-box info">
               <div className="promo-title">
                 <Info size={16} /> Trạng thái realtime:
               </div>
@@ -1038,7 +1038,7 @@ const FoodDetail = () => {
               </div>
             </div>
 
-            <div style={{ marginTop: 12, fontWeight: 600 }}>
+            <div className="review-summary">
               Tạm tính: {formatPrice(totalPrice)}
             </div>
           </div>
@@ -1120,11 +1120,11 @@ const FoodDetail = () => {
                     {foodReviews.slice(0, 5).map((review) => (
                       <div
                         key={review.id}
-                        style={{ padding: "8px 0", borderBottom: "1px solid #eee" }}
+                        className="review-item"
                       >
-                        <b>{review.customerName || "Khách hàng"}</b> -{" "}
-                        {review.rating}/5
-                        <div>{review.content || "Không có nội dung."}</div>
+                        <div className="review-author">{review.customerName || "Khách hàng"}</div>
+                        <div className="review-rating">{review.rating}/5</div>
+                        <div className="review-content">{review.content || "Không có nội dung."}</div>
                       </div>
                     ))}
                   </div>

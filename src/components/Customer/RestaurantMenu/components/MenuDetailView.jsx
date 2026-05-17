@@ -4,6 +4,7 @@ import MenuItemCard from "./MenuItemCard";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuDetailView.scss";
+import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
 
 export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
@@ -59,6 +60,8 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 const ITEMS_PER_PAGE = 8;
 
 const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -240,15 +243,14 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           </div>
         ) : filteredItems.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-            Không tìm thấy món nào.
+            {search.trim() ? "Không tìm thấy món phù hợp trong danh sách đã tải." : "Không tìm thấy món nào."}
           </div>
         ) : (
           <>
             {menuPageInfo?.hasNextPage && (
-              <div style={{ textAlign: "center", color: "#6b7280", marginBottom: "0.75rem" }}>
-                Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.
-              </div>
+              <div className="menu-inline-note">Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.</div>
             )}
+            {loadMoreError && <div className="menu-inline-error">{loadMoreError}</div>}
             <div
               className={`grid-container menu-grid ${viewMode === "list" ? "list-view" : ""}`}
               style={{ padding: 0 }}
@@ -258,12 +260,14 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                   key={item.id}
                   item={item}
                   onClick={(clickedItem) =>
-                    onOpenFoodDetail?.(clickedItem?.id, {
-                      dish: clickedItem,
-                      restaurantId: clickedItem?.restaurantId || restaurantId,
-                      timeSlot,
-                      categoryId: clickedItem?.categoryId || null,
-                    })
+                    onOpenFoodDetail?.(
+                      clickedItem?.id,
+                      buildFoodDetailState(clickedItem, {
+                        restaurantId: clickedItem?.restaurantId || restaurantId,
+                        timeSlot,
+                        categoryId: clickedItem?.categoryId || null,
+                      }),
+                    )
                   }
                 />
               ))}

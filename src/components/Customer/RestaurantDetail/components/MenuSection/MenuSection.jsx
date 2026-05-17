@@ -10,6 +10,7 @@ import { useCart } from "../../../../../hooks/useCart";
 // Icons
 import { ShoppingCart, ChevronDown } from "lucide-react";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { buildFoodDetailPath, buildFoodDetailState } from "../../../../../utils/customerFoodNavigation";
 
 // Utils
 const formatPrice = (value) =>
@@ -247,23 +248,14 @@ const MenuSection = ({ restaurantId }) => {
     const selectedVariantKey =
       selectedVariants[item.id] || item.servingVariants?.[0]?.key || null;
 
-    const state = {
-      dish: item,
+    const state = buildFoodDetailState(item, {
       restaurantId,
       timeSlot: selectedTimeSlot,
       categoryId,
       selectedVariantKey,
-    };
+    });
 
-    const params = new URLSearchParams();
-    if (restaurantId) params.set("restaurantId", restaurantId);
-    if (selectedTimeSlot) params.set("timeSlot", selectedTimeSlot);
-    if (categoryId) params.set("categoryId", categoryId);
-
-    const queryString = params.toString();
-    const detailUrl = queryString ? `/food/${item.id}?${queryString}` : `/food/${item.id}`;
-
-    navigate(detailUrl, { state });
+    navigate(buildFoodDetailPath(item.id, state), { state });
   };
 
   const timeSlots = [

@@ -161,14 +161,7 @@ const RestaurantMenu = () => {
   }, [normalizedRestaurants, restaurantByIdData?.restaurant, restaurantParam]);
 
   const handleOpenFoodDetail = (foodId, state = {}) => {
-    const params = new URLSearchParams();
-    if (state?.restaurantId) params.set("restaurantId", state.restaurantId);
-    if (state?.timeSlot) params.set("timeSlot", state.timeSlot);
-    if (state?.categoryId) params.set("categoryId", state.categoryId);
-
-    const queryString = params.toString();
-    const detailUrl = queryString ? `/food/${foodId}?${queryString}` : `/food/${foodId}`;
-    navigate(detailUrl, { state });
+    navigate(buildFoodDetailPath(foodId, state || {}), { state });
   };
 
   const handleCheckoutSuccess = () => {

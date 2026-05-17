@@ -714,3 +714,15 @@ $green: #10b981;
     transform: scale(0.96);
   }
 }
+
+.food-state-card { display:flex; gap:.5rem; align-items:center; justify-content:center; flex-direction:column; padding:1rem; border-radius:12px; background:#fff; border:1px solid #e5e7eb; margin:1rem; text-align:center; }
+.food-state-card.blocked { border-color:#fecaca; background:#fff7f7; }
+.availability-box { border:1px solid #e5e7eb; border-radius:10px; padding:.75rem; margin:.5rem 0; }
+.availability-box.warning { border-color:#f59e0b; background:#fff7ed; }
+.availability-box.blocked { border-color:#ef4444; background:#fef2f2; }
+.availability-box.info { border-color:#93c5fd; background:#eff6ff; }
+.review-summary { margin-top:12px; font-weight:600; }
+.review-item { padding:8px 0; border-bottom:1px solid #eee; }
+.review-author { font-weight:700; }
+.review-rating { color:#f59e0b; font-weight:600; }
+.review-content { color:#374151; }
