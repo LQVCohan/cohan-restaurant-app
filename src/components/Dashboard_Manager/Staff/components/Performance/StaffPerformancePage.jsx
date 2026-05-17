@@ -188,6 +188,57 @@ export const formatDelta = (value) => {
   const absText = formatContributionScore(Math.abs(delta));
   return `${delta >= 0 ? "+" : "-"}${absText}`;
 };
+
+export const resolvePreviousPeriod = (periodStart, periodEnd) => {
+  if (!periodStart || !periodEnd) return null;
+  const start = new Date(`${periodStart}T00:00:00.000Z`);
+  const end = new Date(`${periodEnd}T23:59:59.999Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+
+  const isMonthlyView =
+    start.getUTCDate() === 1
+    && end.getUTCDate() === new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate()
+    && start.getUTCFullYear() === end.getUTCFullYear()
+    && start.getUTCMonth() === end.getUTCMonth();
+
+  if (isMonthlyView) {
+    const prevStart = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - 1, 1));
+    const prevEnd = new Date(Date.UTC(prevStart.getUTCFullYear(), prevStart.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+    return { periodStart: toDateInput(prevStart), periodEnd: toDateInput(prevEnd) };
+  }
+
+  const durationMs = end.getTime() - start.getTime() + 1;
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - durationMs + 1);
+  return { periodStart: toDateInput(prevStart), periodEnd: toDateInput(prevEnd) };
+};
+
+export const buildPreviousSnapshotMap = (previousSnapshots = [], currentPeriodStart) => {
+  const currentStartMs = new Date(`${currentPeriodStart}T00:00:00.000Z`).getTime();
+  return (previousSnapshots || []).reduce((acc, snapshot) => {
+    const employeeId = String(snapshot?.employeeId || "");
+    const periodEndMs = new Date(snapshot?.periodEnd || 0).getTime();
+    if (!employeeId || Number.isNaN(periodEndMs) || (Number.isFinite(currentStartMs) && periodEndMs >= currentStartMs)) {
+      return acc;
+    }
+
+    const existing = acc[employeeId];
+    const existingEndMs = new Date(existing?.periodEnd || 0).getTime();
+    if (!existing || periodEndMs > existingEndMs) acc[employeeId] = snapshot;
+    return acc;
+  }, {});
+};
+
+export const formatTrendDelta = (currentScore, previousScore) => {
+  const current = Number(currentScore);
+  const previous = Number(previousScore);
+  if (!Number.isFinite(previous) || !Number.isFinite(current)) return "Chưa có dữ liệu kỳ trước";
+  const delta = Math.round((current - previous) * 100) / 100;
+  if (Math.abs(delta) < 0.01) return "Không đổi";
+  const absText = formatContributionScore(Math.abs(delta));
+  return `${delta > 0 ? "+" : "-"}${absText} điểm so với kỳ trước`;
+};
+
 export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
   [
     ...(adjustments || []).map((item) => ({
@@ -489,7 +540,7 @@ const ReviewModal = ({
   );
 };
 
-const PerformanceDetailPanel = ({ snapshot, employee, onClose }) => {
+const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose }) => {
   if (!snapshot && !employee) return null;
 
   const level = getScoreLevel(snapshot?.finalPerformanceScore || 0);
@@ -717,6 +768,17 @@ const StaffPerformancePage = ({
     [snapshots],
   );
 
+  const previousPeriod = useMemo(() => resolvePreviousPeriod(periodStart, periodEnd), [periodEnd, periodStart]);
+  const { snapshots: previousSnapshots } = useStaffPerformance({
+    restaurantId: previousPeriod ? effectiveRestaurantId : undefined,
+    periodStart: previousPeriod?.periodStart,
+    periodEnd: previousPeriod?.periodEnd,
+  });
+  const previousSnapshotByEmployee = useMemo(
+    () => buildPreviousSnapshotMap(previousSnapshots, periodStart),
+    [periodStart, previousSnapshots],
+  );
+
   const rows = useMemo(() => {
     const needle = String(localSearch || "")
       .trim()
@@ -742,11 +804,14 @@ const StaffPerformancePage = ({
         const score = snapshot?.finalPerformanceScore || null;
         const level = snapshot ? getScoreLevel(score) : null;
 
+        const previousSnapshot = previousSnapshotByEmployee[String(employee.id)] || null;
         return {
           employee,
           snapshot,
+          previousSnapshot,
           score,
           level,
+          trendText: formatTrendDelta(score, previousSnapshot?.finalPerformanceScore),
         };
       })
       .filter((row) => {
@@ -755,7 +820,7 @@ const StaffPerformancePage = ({
         return row.snapshot?.performanceLevel === selectedLevel;
       })
       .sort((a, b) => Number(b.score || -1) - Number(a.score || -1));
-  }, [employees, localSearch, selectedLevel, snapshotByEmployee]);
+  }, [employees, localSearch, previousSnapshotByEmployee, selectedLevel, snapshotByEmployee]);
 
   const stats = useMemo(() => {
     const scoredRows = rows.filter((row) => row.snapshot);
@@ -856,8 +921,11 @@ const StaffPerformancePage = ({
     }
   };
 
+  const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
+
   const openDetail = (row) => {
     setSelectedSnapshot(row.snapshot);
+    setSelectedPreviousSnapshot(row.previousSnapshot);
     setSelectedEmployee(row.employee);
   };
 
@@ -1087,6 +1155,7 @@ productivity * 25%
                             <span>
                               {employee.code || "--"} · {employee.role || "--"}
                             </span>
+                            <span className="trend-text">{row.trendText}</span>
                           </div>
                         </div>
                       </td>
@@ -1165,8 +1234,10 @@ productivity * 25%
         <PerformanceDetailPanel
           snapshot={selectedSnapshot}
           employee={selectedEmployee}
+          previousSnapshot={selectedPreviousSnapshot}
           onClose={() => {
             setSelectedSnapshot(null);
+            setSelectedPreviousSnapshot(null);
             setSelectedEmployee(null);
           }}
         />

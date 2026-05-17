@@ -11,6 +11,9 @@ import {
   escapeHtml,
   buildPerformanceReportHtml,
   openPerformanceReportPrintWindow,
+  formatTrendDelta,
+  resolvePreviousPeriod,
+  buildPreviousSnapshotMap,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -223,5 +226,57 @@ describe("openPerformanceReportPrintWindow", () => {
     expect(result).toBe(fakeWindow);
     expect(fakeWindow.opener).toBeNull();
     openSpy.mockRestore();
+  });
+});
+
+
+describe("formatTrendDelta", () => {
+  it("returns +X when current score is higher", () => {
+    expect(formatTrendDelta(85, 80)).toBe("+5 điểm so với kỳ trước");
+  });
+
+  it("returns -X when current score is lower", () => {
+    expect(formatTrendDelta(75, 80)).toBe("-5 điểm so với kỳ trước");
+  });
+
+  it("returns no change when scores are equal", () => {
+    expect(formatTrendDelta(80, 80)).toBe("Không đổi");
+  });
+
+  it("returns missing data label when previous score is unavailable", () => {
+    expect(formatTrendDelta(80, undefined)).toBe("Chưa có dữ liệu kỳ trước");
+  });
+});
+
+
+describe("resolvePreviousPeriod", () => {
+  it("returns previous month for full-month range", () => {
+    expect(resolvePreviousPeriod("2026-05-01", "2026-05-31")).toEqual({
+      periodStart: "2026-04-01",
+      periodEnd: "2026-04-30",
+    });
+  });
+
+  it("returns contiguous previous range for custom dates", () => {
+    expect(resolvePreviousPeriod("2026-05-10", "2026-05-16")).toEqual({
+      periodStart: "2026-05-03",
+      periodEnd: "2026-05-09",
+    });
+  });
+});
+
+describe("buildPreviousSnapshotMap", () => {
+  it("selects nearest previous snapshot by periodEnd", () => {
+    const result = buildPreviousSnapshotMap(
+      [
+        { employeeId: "e1", periodEnd: "2026-04-30T23:59:59.999Z", finalPerformanceScore: 80 },
+        { employeeId: "e1", periodEnd: "2026-04-15T23:59:59.999Z", finalPerformanceScore: 70 },
+        { employeeId: "e2", periodEnd: "2026-04-29T23:59:59.999Z", finalPerformanceScore: 60 },
+      ],
+      "2026-05-01",
+    );
+
+    expect(result.e1.finalPerformanceScore).toBe(80);
+    expect(result.e2.finalPerformanceScore).toBe(60);
   });
 });
