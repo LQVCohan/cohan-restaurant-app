@@ -126,20 +126,19 @@ async function getTableOrThrow(tableId, restaurantId, session = null) {
 }
 
 async function updateTableStatusByReservation(tableId, session = null) {
-  const active = await Reservation.exists({
-    tableId,
-    status: { $in: ["pending_payment", "confirmed", "seated"] },
-  }).session?.(session) || await Reservation.exists({
+  const activeQuery = Reservation.exists({
     tableId,
     status: { $in: ["pending_payment", "confirmed", "seated"] },
   });
+  if (session) activeQuery.session(session);
+  const active = await activeQuery;
 
-  const update = Table.updateOne(
+  const updateQuery = Table.updateOne(
     { _id: tableId },
     { $set: { status: active ? "reserved" : "available" } },
   );
-  if (session) update.session(session);
-  await update;
+  if (session) updateQuery.session(session);
+  await updateQuery;
 }
 
 function assertCanReviewReservationChange(reservation) {
