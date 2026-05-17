@@ -1096,6 +1096,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const assignmentOverrideResolverRef = useRef(null);
   const [assignmentOverrideReason, setAssignmentOverrideReason] = useState("");
   const [assignmentOverrideError, setAssignmentOverrideError] = useState("");
+  const clearAssignmentOverrideRequest = () => {
+    setAssignmentOverrideRequest(null);
+    setAssignmentOverrideReason("");
+    setAssignmentOverrideError("");
+  };
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
   const [autoScheduleConfig, setAutoScheduleConfig] = useState({
     horizonDays: 7,
@@ -1147,6 +1152,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
       .map((edge) => edge.node)
       .filter(Boolean);
   }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+  useEffect(
+    () => () => {
+      const resolver = assignmentOverrideResolverRef.current;
+      assignmentOverrideResolverRef.current = null;
+      resolver?.reject(new Error("Đã hủy thao tác vì chưa nhập lý do override."));
+    },
+    [],
+  );
 
   const effectiveRestaurantId = selectedRestaurantId || "";
   useEffect(() => {
@@ -4940,9 +4953,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   onClick={() => {
                     const resolver = assignmentOverrideResolverRef.current;
                     assignmentOverrideResolverRef.current = null;
-                    setAssignmentOverrideRequest(null);
-                    setAssignmentOverrideReason("");
-                    setAssignmentOverrideError("");
+                    clearAssignmentOverrideRequest();
                     resolver?.reject(
                       new Error("Đã hủy thao tác vì chưa nhập lý do override."),
                     );
@@ -4963,9 +4974,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     }
                     const resolver = assignmentOverrideResolverRef.current;
                     assignmentOverrideResolverRef.current = null;
-                    setAssignmentOverrideRequest(null);
-                    setAssignmentOverrideReason("");
-                    setAssignmentOverrideError("");
+                    clearAssignmentOverrideRequest();
                     resolver?.resolve(trimmedReason);
                   }}
                 >
