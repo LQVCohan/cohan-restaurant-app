@@ -318,6 +318,32 @@ export const MenuQuery = {
       },
     };
   },
+  customerMenuItem: async (_p, { id, restaurantId }) => {
+    if (!mongoose.isValidObjectId(id)) return null;
+    if (restaurantId && !mongoose.isValidObjectId(restaurantId)) return null;
+
+    const item = await MenuItem.findOne({
+      _id: id,
+      ...(restaurantId ? { restaurantId } : {}),
+      status: "available",
+    }).lean({ virtuals: true });
+    if (!item) return null;
+
+    if (String(item.inventoryStatus || "") === "OUT_OF_STOCK") return null;
+
+    if (item.menuId && mongoose.isValidObjectId(item.menuId)) {
+      const menu = await Menu.findOne({
+        _id: item.menuId,
+        restaurantId: item.restaurantId,
+        isActive: true,
+      })
+        .select({ _id: 1 })
+        .lean();
+      if (!menu) return null;
+    }
+
+    return item;
+  },
 
   topMenuItems: async (
     _p,

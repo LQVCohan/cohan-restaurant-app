@@ -25,6 +25,12 @@ import {
 } from "lucide-react";
 import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
+import { useActiveMenuPromotions } from "../../../hooks/useActiveMenuPromotions";
+import {
+  canCustomerOrderMenuItem,
+  getMenuItemAvailability,
+  shouldShowMenuItemToCustomer,
+} from "../../../utils/menuItemAvailability";
 import Cart from "../Homepage_Client/components/Cart";
 import "./FoodDetail.scss";
 
@@ -170,6 +176,47 @@ const RESTAURANT_BY_ID = gql`
     }
   }
 `;
+const CUSTOMER_MENU_ITEM = gql`
+  query CustomerMenuItemForFoodDetail($id: ID!, $restaurantId: ID) {
+    customerMenuItem(id: $id, restaurantId: $restaurantId) {
+      id
+      name
+      description
+      basePrice
+      thumbImage
+      point
+      avgPrepTimeMin
+      restaurantId
+      menuId
+      categoryId
+      status
+      inventoryStatus
+      stockWarnings
+      servingVariants {
+        key
+        mode
+        yieldQty
+        yieldUnit
+        name
+        price
+      }
+    }
+  }
+`;
+const GET_FOOD_REVIEWS = gql`
+  query GetFoodReviewsForFoodDetail($restaurantId: ID!, $limit: Int = 40) {
+    reviews(restaurantId: $restaurantId, targetType: "food", status: "published", limit: $limit, skip: 0) {
+      items {
+        id
+        targetId
+        customerName
+        rating
+        content
+        createdAt
+      }
+    }
+  }
+`;
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", {
@@ -253,28 +300,62 @@ const FoodDetail = () => {
       menuData?.menuItemsConnection?.edges?.map((edge) => edge?.node).filter(Boolean) || [];
     return list.find((item) => String(item.id) === String(foodId)) || null;
   }, [menuData, foodId, hasUsablePreloadedDish, preloadedDish]);
+  const {
+    data: directDishData,
+    loading: directDishLoading,
+    error: directDishError,
+  } = useQuery(CUSTOMER_MENU_ITEM, {
+    variables: { id: foodId, restaurantId: restaurantIdFromState || undefined },
+    skip: hasUsablePreloadedDish || !!foundDish || !foodId,
+    fetchPolicy: "network-only",
+  });
+  const resolvedDish = foundDish || directDishData?.customerMenuItem || null;
+  const { getPromotionForMenuItem, getPromotionLabel } = useActiveMenuPromotions(
+    resolvedDish?.restaurantId,
+    { skip: !resolvedDish?.restaurantId },
+  );
+  const activePromotion = useMemo(
+    () => getPromotionForMenuItem(resolvedDish),
+    [getPromotionForMenuItem, resolvedDish],
+  );
+  const promotionLabel = getPromotionLabel(activePromotion);
 
   const { data: restaurantData } = useQuery(RESTAURANT_BY_ID, {
-    variables: { id: foundDish?.restaurantId },
-    skip: !foundDish?.restaurantId,
+    variables: { id: resolvedDish?.restaurantId },
+    skip: !resolvedDish?.restaurantId,
   });
+  const { data: foodReviewsData } = useQuery(GET_FOOD_REVIEWS, {
+    variables: { restaurantId: resolvedDish?.restaurantId, limit: 40 },
+    skip: !resolvedDish?.restaurantId || !resolvedDish?.id,
+  });
+  const foodReviews = useMemo(() => {
+    const rows = foodReviewsData?.reviews?.items || [];
+    return rows
+      .filter((row) => String(row?.targetId || "") === String(resolvedDish?.id || ""))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [foodReviewsData, resolvedDish?.id]);
+  const averageFoodRating = useMemo(() => {
+    if (!foodReviews.length) return 0;
+    const sum = foodReviews.reduce((acc, row) => acc + Number(row?.rating || 0), 0);
+    return sum / foodReviews.length;
+  }, [foodReviews]);
 
   const sizes = useMemo(() => {
-    if (!foundDish) return [];
-    const variants = foundDish.servingVariants || [];
+    if (!resolvedDish) return [];
+    const variants = resolvedDish.servingVariants || [];
     if (!variants.length) {
       return [
         {
           id: "portion",
           key: "portion",
           name: "Phần tiêu chuẩn",
-          price: Number(foundDish.basePrice) || 0,
+          price: Number(resolvedDish.basePrice) || 0,
           priceAdd: 0,
         },
       ];
     }
 
-    const base = Number(foundDish.basePrice) || 0;
+    const base = Number(resolvedDish.basePrice) || 0;
     return variants.map((variant, idx) => {
       const finalPrice = Number(variant.price) || base;
       return {
@@ -285,7 +366,7 @@ const FoodDetail = () => {
         priceAdd: finalPrice - base,
       };
     });
-  }, [foundDish]);
+  }, [resolvedDish]);
 
   const [mainImage, setMainImage] = useState("/default-dishes.jpg");
   const [selectedSize, setSelectedSize] = useState(null);
@@ -296,10 +377,10 @@ const FoodDetail = () => {
   const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
-    if (foundDish?.thumbImage) {
-      setMainImage(foundDish.thumbImage);
+    if (resolvedDish?.thumbImage) {
+      setMainImage(resolvedDish.thumbImage);
     }
-  }, [foundDish]);
+  }, [resolvedDish]);
 
   useEffect(() => {
     if (!sizes.length) return;
@@ -323,13 +404,13 @@ const FoodDetail = () => {
   } = useQuery(MENU_ITEM_LIVE_STATE, {
     variables: {
       input: {
-        restaurantId: foundDish?.restaurantId,
-        menuItemId: foundDish?.id,
+        restaurantId: resolvedDish?.restaurantId,
+        menuItemId: resolvedDish?.id,
         servingVariantKey: selectedServingKey,
         userId: user?.id,
       },
     },
-    skip: !foundDish?.restaurantId || !foundDish?.id || !selectedServingKey,
+    skip: !resolvedDish?.restaurantId || !resolvedDish?.id || !selectedServingKey,
     fetchPolicy: "network-only",
     pollInterval: 10000,
   });
@@ -348,30 +429,35 @@ const FoodDetail = () => {
   const expiredHoldRefetchKeyRef = useRef(null);
 
   useEffect(() => {
-    if (!foundDish?.restaurantId || !foundDish?.id) return;
-    const socket = io("http://localhost:4000", { transports: ["websocket"] });
+    if (!resolvedDish?.restaurantId || !resolvedDish?.id) return;
+    const socketUrl =
+      import.meta.env.VITE_SOCKET_URL ||
+      import.meta.env.VITE_API_URL ||
+      window.location.origin ||
+      "http://localhost:4000";
+    const socket = io(socketUrl, { transports: ["websocket"] });
     socketRef.current = socket;
     socket.on("connect", () => {
-      socket.emit("joinRestaurant", foundDish.restaurantId);
+      socket.emit("joinRestaurant", resolvedDish.restaurantId);
       socket.emit("joinMenuItemView", {
-        restaurantId: foundDish.restaurantId,
-        menuItemId: foundDish.id,
+        restaurantId: resolvedDish.restaurantId,
+        menuItemId: resolvedDish.id,
       });
     });
     socket.on("inventoryEvents", (evt) => {
       if (!evt) return;
-      if (String(evt.menuItemId || "") === String(foundDish.id)) {
+      if (String(evt.menuItemId || "") === String(resolvedDish.id)) {
         refetchLiveState?.();
       }
     });
     return () => {
       socket.emit("leaveMenuItemView", {
-        restaurantId: foundDish.restaurantId,
-        menuItemId: foundDish.id,
+        restaurantId: resolvedDish.restaurantId,
+        menuItemId: resolvedDish.id,
       });
       socket.disconnect();
     };
-  }, [foundDish?.restaurantId, foundDish?.id, refetchLiveState]);
+  }, [resolvedDish?.restaurantId, resolvedDish?.id, refetchLiveState]);
 
   useEffect(() => {
     if (!liveState?.myHoldExpiresAt) return undefined;
@@ -399,7 +485,7 @@ const FoodDetail = () => {
     refetchLiveState?.();
   }, [liveState?.myHoldExpiresAt, myHoldRemainingSeconds, refetchLiveState]);
 
-  const currentUnitPrice = selectedSize?.price ?? Number(foundDish?.basePrice || 0);
+  const currentUnitPrice = selectedSize?.price ?? Number(resolvedDish?.basePrice || 0);
   const totalPrice = currentUnitPrice * quantity;
 
   const restaurant = restaurantData?.restaurant;
@@ -451,7 +537,7 @@ const FoodDetail = () => {
     updatingBackendCart || removingBackendCart || clearingBackendCart;
 
   const makeCartPayload = () => {
-    if (!foundDish) return null;
+    if (!resolvedDish) return null;
     const servingVariantKey = selectedServingKey || "portion";
 
     const selectedVariantName =
@@ -460,16 +546,16 @@ const FoodDetail = () => {
         : "Phần tiêu chuẩn";
 
     return {
-      id: `${foundDish.id}_${servingVariantKey}`,
-      dishId: foundDish.id,
-      restaurantId: String(foundDish.restaurantId || restaurant?.id || ""),
-      menuId: foundDish.menuId || null,
-      categoryId: foundDish.categoryId || null,
+      id: `${resolvedDish.id}_${servingVariantKey}`,
+      dishId: resolvedDish.id,
+      restaurantId: String(resolvedDish.restaurantId || restaurant?.id || ""),
+      menuId: resolvedDish.menuId || null,
+      categoryId: resolvedDish.categoryId || null,
       variantKey: servingVariantKey,
       servingVariantKey,
-      name: foundDish.name,
+      name: resolvedDish.name,
       price: currentUnitPrice,
-      image: foundDish.thumbImage || "/default-dishes.jpg",
+      image: resolvedDish.thumbImage || "/default-dishes.jpg",
       method: selectedVariantName,
       quantity,
       restaurantName: restaurant?.name || null,
@@ -526,7 +612,7 @@ const FoodDetail = () => {
 
       const returnedItem = data?.addCartItem?.items?.find(
         (item) =>
-          String(item?.menuItemId) === String(foundDish?.id) &&
+          String(item?.menuItemId) === String(resolvedDish?.id) &&
           String(item?.servingVariantKey) ===
             String(selectedServingKey || "portion"),
       );
@@ -708,11 +794,11 @@ const FoodDetail = () => {
     }
   };
 
-  if (menuLoading && !foundDish) {
+  if ((menuLoading || directDishLoading) && !resolvedDish) {
     return <div className="food-detail-wrapper">Đang tải thông tin món ăn...</div>;
   }
 
-  if (menuError && !foundDish) {
+  if ((menuError || directDishError) && !resolvedDish) {
     return (
       <div className="food-detail-wrapper">
         Không thể tải chi tiết món ăn. Vui lòng thử lại sau.
@@ -720,17 +806,12 @@ const FoodDetail = () => {
     );
   }
 
-  if (!foundDish) {
-    if (!restaurantIdFromState) {
-      return (
-        <div className="food-detail-wrapper">
-          Không đủ thông tin để tải món ăn. Vui lòng mở lại món từ trang thực đơn của nhà hàng.
-        </div>
-      );
-    }
-
-    return <div className="food-detail-wrapper">Không tìm thấy món ăn phù hợp trong thực đơn hiện tại.</div>;
+  if (!resolvedDish) {
+    return <div className="food-detail-wrapper">Món này hiện không khả dụng hoặc đã bị ẩn khỏi thực đơn.</div>;
   }
+  const availability = getMenuItemAvailability(resolvedDish);
+  const customerVisible = shouldShowMenuItemToCustomer(resolvedDish);
+  const customerOrderable = canCustomerOrderMenuItem(resolvedDish);
 
   return (
     <div className="food-detail-wrapper">
@@ -738,13 +819,13 @@ const FoodDetail = () => {
         <div className="fd-breadcrumb">
           <span onClick={() => navigate("/")}>Trang chủ</span>{" "}
           <ChevronRight size={14} />
-          <span className="current">{foundDish.name}</span>
+          <span className="current">{resolvedDish.name}</span>
         </div>
 
         <div className="fd-main-grid">
           <div className="fd-gallery">
             <div className="main-image-box">
-              <img src={mainImage} alt={foundDish.name} />
+              <img src={mainImage} alt={resolvedDish.name} />
               <div className="badges">
                 <span className="badge-hot">
                   <Flame size={12} fill="currentColor" /> Món nổi bật
@@ -752,7 +833,7 @@ const FoodDetail = () => {
               </div>
             </div>
             <div className="thumbnail-list">
-              {[foundDish.thumbImage || "/default-dishes.jpg"].map((img, idx) => (
+              {[resolvedDish.thumbImage || "/default-dishes.jpg"].map((img, idx) => (
                 <div
                   key={idx}
                   className={`thumb-item ${mainImage === img ? "active" : ""}`}
@@ -777,18 +858,18 @@ const FoodDetail = () => {
               </div>
             </div>
 
-            <h1 className="food-name">{foundDish.name}</h1>
+            <h1 className="food-name">{resolvedDish.name}</h1>
 
             <div className="meta-info">
               <div className="rating">
                 <Star size={16} fill="#FFD700" color="#FFD700" />
-                <span>{Number(foundDish.point || 0).toFixed(1)}</span>
-                <span className="text-gray">(đánh giá cộng đồng)</span>
+                <span>{foodReviews.length ? averageFoodRating.toFixed(1) : Number(resolvedDish.point || 0).toFixed(1)}</span>
+                <span className="text-gray">({foodReviews.length} đánh giá)</span>
               </div>
               <div className="divider"></div>
               <div className="prep-time">
                 <Clock size={16} />
-                Thời gian chuẩn bị: {foundDish.avgPrepTimeMin || 20} phút
+                Thời gian chuẩn bị: {resolvedDish.avgPrepTimeMin || 20} phút
               </div>
             </div>
 
@@ -800,11 +881,10 @@ const FoodDetail = () => {
               <div className="promo-title">
                 <Tag size={16} /> Ưu đãi áp dụng:
               </div>
-              <ul className="promo-list">
-                <li>Giảm giá theo chương trình của nhà hàng</li>
-                <li>Giá thực tế sẽ được xác nhận tại bước thanh toán</li>
-              </ul>
+              <ul className="promo-list">{activePromotion ? <li>{activePromotion.name} ({promotionLabel})</li> : <li>Hiện chưa có ưu đãi áp dụng cho món này.</li>}</ul>
             </div>
+            {!customerVisible && <div className="promo-box"><div className="promo-title">Món hiện không hiển thị cho khách.</div></div>}
+            {availability?.customerMessage && <div className="promo-box"><div className="promo-title">{availability.customerMessage}</div></div>}
 
             <div className="promo-box">
               <div className="promo-title">
@@ -914,7 +994,7 @@ const FoodDetail = () => {
                   className="btn-add-cart"
                   onClick={handleAddToCart}
                   type="button"
-                  disabled={addDisabled}
+                  disabled={addDisabled || !customerOrderable}
                 >
                   <ShoppingCart size={20} />
                   {addToCartButtonText}
@@ -923,7 +1003,7 @@ const FoodDetail = () => {
                   className="btn-buy-now"
                   onClick={handleBuyNow}
                   type="button"
-                  disabled={addDisabled}
+                  disabled={addDisabled || !customerOrderable}
                 >
                   {addingToBackendCart ? "Đang giữ món..." : "Đặt hàng ngay"}
                 </button>
@@ -961,7 +1041,7 @@ const FoodDetail = () => {
                   <div className="desc-block">
                     <h3>Mô tả món ăn</h3>
                     <p>
-                      {foundDish.description ||
+                      {resolvedDish.description ||
                         "Món ăn được chế biến từ nguyên liệu tươi ngon, phù hợp cho trải nghiệm ẩm thực hàng ngày."}
                     </p>
                   </div>
@@ -987,7 +1067,7 @@ const FoodDetail = () => {
                       <Flame className="icon" />
                       <div>
                         <h4>Phục vụ nhanh</h4>
-                        <p>{foundDish.avgPrepTimeMin || 20} phút (ước tính).</p>
+                        <p>{resolvedDish.avgPrepTimeMin || 20} phút (ước tính).</p>
                       </div>
                     </div>
                   </div>
@@ -997,10 +1077,7 @@ const FoodDetail = () => {
 
             {activeTab === "reviews" && (
               <div className="reviews-content fade-in">
-                <div className="empty-reviews">
-                  <Star size={48} color="#e5e7eb" />
-                  <p>Hiện chưa có module chi tiết đánh giá cho trang này.</p>
-                </div>
+                {foodReviews.length === 0 ? <div className="empty-reviews"><Star size={48} color="#e5e7eb" /><p>Chưa có đánh giá cho món này.</p></div> : <div><p>Điểm trung bình: <b>{averageFoodRating.toFixed(1)}</b> / 5 ({foodReviews.length} đánh giá)</p>{foodReviews.slice(0,5).map((review) => <div key={review.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}><b>{review.customerName || "Khách hàng"}</b> - {review.rating}/5<div>{review.content || "Không có nội dung."}</div></div>)}</div>}
               </div>
             )}
           </div>

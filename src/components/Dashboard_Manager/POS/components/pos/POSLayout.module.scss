@@ -130,6 +130,36 @@
   border: 1px solid #fed7aa;
 }
 
+@keyframes menuAvailabilityNoticeSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.menuAvailabilityNotice {
+  margin: 0.75rem 1rem 0;
+  border-radius: 0.9rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  animation: menuAvailabilityNoticeSlideIn 180ms ease-out;
+}
+.menuAvailabilityNotice_warning { background: #fffbeb; border-color: #fcd34d; }
+.menuAvailabilityNotice_success { background: #ecfdf5; border-color: #6ee7b7; }
+.menuAvailabilityNotice_error { background: #fef2f2; border-color: #fca5a5; }
+.menuAvailabilityNoticeIcon {
+  width: 34px; height: 34px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: rgba(15,23,42,.08);
+}
+.menuAvailabilityNoticeBody { min-width: 0; }
+.menuAvailabilityNoticeMeta { display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.78rem; color: #334155; }
+.menuAvailabilityNoticeMeta > span { background: rgba(15,23,42,0.07); padding: 0.2rem 0.45rem; border-radius: 999px; font-weight: 700; }
+.menuAvailabilityNoticeActions { display: flex; gap: 0.5rem; }
+.menuAvailabilityNoticeActions button { border: 1px solid #cbd5e1; background: #fff; border-radius: 0.6rem; padding: 0.4rem 0.65rem; font-weight: 700; cursor: pointer; }
+.menuAvailabilityNoticeClose { border: 0; background: transparent; color: #64748b; font-size: 1.1rem; cursor: pointer; }
+
 /* 3 cột ngang */
 .shell {
   flex: 1 1 auto;
@@ -215,5 +245,13 @@
   .lockButton {
     justify-content: center;
     width: 100%;
+  }
+  .menuAvailabilityNotice {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+  .menuAvailabilityNoticeActions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
