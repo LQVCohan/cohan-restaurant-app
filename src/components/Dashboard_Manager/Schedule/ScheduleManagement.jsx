@@ -4848,13 +4848,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 ) : null}
               </div>
               {publishIssueSnapshot.pendingAcknowledgements > 0 ? (
-                <div className="publish-confirm-error">
+                <div className="publish-confirm-error publish-confirm-error--ack">
                   Còn {publishIssueSnapshot.pendingAcknowledgements} xác nhận từ
                   nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
                 </div>
               ) : null}
               {publishIssueSnapshot.changedAfterAcknowledgementCount > 0 ? (
-                <div className="publish-confirm-error">
+                <div className="publish-confirm-error publish-confirm-error--changed">
                   Có {publishIssueSnapshot.changedAfterAcknowledgementCount} nhân
                   viên đã xác nhận lịch trước đó nhưng lịch đã thay đổi sau xác
                   nhận. Khi công bố lại, nhân viên cần kiểm tra bản mới.
@@ -4910,7 +4910,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ) : null}
       {assignmentOverrideRequest ? (
         <div className="publish-confirm-backdrop">
-          <div className="publish-confirm-card">
+          <div className="publish-confirm-card schedule-override-modal">
             <div className="publish-confirm-icon">
               <AlertTriangle size={24} />
             </div>
@@ -4987,7 +4987,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ) : null}
       {isReopenModalOpen ? (
         <div className="publish-confirm-backdrop">
-          <div className="publish-confirm-card">
+          <div className="publish-confirm-card schedule-reopen-modal">
             <div className="publish-confirm-icon">
               <Edit3 size={24} />
             </div>

@@ -1,0 +1,162 @@
+/* Shared Schedule modal visual system (scoped to Schedule page only). */
+.manager-page-shell--schedules {
+  --schedule-modal-backdrop: rgba(15, 23, 42, 0.56);
+  --schedule-modal-border: rgba(226, 232, 240, 0.95);
+  --schedule-modal-shadow: 0 34px 90px rgba(15, 23, 42, 0.3);
+  --schedule-modal-radius: 22px;
+  --schedule-modal-title: #0f172a;
+  --schedule-modal-muted: #64748b;
+  --schedule-modal-focus: #4f46e5;
+}
+
+.manager-page-shell--schedules .publish-confirm-backdrop,
+.manager-page-shell--schedules .schedule-publish-modal-overlay {
+  background: var(--schedule-modal-backdrop) !important;
+  backdrop-filter: blur(8px) saturate(1.04) !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-card,
+.manager-page-shell--schedules .schedule-publish-modal {
+  border-radius: var(--schedule-modal-radius) !important;
+  border: 1px solid var(--schedule-modal-border) !important;
+  box-shadow: var(--schedule-modal-shadow) !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-icon {
+  width: 2.85rem !important;
+  height: 2.85rem !important;
+  border-radius: 16px !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-content h3,
+.manager-page-shell--schedules .schedule-publish-modal__header h3 {
+  color: var(--schedule-modal-title) !important;
+  line-height: 1.22 !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-content p,
+.manager-page-shell--schedules .schedule-publish-modal__header p {
+  color: var(--schedule-modal-muted) !important;
+  line-height: 1.45 !important;
+}
+
+.manager-page-shell--schedules .time-change-reason textarea {
+  border-radius: 14px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+}
+
+.manager-page-shell--schedules .time-change-reason textarea:focus {
+  border-color: var(--schedule-modal-focus) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14) !important;
+  outline: none !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-error {
+  border-radius: 13px !important;
+  font-weight: 820 !important;
+}
+
+.manager-page-shell--schedules .schedule-publish-modal__footer,
+.manager-page-shell--schedules .publish-confirm-actions {
+  align-items: center !important;
+}
+
+.manager-page-shell--schedules .publish-confirm-actions button,
+.manager-page-shell--schedules .schedule-publish-modal__footer button {
+  min-width: 132px;
+}
+
+.manager-page-shell--schedules .schedule-empty-state,
+.manager-page-shell--schedules .empty-state.schedule-feedback,
+.manager-page-shell--schedules .empty-mini {
+  border-radius: 14px !important;
+}
+
+.manager-page-shell--schedules .empty-mini {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-weight: 700;
+  padding: 0.58rem 0.7rem;
+}
+
+@media (max-width: 920px) {
+  .manager-page-shell--schedules .schedule-publish-modal,
+  .manager-page-shell--schedules .publish-confirm-card {
+    width: min(95vw, 680px) !important;
+    max-height: 88vh !important;
+  }
+
+  .manager-page-shell--schedules .schedule-publish-modal__footer,
+  .manager-page-shell--schedules .publish-confirm-actions {
+    flex-wrap: wrap;
+  }
+
+  .manager-page-shell--schedules .publish-confirm-actions button,
+  .manager-page-shell--schedules .schedule-publish-modal__footer button {
+    flex: 1 1 180px;
+  }
+}
+
+.manager-page-shell--schedules .publish-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.58rem;
+  margin-bottom: 0.72rem;
+}
+
+.manager-page-shell--schedules .publish-summary-card {
+  padding: 0.6rem 0.68rem;
+  border-radius: 13px;
+  border: 1px solid #dbe3ef;
+  background: #fff;
+}
+
+.manager-page-shell--schedules .publish-summary-card span {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.manager-page-shell--schedules .publish-summary-card strong {
+  display: block;
+  margin-top: 0.16rem;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.manager-page-shell--schedules .publish-confirm-error--ack,
+.manager-page-shell--schedules .publish-confirm-error--changed {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1e3a8a !important;
+}
+
+.manager-page-shell--schedules .schedule-reopen-modal .publish-confirm-content h3 {
+  color: #1e1b4b !important;
+}
+
+.manager-page-shell--schedules .schedule-reopen-modal .time-change-reason::after {
+  content: "Bắt buộc nhập lý do để ghi nhận lịch sử mở lại lịch.";
+  color: #64748b;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.manager-page-shell--schedules .schedule-override-modal .publish-warning-list strong,
+.manager-page-shell--schedules .schedule-override-modal .publish-confirm-content p strong {
+  color: #9a3412;
+}
+
+@media (max-width: 920px) {
+  .manager-page-shell--schedules .publish-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .manager-page-shell--schedules .publish-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,7 @@
 @import "./schedule-insights-polish.css";
+@import "./schedule-modal-system-polish.css";
+@import "./schedule-publish-polish.css";
+@import "./schedule-assignment-override-polish.css";
 @import "./add-shift-modal-polish.css";
 @import "./add-shift-modal-fixes.css";
 @import "./shift-detail-polish.css";
@@ -8,8 +11,6 @@
 @import "./availability-snapshot-polish.css";
 @import "./schedule-board-polish.css";
 @import "./schedule-board-today-cleanup.css";
-@import "./schedule-publish-polish.css";
-@import "./schedule-assignment-override-polish.css";
 @import "./availability-registration-polish.css";
 @import "./schedule-toolbar-polish.css";
 @import "./declined-shift-review-polish.css";
@@ -23,16 +24,16 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.72rem;
-  margin: 0 0 14px;
+  gap: 0.56rem;
+  margin: 0 0 10px;
   border: 1px solid rgba(147, 197, 253, 0.92);
   background:
     radial-gradient(circle at 18px 50%, rgba(37, 99, 235, 0.16), transparent 4rem),
     linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
   color: #1e3a8a;
-  border-radius: 16px;
-  padding: 0.72rem 0.92rem 0.72rem 3rem;
-  font-size: 0.82rem;
+  border-radius: 14px;
+  padding: 0.58rem 0.78rem 0.58rem 2.7rem;
+  font-size: 0.78rem;
   font-weight: 780;
   box-shadow: 0 10px 24px rgba(30, 64, 175, 0.08);
 }
@@ -42,15 +43,15 @@
   position: absolute;
   left: 0.86rem;
   top: 50%;
-  width: 1.38rem;
-  height: 1.38rem;
+  width: 1.2rem;
+  height: 1.2rem;
   transform: translateY(-50%);
   display: grid;
   place-items: center;
   border-radius: 999px;
   background: #2563eb;
   color: #ffffff;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 950;
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
 }
@@ -61,7 +62,7 @@
   margin-left: auto;
   max-width: 40rem;
   color: #475569;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 720;
   line-height: 1.35;
 }
