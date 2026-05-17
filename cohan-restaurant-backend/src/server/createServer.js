@@ -433,7 +433,7 @@ export async function createServer() {
 
   cron.schedule("* * * * *", async () => {
     try {
-      const result = await autoCancelExpiredReservations();
+      const result = await autoCancelExpiredReservations({ io: app.io });
       await cleanupExpiredTableViewLocks();
       if (result?.modifiedCount) {
         app.log.info(
