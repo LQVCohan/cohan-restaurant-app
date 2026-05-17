@@ -12,11 +12,13 @@ const CheckoutPage = () => {
   const fallbackPath = location.state?.from || "/";
 
   const handleClose = () => {
+    if (checkoutCompleted) {
+      clearCart();
+    }
     navigate(fallbackPath, { replace: true });
   };
 
   const handleSuccess = () => {
-    clearCart();
     setCheckoutCompleted(true);
   };
 
