@@ -4,6 +4,8 @@ import useSocketReservation, { RESERVATION_EVENT_TYPES } from "@/hooks/useSocket
 import { useNotification } from "@/hooks/useNotification";
 import styles from "./POSLayout.module.scss";
 
+const MAX_ACTIVITY_ITEMS = 5;
+
 function getReservation(evt) {
   return evt?.reservation || evt?.reservations?.[0] || null;
 }
@@ -11,6 +13,11 @@ function getReservation(evt) {
 function getTableLabel(evt) {
   const reservation = getReservation(evt);
   return reservation?.tableCode || reservation?.tableName || reservation?.tableId || evt?.tableId || "bàn liên quan";
+}
+
+function getReservationKey(evt) {
+  const reservation = getReservation(evt);
+  return String(reservation?.id || reservation?._id || evt?.reservationId || Date.now());
 }
 
 function formatReservationTime(value) {
@@ -114,9 +121,33 @@ function buildNotice(evt) {
   }
 }
 
+function buildActivity(evt) {
+  const notice = buildNotice(evt);
+  const reservation = getReservation(evt);
+  return {
+    id: `${getReservationKey(evt)}:${evt?.type || "UNKNOWN"}:${Date.now()}`,
+    reservationId: getReservationKey(evt),
+    type: evt?.type || "UNKNOWN",
+    tone: notice.tone,
+    icon: notice.icon,
+    title: notice.badge,
+    tableLabel: getTableLabel(evt),
+    timeLabel: formatReservationTime(reservation?.timeTo),
+    partySize: reservation?.partySize || null,
+  };
+}
+
+const toneColorMap = {
+  success: "#15803d",
+  warning: "#92400e",
+  danger: "#b91c1c",
+  info: "#1d4ed8",
+};
+
 export default function PosReservationRealtimeNotice({ restaurantId }) {
   const { showNotification } = useNotification();
   const [latestEvent, setLatestEvent] = useState(null);
+  const [activities, setActivities] = useState([]);
 
   const notice = useMemo(() => {
     return latestEvent ? buildNotice(latestEvent) : null;
@@ -125,40 +156,90 @@ export default function PosReservationRealtimeNotice({ restaurantId }) {
   useSocketReservation(restaurantId, {
     onReservationEvent: (evt) => {
       setLatestEvent(evt);
+      setActivities((prev) => {
+        const next = buildActivity(evt);
+        const deduped = (prev || []).filter(
+          (item) => !(item.reservationId === next.reservationId && item.type === next.type),
+        );
+        return [next, ...deduped].slice(0, MAX_ACTIVITY_ITEMS);
+      });
       const nextNotice = buildNotice(evt);
       showNotification?.(nextNotice.message, nextNotice.tone === "danger" ? "error" : nextNotice.tone);
     },
   });
 
-  if (!notice) return null;
+  if (!notice && !activities.length) return null;
 
-  const Icon = notice.icon;
+  const Icon = notice?.icon;
   const reservation = getReservation(latestEvent);
 
   return (
-    <div className={`${styles.reservationRealtimeNotice} ${styles[`reservationRealtimeNotice_${notice.tone}`] || ""}`}>
-      <div className={styles.reservationRealtimeNoticeIcon}>
-        <Icon size={20} />
-      </div>
+    <>
+      {notice && (
+        <div className={`${styles.reservationRealtimeNotice} ${styles[`reservationRealtimeNotice_${notice.tone}`] || ""}`}>
+          <div className={styles.reservationRealtimeNoticeIcon}>
+            <Icon size={20} />
+          </div>
 
-      <div className={styles.reservationRealtimeNoticeBody}>
-        <div className={styles.reservationRealtimeNoticeMeta}>
-          <span>{notice.badge}</span>
-          {reservation?.partySize ? <span>{reservation.partySize} khách</span> : null}
-          {reservation?.timeTo ? <span>{formatReservationTime(reservation.timeTo)}</span> : null}
+          <div className={styles.reservationRealtimeNoticeBody}>
+            <div className={styles.reservationRealtimeNoticeMeta}>
+              <span>{notice.badge}</span>
+              {reservation?.partySize ? <span>{reservation.partySize} khách</span> : null}
+              {reservation?.timeTo ? <span>{formatReservationTime(reservation.timeTo)}</span> : null}
+            </div>
+            <strong>{notice.title}</strong>
+            <p>{notice.message}</p>
+          </div>
+
+          <button
+            type="button"
+            className={styles.reservationRealtimeNoticeClose}
+            onClick={() => setLatestEvent(null)}
+            aria-label="Đóng thông báo đặt bàn"
+          >
+            Đóng
+          </button>
         </div>
-        <strong>{notice.title}</strong>
-        <p>{notice.message}</p>
-      </div>
+      )}
 
-      <button
-        type="button"
-        className={styles.reservationRealtimeNoticeClose}
-        onClick={() => setLatestEvent(null)}
-        aria-label="Đóng thông báo đặt bàn"
-      >
-        Đóng
-      </button>
-    </div>
+      {activities.length > 0 && (
+        <div style={{ margin: "0.55rem 1rem 0", padding: "0.65rem 0.75rem", border: "1px solid #dbeafe", borderRadius: "1rem", background: "rgba(255,255,255,0.92)", boxShadow: "0 8px 22px rgba(15,23,42,0.05)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <div>
+              <strong style={{ display: "block", color: "#0f172a", fontSize: "0.9rem" }}>Hoạt động đặt bàn</strong>
+              <span style={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 700 }}>Theo dõi realtime từ khách/POS</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActivities([])}
+              style={{ border: "1px solid #cbd5e1", borderRadius: "999px", background: "#fff", color: "#475569", fontWeight: 800, padding: "0.35rem 0.65rem", cursor: "pointer" }}
+            >
+              Xóa
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.1rem" }}>
+            {activities.map((activity) => {
+              const ActivityIcon = activity.icon;
+              const color = toneColorMap[activity.tone] || toneColorMap.info;
+              return (
+                <div key={activity.id} style={{ minWidth: "165px", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.55rem 0.65rem", border: "1px solid #e2e8f0", borderRadius: "0.85rem", background: "#f8fafc" }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(226,232,240,0.7)", color, flexShrink: 0 }}>
+                    <ActivityIcon size={16} />
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <strong style={{ display: "block", color, fontSize: "0.78rem", lineHeight: 1.2 }}>{activity.title}</strong>
+                    <span style={{ display: "block", color: "#475569", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {activity.tableLabel} · {activity.timeLabel}
+                      {activity.partySize ? ` · ${activity.partySize} khách` : ""}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
