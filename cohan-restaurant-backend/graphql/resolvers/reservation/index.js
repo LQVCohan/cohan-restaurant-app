@@ -7,6 +7,7 @@ import {
   ReservationCheckInMutation,
   withSafeReservationStatusMutation,
 } from "./checkIn.js";
+import { withReservationRealtimeEvents } from "./realtimeEvents.js";
 
 const ReviewReservationMutation = {
   ...ReservationMutation,
@@ -15,12 +16,13 @@ const ReviewReservationMutation = {
 };
 
 const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservationMutation);
+const RealtimeReservationMutation = withReservationRealtimeEvents(SafeReservationMutation);
 
 export default {
   Query: {
     ...ReservationQuery,
   },
   Mutation: {
-    ...SafeReservationMutation,
+    ...RealtimeReservationMutation,
   },
 };
