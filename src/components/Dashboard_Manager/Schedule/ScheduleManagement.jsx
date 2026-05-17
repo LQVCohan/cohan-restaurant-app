@@ -1086,6 +1086,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     dangers: [],
     topIssues: [],
     pendingAcknowledgements: 0,
+    changedAfterAcknowledgementCount: 0,
   });
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
@@ -1985,10 +1986,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const pendingAcknowledgements = Number(
       acknowledgementSummary?.pendingCount || 0,
     );
+    const changedAfterAcknowledgementCount = Number(
+      acknowledgementSummary?.changedAfterAcknowledgementCount || 0,
+    );
     return {
       warnings,
       dangers,
       pendingAcknowledgements,
+      changedAfterAcknowledgementCount,
       topIssues: [...dangers, ...warnings].slice(0, 8),
     };
   }, [
@@ -4829,6 +4834,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 <div className="publish-confirm-error">
                   Còn {publishIssueSnapshot.pendingAcknowledgements} xác nhận từ
                   nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
+                </div>
+              ) : null}
+              {publishIssueSnapshot.changedAfterAcknowledgementCount > 0 ? (
+                <div className="publish-confirm-error">
+                  Có {publishIssueSnapshot.changedAfterAcknowledgementCount} nhân
+                  viên đã xác nhận lịch trước đó nhưng lịch đã thay đổi sau xác
+                  nhận. Khi công bố lại, nhân viên cần kiểm tra bản mới.
                 </div>
               ) : null}
               {publishConfirmError ? (
