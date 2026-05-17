@@ -1091,6 +1091,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [reopenError, setReopenError] = useState("");
+  const [assignmentOverrideRequest, setAssignmentOverrideRequest] =
+    useState(null);
+  const assignmentOverrideResolverRef = useRef(null);
+  const [assignmentOverrideReason, setAssignmentOverrideReason] = useState("");
+  const [assignmentOverrideError, setAssignmentOverrideError] = useState("");
+  const clearAssignmentOverrideRequest = () => {
+    setAssignmentOverrideRequest(null);
+    setAssignmentOverrideReason("");
+    setAssignmentOverrideError("");
+  };
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
   const [autoScheduleConfig, setAutoScheduleConfig] = useState({
     horizonDays: 7,
@@ -1142,6 +1152,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
       .map((edge) => edge.node)
       .filter(Boolean);
   }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+  useEffect(
+    () => () => {
+      const resolver = assignmentOverrideResolverRef.current;
+      assignmentOverrideResolverRef.current = null;
+      resolver?.reject(new Error("Đã hủy thao tác vì chưa nhập lý do override."));
+    },
+    [],
+  );
 
   const effectiveRestaurantId = selectedRestaurantId || "";
   useEffect(() => {
@@ -2626,13 +2644,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
         staff.find((person) => String(person.id) === String(employeeId))
           ?.name || "nhân viên";
 
-      const reason = window.prompt(
-        `Có cảnh báo khi xếp ca cho ${employeeName}:\n\n${warningText}\n\nNhập lý do override để tiếp tục:`,
-      );
-
-      if (!reason || !reason.trim()) {
-        throw new Error("Đã hủy thao tác vì chưa nhập lý do override.");
-      }
+      const reason = await new Promise((resolve, reject) => {
+        assignmentOverrideResolverRef.current = { resolve, reject };
+        setAssignmentOverrideReason("");
+        setAssignmentOverrideError("");
+        setAssignmentOverrideRequest({ employeeName, warningText });
+      });
 
       return {
         allowOverride: true,
@@ -4885,6 +4902,83 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   disabled={publishingSchedule || !publishConfirmed}
                 >
                   {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {assignmentOverrideRequest ? (
+        <div className="publish-confirm-backdrop">
+          <div className="publish-confirm-card">
+            <div className="publish-confirm-icon">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="publish-confirm-content">
+              <h3>Xác nhận override cảnh báo xếp ca</h3>
+              <p>
+                Bạn đang xếp ca cho <strong>{assignmentOverrideRequest.employeeName}</strong> và hệ
+                thống ghi nhận cảnh báo:
+              </p>
+              <div className="publish-warning-list">
+                {assignmentOverrideRequest.warningText
+                  .split("\n")
+                  .filter(Boolean)
+                  .map((line, index) => (
+                    <p key={`${line}-${index}`}>{line}</p>
+                  ))}
+              </div>
+              <label className="time-change-reason">
+                Lý do override <span>*</span>
+                <textarea
+                  value={assignmentOverrideReason}
+                  onChange={(event) => {
+                    setAssignmentOverrideReason(event.target.value);
+                    if (assignmentOverrideError) setAssignmentOverrideError("");
+                  }}
+                  rows={3}
+                  placeholder="Nhập lý do override để tiếp tục..."
+                />
+              </label>
+              <p>Lý do này sẽ được ghi vào log thay đổi lịch.</p>
+              {assignmentOverrideError ? (
+                <div className="publish-confirm-error">
+                  {assignmentOverrideError}
+                </div>
+              ) : null}
+              <div className="publish-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const resolver = assignmentOverrideResolverRef.current;
+                    assignmentOverrideResolverRef.current = null;
+                    clearAssignmentOverrideRequest();
+                    resolver?.reject(
+                      new Error("Đã hủy thao tác vì chưa nhập lý do override."),
+                    );
+                  }}
+                >
+                  Hủy thao tác
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    const trimmedReason = assignmentOverrideReason.trim();
+                    if (!trimmedReason) {
+                      setAssignmentOverrideError(
+                        "Cần nhập lý do override để tiếp tục.",
+                      );
+                      return;
+                    }
+                    const resolver = assignmentOverrideResolverRef.current;
+                    assignmentOverrideResolverRef.current = null;
+                    clearAssignmentOverrideRequest();
+                    resolver?.resolve(trimmedReason);
+                  }}
+                >
+                  Tiếp tục override
                 </button>
               </div>
             </div>
