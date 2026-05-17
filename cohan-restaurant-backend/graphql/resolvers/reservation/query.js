@@ -27,6 +27,9 @@ function isReservationOwner(ctx, reservation) {
 }
 
 export const ReservationQuery = {
+  async activeReservationByTable(_, { restaurantId, tableId }, ctx) {
+    return ReservationQuery.confirmedReservationByTable(_, { restaurantId, tableId }, ctx);
+  },
   async reservation(_, { id, orderCode }, ctx) {
     const authorize = async (doc) => {
       if (!doc) return null;

@@ -9,6 +9,8 @@ import {
   normalizePosPaymentRequests,
   POS_PAYMENT_REQUESTS_QUERY,
 } from "@/utils/posPaymentRequests";
+import TableReservationRealtimeBadge from "./TableReservationRealtimeBadge";
+import { RESERVATION_EVENT_TYPES, RESERVATION_SOCKET_EVENT } from "@/hooks/useSocketReservation";
 
 /* --- ICONS --- */
 const IconMulti = () => (
@@ -172,6 +174,42 @@ export default function LeftPanel() {
 
   const [dragOverId, setDragOverId] = useState(null);
   const [draggingId, setDraggingId] = useState(null);
+  const [reservationByTableId, setReservationByTableId] = useState(() => new Map());
+
+  useEffect(() => {
+    const handler = (event) => {
+      const evt = event?.detail?.event;
+      const reservation = evt?.reservation || evt?.reservations?.[0] || null;
+      const tableId = String(reservation?.tableId || evt?.tableId || "");
+      if (!evt?.type || !tableId) return;
+      if (restaurantId && reservation?.restaurantId && String(reservation.restaurantId) !== String(restaurantId)) return;
+
+      setReservationByTableId((prev) => {
+        const next = new Map(prev);
+        if (
+          evt.type === RESERVATION_EVENT_TYPES.CANCELLED ||
+          evt.type === RESERVATION_EVENT_TYPES.PAYMENT_EXPIRED
+        ) {
+          next.delete(tableId);
+        } else if (evt.type === RESERVATION_EVENT_TYPES.CHECKED_IN) {
+          next.set(tableId, { ...reservation, type: evt.type });
+          setTimeout(() => {
+            setReservationByTableId((curr) => {
+              const copy = new Map(curr);
+              const row = copy.get(tableId);
+              if (row?.type === RESERVATION_EVENT_TYPES.CHECKED_IN) copy.delete(tableId);
+              return copy;
+            });
+          }, 5000);
+        } else {
+          next.set(tableId, { ...reservation, type: evt.type });
+        }
+        return next;
+      });
+    };
+    window.addEventListener(RESERVATION_SOCKET_EVENT, handler);
+    return () => window.removeEventListener(RESERVATION_SOCKET_EVENT, handler);
+  }, [restaurantId]);
 
   const tabs = useMemo(
     () => [
@@ -766,6 +804,11 @@ export default function LeftPanel() {
             const tablePaymentRequest = tablePaymentRequestMap.get(
               String(table.code || "").trim().toUpperCase(),
             );
+            const reservationActivity =
+              reservationByTableId.get(String(table.id)) ||
+              (table.status === "reserved"
+                ? { type: RESERVATION_EVENT_TYPES.CONFIRMED, tableId: table.id }
+                : null);
 
             return (
               <div
@@ -821,6 +864,7 @@ export default function LeftPanel() {
                     </span>
                   </div>
                 )}
+                <TableReservationRealtimeBadge activity={reservationActivity} />
 
                 {isSelected && isMultiSelectMode && (
                   <div className={cls.checkOverlay}>

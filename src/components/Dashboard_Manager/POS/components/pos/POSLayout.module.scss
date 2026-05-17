@@ -300,6 +300,19 @@
   }
 }
 
+.reservationActivityPanel {
+  margin: 0.55rem 1rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #dbeafe;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+.reservationActivityHeader { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem; }
+.reservationActivityTitle { display:block; color:#0f172a; font-size:0.9rem; }
+.reservationActivitySubtitle { color:#64748b; font-size:0.78rem; font-weight:700; }
+.reservationActivityClear { border:1px solid #cbd5e1; border-radius:999px; background:#fff; color:#475569; font-weight:800; padding:0.35rem 0.65rem; cursor:pointer; }
+
 /* 3 cột ngang */
 .shell {
   flex: 1 1 auto;

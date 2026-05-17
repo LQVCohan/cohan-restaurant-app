@@ -111,6 +111,31 @@ export const CANCEL_RESERVATION = gql`
   }
 `;
 
+export const CHECK_IN_RESERVATION = gql`
+  mutation CheckInReservation($input: CheckInReservationInput!) {
+    checkInReservation(input: $input) {
+      id restaurantId tableId status timeTo partySize customerName customerPhone
+      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+    }
+  }
+`;
+export const APPROVE_RESERVATION_CHANGE = gql`
+  mutation ApproveReservationChange($input: ApproveReservationChangeInput!) {
+    approveReservationChange(input: $input) {
+      id restaurantId tableId status timeTo partySize customerName customerPhone
+      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+    }
+  }
+`;
+export const REJECT_RESERVATION_CHANGE = gql`
+  mutation RejectReservationChange($input: RejectReservationChangeInput!) {
+    rejectReservationChange(input: $input) {
+      id restaurantId tableId status timeTo partySize customerName customerPhone
+      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+    }
+  }
+`;
+
 export const SET_TABLE_STATUS = gql`
   mutation SetTableStatus($input: SetTableStatusInput!) {
     setTableStatus(input: $input) {
@@ -183,6 +208,9 @@ export function useReservation() {
     CHANGE_RESERVATION_TABLE
   );
   const [mutCancel, cancelState] = useMutation(CANCEL_RESERVATION);
+  const [mutCheckInReservation, checkInReservationState] = useMutation(CHECK_IN_RESERVATION);
+  const [mutApproveReservationChange, approveChangeState] = useMutation(APPROVE_RESERVATION_CHANGE);
+  const [mutRejectReservationChange, rejectChangeState] = useMutation(REJECT_RESERVATION_CHANGE);
   const [mutSetTableStatus, setTableStatusState] =
     useMutation(SET_TABLE_STATUS);
 
@@ -506,6 +534,24 @@ export function useReservation() {
       return { success: false, message: err?.message || "Cancel failed" };
     }
   };
+  const checkInReservation = async (reservationId, note) => {
+    try {
+      const { data } = await mutCheckInReservation({ variables: { input: { reservationId, note } } });
+      return { success: true, data: data?.checkInReservation || null };
+    } catch (err) { return { success: false, message: err?.message || "Check in failed" }; }
+  };
+  const approveReservationChange = async (reservationId, note) => {
+    try {
+      const { data } = await mutApproveReservationChange({ variables: { input: { reservationId, note } } });
+      return { success: true, data: data?.approveReservationChange || null };
+    } catch (err) { return { success: false, message: err?.message || "Approve change failed" }; }
+  };
+  const rejectReservationChange = async (reservationId, reason) => {
+    try {
+      const { data } = await mutRejectReservationChange({ variables: { input: { reservationId, reason } } });
+      return { success: true, data: data?.rejectReservationChange || null };
+    } catch (err) { return { success: false, message: err?.message || "Reject change failed" }; }
+  };
 
   return {
     checkReservationStatus,
@@ -518,6 +564,9 @@ export function useReservation() {
     startStatusPolling,
     moveReservationToAnotherTable,
     cancelReservation,
+    checkInReservation,
+    approveReservationChange,
+    rejectReservationChange,
     // states cho UI
     states: {
       gettingStatus: getStatusState.loading,
@@ -534,6 +583,9 @@ export function useReservation() {
       errorFindingConfirmed: findConfirmedState.error,
       errorMoving: changeTableState.error,
       errorCanceling: cancelState.error,
+      checkingInReservation: checkInReservationState.loading,
+      approvingReservationChange: approveChangeState.loading,
+      rejectingReservationChange: rejectChangeState.loading,
       errorSettingTableStatus: setTableStatusState.error,
       errorUpdatingOrderCustomer: updateOrderCustomerState.error,
     },

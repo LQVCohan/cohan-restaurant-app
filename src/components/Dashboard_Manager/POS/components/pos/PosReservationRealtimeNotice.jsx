@@ -5,7 +5,6 @@ import { useNotification } from "@/hooks/useNotification";
 import styles from "./POSLayout.module.scss";
 
 const MAX_ACTIVITY_ITEMS = 5;
-const RESERVED_TABLE_BADGE_STYLE_ID = "pos-reservation-reserved-table-badge-style";
 
 function getReservation(evt) {
   return evt?.reservation || evt?.reservations?.[0] || null;
@@ -145,49 +144,10 @@ const toneColorMap = {
   info: "#1d4ed8",
 };
 
-function ensureReservedTableBadgeStyle() {
-  if (typeof document === "undefined") return;
-  if (document.getElementById(RESERVED_TABLE_BADGE_STYLE_ID)) return;
-
-  const style = document.createElement("style");
-  style.id = RESERVED_TABLE_BADGE_STYLE_ID;
-  style.textContent = `
-    [class*="tableItem"][data-status="reserved"] {
-      padding-bottom: 2.35rem !important;
-    }
-    [class*="tableItem"][data-status="reserved"]::after {
-      content: "Có đặt bàn";
-      position: absolute;
-      left: 0.65rem;
-      bottom: 0.58rem;
-      display: inline-flex;
-      align-items: center;
-      width: fit-content;
-      max-width: calc(100% - 1.3rem);
-      padding: 0.2rem 0.5rem;
-      border-radius: 999px;
-      border: 1px solid #fbbf24;
-      background: rgba(255, 251, 235, 0.94);
-      color: #92400e;
-      font-size: 0.66rem;
-      font-weight: 950;
-      letter-spacing: 0.01em;
-      box-shadow: 0 6px 14px rgba(217, 119, 6, 0.14);
-      pointer-events: none;
-      z-index: 1;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 export default function PosReservationRealtimeNotice({ restaurantId }) {
   const { showNotification } = useNotification();
   const [latestEvent, setLatestEvent] = useState(null);
   const [activities, setActivities] = useState([]);
-
-  useEffect(() => {
-    ensureReservedTableBadgeStyle();
-  }, []);
 
   const notice = useMemo(() => {
     return latestEvent ? buildNotice(latestEvent) : null;
@@ -243,16 +203,16 @@ export default function PosReservationRealtimeNotice({ restaurantId }) {
       )}
 
       {activities.length > 0 && (
-        <div style={{ margin: "0.55rem 1rem 0", padding: "0.65rem 0.75rem", border: "1px solid #dbeafe", borderRadius: "1rem", background: "rgba(255,255,255,0.92)", boxShadow: "0 8px 22px rgba(15,23,42,0.05)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.5rem" }}>
+        <div className={styles.reservationActivityPanel}>
+          <div className={styles.reservationActivityHeader}>
             <div>
-              <strong style={{ display: "block", color: "#0f172a", fontSize: "0.9rem" }}>Hoạt động đặt bàn</strong>
-              <span style={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 700 }}>Theo dõi realtime từ khách/POS</span>
+              <strong className={styles.reservationActivityTitle}>Hoạt động đặt bàn</strong>
+              <span className={styles.reservationActivitySubtitle}>Theo dõi realtime từ khách/POS</span>
             </div>
             <button
               type="button"
               onClick={() => setActivities([])}
-              style={{ border: "1px solid #cbd5e1", borderRadius: "999px", background: "#fff", color: "#475569", fontWeight: 800, padding: "0.35rem 0.65rem", cursor: "pointer" }}
+              className={styles.reservationActivityClear}
             >
               Xóa
             </button>
