@@ -190,6 +190,13 @@ const mapCouponToCard = (coupon) => {
   const isPercent = coupon.discountType === "PERCENT";
   const usage = buildUsage(coupon);
 
+  const now = Date.now();
+  const isExpired = coupon.endAt ? new Date(coupon.endAt).getTime() < now : false;
+  const isOutOfUsage =
+    Number(coupon.maxUsage || 0) > 0 &&
+    Number(coupon.used || 0) >= Number(coupon.maxUsage || 0);
+  const minOrderValue = Number(coupon.minOrderValue || 0);
+
   return {
     id: coupon.id,
     name: coupon.name || coupon.code,
@@ -210,6 +217,13 @@ const mapCouponToCard = (coupon) => {
     tag: "Coupon",
     color: getCouponColor(category),
     conditions: buildConditionLines(coupon),
+    badges: [
+      isExpired ? "Hết hạn" : null,
+      isOutOfUsage ? "Hết lượt" : null,
+      minOrderValue > 0
+        ? `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ`
+        : null,
+    ].filter(Boolean),
   };
 };
 
@@ -344,8 +358,10 @@ const CouponPage = () => {
       return (
         <div className="empty-state">
           <Inbox size={42} />
-          <h3>Chưa thể tải Coupon</h3>
-          <p>Vui lòng thử lại sau hoặc chọn nhà hàng khác.</p>
+          <h3>Không thể tải Coupon lúc này</h3>
+          <p>
+            Đã có lỗi khi lấy dữ liệu. Vui lòng tải lại trang hoặc thử lại sau.
+          </p>
         </div>
       );
     }
@@ -396,6 +412,14 @@ const CouponPage = () => {
                   <h4 className="t-title">{coupon.title}</h4>
                   <p className="t-sub">{coupon.subTitle}</p>
                   <p className="discount-label">{coupon.discountLabel}</p>
+                  <div className="coupon-badges">
+                    {isSaved && <span className="tag">Đã lưu</span>}
+                    {coupon.badges.map((badge) => (
+                      <span key={`${coupon.id}-${badge}`} className="tag">
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                   {renderCouponUsage(coupon)}
                 </div>
 

@@ -14,7 +14,11 @@ import { formatPrice } from "@/utils/formatters";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { groupPaymentRequests } from "@/utils/paymentRequestGrouping";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
-import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import {
+  formatDiscountReasonLabel,
+  getPromotionSourceLabel,
+  getPromotionTypeLabel,
+} from "@/utils/discountDisplay";
 import {
   getDiscountPreviewErrorMessage,
   useDiscountPreview,
@@ -515,6 +519,12 @@ export default function RightPanel() {
   const totalsForDisplay = discountBreakdown
     ? {
         subtotal: discountBreakdown.subtotal,
+        couponDiscount:
+          discountBreakdown.couponDiscount ||
+          discountBreakdown.voucherDiscount ||
+          0,
+        promotionDiscount: discountBreakdown.promotionDiscount || 0,
+        shippingDiscount: discountBreakdown.shippingDiscount || 0,
         discount:
           discountBreakdown.totalDiscount || discountBreakdown.discount || 0,
         service: discountBreakdown.service || 0,
@@ -524,6 +534,12 @@ export default function RightPanel() {
       }
     : finalTotals || {};
   const totals = totalsForDisplay;
+  const displaySubtotal = discountBreakdown
+    ? totals?.subtotal
+    : finalTotals?.subtotal;
+  const displayGrandTotal = discountBreakdown
+    ? totals?.total || totals?.grandTotal
+    : finalTotals?.total || finalTotals?.grandTotal;
   const hasCouponCode = couponCode.trim().length > 0;
   const hasPromotionSelection = selectedPromotionIds.length > 0;
   const hasDiscountSelection = hasCouponCode || hasPromotionSelection;
@@ -534,7 +550,10 @@ export default function RightPanel() {
     (!discountBreakdown || !!discountError);
   const breakdownConfig = [
     { key: "subtotal", label: "Tạm tính", cls: "" },
-    { key: "discount", label: "Giảm giá", cls: "neg" },
+    { key: "couponDiscount", label: "Giảm coupon", cls: "neg" },
+    { key: "promotionDiscount", label: "Giảm promotion", cls: "neg" },
+    { key: "shippingDiscount", label: "Giảm vận chuyển", cls: "neg" },
+    { key: "discount", label: "Tổng giảm", cls: "neg" },
     { key: "service", label: "Phí phục vụ", cls: "" },
     { key: "tax", label: "Thuế", cls: "" },
   ];
@@ -565,6 +584,21 @@ export default function RightPanel() {
         : [],
     [discountBreakdown?.promotionLines],
   );
+  const promotionBreakdownRows = useMemo(() => {
+    const rows = Array.isArray(discountBreakdown?.appliedPromotionBreakdown)
+      ? discountBreakdown.appliedPromotionBreakdown
+      : [];
+    return rows
+      .map((row, index) => ({
+        key: row?.id || `${row?.promotionId || "promo"}_${index}`,
+        type: getPromotionTypeLabel(row?.type || row?.promotionType),
+        label: row?.promotionName || row?.promotionCode || "Khuyến mãi",
+        source: getPromotionSourceLabel(row?.source),
+        itemName: row?.itemName || "",
+        discountAmount: Math.abs(Number(row?.discountAmount ?? row?.discount ?? 0)),
+      }))
+      .filter((row) => row.discountAmount > 0);
+  }, [discountBreakdown]);
 
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
   const hasUnservedExistingItems = useMemo(() => {
@@ -1385,6 +1419,24 @@ export default function RightPanel() {
                   ))}
                 </div>
               )}
+              {promotionBreakdownRows.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>
+                    Chi tiết khuyến mãi
+                  </div>
+                  {promotionBreakdownRows.map((row) => (
+                    <div key={row.key} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                      <span>
+                        {row.type} · {row.label} · {row.source}
+                        {row.itemName ? ` · ${row.itemName}` : ""}
+                      </span>
+                      <strong style={{ color: "#16a34a" }}>
+                        -{formatPrice(row.discountAmount)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1726,7 +1778,7 @@ export default function RightPanel() {
         <div className={cls.summary}>
           <div className={cls.row}>
             <span>Tạm tính:</span>
-            <strong>{formatPrice(finalTotals?.subtotal || 0)}</strong>
+            <strong>{formatPrice(displaySubtotal || 0)}</strong>
           </div>
 
           <button
@@ -1754,7 +1806,7 @@ export default function RightPanel() {
 
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
-            <strong>{formatPrice(finalTotals?.total || 0)}</strong>
+            <strong>{formatPrice(displayGrandTotal || 0)}</strong>
           </div>
         </div>
 

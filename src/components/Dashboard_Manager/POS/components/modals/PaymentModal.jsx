@@ -18,6 +18,10 @@ import {
   getDiscountBreakdownTotal,
 } from "@/utils/discountPreviewPayload";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import {
+  getPromotionSourceLabel,
+  getPromotionTypeLabel,
+} from "@/utils/discountDisplay";
 
 import { useActiveDiscountPromotions } from "@/hooks/useActiveDiscountPromotions";
 const QRCodePlaceholder = ({ value }) => (
@@ -152,7 +156,22 @@ function PaymentModal({
         value: Number(source?.subtotal || baseTotalAmountVnd),
       },
       {
-        label: "Giảm giá",
+        label: "Giảm coupon",
+        value: Number(source?.couponDiscount || source?.voucherDiscount || 0),
+        negative: true,
+      },
+      {
+        label: "Giảm promotion",
+        value: Number(source?.promotionDiscount || 0),
+        negative: true,
+      },
+      {
+        label: "Giảm vận chuyển",
+        value: Number(source?.shippingDiscount || 0),
+        negative: true,
+      },
+      {
+        label: "Tổng giảm",
         value: Number(
           source?.totalDiscount ??
             source?.discount ??
@@ -187,6 +206,24 @@ function PaymentModal({
         : [],
     [discountBreakdown?.promotionLines],
   );
+  const promotionBreakdownRows = useMemo(() => {
+    const fromBreakdown = Array.isArray(discountBreakdown?.appliedPromotionBreakdown)
+      ? discountBreakdown.appliedPromotionBreakdown
+      : Array.isArray(discountBreakdown?.promotionLines)
+        ? discountBreakdown.promotionLines
+        : [];
+    return fromBreakdown
+      .map((row, index) => ({
+        key: row?.id || row?.lineId || `${row?.promotionId || "promo"}_${index}`,
+        type: getPromotionTypeLabel(row?.type || row?.promotionType),
+        name: row?.promotionName || row?.name || row?.promotionCode || "Khuyến mãi",
+        code: row?.promotionCode || row?.code || "",
+        source: getPromotionSourceLabel(row?.source),
+        itemName: row?.itemName || row?.name || "",
+        discountAmount: Math.abs(Number(row?.discountAmount ?? row?.discount ?? 0)),
+      }))
+      .filter((row) => row.discountAmount > 0);
+  }, [discountBreakdown]);
   const hasValidDiscount = Boolean(
     isDineIn &&
     discountBreakdown &&
@@ -642,6 +679,32 @@ function PaymentModal({
                               {formatPrice(
                                 convertCurrencyAmount(
                                   line.discount,
+                                  "VND",
+                                  activeCurrency,
+                                  usdToVndRate,
+                                ),
+                                { currency: activeCurrency },
+                              )}
+                            </strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {promotionBreakdownRows.length > 0 && (
+                      <div className={s.linePromotionBreakdown}>
+                        <div className={s.linePromotionTitle}>Chi tiết khuyến mãi</div>
+                        {promotionBreakdownRows.map((row) => (
+                          <div key={row.key} className={s.linePromotionRow}>
+                            <span>
+                              {row.type} · {row.name}
+                              {row.code ? ` (${row.code})` : ""} · {row.source}
+                              {row.itemName ? ` · ${row.itemName}` : ""}
+                            </span>
+                            <strong>
+                              -
+                              {formatPrice(
+                                convertCurrencyAmount(
+                                  row.discountAmount,
                                   "VND",
                                   activeCurrency,
                                   usdToVndRate,
