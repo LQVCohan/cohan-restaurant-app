@@ -534,6 +534,12 @@ export default function RightPanel() {
       }
     : finalTotals || {};
   const totals = totalsForDisplay;
+  const displaySubtotal = discountBreakdown
+    ? totals?.subtotal
+    : finalTotals?.subtotal;
+  const displayGrandTotal = discountBreakdown
+    ? totals?.total || totals?.grandTotal
+    : finalTotals?.total || finalTotals?.grandTotal;
   const hasCouponCode = couponCode.trim().length > 0;
   const hasPromotionSelection = selectedPromotionIds.length > 0;
   const hasDiscountSelection = hasCouponCode || hasPromotionSelection;
@@ -1772,7 +1778,7 @@ export default function RightPanel() {
         <div className={cls.summary}>
           <div className={cls.row}>
             <span>Tạm tính:</span>
-            <strong>{formatPrice(totals?.subtotal || 0)}</strong>
+            <strong>{formatPrice(displaySubtotal || 0)}</strong>
           </div>
 
           <button
@@ -1800,7 +1806,7 @@ export default function RightPanel() {
 
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
-            <strong>{formatPrice(totals?.total || totals?.grandTotal || 0)}</strong>
+            <strong>{formatPrice(displayGrandTotal || 0)}</strong>
           </div>
         </div>
 

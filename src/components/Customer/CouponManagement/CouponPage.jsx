@@ -220,7 +220,9 @@ const mapCouponToCard = (coupon) => {
     badges: [
       isExpired ? "Hết hạn" : null,
       isOutOfUsage ? "Hết lượt" : null,
-      minOrderValue > 0 ? "Chưa đủ điều kiện" : null,
+      minOrderValue > 0
+        ? `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ`
+        : null,
     ].filter(Boolean),
   };
 };
