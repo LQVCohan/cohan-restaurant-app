@@ -19,6 +19,36 @@ function overlapQuery(slotStart, slotEnd) {
   };
 }
 
+function emitReservationExpiryEvents(io, expiredReservations, now) {
+  if (!io?.to || !expiredReservations?.length) return;
+
+  const byRestaurant = new Map();
+  for (const reservation of expiredReservations) {
+    const restaurantId = String(reservation.restaurantId || "");
+    if (!restaurantId) continue;
+    if (!byRestaurant.has(restaurantId)) byRestaurant.set(restaurantId, []);
+    byRestaurant.get(restaurantId).push(reservation);
+  }
+
+  for (const [restaurantId, reservations] of byRestaurant.entries()) {
+    io.to(`restaurant_${restaurantId}`).emit("reservationEvents", {
+      type: "RESERVATION_PAYMENT_EXPIRED",
+      restaurantId,
+      reservationIds: reservations.map((item) => String(item._id)),
+      reservations: reservations.map((item) => ({
+        id: String(item._id),
+        _id: String(item._id),
+        restaurantId: String(item.restaurantId),
+        tableId: item.tableId ? String(item.tableId) : null,
+        userId: item.userId ? String(item.userId) : null,
+        status: "cancelled",
+        depositStatus: "cancelled",
+      })),
+      emittedAt: now.toISOString(),
+    });
+  }
+}
+
 export function calcReservationEnd(start, durationMinutes, isUnlimitedTime) {
   if (isUnlimitedTime) return null;
   return new Date(start.getTime() + Number(durationMinutes || 60) * 60 * 1000);
@@ -139,7 +169,7 @@ export async function expirePendingReservationPayments({ io } = {}) {
   const expiredReservations = await Reservation.find({
     status: "pending_payment",
     pendingPaymentExpiresAt: { $lte: now },
-  }).select({ _id: 1, tableId: 1, restaurantId: 1 }).lean();
+  }).select({ _id: 1, tableId: 1, restaurantId: 1, userId: 1 }).lean();
 
   if (!expiredReservations.length) return { modifiedCount: 0 };
 
@@ -163,13 +193,7 @@ export async function expirePendingReservationPayments({ io } = {}) {
     if (!hasActive) await Table.updateOne({ _id: tableId }, { $set: { status: "available" } }).catch(() => {});
   }
 
-  if (io?.emit) {
-    io.emit("reservationEvents", {
-      type: "RESERVATION_PAYMENT_EXPIRED",
-      reservationIds: reservationIds.map((id) => String(id)),
-      emittedAt: now.toISOString(),
-    });
-  }
+  emitReservationExpiryEvents(io, expiredReservations, now);
 
   return updateResult;
 }
