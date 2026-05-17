@@ -27,9 +27,9 @@ export const GET_RESERVATION_STATUS = gql`
   }
 `;
 
-export const CONFIRMED_RESERVATION_BY_TABLE = gql`
-  query ConfirmedReservationByTable($restaurantId: ID!, $tableId: ID!) {
-    confirmedReservationByTable(
+export const ACTIVE_RESERVATION_BY_TABLE = gql`
+  query ActiveReservationByTable($restaurantId: ID!, $tableId: ID!) {
+    activeReservationByTable(
       restaurantId: $restaurantId
       tableId: $tableId
     ) {
@@ -47,6 +47,15 @@ export const CONFIRMED_RESERVATION_BY_TABLE = gql`
       note
       timeTo
       durationMinutes
+      isUnlimitedTime
+      paymentMethod
+      paymentReference
+      changeRequestType
+      changeRequestStatus
+      changeRequestFee
+      requestedTimeTo
+      requestedDurationMinutes
+      requestedTableId
       createdAt
       updatedAt
     }
@@ -114,24 +123,30 @@ export const CANCEL_RESERVATION = gql`
 export const CHECK_IN_RESERVATION = gql`
   mutation CheckInReservation($input: CheckInReservationInput!) {
     checkInReservation(input: $input) {
-      id restaurantId tableId status timeTo partySize customerName customerPhone
-      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+      id status depositStatus orderCode restaurantId tableId userId customerName customerPhone customerEmail
+      partySize note timeTo durationMinutes isUnlimitedTime paymentMethod paymentReference
+      changeRequestType changeRequestStatus changeRequestFee requestedTimeTo requestedDurationMinutes requestedTableId
+      createdAt updatedAt
     }
   }
 `;
 export const APPROVE_RESERVATION_CHANGE = gql`
   mutation ApproveReservationChange($input: ApproveReservationChangeInput!) {
     approveReservationChange(input: $input) {
-      id restaurantId tableId status timeTo partySize customerName customerPhone
-      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+      id status depositStatus orderCode restaurantId tableId userId customerName customerPhone customerEmail
+      partySize note timeTo durationMinutes isUnlimitedTime paymentMethod paymentReference
+      changeRequestType changeRequestStatus changeRequestFee requestedTimeTo requestedDurationMinutes requestedTableId
+      createdAt updatedAt
     }
   }
 `;
 export const REJECT_RESERVATION_CHANGE = gql`
   mutation RejectReservationChange($input: RejectReservationChangeInput!) {
     rejectReservationChange(input: $input) {
-      id restaurantId tableId status timeTo partySize customerName customerPhone
-      changeRequestType changeRequestStatus requestedTimeTo requestedDurationMinutes requestedTableId
+      id status depositStatus orderCode restaurantId tableId userId customerName customerPhone customerEmail
+      partySize note timeTo durationMinutes isUnlimitedTime paymentMethod paymentReference
+      changeRequestType changeRequestStatus changeRequestFee requestedTimeTo requestedDurationMinutes requestedTableId
+      createdAt updatedAt
     }
   }
 `;
@@ -195,8 +210,8 @@ export function useReservation() {
   const [runGetStatus, getStatusState] = useLazyQuery(GET_RESERVATION_STATUS, {
     fetchPolicy: "network-only",
   });
-  const [runFindConfirmedByTable, findConfirmedState] = useLazyQuery(
-    CONFIRMED_RESERVATION_BY_TABLE,
+  const [runFindActiveByTable, findConfirmedState] = useLazyQuery(
+    ACTIVE_RESERVATION_BY_TABLE,
     { fetchPolicy: "network-only" }
   );
 
@@ -382,28 +397,29 @@ export function useReservation() {
       return { success: false, message: "Missing restaurantId/tableId" };
     }
     try {
-      const { data, error } = await runFindConfirmedByTable({
+      const { data, error } = await runFindActiveByTable({
         variables: { restaurantId, tableId },
       });
       if (error) throw error;
-      const resv = data?.confirmedReservationByTable || null;
+      const resv = data?.activeReservationByTable || null;
       return { success: true, data: resv };
     } catch (err) {
       const msg = err?.message || "";
       if (
         msg.includes("Cannot query field") &&
-        msg.includes("confirmedReservationByTable")
+        msg.includes("activeReservationByTable")
       ) {
         return {
           success: false,
           reason: "not_supported",
           message:
-            "Server chưa hỗ trợ confirmedReservationByTable. Có thể bỏ qua vì BE đã tự gán customer & orderCode từ reservation khi upsert order.",
+            "Server chưa hỗ trợ activeReservationByTable. Có thể bỏ qua vì BE đã tự gán customer & orderCode từ reservation khi upsert order.",
         };
       }
       return { success: false, message: msg || "Query failed" };
     }
   };
+  const findActiveByTable = findConfirmedByTable;
 
   const attachReservationCustomerToOrder = async ({
     reservation,
@@ -559,6 +575,7 @@ export function useReservation() {
     createReservation, // alias
     seatReservation,
     findConfirmedByTable,
+    findActiveByTable,
     attachReservationCustomerToOrder,
     hydrateOrderFromTableReservation,
     startStatusPolling,

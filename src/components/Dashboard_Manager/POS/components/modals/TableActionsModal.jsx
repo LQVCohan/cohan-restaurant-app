@@ -1462,6 +1462,7 @@ function TableActionsModalCore({
                 <div>Trạng thái: {activeReservation.status || "-"}</div>
                 <div>Yêu cầu đổi: {activeReservation.changeRequestType || "-"} / {activeReservation.changeRequestStatus || "-"}</div>
                 <div>Giờ yêu cầu mới: {activeReservation.requestedTimeTo ? new Date(activeReservation.requestedTimeTo).toLocaleString("vi-VN") : "-"}</div>
+                <div>Bàn yêu cầu mới: {activeReservation.requestedTableId || "-"}</div>
               </div>
             ) : (
               <div className={s.hint}>Chưa có đặt bàn đang hoạt động cho bàn này.</div>
@@ -1473,6 +1474,9 @@ function TableActionsModalCore({
                   const res = await checkInReservation(activeReservation.id);
                   setBusyKey("checkInReservation", false);
                   if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
+                  setActiveReservation(res.data || activeReservation);
+                  const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                  if (latest?.success) setActiveReservation(latest.data || null);
                   showNotification?.("Check-in reservation thành công.", "success");
                   onUpdated?.();
                 }}>Check-in khách đặt bàn</button>
@@ -1484,7 +1488,9 @@ function TableActionsModalCore({
                     const res = await approveReservationChange(activeReservation.id);
                     setBusyKey("approveReservationChange", false);
                     if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
-                    setActiveReservation(res.data);
+                    setActiveReservation(res.data || activeReservation);
+                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                    if (latest?.success) setActiveReservation(latest.data || null);
                     onUpdated?.();
                     showNotification?.("Đã duyệt thay đổi đặt bàn.", "success");
                   }}>Duyệt thay đổi</button>
@@ -1493,7 +1499,9 @@ function TableActionsModalCore({
                     const res = await rejectReservationChange(activeReservation.id, "Nhà hàng chưa thể đáp ứng thay đổi này.");
                     setBusyKey("rejectReservationChange", false);
                     if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
-                    setActiveReservation(res.data);
+                    setActiveReservation(res.data || activeReservation);
+                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
+                    if (latest?.success) setActiveReservation(latest.data || null);
                     onUpdated?.();
                     showNotification?.("Đã từ chối thay đổi đặt bàn.", "success");
                   }}>Từ chối thay đổi</button>
