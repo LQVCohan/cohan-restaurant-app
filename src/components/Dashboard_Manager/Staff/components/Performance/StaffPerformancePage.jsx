@@ -459,16 +459,6 @@ const ReviewModal = ({
         </div>
 
         <form className="review-form" onSubmit={handleSubmit}>
-          <div className="previous-period-card">
-            <strong>So sánh kỳ trước</strong>
-            <div className="comparison-grid">
-              <span>Điểm kỳ này: {scoreText(finalPerformanceScore)}</span>
-              <span>Điểm kỳ trước: {previousSnapshot ? scoreText(previousSnapshot.finalPerformanceScore) : "--"}</span>
-              <span>Chênh lệch: {formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore)}</span>
-              <span>Level kỳ này / kỳ trước: {level.label} / {previousSnapshot ? getScoreLevel(previousSnapshot.finalPerformanceScore).label : "--"}</span>
-            </div>
-          </div>
-
           <div className="factor-box">
             <strong>Tham khảo đánh giá khách hàng</strong>
             <div className="factor-grid">
@@ -690,16 +680,6 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
             </ul>
           </div>
 
-          <div className="previous-period-card">
-            <strong>So sánh kỳ trước</strong>
-            <div className="comparison-grid">
-              <span>Điểm kỳ này: {scoreText(finalPerformanceScore)}</span>
-              <span>Điểm kỳ trước: {previousSnapshot ? scoreText(previousSnapshot.finalPerformanceScore) : "--"}</span>
-              <span>Chênh lệch: {formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore)}</span>
-              <span>Level kỳ này / kỳ trước: {level.label} / {previousSnapshot ? getScoreLevel(previousSnapshot.finalPerformanceScore).label : "--"}</span>
-            </div>
-          </div>
-
           <div className="factor-box">
             <strong>Dữ liệu đầu vào</strong>
             <div className="factor-grid">
@@ -790,7 +770,7 @@ const StaffPerformancePage = ({
 
   const previousPeriod = useMemo(() => resolvePreviousPeriod(periodStart, periodEnd), [periodEnd, periodStart]);
   const { snapshots: previousSnapshots } = useStaffPerformance({
-    restaurantId: effectiveRestaurantId,
+    restaurantId: previousPeriod ? effectiveRestaurantId : undefined,
     periodStart: previousPeriod?.periodStart,
     periodEnd: previousPeriod?.periodEnd,
   });
