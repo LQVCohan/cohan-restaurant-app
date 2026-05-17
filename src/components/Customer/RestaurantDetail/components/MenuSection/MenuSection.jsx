@@ -8,7 +8,7 @@ import Cart from "../../../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../../../hooks/useCart";
 
 // Icons
-import { ShoppingCart, Plus, ChevronDown } from "lucide-react";
+import { ShoppingCart, ChevronDown } from "lucide-react";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 // Utils
@@ -108,8 +108,7 @@ const MenuSection = ({ restaurantId }) => {
   const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const { cart, addToCart, updateQuantity, getTotalItems, getTotalPrice } =
-    useCart();
+  const { cart, updateQuantity, getTotalItems, getTotalPrice } = useCart();
 
   // --- QUERY CATEGORIES ---
   const { data: categoriesData, loading: catLoading } = useQuery(
@@ -214,28 +213,6 @@ const MenuSection = ({ restaurantId }) => {
     setSelectedVariants((prev) => ({ ...prev, [itemId]: variantKey }));
   };
 
-  const handleAddToCart = (item) => {
-    const selKey = selectedVariants[item.id];
-    const variant =
-      item.servingVariants?.find((v) => v.key === selKey) ||
-      item.servingVariants?.[0];
-
-    // Ưu tiên giá của variant, nếu không có thì lấy basePrice
-    const finalPrice = variant?.price ?? item.basePrice ?? 0;
-    // Tên món + Tên biến thể (nếu có)
-    const variantName =
-      variant?.name && variant.name !== "Standard" ? variant.name : null;
-
-    addToCart({
-      id: variant ? `${item.id}_${variant.key}` : item.id, // ID duy nhất trong giỏ
-      name: item.name,
-      price: finalPrice,
-      image: item.thumbImage || "/default-dishes.jpg",
-      method: variantName, // Lưu cách chế biến vào đây để hiển thị trong giỏ
-    });
-    setIsCartOpen(true);
-  };
-
   const loadMoreItems = () => {
     if (!hasNextPage || !cursor) return;
     fetchMore({
@@ -267,11 +244,15 @@ const MenuSection = ({ restaurantId }) => {
     if (!item?.id) return;
 
     const categoryId = item?.categoryId || activeCategory || null;
+    const selectedVariantKey =
+      selectedVariants[item.id] || item.servingVariants?.[0]?.key || null;
+
     const state = {
       dish: item,
       restaurantId,
       timeSlot: selectedTimeSlot,
       categoryId,
+      selectedVariantKey,
     };
 
     const params = new URLSearchParams();
@@ -435,10 +416,10 @@ const MenuSection = ({ restaurantId }) => {
                           className="btn-add"
                           onClick={(event) => {
                             event.stopPropagation();
-                            handleAddToCart(item);
+                            openFoodDetail(item);
                           }}
                         >
-                          <Plus size={16} /> Thêm
+                          Chọn món
                         </button>
                       </div>
                     </div>
