@@ -204,8 +204,19 @@ const CUSTOMER_MENU_ITEM = gql`
   }
 `;
 const GET_FOOD_REVIEWS = gql`
-  query GetFoodReviewsForFoodDetail($restaurantId: ID!, $limit: Int = 40) {
-    reviews(restaurantId: $restaurantId, targetType: "food", status: "published", limit: $limit, skip: 0) {
+  query GetFoodReviewsForFoodDetail(
+    $restaurantId: ID!
+    $targetId: ID!
+    $limit: Int = 5
+  ) {
+    reviews(
+      restaurantId: $restaurantId
+      targetType: "food"
+      targetId: $targetId
+      status: "published"
+      limit: $limit
+      skip: 0
+    ) {
       items {
         id
         targetId
@@ -236,6 +247,26 @@ const getCartMutationErrorMessage = (error, fallback) =>
   error?.networkError?.result?.errors?.[0]?.message ||
   error?.message ||
   fallback;
+
+const resolveFoodDetailSocketUrl = () => {
+  const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL;
+  if (explicitSocketUrl) return explicitSocketUrl;
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    try {
+      return new URL(apiUrl).origin;
+    } catch {
+      return String(apiUrl).replace(/\/graphql\/?$/, "");
+    }
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  return "http://localhost:4000";
+};
 
 const FoodDetail = () => {
   const { foodId } = useParams();
@@ -325,15 +356,17 @@ const FoodDetail = () => {
     skip: !resolvedDish?.restaurantId,
   });
   const { data: foodReviewsData } = useQuery(GET_FOOD_REVIEWS, {
-    variables: { restaurantId: resolvedDish?.restaurantId, limit: 40 },
+    variables: {
+      restaurantId: resolvedDish?.restaurantId,
+      targetId: resolvedDish?.id,
+      limit: 5,
+    },
     skip: !resolvedDish?.restaurantId || !resolvedDish?.id,
   });
   const foodReviews = useMemo(() => {
     const rows = foodReviewsData?.reviews?.items || [];
-    return rows
-      .filter((row) => String(row?.targetId || "") === String(resolvedDish?.id || ""))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [foodReviewsData, resolvedDish?.id]);
+    return rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [foodReviewsData]);
   const averageFoodRating = useMemo(() => {
     if (!foodReviews.length) return 0;
     const sum = foodReviews.reduce((acc, row) => acc + Number(row?.rating || 0), 0);
@@ -430,12 +463,7 @@ const FoodDetail = () => {
 
   useEffect(() => {
     if (!resolvedDish?.restaurantId || !resolvedDish?.id) return;
-    const socketUrl =
-      import.meta.env.VITE_SOCKET_URL ||
-      import.meta.env.VITE_API_URL ||
-      window.location.origin ||
-      "http://localhost:4000";
-    const socket = io(socketUrl, { transports: ["websocket"] });
+    const socket = io(resolveFoodDetailSocketUrl(), { transports: ["websocket"] });
     socketRef.current = socket;
     socket.on("connect", () => {
       socket.emit("joinRestaurant", resolvedDish.restaurantId);
@@ -623,7 +651,7 @@ const FoodDetail = () => {
       if (!backendCartId || !backendCartItemId) {
         try {
           await refetchLiveState?.();
-        } catch (_refetchError) {
+        } catch {
           // Giữ lỗi đồng bộ dòng giỏ hàng là lỗi chính cần báo cho người dùng.
         }
 
@@ -643,7 +671,7 @@ const FoodDetail = () => {
 
       try {
         await refetchLiveState?.();
-      } catch (_refetchError) {
+      } catch {
         // Giữ flow add-to-cart thành công dù lần refetch realtime này bị trượt.
       }
 
@@ -1077,7 +1105,30 @@ const FoodDetail = () => {
 
             {activeTab === "reviews" && (
               <div className="reviews-content fade-in">
-                {foodReviews.length === 0 ? <div className="empty-reviews"><Star size={48} color="#e5e7eb" /><p>Chưa có đánh giá cho món này.</p></div> : <div><p>Điểm trung bình: <b>{averageFoodRating.toFixed(1)}</b> / 5 ({foodReviews.length} đánh giá)</p>{foodReviews.slice(0,5).map((review) => <div key={review.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}><b>{review.customerName || "Khách hàng"}</b> - {review.rating}/5<div>{review.content || "Không có nội dung."}</div></div>)}</div>}
+                {foodReviews.length === 0 ? (
+                  <div className="empty-reviews">
+                    <Star size={48} color="#e5e7eb" />
+                    <p>Chưa có đánh giá cho món này.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p>
+                      Điểm trung bình từ đánh giá gần đây:{" "}
+                      <b>{averageFoodRating.toFixed(1)}</b> / 5 (
+                      {foodReviews.length} đánh giá)
+                    </p>
+                    {foodReviews.slice(0, 5).map((review) => (
+                      <div
+                        key={review.id}
+                        style={{ padding: "8px 0", borderBottom: "1px solid #eee" }}
+                      >
+                        <b>{review.customerName || "Khách hàng"}</b> -{" "}
+                        {review.rating}/5
+                        <div>{review.content || "Không có nội dung."}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
