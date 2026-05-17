@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Header from "./components/Header";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
@@ -31,12 +31,10 @@ const Home = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [isAnimatingCart, setIsAnimatingCart] = useState(false);
 
   // --- CART HOOK ---
   const {
     cart,
-    addToCart,
     updateQuantity,
     clearCart,
     removeRestaurantItems,
@@ -90,22 +88,58 @@ const Home = () => {
     document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // 3. Xử lý thêm vào giỏ hàng (từ DishGrid)
-  const handleAddToCart = useCallback(
-    (dishPayload) => {
-      addToCart(dishPayload);
-      // Hiệu ứng nút giỏ hàng nảy lên
-      setIsAnimatingCart(true);
-      setTimeout(() => setIsAnimatingCart(false), 600);
-    },
-    [addToCart]
-  );
-
   // 4. Mở modal đặt bàn (từ RestaurantGrid)
   const handleOpenBooking = useCallback((restaurant) => {
     setSelectedRestaurant(restaurant);
     setIsTableBookingOpen(true);
   }, []);
+
+
+
+  const hasBackendHeldItems = useMemo(
+    () =>
+      (cart || []).some(
+        (item) =>
+          item?.backendCartId || item?.backendCartItemId || item?.holdExpiresAt,
+      ),
+    [cart],
+  );
+
+  const showBackendHoldWarning = useCallback(() => {
+    alert(
+      "Giỏ hàng có món đang được giữ trên máy chủ. Vui lòng quản lý giỏ hàng từ trang món hoặc tiếp tục thanh toán.",
+    );
+  }, []);
+
+  const handleCartUpdateQuantity = useCallback(
+    (itemId, delta) => {
+      if (hasBackendHeldItems) {
+        showBackendHoldWarning();
+        return;
+      }
+      updateQuantity(itemId, delta);
+    },
+    [hasBackendHeldItems, showBackendHoldWarning, updateQuantity],
+  );
+
+  const handleClearCart = useCallback(() => {
+    if (hasBackendHeldItems) {
+      showBackendHoldWarning();
+      return;
+    }
+    clearCart();
+  }, [clearCart, hasBackendHeldItems, showBackendHoldWarning]);
+
+  const handleRemoveRestaurantItems = useCallback(
+    (restaurantId) => {
+      if (hasBackendHeldItems) {
+        showBackendHoldWarning();
+        return;
+      }
+      removeRestaurantItems(restaurantId);
+    },
+    [hasBackendHeldItems, removeRestaurantItems, showBackendHoldWarning],
+  );
 
   // 5. Submit đặt bàn
   const handleBookTable = (bookingData) => {
@@ -135,7 +169,6 @@ const Home = () => {
 
         {/* DISH GRID: Fetch Top Món Ăn (Không cần props data, tự fetch trong component) */}
         <DishGrid
-          onAddToCart={handleAddToCart}
           selectedCategoryId={filterState.categoryId}
           selectedCategoryName={filterState.categoryName}
           timeSlot={timeSlot}
@@ -160,11 +193,11 @@ const Home = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        onUpdateQuantity={updateQuantity}
+        onUpdateQuantity={handleCartUpdateQuantity}
         totalPrice={getTotalPrice()}
-        onCheckoutSuccess={clearCart}
-        onClearCart={clearCart}
-        onRemoveRestaurantItems={removeRestaurantItems}
+        onCheckoutSuccess={handleClearCart}
+        onClearCart={handleClearCart}
+        onRemoveRestaurantItems={handleRemoveRestaurantItems}
       />
 
       <TableBooking
@@ -180,9 +213,7 @@ const Home = () => {
       {/* FLOATING CART BUTTON */}
       <button
         onClick={() => setIsCartOpen(!isCartOpen)}
-        className={`cart-floating-btn ${
-          isAnimatingCart ? "cart-animating" : ""
-        }`}
+        className="cart-floating-btn"
         aria-label="Xem giỏ hàng"
       >
         <span className="cart-floating-btn__icon">🛒</span>

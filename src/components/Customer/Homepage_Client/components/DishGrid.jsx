@@ -1,6 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
+import {
+  buildFoodDetailPath,
+  buildFoodDetailState,
+} from "../../../../utils/customerFoodNavigation";
+import {
+  canCustomerOrderMenuItem,
+  getMenuItemAvailability,
+  shouldShowMenuItemToCustomer,
+} from "../../../../utils/menuItemAvailability";
 import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
@@ -26,8 +35,13 @@ const GET_TOP_MENU_ITEMS = gql`
       menuId
       categoryId
       restaurantId
+      status
+      inventoryStatus
+      stockWarnings
+      avgPrepTimeMin
       servingVariants {
         key
+        id
         name
         price
       }
@@ -36,7 +50,6 @@ const GET_TOP_MENU_ITEMS = gql`
 `;
 
 const DishGrid = ({
-  onAddToCart,
   selectedCategoryId = null,
   selectedCategoryName = "",
   timeSlot = null,
@@ -52,57 +65,62 @@ const DishGrid = ({
     fetchPolicy: "network-only",
   });
 
-  // State lưu method đang chọn của từng món
-  const [selectedMethodByDish, setSelectedMethodByDish] = useState({});
+  // State lưu variant key đang chọn của từng món
+  const [selectedVariantKeyByDish, setSelectedVariantKeyByDish] = useState({});
 
   const dishes = useMemo(() => data?.topMenuItems ?? [], [data]);
   const safeDishes = Array.isArray(dishes) ? dishes : [];
-
-
+  const visibleDishes = useMemo(
+    () => safeDishes.filter((dish) => shouldShowMenuItemToCustomer(dish)),
+    [safeDishes],
+  );
   // Ảnh fallback nếu món chưa có ảnh
   const defaultImg =
     "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
 
   // --- LOGIC HELPER ---
+  const getVariantKey = (variant, fallbackIndex = 0) =>
+    variant?.key || variant?.id || variant?.name || `variant-${fallbackIndex}`;
+
   const getSelectedMethod = (dish) => {
-    const chosenName = selectedMethodByDish[dish.id];
-    if (!chosenName && dish.servingVariants?.length > 0) {
+    const selectedKey = selectedVariantKeyByDish[dish.id];
+    if (!selectedKey && dish.servingVariants?.length > 0) {
       return dish.servingVariants[0];
     }
-    return dish.servingVariants?.find((m) => m.name === chosenName) || null;
+    return (
+      dish.servingVariants?.find(
+        (variant, index) => getVariantKey(variant, index) === selectedKey,
+      ) || null
+    );
   };
 
-  const getEffectivePrice = (basePrice, method) => {
-    const b = Number(basePrice) || 0;
-    const delta = Number(method?.price || 0);
-    return b + delta;
+  const getEffectivePrice = (basePrice, variant) => {
+    const variantPrice = Number(variant?.price);
+    if (Number.isFinite(variantPrice) && variantPrice > 0) return variantPrice;
+    return Number(basePrice) || 0;
   };
 
-  const handleMethodChange = (dishId, methodName) => {
-    setSelectedMethodByDish((prev) => ({ ...prev, [dishId]: methodName }));
-  };
-
-  const handleAdd = (dish) => {
-    const method = getSelectedMethod(dish);
-    const price = getEffectivePrice(dish.basePrice, method);
-
-    const payload = {
-      id: dish.id,
-      dishId: dish.id,
-      restaurantId: dish.restaurantId,
-      name: dish.name,
-      price,
-      image: dish.thumbImage || defaultImg,
-      method: method?.name || null,
-      quantity: 1,
-      menuId: dish.menuId,
-      categoryId: dish.categoryId,
-    };
-    onAddToCart?.(payload);
+  const handleMethodChange = (dishId, variantKey) => {
+    setSelectedVariantKeyByDish((prev) => ({ ...prev, [dishId]: variantKey }));
   };
 
   const handleOpenFoodDetail = (dish) => {
-    navigate(`/food/${dish.id}`, { state: { dish } });
+    if (!dish?.id) return;
+    const selectedVariant = getSelectedMethod(dish);
+    const selectedVariantKey =
+      selectedVariant?.key ||
+      selectedVariant?.id ||
+      dish.servingVariants?.[0]?.key ||
+      null;
+
+    const state = buildFoodDetailState(dish, {
+      restaurantId: dish.restaurantId,
+      timeSlot,
+      categoryId: dish.categoryId,
+      selectedVariantKey,
+    });
+
+    navigate(buildFoodDetailPath(dish.id, state), { state });
   };
 
   return (
@@ -126,8 +144,9 @@ const DishGrid = ({
               ? Array.from({ length: 8 }).map((_, idx) => (
                   <SkeletonCard key={idx} />
                 ))
-              : safeDishes.map((dish) => {
+              : visibleDishes.map((dish) => {
                   const method = getSelectedMethod(dish);
+                  const availability = getMenuItemAvailability(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
                   const hasVariants = dish.servingVariants?.length > 0;
@@ -158,6 +177,11 @@ const DishGrid = ({
                             ⭐ {dish.point}
                           </div>
                         )}
+                        {availability?.label && (
+                          <div className="dish-card__availability">
+                            {availability.label}
+                          </div>
+                        )}
                       </div>
 
                       {/* Content Area */}
@@ -178,23 +202,22 @@ const DishGrid = ({
                                 Tùy chọn:
                               </label>
                               <select
+                                onClick={(e) => e.stopPropagation()}
                                 className="dish-card__select"
-                                value={method?.name || ""}
+                                value={method ? getVariantKey(method) : ""}
                                 onChange={(e) =>
                                   handleMethodChange(dish.id, e.target.value)
                                 }
                               >
                                 {dish.servingVariants.map((m, idx) => (
                                   <option
-                                    key={`${dish.id}-${idx}`}
-                                    value={m.name}
+                                    key={`${dish.id}-${getVariantKey(m, idx)}`}
+                                    value={getVariantKey(m, idx)}
                                   >
-                                    {m.name}
-                                    {Number(m.price) > 0
-                                      ? ` (+${Number(
-                                          m.price
-                                        ).toLocaleString()}đ)`
-                                      : ""}
+                                                                        {m.name} - {getEffectivePrice(
+                                      dish.basePrice,
+                                      m,
+                                    ).toLocaleString("vi-VN")}đ
                                   </option>
                                 ))}
                               </select>
@@ -222,10 +245,12 @@ const DishGrid = ({
                             className="dish-card__btn-add"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAdd(dish);
+                              handleOpenFoodDetail(dish);
                             }}
                           >
-                            + Thêm
+                                                        {canCustomerOrderMenuItem(dish)
+                              ? "Chọn món"
+                              : "Xem món"}
                           </button>
                         </div>
                       </div>
@@ -234,7 +259,7 @@ const DishGrid = ({
                 })}
 
             {!loading &&
-              safeDishes.length === 0 &&
+              visibleDishes.length === 0 &&
               (selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
                   Không có món ăn thuộc danh mục này.
@@ -242,7 +267,7 @@ const DishGrid = ({
               )}
 
             {!loading &&
-              safeDishes.length === 0 &&
+              visibleDishes.length === 0 &&
               !(selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
                   Không có món ăn để hiển thị.
