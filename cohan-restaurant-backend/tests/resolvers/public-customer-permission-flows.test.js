@@ -180,7 +180,7 @@ describe("public/customer permission flows", () => {
         lean: vi.fn().mockResolvedValue([
           { _id: "valid-c2", id: "valid-c2", name: "B", order: 1, isActive: true },
           { _id: "valid-c1", id: "valid-c1", name: "A", order: 1, isActive: true },
-                  ]),
+        ]),
       }),
     });
     modelMocks.MenuItem.aggregate.mockResolvedValue([

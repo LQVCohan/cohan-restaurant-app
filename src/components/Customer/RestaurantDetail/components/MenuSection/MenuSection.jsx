@@ -126,7 +126,12 @@ const MenuSection = ({ restaurantId }) => {
       (cat) => cat?.id && cat.isActive !== false,
     );
     setCategories(nextCategories);
-    setActiveCategory((prev) => prev || nextCategories[0]?.id || null);
+    setActiveCategory((prev) => {
+      if (prev && nextCategories.some((cat) => String(cat.id) === String(prev))) {
+        return prev;
+      }
+      return nextCategories[0]?.id || null;
+    });
   }, [categoriesData]);
 
   // --- QUERY MENU ITEMS ---
