@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import LocalImageView from "./LocalImageView";
-import { useAvatarUploadLocal } from "../../hooks/useAvatarUploadLocal";
+import { useImageUploadLocal } from "../../hooks/useImageUploadLocal";
 import {
   getLocalImageStats,
   LOCAL_IMAGE_VARIANTS,
@@ -52,9 +52,10 @@ const LocalImagePicker = ({
   allowUrl = true,
   urlPlaceholder = "https://example.com/image.jpg hoặc local-image://...",
   syncToServer = true,
+  onStatusChange,
 }) => {
   const inputRef = useRef(null);
-  const { upload } = useAvatarUploadLocal();
+  const { uploadImage } = useImageUploadLocal();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [statsText, setStatsText] = useState("");
@@ -72,6 +73,7 @@ const LocalImagePicker = ({
     setIsSaving(true);
     setError("");
     setStatsText("");
+    onStatusChange?.("uploading");
 
     try {
       const saved = await saveLocalImage(file, { ownerKey, purpose });
@@ -90,21 +92,34 @@ const LocalImagePicker = ({
         if (uploadFile) {
           try {
             setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đang đồng bộ lên server...`);
-            const remoteUrl = await upload(uploadFile);
-            if (remoteUrl) {
-              nextValue = remoteUrl;
+            const uploadResult = await uploadImage(uploadFile, {
+              folder: "menu-images",
+              type: purpose,
+              context: ownerKey,
+            });
+
+            if (uploadResult?.url) {
+              nextValue = uploadResult.url;
               syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`;
+              onStatusChange?.("synced");
+            } else {
+              syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Upload server lỗi, tạm dùng ảnh local.`;
+              onStatusChange?.("localOnly");
+              setError(uploadResult?.error?.message || "Không thể đồng bộ ảnh lên server.");
             }
           } catch (uploadError) {
             syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Upload server lỗi, tạm dùng ảnh local.`;
+            onStatusChange?.("error");
             setError(uploadError?.message || "Không thể đồng bộ ảnh lên server.");
           }
         }
       }
 
       onChange?.(nextValue);
+      if (!syncToServer) onStatusChange?.("localOnly");
       setStatsText(syncMessage || "Đã tối ưu ảnh.");
     } catch (err) {
+      onStatusChange?.("error");
       setError(err?.message || "Không thể lưu ảnh cục bộ.");
     } finally {
       setIsSaving(false);
@@ -116,6 +131,7 @@ const LocalImagePicker = ({
     // Không xóa blob ngay tại đây vì ảnh cũ có thể đang được menu/món đã lưu sử dụng.
     // Cleanup dài hạn được xử lý bởi pruneLocalImages/deleteStaleLocalImages trong localImageStore.
     onChange?.("");
+    onStatusChange?.("idle");
     setStatsText("");
     setError("");
   };
@@ -123,6 +139,7 @@ const LocalImagePicker = ({
   const handleUrlChange = (event) => {
     setError("");
     setStatsText("");
+    onStatusChange?.("idle");
     onChange?.(event.target.value);
   };
 
