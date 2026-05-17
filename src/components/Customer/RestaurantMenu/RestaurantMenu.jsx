@@ -47,8 +47,8 @@ const RestaurantMenu = () => {
     if (found) setSelectedRes(found);
   }, [restaurantParam]);
 
-  const handleOpenFoodDetail = (foodId) => {
-    navigate(`/food/${foodId}`);
+  const handleOpenFoodDetail = (foodId, state = {}) => {
+    navigate(`/food/${foodId}`, { state });
   };
 
   const handleCheckoutSuccess = () => {
