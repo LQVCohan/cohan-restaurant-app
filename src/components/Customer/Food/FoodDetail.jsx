@@ -28,9 +28,15 @@ import { AuthContext } from "../../../context/AuthContext";
 import Cart from "../Homepage_Client/components/Cart";
 import "./FoodDetail.scss";
 
-const GET_TOP_MENU_ITEMS = gql`
-  query GetTopMenuItemsForDetail($limit: Int = 120) {
-    topMenuItems(limit: $limit) {
+const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
+  query GetMenuItemsForFoodDetail(
+    $filter: MenuItemFilter!
+    $limit: Int = 100
+    $cursor: ID
+  ) {
+    menuItemsConnection(limit: $limit, cursor: $cursor, filter: $filter) {
+      edges {
+        node {
       id
       name
       description
@@ -41,10 +47,22 @@ const GET_TOP_MENU_ITEMS = gql`
       restaurantId
       menuId
       categoryId
+      status
+      inventoryStatus
+      stockWarnings
       servingVariants {
         key
+        mode
+        yieldQty
+        yieldUnit
         name
         price
+      }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
       }
     }
   }
@@ -177,6 +195,21 @@ const FoodDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const preloadedDish = location.state?.dish || null;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const restaurantIdFromQuery = searchParams.get("restaurantId");
+  const timeSlotFromQuery = searchParams.get("timeSlot");
+  const categoryIdFromQuery = searchParams.get("categoryId");
+  const restaurantIdFromState =
+    location.state?.restaurantId ||
+    preloadedDish?.restaurantId ||
+    restaurantIdFromQuery ||
+    null;
+  const timeSlotFromState = location.state?.timeSlot || timeSlotFromQuery || null;
+  const categoryIdFromState =
+    location.state?.categoryId ||
+    preloadedDish?.categoryId ||
+    categoryIdFromQuery ||
+    null;
   const { user } = useContext(AuthContext) || {};
 
   const {
@@ -189,21 +222,36 @@ const FoodDetail = () => {
     getTotalPrice,
   } = useCart();
 
+  const hasUsablePreloadedDish =
+    String(preloadedDish?.id || "") === String(foodId || "") &&
+    !!preloadedDish?.name &&
+    !!(preloadedDish?.restaurantId || restaurantIdFromState);
+
+  const menuItemFilter = useMemo(() => {
+    if (!restaurantIdFromState) return null;
+    return {
+      restaurantId: restaurantIdFromState,
+      ...(timeSlotFromState ? { timeSlot: timeSlotFromState } : {}),
+      ...(categoryIdFromState ? { categoryId: categoryIdFromState } : {}),
+    };
+  }, [categoryIdFromState, restaurantIdFromState, timeSlotFromState]);
+
   const {
     data: menuData,
     loading: menuLoading,
     error: menuError,
-  } = useQuery(GET_TOP_MENU_ITEMS, {
-    variables: { limit: 120 },
+  } = useQuery(GET_MENU_ITEMS_FOR_FOOD_DETAIL, {
+    variables: { filter: menuItemFilter, limit: 100, cursor: null },
     fetchPolicy: "cache-and-network",
-    skip: !!preloadedDish,
+    skip: hasUsablePreloadedDish || !menuItemFilter,
   });
 
   const foundDish = useMemo(() => {
-    if (preloadedDish) return preloadedDish;
-    const list = menuData?.topMenuItems || [];
+    if (hasUsablePreloadedDish) return preloadedDish;
+    const list =
+      menuData?.menuItemsConnection?.edges?.map((edge) => edge?.node).filter(Boolean) || [];
     return list.find((item) => String(item.id) === String(foodId)) || null;
-  }, [menuData, foodId, preloadedDish]);
+  }, [menuData, foodId, hasUsablePreloadedDish, preloadedDish]);
 
   const { data: restaurantData } = useQuery(RESTAURANT_BY_ID, {
     variables: { id: foundDish?.restaurantId },
@@ -532,7 +580,9 @@ const FoodDetail = () => {
   const handleBuyNow = async () => {
     const addedItem = await addCurrentSelectionToBackendCart();
     if (!addedItem) return;
-    navigate("/checkout", { state: { from: "/food/" + foodId } });
+
+    const returnPath = `${location.pathname}${location.search || ""}`;
+    navigate("/checkout", { state: { from: returnPath } });
   };
 
   const getPrimaryBackendCartId = () =>
@@ -660,7 +710,15 @@ const FoodDetail = () => {
   }
 
   if (!foundDish) {
-    return <div className="food-detail-wrapper">Không tìm thấy món ăn phù hợp.</div>;
+    if (!restaurantIdFromState) {
+      return (
+        <div className="food-detail-wrapper">
+          Không đủ thông tin để tải món ăn. Vui lòng mở lại món từ trang thực đơn của nhà hàng.
+        </div>
+      );
+    }
+
+    return <div className="food-detail-wrapper">Không tìm thấy món ăn phù hợp trong thực đơn hiện tại.</div>;
   }
 
   return (

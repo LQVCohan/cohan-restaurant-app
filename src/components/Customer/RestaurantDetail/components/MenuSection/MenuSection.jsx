@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import "./MenuSection.scss";
 
 // Components
@@ -95,6 +96,7 @@ const GET_FOOD_REVIEWS = gql`
 `;
 
 const MenuSection = ({ restaurantId }) => {
+  const navigate = useNavigate();
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
@@ -254,6 +256,29 @@ const MenuSection = ({ restaurantId }) => {
     });
   };
 
+
+  const openFoodDetail = (item) => {
+    if (!item?.id) return;
+
+    const categoryId = item?.categoryId || activeCategory || null;
+    const state = {
+      dish: item,
+      restaurantId,
+      timeSlot: selectedTimeSlot,
+      categoryId,
+    };
+
+    const params = new URLSearchParams();
+    if (restaurantId) params.set("restaurantId", restaurantId);
+    if (selectedTimeSlot) params.set("timeSlot", selectedTimeSlot);
+    if (categoryId) params.set("categoryId", categoryId);
+
+    const queryString = params.toString();
+    const detailUrl = queryString ? `/food/${item.id}?${queryString}` : `/food/${item.id}`;
+
+    navigate(detailUrl, { state });
+  };
+
   const timeSlots = [
     { id: "breakfast", label: "🍳 Sáng" },
     { id: "lunch", label: "🍱 Trưa" },
@@ -329,7 +354,19 @@ const MenuSection = ({ restaurantId }) => {
                 const displayPrice = currentVariant?.price ?? item.basePrice;
 
                 return (
-                  <div key={item.id} className="dish-card-horizontal">
+                  <div
+                    key={item.id}
+                    className="dish-card-horizontal"
+                    onClick={() => openFoodDetail(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openFoodDetail(item);
+                      }
+                    }}
+                  >
                     <div className="dish-img-wrapper">
                       <img src={img} alt={item.name} loading="lazy" />
                     </div>
@@ -354,7 +391,11 @@ const MenuSection = ({ restaurantId }) => {
 
                       <div className="info-bottom">
                         {/* KHU VỰC CHỌN CÁCH CHẾ BIẾN / BIẾN THỂ */}
-                        <div className="variant-control">
+                        <div
+                          className="variant-control"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
                           {variants.length > 1 ? (
                             <div className="custom-select-wrapper">
                               <select
@@ -386,7 +427,10 @@ const MenuSection = ({ restaurantId }) => {
 
                         <button
                           className="btn-add"
-                          onClick={() => handleAddToCart(item)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleAddToCart(item);
+                          }}
                         >
                           <Plus size={16} /> Thêm
                         </button>

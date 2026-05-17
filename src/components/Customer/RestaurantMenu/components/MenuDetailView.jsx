@@ -254,7 +254,18 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
               style={{ padding: 0 }}
             >
               {currentItems.map((item) => (
-                <MenuItemCard key={item.id} item={item} onClick={(clickedItem) => onOpenFoodDetail?.(clickedItem?.id)} />
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  onClick={(clickedItem) =>
+                    onOpenFoodDetail?.(clickedItem?.id, {
+                      dish: clickedItem,
+                      restaurantId: clickedItem?.restaurantId || restaurantId,
+                      timeSlot,
+                      categoryId: clickedItem?.categoryId || null,
+                    })
+                  }
+                />
               ))}
             </div>
             {totalPages > 1 && (
