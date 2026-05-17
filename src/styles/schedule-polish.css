@@ -19,11 +19,60 @@
 @import "./schedule-hydration-polish.css";
 
 .schedule-readiness-focus-banner {
-  margin: 0 0 12px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  margin: 0 0 14px;
+  border: 1px solid rgba(147, 197, 253, 0.92);
+  background:
+    radial-gradient(circle at 18px 50%, rgba(37, 99, 235, 0.16), transparent 4rem),
+    linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
   color: #1e3a8a;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 13px;
+  border-radius: 16px;
+  padding: 0.72rem 0.92rem 0.72rem 3rem;
+  font-size: 0.82rem;
+  font-weight: 780;
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.08);
+}
+
+.schedule-readiness-focus-banner::before {
+  content: "!";
+  position: absolute;
+  left: 0.86rem;
+  top: 50%;
+  width: 1.38rem;
+  height: 1.38rem;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
+}
+
+.schedule-readiness-focus-banner::after {
+  content: "Kiểm tra ca, nhân sự phân công và lịch sử thay đổi trước khi quay lại chấm công/bảng lương.";
+  display: block;
+  margin-left: auto;
+  max-width: 40rem;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .schedule-readiness-focus-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-left: 3rem;
+  }
+
+  .schedule-readiness-focus-banner::after {
+    margin-left: 0;
+  }
 }
