@@ -6,6 +6,7 @@ import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
 import { formatCurrency } from "../../../utils/formatters";
+import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
 
 // Components Con
@@ -131,16 +132,25 @@ const RestaurantMenu = () => {
     cart,
     updateQuantity,
     clearCart,
+    removeFromCart,
     removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
 
-  const handleClearCart = () => {
-    if (window.confirm("Bạn muốn xóa toàn bộ giỏ hàng?")) {
-      clearCart();
-    }
-  };
+  const {
+    updateCartItemQuantity,
+    removeCartLineItem,
+    clearCustomerCart,
+    removeRestaurantScopedItems,
+    isBusy,
+  } = useCustomerCartActions({
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+  });
 
   const totalPrice = getTotalPrice();
   const totalCount = getTotalItems();
@@ -243,11 +253,13 @@ const RestaurantMenu = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        onUpdateQuantity={updateQuantity}
+        onUpdateQuantity={updateCartItemQuantity}
         totalPrice={totalPrice}
         onCheckoutSuccess={handleCheckoutSuccess}
-        onClearCart={handleClearCart}
-        onRemoveRestaurantItems={removeRestaurantItems}
+        onClearCart={clearCustomerCart}
+        onRemoveRestaurantItems={removeRestaurantScopedItems}
+        onRemoveItem={removeCartLineItem}
+        isBusy={isBusy}
       />
     </div>
   );

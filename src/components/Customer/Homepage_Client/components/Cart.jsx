@@ -100,6 +100,7 @@ const Cart = ({
   onCheckoutSuccess,
   onClearCart,
   onRemoveRestaurantItems,
+  onRemoveItem,
   autoOpenCheckout = false,
   isBusy = false,
 }) => {
@@ -141,7 +142,7 @@ const Cart = ({
     const raw = e.target.value;
     const next = Math.max(1, parseInt(raw || "1", 10));
     const delta = next - (item.quantity || 1);
-    if (delta !== 0) onUpdateQuantity?.(item.id, delta);
+    if (delta !== 0) onUpdateQuantity?.(item, delta);
   };
 
   return (
@@ -193,6 +194,7 @@ const Cart = ({
               onUpdateQuantity={onUpdateQuantity}
               onQtyChange={handleQtyChange}
               onRemoveRestaurantItems={onRemoveRestaurantItems}
+              onRemoveItem={onRemoveItem}
               isBusy={isBusy}
             />
           ))}
@@ -234,6 +236,7 @@ function RestaurantGroup({
   onUpdateQuantity,
   onQtyChange,
   onRemoveRestaurantItems,
+  onRemoveItem,
   isBusy,
 }) {
   const name =
@@ -273,7 +276,7 @@ function RestaurantGroup({
               <div className="cart-item__actions">
                 <div className="cart-qty">
                   <button
-                    onClick={() => onUpdateQuantity?.(item.id, -1)}
+                    onClick={() => onUpdateQuantity?.(item, -1)}
                     className="cart-qty__btn"
                     disabled={isBusy || item.quantity <= 1}
                   >
@@ -287,7 +290,7 @@ function RestaurantGroup({
                     disabled={isBusy}
                   />
                   <button
-                    onClick={() => onUpdateQuantity?.(item.id, 1)}
+                    onClick={() => onUpdateQuantity?.(item, 1)}
                     className="cart-qty__btn"
                     disabled={isBusy}
                   >
@@ -295,6 +298,14 @@ function RestaurantGroup({
                   </button>
                 </div>
                 <div className="cart-item__total-line">{formatVND(line)}</div>
+                <button
+                  onClick={() => onRemoveItem?.(item)}
+                  className="cart-group__remove"
+                  title="Xóa món"
+                  disabled={isBusy}
+                >
+                  <IconTrash />
+                </button>
               </div>
             </div>
           );
