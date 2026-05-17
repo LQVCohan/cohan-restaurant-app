@@ -478,6 +478,11 @@
         font-size: 0.78rem;
         font-weight: 650;
       }
+
+      .trend-text {
+        color: #475569;
+        font-size: 0.75rem;
+      }
     }
 
     .total-score {
@@ -756,6 +761,30 @@
         color: #64748b;
         font-size: 0.78rem;
         line-height: 1.4;
+      }
+    }
+
+
+    .previous-period-card {
+      margin: 0 1rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 0.85rem;
+
+      strong {
+        display: block;
+        margin-bottom: 0.45rem;
+      }
+
+      .comparison-grid {
+        display: grid;
+        gap: 0.4rem;
+
+        span {
+          color: #475569;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
       }
     }
 

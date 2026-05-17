@@ -11,6 +11,7 @@ import {
   escapeHtml,
   buildPerformanceReportHtml,
   openPerformanceReportPrintWindow,
+  formatTrendDelta,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -223,5 +224,24 @@ describe("openPerformanceReportPrintWindow", () => {
     expect(result).toBe(fakeWindow);
     expect(fakeWindow.opener).toBeNull();
     openSpy.mockRestore();
+  });
+});
+
+
+describe("formatTrendDelta", () => {
+  it("returns +X when current score is higher", () => {
+    expect(formatTrendDelta(85, 80)).toBe("+5 điểm so với kỳ trước");
+  });
+
+  it("returns -X when current score is lower", () => {
+    expect(formatTrendDelta(75, 80)).toBe("-5 điểm so với kỳ trước");
+  });
+
+  it("returns no change when scores are equal", () => {
+    expect(formatTrendDelta(80, 80)).toBe("Không đổi");
+  });
+
+  it("returns missing data label when previous score is unavailable", () => {
+    expect(formatTrendDelta(80, undefined)).toBe("Chưa có dữ liệu kỳ trước");
   });
 });
