@@ -113,11 +113,6 @@ const Home = () => {
     removeRestaurantItems,
   });
 
-  const handleCheckoutSuccess = useCallback(() => {
-    clearCart();
-    setIsCartOpen(false);
-  }, [clearCart]);
-
   // 5. Submit đặt bàn
   const handleBookTable = (bookingData) => {
     // Gọi API đặt bàn thật ở đây
@@ -172,7 +167,6 @@ const Home = () => {
         cart={cart}
         onUpdateQuantity={updateCartItemQuantity}
         totalPrice={getTotalPrice()}
-        onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={clearCustomerCart}
         onRemoveRestaurantItems={removeRestaurantScopedItems}
         onRemoveItem={removeCartLineItem}

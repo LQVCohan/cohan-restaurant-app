@@ -119,6 +119,7 @@ const OrderSummaryModal = ({
   const [shipping, setShipping] = useState(DEFAULT_SHIPPING());
   const [shippingTouched, setShippingTouched] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   const [receipt, setReceipt] = useState(null);
   const [couponCode, setCouponCode] = useState("");
@@ -210,6 +211,7 @@ const OrderSummaryModal = ({
       setDiscountBreakdown(null);
       setDiscountError("");
       setDiscountTouched(false);
+      setCheckoutError("");
     }
   }, [isOpen, mappedOrderData, user]);
   useEffect(() => {
@@ -420,7 +422,7 @@ const OrderSummaryModal = ({
       if (cartId && cartItemId && item.holdExpiresAt) {
         const expiresAt = new Date(item.holdExpiresAt);
         if (!Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date()) {
-          return "Một số món trong giỏ đã hết thời gian giữ. Vui lòng cập nhật lại giỏ.";
+          return "Một số món đã hết thời gian giữ. Vui lòng kiểm tra lại giỏ hàng.";
         }
       }
     }
@@ -523,12 +525,13 @@ const OrderSummaryModal = ({
     setSelectedPaymentMethod(method);
 
   const handleConfirmPayment = async () => {
+    setCheckoutError("");
     if (!isShippingValid) {
       setShippingTouched(true);
       return;
     }
     if (!selectedPaymentMethod) {
-      alert("Vui lòng chọn phương thức thanh toán!");
+      setCheckoutError("Vui lòng chọn phương thức thanh toán.");
       return;
     }
 
@@ -542,7 +545,10 @@ const OrderSummaryModal = ({
         onSuccess?.();
       } catch (err) {
         setIsProcessingPayment(false);
-        alert(`Lưu đơn hàng thất bại: ${err?.message || err}`);
+        setCheckoutError(
+          err?.message ||
+            "Không thể tạo đơn. Giỏ hàng của bạn vẫn được giữ, vui lòng thử lại.",
+        );
       }
     } else if (selectedPaymentMethod === "transfer") {
       setCurrentView("qr");
@@ -558,15 +564,21 @@ const OrderSummaryModal = ({
         setIsProcessingPayment(false);
         const message = String(err?.message || "");
         if (message.toLowerCase().includes("insufficient wallet balance")) {
-          alert("Số dư ví không đủ. Vui lòng nạp thêm tiền trong trang hồ sơ.");
+          setCheckoutError(
+            "Số dư ví không đủ. Vui lòng nạp thêm tiền trong trang hồ sơ.",
+          );
           return;
         }
-        alert(`Thanh toán ví thất bại: ${message}`);
+        setCheckoutError(
+          message ||
+            "Không thể tạo đơn. Giỏ hàng của bạn vẫn được giữ, vui lòng thử lại.",
+        );
       }
     }
   };
 
   const handleQRPayment = async () => {
+    setCheckoutError("");
     try {
       setIsProcessingPayment(true);
       const { orders: created } = await persistAllOrders("transfer");
@@ -576,7 +588,10 @@ const OrderSummaryModal = ({
       onSuccess?.();
     } catch (err) {
       setIsProcessingPayment(false);
-      alert(`Lưu đơn hàng thất bại: ${err?.message || err}`);
+      setCheckoutError(
+        err?.message ||
+          "Không thể tạo đơn. Giỏ hàng của bạn vẫn được giữ, vui lòng thử lại.",
+      );
     }
   };
 
@@ -691,7 +706,7 @@ const OrderSummaryModal = ({
                       : undefined
               }
             >
-              {isProcessingPayment ? "Đang lưu đơn..." : "Xác nhận đặt hàng"}
+              {isProcessingPayment ? "Đang tạo đơn..." : "Xác nhận đặt hàng"}
             </button>
           </Modal.Footer>
         );
@@ -712,6 +727,11 @@ const OrderSummaryModal = ({
         className="order-summary-modal"
       >
         <div className="order-summary-wrapper">
+          {!!checkoutError && (
+            <div className="order-summary-error" role="alert">
+              {checkoutError}
+            </div>
+          )}
           <div className="order-summary-content">{renderContent()}</div>
           {renderFooter()}
         </div>
@@ -764,6 +784,17 @@ const SummaryContent = ({
   payableTotal,
 }) => (
   <>
+    {orderData.some((item) => item.holdExpiresAt) && (
+      <div className="section section-highlight">
+        Món đang được giữ tạm thời đến{" "}
+        {new Date(
+          orderData
+            .map((item) => item.holdExpiresAt)
+            .filter(Boolean)
+            .sort()[0],
+        ).toLocaleString("vi-VN")}
+      </div>
+    )}
     <RestaurantInfo
       orderInfo={orderInfo}
       orderData={orderData}

@@ -167,7 +167,7 @@ const AppRouter = () => (
       <Route path="/table/:restaurantId/:tableId" element={<TableCurrentSessionPage />} />
       <Route path="/vr/table/:tableId" element={<VRViewer />} />
       <Route path="/cus-menu" element={<RestaurantMenu />} />
-      <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer", "manager", "admin"])} />
+      <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/food/:foodId" element={<FoodDetail />} />
       <Route path="/vouchers/:id" element={<Navigate to="/restaurants" replace />} />
       <Route path="/coupons/:restaurantId" element={<CouponPage />} />
