@@ -157,11 +157,14 @@ async function resetScenario(restaurantId) {
       periodEnd: { $in: DEMO_PERIOD_ENDS },
     }),
     ShiftAcknowledgement.deleteMany({
-      note: { $regex: DEMO_TAG },
+      restaurantId,
+      periodStart: { $in: DEMO_PERIOD_STARTS },
+      periodEnd: { $in: DEMO_PERIOD_ENDS },
     }),
     ScheduleAcknowledgement.deleteMany({
       restaurantId,
       periodStart: { $in: DEMO_PERIOD_STARTS },
+      periodEnd: { $in: DEMO_PERIOD_ENDS },
     }),
     PayrollItem.deleteMany({
       restaurantId,
