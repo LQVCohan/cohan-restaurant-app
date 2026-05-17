@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import LocalImagePicker from "../../../../common/LocalImagePicker";
+import { getImagePersistenceStatus } from "../../../../../utils/imagePersistence";
 import "./MenuItemModal.scss";
 
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
@@ -194,6 +195,7 @@ const MenuItemModal = ({
   });
 
   const [imgError, setImgError] = useState(false);
+  const [imageSyncStatus, setImageSyncStatus] = useState("idle");
   const [toasts, setToasts] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
@@ -424,7 +426,10 @@ const MenuItemModal = ({
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (field === "thumbImage") setImgError(false);
+    if (field === "thumbImage") {
+      setImgError(false);
+      setImageSyncStatus("idle");
+    }
   };
 
   const handlePMChange = (index, field, value) => {
@@ -698,7 +703,14 @@ const MenuItemModal = ({
                 label="Chọn ảnh món"
                 placeholder="Chưa có ảnh món"
                 helperText="Ảnh sẽ được resize thành bản thumb 320px và preview 960px để tải nhanh, tốn ít bộ nhớ."
+                onStatusChange={setImageSyncStatus}
               />
+              {(imageSyncStatus === "localOnly" || getImagePersistenceStatus(formData.thumbImage) === "localOnly") && (
+                <small className="error-text">Ảnh đang lưu cục bộ trên trình duyệt này. Hãy đồng bộ server để xem được trên thiết bị khác.</small>
+              )}
+              {(imageSyncStatus === "synced" || getImagePersistenceStatus(formData.thumbImage) === "synced") && (
+                <small style={{ color: "#0f766e", display: "block", marginTop: 6 }}>Đã đồng bộ server.</small>
+              )}
             </div>
 
             <div className="form-group">

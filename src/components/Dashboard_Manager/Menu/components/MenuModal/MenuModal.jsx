@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 import "./MenuModal.scss";
 import LocalImagePicker from "../../../../common/LocalImagePicker";
+import { getImagePersistenceStatus } from "../../../../../utils/imagePersistence";
 import {
   hasIconInCategoryName,
   resolveCategoryIcon,
@@ -85,6 +86,7 @@ const MenuModal = ({
   const [quickCatSaving, setQuickCatSaving] = useState(false);
   const [quickCatError, setQuickCatError] = useState("");
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [imageSyncStatus, setImageSyncStatus] = useState("idle");
 
   const initialSnapshotRef = useRef(INITIAL_STATE);
   const catDropdownRef = useRef(null);
@@ -181,6 +183,7 @@ const MenuModal = ({
 
   const handleCoverImageChange = (value) => {
     setFormData((prev) => ({ ...prev, coverImage: value || "" }));
+    setImageSyncStatus("idle");
   };
 
   const handleSelectCategory = (catId) => {
@@ -555,7 +558,14 @@ const MenuModal = ({
                 label="Chọn ảnh bìa"
                 placeholder="Chưa có ảnh bìa"
                 helperText="Ảnh sẽ được resize thành bản thumb 320px và preview 960px để tải nhanh, tốn ít bộ nhớ."
+                onStatusChange={setImageSyncStatus}
               />
+              {(imageSyncStatus === "localOnly" || getImagePersistenceStatus(formData.coverImage) === "localOnly") && (
+                <small className="error-text">Ảnh đang lưu cục bộ trên trình duyệt này. Hãy đồng bộ server để xem được trên thiết bị khác.</small>
+              )}
+              {(imageSyncStatus === "synced" || getImagePersistenceStatus(formData.coverImage) === "synced") && (
+                <small style={{ color: "#0f766e", display: "block", marginTop: 6 }}>Đã đồng bộ server.</small>
+              )}
             </div>
 
             <div className="form-group">
