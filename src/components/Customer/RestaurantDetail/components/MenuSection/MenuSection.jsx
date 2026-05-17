@@ -5,7 +5,8 @@ import "./MenuSection.scss";
 
 // Components
 import Cart from "../../../../Customer/Homepage_Client/components/Cart";
-import { useCart } from "../../../../../hooks/useCart";
+import { useCart } from "../../../../../context/CartProvider";
+import { useCustomerCartActions } from "../../../../../hooks/useCustomerCartActions";
 
 // Icons
 import { ShoppingCart, ChevronDown } from "lucide-react";
@@ -109,7 +110,29 @@ const MenuSection = ({ restaurantId }) => {
   const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const { cart, updateQuantity, getTotalItems, getTotalPrice } = useCart();
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+    getTotalItems,
+    getTotalPrice,
+  } = useCart();
+
+  const {
+    updateCartItemQuantity,
+    removeCartLineItem,
+    clearCustomerCart,
+    removeRestaurantScopedItems,
+    isBusy,
+  } = useCustomerCartActions({
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+  });
 
   // --- QUERY CATEGORIES ---
   const { data: categoriesData, loading: catLoading } = useQuery(
@@ -450,8 +473,12 @@ const MenuSection = ({ restaurantId }) => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        onUpdateQuantity={updateQuantity}
+        onUpdateQuantity={updateCartItemQuantity}
         totalPrice={getTotalPrice()}
+        onClearCart={clearCustomerCart}
+        onRemoveRestaurantItems={removeRestaurantScopedItems}
+        onRemoveItem={removeCartLineItem}
+        isBusy={isBusy}
       />
     </div>
   );

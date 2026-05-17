@@ -713,8 +713,11 @@ const FoodDetail = () => {
   const getPrimaryBackendCartId = () =>
     cart.find((item) => item.backendCartId)?.backendCartId || null;
 
-  const handleCartUpdateQuantity = async (itemId, delta) => {
-    const item = cart.find((entry) => entry.id === itemId);
+  const handleCartUpdateQuantity = async (itemOrId, delta) => {
+    const item =
+      typeof itemOrId === "object"
+        ? itemOrId
+        : cart.find((entry) => entry.id === itemOrId);
     if (!item) return;
 
     const nextQuantity = Math.max(
@@ -741,7 +744,7 @@ const FoodDetail = () => {
         },
       });
 
-      updateQuantity(itemId, delta);
+      updateQuantity(item.id, delta);
       await refetchLiveState?.();
     } catch (error) {
       alert(

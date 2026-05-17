@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import Header from "./components/Header";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
@@ -10,6 +10,7 @@ import TableBooking from "./components/TableBooking";
 
 import { useCart } from "../../../context/CartProvider";
 import "../../../styles/Homepage/home.scss";
+import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 
 // Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)
 const getCurrentTimeSlot = () => {
@@ -36,6 +37,7 @@ const Home = () => {
   const {
     cart,
     updateQuantity,
+    removeFromCart,
     clearCart,
     removeRestaurantItems,
     getTotalItems,
@@ -94,52 +96,19 @@ const Home = () => {
     setIsTableBookingOpen(true);
   }, []);
 
-
-  const hasBackendHeldItems = useMemo(
-    () =>
-      (cart || []).some(
-        (item) =>
-          item?.backendCartId || item?.backendCartItemId || item?.holdExpiresAt,
-      ),
-    [cart],
-  );
-
-  const showBackendHoldWarning = useCallback(() => {
-    alert(
-      "Giỏ hàng có món đang được giữ trên máy chủ. Vui lòng thanh toán hoặc quản lý món từ trang chi tiết món.",
-    );
-  }, []);
-
-  const handleCartUpdateQuantity = useCallback(
-    (itemId, delta) => {
-      if (hasBackendHeldItems) {
-        showBackendHoldWarning();
-        return;
-      }
-      updateQuantity(itemId, delta);
-    },
-    [hasBackendHeldItems, showBackendHoldWarning, updateQuantity],
-  );
-
-  const handleClearCart = useCallback(() => {
-    if (hasBackendHeldItems) {
-      showBackendHoldWarning();
-      return;
-    }
-    clearCart();
-  }, [clearCart, hasBackendHeldItems, showBackendHoldWarning]);
-
-  const handleRemoveRestaurantItems = useCallback(
-    (restaurantId) => {
-      if (hasBackendHeldItems) {
-        showBackendHoldWarning();
-        return;
-      }
-      removeRestaurantItems(restaurantId);
-    },
-    [hasBackendHeldItems, removeRestaurantItems, showBackendHoldWarning],
-  );
-
+  const {
+    updateCartItemQuantity,
+    removeCartLineItem,
+    clearCustomerCart,
+    removeRestaurantScopedItems,
+    isBusy,
+  } = useCustomerCartActions({
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+  });
 
   const handleCheckoutSuccess = useCallback(() => {
     clearCart();
@@ -198,11 +167,13 @@ const Home = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        onUpdateQuantity={handleCartUpdateQuantity}
+        onUpdateQuantity={updateCartItemQuantity}
         totalPrice={getTotalPrice()}
         onCheckoutSuccess={handleCheckoutSuccess}
-        onClearCart={handleClearCart}
-        onRemoveRestaurantItems={handleRemoveRestaurantItems}
+        onClearCart={clearCustomerCart}
+        onRemoveRestaurantItems={removeRestaurantScopedItems}
+        onRemoveItem={removeCartLineItem}
+        isBusy={isBusy}
       />
 
       <TableBooking
