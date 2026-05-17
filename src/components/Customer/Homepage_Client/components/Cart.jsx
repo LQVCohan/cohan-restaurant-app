@@ -103,6 +103,9 @@ const Cart = ({
   onRemoveItem,
   autoOpenCheckout = false,
   isBusy = false,
+  busyItemIds,
+  busyRestaurantIds,
+  isClearing = false,
 }) => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   useEffect(() => {
@@ -138,7 +141,8 @@ const Cart = ({
     cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
 
   const handleQtyChange = (item, e) => {
-    if (isBusy) return;
+    const itemBusy = isBusy || !!busyItemIds?.[item.id];
+    if (itemBusy) return;
     const raw = e.target.value;
     const next = Math.max(1, parseInt(raw || "1", 10));
     const delta = next - (item.quantity || 1);
@@ -166,7 +170,7 @@ const Cart = ({
             <button
               className="cart-header__clear"
               onClick={() => onClearCart?.()}
-              disabled={isBusy}
+              disabled={isBusy || isClearing}
             >
               Xóa tất cả
             </button>
@@ -196,6 +200,8 @@ const Cart = ({
               onRemoveRestaurantItems={onRemoveRestaurantItems}
               onRemoveItem={onRemoveItem}
               isBusy={isBusy}
+              busyItemIds={busyItemIds}
+              busyRestaurantIds={busyRestaurantIds}
             />
           ))}
         </div>
@@ -209,10 +215,10 @@ const Cart = ({
             <button
               className="cart-checkout-btn"
               onClick={() => {
-                if (isBusy) return;
+                if (isBusy || isClearing) return;
                 setIsOrderModalOpen(true);
               }}
-              disabled={isBusy}
+              disabled={isBusy || isClearing}
             >
               Đặt đơn ngay
             </button>
@@ -238,6 +244,8 @@ function RestaurantGroup({
   onRemoveRestaurantItems,
   onRemoveItem,
   isBusy,
+  busyItemIds,
+  busyRestaurantIds,
 }) {
   const name =
     useRestaurantName(group.restaurantId) || `Nhà hàng ${group.restaurantId}`;
@@ -253,7 +261,7 @@ function RestaurantGroup({
           className="cart-group__remove"
           onClick={() => onRemoveRestaurantItems?.(group.restaurantId)}
           title="Xóa nhà hàng này"
-          disabled={isBusy}
+          disabled={isBusy || !!busyRestaurantIds?.[group.restaurantId]}
         >
           <IconTrash />
         </button>
@@ -262,6 +270,7 @@ function RestaurantGroup({
       <div className="cart-group__list">
         {group.items.map((item) => {
           const line = (item.price || 0) * (item.quantity || 1);
+          const itemBusy = isBusy || !!busyItemIds?.[item.id];
           return (
             <div key={item.id} className="cart-item">
               <div className="cart-item__main">
@@ -278,7 +287,7 @@ function RestaurantGroup({
                   <button
                     onClick={() => onUpdateQuantity?.(item, -1)}
                     className="cart-qty__btn"
-                    disabled={isBusy || item.quantity <= 1}
+                    disabled={itemBusy || item.quantity <= 1}
                   >
                     −
                   </button>
@@ -287,12 +296,12 @@ function RestaurantGroup({
                     type="number"
                     value={item.quantity}
                     onChange={(e) => onQtyChange(item, e)}
-                    disabled={isBusy}
+                    disabled={itemBusy}
                   />
                   <button
                     onClick={() => onUpdateQuantity?.(item, 1)}
                     className="cart-qty__btn"
-                    disabled={isBusy}
+                    disabled={itemBusy}
                   >
                     +
                   </button>
@@ -302,7 +311,7 @@ function RestaurantGroup({
                   onClick={() => onRemoveItem?.(item)}
                   className="cart-group__remove"
                   title="Xóa món"
-                  disabled={isBusy}
+                  disabled={itemBusy}
                 >
                   <IconTrash />
                 </button>
