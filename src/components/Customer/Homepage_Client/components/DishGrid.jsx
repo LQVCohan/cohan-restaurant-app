@@ -80,7 +80,7 @@ const DishGrid = ({
 
   // --- LOGIC HELPER ---
   const getVariantKey = (variant, fallbackIndex = 0) =>
-    variant?.key || variant?.id || variant?.name || `variant-${fallbackIndex}`;
+    variant?.key || `variant-${fallbackIndex}`;
 
   const getSelectedMethod = (dish) => {
     const selectedKey = selectedVariantKeyByDish[dish.id];
@@ -106,12 +106,14 @@ const DishGrid = ({
 
   const handleOpenFoodDetail = (dish) => {
     if (!dish?.id) return;
+    const variants = dish.servingVariants || [];
     const selectedVariant = getSelectedMethod(dish);
-    const selectedVariantKey =
-      selectedVariant?.key ||
-      selectedVariant?.id ||
-      dish.servingVariants?.[0]?.key ||
-      null;
+    const selectedIndex = variants.findIndex((variant) => variant === selectedVariant);
+    const selectedVariantKey = selectedVariant
+      ? getVariantKey(selectedVariant, selectedIndex >= 0 ? selectedIndex : 0)
+      : variants[0]
+        ? getVariantKey(variants[0], 0)
+        : null;
 
     const state = buildFoodDetailState(dish, {
       restaurantId: dish.restaurantId,
@@ -214,7 +216,7 @@ const DishGrid = ({
                                     key={`${dish.id}-${getVariantKey(m, idx)}`}
                                     value={getVariantKey(m, idx)}
                                   >
-                                                                        {m.name} - {getEffectivePrice(
+                                    {m.name} - {getEffectivePrice(
                                       dish.basePrice,
                                       m,
                                     ).toLocaleString("vi-VN")}đ
@@ -248,7 +250,7 @@ const DishGrid = ({
                               handleOpenFoodDetail(dish);
                             }}
                           >
-                                                        {canCustomerOrderMenuItem(dish)
+                            {canCustomerOrderMenuItem(dish)
                               ? "Chọn món"
                               : "Xem món"}
                           </button>

@@ -95,7 +95,6 @@ const Home = () => {
   }, []);
 
 
-
   const hasBackendHeldItems = useMemo(
     () =>
       (cart || []).some(
@@ -107,7 +106,7 @@ const Home = () => {
 
   const showBackendHoldWarning = useCallback(() => {
     alert(
-      "Giỏ hàng có món đang được giữ trên máy chủ. Vui lòng quản lý giỏ hàng từ trang món hoặc tiếp tục thanh toán.",
+      "Giỏ hàng có món đang được giữ trên máy chủ. Vui lòng thanh toán hoặc quản lý món từ trang chi tiết món.",
     );
   }, []);
 
@@ -140,6 +139,12 @@ const Home = () => {
     },
     [hasBackendHeldItems, removeRestaurantItems, showBackendHoldWarning],
   );
+
+
+  const handleCheckoutSuccess = useCallback(() => {
+    clearCart();
+    setIsCartOpen(false);
+  }, [clearCart]);
 
   // 5. Submit đặt bàn
   const handleBookTable = (bookingData) => {
@@ -195,7 +200,7 @@ const Home = () => {
         cart={cart}
         onUpdateQuantity={handleCartUpdateQuantity}
         totalPrice={getTotalPrice()}
-        onCheckoutSuccess={handleClearCart}
+        onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={handleRemoveRestaurantItems}
       />
