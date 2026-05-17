@@ -10,7 +10,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import { MOCK_MENU, MENU_CATEGORIES } from "../data/mockData";
 import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
 import "./MenuOrdering.scss";
 
@@ -26,8 +25,8 @@ export default function MenuOrdering({
   selectedCategory,
   setSelectedCategory,
   onRemoveCustomer,
-  menuItems = MOCK_MENU,
-  categories = MENU_CATEGORIES,
+  menuItems = [],
+  categories = ["Tất cả"],
 }) {
   const { user } = useContext(AuthContext) || {};
   const permissions = useMemo(() => {
@@ -184,7 +183,7 @@ export default function MenuOrdering({
       {permissions.canViewMenu && (
         <>
           <div className="category-scroll">
-            {(categories || MENU_CATEGORIES).map((cat) => (
+            {(categories || ["Tất cả"]).map((cat) => (
               <button
                 key={cat}
                 className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
@@ -196,6 +195,8 @@ export default function MenuOrdering({
           </div>
 
           <div className="menu-grid">
+            {!menuItems.length ? <div className="staff-inline-state">Nhà hàng chưa có món đang bán.</div> : null}
+            {menuItems.length > 0 && filteredMenu.length === 0 ? <div className="staff-inline-state">Không tìm thấy món phù hợp.</div> : null}
             {filteredMenu.map((item) => {
               const isOutOfStock = item.stock <= 0;
               return (

@@ -7,7 +7,6 @@ import {
   Receipt,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import { MOCK_FLOORS } from "../data/mockData";
 import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
 import "./TableMap.scss";
 
@@ -16,14 +15,14 @@ export default function TableMap({
   onSelect,
   selectedTable,
   onTableAction,
-  floors = MOCK_FLOORS,
+  floors = [],
 }) {
   const { user } = useContext(AuthContext) || {};
   const permissions = useMemo(() => {
     return getStaffOrderingPermissions(user);
   }, [user]);
 
-  const [floor, setFloor] = useState((floors && floors[0]) || MOCK_FLOORS[0]);
+  const [floor, setFloor] = useState((floors && floors[0]) || "");
 
   React.useEffect(() => {
     if (!floor && floors?.length) setFloor(floors[0]);
@@ -52,7 +51,7 @@ export default function TableMap({
       </div>
 
       <div className="floor-selector-scroll">
-        {(floors || MOCK_FLOORS).map((f) => (
+        {(floors || []).map((f) => (
           <button
             key={f}
             className={`floor-chip ${floor === f ? "active" : ""}`}
@@ -62,6 +61,10 @@ export default function TableMap({
           </button>
         ))}
       </div>
+
+      {!floors?.length ? (
+        <div className="staff-inline-state">Chưa có khu vực bàn đang hoạt động.</div>
+      ) : null}
 
       <div className="table-grid">
         {currentFloorTables.map((table) => {
