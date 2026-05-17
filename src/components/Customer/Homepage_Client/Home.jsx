@@ -37,6 +37,7 @@ const Home = () => {
   const {
     cart,
     updateQuantity,
+    removeFromCart,
     clearCart,
     removeRestaurantItems,
     getTotalItems,
@@ -94,7 +95,6 @@ const Home = () => {
     setSelectedRestaurant(restaurant);
     setIsTableBookingOpen(true);
   }, []);
-
 
   const {
     updateCartItemQuantity,
