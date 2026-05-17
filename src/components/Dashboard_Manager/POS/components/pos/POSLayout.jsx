@@ -6,6 +6,7 @@ import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
+import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import PosProvider from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 
@@ -141,6 +142,7 @@ export default function POSLayout() {
       ) : (
         <PosProvider restaurantId={restaurantId}>
           <PosMenuAvailabilityRealtimeNotice restaurantId={restaurantId} />
+          <PosReservationRealtimeNotice restaurantId={restaurantId} />
           <div className={styles.shell}>
             <div className={styles.leftCol}>
               <div className={styles.card}>
