@@ -126,6 +126,9 @@ const MenuSection = ({ restaurantId }) => {
     clearCustomerCart,
     removeRestaurantScopedItems,
     isBusy,
+    busyItemIds,
+    busyRestaurantIds,
+    isClearing,
   } = useCustomerCartActions({
     cart,
     updateQuantity,
@@ -479,6 +482,9 @@ const MenuSection = ({ restaurantId }) => {
         onRemoveRestaurantItems={removeRestaurantScopedItems}
         onRemoveItem={removeCartLineItem}
         isBusy={isBusy}
+        busyItemIds={busyItemIds}
+        busyRestaurantIds={busyRestaurantIds}
+        isClearing={isClearing}
       />
     </div>
   );

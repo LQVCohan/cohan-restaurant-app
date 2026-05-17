@@ -102,6 +102,9 @@ const Home = () => {
     clearCustomerCart,
     removeRestaurantScopedItems,
     isBusy,
+    busyItemIds,
+    busyRestaurantIds,
+    isClearing,
   } = useCustomerCartActions({
     cart,
     updateQuantity,
@@ -174,6 +177,9 @@ const Home = () => {
         onRemoveRestaurantItems={removeRestaurantScopedItems}
         onRemoveItem={removeCartLineItem}
         isBusy={isBusy}
+        busyItemIds={busyItemIds}
+        busyRestaurantIds={busyRestaurantIds}
+        isClearing={isClearing}
       />
 
       <TableBooking

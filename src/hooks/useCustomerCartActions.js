@@ -35,7 +35,13 @@ export const useCustomerCartActions = ({
   removeFromCart,
   clearCart,
   removeRestaurantItems,
+  onAfterBackendCartChange,
 }) => {
+  const safeUpdateQuantity = updateQuantity || (() => {});
+  const safeRemoveFromCart = removeFromCart || (() => {});
+  const safeClearCart = clearCart || (() => {});
+  const safeRemoveRestaurantItems = removeRestaurantItems || (() => {});
+
   const [busyItemIds, setBusyItemIds] = useState({});
   const [busyRestaurantIds, setBusyRestaurantIds] = useState({});
   const [isClearing, setIsClearing] = useState(false);
@@ -60,7 +66,7 @@ export const useCustomerCartActions = ({
       if (nextQuantity === Number(item.quantity || 1)) return;
 
       if (!item.backendCartItemId) {
-        updateQuantity(item.id, delta);
+        safeUpdateQuantity(item.id, delta);
         return;
       }
 
@@ -80,21 +86,22 @@ export const useCustomerCartActions = ({
             },
           },
         });
-        updateQuantity(item.id, delta);
+        safeUpdateQuantity(item.id, delta);
+        onAfterBackendCartChange?.();
       } catch (error) {
         alert(getMutationErrorMessage(error, "Không thể cập nhật số lượng món. Vui lòng thử lại."));
       } finally {
         setBusyItem(item.id, false);
       }
     },
-    [cart, updateCartItemMutation, updateQuantity],
+    [cart, onAfterBackendCartChange, safeUpdateQuantity, updateCartItemMutation],
   );
 
   const removeCartLineItem = useCallback(
     async (item) => {
       if (!item) return;
       if (!item.backendCartItemId) {
-        removeFromCart(item.id);
+        safeRemoveFromCart(item.id);
         return;
       }
       if (!item.backendCartId) {
@@ -107,14 +114,15 @@ export const useCustomerCartActions = ({
         await removeCartItemMutation({
           variables: { input: { cartId: item.backendCartId, itemId: item.backendCartItemId } },
         });
-        removeFromCart(item.id);
+        safeRemoveFromCart(item.id);
+        onAfterBackendCartChange?.();
       } catch (error) {
         alert(getMutationErrorMessage(error, "Không thể xóa món. Vui lòng thử lại."));
       } finally {
         setBusyItem(item.id, false);
       }
     },
-    [removeCartItemMutation, removeFromCart],
+    [onAfterBackendCartChange, removeCartItemMutation, safeRemoveFromCart],
   );
 
   const removeRestaurantScopedItems = useCallback(
@@ -126,11 +134,9 @@ export const useCustomerCartActions = ({
 
       setBusyRestaurantIds((prev) => ({ ...prev, [restaurantId]: true }));
       try {
+        const localOnlyItems = itemsToRemove.filter((item) => !item.backendCartItemId);
         for (const item of itemsToRemove) {
-          if (!item.backendCartItemId) {
-            removeFromCart(item.id);
-            continue;
-          }
+          if (!item.backendCartItemId) continue;
           if (!item.backendCartId) {
             alert("Có món đang giữ chỗ nhưng thiếu thông tin đồng bộ. Vui lòng thêm lại món.");
             return;
@@ -138,15 +144,23 @@ export const useCustomerCartActions = ({
           await removeCartItemMutation({
             variables: { input: { cartId: item.backendCartId, itemId: item.backendCartItemId } },
           });
-          removeFromCart(item.id);
+          safeRemoveFromCart(item.id);
         }
+        if (localOnlyItems.length) safeRemoveRestaurantItems(restaurantId);
+        onAfterBackendCartChange?.();
       } catch (error) {
         alert(getMutationErrorMessage(error, "Không thể xóa món của nhà hàng này. Vui lòng thử lại."));
       } finally {
         setBusyRestaurantIds((prev) => ({ ...prev, [restaurantId]: false }));
       }
     },
-    [cart, removeCartItemMutation, removeFromCart],
+    [
+      cart,
+      onAfterBackendCartChange,
+      removeCartItemMutation,
+      safeRemoveFromCart,
+      safeRemoveRestaurantItems,
+    ],
   );
 
   const clearCustomerCart = useCallback(async () => {
@@ -157,7 +171,8 @@ export const useCustomerCartActions = ({
       if (firstBackendCartId) {
         try {
           await clearCartMutation({ variables: { input: { cartId: firstBackendCartId } } });
-          clearCart();
+          safeClearCart();
+          onAfterBackendCartChange?.();
           return;
         } catch {
           // fallback remove tuần tự
@@ -174,13 +189,20 @@ export const useCustomerCartActions = ({
           variables: { input: { cartId: item.backendCartId, itemId: item.backendCartItemId } },
         });
       }
-      clearCart();
+      safeClearCart();
+      onAfterBackendCartChange?.();
     } catch (error) {
       alert(getMutationErrorMessage(error, "Không thể xóa giỏ hàng. Vui lòng thử lại."));
     } finally {
       setIsClearing(false);
     }
-  }, [cart, clearCart, clearCartMutation, removeCartItemMutation]);
+  }, [
+    cart,
+    clearCartMutation,
+    onAfterBackendCartChange,
+    removeCartItemMutation,
+    safeClearCart,
+  ]);
 
   const isBusy = useMemo(
     () => isClearing || Object.values(busyItemIds).some(Boolean) || Object.values(busyRestaurantIds).some(Boolean),

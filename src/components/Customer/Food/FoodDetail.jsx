@@ -32,6 +32,7 @@ import {
   shouldShowMenuItemToCustomer,
 } from "../../../utils/menuItemAvailability";
 import Cart from "../Homepage_Client/components/Cart";
+import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -115,53 +116,6 @@ const ADD_CART_ITEM = gql`
   }
 `;
 
-const UPDATE_CART_ITEM = gql`
-  mutation UpdateCartItem($input: UpdateCartItemInput!) {
-    updateCartItem(input: $input) {
-      id
-      totalQuantity
-      totalAmount
-      items {
-        id
-        restaurantId
-        menuItemId
-        name
-        price
-        quantity
-        thumbImage
-        note
-        servingVariantKey
-        holdExpiresAt
-        holdStatus
-      }
-    }
-  }
-`;
-
-const REMOVE_CART_ITEM = gql`
-  mutation RemoveCartItem($input: RemoveCartItemInput!) {
-    removeCartItem(input: $input) {
-      id
-      totalQuantity
-      totalAmount
-      items {
-        id
-        restaurantId
-        menuItemId
-        quantity
-        servingVariantKey
-        holdExpiresAt
-        holdStatus
-      }
-    }
-  }
-`;
-
-const CLEAR_CART = gql`
-  mutation ClearCart($input: ClearCartInput!) {
-    clearCart(input: $input)
-  }
-`;
 
 const RESTAURANT_BY_ID = gql`
   query RestaurantByIdForFoodDetail($id: ID!) {
@@ -241,12 +195,6 @@ const formatCountdown = (seconds) => {
   const remainder = safeSeconds % 60;
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 };
-
-const getCartMutationErrorMessage = (error, fallback) =>
-  error?.graphQLErrors?.[0]?.message ||
-  error?.networkError?.result?.errors?.[0]?.message ||
-  error?.message ||
-  fallback;
 
 const resolveFoodDetailSocketUrl = () => {
   const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL;
@@ -450,12 +398,6 @@ const FoodDetail = () => {
 
   const [addCartItemMutation, { loading: addingToBackendCart }] =
     useMutation(ADD_CART_ITEM);
-  const [updateCartItemMutation, { loading: updatingBackendCart }] =
-    useMutation(UPDATE_CART_ITEM);
-  const [removeCartItemMutation, { loading: removingBackendCart }] =
-    useMutation(REMOVE_CART_ITEM);
-  const [clearCartMutation, { loading: clearingBackendCart }] =
-    useMutation(CLEAR_CART);
 
   const liveState = liveStateData?.menuItemLiveState;
   const socketRef = useRef(null);
@@ -560,9 +502,6 @@ const FoodDetail = () => {
             : quantityExceedsAvailable
               ? "Không đủ số lượng"
               : "Thêm vào giỏ";
-
-  const cartActionBusy =
-    updatingBackendCart || removingBackendCart || clearingBackendCart;
 
   const makeCartPayload = () => {
     if (!resolvedDish) return null;
@@ -710,120 +649,23 @@ const FoodDetail = () => {
     navigate("/checkout", { state: { from: returnPath } });
   };
 
-  const getPrimaryBackendCartId = () =>
-    cart.find((item) => item.backendCartId)?.backendCartId || null;
-
-  const handleCartUpdateQuantity = async (itemOrId, delta) => {
-    const item =
-      typeof itemOrId === "object"
-        ? itemOrId
-        : cart.find((entry) => entry.id === itemOrId);
-    if (!item) return;
-
-    const nextQuantity = Math.max(
-      1,
-      Number(item.quantity || 1) + Number(delta || 0),
-    );
-    if (nextQuantity === Number(item.quantity || 1)) return;
-
-    if (!item.backendCartId || !item.backendCartItemId) {
-      alert(
-        "Món này chưa được đồng bộ với giỏ hàng máy chủ. Vui lòng thêm lại món.",
-      );
-      return;
-    }
-
-    try {
-      await updateCartItemMutation({
-        variables: {
-          input: {
-            cartId: item.backendCartId,
-            itemId: item.backendCartItemId,
-            quantity: nextQuantity,
-          },
-        },
-      });
-
-      updateQuantity(item.id, delta);
-      await refetchLiveState?.();
-    } catch (error) {
-      alert(
-        getCartMutationErrorMessage(
-          error,
-          "Không thể cập nhật số lượng món. Vui lòng thử lại.",
-        ),
-      );
-    }
-  };
-
-  const handleClearCart = async () => {
-    if (!cart.length) return;
-
-    const backendCartId = getPrimaryBackendCartId();
-    if (!backendCartId) {
-      clearCart();
-      return;
-    }
-
-    try {
-      await clearCartMutation({
-        variables: { input: { cartId: backendCartId } },
-      });
-
-      clearCart();
-      await refetchLiveState?.();
-    } catch (error) {
-      alert(
-        getCartMutationErrorMessage(
-          error,
-          "Không thể xóa giỏ hàng vì chưa trả được món đã giữ. Vui lòng thử lại.",
-        ),
-      );
-    }
-  };
-
-  const handleRemoveRestaurantItems = async (restaurantId) => {
-    const itemsToRemove = (cart || []).filter(
-      (item) => String(item.restaurantId) === String(restaurantId),
-    );
-
-    if (!itemsToRemove.length) return;
-
-    const syncedItems = itemsToRemove.filter(
-      (item) => item.backendCartId && item.backendCartItemId,
-    );
-    const localOnlyItems = itemsToRemove.filter(
-      (item) => !item.backendCartId || !item.backendCartItemId,
-    );
-
-    try {
-      for (const item of syncedItems) {
-        await removeCartItemMutation({
-          variables: {
-            input: {
-              cartId: item.backendCartId,
-              itemId: item.backendCartItemId,
-            },
-          },
-        });
-
-        removeFromCart(item.id);
-      }
-
-      for (const item of localOnlyItems) {
-        removeFromCart(item.id);
-      }
-
-      await refetchLiveState?.();
-    } catch (error) {
-      alert(
-        getCartMutationErrorMessage(
-          error,
-          "Không thể xóa món của nhà hàng này. Vui lòng thử lại.",
-        ),
-      );
-    }
-  };
+  const {
+    updateCartItemQuantity,
+    removeCartLineItem,
+    clearCustomerCart,
+    removeRestaurantScopedItems,
+    isBusy: cartActionBusy,
+    busyItemIds,
+    busyRestaurantIds,
+    isClearing,
+  } = useCustomerCartActions({
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+    onAfterBackendCartChange: () => refetchLiveState?.(),
+  });
 
   if ((menuLoading || directDishLoading) && !resolvedDish) {
     return <div className="food-detail-wrapper">Đang tải thông tin món ăn...</div>;
@@ -1141,12 +983,16 @@ const FoodDetail = () => {
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
           cart={cart}
-          onUpdateQuantity={handleCartUpdateQuantity}
+          onUpdateQuantity={updateCartItemQuantity}
           totalPrice={getTotalPrice()}
           onCheckoutSuccess={clearCart}
-          onClearCart={handleClearCart}
-          onRemoveRestaurantItems={handleRemoveRestaurantItems}
+          onClearCart={clearCustomerCart}
+          onRemoveRestaurantItems={removeRestaurantScopedItems}
+          onRemoveItem={removeCartLineItem}
           isBusy={cartActionBusy}
+          busyItemIds={busyItemIds}
+          busyRestaurantIds={busyRestaurantIds}
+          isClearing={isClearing}
         />
 
         {cart.length > 0 && (
