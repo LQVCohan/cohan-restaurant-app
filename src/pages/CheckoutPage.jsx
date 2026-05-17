@@ -7,16 +7,31 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cart, clearCart } = useCart();
+  const [checkoutCompleted, setCheckoutCompleted] = React.useState(false);
+
+  const fallbackPath = location.state?.from || "/";
 
   const handleClose = () => {
-    const fallbackPath = location.state?.from || "/";
     navigate(fallbackPath, { replace: true });
   };
 
   const handleSuccess = () => {
     clearCart();
-    handleClose();
+    setCheckoutCompleted(true);
   };
+
+
+  if (!checkoutCompleted && (!cart || cart.length === 0)) {
+    return (
+      <div className="checkout-empty-state">
+        <h2>Giỏ hàng đang trống</h2>
+        <p>Vui lòng thêm món trước khi thanh toán.</p>
+        <button type="button" className="btn btn--primary" onClick={handleClose}>
+          Quay lại thực đơn
+        </button>
+      </div>
+    );
+  }
 
   return (
     <OrderSummaryModal
