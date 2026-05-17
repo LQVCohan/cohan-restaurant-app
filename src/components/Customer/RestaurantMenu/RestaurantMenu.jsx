@@ -6,6 +6,7 @@ import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
 import { formatCurrency } from "../../../utils/formatters";
+import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
 
 // Components Con
 import RestaurantCard from "./components/RestaurantCard";
@@ -161,14 +162,7 @@ const RestaurantMenu = () => {
   }, [normalizedRestaurants, restaurantByIdData?.restaurant, restaurantParam]);
 
   const handleOpenFoodDetail = (foodId, state = {}) => {
-    const params = new URLSearchParams();
-    if (state?.restaurantId) params.set("restaurantId", state.restaurantId);
-    if (state?.timeSlot) params.set("timeSlot", state.timeSlot);
-    if (state?.categoryId) params.set("categoryId", state.categoryId);
-
-    const queryString = params.toString();
-    const detailUrl = queryString ? `/food/${foodId}?${queryString}` : `/food/${foodId}`;
-    navigate(detailUrl, { state });
+    navigate(buildFoodDetailPath(foodId, state || {}), { state });
   };
 
   const handleCheckoutSuccess = () => {

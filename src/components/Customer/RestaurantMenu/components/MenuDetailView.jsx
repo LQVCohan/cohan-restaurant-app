@@ -4,6 +4,7 @@ import MenuItemCard from "./MenuItemCard";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuDetailView.scss";
+import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
 
 export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
@@ -59,6 +60,8 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 const ITEMS_PER_PAGE = 8;
 
 const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -150,6 +153,45 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     setCurrentPage(1);
   }, [timeSlot, activeCat, search, rawMenuItems.length]);
 
+  const handleLoadMore = async () => {
+    if (!menuPageInfo?.hasNextPage || !menuPageInfo?.endCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setLoadMoreError("");
+
+    try {
+      await fetchMore({
+        variables: {
+          filter: menuItemFilter,
+          limit: 100,
+          cursor: menuPageInfo.endCursor,
+        },
+        updateQuery: (prev, { fetchMoreResult }) => {
+          if (!fetchMoreResult?.menuItemsConnection) return prev;
+
+          const prevEdges = prev?.menuItemsConnection?.edges || [];
+          const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
+          const seen = new Set(prevEdges.map((edge) => edge?.node?.id).filter(Boolean));
+          const merged = [...prevEdges, ...nextEdges.filter((edge) => !seen.has(edge?.node?.id))];
+
+          return {
+            menuItemsConnection: {
+              ...fetchMoreResult.menuItemsConnection,
+              edges: merged,
+              __typename:
+                prev?.menuItemsConnection?.__typename ||
+                fetchMoreResult.menuItemsConnection.__typename,
+            },
+          };
+        },
+      });
+    } catch (_error) {
+      setLoadMoreError("Không thể tải thêm món. Vui lòng thử lại.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
 
   return (
@@ -240,15 +282,14 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           </div>
         ) : filteredItems.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-            Không tìm thấy món nào.
+            {search.trim() ? "Không tìm thấy món phù hợp trong danh sách đã tải." : "Không tìm thấy món nào."}
           </div>
         ) : (
           <>
             {menuPageInfo?.hasNextPage && (
-              <div style={{ textAlign: "center", color: "#6b7280", marginBottom: "0.75rem" }}>
-                Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.
-              </div>
+              <div className="menu-inline-note">Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.</div>
             )}
+            {loadMoreError && <div className="menu-inline-error">{loadMoreError}</div>}
             <div
               className={`grid-container menu-grid ${viewMode === "list" ? "list-view" : ""}`}
               style={{ padding: 0 }}
@@ -258,12 +299,14 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                   key={item.id}
                   item={item}
                   onClick={(clickedItem) =>
-                    onOpenFoodDetail?.(clickedItem?.id, {
-                      dish: clickedItem,
-                      restaurantId: clickedItem?.restaurantId || restaurantId,
-                      timeSlot,
-                      categoryId: clickedItem?.categoryId || null,
-                    })
+                    onOpenFoodDetail?.(
+                      clickedItem?.id,
+                      buildFoodDetailState(clickedItem, {
+                        restaurantId: clickedItem?.restaurantId || restaurantId,
+                        timeSlot,
+                        categoryId: clickedItem?.categoryId || null,
+                      }),
+                    )
                   }
                 />
               ))}
@@ -288,34 +331,13 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
               </div>
             )}
             {menuPageInfo?.hasNextPage && (
-              <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <div className="menu-load-more-wrap">
                 <button
                   type="button"
-                  onClick={() =>
-                    fetchMore({
-                      variables: {
-                        filter: menuItemFilter,
-                        limit: 100,
-                        cursor: menuPageInfo?.endCursor,
-                      },
-                      updateQuery: (prev, { fetchMoreResult }) => {
-                        if (!fetchMoreResult?.menuItemsConnection) return prev;
-                        const prevEdges = prev?.menuItemsConnection?.edges || [];
-                        const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
-                        const seen = new Set(prevEdges.map((e) => e?.node?.id));
-                        const merged = [...prevEdges, ...nextEdges.filter((e) => !seen.has(e?.node?.id))];
-                        return {
-                          menuItemsConnection: {
-                            ...fetchMoreResult.menuItemsConnection,
-                            edges: merged,
-                            __typename: prev?.menuItemsConnection?.__typename,
-                          },
-                        };
-                      },
-                    })
-                  }
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
                 >
-                  Tải thêm món
+                  {isLoadingMore ? "Đang tải thêm..." : "Tải thêm món"}
                 </button>
               </div>
             )}

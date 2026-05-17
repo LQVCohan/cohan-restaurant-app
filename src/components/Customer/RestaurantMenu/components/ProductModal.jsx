@@ -4,6 +4,7 @@ import { X, Minus, Plus } from "lucide-react";
 import "../styles/ProductModal.scss";
 
 const ProductModal = ({ product, onClose, onAddToCart }) => {
+  // Legacy note: hiện chưa được render trong luồng customer chính; không dùng làm đường add cart production.
   // --- 1. KHAI BÁO HOOKS (Luôn để trên cùng, không được nằm trong if) ---
 
   const [quantity, setQuantity] = useState(1);
