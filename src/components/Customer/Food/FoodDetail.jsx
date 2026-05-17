@@ -210,6 +210,7 @@ const FoodDetail = () => {
     preloadedDish?.categoryId ||
     categoryIdFromQuery ||
     null;
+  const selectedVariantKeyFromState = location.state?.selectedVariantKey || null;
   const { user } = useContext(AuthContext) || {};
 
   const {
@@ -301,8 +302,18 @@ const FoodDetail = () => {
   }, [foundDish]);
 
   useEffect(() => {
-    if (sizes.length) setSelectedSize(sizes[0]);
-  }, [sizes]);
+    if (!sizes.length) return;
+
+    const preferredSize = selectedVariantKeyFromState
+      ? sizes.find(
+          (size) =>
+            String(size.key || "") === String(selectedVariantKeyFromState) ||
+            String(size.id || "") === String(selectedVariantKeyFromState),
+        )
+      : null;
+
+    setSelectedSize(preferredSize || sizes[0]);
+  }, [sizes, selectedVariantKeyFromState]);
 
   const selectedServingKey = selectedSize?.key || null;
 
