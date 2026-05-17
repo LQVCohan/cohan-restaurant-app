@@ -319,6 +319,7 @@ extend type Query {
     cursor: ID
     filter: MenuItemFilter!
   ): MenuItemConnection!
+  customerMenuItem(id: ID!, restaurantId: ID): MenuItem
 
   topMenuItems(
     limit: Int = 8

@@ -97,7 +97,7 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
     [activeCat, restaurantId, timeSlot],
   );
 
-  const { data: menuData, loading: menuLoading, error: menuError } = useQuery(
+  const { data: menuData, loading: menuLoading, error: menuError, fetchMore } = useQuery(
     GET_MENU_ITEMS_FOR_CUSTOMER_MENU,
     {
       variables: {
@@ -284,6 +284,38 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                 ))}
                 <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
                   &gt;
+                </button>
+              </div>
+            )}
+            {menuPageInfo?.hasNextPage && (
+              <div style={{ textAlign: "center", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    fetchMore({
+                      variables: {
+                        filter: menuItemFilter,
+                        limit: 100,
+                        cursor: menuPageInfo?.endCursor,
+                      },
+                      updateQuery: (prev, { fetchMoreResult }) => {
+                        if (!fetchMoreResult?.menuItemsConnection) return prev;
+                        const prevEdges = prev?.menuItemsConnection?.edges || [];
+                        const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
+                        const seen = new Set(prevEdges.map((e) => e?.node?.id));
+                        const merged = [...prevEdges, ...nextEdges.filter((e) => !seen.has(e?.node?.id))];
+                        return {
+                          menuItemsConnection: {
+                            ...fetchMoreResult.menuItemsConnection,
+                            edges: merged,
+                            __typename: prev?.menuItemsConnection?.__typename,
+                          },
+                        };
+                      },
+                    })
+                  }
+                >
+                  Tải thêm món
                 </button>
               </div>
             )}

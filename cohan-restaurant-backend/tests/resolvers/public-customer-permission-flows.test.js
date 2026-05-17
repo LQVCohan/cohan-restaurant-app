@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   Menu: { find: vi.fn(), findOne: vi.fn() },
-  MenuItem: { find: vi.fn(), aggregate: vi.fn() },
+  MenuItem: { find: vi.fn(), findOne: vi.fn(), aggregate: vi.fn() },
   Category: { find: vi.fn() },
   Promotion: { find: vi.fn() },
   Coupon: { find: vi.fn(), findOne: vi.fn() },
@@ -57,6 +57,7 @@ describe("public/customer permission flows", () => {
     modelMocks.Menu.find.mockReturnValue(findChain([]));
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
     modelMocks.MenuItem.find.mockReturnValue(findChain([]));
+    modelMocks.MenuItem.findOne.mockReturnValue(findOneChain(null));
     modelMocks.Category.find.mockReturnValue(findChain([]));
     modelMocks.Promotion.find.mockReturnValue(findChain([]));
     modelMocks.Coupon.find.mockReturnValue(findChain([]));
@@ -199,6 +200,26 @@ describe("public/customer permission flows", () => {
     expect(rows.map((x) => x.id || String(x._id))).toEqual(["valid-c2", "valid-c1"]);
     expect(rows.every((x) => x.isActive !== false)).toBe(true);
     expect(rows.every((x) => x.menuItemCount > 0)).toBe(true);
+  });
+  it("lets public users query customerMenuItem for available item", async () => {
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+    modelMocks.MenuItem.findOne.mockReturnValue(
+      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+    );
+    modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
+    const row = await MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {});
+    expect(row?.id).toBe("valid-m1");
+    expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+  });
+
+  it("returns null for unavailable or out_of_stock customerMenuItem", async () => {
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+    modelMocks.MenuItem.findOne.mockReturnValue(findOneChain(null));
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    modelMocks.MenuItem.findOne.mockReturnValue(
+      findOneChain({ _id: "valid-m1", restaurantId: "valid-r1", status: "available", inventoryStatus: "OUT_OF_STOCK" }),
+    );
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
   });
 
 });
