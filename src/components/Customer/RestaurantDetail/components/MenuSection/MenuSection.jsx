@@ -20,7 +20,7 @@ const formatPrice = (value) =>
 /* ──────────────── GraphQL (Giữ nguyên) ──────────────── */
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
-    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+    customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
       id
       name
       order
@@ -122,10 +122,11 @@ const MenuSection = ({ restaurantId }) => {
   );
 
   useEffect(() => {
-    if (categoriesData?.categories?.length) {
-      setCategories(categoriesData.categories);
-      setActiveCategory((prev) => prev || categoriesData.categories[0]?.id);
-    }
+    const nextCategories = (categoriesData?.customerMenuCategories || []).filter(
+      (cat) => cat?.id && cat.isActive !== false,
+    );
+    setCategories(nextCategories);
+    setActiveCategory((prev) => prev || nextCategories[0]?.id || null);
   }, [categoriesData]);
 
   // --- QUERY MENU ITEMS ---
