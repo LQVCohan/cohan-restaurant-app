@@ -14,6 +14,8 @@ import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 
+const ALL_FLOORS_KEY = "all";
+
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
   const duplicateErr = gqlErrors.find(
@@ -83,10 +85,8 @@ const TableManagement = () => {
         name: f.name || `Tầng ${f.level ?? ""}`,
         icon: "🏢",
         level: Number(f.level),
-        active:
-          activeLevel != null ? Number(f.level) === Number(activeLevel) : false,
       })),
-    [floorsRaw, activeLevel]
+    [floorsRaw]
   );
 
   const tablesMapped = useMemo(
@@ -105,7 +105,7 @@ const TableManagement = () => {
   );
 
   // --- UI States ---
-  const [currentFloor, setCurrentFloor] = useState(null);
+  const [currentFloor, setCurrentFloor] = useState(ALL_FLOORS_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState({
     status: "",
@@ -216,15 +216,7 @@ const TableManagement = () => {
     notify: showNotification,
   });
 
-  // --- Auto Select Floor ---
-  useEffect(() => {
-    if (!floors.length) return;
-    if (!currentFloor) {
-      const targetId =
-        activeLevel != null ? getIdFromLevel(activeLevel) : floors[0].id;
-      if (targetId) setCurrentFloor(String(targetId));
-    }
-  }, [floors, activeLevel, currentFloor, getIdFromLevel]);
+  const isAllFloorsSelected = currentFloor === ALL_FLOORS_KEY;
 
   useEffect(() => {
     if (vrDraft.didRestore) return;
@@ -244,6 +236,11 @@ const TableManagement = () => {
       setFloorErrors({});
     }
   }, [showFloorModal]);
+
+  const selectAllFloors = () => {
+    setCurrentFloor(ALL_FLOORS_KEY);
+    setActiveLevel(null);
+  };
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -316,7 +313,11 @@ const TableManagement = () => {
 
   const getFilteredTables = () => {
     let filtered = [...tablesMapped];
-    if (currentFloor)
+    const shouldFilterByFloor =
+      currentFloor != null &&
+      currentFloor !== "" &&
+      currentFloor !== ALL_FLOORS_KEY;
+    if (shouldFilterByFloor)
       filtered = filtered.filter(
         (t) => String(t.floorId) === String(currentFloor)
       );
@@ -378,8 +379,11 @@ const TableManagement = () => {
   };
 
   const handleOpenFloorDesigner = () => {
-    const targetFloorId =
-      currentFloor || (floors.length ? floors[0].id : null);
+    if (isAllFloorsSelected || !currentFloor) {
+      showNotification("Vui lòng chọn một tầng cụ thể để thiết kế sơ đồ.", "warning");
+      return;
+    }
+    const targetFloorId = currentFloor;
     if (!targetFloorId) {
       showNotification("Chưa chọn tầng để chỉnh sửa sơ đồ.", "warning");
       return;
@@ -594,10 +598,22 @@ const TableManagement = () => {
         <aside className="tm-sidebar">
           <h3>Khu vực / Tầng</h3>
           <div className="tm-floor-list">
+            <div
+              className={`tm-floor-item ${isAllFloorsSelected ? "active" : ""}`}
+              onClick={selectAllFloors}
+            >
+              <span className="icon">🏬</span>
+              <span className="name">Tất cả tầng</span>
+              <span className="count">{tablesMapped.length}</span>
+            </div>
             {floors.map((f) => (
               <div
                 key={f.id}
-                className={`tm-floor-item ${f.active ? "active" : ""}`}
+                className={`tm-floor-item ${
+                  !isAllFloorsSelected && String(currentFloor) === String(f.id)
+                    ? "active"
+                    : ""
+                }`}
                 onClick={() => selectFloor(f.id)}
               >
                 <span className="icon">{f.icon}</span>
