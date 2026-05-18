@@ -738,6 +738,7 @@ const TableManagement = () => {
           table={liteTable}
           restaurantId={restaurantId}
           floors={floorsRaw}
+          tables={tablesRaw}
           actions={{
             updateTable,
             setTableStatus,
