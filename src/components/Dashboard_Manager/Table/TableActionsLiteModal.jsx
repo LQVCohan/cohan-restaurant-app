@@ -24,6 +24,28 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   return "";
 };
 
+
+const resolveTableActionError = (error, fallbackMessage = "Không thể thực hiện thao tác với bàn. Vui lòng thử lại.") => {
+  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const firstGraphQLError = gqlErrors[0] || null;
+  const code =
+    firstGraphQLError?.extensions?.code ||
+    error?.extensions?.code ||
+    null;
+
+  if (code === "TABLE_HAS_ACTIVE_ORDERS") {
+    return "Không thể thực hiện thao tác vì bàn đang có phiên hoặc order hoạt động.";
+  }
+
+  const duplicateMessage = resolveTableDuplicateMessage(error);
+  if (duplicateMessage) return duplicateMessage;
+
+  const message = firstGraphQLError?.message || error?.message;
+  if (typeof message === "string" && message.trim()) return message.trim();
+
+  return fallbackMessage;
+};
+
 const DEFAULT_TABLE_POSITION = { x: 80, y: 80 };
 const TABLE_POSITION_STEP = 40;
 const TABLE_POSITION_MAX_ATTEMPTS = 30;
@@ -392,22 +414,15 @@ export default function TableActionsLiteModal({
       try {
         await onUpdated?.();
         showNotification("Đã lưu cấu hình bàn thành công.", "success", 2200);
-      } catch (syncError) {
-        console.error(syncError);
+      } catch {
         showNotification(
           "Đã lưu thành công nhưng không thể đồng bộ danh sách ngay lúc này.",
           "warning",
           3600
         );
       }
-    } catch (e) {
-      console.error(e);
-      const duplicateMessage = resolveTableDuplicateMessage(e, code?.trim());
-      if (duplicateMessage) {
-        showNotification(duplicateMessage, "error");
-        return;
-      }
-      showNotification("Cập nhật thông tin bàn thất bại.", "error");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Cập nhật thông tin bàn thất bại."), "error");
     } finally {
       setBusyKey("save", false);
     }
@@ -491,24 +506,26 @@ export default function TableActionsLiteModal({
   };
 
   const handleChangeStatus = async (next) => {
-    if (!table?.id || next === status) return;
+    if (!table?.id || next === status || busy.status) return;
     setBusyKey("status", true);
     try {
       await actions.setTableStatus({ id: table.id, status: next });
       setStatusLocal(next);
       await onUpdated?.();
-    } catch (e) {
-      console.error(e);
-      alert("Đổi trạng thái thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Đổi trạng thái thất bại."), "error");
     } finally {
       setBusyKey("status", false);
     }
   };
 
   const handleMove = async () => {
-    if (!table?.id || moveLevel == null) return;
+    if (!table?.id || moveLevel == null || busy.move) return;
     const floorId = actions.getIdFromLevel?.(moveLevel);
-    if (!floorId) return alert("Không tìm thấy tầng đích.");
+    if (!floorId) {
+      showNotification("Không tìm thấy tầng đích.", "error");
+      return;
+    }
 
     const currentFloorId = getTableFloorId(table);
     const isChangingFloor = String(currentFloorId) !== String(floorId);
@@ -523,21 +540,25 @@ export default function TableActionsLiteModal({
     try {
       await actions.moveTable(payload);
       await onUpdated?.();
-    } catch (e) {
-      console.error(e);
-      alert("Chuyển tầng thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Chuyển tầng thất bại."), "error");
     } finally {
       setBusyKey("move", false);
     }
   };
 
   const handleSwap = async () => {
+    if (busy.swap) return;
     const codeB = (swapWithCode || "").trim();
     if (!codeB) return;
     const b = actions.fetchTableByCode?.(codeB);
-    if (!b) return alert("Không tìm thấy bàn có mã: " + codeB);
+    if (!b) {
+      showNotification("Không tìm thấy bàn có mã: " + codeB, "error");
+      return;
+    }
     if (String(b.floorId) !== String(table.floorId)) {
-      return alert("Đổi chỗ chỉ áp dụng cho 2 bàn cùng tầng.");
+      showNotification("Đổi chỗ chỉ áp dụng cho 2 bàn cùng tầng.", "error");
+      return;
     }
     setBusyKey("swap", true);
     try {
@@ -549,15 +570,15 @@ export default function TableActionsLiteModal({
       });
       await onUpdated?.();
       setSwapWithCode("");
-    } catch (e) {
-      console.error(e);
-      alert("Đổi chỗ (swap code) thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Đổi chỗ (swap code) thất bại."), "error");
     } finally {
       setBusyKey("swap", false);
     }
   };
 
   const handleMerge = async () => {
+    if (busy.merge) return;
     const raw = (mergeCodes || "").trim();
     if (!raw) return;
     const ids = Array.from(
@@ -570,22 +591,24 @@ export default function TableActionsLiteModal({
           .map((t) => t.id)
       )
     );
-    if (ids.length < 2) return alert("Cần ít nhất 2 bàn để gộp.");
+    if (ids.length < 2) {
+      showNotification("Cần ít nhất 2 bàn để gộp.", "error");
+      return;
+    }
     setBusyKey("merge", true);
     try {
       await actions.mergeTables({ tableIds: ids, anchorId: table.id });
       await onUpdated?.();
       setMergeCodes("");
-    } catch (e) {
-      console.error(e);
-      alert("Gộp bàn thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Gộp bàn thất bại."), "error");
     } finally {
       setBusyKey("merge", false);
     }
   };
 
   const handleSplitOut = async () => {
-    if (!table?.joinGroupId) return;
+    if (!table?.joinGroupId || busy.split) return;
     setBusyKey("split", true);
     try {
       await actions.splitTables({
@@ -594,16 +617,15 @@ export default function TableActionsLiteModal({
         tableIds: [table.id],
       });
       await onUpdated?.();
-    } catch (e) {
-      console.error(e);
-      alert("Tách bàn thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Tách bàn thất bại."), "error");
     } finally {
       setBusyKey("split", false);
     }
   };
 
   const handleDelete = async () => {
-    if (!table?.id) return;
+    if (!table?.id || busy.delete) return;
     if (!window.confirm(`Xoá bàn ${table.number}?`)) return;
     setBusyKey("delete", true);
     try {
@@ -611,9 +633,8 @@ export default function TableActionsLiteModal({
       await onUpdated?.();
       clearDraft();
       onClose?.();
-    } catch (e) {
-      console.error(e);
-      alert("Xoá bàn thất bại.");
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Xoá bàn thất bại."), "error");
     } finally {
       setBusyKey("delete", false);
     }
