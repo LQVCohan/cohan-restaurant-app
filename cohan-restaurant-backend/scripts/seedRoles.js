@@ -6,24 +6,41 @@ import { Role, ParentRole, Permission } from "../models/index.js";
 dotenv.config();
 await mongoose.connect(process.env.MONGO_URI, { dbName: process.env.MONGO_DB });
 
+const MENU_MANAGER_PERMISSIONS = [
+  "menu.read",
+  "menu.write",
+  "menu.create",
+  "menu.update",
+  "menu.delete",
+  "menu.copy",
+  "menu.item.create",
+  "menu.item.update",
+  "menu.item.delete",
+  "menu.price.update",
+  "menu.category.manage",
+  "menu.group.manage",
+  "menu.inventory.sync",
+  "menu.audit.read",
+];
+
 const roles = [
   { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true, permissions: [] },
-  { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true, permissions: [] },
+  { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true, permissions: MENU_MANAGER_PERMISSIONS },
   { name: "HR", slug: "hr", parentRole: "hr", isSystem: true, permissions: [] },
   { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true, permissions: [] },
   { name: "Customer", slug: "customer", parentRole: "customer", isSystem: true, permissions: [] },
   { name: "Staff", slug: "staff", parentRole: "staff", isSystem: true, permissions: [] },
   { name: "Server", slug: "server", parentRole: "staff", department: "service", permissions: ["menu.read", "order.read", "order.create", "order.update", "table.read"] },
-  { name: "Supervisor", slug: "supervisor", parentRole: "staff", department: "service", permissions: ["menu.read", "order.read", "order.create", "order.update", "order.cancel", "table.read", "table.write", "staff.read", "shift.read"] },
+  { name: "Supervisor", slug: "supervisor", parentRole: "staff", department: "service", permissions: ["menu.read", "menu.item.update", "menu.price.update", "menu.audit.read", "order.read", "order.create", "order.update", "order.cancel", "table.read", "table.write", "staff.read", "shift.read"] },
   { name: "Host", slug: "host", parentRole: "staff", department: "service", permissions: ["menu.read", "reservation.read", "reservation.update", "table.read"] },
-  { name: "Cashier", slug: "cashier", parentRole: "staff", department: "cashier", permissions: ["order.read", "payment.read", "payment.write", "table.read"] },
-  { name: "Chef", slug: "chef", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read", "order.update"] },
-  { name: "Cook", slug: "cook", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read", "order.update"] },
-  { name: "Kitchen Helper", slug: "kitchen_helper", parentRole: "staff", department: "kitchen", permissions: ["kitchen.read", "kitchen.write", "order.read", "order.update"] },
+  { name: "Cashier", slug: "cashier", parentRole: "staff", department: "cashier", permissions: ["menu.read", "order.read", "payment.read", "payment.write", "table.read"] },
+  { name: "Chef", slug: "chef", parentRole: "staff", department: "kitchen", permissions: ["menu.read", "menu.item.update", "kitchen.read", "kitchen.write", "order.read", "order.update"] },
+  { name: "Cook", slug: "cook", parentRole: "staff", department: "kitchen", permissions: ["menu.read", "menu.item.update", "kitchen.read", "kitchen.write", "order.read", "order.update"] },
+  { name: "Kitchen Helper", slug: "kitchen_helper", parentRole: "staff", department: "kitchen", permissions: ["menu.read", "kitchen.read", "kitchen.write", "order.read", "order.update"] },
   { name: "Cleaner", slug: "cleaner", parentRole: "staff", department: "cleaning", permissions: ["cleaning.read"] },
   { name: "Shipper", slug: "shipper", parentRole: "staff", department: "delivery", permissions: ["delivery.read", "delivery.update"] },
-  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["inventory.read", "inventory.write", "stock.read", "stock.write", "supplier.read", "supplier.write"] },
-  { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar", permissions: ["menu.read", "order.read", "order.create"] },
+  { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["menu.read", "menu.inventory.sync", "inventory.read", "inventory.write", "stock.read", "stock.write", "supplier.read", "supplier.write"] },
+  { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar", permissions: ["menu.read", "menu.item.update", "order.read", "order.create"] },
 ];
 
 async function idsFor(codes) {
