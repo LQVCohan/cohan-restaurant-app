@@ -38,7 +38,7 @@ jobs:
         run: npm run -s lint
 
       - name: Run frontend MenuManagement RBAC tests
-        run: npm run test -- src/utils/frontendRoleAccess.test.js
+        run: npm run -s test:menu-rbac
 
   backend-menu-rbac:
     name: Backend Menu RBAC tests
@@ -62,8 +62,4 @@ jobs:
         run: npm run -s lint
 
       - name: Run backend MenuManagement RBAC tests
-        run: |
-          npm run test -- \
-            tests/server/auth-user-resolver.test.js \
-            tests/resolvers/menu-permission.test.js \
-            tests/resolvers/menu-audit-log-permission.test.js
+        run: npm run -s test:menu-rbac
