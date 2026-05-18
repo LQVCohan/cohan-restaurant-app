@@ -2,9 +2,15 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import Floor from "../../../models/floor.model.js";
 import Table from "../../../models/table.model.js";
+import Order from "../../../models/order.model.js";
 import { logEvent } from "../../../src/services/eventLog.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  INACTIVE_ORDER_STATUSES,
+  activeTableSessionLookupFilter,
+  withOrderBatchOrLegacyFilter,
+} from "../../../utils/orderLifecycle.js";
 const ensureFloorLevel = async (floorId) => {
   const f = await Floor.findById(floorId).select({ level: 1 }).lean();
   if (!f) throw new GraphQLError("Floor not found");
@@ -60,6 +66,30 @@ const mapDuplicateMongoError = (error, fallbackCode) => {
     throw duplicateTableError(humanizeTableCode(fallbackCode));
   }
   throw error;
+};
+
+const hasActiveOrdersForTable = async ({ restaurantId, tableId, tableCode }) => {
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({ restaurantId, tableId, tableCode })
+  )
+    .select({ _id: 1 })
+    .lean();
+
+  if (activeSession?._id) {
+    return true;
+  }
+
+  const activeLegacyOrBatchOrder = await Order.findOne(
+    withOrderBatchOrLegacyFilter({
+      restaurantId,
+      tableId,
+      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+    })
+  )
+    .select({ _id: 1 })
+    .lean();
+
+  return Boolean(activeLegacyOrBatchOrder?._id);
 };
 
 export default {
@@ -278,6 +308,17 @@ export default {
     const before = await Table.findById(id).lean({ virtuals: true });
     if (!before) return false;
     await requireRestaurantPermission(ctx, before.restaurantId, PERMISSIONS.TABLE_WRITE);
+
+    const activeOrderExists = await hasActiveOrdersForTable({
+      restaurantId: before.restaurantId,
+      tableId: before._id,
+      tableCode: before.code,
+    });
+    if (activeOrderExists) {
+      throw new GraphQLError("Không thể xóa bàn đang có phiên hoặc order hoạt động.", {
+        extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+      });
+    }
 
     const res = await Table.deleteOne({ _id: id });
 
