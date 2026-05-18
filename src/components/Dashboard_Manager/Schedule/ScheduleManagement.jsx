@@ -1260,7 +1260,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: effectiveRestaurantId || undefined },
     fetchPolicy: "cache-and-network",
-    nextFetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-and-network",
     skip: !effectiveRestaurantId,
   });
 
