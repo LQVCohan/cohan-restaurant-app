@@ -17,6 +17,8 @@ import {
   buildPreviousSnapshotMap,
   buildPerformanceOverview,
   resolveNeedsAttentionVisibleRows,
+  escapeCsvValue,
+  buildPerformanceOverviewCsvRows,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -380,5 +382,34 @@ describe("resolveNeedsAttentionVisibleRows", () => {
     const rows = Array.from({ length: 7 }, (_, index) => ({ id: index + 1 }));
     const result = resolveNeedsAttentionVisibleRows(rows, true, 5);
     expect(result).toHaveLength(7);
+  });
+});
+
+describe("csv helpers", () => {
+  it("escapeCsvValue wraps comma-containing values", () => {
+    expect(escapeCsvValue("A,B")).toBe('"A,B"');
+  });
+
+  it("escapeCsvValue escapes internal quotes", () => {
+    expect(escapeCsvValue('A "B"')).toBe('"A ""B"""');
+  });
+
+  it("buildPerformanceOverviewCsvRows handles missing snapshot and previousSnapshot", () => {
+    const rows = [
+      {
+        employee: { code: "E001", name: "An", role: "Phục vụ" },
+        snapshot: null,
+        previousSnapshot: null,
+        score: null,
+        level: null,
+        trendDelta: null,
+      },
+    ];
+    const result = buildPerformanceOverviewCsvRows(rows);
+    expect(result[0][0]).toBe("E001");
+    expect(result[0][3]).toBe("--");
+    expect(result[0][5]).toBe("--");
+    expect(result[0][7]).toBe("Không");
+    expect(result[0][8]).toBe("--");
   });
 });
