@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useContext } from "react";
+import { Link } from "react-router-dom";
 import "./OrdersPage.scss";
 import OrderItem from "./OrderItem"; // Import OrderItem mới
 import Toast from "../../ui/Toast";
@@ -149,6 +150,7 @@ export default function OrdersPage() {
   const {
     data: orderConn,
     loading: ordersLoading,
+    error: ordersError,
     refetch: refetchOrders,
   } = useQuery(ORDERS_BY_USER, {
     variables: { userId, limit: 20 },
@@ -158,6 +160,7 @@ export default function OrdersPage() {
   const {
     data: resvList,
     loading: resvLoading,
+    error: resvError,
     refetch: refetchReservations,
   } = useQuery(MY_RESERVATIONS, {
     variables: { limit: 20 },
@@ -402,7 +405,18 @@ export default function OrdersPage() {
 
       <div className="orders-grid">
         {ordersLoading || resvLoading ? (
-          <Skeleton rows={3} />
+          <div className="empty-state">
+            <p>Đang tải danh sách đơn hàng...</p>
+            <Skeleton rows={3} />
+          </div>
+        ) : ordersError || resvError ? (
+          <div className="empty-state">
+            <p>{ordersError?.message || resvError?.message || "Không thể tải danh sách đơn hàng."}</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
+              <Link to="/orders" className="btn-create">Quay lại đơn hàng của tôi</Link>
+              <Link to="/" className="btn-create">Tiếp tục xem món</Link>
+            </div>
+          </div>
         ) : (
           visibleItems.map((item) => (
             <OrderItem
@@ -413,7 +427,10 @@ export default function OrdersPage() {
           ))
         )}
         {!ordersLoading && !resvLoading && visibleItems.length === 0 && (
-          <div className="empty-state">Không có đơn hàng nào.</div>
+          <div className="empty-state">
+            <p>Bạn chưa có đơn hàng nào.</p>
+            <Link to="/" className="btn-create">Tiếp tục xem món</Link>
+          </div>
         )}
       </div>
 
