@@ -8,14 +8,10 @@ import {
   Recipe,
   AuditLog,
 } from "../../../models/index.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
-
-const PERMISSIONS = {
-  MENU_WRITE: "menu.write",
-};
 
 function isOid(v) {
   return mongoose.isValidObjectId(v);
@@ -94,6 +90,38 @@ function buildDefaultVariantFromBasePrice(basePrice) {
   };
 }
 
+function includesMeaningfulItemField(input = {}) {
+  return [
+    "categoryId",
+    "name",
+    "description",
+    "thumbImage",
+    "mediaAssetIds",
+    "modifierGroupIds",
+    "notes",
+    "status",
+    "avgPrepTimeMin",
+    "point",
+    "rate",
+    "orderCounter",
+  ].some((field) => input[field] !== undefined);
+}
+
+async function requireMenuItemUpdatePermissions(ctx, restaurantId, input = {}) {
+  const wantsPriceUpdate = input.basePrice !== undefined;
+  const wantsItemUpdate = includesMeaningfulItemField(input);
+
+  if (wantsItemUpdate) {
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.UPDATE_ITEM);
+  }
+  if (wantsPriceUpdate) {
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.UPDATE_PRICE);
+  }
+  if (!wantsItemUpdate && !wantsPriceUpdate) {
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.UPDATE_ITEM);
+  }
+}
+
 export const MenuMutation = {
   // ================================
   // ENSURE MENU (CREATE / UPDATE)
@@ -111,7 +139,13 @@ export const MenuMutation = {
 
     if (!isOid(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     assertTimeSlot(timeSlot);
-    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_WRITE);
+
+    const beforeMenu = await Menu.findOne({ restaurantId, timeSlot }).lean();
+    await requireMenuPermission(
+      ctx,
+      restaurantId,
+      beforeMenu ? MENU_PERMISSION.UPDATE_MENU : MENU_PERMISSION.CREATE_MENU,
+    );
 
     // check restaurant tồn tại (nhẹ)
     const restExists = await Restaurant.exists({ _id: restaurantId });
@@ -129,7 +163,6 @@ export const MenuMutation = {
     if (coverImage !== undefined) patch.coverImage = coverImage;
     if (typeof isActive === "boolean") patch.isActive = isActive;
     if (categoryMenuId !== undefined) patch.categoryMenuId = categoryMenuId;
-    const beforeMenu = await Menu.findOne({ restaurantId, timeSlot }).lean();
     const doc = await Menu.findOneAndUpdate(
       { restaurantId, timeSlot },
       {
@@ -205,7 +238,7 @@ export const MenuMutation = {
       throw new GraphQLError("name is required");
     }
     if (status) assertStatus(status);
-    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_WRITE);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.CREATE_ITEM);
 
     const basePriceNum = toNumOrUndef(basePrice);
     if (basePriceNum !== undefined && basePriceNum < 0) {
@@ -334,7 +367,7 @@ export const MenuMutation = {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
     const existing = await MenuItem.findById(id).lean();
     if (!existing) throw new GraphQLError("MenuItem not found");
-    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
+    await requireMenuItemUpdatePermissions(ctx, existing.restaurantId, input);
 
     // only allow basic fields here. Pricing must go to Recipe (but we support basePrice as shortcut)
     const session = await mongoose.startSession();
@@ -488,7 +521,7 @@ export const MenuMutation = {
     if (!isOid(id)) throw new GraphQLError("Invalid id");
     const existing = await MenuItem.findById(id).lean();
     if (!existing) return true;
-    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
+    await requireMenuPermission(ctx, existing.restaurantId, MENU_PERMISSION.DELETE_ITEM);
 
     const session = await mongoose.startSession();
     try {
@@ -538,7 +571,7 @@ export const MenuMutation = {
     if (categoryId && !isOid(categoryId)) {
       throw new GraphQLError("Invalid categoryId");
     }
-    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_WRITE);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.UPDATE_ITEM);
 
     const patch = {};
     if (typeof name === "string") patch.name = name;
@@ -619,7 +652,7 @@ export const MenuMutation = {
     assertStatus(status);
     const existing = await MenuItem.findById(id).lean();
     if (!existing) throw new GraphQLError("MenuItem not found");
-    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.MENU_WRITE);
+    await requireMenuPermission(ctx, existing.restaurantId, MENU_PERMISSION.UPDATE_ITEM);
 
     const item = await MenuItem.findByIdAndUpdate(
       id,
@@ -662,7 +695,7 @@ export const MenuMutation = {
 
       if (!isOid(restaurantId)) throw new GraphQLError("Invalid restaurantId");
       if (timeSlot) assertTimeSlot(timeSlot);
-      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_WRITE);
+      await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.UPDATE_PRICE);
 
       if (
         !target ||
