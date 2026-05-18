@@ -1,8 +1,67 @@
 // src/hooks/useCart.js
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+
+const CART_STORAGE_KEY = "cohan.customerCart.v1";
+
+const getStorage = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+export const clearPersistedCart = () => {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(CART_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+const isHoldExpired = (item) => {
+  if (!item?.holdExpiresAt) return false;
+  const expiresAt = new Date(item.holdExpiresAt);
+  return !Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date();
+};
+
+const getInitialCart = () => {
+  const storage = getStorage();
+  if (!storage) return [];
+
+  try {
+    const raw = storage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => !isHoldExpired(item));
+  } catch {
+    return [];
+  }
+};
 
 export const useCart = () => {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(getInitialCart);
+
+  useEffect(() => {
+    const storage = getStorage();
+    if (!storage) return;
+
+    try {
+      if (!cart.length) {
+        clearPersistedCart();
+        return;
+      }
+
+      storage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch {
+      // Ignore storage write errors to avoid breaking checkout UX.
+    }
+  }, [cart]);
 
   // dish cần có: id (dishId), restaurantId, name, price, image?, method?, quantity?
   const addToCart = useCallback((dish) => {

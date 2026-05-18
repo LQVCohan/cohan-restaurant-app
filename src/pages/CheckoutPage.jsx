@@ -8,22 +8,32 @@ const CheckoutPage = () => {
   const location = useLocation();
   const { cart, clearCart } = useCart();
   const [checkoutCompleted, setCheckoutCompleted] = React.useState(false);
+  const [checkoutItems, setCheckoutItems] = React.useState(() => cart || []);
 
   const fallbackPath = location.state?.from || "/";
 
-  const handleClose = () => {
-    if (checkoutCompleted) {
-      clearCart();
+  React.useEffect(() => {
+    if (
+      !checkoutCompleted &&
+      checkoutItems.length === 0 &&
+      Array.isArray(cart) &&
+      cart.length > 0
+    ) {
+      setCheckoutItems(cart);
     }
+  }, [cart, checkoutCompleted, checkoutItems.length]);
+
+  const handleClose = () => {
     navigate(fallbackPath, { replace: true });
   };
 
   const handleSuccess = () => {
     setCheckoutCompleted(true);
+    clearCart();
   };
 
 
-  if (!checkoutCompleted && (!cart || cart.length === 0)) {
+  if (!checkoutCompleted && (!checkoutItems || checkoutItems.length === 0)) {
     return (
       <div className="checkout-empty-state">
         <h2>Giỏ hàng đang trống</h2>
@@ -39,7 +49,7 @@ const CheckoutPage = () => {
     <OrderSummaryModal
       isOpen
       onClose={handleClose}
-      items={cart}
+      items={checkoutItems}
       onSuccess={handleSuccess}
     />
   );
