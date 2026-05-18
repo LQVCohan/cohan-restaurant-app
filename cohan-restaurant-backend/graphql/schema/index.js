@@ -44,6 +44,8 @@ const files = [
   "posCustomer.graphql",
   "attendance_overtime.graphql",
   "audit_log.graphql",
+  "systemSetting.graphql",
+  "backup.graphql",
 ].map((f) => fs.readFileSync(path.join(schemaDir, f), "utf8"));
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });

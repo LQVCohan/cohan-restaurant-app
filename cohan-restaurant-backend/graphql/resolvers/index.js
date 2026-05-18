@@ -37,6 +37,8 @@ import communication from "./communication/index.js";
 import availability from "./availability/index.js";
 import auditLog from "./audit_log/index.js";
 import { rbacAuditLogs } from "./audit_log/rbac.js";
+import systemSetting from "./systemSetting/index.js";
+import backup from "./backup/index.js";
 export default {
   ...baseResolvers,
 
@@ -74,6 +76,8 @@ export default {
     ...(communication.Query || {}),
     ...(availability.Query || {}),
     ...(auditLog.Query || {}),
+    ...(systemSetting.Query || {}),
+    ...(backup.Query || {}),
     rbacAuditLogs,
   },
 
@@ -108,6 +112,8 @@ export default {
     ...(availability.Mutation || {}),
     ...(posCustomer.Mutation || {}),
     ...(userCoupon.Mutation || {}),
+    ...(systemSetting.Mutation || {}),
+    ...(backup.Mutation || {}),
   },
 
   ...(role.Role ? { Role: role.Role } : {}),
@@ -143,4 +149,6 @@ export default {
     ? { StaffAttendanceRecord: attendanceOvertime.StaffAttendanceRecord }
     : {}),
   ...(auditLog.AuditLog ? { AuditLog: auditLog.AuditLog } : {}),
+  ...(systemSetting.SystemSetting ? { SystemSetting: systemSetting.SystemSetting } : {}),
+  ...(backup.BackupRun ? { BackupRun: backup.BackupRun } : {}),
 };

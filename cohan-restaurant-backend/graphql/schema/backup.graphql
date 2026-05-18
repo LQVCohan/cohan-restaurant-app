@@ -1,0 +1,96 @@
+type BackupChecklist {
+  reportsChecked: Boolean!
+  transactionsReconciled: Boolean!
+  settingsReviewed: Boolean!
+  exportPrepared: Boolean!
+  safeCopyStored: Boolean!
+  operatorRecorded: Boolean!
+}
+
+type BackupScope {
+  ordersAndPayments: Boolean!
+  tablesAndFloorPlan: Boolean!
+  menuAndPricing: Boolean!
+  inventory: Boolean!
+  staffAndPermissions: Boolean!
+  schedules: Boolean!
+  customersAndPromotions: Boolean!
+  reportsAndReconciliation: Boolean!
+}
+
+type BackupRisk {
+  key: String!
+  label: String!
+  severity: String!
+  resolved: Boolean!
+  description: String
+}
+
+type BackupReadiness {
+  restaurantId: ID!
+  ready: Boolean!
+  risks: [BackupRisk!]!
+  checklist: BackupChecklist!
+  scope: BackupScope!
+  lastRun: BackupRun
+}
+
+type BackupRun {
+  id: ID!
+  restaurantId: ID!
+  status: String!
+  checklist: BackupChecklist!
+  scope: BackupScope!
+  note: String
+  createdBy: ID
+  completedBy: ID
+  completedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BackupChecklistInput {
+  reportsChecked: Boolean
+  transactionsReconciled: Boolean
+  settingsReviewed: Boolean
+  exportPrepared: Boolean
+  safeCopyStored: Boolean
+  operatorRecorded: Boolean
+}
+
+input BackupScopeInput {
+  ordersAndPayments: Boolean
+  tablesAndFloorPlan: Boolean
+  menuAndPricing: Boolean
+  inventory: Boolean
+  staffAndPermissions: Boolean
+  schedules: Boolean
+  customersAndPromotions: Boolean
+  reportsAndReconciliation: Boolean
+}
+
+input CreateBackupRunInput {
+  restaurantId: ID!
+  checklist: BackupChecklistInput
+  scope: BackupScopeInput
+  note: String
+}
+
+input UpdateBackupRunInput {
+  id: ID!
+  restaurantId: ID!
+  checklist: BackupChecklistInput
+  scope: BackupScopeInput
+  note: String
+  status: String
+}
+
+extend type Query {
+  backupReadiness(restaurantId: ID!): BackupReadiness!
+  backupRuns(restaurantId: ID!, limit: Int = 20, offset: Int = 0): [BackupRun!]!
+}
+
+extend type Mutation {
+  createBackupRun(input: CreateBackupRunInput!): BackupRun!
+  updateBackupRun(input: UpdateBackupRunInput!): BackupRun!
+}

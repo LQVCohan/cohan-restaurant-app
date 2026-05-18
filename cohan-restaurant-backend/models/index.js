@@ -94,3 +94,6 @@ export { default as PerformanceIncident } from "./performance-incident.model.js"
 
 export { default as PerformanceIncidentAppeal } from "./performanceIncidentAppeal.model.js";
 export { default as PosCustomer } from "./pos-customer.model.js";
+
+export { default as SystemSetting } from "./system-setting.model.js";
+export { default as BackupRun } from "./backup-run.model.js";

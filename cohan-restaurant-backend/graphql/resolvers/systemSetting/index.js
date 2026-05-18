@@ -1,0 +1,158 @@
+import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
+import { AuditLog, Restaurant, SystemSetting } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
+import { requireRole } from "../../../utils/authz.js";
+
+const DEFAULT_DOC = {
+  timezone: "Asia/Ho_Chi_Minh",
+  currency: "VND",
+  dateFormat: "DD/MM/YYYY",
+  operational: { businessDayStartHour: 5, defaultLanguage: "vi" },
+  modules: { scheduling: true, rbac: true, printing: true, backup: true },
+  metadata: { note: "", version: 1 },
+};
+
+const badInput = (message) => new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+const notFound = (message = "Resource not found") => new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
+
+const toId = (v) => (v ? String(v._id || v.id || v) : null);
+
+function sanitizeNonEmptyString(value, fieldName) {
+  if (value == null) return undefined;
+  const normalized = String(value).trim();
+  if (!normalized) throw badInput(`${fieldName} must be a non-empty string`);
+  return normalized;
+}
+
+function normalizeDoc(doc) {
+  return {
+    id: toId(doc._id),
+    restaurantId: toId(doc.restaurantId),
+    timezone: doc.timezone || DEFAULT_DOC.timezone,
+    currency: doc.currency || DEFAULT_DOC.currency,
+    dateFormat: doc.dateFormat || DEFAULT_DOC.dateFormat,
+    operational: {
+      businessDayStartHour: Number(doc?.operational?.businessDayStartHour ?? DEFAULT_DOC.operational.businessDayStartHour),
+      defaultLanguage: doc?.operational?.defaultLanguage || DEFAULT_DOC.operational.defaultLanguage,
+    },
+    modules: {
+      scheduling: Boolean(doc?.modules?.scheduling ?? DEFAULT_DOC.modules.scheduling),
+      rbac: Boolean(doc?.modules?.rbac ?? DEFAULT_DOC.modules.rbac),
+      printing: Boolean(doc?.modules?.printing ?? DEFAULT_DOC.modules.printing),
+      backup: Boolean(doc?.modules?.backup ?? DEFAULT_DOC.modules.backup),
+    },
+    metadata: {
+      note: doc?.metadata?.note || "",
+      version: Number(doc?.metadata?.version || 1),
+    },
+    updatedBy: doc?.updatedBy ? toId(doc.updatedBy) : null,
+    createdAt: doc?.createdAt || null,
+    updatedAt: doc?.updatedAt || null,
+  };
+}
+
+async function assertAccess(ctx, restaurantId) {
+  requireRole(ctx?.user, ["admin", "manager"]);
+  if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, restaurantId);
+  const restaurant = await Restaurant.findById(restaurantId).lean();
+  if (!restaurant) throw notFound("Restaurant not found");
+}
+
+async function findOrCreate(restaurantId) {
+  let doc = await SystemSetting.findOne({ restaurantId });
+  if (!doc) {
+    doc = await SystemSetting.create({ restaurantId, ...DEFAULT_DOC });
+  }
+  return doc;
+}
+
+async function safeAuditLog(payload) {
+  try {
+    await AuditLog.create(payload);
+  } catch (error) {
+    console.warn("[systemSetting] audit log failed", error?.message || error);
+  }
+}
+
+export default {
+  Query: {
+    systemSetting: async (_, { restaurantId }, ctx) => {
+      await assertAccess(ctx, restaurantId);
+      const doc = await findOrCreate(restaurantId);
+      return normalizeDoc(doc);
+    },
+  },
+  Mutation: {
+    updateSystemSetting: async (_, { input }, ctx) => {
+      const restaurantId = input?.restaurantId;
+      await assertAccess(ctx, restaurantId);
+      const existing = await findOrCreate(restaurantId);
+      const before = normalizeDoc(existing.toObject());
+
+      const set = {};
+      const timezone = sanitizeNonEmptyString(input?.timezone, "timezone");
+      if (timezone !== undefined) set.timezone = timezone;
+      const currency = sanitizeNonEmptyString(input?.currency, "currency");
+      if (currency !== undefined) set.currency = currency;
+      const dateFormat = sanitizeNonEmptyString(input?.dateFormat, "dateFormat");
+      if (dateFormat !== undefined) set.dateFormat = dateFormat;
+
+      if (input?.operational) {
+        if (Object.prototype.hasOwnProperty.call(input.operational, "businessDayStartHour")) {
+          const hour = Number(input.operational.businessDayStartHour);
+          if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
+            throw badInput("operational.businessDayStartHour must be an integer between 0 and 23");
+          }
+          set["operational.businessDayStartHour"] = hour;
+        }
+        const lang = sanitizeNonEmptyString(input.operational.defaultLanguage, "operational.defaultLanguage");
+        if (lang !== undefined) set["operational.defaultLanguage"] = lang;
+      }
+
+      if (input?.modules) {
+        const keys = ["scheduling", "rbac", "printing", "backup"];
+        keys.forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(input.modules, key)) {
+            set[`modules.${key}`] = Boolean(input.modules[key]);
+          }
+        });
+      }
+
+      if (Object.prototype.hasOwnProperty.call(input || {}, "note")) {
+        const note = input.note == null ? "" : String(input.note);
+        set["metadata.note"] = note;
+      }
+
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+      if (actorId && mongoose.isValidObjectId(actorId)) {
+        set.updatedBy = actorId;
+      }
+
+      const updated = await SystemSetting.findOneAndUpdate(
+        { restaurantId },
+        {
+          $set: set,
+          $inc: { "metadata.version": 1 },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+
+      const after = normalizeDoc(updated.toObject());
+      await safeAuditLog({
+        action: "SYSTEM_SETTING_UPDATED",
+        module: "settings",
+        targetType: "SystemSetting",
+        targetId: updated._id,
+        restaurantId,
+        actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        before,
+        after,
+      });
+
+      return after;
+    },
+  },
+};
