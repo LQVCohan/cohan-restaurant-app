@@ -9,7 +9,6 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 import {
   INACTIVE_ORDER_STATUSES,
   activeTableSessionLookupFilter,
-  childOrdersForSessionFilter,
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
 const ensureFloorLevel = async (floorId) => {
@@ -77,17 +76,6 @@ const hasActiveOrdersForTable = async ({ restaurantId, tableId, tableCode }) => 
     .lean();
 
   if (activeSession?._id) {
-    const activeChildOrder = await Order.findOne({
-      ...childOrdersForSessionFilter({
-        restaurantId,
-        parentOrderId: activeSession._id,
-      }),
-      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-    })
-      .select({ _id: 1 })
-      .lean();
-
-    if (activeChildOrder?._id) return true;
     return true;
   }
 
