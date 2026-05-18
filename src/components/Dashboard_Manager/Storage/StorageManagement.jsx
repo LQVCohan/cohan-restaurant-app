@@ -128,10 +128,7 @@ const StorageManagement = () => {
 
   // ==== 4) StockItems/Movements ====
   const shouldFetchStock =
-    restaurantReady &&
-    (activeTab === "ingredients" ||
-      activeTab === "inventory" ||
-      false);
+    restaurantReady && ["ingredients", "inventory"].includes(activeTab);
 
   const {
     data: stockData,

@@ -5,6 +5,7 @@ import { useLazyQuery } from "@apollo/client/react";
 import { usePaymentTimer } from "../../../hooks/usePaymentTimer";
 import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency } from "../../../utils/formatters";
+import { readStorageValue } from "@/lib/browserStorage";
 import "./QRPaymentModal.scss";
 
 const GET_RESERVATION_STATUS = gql`
@@ -105,11 +106,15 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     if (!booking?.id) return;
     setCreating(true);
     try {
+      const token = readStorageValue("auth_token") || readStorageValue("token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
       const res = await fetch(`${API_BASE}/api/payments/reservations/${booking.id}/create`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({ provider }),
       });
       const json = await res.json();
