@@ -70,6 +70,9 @@ const TableManagement = () => {
     moveTable,
     deleteTable,
     fetchTableByCode,
+    swapTableCodes,
+    mergeTables,
+    splitTables,
   } = useTableManagement({ restaurantId });
 
   // --- Data Mapping (Chỉ giữ lại data cần thiết cho quản lý danh sách) ---
@@ -719,6 +722,9 @@ const TableManagement = () => {
             deleteTable,
             fetchTableByCode,
             getIdFromLevel,
+            swapTableCodes,
+            mergeTables,
+            splitTables,
           }}
           onUpdated={refetchTables}
           onClose={() => {
