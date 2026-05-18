@@ -219,6 +219,17 @@ const TableManagement = () => {
   const isAllFloorsSelected = currentFloor === ALL_FLOORS_KEY;
 
   useEffect(() => {
+    if (currentFloor === ALL_FLOORS_KEY) return;
+    const hasSelectedFloor = floors.some(
+      (floor) => String(floor.id) === String(currentFloor)
+    );
+    if (!hasSelectedFloor) {
+      setCurrentFloor(ALL_FLOORS_KEY);
+      setActiveLevel(null);
+    }
+  }, [currentFloor, floors, setActiveLevel]);
+
+  useEffect(() => {
     if (vrDraft.didRestore) return;
     setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
   }, [restaurant, vrDraft.didRestore]);
@@ -311,17 +322,21 @@ const TableManagement = () => {
       .replace(/\s+/g, " ")
       .toLowerCase();
 
-  const getFilteredTables = () => {
-    let filtered = [...tablesMapped];
-    const shouldFilterByFloor =
-      currentFloor != null &&
-      currentFloor !== "" &&
-      currentFloor !== ALL_FLOORS_KEY;
-    if (shouldFilterByFloor)
-      filtered = filtered.filter(
-        (t) => String(t.floorId) === String(currentFloor)
-      );
+  const getTableFloorId = (table) =>
+    table?.floorId?.id ||
+    table?.floorId?._id ||
+    table?.floorId ||
+    table?.floor?.id ||
+    table?.floor?._id ||
+    null;
 
+  const filterTablesByFloor = (tables, floorId) =>
+    (tables || []).filter(
+      (t) => String(getTableFloorId(t)) === String(floorId)
+    );
+
+  const baseFilteredTables = useMemo(() => {
+    let filtered = [...tablesMapped];
     const normalizedQuery = normalizeSearch(searchQuery);
     if (normalizedQuery) {
       const compactQuery = normalizedQuery.replace(/\s+/g, "");
@@ -337,13 +352,28 @@ const TableManagement = () => {
 
     if (currentFilters.status)
       filtered = filtered.filter((t) => t.status === currentFilters.status);
-    return filtered.sort((a, b) =>
+    return filtered;
+  }, [tablesMapped, searchQuery, currentFilters.status]);
+
+  const filteredTables = useMemo(() => {
+    const shouldFilterByFloor =
+      currentFloor != null &&
+      currentFloor !== "" &&
+      currentFloor !== ALL_FLOORS_KEY;
+    const scopedTables = shouldFilterByFloor
+      ? filterTablesByFloor(baseFilteredTables, currentFloor)
+      : baseFilteredTables;
+    return [...scopedTables].sort((a, b) =>
       String(a.number || "").localeCompare(String(b.number || ""), "vi", {
         numeric: true,
         sensitivity: "base",
       })
     );
-  };
+  }, [baseFilteredTables, currentFloor]);
+
+  const allFloorsCount = baseFilteredTables.length;
+  const getFloorTableCount = (floorId) =>
+    filterTablesByFloor(baseFilteredTables, floorId).length;
 
   // --- Handlers ---
   const POS_MANAGED_STATUS_TRANSITIONS = new Set([
@@ -475,7 +505,10 @@ const TableManagement = () => {
       ...prev,
       seats: mapped.seats,
       area: mapped.area,
-      floorId: prev.floorId || currentFloor || floors[0]?.id || "",
+      floorId:
+        prev.floorId ||
+        (isAllFloorsSelected ? "" : currentFloor) ||
+        "",
       visualTemplate: mapped.visualTemplate,
     }));
     setShowTable3DModal(false);
@@ -604,7 +637,7 @@ const TableManagement = () => {
             >
               <span className="icon">🏬</span>
               <span className="name">Tất cả tầng</span>
-              <span className="count">{tablesMapped.length}</span>
+              <span className="count">{allFloorsCount}</span>
             </div>
             {floors.map((f) => (
               <div
@@ -619,7 +652,7 @@ const TableManagement = () => {
                 <span className="icon">{f.icon}</span>
                 <span className="name">{f.name}</span>
                 <span className="count">
-                  {tablesMapped.filter((t) => t.floorId === f.id).length}
+                  {getFloorTableCount(f.id)}
                 </span>
               </div>
             ))}
@@ -655,13 +688,13 @@ const TableManagement = () => {
 
         {/* Main: Grid Tables */}
         <main className="tm-grid-area">
-          {getFilteredTables().length === 0 ? (
+          {filteredTables.length === 0 ? (
             <div className="tm-empty">
               <span>🪑</span> <p>Không có bàn nào hiển thị.</p>
             </div>
           ) : (
             <div className="tm-table-grid">
-              {getFilteredTables().map((t) => {
+              {filteredTables.map((t) => {
                 const statusCfg = getStatusConfig(t.status);
                 const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
                 return (
