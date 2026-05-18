@@ -50,6 +50,10 @@ function buildFilter(filter = {}) {
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
+      if (filter?.restaurantId && !isOid(filter.restaurantId)) {
+        throw new GraphQLError("Invalid restaurantId");
+      }
+
       const query = buildFilter(filter);
 
       if (query.restaurantId) {

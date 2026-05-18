@@ -1,7 +1,7 @@
 // src/pages/OrderTrackingPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { GET_ORDER_TRACKING } from "./queries/orderTracking.queries";
 import useSocketDeliveryTracking from "../../../hooks/useSocketDeliveryTracking";
 import OrderTrackingMap from "./components/OrderTrackingMap";
@@ -11,6 +11,8 @@ const GET_ORDER_ITEMS_FOR_TRACKING = gql`
   query GetOrderItemsForTracking($id: ID!) {
     order(id: $id) {
       id
+      restaurantId
+      orderCode
       items {
         _id
         name
@@ -50,6 +52,7 @@ export default function OrderTrackingPage() {
   const initialOrderCode = searchParams.get("orderCode") || "";
 
   const [orderCode, setOrderCode] = useState(initialOrderCode);
+  const [resolvedRestaurantId, setResolvedRestaurantId] = useState(restaurantId || "");
   const [deliveryStatus, setDeliveryStatus] = useState(null);
   const [driverInfo, setDriverInfo] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
@@ -57,16 +60,48 @@ export default function OrderTrackingPage() {
   const [events, setEvents] = useState([]);
 
   const { data, loading, error } = useQuery(GET_ORDER_TRACKING, {
-    skip: !orderId || !restaurantId,
-    variables: { orderId, restaurantId },
+    skip: !orderId || !resolvedRestaurantId,
+    variables: { orderId, restaurantId: resolvedRestaurantId },
     fetchPolicy: "cache-and-network",
   });
 
-  const { data: orderData } = useQuery(GET_ORDER_ITEMS_FOR_TRACKING, {
+  const {
+    data: orderData,
+    loading: orderLookupLoading,
+    error: orderLookupError,
+  } = useQuery(GET_ORDER_ITEMS_FOR_TRACKING, {
     skip: !orderId,
     variables: { id: orderId },
     fetchPolicy: "cache-and-network",
   });
+
+  const needsRestaurantResolution = Boolean(
+    orderId && !restaurantId && !resolvedRestaurantId
+  );
+  const isResolvingRestaurant = needsRestaurantResolution && orderLookupLoading;
+  const cannotResolveRestaurant =
+    Boolean(orderId) &&
+    !resolvedRestaurantId &&
+    !orderLookupLoading &&
+    (!orderData?.order?.restaurantId || orderLookupError);
+
+  useEffect(() => {
+    if (restaurantId) {
+      setResolvedRestaurantId(restaurantId);
+    }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (!resolvedRestaurantId && orderData?.order?.restaurantId) {
+      setResolvedRestaurantId(orderData.order.restaurantId);
+    }
+  }, [orderData, resolvedRestaurantId]);
+
+  useEffect(() => {
+    if (!orderCode && orderData?.order?.orderCode) {
+      setOrderCode(orderData.order.orderCode);
+    }
+  }, [orderCode, orderData]);
 
   // Sync data lần đầu từ GraphQL
   useEffect(() => {
@@ -191,12 +226,49 @@ export default function OrderTrackingPage() {
     );
   }, [driverInfo, tracking]);
 
-  if (!orderId || !restaurantId) {
+  if (!orderId) {
     return (
       <div className="ot-page">
         <div className="ot-page-inner">
           <h2>Không tìm thấy thông tin đơn hàng</h2>
-          <p>Thiếu orderId hoặc restaurantId trên URL.</p>
+          <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
+          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <Link to="/orders" className="ot-btn">Quay lại đơn hàng của tôi</Link>
+            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isResolvingRestaurant) {
+    return (
+      <div className="ot-page">
+        <div className="ot-page-inner">
+          <h2>Đang tải trạng thái đơn hàng...</h2>
+          <p>Đang kiểm tra thông tin nhà hàng của đơn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cannotResolveRestaurant) {
+    return (
+      <div className="ot-page">
+        <div className="ot-page-inner">
+          <h2>Không tìm thấy thông tin đơn hàng</h2>
+          {orderLookupError ? (
+            <>
+              <p>Không thể kiểm tra thông tin đơn hàng.</p>
+              {orderLookupError?.message && <p>{orderLookupError.message}</p>}
+            </>
+          ) : (
+            <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
+          )}
+          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <Link to="/orders" className="ot-btn">Quay lại danh sách đơn hàng</Link>
+            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
+          </div>
         </div>
       </div>
     );
@@ -207,6 +279,7 @@ export default function OrderTrackingPage() {
       <div className="ot-page">
         <div className="ot-page-inner">
           <h2>Đang tải thông tin đơn hàng...</h2>
+          <p>Đang tải trạng thái đơn hàng...</p>
         </div>
       </div>
     );
@@ -218,6 +291,10 @@ export default function OrderTrackingPage() {
         <div className="ot-page-inner">
           <h2>Có lỗi xảy ra</h2>
           <p>{error.message}</p>
+          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <Link to="/orders" className="ot-btn">Quay lại đơn hàng của tôi</Link>
+            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
+          </div>
         </div>
       </div>
     );

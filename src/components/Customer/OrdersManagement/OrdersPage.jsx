@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useContext } from "react";
+import { Link } from "react-router-dom";
 import "./OrdersPage.scss";
 import OrderItem from "./OrderItem"; // Import OrderItem mới
 import Toast from "../../ui/Toast";
@@ -149,6 +150,7 @@ export default function OrdersPage() {
   const {
     data: orderConn,
     loading: ordersLoading,
+    error: ordersError,
     refetch: refetchOrders,
   } = useQuery(ORDERS_BY_USER, {
     variables: { userId, limit: 20 },
@@ -158,6 +160,7 @@ export default function OrdersPage() {
   const {
     data: resvList,
     loading: resvLoading,
+    error: resvError,
     refetch: refetchReservations,
   } = useQuery(MY_RESERVATIONS, {
     variables: { limit: 20 },
@@ -371,6 +374,13 @@ export default function OrdersPage() {
     return true;
   });
 
+  const hasAnyError = Boolean(ordersError || resvError);
+  const hasVisibleItems = visibleItems.length > 0;
+  const isLoading = ordersLoading || resvLoading;
+  const shouldShowFullError = !isLoading && hasAnyError && !hasVisibleItems;
+  const shouldShowPartialWarning = !isLoading && hasAnyError && hasVisibleItems;
+  const shouldShowEmpty = !isLoading && !hasAnyError && !hasVisibleItems;
+
   return (
     <div className="orders-page">
       {toasts.map((t) => (
@@ -401,19 +411,43 @@ export default function OrdersPage() {
       </div>
 
       <div className="orders-grid">
-        {ordersLoading || resvLoading ? (
-          <Skeleton rows={3} />
+        {isLoading ? (
+          <div className="empty-state">
+            <p>Đang tải danh sách đơn hàng...</p>
+            <Skeleton rows={3} />
+          </div>
+        ) : shouldShowFullError ? (
+          <div className="empty-state">
+            <p>{ordersError?.message || resvError?.message || "Không thể tải danh sách đơn hàng."}</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
+              <Link to="/orders" className="btn-create">Quay lại đơn hàng của tôi</Link>
+              <Link to="/" className="btn-create">Tiếp tục xem món</Link>
+            </div>
+          </div>
         ) : (
-          visibleItems.map((item) => (
-            <OrderItem
-              key={item.key}
-              {...item}
-              onClick={() => console.log("View details", item.key)}
-            />
-          ))
+          <>
+            {shouldShowPartialWarning && (
+              <div className="empty-state" style={{ marginBottom: 12 }}>
+                <p>Một phần dữ liệu chưa tải được. Bạn vẫn có thể xem các đơn đã tải.</p>
+                {(ordersError?.message || resvError?.message) && (
+                  <p>{ordersError?.message || resvError?.message}</p>
+                )}
+              </div>
+            )}
+            {visibleItems.map((item) => (
+              <OrderItem
+                key={item.key}
+                {...item}
+                onClick={() => console.log("View details", item.key)}
+              />
+            ))}
+          </>
         )}
-        {!ordersLoading && !resvLoading && visibleItems.length === 0 && (
-          <div className="empty-state">Không có đơn hàng nào.</div>
+        {shouldShowEmpty && (
+          <div className="empty-state">
+            <p>Bạn chưa có đơn hàng nào.</p>
+            <Link to="/" className="btn-create">Tiếp tục xem món</Link>
+          </div>
         )}
       </div>
 
