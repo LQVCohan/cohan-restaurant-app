@@ -14,6 +14,8 @@ import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 
+const ALL_FLOORS_KEY = "all";
+
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
   const duplicateErr = gqlErrors.find(
@@ -83,10 +85,8 @@ const TableManagement = () => {
         name: f.name || `Tầng ${f.level ?? ""}`,
         icon: "🏢",
         level: Number(f.level),
-        active:
-          activeLevel != null ? Number(f.level) === Number(activeLevel) : false,
       })),
-    [floorsRaw, activeLevel]
+    [floorsRaw]
   );
 
   const tablesMapped = useMemo(
@@ -105,7 +105,7 @@ const TableManagement = () => {
   );
 
   // --- UI States ---
-  const [currentFloor, setCurrentFloor] = useState(null);
+  const [currentFloor, setCurrentFloor] = useState(ALL_FLOORS_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState({
     status: "",
@@ -216,15 +216,18 @@ const TableManagement = () => {
     notify: showNotification,
   });
 
-  // --- Auto Select Floor ---
+  const isAllFloorsSelected = currentFloor === ALL_FLOORS_KEY;
+
   useEffect(() => {
-    if (!floors.length) return;
-    if (!currentFloor) {
-      const targetId =
-        activeLevel != null ? getIdFromLevel(activeLevel) : floors[0].id;
-      if (targetId) setCurrentFloor(String(targetId));
+    if (currentFloor === ALL_FLOORS_KEY) return;
+    const hasSelectedFloor = floors.some(
+      (floor) => String(floor.id) === String(currentFloor)
+    );
+    if (!hasSelectedFloor) {
+      setCurrentFloor(ALL_FLOORS_KEY);
+      setActiveLevel(null);
     }
-  }, [floors, activeLevel, currentFloor, getIdFromLevel]);
+  }, [currentFloor, floors, setActiveLevel]);
 
   useEffect(() => {
     if (vrDraft.didRestore) return;
@@ -244,6 +247,11 @@ const TableManagement = () => {
       setFloorErrors({});
     }
   }, [showFloorModal]);
+
+  const selectAllFloors = () => {
+    setCurrentFloor(ALL_FLOORS_KEY);
+    setActiveLevel(null);
+  };
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -314,13 +322,21 @@ const TableManagement = () => {
       .replace(/\s+/g, " ")
       .toLowerCase();
 
-  const getFilteredTables = () => {
-    let filtered = [...tablesMapped];
-    if (currentFloor)
-      filtered = filtered.filter(
-        (t) => String(t.floorId) === String(currentFloor)
-      );
+  const getTableFloorId = (table) =>
+    table?.floorId?.id ||
+    table?.floorId?._id ||
+    table?.floorId ||
+    table?.floor?.id ||
+    table?.floor?._id ||
+    null;
 
+  const filterTablesByFloor = (tables, floorId) =>
+    (tables || []).filter(
+      (t) => String(getTableFloorId(t)) === String(floorId)
+    );
+
+  const baseFilteredTables = useMemo(() => {
+    let filtered = [...tablesMapped];
     const normalizedQuery = normalizeSearch(searchQuery);
     if (normalizedQuery) {
       const compactQuery = normalizedQuery.replace(/\s+/g, "");
@@ -336,13 +352,28 @@ const TableManagement = () => {
 
     if (currentFilters.status)
       filtered = filtered.filter((t) => t.status === currentFilters.status);
-    return filtered.sort((a, b) =>
+    return filtered;
+  }, [tablesMapped, searchQuery, currentFilters.status]);
+
+  const filteredTables = useMemo(() => {
+    const shouldFilterByFloor =
+      currentFloor != null &&
+      currentFloor !== "" &&
+      currentFloor !== ALL_FLOORS_KEY;
+    const scopedTables = shouldFilterByFloor
+      ? filterTablesByFloor(baseFilteredTables, currentFloor)
+      : baseFilteredTables;
+    return [...scopedTables].sort((a, b) =>
       String(a.number || "").localeCompare(String(b.number || ""), "vi", {
         numeric: true,
         sensitivity: "base",
       })
     );
-  };
+  }, [baseFilteredTables, currentFloor]);
+
+  const allFloorsCount = baseFilteredTables.length;
+  const getFloorTableCount = (floorId) =>
+    filterTablesByFloor(baseFilteredTables, floorId).length;
 
   // --- Handlers ---
   const POS_MANAGED_STATUS_TRANSITIONS = new Set([
@@ -378,8 +409,11 @@ const TableManagement = () => {
   };
 
   const handleOpenFloorDesigner = () => {
-    const targetFloorId =
-      currentFloor || (floors.length ? floors[0].id : null);
+    if (isAllFloorsSelected || !currentFloor) {
+      showNotification("Vui lòng chọn một tầng cụ thể để thiết kế sơ đồ.", "warning");
+      return;
+    }
+    const targetFloorId = currentFloor;
     if (!targetFloorId) {
       showNotification("Chưa chọn tầng để chỉnh sửa sơ đồ.", "warning");
       return;
@@ -471,7 +505,10 @@ const TableManagement = () => {
       ...prev,
       seats: mapped.seats,
       area: mapped.area,
-      floorId: prev.floorId || currentFloor || floors[0]?.id || "",
+      floorId:
+        prev.floorId ||
+        (isAllFloorsSelected ? "" : currentFloor) ||
+        "",
       visualTemplate: mapped.visualTemplate,
     }));
     setShowTable3DModal(false);
@@ -594,16 +631,28 @@ const TableManagement = () => {
         <aside className="tm-sidebar">
           <h3>Khu vực / Tầng</h3>
           <div className="tm-floor-list">
+            <div
+              className={`tm-floor-item ${isAllFloorsSelected ? "active" : ""}`}
+              onClick={selectAllFloors}
+            >
+              <span className="icon">🏬</span>
+              <span className="name">Tất cả tầng</span>
+              <span className="count">{allFloorsCount}</span>
+            </div>
             {floors.map((f) => (
               <div
                 key={f.id}
-                className={`tm-floor-item ${f.active ? "active" : ""}`}
+                className={`tm-floor-item ${
+                  !isAllFloorsSelected && String(currentFloor) === String(f.id)
+                    ? "active"
+                    : ""
+                }`}
                 onClick={() => selectFloor(f.id)}
               >
                 <span className="icon">{f.icon}</span>
                 <span className="name">{f.name}</span>
                 <span className="count">
-                  {tablesMapped.filter((t) => t.floorId === f.id).length}
+                  {getFloorTableCount(f.id)}
                 </span>
               </div>
             ))}
@@ -639,13 +688,13 @@ const TableManagement = () => {
 
         {/* Main: Grid Tables */}
         <main className="tm-grid-area">
-          {getFilteredTables().length === 0 ? (
+          {filteredTables.length === 0 ? (
             <div className="tm-empty">
               <span>🪑</span> <p>Không có bàn nào hiển thị.</p>
             </div>
           ) : (
             <div className="tm-table-grid">
-              {getFilteredTables().map((t) => {
+              {filteredTables.map((t) => {
                 const statusCfg = getStatusConfig(t.status);
                 const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
                 return (
