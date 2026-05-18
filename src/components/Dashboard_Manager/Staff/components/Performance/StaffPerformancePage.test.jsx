@@ -12,8 +12,10 @@ import {
   buildPerformanceReportHtml,
   openPerformanceReportPrintWindow,
   formatTrendDelta,
+  resolveTrendDelta,
   resolvePreviousPeriod,
   buildPreviousSnapshotMap,
+  buildPerformanceOverview,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -278,5 +280,56 @@ describe("buildPreviousSnapshotMap", () => {
 
     expect(result.e1.finalPerformanceScore).toBe(80);
     expect(result.e2.finalPerformanceScore).toBe(60);
+  });
+});
+
+describe("performance overview helpers", () => {
+  it("resolveTrendDelta returns numeric delta or null", () => {
+    expect(resolveTrendDelta(90, 80)).toBe(10);
+    expect(resolveTrendDelta(90, undefined)).toBeNull();
+  });
+
+  it("topImproved selects highest 3 positive deltas", () => {
+    const rows = [
+      { trendDelta: 1 },
+      { trendDelta: 6 },
+      { trendDelta: 2 },
+      { trendDelta: 4 },
+      { trendDelta: -1 },
+    ];
+    const result = buildPerformanceOverview(rows);
+    expect(result.topImproved.map((item) => item.trendDelta)).toEqual([6, 4, 2]);
+  });
+
+  it("topDeclined selects lowest 3 negative deltas", () => {
+    const rows = [
+      { trendDelta: -1 },
+      { trendDelta: -6 },
+      { trendDelta: -2 },
+      { trendDelta: -4 },
+      { trendDelta: 3 },
+    ];
+    const result = buildPerformanceOverview(rows);
+    expect(result.topDeclined.map((item) => item.trendDelta)).toEqual([-6, -4, -2]);
+  });
+
+  it("needsAttention includes needs_attention and poor levels", () => {
+    const rows = [
+      { snapshot: { performanceLevel: "good" }, trendDelta: 1 },
+      { snapshot: { performanceLevel: "needs_attention" }, trendDelta: -1 },
+      { snapshot: { performanceLevel: "poor" }, trendDelta: -2 },
+    ];
+    const result = buildPerformanceOverview(rows);
+    expect(result.needsAttention).toHaveLength(2);
+  });
+
+  it("counts rows missing previous snapshot data", () => {
+    const rows = [
+      { trendDelta: null },
+      { trendDelta: 2 },
+      { trendDelta: null },
+    ];
+    const result = buildPerformanceOverview(rows);
+    expect(result.noPreviousDataCount).toBe(2);
   });
 });

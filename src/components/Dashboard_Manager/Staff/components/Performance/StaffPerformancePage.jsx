@@ -239,6 +239,34 @@ export const formatTrendDelta = (currentScore, previousScore) => {
   return `${delta > 0 ? "+" : "-"}${absText} điểm so với kỳ trước`;
 };
 
+export const resolveTrendDelta = (currentScore, previousScore) => {
+  const current = Number(currentScore);
+  const previous = Number(previousScore);
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  return Math.round((current - previous) * 100) / 100;
+};
+
+export const buildPerformanceOverview = (rows = []) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const withTrend = safeRows.filter((row) => Number.isFinite(row?.trendDelta));
+
+  return {
+    topImproved: withTrend
+      .filter((row) => row.trendDelta > 0)
+      .sort((a, b) => b.trendDelta - a.trendDelta)
+      .slice(0, 3),
+    topDeclined: withTrend
+      .filter((row) => row.trendDelta < 0)
+      .sort((a, b) => a.trendDelta - b.trendDelta)
+      .slice(0, 3),
+    needsAttention: safeRows.filter((row) => {
+      const performanceLevel = row?.snapshot?.performanceLevel;
+      return performanceLevel === "needs_attention" || performanceLevel === "poor";
+    }),
+    noPreviousDataCount: safeRows.filter((row) => row?.trendDelta === null).length,
+  };
+};
+
 export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
   [
     ...(adjustments || []).map((item) => ({
@@ -811,6 +839,7 @@ const StaffPerformancePage = ({
           previousSnapshot,
           score,
           level,
+          trendDelta: resolveTrendDelta(score, previousSnapshot?.finalPerformanceScore),
           trendText: formatTrendDelta(score, previousSnapshot?.finalPerformanceScore),
         };
       })
@@ -847,6 +876,38 @@ const StaffPerformancePage = ({
       missing: rows.length - scoredRows.length,
     };
   }, [rows]);
+
+  const overview = useMemo(() => buildPerformanceOverview(rows), [rows]);
+
+  const renderOverviewItems = (list, emptyText) => {
+    if (!list.length) {
+      return <p className="overview-empty">{emptyText}</p>;
+    }
+
+    return (
+      <ul>
+        {list.map((row) => {
+          const displayName =
+            row.employee?.name || row.snapshot?.employeeName || "Nhân viên";
+          const currentScore = Number.isFinite(Number(row.score)) ? scoreText(row.score) : "--";
+          const levelLabel = row.level?.label || "Chưa có mức";
+          const trendLabel =
+            row.trendDelta === null
+              ? "Chưa có dữ liệu so sánh kỳ trước"
+              : `${row.trendDelta > 0 ? "+" : ""}${formatContributionScore(row.trendDelta)} điểm`;
+
+          return (
+            <li key={row.employee?.id || `${displayName}-${trendLabel}`}>
+              <strong>{displayName}</strong>
+              <span>Điểm: {currentScore}</span>
+              <span>Chênh lệch: {trendLabel}</span>
+              <span>Mức: {levelLabel}</span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
 
   const handleRecalculateAll = async () => {
     if (!effectiveRestaurantId) {
@@ -1080,6 +1141,31 @@ productivity * 25%
             <strong>{stats.needsAttention}</strong>
           </div>
         </div>
+      </section>
+
+      <section className="performance-overview">
+        <article className="overview-card">
+          <h3>Tăng nhiều nhất</h3>
+          {renderOverviewItems(
+            overview.topImproved,
+            overview.noPreviousDataCount === rows.length && rows.length > 0
+              ? "Chưa có dữ liệu so sánh kỳ trước"
+              : "Chưa có nhân viên tăng điểm",
+          )}
+        </article>
+        <article className="overview-card">
+          <h3>Giảm nhiều nhất</h3>
+          {renderOverviewItems(
+            overview.topDeclined,
+            overview.noPreviousDataCount === rows.length && rows.length > 0
+              ? "Chưa có dữ liệu so sánh kỳ trước"
+              : "Không có nhân viên giảm điểm",
+          )}
+        </article>
+        <article className="overview-card">
+          <h3>Cần chú ý</h3>
+          {renderOverviewItems(overview.needsAttention, "Không có nhân viên cần chú ý")}
+        </article>
       </section>
 
       {error ? (
