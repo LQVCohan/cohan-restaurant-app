@@ -9,17 +9,17 @@ const SUMMARY_CARDS = [
   {
     title: "Bảo mật",
     lines: ["Quản lý qua RBAC", "Vai trò và quyền truy cập nội bộ"],
-    action: { label: "Đi tới #rbac", page: "rbac" },
+    action: { label: "Mở phân quyền", page: "rbac" },
   },
   {
     title: "Nhà hàng",
     lines: ["Hồ sơ, liên hệ, giờ mở cửa", "Cấu hình thông tin hiển thị"],
-    action: { label: "Đi tới #restaurant-info-management", page: "restaurant-info-management" },
+    action: { label: "Mở thông tin nhà hàng", page: "restaurant-info-management" },
   },
   {
     title: "Thiết bị",
     lines: ["Máy in, mẫu in", "Phiếu bếp/hóa đơn"],
-    action: { label: "Đi tới #print-management", page: "print-management" },
+    action: { label: "Mở quản lý in ấn", page: "print-management" },
   },
 ];
 
@@ -36,7 +36,7 @@ const SETTINGS_GROUPS = [
     icon: "📅",
     title: "Lịch làm việc & ca làm",
     description: "Quản lý ca làm, quy tắc phân công và lịch vận hành.",
-    status: "Điều hướng",
+    status: "Mở trang liên quan",
     action: { label: "Mở lịch làm việc", page: "schedules" },
   },
   {
@@ -57,14 +57,14 @@ const SETTINGS_GROUPS = [
     icon: "🏪",
     title: "Thông tin nhà hàng",
     description: "Cập nhật hồ sơ nhà hàng, địa chỉ, hotline và giờ mở cửa.",
-    status: "Điều hướng",
+    status: "Mở trang liên quan",
     action: { label: "Mở thông tin nhà hàng", page: "restaurant-info-management" },
   },
   {
     icon: "💾",
     title: "Sao lưu dữ liệu",
     description: "Chuẩn bị quy trình đối soát và sao lưu vận hành trước khi chốt ngày.",
-    status: "Điều hướng",
+    status: "Mở trang liên quan",
     action: { label: "Mở sao lưu", page: "backup" },
   },
 ];

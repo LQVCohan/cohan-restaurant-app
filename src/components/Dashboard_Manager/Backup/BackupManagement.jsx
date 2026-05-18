@@ -5,17 +5,17 @@ const SUMMARY_ITEMS = [
   {
     title: "Báo cáo",
     description: "Cần kiểm tra báo cáo cuối ngày.",
-    action: { label: "Điều hướng reports", page: "reports" },
+    action: { label: "Mở báo cáo", page: "reports" },
   },
   {
     title: "Giao dịch",
     description: "Cần đối soát thanh toán/hoàn tiền.",
-    action: { label: "Điều hướng transactions", page: "transactions" },
+    action: { label: "Mở giao dịch", page: "transactions" },
   },
   {
     title: "Cấu hình",
     description: "Cần kiểm tra settings/RBAC/nhà hàng/in ấn.",
-    action: { label: "Điều hướng settings", page: "settings" },
+    action: { label: "Mở cài đặt", page: "settings" },
   },
   {
     title: "Xuất dữ liệu",
