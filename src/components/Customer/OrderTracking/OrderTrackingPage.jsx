@@ -65,11 +65,25 @@ export default function OrderTrackingPage() {
     fetchPolicy: "cache-and-network",
   });
 
-  const { data: orderData } = useQuery(GET_ORDER_ITEMS_FOR_TRACKING, {
+  const {
+    data: orderData,
+    loading: orderLookupLoading,
+    error: orderLookupError,
+  } = useQuery(GET_ORDER_ITEMS_FOR_TRACKING, {
     skip: !orderId,
     variables: { id: orderId },
     fetchPolicy: "cache-and-network",
   });
+
+  const needsRestaurantResolution = Boolean(
+    orderId && !restaurantId && !resolvedRestaurantId
+  );
+  const isResolvingRestaurant = needsRestaurantResolution && orderLookupLoading;
+  const cannotResolveRestaurant =
+    Boolean(orderId) &&
+    !resolvedRestaurantId &&
+    !orderLookupLoading &&
+    (!orderData?.order?.restaurantId || orderLookupError);
 
   useEffect(() => {
     if (restaurantId) {
@@ -227,12 +241,30 @@ export default function OrderTrackingPage() {
     );
   }
 
-  if (!resolvedRestaurantId && !loading) {
+  if (isResolvingRestaurant) {
+    return (
+      <div className="ot-page">
+        <div className="ot-page-inner">
+          <h2>Đang tải trạng thái đơn hàng...</h2>
+          <p>Đang kiểm tra thông tin nhà hàng của đơn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cannotResolveRestaurant) {
     return (
       <div className="ot-page">
         <div className="ot-page-inner">
           <h2>Không tìm thấy thông tin đơn hàng</h2>
-          <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
+          {orderLookupError ? (
+            <>
+              <p>Không thể kiểm tra thông tin đơn hàng.</p>
+              {orderLookupError?.message && <p>{orderLookupError.message}</p>}
+            </>
+          ) : (
+            <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
+          )}
           <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
             <Link to="/orders" className="ot-btn">Quay lại danh sách đơn hàng</Link>
             <Link to="/" className="ot-btn">Tiếp tục xem món</Link>

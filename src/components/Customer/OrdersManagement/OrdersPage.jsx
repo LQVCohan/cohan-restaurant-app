@@ -374,6 +374,13 @@ export default function OrdersPage() {
     return true;
   });
 
+  const hasAnyError = Boolean(ordersError || resvError);
+  const hasVisibleItems = visibleItems.length > 0;
+  const isLoading = ordersLoading || resvLoading;
+  const shouldShowFullError = !isLoading && hasAnyError && !hasVisibleItems;
+  const shouldShowPartialWarning = !isLoading && hasAnyError && hasVisibleItems;
+  const shouldShowEmpty = !isLoading && !hasAnyError && !hasVisibleItems;
+
   return (
     <div className="orders-page">
       {toasts.map((t) => (
@@ -404,12 +411,12 @@ export default function OrdersPage() {
       </div>
 
       <div className="orders-grid">
-        {ordersLoading || resvLoading ? (
+        {isLoading ? (
           <div className="empty-state">
             <p>Đang tải danh sách đơn hàng...</p>
             <Skeleton rows={3} />
           </div>
-        ) : ordersError || resvError ? (
+        ) : shouldShowFullError ? (
           <div className="empty-state">
             <p>{ordersError?.message || resvError?.message || "Không thể tải danh sách đơn hàng."}</p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
@@ -418,15 +425,25 @@ export default function OrdersPage() {
             </div>
           </div>
         ) : (
-          visibleItems.map((item) => (
-            <OrderItem
-              key={item.key}
-              {...item}
-              onClick={() => console.log("View details", item.key)}
-            />
-          ))
+          <>
+            {shouldShowPartialWarning && (
+              <div className="empty-state" style={{ marginBottom: 12 }}>
+                <p>Một phần dữ liệu chưa tải được. Bạn vẫn có thể xem các đơn đã tải.</p>
+                {(ordersError?.message || resvError?.message) && (
+                  <p>{ordersError?.message || resvError?.message}</p>
+                )}
+              </div>
+            )}
+            {visibleItems.map((item) => (
+              <OrderItem
+                key={item.key}
+                {...item}
+                onClick={() => console.log("View details", item.key)}
+              />
+            ))}
+          </>
         )}
-        {!ordersLoading && !resvLoading && visibleItems.length === 0 && (
+        {shouldShowEmpty && (
           <div className="empty-state">
             <p>Bạn chưa có đơn hàng nào.</p>
             <Link to="/" className="btn-create">Tiếp tục xem món</Link>
