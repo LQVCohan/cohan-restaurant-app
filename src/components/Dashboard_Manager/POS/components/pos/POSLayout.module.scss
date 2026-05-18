@@ -300,9 +300,9 @@
   }
 }
 
-.reservationActivityPanel {
-  margin: 0.55rem 1rem 0;
-  padding: 0.65rem 0.75rem;
+ .reservationActivityPanel {
+  margin: 0.45rem 1rem 0;
+  padding: 0.55rem 0.65rem;
   border: 1px solid #dbeafe;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.92);
@@ -311,7 +311,7 @@
 .reservationActivityHeader { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem; }
 .reservationActivityTitle { display:block; color:#0f172a; font-size:0.9rem; }
 .reservationActivitySubtitle { color:#64748b; font-size:0.78rem; font-weight:700; }
-.reservationActivityClear { border:1px solid #cbd5e1; border-radius:999px; background:#fff; color:#475569; font-weight:800; padding:0.35rem 0.65rem; cursor:pointer; }
+.reservationActivityClear { border:1px solid #cbd5e1; border-radius:999px; background:#f8fafc; color:#64748b; font-weight:700; padding:0.25rem 0.55rem; cursor:pointer; font-size:0.73rem; }
 
 /* 3 cột ngang */
 .shell {
@@ -412,3 +412,13 @@
     width: 100%;
   }
 }
+
+.reservationActivityList { display:flex; gap:0.45rem; overflow-x:auto; padding-bottom:0.1rem; scrollbar-width:thin; }
+.reservationActivityCard { min-width:152px; display:flex; align-items:center; gap:0.45rem; padding:0.45rem 0.55rem; border:1px solid #e2e8f0; border-radius:0.75rem; background:#f8fafc; }
+.reservationActivityIcon { width:28px; height:28px; border-radius:0.6rem; display:inline-flex; align-items:center; justify-content:center; background:rgba(226,232,240,.8); color:#1d4ed8; flex-shrink:0; }
+.reservationActivityContent { min-width:0; display:block; }
+.reservationActivityContent strong { display:block; font-size:0.75rem; line-height:1.2; color:#1d4ed8; }
+.reservationActivityContent > span { display:block; color:#475569; font-size:0.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.reservationActivityCard_success .reservationActivityIcon,.reservationActivityCard_success .reservationActivityContent strong{ color:#15803d; }
+.reservationActivityCard_warning .reservationActivityIcon,.reservationActivityCard_warning .reservationActivityContent strong{ color:#92400e; }
+.reservationActivityCard_danger .reservationActivityIcon,.reservationActivityCard_danger .reservationActivityContent strong{ color:#b91c1c; }

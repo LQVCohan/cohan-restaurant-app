@@ -24,7 +24,7 @@ function getBadgeMeta(type) {
     case RESERVATION_EVENT_TYPES.CHANGE_REQUESTED:
       return { tone: "warning", label: "Chờ duyệt đổi", icon: Clock3 };
     case RESERVATION_EVENT_TYPES.CHANGE_APPROVED:
-      return { tone: "success", label: "Đã duyệt đổi", icon: CheckCircle2 };
+      return { tone: "success", label: "Đã xác nhận", icon: CheckCircle2 };
     case RESERVATION_EVENT_TYPES.CHANGE_REJECTED:
       return { tone: "danger", label: "Từ chối đổi", icon: XCircle };
     case RESERVATION_EVENT_TYPES.CHECKED_IN:

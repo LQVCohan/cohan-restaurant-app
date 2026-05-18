@@ -391,3 +391,8 @@ $success-light: #ecfdf5;
     }
   }
 }
+
+.addressSelects { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0.5rem; }
+.addrDetail{ width:100%; max-width:100%; }
+.emptyError{ color:#b91c1c; }
+@media (max-width: 768px){ .addressSelects{ grid-template-columns:1fr; } }
