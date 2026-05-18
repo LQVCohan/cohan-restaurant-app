@@ -96,6 +96,11 @@ describe("MenuManagement permission helper", () => {
       "menu.write",
       "inventory.write",
     ]);
-    expect(MENU_PERMISSION.VIEW_AUDIT).toEqual(["menu.audit.read", "menu.read", "log.read"]);
+    expect(MENU_PERMISSION.VIEW_AUDIT).toEqual([
+      "menu.audit.read",
+      "menu.read",
+      "menu.write",
+      "log.read",
+    ]);
   });
 });
