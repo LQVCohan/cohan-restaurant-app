@@ -47,6 +47,15 @@ const getTableFloorId = (targetTable) =>
   targetTable?.floor?._id ||
   null;
 
+
+const buildMovedTablePosition = (targetTable, nextCoordinates) => {
+  const currentPosition = getTablePosition(targetTable);
+  return {
+    ...(isValidPosition(currentPosition) ? currentPosition : {}),
+    ...nextCoordinates,
+  };
+};
+
 const getAvailablePositionForFloor = (allTables, targetFloorId) => {
   const occupiedPositions = new Set(
     (allTables || [])
@@ -506,7 +515,8 @@ export default function TableActionsLiteModal({
     const payload = { id: table.id, floorId };
 
     if (isChangingFloor) {
-      payload.position = getAvailablePositionForFloor(tables, floorId);
+      const nextCoordinates = getAvailablePositionForFloor(tables, floorId);
+      payload.position = buildMovedTablePosition(table, nextCoordinates);
     }
 
     setBusyKey("move", true);
