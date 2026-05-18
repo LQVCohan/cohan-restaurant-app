@@ -338,6 +338,52 @@ export const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+export const escapeCsvValue = (value) => {
+  const normalizedValue = value === null || value === undefined ? "" : String(value);
+  if (!/[",\n\r]/.test(normalizedValue)) return normalizedValue;
+  return `"${normalizedValue.replaceAll('"', '""')}"`;
+};
+const CSV_EMPTY_VALUE = "--";
+export const buildPerformanceOverviewCsvRows = (rows = []) =>
+  rows.map((row) => {
+    const employee = row?.employee || {};
+    const snapshot = row?.snapshot || {};
+    const previousSnapshot = row?.previousSnapshot || null;
+    const customerRating = formatCustomerRating(snapshot?.factors);
+    const customerRatingCount = Number(snapshot?.factors?.staffRateCount);
+    return [
+      employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
+      employee.name || snapshot.employeeName || CSV_EMPTY_VALUE,
+      employee.role || snapshot.employeeRole || CSV_EMPTY_VALUE,
+      row?.score ?? snapshot.finalPerformanceScore ?? CSV_EMPTY_VALUE,
+      row?.level?.label || snapshot.performanceLevel || CSV_EMPTY_VALUE,
+      previousSnapshot?.finalPerformanceScore ?? CSV_EMPTY_VALUE,
+      row?.trendDelta ?? CSV_EMPTY_VALUE,
+      previousSnapshot ? "Có" : "Không",
+      customerRating?.hasRating ? customerRating.label : CSV_EMPTY_VALUE,
+      Number.isFinite(customerRatingCount) ? customerRatingCount : CSV_EMPTY_VALUE,
+      "",
+    ];
+  });
+export const buildPerformanceOverviewCsvContent = (rows = []) => {
+  const header = [
+    "Mã nhân viên",
+    "Tên nhân viên",
+    "Vai trò",
+    "Điểm kỳ này",
+    "Mức kỳ này",
+    "Điểm kỳ trước",
+    "Chênh lệch",
+    "Có dữ liệu kỳ trước",
+    "Đánh giá khách hàng",
+    "Số lượt đánh giá khách hàng",
+    "Ghi chú",
+  ];
+  const csvRows = buildPerformanceOverviewCsvRows(rows);
+  return [header, ...csvRows]
+    .map((line) => line.map(escapeCsvValue).join(","))
+    .join("\n");
+};
 export const buildPerformanceReportData = ({
   snapshot = {},
   employee = null,
@@ -1020,6 +1066,17 @@ const StaffPerformancePage = ({
   };
 
   const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
+  const handleExportCsv = () => {
+    const csvContent = buildPerformanceOverviewCsvContent(rows);
+    const filename = `staff-performance-overview-${periodStart}-${periodEnd}.csv`;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(blobUrl);
+  };
 
   const openDetail = (row) => {
     setSelectedSnapshot(row.snapshot);
@@ -1049,6 +1106,13 @@ const StaffPerformancePage = ({
             }}
           >
             Kỳ hiện tại
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleExportCsv}
+          >
+            Xuất CSV
           </button>
           <button
             type="button"
