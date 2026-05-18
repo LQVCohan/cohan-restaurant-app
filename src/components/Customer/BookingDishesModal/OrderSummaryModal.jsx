@@ -525,7 +525,7 @@ const OrderSummaryModal = ({
     const parentOrderCodes = createdOrders
       .map((o) => o?.parentOrderCode)
       .filter(Boolean);
-    const resolvedTotalPaid = checkout?.grandTotal || totalPaidFromOrders;
+    const resolvedTotalPaid = checkout?.grandTotal ?? totalPaidFromOrders;
     setReceipt({
       customerName: shipping.fullName,
       customerPhone: shipping.phone,
