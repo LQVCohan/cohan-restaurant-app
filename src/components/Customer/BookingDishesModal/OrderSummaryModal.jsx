@@ -56,6 +56,24 @@ const DEFAULT_SHIPPING = (prefill = {}) => ({
 
 const ORDER_VAT_RATE = 0.1;
 
+const getExpiredHoldItems = (items = []) =>
+  items.filter((item) => {
+    if (!item?.holdExpiresAt) return false;
+    const expiresAt = new Date(item.holdExpiresAt);
+    return !Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date();
+  });
+
+const getEarliestHoldExpiry = (items = []) => {
+  const timestamps = items
+    .map((item) => item?.holdExpiresAt)
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter((time) => !Number.isNaN(time) && time > Date.now());
+
+  if (!timestamps.length) return null;
+  return new Date(Math.min(...timestamps));
+};
+
 const RESTAURANT_BY_ID = gql`
   query RestaurantById($id: ID!) {
     restaurant(id: $id) {
@@ -410,6 +428,11 @@ const OrderSummaryModal = ({
     setDiscountTouched(false);
   }, [canPreviewDiscount]);
   const validateCartHoldBeforeCheckout = useCallback(() => {
+    const expiredHoldItems = getExpiredHoldItems(orderData);
+    if (expiredHoldItems.length) {
+      return "Một số món đã hết thời gian giữ. Vui lòng kiểm tra lại giỏ hàng.";
+    }
+
     for (const item of orderData || []) {
       const cartId = item.backendCartId || item.cartId;
       const cartItemId = item.backendCartItemId || item.cartItemId;
@@ -417,13 +440,6 @@ const OrderSummaryModal = ({
 
       if (hasAnyCartRef && (!cartId || !cartItemId)) {
         return "Một số món chưa được đồng bộ đúng với giỏ hàng. Vui lòng thêm lại món.";
-      }
-
-      if (cartId && cartItemId && item.holdExpiresAt) {
-        const expiresAt = new Date(item.holdExpiresAt);
-        if (!Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date()) {
-          return "Một số món đã hết thời gian giữ. Vui lòng kiểm tra lại giỏ hàng.";
-        }
       }
     }
 
@@ -606,6 +622,9 @@ const OrderSummaryModal = ({
   };
 
   const renderContent = () => {
+    const expiredHoldItems = getExpiredHoldItems(orderData);
+    const earliestHoldExpiry = getEarliestHoldExpiry(orderData);
+
     switch (currentView) {
       case "success":
         return <SuccessScreen onContinueBrowsing={onClose} />;
@@ -643,21 +662,19 @@ const OrderSummaryModal = ({
             onApplyDiscountPreview={handleApplyDiscountPreview}
             hasUnappliedDiscount={hasUnappliedDiscount}
             payableTotal={payableTotal}
+            expiredHoldItems={expiredHoldItems}
+            earliestHoldExpiry={earliestHoldExpiry}
           />
         );
     }
   };
 
   const renderFooter = () => {
+    const hasExpiredHolds = getExpiredHoldItems(orderData).length > 0;
+
     switch (currentView) {
       case "success":
-        return (
-          <Modal.Footer>
-            <button className="btn btn--primary" onClick={() => onClose()}>
-              Tiếp tục xem món
-            </button>
-          </Modal.Footer>
-        );
+        return null;
       case "qr":
         return (
           <Modal.Footer>
@@ -685,11 +702,8 @@ const OrderSummaryModal = ({
             <button className="btn btn--secondary" onClick={onClose}>
               Đóng
             </button>
-            <button
-              className="btn btn--primary"
-              onClick={() => alert("Chỉnh sửa đơn hàng")}
-            >
-              Chỉnh sửa đơn hàng
+            <button className="btn btn--primary" onClick={onClose}>
+              Quay lại giỏ hàng
             </button>
             <button
               className="btn btn--success"
@@ -699,7 +713,8 @@ const OrderSummaryModal = ({
                 !selectedPaymentMethod ||
                 isProcessingPayment ||
                 shouldBlockCheckoutForDiscount ||
-                isPreviewingDiscount
+                isPreviewingDiscount ||
+                hasExpiredHolds
               }
               title={
                 !isShippingValid
@@ -708,6 +723,8 @@ const OrderSummaryModal = ({
                     ? "Chọn phương thức thanh toán"
                     : shouldBlockCheckoutForDiscount
                       ? "Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng"
+                      : hasExpiredHolds
+                        ? "Một số món đã hết thời gian giữ. Vui lòng quay lại giỏ hàng."
                       : undefined
               }
             >
@@ -787,17 +804,18 @@ const SummaryContent = ({
   onApplyDiscountPreview,
   hasUnappliedDiscount,
   payableTotal,
+  expiredHoldItems,
+  earliestHoldExpiry,
 }) => (
   <>
-    {orderData.some((item) => item.holdExpiresAt) && (
+    {!!earliestHoldExpiry && (
       <div className="section section-highlight">
-        Món đang được giữ tạm thời đến{" "}
-        {new Date(
-          orderData
-            .map((item) => item.holdExpiresAt)
-            .filter(Boolean)
-            .sort()[0],
-        ).toLocaleString("vi-VN")}
+        Món đang được giữ tạm thời đến {earliestHoldExpiry.toLocaleString("vi-VN")}
+      </div>
+    )}
+    {!!expiredHoldItems?.length && (
+      <div className="order-summary-error" role="alert">
+        Một số món đã hết thời gian giữ. Vui lòng kiểm tra lại giỏ hàng.
       </div>
     )}
     <RestaurantInfo
