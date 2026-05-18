@@ -349,6 +349,7 @@ const TableManagement = () => {
     "available->occupied",
     "reserved->occupied",
     "occupied->payment_pending",
+    "payment_pending->cleaning",
     "occupied->available",
     "payment_pending->available",
   ]);
