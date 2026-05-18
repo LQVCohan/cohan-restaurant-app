@@ -17,8 +17,11 @@ import {
   holdReservationSlot,
   releaseReservationSlot,
 } from "../../../src/services/reservationAvailability.service.js";
+import {
+  ACTIVE_RESERVATION_STATUSES,
+  hasActiveOrdersForTable,
+} from "../../../utils/tableStateGuards.js";
 
-const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
 const PAYMENT_STATUSES = ["paid", "pending", "failed", "cancelled"];
 const GUEST_TTL_DAYS = 30;
@@ -130,7 +133,7 @@ async function ensureNoTableConflict({ tableId, timeTo, durationMinutes, isUnlim
 
   const q = {
     tableId: toObjectId(tableId, "tableId"),
-    status: { $in: ACTIVE_STATUSES },
+    status: { $in: ACTIVE_RESERVATION_STATUSES },
   };
   if (exceptId) q._id = { $ne: toObjectId(exceptId, "reservationId") };
 
@@ -174,11 +177,27 @@ async function ensureNoActiveViewLock(tableId, requesterUserId, session = null) 
   }
 }
 
-async function updateTableStatusByReservation(tableId) {
-  const active = await Reservation.exists({ tableId, status: { $in: ["pending_payment", "confirmed", "seated"] } });
+async function updateTableStatusByReservation(tableId, restaurantId) {
+  const [hasActiveReservation, hasActiveOrder] = await Promise.all([
+    Reservation.exists({
+      tableId,
+      status: { $in: ACTIVE_RESERVATION_STATUSES },
+    }),
+    hasActiveOrdersForTable({ restaurantId, tableId }),
+  ]);
+
+  if (hasActiveReservation) {
+    await Table.updateOne({ _id: tableId }, { $set: { status: "reserved" } });
+    return;
+  }
+
+  if (hasActiveOrder) {
+    return;
+  }
+
   await Table.updateOne(
-    { _id: tableId },
-    { $set: { status: active ? "reserved" : "available" } }
+    { _id: tableId, status: "reserved" },
+    { $set: { status: "available" } }
   );
 }
 
@@ -643,7 +662,7 @@ export const ReservationMutation = {
     if (["cancelled", "completed", "no_show"].includes(current.status)) {
       await releaseReservationSlot({ reservationId: current._id, reason: current.status });
     }
-    await updateTableStatusByReservation(current.tableId);
+    await updateTableStatusByReservation(current.tableId, current.restaurantId);
     return current;
   },
 
@@ -688,7 +707,7 @@ export const ReservationMutation = {
       await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "reserved" } });
     } else if (pStatus === "failed" || pStatus === "cancelled") {
       await releaseReservationSlot({ reservationId: reservation._id, reason: pStatus });
-      await updateTableStatusByReservation(reservation.tableId);
+      await updateTableStatusByReservation(reservation.tableId, reservation.restaurantId);
     } else {
       await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "payment_pending" } });
     }
@@ -737,7 +756,7 @@ export const ReservationMutation = {
     if (current.depositStatus === "pending") current.depositStatus = "cancelled";
     await current.save();
     await releaseReservationSlot({ reservationId: current._id, reason: "cancelled" });
-    await updateTableStatusByReservation(current.tableId);
+    await updateTableStatusByReservation(current.tableId, current.restaurantId);
     await EventLog.log({
       restaurantId: current.restaurantId,
       actorUserId: ctx?.user?.id,
@@ -764,7 +783,7 @@ export const ReservationMutation = {
     current.status = "no_show";
     await current.save();
     await releaseReservationSlot({ reservationId: current._id, reason: "no_show" });
-    await updateTableStatusByReservation(current.tableId);
+    await updateTableStatusByReservation(current.tableId, current.restaurantId);
     return current;
   },
 };
