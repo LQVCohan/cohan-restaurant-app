@@ -24,8 +24,6 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   return "";
 };
 
-
-
 const DEFAULT_TABLE_POSITION = { x: 80, y: 80 };
 const TABLE_POSITION_STEP = 40;
 const TABLE_POSITION_MAX_ATTEMPTS = 30;
