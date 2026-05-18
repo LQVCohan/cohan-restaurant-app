@@ -1,8 +1,8 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { AuditLog, Menu, MenuItem } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
 import { getMenuItemInventoryAvailability } from "../../../src/services/menuItemInventoryAvailability.service.js";
+import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 const SYNCABLE_STATUSES = ["available", "out_of_stock"];
 
@@ -39,7 +39,7 @@ export const InventorySyncMenuMutation = {
     } = input || {};
 
     if (!isOid(restaurantId)) throw new GraphQLError("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.SYNC_INVENTORY);
 
     const query = { restaurantId, status: { $in: SYNCABLE_STATUSES } };
 
