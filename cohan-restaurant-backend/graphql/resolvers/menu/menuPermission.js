@@ -1,0 +1,38 @@
+import { GraphQLError } from "graphql";
+import { requireRestaurantAccess } from "../../guards.js";
+import { hasAnyPermission } from "../../../src/services/auth/authorization.service.js";
+import { MENU_PERMISSION_FALLBACKS, PERMISSIONS } from "../../../src/constants/permissions.js";
+
+const DEFAULT_FALLBACK = [PERMISSIONS.MENU_WRITE];
+
+export const MENU_PERMISSION = {
+  READ: [PERMISSIONS.MENU_READ],
+  CREATE_MENU: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_CREATE],
+  UPDATE_MENU: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_UPDATE],
+  DELETE_MENU: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_DELETE],
+  COPY_MENU: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_COPY],
+  CREATE_ITEM: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_ITEM_CREATE],
+  UPDATE_ITEM: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_ITEM_UPDATE],
+  DELETE_ITEM: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_ITEM_DELETE],
+  UPDATE_PRICE: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_PRICE_UPDATE],
+  MANAGE_CATEGORY: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_CATEGORY_MANAGE],
+  MANAGE_GROUP: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_GROUP_MANAGE],
+  SYNC_INVENTORY: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_INVENTORY_SYNC],
+  VIEW_AUDIT: MENU_PERMISSION_FALLBACKS[PERMISSIONS.MENU_AUDIT_READ],
+};
+
+export async function requireMenuPermission(ctx, restaurantId, permissionCodes) {
+  await requireRestaurantAccess(ctx, restaurantId);
+  const codes = Array.isArray(permissionCodes) && permissionCodes.length
+    ? permissionCodes
+    : DEFAULT_FALLBACK;
+
+  if (await hasAnyPermission(ctx?.user, codes)) return true;
+
+  throw new GraphQLError("FORBIDDEN_MENU_PERMISSION", {
+    extensions: {
+      code: "FORBIDDEN",
+      requiredPermissions: codes,
+    },
+  });
+}
