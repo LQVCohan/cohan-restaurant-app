@@ -15,8 +15,30 @@ export async function resolveAuthenticatedUserFromRequest(request) {
     const userId = String(payload.id || payload.sub || payload.userId || "");
     if (!userId) return null;
 
-    const userDoc = await User.findById(userId).populate("role").lean({ virtuals: true });
+    const userDoc = await User.findById(userId)
+      .populate({
+        path: "role",
+        populate: [
+          { path: "permissions" },
+          { path: "parentRole", populate: { path: "permissions" } },
+        ],
+      })
+      .lean({ virtuals: true });
     if (!userDoc || userDoc.status !== "active") return null;
+
+    const rolePermissions = Array.isArray(userDoc.role?.permissions)
+      ? userDoc.role.permissions
+      : [];
+    const parentPermissions = Array.isArray(userDoc.role?.parentRole?.permissions)
+      ? userDoc.role.parentRole.permissions
+      : [];
+    const effectivePermissionCodes = [
+      ...parentPermissions,
+      ...rolePermissions,
+    ]
+      .map((permission) => permission?.code || permission?.permissionCode || permission?.slug || permission?.name)
+      .filter(Boolean)
+      .map((code) => String(code).trim().toLowerCase());
 
     return {
       id: String(userDoc._id),
@@ -29,6 +51,11 @@ export async function resolveAuthenticatedUserFromRequest(request) {
       provider: userDoc.provider,
       refRestaurants: userDoc.refRestaurants,
       restaurantForStaff: userDoc.restaurantForStaff,
+      restaurantId: userDoc.restaurantId,
+      restaurantIds: userDoc.restaurantIds,
+      permissions: rolePermissions,
+      effectivePermissions: [...parentPermissions, ...rolePermissions],
+      effectivePermissionCodes,
       point: userDoc.point,
       loyaltyPoints: userDoc.loyaltyPoints,
       customerType: userDoc.customerType,
