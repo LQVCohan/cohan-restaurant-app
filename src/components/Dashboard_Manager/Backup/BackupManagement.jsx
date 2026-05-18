@@ -1,79 +1,233 @@
-import React from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
+import { AuthContext } from "../../../context/AuthContext";
 import "./BackupManagement.scss";
 
-const SUMMARY_ITEMS = [
+const Q_BACKUP_READINESS = gql`
+  query BackupReadiness($restaurantId: ID!) {
+    backupReadiness(restaurantId: $restaurantId) {
+      restaurantId
+      ready
+      risks {
+        key
+        label
+        severity
+        resolved
+        description
+      }
+      checklist {
+        reportsChecked
+        transactionsReconciled
+        settingsReviewed
+        exportPrepared
+        safeCopyStored
+        operatorRecorded
+      }
+      scope {
+        ordersAndPayments
+        tablesAndFloorPlan
+        menuAndPricing
+        inventory
+        staffAndPermissions
+        schedules
+        customersAndPromotions
+        reportsAndReconciliation
+      }
+      lastRun {
+        id
+        status
+        note
+        completedAt
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const Q_BACKUP_RUNS = gql`
+  query BackupRuns($restaurantId: ID!, $limit: Int!, $offset: Int!) {
+    backupRuns(restaurantId: $restaurantId, limit: $limit, offset: $offset) {
+      id
+      restaurantId
+      status
+      note
+      createdBy
+      completedBy
+      completedAt
+      createdAt
+      updatedAt
+      checklist {
+        reportsChecked
+        transactionsReconciled
+        settingsReviewed
+        exportPrepared
+        safeCopyStored
+        operatorRecorded
+      }
+      scope {
+        ordersAndPayments
+        tablesAndFloorPlan
+        menuAndPricing
+        inventory
+        staffAndPermissions
+        schedules
+        customersAndPromotions
+        reportsAndReconciliation
+      }
+    }
+  }
+`;
+
+const FALLBACK_CHECKLIST = {
+  reportsChecked: false,
+  transactionsReconciled: false,
+  settingsReviewed: false,
+  exportPrepared: false,
+  safeCopyStored: false,
+  operatorRecorded: false,
+};
+
+const FALLBACK_SCOPE = {
+  ordersAndPayments: true,
+  tablesAndFloorPlan: true,
+  menuAndPricing: true,
+  inventory: true,
+  staffAndPermissions: true,
+  schedules: true,
+  customersAndPromotions: true,
+  reportsAndReconciliation: true,
+};
+
+const FALLBACK_RISKS = [
   {
-    title: "Báo cáo",
-    description: "Cần kiểm tra báo cáo cuối ngày.",
-    action: { label: "Mở báo cáo", page: "reports" },
+    key: "reports_not_checked",
+    label: "Báo cáo cuối ngày chưa kiểm tra",
+    severity: "warning",
+    resolved: false,
+    description: "Cần hoàn tất trước khi chốt checklist backup.",
   },
   {
-    title: "Giao dịch",
-    description: "Cần đối soát thanh toán/hoàn tiền.",
-    action: { label: "Mở giao dịch", page: "transactions" },
-  },
-  {
-    title: "Cấu hình",
-    description: "Cần kiểm tra settings/RBAC/nhà hàng/in ấn.",
-    action: { label: "Mở cài đặt", page: "settings" },
-  },
-  {
-    title: "Xuất dữ liệu",
-    description: "Hiện chưa có API tự động.",
-    note: "Không có nút download giả.",
+    key: "transactions_not_reconciled",
+    label: "Giao dịch chưa đối soát",
+    severity: "warning",
+    resolved: false,
+    description: "Cần hoàn tất trước khi chốt checklist backup.",
   },
 ];
 
-const TIMELINE_STEPS = [
-  {
-    title: "Kiểm tra báo cáo cuối ngày",
-    description: "Mở báo cáo, kiểm tra doanh thu, đơn hàng, dữ liệu vận hành.",
-    action: { label: "Mở báo cáo", page: "reports" },
-  },
-  {
-    title: "Đối soát giao dịch",
-    description: "Kiểm tra thanh toán, hoàn tiền, giao dịch lỗi/chờ xử lý.",
-    action: { label: "Mở giao dịch", page: "transactions" },
-  },
-  {
-    title: "Kiểm tra cấu hình hệ thống",
-    description: "Kiểm tra settings, RBAC, thông tin nhà hàng, in ấn.",
-    action: { label: "Mở cài đặt", page: "settings" },
-  },
-  {
-    title: "Xuất dữ liệu cần lưu",
-    description: "Hiện chưa có API backup tự động. Cần chuẩn bị quy trình export/snapshot khi backend hỗ trợ.",
-  },
-  {
-    title: "Lưu bản sao an toàn",
-    description: "Gợi ý lưu ở nơi an toàn/offline/cloud nội bộ theo quy định vận hành.",
-  },
-  {
-    title: "Ghi nhận người thực hiện và thời điểm",
-    description: "Gợi ý ghi log thủ công cho đến khi có audit log backend.",
-  },
-];
+const FALLBACK_READINESS = {
+  restaurantId: "",
+  ready: false,
+  risks: FALLBACK_RISKS,
+  checklist: FALLBACK_CHECKLIST,
+  scope: FALLBACK_SCOPE,
+  lastRun: null,
+};
 
-const DATA_CARDS = [
-  ["Đơn hàng & thanh toán", "Bao gồm đơn bán, trạng thái thanh toán, hoàn tiền và dữ liệu liên quan."],
-  ["Bàn & sơ đồ tầng", "Lưu cấu hình bàn, khu vực và sơ đồ phục vụ."],
-  ["Menu & giá bán", "Đảm bảo thực đơn, giá và danh mục sản phẩm được sao lưu."],
-  ["Kho & nguyên liệu", "Bao gồm tồn kho, nhập-xuất và định mức nguyên liệu."],
-  ["Nhân viên & phân quyền", "Lưu role, quyền truy cập và trạng thái tài khoản nội bộ."],
-  ["Lịch làm việc", "Sao lưu lịch ca, phân công và thay đổi đang chờ duyệt."],
-  ["Khách hàng & khuyến mãi", "Gồm dữ liệu khách hàng, nhóm khách và lịch sử khuyến mãi."],
-  ["Báo cáo & đối soát", "Lưu báo cáo cuối ngày và thông tin đối soát định kỳ."],
-];
+const CHECKLIST_LABELS = {
+  reportsChecked: "Kiểm tra báo cáo cuối ngày",
+  transactionsReconciled: "Đối soát giao dịch",
+  settingsReviewed: "Kiểm tra cấu hình hệ thống",
+  exportPrepared: "Chuẩn bị dữ liệu export/snapshot",
+  safeCopyStored: "Lưu bản sao an toàn",
+  operatorRecorded: "Ghi nhận người thực hiện và thời điểm",
+};
 
-const RISKS = [
-  "Chưa đối soát giao dịch",
-  "Báo cáo cuối ngày chưa kiểm tra",
-  "Thay đổi phân quyền chưa xác nhận",
-  "Dữ liệu lịch/ca đang có draft hoặc pending changes",
-  "Máy in hoặc báo cáo có lỗi chưa xử lý",
-];
+const SCOPE_LABELS = {
+  ordersAndPayments: "Đơn hàng & thanh toán",
+  tablesAndFloorPlan: "Bàn & sơ đồ tầng",
+  menuAndPricing: "Menu & giá bán",
+  inventory: "Kho & nguyên liệu",
+  staffAndPermissions: "Nhân viên & phân quyền",
+  schedules: "Lịch làm việc",
+  customersAndPromotions: "Khách hàng & khuyến mãi",
+  reportsAndReconciliation: "Báo cáo & đối soát",
+};
+
+const toChecklistItems = (checklist = FALLBACK_CHECKLIST) =>
+  Object.entries(CHECKLIST_LABELS).map(([key, label]) => ({
+    key,
+    label,
+    done: Boolean(checklist?.[key]),
+  }));
+
+const toScopeItems = (scope = FALLBACK_SCOPE) =>
+  Object.entries(SCOPE_LABELS).map(([key, label]) => ({
+    key,
+    label,
+    enabled: Boolean(scope?.[key]),
+  }));
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("vi-VN");
+};
 
 const BackupManagement = () => {
+  const { restaurants = [] } = useContext(AuthContext) || {};
+  const [restaurantId, setRestaurantId] = useState("");
+
+  useEffect(() => {
+    if (!restaurantId && restaurants.length > 0) {
+      setRestaurantId(String(restaurants[0]?.id || restaurants[0]?.restaurantId || ""));
+    }
+  }, [restaurantId, restaurants]);
+
+  const readinessQuery = useQuery(Q_BACKUP_READINESS, {
+    variables: { restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
+  const runsQuery = useQuery(Q_BACKUP_RUNS, {
+    variables: { restaurantId, limit: 5, offset: 0 },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
+
+  const readiness = readinessQuery.data?.backupReadiness || FALLBACK_READINESS;
+  const runs = Array.isArray(runsQuery.data?.backupRuns) ? runsQuery.data.backupRuns : [];
+  const checklistItems = useMemo(() => toChecklistItems(readiness.checklist), [readiness.checklist]);
+  const scopeItems = useMemo(() => toScopeItems(readiness.scope), [readiness.scope]);
+  const unresolvedRisks = useMemo(
+    () => (readiness.risks || []).filter((risk) => !risk.resolved),
+    [readiness.risks],
+  );
+  const enabledScopeCount = scopeItems.filter((item) => item.enabled).length;
+  const completedChecklistCount = checklistItems.filter((item) => item.done).length;
+  const lastRunDate =
+    readiness.lastRun?.completedAt || readiness.lastRun?.updatedAt || readiness.lastRun?.createdAt;
+
+  const warning = !restaurantId
+    ? "Chưa xác định nhà hàng để đọc cấu hình"
+    : readinessQuery.error || runsQuery.error
+      ? "Không đọc được trạng thái backup, đang hiển thị checklist khuyến nghị."
+      : "";
+  const loading = readinessQuery.loading || runsQuery.loading;
+
+  const summaryItems = [
+    {
+      title: "Trạng thái",
+      description: readiness.ready
+        ? "Đủ điều kiện theo checklist metadata hiện tại."
+        : `Còn ${unresolvedRisks.length} rủi ro cần xử lý.`,
+    },
+    {
+      title: "Phạm vi",
+      description: `${enabledScopeCount}/${scopeItems.length} hạng mục đang được đưa vào phạm vi backup metadata.`,
+    },
+    {
+      title: "Checklist",
+      description: `${completedChecklistCount}/${checklistItems.length} bước đã hoàn tất.`,
+    },
+    {
+      title: "Lần chạy gần nhất",
+      description: lastRunDate ? formatDate(lastRunDate) : "Chưa có dữ liệu.",
+    },
+  ];
+
   const navigateManagerPage = (page) => {
     if (!page) return;
     window.dispatchEvent(
@@ -81,9 +235,7 @@ const BackupManagement = () => {
         detail: { page, source: "backup-management" },
       }),
     );
-    if (window.location.hash !== `#${page}`) {
-      window.location.hash = page;
-    }
+    if (window.location.hash !== `#${page}`) window.location.hash = page;
   };
 
   return (
@@ -91,56 +243,71 @@ const BackupManagement = () => {
       <header className="backup-management__hero">
         <div>
           <h2>Sao lưu &amp; khôi phục</h2>
-          <p>Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần kiểm tra.</p>
+          <p>
+            Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần
+            kiểm tra.
+          </p>
         </div>
         <div className="backup-management__badges" aria-label="Trạng thái trang">
-          <span>Frontend-only</span>
+          <span>Backend metadata</span>
           <span>Checklist vận hành</span>
           <span>Không restore tự động</span>
         </div>
       </header>
 
       <section className="backup-management__alert" role="note">
-        Chưa có API sao lưu tự động. Trang này không tạo file backup, không khôi phục dữ liệu và không thay đổi dữ liệu hệ thống.
+        Trang này chưa tạo file backup, chưa download backup và chưa khôi phục dữ liệu.
       </section>
+      {warning ? (
+        <section className="backup-management__alert" role="note">
+          {warning}
+        </section>
+      ) : null}
 
       <section className="backup-management__summary" aria-label="Tổng quan trước sao lưu">
-        {SUMMARY_ITEMS.map((item) => (
+        {loading ? <p className="backup-management__note">Đang tải trạng thái backup...</p> : null}
+        {summaryItems.map((item) => (
           <article key={item.title}>
             <h3>{item.title}</h3>
             <p>{item.description}</p>
-            {item.action ? (
-              <button type="button" onClick={() => navigateManagerPage(item.action.page)}>{item.action.label}</button>
-            ) : null}
-            {item.note ? <p className="backup-management__note">{item.note}</p> : null}
           </article>
         ))}
+        <article>
+          <h3>Điều hướng</h3>
+          <p>Kiểm tra báo cáo, giao dịch và cài đặt trước khi kết thúc ngày.</p>
+          <button type="button" onClick={() => navigateManagerPage("reports")}>
+            Mở báo cáo
+          </button>
+          <button type="button" onClick={() => navigateManagerPage("transactions")}>
+            Mở giao dịch
+          </button>
+          <button type="button" onClick={() => navigateManagerPage("settings")}>
+            Mở cài đặt
+          </button>
+        </article>
       </section>
 
-      <section className="backup-management__timeline" aria-label="Quy trình sao lưu khuyến nghị">
-        <h3>Quy trình sao lưu khuyến nghị</h3>
+      <section className="backup-management__timeline" aria-label="Checklist readiness">
+        <h3>Checklist readiness</h3>
         <ol>
-          {TIMELINE_STEPS.map((step) => (
-            <li key={step.title}>
+          {checklistItems.map((item) => (
+            <li key={item.key}>
               <div>
-                <h4>{step.title}</h4>
-                <p>{step.description}</p>
-                {step.action ? (
-                  <button type="button" onClick={() => navigateManagerPage(step.action.page)}>{step.action.label}</button>
-                ) : null}
+                <h4>{item.label}</h4>
+                <p>{item.done ? "Hoàn tất" : "Chưa xong"}</p>
               </div>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="backup-management__data-grid" aria-label="Dữ liệu nên đưa vào backup">
-        <h3>Dữ liệu nên đưa vào backup</h3>
+      <section className="backup-management__data-grid" aria-label="Phạm vi backup metadata">
+        <h3>Phạm vi backup metadata</h3>
         <div>
-          {DATA_CARDS.map(([title, desc]) => (
-            <article key={title}>
-              <h4>{title}</h4>
-              <p>{desc}</p>
+          {scopeItems.map((item) => (
+            <article key={item.key}>
+              <h4>{item.label}</h4>
+              <p>{item.enabled ? "Có trong phạm vi" : "Không bao gồm"}</p>
             </article>
           ))}
         </div>
@@ -149,25 +316,49 @@ const BackupManagement = () => {
       <section className="backup-management__risk-grid" aria-label="Rủi ro trước khi backup">
         <h3>Rủi ro trước khi backup</h3>
         <div>
-          {RISKS.map((risk) => (
-            <article key={risk}>
-              <h4>{risk}</h4>
+          {(readiness.risks || []).map((risk) => (
+            <article key={risk.key}>
+              <h4>{risk.label}</h4>
+              <p>{risk.description || "Không có mô tả."}</p>
+              <p>{risk.resolved ? "Đã xử lý" : "Cần xử lý"}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="backup-management__roadmap" aria-label="Backend cần bổ sung sau này">
-        <h3>Backend cần bổ sung sau này</h3>
-        <ul>
-          <li>POST /backups</li>
-          <li>GET /backups</li>
-          <li>GET /backups/:id/download</li>
-          <li>POST /backups/:id/restore</li>
-          <li>Audit log cho backup/restore</li>
-          <li>Permission riêng: backup.read, backup.write, backup.restore</li>
-          <li>Trạng thái backup: pending, running, completed, failed</li>
-        </ul>
+      <section className="backup-management__timeline" aria-label="Lịch sử backup run metadata">
+        <h3>5 backup runs gần nhất (metadata)</h3>
+        <ol>
+          {runs.length ? (
+            runs.map((run) => {
+              const runChecklist = toChecklistItems(run.checklist);
+              const runScope = toScopeItems(run.scope);
+              const doneCount = runChecklist.filter((item) => item.done).length;
+              const scopeCount = runScope.filter((item) => item.enabled).length;
+
+              return (
+                <li key={run.id}>
+                  <div>
+                    <h4>
+                      {run.status || "unknown"} • {formatDate(run.createdAt)}
+                    </h4>
+                    <p>Checklist: {doneCount}/{runChecklist.length} bước hoàn tất</p>
+                    <p>Phạm vi: {scopeCount}/{runScope.length} hạng mục</p>
+                    {run.completedAt ? <p>Hoàn tất lúc: {formatDate(run.completedAt)}</p> : null}
+                    <p>Cập nhật: {formatDate(run.updatedAt)}</p>
+                    {run.note ? <p>Ghi chú: {run.note}</p> : null}
+                  </div>
+                </li>
+              );
+            })
+          ) : (
+            <li>
+              <div>
+                <p>Chưa có lịch sử backup runs.</p>
+              </div>
+            </li>
+          )}
+        </ol>
       </section>
     </div>
   );
