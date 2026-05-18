@@ -5,7 +5,7 @@ import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MAX_LIMIT = 100;
-const RESTAURANT_AUDIT_PERMISSIONS = ["menu.audit.read", "log.read", "menu.write"];
+const RESTAURANT_AUDIT_PERMISSIONS = ["menu.audit.read", "menu.read", "log.read"];
 
 function isOid(value) {
   return mongoose.isValidObjectId(value);
