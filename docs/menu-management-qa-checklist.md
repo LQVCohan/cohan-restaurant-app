@@ -1,6 +1,6 @@
 # MenuManagement QA Checklist (Final Demo Readiness)
 
-Use this checklist before graduation project review. Scope focuses on MenuManagement only (no PBAC changes).
+Use this checklist before graduation project review. Scope focuses on MenuManagement only.
 
 ## 1) Backend startup & schema health
 - [ ] Start backend: `npm run dev --prefix cohan-restaurant-backend`
@@ -8,6 +8,8 @@ Use this checklist before graduation project review. Scope focuses on MenuManage
 - [ ] Verify backend health endpoint responds (`/health/live`, `/health/ready`).
 - [ ] Verify GraphQL schema loads with no resolver/schema mismatch warnings.
 - [ ] Verify no `Unknown field` GraphQL errors in server log during MenuManagement flows.
+- [ ] Run RBAC seed before permission testing: `npm run seed:rbac --prefix cohan-restaurant-backend`.
+- [ ] Restart backend and log in again after RBAC seed so the auth context receives fresh role permissions.
 
 ## 2) GraphQL menu queries
 - [ ] `menus` returns menu list by restaurant and includes `timeSlot`, `isActive`, `coverImage`.
@@ -64,18 +66,69 @@ Use this checklist before graduation project review. Scope focuses on MenuManage
 - [ ] `copy_menu` event is written with actor + target context.
 - [ ] `delete_menu` event is written (including force-delete case).
 - [ ] `sync_inventory_status` event is written for confirmed sync.
+- [ ] `auditLogs` rejects restaurant users without `menu.audit.read`, `log.read`, or fallback `menu.write`.
+- [ ] `auditLogs` allows roles with `menu.audit.read`, `log.read`, or fallback `menu.write`.
 
-## 9) Regression checks
+## 9) MenuManagement RBAC matrix
+
+Run these checks after `npm run seed:rbac --prefix cohan-restaurant-backend`, backend restart, and fresh login.
+
+| Role | Expected MenuManagement access |
+| --- | --- |
+| `admin` | Full access. Can perform every MenuManagement action. |
+| `manager` | Full MenuManagement access: menu CRUD, copy/delete, item CRUD, bulk price, category/menu group, sync inventory, audit history. |
+| `server` | Read menu only. Must not see or successfully call create/update/delete/copy/sync/audit actions. |
+| `host` | Read menu only. Must not see or successfully call write actions. |
+| `cashier` | Read menu only. Must not see or successfully call write actions. |
+| `supervisor` | Can read menu, update item, update price, view audit. Must not create/delete/copy menu or manage categories/groups. |
+| `chef` / `cook` | Can read menu and update item status/content allowed by UI. Must not update price, copy/delete menu, manage categories/groups, or view audit unless separately granted. |
+| `storekeeper` | Can read menu and sync inventory. Must not create/delete/copy menu, update price, or manage categories/groups. |
+| `customer` | Must not access Dashboard Manager MenuManagement route. |
+
+### RBAC UI visibility checks
+- [ ] Role without `menu.create`/`menu.write` does not see “Tạo thực đơn”.
+- [ ] Role without `menu.update`/`menu.write` does not see edit/toggle menu actions.
+- [ ] Role without `menu.delete`/`menu.write` does not see delete menu action.
+- [ ] Role without `menu.copy`/`menu.write` does not see copy menu action.
+- [ ] Role without `menu.inventory.sync`/`inventory.write`/`menu.write` does not see “Đồng bộ tồn kho”.
+- [ ] Role without `menu.audit.read`/`log.read`/`menu.write` does not see audit history action.
+- [ ] Role without `menu.item.create`/`menu.write` cannot create item.
+- [ ] Role without `menu.item.update`/`menu.write` cannot update item/status.
+- [ ] Role without `menu.item.delete`/`menu.write` cannot delete item.
+- [ ] Role without `menu.price.update`/`menu.write` cannot bulk update price.
+- [ ] Role without `menu.category.manage`/`menu.write` cannot manage Dish Category.
+- [ ] Role without `menu.group.manage`/`menu.write` cannot manage Menu Group.
+
+### RBAC backend enforcement checks
+For each restricted role, verify the GraphQL mutation returns `FORBIDDEN` or `FORBIDDEN_MENU_PERMISSION` when called directly from GraphQL client/network tools:
+
+- [ ] `ensureMenu` without `menu.create` or `menu.update`.
+- [ ] `copyMenu` without `menu.copy`.
+- [ ] `deleteMenu` without `menu.delete`.
+- [ ] `createMenuItem` without `menu.item.create`.
+- [ ] `updateMenuItem` without `menu.item.update`.
+- [ ] `deleteMenuItem` without `menu.item.delete`.
+- [ ] `bulkUpdateMenuItemPrices` without `menu.price.update`.
+- [ ] `syncMenuItemInventoryStatuses` without `menu.inventory.sync`/`inventory.write`.
+- [ ] `createCategory`, `updateCategory`, `deleteCategory` without `menu.category.manage`.
+- [ ] `createCategoryMenu`, `updateCategoryMenu`, `deleteCategoryMenu` without `menu.group.manage`.
+- [ ] `auditLogs` without `menu.audit.read`/`log.read`.
+
+## 10) Regression checks
 - [ ] No schema/resolver mismatch after all operations.
 - [ ] No unknown GraphQL field errors in client logs/network responses.
 - [ ] UI refetch/refresh occurs after mutations (no stale lists/cards).
 - [ ] No stale `imageSyncStatus` banner after successful upload/sync paths.
+- [ ] RBAC fallback `menu.write` still works for legacy roles while granular permissions are being rolled out.
 
-## 10) Suggested run order for final demo day
-1. Seed demo data (see `docs/menu-management-demo-data.md`).
-2. Backend + frontend start.
-3. Run GraphQL query checks.
-4. Run menu and menu-item CRUD checks.
-5. Run inventory sync dry-run → cancel confirm → confirm sync.
-6. Run image upload + local fallback checks.
-7. Validate AuditLog records and regression list.
+## 11) Suggested run order for final demo day
+1. Seed RBAC: `npm run seed:rbac --prefix cohan-restaurant-backend`.
+2. Seed demo data (see `docs/menu-management-demo-data.md`).
+3. Restart backend + frontend.
+4. Log out and log in again with the role being tested.
+5. Run GraphQL query checks.
+6. Run menu and menu-item CRUD checks.
+7. Run inventory sync dry-run → cancel confirm → confirm sync.
+8. Run image upload + local fallback checks.
+9. Validate AuditLog records and regression list.
+10. Validate MenuManagement RBAC matrix role by role.
