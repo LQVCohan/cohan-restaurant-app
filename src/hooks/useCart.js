@@ -5,7 +5,22 @@ const CART_STORAGE_KEY = "cohan.customerCart.v1";
 
 const getStorage = () => {
   if (typeof window === "undefined") return null;
-  return window.sessionStorage;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+export const clearPersistedCart = () => {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(CART_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 };
 
 const isHoldExpired = (item) => {
@@ -38,7 +53,7 @@ export const useCart = () => {
 
     try {
       if (!cart.length) {
-        storage.removeItem(CART_STORAGE_KEY);
+        clearPersistedCart();
         return;
       }
 

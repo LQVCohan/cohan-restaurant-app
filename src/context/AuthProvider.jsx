@@ -11,6 +11,7 @@ import {
   removeStorageValue,
   writeStorageValue,
 } from "@/lib/browserStorage";
+import { clearPersistedCart } from "@/hooks/useCart";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -328,6 +329,7 @@ export const AuthProvider = ({ children }) => {
     onError: (error) => {
       if (isAuthFailure(error)) {
         clearStoredAuth();
+        clearPersistedCart();
         setToken(null);
         setUser(null);
         setRestaurants([]);
@@ -433,6 +435,7 @@ export const AuthProvider = ({ children }) => {
     setSessionState("anonymous");
     setSessionWarning("");
     clearStoredAuth();
+    clearPersistedCart();
     navigate("/login", { replace: true });
   }, [navigate]);
 
