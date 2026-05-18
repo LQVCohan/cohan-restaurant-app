@@ -290,6 +290,17 @@ describe("performance overview helpers", () => {
     expect(resolveTrendDelta(90, undefined)).toBeNull();
   });
 
+  it("resolveTrendDelta treats empty current score values as missing", () => {
+    expect(resolveTrendDelta(null, 80)).toBeNull();
+    expect(resolveTrendDelta(undefined, 80)).toBeNull();
+    expect(resolveTrendDelta("", 80)).toBeNull();
+  });
+
+  it("resolveTrendDelta still accepts numeric zero values", () => {
+    expect(resolveTrendDelta(0, 80)).toBe(-80);
+    expect(resolveTrendDelta(80, 0)).toBe(80);
+  });
+
   it("topImproved selects highest 3 positive deltas", () => {
     const rows = [
       { trendDelta: 1 },
@@ -312,6 +323,19 @@ describe("performance overview helpers", () => {
     ];
     const result = buildPerformanceOverview(rows);
     expect(result.topDeclined.map((item) => item.trendDelta)).toEqual([-6, -4, -2]);
+  });
+
+  it("does not include missing-current rows in top improved or declined", () => {
+    const rows = [
+      { trendDelta: resolveTrendDelta(null, 80) },
+      { trendDelta: resolveTrendDelta(undefined, 75) },
+      { trendDelta: resolveTrendDelta("", 70) },
+      { trendDelta: resolveTrendDelta(88, 80) },
+      { trendDelta: resolveTrendDelta(72, 80) },
+    ];
+    const result = buildPerformanceOverview(rows);
+    expect(result.topImproved.map((item) => item.trendDelta)).toEqual([8]);
+    expect(result.topDeclined.map((item) => item.trendDelta)).toEqual([-8]);
   });
 
   it("needsAttention includes needs_attention and poor levels", () => {

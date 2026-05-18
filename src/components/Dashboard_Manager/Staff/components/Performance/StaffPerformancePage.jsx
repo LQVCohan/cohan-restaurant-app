@@ -240,6 +240,10 @@ export const formatTrendDelta = (currentScore, previousScore) => {
 };
 
 export const resolveTrendDelta = (currentScore, previousScore) => {
+  const hasCurrent = currentScore !== null && currentScore !== undefined && currentScore !== "";
+  const hasPrevious = previousScore !== null && previousScore !== undefined && previousScore !== "";
+  if (!hasCurrent || !hasPrevious) return null;
+
   const current = Number(currentScore);
   const previous = Number(previousScore);
   if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
