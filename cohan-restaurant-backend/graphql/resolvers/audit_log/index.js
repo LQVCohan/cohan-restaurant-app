@@ -2,8 +2,10 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { AuditLog } from "../../../models/index.js";
 import { requireRestaurantAccess, requireRoles } from "../../guards.js";
+import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MAX_LIMIT = 100;
+const RESTAURANT_AUDIT_PERMISSIONS = ["menu.audit.read", "log.read", "menu.write"];
 
 function isOid(value) {
   return mongoose.isValidObjectId(value);
@@ -50,6 +52,7 @@ export default {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
       if (filter?.restaurantId) {
         await requireRestaurantAccess(ctx, filter.restaurantId);
+        await requireAnyPermission(ctx, RESTAURANT_AUDIT_PERMISSIONS);
       } else {
         requireRoles(ctx, ["ADMIN"]);
       }
