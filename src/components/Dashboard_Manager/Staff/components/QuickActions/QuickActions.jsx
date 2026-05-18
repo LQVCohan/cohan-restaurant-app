@@ -36,7 +36,7 @@ const QuickActions = ({ onPageChange }) => {
       desc: "Ước tính thu nhập",
       color: "#10b981", // Emerald
       bgColor: "#ecfdf5",
-      onClick: () => alert("💰 Tính năng đang phát triển..."),
+      onClick: () => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "payroll", source: "staff-quick-actions" } })),
     },
     {
       id: "leave",

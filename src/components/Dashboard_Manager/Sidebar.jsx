@@ -94,16 +94,14 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
     {
       title: "Hệ thống",
       items: [
-        { id: "settings", roles: ["admin"], icon: "⚙️", label: "Cài đặt", page: "Cài đặt" },
-        {
+                {
           id: "print-management",
           permissions: ["print.read", "report.read"],
           icon: "🖨️",
           label: "Quản lý in ấn",
           page: "Quản lý in ấn",
         },
-        { id: "backup", roles: ["admin"], icon: "💾", label: "Sao lưu", page: "Sao lưu" },
-      ],
+              ],
     },
   ];
 

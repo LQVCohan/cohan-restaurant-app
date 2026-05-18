@@ -25,6 +25,7 @@ import {
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments } from "../services/payment/paymentSession.service.js";
+import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 
 const parseAllowedOrigins = () => {
   const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
@@ -95,7 +96,8 @@ export async function createServer() {
     try {
       const reservationId = req.params?.reservationId;
       const { provider } = req.body || {};
-      const userId = req.user?.id || req.headers["x-user-id"];
+      const authUser = await resolveAuthenticatedUserFromRequest(req);
+      const userId = authUser?.id;
       if (!userId) return reply.code(401).send({ ok: false, message: "Unauthorized" });
       const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${process.env.PORT || 4000}`;
       const proto = req.headers["x-forwarded-proto"] || "http";
@@ -128,7 +130,8 @@ export async function createServer() {
 
   app.get("/api/payments/reservations/:reservationId", async (req, reply) => {
     try {
-      const userId = req.user?.id || req.headers["x-user-id"];
+      const authUser = await resolveAuthenticatedUserFromRequest(req);
+      const userId = authUser?.id;
       if (!userId) return reply.code(401).send({ ok: false, message: "Unauthorized" });
       const list = await listReservationPayments(req.params?.reservationId, userId);
       return reply.send({ ok: true, items: list });

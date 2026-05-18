@@ -2345,11 +2345,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
       await refetchPublication?.();
       await refetchScheduleLogs?.();
-      // TODO(schedule-incident): khi backend có ScheduleIncident service/mutation,
-      // gửi snapshot issue publish tại đây với type:
-      // - PUBLISH_WITH_WARNING (nếu chỉ có warning)
-      // - PUBLISH_WITH_DANGER (nếu có danger/hard conflict)
-      // để theo dõi schedule quality.
+      // ScheduleIncident integration is intentionally deferred and documented in
+      // docs/schedule-incident-roadmap.md; publish flow keeps current EventLog behavior.
 
       setIsPublishConfirmOpen(false);
       setPublishConfirmed(false);

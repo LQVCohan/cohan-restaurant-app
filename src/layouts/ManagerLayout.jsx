@@ -38,14 +38,10 @@ const VALID_MANAGER_PAGES = new Set([
   "analytics",
   "transactions",
   "reports",
-  "settings",
   "schedules",
   "promotions",
-  "rates",
   "finance",
-  "setting",
   "payroll",
-  "backup",
   "reviews",
   "print-management",
   "restaurant-info-management",
@@ -271,7 +267,7 @@ const ManagerLayout = () => {
       case "print-management": return <PrintManagement />;
       case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
       case "rbac": return <RbacManagement />;
-      default: return <div>Content not found</div>;
+      default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
     }
   };
 
