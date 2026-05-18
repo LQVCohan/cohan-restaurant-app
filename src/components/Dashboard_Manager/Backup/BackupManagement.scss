@@ -1,0 +1,35 @@
+.backup-management {
+  display: grid;
+  gap: 16px;
+
+  &__header p { margin-top: 4px; color: #6b7280; }
+
+  &__grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  &__card,
+  &__timeline {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  button {
+    margin-top: 10px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 768px) {
+  .backup-management__grid {
+    grid-template-columns: 1fr;
+  }
+}
