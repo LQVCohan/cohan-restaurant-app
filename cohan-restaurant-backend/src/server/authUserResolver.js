@@ -1,6 +1,21 @@
 import jwt from "jsonwebtoken";
 import { User } from "../../models/index.js";
 
+function permissionCodeOf(permission) {
+  const code = permission?.code || permission?.permissionCode || permission?.slug || permission?.name;
+  return String(code || "").trim().toLowerCase();
+}
+
+function uniquePermissionCodes(permissions = []) {
+  return Array.from(
+    new Set(
+      permissions
+        .map(permissionCodeOf)
+        .filter(Boolean),
+    ),
+  );
+}
+
 export async function resolveAuthenticatedUserFromRequest(request) {
   const rawAuth = request.headers?.authorization || request.headers?.Authorization || "";
   const parts = String(rawAuth).trim().split(/\s+/);
@@ -32,13 +47,8 @@ export async function resolveAuthenticatedUserFromRequest(request) {
     const parentPermissions = Array.isArray(userDoc.role?.parentRole?.permissions)
       ? userDoc.role.parentRole.permissions
       : [];
-    const effectivePermissionCodes = [
-      ...parentPermissions,
-      ...rolePermissions,
-    ]
-      .map((permission) => permission?.code || permission?.permissionCode || permission?.slug || permission?.name)
-      .filter(Boolean)
-      .map((code) => String(code).trim().toLowerCase());
+    const effectivePermissions = [...parentPermissions, ...rolePermissions];
+    const effectivePermissionCodes = uniquePermissionCodes(effectivePermissions);
 
     return {
       id: String(userDoc._id),
@@ -54,7 +64,7 @@ export async function resolveAuthenticatedUserFromRequest(request) {
       restaurantId: userDoc.restaurantId,
       restaurantIds: userDoc.restaurantIds,
       permissions: rolePermissions,
-      effectivePermissions: [...parentPermissions, ...rolePermissions],
+      effectivePermissions,
       effectivePermissionCodes,
       point: userDoc.point,
       loyaltyPoints: userDoc.loyaltyPoints,

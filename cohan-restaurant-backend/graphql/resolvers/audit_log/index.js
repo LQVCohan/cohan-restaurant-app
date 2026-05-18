@@ -61,7 +61,6 @@ export default {
         requireRoles(ctx, ["ADMIN"]);
       }
 
-      const query = buildFilter(filter);
       const safeLimit = normalizeLimit(limit);
       const safeOffset = normalizeOffset(offset);
 
