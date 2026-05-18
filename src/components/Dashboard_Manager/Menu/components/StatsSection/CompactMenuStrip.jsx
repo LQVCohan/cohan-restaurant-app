@@ -51,24 +51,6 @@ const MENU_FIELDS = gql`
   }
 `;
 
-const SYNC_MENU_ITEM_FIELDS = gql`
-  fragment CompactMenuItemInventoryFields on MenuItem {
-    id
-    status
-    inventoryStatus
-    maxAvailable
-    stockWarnings
-    stockShortages {
-      ingredientId
-      ingredientName
-      available
-      required
-      missing
-      unit
-    }
-  }
-`;
-
 const MENUS_QUERY = gql`
   query Menus($restaurantId: ID!) {
     menus(restaurantId: $restaurantId) {
@@ -250,13 +232,13 @@ const CompactMenuStrip = ({
   const canCopyMenu = typeof onCopyMenu === "function";
   const canDeleteMenu =
     typeof onDeleteMenu === "function" ||
-    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.UPDATE_MENU);
+    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.DELETE_MENU);
   const canSyncInventory =
-    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM) &&
+    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.SYNC_INVENTORY) &&
     typeof onSyncInventory === "function";
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
-    MENU_MANAGEMENT_ACTIONS.VIEW,
+    MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT,
   );
   const currentActiveId = activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const restaurantId = menus.find((menu) => menu?.restaurantId)?.restaurantId || null;
