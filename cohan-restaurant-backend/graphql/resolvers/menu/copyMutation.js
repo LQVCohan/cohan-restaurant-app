@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Menu, MenuItem, Recipe, AuditLog } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 
@@ -78,7 +78,7 @@ export const CopyMenuMutation = {
       throw new GraphQLError("Invalid categoryMenuId");
     }
 
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.COPY_MENU);
 
     const sourceMenu = sourceMenuId
       ? await Menu.findOne({ _id: sourceMenuId, restaurantId }).lean()
