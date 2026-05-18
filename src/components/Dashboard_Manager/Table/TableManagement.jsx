@@ -360,7 +360,7 @@ const TableManagement = () => {
   const handleTableStatusChange = async (table, nextStatus) => {
     if (isPosManagedStatusTransition(table?.status, nextStatus)) {
       showNotification(
-        "Vui lòng thao tác nhận khách/thanh toán tại POS để đồng bộ order và phiên bàn.",
+        "Vui lòng thao tác nhận khách, thanh toán hoặc dọn bàn tại POS để đồng bộ order và phiên bàn.",
         "warning"
       );
       return;
