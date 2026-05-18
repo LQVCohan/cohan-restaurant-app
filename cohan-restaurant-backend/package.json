@@ -7,6 +7,7 @@
     "start": "node --es-module-specifier-resolution=node src/server/server.js",
     "dev": "nodemon --es-module-specifier-resolution=node src/server/server.js",
     "test": "vitest run",
+    "test:menu-rbac": "vitest run tests/server/auth-user-resolver.test.js tests/resolvers/menu-permission.test.js tests/resolvers/menu-audit-log-permission.test.js",
     "seed:admin": "node scripts/seed-admin.js",
     "import:restaurant-data": "node scripts/import-restaurant-data.js",
     "test:db": "node scripts/test-db.js",
