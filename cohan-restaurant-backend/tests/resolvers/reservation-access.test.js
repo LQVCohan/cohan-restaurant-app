@@ -2,6 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireRestaurantAccess = vi.fn();
 
+
+const tableStateGuardMocks = vi.hoisted(() => ({
+  ACTIVE_RESERVATION_STATUSES: ["pending_payment", "confirmed", "seated", "pending_change"],
+  hasActiveOrdersForTable: vi.fn(),
+}));
+
 const modelMocks = vi.hoisted(() => ({
   Reservation: {
     findById: vi.fn(),
@@ -24,6 +30,7 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock('../../models/index.js', () => modelMocks);
 vi.mock('../../graphql/guards.js', () => ({ requireRestaurantAccess }));
+vi.mock('../../utils/tableStateGuards.js', () => tableStateGuardMocks);
 vi.mock('mongoose', async () => {
   const actual = await vi.importActual('mongoose');
   return {
@@ -52,6 +59,7 @@ describe('Reservation access hardening', () => {
     modelMocks.EventLog.log.mockResolvedValue(true);
     modelMocks.Table.updateOne.mockResolvedValue({ matchedCount: 1 });
     modelMocks.Reservation.exists.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
   });
 
   it('reservation by id allows owner without requireRestaurantAccess', async () => {
@@ -157,6 +165,36 @@ describe('Reservation access hardening', () => {
 
     expect(requireRestaurantAccess).not.toHaveBeenCalled();
     expect(reservation.save).toHaveBeenCalled();
+  });
+
+
+  it('submitReservationPayment failed releases payment_pending table to available when no active reservation/order', async () => {
+    const reservation = {
+      _id: 'valid-rsv',
+      userId: 'user-1',
+      restaurantId: 'valid-r1',
+      tableId: 'valid-t1',
+      depositStatus: 'pending',
+      save: vi.fn(),
+    };
+    modelMocks.Reservation.findById.mockResolvedValue(reservation);
+    modelMocks.Reservation.exists.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
+    const { ReservationMutation } = await import('../../graphql/resolvers/reservation/mutation.js');
+
+    await ReservationMutation.submitReservationPayment(
+      null,
+      { input: { reservationId: 'valid-rsv', method: 'momo', paymentStatus: 'failed' } },
+      { user: { id: 'user-1', roleName: 'customer' } },
+    );
+
+    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
+      {
+        _id: 'valid-t1',
+        status: { $in: ['reserved', 'payment_pending'] },
+      },
+      { $set: { status: 'available' } },
+    );
   });
 
   it('submitReservationPayment manager denied by restaurant scope before save/payment transaction/event log', async () => {
