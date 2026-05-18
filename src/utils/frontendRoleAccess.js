@@ -179,26 +179,32 @@ export const MENU_MANAGEMENT_ACTIONS = {
   MANAGE_MENU_GROUP: "menu.manage_menu_group",
   CREATE_MENU: "menu.create_menu",
   UPDATE_MENU: "menu.update_menu",
+  DELETE_MENU: "menu.delete_menu",
   TOGGLE_MENU: "menu.toggle_menu",
   COPY_MENU: "menu.copy_menu",
+  SYNC_INVENTORY: "menu.sync_inventory",
+  VIEW_AUDIT: "menu.view_audit",
 };
 
-const MENU_WRITE_ACTIONS = new Set([
-  MENU_MANAGEMENT_ACTIONS.COPY_MENU,
-  MENU_MANAGEMENT_ACTIONS.CREATE_ITEM,
-  MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
-  MENU_MANAGEMENT_ACTIONS.DELETE_ITEM,
-  MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE,
-  MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY,
-  MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP,
-  MENU_MANAGEMENT_ACTIONS.CREATE_MENU,
-  MENU_MANAGEMENT_ACTIONS.UPDATE_MENU,
-  MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU,
-]);
+const MENU_ACTION_PERMISSION_MAP = {
+  [MENU_MANAGEMENT_ACTIONS.VIEW]: ["menu.read"],
+  [MENU_MANAGEMENT_ACTIONS.CREATE_ITEM]: ["menu.item.create", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM]: ["menu.item.update", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.DELETE_ITEM]: ["menu.item.delete", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_PRICE]: ["menu.price.update", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.MANAGE_DISH_CATEGORY]: ["menu.category.manage", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.MANAGE_MENU_GROUP]: ["menu.group.manage", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.CREATE_MENU]: ["menu.create", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.UPDATE_MENU]: ["menu.update", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.DELETE_MENU]: ["menu.delete", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU]: ["menu.update", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["menu.copy", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.SYNC_INVENTORY]: ["menu.inventory.sync", "menu.write", "inventory.write"],
+  [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "log.read"],
+};
 
 export const canAccessMenuManagementAction = (userOrRole, action) => {
-  if (!action) return false;
-  if (action === MENU_MANAGEMENT_ACTIONS.VIEW) return hasPermission(userOrRole, "menu.read");
-  if (MENU_WRITE_ACTIONS.has(action)) return hasAnyPermission(userOrRole, ["menu.write"]);
-  return false;
+  const permissions = MENU_ACTION_PERMISSION_MAP[action];
+  if (!permissions) return false;
+  return hasAnyPermission(userOrRole, permissions);
 };
