@@ -414,6 +414,21 @@
       color: #64748b;
       font-size: 0.82rem;
     }
+
+    .overview-toggle {
+      margin-top: 0.55rem;
+      border: none;
+      background: transparent;
+      padding: 0;
+      color: #4338ca;
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-decoration: underline;
+
+      &:hover:not(:disabled) {
+        color: #3730a3;
+      }
+    }
   }
 
   .performance-layout {

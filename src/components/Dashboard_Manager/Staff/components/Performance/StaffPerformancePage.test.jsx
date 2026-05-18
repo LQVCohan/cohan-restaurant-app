@@ -16,6 +16,7 @@ import {
   resolvePreviousPeriod,
   buildPreviousSnapshotMap,
   buildPerformanceOverview,
+  resolveNeedsAttentionVisibleRows,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -331,5 +332,29 @@ describe("performance overview helpers", () => {
     ];
     const result = buildPerformanceOverview(rows);
     expect(result.noPreviousDataCount).toBe(2);
+  });
+
+  it("buildPerformanceOverview keeps full needsAttention list", () => {
+    const rows = Array.from({ length: 7 }, (_, index) => ({
+      snapshot: { performanceLevel: index % 2 === 0 ? "needs_attention" : "poor" },
+      trendDelta: -1,
+    }));
+    const result = buildPerformanceOverview(rows);
+    expect(result.needsAttention).toHaveLength(7);
+  });
+});
+
+describe("resolveNeedsAttentionVisibleRows", () => {
+  it("returns first 5 items when collapsed", () => {
+    const rows = Array.from({ length: 7 }, (_, index) => ({ id: index + 1 }));
+    const result = resolveNeedsAttentionVisibleRows(rows, false, 5);
+    expect(result).toHaveLength(5);
+    expect(result.map((item) => item.id)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("returns all items when expanded", () => {
+    const rows = Array.from({ length: 7 }, (_, index) => ({ id: index + 1 }));
+    const result = resolveNeedsAttentionVisibleRows(rows, true, 5);
+    expect(result).toHaveLength(7);
   });
 });

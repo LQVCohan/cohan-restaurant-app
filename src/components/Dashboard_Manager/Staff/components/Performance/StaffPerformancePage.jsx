@@ -267,6 +267,13 @@ export const buildPerformanceOverview = (rows = []) => {
   };
 };
 
+export const resolveNeedsAttentionVisibleRows = (rows = [], showAll = false, limit = 5) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeLimit = Number.isFinite(Number(limit)) ? Math.max(0, Number(limit)) : 5;
+  if (showAll) return safeRows;
+  return safeRows.slice(0, safeLimit);
+};
+
 export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
   [
     ...(adjustments || []).map((item) => ({
@@ -768,6 +775,7 @@ const StaffPerformancePage = ({
   const [periodEnd, setPeriodEnd] = useState(defaultRange.periodEnd);
   const [localSearch, setLocalSearch] = useState(searchQuery || "");
   const [selectedLevel, setSelectedLevel] = useState("all");
+  const [showAllNeedsAttention, setShowAllNeedsAttention] = useState(false);
   const [selectedSnapshot, setSelectedSnapshot] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [reviewEmployee, setReviewEmployee] = useState(null);
@@ -878,6 +886,14 @@ const StaffPerformancePage = ({
   }, [rows]);
 
   const overview = useMemo(() => buildPerformanceOverview(rows), [rows]);
+  const needsAttentionVisibleRows = useMemo(
+    () => resolveNeedsAttentionVisibleRows(overview.needsAttention, showAllNeedsAttention, 5),
+    [overview.needsAttention, showAllNeedsAttention],
+  );
+  const remainingNeedsAttentionCount = Math.max(
+    0,
+    overview.needsAttention.length - needsAttentionVisibleRows.length,
+  );
 
   const renderOverviewItems = (list, emptyText) => {
     if (!list.length) {
@@ -1164,7 +1180,18 @@ productivity * 25%
         </article>
         <article className="overview-card">
           <h3>Cần chú ý</h3>
-          {renderOverviewItems(overview.needsAttention, "Không có nhân viên cần chú ý")}
+          {renderOverviewItems(needsAttentionVisibleRows, "Không có nhân viên cần chú ý")}
+          {overview.needsAttention.length > 5 ? (
+            <button
+              type="button"
+              className="overview-toggle"
+              onClick={() => setShowAllNeedsAttention((prev) => !prev)}
+            >
+              {showAllNeedsAttention
+                ? "Thu gọn"
+                : `Xem thêm ${remainingNeedsAttentionCount} nhân viên`}
+            </button>
+          ) : null}
         </article>
       </section>
 
