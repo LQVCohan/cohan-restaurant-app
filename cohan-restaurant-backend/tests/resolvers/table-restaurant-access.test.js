@@ -122,6 +122,55 @@ describe("table restaurant access guards", () => {
   });
   it("moveTable denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.moveTable(null,{input:{id:"valid-t1",floorId:"valid-f2"}},{user:{id:"u1",roleName:"manager"}})).rejects.toThrow(); expect(floorMocks.findById).not.toHaveBeenCalled(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
   it("setTableStatus denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.setTableStatus(null,{input:{id:"valid-t1",status:"OPEN"}},{})).rejects.toThrow(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
+  it("setTableStatus blocked when active table_session exists and target is available", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    orderMocks.findOne.mockReturnValueOnce(mockFindOneChain({ _id: "session-1" }));
+    await expect(
+      m.setTableStatus(null, { input: { id: "valid-t1", status: "available" } }, {})
+    ).rejects.toMatchObject({
+      message: "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
+      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+    });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(1);
+    expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+  it("setTableStatus blocked when active legacy/order_batch exists and target is available", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    orderMocks.findOne
+      .mockReturnValueOnce(mockFindOneChain(null))
+      .mockReturnValueOnce(mockFindOneChain({ _id: "legacy-1" }));
+    await expect(
+      m.setTableStatus(null, { input: { id: "valid-t1", status: "available" } }, {})
+    ).rejects.toMatchObject({
+      message: "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
+      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+    });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
+    expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+  it("setTableStatus blocked when active table_session exists and target is cleaning", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    orderMocks.findOne.mockReturnValueOnce(mockFindOneChain({ _id: "session-1" }));
+    await expect(
+      m.setTableStatus(null, { input: { id: "valid-t1", status: "cleaning" } }, {})
+    ).rejects.toMatchObject({
+      message: "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
+      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+    });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(1);
+    expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+  it("setTableStatus available succeeds when no active session/order exists", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    orderMocks.findOne
+      .mockReturnValueOnce(mockFindOneChain(null))
+      .mockReturnValueOnce(mockFindOneChain(null));
+    await expect(
+      m.setTableStatus(null, { input: { id: "valid-t1", status: "available" } }, {})
+    ).resolves.toMatchObject({ _id: "valid-t1" });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
+    expect(tableMocks.findByIdAndUpdate).toHaveBeenCalled();
+  });
   it("acquire lock denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; tableMocks.findById.mockReturnValueOnce(leanWrap({ _id:"valid-t1", restaurantId:"valid-r1" })); const io={to:vi.fn(()=>({emit:vi.fn()}))}; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.acquireTableViewLock(null,{input:{tableId:"valid-t1",userId:"valid-u1"}},{io})).rejects.toThrow(); expect(tableMocks.findOneAndUpdate).not.toHaveBeenCalled(); expect(io.to).not.toHaveBeenCalled(); });
   it("release lock denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; tableMocks.findById.mockReturnValueOnce(selectLeanWrap({ restaurantId:"valid-r1" })); const io={to:vi.fn(()=>({emit:vi.fn()}))}; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.releaseTableViewLock(null,{input:{tableId:"valid-t1",userId:"valid-u1"}},{io})).rejects.toThrow(); expect(tableMocks.findOneAndUpdate).not.toHaveBeenCalled(); expect(io.to).not.toHaveBeenCalled(); });
 

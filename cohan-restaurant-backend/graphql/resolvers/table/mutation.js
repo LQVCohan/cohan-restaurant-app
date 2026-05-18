@@ -92,6 +92,13 @@ const hasActiveOrdersForTable = async ({ restaurantId, tableId, tableCode }) => 
   return Boolean(activeLegacyOrBatchOrder?._id);
 };
 
+const TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS = new Set([
+  "available",
+  "cleaning",
+  "offline",
+  "maintenance",
+]);
+
 export default {
   createTable: async (_p, { input }, ctx) => {
     const { restaurantId, floorId } = input;
@@ -389,9 +396,27 @@ export default {
   setTableStatus: async (_p, { input }, ctx) => {
     const { id, status } = input;
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
-    const existing = await Table.findById(id).select({ restaurantId: 1 }).lean();
+    const existing = await Table.findById(id)
+      .select({ restaurantId: 1, code: 1 })
+      .lean();
     if (!existing) throw new GraphQLError("Table not found");
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.TABLE_WRITE);
+    const normalizedStatus = String(status || "").trim().toLowerCase();
+    if (TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS.has(normalizedStatus)) {
+      const activeOrderExists = await hasActiveOrdersForTable({
+        restaurantId: existing.restaurantId,
+        tableId: existing._id || id,
+        tableCode: existing.code,
+      });
+      if (activeOrderExists) {
+        throw new GraphQLError(
+          "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
+          {
+            extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+          }
+        );
+      }
+    }
     const doc = await Table.findByIdAndUpdate(
       id,
       { $set: { status } },

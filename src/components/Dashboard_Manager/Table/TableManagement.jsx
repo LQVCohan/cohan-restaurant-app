@@ -345,6 +345,29 @@ const TableManagement = () => {
   };
 
   // --- Handlers ---
+  const POS_MANAGED_STATUS_TRANSITIONS = new Set([
+    "available->occupied",
+    "reserved->occupied",
+    "occupied->payment_pending",
+    "payment_pending->cleaning",
+    "occupied->available",
+    "payment_pending->available",
+  ]);
+
+  const isPosManagedStatusTransition = (currentStatus, nextStatus) =>
+    POS_MANAGED_STATUS_TRANSITIONS.has(`${currentStatus}->${nextStatus}`);
+
+  const handleTableStatusChange = async (table, nextStatus) => {
+    if (isPosManagedStatusTransition(table?.status, nextStatus)) {
+      showNotification(
+        "Vui lòng thao tác nhận khách, thanh toán hoặc dọn bàn tại POS để đồng bộ order và phiên bàn.",
+        "warning"
+      );
+      return;
+    }
+    return changeTableStatus(table.id, nextStatus);
+  };
+
   const changeTableStatus = async (tableId, newStatus) => {
     try {
       await setTableStatus({ id: String(tableId), status: newStatus });
@@ -658,7 +681,7 @@ const TableManagement = () => {
                       {t.status === "available" && (
                         <button
                           className="btn-mini success"
-                          onClick={() => changeTableStatus(t.id, "occupied")}
+                          onClick={() => handleTableStatusChange(t, "occupied")}
                         >
                           Nhận khách
                         </button>
@@ -667,7 +690,7 @@ const TableManagement = () => {
                         <button
                           className="btn-mini warning"
                           onClick={() =>
-                            changeTableStatus(t.id, "payment_pending")
+                            handleTableStatusChange(t, "payment_pending")
                           }
                         >
                           T.Toán
@@ -676,7 +699,7 @@ const TableManagement = () => {
                       {t.status === "payment_pending" && (
                         <button
                           className="btn-mini primary"
-                          onClick={() => changeTableStatus(t.id, "cleaning")}
+                          onClick={() => handleTableStatusChange(t, "cleaning")}
                         >
                           Dọn
                         </button>
@@ -684,7 +707,7 @@ const TableManagement = () => {
                       {t.status === "cleaning" && (
                         <button
                           className="btn-mini secondary"
-                          onClick={() => changeTableStatus(t.id, "available")}
+                          onClick={() => handleTableStatusChange(t, "available")}
                         >
                           Xong
                         </button>
@@ -692,7 +715,7 @@ const TableManagement = () => {
                       {t.status === "reserved" && (
                         <button
                           className="btn-mini success"
-                          onClick={() => changeTableStatus(t.id, "occupied")}
+                          onClick={() => handleTableStatusChange(t, "occupied")}
                         >
                           Nhận khách
                         </button>
