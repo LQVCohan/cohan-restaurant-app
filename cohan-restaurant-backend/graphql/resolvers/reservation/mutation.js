@@ -180,6 +180,7 @@ async function ensureNoActiveViewLock(tableId, requesterUserId, session = null) 
 async function updateTableStatusByReservation(tableId, restaurantId) {
   const [hasActiveReservation, hasActiveOrder] = await Promise.all([
     Reservation.exists({
+      restaurantId,
       tableId,
       status: { $in: ACTIVE_RESERVATION_STATUSES },
     }),
