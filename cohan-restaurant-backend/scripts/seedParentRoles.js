@@ -6,12 +6,29 @@ import { ParentRole, Permission } from "../models/index.js";
 dotenv.config();
 await mongoose.connect(process.env.MONGO_URI, { dbName: process.env.MONGO_DB });
 
+const MENU_MANAGEMENT_PERMISSIONS = [
+  "menu.read",
+  "menu.write",
+  "menu.create",
+  "menu.update",
+  "menu.delete",
+  "menu.copy",
+  "menu.item.create",
+  "menu.item.update",
+  "menu.item.delete",
+  "menu.price.update",
+  "menu.category.manage",
+  "menu.group.manage",
+  "menu.inventory.sync",
+  "menu.audit.read",
+];
+
 const parentRoleMatrix = {
   admin: { name: "Admin", permissions: ["*"] },
   manager: {
     name: "Manager",
     permissions: [
-      "restaurant.read", "restaurant.write", "menu.read", "menu.write",
+      "restaurant.read", "restaurant.write", ...MENU_MANAGEMENT_PERMISSIONS,
       "order.read", "order.create", "order.update", "order.cancel",
       "payment.read", "payment.write", "staff.read", "staff.write",
       "shift.read", "shift.manage", "table.read", "table.write",
@@ -19,7 +36,7 @@ const parentRoleMatrix = {
       "inventory.read", "inventory.write", "stock.read", "stock.write",
       "reservation.read", "reservation.update", "reservation.cancel",
       "promotion.read", "promotion.write", "coupon.read", "coupon.write",
-      "role.read", "permission.read",
+      "role.read", "permission.read", "log.read",
     ],
   },
   hr: { name: "HR", permissions: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"] },
