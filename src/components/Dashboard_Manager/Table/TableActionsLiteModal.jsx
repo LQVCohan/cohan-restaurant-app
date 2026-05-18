@@ -24,6 +24,54 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   return "";
 };
 
+
+
+const DEFAULT_TABLE_POSITION = { x: 80, y: 80 };
+const TABLE_POSITION_STEP = 40;
+const TABLE_POSITION_MAX_ATTEMPTS = 30;
+
+const getTablePosition = (targetTable) =>
+  targetTable?.position || {
+    x: targetTable?.posX,
+    y: targetTable?.posY,
+  };
+
+const isValidPosition = (position) =>
+  position &&
+  Number.isFinite(Number(position.x)) &&
+  Number.isFinite(Number(position.y));
+
+const getTableFloorId = (targetTable) =>
+  targetTable?.floorId?.id ||
+  targetTable?.floorId?._id ||
+  targetTable?.floorId ||
+  targetTable?.floor?.id ||
+  targetTable?.floor?._id ||
+  null;
+
+const getAvailablePositionForFloor = (allTables, targetFloorId) => {
+  const occupiedPositions = new Set(
+    (allTables || [])
+      .filter((item) => String(getTableFloorId(item)) === String(targetFloorId))
+      .map(getTablePosition)
+      .filter(isValidPosition)
+      .map((position) => `${Math.round(Number(position.x))}:${Math.round(Number(position.y))}`)
+  );
+
+  for (let index = 0; index < TABLE_POSITION_MAX_ATTEMPTS; index += 1) {
+    const candidate = {
+      x: DEFAULT_TABLE_POSITION.x + index * TABLE_POSITION_STEP,
+      y: DEFAULT_TABLE_POSITION.y + index * TABLE_POSITION_STEP,
+    };
+    const key = `${Math.round(candidate.x)}:${Math.round(candidate.y)}`;
+    if (!occupiedPositions.has(key)) {
+      return candidate;
+    }
+  }
+
+  return DEFAULT_TABLE_POSITION;
+};
+
 export default function TableActionsLiteModal({
   open,
   table,
@@ -33,6 +81,7 @@ export default function TableActionsLiteModal({
 
   // floors: Array<{id, level, name?}>
   floors = [],
+  tables = [],
 
   // actions from parent (TableManagement)
   actions = {
@@ -453,9 +502,18 @@ export default function TableActionsLiteModal({
     if (!table?.id || moveLevel == null) return;
     const floorId = actions.getIdFromLevel?.(moveLevel);
     if (!floorId) return alert("Không tìm thấy tầng đích.");
+
+    const currentFloorId = getTableFloorId(table);
+    const isChangingFloor = String(currentFloorId) !== String(floorId);
+    const payload = { id: table.id, floorId };
+
+    if (isChangingFloor) {
+      payload.position = getAvailablePositionForFloor(tables, floorId);
+    }
+
     setBusyKey("move", true);
     try {
-      await actions.moveTable({ id: table.id, floorId });
+      await actions.moveTable(payload);
       await onUpdated?.();
     } catch (e) {
       console.error(e);
