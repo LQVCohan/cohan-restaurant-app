@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Menu, MenuItem, Recipe, AuditLog } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 function getActorId(ctx) {
   return ctx?.user?.id || ctx?.user?._id || null;
@@ -14,7 +14,7 @@ export const DeleteMenuMutation = {
     const existingMenu = await Menu.findById(id).lean();
     if (!existingMenu) return true;
 
-    await requireRestaurantAccess(ctx, existingMenu.restaurantId);
+    await requireMenuPermission(ctx, existingMenu.restaurantId, MENU_PERMISSION.DELETE_MENU);
 
     const itemCount = await MenuItem.countDocuments({
       restaurantId: existingMenu.restaurantId,
