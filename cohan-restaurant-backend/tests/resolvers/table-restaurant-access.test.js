@@ -6,6 +6,7 @@ const tableMocks = vi.hoisted(() => ({
   updateOne: vi.fn(), bulkWrite: vi.fn(), findOneAndUpdate: vi.fn(),
 }));
 const floorMocks = vi.hoisted(() => ({ findById: vi.fn() }));
+const orderMocks = vi.hoisted(() => ({ findOne: vi.fn() }));
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
 const eventMocks = vi.hoisted(() => ({ logEvent: vi.fn() }));
 const mongooseMocks = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const mongooseMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/table.model.js", () => ({ default: tableMocks }));
 vi.mock("../../models/floor.model.js", () => ({ default: floorMocks }));
+vi.mock("../../models/order.model.js", () => ({ default: orderMocks }));
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../src/services/eventLog.service.js", () => eventMocks);
 vi.mock("mongoose", () => ({ default: mongooseMocks }));
@@ -43,6 +45,7 @@ describe("table restaurant access guards", () => {
     tableMocks.bulkWrite.mockResolvedValue({ upsertedCount: 1, modifiedCount: 1 });
     tableMocks.findOneAndUpdate.mockReturnValue(leanWrap({ _id: "valid-t1", restaurantId: "valid-r1" }));
     floorMocks.findById.mockReturnValue(selectLeanWrap({ restaurantId: "valid-r1", level: 1 }));
+    orderMocks.findOne.mockReturnValue(leanWrap(null));
   });
 
   it("tables denied blocks cleanup and find", async () => {
@@ -66,6 +69,50 @@ describe("table restaurant access guards", () => {
 
   it("updateTable denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.updateTable(null,{input:{id:"valid-t1",code:"B"}},{})).rejects.toThrow(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
   it("deleteTable denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; tableMocks.findById.mockReturnValueOnce(leanWrap({ _id:"valid-t1", restaurantId:"valid-r1" })); guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.deleteTable(null,{id:"valid-t1"},{})).rejects.toThrow(); expect(tableMocks.deleteOne).not.toHaveBeenCalled(); expect(eventMocks.logEvent).not.toHaveBeenCalled(); });
+  it("deleteTable blocked when active table_session exists", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    tableMocks.findById.mockReturnValueOnce(
+      leanWrap({ _id: "valid-t1", restaurantId: "valid-r1", code: "A1" })
+    );
+    orderMocks.findOne
+      .mockReturnValueOnce(leanWrap({ _id: "session-1" }))
+      .mockReturnValueOnce(leanWrap(null));
+
+    await expect(m.deleteTable(null, { id: "valid-t1" }, {})).rejects.toMatchObject({
+      message: "Không thể xóa bàn đang có phiên hoặc order hoạt động.",
+      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+    });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
+    expect(tableMocks.deleteOne).not.toHaveBeenCalled();
+  });
+  it("deleteTable blocked when active legacy/order_batch exists", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    tableMocks.findById.mockReturnValueOnce(
+      leanWrap({ _id: "valid-t1", restaurantId: "valid-r1", code: "A1" })
+    );
+    orderMocks.findOne
+      .mockReturnValueOnce(leanWrap(null))
+      .mockReturnValueOnce(leanWrap({ _id: "legacy-1" }));
+
+    await expect(m.deleteTable(null, { id: "valid-t1" }, {})).rejects.toMatchObject({
+      message: "Không thể xóa bàn đang có phiên hoặc order hoạt động.",
+      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+    });
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
+    expect(tableMocks.deleteOne).not.toHaveBeenCalled();
+  });
+  it("deleteTable succeeds when no active session/order", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    tableMocks.findById.mockReturnValueOnce(
+      leanWrap({ _id: "valid-t1", restaurantId: "valid-r1", floorId: "valid-f1", code: "A1", name: "A1", status: "available" })
+    );
+    orderMocks.findOne.mockReturnValueOnce(leanWrap(null)).mockReturnValueOnce(leanWrap(null));
+    tableMocks.deleteOne.mockResolvedValueOnce({ deletedCount: 1 });
+
+    await expect(m.deleteTable(null, { id: "valid-t1" }, {})).resolves.toBe(true);
+    expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
+    expect(tableMocks.deleteOne).toHaveBeenCalledWith({ _id: "valid-t1" });
+  });
   it("moveTable denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.moveTable(null,{input:{id:"valid-t1",floorId:"valid-f2"}},{user:{id:"u1",roleName:"manager"}})).rejects.toThrow(); expect(floorMocks.findById).not.toHaveBeenCalled(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
   it("setTableStatus denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.setTableStatus(null,{input:{id:"valid-t1",status:"OPEN"}},{})).rejects.toThrow(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
   it("acquire lock denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; tableMocks.findById.mockReturnValueOnce(leanWrap({ _id:"valid-t1", restaurantId:"valid-r1" })); const io={to:vi.fn(()=>({emit:vi.fn()}))}; guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.acquireTableViewLock(null,{input:{tableId:"valid-t1",userId:"valid-u1"}},{io})).rejects.toThrow(); expect(tableMocks.findOneAndUpdate).not.toHaveBeenCalled(); expect(io.to).not.toHaveBeenCalled(); });
