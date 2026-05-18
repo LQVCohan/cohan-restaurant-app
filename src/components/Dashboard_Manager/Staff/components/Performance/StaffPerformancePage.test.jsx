@@ -19,6 +19,7 @@ import {
   resolveNeedsAttentionVisibleRows,
   escapeCsvValue,
   buildPerformanceOverviewCsvRows,
+  buildPerformanceOverviewCsvBlobContent,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -394,6 +395,17 @@ describe("csv helpers", () => {
     expect(escapeCsvValue('A "B"')).toBe('"A ""B"""');
   });
 
+  it("escapeCsvValue guards formula-like values", () => {
+    expect(escapeCsvValue("=SUM(A1:A2)")).toBe("'=SUM(A1:A2)");
+    expect(escapeCsvValue("+test")).toBe("'+test");
+    expect(escapeCsvValue("-test")).toBe("'-test");
+    expect(escapeCsvValue("@cmd")).toBe("'@cmd");
+  });
+
+  it("escapeCsvValue does not prefix number types", () => {
+    expect(escapeCsvValue(-5)).toBe("-5");
+  });
+
   it("buildPerformanceOverviewCsvRows handles missing snapshot and previousSnapshot", () => {
     const rows = [
       {
@@ -411,5 +423,10 @@ describe("csv helpers", () => {
     expect(result[0][5]).toBe("--");
     expect(result[0][7]).toBe("Không");
     expect(result[0][8]).toBe("--");
+  });
+
+  it("buildPerformanceOverviewCsvBlobContent prepends UTF-8 BOM", () => {
+    const csv = buildPerformanceOverviewCsvBlobContent([]);
+    expect(csv.startsWith("\uFEFF")).toBe(true);
   });
 });
