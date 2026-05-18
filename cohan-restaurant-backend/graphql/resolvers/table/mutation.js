@@ -2,15 +2,13 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import Floor from "../../../models/floor.model.js";
 import Table from "../../../models/table.model.js";
-import Order from "../../../models/order.model.js";
 import { logEvent } from "../../../src/services/eventLog.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
-  INACTIVE_ORDER_STATUSES,
-  activeTableSessionLookupFilter,
-  withOrderBatchOrLegacyFilter,
-} from "../../../utils/orderLifecycle.js";
+  hasActiveOrdersForTable,
+  hasActiveReservationsForTable,
+} from "../../../utils/tableStateGuards.js";
 const ensureFloorLevel = async (floorId) => {
   const f = await Floor.findById(floorId).select({ level: 1 }).lean();
   if (!f) throw new GraphQLError("Floor not found");
@@ -66,30 +64,6 @@ const mapDuplicateMongoError = (error, fallbackCode) => {
     throw duplicateTableError(humanizeTableCode(fallbackCode));
   }
   throw error;
-};
-
-const hasActiveOrdersForTable = async ({ restaurantId, tableId, tableCode }) => {
-  const activeSession = await Order.findOne(
-    activeTableSessionLookupFilter({ restaurantId, tableId, tableCode })
-  )
-    .select({ _id: 1 })
-    .lean();
-
-  if (activeSession?._id) {
-    return true;
-  }
-
-  const activeLegacyOrBatchOrder = await Order.findOne(
-    withOrderBatchOrLegacyFilter({
-      restaurantId,
-      tableId,
-      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-    })
-  )
-    .select({ _id: 1 })
-    .lean();
-
-  return Boolean(activeLegacyOrBatchOrder?._id);
 };
 
 const TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS = new Set([
@@ -327,6 +301,16 @@ export default {
       });
     }
 
+    const activeReservationExists = await hasActiveReservationsForTable({
+      restaurantId: before.restaurantId,
+      tableId: before._id,
+    });
+    if (activeReservationExists) {
+      throw new GraphQLError("Không thể xóa bàn đang có đặt chỗ hoạt động.", {
+        extensions: { code: "TABLE_HAS_ACTIVE_RESERVATION" },
+      });
+    }
+
     const res = await Table.deleteOne({ _id: id });
 
     // Ghi log nếu xóa thành công
@@ -403,9 +387,10 @@ export default {
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.TABLE_WRITE);
     const normalizedStatus = String(status || "").trim().toLowerCase();
     if (TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS.has(normalizedStatus)) {
+      const tableId = existing._id || id;
       const activeOrderExists = await hasActiveOrdersForTable({
         restaurantId: existing.restaurantId,
-        tableId: existing._id || id,
+        tableId,
         tableCode: existing.code,
       });
       if (activeOrderExists) {
@@ -413,6 +398,19 @@ export default {
           "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
           {
             extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+          }
+        );
+      }
+
+      const activeReservationExists = await hasActiveReservationsForTable({
+        restaurantId: existing.restaurantId,
+        tableId,
+      });
+      if (activeReservationExists) {
+        throw new GraphQLError(
+          "Không thể chuyển trạng thái bàn khi còn đặt chỗ hoạt động.",
+          {
+            extensions: { code: "TABLE_HAS_ACTIVE_RESERVATION" },
           }
         );
       }
