@@ -197,7 +197,7 @@ async function updateTableStatusByReservation(tableId, restaurantId) {
   }
 
   await Table.updateOne(
-    { _id: tableId, status: "reserved" },
+    { _id: tableId, status: { $in: ["reserved", "payment_pending"] } },
     { $set: { status: "available" } }
   );
 }
