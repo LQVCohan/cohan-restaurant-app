@@ -649,9 +649,25 @@ const OrderSummaryModal = ({
             onContinueBrowsing={onClose}
             onTrackOrder={() => {
               if (!isAuthenticated) return;
-              const orderIds = receipt?.orderIds || [];
-              if (orderIds.length === 1) {
-                navigate(`/track-order/${orderIds[0]}`);
+              const orders = receipt?.orders || [];
+              if (orders.length === 1) {
+                const firstOrder = orders[0];
+                if (firstOrder?.id && firstOrder?.restaurantId) {
+                  const params = new URLSearchParams();
+                  params.set(
+                    "restaurantId",
+                    encodeURIComponent(firstOrder.restaurantId),
+                  );
+                  if (firstOrder?.orderCode) {
+                    params.set(
+                      "orderCode",
+                      encodeURIComponent(firstOrder.orderCode),
+                    );
+                  }
+                  navigate(`/track-order/${firstOrder.id}?${params.toString()}`);
+                  return;
+                }
+                navigate("/orders");
                 return;
               }
               navigate("/orders");
@@ -1526,9 +1542,17 @@ const SuccessScreen = ({
 }) => {
   const orderCodes = receipt?.orderCodes || [];
   const displayCode = receipt?.checkoutCode || orderCodes[0] || "";
+  const firstOrder = receipt?.orders?.[0];
   const orderCount = receipt?.orders?.length || 0;
   const hasMultipleOrders = orderCount > 1;
-  const canTrackOrder = isAuthenticated && orderCount > 0;
+  const canTrackSingleOrder = Boolean(
+    isAuthenticated &&
+      orderCount === 1 &&
+      firstOrder?.id &&
+      firstOrder?.restaurantId,
+  );
+  const canViewOrders = Boolean(isAuthenticated && orderCount > 1);
+  const canTrackOrder = canTrackSingleOrder || canViewOrders;
 
   return (
     <div className="section text-center">
