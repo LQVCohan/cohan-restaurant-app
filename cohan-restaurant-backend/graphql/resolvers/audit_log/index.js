@@ -50,14 +50,15 @@ function buildFilter(filter = {}) {
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
-      if (filter?.restaurantId) {
-        await requireRestaurantAccess(ctx, filter.restaurantId);
+      const query = buildFilter(filter);
+
+      if (query.restaurantId) {
+        await requireRestaurantAccess(ctx, query.restaurantId);
         await requireAnyPermission(ctx, RESTAURANT_AUDIT_PERMISSIONS);
       } else {
         requireRoles(ctx, ["ADMIN"]);
       }
 
-      const query = buildFilter(filter);
       const safeLimit = normalizeLimit(limit);
       const safeOffset = normalizeOffset(offset);
 
