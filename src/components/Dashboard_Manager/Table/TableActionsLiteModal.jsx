@@ -25,7 +25,11 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
 };
 
 
-const resolveTableActionError = (error, fallbackMessage = "Không thể thực hiện thao tác với bàn. Vui lòng thử lại.") => {
+const resolveTableActionError = (
+  error,
+  fallbackMessage = "Không thể thực hiện thao tác với bàn. Vui lòng thử lại.",
+  fallbackDuplicateCode = ""
+) => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
   const firstGraphQLError = gqlErrors[0] || null;
   const code =
@@ -37,7 +41,7 @@ const resolveTableActionError = (error, fallbackMessage = "Không thể thực h
     return "Không thể thực hiện thao tác vì bàn đang có phiên hoặc order hoạt động.";
   }
 
-  const duplicateMessage = resolveTableDuplicateMessage(error);
+  const duplicateMessage = resolveTableDuplicateMessage(error, fallbackDuplicateCode);
   if (duplicateMessage) return duplicateMessage;
 
   const message = firstGraphQLError?.message || error?.message;
@@ -422,7 +426,10 @@ export default function TableActionsLiteModal({
         );
       }
     } catch (error) {
-      showNotification(resolveTableActionError(error, "Cập nhật thông tin bàn thất bại."), "error");
+      showNotification(
+        resolveTableActionError(error, "Cập nhật thông tin bàn thất bại.", code?.trim()),
+        "error"
+      );
     } finally {
       setBusyKey("save", false);
     }
