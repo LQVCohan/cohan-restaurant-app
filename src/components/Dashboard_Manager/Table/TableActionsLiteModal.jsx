@@ -50,6 +50,23 @@ const resolveTableActionError = (
   return fallbackMessage;
 };
 
+const getUniqueDisplayLabels = (values = []) => {
+  const seen = new Set();
+
+  return (Array.isArray(values) ? values : [values])
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+const joinUniqueLabels = (values = [], separator = " · ") =>
+  getUniqueDisplayLabels(values).join(separator);
+
 const DEFAULT_TABLE_POSITION = { x: 80, y: 80 };
 const TABLE_POSITION_STEP = 40;
 const TABLE_POSITION_MAX_ATTEMPTS = 30;
@@ -190,7 +207,7 @@ export default function TableActionsLiteModal({
       code: table?.code || "",
       capacity: Number(table?.capacity || 0),
       type: table?.type || "standard",
-      tags: Array.isArray(table?.tags) ? table.tags.join(", ") : "",
+      tags: joinUniqueLabels(table?.tags || [], ", "),
       status: table?.status || "available",
       depositAmount: table?.deposit ?? "",
       selectedPromotions: Array.isArray(table?.promotionIds) ? table.promotionIds : [],
@@ -298,7 +315,7 @@ export default function TableActionsLiteModal({
     setCode(table?.code || "");
     setCapacity(Number(table?.capacity || 0));
     setType(table?.type || "standard");
-    setTags(Array.isArray(table?.tags) ? table.tags.join(", ") : "");
+    setTags(joinUniqueLabels(table?.tags || [], ", "));
     setStatusLocal(table?.status || "available");
     const storedImage = loadTableVrImage(table?.id);
     const fallbackVrUrl =
@@ -369,13 +386,14 @@ export default function TableActionsLiteModal({
   const hasStoredImage = !!loadTableVrImage(table?.id);
   const isVrSaving = !!busy.save || vrUploading;
   const hasVrConfigured = Boolean(vrUrl?.trim() || hasStoredImage);
-  const vrContextLabel = [
-    `Bàn ${code || table?.code || "--"}`,
-    zoneLabel?.trim() ? `Khu vực ${zoneLabel.trim()}` : null,
-    table?.floorLevel != null ? `Tầng ${table.floorLevel}` : null,
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  const vrContextLabel = joinUniqueLabels(
+    [
+      `Bàn ${code || table?.code || "--"}`,
+      zoneLabel?.trim() ? `Khu vực ${zoneLabel.trim()}` : null,
+      table?.floorLevel != null ? `Tầng ${table.floorLevel}` : null,
+    ],
+    " • "
+  );
 
   // ================= Actions =================
   const handleSaveBasics = async () => {
