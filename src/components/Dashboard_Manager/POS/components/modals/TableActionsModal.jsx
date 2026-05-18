@@ -1428,7 +1428,7 @@ function TableActionsModalCore({
                     </select>
                   </>
                 )}
-              <div style={{ gridColumn: "1/-1" }}>
+              <div className={s.spanFull}>
                 <textarea
                   className={`${s.input} ${s.textarea}`}
                   value={cust.note}
@@ -1454,15 +1454,13 @@ function TableActionsModalCore({
             <div className={s.label}>Đặt bàn / Reservation</div>
             {activeReservation ? (
               <div className={s.reservationInfo}>
-                <div>Mã: <b>{activeReservation.orderCode || activeReservation.id}</b></div>
-                <div>Khách: {activeReservation.customerName || "-"}</div>
-                <div>SĐT: {activeReservation.customerPhone || "-"}</div>
-                <div>Số khách: {activeReservation.partySize || "-"}</div>
-                <div>Giờ đặt: {activeReservation.timeTo ? new Date(activeReservation.timeTo).toLocaleString("vi-VN") : "-"}</div>
-                <div>Trạng thái: {activeReservation.status || "-"}</div>
-                <div>Yêu cầu đổi: {activeReservation.changeRequestType || "-"} / {activeReservation.changeRequestStatus || "-"}</div>
-                <div>Giờ yêu cầu mới: {activeReservation.requestedTimeTo ? new Date(activeReservation.requestedTimeTo).toLocaleString("vi-VN") : "-"}</div>
-                <div>Bàn yêu cầu mới: {activeReservation.requestedTableId || "-"}</div>
+                <div><span>Mã</span><b>{activeReservation.orderCode || activeReservation.id}</b></div>
+                <div><span>Khách</span>{activeReservation.customerName || "-"}</div>
+                <div><span>SĐT</span>{activeReservation.customerPhone || "-"}</div>
+                <div><span>Số khách</span>{activeReservation.partySize || "-"}</div>
+                <div><span>Giờ đặt</span>{activeReservation.timeTo ? new Date(activeReservation.timeTo).toLocaleString("vi-VN") : "-"}</div>
+                <div><span>Trạng thái</span>{activeReservation.status || "-"}</div>
+                <div><span>Yêu cầu đổi</span>{activeReservation.changeRequestType || "-"} / {activeReservation.changeRequestStatus || "-"}</div>
               </div>
             ) : (
               <div className={s.hint}>Chưa có đặt bàn đang hoạt động cho bàn này.</div>
@@ -1477,9 +1475,9 @@ function TableActionsModalCore({
                   setActiveReservation(res.data || activeReservation);
                   const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
                   if (latest?.success) setActiveReservation(latest.data || null);
-                  showNotification?.("Check-in reservation thành công.", "success");
+                  showNotification?.("Nhận bàn thành công.", "success");
                   onUpdated?.();
-                }}>Check-in khách đặt bàn</button>
+                }}>Nhận bàn</button>
               )}
               {(activeReservation?.status === "pending_change" || activeReservation?.changeRequestStatus === "requested") && (
                 <>

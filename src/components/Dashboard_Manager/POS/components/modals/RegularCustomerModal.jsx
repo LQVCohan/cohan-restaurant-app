@@ -746,7 +746,7 @@ export default function RegularCustomerModal({
                 <div className={cls.empty}>Đang tìm khách...</div>
               )}
               {filteredCustomers.length === 0 && (
-                <div className={cls.empty}>Chưa có khách nào.</div>
+                <div className={cls.empty}>Chưa có khách quen phù hợp.</div>
               )}
             </div>
           </div>
@@ -877,7 +877,7 @@ export default function RegularCustomerModal({
             </div>
 
             {identityConflict && (
-              <div className={cls.empty} style={{ color: "#b91c1c" }}>
+              <div className={`${cls.empty} ${cls.emptyError}`}>
                 Email và SĐT thuộc hai hồ sơ khác nhau. Không thể lưu khách quen
                 để tránh cập nhật sai hồ sơ. Hãy chọn một hồ sơ có sẵn hoặc dùng
                 thông tin này cho đơn hiện tại.

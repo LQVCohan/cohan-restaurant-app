@@ -137,13 +137,6 @@ function buildActivity(evt) {
   };
 }
 
-const toneColorMap = {
-  success: "#15803d",
-  warning: "#92400e",
-  danger: "#b91c1c",
-  info: "#1d4ed8",
-};
-
 export default function PosReservationRealtimeNotice({ restaurantId }) {
   const { showNotification } = useNotification();
   const [latestEvent, setLatestEvent] = useState(null);
@@ -218,18 +211,17 @@ export default function PosReservationRealtimeNotice({ restaurantId }) {
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.1rem" }}>
+          <div className={styles.reservationActivityList}>
             {activities.map((activity) => {
               const ActivityIcon = activity.icon;
-              const color = toneColorMap[activity.tone] || toneColorMap.info;
               return (
-                <div key={activity.id} style={{ minWidth: "165px", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.55rem 0.65rem", border: "1px solid #e2e8f0", borderRadius: "0.85rem", background: "#f8fafc" }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(226,232,240,0.7)", color, flexShrink: 0 }}>
-                    <ActivityIcon size={16} />
+                <div key={activity.id} className={`${styles.reservationActivityCard} ${styles[`reservationActivityCard_${activity.tone}`] || ""}`}>
+                  <span className={styles.reservationActivityIcon}>
+                    <ActivityIcon size={15} />
                   </span>
-                  <span style={{ minWidth: 0 }}>
-                    <strong style={{ display: "block", color, fontSize: "0.78rem", lineHeight: 1.2 }}>{activity.title}</strong>
-                    <span style={{ display: "block", color: "#475569", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span className={styles.reservationActivityContent}>
+                    <strong>{activity.title}</strong>
+                    <span>
                       {activity.tableLabel} · {activity.timeLabel}
                       {activity.partySize ? ` · ${activity.partySize} khách` : ""}
                     </span>

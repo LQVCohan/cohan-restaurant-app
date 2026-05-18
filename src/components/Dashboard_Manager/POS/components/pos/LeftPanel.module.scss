@@ -489,9 +489,12 @@
   font-weight: 900;
 }
 
-.paymentRequestRow {
-  margin-top: 0.55rem;
+.badgeStack {
+  margin-top: 0.5rem;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  align-items: flex-start;
 }
 
 .paymentRequestBadge {
@@ -503,14 +506,13 @@
   border: 1px solid #fdba74;
   background: #fff7ed;
   color: #c2410c;
-  font-size: 0.67rem;
+  font-size: 0.64rem;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.18;
   box-shadow: 0 6px 14px rgba(249, 115, 22, 0.1);
 }
 
 .reservationBadgeRow {
-  margin-top: 0.45rem;
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -520,9 +522,9 @@
   border: 1px solid #bfdbfe;
   background: #eff6ff;
   color: #1d4ed8;
-  font-size: 0.65rem;
+  font-size: 0.64rem;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.18;
   em {
     font-style: normal;
     opacity: 0.85;
@@ -633,5 +635,20 @@
 
   .tablesGrid {
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+}
+
+
+@media (max-width: 640px) {
+  .badgeStack {
+    gap: 0.3rem;
+  }
+
+  .paymentRequestBadge,
+  .reservationBadgeRow {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

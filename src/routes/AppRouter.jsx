@@ -145,13 +145,13 @@ const AppRouter = () => (
     <Route path="/admin/restaurants/categories" element={withPrivateRoute(<AdminRestaurantInfoManagement />, ["admin"])} />
     <Route path="/admin/dashboard" element={withPrivateRoute(<Dashboard />, ["admin"])} />
 
-    <Route path="/users" element={withPrivateRoute(<div>Quản Lý Người Dùng</div>, ["admin"])} />
-    <Route path="/settings" element={withPrivateRoute(<div>Cài Đặt Hệ Thống</div>, ["admin"])} />
-    <Route path="/employees" element={withPrivateRoute(<div>Quản Lý Nhân Viên</div>, ["admin", "manager"])} />
-    <Route path="/inventory" element={withPrivateRoute(<div>Quản Lý Kho</div>, ["admin", "manager"])} />
-    <Route path="/reservations" element={withPrivateRoute(<div>Quản Lý Đặt Bàn</div>, ["admin", "manager"])} />
-    <Route path="/promotions" element={withPrivateRoute(<div>Quản Lý Khuyến Mãi</div>, ["admin", "manager"])} />
-    <Route path="/analytics" element={withPrivateRoute(<div>Phân Tích / Báo Cáo</div>, ["admin", "manager"])} />
+    <Route path="/users" element={withPrivateRoute(<Navigate to="/manager#rbac" replace />, ["admin"])} />
+    <Route path="/settings" element={withPrivateRoute(<Navigate to="/manager#settings" replace />, ["admin"])} />
+    <Route path="/employees" element={withPrivateRoute(<Navigate to="/manager#staff" replace />, ["admin", "manager"])} />
+    <Route path="/inventory" element={withPrivateRoute(<Navigate to="/manager#inventory" replace />, ["admin", "manager"])} />
+    <Route path="/reservations" element={withPrivateRoute(<Navigate to="/manager#tables" replace />, ["admin", "manager"])} />
+    <Route path="/promotions" element={withPrivateRoute(<Navigate to="/manager#promotions" replace />, ["admin", "manager"])} />
+    <Route path="/analytics" element={withPrivateRoute(<Navigate to="/manager#analytics" replace />, ["admin", "manager"])} />
 
     <Route element={<CustomerLayout />}>
       <Route path="/" element={<Home />} />
