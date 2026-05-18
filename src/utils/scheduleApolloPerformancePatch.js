@@ -3,10 +3,6 @@ const SCHEDULE_QUERY_NAMES = new Set([
   "AllRestaurants",
   "RestaurantsByManager",
   "StaffList",
-  "StaffShifts",
-  "SchedulePublication",
-  "ScheduleAckSummary",
-  "ShiftAcknowledgements",
   "ScheduleAvailabilityWindows",
   "ScheduleAvailabilitySubmissions",
 ]);
