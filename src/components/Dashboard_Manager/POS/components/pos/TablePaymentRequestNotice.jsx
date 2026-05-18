@@ -32,7 +32,7 @@ export default function TablePaymentRequestNotice() {
     clearPaymentRequest,
   } = usePos();
   const { showNotification } = useNotification?.() || {
-    showNotification: (message, type) => console.log(type || "info", message),
+    showNotification: () => {},
   };
   const apolloClient = useApolloClient();
   const previousHadDraftItemsRef = useRef(false);

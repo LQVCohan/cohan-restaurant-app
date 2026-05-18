@@ -857,14 +857,14 @@ export default function LeftPanel() {
                   </span>
                 </div>
 
-                {tablePaymentRequest && (
-                  <div className={cls.paymentRequestRow}>
-                    <span className={cls.paymentRequestBadge}>
-                      Yêu cầu thanh toán
-                    </span>
+                {(tablePaymentRequest || reservationActivity) && (
+                  <div className={cls.badgeStack}>
+                    {tablePaymentRequest ? (
+                      <span className={cls.paymentRequestBadge}>Yêu cầu thanh toán</span>
+                    ) : null}
+                    <TableReservationRealtimeBadge activity={reservationActivity} />
                   </div>
                 )}
-                <TableReservationRealtimeBadge activity={reservationActivity} />
 
                 {isSelected && isMultiSelectMode && (
                   <div className={cls.checkOverlay}>

@@ -605,3 +605,10 @@
     width: 100%;
   }
 }
+
+.spanFull { grid-column: 1 / -1; }
+.reservationInfo { grid-template-columns: repeat(2,minmax(0,1fr)); gap:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; padding:0.6rem; }
+.reservationInfo > div { border:1px solid #e2e8f0; border-radius:0.7rem; padding:0.45rem 0.55rem; background:#fff; font-size:0.8rem; font-weight:700; display:flex; flex-direction:column; gap:0.2rem; }
+.reservationInfo > div > span { font-size:0.68rem; text-transform:uppercase; letter-spacing:.03em; color:#64748b; font-weight:800; }
+.actionsEnd { flex-wrap:wrap; }
+@media (max-width: 640px){ .reservationInfo{ grid-template-columns:1fr; } }
