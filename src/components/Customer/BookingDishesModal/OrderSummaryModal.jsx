@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "../../common/Modal";
 import ModifierModal from "./ModifierModal";
 import { formatCurrency, formatQuantity } from "../../../utils/formatters";
@@ -122,6 +123,7 @@ const OrderSummaryModal = ({
   onSuccess, // Called after orders are persisted; parent should clear cart but not necessarily close.
 }) => {
   const { user, isAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
   const walletBalance = Number(user?.wallet?.balance || 0);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -512,11 +514,18 @@ const OrderSummaryModal = ({
     discountBreakdown,
     calculateSubtotals().finalTotal,
   );
-  const setAndShowSuccess = (createdOrders) => {
-    const totalPaid = createdOrders.reduce(
+  const setAndShowSuccess = ({ orders: createdOrders = [], checkout, orderCode }) => {
+    const totalPaidFromOrders = createdOrders.reduce(
       (s, o) => s + (o?.totals?.grandTotal || 0),
       0,
     );
+    const checkoutCode = checkout?.checkoutCode || orderCode || "";
+    const orderIds = checkout?.orderIds || createdOrders.map((o) => o?.id).filter(Boolean);
+    const orderCodes = createdOrders.map((o) => o?.orderCode).filter(Boolean);
+    const parentOrderCodes = createdOrders
+      .map((o) => o?.parentOrderCode)
+      .filter(Boolean);
+    const resolvedTotalPaid = checkout?.grandTotal ?? totalPaidFromOrders;
     setReceipt({
       customerName: shipping.fullName,
       customerPhone: shipping.phone,
@@ -527,9 +536,15 @@ const OrderSummaryModal = ({
       scheduleTime: shipping.scheduleTime,
       note: shipping.note,
       paymentMethod: selectedPaymentMethod,
-      totalPaid,
+      totalPaid: resolvedTotalPaid,
+      checkoutCode,
+      orderIds,
+      orderCodes,
+      parentOrderCodes,
       orders: createdOrders.map((o) => ({
         id: o.id,
+        orderCode: o.orderCode,
+        parentOrderCode: o.parentOrderCode,
         restaurantId: o.restaurantId,
         grandTotal: o?.totals?.grandTotal || 0,
       })),
@@ -558,10 +573,10 @@ const OrderSummaryModal = ({
     if (selectedPaymentMethod === "cash") {
       try {
         setIsProcessingPayment(true);
-        const { orders: created } = await persistAllOrders("cash");
+        const checkoutResult = await persistAllOrders("cash");
         setIsProcessingPayment(false);
         setCurrentView("success");
-        setAndShowSuccess(created);
+        setAndShowSuccess(checkoutResult);
         onSuccess?.();
       } catch (err) {
         setIsProcessingPayment(false);
@@ -575,10 +590,10 @@ const OrderSummaryModal = ({
     } else if (selectedPaymentMethod === "wallet") {
       try {
         setIsProcessingPayment(true);
-        const { orders: created } = await persistAllOrders("wallet");
+        const checkoutResult = await persistAllOrders("wallet");
         setIsProcessingPayment(false);
         setCurrentView("success");
-        setAndShowSuccess(created);
+        setAndShowSuccess(checkoutResult);
         onSuccess?.();
       } catch (err) {
         setIsProcessingPayment(false);
@@ -601,10 +616,10 @@ const OrderSummaryModal = ({
     setCheckoutError("");
     try {
       setIsProcessingPayment(true);
-      const { orders: created } = await persistAllOrders("transfer");
+      const checkoutResult = await persistAllOrders("transfer");
       setIsProcessingPayment(false);
       setCurrentView("success");
-      setAndShowSuccess(created);
+      setAndShowSuccess(checkoutResult);
       onSuccess?.();
     } catch (err) {
       setIsProcessingPayment(false);
@@ -627,7 +642,38 @@ const OrderSummaryModal = ({
 
     switch (currentView) {
       case "success":
-        return <SuccessScreen onContinueBrowsing={onClose} />;
+        return (
+          <SuccessScreen
+            receipt={receipt}
+            isAuthenticated={isAuthenticated}
+            onContinueBrowsing={onClose}
+            onTrackOrder={() => {
+              if (!isAuthenticated) return;
+              const orders = receipt?.orders || [];
+              if (orders.length === 1) {
+                const firstOrder = orders[0];
+                if (firstOrder?.id && firstOrder?.restaurantId) {
+                  const params = new URLSearchParams();
+                  params.set(
+                    "restaurantId",
+                    encodeURIComponent(firstOrder.restaurantId),
+                  );
+                  if (firstOrder?.orderCode) {
+                    params.set(
+                      "orderCode",
+                      encodeURIComponent(firstOrder.orderCode),
+                    );
+                  }
+                  navigate(`/track-order/${firstOrder.id}?${params.toString()}`);
+                  return;
+                }
+                navigate("/orders");
+                return;
+              }
+              navigate("/orders");
+            }}
+          />
+        );
       case "qr":
         return (
           <QRPaymentScreen
@@ -1488,22 +1534,73 @@ const PaymentMethods = ({
   </div>
 );
 
-const SuccessScreen = ({ onContinueBrowsing }) => (
-  <div className="section text-center">
-    <div className="success-screen">
-      <div className="success-icon-large">
-        <CheckCircle size={64} />
+const SuccessScreen = ({
+  receipt,
+  isAuthenticated,
+  onContinueBrowsing,
+  onTrackOrder,
+}) => {
+  const orderCodes = receipt?.orderCodes || [];
+  const displayCode = receipt?.checkoutCode || orderCodes[0] || "";
+  const firstOrder = receipt?.orders?.[0];
+  const orderCount = receipt?.orders?.length || 0;
+  const hasMultipleOrders = orderCount > 1;
+  const canTrackSingleOrder = Boolean(
+    isAuthenticated &&
+      orderCount === 1 &&
+      firstOrder?.id &&
+      firstOrder?.restaurantId,
+  );
+  const canViewOrders = Boolean(isAuthenticated && orderCount > 1);
+  const canTrackOrder = canTrackSingleOrder || canViewOrders;
+
+  return (
+    <div className="section text-center">
+      <div className="success-screen">
+        <div className="success-icon-large">
+          <CheckCircle size={64} />
+        </div>
+        <h3 className="success-title">Đặt đơn thành công</h3>
+
+        {displayCode ? (
+          <p className="success-message">Mã đơn: {displayCode}</p>
+        ) : (
+          <p className="success-message">Đơn hàng của bạn đã được tạo.</p>
+        )}
+
+        {hasMultipleOrders && (
+          <div className="mt-2">
+            <p className="success-message">Đã tạo {orderCount} đơn hàng.</p>
+            {!!orderCodes.length && (
+              <ul>
+                {orderCodes.slice(0, 5).map((code) => (
+                  <li key={code}>{code}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {Number(receipt?.totalPaid) > 0 && (
+          <p className="success-message mt-2">
+            Tổng tiền đã đặt: {formatCurrency(receipt.totalPaid)}
+          </p>
+        )}
+
+        <div className="mt-4 d-flex gap-2 justify-content-center">
+          {canTrackOrder && (
+            <button className="btn btn--secondary" onClick={onTrackOrder}>
+              Theo dõi đơn hàng
+            </button>
+          )}
+          <button className="btn btn--primary" onClick={onContinueBrowsing}>
+            Tiếp tục xem món
+          </button>
+        </div>
       </div>
-      <h3 className="success-title">Đặt đơn thành công</h3>
-      <p className="success-message">
-        Cảm ơn bạn. Đơn hàng của bạn đã được tạo.
-      </p>
-      <button className="btn btn--primary mt-4" onClick={onContinueBrowsing}>
-        Tiếp tục xem món
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 const QRPaymentScreen = ({ amount }) => (
   <div className="section text-center">
