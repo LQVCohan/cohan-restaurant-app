@@ -916,12 +916,29 @@ const StaffPerformancePage = ({
               ? "Chưa có dữ liệu so sánh kỳ trước"
               : `${row.trendDelta > 0 ? "+" : ""}${formatContributionScore(row.trendDelta)} điểm`;
 
+          const isClickable = Boolean(row.snapshot || row.employee);
+          const missingSnapshotHint = row.snapshot
+            ? null
+            : "Chưa có snapshot kỳ này";
+
           return (
             <li key={row.employee?.id || `${displayName}-${trendLabel}`}>
-              <strong>{displayName}</strong>
-              <span>Điểm: {currentScore}</span>
-              <span>Chênh lệch: {trendLabel}</span>
-              <span>Mức: {levelLabel}</span>
+              <button
+                type="button"
+                className="overview-item-button"
+                onClick={() => openDetail(row)}
+                aria-label={`Xem chi tiết hiệu suất của ${displayName}`}
+                disabled={!isClickable}
+                title={!isClickable ? missingSnapshotHint : undefined}
+              >
+                <strong>{displayName}</strong>
+                <span>Điểm: {currentScore}</span>
+                <span>Chênh lệch: {trendLabel}</span>
+                <span>Mức: {levelLabel}</span>
+                {!isClickable && missingSnapshotHint ? (
+                  <span className="overview-item-hint">{missingSnapshotHint}</span>
+                ) : null}
+              </button>
             </li>
           );
         })}

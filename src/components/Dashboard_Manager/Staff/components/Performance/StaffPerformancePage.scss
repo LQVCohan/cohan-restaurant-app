@@ -388,13 +388,36 @@
       li {
         border-top: 1px dashed #e2e8f0;
         padding-top: 0.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
 
         &:first-child {
           border-top: none;
           padding-top: 0;
+        }
+      }
+
+      .overview-item-button {
+        width: 100%;
+        border: none;
+        background: transparent;
+        text-align: left;
+        padding: 0.2rem 0.35rem;
+        margin: 0 -0.35rem;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+
+        &:hover:not(:disabled) {
+          background: #f8fafc;
+        }
+
+        &:focus-visible {
+          outline: 2px solid #4338ca;
+          outline-offset: 2px;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
         }
 
         strong {
@@ -405,6 +428,10 @@
         span {
           color: #475569;
           font-size: 0.78rem;
+        }
+
+        .overview-item-hint {
+          color: #94a3b8;
         }
       }
     }
