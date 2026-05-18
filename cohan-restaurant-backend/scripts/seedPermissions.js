@@ -22,8 +22,20 @@ export const permissions = [
   ["dashboard.read", "Xem dashboard", "dashboard", "Xem dashboard phân tích"],
   ["report.read", "Xem báo cáo", "report", "Xem báo cáo tổng hợp"],
   ["report.export", "Xuất báo cáo", "report", "Xuất báo cáo"],
-  ["menu.read", "Xem menu", "menu", "Xem danh sách món"],
-  ["menu.write", "Quản lý menu", "menu", "Thêm, sửa, xóa món ăn"],
+  ["menu.read", "Xem menu", "menu", "Xem danh sách món và thực đơn"],
+  ["menu.write", "Quản lý menu", "menu", "Quyền ghi tổng quát cho menu; giữ tương thích role cũ"],
+  ["menu.create", "Tạo thực đơn", "menu", "Tạo thực đơn theo khung giờ"],
+  ["menu.update", "Cập nhật thực đơn", "menu", "Sửa thông tin, ảnh và trạng thái thực đơn"],
+  ["menu.delete", "Xóa thực đơn", "menu", "Xóa thực đơn, bao gồm force-delete khi cần"],
+  ["menu.copy", "Sao chép thực đơn", "menu", "Sao chép thực đơn kèm món và recipe"],
+  ["menu.item.create", "Tạo món", "menu", "Thêm món mới vào thực đơn"],
+  ["menu.item.update", "Cập nhật món", "menu", "Sửa thông tin, ảnh, recipe và trạng thái món"],
+  ["menu.item.delete", "Xóa món", "menu", "Xóa món khỏi thực đơn"],
+  ["menu.price.update", "Cập nhật giá menu", "menu", "Cập nhật giá món và bulk price"],
+  ["menu.category.manage", "Quản lý danh mục món", "menu", "Tạo, sửa, xóa danh mục món"],
+  ["menu.group.manage", "Quản lý nhóm thực đơn", "menu", "Tạo, sửa, xóa nhóm thực đơn"],
+  ["menu.inventory.sync", "Đồng bộ tồn kho menu", "menu", "Đồng bộ trạng thái hết hàng theo tồn kho"],
+  ["menu.audit.read", "Xem lịch sử menu", "menu", "Xem audit log của menu và món"],
   ["order.read", "Xem đơn hàng", "order", "Xem danh sách đơn hàng"],
   ["order.create", "Tạo đơn hàng", "order", "Tạo đơn hàng mới"],
   ["order.update", "Cập nhật đơn hàng", "order", "Cập nhật trạng thái đơn hàng"],
@@ -74,7 +86,8 @@ export const permissions = [
   ["loyalty.read", "Xem điểm tích lũy", "customer", "Xem điểm thưởng"],
   ["notification.read", "Xem thông báo", "customer", "Xem thông báo"],
 ].map(([code, name, group, description]) => {
-  const [resource, action] = code.split(".");
+  const [resource, ...rest] = code.split(".");
+  const action = rest.join(".");
   return { code, resource, action, group, name, description, isSystem: true, isActive: true };
 });
 
