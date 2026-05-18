@@ -556,7 +556,7 @@ export default function TableActionsLiteModal({
       showNotification("Không tìm thấy bàn có mã: " + codeB, "error");
       return;
     }
-    if (String(b.floorId) !== String(table.floorId)) {
+    if (String(getTableFloorId(b)) !== String(getTableFloorId(table))) {
       showNotification("Đổi chỗ chỉ áp dụng cho 2 bàn cùng tầng.", "error");
       return;
     }
