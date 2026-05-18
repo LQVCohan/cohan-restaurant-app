@@ -1125,13 +1125,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useState(null);
   const [isValidatingAutoSchedule, setIsValidatingAutoSchedule] =
     useState(false);
-  const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
+  const { data: meData } = useQuery(ME_QUERY, {
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
+  });
   const me = meData?.me;
 
   const { data: allRestaurantsData } = useQuery(GET_ALL_RESTAURANTS, {
     variables: { limit: 100 },
     skip: me?.roleName !== "admin",
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
   });
   const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: {
@@ -1139,7 +1143,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       limit: 100,
     },
     skip: !me?.id || me?.roleName === "admin",
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
   });
   const restaurantOptions = useMemo(() => {
     if (me?.roleName === "admin") {
@@ -1254,8 +1259,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     refetch: refetchStaffList,
   } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: effectiveRestaurantId || undefined },
-    fetchPolicy: "network-only",
-    nextFetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
     skip: !effectiveRestaurantId,
   });
 
@@ -2133,6 +2138,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
   });
   const selectedShiftChangeLogs = scheduleLogData?.scheduleChangeLogs || [];
+
+  const isInitialScheduleLoading =
+    Boolean(effectiveRestaurantId) &&
+    (staffLoading || shiftsLoading) &&
+    !staffData?.staffList &&
+    !shiftsData?.staffShifts;
+  const isRefreshingSchedule =
+    Boolean(effectiveRestaurantId) &&
+    (staffLoading || shiftsLoading) &&
+    !isInitialScheduleLoading;
 
   const autoSchedulePreview =
     validatedAutoSchedulePreview || rawAutoSchedulePreview;
@@ -4557,9 +4572,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       )}
 
-      {(staffLoading || shiftsLoading) && (
+      {isInitialScheduleLoading && (
         <div className="empty-state schedule-feedback">
           Đang tải dữ liệu lịch làm việc...
+        </div>
+      )}
+
+      {isRefreshingSchedule && (
+        <div className="schedule-refresh-indicator" role="status" aria-live="polite">
+          Đang làm mới lịch...
         </div>
       )}
 

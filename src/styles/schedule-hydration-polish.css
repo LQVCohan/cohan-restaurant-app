@@ -170,3 +170,19 @@
       linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);
   }
 }
+
+.manager-page-shell--schedules .schedule-refresh-indicator {
+  position: sticky;
+  bottom: 0.7rem;
+  margin: 0.8rem auto 0;
+  width: fit-content;
+  padding: 0.34rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1e3a8a;
+  font-size: 0.73rem;
+  font-weight: 780;
+  box-shadow: 0 8px 22px rgba(30, 64, 175, 0.16);
+  z-index: 6;
+}
