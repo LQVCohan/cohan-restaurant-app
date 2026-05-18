@@ -340,10 +340,15 @@ export const escapeHtml = (value) =>
     .replaceAll("'", "&#39;");
 export const escapeCsvValue = (value) => {
   const normalizedValue = value === null || value === undefined ? "" : String(value);
-  if (!/[",\n\r]/.test(normalizedValue)) return normalizedValue;
-  return `"${normalizedValue.replaceAll('"', '""')}"`;
+  const shouldPrefixFormulaGuard =
+    typeof value === "string" && /^[=+\-@]/.test(normalizedValue.trimStart());
+  const safeValue = shouldPrefixFormulaGuard ? `'${normalizedValue}` : normalizedValue;
+  if (!/[",\n\r]/.test(safeValue)) return safeValue;
+  return `"${safeValue.replaceAll('"', '""')}"`;
 };
 const CSV_EMPTY_VALUE = "--";
+export const buildPerformanceOverviewCsvBlobContent = (rows = []) =>
+  `\uFEFF${buildPerformanceOverviewCsvContent(rows)}`;
 export const buildPerformanceOverviewCsvRows = (rows = []) =>
   rows.map((row) => {
     const employee = row?.employee || {};
@@ -1067,7 +1072,7 @@ const StaffPerformancePage = ({
 
   const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
   const handleExportCsv = () => {
-    const csvContent = buildPerformanceOverviewCsvContent(rows);
+    const csvContent = buildPerformanceOverviewCsvBlobContent(rows);
     const filename = `staff-performance-overview-${periodStart}-${periodEnd}.csv`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const blobUrl = URL.createObjectURL(blob);
