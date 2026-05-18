@@ -1,0 +1,245 @@
+import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
+import { AuditLog, BackupRun, Restaurant } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
+import { requireRole } from "../../../utils/authz.js";
+
+const VALID_STATUS = new Set(["planned", "checklist_completed", "cancelled"]);
+const MAX_LIMIT = 100;
+
+const DEFAULT_CHECKLIST = {
+  reportsChecked: false,
+  transactionsReconciled: false,
+  settingsReviewed: false,
+  exportPrepared: false,
+  safeCopyStored: false,
+  operatorRecorded: false,
+};
+
+const DEFAULT_SCOPE = {
+  ordersAndPayments: true,
+  tablesAndFloorPlan: true,
+  menuAndPricing: true,
+  inventory: true,
+  staffAndPermissions: true,
+  schedules: true,
+  customersAndPromotions: true,
+  reportsAndReconciliation: true,
+};
+
+const RISK_DEFS = [
+  ["reportsChecked", "reports_not_checked", "Báo cáo cuối ngày chưa kiểm tra"],
+  ["transactionsReconciled", "transactions_not_reconciled", "Giao dịch chưa đối soát"],
+  ["settingsReviewed", "settings_not_reviewed", "Cấu hình hệ thống chưa rà soát"],
+  ["exportPrepared", "export_not_prepared", "Dữ liệu export/snapshot chưa chuẩn bị"],
+  ["safeCopyStored", "safe_copy_not_stored", "Bản sao an toàn chưa được lưu"],
+  ["operatorRecorded", "operator_not_recorded", "Chưa ghi nhận người thực hiện và thời điểm"],
+];
+
+const badInput = (message) => new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+const notFound = (message = "Resource not found") => new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
+
+function sanitizeNote(note) {
+  if (note == null) return undefined;
+  const normalized = String(note);
+  if (normalized.length > 1000) throw badInput("note must be at most 1000 characters");
+  return normalized;
+}
+
+function normalizeChecklist(checklist = {}) {
+  return {
+    reportsChecked: Boolean(checklist.reportsChecked),
+    transactionsReconciled: Boolean(checklist.transactionsReconciled),
+    settingsReviewed: Boolean(checklist.settingsReviewed),
+    exportPrepared: Boolean(checklist.exportPrepared),
+    safeCopyStored: Boolean(checklist.safeCopyStored),
+    operatorRecorded: Boolean(checklist.operatorRecorded),
+  };
+}
+
+function normalizeScope(scope = {}) {
+  return {
+    ordersAndPayments: Boolean(scope.ordersAndPayments ?? true),
+    tablesAndFloorPlan: Boolean(scope.tablesAndFloorPlan ?? true),
+    menuAndPricing: Boolean(scope.menuAndPricing ?? true),
+    inventory: Boolean(scope.inventory ?? true),
+    staffAndPermissions: Boolean(scope.staffAndPermissions ?? true),
+    schedules: Boolean(scope.schedules ?? true),
+    customersAndPromotions: Boolean(scope.customersAndPromotions ?? true),
+    reportsAndReconciliation: Boolean(scope.reportsAndReconciliation ?? true),
+  };
+}
+
+function allChecklistDone(checklist) {
+  return Object.values(checklist).every(Boolean);
+}
+
+async function assertAccess(ctx, restaurantId) {
+  requireRole(ctx?.user, ["admin", "manager"]);
+  if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
+  await requireRestaurantAccess(ctx, restaurantId);
+  const restaurant = await Restaurant.findById(restaurantId).lean();
+  if (!restaurant) throw notFound("Restaurant not found");
+}
+
+function toView(doc) {
+  return {
+    id: String(doc._id),
+    restaurantId: String(doc.restaurantId),
+    status: doc.status,
+    checklist: normalizeChecklist(doc.checklist || DEFAULT_CHECKLIST),
+    scope: normalizeScope(doc.scope || DEFAULT_SCOPE),
+    note: doc.note || "",
+    createdBy: doc.createdBy ? String(doc.createdBy) : null,
+    completedBy: doc.completedBy ? String(doc.completedBy) : null,
+    completedAt: doc.completedAt || null,
+    createdAt: doc.createdAt || null,
+    updatedAt: doc.updatedAt || null,
+  };
+}
+
+function buildRisks(checklist) {
+  return RISK_DEFS.map(([field, key, label]) => ({
+    key,
+    label,
+    severity: "warning",
+    resolved: Boolean(checklist[field]),
+    description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi chốt checklist backup.",
+  }));
+}
+
+async function safeAuditLog(payload) {
+  try {
+    await AuditLog.create(payload);
+  } catch (error) {
+    console.warn("[backup] audit log failed", error?.message || error);
+  }
+}
+
+export default {
+  Query: {
+    backupReadiness: async (_, { restaurantId }, ctx) => {
+      await assertAccess(ctx, restaurantId);
+      const latest = await BackupRun.findOne({ restaurantId }).sort({ createdAt: -1 }).lean();
+      const checklist = normalizeChecklist(latest?.checklist || DEFAULT_CHECKLIST);
+      const scope = normalizeScope(latest?.scope || DEFAULT_SCOPE);
+      const risks = buildRisks(checklist);
+      return {
+        restaurantId: String(restaurantId),
+        ready: risks.every((r) => r.resolved),
+        risks,
+        checklist,
+        scope,
+        lastRun: latest ? toView(latest) : null,
+      };
+    },
+    backupRuns: async (_, { restaurantId, limit = 20, offset = 0 }, ctx) => {
+      await assertAccess(ctx, restaurantId);
+      const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), MAX_LIMIT);
+      const safeOffset = Math.max(Number(offset) || 0, 0);
+      const rows = await BackupRun.find({ restaurantId })
+        .sort({ createdAt: -1 })
+        .skip(safeOffset)
+        .limit(safeLimit)
+        .lean();
+      return rows.map(toView);
+    },
+  },
+  Mutation: {
+    createBackupRun: async (_, { input }, ctx) => {
+      const restaurantId = input?.restaurantId;
+      await assertAccess(ctx, restaurantId);
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+
+      const checklist = normalizeChecklist({ ...DEFAULT_CHECKLIST, ...(input?.checklist || {}) });
+      const scope = normalizeScope({ ...DEFAULT_SCOPE, ...(input?.scope || {}) });
+      const note = sanitizeNote(input?.note);
+      const status = allChecklistDone(checklist) ? "checklist_completed" : "planned";
+
+      const payload = {
+        restaurantId,
+        checklist,
+        scope,
+        status,
+      };
+      if (note !== undefined) payload.note = note;
+      if (actorId && mongoose.isValidObjectId(actorId)) payload.createdBy = actorId;
+      if (status === "checklist_completed") {
+        payload.completedAt = new Date();
+        if (actorId && mongoose.isValidObjectId(actorId)) payload.completedBy = actorId;
+      }
+
+      const created = await BackupRun.create(payload);
+
+      await safeAuditLog({
+        action: "BACKUP_RUN_CREATED",
+        module: "backup",
+        targetType: "BackupRun",
+        targetId: created._id,
+        restaurantId,
+        actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        after: toView(created),
+      });
+
+      return toView(created);
+    },
+
+    updateBackupRun: async (_, { input }, ctx) => {
+      const { id, restaurantId } = input || {};
+      await assertAccess(ctx, restaurantId);
+      if (!mongoose.isValidObjectId(id)) throw badInput("Invalid id");
+
+      const doc = await BackupRun.findById(id);
+      if (!doc) throw notFound("Backup run not found");
+      if (String(doc.restaurantId) !== String(restaurantId)) throw badInput("Backup run does not belong to restaurantId");
+
+      const before = toView(doc);
+      const set = {};
+      if (input?.checklist) {
+        set.checklist = normalizeChecklist({ ...normalizeChecklist(doc.checklist), ...input.checklist });
+      }
+      if (input?.scope) {
+        set.scope = normalizeScope({ ...normalizeScope(doc.scope), ...input.scope });
+      }
+      const note = sanitizeNote(input?.note);
+      if (note !== undefined) set.note = note;
+
+      if (Object.prototype.hasOwnProperty.call(input || {}, "status") && input.status != null) {
+        const status = String(input.status);
+        if (!VALID_STATUS.has(status)) throw badInput("Invalid status");
+        set.status = status;
+      }
+
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+      const finalChecklist = set.checklist || normalizeChecklist(doc.checklist);
+      const finalStatus = set.status || doc.status;
+      if (finalStatus === "checklist_completed" || (allChecklistDone(finalChecklist) && finalStatus === "planned")) {
+        set.status = "checklist_completed";
+        set.completedAt = new Date();
+        if (actorId && mongoose.isValidObjectId(actorId)) set.completedBy = actorId;
+      }
+      if (set.status === "cancelled") {
+        set.completedAt = null;
+        set.completedBy = null;
+      }
+
+      Object.assign(doc, set);
+      await doc.save();
+
+      await safeAuditLog({
+        action: "BACKUP_RUN_UPDATED",
+        module: "backup",
+        targetType: "BackupRun",
+        targetId: doc._id,
+        restaurantId,
+        actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+        before,
+        after: toView(doc),
+      });
+
+      return toView(doc);
+    },
+  },
+};

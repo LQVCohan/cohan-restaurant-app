@@ -1,0 +1,60 @@
+type SystemSettingOperational {
+  businessDayStartHour: Int!
+  defaultLanguage: String!
+}
+
+type SystemSettingModules {
+  scheduling: Boolean!
+  rbac: Boolean!
+  printing: Boolean!
+  backup: Boolean!
+}
+
+type SystemSettingMetadata {
+  note: String
+  version: Int!
+}
+
+type SystemSetting {
+  id: ID!
+  restaurantId: ID!
+  timezone: String!
+  currency: String!
+  dateFormat: String!
+  operational: SystemSettingOperational!
+  modules: SystemSettingModules!
+  metadata: SystemSettingMetadata!
+  updatedBy: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SystemSettingOperationalInput {
+  businessDayStartHour: Int
+  defaultLanguage: String
+}
+
+input SystemSettingModulesInput {
+  scheduling: Boolean
+  rbac: Boolean
+  printing: Boolean
+  backup: Boolean
+}
+
+input UpdateSystemSettingInput {
+  restaurantId: ID!
+  timezone: String
+  currency: String
+  dateFormat: String
+  operational: SystemSettingOperationalInput
+  modules: SystemSettingModulesInput
+  note: String
+}
+
+extend type Query {
+  systemSetting(restaurantId: ID!): SystemSetting!
+}
+
+extend type Mutation {
+  updateSystemSetting(input: UpdateSystemSettingInput!): SystemSetting!
+}
