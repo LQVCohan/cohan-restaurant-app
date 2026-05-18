@@ -2701,9 +2701,8 @@ const mutationResolvers = {
     doc.declineClassification =
       now > new Date(doc.deadlineAt) ? "late" : "unknown";
     await doc.save();
-    // TODO: integrate ScheduleIncident service:
-    // - valid decline => EMPLOYEE_VALID_DECLINE (neutral responsibility)
-    // - late decline => EMPLOYEE_LATE_DECLINE (employee responsibility)
+    // ScheduleIncident backend flow is tracked in docs/schedule-incident-roadmap.md;
+    // current resolver keeps shift acknowledgement state + EventLog without creating incident records.
     return doc;
   },
   respondShiftAcknowledgement: async (_, { input }, ctx) => {

@@ -36,14 +36,10 @@ const VALID_MANAGER_PAGES = new Set([
   "analytics",
   "transactions",
   "reports",
-  "settings",
   "schedules",
   "promotions",
-  "rates",
   "finance",
-  "setting",
   "payroll",
-  "backup",
   "reviews",
   "print-management",
   "restaurant-info-management",
@@ -89,10 +85,6 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   reviews: ["review.read", "report.read"],
   reports: ["report.read"],
   finance: ["payment.read"],
-  settings: ["system.manage"],
-  rates: ["system.manage"],
-  setting: ["system.manage"],
-  backup: ["system.manage"],
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
 };
@@ -116,10 +108,6 @@ const PAGE_CONFIG = {
   "print-management": { title: "Quản lý in ấn", description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job", icon: "🖨️", keywords: ["print", "máy in", "phiếu bếp", "queue"] },
   "restaurant-info-management": { title: "Thông tin nhà hàng", description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", icon: "🏪", keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"] },
   rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
-  settings: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  rates: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  setting: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  backup: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["backup", "sao lưu"] },
 };
 
 const PermissionFallback = () => (
@@ -255,10 +243,6 @@ const ManagerLayout = () => {
       case "analytics": return <ManagerAnalyst />;
       case "reports": return <ReportsManagement />;
       case "finance": return <FinanceDashboard />;
-      case "settings":
-      case "rates":
-      case "setting":
-      case "backup": return <div>Đang phát triển…</div>;
       case "schedules": return <ScheduleManagementPage />;
       case "promotions": return <PromotionManagement />;
       case "payroll": return <PayrollManagement />;
@@ -266,7 +250,7 @@ const ManagerLayout = () => {
       case "print-management": return <PrintManagement />;
       case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
       case "rbac": return <RbacManagement />;
-      default: return <div>Content not found</div>;
+      default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
     }
   };
 

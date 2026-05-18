@@ -108,8 +108,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
       const res = await fetch(`${API_BASE}/api/payments/reservations/${booking.id}/create`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "x-user-id": booking?.userId || "",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ provider }),
       });

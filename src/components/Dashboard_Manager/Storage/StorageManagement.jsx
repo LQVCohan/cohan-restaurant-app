@@ -28,7 +28,6 @@ import {
   Carrot,
   Package,
   BookOpen,
-  PieChart,
   ClipboardList,
   AlertCircle,
 } from "lucide-react";
@@ -132,7 +131,7 @@ const StorageManagement = () => {
     restaurantReady &&
     (activeTab === "ingredients" ||
       activeTab === "inventory" ||
-      activeTab === "allocation");
+      false);
 
   const {
     data: stockData,
@@ -314,16 +313,7 @@ const StorageManagement = () => {
         />
       ),
     },
-    {
-      id: "allocation",
-      label: "Phân bổ",
-      icon: <PieChart size={18} />,
-      component: (
-        <div className="sm-dev-placeholder">
-          Tính năng phân bổ đang phát triển...
-        </div>
-      ),
-    },
+    // Allocation flow is intentionally hidden until backend stock transfer workflow is enabled.
     {
       id: "inventory",
       label: "Kiểm kê",
@@ -415,7 +405,7 @@ const StorageManagement = () => {
                 activeTab={activeTab}
                 onTabChange={(t) => {
                   setActiveTab(t);
-                  if (["inventory", "allocation", "ingredients"].includes(t)) {
+                  if (["inventory", "ingredients"].includes(t)) {
                     refetchStock?.();
                     if (t === "inventory") refetchMovements?.();
                   }

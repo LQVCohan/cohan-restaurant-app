@@ -79,3 +79,10 @@ Không. Backend/frontend trong dự án này chỉ tự load file tên **`.env`*
 
 > Quan trọng: chỉ xóa secret khỏi file hiện tại **không đủ** nếu secret đã từng push; bạn vẫn phải rotate.
 
+
+## 8) Production env (triển khai thật)
+
+- Không commit secret hoặc token production vào repository.
+- `.env.production` trong repo chỉ là placeholder an toàn để tham chiếu key.
+- Giá trị production thật phải được cấu hình trực tiếp trên hosting/CI secret manager (Vercel, Netlify, Docker secrets, Kubernetes secrets...).
+- Local development tiếp tục dùng `.env.development` hoặc `npm run env:local`.
