@@ -19,6 +19,8 @@ import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManag
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
+import SettingsManagement from "@/components/Dashboard_Manager/Settings/SettingsManagement";
+import BackupManagement from "@/components/Dashboard_Manager/Backup/BackupManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
@@ -89,6 +91,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   reviews: ["review.read", "report.read"],
   reports: ["report.read"],
   finance: ["payment.read"],
+  transactions: ["payment.read"],
   settings: ["system.manage"],
   rates: ["system.manage"],
   setting: ["system.manage"],
@@ -109,6 +112,7 @@ const PAGE_CONFIG = {
   analytics: { title: "Phân tích kinh doanh", description: "Theo dõi xu hướng doanh thu và đề xuất tối ưu vận hành", icon: "🧠", keywords: ["analyst", "ai", "chiến lược", "dự báo"] },
   reports: { title: "Báo cáo", description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ", icon: "📑", keywords: ["report", "báo cáo", "xuất file", "csv"] },
   finance: { title: "Tài chính", description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", icon: "💰", keywords: ["finance", "thu", "chi", "công nợ", "profit"] },
+  transactions: { title: "Giao dịch", description: "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", icon: "💳", keywords: ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"] },
   schedules: { title: "Lịch làm việc", description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", icon: "📅", keywords: ["schedule", "ca làm", "shift", "lịch"] },
   promotions: { title: "Khuyến mãi", description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", icon: "🎁", keywords: ["promotion", "coupon", "discount", "khuyến mãi"] },
   payroll: { title: "Bảng lương", description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", icon: "💼", keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"] },
@@ -116,10 +120,10 @@ const PAGE_CONFIG = {
   "print-management": { title: "Quản lý in ấn", description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job", icon: "🖨️", keywords: ["print", "máy in", "phiếu bếp", "queue"] },
   "restaurant-info-management": { title: "Thông tin nhà hàng", description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", icon: "🏪", keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"] },
   rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
-  settings: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  rates: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  setting: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["settings", "cài đặt"] },
-  backup: { title: "Cài đặt", description: "Cấu hình hệ thống và tuỳ chọn vận hành", icon: "⚙️", keywords: ["backup", "sao lưu"] },
+  settings: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
+  rates: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
+  setting: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
+  backup: { title: "Sao lưu & khôi phục", description: "Checklist sao lưu dữ liệu, đối soát và điều hướng xuất báo cáo", icon: "🗄️", keywords: ["backup", "sao lưu", "khôi phục", "export", "báo cáo"] },
 };
 
 const PermissionFallback = () => (
@@ -255,10 +259,11 @@ const ManagerLayout = () => {
       case "analytics": return <ManagerAnalyst />;
       case "reports": return <ReportsManagement />;
       case "finance": return <FinanceDashboard />;
+      case "transactions": return <FinanceDashboard />;
       case "settings":
       case "rates":
-      case "setting":
-      case "backup": return <div>Đang phát triển…</div>;
+      case "setting": return <SettingsManagement />;
+      case "backup": return <BackupManagement />;
       case "schedules": return <ScheduleManagementPage />;
       case "promotions": return <PromotionManagement />;
       case "payroll": return <PayrollManagement />;
