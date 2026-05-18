@@ -2,14 +2,17 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Category, MenuItem, CategoryMenu } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import {
+  MENU_PERMISSION,
+  requireMenuPermission,
+} from "../menu/menuPermission.js";
 
 export const CategoryMutation = {
   createCategory: async (_, { input }, ctx) => {
     const { restaurantId, name, icon = "🍽️", order = 0 } = input;
     if (restaurantId == null) throw new GraphQLError("restaurantId is required");
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.MANAGE_CATEGORY);
 
     const normalizedName = String(name || "").trim();
     const normalizedIcon = String(icon || "🍽️").trim() || "🍽️";
@@ -38,7 +41,7 @@ export const CategoryMutation = {
     if (!mongoose.isValidObjectId(input?.id)) throw new GraphQLError("Invalid id");
     const c = await Category.findById(input.id);
     if (!c) throw new GraphQLError("Category not found");
-    await requireRestaurantAccess(ctx, c.restaurantId);
+    await requireMenuPermission(ctx, c.restaurantId, MENU_PERMISSION.MANAGE_CATEGORY);
 
     if (input.name !== undefined) c.name = input.name;
     if (input.icon !== undefined) c.icon = String(input.icon || "🍽️").trim() || "🍽️";
@@ -53,7 +56,7 @@ export const CategoryMutation = {
     if (!mongoose.isValidObjectId(id)) return true;
     const existing = await Category.findById(id).select({ restaurantId: 1 }).lean();
     if (!existing) return true;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireMenuPermission(ctx, existing.restaurantId, MENU_PERMISSION.MANAGE_CATEGORY);
     const used = await MenuItem.exists({ categoryId: id, restaurantId: existing.restaurantId });
     if (used)
       throw new GraphQLError("Cannot delete: category is in use by menu items");
@@ -73,7 +76,7 @@ export const CategoryMutation = {
     } = input;
 
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.MANAGE_GROUP);
     const doc = await CategoryMenu.create({
       restaurantId,
       name,
@@ -89,7 +92,7 @@ export const CategoryMutation = {
   updateCategoryMenu: async (_, { input }, ctx) => {
     const cm = await CategoryMenu.findById(input.id);
     if (!cm) throw new GraphQLError("CategoryMenu not found");
-    await requireRestaurantAccess(ctx, cm.restaurantId);
+    await requireMenuPermission(ctx, cm.restaurantId, MENU_PERMISSION.MANAGE_GROUP);
 
     if (input.name !== undefined) cm.name = input.name;
     if (input.icon !== undefined) cm.icon = String(input.icon || "🍽️").trim() || "🍽️";
@@ -105,7 +108,7 @@ export const CategoryMutation = {
     if (!mongoose.isValidObjectId(id)) return true;
     const existing = await CategoryMenu.findById(id).select({ restaurantId: 1 }).lean();
     if (!existing) return true;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireMenuPermission(ctx, existing.restaurantId, MENU_PERMISSION.MANAGE_GROUP);
     await CategoryMenu.findByIdAndDelete(id);
     return true;
   },
