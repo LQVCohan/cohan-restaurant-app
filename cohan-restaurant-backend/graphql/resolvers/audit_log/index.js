@@ -5,7 +5,7 @@ import { requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 
 const MAX_LIMIT = 100;
-const RESTAURANT_AUDIT_PERMISSIONS = ["menu.audit.read", "log.read", "menu.write"];
+const RESTAURANT_AUDIT_PERMISSIONS = ["menu.audit.read", "menu.read", "log.read"];
 
 function isOid(value) {
   return mongoose.isValidObjectId(value);
@@ -50,6 +50,10 @@ function buildFilter(filter = {}) {
 export default {
   Query: {
     auditLogs: async (_, { filter = {}, limit = 50, offset = 0 }, ctx) => {
+      if (filter?.restaurantId && !isOid(filter.restaurantId)) {
+        throw new GraphQLError("Invalid restaurantId");
+      }
+
       if (filter?.restaurantId) {
         await requireRestaurantAccess(ctx, filter.restaurantId);
         await requireAnyPermission(ctx, RESTAURANT_AUDIT_PERMISSIONS);
