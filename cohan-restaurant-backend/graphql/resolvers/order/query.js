@@ -29,6 +29,12 @@ import {
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import {
+  ensureOrderTracking,
+  updatePublicStatusHistory,
+  toCustomerTrackingPayload,
+  buildOrderTrackingQrSvg,
+} from "../../../src/services/orderTracking.service.js";
 const INACTIVE_STATUSES = ["cancelled", "completed", "failed"];
 const ACTIVE_VIEW_PAYMENT_FILTER = {
   orderPaymentStatus: { $ne: "paid" },
@@ -230,6 +236,24 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 }
 
 export const OrderQuery = {
+  async customerTrackOrder(_, { trackingToken }) {
+    const order = await Order.findOne({ trackingToken }).select({
+      trackingCode: 1, publicStatus: 1, customerVisibleNote: 1, estimatedReadyAt: 1, statusHistory: 1, items: 1, orderPaymentStatus: 1, payment: 1, totals: 1, trackingQrRevokedAt: 1,
+    });
+    if (!order) return null;
+    if (order.trackingQrRevokedAt) throw new Error("Tracking link has expired");
+    updatePublicStatusHistory(order, "SYSTEM");
+    await order.save();
+    return toCustomerTrackingPayload(order.toObject());
+  },
+  async orderTrackingQrSvg(_, { orderId }, ctx) {
+    const order = await Order.findById(orderId);
+    if (!order) throw new Error("Order not found");
+    await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_READ);
+    await ensureOrderTracking(order);
+    await order.save();
+    return buildOrderTrackingQrSvg(order);
+  },
   /** Single */
   async order(_, { id }, ctx) {
     if (!mongoose.isValidObjectId(id)) return null;

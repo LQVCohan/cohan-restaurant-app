@@ -51,6 +51,10 @@ import {
   commitReservationForOrderTx,
   cancelReservationForOrderTx,
 } from "../../../src/services/inventory.service.js";
+import {
+  ensureOrderTracking,
+  updatePublicStatusHistory,
+} from "../../../src/services/orderTracking.service.js";
 
 const RESERVABLE_STATUSES = [
   "draft",
@@ -1690,6 +1694,9 @@ export const OrderMutation = {
     }
 
     await markTableStatus(restaurantId, tableInfo.tableCode, "occupied");
+    await ensureOrderTracking(createdOrderDoc);
+    updatePublicStatusHistory(createdOrderDoc, "SYSTEM");
+    await createdOrderDoc.save();
     await emitOrderEvent(ctx, restaurantId, "ORDER_CREATED", createdOrderDoc);
 
     return { isNewOrder: true, order: createdOrderDoc.toJSON() };
@@ -1865,6 +1872,9 @@ export const OrderMutation = {
       });
     }
 
+    await ensureOrderTracking(createdOrderDoc);
+    updatePublicStatusHistory(createdOrderDoc, "SYSTEM");
+    await createdOrderDoc.save();
     await emitOrderEvent(ctx, restaurantId, "ORDER_CREATED", createdOrderDoc);
     return { order: createdOrderDoc.toJSON() };
   },
