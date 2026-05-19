@@ -19,6 +19,7 @@
 @import "./schedule-header-line-fix.css";
 @import "./schedule-board-jumper-polish.css";
 @import "./schedule-hydration-polish.css";
+@import "./schedule-print-polish.css";
 
 .schedule-readiness-focus-banner {
   position: relative;
