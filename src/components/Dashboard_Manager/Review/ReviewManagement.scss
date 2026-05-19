@@ -86,6 +86,11 @@
   gap: 6px;
   transition: var(--reviews-transition);
   white-space: nowrap;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
 }
 
 .reviews-btn-primary {
@@ -93,7 +98,7 @@
   color: #ffffff;
   border-color: var(--reviews-primary-color);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--reviews-primary-hover);
     border-color: var(--reviews-primary-hover);
     box-shadow: var(--reviews-shadow-md);
@@ -106,10 +111,83 @@
   color: var(--reviews-text-main);
   border-color: var(--reviews-border-color);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #f8fafc;
     box-shadow: var(--reviews-shadow-sm);
   }
+}
+
+.reviews-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+
+  &:hover:not(:disabled) {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    box-shadow: var(--reviews-shadow-md);
+  }
+}
+
+.reviews-toast {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  z-index: 1200;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: var(--reviews-shadow-lg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.reviews-toast--error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.reviews-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.reviews-confirm-dialog {
+  width: min(440px, 100%);
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--reviews-card-bg);
+  color: var(--reviews-text-main);
+  box-shadow: var(--reviews-shadow-lg);
+  border: 1px solid var(--reviews-border-color);
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--reviews-text-secondary);
+    line-height: 1.55;
+  }
+}
+
+.reviews-confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 /* ========== HEADER NỘI DUNG (title + search + buttons) ========== */
@@ -206,5 +284,9 @@
 
   .reviews-content-header__search-box-input {
     width: 100%;
+  }
+
+  .reviews-confirm-dialog__actions {
+    flex-direction: column-reverse;
   }
 }
