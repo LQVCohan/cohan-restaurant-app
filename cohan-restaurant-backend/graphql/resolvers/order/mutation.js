@@ -51,6 +51,11 @@ import {
   commitReservationForOrderTx,
   cancelReservationForOrderTx,
 } from "../../../src/services/inventory.service.js";
+import {
+  ensureOrderTracking,
+  updatePublicStatusHistory,
+  emitCustomerTrackingUpdateIfChanged,
+} from "../../../src/services/orderTracking.service.js";
 
 const RESERVABLE_STATUSES = [
   "draft",
@@ -1690,6 +1695,9 @@ export const OrderMutation = {
     }
 
     await markTableStatus(restaurantId, tableInfo.tableCode, "occupied");
+    await ensureOrderTracking(createdOrderDoc);
+    updatePublicStatusHistory(createdOrderDoc, "SYSTEM");
+    await createdOrderDoc.save();
     await emitOrderEvent(ctx, restaurantId, "ORDER_CREATED", createdOrderDoc);
 
     return { isNewOrder: true, order: createdOrderDoc.toJSON() };
@@ -1865,6 +1873,9 @@ export const OrderMutation = {
       });
     }
 
+    await ensureOrderTracking(createdOrderDoc);
+    updatePublicStatusHistory(createdOrderDoc, "SYSTEM");
+    await createdOrderDoc.save();
     await emitOrderEvent(ctx, restaurantId, "ORDER_CREATED", createdOrderDoc);
     return { order: createdOrderDoc.toJSON() };
   },
@@ -2053,6 +2064,7 @@ export const OrderMutation = {
       throw new Error("Không tìm thấy đơn để yêu cầu thanh toán.");
 
     for (const order of orders) {
+      const prevPublicStatus = order.publicStatus;
       assertOrderCanRequestPayment(order);
       order.payment = order.payment || {};
       order.payment.status = "payment_requested";
@@ -2067,7 +2079,9 @@ export const OrderMutation = {
           note: "Nhân viên yêu cầu thanh toán.",
         },
       ];
+      updatePublicStatusHistory(order, "CASHIER");
       await order.save();
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(
         ctx,
         String(order.restaurantId),
@@ -2094,6 +2108,7 @@ export const OrderMutation = {
       throw new Error("Không tìm thấy đơn đang phục vụ của bàn này.");
 
     for (const order of orders) {
+      const prevPublicStatus = order.publicStatus;
       assertOrderCanRequestPayment(order);
       order.payment = order.payment || {};
       order.payment.status = "payment_requested";
@@ -2108,7 +2123,9 @@ export const OrderMutation = {
           note: "Nhân viên yêu cầu thanh toán.",
         },
       ];
+      updatePublicStatusHistory(order, "CASHIER");
       await order.save();
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(
         ctx,
         String(order.restaurantId),
@@ -2433,6 +2450,10 @@ export const OrderMutation = {
     }
 
     for (const order of createdOrders) {
+      const prevPublicStatus = order.publicStatus;
+      await ensureOrderTracking(order);
+      updatePublicStatusHistory(order, "SYSTEM");
+      await order.save();
       if (order.orderType === "delivery") {
         await createOrderTrackingEvent({
           order,
@@ -2446,6 +2467,7 @@ export const OrderMutation = {
           },
         });
       }
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
     }
 
@@ -3007,6 +3029,7 @@ export const OrderMutation = {
           }
         }
 
+        const prevPublicStatus = order.publicStatus;
         order.currentStatus = status;
         if (status === "preparing") {
           for (const item of order.items || []) {
@@ -3038,7 +3061,10 @@ export const OrderMutation = {
           byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
         });
 
+        updatePublicStatusHistory(order, "STAFF");
         await order.save({ session });
+        order.$locals = order.$locals || {};
+        order.$locals.prevPublicStatus = prevPublicStatus;
       });
     } finally {
       await session.endSession();
@@ -3057,6 +3083,7 @@ export const OrderMutation = {
         },
       });
     }
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null, force: true });
 
     await emitOrderEvent(ctx, order.restaurantId, "ORDER_STATUS_CHANGED", {
       order,
@@ -3165,8 +3192,12 @@ export const OrderMutation = {
             `Không thể chuyển trạng thái món từ ${currentItemStatus} sang ${status}.`,
           );
         }
+        const prevPublicStatus = order.publicStatus;
         item.status = status;
+        updatePublicStatusHistory(order, "KITCHEN");
         await order.save({ session });
+        order.$locals = order.$locals || {};
+        order.$locals.prevPublicStatus = prevPublicStatus;
       });
     } finally {
       await session.endSession();
@@ -3187,6 +3218,7 @@ export const OrderMutation = {
         },
       });
     }
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null, force: true });
 
     await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_STATUS_CHANGED", {
       order,
@@ -3332,6 +3364,7 @@ export const OrderMutation = {
           });
         }
 
+        const prevPublicStatus = order.publicStatus;
         order.currentStatus = "cancelled";
         order.statusTimeline.push({
           status: "cancelled",
@@ -3340,7 +3373,10 @@ export const OrderMutation = {
           byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
         });
 
+        updatePublicStatusHistory(order, "STAFF");
         await order.save({ session });
+        order.$locals = order.$locals || {};
+        order.$locals.prevPublicStatus = prevPublicStatus;
       });
     } finally {
       await session.endSession();
@@ -3359,6 +3395,7 @@ export const OrderMutation = {
         },
       });
     }
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null });
 
     await emitOrderEvent(ctx, restaurantId, "ORDER_CANCELLED", order);
 

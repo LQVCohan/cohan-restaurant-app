@@ -60,6 +60,18 @@ const OrderPaymentStatusEnum = [
   "refunded",
   "partially_refunded",
 ];
+const CustomerOrderPublicStatusEnum = [
+  "ORDER_RECEIVED",
+  "CONFIRMED",
+  "PREPARING",
+  "PARTIALLY_READY",
+  "READY_TO_SERVE",
+  "SERVED",
+  "WAITING_FOR_PAYMENT",
+  "PAID",
+  "CANCELLED",
+  "ISSUE_REPORTED",
+];
 
 const SplitStatusEnum = ["none", "root", "root_hidden", "partial"];
 
@@ -279,6 +291,38 @@ const OrderItemSchema = new Schema(
 
 const OrderSchema = BaseSchemaModel({
   orderCode: { type: String, required: true, index: true },
+  trackingCode: { type: String, default: null },
+  trackingToken: { type: String, default: null },
+  trackingUrl: { type: String, default: null },
+  trackingQrPayload: { type: String, default: null },
+  trackingQrGeneratedAt: { type: Date, default: null },
+  trackingQrRevokedAt: { type: Date, default: null },
+  publicStatus: {
+    type: String,
+    enum: CustomerOrderPublicStatusEnum,
+    default: "ORDER_RECEIVED",
+  },
+  statusHistory: {
+    type: [
+      {
+        _id: false,
+        status: { type: String, required: true },
+        displayMessage: { type: String, required: true },
+        changedAt: { type: Date, required: true },
+        changedByRole: {
+          type: String,
+          enum: ["CUSTOMER", "STAFF", "KITCHEN", "CASHIER", "SYSTEM"],
+          default: "SYSTEM",
+        },
+        metadata: { type: Schema.Types.Mixed, default: null },
+      },
+    ],
+    default: [],
+  },
+  estimatedReadyAt: { type: Date, default: null },
+  estimatedDeliveryAt: { type: Date, default: null },
+  customerVisibleNote: { type: String, default: null },
+  lastCustomerNotifiedAt: { type: Date, default: null },
   parentOrderCode: { type: String, index: true },
   orderKind: {
     type: String,
@@ -531,6 +575,22 @@ OrderSchema.index({
   createdAt: -1,
 });
 
+OrderSchema.index(
+  { trackingCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { trackingCode: { $type: "string" } },
+    name: "unique_order_tracking_code",
+  },
+);
+OrderSchema.index(
+  { trackingToken: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { trackingToken: { $type: "string" } },
+    name: "unique_order_tracking_token",
+  },
+);
 OrderSchema.index(
   { activeSessionKey: 1 },
   {
