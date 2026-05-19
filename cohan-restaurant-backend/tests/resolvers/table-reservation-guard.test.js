@@ -84,4 +84,50 @@ describe("table mutation reservation guards", () => {
     });
     expect(tableFindByIdAndUpdateMock).not.toHaveBeenCalled();
   });
+
+  it("blocks setTableStatus cleaning when table has active reservation", async () => {
+    tableFindByIdMock.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: "table-1",
+          restaurantId: "restaurant-1",
+          code: "A1",
+        }),
+      }),
+    });
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveReservationsForTable.mockResolvedValue(true);
+
+    const mutation = (await import("../../graphql/resolvers/table/mutation.js")).default;
+
+    await expect(
+      mutation.setTableStatus(null, { input: { id: "table-1", status: "cleaning" } }, { user: { id: "u1" } }),
+    ).rejects.toMatchObject({
+      extensions: { code: "TABLE_HAS_ACTIVE_RESERVATION" },
+    });
+    expect(tableFindByIdAndUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks setTableStatus maintenance when table has active reservation", async () => {
+    tableFindByIdMock.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: "table-1",
+          restaurantId: "restaurant-1",
+          code: "A1",
+        }),
+      }),
+    });
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveReservationsForTable.mockResolvedValue(true);
+
+    const mutation = (await import("../../graphql/resolvers/table/mutation.js")).default;
+
+    await expect(
+      mutation.setTableStatus(null, { input: { id: "table-1", status: "maintenance" } }, { user: { id: "u1" } }),
+    ).rejects.toMatchObject({
+      extensions: { code: "TABLE_HAS_ACTIVE_RESERVATION" },
+    });
+    expect(tableFindByIdAndUpdateMock).not.toHaveBeenCalled();
+  });
 });
