@@ -134,13 +134,14 @@ const OrderItemRow = React.memo(
     orderStatus,
     onStatusChange,
     isSaving,
-    onReviewItemVoid,
-    onRequestItemReturn,
-    onReviewItemReturn,
+    onOpenApproveVoid,
+    onOpenRejectVoid,
+    onOpenRequestReturn,
+    onOpenApproveReturn,
+    onOpenRejectReturn,
   }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
-    const targetOrderId = item?.sourceOrderId || order?.actionOrderId || order?.id;
 
     useEffect(() => {
       const handleClickOutside = (event) => {
@@ -179,7 +180,6 @@ const OrderItemRow = React.memo(
       0,
       baseline - Number(item.returnedQuantity || 0),
     );
-    const [reviewingRequestId, setReviewingRequestId] = useState(null);
     const canReviewVoid =
       !["completed", "cancelled"].includes(orderStatus) &&
       !["served", "cancelled", "returned"].includes(item.status);
@@ -234,57 +234,20 @@ const OrderItemRow = React.memo(
                 <button
                   disabled={
                     !canReviewVoid ||
-                    reviewingRequestId === req.requestId ||
-                    !onReviewItemVoid ||
+                    !onOpenApproveVoid ||
                     req.status !== "pending"
                   }
-                  onClick={async () => {
-                    const ok = window.confirm(
-                      `Duyệt hủy ${req.quantity} món ${item.name}? Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.`,
-                    );
-                    if (!ok) return;
-                    setReviewingRequestId(req.requestId);
-                    try {
-                      await onReviewItemVoid({
-                        orderId: targetOrderId,
-                        orderItemId: item._id,
-                        requestId: req.requestId,
-                        approve: true,
-                        note: "POS duyệt yêu cầu hủy món",
-                      });
-                    } finally {
-                      setReviewingRequestId(null);
-                    }
-                  }}
+                  onClick={() => onOpenApproveVoid?.({ item, request: req, index })}
                 >
                   Duyệt
                 </button>
                 <button
                   disabled={
                     !canReviewVoid ||
-                    reviewingRequestId === req.requestId ||
-                    !onReviewItemVoid ||
+                    !onOpenRejectVoid ||
                     req.status !== "pending"
                   }
-                  onClick={async () => {
-                    const note = window.prompt(
-                      "Nhập lý do từ chối",
-                      "Không phù hợp trạng thái xử lý",
-                    );
-                    if (note == null) return;
-                    setReviewingRequestId(req.requestId);
-                    try {
-                      await onReviewItemVoid({
-                        orderId: targetOrderId,
-                        orderItemId: item._id,
-                        requestId: req.requestId,
-                        approve: false,
-                        note,
-                      });
-                    } finally {
-                      setReviewingRequestId(null);
-                    }
-                  }}
+                  onClick={() => onOpenRejectVoid?.({ item, request: req, index })}
                 >
                   Từ chối
                 </button>
@@ -301,52 +264,7 @@ const OrderItemRow = React.memo(
             pendingReturnRequests.length === 0 &&
             remainingReturnable > 0 && (
               <button
-                onClick={async () => {
-                  const qtyRaw = window.prompt(
-                    "Nhập số lượng muốn trả lại",
-                    "1",
-                  );
-                  if (qtyRaw == null) return;
-                  const qty = Number(qtyRaw);
-                  if (!Number.isInteger(qty) || qty <= 0) {
-                    window.alert(
-                      "Số lượng trả lại phải là số nguyên lớn hơn 0.",
-                    );
-                    return;
-                  }
-                  if (qty > remainingReturnable) {
-                    window.alert(
-                      "Số lượng trả lại lớn hơn số lượng còn có thể trả.",
-                    );
-                    return;
-                  }
-                  const reason = window.prompt("Nhập lý do trả lại món", "");
-                  if (reason == null) return;
-                  const mode = window.prompt(
-                    "Cách xử lý (none/remove_from_bill/refund_after_payment)",
-                    "none",
-                  );
-                  if (!mode) return;
-                  if (
-                    ![
-                      "none",
-                      "remove_from_bill",
-                      "refund_after_payment",
-                    ].includes(mode)
-                  ) {
-                    window.alert(
-                      "Chế độ xử lý không hợp lệ. Chọn none, remove_from_bill hoặc refund_after_payment.",
-                    );
-                    return;
-                  }
-                  await onRequestItemReturn?.({
-                    orderId: targetOrderId,
-                    orderItemId: item._id,
-                    quantity: qty,
-                    reason,
-                    refundMode: mode,
-                  });
-                }}
+                onClick={() => onOpenRequestReturn?.({ item, index, remainingReturnable })}
               >
                 Trả lại món
               </button>
@@ -357,35 +275,12 @@ const OrderItemRow = React.memo(
               <div>Lý do: {req.reason}</div>
               <div>Cách xử lý: {req.refundMode}</div>
               <button
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `Duyệt trả lại ${req.quantity} món ${item.name}? Kho sẽ không được hoàn tự động.`,
-                    )
-                  )
-                    return;
-                  await onReviewItemReturn?.({
-                    orderId: targetOrderId,
-                    orderItemId: item._id,
-                    requestId: req.requestId,
-                    approve: true,
-                  });
-                }}
+                onClick={() => onOpenApproveReturn?.({ item, request: req, index })}
               >
                 Duyệt trả lại
               </button>
               <button
-                onClick={async () => {
-                  const note = window.prompt("Lý do từ chối", "");
-                  if (note == null) return;
-                  await onReviewItemReturn?.({
-                    orderId: targetOrderId,
-                    orderItemId: item._id,
-                    requestId: req.requestId,
-                    approve: false,
-                    note,
-                  });
-                }}
+                onClick={() => onOpenRejectReturn?.({ item, request: req, index })}
               >
                 Từ chối
               </button>
@@ -444,6 +339,15 @@ const OrderModal = ({
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [actionDialog, setActionDialog] = useState(null);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [actionForm, setActionForm] = useState({
+    note: "",
+    quantity: 1,
+    reason: "",
+    refundMode: "none",
+  });
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
   const actionOrderId = order?.actionOrderId || order?.id;
 
@@ -532,6 +436,21 @@ const OrderModal = ({
     }, 60000);
     return () => clearInterval(interval);
   }, [order?.createdAt]);
+  useEffect(() => {
+    if (!actionDialog) return;
+    if (actionDialog.type === "rejectVoid") {
+      setActionForm((prev) => ({ ...prev, note: "Không phù hợp trạng thái xử lý" }));
+    } else if (actionDialog.type === "requestReturn") {
+      setActionForm({
+        note: "",
+        quantity: 1,
+        reason: "",
+        refundMode: "none",
+      });
+    } else {
+      setActionForm((prev) => ({ ...prev, note: "" }));
+    }
+  }, [actionDialog]);
 
   const handleClose = useCallback(() => onClose?.(), [onClose]);
 
@@ -574,14 +493,68 @@ const OrderModal = ({
     [actionOrderId, onUpdateItemStatus],
   );
 
+  const openActionDialog = useCallback((payload) => {
+    setActionError("");
+    setActionDialog(payload);
+  }, []);
+  const closeActionDialog = useCallback(() => {
+    if (actionSubmitting) return;
+    setActionDialog(null);
+    setActionError("");
+  }, [actionSubmitting]);
+
+  const submitActionDialog = useCallback(
+    async (formState = {}) => {
+      if (!actionDialog) return;
+      const targetOrderId =
+        actionDialog?.item?.sourceOrderId || actionOrderId || order?.id;
+      setActionSubmitting(true);
+      setActionError("");
+      try {
+        if (actionDialog.type === "approveVoid") {
+          if (typeof onReviewItemVoid !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
+        } else if (actionDialog.type === "rejectVoid") {
+          const note = String(formState.note || "").trim();
+          if (!note) throw new Error("Vui lòng nhập lý do từ chối.");
+          if (typeof onReviewItemVoid !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
+        } else if (actionDialog.type === "requestReturn") {
+          const quantity = Number(formState.quantity);
+          const reason = String(formState.reason || "").trim();
+          const refundMode = formState.refundMode;
+          const remainingReturnable = Number(actionDialog.remainingReturnable || 0);
+          if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("Số lượng trả lại phải là số nguyên lớn hơn 0.");
+          if (quantity > remainingReturnable) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
+          if (!reason) throw new Error("Vui lòng nhập lý do trả lại món.");
+          if (!["none", "remove_from_bill", "refund_after_payment"].includes(refundMode)) throw new Error("Chế độ xử lý không hợp lệ.");
+          if (typeof onRequestItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onRequestItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, quantity, reason, refundMode });
+        } else if (actionDialog.type === "approveReturn") {
+          if (typeof onReviewItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true });
+        } else if (actionDialog.type === "rejectReturn") {
+          const note = String(formState.note || "").trim();
+          if (!note) throw new Error("Vui lòng nhập lý do từ chối.");
+          if (typeof onReviewItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
+        } else if (actionDialog.type === "serveAll") {
+          if (typeof onUpdateItemStatus !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          const pendingItems = items.map((it, idx) => ({ ...it, idx })).filter((it) => !["served", "cancelled"].includes(it.status));
+          for (const item of pendingItems) await handleChangeStatus(item, item.idx, "served");
+        }
+        setActionDialog(null);
+      } catch (error) {
+        setActionError(error?.message || "Không thể thực hiện thao tác.");
+      } finally {
+        setActionSubmitting(false);
+      }
+    },
+    [actionDialog, actionOrderId, handleChangeStatus, items, onRequestItemReturn, onReviewItemReturn, onReviewItemVoid, order?.id],
+  );
+
   const handleServeAll = async () => {
-    if (!window.confirm("Xác nhận đã trả hết các món còn lại?")) return;
-    const pendingItems = items
-      .map((it, idx) => ({ ...it, idx }))
-      .filter((it) => !["served", "cancelled"].includes(it.status));
-    for (const item of pendingItems) {
-      await handleChangeStatus(item, item.idx, "served");
-    }
+    openActionDialog({ type: "serveAll", title: "Xác nhận trả hết món?" });
   };
 
   const renderOrderTypeIcon = (type) => {
@@ -759,9 +732,21 @@ const OrderModal = ({
                   orderStatus={order?.currentStatus}
                   isSaving={savingMap[item._lineId || index]}
                   onStatusChange={handleChangeStatus}
-                  onReviewItemVoid={onReviewItemVoid}
-                  onRequestItemReturn={onRequestItemReturn}
-                  onReviewItemReturn={onReviewItemReturn}
+                  onOpenApproveVoid={({ item, request, index: itemIndex }) =>
+                    openActionDialog({ type: "approveVoid", item, request, itemIndex, title: "Duyệt yêu cầu hủy món?" })
+                  }
+                  onOpenRejectVoid={({ item, request, index: itemIndex }) =>
+                    openActionDialog({ type: "rejectVoid", item, request, itemIndex, title: "Từ chối yêu cầu hủy món?" })
+                  }
+                  onOpenRequestReturn={({ item, index: itemIndex, remainingReturnable }) =>
+                    openActionDialog({ type: "requestReturn", item, itemIndex, remainingReturnable, title: "Trả lại món" })
+                  }
+                  onOpenApproveReturn={({ item, request, index: itemIndex }) =>
+                    openActionDialog({ type: "approveReturn", item, request, itemIndex, title: "Duyệt trả lại món?" })
+                  }
+                  onOpenRejectReturn={({ item, request, index: itemIndex }) =>
+                    openActionDialog({ type: "rejectReturn", item, request, itemIndex, title: "Từ chối yêu cầu trả lại?" })
+                  }
                 />
               ))}
             </div>
@@ -826,6 +811,47 @@ const OrderModal = ({
             <Printer size={18} /> In tạm tính
           </button>
         </footer>
+        {actionDialog && (
+          <div className="om-actionDialogOverlay" onClick={closeActionDialog}>
+            <div className="om-actionDialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="om-actionDialog__header">{actionDialog.title}</div>
+              <div className="om-actionDialog__body">
+                {actionDialog.type === "approveVoid" && <p>Duyệt hủy x{actionDialog.request?.quantity} món {actionDialog.item?.name}. Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.</p>}
+                {actionDialog.type === "approveReturn" && <p>Duyệt trả lại x{actionDialog.request?.quantity} món {actionDialog.item?.name}. Kho sẽ không được hoàn tự động.</p>}
+                {actionDialog.type === "serveAll" && <p>Toàn bộ món còn lại sẽ được chuyển sang trạng thái đã trả.</p>}
+                {["rejectVoid", "rejectReturn"].includes(actionDialog.type) && (
+                  <label className="om-actionDialog__field">Lý do
+                    <textarea value={actionForm.note} onChange={(e) => setActionForm((prev) => ({ ...prev, note: e.target.value }))} />
+                  </label>
+                )}
+                {actionDialog.type === "requestReturn" && (
+                  <>
+                    <label className="om-actionDialog__field">Số lượng
+                      <input type="number" min={1} max={actionDialog.remainingReturnable || 1} value={actionForm.quantity} onChange={(e) => setActionForm((prev) => ({ ...prev, quantity: e.target.value }))} />
+                    </label>
+                    <label className="om-actionDialog__field">Lý do
+                      <textarea value={actionForm.reason} onChange={(e) => setActionForm((prev) => ({ ...prev, reason: e.target.value }))} />
+                    </label>
+                    <label className="om-actionDialog__field">Cách xử lý
+                      <select value={actionForm.refundMode} onChange={(e) => setActionForm((prev) => ({ ...prev, refundMode: e.target.value }))}>
+                        <option value="none">Chỉ ghi nhận trả lại</option>
+                        <option value="remove_from_bill">Trừ khỏi hóa đơn</option>
+                        <option value="refund_after_payment">Hoàn tiền sau thanh toán</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+                {actionError && <div className="om-actionDialog__error">{actionError}</div>}
+              </div>
+              <div className="om-actionDialog__actions">
+                <button className="om-actionDialog__button om-actionDialog__button--secondary" onClick={closeActionDialog} disabled={actionSubmitting}>Hủy</button>
+                <button className={`om-actionDialog__button ${["approveVoid", "approveReturn", "serveAll"].includes(actionDialog.type) ? "om-actionDialog__button--danger" : "om-actionDialog__button--primary"}`} onClick={() => submitActionDialog(actionForm)} disabled={actionSubmitting}>
+                  {actionSubmitting ? "Đang xử lý..." : "Xác nhận"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,
