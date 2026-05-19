@@ -339,6 +339,15 @@ export async function createServer() {
       socket.leave(roomName);
       app.log.info(`🚪 Socket ${socket.id} left order room ${roomName}`);
     });
+    socket.on("join-order-tracking", ({ trackingToken } = {}) => {
+      if (!trackingToken || typeof trackingToken !== "string") return;
+      socket.join(`order-tracking:${trackingToken}`);
+    });
+
+    socket.on("leave-order-tracking", ({ trackingToken } = {}) => {
+      if (!trackingToken || typeof trackingToken !== "string") return;
+      socket.leave(`order-tracking:${trackingToken}`);
+    });
 
     socket.on("joinMenuItemView", ({ restaurantId, menuItemId }) => {
       if (!restaurantId || !menuItemId) return;

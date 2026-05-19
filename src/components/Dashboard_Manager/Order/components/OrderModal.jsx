@@ -22,6 +22,7 @@ import {
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import OrderTrackingQrCard from "./OrderTrackingQrCard";
 
 const formatCurrency = (amount) => {
   const n = Number(amount) || 0;
@@ -140,7 +141,7 @@ const OrderItemRow = React.memo(
   }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
-    const targetOrderId = item?.sourceOrderId || order?.actionOrderId || order?.id;
+    const targetOrderId = item?.sourceOrderId || order?.actionOrderId || order?.id || order?._id;
 
     useEffect(() => {
       const handleClickOutside = (event) => {
@@ -445,7 +446,7 @@ const OrderModal = ({
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
-  const actionOrderId = order?.actionOrderId || order?.id;
+  const actionOrderId = order?.actionOrderId || order?.id || order?._id;
 
   const items = useMemo(() => {
     return (order?.items || []).map((it) => {
@@ -703,6 +704,9 @@ const OrderModal = ({
                 <Utensils size={16} /> <span className="text">{order.note}</span>
               </div>
             )}
+          </section>
+          <section className="om-section info-card">
+            <OrderTrackingQrCard orderId={order?.actionOrderId || order?.id || order?._id} />
           </section>
 
           {Array.isArray(order?.statusTimeline) &&

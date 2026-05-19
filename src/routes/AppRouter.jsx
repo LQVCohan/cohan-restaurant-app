@@ -14,6 +14,7 @@ import TableBooking from "../components/Customer/TableBooking/TableBooking";
 import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
 import ProfilePage from "../components/Customer/Profile/ProfilePage";
 import OrderTrackingPage from "../components/Customer/OrderTracking/OrderTrackingPage";
+import PublicOrderTrackingPage from "../components/Customer/OrderTracking/PublicOrderTrackingPage";
 import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
 import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfilePage.jsx";
 import ForYou from "@/components/Customer/ForYou/ForYou";
@@ -129,6 +130,7 @@ const AppRouter = () => (
     <Route path="/403" element={<ForbiddenPage />} />
     <Route path="/logout" element={<LogoutHandler />} />
     <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />
+    <Route path="/track-order/:trackingToken" element={<PublicOrderTrackingPage />} />
 
     <Route path="/staff" element={withPrivateRoute(<Navigate to="/staff/dashboard" replace />, STAFF_SHARED_ROLES)} />
     <Route path="/staff/dashboard" element={withPrivateRoute(withStaffLayout(<StaffDashboardPage />), STAFF_SHARED_ROLES)} />
@@ -160,7 +162,7 @@ const AppRouter = () => (
       <Route path="/owner/:id" element={withPrivateRoute(<OwnerProfilePage />, ["manager", "admin"])} />
       <Route path="/for-you" element={<ForYou />} />
       <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
-      <Route path="/track-order/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
+      <Route path="/track-delivery/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
       <Route path="/restaurants" element={<RestaurantsList />} />
       <Route path="/restaurant/:id" element={<RestaurantDetail />} />
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
