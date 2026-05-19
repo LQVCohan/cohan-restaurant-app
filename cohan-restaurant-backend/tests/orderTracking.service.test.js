@@ -80,4 +80,41 @@ describe("orderTracking.service", () => {
     const payload = emit.mock.calls[0][1];
     expect(payload.items?.[0]?._id).toBeUndefined();
   });
+  it("ensures checkout-created orders receive tracking before emit", async () => {
+    vi.spyOn(Order, "exists").mockResolvedValueOnce(null);
+    const emit = vi.fn();
+    const ctx = { io: { to: vi.fn(() => ({ emit })) } };
+    const save = vi.fn(async () => orderDoc);
+    const orderDoc = {
+      orderType: "takeaway",
+      restaurantId: "r1",
+      publicStatus: "ORDER_RECEIVED",
+      currentStatus: "pending",
+      items: [{ name: "Cafe", quantity: 1, status: "pending", _id: "secret" }],
+      statusHistory: [],
+      totals: { grandTotal: 45000 },
+      trackingToken: null,
+      trackingCode: null,
+      save,
+      toObject: () => ({
+        trackingCode: orderDoc.trackingCode,
+        trackingToken: orderDoc.trackingToken,
+        trackingQrPayload: orderDoc.trackingQrPayload,
+        publicStatus: orderDoc.publicStatus,
+        items: orderDoc.items,
+        statusHistory: orderDoc.statusHistory,
+        totals: orderDoc.totals,
+      }),
+    };
+    await ensureOrderTracking(orderDoc);
+    updatePublicStatusHistory(orderDoc, "SYSTEM");
+    await orderDoc.save();
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus: "ORDER_RECEIVED", force: true });
+    expect(orderDoc.trackingToken).toBeTruthy();
+    expect(orderDoc.trackingCode).toContain("ORD-");
+    expect(orderDoc.trackingQrPayload).toBe(orderDoc.trackingUrl);
+    expect(save).toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit.mock.calls[0][1]?.items?.[0]?._id).toBeUndefined();
+  });
 });

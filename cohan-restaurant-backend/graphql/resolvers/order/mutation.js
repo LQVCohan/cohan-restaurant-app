@@ -2451,7 +2451,9 @@ export const OrderMutation = {
 
     for (const order of createdOrders) {
       const prevPublicStatus = order.publicStatus;
+      await ensureOrderTracking(order);
       updatePublicStatusHistory(order, "SYSTEM");
+      await order.save();
       if (order.orderType === "delivery") {
         await createOrderTrackingEvent({
           order,
@@ -2465,7 +2467,7 @@ export const OrderMutation = {
           },
         });
       }
-      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus });
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
     }
 
