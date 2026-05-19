@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildVisibleScheduleInsights } from "./utils/scheduleInsights";
+import { buildScheduleQualitySummary } from "./utils/scheduleQuality";
 
 const baseShift = {
   id: "shift-1",
@@ -107,5 +108,61 @@ describe("buildVisibleScheduleInsights min weekly hours warnings", () => {
       employmentTypePolicy,
     });
     expect(result.issues.find((issue) => issue.id === "pt-1-availability-below-min-hours")).toBeTruthy();
+  });
+});
+
+describe("buildScheduleQualitySummary", () => {
+  it("returns danger score when no shifts are available", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [],
+      staffShifts: [],
+    });
+    expect(result.score).toBeLessThan(70);
+    expect(["warning", "danger"]).toContain(result.tone);
+  });
+
+  it("keeps high score when risks are clean", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1" }],
+      staffShifts: [{ assignedCount: 1 }],
+    });
+    expect(result.score).toBe(100);
+    expect(result.tone).toBe("success");
+  });
+
+  it("reduces score from warnings, dangers, pending and changed-after-ack", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [{ id: "w1" }, { id: "w2" }],
+        dangers: [{ id: "d1" }],
+        pendingAcknowledgements: 2,
+        changedAfterAcknowledgementCount: 1,
+        topIssues: [{ id: "d1" }],
+      },
+      scheduleLifecycleStatus: "revision_draft",
+      effectiveScheduleStatus: "revision_draft",
+      shifts: [{ id: "s1" }, { id: "s2" }],
+      staffShifts: [{ assignedCount: 1 }, { assignedCount: 0 }],
+    });
+    expect(result.score).toBeLessThan(85);
+    expect(result.tone === "info" || result.tone === "warning" || result.tone === "danger").toBeTruthy();
   });
 });
