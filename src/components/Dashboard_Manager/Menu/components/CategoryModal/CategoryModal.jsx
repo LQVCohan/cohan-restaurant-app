@@ -20,6 +20,7 @@ import {
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
 import "./CategoryModal.scss";
+import "./CategoryModalPolish.scss";
 
 const INITIAL_FORM = {
   id: null,
