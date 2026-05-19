@@ -137,6 +137,14 @@ describe("ScheduleManagement", () => {
     vi.clearAllMocks();
   });
 
+
+  it("does not crash when schedule quality summary reads staff shifts", () => {
+    mockShiftsData = undefined;
+
+    expect(() => render(<ScheduleManagement />)).not.toThrow();
+    expect(screen.getByText("Đánh giá chất lượng lịch")).toBeInTheDocument();
+  });
+
   it("keeps the staff schedule tab in read-only mode", () => {
     const { container } = render(<ScheduleManagement readOnly />);
 
