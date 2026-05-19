@@ -304,6 +304,51 @@ describe("payment request + confirm guards", () => {
     expect(emitOrderEventMock).toHaveBeenCalled();
   });
 
+  it.each(["delivery", "takeaway"])(
+    "payOrdersByOrderIds for %s does not touch table lifecycle models",
+    async (orderType) => {
+      const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+      const offPremiseOrder = {
+        _id: `65f0000000000000000003${orderType === "delivery" ? "01" : "02"}`,
+        restaurantId: "65f000000000000000000099",
+        orderCode: orderType === "delivery" ? "SHIP-301" : "TAKE-302",
+        orderType,
+        tableId: null,
+        tableCode: null,
+        currentStatus: "served",
+        items: [{ status: "served", quantity: 1, lineSubtotal: 120000, unitPrice: 120000, dishId: "dish-ship-1", name: "Ship dish", voidRequests: [], returnRequests: [] }],
+        totals: { subtotal: 120000, discount: 0, tax: 0, service: 0, shippingFee: 15000, grandTotal: 135000 },
+        payment: { status: "payment_requested" },
+      };
+
+      modelMocks.Order.find
+        .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([offPremiseOrder]) })
+        .mockResolvedValueOnce([offPremiseOrder]);
+
+      const out = await payOrdersByOrderIds(
+        null,
+        {
+          input: {
+            restaurantId: "65f000000000000000000099",
+            orderIds: [offPremiseOrder._id],
+            method: "cash",
+          },
+        },
+        AUTH_CONTEXT,
+      );
+
+      expect(modelMocks.Table.findById).not.toHaveBeenCalled();
+      expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+      expect(modelMocks.Order.updateMany).toHaveBeenCalled();
+
+      const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
+      expect(payload.$set["payment.status"]).toBe("paid");
+      expect(payload.$set.currentStatus).toBe("completed");
+      expect(payload.$push.statusTimeline.note).toBe("Đã thanh toán và hoàn tất đơn.");
+      expect(out?.invoice).toBeTruthy();
+    },
+  );
+
   it("payOrdersByTableId returns warning for unserved child with active parent and does not close parent", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const unservedChild = {
