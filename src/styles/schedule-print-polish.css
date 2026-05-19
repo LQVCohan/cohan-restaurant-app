@@ -1,0 +1,120 @@
+.manager-page-shell--schedules .schedule-print-header {
+  display: none;
+}
+
+@media print {
+  body.schedule-print-mode {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  body.schedule-print-mode .app-sidebar,
+  body.schedule-print-mode .sidebar,
+  body.schedule-print-mode nav,
+  body.schedule-print-mode header:not(.schedule-header),
+  body.schedule-print-mode .topbar,
+  body.schedule-print-mode .manager-topbar,
+  body.schedule-print-mode .page-actions,
+  body.schedule-print-mode .header-actions,
+  body.schedule-print-mode .toolbar-right,
+  body.schedule-print-mode .view-toggles,
+  body.schedule-print-mode .date-navigation .nav-btn,
+  body.schedule-print-mode .schedule-publish-reminder,
+  body.schedule-print-mode .declined-shift-review-panel,
+  body.schedule-print-mode .schedule-quality-panel,
+  body.schedule-print-mode .schedule-readiness-focus-banner,
+  body.schedule-print-mode .refresh-indicator,
+  body.schedule-print-mode .loading-overlay,
+  body.schedule-print-mode .modal,
+  body.schedule-print-mode .modal-backdrop {
+    display: none !important;
+  }
+
+  body.schedule-print-mode .manager-page-shell--schedules,
+  body.schedule-print-mode .schedule-container,
+  body.schedule-print-mode .schedule-board,
+  body.schedule-print-mode .schedule-day-column,
+  body.schedule-print-mode .day-header,
+  body.schedule-print-mode .day-body,
+  body.schedule-print-mode .shift-card,
+  body.schedule-print-mode .schedule-shift-card {
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  body.schedule-print-mode .schedule-container {
+    padding: 0 !important;
+  }
+
+  body.schedule-print-mode .schedule-header {
+    padding: 0 0 0.5rem !important;
+    border: 0 !important;
+  }
+
+  body.schedule-print-mode .schedule-header .kpi-grid,
+  body.schedule-print-mode .schedule-header .subtitle {
+    display: none !important;
+  }
+
+  body.schedule-print-mode .schedule-toolbar {
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+
+  body.schedule-print-mode .schedule-print-header {
+    display: block !important;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 0.5rem;
+  }
+
+  body.schedule-print-mode .schedule-print-header h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  body.schedule-print-mode .schedule-print-header p {
+    margin: 0.08rem 0;
+    font-size: 0.88rem;
+    color: #374151 !important;
+  }
+
+  body.schedule-print-mode .toolbar-left {
+    display: block !important;
+  }
+
+  body.schedule-print-mode .date-navigation {
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    margin-bottom: 0.4rem;
+  }
+
+  body.schedule-print-mode .week-label {
+    text-align: left !important;
+    min-width: 0 !important;
+    font-weight: 700 !important;
+  }
+
+  body.schedule-print-mode .schedule-board {
+    padding: 0 !important;
+    gap: 0.5rem !important;
+    overflow: visible !important;
+  }
+
+  body.schedule-print-mode .schedule-day-column,
+  body.schedule-print-mode .shift-card,
+  body.schedule-print-mode .schedule-shift-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-color: #d1d5db !important;
+  }
+}
