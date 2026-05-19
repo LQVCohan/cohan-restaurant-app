@@ -349,6 +349,49 @@ describe("payment request + confirm guards", () => {
     },
   );
 
+
+  it.each([
+    ["delivery", "failed"],
+    ["delivery", "cancelled"],
+    ["takeaway", "failed"],
+    ["takeaway", "cancelled"],
+  ])(
+    "payOrdersByOrderIds ignores %s order when payment/current status is %s",
+    async (orderType, terminalStatus) => {
+      const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+      modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
+
+      const out = await payOrdersByOrderIds(
+        null,
+        {
+          input: {
+            restaurantId: "65f000000000000000000099",
+            orderIds: [
+              `65f0000000000000000004${orderType === "delivery" ? "01" : "02"}`,
+            ],
+            method: "cash",
+          },
+        },
+        AUTH_CONTEXT,
+      );
+
+      const orderFindFilter = modelMocks.Order.find.mock.calls[0][0];
+      expect(orderFindFilter.currentStatus).toEqual({ $nin: ["completed", "cancelled", "failed"] });
+      expect(orderFindFilter.restaurantId.toString()).toBe("65f000000000000000000099");
+      expect(out).toEqual({
+        warning: true,
+        pendingOrderCodes: [],
+        invoice: null,
+        transaction: null,
+        cashflow: null,
+      });
+      expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
+      expect(modelMocks.Table.findById).not.toHaveBeenCalled();
+      expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+      expect(terminalStatus).toMatch(/failed|cancelled/);
+    },
+  );
+
   it("payOrdersByTableId returns warning for unserved child with active parent and does not close parent", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const unservedChild = {
