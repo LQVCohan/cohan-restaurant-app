@@ -304,6 +304,45 @@ describe("payment request + confirm guards", () => {
     expect(emitOrderEventMock).toHaveBeenCalled();
   });
 
+  it("payOrdersByOrderIds for delivery does not touch table lifecycle models", async () => {
+    const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+    const deliveryOrder = {
+      _id: "65f000000000000000000301",
+      restaurantId: "65f000000000000000000099",
+      orderCode: "SHIP-301",
+      orderType: "delivery",
+      tableId: null,
+      tableCode: null,
+      currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 120000, unitPrice: 120000, dishId: "dish-ship-1", name: "Ship dish", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 120000, discount: 0, tax: 0, service: 0, shippingFee: 15000, grandTotal: 135000 },
+      payment: { status: "pending" },
+    };
+
+    modelMocks.Order.find
+      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([deliveryOrder]) })
+      .mockResolvedValueOnce([deliveryOrder]);
+
+    await payOrdersByOrderIds(
+      null,
+      {
+        input: {
+          restaurantId: "65f000000000000000000099",
+          orderIds: ["65f000000000000000000301"],
+          method: "cash",
+        },
+      },
+      AUTH_CONTEXT,
+    );
+
+    expect(modelMocks.Table.findById).not.toHaveBeenCalled();
+    expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+
+    const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
+    expect(payload.$set["payment.status"]).toBe("paid");
+    expect(payload.$set.currentStatus).toBe("completed");
+  });
+
   it("payOrdersByTableId returns warning for unserved child with active parent and does not close parent", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const unservedChild = {
