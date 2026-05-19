@@ -13,6 +13,7 @@ import { loadTableVrImage } from "@/utils/vrStorage";
 import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
+import { mapTableMutationError } from "@/utils/tableMutationError";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -28,32 +29,6 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   }
   return "";
 };
-
-const resolveTableStatusError = (
-  error,
-  fallbackMessage = "Lỗi đổi trạng thái!"
-) => {
-  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
-  const firstGraphQLError = gqlErrors[0] || null;
-  const code =
-    firstGraphQLError?.extensions?.code ||
-    error?.extensions?.code ||
-    null;
-
-  if (code === "TABLE_HAS_ACTIVE_ORDERS") {
-    return "Không thể chuyển trạng thái bàn vì bàn đang có phiên hoặc order hoạt động.";
-  }
-
-  if (code === "TABLE_HAS_ACTIVE_RESERVATION") {
-    return "Không thể chuyển trạng thái bàn vì bàn đang có đặt chỗ hoạt động.";
-  }
-
-  const message = firstGraphQLError?.message || error?.message;
-  if (typeof message === "string" && message.trim()) return message.trim();
-
-  return fallbackMessage;
-};
-
 
 const getTableFloorId = (table) =>
   table?.floorId?.id ||
@@ -429,7 +404,7 @@ const TableManagement = () => {
       await setTableStatus({ id: String(tableId), status: newStatus });
       await refetchTables();
     } catch (error) {
-      showNotification(resolveTableStatusError(error), "error");
+      showNotification(mapTableMutationError(error), "error");
     }
   };
 

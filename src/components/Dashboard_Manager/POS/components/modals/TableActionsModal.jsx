@@ -7,6 +7,7 @@ import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
 import { GET_CUSTOMERS_FOR_TABLE_INFO } from "../../../../../hooks/useUserManagement";
 import { useNotification } from "../../../../../hooks/useNotification";
+import { mapTableMutationError } from "../../../../../utils/tableMutationError";
 
 const Q_TABLE_CUSTOMER = gql`
   query TableCustomer(
@@ -762,7 +763,7 @@ function TableActionsModalCore({
       onUpdated?.();
     } catch (e) {
       console.error(e);
-      alert("Lỗi trạng thái.");
+      showNotification?.(mapTableMutationError(e), "error");
     } finally {
       setBusyKey("status", false);
     }
@@ -858,6 +859,10 @@ function TableActionsModalCore({
       onClose?.();
     } catch (e) {
       console.error(e);
+      showNotification?.(
+        mapTableMutationError(e, "Không thể xoá bàn."),
+        "error"
+      );
     } finally {
       setBusyKey("delete", false);
     }
