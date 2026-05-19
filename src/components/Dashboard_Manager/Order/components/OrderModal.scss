@@ -526,3 +526,76 @@ $st-cancelled-text: #b91c1c;
   background: #cbd5e1;
   border-radius: 10px;
 }
+
+.om-actionDialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+  padding: 16px;
+}
+.om-actionDialog {
+  width: min(560px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+}
+.om-actionDialog__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid $border-color;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.om-actionDialog__body {
+  padding: 16px 20px;
+  display: grid;
+  gap: 12px;
+}
+.om-actionDialog__field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: $text-main;
+  textarea,
+  input,
+  select {
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    padding: 8px 10px;
+    width: 100%;
+  }
+  textarea {
+    min-height: 90px;
+  }
+}
+.om-actionDialog__error {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.om-actionDialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 18px;
+}
+.om-actionDialog__button {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-weight: 700;
+}
+.om-actionDialog__button--secondary {
+  background: #e2e8f0;
+}
+.om-actionDialog__button--danger {
+  background: #dc2626;
+  color: #fff;
+}
+.om-actionDialog__button--primary {
+  background: #0f766e;
+  color: #fff;
+}

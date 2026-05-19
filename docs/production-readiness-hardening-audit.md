@@ -21,10 +21,12 @@
 - Removed vague runtime TODO comments about ScheduleIncident and documented limitation in `docs/schedule-incident-roadmap.md`.
 - Removed runtime "Tính năng đang phát triển" alert from staff quick actions.
 - Replaced review-management browser alerts/confirms with inline toast feedback and an in-app delete confirmation dialog.
+- Migrated OrderModal operational browser prompt/confirm/alert flows (hủy món, trả lại món, trả hết món) to in-app action dialogs.
+- Migrated menu inventory sync dry-run alert/confirm flow to in-app notice + confirmation modal.
+- Menu delete confirmation is enforced through in-app modal flow (no runtime browser confirm).
 
 ## Remaining limitations
 - ScheduleIncident service/model is intentionally deferred and documented for post-defense implementation.
-- Order item return/void flows and menu inventory sync still contain browser prompt/confirm dialogs; these are operational workflows and should be migrated to dedicated modals in a later UX pass.
 
 ## Verification
 - PR #602 CI completed frontend/backend lint, test, and build successfully before merge.

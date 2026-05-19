@@ -336,10 +336,6 @@ const CompactMenuStrip = ({
     if (typeof onDeleteMenu === "function") return onDeleteMenu(menu);
     const count = Number(menu.itemCount || 0);
     const force = count > 0;
-    const message = force
-      ? `Thực đơn "${menu.name || menu.timeSlot}" đang có ${count} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này. Bạn chắc chắn?`
-      : `Bạn chắc chắn muốn xóa thực đơn "${menu.name || menu.timeSlot}"?`;
-    if (typeof window !== "undefined" && !window.confirm(message)) return;
     setBusyMenuId(menu.id);
     setActionError("");
     setActionMessage("");

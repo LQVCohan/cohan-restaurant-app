@@ -206,6 +206,9 @@ const MenuManagement = () => {
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
   const [sortOption, setSortOption] = useState("default");
   const [inventoryFilter, setInventoryFilter] = useState("all");
+  const [inventorySyncNotice, setInventorySyncNotice] = useState("");
+  const [inventorySyncPreview, setInventorySyncPreview] = useState(null);
+  const [isConfirmingInventorySync, setIsConfirmingInventorySync] = useState(false);
 
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
@@ -697,27 +700,31 @@ const MenuManagement = () => {
       });
 
       if (!dryRunResult?.updatedCount) {
-        window.alert("Không có món nào cần cập nhật.");
+        setInventorySyncNotice("Không có món nào cần cập nhật.");
         return dryRunResult;
       }
-
-      const confirmed = window.confirm(
-        `Sẽ cập nhật ${dryRunResult.updatedCount} món.\n` +
-          `- available → out_of_stock: ${dryRunResult.toOutOfStockCount || 0}\n` +
-          `- out_of_stock → available: ${dryRunResult.toAvailableCount || 0}\n\n` +
-          "Bạn có chắc muốn đồng bộ tồn kho ngay bây giờ?",
-      );
-      if (!confirmed) return null;
-
-      return syncMenuItemInventoryStatuses({
-        restaurantId,
-        timeSlot,
-        recoverOutOfStock: true,
-        dryRun: false,
-      });
+      setInventorySyncNotice("");
+      setInventorySyncPreview({ restaurantId, timeSlot, dryRunResult });
+      return null;
     },
     [syncMenuItemInventoryStatuses],
   );
+  const handleConfirmInventorySync = useCallback(async () => {
+    if (!inventorySyncPreview) return;
+    setIsConfirmingInventorySync(true);
+    try {
+      const result = await syncMenuItemInventoryStatuses({
+        restaurantId: inventorySyncPreview.restaurantId,
+        timeSlot: inventorySyncPreview.timeSlot,
+        recoverOutOfStock: true,
+        dryRun: false,
+      });
+      setInventorySyncPreview(null);
+      setInventorySyncNotice(`Đã cập nhật ${result?.updatedCount || 0} món.`);
+    } finally {
+      setIsConfirmingInventorySync(false);
+    }
+  }, [inventorySyncPreview, syncMenuItemInventoryStatuses]);
 
   const inlineAlertStyle = {
     display: "flex",
@@ -870,6 +877,7 @@ const MenuManagement = () => {
       </section>
 
       <main className="mm-body">
+        {inventorySyncNotice && <div className="mm-notice">{inventorySyncNotice}</div>}
         <Toolbar
           searchTerm={search}
           onSearchChange={setSearch}
@@ -1123,6 +1131,20 @@ const MenuManagement = () => {
             <FiTrash2 size={16} />
             <span>{isDeletingItem ? "Đang xóa..." : "Xóa"}</span>
           </button>
+        </Modal.Footer>
+      </Modal>
+      <Modal
+        isOpen={!!inventorySyncPreview}
+        onClose={() => !isConfirmingInventorySync && setInventorySyncPreview(null)}
+        size="sm"
+      >
+        <Modal.Header>Xác nhận đồng bộ tồn kho</Modal.Header>
+        <Modal.Body>
+          Sẽ cập nhật {inventorySyncPreview?.dryRunResult?.updatedCount || 0} món. - available → out_of_stock: {inventorySyncPreview?.dryRunResult?.toOutOfStockCount || 0}; - out_of_stock → available: {inventorySyncPreview?.dryRunResult?.toAvailableCount || 0}.
+        </Modal.Body>
+        <Modal.Footer>
+          <button type="button" onClick={() => setInventorySyncPreview(null)} disabled={isConfirmingInventorySync} style={modalButtonBaseStyle}>Hủy</button>
+          <button type="button" onClick={handleConfirmInventorySync} disabled={isConfirmingInventorySync} style={{ ...modalButtonBaseStyle, background: "#0f766e", color: "#fff" }}>{isConfirmingInventorySync ? "Đang đồng bộ..." : "Đồng bộ ngay"}</button>
         </Modal.Footer>
       </Modal>
     </div>
