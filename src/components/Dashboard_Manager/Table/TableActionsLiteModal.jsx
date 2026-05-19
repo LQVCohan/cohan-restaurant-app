@@ -10,6 +10,7 @@ import { usePromotions } from "@/hooks/usePromotions";
 import useModalDraft from "@/hooks/useModalDraft";
 import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
+import { mapTableMutationError } from "@/utils/tableMutationError";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -30,28 +31,9 @@ const resolveTableActionError = (
   fallbackMessage = "Không thể thực hiện thao tác với bàn. Vui lòng thử lại.",
   fallbackDuplicateCode = ""
 ) => {
-  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
-  const firstGraphQLError = gqlErrors[0] || null;
-  const code =
-    firstGraphQLError?.extensions?.code ||
-    error?.extensions?.code ||
-    null;
-
-  if (code === "TABLE_HAS_ACTIVE_ORDERS") {
-    return "Không thể thực hiện thao tác vì bàn đang có phiên hoặc order hoạt động.";
-  }
-
-  if (code === "TABLE_HAS_ACTIVE_RESERVATION") {
-    return "Không thể thực hiện thao tác vì bàn đang có đặt chỗ hoạt động.";
-  }
-
   const duplicateMessage = resolveTableDuplicateMessage(error, fallbackDuplicateCode);
   if (duplicateMessage) return duplicateMessage;
-
-  const message = firstGraphQLError?.message || error?.message;
-  if (typeof message === "string" && message.trim()) return message.trim();
-
-  return fallbackMessage;
+  return mapTableMutationError(error, fallbackMessage);
 };
 
 const getUniqueDisplayLabels = (values = []) => {

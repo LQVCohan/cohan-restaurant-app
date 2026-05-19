@@ -154,7 +154,6 @@ export default function useTableManagement({ restaurantId }) {
     },
   });
   const [deleteMut] = useMutation(M_DELETE, {
-    optimisticResponse: ({ id }) => ({ deleteTable: true }),
     update(cache, { variables }) {
       const idRef = cache.identify({ __typename: "Table", id: variables.id });
       cache.evict({ id: idRef });
@@ -162,13 +161,6 @@ export default function useTableManagement({ restaurantId }) {
     },
   });
   const [setStatusMut] = useMutation(M_SET_STATUS, {
-    optimisticResponse: ({ input }) => ({
-      setTableStatus: {
-        __typename: "Table",
-        id: input.id,
-        status: input.status,
-      },
-    }),
     update(cache, { data }) {
       const t = data?.setTableStatus;
       if (!t) return;
