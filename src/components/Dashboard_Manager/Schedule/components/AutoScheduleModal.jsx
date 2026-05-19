@@ -503,14 +503,18 @@ const AutoScheduleModal = ({
                       <h5>Nhân sự dự kiến áp dụng</h5>
                       {(item.plannedAssignments || []).length ? (
                         <ul>
-                          {item.plannedAssignments.map((assignment) => (
-                            <li key={`${item.shiftKey}-${assignment.staffId}`}>
-                              <CheckCircle2 size={14} />
-                              <div>
-                                <strong>
-                                  {assignment.fullName} •{" "}
-                                  {getRoleLabel(assignment.role)}
-                                </strong>
+                          {item.plannedAssignments.map((assignment) => {
+                            const hasValidationIssues =
+                              (assignment.validationIssues || []).length > 0;
+
+                            return (
+                              <li key={`${item.shiftKey}-${assignment.staffId}`}>
+                                <CheckCircle2 size={14} />
+                                <div>
+                                  <strong>
+                                    {assignment.fullName} •{" "}
+                                    {getRoleLabel(assignment.role)}
+                                  </strong>
 
                                 <div className="assignment-explain-chips">
                                   {assignment.role ? (
@@ -524,15 +528,25 @@ const AutoScheduleModal = ({
                                       Điểm phù hợp: {compactNumber(assignment.score)}
                                     </span>
                                   ) : null}
-                                  <span className="explain-chip success">
-                                    Có thể xếp
-                                  </span>
+                                  {hasValidationIssues ? (
+                                    <span className="explain-chip danger">
+                                      Cần xử lý
+                                    </span>
+                                  ) : item.canApply === false ? (
+                                    <span className="explain-chip danger">
+                                      Không thể áp dụng
+                                    </span>
+                                  ) : (
+                                    <span className="explain-chip success">
+                                      Có thể xếp
+                                    </span>
+                                  )}
                                   {(assignment.warnings || []).length ? (
                                     <span className="explain-chip warning">
                                       Có cảnh báo
                                     </span>
                                   ) : null}
-                                  {(assignment.validationIssues || []).length ? (
+                                  {hasValidationIssues ? (
                                     <span className="explain-chip danger">
                                       Cần kiểm tra availability
                                     </span>
@@ -575,12 +589,13 @@ const AutoScheduleModal = ({
                                   </div>
                                 ) : null}
 
-                                <CandidateScoreBreakdown
-                                  assignment={assignment}
-                                />
-                              </div>
-                            </li>
-                          ))}
+                                  <CandidateScoreBreakdown
+                                    assignment={assignment}
+                                  />
+                                </div>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         <div className="note-line">
