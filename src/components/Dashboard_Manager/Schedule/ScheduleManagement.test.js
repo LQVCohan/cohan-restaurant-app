@@ -141,11 +141,46 @@ describe("buildScheduleQualitySummary", () => {
       },
       scheduleLifecycleStatus: "draft",
       effectiveScheduleStatus: "draft",
-      shifts: [{ id: "s1" }],
-      staffShifts: [{ assignedCount: 1 }],
+      shifts: [{ id: "s1", records: [{ id: "r1" }], staffIds: ["emp1"] }],
+      staffShifts: [{ id: "r1", employeeId: "emp1" }],
     });
     expect(result.score).toBe(100);
     expect(result.tone).toBe("success");
+  });
+
+  it("does not apply no-assignment penalty when shift groups have records or staff ids", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1", records: [{ id: "r1" }], staffIds: [] }],
+      staffShifts: [],
+    });
+    expect(result.score).toBe(100);
+  });
+
+  it("applies no-assignment penalty when shift groups are present but empty", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1", records: [], staffIds: [] }],
+      staffShifts: [],
+    });
+    expect(result.score).toBe(70);
+    expect(result.reasons).toContain("Các ca hiện chưa có nhân sự được phân công.");
   });
 
   it("reduces score from warnings, dangers, pending and changed-after-ack", () => {
@@ -160,7 +195,7 @@ describe("buildScheduleQualitySummary", () => {
       scheduleLifecycleStatus: "revision_draft",
       effectiveScheduleStatus: "revision_draft",
       shifts: [{ id: "s1" }, { id: "s2" }],
-      staffShifts: [{ assignedCount: 1 }, { assignedCount: 0 }],
+      staffShifts: [{ id: "r1", employeeId: "emp1" }],
     });
     expect(result.score).toBeLessThan(85);
     expect(result.tone === "info" || result.tone === "warning" || result.tone === "danger").toBeTruthy();

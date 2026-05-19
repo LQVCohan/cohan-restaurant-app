@@ -3985,9 +3985,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className="schedule-quality-panel__link"
-              onClick={() => setPublishIssueSnapshot(schedulePublishRiskSummary)}
+              onClick={() => {
+                setPublishIssueSnapshot(schedulePublishRiskSummary);
+                setIsStatsPanelOpen(true);
+              }}
             >
-              Xem cảnh báo
+              Xem chi tiết cảnh báo
             </button>
           ) : null}
         </section>

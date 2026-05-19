@@ -32,11 +32,22 @@ export const buildScheduleQualitySummary = ({
   const changedAfterAcknowledgementCount = Number(
     schedulePublishRiskSummary?.changedAfterAcknowledgementCount || 0,
   );
-  const totalShifts = Number(Array.isArray(shifts) ? shifts.length : 0);
+  const shiftGroups = Array.isArray(shifts) ? shifts : [];
+  const totalShifts = Number(shiftGroups.length);
+  const assignedShiftCountFromGroups = Number(
+    shiftGroups.filter((shift) => {
+      const recordCount = Array.isArray(shift.records) ? shift.records.length : 0;
+      const staffIdCount = Array.isArray(shift.staffIds) ? shift.staffIds.length : 0;
+      return recordCount > 0 || staffIdCount > 0;
+    }).length,
+  );
+  const rawAssignedRowCount = Array.isArray(staffShifts) ? staffShifts.length : 0;
   const assignedShiftCount = Number(
-    Array.isArray(staffShifts)
-      ? staffShifts.filter((shift) => Number(shift.assignedCount || 0) > 0).length
-      : 0,
+    assignedShiftCountFromGroups > 0 || totalShifts > 0
+      ? assignedShiftCountFromGroups
+      : rawAssignedRowCount > 0
+        ? 1
+        : 0,
   );
 
   const scorePenalty =
