@@ -452,3 +452,77 @@
     margin-right: -0.75rem;
   }
 }
+
+.auto-schedule-body .assignment-explain-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.4rem;
+}
+
+.auto-schedule-body .explain-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.14rem 0.55rem;
+  font-size: 0.69rem;
+  font-weight: 760;
+  line-height: 1.25;
+  border: 1px solid transparent;
+}
+
+.auto-schedule-body .explain-chip.info { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.auto-schedule-body .explain-chip.success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.auto-schedule-body .explain-chip.warning { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.auto-schedule-body .explain-chip.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+.auto-schedule-body .assignment-alert-block {
+  margin: 0.35rem 0;
+  border-radius: 10px;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid;
+}
+
+.auto-schedule-body .assignment-alert-block h6 {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.auto-schedule-body .assignment-alert-block ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.auto-schedule-body .assignment-alert-block li span,
+.auto-schedule-body .assignment-alert-block li small {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.auto-schedule-body .assignment-alert-block.warning { background: #fffaf0; border-color: #fcd34d; }
+.auto-schedule-body .assignment-alert-block.warning h6 { color: #9a3412; }
+.auto-schedule-body .assignment-alert-block.issue { background: #fef2f2; border-color: #fca5a5; }
+.auto-schedule-body .assignment-alert-block.issue h6 { color: #b91c1c; }
+
+.auto-schedule-body .blocked-candidates-section h5 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #9a3412;
+}
+
+.auto-schedule-body .blocked-candidates-count {
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
