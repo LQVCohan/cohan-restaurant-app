@@ -11,6 +11,7 @@ import {
   FiZap,
 } from "react-icons/fi";
 import "./PriceEditModal.scss";
+import "./PriceEditModalPolish.scss";
 
 const cloneIngredients = (ingredients = []) =>
   Array.isArray(ingredients)
