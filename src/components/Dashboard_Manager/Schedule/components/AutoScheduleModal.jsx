@@ -56,6 +56,25 @@ const formatRoleNeed = (roleRow) => {
     unresolved,
   };
 };
+
+const getIssueMessage = (issue) => {
+  if (!issue) return "";
+  if (typeof issue === "string") return issue;
+  return issue.message || "";
+};
+
+const getSuggestedAction = (issue) => {
+  if (!issue || typeof issue === "string") return "";
+  return issue.suggestedAction || "";
+};
+
+const getCandidateDisplayName = (candidate) => {
+  if (candidate?.fullName || candidate?.employeeName) {
+    return candidate.fullName || candidate.employeeName;
+  }
+  const fallbackId = candidate?.staffId || candidate?.employeeId;
+  return fallbackId ? `Nhân viên #${fallbackId}` : "Nhân viên chưa rõ";
+};
 const AutoScheduleModal = ({
   isOpen,
   onClose,
@@ -484,21 +503,99 @@ const AutoScheduleModal = ({
                       <h5>Nhân sự dự kiến áp dụng</h5>
                       {(item.plannedAssignments || []).length ? (
                         <ul>
-                          {item.plannedAssignments.map((assignment) => (
-                            <li key={`${item.shiftKey}-${assignment.staffId}`}>
-                              <CheckCircle2 size={14} />
-                              <div>
-                                <strong>
-                                  {assignment.fullName} •{" "}
-                                  {getRoleLabel(assignment.role)}
-                                </strong>
+                          {item.plannedAssignments.map((assignment) => {
+                            const hasValidationIssues =
+                              (assignment.validationIssues || []).length > 0;
 
-                                <CandidateScoreBreakdown
-                                  assignment={assignment}
-                                />
-                              </div>
-                            </li>
-                          ))}
+                            return (
+                              <li key={`${item.shiftKey}-${assignment.staffId}`}>
+                                <CheckCircle2 size={14} />
+                                <div>
+                                  <strong>
+                                    {assignment.fullName} •{" "}
+                                    {getRoleLabel(assignment.role)}
+                                  </strong>
+
+                                  <div className="assignment-explain-chips">
+                                    {assignment.role ? (
+                                      <span className="explain-chip info">
+                                        Vai trò cần: {getRoleLabel(assignment.role)}
+                                      </span>
+                                    ) : null}
+                                    {assignment.score !== null &&
+                                    assignment.score !== undefined ? (
+                                      <span className="explain-chip info">
+                                        Điểm phù hợp: {compactNumber(assignment.score)}
+                                      </span>
+                                    ) : null}
+                                    {hasValidationIssues ? (
+                                      <span className="explain-chip danger">
+                                        Cần xử lý
+                                      </span>
+                                    ) : item.canApply === false ? (
+                                      <span className="explain-chip danger">
+                                        Không thể áp dụng
+                                      </span>
+                                    ) : (
+                                      <span className="explain-chip success">
+                                        Có thể xếp
+                                      </span>
+                                    )}
+                                    {(assignment.warnings || []).length ? (
+                                      <span className="explain-chip warning">
+                                        Có cảnh báo
+                                      </span>
+                                    ) : null}
+                                    {hasValidationIssues ? (
+                                      <span className="explain-chip danger">
+                                        Cần kiểm tra availability
+                                      </span>
+                                    ) : null}
+                                  </div>
+
+                                  {(assignment.warnings || []).length ? (
+                                    <div className="assignment-alert-block warning">
+                                      <h6>Cảnh báo</h6>
+                                      <ul>
+                                        {assignment.warnings.map((warning, idx) => (
+                                          <li key={`${item.shiftKey}-${assignment.staffId}-warn-${idx}`}>
+                                            <span>{getIssueMessage(warning)}</span>
+                                            {getSuggestedAction(warning) ? (
+                                              <small>
+                                                Gợi ý: {getSuggestedAction(warning)}
+                                              </small>
+                                            ) : null}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+
+                                  {(assignment.validationIssues || []).length ? (
+                                    <div className="assignment-alert-block issue">
+                                      <h6>Vấn đề cần xử lý</h6>
+                                      <ul>
+                                        {assignment.validationIssues.map((issue, idx) => (
+                                          <li key={`${item.shiftKey}-${assignment.staffId}-issue-${idx}`}>
+                                            <span>{getIssueMessage(issue)}</span>
+                                            {getSuggestedAction(issue) ? (
+                                              <small>
+                                                Gợi ý: {getSuggestedAction(issue)}
+                                              </small>
+                                            ) : null}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+
+                                  <CandidateScoreBreakdown
+                                    assignment={assignment}
+                                  />
+                                </div>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         <div className="note-line">
@@ -508,23 +605,26 @@ const AutoScheduleModal = ({
                     </div>
 
                     {(item.blockedCandidates || []).length ? (
-                      <div className="assignment-block warning">
-                        <h5>Ứng viên bị chặn</h5>
+                      <div className="assignment-block warning blocked-candidates-section">
+                        <h5>
+                          Ứng viên bị chặn
+                          <span className="blocked-candidates-count">
+                            {item.blockedCandidates.length} ứng viên
+                          </span>
+                        </h5>
                         <ul>
-                          {item.blockedCandidates
-                            .slice(0, 4)
-                            .map((candidate) => (
-                              <li key={`${item.shiftKey}-${candidate.staffId}`}>
-                                <AlertTriangle size={14} />
-                                <div>
-                                  <strong>
-                                    {candidate.fullName} •{" "}
-                                    {getRoleLabel(candidate.role)}
-                                  </strong>
-                                  <span>{candidate.reason}</span>
-                                </div>
-                              </li>
-                            ))}
+                          {item.blockedCandidates.slice(0, 6).map((candidate, idx) => (
+                            <li key={`${item.shiftKey}-${candidate.staffId || candidate.employeeId || idx}`}>
+                              <AlertTriangle size={14} />
+                              <div>
+                                <strong>
+                                  {getCandidateDisplayName(candidate)}
+                                  {candidate.role ? ` • ${getRoleLabel(candidate.role)}` : ""}
+                                </strong>
+                                <span>{candidate.reason || "Không đạt điều kiện xếp ca"}</span>
+                              </div>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     ) : null}
