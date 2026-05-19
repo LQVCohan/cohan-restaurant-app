@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useContext } from "react";
+import Modal from "@/components/common/Modal";
 import { Link, useNavigate } from "react-router-dom";
 import "./OrdersPage.scss";
 import OrderItem from "./OrderItem"; // Import OrderItem mới
@@ -132,6 +133,74 @@ const normalizeOrderType = (raw) =>
     ? "delivery"
     : "dinein";
 
+
+
+function OrderDetailModal({ detailTarget, onClose }) {
+  if (!detailTarget?.data) return null;
+
+  const { kind, data } = detailTarget;
+  const orderCode = data.orderCode || data.id || "--";
+
+  const renderField = (label, value) => (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      <span className="detail-value">{value || "--"}</span>
+    </div>
+  );
+
+  return (
+    <Modal isOpen={!!detailTarget} onClose={onClose} size="md">
+      <Modal.Header>
+        {kind === "dinein" ? "Chi tiết đơn tại quán" : "Chi tiết đặt bàn"}
+      </Modal.Header>
+      <Modal.Body className="order-detail-modal">
+        {kind === "dinein" ? (
+          <>
+            {renderField("Mã đơn", orderCode)}
+            {renderField("Trạng thái", data.currentStatus || "--")}
+            {renderField("Nhà hàng", data.restaurantId || "--")}
+            {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
+            {renderField("Hình thức", data.orderType || "--")}
+            <div className="detail-items">
+              <p className="detail-section-title">Danh sách món</p>
+              {(data.items || []).length ? (
+                <ul>
+                  {(data.items || []).map((it, idx) => (
+                    <li key={it?._id || `${it?.name}_${idx}`}>
+                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(it?.price || 0)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>--</p>
+              )}
+            </div>
+            {renderField("Tổng tiền", fmtMoney(data?.totals?.grandTotal || 0))}
+            {data?.reservationId && renderField("Liên kết đặt bàn", data.reservationId)}
+          </>
+        ) : (
+          <>
+            {renderField("Mã đặt bàn", orderCode)}
+            {renderField("Nhà hàng", data.restaurantName || data.restaurantId || "--")}
+            {renderField("Bàn", data.tableId || "--")}
+            {renderField("Thời gian đến", data.timeTo ? toVNDateTime(data.timeTo) : "--")}
+            {renderField("Thời lượng", data.isUnlimitedTime ? "Không giới hạn" : `${data.durationMinutes || "--"} phút`)}
+            {renderField("Số khách", data.partySize ? `${data.partySize} người` : "--")}
+            {renderField("Tiền cọc", fmtMoney(data.depositAmount || 0))}
+            {renderField("Trạng thái thanh toán cọc", data.depositStatus || "--")}
+            {renderField("Trạng thái đặt bàn", data.status || "--")}
+            {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
+          </>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <button className="btn btn--primary" onClick={onClose}>
+          Đóng
+        </button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
 export default function OrdersPage() {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id;
@@ -146,6 +215,7 @@ export default function OrdersPage() {
   const [qrBooking, setQrBooking] = useState(null);
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [changeTableOpen, setChangeTableOpen] = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null);
 
   // Queries
   const {
@@ -234,12 +304,20 @@ export default function OrdersPage() {
     }
 
     if (item?.kind === "dinein") {
-      pushToast("Chi tiết đơn tại quán sẽ được bổ sung sau.");
+      if (!raw) {
+        pushToast("Không đủ thông tin để mở chi tiết đơn.");
+        return;
+      }
+      setDetailTarget({ kind: "dinein", data: raw });
       return;
     }
 
     if (item?.kind === "reservation") {
-      pushToast("Chi tiết đặt bàn sẽ được bổ sung sau.");
+      if (!raw) {
+        pushToast("Không đủ thông tin để mở chi tiết đơn.");
+        return;
+      }
+      setDetailTarget({ kind: "reservation", data: raw });
       return;
     }
 
@@ -543,6 +621,10 @@ export default function OrdersPage() {
         isOpen={!!trackingOrder}
         onClose={() => setTrackingOrder(null)}
         order={trackingOrder}
+      />
+      <OrderDetailModal
+        detailTarget={detailTarget}
+        onClose={() => setDetailTarget(null)}
       />
       <ChangeTableModal
         isOpen={!!changeTableOpen}
