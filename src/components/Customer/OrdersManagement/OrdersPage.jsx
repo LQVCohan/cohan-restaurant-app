@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useContext } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./OrdersPage.scss";
 import OrderItem from "./OrderItem"; // Import OrderItem mới
 import Toast from "../../ui/Toast";
@@ -137,6 +137,7 @@ export default function OrdersPage() {
   const userId = auth?.user?.id;
   const [activeTab, setActiveTab] = useState("all");
   const [toasts, setToasts] = useState([]);
+  const navigate = useNavigate();
 
   // State Modals
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -205,6 +206,40 @@ export default function OrdersPage() {
   const pushToast = (text) =>
     setToasts((t) => [...t, { id: Math.random(), text }]);
   const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
+
+
+  const buildTrackingUrl = (order) => {
+    const orderId = order?.id;
+    if (!orderId) return null;
+
+    const params = new URLSearchParams();
+    if (order.restaurantId) params.set("restaurantId", order.restaurantId);
+    if (order.orderCode) params.set("orderCode", order.orderCode);
+
+    const query = params.toString();
+    return `/track-order/${orderId}${query ? `?${query}` : ""}`;
+  };
+
+  const handleItemClick = (item) => {
+    const raw = item?.raw;
+
+    if (item?.kind === "delivery" || item?.kind === "dinein") {
+      const url = buildTrackingUrl(raw);
+      if (url) {
+        navigate(url);
+        return;
+      }
+      pushToast("Không đủ thông tin để mở chi tiết đơn.");
+      return;
+    }
+
+    if (item?.kind === "reservation") {
+      pushToast("Chi tiết đặt bàn sẽ được bổ sung sau.");
+      return;
+    }
+
+    pushToast("Không đủ thông tin để mở chi tiết đơn.");
+  };
 
   /* --- 1. MAPPING RESERVATION DATA --- */
   const reservationItems = useMemo(() => {
@@ -438,7 +473,7 @@ export default function OrdersPage() {
               <OrderItem
                 key={item.key}
                 {...item}
-                onClick={() => console.log("View details", item.key)}
+                onClick={() => handleItemClick(item)}
               />
             ))}
           </>
