@@ -68,7 +68,18 @@ const restaurantSchema = BaseSchemaModel({
     max: 5,
     default: 0,
   },
+  // Deprecated: legacy lifecycle field, keep for backward compatibility
   status: { type: String, enum: ["active", "inactive"], default: "active" },
+  businessStatus: { type: String, enum: ["active", "inactive", "suspended", "archived"], default: "active" },
+  publicationStatus: { type: String, enum: ["draft", "published", "hidden"], default: "published" },
+  operationalStatus: { type: String, enum: ["normal", "paused", "maintenance", "holiday"], default: "normal" },
+  timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
+  weeklyOpeningHours: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  specialHours: { type: [mongoose.Schema.Types.Mixed], default: () => [] },
+  capabilities: { type: mongoose.Schema.Types.Mixed, default: () => ({ acceptsReservations: true, acceptsOrders: true, acceptsTableOrders: true, acceptsDelivery: false, acceptsPickup: false }) },
+  reservationPolicy: { type: mongoose.Schema.Types.Mixed, default: () => ({ allowWhenClosed: true, minAdvanceMinutes: 30, maxAdvanceDays: 30 }) },
+  orderPolicy: { type: mongoose.Schema.Types.Mixed, default: () => ({ allowWhenClosed: false, minAdvanceMinutes: 0 }) },
+  reviewCount: { type: Number, default: 0, min: 0 },
   reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
   paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
@@ -82,6 +93,8 @@ const restaurantSchema = BaseSchemaModel({
 });
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
+restaurantSchema.index({ businessStatus: 1, publicationStatus: 1, operationalStatus: 1 });
+restaurantSchema.index({ reviewCount: -1 });
 restaurantSchema.index({ managerId: 1 });
 restaurantSchema.index({ "address.city": 1, "address.district": 1 });
 restaurantSchema.index({ "address.ward": 1, "address.postalCode": 1 });

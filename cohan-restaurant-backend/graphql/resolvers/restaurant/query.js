@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 /* ============================ Helpers ============================ */
 
@@ -23,10 +24,11 @@ function clampLimit(n, min = 1, max = 100) {
   return Math.max(min, Math.min(max, Math.floor(x)));
 }
 
+function escapeRegex(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function safeRegexContains(value) {
-  const s = String(value || "").trim();
+  const s = String(value || "").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0,80);
   if (!s) return null;
-  return { $regex: s, $options: "i" };
+  return { $regex: escapeRegex(s), $options: "i" };
 }
 
 function buildFilter(restaurantFilter) {
@@ -117,6 +119,7 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
+    totalCount: await Restaurant.countDocuments(buildFilter(restaurantFilter)),
   };
 }
 
@@ -174,6 +177,7 @@ async function restaurantsByManager(
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
+    totalCount: await Restaurant.countDocuments(buildFilter(restaurantFilter)),
   };
 }
 
@@ -333,4 +337,31 @@ export const RestaurantQuery = {
   restaurantsByCategoryTimeSlot,
   restaurantCategoryIndexes,
   refreshRestaurantCategoryIndexes,
+  publicRestaurants,
+  publicRestaurant,
+  similarRestaurants,
 };
+
+
+async function publicRestaurants(_, { limit = 20, cursor, filter }) {
+  const f = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
+  const lim = clampLimit(limit, 1, 100);
+  const cId = toObjectIdOrNull(cursor);
+  if (cId) f._id = { ...(f._id || {}), $gt: cId };
+  const docs = await Restaurant.find(f).sort({ _id: 1 }).limit(lim + 1).lean();
+  const hasNextPage = docs.length > lim;
+  const slice = hasNextPage ? docs.slice(0, lim) : docs;
+  return { edges: slice.map((d) => ({ node: d, cursor: String(d._id) })), pageInfo: { endCursor: slice.length ? String(slice[slice.length - 1]._id) : null, hasNextPage }, totalCount: await Restaurant.countDocuments(f) };
+}
+async function publicRestaurant(_, { id }) {
+  if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
+  return Restaurant.findOne({ _id: id, businessStatus: "active", publicationStatus: "published" }).lean();
+}
+async function similarRestaurants(_, { restaurantId, limit = 6 }) {
+  const root = await Restaurant.findOne({ _id: restaurantId, businessStatus: "active", publicationStatus: "published" }).lean();
+  if (!root) return [];
+  const lim = clampLimit(limit, 1, 20);
+  const q = { _id: { $ne: root._id }, businessStatus: "active", publicationStatus: "published" };
+  if (root.cuisineType) q.cuisineType = root.cuisineType;
+  return Restaurant.find(q).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
+}
