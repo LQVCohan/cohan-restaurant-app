@@ -136,6 +136,7 @@ export default function PublicOrderTrackingPage() {
   const isCancelled = publicStatus === "CANCELLED";
   const isPaid = publicStatus === "PAID" || paymentStatus === "PAID";
   const paymentRequested = paymentStatus === "PAYMENT_REQUESTED";
+  const canRequestPayment = Boolean(tracking.payment?.canRequestPayment);
   const disableActions = requestingPayment || callingStaff || isCancelled;
 
   const handleActionResult = async (executor) => {
@@ -177,16 +178,14 @@ export default function PublicOrderTrackingPage() {
         <h3>Thanh toán</h3>
         <p>Tổng tiền: {(Number(tracking.payment?.totalAmount || 0)).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}</p>
         <p>Trạng thái: {paymentStatusLabel[String(tracking.payment?.status || "").toUpperCase()] || "Đang cập nhật"}</p>
-        {tracking.payment?.canRequestPayment && <p>Bạn có thể gọi nhân viên để thanh toán.</p>}
+        {canRequestPayment && <p>Bạn có thể gọi nhân viên để thanh toán.</p>}
+        <button type="button" disabled={disableActions || isPaid || paymentRequested || !canRequestPayment} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>Yêu cầu thanh toán</button>
+        {paymentRequested && <p>Yêu cầu thanh toán đã được gửi.</p>}
+        {!canRequestPayment && !isPaid && !paymentRequested && <p>Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
       </div>
       <div className="section">
         <h3>Cần hỗ trợ?</h3>
         <button type="button" disabled={disableActions} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>Gọi nhân viên</button>
-      </div>
-      <div className="section">
-        <h3>Thanh toán</h3>
-        <button type="button" disabled={disableActions || isPaid || paymentRequested} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>Yêu cầu thanh toán</button>
-        {paymentRequested && <p>Yêu cầu thanh toán đã được gửi.</p>}
       </div>
       {actionMessage && <p className="action-message">{actionMessage}</p>}
       <button type="button" onClick={() => refetch()}>Làm mới</button>

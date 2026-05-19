@@ -78,6 +78,12 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
         case "ORDER_CANCELLED":
           h.onCancelled?.(evt.order);
           break;
+        case "CUSTOMER_PAYMENT_REQUESTED":
+          h.onCustomerPaymentRequested?.(evt);
+          break;
+        case "CUSTOMER_STAFF_CALL_REQUESTED":
+          h.onCustomerStaffCallRequested?.(evt);
+          break;
         default:
           break;
       }

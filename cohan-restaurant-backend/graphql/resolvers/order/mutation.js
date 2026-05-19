@@ -21,7 +21,7 @@ import {
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
-import { emitOrderEvent } from "./helper/emitOrderEvent.js";
+import { emitOrderEvent, emitRestaurantEvent } from "./helper/emitOrderEvent.js";
 import {
   ensureUserForOrder,
   resolveTable,
@@ -2168,10 +2168,10 @@ export const OrderMutation = {
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
-    await emitOrderEvent(ctx, String(order.restaurantId), "CUSTOMER_PAYMENT_REQUESTED", {
-      order,
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_PAYMENT_REQUESTED", {
+      order: toCustomerTrackingPayload(order.toObject()),
       trackingCode: order.trackingCode || null,
-      tableCode: order.tableCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
       message: "Khách yêu cầu thanh toán",
     });
     return { success: true, message: "Đã gửi yêu cầu thanh toán đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
@@ -2197,12 +2197,11 @@ export const OrderMutation = {
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
-    await emitOrderEvent(ctx, String(order.restaurantId), "CUSTOMER_STAFF_CALL_REQUESTED", {
-      order,
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_STAFF_CALL_REQUESTED", {
+      order: toCustomerTrackingPayload(order.toObject()),
       trackingCode: order.trackingCode || null,
-      tableCode: order.tableCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
       message: normalizedReason,
-      type: "CUSTOMER_STAFF_CALL_REQUESTED",
     });
     return { success: true, message: "Đã gửi yêu cầu hỗ trợ đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
   },
