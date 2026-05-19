@@ -23,6 +23,8 @@ const OrderItem = ({
 }) => {
   const handleKeyDown = (event) => {
     if (!onClick) return;
+    if (event.target !== event.currentTarget) return;
+
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onClick();
