@@ -12,4 +12,12 @@ describe("Order model activeSessionKey index definition", () => {
     expect(src).toContain('activeSessionKey: { $type: "string" }');
     expect(src).not.toContain("sparse: true");
   });
+  it("uses partial unique index for trackingCode/trackingToken", () => {
+    const modelPath = path.resolve(process.cwd(), "models/order.model.js");
+    const src = fs.readFileSync(modelPath, "utf8");
+    expect(src).toContain('name: "unique_order_tracking_code"');
+    expect(src).toContain('partialFilterExpression: { trackingCode: { $type: "string" } }');
+    expect(src).toContain('name: "unique_order_tracking_token"');
+    expect(src).toContain('partialFilterExpression: { trackingToken: { $type: "string" } }');
+  });
 });

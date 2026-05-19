@@ -291,8 +291,8 @@ const OrderItemSchema = new Schema(
 
 const OrderSchema = BaseSchemaModel({
   orderCode: { type: String, required: true, index: true },
-  trackingCode: { type: String, unique: true, sparse: true, index: true },
-  trackingToken: { type: String, unique: true, sparse: true, index: true },
+  trackingCode: { type: String, index: true },
+  trackingToken: { type: String, index: true },
   trackingUrl: { type: String, default: null },
   trackingQrPayload: { type: String, default: null },
   trackingQrGeneratedAt: { type: Date, default: null },
@@ -575,6 +575,22 @@ OrderSchema.index({
   createdAt: -1,
 });
 
+OrderSchema.index(
+  { trackingCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { trackingCode: { $type: "string" } },
+    name: "unique_order_tracking_code",
+  },
+);
+OrderSchema.index(
+  { trackingToken: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { trackingToken: { $type: "string" } },
+    name: "unique_order_tracking_token",
+  },
+);
 OrderSchema.index(
   { activeSessionKey: 1 },
   {

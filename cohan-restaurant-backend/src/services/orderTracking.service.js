@@ -45,7 +45,9 @@ export function computePublicOrderStatus(order = {}) {
   if (["payment_requested", "partial"].includes(paymentStatus)) return "WAITING_FOR_PAYMENT";
   const statuses = (order?.items || []).map((it) => String(it?.status || "").toLowerCase());
   if (!statuses.length) return orderStatus === "confirmed" ? "CONFIRMED" : "ORDER_RECEIVED";
-  if (statuses.every((s) => s === "served" || s === "cancelled" || s === "returned")) return "SERVED";
+  if (statuses.length && statuses.every((s) => s === "cancelled" || s === "returned")) return "CANCELLED";
+  if (statuses.every((s) => s === "served")) return "SERVED";
+  if (statuses.every((s) => s === "served" || s === "cancelled" || s === "returned")) return "PARTIALLY_READY";
   const readyCount = statuses.filter((s) => s === "ready" || s === "served").length;
   if (readyCount === statuses.length) return "READY_TO_SERVE";
   if (readyCount > 0) return "PARTIALLY_READY";
@@ -103,10 +105,18 @@ export function toCustomerTrackingPayload(order = {}) {
     }),
     payment: {
       status: String(order?.orderPaymentStatus || order?.payment?.status || "UNPAID").toUpperCase(),
-      canRequestPayment: ["payment_requested", "partial", "unpaid"].includes(String(order?.orderPaymentStatus || "").toLowerCase()),
+      canRequestPayment: ["partial", "unpaid"].includes(String(order?.orderPaymentStatus || "").toLowerCase()),
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
   };
+}
+
+export function emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus = null }) {
+  if (!ctx?.io || !orderDoc?.trackingToken) return;
+  const currentPublicStatus = orderDoc?.publicStatus;
+  if (!currentPublicStatus || currentPublicStatus === previousPublicStatus) return;
+  const payload = toCustomerTrackingPayload(orderDoc.toObject ? orderDoc.toObject() : orderDoc);
+  ctx.io.to(`order-tracking:${orderDoc.trackingToken}`).emit("customer-order-tracking-updated", payload);
 }
 
 export async function buildOrderTrackingQrSvg(orderDoc) {

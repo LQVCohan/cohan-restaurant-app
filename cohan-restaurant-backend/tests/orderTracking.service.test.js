@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   computePublicOrderStatus,
   toCustomerTrackingPayload,
+  ensureOrderTracking,
+  updatePublicStatusHistory,
 } from "../src/services/orderTracking.service.js";
+import { Order } from "../models/index.js";
+import { vi } from "vitest";
 
 describe("orderTracking.service", () => {
   it("maps preparing items to PREPARING", () => {
@@ -37,5 +41,22 @@ describe("orderTracking.service", () => {
     });
     expect(payload.trackingCode).toContain("ORD-");
     expect(payload.items[0]._id).toBeUndefined();
+  });
+  it("maps all cancelled/returned to CANCELLED", () => {
+    expect(computePublicOrderStatus({ items: [{ status: "cancelled" }, { status: "returned" }] })).toBe("CANCELLED");
+  });
+  it("generates tracking fields", async () => {
+    vi.spyOn(Order, "exists").mockResolvedValueOnce(null);
+    const orderDoc = {};
+    await ensureOrderTracking(orderDoc);
+    expect(orderDoc.trackingCode).toContain("ORD-");
+    expect(orderDoc.trackingToken?.length).toBeGreaterThan(20);
+    expect(orderDoc.trackingQrPayload).toBe(orderDoc.trackingUrl);
+  });
+  it("does not append duplicate statusHistory entry", () => {
+    const changedAt = new Date();
+    const order = { publicStatus: "PREPARING", currentStatus: "preparing", items: [{ status: "preparing" }], statusHistory: [{ status: "PREPARING", displayMessage: "x", changedAt }] };
+    updatePublicStatusHistory(order, "SYSTEM");
+    expect(order.statusHistory).toHaveLength(1);
   });
 });
