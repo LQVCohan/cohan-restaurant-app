@@ -21,6 +21,15 @@ const OrderItem = ({
   actions = [],
   onClick,
 }) => {
+  const handleKeyDown = (event) => {
+    if (!onClick) return;
+    if (event.target !== event.currentTarget) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
   // Config icon và màu sắc theo loại đơn
   const kindConfig = {
     reservation: {
@@ -38,7 +47,13 @@ const OrderItem = ({
   const currentKind = kindConfig[kind] || kindConfig.dinein;
 
   return (
-    <article className="order-card" onClick={onClick}>
+    <article
+      className="order-card"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       {/* HEADER: Loại đơn + Ngày giờ + Trạng thái */}
       <div className="card-header">
         <div className="header-left">
