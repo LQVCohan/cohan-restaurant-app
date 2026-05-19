@@ -1066,6 +1066,32 @@ type SmartPromotionEngine {
   couponContext: SmartPromotionCouponContext!
   meta: SmartPromotionEngineMeta!
 }
+type CustomerTrackingTimelineEntry {
+  status: String!
+  displayMessage: String!
+  changedAt: DateTime!
+}
+type CustomerTrackingItem {
+  name: String!
+  quantity: Float!
+  publicStatus: String!
+  publicStatusLabel: String!
+}
+type CustomerTrackingPayment {
+  status: String!
+  canRequestPayment: Boolean!
+  totalAmount: Float!
+}
+type CustomerOrderTrackingView {
+  trackingCode: String!
+  publicStatus: String!
+  publicStatusLabel: String!
+  customerVisibleNote: String
+  estimatedReadyAt: DateTime
+  timeline: [CustomerTrackingTimelineEntry!]!
+  items: [CustomerTrackingItem!]!
+  payment: CustomerTrackingPayment!
+}
 
 # =========================================================
 # ROOT
@@ -1129,6 +1155,8 @@ extend type Query {
     horizonDays: Int = 2
     timezone: String = "Asia/Ho_Chi_Minh"
   ): SmartPromotionEngine!
+  customerTrackOrder(trackingToken: String!): CustomerOrderTrackingView
+  orderTrackingQrSvg(orderId: ID!): String!
 }
 
 extend type Mutation {

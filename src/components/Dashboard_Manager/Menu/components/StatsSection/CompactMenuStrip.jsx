@@ -27,6 +27,7 @@ import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./CompactMenuStrip.scss";
+import "./CompactMenuStripPolish.scss";
 
 const MENU_FIELDS = gql`
   fragment CompactMenuFields on Menu {

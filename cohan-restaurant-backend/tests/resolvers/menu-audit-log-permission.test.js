@@ -69,8 +69,8 @@ describe("auditLogs resolver MenuManagement permissions", () => {
     );
     expect(authzMocks.requireAnyPermission).toHaveBeenCalledWith(managerCtx, [
       "menu.audit.read",
+      "menu.read",
       "log.read",
-      "menu.write",
     ]);
     expect(modelMocks.AuditLog.find).toHaveBeenCalledWith({
       restaurantId: "507f1f77bcf86cd799439011",
