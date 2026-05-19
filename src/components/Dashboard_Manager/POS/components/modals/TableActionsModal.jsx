@@ -8,6 +8,7 @@ import { useReservation } from "../../../../../hooks/useReservation";
 import { GET_CUSTOMERS_FOR_TABLE_INFO } from "../../../../../hooks/useUserManagement";
 import { useNotification } from "../../../../../hooks/useNotification";
 import { mapTableMutationError } from "../../../../../utils/tableMutationError";
+import { getTableActionDisabledReason, getTableGuardState } from "../../../../../utils/tableGuardState";
 
 const Q_TABLE_CUSTOMER = gql`
   query TableCustomer(
@@ -125,6 +126,13 @@ function TableActionsModalCore({
   const [type, setType] = useState("standard");
   const [tags, setTags] = useState("");
   const [status, setStatusLocal] = useState("available");
+  const guardState = useMemo(() => getTableGuardState(table), [table]);
+  const deleteDisabledReason = useMemo(
+    () => getTableActionDisabledReason(table, "delete"),
+    [table]
+  );
+  const getStatusDisabledReason = (nextStatus) =>
+    getTableActionDisabledReason(table, "set_status", nextStatus);
 
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
@@ -1118,7 +1126,8 @@ function TableActionsModalCore({
                     className={`${s.chip} ${status === st ? s.active : ""}`}
                     data-variant={st}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status}
+                    disabled={busy.status || !!getStatusDisabledReason(st)}
+                    title={getStatusDisabledReason(st) || ""}
                   >
                     {statusLabels[st] || st}
                   </button>
@@ -1519,10 +1528,12 @@ function TableActionsModalCore({
           <button
             className={`${s.btn} ${s.danger}`}
             onClick={handleDelete}
-            disabled={busy.delete}
+            disabled={busy.delete || !!deleteDisabledReason}
+            title={deleteDisabledReason || ""}
           >
             <IconTrash /> Xoá bàn
           </button>
+          {deleteDisabledReason && <div className={s.hint}>{deleteDisabledReason}</div>}
           <div className={s.actions}>
             <button className={s.btn} onClick={onClose}>
               Đóng
