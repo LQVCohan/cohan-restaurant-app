@@ -13,25 +13,24 @@ $tb-indigo-50: #fdf8f3;
 $tb-indigo-100: #f7efe6;
 $tb-indigo-500: #c5a47e;
 $tb-indigo-600: #b89365;
-$tb-indigo-700: #a57c4f;
+$tb-indigo-700: #9f7449;
 $tb-white: #ffffff;
-$tb-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-  0 2px 4px -1px rgba(0, 0, 0, 0.03);
-$tb-radius: 10px;
+$tb-shadow: 0 14px 32px rgba(15, 23, 42, 0.065);
+$tb-radius: 16px;
 
 .toolbar-container {
-  background: $tb-white;
+  background: rgba($tb-white, 0.92);
   border-radius: $tb-radius;
   box-shadow: $tb-shadow;
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom: 24px;
-  border: 1px solid $tb-slate-100;
-  transition: all 0.3s ease;
+  margin-bottom: 20px;
+  border: 1px solid rgba($tb-slate-200, 0.95);
+  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
 
-  // --- TOP BAR ---
   .toolbar-top {
     display: flex;
     justify-content: space-between;
@@ -43,50 +42,59 @@ $tb-radius: 10px;
       position: relative;
       flex: 1;
       min-width: 280px;
-      max-width: 400px;
+      max-width: 460px;
 
       .search-icon {
         position: absolute;
-        left: 12px;
+        left: 14px;
         top: 50%;
         transform: translateY(-50%);
-        color: $tb-slate-400;
+        color: $tb-indigo-600;
         font-size: 18px;
+        pointer-events: none;
       }
 
       .search-input {
         width: 100%;
-        padding: 10px 12px 10px 40px;
+        padding: 12px 42px 12px 42px;
         border: 1px solid $tb-slate-200;
-        border-radius: 8px;
+        border-radius: 999px;
         font-size: 14px;
+        font-weight: 600;
         color: $tb-slate-800;
         background: $tb-slate-50;
-        transition: 0.2s;
+        transition: all 0.2s ease;
+
+        &::placeholder {
+          color: $tb-slate-400;
+          font-weight: 500;
+        }
 
         &:focus {
           background: $tb-white;
           border-color: $tb-indigo-500;
-          box-shadow: 0 0 0 3px rgba($tb-indigo-500, 0.1);
+          box-shadow: 0 0 0 4px rgba($tb-indigo-500, 0.14);
           outline: none;
         }
       }
 
       .clear-btn {
         position: absolute;
-        right: 10px;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
-        background: none;
+        background: $tb-slate-100;
         border: none;
-        color: $tb-slate-400;
+        color: $tb-slate-500;
         cursor: pointer;
-        padding: 4px;
+        padding: 5px;
         border-radius: 50%;
         display: flex;
+        transition: all 0.18s ease;
+
         &:hover {
-          background: $tb-slate-200;
-          color: $tb-slate-600;
+          background: $tb-indigo-50;
+          color: $tb-indigo-700;
         }
       }
     }
@@ -95,20 +103,21 @@ $tb-radius: 10px;
       display: flex;
       gap: 10px;
       align-items: center;
+      flex-wrap: wrap;
 
-      // View Toggle (Grid/List)
       .view-toggle {
         display: flex;
         background: $tb-slate-100;
-        padding: 3px;
-        border-radius: 8px;
-        margin-right: 8px;
+        padding: 4px;
+        border-radius: 999px;
+        margin-right: 4px;
+        border: 1px solid rgba($tb-slate-200, 0.9);
 
         .toggle-btn {
           border: none;
           background: transparent;
-          padding: 6px 10px;
-          border-radius: 6px;
+          padding: 7px 11px;
+          border-radius: 999px;
           color: $tb-slate-500;
           cursor: pointer;
           display: flex;
@@ -117,52 +126,55 @@ $tb-radius: 10px;
 
           &.active {
             background: $tb-white;
-            color: $tb-indigo-600;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            color: $tb-indigo-700;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
           }
+
           &:hover:not(.active) {
             color: $tb-slate-700;
           }
         }
       }
 
-      // Buttons
       .btn {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 9px 16px;
-        border-radius: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
         font-size: 14px;
-        font-weight: 600;
-        border: none;
+        font-weight: 700;
+        border: 1px solid transparent;
         cursor: pointer;
-        transition: 0.2s;
+        transition: all 0.18s ease;
         white-space: nowrap;
 
         &-secondary {
           background: $tb-white;
-          border: 1px solid $tb-slate-200;
+          border-color: $tb-slate-200;
           color: $tb-slate-600;
+
           &:hover {
             background: $tb-slate-50;
-            border-color: $tb-slate-300;
+            border-color: $tb-indigo-500;
             color: $tb-slate-800;
-          }
-        }
-
-        &-primary {
-          background: $tb-indigo-600;
-          color: white;
-          box-shadow: 0 2px 4px rgba($tb-indigo-600, 0.2);
-          &:hover {
-            background: $tb-indigo-500;
             transform: translateY(-1px);
           }
         }
 
+        &-primary {
+          background: linear-gradient(135deg, $tb-indigo-700, $tb-indigo-500);
+          color: white;
+          box-shadow: 0 10px 22px rgba($tb-indigo-600, 0.24);
+
+          &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba($tb-indigo-600, 0.3);
+          }
+        }
+
         @media (max-width: 768px) {
-          padding: 9px;
+          padding: 10px 12px;
           .hide-mobile {
             display: none;
           }
@@ -171,7 +183,6 @@ $tb-radius: 10px;
     }
   }
 
-  // --- MIDDLE BAR: FILTERS ---
   .toolbar-filters {
     display: flex;
     justify-content: space-between;
@@ -183,7 +194,7 @@ $tb-radius: 10px;
 
     .filter-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       align-items: center;
 
@@ -192,40 +203,42 @@ $tb-radius: 10px;
 
         .custom-select {
           appearance: none;
-          padding: 8px 32px 8px 36px; // Left icon space, Right arrow space
+          padding: 9px 34px 9px 36px;
           border: 1px solid $tb-slate-200;
-          border-radius: 8px;
+          border-radius: 999px;
           background: $tb-white;
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 650;
           color: $tb-slate-600;
           cursor: pointer;
-          min-width: 140px;
-          transition: 0.2s;
+          min-width: 150px;
+          transition: 0.18s;
 
           &:focus {
             outline: none;
             border-color: $tb-indigo-500;
+            box-shadow: 0 0 0 3px rgba($tb-indigo-500, 0.12);
           }
+
           &.active {
             border-color: $tb-indigo-500;
             background: $tb-indigo-50;
-            color: $tb-indigo-600;
+            color: $tb-indigo-700;
           }
         }
 
         .select-icon {
           position: absolute;
-          left: 10px;
+          left: 11px;
           top: 50%;
           transform: translateY(-50%);
-          color: $tb-slate-400;
+          color: $tb-indigo-600;
           pointer-events: none;
         }
 
         .select-arrow {
           position: absolute;
-          right: 10px;
+          right: 12px;
           top: 50%;
           transform: translateY(-50%);
           color: $tb-slate-400;
@@ -235,25 +248,27 @@ $tb-radius: 10px;
       }
 
       .btn-filter-toggle {
-        background: transparent;
-        border: 1px solid dashed $tb-slate-300;
-        padding: 8px 12px;
-        border-radius: 8px;
+        background: $tb-white;
+        border: 1px dashed $tb-slate-300;
+        padding: 9px 13px;
+        border-radius: 999px;
         color: $tb-slate-600;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 650;
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 6px;
-        transition: 0.2s;
+        transition: 0.18s;
 
         &:hover {
           background: $tb-slate-50;
+          border-color: $tb-indigo-500;
         }
+
         &.active {
           background: $tb-indigo-50;
-          color: $tb-indigo-600;
+          color: $tb-indigo-700;
           border-color: $tb-indigo-200;
         }
       }
@@ -262,47 +277,54 @@ $tb-radius: 10px;
     .result-count {
       font-size: 13px;
       color: $tb-slate-500;
+      background: $tb-slate-50;
+      border: 1px solid $tb-slate-200;
+      padding: 7px 11px;
+      border-radius: 999px;
+
       strong {
         color: $tb-slate-800;
-        font-weight: 700;
+        font-weight: 800;
       }
     }
   }
 
-  // --- ADVANCED PANEL (SLIDE DOWN) ---
   .advanced-panel {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
     background: $tb-slate-50;
-    border-radius: 8px;
+    border-radius: 12px;
 
     &.open {
-      max-height: 100px; // Đủ để hiện nội dung
+      max-height: 130px;
       border: 1px solid $tb-slate-200;
     }
 
     .price-inputs {
-      padding: 12px 16px;
+      padding: 13px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
 
       label {
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 750;
         color: $tb-slate-600;
       }
 
       input {
-        width: 100px;
-        padding: 6px 10px;
+        width: 110px;
+        padding: 8px 10px;
         border: 1px solid $tb-slate-300;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
         outline: none;
+
         &:focus {
           border-color: $tb-indigo-500;
+          box-shadow: 0 0 0 3px rgba($tb-indigo-500, 0.12);
         }
       }
 
@@ -314,12 +336,13 @@ $tb-radius: 10px;
         background: $tb-slate-800;
         color: white;
         border: none;
-        padding: 6px 12px;
-        border-radius: 6px;
+        padding: 8px 13px;
+        border-radius: 999px;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 750;
         cursor: pointer;
         margin-left: auto;
+
         &:hover {
           background: black;
         }
@@ -327,7 +350,6 @@ $tb-radius: 10px;
     }
   }
 
-  // --- ACTIVE CHIPS ---
   .active-chips-area {
     display: flex;
     flex-wrap: wrap;
@@ -339,24 +361,25 @@ $tb-radius: 10px;
       font-size: 12px;
       color: $tb-slate-400;
       margin-right: 4px;
+      font-weight: 650;
     }
 
     .chip {
       background: $tb-indigo-50;
       color: $tb-indigo-700;
       border: 1px solid $tb-indigo-100;
-      padding: 4px 10px;
-      border-radius: 16px;
+      padding: 5px 10px;
+      border-radius: 999px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 750;
       display: flex;
       align-items: center;
       gap: 6px;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.25s ease;
 
       svg {
         cursor: pointer;
-        opacity: 0.6;
+        opacity: 0.65;
         &:hover {
           opacity: 1;
         }
@@ -372,6 +395,31 @@ $tb-radius: 10px;
       text-decoration: underline;
       &:hover {
         color: #ef4444;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 14px;
+
+    .toolbar-top {
+      .search-wrapper {
+        min-width: 100%;
+        max-width: none;
+      }
+
+      .actions-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    .toolbar-filters {
+      .filter-row,
+      .filter-row .select-wrapper,
+      .filter-row .select-wrapper .custom-select,
+      .result-count {
+        width: 100%;
       }
     }
   }

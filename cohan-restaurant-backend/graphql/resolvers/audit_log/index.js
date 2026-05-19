@@ -54,6 +54,8 @@ export default {
         throw new GraphQLError("Invalid restaurantId");
       }
 
+      const query = buildFilter(filter);
+
       if (filter?.restaurantId) {
         await requireRestaurantAccess(ctx, filter.restaurantId);
         await requireAnyPermission(ctx, RESTAURANT_AUDIT_PERMISSIONS);

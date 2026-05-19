@@ -1,54 +1,65 @@
 // Variables
-$primary: #b89365; // Gold 600
-$text-main: #0f172a; // Slate 900
-$text-sub: #64748b; // Slate 500
+$primary: #b89365;
+$primary-dark: #9f7449;
+$text-main: #0f172a;
+$text-sub: #64748b;
 $bg-white: #ffffff;
 $border: #e2e8f0;
 $danger: #ef4444;
 $success: #10b981;
 $warning: #d97706;
 $muted: #475569;
-$radius: 12px;
+$radius: 16px;
 
 .menu-item-card {
-  background: $bg-white;
-  border: 1px solid $border;
+  background: linear-gradient(180deg, #ffffff 0%, #fffdfb 100%);
+  border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: $radius;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   position: relative;
   cursor: pointer;
-  height: 100%; // Đảm bảo chiều cao đồng nhất trong Grid
+  height: 100%;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    z-index: 1;
+  }
 
   &:hover {
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    transform: translateY(-4px);
-    border-color: #cbd5e1;
+    box-shadow: 0 20px 44px -18px rgba(15, 23, 42, 0.34);
+    transform: translateY(-5px);
+    border-color: rgba($primary, 0.45);
 
-    // Trigger hiệu ứng overlay khi hover vào card
     .card-image-wrapper .sales-overlay {
       opacity: 1;
       visibility: visible;
 
       .sales-stat {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
       }
     }
 
-    // Zoom ảnh nhẹ
     .card-image-wrapper img {
-      transform: scale(1.08);
+      transform: scale(1.07);
     }
   }
 
-  // --- 1. IMAGE AREA ---
   .card-image-wrapper {
-    height: 180px;
+    height: 188px;
     position: relative;
     overflow: hidden;
-    background: #f8fafc;
+    background:
+      radial-gradient(circle at top, rgba($primary, 0.18), transparent 55%),
+      #f8fafc;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -57,84 +68,84 @@ $radius: 12px;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     .placeholder-img {
       color: #cbd5e1;
+      filter: drop-shadow(0 8px 16px rgba(15, 23, 42, 0.08));
     }
 
     .badge-wrapper {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 2;
+      top: 12px;
+      right: 12px;
+      z-index: 4;
     }
 
-    // Status Badge
     .status-badge {
       font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
+      font-weight: 750;
+      padding: 6px 11px;
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
       border: 1px solid transparent;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 
       &.available {
-        background: rgba(236, 253, 245, 0.95);
+        background: rgba(236, 253, 245, 0.96);
         color: #047857;
-        border-color: rgba(16, 185, 129, 0.25);
+        border-color: rgba(16, 185, 129, 0.28);
       }
 
       &.out-of-stock {
-        background: rgba(255, 251, 235, 0.95);
+        background: rgba(255, 251, 235, 0.96);
         color: $warning;
-        border-color: rgba(217, 119, 6, 0.2);
+        border-color: rgba(217, 119, 6, 0.25);
       }
 
       &.unavailable {
-        background: rgba(254, 242, 242, 0.95);
+        background: rgba(254, 242, 242, 0.96);
         color: $danger;
-        border-color: rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.2);
       }
 
       &.hidden {
-        background: rgba(248, 250, 252, 0.96);
+        background: rgba(248, 250, 252, 0.98);
         color: $muted;
-        border-color: rgba(100, 116, 139, 0.22);
+        border-color: rgba(100, 116, 139, 0.24);
       }
     }
 
-    // --- SALES OVERLAY (HOVER EFFECT) ---
     .sales-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.6); // Slate 900 with opacity
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.68));
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
       visibility: hidden;
-      transition: all 0.3s ease;
+      transition: all 0.24s ease;
       z-index: 3;
       backdrop-filter: blur(2px);
 
       .sales-stat {
-        background: white;
-        padding: 8px 16px 8px 10px;
-        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 9px 16px 9px 10px;
+        border-radius: 999px;
         display: flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        transform: translateY(20px); // Slide from bottom
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+        transform: translateY(18px) scale(0.98);
+        transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 
         .icon-circle {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           background: #fff1f2;
-          color: #f43f5e; // Rose color
+          color: #f43f5e;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -144,15 +155,17 @@ $radius: 12px;
         .stat-info {
           display: flex;
           flex-direction: column;
+
           .label {
             font-size: 10px;
             color: $text-sub;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
+
           .value {
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 800;
             color: $text-main;
           }
         }
@@ -160,29 +173,30 @@ $radius: 12px;
     }
   }
 
-  // --- 2. BODY CONTENT ---
   .card-body {
-    padding: 16px;
+    padding: 17px;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 13px;
 
     .info-top {
       .category-name {
         font-size: 11px;
-        font-weight: 600;
-        color: $primary;
+        font-weight: 800;
+        color: $primary-dark;
         text-transform: uppercase;
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 5px;
+        letter-spacing: 0.04em;
       }
+
       .item-name {
         margin: 0;
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 17px;
+        font-weight: 800;
         color: $text-main;
-        line-height: 1.3;
+        line-height: 1.32;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -192,14 +206,15 @@ $radius: 12px;
     .availability-warning {
       display: flex;
       align-items: flex-start;
-      gap: 6px;
-      padding: 8px 10px;
-      border-radius: 10px;
+      gap: 8px;
+      padding: 9px 11px;
+      border-radius: 12px;
       border: 1px solid #fde68a;
-      background: #fffbeb;
+      background: linear-gradient(180deg, #fffbeb, #fff7dd);
       color: #92400e;
-      font-size: 11px;
-      line-height: 1.35;
+      font-size: 11.5px;
+      line-height: 1.38;
+      box-shadow: 0 6px 14px rgba(217, 119, 6, 0.08);
 
       svg {
         flex-shrink: 0;
@@ -214,23 +229,24 @@ $radius: 12px;
       }
     }
 
-    // --- VARIANTS LIST ---
     .variants-list {
       background: #f8fafc;
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: auto; // Đẩy xuống dưới nếu tên ngắn
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 12px;
+      padding: 11px;
+      margin-top: auto;
 
       .list-header {
         display: flex;
         justify-content: space-between;
         font-size: 10px;
-        font-weight: 600;
+        font-weight: 800;
         color: $text-sub;
         text-transform: uppercase;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
+        margin-bottom: 9px;
+        padding-bottom: 5px;
         border-bottom: 1px solid #e2e8f0;
+        letter-spacing: 0.03em;
       }
 
       .variant-row {
@@ -239,45 +255,44 @@ $radius: 12px;
         justify-content: space-between;
         font-size: 13px;
         color: $text-main;
-        margin-bottom: 6px;
+        margin-bottom: 7px;
 
         &:last-child {
           margin-bottom: 0;
         }
 
         .v-name {
-          font-weight: 500;
+          font-weight: 600;
           max-width: 60%;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        // Dotted line effect
         .dotted-line {
           flex: 1;
-          margin: 0 6px;
+          margin: 0 7px;
           border-bottom: 1px dotted #cbd5e1;
           position: relative;
           top: -4px;
         }
 
         .v-price {
-          font-weight: 600;
+          font-weight: 800;
           color: $text-main;
         }
 
         &.single {
           .v-price {
-            color: $primary;
+            color: $primary-dark;
             font-size: 14px;
           }
         }
       }
 
       .variant-more {
-        margin-top: 6px;
-        padding-top: 6px;
+        margin-top: 7px;
+        padding-top: 7px;
         border-top: 1px dashed #e2e8f0;
         font-size: 11px;
         color: $text-sub;
@@ -290,11 +305,10 @@ $radius: 12px;
     }
   }
 
-  // --- 3. ACTIONS ---
   .card-actions {
     display: flex;
     border-top: 1px solid $border;
-    background: #fafafa;
+    background: rgba(248, 250, 252, 0.8);
 
     .action-btn {
       flex: 1;
@@ -307,23 +321,27 @@ $radius: 12px;
       justify-content: center;
       gap: 6px;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 700;
       color: $text-sub;
-      transition: all 0.2s;
+      transition: all 0.18s ease;
 
       &:hover {
         background: #f1f5f9;
+
         &.edit {
-          color: $primary;
+          color: $primary-dark;
         }
+
         &.history {
           color: #2563eb;
         }
+
         &.delete {
           color: $danger;
         }
       }
     }
+
     .divider {
       width: 1px;
       background: $border;

@@ -52,6 +52,15 @@
   outline: none !important;
 }
 
+
+.manager-page-shell--schedules .schedule-publish-modal button:focus-visible,
+.manager-page-shell--schedules .publish-confirm-card button:focus-visible,
+.manager-page-shell--schedules .publish-confirm-card textarea:focus-visible,
+.manager-page-shell--schedules .schedule-publish-modal input:focus-visible {
+  outline: 2px solid #4f46e5 !important;
+  outline-offset: 2px !important;
+}
+
 .manager-page-shell--schedules .publish-confirm-error {
   border-radius: 13px !important;
   font-weight: 820 !important;
@@ -91,6 +100,7 @@
   .manager-page-shell--schedules .schedule-publish-modal__footer,
   .manager-page-shell--schedules .publish-confirm-actions {
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .manager-page-shell--schedules .publish-confirm-actions button,
