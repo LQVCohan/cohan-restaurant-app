@@ -236,17 +236,22 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 }
 
 export const OrderQuery = {
-  async customerServiceRequests(_, { restaurantId, status = "PENDING" }, ctx) {
+  async customerServiceRequests(_, { restaurantId, status = "PENDING", type, limit = 50 }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const normalized = String(status || "PENDING").toUpperCase();
+    const normalizedType = type ? String(type).toUpperCase() : null;
+    const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+    const elemMatch = { status: normalized };
+    if (normalizedType) elemMatch.type = normalizedType;
     const orders = await Order.find({
       restaurantId: rid,
-      customerRequests: { $elemMatch: { status: normalized } },
+      customerRequests: { $elemMatch: elemMatch },
     }).select({ orderCode: 1, trackingCode: 1, tableCode: 1, customerRequests: 1 });
     const out = [];
     for (const order of orders) {
       for (const req of order.customerRequests || []) {
-        if (String(req?.status || "") !== normalized) continue;
+        if (String(req?.status || "").toUpperCase() !== normalized) continue;
+        if (normalizedType && String(req?.type || "").toUpperCase() !== normalizedType) continue;
         out.push({
           orderId: String(order._id),
           orderCode: order.orderCode,
@@ -262,7 +267,7 @@ export const OrderQuery = {
         });
       }
     }
-    return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, safeLimit);
   },
   async customerTrackOrder(_, { trackingToken }) {
     const order = await Order.findOne({ trackingToken }).select({

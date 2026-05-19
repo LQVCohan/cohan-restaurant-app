@@ -1184,7 +1184,7 @@ extend type Query {
     timezone: String = "Asia/Ho_Chi_Minh"
   ): SmartPromotionEngine!
   customerTrackOrder(trackingToken: String!): CustomerOrderTrackingView
-  customerServiceRequests(restaurantId: ID!, status: String = "PENDING"): [CustomerServiceRequest!]!
+  customerServiceRequests(restaurantId: ID!, status: String = "PENDING", type: String, limit: Int = 50): [CustomerServiceRequest!]!
   orderTrackingQrSvg(orderId: ID!): String!
 }
 

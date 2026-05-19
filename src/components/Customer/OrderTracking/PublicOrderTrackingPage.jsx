@@ -155,6 +155,10 @@ export default function PublicOrderTrackingPage() {
     RESOLVED: "Yêu cầu đã được xử lý",
     CANCELLED: "Yêu cầu đã huỷ",
   };
+  const requestTypeLabel = {
+    STAFF_CALL: "Yêu cầu hỗ trợ",
+    PAYMENT_REQUEST: "Yêu cầu thanh toán",
+  };
 
   const handleActionResult = async (executor) => {
     try {
@@ -203,8 +207,12 @@ export default function PublicOrderTrackingPage() {
       <div className="section">
         <h3>Cần hỗ trợ?</h3>
         <button type="button" disabled={disableActions} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>Gọi nhân viên</button>
-        {latestRequest && <p>{requestStatusLabel[String(latestRequest.status || "").toUpperCase()] || "Đã gửi yêu cầu"}</p>}
       </div>
+      {latestRequest && <div className="section">
+        <h3>Trạng thái yêu cầu gần nhất</h3>
+        <p>{requestTypeLabel[String(latestRequest.type || "").toUpperCase()] || "Yêu cầu"}: {requestStatusLabel[String(latestRequest.status || "").toUpperCase()] || "Đã gửi yêu cầu"}</p>
+        {latestRequest.message && <p>{latestRequest.message}</p>}
+      </div>}
       {actionMessage && <p className="action-message">{actionMessage}</p>}
       <button type="button" onClick={() => refetch()}>Làm mới</button>
       <small>Trạng thái sẽ tự cập nhật khi nhà hàng xử lý đơn.</small>
