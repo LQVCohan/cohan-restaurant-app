@@ -54,6 +54,20 @@ const resolveTableStatusError = (
   return fallbackMessage;
 };
 
+
+const getTableFloorId = (table) =>
+  table?.floorId?.id ||
+  table?.floorId?._id ||
+  table?.floorId ||
+  table?.floor?.id ||
+  table?.floor?._id ||
+  null;
+
+const filterTablesByFloor = (tables, floorId) =>
+  (tables || []).filter(
+    (t) => String(getTableFloorId(t)) === String(floorId)
+  );
+
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
   const { showNotification } = useNotification();
@@ -81,7 +95,6 @@ const TableManagement = () => {
   // --- Hooks ---
   const {
     floors: floorsRaw,
-    activeLevel,
     setActiveLevel,
     getIdFromLevel,
     getLevelFromId,
@@ -346,19 +359,6 @@ const TableManagement = () => {
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase();
-
-  const getTableFloorId = (table) =>
-    table?.floorId?.id ||
-    table?.floorId?._id ||
-    table?.floorId ||
-    table?.floor?.id ||
-    table?.floor?._id ||
-    null;
-
-  const filterTablesByFloor = (tables, floorId) =>
-    (tables || []).filter(
-      (t) => String(getTableFloorId(t)) === String(floorId)
-    );
 
   const baseFilteredTables = useMemo(() => {
     let filtered = [...tablesMapped];
