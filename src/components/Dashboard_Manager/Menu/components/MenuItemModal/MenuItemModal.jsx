@@ -615,6 +615,14 @@ const MenuItemModal = ({
 
   const isSaving = isSubmitting;
   const isSubmitDisabled = isSaving || isRecipeGuardPending;
+  const recipeTrackingStatus = useMemo(() => {
+    const variants = Array.isArray(formData.preparationMethods) ? formData.preparationMethods : [];
+    const hasVariants = variants.length > 0 && variants.some((variant) => String(variant?.name || "").trim());
+    const hasIngredients = variants.some((variant) => Array.isArray(variant?.ingredients) && variant.ingredients.length > 0);
+    if (hasIngredients) return "tracked";
+    if (hasVariants) return "missing_ingredients";
+    return "not_tracked";
+  }, [formData.preparationMethods]);
 
   return (
     <Modal
@@ -742,6 +750,30 @@ const MenuItemModal = ({
                 disabled={isSaving}
               >
                 <Plus size={16} /> Thêm mới
+              </button>
+            </div>
+            <div className={`recipe-tracking-card ${recipeTrackingStatus}`}>
+              <p className="recipe-tracking-card__title">
+                {recipeTrackingStatus === "tracked"
+                  ? "Đã có recipe tracking cho món này."
+                  : recipeTrackingStatus === "missing_ingredients"
+                  ? "Biến thể giá đã có, nhưng chưa gắn nguyên liệu."
+                  : "Món này chưa có recipe tracking."}
+              </p>
+              <p className="recipe-tracking-card__description">
+                {recipeTrackingStatus === "tracked"
+                  ? "Trạng thái tồn kho có thể được đồng bộ tự động chính xác hơn."
+                  : "Trạng thái tồn kho có thể không tự động đồng bộ chính xác."}
+              </p>
+              <button
+                type="button"
+                className="recipe-tracking-card__cta"
+                title="Mở module Kho để quản lý recipe"
+                onClick={() => {
+                  window.location.href = "/manager#storage";
+                }}
+              >
+                Mở quản lý recipe
               </button>
             </div>
 

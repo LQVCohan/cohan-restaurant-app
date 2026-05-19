@@ -122,6 +122,18 @@
     font-size: 13px;
     box-shadow: none;
   }
+  .mm-filter-count {
+    margin-left: 8px;
+    min-width: 22px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .mm-btn.active .mm-filter-count {
+    background: rgba(255, 255, 255, 0.24);
+  }
 }
 
 .mm-grid {

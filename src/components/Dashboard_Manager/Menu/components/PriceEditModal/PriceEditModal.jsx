@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import "./PriceEditModal.scss";
 import "./PriceEditModalPolish.scss";
+import MenuConfirmDialog from "../common/MenuConfirmDialog";
 
 const cloneIngredients = (ingredients = []) =>
   Array.isArray(ingredients)
@@ -112,6 +113,7 @@ const PriceEditModal = ({
   const [submitError, setSubmitError] = useState(null);
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
   const [appliedBulkOperations, setAppliedBulkOperations] = useState({});
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const submitting = isSubmitting || isLocalSubmitting;
 
@@ -263,12 +265,6 @@ const PriceEditModal = ({
   };
 
   const resetPrices = () => {
-    if (
-      !window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ giá về ban đầu?")
-    ) {
-      return;
-    }
-
     setSubmitError(null);
     setAppliedBulkOperations({});
     setPriceChanges((prev) =>
@@ -497,7 +493,7 @@ const PriceEditModal = ({
             </button>
             <button
               className="pem-btn-reset"
-              onClick={resetPrices}
+                  onClick={() => setIsResetConfirmOpen(true)}
               disabled={submitting}
             >
               <FiRefreshCw /> Đặt lại
@@ -693,6 +689,20 @@ const PriceEditModal = ({
         </div>
       </div>
     </Modal>
+    <MenuConfirmDialog
+      isOpen={isResetConfirmOpen}
+      title="Đặt lại toàn bộ giá?"
+      message="Các thay đổi giá chưa lưu sẽ được đưa về giá ban đầu."
+      tone="warning"
+      confirmText="Đặt lại"
+      cancelText="Hủy"
+      isLoading={submitting}
+      onCancel={() => setIsResetConfirmOpen(false)}
+      onConfirm={() => {
+        resetPrices();
+        setIsResetConfirmOpen(false);
+      }}
+    />
   );
 };
 

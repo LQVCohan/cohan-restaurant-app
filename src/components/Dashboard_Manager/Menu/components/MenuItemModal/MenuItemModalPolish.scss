@@ -140,6 +140,18 @@
       border-radius: 999px;
     }
   }
+  .recipe-tracking-card {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid #f1e5d5;
+    background: #fffaf4;
+    &__title { margin: 0 0 6px; font-weight: 800; font-size: 14px; }
+    &__description { margin: 0; font-size: 13px; color: #64748b; line-height: 1.5; }
+    &__cta { margin-top: 10px; border-radius: 999px; border: 1px solid #c5a47e; background: #fff; color: #9f7449; padding: 6px 12px; font-weight: 700; }
+    &.tracked { border-color: #99f6e4; background: #f0fdfa; .recipe-tracking-card__title { color: #0f766e; } }
+    &.missing_ingredients, &.not_tracked { border-color: #fde68a; background: #fffbeb; .recipe-tracking-card__title { color: #92400e; } }
+  }
 
   .method-card {
     border-radius: 16px;
