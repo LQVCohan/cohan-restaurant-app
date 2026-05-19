@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildVisibleScheduleInsights } from "./utils/scheduleInsights";
+import { buildScheduleQualitySummary } from "./utils/scheduleQuality";
 
 const baseShift = {
   id: "shift-1",
@@ -107,5 +108,96 @@ describe("buildVisibleScheduleInsights min weekly hours warnings", () => {
       employmentTypePolicy,
     });
     expect(result.issues.find((issue) => issue.id === "pt-1-availability-below-min-hours")).toBeTruthy();
+  });
+});
+
+describe("buildScheduleQualitySummary", () => {
+  it("returns danger score when no shifts are available", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [],
+      staffShifts: [],
+    });
+    expect(result.score).toBeLessThan(70);
+    expect(["warning", "danger"]).toContain(result.tone);
+  });
+
+  it("keeps high score when risks are clean", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1", records: [{ id: "r1" }], staffIds: ["emp1"] }],
+      staffShifts: [{ id: "r1", employeeId: "emp1" }],
+    });
+    expect(result.score).toBe(100);
+    expect(result.tone).toBe("success");
+  });
+
+  it("does not apply no-assignment penalty when shift groups have records or staff ids", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1", records: [{ id: "r1" }], staffIds: [] }],
+      staffShifts: [],
+    });
+    expect(result.score).toBe(100);
+  });
+
+  it("applies no-assignment penalty when shift groups are present but empty", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [],
+        dangers: [],
+        pendingAcknowledgements: 0,
+        changedAfterAcknowledgementCount: 0,
+        topIssues: [],
+      },
+      scheduleLifecycleStatus: "draft",
+      effectiveScheduleStatus: "draft",
+      shifts: [{ id: "s1", records: [], staffIds: [] }],
+      staffShifts: [],
+    });
+    expect(result.score).toBe(70);
+    expect(result.reasons).toContain("Các ca hiện chưa có nhân sự được phân công.");
+  });
+
+  it("reduces score from warnings, dangers, pending and changed-after-ack", () => {
+    const result = buildScheduleQualitySummary({
+      schedulePublishRiskSummary: {
+        warnings: [{ id: "w1" }, { id: "w2" }],
+        dangers: [{ id: "d1" }],
+        pendingAcknowledgements: 2,
+        changedAfterAcknowledgementCount: 1,
+        topIssues: [{ id: "d1" }],
+      },
+      scheduleLifecycleStatus: "revision_draft",
+      effectiveScheduleStatus: "revision_draft",
+      shifts: [{ id: "s1" }, { id: "s2" }],
+      staffShifts: [{ id: "r1", employeeId: "emp1" }],
+    });
+    expect(result.score).toBeLessThan(85);
+    expect(result.tone === "info" || result.tone === "warning" || result.tone === "danger").toBeTruthy();
   });
 });
