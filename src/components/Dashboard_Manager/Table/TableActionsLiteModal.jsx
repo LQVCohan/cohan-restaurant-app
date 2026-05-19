@@ -41,6 +41,10 @@ const resolveTableActionError = (
     return "Không thể thực hiện thao tác vì bàn đang có phiên hoặc order hoạt động.";
   }
 
+  if (code === "TABLE_HAS_ACTIVE_RESERVATION") {
+    return "Không thể thực hiện thao tác vì bàn đang có đặt chỗ hoạt động.";
+  }
+
   const duplicateMessage = resolveTableDuplicateMessage(error, fallbackDuplicateCode);
   if (duplicateMessage) return duplicateMessage;
 
