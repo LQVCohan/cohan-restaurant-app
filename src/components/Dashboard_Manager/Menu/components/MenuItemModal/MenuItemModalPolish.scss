@@ -1,0 +1,47 @@
+/* =========================================================
+   MENU ITEM MODAL POLISH
+   Safe companion stylesheet for MenuItemModal.jsx.
+   This file is intentionally scoped to the modal root so the import remains
+   build-safe without affecting unrelated manager pages.
+   ========================================================= */
+
+.menu-item-modal-modern {
+  .modal-content {
+    border-radius: 18px;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
+  }
+
+  .modal-header {
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .modal-footer {
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .modern-input,
+  .modern-select,
+  .modern-textarea {
+    &:focus-visible {
+      outline: 2px solid #b89365;
+      outline-offset: 2px;
+    }
+  }
+
+  .method-card {
+    position: relative;
+  }
+
+  .btn-add-variant,
+  .btn-save,
+  .btn-cancel,
+  .btn-remove {
+    &:focus-visible {
+      outline: 2px solid #b89365;
+      outline-offset: 2px;
+    }
+  }
+}
