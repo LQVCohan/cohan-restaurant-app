@@ -659,12 +659,12 @@ const OrderSummaryModal = ({
                   const params = new URLSearchParams();
                   params.set(
                     "restaurantId",
-                    encodeURIComponent(firstOrder.restaurantId),
+                    String(firstOrder.restaurantId),
                   );
                   if (firstOrder?.orderCode) {
                     params.set(
                       "orderCode",
-                      encodeURIComponent(firstOrder.orderCode),
+                      String(firstOrder.orderCode),
                     );
                   }
                   navigate(`/track-delivery/${firstOrder.id}?${params.toString()}`);
