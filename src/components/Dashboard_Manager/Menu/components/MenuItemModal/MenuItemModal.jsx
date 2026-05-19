@@ -14,6 +14,7 @@ import Modal from "../../../../common/Modal";
 import LocalImagePicker from "../../../../common/LocalImagePicker";
 import { getImagePersistenceStatus } from "../../../../../utils/imagePersistence";
 import "./MenuItemModal.scss";
+import "./MenuItemModalPolish.scss";
 
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
 import { useRecipes } from "../../../../../hooks/useRecipes";
