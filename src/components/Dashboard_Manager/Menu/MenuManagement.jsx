@@ -17,6 +17,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import "./MenuManagement.scss";
+import "./MenuManagementPolish.scss";
 
 // Sub-components
 import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
