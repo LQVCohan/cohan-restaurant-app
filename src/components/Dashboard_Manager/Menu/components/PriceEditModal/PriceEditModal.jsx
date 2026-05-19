@@ -401,7 +401,8 @@ const PriceEditModal = ({
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       isOpen={isOpen}
       onClose={handleRequestClose}
       title="Điều chỉnh giá hàng loạt"
@@ -688,21 +689,22 @@ const PriceEditModal = ({
           </div>
         </div>
       </div>
-    </Modal>
-    <MenuConfirmDialog
-      isOpen={isResetConfirmOpen}
-      title="Đặt lại toàn bộ giá?"
-      message="Các thay đổi giá chưa lưu sẽ được đưa về giá ban đầu."
-      tone="warning"
-      confirmText="Đặt lại"
-      cancelText="Hủy"
-      isLoading={submitting}
-      onCancel={() => setIsResetConfirmOpen(false)}
-      onConfirm={() => {
-        resetPrices();
-        setIsResetConfirmOpen(false);
-      }}
-    />
+      </Modal>
+      <MenuConfirmDialog
+        isOpen={isResetConfirmOpen}
+        title="Đặt lại toàn bộ giá?"
+        message="Các thay đổi giá chưa lưu sẽ được đưa về giá ban đầu."
+        tone="warning"
+        confirmText="Đặt lại"
+        cancelText="Hủy"
+        isLoading={submitting}
+        onCancel={() => setIsResetConfirmOpen(false)}
+        onConfirm={() => {
+          resetPrices();
+          setIsResetConfirmOpen(false);
+        }}
+      />
+    </>
   );
 };
 

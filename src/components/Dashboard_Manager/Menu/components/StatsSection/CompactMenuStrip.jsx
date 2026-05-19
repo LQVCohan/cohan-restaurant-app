@@ -631,26 +631,6 @@ const CompactMenuStrip = ({
         onCancel={handleCancelDeleteMenu}
         onConfirm={handleConfirmDeleteMenu}
       />
-      {deleteCandidate && (
-        <div className="cms-confirm-overlay" onClick={handleCancelDeleteMenu}>
-          <div className="cms-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h4>Xóa thực đơn?</h4>
-            <p className="cms-confirm-dialog__warning">
-              {deleteCandidate.itemCount > 0
-                ? `Thực đơn này đang có ${deleteCandidate.itemCount} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này.`
-                : "Bạn có chắc chắn muốn xóa thực đơn này?"}
-            </p>
-            <div className="cms-confirm-dialog__actions">
-              <button className="cms-confirm-btn cms-confirm-btn--secondary" onClick={handleCancelDeleteMenu} disabled={isDeletingCandidate}>
-                Hủy
-              </button>
-              <button className="cms-confirm-btn cms-confirm-btn--danger" onClick={handleConfirmDeleteMenu} disabled={isDeletingCandidate}>
-                {isDeletingCandidate ? "Đang xóa..." : "Xóa thực đơn"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

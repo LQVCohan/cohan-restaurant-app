@@ -752,6 +752,11 @@ const MenuManagement = () => {
       setIsSyncingInventory(false);
     }
   }, [inventorySyncPreview, pendingSyncPayload, pushMenuToast, refetchItems, refetchMenus, syncMenuItemInventoryStatuses]);
+  const handleCancelInventorySyncPreview = useCallback(() => {
+    if (isSyncingInventory) return;
+    setInventorySyncPreview(null);
+    setPendingSyncPayload(null);
+  }, [isSyncingInventory]);
 
   const inlineAlertStyle = {
     display: "flex",
@@ -1162,7 +1167,7 @@ const MenuManagement = () => {
       </Modal>
       <MenuConfirmDialog
         isOpen={!!inventorySyncPreview}
-        onCancel={() => !isSyncingInventory && setInventorySyncPreview(null)}
+        onCancel={handleCancelInventorySyncPreview}
         onConfirm={handleConfirmInventorySync}
         isLoading={isSyncingInventory}
         tone="warning"
