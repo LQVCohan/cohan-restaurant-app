@@ -323,6 +323,8 @@ const OrderSchema = BaseSchemaModel({
   estimatedDeliveryAt: { type: Date, default: null },
   customerVisibleNote: { type: String, default: null },
   lastCustomerNotifiedAt: { type: Date, default: null },
+  lastCustomerStaffCallAt: { type: Date, default: null },
+  lastCustomerPaymentRequestAt: { type: Date, default: null },
   parentOrderCode: { type: String, index: true },
   orderKind: {
     type: String,

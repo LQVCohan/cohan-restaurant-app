@@ -1092,6 +1092,11 @@ type CustomerOrderTrackingView {
   items: [CustomerTrackingItem!]!
   payment: CustomerTrackingPayment!
 }
+type CustomerTrackingActionResult {
+  success: Boolean!
+  message: String!
+  tracking: CustomerOrderTrackingView
+}
 
 # =========================================================
 # ROOT
@@ -1199,6 +1204,8 @@ extend type Mutation {
   requestPaymentForTable(
     input: RequestPaymentForTableInput!
   ): ActionResultPayload!
+  requestPaymentFromTracking(trackingToken: String!): CustomerTrackingActionResult!
+  callStaffFromTracking(trackingToken: String!, reason: String): CustomerTrackingActionResult!
   remindOrderItem(input: RemindOrderItemInput!): ActionResultPayload!
 
   updateOrderItemStatus(
