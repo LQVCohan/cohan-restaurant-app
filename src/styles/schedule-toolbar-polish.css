@@ -165,6 +165,13 @@
   transform: translateY(-1px);
 }
 
+
+.manager-page-shell--schedules .schedule-toolbar button:focus-visible,
+.manager-page-shell--schedules .schedule-toolbar select:focus-visible {
+  outline: 2px solid #4f46e5 !important;
+  outline-offset: 2px !important;
+}
+
 .manager-page-shell--schedules .btn-availability-snapshot {
   border: 1px solid #dbe3ef !important;
   background: #ffffff !important;
@@ -331,5 +338,18 @@
   .manager-page-shell--schedules .toolbar-right .schedule-status-badge {
     width: 100% !important;
     max-width: none !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .manager-page-shell--schedules .view-toggles button {
+    padding-inline: 0.35rem !important;
+    font-size: 0.74rem !important;
+  }
+
+  .manager-page-shell--schedules .toolbar-right select,
+  .manager-page-shell--schedules .toolbar-right button,
+  .manager-page-shell--schedules .toolbar-right .schedule-status-badge {
+    min-height: 2.5rem !important;
   }
 }

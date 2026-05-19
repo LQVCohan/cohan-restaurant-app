@@ -173,7 +173,7 @@
 
 .manager-page-shell--schedules .schedule-refresh-indicator {
   position: sticky;
-  bottom: 0.7rem;
+  bottom: 0.35rem;
   margin: 0.8rem auto 0;
   width: fit-content;
   padding: 0.34rem 0.72rem;
@@ -184,5 +184,13 @@
   font-size: 0.73rem;
   font-weight: 780;
   box-shadow: 0 8px 22px rgba(30, 64, 175, 0.16);
-  z-index: 6;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .manager-page-shell--schedules .schedule-refresh-indicator {
+    font-size: 0.69rem;
+    padding: 0.3rem 0.62rem;
+  }
 }

@@ -4570,7 +4570,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       )}
 
       {isInitialScheduleLoading && (
-        <div className="empty-state schedule-feedback">
+        <div className="empty-state schedule-feedback" role="status" aria-live="polite">
           Đang tải dữ liệu lịch làm việc...
         </div>
       )}
@@ -4680,11 +4680,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
       />
 
       {isPublishConfirmOpen ? (
-        <div className="schedule-publish-modal-overlay">
+        <div className="schedule-publish-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="schedule-publish-title">
           <div className="schedule-publish-modal">
             <div className="schedule-publish-modal__header">
               <div>
-                <h3>Xác nhận công bố lịch</h3>
+                <h3 id="schedule-publish-title">Xác nhận công bố lịch</h3>
                 <p>
                   Kiểm tra các cảnh báo quan trọng trước khi gửi lịch cho nhân
                   viên.
@@ -4693,6 +4693,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <button
                 type="button"
                 className="publish-confirm-close"
+                aria-label="Đóng hộp thoại công bố lịch"
                 onClick={() => {
                   if (publishingSchedule) return;
                   setIsPublishConfirmOpen(false);
@@ -4927,13 +4928,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
       {assignmentOverrideRequest ? (
-        <div className="publish-confirm-backdrop">
+        <div className="publish-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
           <div className="publish-confirm-card schedule-override-modal">
             <div className="publish-confirm-icon">
               <AlertTriangle size={24} />
             </div>
             <div className="publish-confirm-content">
-              <h3>Xác nhận override cảnh báo xếp ca</h3>
+              <h3 id="schedule-override-title">Xác nhận override cảnh báo xếp ca</h3>
               <p>
                 Bạn đang xếp ca cho <strong>{assignmentOverrideRequest.employeeName}</strong> và hệ
                 thống ghi nhận cảnh báo:
@@ -5004,13 +5005,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
       {isReopenModalOpen ? (
-        <div className="publish-confirm-backdrop">
+        <div className="publish-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedule-reopen-title">
           <div className="publish-confirm-card schedule-reopen-modal">
             <div className="publish-confirm-icon">
               <Edit3 size={24} />
             </div>
             <div className="publish-confirm-content">
-              <h3>Mở lại lịch đã công bố?</h3>
+              <h3 id="schedule-reopen-title">Mở lại lịch đã công bố?</h3>
               <p>
                 Lịch này đã được công bố cho nhân viên. Khi mở lại, bạn có thể
                 chỉnh sửa như bản nháp. Nhân viên sẽ chưa nhận thông báo cho đến
