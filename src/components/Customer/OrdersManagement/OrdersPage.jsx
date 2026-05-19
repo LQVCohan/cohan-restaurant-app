@@ -217,7 +217,7 @@ export default function OrdersPage() {
     if (order.orderCode) params.set("orderCode", order.orderCode);
 
     const query = params.toString();
-    return `/track-order/${orderId}${query ? `?${query}` : ""}`;
+    return `/track-delivery/${orderId}${query ? `?${query}` : ""}`;
   };
 
   const handleItemClick = (item) => {

@@ -129,7 +129,7 @@ const ROUTE_ACCESS_RULES = [
   },
   { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
   {
-    test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-order)(\/|$)/,
+    test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-delivery)(\/|$)/,
     allow: ["customer", "admin", "manager"],
   },
 ];
