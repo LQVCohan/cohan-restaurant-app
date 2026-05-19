@@ -97,6 +97,7 @@ const CREATE_CHECKOUT_ORDERS = gql`
         orderCode
         parentOrderCode
         restaurantId
+        orderType
         totals {
           grandTotal
         }
@@ -652,7 +653,9 @@ const OrderSummaryModal = ({
               const orders = receipt?.orders || [];
               if (orders.length === 1) {
                 const firstOrder = orders[0];
-                if (firstOrder?.id && firstOrder?.restaurantId) {
+                const normalizedOrderType = String(firstOrder?.orderType || "").toLowerCase();
+                const isDeliveryOrder = ["delivery", "ship", "giao_hang"].includes(normalizedOrderType);
+                if (isDeliveryOrder && firstOrder?.id && firstOrder?.restaurantId) {
                   const params = new URLSearchParams();
                   params.set(
                     "restaurantId",
