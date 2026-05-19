@@ -56,8 +56,8 @@ export default {
 
       const query = buildFilter(filter);
 
-      if (query.restaurantId) {
-        await requireRestaurantAccess(ctx, query.restaurantId);
+      if (filter?.restaurantId) {
+        await requireRestaurantAccess(ctx, filter.restaurantId);
         await requireAnyPermission(ctx, RESTAURANT_AUDIT_PERMISSIONS);
       } else {
         requireRoles(ctx, ["ADMIN"]);
