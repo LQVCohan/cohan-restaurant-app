@@ -45,7 +45,9 @@ export function computePublicOrderStatus(order = {}) {
   if (["payment_requested", "partial"].includes(paymentStatus)) return "WAITING_FOR_PAYMENT";
   const statuses = (order?.items || []).map((it) => String(it?.status || "").toLowerCase());
   if (!statuses.length) return orderStatus === "confirmed" ? "CONFIRMED" : "ORDER_RECEIVED";
-  if (statuses.length && statuses.every((s) => s === "cancelled" || s === "returned")) return "CANCELLED";
+  if (statuses.length && statuses.every((s) => s === "cancelled")) return "CANCELLED";
+  if (statuses.length && statuses.every((s) => s === "returned")) return "ISSUE_REPORTED";
+  if (statuses.length && statuses.every((s) => s === "cancelled" || s === "returned")) return "ISSUE_REPORTED";
   if (statuses.every((s) => s === "served")) return "SERVED";
   if (statuses.every((s) => s === "served" || s === "cancelled" || s === "returned")) return "PARTIALLY_READY";
   const readyCount = statuses.filter((s) => s === "ready" || s === "served").length;
@@ -92,6 +94,9 @@ export function updatePublicStatusHistory(orderDoc, changedByRole = "SYSTEM") {
 }
 
 export function toCustomerTrackingPayload(order = {}) {
+  const normalizedPaymentStatus = String(
+    order?.orderPaymentStatus || order?.payment?.status || "unpaid",
+  ).toLowerCase();
   return {
     trackingCode: order.trackingCode,
     publicStatus: order.publicStatus,
@@ -104,17 +109,17 @@ export function toCustomerTrackingPayload(order = {}) {
       return { name: item.name, quantity: item.quantity, publicStatus: mapped.status, publicStatusLabel: mapped.label };
     }),
     payment: {
-      status: String(order?.orderPaymentStatus || order?.payment?.status || "UNPAID").toUpperCase(),
-      canRequestPayment: ["partial", "unpaid"].includes(String(order?.orderPaymentStatus || "").toLowerCase()),
+      status: normalizedPaymentStatus.toUpperCase(),
+      canRequestPayment: ["partial", "unpaid"].includes(normalizedPaymentStatus),
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
   };
 }
 
-export function emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus = null }) {
+export function emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus = null, force = false }) {
   if (!ctx?.io || !orderDoc?.trackingToken) return;
   const currentPublicStatus = orderDoc?.publicStatus;
-  if (!currentPublicStatus || currentPublicStatus === previousPublicStatus) return;
+  if (!force && (!currentPublicStatus || currentPublicStatus === previousPublicStatus)) return;
   const payload = toCustomerTrackingPayload(orderDoc.toObject ? orderDoc.toObject() : orderDoc);
   ctx.io.to(`order-tracking:${orderDoc.trackingToken}`).emit("customer-order-tracking-updated", payload);
 }

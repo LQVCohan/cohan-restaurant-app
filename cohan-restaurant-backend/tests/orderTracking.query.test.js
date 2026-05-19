@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   findOneMock: vi.fn(),
   findByIdMock: vi.fn(),
+  existsMock: vi.fn(),
   requirePermMock: vi.fn(async () => true),
 }));
 
 vi.mock("../models/index.js", () => ({
-  Order: { findOne: mocks.findOneMock, findById: mocks.findByIdMock },
+  Order: { findOne: mocks.findOneMock, findById: mocks.findByIdMock, exists: mocks.existsMock },
   User: {}, Table: {}, Customer: {}, MenuItem: {}, StockItem: {}, Supply: {}, Promotion: {}, Staff: {}, Review: {},
 }));
 vi.mock("../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: mocks.requirePermMock }));
@@ -36,7 +37,16 @@ describe("OrderQuery customerTrackOrder", () => {
   });
 
   it("requires auth for QR svg", async () => {
-    mocks.findByIdMock.mockResolvedValue({ restaurantId: "r1", trackingQrPayload: "https://x", trackingUrl: "https://x" });
+    mocks.existsMock.mockResolvedValue(null);
+    const order = {
+      restaurantId: "r1",
+      trackingQrPayload: "https://x",
+      trackingUrl: "https://x",
+      trackingToken: "token",
+      trackingCode: "ORD-TEST",
+      save: vi.fn(async () => order),
+    };
+    mocks.findByIdMock.mockResolvedValue(order);
     await OrderQuery.orderTrackingQrSvg(null, { orderId: "o1" }, { user: { id: "u1" } });
     expect(mocks.requirePermMock).toHaveBeenCalled();
   });

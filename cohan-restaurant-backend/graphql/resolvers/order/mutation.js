@@ -2081,7 +2081,7 @@ export const OrderMutation = {
       ];
       updatePublicStatusHistory(order, "CASHIER");
       await order.save();
-      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus });
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(
         ctx,
         String(order.restaurantId),
@@ -2125,7 +2125,7 @@ export const OrderMutation = {
       ];
       updatePublicStatusHistory(order, "CASHIER");
       await order.save();
-      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus });
+      emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
       await emitOrderEvent(
         ctx,
         String(order.restaurantId),
@@ -3081,7 +3081,7 @@ export const OrderMutation = {
         },
       });
     }
-    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null, force: true });
 
     await emitOrderEvent(ctx, order.restaurantId, "ORDER_STATUS_CHANGED", {
       order,
@@ -3216,7 +3216,7 @@ export const OrderMutation = {
         },
       });
     }
-    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: order?.$locals?.prevPublicStatus || null, force: true });
 
     await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_STATUS_CHANGED", {
       order,

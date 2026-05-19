@@ -4,6 +4,7 @@ import {
   toCustomerTrackingPayload,
   ensureOrderTracking,
   updatePublicStatusHistory,
+  emitCustomerTrackingUpdateIfChanged,
 } from "../src/services/orderTracking.service.js";
 import { Order } from "../models/index.js";
 import { vi } from "vitest";
@@ -43,7 +44,10 @@ describe("orderTracking.service", () => {
     expect(payload.items[0]._id).toBeUndefined();
   });
   it("maps all cancelled/returned to CANCELLED", () => {
-    expect(computePublicOrderStatus({ items: [{ status: "cancelled" }, { status: "returned" }] })).toBe("CANCELLED");
+    expect(computePublicOrderStatus({ items: [{ status: "cancelled" }, { status: "cancelled" }] })).toBe("CANCELLED");
+    expect(computePublicOrderStatus({ items: [{ status: "returned" }, { status: "returned" }] })).toBe("ISSUE_REPORTED");
+    expect(computePublicOrderStatus({ items: [{ status: "cancelled" }, { status: "returned" }] })).toBe("ISSUE_REPORTED");
+    expect(computePublicOrderStatus({ currentStatus: "cancelled", items: [{ status: "returned" }] })).toBe("CANCELLED");
   });
   it("generates tracking fields", async () => {
     vi.spyOn(Order, "exists").mockResolvedValueOnce(null);
@@ -58,5 +62,22 @@ describe("orderTracking.service", () => {
     const order = { publicStatus: "PREPARING", currentStatus: "preparing", items: [{ status: "preparing" }], statusHistory: [{ status: "PREPARING", displayMessage: "x", changedAt }] };
     updatePublicStatusHistory(order, "SYSTEM");
     expect(order.statusHistory).toHaveLength(1);
+  });
+  it("maps payment canRequestPayment safely", () => {
+    expect(toCustomerTrackingPayload({ orderPaymentStatus: "payment_requested", items: [], statusHistory: [] }).payment.canRequestPayment).toBe(false);
+    expect(toCustomerTrackingPayload({ orderPaymentStatus: "paid", items: [], statusHistory: [] }).payment.canRequestPayment).toBe(false);
+    expect(toCustomerTrackingPayload({ orderPaymentStatus: "unpaid", items: [], statusHistory: [] }).payment.canRequestPayment).toBe(true);
+  });
+  it("emits tracking update when forced even if status unchanged", () => {
+    const emit = vi.fn();
+    const to = vi.fn(() => ({ emit }));
+    const ctx = { io: { to } };
+    const orderDoc = { trackingToken: "abc", publicStatus: "PREPARING", toObject: () => ({ trackingCode: "ORD", publicStatus: "PREPARING", items: [{ _id: "x", name: "A", quantity: 1, status: "preparing" }], statusHistory: [] }) };
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus: "PREPARING", force: false });
+    expect(emit).not.toHaveBeenCalled();
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus: "PREPARING", force: true });
+    expect(emit).toHaveBeenCalledTimes(1);
+    const payload = emit.mock.calls[0][1];
+    expect(payload.items?.[0]?._id).toBeUndefined();
   });
 });

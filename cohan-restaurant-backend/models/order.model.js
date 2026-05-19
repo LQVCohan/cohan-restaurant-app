@@ -291,8 +291,8 @@ const OrderItemSchema = new Schema(
 
 const OrderSchema = BaseSchemaModel({
   orderCode: { type: String, required: true, index: true },
-  trackingCode: { type: String, index: true },
-  trackingToken: { type: String, index: true },
+  trackingCode: { type: String, default: null },
+  trackingToken: { type: String, default: null },
   trackingUrl: { type: String, default: null },
   trackingQrPayload: { type: String, default: null },
   trackingQrGeneratedAt: { type: Date, default: null },
