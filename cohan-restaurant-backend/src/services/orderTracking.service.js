@@ -97,6 +97,10 @@ export function toCustomerTrackingPayload(order = {}) {
   const normalizedPaymentStatus = String(
     order?.orderPaymentStatus || order?.payment?.status || "unpaid",
   ).toLowerCase();
+  const latestRequest = Array.isArray(order?.customerRequests) && order.customerRequests.length
+    ? [...order.customerRequests]
+      .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
+    : null;
   return {
     trackingCode: order.trackingCode,
     publicStatus: order.publicStatus,
@@ -113,6 +117,17 @@ export function toCustomerTrackingPayload(order = {}) {
       canRequestPayment: ["partial", "unpaid"].includes(normalizedPaymentStatus),
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
+    latestRequest: latestRequest
+      ? {
+        requestId: latestRequest.requestId,
+        type: latestRequest.type,
+        status: latestRequest.status,
+        message: latestRequest.message || null,
+        createdAt: latestRequest.createdAt || null,
+        acknowledgedAt: latestRequest.acknowledgedAt || null,
+        resolvedAt: latestRequest.resolvedAt || null,
+      }
+      : null,
   };
 }
 

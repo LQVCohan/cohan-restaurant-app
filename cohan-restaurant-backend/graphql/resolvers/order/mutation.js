@@ -1,6 +1,7 @@
 // src/graphql/resolvers/order/mutation.js
 
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 import {
   Order,
@@ -108,6 +109,20 @@ function assertOrderCanRequestPayment(order) {
       "Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.",
     );
   }
+}
+
+function appendCustomerRequest(order, type, message = null) {
+  order.customerRequests = Array.isArray(order.customerRequests) ? order.customerRequests : [];
+  const requestId = crypto.randomUUID();
+  order.customerRequests.push({
+    requestId,
+    type,
+    status: "PENDING",
+    message: message || null,
+    createdAt: new Date(),
+    source: "CUSTOMER_TRACKING",
+  });
+  return requestId;
 }
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
@@ -2165,6 +2180,7 @@ export const OrderMutation = {
     order.orderPaymentStatus = "payment_requested";
     order.lastCustomerPaymentRequestAt = new Date();
     order.customerVisibleNote = "Yêu cầu thanh toán đã được gửi cho nhân viên.";
+    appendCustomerRequest(order, "PAYMENT_REQUEST", "Khách yêu cầu thanh toán");
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
@@ -2194,6 +2210,7 @@ export const OrderMutation = {
     const previousPublicStatus = order.publicStatus;
     order.lastCustomerStaffCallAt = new Date(now);
     order.customerVisibleNote = normalizedReason;
+    appendCustomerRequest(order, "STAFF_CALL", normalizedReason);
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
@@ -2204,6 +2221,40 @@ export const OrderMutation = {
       message: normalizedReason,
     });
     return { success: true, message: "Đã gửi yêu cầu hỗ trợ đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
+  },
+  async acknowledgeCustomerServiceRequest(_, { restaurantId, orderId, requestId }, ctx) {
+    const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
+    const order = await Order.findOne({ _id: toId(orderId), restaurantId: rid });
+    if (!order) throw new Error("Order not found");
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const req = (order.customerRequests || []).find((x) => x.requestId === requestId);
+    if (!req) throw new Error("Request not found");
+    req.status = "ACKNOWLEDGED";
+    req.acknowledgedAt = new Date();
+    req.acknowledgedBy = actorId || null;
+    order.customerVisibleNote = "Nhân viên đã nhận yêu cầu của bạn.";
+    await order.save();
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_REQUEST_ACKNOWLEDGED", { orderId: String(order._id), requestId });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, force: true });
+    return { ok: true, message: "Đã nhận xử lý yêu cầu." };
+  },
+  async resolveCustomerServiceRequest(_, { restaurantId, orderId, requestId }, ctx) {
+    const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
+    const order = await Order.findOne({ _id: toId(orderId), restaurantId: rid });
+    if (!order) throw new Error("Order not found");
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const req = (order.customerRequests || []).find((x) => x.requestId === requestId);
+    if (!req) throw new Error("Request not found");
+    req.status = "RESOLVED";
+    req.resolvedAt = new Date();
+    req.resolvedBy = actorId || null;
+    order.customerVisibleNote = "Yêu cầu của bạn đã được xử lý.";
+    await order.save();
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_REQUEST_RESOLVED", { orderId: String(order._id), requestId });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, force: true });
+    return { ok: true, message: "Đã đánh dấu xử lý xong." };
   },
   async remindOrderItem(_, { input }, ctx) {
     const { restaurantId, orderId, orderItemId, note } = input || {};
