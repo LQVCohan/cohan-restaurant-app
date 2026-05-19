@@ -114,6 +114,33 @@ const formatCompactCount = (n) =>
     maximumFractionDigits: 1,
   }).format(Number(n || 0));
 
+const DEFAULT_RANKS_FALLBACK = [
+  { name: "Mới", minPoints: 0, benefits: "" },
+  { name: "Thân thiết", minPoints: 5, benefits: "" },
+  { name: "VIP", minPoints: 20, benefits: "" },
+];
+
+const normalizeRanks = (ranks = []) => {
+  const source = Array.isArray(ranks) && ranks.length ? ranks : DEFAULT_RANKS_FALLBACK;
+  return source
+    .map((rank) => ({
+      name: rank?.name || "",
+      minPoints: Number(rank?.minPoints || 0),
+      benefits: rank?.benefits || "",
+    }))
+    .sort((a, b) => b.minPoints - a.minPoints);
+};
+
+const resolveCustomerRank = (loyaltyPoints, ranks = []) => {
+  const points = Math.max(0, Number(loyaltyPoints || 0));
+  const sortedRanks = normalizeRanks(ranks);
+  return (
+    sortedRanks.find((rank) => points >= rank.minPoints) ||
+    sortedRanks[sortedRanks.length - 1] ||
+    DEFAULT_RANKS_FALLBACK[0]
+  );
+};
+
 /* ================== Main Component ================== */
 
 const CustomerManagement = () => {
@@ -310,6 +337,10 @@ const CustomerManagement = () => {
     }
     return map;
   }, [ordersAll]);
+  const rankSettings = useMemo(
+    () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
+    [rankSettingsData],
+  );
 
   // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
   const customersDecorated = useMemo(() => {
@@ -321,13 +352,14 @@ const CustomerManagement = () => {
       return {
         ...c,
         displayName: c.name || "Khách hàng",
+        customerType: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
         recentOrders,
         favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
         topDishes,
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
-  }, [filteredCustomers, ordersByUserId]);
+  }, [filteredCustomers, ordersByUserId, rankSettings]);
 
   const onlineCount = useMemo(
     () => customersDecorated.filter((c) => c.online).length,
@@ -373,7 +405,7 @@ const CustomerManagement = () => {
     customer.displayName || customer.name || "",
     customer.phone || "",
     customer.email || "",
-    customer.customerType || "",
+    resolveCustomerRank(customer?.loyaltyPoints, rankSettings).name || "",
     Number(customer.loyaltyPoints || 0),
     Number(customer.totalOrders || 0),
     Number(customer.totalSpending || 0),
@@ -382,7 +414,7 @@ const CustomerManagement = () => {
     customer.lastLoginAt ? toDateStringVI(customer.lastLoginAt) : "",
   ];
 
-  const buildScopeSheets = (scope, rows) => {
+  const buildScopeSheets = (scope, rows, ranks) => {
     const header = [
       "STT",
       "Mã KH",
@@ -416,17 +448,19 @@ const CustomerManagement = () => {
       ];
     }
 
-    const vipRows = rows.filter((c) => Number(c.loyaltyPoints || 0) > 15000);
-    const frequentRows = rows.filter((c) => {
-      const pts = Number(c.loyaltyPoints || 0);
-      return pts > 5000 && pts <= 15000;
+    const groupedByRank = rows.reduce((acc, customer) => {
+      const rank = resolveCustomerRank(customer?.loyaltyPoints, ranks);
+      const rankName = rank?.name || "KhongXacDinh";
+      if (!acc.has(rankName)) acc.set(rankName, []);
+      acc.get(rankName).push(customer);
+      return acc;
+    }, new Map());
+
+    return normalizeRanks(ranks).map((rank) => {
+      const customersByRank = groupedByRank.get(rank.name) || [];
+      const safeSheetName = String(rank.name || "Rank").replace(/[^A-Za-z0-9]/g, "").slice(0, 31) || "Rank";
+      return { name: safeSheetName, rows: [header, ...customersByRank.map(toCustomerRow)] };
     });
-    const newRows = rows.filter((c) => Number(c.loyaltyPoints || 0) <= 5000);
-    return [
-      { name: "VIP", rows: [header, ...vipRows.map(toCustomerRow)] },
-      { name: "ThanThiet", rows: [header, ...frequentRows.map(toCustomerRow)] },
-      { name: "Moi", rows: [header, ...newRows.map(toCustomerRow)] },
-    ];
   };
 
   const handleExportExcel = () => {
@@ -440,7 +474,7 @@ const CustomerManagement = () => {
         return;
       }
 
-      const sheets = buildScopeSheets(exportScope, visibleRows);
+      const sheets = buildScopeSheets(exportScope, visibleRows, rankSettings);
       const dateSuffix = new Date().toISOString().slice(0, 10);
       const scopeSuffix =
         exportScope === "current_list"

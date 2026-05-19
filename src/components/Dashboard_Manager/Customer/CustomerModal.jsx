@@ -1,5 +1,6 @@
 // src/components/CustomerManagement/CustomerModal.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useMutation } from "@apollo/client";
 import {
   Mail,
   Phone,
@@ -22,6 +23,8 @@ import Modal from "../../../components/common/Modal";
 import ChatThreadPanel from "../../../components/common/ChatThreadPanel";
 import useCommunication from "../../../hooks/useCommunication";
 import { AuthContext } from "../../../context/AuthContext";
+import { useNotification } from "../../../hooks/useNotification";
+import { ADMIN_UPDATE_USER } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
 
 /* ===== Helpers & Utils ===== */
@@ -91,9 +94,11 @@ const CustomerModal = ({
   restaurantId: restaurantIdProp = null,
 }) => {
   const { user, restaurants = [] } = useContext(AuthContext) || {};
-  const [notes, setNotes] = useState(customer?.notes || "");
+  const { showNotification } = useNotification();
+  const [notes, setNotes] = useState(customer?.noteInternal || customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [tempNotes, setTempNotes] = useState(customer?.notes || "");
+  const [tempNotes, setTempNotes] = useState(customer?.noteInternal || customer?.notes || "");
+  const [saveNotesMut, { loading: savingNotes }] = useMutation(ADMIN_UPDATE_USER);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatThreadId, setChatThreadId] = useState(null);
   const [chatError, setChatError] = useState("");
@@ -170,9 +175,28 @@ const CustomerModal = ({
     setChatError("");
   }, [customer?.id]);
 
-  const handleSaveNotes = () => {
-    setNotes(tempNotes);
+  useEffect(() => {
+    const incomingNotes = customer?.noteInternal || customer?.notes || "";
+    setNotes(incomingNotes);
+    setTempNotes(incomingNotes);
     setIsEditingNotes(false);
+  }, [customer?.id, customer?.noteInternal, customer?.notes]);
+
+  const handleSaveNotes = async () => {
+    if (!customer?.id) return;
+    try {
+      await saveNotesMut({
+        variables: {
+          userId: customer.id,
+          input: { noteInternal: tempNotes || "" },
+        },
+      });
+      setNotes(tempNotes || "");
+      setIsEditingNotes(false);
+      showNotification("Đã lưu ghi chú khách hàng.", "success");
+    } catch (err) {
+      showNotification(err?.message || "Không thể lưu ghi chú khách hàng.", "error");
+    }
   };
 
   const openCustomerChat = async () => {
@@ -471,7 +495,7 @@ const CustomerModal = ({
                     autoFocus
                   />
                   <div className="action-row">
-                    <button className="save" onClick={handleSaveNotes}>
+                    <button className="save" onClick={handleSaveNotes} disabled={savingNotes}>
                       Lưu
                     </button>
                     <button

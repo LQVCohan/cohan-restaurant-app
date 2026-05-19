@@ -85,7 +85,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   staff: ["staff.read"],
   schedules: ["shift.read"],
   payroll: ["payroll.read"],
-  customers: ["customer.read", "staff.read"],
+  customers: ["customer.read"],
   "customer-analytics": ["report.read"],
   promotions: ["promotion.read", "coupon.read"],
   reviews: ["review.read", "report.read"],
