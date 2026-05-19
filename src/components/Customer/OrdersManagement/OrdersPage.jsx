@@ -223,13 +223,18 @@ export default function OrdersPage() {
   const handleItemClick = (item) => {
     const raw = item?.raw;
 
-    if (item?.kind === "delivery" || item?.kind === "dinein") {
+    if (item?.kind === "delivery") {
       const url = buildTrackingUrl(raw);
       if (url) {
         navigate(url);
         return;
       }
       pushToast("Không đủ thông tin để mở chi tiết đơn.");
+      return;
+    }
+
+    if (item?.kind === "dinein") {
+      pushToast("Chi tiết đơn tại quán sẽ được bổ sung sau.");
       return;
     }
 
