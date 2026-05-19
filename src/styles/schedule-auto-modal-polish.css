@@ -508,14 +508,21 @@
 .auto-schedule-body .assignment-alert-block.issue { background: #fef2f2; border-color: #fca5a5; }
 .auto-schedule-body .assignment-alert-block.issue h6 { color: #b91c1c; }
 
-.auto-schedule-body .blocked-candidates-section > summary {
-  cursor: pointer;
-  font-weight: 800;
+.auto-schedule-body .blocked-candidates-section h5 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   color: #9a3412;
 }
 
-.auto-schedule-body .blocked-candidates-section > summary:focus-visible {
-  outline: 2px solid #fb923c;
-  outline-offset: 2px;
-  border-radius: 6px;
+.auto-schedule-body .blocked-candidates-count {
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
