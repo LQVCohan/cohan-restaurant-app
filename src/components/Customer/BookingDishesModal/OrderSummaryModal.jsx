@@ -664,7 +664,7 @@ const OrderSummaryModal = ({
                       encodeURIComponent(firstOrder.orderCode),
                     );
                   }
-                  navigate(`/track-order/${firstOrder.id}?${params.toString()}`);
+                  navigate(`/track-delivery/${firstOrder.id}?${params.toString()}`);
                   return;
                 }
                 navigate("/orders");
