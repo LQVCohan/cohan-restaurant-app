@@ -21,7 +21,7 @@ import {
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
-import { emitOrderEvent } from "./helper/emitOrderEvent.js";
+import { emitOrderEvent, emitRestaurantEvent } from "./helper/emitOrderEvent.js";
 import {
   ensureUserForOrder,
   resolveTable,
@@ -55,6 +55,7 @@ import {
   ensureOrderTracking,
   updatePublicStatusHistory,
   emitCustomerTrackingUpdateIfChanged,
+  toCustomerTrackingPayload,
 } from "../../../src/services/orderTracking.service.js";
 
 const RESERVABLE_STATUSES = [
@@ -115,6 +116,17 @@ const PRINT_STATIONS = {
   bar: "bar",
   cashier: "cashier",
 };
+const TRACKING_INVALID_MESSAGE = "Không thể xử lý yêu cầu. Vui lòng kiểm tra lại mã theo dõi hoặc liên hệ nhân viên.";
+const TRACKING_REVOKED_MESSAGE = "Liên kết theo dõi đơn hàng đã hết hiệu lực.";
+const DEFAULT_STAFF_CALL_REASON = "Khách cần hỗ trợ tại bàn.";
+const STAFF_CALL_REASON_MAX_LENGTH = 200;
+const STAFF_CALL_RATE_LIMIT_MS = 60 * 1000;
+
+function normalizeCallStaffReason(reason) {
+  const normalized = String(reason || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return DEFAULT_STAFF_CALL_REASON;
+  return normalized.slice(0, STAFF_CALL_REASON_MAX_LENGTH);
+}
 
 function mapItemToStation(item = {}) {
   const categoryName = String(
@@ -2134,6 +2146,64 @@ export const OrderMutation = {
       );
     }
     return { ok: true, message: "Đã gửi yêu cầu thanh toán đến POS." };
+  },
+  async requestPaymentFromTracking(_, { trackingToken }, ctx) {
+    const token = String(trackingToken || "").trim();
+    if (!token) return { success: false, message: TRACKING_INVALID_MESSAGE, tracking: null };
+    const order = await Order.findOne({ trackingToken: token });
+    if (!order) return { success: false, message: TRACKING_INVALID_MESSAGE, tracking: null };
+    if (order.trackingQrRevokedAt) return { success: false, message: TRACKING_REVOKED_MESSAGE, tracking: null };
+    const normalizedPaymentStatus = String(order?.orderPaymentStatus || order?.payment?.status || "").toLowerCase();
+    if (normalizedPaymentStatus === "paid") return { success: false, message: "Đơn hàng đã thanh toán.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    if (String(order.currentStatus || "").toLowerCase() === "cancelled") return { success: false, message: "Đơn hàng đã bị hủy.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    if (normalizedPaymentStatus === "payment_requested") return { success: true, message: "Yêu cầu thanh toán đã được gửi trước đó.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    const previousPublicStatus = order.publicStatus;
+    order.payment = order.payment || {};
+    order.payment.status = "payment_requested";
+    order.payment.requestedAt = new Date();
+    order.payment.requestSource = "customer_tracking";
+    order.orderPaymentStatus = "payment_requested";
+    order.lastCustomerPaymentRequestAt = new Date();
+    order.customerVisibleNote = "Yêu cầu thanh toán đã được gửi cho nhân viên.";
+    updatePublicStatusHistory(order, "CUSTOMER");
+    await order.save();
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_PAYMENT_REQUESTED", {
+      order: toCustomerTrackingPayload(order.toObject()),
+      trackingCode: order.trackingCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
+      message: "Khách yêu cầu thanh toán",
+    });
+    return { success: true, message: "Đã gửi yêu cầu thanh toán đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
+  },
+  async callStaffFromTracking(_, { trackingToken, reason }, ctx) {
+    const token = String(trackingToken || "").trim();
+    if (!token) return { success: false, message: TRACKING_INVALID_MESSAGE, tracking: null };
+    const order = await Order.findOne({ trackingToken: token });
+    if (!order) return { success: false, message: TRACKING_INVALID_MESSAGE, tracking: null };
+    if (order.trackingQrRevokedAt) return { success: false, message: TRACKING_REVOKED_MESSAGE, tracking: null };
+    if (["cancelled", "completed", "failed"].includes(String(order.currentStatus || "").toLowerCase())) {
+      return { success: false, message: "Đơn hàng không còn hoạt động.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    }
+    const now = Date.now();
+    const lastCallTs = order.lastCustomerStaffCallAt ? new Date(order.lastCustomerStaffCallAt).getTime() : 0;
+    if (lastCallTs && now - lastCallTs < STAFF_CALL_RATE_LIMIT_MS) {
+      return { success: false, message: "Yêu cầu hỗ trợ đã được gửi. Vui lòng chờ nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    }
+    const normalizedReason = normalizeCallStaffReason(reason);
+    const previousPublicStatus = order.publicStatus;
+    order.lastCustomerStaffCallAt = new Date(now);
+    order.customerVisibleNote = normalizedReason;
+    updatePublicStatusHistory(order, "CUSTOMER");
+    await order.save();
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_STAFF_CALL_REQUESTED", {
+      order: toCustomerTrackingPayload(order.toObject()),
+      trackingCode: order.trackingCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
+      message: normalizedReason,
+    });
+    return { success: true, message: "Đã gửi yêu cầu hỗ trợ đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
   },
   async remindOrderItem(_, { input }, ctx) {
     const { restaurantId, orderId, orderItemId, note } = input || {};

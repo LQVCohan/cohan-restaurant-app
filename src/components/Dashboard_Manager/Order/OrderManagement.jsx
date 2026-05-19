@@ -472,6 +472,15 @@ const OrderManagement = () => {
       }
       void refetchOrders();
     },
+    onCustomerPaymentRequested: (evt) => {
+      const label = evt?.tableCode || evt?.trackingCode || evt?.order?.trackingCode || "không rõ bàn";
+      showNotification(`Khách yêu cầu thanh toán (${label})`, "warning");
+    },
+    onCustomerStaffCallRequested: (evt) => {
+      const label = evt?.tableCode || evt?.trackingCode || evt?.order?.trackingCode || "không rõ bàn";
+      const reason = evt?.message ? `: ${evt.message}` : "";
+      showNotification(`Khách cần hỗ trợ (${label})${reason}`, "warning");
+    },
   });
 
   useEffect(() => {

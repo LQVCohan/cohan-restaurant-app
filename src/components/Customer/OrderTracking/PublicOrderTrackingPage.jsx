@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import "./publicOrderTracking.scss";
@@ -31,6 +31,14 @@ export const CUSTOMER_TRACK_ORDER = gql`
     }
   }
 `;
+const TRACKING_FIELDS = `
+  trackingCode publicStatus publicStatusLabel customerVisibleNote estimatedReadyAt
+  timeline { status displayMessage changedAt }
+  items { name quantity publicStatus publicStatusLabel }
+  payment { status canRequestPayment totalAmount }
+`;
+export const REQUEST_PAYMENT_FROM_TRACKING = gql`mutation RequestPaymentFromTracking($trackingToken: String!){requestPaymentFromTracking(trackingToken:$trackingToken){success message tracking{${TRACKING_FIELDS}}}}`;
+export const CALL_STAFF_FROM_TRACKING = gql`mutation CallStaffFromTracking($trackingToken: String!,$reason: String){callStaffFromTracking(trackingToken:$trackingToken,reason:$reason){success message tracking{${TRACKING_FIELDS}}}}`;
 
 const paymentStatusLabel = {
   UNPAID: "Chưa thanh toán",
@@ -47,7 +55,10 @@ export default function PublicOrderTrackingPage() {
   const { trackingToken } = useParams();
   const [socketReady, setSocketReady] = useState(false);
   const [liveData, setLiveData] = useState(null);
+  const [actionMessage, setActionMessage] = useState("");
   const socketRef = useRef(null);
+  const [requestPayment, { loading: requestingPayment }] = useMutation(REQUEST_PAYMENT_FROM_TRACKING);
+  const [callStaff, { loading: callingStaff }] = useMutation(CALL_STAFF_FROM_TRACKING);
 
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(CUSTOMER_TRACK_ORDER, {
     skip: !trackingToken,
@@ -120,6 +131,25 @@ export default function PublicOrderTrackingPage() {
     );
   }
   if (!tracking) return <div className="track-order-page"><h2>Không tìm thấy đơn hàng</h2><p>Vui lòng kiểm tra lại mã QR hoặc liên hệ nhân viên.</p></div>;
+  const paymentStatus = String(tracking.payment?.status || "").toUpperCase();
+  const publicStatus = String(tracking.publicStatus || "").toUpperCase();
+  const isCancelled = publicStatus === "CANCELLED";
+  const isPaid = publicStatus === "PAID" || paymentStatus === "PAID";
+  const paymentRequested = paymentStatus === "PAYMENT_REQUESTED";
+  const canRequestPayment = Boolean(tracking.payment?.canRequestPayment);
+  const disableActions = requestingPayment || callingStaff || isCancelled;
+
+  const handleActionResult = async (executor) => {
+    try {
+      const result = await executor();
+      const actionResult = result?.data?.requestPaymentFromTracking || result?.data?.callStaffFromTracking;
+      setActionMessage(actionResult?.message || "Đã gửi yêu cầu.");
+      if (actionResult?.tracking) setLiveData(actionResult.tracking);
+      else await refetch();
+    } catch {
+      setActionMessage("Không thể gửi yêu cầu lúc này. Vui lòng thử lại sau.");
+    }
+  };
 
   return (
     <div className="track-order-page">
@@ -148,8 +178,16 @@ export default function PublicOrderTrackingPage() {
         <h3>Thanh toán</h3>
         <p>Tổng tiền: {(Number(tracking.payment?.totalAmount || 0)).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}</p>
         <p>Trạng thái: {paymentStatusLabel[String(tracking.payment?.status || "").toUpperCase()] || "Đang cập nhật"}</p>
-        {tracking.payment?.canRequestPayment && <p>Bạn có thể gọi nhân viên để thanh toán.</p>}
+        {canRequestPayment && <p>Bạn có thể gọi nhân viên để thanh toán.</p>}
+        <button type="button" disabled={disableActions || isPaid || paymentRequested || !canRequestPayment} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>Yêu cầu thanh toán</button>
+        {paymentRequested && <p>Yêu cầu thanh toán đã được gửi.</p>}
+        {!canRequestPayment && !isPaid && !paymentRequested && <p>Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
       </div>
+      <div className="section">
+        <h3>Cần hỗ trợ?</h3>
+        <button type="button" disabled={disableActions} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>Gọi nhân viên</button>
+      </div>
+      {actionMessage && <p className="action-message">{actionMessage}</p>}
       <button type="button" onClick={() => refetch()}>Làm mới</button>
       <small>Trạng thái sẽ tự cập nhật khi nhà hàng xử lý đơn.</small>
     </div>
