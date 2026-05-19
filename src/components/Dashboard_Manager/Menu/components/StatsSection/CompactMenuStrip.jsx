@@ -192,6 +192,8 @@ const CompactMenuStrip = ({
   const [isSyncingInventory, setIsSyncingInventory] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [isDeletingCandidate, setIsDeletingCandidate] = useState(false);
 
   const [copyMenuMutation] = useMutation(COPY_MENU_MUTATION, {
     update(cache, { data }) {
@@ -336,6 +338,18 @@ const CompactMenuStrip = ({
     if (typeof onDeleteMenu === "function") return onDeleteMenu(menu);
     const count = Number(menu.itemCount || 0);
     const force = count > 0;
+    setDeleteCandidate({ menu, force, itemCount: count });
+  };
+
+  const handleCancelDeleteMenu = () => {
+    if (isDeletingCandidate) return;
+    setDeleteCandidate(null);
+  };
+
+  const handleConfirmDeleteMenu = async () => {
+    if (!deleteCandidate?.menu?.id || isDeletingCandidate) return;
+    const { menu, force } = deleteCandidate;
+    setIsDeletingCandidate(true);
     setBusyMenuId(menu.id);
     setActionError("");
     setActionMessage("");
@@ -346,9 +360,11 @@ const CompactMenuStrip = ({
         setInternalActiveId(nextMenu.id);
         dispatchSelectChange(nextMenu.timeSlot);
       }
+      setDeleteCandidate(null);
     } catch (error) {
       setActionError(errorText(error, "Không thể xóa thực đơn. Vui lòng thử lại."));
     } finally {
+      setIsDeletingCandidate(false);
       setBusyMenuId(null);
     }
   };
@@ -600,6 +616,26 @@ const CompactMenuStrip = ({
         entityId={historyMenu?.id || historyMenu?._id}
         title={`Lịch sử menu: ${historyMenu?.name || "Thực đơn"}`}
       />
+      {deleteCandidate && (
+        <div className="cms-confirm-overlay" onClick={handleCancelDeleteMenu}>
+          <div className="cms-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h4>Xóa thực đơn?</h4>
+            <p className="cms-confirm-dialog__warning">
+              {deleteCandidate.itemCount > 0
+                ? `Thực đơn này đang có ${deleteCandidate.itemCount} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này.`
+                : "Bạn có chắc chắn muốn xóa thực đơn này?"}
+            </p>
+            <div className="cms-confirm-dialog__actions">
+              <button className="cms-confirm-btn cms-confirm-btn--secondary" onClick={handleCancelDeleteMenu} disabled={isDeletingCandidate}>
+                Hủy
+              </button>
+              <button className="cms-confirm-btn cms-confirm-btn--danger" onClick={handleConfirmDeleteMenu} disabled={isDeletingCandidate}>
+                {isDeletingCandidate ? "Đang xóa..." : "Xóa thực đơn"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

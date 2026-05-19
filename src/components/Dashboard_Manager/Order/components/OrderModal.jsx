@@ -512,11 +512,13 @@ const OrderModal = ({
       setActionError("");
       try {
         if (actionDialog.type === "approveVoid") {
-          await onReviewItemVoid?.({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
+          if (typeof onReviewItemVoid !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
         } else if (actionDialog.type === "rejectVoid") {
           const note = String(formState.note || "").trim();
           if (!note) throw new Error("Vui lòng nhập lý do từ chối.");
-          await onReviewItemVoid?.({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
+          if (typeof onReviewItemVoid !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
         } else if (actionDialog.type === "requestReturn") {
           const quantity = Number(formState.quantity);
           const reason = String(formState.reason || "").trim();
@@ -526,14 +528,18 @@ const OrderModal = ({
           if (quantity > remainingReturnable) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
           if (!reason) throw new Error("Vui lòng nhập lý do trả lại món.");
           if (!["none", "remove_from_bill", "refund_after_payment"].includes(refundMode)) throw new Error("Chế độ xử lý không hợp lệ.");
-          await onRequestItemReturn?.({ orderId: targetOrderId, orderItemId: actionDialog.item._id, quantity, reason, refundMode });
+          if (typeof onRequestItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onRequestItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, quantity, reason, refundMode });
         } else if (actionDialog.type === "approveReturn") {
-          await onReviewItemReturn?.({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true });
+          if (typeof onReviewItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true });
         } else if (actionDialog.type === "rejectReturn") {
           const note = String(formState.note || "").trim();
           if (!note) throw new Error("Vui lòng nhập lý do từ chối.");
-          await onReviewItemReturn?.({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
+          if (typeof onReviewItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
+          await onReviewItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
         } else if (actionDialog.type === "serveAll") {
+          if (typeof onUpdateItemStatus !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
           const pendingItems = items.map((it, idx) => ({ ...it, idx })).filter((it) => !["served", "cancelled"].includes(it.status));
           for (const item of pendingItems) await handleChangeStatus(item, item.idx, "served");
         }
