@@ -7,21 +7,45 @@ const tableMocks = vi.hoisted(() => ({
 }));
 const floorMocks = vi.hoisted(() => ({ findById: vi.fn() }));
 const orderMocks = vi.hoisted(() => ({ findOne: vi.fn() }));
+const reservationMocks = vi.hoisted(() => ({ findOne: vi.fn() }));
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
 const authMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn() }));
 const eventMocks = vi.hoisted(() => ({ logEvent: vi.fn() }));
-const mongooseMocks = vi.hoisted(() => ({
-  isValidObjectId: vi.fn((v) => String(v).startsWith("valid-") || /^[a-f\d]{24}$/i.test(String(v))),
-  Types: { ObjectId: vi.fn((v) => v) },
-}));
+const mongooseMocks = vi.hoisted(() => {
+  const Schema = vi.fn(function Schema(definition, options) {
+    this.definition = definition;
+    this.options = options;
+    this.index = vi.fn();
+    this.virtual = vi.fn(() => ({ get: vi.fn() }));
+    this.pre = vi.fn();
+    this.plugin = vi.fn();
+    this.methods = {};
+    this.statics = {};
+  });
+  Schema.Types = { ObjectId: "ObjectId" };
+
+  return {
+    Schema,
+    isValidObjectId: vi.fn((v) => String(v).startsWith("valid-") || /^[a-f\d]{24}$/i.test(String(v))),
+    Types: { ObjectId: vi.fn((v) => v) },
+    model: vi.fn(),
+  };
+});
 
 vi.mock("../../models/table.model.js", () => ({ default: tableMocks }));
 vi.mock("../../models/floor.model.js", () => ({ default: floorMocks }));
 vi.mock("../../models/order.model.js", () => ({ default: orderMocks }));
+vi.mock("../../models/reservation.model.js", () => ({ default: reservationMocks }));
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("../../src/services/eventLog.service.js", () => eventMocks);
-vi.mock("mongoose", () => ({ default: mongooseMocks }));
+vi.mock("mongoose", () => ({
+  default: mongooseMocks,
+  Schema: mongooseMocks.Schema,
+  Types: mongooseMocks.Types,
+  model: mongooseMocks.model,
+  isValidObjectId: mongooseMocks.isValidObjectId,
+}));
 
 const leanWrap = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
 const selectLeanWrap = (value) => ({ select: vi.fn(() => leanWrap(value)) });
@@ -54,6 +78,7 @@ describe("table restaurant access guards", () => {
     tableMocks.findOneAndUpdate.mockReturnValue(leanWrap({ _id: "valid-t1", restaurantId: "valid-r1" }));
     floorMocks.findById.mockReturnValue(selectLeanWrap({ restaurantId: "valid-r1", level: 1 }));
     orderMocks.findOne.mockReturnValue(mockFindOneChain(null));
+    reservationMocks.findOne.mockReturnValue(mockFindOneChain(null));
   });
 
   it("tables denied blocks cleanup and find", async () => {
