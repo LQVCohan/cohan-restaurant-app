@@ -12,7 +12,6 @@ export const CUSTOMER_TRACK_ORDER = gql`
       publicStatusLabel
       customerVisibleNote
       estimatedReadyAt
-      trackingQrRevokedAt
       timeline {
         status
         displayMessage
@@ -42,7 +41,7 @@ const paymentStatusLabel = {
 
 const finalStatuses = new Set(["PAID", "CANCELLED"]);
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:4000";
+const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 export default function PublicOrderTrackingPage() {
   const { trackingToken } = useParams();
@@ -99,12 +98,28 @@ export default function PublicOrderTrackingPage() {
 
   if (!trackingToken) return <div className="track-order-page">Không tìm thấy đơn hàng.</div>;
   if (loading && !tracking) return <div className="track-order-page">Đang tải trạng thái đơn hàng...</div>;
-  if (error) return <div className="track-order-page">Không thể tải dữ liệu. Vui lòng thử lại sau.</div>;
-  if (!tracking) return <div className="track-order-page"><h2>Không tìm thấy đơn hàng</h2><p>Vui lòng kiểm tra lại mã QR hoặc liên hệ nhân viên.</p></div>;
+  if (error) {
+    const message = String(error.message || "").toLowerCase();
+    if (message.includes("expired") || message.includes("hết hiệu lực")) {
+      return (
+        <div className="track-order-page">
+          <h2>Liên kết theo dõi đơn hàng đã hết hiệu lực.</h2>
+          <p>Vui lòng liên hệ nhân viên nếu bạn cần kiểm tra lại đơn hàng.</p>
+        </div>
+      );
+    }
 
-  if (tracking.trackingQrRevokedAt) {
-    return <div className="track-order-page"><h2>Liên kết theo dõi đơn hàng đã hết hiệu lực.</h2></div>;
+    return (
+      <div className="track-order-page">
+        <h2>Không thể tải dữ liệu</h2>
+        <p>Vui lòng thử lại sau hoặc liên hệ nhân viên.</p>
+        <button type="button" onClick={() => refetch()}>
+          Thử lại
+        </button>
+      </div>
+    );
   }
+  if (!tracking) return <div className="track-order-page"><h2>Không tìm thấy đơn hàng</h2><p>Vui lòng kiểm tra lại mã QR hoặc liên hệ nhân viên.</p></div>;
 
   return (
     <div className="track-order-page">
