@@ -20,7 +20,7 @@ import "./RestaurantList.scss";
    ========================= */
 const GET_RESTAURANTS = gql`
   query GetRestaurants($limit: Int, $cursor: ID, $filter: RestaurantFilter) {
-    restaurants(limit: $limit, cursor: $cursor, restaurantFilter: $filter) {
+    publicRestaurants(limit: $limit, cursor: $cursor, filter: $filter) {
       edges {
         cursor
         node {
@@ -32,7 +32,13 @@ const GET_RESTAURANTS = gql`
           avgRating
           coverImage
           avatar
-          status
+          openingStatus
+          openingStatusReason
+          canReserve
+          canOrder
+          reviewCount
+          businessStatus
+          publicationStatus
           address {
             district
             city
@@ -77,7 +83,7 @@ const RestaurantList = ({ restaurantFilter }) => {
       district: node.address?.district,
       city: node.address?.city,
       image: node.coverImage || node.avatar || "/default-dishes.jpg",
-      status: node.status || "open",
+      openingStatus: node.openingStatus, canReserve: node.canReserve, canOrder: node.canOrder, reviewCount: node.reviewCount,
     }));
   }, [accumulated]);
 
@@ -137,11 +143,11 @@ const RestaurantList = ({ restaurantFilter }) => {
 
   // Handle Initial Load
   useEffect(() => {
-    if (!data?.restaurants) return;
-    const edges = data.restaurants.edges ?? [];
+    if (!data?.publicRestaurants) return;
+    const edges = data.publicRestaurants.edges ?? [];
     setAccumulated(edges.map(({ node }) => node));
-    setEndCursor(data.restaurants.pageInfo?.endCursor ?? null);
-    setHasNextPage(!!data.restaurants.pageInfo?.hasNextPage);
+    setEndCursor(data.publicRestaurants.pageInfo?.endCursor ?? null);
+    setHasNextPage(!!data.publicRestaurants.pageInfo?.hasNextPage);
   }, [data]);
 
   // Handle Load More
@@ -156,10 +162,10 @@ const RestaurantList = ({ restaurantFilter }) => {
       },
       updateQuery: (prev, { fetchMoreResult }) => fetchMoreResult || prev,
     });
-    const edgesMore = more?.data?.restaurants?.edges ?? [];
+    const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
     setAccumulated((prev) => [...prev, ...edgesMore.map(({ node }) => node)]);
-    setEndCursor(more?.data?.restaurants?.pageInfo?.endCursor ?? null);
-    setHasNextPage(!!more?.data?.restaurants?.pageInfo?.hasNextPage);
+    setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
+    setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
   };
 
   // Refetch when filters change
@@ -230,7 +236,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                     ? "Đang tải dữ liệu..."
                     : error
                     ? "Không thể tải dữ liệu"
-                    : `Tìm thấy ${filteredRestaurants.length} nhà hàng`}
+                    : `Tìm thấy ${data?.publicRestaurants?.totalCount ?? filteredRestaurants.length} nhà hàng`}
                 </h2>
                 <div className="view-toggles">
                   <button
