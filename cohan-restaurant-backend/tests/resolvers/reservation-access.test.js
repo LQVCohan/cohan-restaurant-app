@@ -196,6 +196,64 @@ describe('Reservation access hardening', () => {
       { $set: { status: 'available' } },
     );
   });
+  it('updateReservationStatus clears reserved table to available when no active reservation/order', async () => {
+    const current = { _id: 'valid-rsv', userId: 'u1', restaurantId: 'valid-r1', tableId: 'valid-t1', save: vi.fn() };
+    modelMocks.Reservation.findById.mockResolvedValue(current);
+    modelMocks.Reservation.exists.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
+    const { ReservationMutation } = await import('../../graphql/resolvers/reservation/mutation.js');
+
+    await ReservationMutation.updateReservationStatus(null, { input: { id: 'valid-rsv', status: 'cancelled' } }, { user: { id: 'm1', roleName: 'manager' } });
+
+    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
+      {
+        _id: 'valid-t1',
+        status: { $in: ['reserved', 'payment_pending'] },
+      },
+      { $set: { status: 'available' } },
+    );
+  });
+
+  it('submitReservationPayment failed does not clear occupied/in_use statuses', async () => {
+    const reservation = {
+      _id: 'valid-rsv',
+      userId: 'user-1',
+      restaurantId: 'valid-r1',
+      tableId: 'valid-t1',
+      depositStatus: 'pending',
+      save: vi.fn(),
+    };
+    modelMocks.Reservation.findById.mockResolvedValue(reservation);
+    modelMocks.Reservation.exists.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
+    const { ReservationMutation } = await import('../../graphql/resolvers/reservation/mutation.js');
+
+    await ReservationMutation.submitReservationPayment(
+      null,
+      { input: { reservationId: 'valid-rsv', method: 'momo', paymentStatus: 'failed' } },
+      { user: { id: 'user-1', roleName: 'customer' } },
+    );
+
+    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
+      {
+        _id: 'valid-t1',
+        status: { $in: ['reserved', 'payment_pending'] },
+      },
+      { $set: { status: 'available' } },
+    );
+  });
+
+  it('updateReservationStatus keeps table status unchanged when active order exists', async () => {
+    const current = { _id: 'valid-rsv', userId: 'u1', restaurantId: 'valid-r1', tableId: 'valid-t1', save: vi.fn() };
+    modelMocks.Reservation.findById.mockResolvedValue(current);
+    modelMocks.Reservation.exists.mockResolvedValue(false);
+    tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(true);
+    const { ReservationMutation } = await import('../../graphql/resolvers/reservation/mutation.js');
+
+    await ReservationMutation.updateReservationStatus(null, { input: { id: 'valid-rsv', status: 'cancelled' } }, { user: { id: 'm1', roleName: 'manager' } });
+
+    expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+  });
 
   it('submitReservationPayment cancelled releases reserved table to available when no active reservation/order', async () => {
     const reservation = {
