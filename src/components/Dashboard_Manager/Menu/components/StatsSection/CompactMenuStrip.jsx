@@ -191,6 +191,8 @@ const CompactMenuStrip = ({
   const [isSyncingInventory, setIsSyncingInventory] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [isDeletingCandidate, setIsDeletingCandidate] = useState(false);
 
   const [copyMenuMutation] = useMutation(COPY_MENU_MUTATION, {
     update(cache, { data }) {
@@ -336,23 +338,39 @@ const CompactMenuStrip = ({
     const count = Number(menu.itemCount || 0);
     const force = count > 0;
     const message = force
-      ? `Thực đơn "${menu.name || menu.timeSlot}" đang có ${count} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này. Bạn chắc chắn?`
+      ? `Thực đơn "${menu.name || menu.timeSlot}" đang có ${count} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này.`
       : `Bạn chắc chắn muốn xóa thực đơn "${menu.name || menu.timeSlot}"?`;
-    if (typeof window !== "undefined" && !window.confirm(message)) return;
+    setActionError("");
+    setActionMessage("");
+    setDeleteCandidate({ menu, force, message });
+  };
+
+  const handleCancelDeleteMenu = () => {
+    if (isDeletingCandidate) return;
+    setDeleteCandidate(null);
+  };
+
+  const handleConfirmDeleteMenu = async () => {
+    const menu = deleteCandidate?.menu;
+    if (!menu?.id || busyMenuId || isDeletingCandidate) return;
+
     setBusyMenuId(menu.id);
+    setIsDeletingCandidate(true);
     setActionError("");
     setActionMessage("");
     try {
-      await deleteMenuMutation({ variables: { id: menu.id, force } });
+      await deleteMenuMutation({ variables: { id: menu.id, force: Boolean(deleteCandidate.force) } });
       const nextMenu = menus.find((candidate) => candidate.id !== menu.id);
       if (nextMenu) {
         setInternalActiveId(nextMenu.id);
         dispatchSelectChange(nextMenu.timeSlot);
       }
+      setDeleteCandidate(null);
     } catch (error) {
       setActionError(errorText(error, "Không thể xóa thực đơn. Vui lòng thử lại."));
     } finally {
       setBusyMenuId(null);
+      setIsDeletingCandidate(false);
     }
   };
 
@@ -603,6 +621,43 @@ const CompactMenuStrip = ({
         entityId={historyMenu?.id || historyMenu?._id}
         title={`Lịch sử menu: ${historyMenu?.name || "Thực đơn"}`}
       />
+      {deleteCandidate && (
+        <div className="cms-confirm-overlay" role="presentation" onClick={handleCancelDeleteMenu}>
+          <div
+            className="cms-confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cms-delete-menu-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="cms-delete-menu-title">Xóa thực đơn?</h3>
+            <p>{deleteCandidate.message}</p>
+            {deleteCandidate.force && (
+              <p className="cms-confirm-dialog__warning">
+                Các món và recipe thuộc thực đơn này cũng sẽ bị xóa theo.
+              </p>
+            )}
+            <div className="cms-confirm-dialog__actions">
+              <button
+                type="button"
+                className="cms-confirm-btn cms-confirm-btn--secondary"
+                disabled={isDeletingCandidate}
+                onClick={handleCancelDeleteMenu}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="cms-confirm-btn cms-confirm-btn--danger"
+                disabled={isDeletingCandidate}
+                onClick={handleConfirmDeleteMenu}
+              >
+                {isDeletingCandidate ? "Đang xóa..." : "Xóa thực đơn"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
