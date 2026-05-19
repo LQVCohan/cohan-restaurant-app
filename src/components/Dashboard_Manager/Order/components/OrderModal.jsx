@@ -22,6 +22,7 @@ import {
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import OrderTrackingQrCard from "./OrderTrackingQrCard";
 
 const formatCurrency = (amount) => {
   const n = Number(amount) || 0;
@@ -703,6 +704,9 @@ const OrderModal = ({
                 <Utensils size={16} /> <span className="text">{order.note}</span>
               </div>
             )}
+          </section>
+          <section className="om-section info-card">
+            <OrderTrackingQrCard orderId={order?.actionOrderId || order?.id} />
           </section>
 
           {Array.isArray(order?.statusTimeline) &&

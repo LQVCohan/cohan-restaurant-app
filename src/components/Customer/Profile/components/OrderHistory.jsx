@@ -120,7 +120,7 @@ const OrderHistory = ({ user }) => {
                     <strong>{order.shipping?.deliveryStatus || "Đang cập nhật"}</strong>
                   </div>
                   <Link
-                    to={`/track-order/${order.id}`}
+                    to={`/track-delivery/${order.id}`}
                     className="tracking-link"
                   >
                     Theo dõi đơn
