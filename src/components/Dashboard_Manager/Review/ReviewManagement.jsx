@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 
 import "./ReviewManagement.scss";
@@ -162,11 +162,6 @@ const normalizeReview = (review) => ({
   created_at: review.createdAt,
 });
 
-function showNotification(msg) {
-  window.alert(msg);
-}
-
-
 function getModerationSuccessMessage(review, status) {
   if (status === "published") {
     return review?.staff_id
@@ -194,6 +189,19 @@ const ReviewManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [reviewPendingDelete, setReviewPendingDelete] = useState(null);
+  const [isDeletingReview, setIsDeletingReview] = useState(false);
+
+  const notify = useCallback((message, type = "success") => {
+    setNotification({ message, type });
+  }, []);
+
+  useEffect(() => {
+    if (!notification) return undefined;
+    const timer = window.setTimeout(() => setNotification(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [notification]);
 
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
@@ -341,23 +349,41 @@ const ReviewManagement = () => {
     setModalVisible(true);
   }, []);
 
-  const handleDeleteReview = useCallback(
-    async (review) => {
-      if (!window.confirm("Xóa đánh giá này?")) return;
-      await deleteReview({ variables: { id: review.id } });
+  const handleDeleteReview = useCallback((review) => {
+    setReviewPendingDelete(review);
+  }, []);
+
+  const handleCancelDeleteReview = useCallback(() => {
+    if (isDeletingReview) return;
+    setReviewPendingDelete(null);
+  }, [isDeletingReview]);
+
+  const handleConfirmDeleteReview = useCallback(async () => {
+    if (!reviewPendingDelete?.id || isDeletingReview) return;
+    setIsDeletingReview(true);
+    try {
+      await deleteReview({ variables: { id: reviewPendingDelete.id } });
       await refetch();
-      showNotification("Đã xóa đánh giá");
-    },
-    [deleteReview, refetch],
-  );
+      setReviewPendingDelete(null);
+      notify("Đã xóa đánh giá");
+    } catch (err) {
+      notify(err?.message || "Không thể xóa đánh giá. Vui lòng thử lại.", "error");
+    } finally {
+      setIsDeletingReview(false);
+    }
+  }, [deleteReview, isDeletingReview, notify, refetch, reviewPendingDelete]);
 
   const handleModerate = useCallback(
     async (review, status) => {
-      await setReviewStatus({ variables: { id: review.id, status } });
-      await refetch();
-      showNotification(getModerationSuccessMessage(review, status));
+      try {
+        await setReviewStatus({ variables: { id: review.id, status } });
+        await refetch();
+        notify(getModerationSuccessMessage(review, status));
+      } catch (err) {
+        notify(err?.message || "Không thể cập nhật trạng thái đánh giá.", "error");
+      }
     },
-    [refetch, setReviewStatus],
+    [notify, refetch, setReviewStatus],
   );
 
   const handleExport = () => {
@@ -402,6 +428,12 @@ const ReviewManagement = () => {
 
   return (
     <div className="reviews-page">
+      {notification && (
+        <div className={`reviews-toast reviews-toast--${notification.type}`} role="status">
+          {notification.message}
+        </div>
+      )}
+
       <div className="reviews-container">
         <ReviewsHeader total={stats.total} avg={stats.avg} pending={stats.pending} />
         <ReviewsNavTabs
@@ -458,6 +490,36 @@ const ReviewManagement = () => {
           </div>
         </main>
       </div>
+
+      {reviewPendingDelete && (
+        <div className="reviews-confirm-overlay" role="presentation">
+          <div className="reviews-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="review-delete-title">
+            <h3 id="review-delete-title">Xóa đánh giá?</h3>
+            <p>
+              Bạn đang xóa đánh giá của <strong>{reviewPendingDelete.customer_name || "khách hàng"}</strong>.
+              Hành động này không thể hoàn tác.
+            </p>
+            <div className="reviews-confirm-dialog__actions">
+              <button
+                type="button"
+                className="reviews-btn reviews-btn-secondary"
+                disabled={isDeletingReview}
+                onClick={handleCancelDeleteReview}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="reviews-btn reviews-btn-danger"
+                disabled={isDeletingReview}
+                onClick={handleConfirmDeleteReview}
+              >
+                {isDeletingReview ? "Đang xóa..." : "Xóa đánh giá"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ReviewModal
         visible={modalVisible}
