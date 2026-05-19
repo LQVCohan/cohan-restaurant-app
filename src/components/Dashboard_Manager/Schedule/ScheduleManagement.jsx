@@ -47,6 +47,7 @@ import {
   buildVisibleScheduleInsights,
   resolveStaffAutoRole,
 } from "./utils/scheduleInsights";
+import { buildScheduleQualitySummary } from "./utils/scheduleQuality";
 import {
   buildAutoScheduleCreateInputs,
   buildAutoSchedulePreview,
@@ -2074,6 +2075,23 @@ const ScheduleManagement = ({ readOnly = false }) => {
     () => groupPublishWarnings(schedulePublishRiskSummary.warnings),
     [schedulePublishRiskSummary.warnings],
   );
+  const scheduleQualitySummary = useMemo(
+    () =>
+      buildScheduleQualitySummary({
+        schedulePublishRiskSummary,
+        scheduleLifecycleStatus,
+        effectiveScheduleStatus,
+        shifts,
+        staffShifts,
+      }),
+    [
+      schedulePublishRiskSummary,
+      scheduleLifecycleStatus,
+      effectiveScheduleStatus,
+      shifts,
+      staffShifts,
+    ],
+  );
   const minHoursSummaryRows = useMemo(
     () =>
       groupedPublishWarnings.minHoursIssues.map((issue) => ({
@@ -3938,6 +3956,63 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </div>
           </div>
         </div>
+        <section
+          className={`schedule-quality-panel tone-${scheduleQualitySummary.tone}`}
+          aria-label="Chất lượng lịch tuần"
+        >
+          <div className="schedule-quality-panel__header">
+            <div>
+              <p className="schedule-quality-panel__title">Chất lượng lịch tuần</p>
+              <p className="schedule-quality-panel__headline">
+                {scheduleQualitySummary.headline}
+              </p>
+            </div>
+            <div className="schedule-quality-panel__score-wrap">
+              <span className="schedule-quality-panel__score">
+                {typeof scheduleQualitySummary.score === "number"
+                  ? `${scheduleQualitySummary.score}/100`
+                  : "--/100"}
+              </span>
+              <span className="schedule-quality-panel__level">
+                {scheduleQualitySummary.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="schedule-quality-panel__metrics">
+            {scheduleQualitySummary.metrics.map((metric) => (
+              <div key={metric.key} className="schedule-quality-panel__metric">
+                <span className="label">{metric.label}</span>
+                <span className="value">{metric.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="schedule-quality-panel__body">
+            <ul>
+              {scheduleQualitySummary.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+            <ul>
+              {scheduleQualitySummary.nextActions.map((action) => (
+                <li key={action}>{action}</li>
+              ))}
+            </ul>
+          </div>
+          {scheduleQualitySummary.hasTopIssues ? (
+            <button
+              type="button"
+              className="schedule-quality-panel__link"
+              onClick={() => {
+                setPublishIssueSnapshot(schedulePublishRiskSummary);
+                setIsStatsPanelOpen(true);
+              }}
+            >
+              Xem chi tiết cảnh báo
+            </button>
+          ) : null}
+        </section>
       </header>
       <section className="declined-shift-review-panel">
         <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>

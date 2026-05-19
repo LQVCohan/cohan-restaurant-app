@@ -20,7 +20,7 @@
 @import "./schedule-board-jumper-polish.css";
 @import "./schedule-hydration-polish.css";
 @import "./schedule-print-polish.css";
-
+@import "./schedule-quality-polish.css";
 .schedule-readiness-focus-banner {
   position: relative;
   display: flex;

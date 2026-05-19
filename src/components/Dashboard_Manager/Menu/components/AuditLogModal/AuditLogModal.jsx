@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import "./AuditLogModal.scss";
+import "./AuditLogModalPolish.scss";
 
 const AUDIT_LOGS_QUERY = gql`
   query AuditLogs($filter: AuditLogFilterInput, $limit: Int, $offset: Int) {
