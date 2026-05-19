@@ -14,6 +14,7 @@ import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 import { mapTableMutationError } from "@/utils/tableMutationError";
+import { getTableGuardState } from "@/utils/tableGuardState";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -697,6 +698,7 @@ const TableManagement = () => {
               {filteredTables.map((t) => {
                 const statusCfg = getStatusConfig(t.status);
                 const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
+                const guardState = getTableGuardState(t);
                 return (
                   <div
                     key={t.id}
@@ -710,6 +712,11 @@ const TableManagement = () => {
                       <span className="table-no">{t.number}</span>
                       <div className="card-top-right">
                         {hasVr && <span className="vr-badge">360°</span>}
+                        {guardState.hasGuard && (
+                          <span className="tm-guard-badge" title={guardState.reason}>
+                            {guardState.badge}
+                          </span>
+                        )}
                         <span className={`status-badge ${statusCfg.color}`}>
                           {statusCfg.text}
                         </span>
