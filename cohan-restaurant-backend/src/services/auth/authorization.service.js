@@ -4,6 +4,10 @@ import { hasRole } from "../../../utils/authz.js";
 
 export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
   "menu.read",
+  "menu.item.update",
+  "menu.price.update",
+  "menu.inventory.sync",
+  "menu.audit.read",
   "order.read",
   "order.create",
   "order.update",
