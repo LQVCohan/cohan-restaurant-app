@@ -23,6 +23,7 @@ import {
 } from "../../../utils/tableStateGuards.js";
 
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
+const RESERVATION_OWNED_TABLE_STATUSES = ["reserved", "payment_pending"];
 const PAYMENT_STATUSES = ["paid", "pending", "failed", "cancelled"];
 const GUEST_TTL_DAYS = 30;
 const GUEST_TTL_MS = GUEST_TTL_DAYS * 24 * 60 * 60 * 1000;
@@ -197,7 +198,7 @@ async function updateTableStatusByReservation(tableId, restaurantId) {
   }
 
   await Table.updateOne(
-    { _id: tableId, status: { $in: ["reserved", "payment_pending"] } },
+    { _id: tableId, status: { $in: RESERVATION_OWNED_TABLE_STATUSES } },
     { $set: { status: "available" } }
   );
 }
