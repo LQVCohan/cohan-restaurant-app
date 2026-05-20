@@ -8,8 +8,6 @@ import React, {
   useState,
 } from "react";
 import {
-  FiMapPin,
-  FiClock,
   FiPlus,
   FiFolderPlus,
   FiTag,
@@ -18,6 +16,7 @@ import {
 } from "react-icons/fi";
 import "./MenuManagement.scss";
 import "./MenuManagementPolish.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 // Sub-components
 import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
@@ -128,6 +127,102 @@ const normalizeServingVariantsForSave = (methods = []) => {
     ...method,
     isDefault: idx === defaultIndex,
   }));
+};
+
+
+const getMenuEmptyState = ({
+  restaurantId,
+  selectedTimeSlot,
+  items,
+  displayItems,
+  inventoryFilter,
+  hasActiveMenuFilters,
+  canCreateMenuItem,
+  canCreateMenu,
+  hasMenuForSelectedSlot,
+  hasAnyMenu,
+}) => {
+  if (!restaurantId) {
+    return {
+      icon: "🏪",
+      title: "Chọn nhà hàng để quản lý thực đơn",
+      description: "Vui lòng chọn một nhà hàng trước khi xem hoặc chỉnh sửa món.",
+      action: null,
+    };
+  }
+
+  if (!hasAnyMenu) {
+    return {
+      icon: "🕒",
+      title: "Chưa có menu cho nhà hàng này",
+      description: "Tạo menu đầu tiên trước khi thêm món vào thực đơn.",
+      action: canCreateMenu ? "create_menu" : null,
+    };
+  }
+
+  if (selectedTimeSlot && !hasMenuForSelectedSlot) {
+    return {
+      icon: "🕒",
+      title: "Chưa có menu cho khung giờ này",
+      description: "Tạo menu hoặc chọn khung giờ khác để bắt đầu quản lý món.",
+      action: canCreateMenu ? "create_menu" : null,
+    };
+  }
+
+  const hasDisplayItems = (displayItems || []).length > 0;
+  const hasItems = (items || []).length > 0;
+
+  if (!hasDisplayItems && hasActiveMenuFilters) {
+    const inventoryFilterMap = {
+      out_of_stock: {
+        title: "Không có món hết hàng",
+        description: "Tất cả món đang đủ điều kiện bán hoặc không thuộc bộ lọc hiện tại.",
+      },
+      low_stock: {
+        title: "Không có món sắp hết nguyên liệu",
+        description: "Chưa phát hiện món nào có cảnh báo tồn kho thấp.",
+      },
+      not_tracked: {
+        title: "Không có món thiếu recipe tracking",
+        description: "Tất cả món trong phạm vi hiện tại đã có recipe hoặc không cần tracking.",
+      },
+      unavailable: {
+        title: "Không có món tạm dừng",
+        description: "Không có món nào ở trạng thái tạm dừng trong phạm vi hiện tại.",
+      },
+      hidden: {
+        title: "Không có món đang ẩn",
+        description: "Không có món nào đang bị ẩn theo bộ lọc hiện tại.",
+      },
+    };
+
+    const inventoryState = inventoryFilterMap[inventoryFilter];
+    if (inventoryState) {
+      return {
+        icon: "📦",
+        ...inventoryState,
+        action: "clear_filters",
+      };
+    }
+
+    return {
+      icon: "🔎",
+      title: "Không tìm thấy món phù hợp",
+      description: "Thử đổi từ khóa tìm kiếm hoặc xóa bớt bộ lọc.",
+      action: "clear_filters",
+    };
+  }
+
+  if (!hasActiveMenuFilters && !hasItems) {
+    return {
+      icon: "🍽️",
+      title: "Chưa có món ăn nào",
+      description: "Thêm món đầu tiên để bắt đầu xây dựng thực đơn cho khung giờ này.",
+      action: canCreateMenuItem ? "add_item" : null,
+    };
+  }
+
+  return null;
 };
 
 const buildPriceEditError = ({ successCount, failures }) => {
@@ -790,7 +885,7 @@ const MenuManagement = () => {
       if (inventoryFilter === "all") return mapped;
       return mapped.filter((item) => {
         const warnings = Array.isArray(item.stockWarnings) ? item.stockWarnings : [];
-        const hasRecipe = Array.isArray(item.servingVariants) && item.servingVariants.length > 0;
+
         if (inventoryFilter === "low_stock") {
           return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK;
         }
@@ -801,12 +896,69 @@ const MenuManagement = () => {
           return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR;
         }
         if (inventoryFilter === "not_tracked") {
-          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || !hasRecipe || warnings.some((w) => /chưa tracking recipe/i.test(String(w)));
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || warnings.some((w) => /tracking recipe|chưa tracking|recipe/i.test(String(w)));
         }
         return true;
       });
     },
     [items, categories, inventoryFilter],
+  );
+
+  const hasAnyMenu = (menus || []).length > 0;
+
+  const hasMenuForSelectedSlot = useMemo(
+    () => (menus || []).some((menu) => menu?.timeSlot === selectedTimeSlot),
+    [menus, selectedTimeSlot],
+  );
+
+  const hasActiveMenuFilters = Boolean(
+    search?.trim() ||
+      categoryId ||
+      statusFilter ||
+      inventoryFilter !== "all" ||
+      priceRange?.minPrice ||
+      priceRange?.maxPrice,
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setSearch("");
+    setCategoryId(null);
+    setStatusFilter(null);
+    setInventoryFilter("all");
+    setPriceRange({ minPrice: null, maxPrice: null });
+  }, [setCategoryId, setPriceRange, setSearch, setStatusFilter]);
+
+  const handleOpenRecipeIssue = useCallback((item) => {
+    toggleModal("menuItem", true, item?.id);
+    pushMenuToast("Mở món để cập nhật recipe và tồn kho.", "info");
+  }, [pushMenuToast]);
+
+  const emptyState = useMemo(
+    () =>
+      getMenuEmptyState({
+        restaurantId: currentRestaurant,
+        selectedTimeSlot,
+        items,
+        displayItems,
+        inventoryFilter,
+        hasActiveMenuFilters,
+        canCreateMenuItem,
+        canCreateMenu,
+        hasMenuForSelectedSlot,
+        hasAnyMenu,
+      }),
+    [
+      canCreateMenu,
+      canCreateMenuItem,
+      currentRestaurant,
+      displayItems,
+      hasActiveMenuFilters,
+      hasAnyMenu,
+      hasMenuForSelectedSlot,
+      inventoryFilter,
+      items,
+      selectedTimeSlot,
+    ],
   );
 
   const visibleItemIds = useMemo(
@@ -830,12 +982,12 @@ const MenuManagement = () => {
     return sourceItems.reduce(
       (acc, item) => {
         const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
-        const hasRecipe = Array.isArray(item?.servingVariants) && item.servingVariants.length > 0;
+
         acc.all += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK) acc.low_stock += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK) acc.out_of_stock += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR) acc.needs_check += 1;
-        if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || !hasRecipe || warnings.some((w) => /chưa tracking recipe/i.test(String(w)))) acc.not_tracked += 1;
+        if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || warnings.some((w) => /tracking recipe|chưa tracking|recipe/i.test(String(w)))) acc.not_tracked += 1;
         return acc;
       },
       { all: 0, low_stock: 0, out_of_stock: 0, needs_check: 0, not_tracked: 0 },
@@ -918,78 +1070,33 @@ const MenuManagement = () => {
   }
   return (
     <div className="mm-page-container">
-      <header className="mm-header">
-        <div className="mm-header__left">
-          <h1 className="mm-title">Quản lý Thực Đơn</h1>
-          <p className="mm-subtitle">
-            Thiết lập món ăn, danh mục món và nhóm thực đơn
-          </p>
-        </div>
-
-        <div className="mm-header__right">
-          <div className="mm-global-filter">
-            <div className="mm-select-wrapper">
-              <FiMapPin className="mm-icon" />
-              <select
-                className="mm-select"
-                value={currentRestaurant || ""}
-                onChange={(e) => setCurrentRestaurant(e.target.value)}
-                disabled={managerRestaurants.length <= 1}
-              >
-                {managerRestaurants.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mm-select-wrapper">
-              <FiClock className="mm-icon" />
-              <select
-                className="mm-select"
-                value={selectedTimeSlot || "breakfast"}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-              >
-                {Object.entries(TIME_SLOT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mm-actions">
-            {canManageDishCategory && (
-              <button
-                className="mm-btn mm-btn--secondary"
-                onClick={() => toggleModal("dishCategory", true)}
-              >
-                <FiTag /> Danh mục món
-              </button>
-            )}
-
-            {canManageMenuGroup && (
-              <button
-                className="mm-btn mm-btn--secondary"
-                onClick={() => toggleModal("menuGroup", true)}
-              >
-                <FiFolderPlus /> Nhóm thực đơn
-              </button>
-            )}
-
-            {canCreateMenuItem && (
-              <button
-                className="mm-btn mm-btn--primary"
-                onClick={() => toggleModal("menuItem", true)}
-              >
-                <FiPlus /> Thêm món
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <ManagementPageHeader
+        eyebrow="MENU MANAGER"
+        title="Quản lý Thực Đơn"
+        subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"
+        icon="📋"
+        selectedRestaurant={currentRestaurant || ""}
+        onRestaurantChange={setCurrentRestaurant}
+        restaurantList={managerRestaurants}
+        customFilters={(
+          <select
+            className="mph-select"
+            value={selectedTimeSlot || "breakfast"}
+            onChange={(e) => setSelectedTimeSlot(e.target.value)}
+          >
+            {Object.entries(TIME_SLOT_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        )}
+        quickActions={[
+          ...(canManageDishCategory ? [{ icon: "🏷️", label: "Danh mục món", onClick: () => toggleModal("dishCategory", true) }] : []),
+          ...(canManageMenuGroup ? [{ icon: "📁", label: "Nhóm thực đơn", onClick: () => toggleModal("menuGroup", true) }] : []),
+        ]}
+        primaryAction={canCreateMenuItem ? { icon: "➕", label: "Thêm món", onClick: () => toggleModal("menuItem", true) } : null}
+      />
 
       <section className="mm-stats-section">
         <CompactMenuStrip
@@ -1089,21 +1196,28 @@ const MenuManagement = () => {
             </div>
           )}
 
-          {!itemsLoading && displayItems.length === 0 && !itemsError && (
+          {!itemsLoading && displayItems.length === 0 && !itemsError && emptyState && (
             <div className="mm-empty-state">
-              <div className="mm-empty-state__img">🍽️</div>
-              <h3>Chưa có món ăn nào</h3>
-              <p>
-                Thực đơn của bạn đang trống hoặc không tìm thấy kết quả phù hợp.
-              </p>
-              {canCreateMenuItem && (
-                <button
-                  className="mm-btn mm-btn--primary"
-                  onClick={() => toggleModal("menuItem", true)}
-                >
-                  Thêm món ngay
-                </button>
-              )}
+              <div className="mm-empty-state__icon">{emptyState.icon}</div>
+              <h3 className="mm-empty-state__title">{emptyState.title}</h3>
+              <p className="mm-empty-state__description">{emptyState.description}</p>
+              <div className="mm-empty-state__actions">
+                {emptyState.action === "create_menu" && canCreateMenu && (
+                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menu", true)}>
+                    Tạo menu
+                  </button>
+                )}
+                {emptyState.action === "add_item" && canCreateMenuItem && (
+                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menuItem", true)}>
+                    Thêm món mới
+                  </button>
+                )}
+                {emptyState.action === "clear_filters" && (
+                  <button className="mm-btn mm-btn--secondary" onClick={handleClearFilters}>
+                    Xóa lọc
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1146,6 +1260,8 @@ const MenuManagement = () => {
                     }
                     selected={selectedItemIds.has(String(item.id))}
                     onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
+                    onOpenRecipeIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
+                    onOpenInventoryIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
                   />
                 ))}
               </div>

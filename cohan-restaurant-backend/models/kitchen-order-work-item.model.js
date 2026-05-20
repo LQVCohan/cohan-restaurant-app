@@ -35,6 +35,11 @@ const KitchenOrderWorkItemSchema = new Schema(
     teamEmployeeIds: [{ type: Types.ObjectId, ref: "User" }],
     barLeadId: { type: Types.ObjectId, ref: "User" },
     barStaffIds: [{ type: Types.ObjectId, ref: "User" }],
+    unaccepted: { type: Boolean, default: false, index: true },
+    unacceptedAt: Date,
+    unacceptedAfterMinutes: Number,
+    unacceptedResponsibleEmployeeIds: [{ type: Types.ObjectId, ref: "User" }],
+    unacceptedReason: String,
     noRoster: { type: Boolean, default: false },
     noRosterReason: String,
     actualPrepMinutes: Number,
@@ -50,9 +55,11 @@ const KitchenOrderWorkItemSchema = new Schema(
 KitchenOrderWorkItemSchema.index({ orderId: 1, orderItemId: 1 }, { unique: true });
 KitchenOrderWorkItemSchema.index({ restaurantId: 1, station: 1, kitchenEnteredAt: 1 });
 KitchenOrderWorkItemSchema.index({ restaurantId: 1, status: 1, updatedAt: 1 });
+KitchenOrderWorkItemSchema.index({ restaurantId: 1, status: 1, unaccepted: 1, kitchenEnteredAt: 1 });
 KitchenOrderWorkItemSchema.index({ headChefId: 1, kitchenEnteredAt: 1 });
 KitchenOrderWorkItemSchema.index({ assistantChefIds: 1, kitchenEnteredAt: 1 });
 KitchenOrderWorkItemSchema.index({ teamEmployeeIds: 1, kitchenEnteredAt: 1 });
+KitchenOrderWorkItemSchema.index({ unacceptedResponsibleEmployeeIds: 1, kitchenEnteredAt: 1 });
 KitchenOrderWorkItemSchema.index({ rosterSnapshotId: 1 });
 
 export default mongoose.model("KitchenOrderWorkItem", KitchenOrderWorkItemSchema);

@@ -61,7 +61,9 @@ import {
   toCustomerTrackingPayload,
 } from "../../../src/services/orderTracking.service.js";
 import {
+  syncKitchenOrderWorkItemsForKitchenEntry,
   upsertKitchenOrderWorkItemForStatusChange,
+  syncKitchenOrderWorkItemForVoidOrReturn,
   syncKitchenOrderWorkItemsForOrderStatusChange,
 } from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
 
@@ -1696,6 +1698,12 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+        await syncKitchenOrderWorkItemsForKitchenEntry({
+          order: createdOrderDoc,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
 
         await Order.updateOne(
           { _id: parentSession._id },
@@ -1875,6 +1883,12 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+        await syncKitchenOrderWorkItemsForKitchenEntry({
+          order: createdOrderDoc,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
 
         if (totals?.couponId) {
           await incrementCouponUsageOnce({
@@ -2521,6 +2535,12 @@ export const OrderMutation = {
           );
 
           createdOrders.push(order);
+          await syncKitchenOrderWorkItemsForKitchenEntry({
+            order,
+            actorUserId: ctx?.user?.id || ctx?.user?._id,
+            now: new Date(),
+            session,
+          });
           checkoutTotals.subtotal += Number(totals.subtotal || 0);
           checkoutTotals.promotionDiscount += Number(
             totals.promotionDiscount || 0,
@@ -2947,6 +2967,7 @@ export const OrderMutation = {
         req.reviewNote = note || "";
 
         if (approve) {
+          const previousStatus = item.status;
           const qty = Number(req.quantity || 0);
           const activeQuantity = Number(item.quantity || 0);
 
@@ -2964,6 +2985,15 @@ export const OrderMutation = {
           if (item.quantity <= 0) {
             item.quantity = 0;
             item.status = "cancelled";
+            await syncKitchenOrderWorkItemForVoidOrReturn({
+              order,
+              item,
+              previousStatus,
+              nextStatus: "cancelled",
+              actorUserId: ctx?.user?.id || ctx?.user?._id,
+              now: new Date(),
+              session,
+            });
           }
 
           const plainItems = order.items.map((x) =>
@@ -3094,6 +3124,7 @@ export const OrderMutation = {
         req.reviewNote = note || "";
 
         if (approve) {
+          const previousStatus = item.status;
           const qty = Number(req.quantity || 0);
           if (Number(item.originalQuantity || 0) <= 0) {
             item.originalQuantity = getReturnBaselineQuantity(item);
@@ -3106,6 +3137,15 @@ export const OrderMutation = {
             item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
             if (item.quantity <= 0) {
               item.status = "returned";
+              await syncKitchenOrderWorkItemForVoidOrReturn({
+                order,
+                item,
+                previousStatus,
+                nextStatus: "returned",
+                actorUserId: ctx?.user?.id || ctx?.user?._id,
+                now: new Date(),
+                session,
+              });
             }
             const plainItems = order.items.map((x) =>
               typeof x.toObject === "function" ? x.toObject() : x,

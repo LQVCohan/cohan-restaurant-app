@@ -1,9 +1,6 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
+import ManagementPageHeader from "../../../shared/ManagementPageHeader";
 import "./StaffHeader.scss";
-
-// Utility formatting
-const formatNumber = (value) =>
-  typeof value === "number" ? value.toLocaleString("vi-VN") : value;
 
 const StaffHeader = ({
   selectedRestaurant,
@@ -20,240 +17,38 @@ const StaffHeader = ({
   onSearchChange,
   pendingLeaveCount = 0,
 }) => {
-  // --- TIME & GREETING LOGIC ---
-  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const statsData = useMemo(() => ([
+    { id: "total", icon: "👥", label: "Tổng nhân sự", value: stats.totalStaff || 0 },
+    { id: "active", icon: "🟢", label: "Đang trực tuyến", value: stats.activeStaff || 0, suffix: "Online" },
+    { id: "leave", icon: "📅", label: "Nghỉ phép", value: stats.onLeaveStaff || 0, suffix: "Hôm nay" },
+    { id: "rate", icon: "⭐", label: "Đánh giá TB", value: (Math.round((stats.avgRate || 0) * 10) / 10).toFixed(1), suffix: "/5.0" },
+  ]), [stats]);
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const getShiftInfo = (date) => {
-    const h = date.getHours();
-    if (h >= 5 && h < 12)
-      return { label: "Ca Sáng", icon: "🌅", greeting: "Chào buổi sáng" };
-    if (h >= 12 && h < 18)
-      return { label: "Ca Chiều", icon: "☀️", greeting: "Chào buổi chiều" };
-    return { label: "Ca Tối", icon: "🌙", greeting: "Buổi tối tốt lành" };
-  };
-
-  const shiftInfo = getShiftInfo(currentTime);
-  const timeStr = currentTime.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const dateStr = currentTime.toLocaleDateString("vi-VN", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-  });
-
-  // --- STATS DATA ---
-  const statsData = useMemo(() => {
-    const avgRate = Math.round((stats.avgRate || 0) * 10) / 10;
-    return [
-      {
-        id: "total",
-        icon: "👥",
-        label: "Tổng nhân sự",
-        value: stats.totalStaff || 0,
-        tone: "primary",
-        trend: "+2",
-      },
-      {
-        id: "active",
-        icon: "🟢",
-        label: "Đang trực tuyến",
-        value: stats.activeStaff || 0,
-        tone: "success",
-        suffix: "Online",
-      },
-      {
-        id: "leave",
-        icon: "📅",
-        label: "Nghỉ phép",
-        value: stats.onLeaveStaff || 0,
-        tone: "warning",
-        suffix: "Hôm nay",
-      },
-      {
-        id: "rate",
-        icon: "⭐",
-        label: "Đánh giá TB",
-        value: avgRate ? avgRate.toFixed(1) : "0.0",
-        tone: "info",
-        suffix: "/ 5.0",
-      },
-    ];
-  }, [stats]);
-
-  const quickActions = [
-    {
-      icon: "📝",
-      label: "Điểm Danh",
-      onClick: () => onPageChange("attendance"),
-    },
-    { icon: "📅", label: "Xếp Ca", onClick: () => onPageChange("schedule") },
-    { icon: "🏖️", label: "Nghỉ Phép", onClick: () => onPageChange("leave") },
-  ];
-
-  return (
-    <div className={`premium-staff-header ${isCollapsed ? "collapsed" : ""}`}>
-      {/* BACKGROUND DECORATION */}
-      <div className="header-decor-circle"></div>
-
-      {/* TOGGLE BUTTON */}
-      <button
-        className="header-toggle-btn"
-        onClick={onToggle}
-        title="Thu gọn/Mở rộng"
-      >
-        <span className="toggle-icon">{isCollapsed ? "▼" : "▲"}</span>
-      </button>
-
-      {/* --- LEFT COLUMN: IDENTITY & CONTEXT --- */}
-      <div className="header-column col-identity">
-        <div className="identity-content">
-          <div className="brand-tag">HR Manager</div>
-          <h1 className="page-title">
-            {isCollapsed ? "Nhân Sự" : "Quản Lý Nhân Sự"}
-          </h1>
-
-          {!isCollapsed && (
-            <>
-              <div className="greeting-block">
-                <span className="greeting-text">
-                  {shiftInfo.greeting}, Admin!
-                </span>
-                <p className="sub-text">
-                  Theo dõi hoạt động nhân sự theo thời gian thực.
-                </p>
-              </div>
-
-              <div className="time-widget-card">
-                <div className="time-display">
-                  <span className="clock">{timeStr}</span>
-                  <span className="date">{dateStr}</span>
-                </div>
-                <div className="shift-badge">
-                  {shiftInfo.icon} <span>{shiftInfo.label}</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* --- RIGHT COLUMN: METRICS & TOOLS --- */}
-      <div className="header-column col-workspace">
-        {/* TOP ROW: STATS GRID */}
-        {!isCollapsed && (
-          <div className="stats-grid-row">
-            {statsData.map((item) => (
-              <div key={item.id} className={`stat-card tone-${item.tone}`}>
-                <div className="stat-icon-wrapper">{item.icon}</div>
-                <div className="stat-content">
-                  <span className="stat-label">{item.label}</span>
-                  <div className="stat-value-group">
-                    <span className="stat-value">
-                      {loading ? "--" : formatNumber(item.value)}
-                    </span>
-                    {item.suffix && (
-                      <span className="stat-suffix">{item.suffix}</span>
-                    )}
-                    {item.trend && (
-                      <span className="stat-trend success">↗ {item.trend}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* BOTTOM ROW: TOOLBAR (SEARCH, FILTER, ACTIONS) */}
-        <div className="toolbar-row">
-          <div className="search-filter-group">
-            <div className="search-input-wrapper">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder={
-                  isCollapsed ? "Tìm kiếm..." : "Tìm tên nhân viên, mã số..."
-                }
-                value={searchValue}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-              />
-            </div>
-
-            <div className="branch-select-wrapper">
-              <select
-                className="custom-select"
-                value={selectedRestaurant}
-                onChange={(e) => onRestaurantChange(e.target.value)}
-              >
-                {!restaurantList.length && (
-                  <option value="">Không có nhà hàng</option>
-                )}
-                {restaurantList.map((r) => (
-                  <option key={r.id || r._id} value={r.id || r._id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="actions-group">
-            {!isCollapsed && (
-              <div className="quick-nav">
-                {quickActions.map((action, idx) => (
-                  <button
-                    key={idx}
-                    className="quick-btn"
-                    onClick={action.onClick}
-                    title={action.label}
-                  >
-                    {action.icon}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="divider-vertical"></div>
-
-            <button className="btn btn-secondary" onClick={onExportData}>
-              <span>📤 Export</span>
-            </button>
-            <button className="btn btn-primary" onClick={onAddEmployee}>
-              <span>➕ {isCollapsed ? "" : "Thêm Nhân Sự"}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* INFO FOOTER (Only shown when expanded) */}
-        {!isCollapsed && (
-          <div className="info-footer-row">
-            <div className="active-users-stack">
-              <span className="footer-label">Đang trực tuyến:</span>
-              <div className="avatar-group summary-only">
-                <div className="avatar-counter">
-                  {loading ? "--" : formatNumber(stats.activeStaff || 0)}
-                </div>
-              </div>
-            </div>
-
-            <div className="pending-tasks">
-              <span className="footer-label">Cần duyệt:</span>
-              <span className="task-badge warn">
-                {loading ? "--" : formatNumber(pendingLeaveCount)} Nghỉ phép
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <ManagementPageHeader
+    className="staff-page-header"
+    eyebrow="HR MANAGER"
+    title={isCollapsed ? "Nhân Sự" : "Quản Lý Nhân Sự"}
+    subtitle="Theo dõi hoạt động nhân sự theo thời gian thực."
+    stats={statsData}
+    loading={loading}
+    isCollapsed={isCollapsed}
+    onToggle={onToggle}
+    searchValue={searchValue}
+    onSearchChange={onSearchChange}
+    searchPlaceholder={isCollapsed ? "Tìm kiếm..." : "Tìm tên nhân viên, mã số..."}
+    selectedRestaurant={selectedRestaurant}
+    onRestaurantChange={onRestaurantChange}
+    restaurantList={restaurantList}
+    quickActions={[
+      { icon: "📝", label: "Điểm Danh", onClick: () => onPageChange?.("attendance") },
+      { icon: "📅", label: "Xếp Ca", onClick: () => onPageChange?.("schedule") },
+      { icon: "🏖️", label: "Nghỉ Phép", onClick: () => onPageChange?.("leave") },
+    ]}
+    secondaryActions={onExportData ? [{ icon: "📤", label: "Export", onClick: onExportData }] : []}
+    primaryAction={onAddEmployee ? { icon: "➕", label: isCollapsed ? "" : "Thêm Nhân Sự", onClick: onAddEmployee } : null}
+    footerLeft={<span>Đang trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span>}
+    footerRight={<span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} Nghỉ phép</strong></span>}
+  />;
 };
 
 export default StaffHeader;

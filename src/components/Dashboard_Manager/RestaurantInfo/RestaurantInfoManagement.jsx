@@ -40,6 +40,7 @@ import {
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
 import "./RestaurantInfoManagement.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -1681,76 +1682,38 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   return (
     <div className="restaurant-management-container">
       {/* HEADER SECTION - Modern Style */}
-      <div className="page-header-modern">
-        <div className="header-left">
-          <Title level={2}>Hồ sơ nhà hàng</Title>
-          <Text type="secondary">
-            Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng
-          </Text>
-          <div className="status-pill-row">
-            <Tag color={restaurantForm.status === "active" ? "green" : "orange"}>
-              {restaurantForm.status === "active"
-                ? "Đang hoạt động"
-                : "Tạm ngưng"}
-            </Tag>
-            {isDirty ? (
-              <Tag color="gold">Có thay đổi chưa lưu</Tag>
-            ) : (
-              <Tag color="blue">Đã đồng bộ</Tag>
-            )}
-          </div>
-        </div>
-
-        <div className="header-actions">
-          <Space size="middle">
-            <div className="draft-control">
-              <Select
-                placeholder="Lịch sử bản nháp"
-                style={{ width: 180 }}
-                allowClear
-                variant="borderless"
-                options={drafts.map((item) => ({
-                  value: item.id,
-                  label: `${item.label}`,
-                }))}
-                onChange={(id) => id && loadDraft(id)}
-              />
-              <Button
-                type="text"
-                icon={<SaveOutlined />}
-                onClick={() => saveDraftToLocal()}
-              >
-                Lưu nháp
-              </Button>
-            </div>
-
-            <Divider orientation="vertical" style={{ height: 24 }} />
-
-            <Select
-              value={selectedRestaurantId}
-              onChange={setSelectedRestaurantId}
-              style={{ width: 200 }}
-              loading={managerRestaurantsLoading || allRestaurantsLoading}
-              placeholder="Chọn chi nhánh"
-              options={restaurantOptions.map((r) => ({
-                label: r.name,
-                value: r.id,
-              }))}
-            />
-
-            <Button
-              type="primary"
-              size="large"
-              icon={<SaveOutlined />}
-              loading={savingRestaurant}
-              onClick={onSaveRestaurantInfo}
-              className="save-btn-gradient"
-            >
-              Lưu thay đổi
-            </Button>
-          </Space>
-        </div>
-      </div>
+      <ManagementPageHeader
+        eyebrow="RESTAURANT INFO"
+        title="Hồ sơ nhà hàng"
+        subtitle="Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng"
+        icon="🏪"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={setSelectedRestaurantId}
+        restaurantList={restaurantOptions.map((r) => ({ id: r.id, name: r.name }))}
+        restaurantDisabled={managerRestaurantsLoading || allRestaurantsLoading}
+        customFilters={(
+          <select
+            className="mph-select"
+            value=""
+            onChange={(e) => e.target.value && loadDraft(e.target.value)}
+          >
+            <option value="">Lịch sử bản nháp</option>
+            {drafts.map((item) => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+        )}
+        secondaryActions={[{ icon: "📝", label: "Lưu nháp", onClick: () => saveDraftToLocal() }]}
+        primaryAction={{
+          icon: "💾",
+          label: "Lưu thay đổi",
+          onClick: onSaveRestaurantInfo,
+          loading: savingRestaurant,
+          disabled: savingRestaurant,
+        }}
+        footerLeft={<span>{restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng"}</span>}
+        footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã đồng bộ"}</span>}
+      />
 
       <div className="quick-metrics-grid">
         <Card variant="borderless" className="metric-card">

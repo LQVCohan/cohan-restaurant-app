@@ -142,11 +142,11 @@ const CustomerManagement = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
 
   const {
-    filteredCustomers,
+    customerPageItems,
+    customerPageInfo,
     loading: usersLoading,
-    searchCustomers,
     switchRestaurant,
-    getCustomers,
+    getCustomersPage,
   } = useUserManagement();
 
   const defaultRestaurantId = restaurants?.[0]?.id || "";
@@ -166,6 +166,7 @@ const CustomerManagement = () => {
   // Filter & Search States
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [rankDraft, setRankDraft] = useState([]);
 
   const { data: rankSettingsData, refetch: refetchRankSettings } = useQuery(
@@ -190,8 +191,8 @@ const CustomerManagement = () => {
   }, [restaurants, selectedRestaurantId]);
 
   const summaryUserIds = useMemo(
-    () => [...new Set((filteredCustomers || []).map((c) => c?.id).filter(Boolean))],
-    [filteredCustomers],
+    () => [...new Set((customerPageItems || []).map((c) => c?.id).filter(Boolean))],
+    [customerPageItems],
   );
   const { data: summaryData, refetch: refetchSummaries } = useQuery(
     GET_CUSTOMER_LIST_SUMMARIES,
@@ -209,18 +210,18 @@ const CustomerManagement = () => {
 
   // Fetch dữ liệu khách hàng khi thay đổi nhà hàng
   useEffect(() => {
-    getCustomers({
-      restaurantId: selectedRestaurantId,
-      includeGuests: true,
-      search: "",
-    });
-  }, [getCustomers, selectedRestaurantId]);
+    const t = setTimeout(() => setSearchDebounced(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    getCustomersPage({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
+  }, [getCustomersPage, searchDebounced, selectedRestaurantId]);
 
   // --- 3. Handlers ---
 
   const handleSearch = (query) => {
     setSearchQuery(query);
-    searchCustomers(query);
   };
 
   const handleFilter = (filterKey) => {
@@ -255,11 +256,7 @@ const CustomerManagement = () => {
   };
 
   const refreshCustomerListAfterCreate = async (createdUser = null) => {
-    await getCustomers({
-      restaurantId: selectedRestaurantId,
-      includeGuests: true,
-      search: "",
-    });
+    await getCustomersPage({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
     if (selectedRestaurantId) await refetchSummaries();
 
     if (!createdUser) {
@@ -316,7 +313,7 @@ const CustomerManagement = () => {
 
   // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
   const customersDecorated = useMemo(() => {
-    return (filteredCustomers || []).map((c) => {
+    return (customerPageItems || []).map((c) => {
       const uid = c.id;
       const summary = (uid && summaryByUserId.get(uid)) || null;
       const recentOrders = (summary?.recentOrders || []).map((o) => ({
@@ -336,7 +333,7 @@ const CustomerManagement = () => {
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
-  }, [filteredCustomers, rankSettings, summaryByUserId]);
+  }, [customerPageItems, rankSettings, summaryByUserId]);
 
   const onlineCount = useMemo(
     () => customersDecorated.filter((c) => c.online).length,
@@ -616,6 +613,25 @@ const CustomerManagement = () => {
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />
+          {customerPageInfo?.hasNextPage ? (
+            <div className="mt-3 flex justify-center">
+              <button
+                className="cm-btn cm-btn-secondary"
+                onClick={() =>
+                  getCustomersPage({
+                    restaurantId: selectedRestaurantId,
+                    includeGuests: true,
+                    search: searchDebounced,
+                    limit: 30,
+                    cursor: customerPageInfo?.endCursor || undefined,
+                    append: true,
+                  })
+                }
+              >
+                Tải thêm
+              </button>
+            </div>
+          ) : null}
         </section>
 
         {/* Sidebar Filter Panel (Animated) */}

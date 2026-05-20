@@ -1,5 +1,12 @@
 import { KitchenOrderWorkItem, KitchenShiftRosterSnapshot } from "../../../models/index.js";
 
+export const DEFAULT_KITCHEN_TARGET_PREP_MINUTES = 20;
+export const DEFAULT_BAR_TARGET_PREP_MINUTES = 10;
+export const DEFAULT_LATE_GRACE_MINUTES = 5;
+export const DEFAULT_VERY_LATE_GRACE_MINUTES = 15;
+export const DEFAULT_UNACCEPTED_GRACE_MINUTES = 5;
+export const DEFAULT_BAR_UNACCEPTED_GRACE_MINUTES = 3;
+
 const BAR_KEYWORDS = [
   "drink",
   "beverage",
@@ -25,6 +32,38 @@ function toUniqueIds(values = []) {
   return [...new Set(values.map((v) => String(v || "")).filter(Boolean))];
 }
 
+function toPositiveNumber(value) {
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export function resolveUnacceptedGraceMinutes(workItem = {}) {
+  return workItem?.station === "bar"
+    ? DEFAULT_BAR_UNACCEPTED_GRACE_MINUTES
+    : DEFAULT_UNACCEPTED_GRACE_MINUTES;
+}
+
+export function resolveUnacceptedResponsibleEmployeeIds(workItem = {}) {
+  if (workItem?.station === "bar") {
+    return toUniqueIds(
+      workItem?.barStaffIds?.length
+        ? workItem.barStaffIds
+        : workItem?.barLeadId
+          ? [workItem.barLeadId]
+          : workItem?.teamEmployeeIds || [],
+    );
+  }
+
+  return toUniqueIds(
+    workItem?.assistantChefIds?.length
+      ? workItem.assistantChefIds
+      : workItem?.teamEmployeeIds?.length
+        ? workItem.teamEmployeeIds
+        : workItem?.headChefId
+          ? [workItem.headChefId]
+          : [],
+  );
+}
+
 export function resolveOrderItemStation(item = {}) {
   const signals = [item?.name, item?.categoryName, item?.category?.name]
     .map(normalizeText)
@@ -32,6 +71,31 @@ export function resolveOrderItemStation(item = {}) {
 
   const isBar = BAR_KEYWORDS.some((keyword) => signals.includes(keyword));
   return isBar ? "bar" : "kitchen";
+}
+
+export function resolveTargetPrepMinutes(item, station) {
+  const resolved =
+    toPositiveNumber(item?.targetPrepMinutes) ||
+    toPositiveNumber(item?.prepTimeMinutes) ||
+    toPositiveNumber(item?.estimatedPrepMinutes) ||
+    toPositiveNumber(item?.servingVariant?.targetPrepMinutes);
+
+  if (resolved) return resolved;
+  return station === "bar" ? DEFAULT_BAR_TARGET_PREP_MINUTES : DEFAULT_KITCHEN_TARGET_PREP_MINUTES;
+}
+
+export function resolvePrepTimeLevel(actualPrepMinutes, targetPrepMinutes) {
+  if (!Number.isFinite(actualPrepMinutes) || actualPrepMinutes < 0) return null;
+  if (!Number.isFinite(targetPrepMinutes) || targetPrepMinutes <= 0) return null;
+
+  const lateThreshold = targetPrepMinutes + DEFAULT_LATE_GRACE_MINUTES;
+
+  if (actualPrepMinutes <= targetPrepMinutes) return "on_time";
+  // "late": target < actual <= target + DEFAULT_LATE_GRACE_MINUTES
+  if (actualPrepMinutes <= lateThreshold) return "late";
+  // "very_late": actual > target + DEFAULT_LATE_GRACE_MINUTES
+  // DEFAULT_VERY_LATE_GRACE_MINUTES is reserved for future threshold tuning.
+  return "very_late";
 }
 
 export async function findKitchenRosterForOrderItem({ restaurantId, station, at }) {
@@ -137,6 +201,13 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     if (baseStart) {
       set.actualPrepMinutes = Math.max(0, Math.round((new Date(set.readyAt) - new Date(baseStart)) / 60000));
     }
+
+    const hasExistingTarget = Number.isFinite(existingWorkItem?.targetPrepMinutes) && existingWorkItem.targetPrepMinutes > 0;
+    const targetPrepMinutes = hasExistingTarget
+      ? existingWorkItem.targetPrepMinutes
+      : resolveTargetPrepMinutes(item, station);
+    set.targetPrepMinutes = targetPrepMinutes;
+    set.timeLevel = resolvePrepTimeLevel(set.actualPrepMinutes, targetPrepMinutes);
   }
   if (nextStatus === "served") set.servedAt = existingWorkItem?.servedAt || atNow;
   if (nextStatus === "cancelled") set.cancelledAt = existingWorkItem?.cancelledAt || atNow;
@@ -171,6 +242,171 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
   ).session(session);
 }
 
+export async function upsertKitchenOrderWorkItemForKitchenEntry({
+  order,
+  item,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order?._id || !order?.restaurantId || !item?._id) return null;
+
+  const station = resolveOrderItemStation(item);
+  const existingWorkItem = await KitchenOrderWorkItem.findOne({
+    orderId: order._id,
+    orderItemId: item._id,
+  })
+    .lean()
+    .session(session);
+
+  const at = existingWorkItem?.kitchenEnteredAt || now || order?.createdAt || new Date();
+  const roster = await findKitchenRosterForOrderItem({
+    restaurantId: order.restaurantId,
+    station,
+    at,
+  });
+
+  const set = {
+    status: item?.status || "pending",
+    kitchenEnteredAt: existingWorkItem?.kitchenEnteredAt || at,
+    lastStatusChangedAt: existingWorkItem?.lastStatusChangedAt || at,
+    updatedBy: actorUserId || null,
+  };
+
+  if (roster) {
+    set.noRoster = false;
+    set.noRosterReason = null;
+    Object.assign(set, roster);
+  } else {
+    set.noRoster = true;
+    set.noRosterReason = "Không tìm thấy roster bếp/bar active theo thời điểm món vào bếp.";
+  }
+
+  return KitchenOrderWorkItem.findOneAndUpdate(
+    { orderId: order._id, orderItemId: item._id },
+    {
+      $setOnInsert: {
+        restaurantId: order?.restaurantId || null,
+        orderId: order?._id || null,
+        orderCode: order?.orderCode || null,
+        orderItemId: item?._id || null,
+        dishId: item?.dishId || null,
+        menuId: item?.menuId || null,
+        categoryId: item?.categoryId || null,
+        dishName: item?.name || null,
+        quantity: Number(item?.quantity || 0),
+        station,
+        createdBy: actorUserId || null,
+      },
+      $set: set,
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  ).session(session);
+}
+
+export async function syncKitchenOrderWorkItemsForKitchenEntry({
+  order,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order || !Array.isArray(order.items)) return { syncedCount: 0 };
+
+  let syncedCount = 0;
+  for (const item of order.items) {
+    const normalizedStatus = String(item?.status || "").toLowerCase();
+    if (!item?._id || ["cancelled", "returned"].includes(normalizedStatus)) continue;
+    await upsertKitchenOrderWorkItemForKitchenEntry({
+      order,
+      item,
+      actorUserId,
+      now,
+      session,
+    });
+    syncedCount += 1;
+  }
+
+  return { syncedCount };
+}
+
+export async function markUnacceptedKitchenOrderWorkItems({
+  restaurantId,
+  now,
+  graceMinutes,
+  session,
+}) {
+  if (!restaurantId) return { matchedCount: 0, modifiedCount: 0 };
+
+  const atNow = now || new Date();
+  const sharedGraceMinutes = toPositiveNumber(graceMinutes);
+  const query = {
+    restaurantId,
+    status: "pending",
+    unaccepted: { $ne: true },
+    kitchenEnteredAt: { $exists: true },
+  };
+
+  if (sharedGraceMinutes) {
+    query.kitchenEnteredAt.$lte = new Date(atNow.getTime() - sharedGraceMinutes * 60000);
+  }
+
+  const candidates = await KitchenOrderWorkItem.find(query).session(session);
+  let matchedCount = 0;
+  let modifiedCount = 0;
+
+  for (const workItem of candidates || []) {
+    const grace = sharedGraceMinutes || resolveUnacceptedGraceMinutes(workItem);
+    const enteredAt = workItem?.kitchenEnteredAt ? new Date(workItem.kitchenEnteredAt) : null;
+    if (!enteredAt) continue;
+
+    const overdue = atNow.getTime() - enteredAt.getTime() >= grace * 60000;
+    if (!overdue) continue;
+
+    matchedCount += 1;
+    const updateResult = await KitchenOrderWorkItem.updateOne(
+      { _id: workItem._id, unaccepted: { $ne: true } },
+      {
+        $set: {
+          unaccepted: true,
+          unacceptedAt: atNow,
+          unacceptedAfterMinutes: grace,
+          unacceptedResponsibleEmployeeIds: resolveUnacceptedResponsibleEmployeeIds(workItem),
+          unacceptedReason: "Món chưa được nhận sau ngưỡng thời gian cho phép.",
+          updatedAt: atNow,
+        },
+      },
+      { session },
+    );
+
+    if (updateResult?.modifiedCount > 0) modifiedCount += updateResult.modifiedCount;
+  }
+
+  return { matchedCount, modifiedCount };
+}
+
+
+export async function syncKitchenOrderWorkItemForVoidOrReturn({
+  order,
+  item,
+  previousStatus,
+  nextStatus,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order?._id || !item?._id || !nextStatus) return null;
+  if (!['cancelled', 'returned'].includes(nextStatus)) return null;
+
+  return upsertKitchenOrderWorkItemForStatusChange({
+    order,
+    item,
+    previousStatus,
+    nextStatus,
+    actorUserId,
+    now,
+    session,
+  });
+}
 
 export async function syncKitchenOrderWorkItemsForOrderStatusChange({
   order,
