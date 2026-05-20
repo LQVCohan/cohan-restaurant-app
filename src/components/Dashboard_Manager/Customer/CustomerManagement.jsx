@@ -134,6 +134,17 @@ const createSafeSheetName = (baseName, usedNames) => {
   usedNames.add(candidate);
   return candidate;
 };
+const getRankBoundsForFilter = (filterKey, rankSettings) => {
+  const ranks = normalizeRanks(rankSettings);
+  if (filterKey === "all" || !ranks.length) return null;
+  const top = ranks[ranks.length - 1];
+  const middle = ranks.length > 2 ? ranks[ranks.length - 2] : ranks[1];
+  const base = ranks[0];
+  if (filterKey === "vip" && top) return { minPoints: Number(top.minPoints || 0), maxPointsExclusive: null, rankName: top.name };
+  if (filterKey === "new" && base) return { minPoints: Number(base.minPoints || 0), maxPointsExclusive: Number(middle?.minPoints ?? top?.minPoints ?? 0), rankName: base.name };
+  if (filterKey === "frequent" && middle) return { minPoints: Number(middle.minPoints || 0), maxPointsExclusive: Number(top?.minPoints ?? 0), rankName: middle.name };
+  return null;
+};
 
 /* ================== Main Component ================== */
 
@@ -147,6 +158,7 @@ const CustomerManagement = () => {
     loading: usersLoading,
     switchRestaurant,
     getCustomersPage,
+    getCustomerExportRows,
   } = useUserManagement();
 
   const defaultRestaurantId = restaurants?.[0]?.id || "";
@@ -215,8 +227,10 @@ const CustomerManagement = () => {
   }, [searchQuery]);
   useEffect(() => {
     if (!selectedRestaurantId) return;
-    getCustomersPage({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
-  }, [getCustomersPage, searchDebounced, selectedRestaurantId]);
+    getCustomersPage({
+      restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30, customerRank: getRankBoundsForFilter(activeFilter, rankSettings),
+    });
+  }, [activeFilter, getCustomersPage, rankSettings, searchDebounced, selectedRestaurantId]);
 
   // --- 3. Handlers ---
 
@@ -353,19 +367,7 @@ const CustomerManagement = () => {
     };
   }, [rankSettings]);
 
-  const customersVisible = useMemo(() => {
-    if (activeFilter === "all") return customersDecorated;
-    if (activeFilter === "vip") {
-      return customersDecorated.filter((c) => c.customerType === tierFilters.topName);
-    }
-    if (activeFilter === "new") {
-      return customersDecorated.filter((c) => c.customerType === tierFilters.baseName);
-    }
-    if (activeFilter === "frequent") {
-      return customersDecorated.filter((c) => c.customerType === tierFilters.middleName);
-    }
-    return customersDecorated;
-  }, [activeFilter, customersDecorated, tierFilters]);
+  const customersVisible = customersDecorated;
 
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
@@ -458,12 +460,15 @@ const CustomerManagement = () => {
     });
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       setExporting(true);
       setExportError("");
 
-      const visibleRows = customersVisible || [];
+      const rankFilter = getRankBoundsForFilter(activeFilter, rankSettings);
+      const visibleRows = exportScope === "filtered_all"
+        ? await getCustomerExportRows({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 1000, customerRank: rankFilter })
+        : (customersVisible || []);
       if (!visibleRows.length) {
         setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
         return;
@@ -474,6 +479,8 @@ const CustomerManagement = () => {
       const scopeSuffix =
         exportScope === "current_list"
           ? "danh-sach-hien-tai"
+          : exportScope === "filtered_all"
+            ? "tat-ca-theo-bo-loc"
           : exportScope === "customer_type"
             ? "phan-loai-guest"
             : "phan-loai-hang";
@@ -622,6 +629,7 @@ const CustomerManagement = () => {
                     restaurantId: selectedRestaurantId,
                     includeGuests: true,
                     search: searchDebounced,
+                    customerRank: getRankBoundsForFilter(activeFilter, rankSettings),
                     limit: 30,
                     cursor: customerPageInfo?.endCursor || undefined,
                     append: true,
@@ -743,7 +751,18 @@ const CustomerManagement = () => {
                 />
                 <span>
                   <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách
-                  đang hiển thị.
+                  đã tải/đang hiển thị.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="exportScope"
+                  checked={exportScope === "filtered_all"}
+                  onChange={() => setExportScope("filtered_all")}
+                />
+                <span>
+                  <strong>Tất cả theo bộ lọc hiện tại</strong> — gọi backend và xuất tối đa 1000 khách đầu tiên theo filter.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -818,7 +837,18 @@ const CustomerManagement = () => {
                 />
                 <span>
                   <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách
-                  đang hiển thị.
+                  đã tải/đang hiển thị.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="exportScope"
+                  checked={exportScope === "filtered_all"}
+                  onChange={() => setExportScope("filtered_all")}
+                />
+                <span>
+                  <strong>Tất cả theo bộ lọc hiện tại</strong> — gọi backend và xuất tối đa 1000 khách đầu tiên theo filter.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -873,3 +903,6 @@ const CustomerManagement = () => {
 };
 
 export default CustomerManagement;
+          <div className="text-xs text-slate-500 mt-1">
+            Đang hiển thị {customersVisible.length} / tổng {customerPageInfo?.hasNextPage ? `${customersVisible.length}+` : customersVisible.length}
+          </div>

@@ -6,7 +6,7 @@ const requirePermissionMock = vi.hoisted(() => vi.fn());
 
 const modelMocks = vi.hoisted(() => ({
   User: { findById: vi.fn() },
-  Role: {},
+  Role: { findOne: vi.fn() },
   Customer: { find: vi.fn(), countDocuments: vi.fn() },
   Order: { find: vi.fn() },
   CustomerRankSetting: {
@@ -257,6 +257,39 @@ describe("user/customer restaurant access guards", () => {
     expect(modelMocks.CustomerRankSetting.findOneAndUpdate).not.toHaveBeenCalled();
     expect(modelMocks.CustomerRankSetting.updateOne).not.toHaveBeenCalled();
     expect(modelMocks.CustomerRankSetting.create).not.toHaveBeenCalled();
+  });
+
+  it("customerListPage composes rank/search/kind with same finalCond for count and find", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne.mockResolvedValue({ _id: { _mockObjectId: "valid-customer-role" } });
+    const findLean = vi.fn(async () => []);
+    modelMocks.Customer.find.mockReturnValue({
+      populate: () => ({ populate: () => ({ sort: () => ({ skip: () => ({ limit: () => ({ lean: findLean }) }) }) }) }),
+    });
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerListPage(null, {
+      restaurantId: "valid-r1", search: "john", includeGuests: false, customerKind: "REGISTERED", customerRank: { minPoints: 10, maxPointsExclusive: 50 },
+    }, ctxFor());
+    const countCond = modelMocks.Customer.countDocuments.mock.calls[0][0];
+    const findCond = modelMocks.Customer.find.mock.calls[0][0];
+    expect(findCond).toEqual(countCond);
+    expect(JSON.stringify(findCond)).toContain("loyaltyPoints");
+    expect(JSON.stringify(findCond)).toContain("$or");
+  });
+
+  it("customerExportRows enforces guards and caps limit", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne.mockResolvedValue({ _id: { _mockObjectId: "valid-customer-role" } });
+    modelMocks.Customer.find.mockReturnValue({
+      select: () => ({ populate: () => ({ populate: () => ({ sort: () => ({ limit: () => ({ lean: async () => [] }) }) }) }) }),
+    });
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerExportRows(null, { restaurantId: "valid-r1", limit: 99999, customerRank: { minPoints: 100 } }, ctxFor());
+    expect(requirePermissionMock).toHaveBeenCalled();
+    expect(requireRestaurantAccessMock).toHaveBeenCalledWith(expect.anything(), "valid-r1");
+    const limitChain = modelMocks.Customer.find.mock.results[0].value.select().populate().populate().sort();
+    expect(limitChain.limit).toBeTypeOf("function");
   });
 
   it("upsertCustomerRankSettings allowed calls requireRestaurantAccess before write", async () => {
