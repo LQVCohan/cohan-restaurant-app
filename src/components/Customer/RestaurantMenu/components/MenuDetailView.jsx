@@ -59,6 +59,22 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 
 const ITEMS_PER_PAGE = 8;
 
+const getCannotOrderReason = (restaurant, canOrder) => {
+  if (canOrder) return "";
+  switch (restaurant?.openingStatus) {
+    case "closed":
+      return "Nhà hàng đang đóng cửa";
+    case "paused":
+      return "Nhà hàng đang tạm ngưng nhận đơn";
+    case "maintenance":
+      return "Nhà hàng đang bảo trì";
+    case "holiday":
+      return "Nhà hàng nghỉ hôm nay";
+    default:
+      return "Nhà hàng chưa nhận đặt món";
+  }
+};
+
 const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -274,13 +290,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
 
 
         {!canOrder && (
-          <div style={{ color: "#b45309", marginBottom: "1rem" }}>
-            {restaurant?.openingStatus === "closed" && "Nhà hàng đang đóng cửa"}
-            {restaurant?.openingStatus === "paused" && "Nhà hàng đang tạm ngưng nhận đơn"}
-            {restaurant?.openingStatus === "maintenance" && "Nhà hàng đang bảo trì"}
-            {restaurant?.openingStatus === "holiday" && "Nhà hàng nghỉ hôm nay"}
-            {!restaurant?.canOrder && restaurant?.openingStatus === "open" && "Nhà hàng chưa nhận đặt món"}
-          </div>
+          <div className="menu-inline-note">{getCannotOrderReason(restaurant, canOrder)}</div>
         )}
         {isLoading ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>

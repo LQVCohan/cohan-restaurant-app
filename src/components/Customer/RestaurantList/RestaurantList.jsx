@@ -49,6 +49,7 @@ const GET_RESTAURANTS = gql`
         hasNextPage
         endCursor
       }
+      totalCount
     }
   }
 `;
@@ -124,7 +125,7 @@ const RestaurantList = ({ restaurantFilter }) => {
   const prevFilterKeyRef = useRef(filterKey);
   const isFetchingMoreRef = useRef(false);
 
-  const { data, loading, error, fetchMore, refetch } = useQuery(
+  const { data, loading, error, fetchMore } = useQuery(
     GET_RESTAURANTS,
     {
       variables: {
@@ -163,12 +164,12 @@ const RestaurantList = ({ restaurantFilter }) => {
     isFetchingMoreRef.current = true;
     try {
       const more = await fetchMore({
-      variables: {
+        variables: {
         limit: LIMIT,
         cursor: endCursor,
         filter: gqlFilters,
-      },
-    });
+        },
+      });
       const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
       setAccumulated((prev) => {
         const map = new Map(prev.map((x) => [x.id, x]));
@@ -182,19 +183,10 @@ const RestaurantList = ({ restaurantFilter }) => {
     }
   };
 
-  // Refetch when filters change
-  useEffect(() => {
-    refetch({
-      limit: LIMIT,
-      cursor: null,
-      filter: gqlFilters,
-    });
-  }, [gqlFilters, refetch]);
 
   // --- HANDLERS ---
   const handleQuickFilter = (type) => {
     setQuickFilter(type);
-    if (type === "distance") setSortBy("distance");
     if (type === "rating") setSortBy("rating");
     // Scroll xuống list
     document
@@ -291,6 +283,14 @@ const RestaurantList = ({ restaurantFilter }) => {
               </div>
             )}
 
+            {error && accumulated.length === 0 && (
+              <div className="state-box error">Không thể tải dữ liệu nhà hàng.</div>
+            )}
+
+            {!loading && !error && accumulated.length === 0 && (
+              <div className="state-box empty">Không tìm thấy nhà hàng phù hợp.</div>
+            )}
+
             {accumulated.length > 0 && (
               <>
                 <div className={`restaurants-display mode-${currentView}`}>
@@ -317,7 +317,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                     <button
                       className="btn-load-more"
                       onClick={handleLoadMore}
-                      disabled={loading}
+                      disabled={loading && accumulated.length === 0}
                     >
                       {loading ? "Đang tải..." : "Xem thêm nhà hàng"}
                     </button>
