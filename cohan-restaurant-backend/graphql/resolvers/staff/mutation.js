@@ -101,6 +101,7 @@ import {
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
 import { syncAttendancePerformanceIncidents } from "../../../src/services/performance/attendancePerformanceIntegration.service.js";
+import { syncKitchenShiftRosterSnapshotsForPublication } from "../../../src/services/kitchen/kitchenShiftRosterSnapshot.service.js";
 import { runAttendanceExceptionDetectionJob } from "../../../src/jobs/attendanceException.job.js";
 import {
   createPerformanceIncidentOnce,
@@ -1518,6 +1519,17 @@ const mutationResolvers = {
       ),
     ];
 
+    const kitchenRosterSyncResult =
+      await syncKitchenShiftRosterSnapshotsForPublication({
+        restaurantId,
+        publication,
+        periodStart,
+        periodEnd,
+        shifts,
+        actorUserId,
+        source: isRepublish ? "schedule_republish" : "schedule_publish",
+      });
+
     await Promise.all(
       shifts.map((shift) =>
         ensureShiftAcknowledgement({
@@ -1570,6 +1582,9 @@ const mutationResolvers = {
         isRepublish,
         affectedEmployees: employeeIds.length,
         affectedShifts: shifts.length,
+        kitchenRosterSynced: true,
+        kitchenRosterCreatedCount: kitchenRosterSyncResult.createdCount,
+        kitchenRosterSupersededCount: kitchenRosterSyncResult.supersededCount,
       },
       at: new Date(),
     });
