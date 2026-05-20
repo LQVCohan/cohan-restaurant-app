@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 /* ============================ Helpers ============================ */
 
@@ -23,10 +24,11 @@ function clampLimit(n, min = 1, max = 100) {
   return Math.max(min, Math.min(max, Math.floor(x)));
 }
 
+function escapeRegex(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function safeRegexContains(value) {
-  const s = String(value || "").trim();
+  const s = String(value || "").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0,80);
   if (!s) return null;
-  return { $regex: s, $options: "i" };
+  return { $regex: escapeRegex(s), $options: "i" };
 }
 
 function buildFilter(restaurantFilter) {
@@ -90,6 +92,20 @@ function buildFilter(restaurantFilter) {
   return f;
 }
 
+
+
+function applyPublicAvailabilityFilters(docs, filter) {
+  const f = filter || {};
+  return docs.filter((doc) => {
+    const availability = computeRestaurantAvailability(doc);
+    if (f.openNow === true && availability.openingStatus !== "open") return false;
+    if (f.openingStatus && availability.openingStatus !== f.openingStatus) return false;
+    if (typeof f.acceptsReservations === "boolean" && availability.canReserve !== f.acceptsReservations) return false;
+    if (typeof f.acceptsOrders === "boolean" && availability.canOrder !== f.acceptsOrders) return false;
+    return true;
+  });
+}
+
 /* ============================ Queries ============================ */
 
 /** Danh sách nhà hàng với cursor pagination và bộ lọc
@@ -117,6 +133,7 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
+    totalCount: await Restaurant.countDocuments({ managerId: new mongoose.Types.ObjectId(managerId), ...buildFilter(restaurantFilter) }),
   };
 }
 
@@ -174,6 +191,7 @@ async function restaurantsByManager(
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
+    totalCount: await Restaurant.countDocuments(buildFilter(restaurantFilter)),
   };
 }
 
@@ -333,4 +351,62 @@ export const RestaurantQuery = {
   restaurantsByCategoryTimeSlot,
   restaurantCategoryIndexes,
   refreshRestaurantCategoryIndexes,
+  publicRestaurants,
+  publicRestaurant,
+  similarRestaurants,
 };
+
+
+async function publicRestaurants(_, { limit = 20, cursor, filter }) {
+  const lim = clampLimit(limit, 1, 100);
+  const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
+  const countFilter = { ...baseFilter };
+
+  const cId = toObjectIdOrNull(cursor);
+  if (cId) baseFilter._id = { ...(baseFilter._id || {}), $gt: cId };
+
+  const rawDocs = await Restaurant.find(baseFilter).sort({ _id: 1 }).limit(500).lean();
+  const filtered = applyPublicAvailabilityFilters(rawDocs, filter);
+  const pageSlice = filtered.slice(0, lim + 1);
+  const hasNextPage = pageSlice.length > lim;
+  const slice = hasNextPage ? pageSlice.slice(0, lim) : pageSlice;
+
+  const allCountDocs = await Restaurant.find(countFilter).lean();
+  const totalCount = applyPublicAvailabilityFilters(allCountDocs, filter).length;
+
+  return {
+    edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+    pageInfo: {
+      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+      hasNextPage,
+    },
+    totalCount,
+  };
+}
+async function publicRestaurant(_, { id }) {
+  if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
+  return Restaurant.findOne({ _id: id, businessStatus: "active", publicationStatus: "published" }).lean();
+}
+async function similarRestaurants(_, { restaurantId, limit = 6 }) {
+  const root = await Restaurant.findOne({ _id: restaurantId, businessStatus: "active", publicationStatus: "published" }).lean();
+  if (!root) return [];
+  const lim = clampLimit(limit, 1, 20);
+
+  const sameCuisine = await Restaurant.find({
+    _id: { $ne: root._id },
+    businessStatus: "active",
+    publicationStatus: "published",
+    cuisineType: root.cuisineType,
+  }).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
+
+  if (sameCuisine.length >= lim) return sameCuisine;
+
+  const fallback = await Restaurant.find({
+    _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) },
+    businessStatus: "active",
+    publicationStatus: "published",
+    $or: [{ "address.district": root.address?.district }, { "address.city": root.address?.city }],
+  }).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim - sameCuisine.length).lean();
+
+  return [...sameCuisine, ...fallback];
+}
