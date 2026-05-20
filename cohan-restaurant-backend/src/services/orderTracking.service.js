@@ -98,10 +98,11 @@ export function toCustomerTrackingPayload(order = {}) {
     order?.orderPaymentStatus || order?.payment?.status || "unpaid",
   ).toLowerCase();
   const latestRequest = Array.isArray(order?.customerRequests)
-  ? [...order.customerRequests]
-      .filter(Boolean)
-      .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
+    ? [...order.customerRequests]
+        .filter(Boolean)
+        .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
     : null;
+
   return {
     trackingCode: order.trackingCode,
     publicStatus: order.publicStatus,
@@ -119,16 +120,16 @@ export function toCustomerTrackingPayload(order = {}) {
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
     latestRequest: latestRequest
-  ? {
-      requestId: latestRequest.requestId || null,
-      type: latestRequest.type || null,
-      status: latestRequest.status || null,
-      message: latestRequest.message || null,
-      createdAt: latestRequest.createdAt || null,
-      acknowledgedAt: latestRequest.acknowledgedAt || null,
-      resolvedAt: latestRequest.resolvedAt || null,
-    }
-  : null,
+      ? {
+          requestId: latestRequest.requestId || null,
+          type: latestRequest.type || null,
+          status: latestRequest.status || null,
+          message: latestRequest.message || null,
+          createdAt: latestRequest.createdAt || null,
+          acknowledgedAt: latestRequest.acknowledgedAt || null,
+          resolvedAt: latestRequest.resolvedAt || null,
+        }
+      : null,
   };
 }
 
