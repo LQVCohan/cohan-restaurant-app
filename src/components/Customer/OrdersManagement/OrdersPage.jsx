@@ -585,7 +585,7 @@ export default function OrdersPage() {
   // Filter + Search + Sort logic
   const visibleItems = useMemo(() => {
     const searchText = searchTerm.trim().toLowerCase();
-    const completedStatuses = ["completed"];
+    const completedStatuses = ["completed", "seated"];
     const cancelledStatuses = ["cancelled", "rejected", "expired"];
 
     const tabFiltered = allItems.filter((item) => {
