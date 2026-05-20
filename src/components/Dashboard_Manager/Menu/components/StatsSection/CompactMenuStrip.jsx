@@ -26,6 +26,7 @@ import {
 import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
+import MenuConfirmDialog from "../common/MenuConfirmDialog";
 import "./CompactMenuStrip.scss";
 import "./CompactMenuStripPolish.scss";
 
@@ -323,9 +324,7 @@ const CompactMenuStrip = ({
       const warningText = result?.warnings?.length
         ? ` Có ${result.warnings.length} cảnh báo cần kiểm tra.`
         : "";
-      setActionMessage(
-        `Đã kiểm tra ${result?.checkedCount || 0} món, cập nhật ${result?.updatedCount || 0} trạng thái.${warningText}`,
-      );
+      setActionMessage(`Đã kiểm tra ${result?.checkedCount || 0} món, cập nhật ${result?.updatedCount || 0} trạng thái.${warningText}`);
     } catch (error) {
       setActionError(errorText(error, "Không thể đồng bộ tồn kho. Vui lòng thử lại."));
     } finally {
@@ -616,26 +615,22 @@ const CompactMenuStrip = ({
         entityId={historyMenu?.id || historyMenu?._id}
         title={`Lịch sử menu: ${historyMenu?.name || "Thực đơn"}`}
       />
-      {deleteCandidate && (
-        <div className="cms-confirm-overlay" onClick={handleCancelDeleteMenu}>
-          <div className="cms-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h4>Xóa thực đơn?</h4>
-            <p className="cms-confirm-dialog__warning">
-              {deleteCandidate.itemCount > 0
-                ? `Thực đơn này đang có ${deleteCandidate.itemCount} món. Xóa sẽ xóa kèm các món và recipe trong thực đơn này.`
-                : "Bạn có chắc chắn muốn xóa thực đơn này?"}
-            </p>
-            <div className="cms-confirm-dialog__actions">
-              <button className="cms-confirm-btn cms-confirm-btn--secondary" onClick={handleCancelDeleteMenu} disabled={isDeletingCandidate}>
-                Hủy
-              </button>
-              <button className="cms-confirm-btn cms-confirm-btn--danger" onClick={handleConfirmDeleteMenu} disabled={isDeletingCandidate}>
-                {isDeletingCandidate ? "Đang xóa..." : "Xóa thực đơn"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MenuConfirmDialog
+        isOpen={!!deleteCandidate}
+        title={deleteCandidate?.itemCount > 0 ? "Xóa thực đơn có món?" : "Xóa thực đơn?"}
+        message={
+          deleteCandidate?.itemCount > 0
+            ? "Thực đơn này đang có món. Xóa thực đơn sẽ xóa kèm món/recipe thuộc thực đơn này."
+            : "Bạn có chắc muốn xóa thực đơn này?"
+        }
+        description={deleteCandidate?.itemCount > 0 ? `Số món hiện có: ${deleteCandidate.itemCount}` : ""}
+        tone={deleteCandidate?.itemCount > 0 ? "danger" : "default"}
+        confirmText={deleteCandidate?.itemCount > 0 ? "Xóa kèm món" : "Xóa"}
+        cancelText="Hủy"
+        isLoading={isDeletingCandidate}
+        onCancel={handleCancelDeleteMenu}
+        onConfirm={handleConfirmDeleteMenu}
+      />
     </>
   );
 };

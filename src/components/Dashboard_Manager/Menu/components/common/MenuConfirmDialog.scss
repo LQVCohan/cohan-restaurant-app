@@ -1,0 +1,14 @@
+.menu-confirm-dialog {
+  &__content { display: flex; flex-direction: column; gap: 12px; }
+  &__hero { display: flex; align-items: flex-start; gap: 10px; p { margin: 0; line-height: 1.55; color: #334155; font-weight: 600; } }
+  &__description { margin: 0; color: #64748b; font-size: 14px; line-height: 1.5; }
+  &__preview { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #fffaf4; }
+  &__btn { border-radius: 999px; min-width: 110px; padding: 9px 14px; font-weight: 700; border: 1px solid transparent; }
+  &__btn.cancel { background: #fff; border-color: #cbd5e1; color: #475569; }
+  &__btn.confirm { background: linear-gradient(135deg, #9f7449, #c5a47e); color: #fff; }
+  &--danger .menu-confirm-dialog__hero svg { color: #dc2626; }
+  &--warning .menu-confirm-dialog__hero svg { color: #d97706; }
+  &--success .menu-confirm-dialog__hero svg { color: #0f766e; }
+  &--default .menu-confirm-dialog__hero svg { color: #9f7449; }
+  &--danger .menu-confirm-dialog__btn.confirm { background: linear-gradient(135deg, #b91c1c, #dc2626); }
+}
