@@ -170,3 +170,36 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).session(session);
 }
+
+
+export async function syncKitchenOrderWorkItemsForOrderStatusChange({
+  order,
+  itemTransitions,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order?._id || !Array.isArray(itemTransitions) || !itemTransitions.length) {
+    return { syncedCount: 0 };
+  }
+
+  let syncedCount = 0;
+  for (const transition of itemTransitions) {
+    const item = transition?.item;
+    const nextStatus = transition?.nextStatus;
+    if (!item?._id || !nextStatus) continue;
+
+    await upsertKitchenOrderWorkItemForStatusChange({
+      order,
+      item,
+      previousStatus: transition?.previousStatus,
+      nextStatus,
+      actorUserId,
+      now,
+      session,
+    });
+    syncedCount += 1;
+  }
+
+  return { syncedCount };
+}

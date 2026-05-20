@@ -174,4 +174,96 @@ describe("kitchenOrderWorkItem service", () => {
       }),
     ).resolves.toBeTruthy();
   });
+
+describe("syncKitchenOrderWorkItemsForOrderStatusChange", () => {
+  it("calls upsert for each valid transition", async () => {
+    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+    const now = new Date("2026-05-20T10:00:00.000Z");
+    const order = { _id: "o1", restaurantId: "r1" };
+    const itemTransitions = [
+      { item: { _id: "i1" }, previousStatus: "pending", nextStatus: "preparing" },
+      { item: { _id: "i2" }, previousStatus: "preparing", nextStatus: "ready" },
+    ];
+
+    const result = await service.syncKitchenOrderWorkItemsForOrderStatusChange({
+      order,
+      itemTransitions,
+      actorUserId: "u1",
+      now,
+      session: {},
+    });
+
+    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
+      1,
+      { orderId: "o1", orderItemId: "i1" },
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
+      2,
+      { orderId: "o1", orderItemId: "i2" },
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(result).toEqual({ syncedCount: 2 });
+  });
+
+  it("skips transition missing item or nextStatus and returns accurate syncedCount", async () => {
+    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+    const result = await service.syncKitchenOrderWorkItemsForOrderStatusChange({
+      order: { _id: "o1" },
+      itemTransitions: [
+        { item: null, previousStatus: "pending", nextStatus: "preparing" },
+        { item: { _id: "i1" }, previousStatus: "pending" },
+        { item: { _id: "i2" }, previousStatus: "pending", nextStatus: "preparing" },
+      ],
+      session: {},
+    });
+
+    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ syncedCount: 1 });
+  });
+
+  it("returns zero when order missing or transitions empty", async () => {
+    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+    await expect(
+      service.syncKitchenOrderWorkItemsForOrderStatusChange({ order: null, itemTransitions: [{ item: { _id: "i1" }, nextStatus: "served" }] }),
+    ).resolves.toEqual({ syncedCount: 0 });
+
+    await expect(
+      service.syncKitchenOrderWorkItemsForOrderStatusChange({ order: { _id: "o1" }, itemTransitions: [] }),
+    ).resolves.toEqual({ syncedCount: 0 });
+  });
+
+  it("processes transitions sequentially", async () => {
+    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+    const callOrder = [];
+    modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mockImplementation(({ orderItemId }) => {
+      callOrder.push(`start-${orderItemId}`);
+      return {
+        session: vi.fn(async () => {
+          await new Promise((resolve) => setTimeout(resolve, orderItemId === "i1" ? 15 : 0));
+          callOrder.push(`end-${orderItemId}`);
+          return { _id: `work-${orderItemId}` };
+        }),
+      };
+    });
+
+    await service.syncKitchenOrderWorkItemsForOrderStatusChange({
+      order: { _id: "o1", restaurantId: "r1" },
+      itemTransitions: [
+        { item: { _id: "i1" }, previousStatus: "pending", nextStatus: "preparing" },
+        { item: { _id: "i2" }, previousStatus: "pending", nextStatus: "preparing" },
+      ],
+      session: {},
+    });
+
+    expect(callOrder).toEqual(["start-i1", "end-i1", "start-i2", "end-i2"]);
+  });
+});
+
 });
