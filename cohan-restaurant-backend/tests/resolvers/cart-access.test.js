@@ -4,6 +4,8 @@ const model = vi.hoisted(() => ({
   Cart: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), create: vi.fn() },
   Warehouse: { findOne: vi.fn() },
   Restaurant: { findById: vi.fn() },
+  MenuItem: { findById: vi.fn() },
+  Menu: { findOne: vi.fn() },
 }));
 const inv = vi.hoisted(() => ({ checkAvailabilityForLinesTx: vi.fn(), reserveForOrderTx: vi.fn(), cancelReservationForOrderTx: vi.fn() }));
 const event = vi.hoisted(() => ({ logObjectEvent: vi.fn() }));
@@ -40,8 +42,9 @@ const makeRestaurantQuery = (restaurant = {}) => ({
   lean: vi.fn().mockResolvedValue({
     _id: "valid-r1",
     status: "active",
-    businessStatus: "open",
+    businessStatus: "active",
     publicationStatus: "published",
+    orderPolicy: { allowWhenClosed: true },
     ...restaurant,
   }),
 });
@@ -98,6 +101,16 @@ describe("cart access hardening", () => {
     mg.startSession.mockResolvedValue(session);
     model.Cart.create.mockResolvedValue([{ _id: "valid-c1", items: [], status: "active", toObject: () => ({ _id: "valid-c1", items: [] }), save: vi.fn() }]);
     model.Restaurant.findById.mockReturnValue(makeRestaurantQuery());
+    model.MenuItem.findById.mockReturnValue(
+      queryChain({
+        _id: "valid-m1",
+        restaurantId: "valid-r1",
+        status: "available",
+        inventoryStatus: "IN_STOCK",
+        menuId: "valid-menu-1",
+      }),
+    );
+    model.Menu.findOne.mockReturnValue(queryChain({ _id: "valid-menu-1", isActive: true, restaurantId: "valid-r1" }));
   });
 
   it("myCart rejects unauthenticated and cross-user", async () => {
