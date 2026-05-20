@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import {
   Award,
@@ -248,6 +248,13 @@ export const resolveTrendDelta = (currentScore, previousScore) => {
   const previous = Number(previousScore);
   if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
   return Math.round((current - previous) * 100) / 100;
+};
+
+export const resolveEffectivePerformanceRestaurantId = (selectedRestaurant) => {
+  if (selectedRestaurant === null || selectedRestaurant === undefined) return null;
+  const normalizedValue = String(selectedRestaurant).trim();
+  if (!normalizedValue || normalizedValue.toLowerCase() === "all") return null;
+  return normalizedValue;
 };
 
 export const buildPerformanceOverview = (rows = []) => {
@@ -880,10 +887,17 @@ const StaffPerformancePage = ({
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [reviewEmployee, setReviewEmployee] = useState(null);
 
-  const effectiveRestaurantId =
-    selectedRestaurant !== "all"
-      ? selectedRestaurant
-      : restaurantList?.[0]?.id || employees?.[0]?.restaurantForStaff || "";
+  const effectiveRestaurantId = resolveEffectivePerformanceRestaurantId(selectedRestaurant);
+  const hasSpecificRestaurantSelected = Boolean(effectiveRestaurantId);
+  const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
+
+  useEffect(() => {
+    if (hasSpecificRestaurantSelected) return;
+    setSelectedSnapshot(null);
+    setSelectedEmployee(null);
+    setSelectedPreviousSnapshot(null);
+    setReviewEmployee(null);
+  }, [effectiveRestaurantId, hasSpecificRestaurantSelected]);
 
   const {
     snapshots,
@@ -897,6 +911,7 @@ const StaffPerformancePage = ({
     restaurantId: effectiveRestaurantId,
     periodStart,
     periodEnd,
+    skip: !hasSpecificRestaurantSelected,
   });
 
   const snapshotByEmployee = useMemo(
@@ -909,6 +924,7 @@ const StaffPerformancePage = ({
     restaurantId: previousPeriod ? effectiveRestaurantId : undefined,
     periodStart: previousPeriod?.periodStart,
     periodEnd: previousPeriod?.periodEnd,
+    skip: !hasSpecificRestaurantSelected || !previousPeriod,
   });
   const previousSnapshotByEmployee = useMemo(
     () => buildPreviousSnapshotMap(previousSnapshots, periodStart),
@@ -1089,6 +1105,7 @@ const StaffPerformancePage = ({
   };
 
   const handleSubmitReview = async (input) => {
+    if (!effectiveRestaurantId) return;
     try {
       await upsertStaffPerformanceReview({ variables: { input } });
 
@@ -1115,8 +1132,8 @@ const StaffPerformancePage = ({
     }
   };
 
-  const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
   const handleExportCsv = () => {
+    if (!hasSpecificRestaurantSelected) return;
     const csvContent = buildPerformanceOverviewCsvBlobContent(rows);
     const filename = `staff-performance-overview-${periodStart}-${periodEnd}.csv`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -1129,9 +1146,15 @@ const StaffPerformancePage = ({
   };
 
   const openDetail = (row) => {
+    if (!hasSpecificRestaurantSelected) return;
     setSelectedSnapshot(row.snapshot);
     setSelectedPreviousSnapshot(row.previousSnapshot);
     setSelectedEmployee(row.employee);
+  };
+
+  const openReviewModal = (employee) => {
+    if (!hasSpecificRestaurantSelected) return;
+    setReviewEmployee(employee);
   };
 
   return (
@@ -1161,6 +1184,7 @@ const StaffPerformancePage = ({
             type="button"
             className="btn-secondary"
             onClick={handleExportCsv}
+            disabled={!hasSpecificRestaurantSelected}
           >
             Xuất CSV
           </button>
@@ -1294,6 +1318,13 @@ productivity * 25%
         </div>
       </section>
 
+      {!hasSpecificRestaurantSelected ? (
+        <div className="performance-empty-state" role="status">
+          Vui lòng chọn một nhà hàng cụ thể để xem hiệu suất nhân viên.
+        </div>
+      ) : null}
+
+      {hasSpecificRestaurantSelected ? (
       <section className="performance-overview">
         <article className="overview-card">
           <h3>Tăng nhiều nhất</h3>
@@ -1329,13 +1360,15 @@ productivity * 25%
           ) : null}
         </article>
       </section>
+      ) : null}
 
-      {error ? (
+      {hasSpecificRestaurantSelected && error ? (
         <div className="performance-error">
           Không tải được dữ liệu hiệu suất: {error.message}
         </div>
       ) : null}
 
+      {hasSpecificRestaurantSelected ? (
       <section className="performance-layout">
         <div className="performance-table-card">
           <div className="table-header">
@@ -1458,7 +1491,7 @@ productivity * 25%
                         <button
                           type="button"
                           className="row-action"
-                          onClick={() => setReviewEmployee(employee)}
+                          onClick={() => openReviewModal(employee)}
                         >
                           Đánh giá
                         </button>
@@ -1490,6 +1523,7 @@ productivity * 25%
           }}
         />
       </section>
+      ) : null}
 
       <ReviewModal
         isOpen={Boolean(reviewEmployee)}
