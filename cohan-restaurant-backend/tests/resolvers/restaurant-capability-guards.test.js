@@ -46,7 +46,5 @@ describe("restaurantCapabilityGuards", () => {
     expect(() => guards.assertRestaurantCanReserve({ canReserve: true })).not.toThrow();
   });
 
-  it("TODO: add integration-level createCheckoutOrders/createReservation capability-gating tests with light fixtures", () => {
-    expect(true).toBe(true);
-  });
+  // TODO: add integration-level createCheckoutOrders/createReservation capability-gating tests with light fixtures.
 });
