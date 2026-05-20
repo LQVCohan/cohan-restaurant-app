@@ -3,8 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const makeQuery = (doc) => ({
   sort: vi.fn().mockReturnThis(),
   session: vi.fn().mockReturnThis(),
+  select: vi.fn().mockReturnThis(),
+  lean: vi.fn().mockResolvedValue(doc),
   then: (resolve, reject) => Promise.resolve(doc).then(resolve, reject),
 });
+
+const makeGuestDoc = (overrides = {}) => {
+  const doc = { _id: "guest-1", isGuest: true, ...overrides };
+  doc.save = vi.fn().mockResolvedValue(doc);
+  return doc;
+};
 
 const modelMocks = vi.hoisted(() => ({
   Customer: { findOne: vi.fn(), create: vi.fn() },
@@ -16,6 +24,8 @@ vi.mock("../../models/index.js", () => modelMocks);
 describe("order userUtils identity helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Customer.findOne.mockReset();
+    modelMocks.Customer.create.mockReset();
   });
 
   it("normalizes and compacts customer input without empty email/phone", async () => {
@@ -155,10 +165,12 @@ describe("order userUtils identity helpers", () => {
   });
 
   it("updates matched guest when resolving/creating order customer", async () => {
-    const guest = { _id: "guest-1", isGuest: true, save: vi.fn().mockResolvedValue(undefined) };
-    modelMocks.Customer.findOne
-      .mockReturnValueOnce(makeQuery(guest))
-      .mockReturnValueOnce(makeQuery(null));
+    const guest = makeGuestDoc({ email: "guest@example.com" });
+    modelMocks.Customer.findOne.mockImplementation((query) => {
+      if (query?.email) return makeQuery(guest);
+      if (query?.phone) return makeQuery(null);
+      return makeQuery(null);
+    });
 
     const { resolveOrCreateGuestCustomerForOrder } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"

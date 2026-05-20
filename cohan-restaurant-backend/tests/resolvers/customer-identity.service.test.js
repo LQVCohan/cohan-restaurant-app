@@ -3,8 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const makeQuery = (doc) => ({
   sort: vi.fn().mockReturnThis(),
   session: vi.fn().mockReturnThis(),
+  select: vi.fn().mockReturnThis(),
+  lean: vi.fn().mockResolvedValue(doc),
   then: (resolve, reject) => Promise.resolve(doc).then(resolve, reject),
 });
+
+const makeGuestDoc = (overrides = {}) => {
+  const doc = { _id: "g1", isGuest: true, ...overrides };
+  doc.save = vi.fn().mockResolvedValue(doc);
+  return doc;
+};
 
 const modelMocks = vi.hoisted(() => ({
   Customer: { findOne: vi.fn(), create: vi.fn() },
@@ -15,6 +23,8 @@ vi.mock("../../models/index.js", () => modelMocks);
 describe("customerIdentity shared service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Customer.findOne.mockReset();
+    modelMocks.Customer.create.mockReset();
   });
 
   it("normalizes email and phone", async () => {
@@ -55,11 +65,13 @@ describe("customerIdentity shared service", () => {
   });
 
   it("returns conflict for registered email and different guest phone", async () => {
-    modelMocks.Customer.findOne
-      .mockReturnValueOnce(makeQuery({ _id: "u1", isGuest: false }))
-      .mockReturnValueOnce(makeQuery({ _id: "g2", isGuest: true }));
+    modelMocks.Customer.findOne.mockImplementation((query) => {
+      if (query?.email) return makeQuery({ _id: "u1", isGuest: false });
+      if (query?.phone) return makeQuery(makeGuestDoc({ _id: "g2" }));
+      return makeQuery(null);
+    });
     const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
-    const out = await resolveCustomerIdentityByContact({ email: "u@x.com", phone: "0902" });
+    const out = await resolveCustomerIdentityByContact({ email: "u@x.com", phone: "0902123456" });
     expect(out.conflict).toEqual({ emailUserId: "u1", phoneUserId: "g2" });
   });
 
@@ -67,7 +79,7 @@ describe("customerIdentity shared service", () => {
     modelMocks.Customer.findOne
       .mockReturnValueOnce(makeQuery(null))
       .mockReturnValueOnce(makeQuery(null));
-    modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "g3", fullName: "Khách", isGuest: true }]);
+    modelMocks.Customer.create.mockImplementationOnce(() => Promise.resolve([{ _id: "g3", fullName: "Khách", isGuest: true }]));
     const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
     const out = await resolveCustomerIdentityByContact({ email: "a@b.com", createIfMissing: true });
     expect(out.mode).toBe("created_guest");

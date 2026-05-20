@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../src/services/auth/authorization.service.js";
+vi.mock("../../models/index.js", async () => {
+  const actual = await vi.importActual("../../models/index.js");
+  return {
+    ...actual,
+    Restaurant: {
+      ...actual.Restaurant,
+      exists: vi.fn().mockResolvedValue(false),
+    },
+  };
+});
 
-const RESTAURANT_ID = "507f1f77bcf86cd799439011";
-const OTHER_RESTAURANT_ID = "507f1f77bcf86cd799439012";
+
+const RESTAURANT_ID = "rest-main-1";
+const OTHER_RESTAURANT_ID = "rest-other-1";
 
 function role(slug, permissions = []) {
   return {
