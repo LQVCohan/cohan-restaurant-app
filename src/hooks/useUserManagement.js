@@ -671,6 +671,9 @@ const useUserManagement = () => {
       raw: u,
       email: u.email || null,
       phone: u.phone || null,
+      online: !!u.isOnline,
+      lastLoginAt: u.lastLoginAt || null,
+      verificationStatus: u.emailVerified ? "verified" : "unverified",
     };
   }, []);
   const getCustomersPage = useCallback(async ({

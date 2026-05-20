@@ -292,4 +292,44 @@ describe("user/customer restaurant access guards", () => {
     expect(modelMocks.Customer.countDocuments).toHaveBeenCalled();
     expect(result.items).toHaveLength(1);
   });
+
+  it("customerListPage ALL + includeGuests=true + search keeps both kind/search clauses", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne = vi.fn(() => ({ lean: async () => ({ _id: "role-customer" }) }));
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    modelMocks.Customer.find.mockReturnValue({
+      populate: () => ({ populate: () => ({ sort: () => ({ skip: () => ({ limit: () => ({ lean: async () => [] }) }) }) }) }),
+    });
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerListPage(
+      null,
+      {
+        restaurantId: "valid-r1",
+        customerKind: "ALL",
+        includeGuests: true,
+        search: "abc",
+      },
+      ctxFor(),
+    );
+
+    const countCond = modelMocks.Customer.countDocuments.mock.calls.at(-1)?.[0];
+    const findCond = modelMocks.Customer.find.mock.calls.at(-1)?.[0];
+    expect(countCond).toEqual(findCond);
+    expect(countCond).toMatchObject({
+      $and: [
+        { refRestaurants: { $in: [{ _mockObjectId: "valid-r1" }] } },
+        { $or: [{ role: "role-customer" }, { isGuest: true }] },
+      ],
+    });
+    const andClauses = countCond?.$and || [];
+    const searchClause = andClauses.find((x) => Array.isArray(x?.$or));
+    expect(searchClause?.$or).toEqual(
+      expect.arrayContaining([
+        { fullName: expect.any(RegExp) },
+        { username: expect.any(RegExp) },
+        { email: expect.any(RegExp) },
+        { phone: expect.any(RegExp) },
+      ]),
+    );
+  });
 });

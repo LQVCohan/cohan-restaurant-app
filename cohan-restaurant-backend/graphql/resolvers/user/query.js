@@ -322,7 +322,9 @@ export const UserQuery = {
       else kindClause = customerRoleClause || { _id: { $exists: false } };
     }
 
-    const finalCond = { ...restaurantScopeCond, ...(searchCond || {}), ...kindClause };
+    const clauses = [restaurantScopeCond, kindClause].filter(Boolean);
+    if (searchCond) clauses.push(searchCond);
+    const finalCond = clauses.length === 1 ? clauses[0] : { $and: clauses };
     const dir = String(sortDirection).toUpperCase() === "ASC" ? 1 : -1;
     const sortMap = {
       CREATED_AT: { createdAt: dir, _id: dir },
