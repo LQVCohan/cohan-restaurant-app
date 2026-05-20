@@ -2,10 +2,8 @@ import React, { useContext, useMemo } from "react";
 import {
   AlertTriangle,
   BarChart3,
-  ClipboardList,
   RefreshCw,
   Monitor,
-  FileText,
   CalendarRange,
   Store,
 } from "lucide-react";
@@ -56,7 +54,7 @@ const Dashboard = () => {
     return fullName ? `Xin chào, ${fullName}` : "Tổng quan vận hành";
   }, [user]);
 
-  const rangeLabel = RANGE_LABELS[range] || "Hôm nay";
+  const rangeLabel = RANGE_LABELS[range] || "7 ngày gần nhất";
 
   return (
     <div className="manager-dashboard">
@@ -71,10 +69,6 @@ const Dashboard = () => {
         </div>
 
         <div className="dashboard-hero__actions">
-          <button type="button" className="dashboard-btn dashboard-btn--secondary" onClick={() => handleGenerateReport?.()} disabled={loading}>
-            <FileText size={16} />
-            <span>Xuất báo cáo</span>
-          </button>
           <button type="button" className="dashboard-btn dashboard-btn--ghost" onClick={() => handleGenerateReport?.()} disabled={loading}>
             <RefreshCw size={16} className={loading ? "spin" : ""} />
             <span>Làm mới</span>
@@ -141,7 +135,7 @@ const Dashboard = () => {
 
       <section className="dashboard-section">
         <div className="dashboard-section__head">
-          <h2>Tổng quan hôm nay</h2>
+          <h2>Tổng quan vận hành</h2>
         </div>
         <div className="dashboard-kpi-grid">
           <StatsGrid stats={stats} isLoading={loading} />
@@ -188,9 +182,8 @@ const Dashboard = () => {
               <h3>Đơn hàng gần đây</h3>
               <p>Theo dõi các đơn mới và trạng thái xử lý</p>
             </div>
-            <span className="dashboard-link">Xem tất cả</span>
           </div>
-          <RecentOrders orders={safeRecentOrders} loading={loading} />
+          <RecentOrders orders={safeRecentOrders} loading={loading} variant="bare" />
         </article>
 
         <article className="dashboard-card dashboard-list-card">
@@ -200,13 +193,7 @@ const Dashboard = () => {
               <p>Các món có doanh số tốt nhất</p>
             </div>
           </div>
-          <TopDishes data={safeTopDishes} lowStockItems={safeLowStockItems} loading={loading} />
-          {!loading && safeTopDishes.length === 0 ? (
-            <div className="dashboard-empty dashboard-empty--compact">
-              <ClipboardList size={18} />
-              <h4>Chưa có dữ liệu món bán chạy.</h4>
-            </div>
-          ) : null}
+          <TopDishes data={safeTopDishes} lowStockItems={safeLowStockItems} loading={loading} variant="bare" />
         </article>
       </section>
     </div>

@@ -9,60 +9,72 @@ const formatMoney = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const RecentOrders = ({ orders = [], loading }) => {
+const STATUS_LABEL = {
+  pending: "Chờ xử lý",
+  confirmed: "Chờ xử lý",
+  customer_attached: "Chờ xử lý",
+  preparing: "Đang chuẩn bị",
+  ready: "Đang chuẩn bị",
+  served: "Đang chuẩn bị",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+const STATUS_CLASS = {
+  pending: "pending",
+  confirmed: "pending",
+  customer_attached: "pending",
+  preparing: "preparing",
+  ready: "preparing",
+  served: "preparing",
+  completed: "completed",
+  cancelled: "cancelled",
+};
+
+const RecentOrders = ({ orders = [], loading, variant = "card" }) => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const shellClass = variant === "bare" ? "recent-orders recent-orders--bare" : "dashboard-widget recent-orders";
+
   return (
-    <div className="dashboard-widget recent-orders">
-      <div className="widget-header">
-        <h3 className="widget-title">Đơn Hàng Gần Đây</h3>
-      </div>
-      <div className="table-header-row">
-        <span className="th-1">Khách hàng / Mã</span>
-        <span className="th-2">Thực đơn gọi</span>
-        <span className="th-3">Trạng thái</span>
-        <span className="th-4">Tổng tiền</span>
-        <span className="th-5"></span>
-      </div>
+    <div className={shellClass}>
+      {variant !== "bare" ? (
+        <div className="widget-header">
+          <h3 className="widget-title">Đơn hàng gần đây</h3>
+        </div>
+      ) : null}
+
       <div className="order-list-body custom-scrollbar">
-        {loading ? <div className="empty-state"><p>Đang tải...</p></div> : null}
-        {!loading && orders.length === 0 ? (
+        {loading ? <div className="empty-state"><p>Đang tải dữ liệu...</p></div> : null}
+        {!loading && safeOrders.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              <ShoppingBag size={40} />
+              <ShoppingBag size={28} />
             </div>
-            <p>Chưa có đơn hàng nào</p>
+            <p>Chưa có đơn hàng trong khoảng thời gian này.</p>
           </div>
         ) : null}
-        {!loading &&
-          orders.map((order) => (
-            <div className="order-row fade-in-item" key={order.id}>
-              <div className="col-info">
-                <div className="text-wrapper">
-                  <div className="row-top">
-                    <span className="customer-name">{order.customerName || "Khách"}</span>
-                    <span className="dot">•</span>
-                    <span className="order-id">#{order.orderCode || order.id}</span>
-                  </div>
-                  <div className="row-bottom">
-                    <span className="location-tag">{order.tableCode || order.orderType}</span>
-                    <span className="time-ago">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "—"}
-                    </span>
-                  </div>
-                </div>
+
+        {!loading && safeOrders.map((order) => {
+          const statusRaw = String(order?.status || "").toLowerCase();
+          const statusClass = STATUS_CLASS[statusRaw] || "unknown";
+          const statusLabel = STATUS_LABEL[statusRaw] || "Không xác định";
+
+          return (
+            <div className="order-row" key={order.id}>
+              <div className="order-row__main">
+                <p className="order-code">#{order.orderCode || order.id}</p>
+                <p className="order-meta">
+                  {order.customerName || "Khách"} • {order.tableCode || order.orderType || "Tại quầy"}
+                </p>
               </div>
-              <div className="col-menu">
-                <span className="menu-text">{(order.itemNames || []).slice(0, 2).join(", ")}</span>
-              </div>
-              <div className="col-status">
-                <div className="status-pill">
-                  <span>{order.status || "pending"}</span>
-                </div>
-              </div>
-              <div className="col-total">
-                <span className="amount">{formatMoney(order.total)}</span>
+              <div className={`status-pill status-pill--${statusClass}`}>{statusLabel}</div>
+              <div className="order-row__side">
+                <p className="order-amount">{formatMoney(order.total)}</p>
+                <p className="order-time">{order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "—"}</p>
               </div>
             </div>
-          ))}
+          );
+        })}
       </div>
     </div>
   );

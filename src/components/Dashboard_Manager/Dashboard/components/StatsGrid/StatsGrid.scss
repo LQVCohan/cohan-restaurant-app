@@ -1,206 +1,88 @@
-// Variables
-@use "sass:list";
-$bg-card: #ffffff;
-$text-main: #111827;
-$text-sub: #6b7280;
-$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-$radius: 16px;
-
-// Color Palettes (Background Light / Main Color)
-$colors: (
-  "emerald": (
-    #ecfdf5,
-    #059669,
-  ),
-  // Revenue
-  "blue":
-    (
-      #eff6ff,
-      #2563eb,
-    ),
-  // Orders
-  "violet":
-    (
-      #f5f3ff,
-      #7c3aed,
-    ),
-  // Customers
-  "amber":
-    (
-      #fffbeb,
-      #d97706,
-    )
-    // Rating,
-);
-
 .stats-grid-container {
-  display: grid;
-  // Responsive Grid: Tự động xuống dòng
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  width: 100%;
-
-  .stat-card {
-    background: $bg-card;
-    border-radius: $radius;
-    padding: 20px;
-    box-shadow: $shadow-sm;
-    border: 1px solid #e5e7eb;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 160px;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-
-    // --- Header: Icon & Trend ---
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
-      z-index: 2; // Nổi lên trên chart
-
-      .icon-wrapper {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s;
-      }
-
-      .trend-badge {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 20px;
-
-        &.positive {
-          background: #ecfdf5;
-          color: #059669;
-        }
-        &.negative {
-          background: #fef2f2;
-          color: #dc2626;
-        }
-      }
-    }
-
-    // --- Main Info ---
-    .card-main {
-      z-index: 2;
-      .stat-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: $text-sub;
-        display: block;
-        margin-bottom: 4px;
-      }
-
-      .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: $text-main;
-        margin: 0;
-        line-height: 1.2;
-      }
-
-      .sub-text {
-        font-size: 11px;
-        color: #9ca3af;
-        margin-top: 4px;
-      }
-    }
-
-    // --- Mini Chart (Absolute Position) ---
-    .card-chart {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      width: 120px;
-      height: 60px;
-      opacity: 0.5;
-      z-index: 1;
-      pointer-events: none; // Không chặn hover
-    }
-
-    // --- Theming (Dynamic Colors) ---
-    @each $name, $vals in $colors {
-      &.#{$name} {
-        .icon-wrapper {
-          background: list.nth($vals, 1);
-          color: list.nth($vals, 2);
-        }
-        // Màu cho chart SVG (dùng 'currentColor')
-        color: list.nth($vals, 2);
-      }
-    }
-
-    // --- SKELETON LOADING STATE ---
-    &.skeleton-card {
-      pointer-events: none;
-
-      .sk-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: #f3f4f6;
-        margin-bottom: 16px;
-      }
-      .sk-content {
-        .sk-line {
-          background: #f3f4f6;
-          height: 10px;
-          border-radius: 4px;
-          margin-bottom: 8px;
-        }
-        .h-large {
-          height: 24px;
-        }
-        .w-50 {
-          width: 50%;
-        }
-        .w-80 {
-          width: 80%;
-        }
-      }
-
-      // Animation shimmer
-      &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.5),
-          transparent
-        );
-        animation: skeleton-loading 1.5s infinite;
-      }
-    }
-  }
+  display: contents;
 }
 
-@keyframes skeleton-loading {
-  0% {
-    transform: translateX(-100%);
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 18px;
+  min-height: 138px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
+  transition: all 160ms ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    border-color: #dbeafe;
   }
-  100% {
-    transform: translateX(100%);
+
+  &__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
+
+  .icon-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .trend-badge {
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+
+    &--neutral {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+  }
+
+  .stat-label {
+    margin: 14px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .stat-value {
+    margin: 6px 0 0;
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .stat-sub {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  &--primary .icon-badge { background: #eff6ff; color: #2563eb; }
+  &--success .icon-badge { background: #ecfdf5; color: #16a34a; }
+  &--warning .icon-badge { background: #fffbeb; color: #f59e0b; }
+  &--danger .icon-badge { background: #fef2f2; color: #dc2626; }
+  &--info .icon-badge { background: #ecfeff; color: #0891b2; }
+  &--neutral .icon-badge { background: #f3f4f6; color: #4b5563; }
+}
+
+.stat-card--skeleton {
+  .dashboard-skeleton { border-radius: 10px; }
+  .sk-icon { width: 42px; height: 42px; border-radius: 14px; }
+  .sk-trend { width: 64px; height: 24px; border-radius: 999px; }
+  .sk-label { margin-top: 14px; width: 45%; height: 14px; }
+  .sk-value { margin-top: 8px; width: 60%; height: 30px; }
+  .sk-sub { margin-top: 10px; width: 70%; height: 14px; }
+}
+
+@media (max-width: 480px) {
+  .stat-card .stat-value { font-size: 24px; }
 }
