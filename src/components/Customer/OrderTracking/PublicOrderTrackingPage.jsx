@@ -28,6 +28,15 @@ export const CUSTOMER_TRACK_ORDER = gql`
         canRequestPayment
         totalAmount
       }
+      latestRequest {
+        requestId
+        type
+        status
+        message
+        createdAt
+        acknowledgedAt
+        resolvedAt
+      }
     }
   }
 `;
@@ -36,6 +45,7 @@ const TRACKING_FIELDS = `
   timeline { status displayMessage changedAt }
   items { name quantity publicStatus publicStatusLabel }
   payment { status canRequestPayment totalAmount }
+  latestRequest { requestId type status message createdAt acknowledgedAt resolvedAt }
 `;
 export const REQUEST_PAYMENT_FROM_TRACKING = gql`mutation RequestPaymentFromTracking($trackingToken: String!){requestPaymentFromTracking(trackingToken:$trackingToken){success message tracking{${TRACKING_FIELDS}}}}`;
 export const CALL_STAFF_FROM_TRACKING = gql`mutation CallStaffFromTracking($trackingToken: String!,$reason: String){callStaffFromTracking(trackingToken:$trackingToken,reason:$reason){success message tracking{${TRACKING_FIELDS}}}}`;
@@ -183,6 +193,15 @@ export default function PublicOrderTrackingPage() {
         {paymentRequested && <p>Yêu cầu thanh toán đã được gửi.</p>}
         {!canRequestPayment && !isPaid && !paymentRequested && <p>Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
       </div>
+      {tracking.latestRequest && (
+        <div className="section">
+          <h3>Yêu cầu gần nhất</h3>
+          <p><strong>Nội dung:</strong> {tracking.latestRequest.message || "-"}</p>
+          <p><strong>Trạng thái:</strong> {tracking.latestRequest.status || "-"}</p>
+          {tracking.latestRequest.createdAt && <p><strong>Tạo lúc:</strong> {new Date(tracking.latestRequest.createdAt).toLocaleString("vi-VN")}</p>}
+        </div>
+      )}
+
       <div className="section">
         <h3>Cần hỗ trợ?</h3>
         <button type="button" disabled={disableActions} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>Gọi nhân viên</button>

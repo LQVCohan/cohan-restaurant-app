@@ -1556,8 +1556,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
     [rawStaffList],
   );
 
+  const staffShifts = useMemo(
+    () => shiftsData?.staffShifts || [],
+    [shiftsData?.staffShifts],
+  );
+
   const shifts = useMemo(() => {
-    const rows = shiftsData?.staffShifts || [];
+    const rows = staffShifts;
     const map = new Map();
 
     rows.forEach((row) => {
@@ -1596,13 +1601,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.date.localeCompare(right.date) ||
         left.shiftType.localeCompare(right.shiftType),
     );
-  }, [shiftsData, staff]);
+  }, [staffShifts, staff]);
   const shiftRowsById = useMemo(() => {
-    const rows = shiftsData?.staffShifts || [];
+    const rows = staffShifts;
     const map = new Map();
     rows.forEach((row) => map.set(String(row.id), row));
     return map;
-  }, [shiftsData]);
+  }, [staffShifts]);
   const reasonCategoryLabels = {
     sick: "Bị ốm",
     personal: "Việc cá nhân",

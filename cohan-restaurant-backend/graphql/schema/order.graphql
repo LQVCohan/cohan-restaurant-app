@@ -1082,6 +1082,15 @@ type CustomerTrackingPayment {
   canRequestPayment: Boolean!
   totalAmount: Float!
 }
+type CustomerTrackingLatestRequest {
+  requestId: String
+  type: String
+  status: String
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
 type CustomerOrderTrackingView {
   trackingCode: String!
   publicStatus: String!
@@ -1091,6 +1100,7 @@ type CustomerOrderTrackingView {
   timeline: [CustomerTrackingTimelineEntry!]!
   items: [CustomerTrackingItem!]!
   payment: CustomerTrackingPayment!
+  latestRequest: CustomerTrackingLatestRequest
 }
 type CustomerTrackingActionResult {
   success: Boolean!
