@@ -151,9 +151,7 @@ const Dashboard = () => {
             <span className="dashboard-mini-badge">{rangeLabel}</span>
           </div>
           {loading ? <div className="dashboard-skeleton dashboard-skeleton--chart" /> : null}
-          {!loading && safeRevenueTrend.length > 0 ? (
-            <RevenueChart data={safeRevenueTrend} loading={loading} />
-          ) : null}
+          {!loading ? <RevenueChart data={safeRevenueTrend} loading={loading} /> : null}
         </article>
 
         <article className="dashboard-card dashboard-summary-card">
