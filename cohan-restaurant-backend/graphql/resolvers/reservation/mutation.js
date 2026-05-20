@@ -5,7 +5,6 @@ import {
   Restaurant,
   Table,
   User,
-  Customer,
   PaymentTransaction,
   EventLog,
 } from "../../../models/index.js";
@@ -18,6 +17,14 @@ import {
   releaseReservationSlot,
 } from "../../../src/services/reservationAvailability.service.js";
 import {
+  BASIC_EMAIL_REGEX,
+  BASIC_PHONE_REGEX,
+  compactCustomerContact,
+  normalizeCustomerEmail,
+  normalizeCustomerPhone,
+  resolveOrCreateGuestCustomer,
+} from "../shared/customerIdentity.js";
+import {
   ACTIVE_RESERVATION_STATUSES,
   hasActiveOrdersForTable,
 } from "../../../utils/tableStateGuards.js";
@@ -25,10 +32,6 @@ import {
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
 const RESERVATION_OWNED_TABLE_STATUSES = ["reserved", "payment_pending"];
 const PAYMENT_STATUSES = ["paid", "pending", "failed", "cancelled"];
-const GUEST_TTL_DAYS = 30;
-const GUEST_TTL_MS = GUEST_TTL_DAYS * 24 * 60 * 60 * 1000;
-const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const BASIC_PHONE_REGEX = /^0\d{9,10}$/;
 
 function toObjectId(id, field = "ID") {
   if (!id || !mongoose.isValidObjectId(id)) {
@@ -218,18 +221,6 @@ function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent })
   return Math.max(0, Number(baseDeposit || 0)) + menuPart;
 }
 
-function normalizeReservationEmail(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function normalizeReservationPhone(value) {
-  const raw = String(value || "").trim().replace(/\s+/g, "");
-  if (!raw) return "";
-  if (raw.startsWith("+84")) return `0${raw.slice(3)}`;
-  if (raw.startsWith("84")) return `0${raw.slice(2)}`;
-  return raw;
-}
-
 async function resolveReservationUser(input, ctx, session = null) {
   const authUserId = ctx?.user?.id;
   if (mongoose.isValidObjectId(authUserId)) {
@@ -243,95 +234,58 @@ async function resolveReservationUser(input, ctx, session = null) {
       userId: currentUser._id,
       isGuestCustomer: !!currentUser.isGuest,
       customerName: String(input.customerName || currentUser.fullName || "").trim(),
-      customerPhone: normalizeReservationPhone(input.customerPhone || currentUser.phone || ""),
-      customerEmail: normalizeReservationEmail(input.customerEmail || currentUser.email || ""),
+      customerPhone: normalizeCustomerPhone(input.customerPhone || currentUser.phone || "") || "",
+      customerEmail: normalizeCustomerEmail(input.customerEmail || currentUser.email || "") || "",
     };
   }
 
-  const customerName = String(input.customerName || "").trim();
-  const customerEmail = normalizeReservationEmail(input.customerEmail);
-  const customerPhone = normalizeReservationPhone(input.customerPhone);
+  const compact = compactCustomerContact({
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone,
+  });
 
-  if (!customerName) {
+  if (!compact.customerName) {
     throw new GraphQLError("customerName là bắt buộc khi đặt bàn không cần đăng nhập", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
 
-  if (!customerEmail && !customerPhone) {
+  if (!compact.email && !compact.phone) {
     throw new GraphQLError("Vui lòng nhập email hoặc số điện thoại để nhà hàng xác nhận đặt bàn.", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
 
-  if (customerEmail && !BASIC_EMAIL_REGEX.test(customerEmail)) {
+  if (compact.email && !BASIC_EMAIL_REGEX.test(compact.email)) {
     throw new GraphQLError("customerEmail không hợp lệ", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
 
-  if (customerPhone && !BASIC_PHONE_REGEX.test(customerPhone)) {
+  if (compact.phone && !BASIC_PHONE_REGEX.test(compact.phone)) {
     throw new GraphQLError("customerPhone không hợp lệ", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
 
-  const matchClauses = [];
-  if (customerEmail) matchClauses.push({ email: customerEmail });
-  if (customerPhone) matchClauses.push({ phone: customerPhone });
+  const identity = await resolveOrCreateGuestCustomer({
+    email: compact.email,
+    phone: compact.phone,
+    customerName: compact.customerName,
+    createIfMissing: true,
+    session,
+    restaurantId: input.restaurantId,
+    guestFallbackName: compact.customerName,
+  });
 
-  const matchedCustomer = await Customer.findOne(
-    { $or: matchClauses },
-    null,
-    session ? { session } : undefined
-  ).sort({ isGuest: 1, updatedAt: -1 });
-
-  if (matchedCustomer) {
-    if (matchedCustomer.isGuest) {
-      const now = new Date();
-      matchedCustomer.guestExpiresAt = new Date(now.getTime() + GUEST_TTL_MS);
-      matchedCustomer.guestLastSeenAt = now;
-      if (customerName) matchedCustomer.fullName = customerName;
-      if (!matchedCustomer.email && customerEmail) matchedCustomer.email = customerEmail;
-      if (!matchedCustomer.phone && customerPhone) matchedCustomer.phone = customerPhone;
-      await matchedCustomer.save({ session });
-    }
-
-    return {
-      user: matchedCustomer,
-      userId: matchedCustomer._id,
-      isGuestCustomer: !!matchedCustomer.isGuest,
-      customerName: customerName || matchedCustomer.fullName || "",
-      customerPhone: customerPhone || matchedCustomer.phone || "",
-      customerEmail: customerEmail || matchedCustomer.email || "",
-    };
+  if (identity?.conflict) {
+    throw new GraphQLError("Thông tin liên hệ khớp với nhiều hồ sơ khách hàng khác nhau", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
   }
 
-  const now = new Date();
-  const createdGuest = await Customer.create(
-    [
-      {
-        fullName: customerName,
-        email: customerEmail || undefined,
-        phone: customerPhone || undefined,
-        status: "pending",
-        customerType: "NEW",
-        isGuest: true,
-        guestExpiresAt: new Date(now.getTime() + GUEST_TTL_MS),
-        guestLastSeenAt: now,
-      },
-    ],
-    { session }
-  ).then((rows) => rows[0]);
-
-  return {
-    user: createdGuest,
-    userId: createdGuest._id,
-    isGuestCustomer: true,
-    customerName,
-    customerPhone,
-    customerEmail,
-  };
+  return identity;
 }
 
 export const ReservationMutation = {

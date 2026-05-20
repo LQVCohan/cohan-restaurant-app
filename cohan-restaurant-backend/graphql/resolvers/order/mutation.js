@@ -1618,7 +1618,7 @@ export const OrderMutation = {
         const resolvedCustomerUserId = await ensureUserForOrder(
           userId,
           effectiveCustomer,
-          { session },
+          { session, restaurantId: rid },
         );
 
         const parentSessionMeta = await findOrCreateActiveTableSession({
@@ -1636,7 +1636,7 @@ export const OrderMutation = {
         const sessionUserId =
           parentSession?.userId ||
           resolvedCustomerUserId ||
-          (await ensureUserForOrder(userId, sessionCustomer, { session }));
+          (await ensureUserForOrder(userId, sessionCustomer, { session, restaurantId: rid }));
 
         if (sessionUserId && !parentSession?.userId) {
           await Order.updateOne(
@@ -1818,7 +1818,7 @@ export const OrderMutation = {
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
         finalUserId = identity?.conflict
           ? null
-          : await ensureUserForOrder(userId, compactCustomer, { session });
+          : await ensureUserForOrder(userId, compactCustomer, { session, restaurantId: rid });
         await hydrateOrderItems({
           restaurantId,
           items: normalizedItems,
@@ -2436,7 +2436,7 @@ export const OrderMutation = {
         finalUserId = await ensureUserForOrder(
           userId,
           checkoutCustomerContact,
-          { session },
+          { session, restaurantId: grouped.values().next().value?.restaurantId || null },
         );
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
@@ -3459,7 +3459,7 @@ export const OrderMutation = {
     if (!orderCode) throw new Error("orderCode is required");
     if (!customer) throw new Error("customer is required");
 
-    const finalUserId = await ensureUserForOrder(userId, customer);
+    const finalUserId = await ensureUserForOrder(userId, customer, { restaurantId: rid });
 
     const res = await Order.updateMany(
       {
