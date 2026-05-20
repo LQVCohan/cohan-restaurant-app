@@ -1,7 +1,6 @@
 import React, { useContext, useMemo } from "react";
 import {
   AlertTriangle,
-  BarChart3,
   RefreshCw,
   Monitor,
   CalendarRange,
@@ -152,15 +151,8 @@ const Dashboard = () => {
             <span className="dashboard-mini-badge">{rangeLabel}</span>
           </div>
           {loading ? <div className="dashboard-skeleton dashboard-skeleton--chart" /> : null}
-          {!loading && safeRevenueTrend.length === 0 ? (
-            <div className="dashboard-empty">
-              <BarChart3 size={20} />
-              <h4>Chưa có dữ liệu doanh thu.</h4>
-              <p>Dữ liệu sẽ xuất hiện khi có đơn hàng hoàn tất trong khoảng thời gian này.</p>
-            </div>
-          ) : null}
           {!loading && safeRevenueTrend.length > 0 ? (
-            <RevenueChart data={safeRevenueTrend} loading={loading} range={range} onRangeChange={setRange} />
+            <RevenueChart data={safeRevenueTrend} loading={loading} />
           ) : null}
         </article>
 
