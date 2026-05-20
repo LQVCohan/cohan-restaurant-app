@@ -256,7 +256,34 @@ export default function RbacManagement() {
 
   return (
     <div className="rbac-page">
-      <ManagementPageHeader eyebrow="RBAC MANAGER" title="Phân quyền nhân viên" subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng." icon="🛡️" stats={[{ label: "Vai trò", value: rbac.roles.length, icon: "👥" }, { label: "Nhân viên", value: rbac.staff.length, icon: "🧑‍🍳" }]} secondaryActions={[{ label: "Làm mới", onClick: () => rbac.refetch(), disabled: rbac.loading, loading: rbac.loading }]} footerLeft={<small>Backend vẫn kiểm tra quyền bắt buộc.</small>} showTimeWidget={false} />
+      <ManagementPageHeader
+        eyebrow="RBAC MANAGER"
+        title="Phân quyền nhân viên"
+        subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng."
+        icon="🛡️"
+        stats={[
+          {
+            label: "Vai trò",
+            value: rbac.roles.length,
+            icon: "👥",
+          },
+          {
+            label: "Nhân viên",
+            value: rbac.staff.length,
+            icon: "🧑‍🍳",
+          },
+        ]}
+        secondaryActions={[
+          {
+            label: "Làm mới",
+            onClick: () => rbac.refetch(),
+            disabled: rbac.loading,
+            loading: rbac.loading,
+          },
+        ]}
+        footerLeft={<small>Backend vẫn kiểm tra quyền bắt buộc.</small>}
+        showTimeWidget={false}
+      />
       {rbac.error ? <div className="rbac-status rbac-status--error">{getGraphQLErrorMessage(rbac.error, "Không tải được dữ liệu phân quyền.")}</div> : null}
       {rbac.loading ? <div className="rbac-status">Đang tải dữ liệu phân quyền...</div> : null}
       <nav className="rbac-tabs" aria-label="Quản lý phân quyền">

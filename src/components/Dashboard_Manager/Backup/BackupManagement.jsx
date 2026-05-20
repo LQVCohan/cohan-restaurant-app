@@ -241,7 +241,32 @@ const BackupManagement = () => {
 
   return (
     <div className="backup-management">
-      <ManagementPageHeader eyebrow="BACKUP CENTER" title="Sao lưu & khôi phục" subtitle="Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần kiểm tra." icon="🗄️" stats={[{ label: "Checklist", value: `${completedChecklistCount}/${checklistItems.length}`, icon: "✅" }, { label: "Backup runs", value: runs.length, icon: "🧾" }]} customControls={<div className="backup-management__badges" aria-label="Trạng thái trang"><span>Backend metadata</span><span>Checklist vận hành</span><span>Không restore tự động</span></div>} showTimeWidget={false} />
+      <ManagementPageHeader
+        eyebrow="BACKUP CENTER"
+        title="Sao lưu & khôi phục"
+        subtitle="Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần kiểm tra."
+        icon="🗄️"
+        stats={[
+          {
+            label: "Checklist",
+            value: `${completedChecklistCount}/${checklistItems.length}`,
+            icon: "✅",
+          },
+          {
+            label: "Backup runs",
+            value: runs.length,
+            icon: "🧾",
+          },
+        ]}
+        customControls={(
+          <div className="backup-management__badges" aria-label="Trạng thái trang">
+            <span>Backend metadata</span>
+            <span>Checklist vận hành</span>
+            <span>Không restore tự động</span>
+          </div>
+        )}
+        showTimeWidget={false}
+      />
 
       <section className="backup-management__alert" role="note">
         Trang này chưa tạo file backup, chưa download backup và chưa khôi phục dữ liệu.

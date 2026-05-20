@@ -99,7 +99,32 @@ const SettingsManagement = () => {
 
   const navigateManagerPage = (page) => { if (!page) return; window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page, source: "settings-management" } })); if (window.location.hash !== `#${page}`) window.location.hash = page; };
 
-  return (<div className="settings-management"><ManagementPageHeader eyebrow="SYSTEM SETTINGS" title="Cài đặt hệ thống" subtitle="Quản lý cấu hình vận hành, bảo mật, phân quyền và các thiết lập liên quan đến nhà hàng." icon="⚙️" stats={[{ label: "Nhà hàng", value: restaurants.length, icon: "🏬" }, { label: "Trạng thái", value: loading ? "Đang tải" : "Sẵn sàng", icon: "📡" }]} customControls={<div className="settings-management__badges" aria-label="Trạng thái trang"><span>Backend foundation</span><span>Đọc cấu hình</span><span>Chỉnh sửa ở PR sau</span></div>} showTimeWidget={false} />
+  return (<div className="settings-management"><ManagementPageHeader
+    eyebrow="SYSTEM SETTINGS"
+    title="Cài đặt hệ thống"
+    subtitle="Quản lý cấu hình vận hành, bảo mật, phân quyền và các thiết lập liên quan đến nhà hàng."
+    icon="⚙️"
+    stats={[
+      {
+        label: "Nhà hàng",
+        value: restaurants.length,
+        icon: "🏬",
+      },
+      {
+        label: "Trạng thái",
+        value: loading ? "Đang tải" : "Sẵn sàng",
+        icon: "📡",
+      },
+    ]}
+    customControls={(
+      <div className="settings-management__badges" aria-label="Trạng thái trang">
+        <span>Backend foundation</span>
+        <span>Đọc cấu hình</span>
+        <span>Chỉnh sửa ở PR sau</span>
+      </div>
+    )}
+    showTimeWidget={false}
+  />
     {warning ? <section className="settings-management__alert" role="note">{warning}</section> : null}
     <section className="settings-management__summary" aria-label="Tổng quan cấu hình">{loading ? <p className="settings-management__note">Đang tải cấu hình hệ thống...</p> : null}{summaryCards.map((item) => (<article key={item.title} className="settings-management__card"><h3>{item.title}</h3><ul>{item.lines.map((line) => (<li key={line}>{line}</li>))}</ul>{item.action ? (<button type="button" onClick={() => navigateManagerPage(item.action.page)}>{item.action.label}</button>) : null}</article>))}</section>
     <section className="settings-management__grid" aria-label="Nhóm thiết lập">{settingsGroups.map((group) => (<article key={group.title} className="settings-management__card"><p className="settings-management__icon" aria-hidden="true">{group.icon}</p><h3>{group.title}</h3><p>{group.description}</p><p className="settings-management__status-chip">{group.status}</p>{group.reference ? (<ul>{group.reference.map((line) => (<li key={line}>{line}</li>))}</ul>) : null}{group.note ? <p className="settings-management__note">{group.note}</p> : null}{group.action ? (<button type="button" onClick={() => navigateManagerPage(group.action.page)}>{group.action.label}</button>) : null}</article>))}</section>
