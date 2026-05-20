@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
 
@@ -13,6 +13,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 // Icons
 import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";
+import { getOpeningStatusLabel } from "@/utils/restaurantStatus";
 
 import "./RestaurantDetail.scss";
 
@@ -22,7 +23,7 @@ const GET_PUBLIC_RESTAURANT = gql`
       id name avatar coverImage spaceImages description cuisineType avgRating reviewCount
       openingStatus openingStatusReason canReserve canOrder
       address { line1 district city lat lng }
-      phone website
+      phone
     }
   }
 `;
@@ -49,6 +50,7 @@ const RestaurantDetail = () => {
   });
 
   const [activeTab, setActiveTab] = useState("info");
+  const [favoriteActive, setFavoriteActive] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [previewRestaurantOverride, setPreviewRestaurantOverride] =
     useState(null);
@@ -134,9 +136,37 @@ const RestaurantDetail = () => {
   const headerReviewCount = reviewStats?.total ?? resolvedRestaurant.reviewCount ?? 0;
   const headerRating = headerReviewCount > 0 ? Number(reviewStats?.avgRating ?? resolvedRestaurant.avgRating ?? 0).toFixed(1) : "Chưa có đánh giá";
 
+  const canReserve = !!resolvedRestaurant.canReserve;
+
   const handleBookTable = () => {
     if (isPreviewMode) return;
+    if (!canReserve) return;
     navigate(`/restaurant/${resolvedRestaurant.id}/layout`);
+  };
+
+  const handleFavorite = () => {
+    if (isPreviewMode) return;
+    const authToken = localStorage.getItem("token");
+    if (!authToken) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    const key = `restaurant_favorites`;
+    const nextSet = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+    if (nextSet.has(resolvedRestaurant.id)) nextSet.delete(resolvedRestaurant.id);
+    else nextSet.add(resolvedRestaurant.id);
+    localStorage.setItem(key, JSON.stringify([...nextSet]));
+    setFavoriteActive(nextSet.has(resolvedRestaurant.id));
+  };
+
+  const handleShare = async () => {
+    if (isPreviewMode) return;
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: resolvedRestaurant.name, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
   };
 
   const tabs = [
@@ -193,7 +223,7 @@ const RestaurantDetail = () => {
                     resolvedRestaurant.openingStatus === "open" ? "open" : "closed"
                   }`}
                 >
-                  {resolvedRestaurant.openingStatus === "open" ? "Đang mở cửa" : "Đóng cửa"}
+                  {getOpeningStatusLabel(resolvedRestaurant.openingStatus)}
                 </span>
               </div>
 
@@ -203,16 +233,16 @@ const RestaurantDetail = () => {
             </div>
 
             <div className="action-group">
-              <button className="btn-icon" disabled={isPreviewMode}>
+              <button className={`btn-icon ${favoriteActive ? "active" : ""}`} disabled={isPreviewMode} onClick={handleFavorite}>
                 <Heart size={20} />
               </button>
-              <button className="btn-icon" disabled={isPreviewMode}>
+              <button className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
                 <Share2 size={20} />
               </button>
               <button
                 className="btn-book desktop-only"
                 onClick={handleBookTable}
-                disabled={isPreviewMode}
+                disabled={isPreviewMode || !canReserve}
               >
                 {resolvedRestaurant.canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
               </button>
@@ -269,7 +299,7 @@ const RestaurantDetail = () => {
             <div className="time-picker-mock">
               <Clock size={16} /> {resolvedRestaurant.openingStatusReason || "Kiểm tra lịch trống khi đặt bàn"}
             </div>
-            <button className="btn-book-full" onClick={handleBookTable} disabled={isPreviewMode}>
+            <button className="btn-book-full" onClick={handleBookTable} disabled={isPreviewMode || !canReserve}>
               Tiếp tục đặt bàn
             </button>
           </div>
@@ -288,7 +318,7 @@ const RestaurantDetail = () => {
 
       {/* Mobile Floating Button */}
       <div className="mobile-action-bar mobile-only">
-        <button className="btn-book-mobile" onClick={handleBookTable} disabled={isPreviewMode}>
+        <button className="btn-book-mobile" onClick={handleBookTable} disabled={isPreviewMode || !canReserve}>
           {resolvedRestaurant.canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
         </button>
       </div>
@@ -297,3 +327,4 @@ const RestaurantDetail = () => {
 };
 
 export default RestaurantDetail;
+

@@ -115,11 +115,12 @@ function applyPublicAvailabilityFilters(docs, filter) {
 async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
   const lim = clampLimit(limit, 1, 100);
 
-  const f = buildFilter(restaurantFilter);
+  const baseFilter = buildFilter(restaurantFilter);
+  const queryFilter = { ...baseFilter };
   const cId = toObjectIdOrNull(cursor);
-  if (cId) f._id = { ...(f._id || {}), $gt: cId };
+  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
 
-  const docs = await Restaurant.find(f)
+  const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })
     .limit(lim + 1)
     .lean();
@@ -133,7 +134,7 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
-    totalCount: await Restaurant.countDocuments({ managerId: new mongoose.Types.ObjectId(managerId), ...buildFilter(restaurantFilter) }),
+    totalCount: await Restaurant.countDocuments(baseFilter),
   };
 }
 
@@ -169,15 +170,16 @@ async function restaurantsByManager(
   }
 
   const lim = clampLimit(limit, 1, 100);
-  const f = {
+  const baseFilter = {
     managerId: new mongoose.Types.ObjectId(managerId),
     ...buildFilter(restaurantFilter),
   };
+  const queryFilter = { ...baseFilter };
 
   const cId = toObjectIdOrNull(cursor);
-  if (cId) f._id = { ...(f._id || {}), $gt: cId };
+  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
 
-  const docs = await Restaurant.find(f)
+  const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })
     .limit(lim + 1)
     .lean();
@@ -191,7 +193,7 @@ async function restaurantsByManager(
       endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
       hasNextPage,
     },
-    totalCount: await Restaurant.countDocuments(buildFilter(restaurantFilter)),
+    totalCount: await Restaurant.countDocuments(baseFilter),
   };
 }
 
@@ -357,6 +359,94 @@ export const RestaurantQuery = {
 };
 
 
+async function publicRestaurants(_, { limit = 20, cursor, filter }) {
+  const lim = clampLimit(limit, 1, 100);
+  const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
+  const runtimeFilterEnabled = filter && (
+    filter.openNow === true
+    || !!filter.openingStatus
+    || typeof filter.acceptsReservations === "boolean"
+    || typeof filter.acceptsOrders === "boolean"
+  );
+
+  if (!runtimeFilterEnabled) {
+    const queryFilter = { ...baseFilter };
+    const cId = toObjectIdOrNull(cursor);
+    if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
+
+    const docs = await Restaurant.find(queryFilter).sort({ _id: 1 }).limit(lim + 1).lean();
+    const hasNextPage = docs.length > lim;
+    const slice = hasNextPage ? docs.slice(0, lim) : docs;
+
+    return {
+      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+      pageInfo: {
+        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+        hasNextPage,
+      },
+      totalCount: await Restaurant.countDocuments(baseFilter),
+    };
+  }
+
+  const batchSize = 100;
+  const accepted = [];
+  let nextCursorId = toObjectIdOrNull(cursor);
+  let exhausted = false;
+
+  while (accepted.length < lim + 1 && !exhausted) {
+    const queryFilter = { ...baseFilter };
+    if (nextCursorId) queryFilter._id = { ...(queryFilter._id || {}), $gt: nextCursorId };
+
+    const batch = await Restaurant.find(queryFilter).sort({ _id: 1 }).limit(batchSize).lean();
+    if (!batch.length) { exhausted = true; break; }
+
+    const passBatch = applyPublicAvailabilityFilters(batch, filter);
+    accepted.push(...passBatch);
+    nextCursorId = batch[batch.length - 1]._id;
+
+    if (batch.length < batchSize) exhausted = true;
+  }
+
+  const slice = accepted.slice(0, lim);
+  let hasNextPage = accepted.length > lim;
+
+  if (!hasNextPage && slice.length) {
+    const afterReturnedId = toObjectIdOrNull(String(slice[slice.length - 1]._id));
+    let probeCursor = afterReturnedId;
+    while (!hasNextPage && probeCursor) {
+      const probeFilter = { ...baseFilter, _id: { ...(baseFilter._id || {}), $gt: probeCursor } };
+      const probeBatch = await Restaurant.find(probeFilter).sort({ _id: 1 }).limit(batchSize).lean();
+      if (!probeBatch.length) break;
+      if (applyPublicAvailabilityFilters(probeBatch, filter).length > 0) {
+        hasNextPage = true;
+        break;
+      }
+      probeCursor = probeBatch.length < batchSize ? null : probeBatch[probeBatch.length - 1]._id;
+    }
+  }
+
+  // TODO: optimize totalCount with pre-computed availability index to avoid full scan for runtime filters.
+  let totalCount = 0;
+  let countCursor = null;
+  while (true) {
+    const countFilter = { ...baseFilter };
+    if (countCursor) countFilter._id = { ...(countFilter._id || {}), $gt: countCursor };
+    const countBatch = await Restaurant.find(countFilter).sort({ _id: 1 }).limit(batchSize).lean();
+    if (!countBatch.length) break;
+    totalCount += applyPublicAvailabilityFilters(countBatch, filter).length;
+    if (countBatch.length < batchSize) break;
+    countCursor = countBatch[countBatch.length - 1]._id;
+  }
+
+  return {
+    edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+    pageInfo: {
+      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+      hasNextPage,
+    },
+    totalCount,
+  };
+}
 async function publicRestaurants(_, { limit = 20, cursor, filter }) {
   const lim = clampLimit(limit, 1, 100);
   const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
