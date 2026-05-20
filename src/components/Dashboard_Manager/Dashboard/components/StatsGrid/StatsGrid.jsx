@@ -68,26 +68,28 @@ const StatCard = ({ label, value, icon: Icon, tone }) => (
 const StatsGrid = ({ stats, isLoading }) => {
   const statusCounts = stats?.statusCounts || {};
 
-  if (isLoading) {
-    return CARD_ORDER.map((key) => <SkeletonCard key={key} />);
-  }
+  return (
+    <div className="stats-grid-container">
+      {isLoading
+        ? CARD_ORDER.map((key) => <SkeletonCard key={key} />)
+        : CARD_ORDER.map((key) => {
+            const config = CARD_CONFIG[key];
+            const value = ["pending", "preparing", "completed", "cancelled"].includes(key)
+              ? statusCounts[key] ?? 0
+              : stats?.[key] ?? 0;
 
-  return CARD_ORDER.map((key) => {
-    const config = CARD_CONFIG[key];
-    const value = ["pending", "preparing", "completed", "cancelled"].includes(key)
-      ? statusCounts[key] ?? 0
-      : stats?.[key] ?? 0;
-
-    return (
-      <StatCard
-        key={key}
-        label={config.label}
-        value={value}
-        icon={config.icon}
-        tone={config.tone}
-      />
-    );
-  });
+            return (
+              <StatCard
+                key={key}
+                label={config.label}
+                value={value}
+                icon={config.icon}
+                tone={config.tone}
+              />
+            );
+          })}
+    </div>
+  );
 };
 
 export default StatsGrid;
