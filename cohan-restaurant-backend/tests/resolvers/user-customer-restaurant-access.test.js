@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 
 const requireRoleMock = vi.hoisted(() => vi.fn());
 const requireRestaurantAccessMock = vi.hoisted(() => vi.fn());
+const requirePermissionMock = vi.hoisted(() => vi.fn());
 
 const modelMocks = vi.hoisted(() => ({
   User: { findById: vi.fn() },
@@ -22,6 +23,12 @@ vi.mock("../../graphql/guards.js", () => ({
   requireRestaurantAccess: requireRestaurantAccessMock,
 }));
 vi.mock("../../utils/authz.js", () => ({ requireRole: requireRoleMock }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requirePermission: requirePermissionMock,
+}));
+vi.mock("../../src/constants/permissions.js", () => ({
+  PERMISSIONS: { CUSTOMER_READ: "customer.read" },
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
@@ -43,6 +50,7 @@ describe("user/customer restaurant access guards", () => {
     vi.resetModules();
     vi.clearAllMocks();
     requireRoleMock.mockImplementation(() => {});
+    requirePermissionMock.mockResolvedValue(undefined);
   });
 
   it("customerAnalytics denied does not call Order.find or Customer.find", async () => {
@@ -169,6 +177,60 @@ describe("user/customer restaurant access guards", () => {
 
     await UserQuery.customerDetailAnalytics(null, { userId: "valid-u1" }, ctxFor("ADMIN"));
     expect(modelMocks.Order.find).toHaveBeenCalledWith({ userId: { _mockObjectId: "valid-u1" } });
+  });
+
+  it("customerListSummaries returns [] when userIds empty", async () => {
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    const result = await UserQuery.customerListSummaries(
+      null,
+      { restaurantId: "valid-r1", userIds: [] },
+      ctxFor(),
+    );
+    expect(result).toEqual([]);
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
+  });
+
+  it("customerListSummaries denied does not call Order.find", async () => {
+    requireRestaurantAccessMock.mockRejectedValue(new GraphQLError("FORBIDDEN_SCOPE"));
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await expect(
+      UserQuery.customerListSummaries(
+        null,
+        { restaurantId: "valid-r1", userIds: ["valid-u1"] },
+        ctxFor(),
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
+  });
+
+  it("customerListSummaries aggregates recentOrders/topDishes and scopes by restaurant", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Order.find.mockReturnValue({
+      sort: () => ({
+        lean: async () => ([
+          { _id: "o5", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-05T00:00:00.000Z", orderCode: "A5", totals: { grandTotal: 50000 }, items: [{ name: "Pho", quantity: 1 }, { name: "Bun", quantity: 2 }] },
+          { _id: "o4", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-04T00:00:00.000Z", orderCode: "A4", totals: { grandTotal: 40000 }, items: [{ name: "Pho", quantity: 3 }] },
+          { _id: "o3", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-03T00:00:00.000Z", orderCode: "A3", totals: { grandTotal: 30000 }, items: [{ name: "Com", quantity: 1 }] },
+          { _id: "o2", restaurantId: "valid-r1", userId: "valid-u2", createdAt: "2026-01-02T00:00:00.000Z", orderCode: "B2", totals: { grandTotal: 20000 }, items: [{ name: "Pho", quantity: 2 }] },
+        ]),
+      }),
+    });
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    const result = await UserQuery.customerListSummaries(
+      null,
+      { restaurantId: "valid-r1", userIds: ["valid-u1", "valid-u2"], recentLimit: 2, topDishLimit: 2 },
+      ctxFor(),
+    );
+    expect(modelMocks.Order.find).toHaveBeenCalledWith({
+      restaurantId: { _mockObjectId: "valid-r1" },
+      userId: { $in: [{ _mockObjectId: "valid-u1" }, { _mockObjectId: "valid-u2" }] },
+    });
+    expect(result[0].recentOrders.map((x) => x.orderCode)).toEqual(["A5", "A4"]);
+    expect(result[0].topDishes).toEqual([
+      { dishName: "Pho", quantity: 4 },
+      { dishName: "Bun", quantity: 2 },
+    ]);
+    expect(result[1].recentOrders).toHaveLength(1);
   });
 
   it("upsertCustomerRankSettings denied does not call writes", async () => {

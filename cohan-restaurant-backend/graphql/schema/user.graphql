@@ -519,6 +519,20 @@ type CustomerDetailAnalytics {
   rankPoints: Int!
 }
 
+type CustomerRecentOrder {
+  id: ID!
+  orderCode: String
+  createdAt: DateTime
+  amount: Float
+  items: [String!]!
+}
+
+type CustomerListSummary {
+  userId: ID!
+  recentOrders: [CustomerRecentOrder!]!
+  topDishes: [CustomerTopDish!]!
+}
+
 type CustomerAnalyticsDay {
   date: String!
   orderCount: Int!
@@ -2651,6 +2665,12 @@ type Query {
     userId: ID!
     restaurantId: ID
   ): CustomerDetailAnalytics!
+  customerListSummaries(
+    restaurantId: ID!
+    userIds: [ID!]!
+    recentLimit: Int
+    topDishLimit: Int
+  ): [CustomerListSummary!]!
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
 

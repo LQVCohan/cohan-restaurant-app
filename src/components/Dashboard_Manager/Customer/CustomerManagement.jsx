@@ -25,7 +25,6 @@ import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 
 // Hooks & Context
 import useUserManagement from "../../../hooks/useUserManagement";
-import useOrderManagement from "../../../hooks/useOrderManagement";
 import { AuthContext } from "../../../context/AuthContext";
 
 // Styles
@@ -60,6 +59,34 @@ const UPSERT_CUSTOMER_RANK_SETTINGS = gql`
   }
 `;
 
+const GET_CUSTOMER_LIST_SUMMARIES = gql`
+  query GetCustomerListSummaries(
+    $restaurantId: ID!
+    $userIds: [ID!]!
+    $recentLimit: Int
+    $topDishLimit: Int
+  ) {
+    customerListSummaries(
+      restaurantId: $restaurantId
+      userIds: $userIds
+      recentLimit: $recentLimit
+      topDishLimit: $topDishLimit
+    ) {
+      userId
+      recentOrders {
+        id
+        orderCode
+        createdAt
+        amount
+        items
+      }
+      topDishes {
+        dishName
+        quantity
+      }
+    }
+  }
+`;
 /* ================== Helpers ================== */
 
 const toDateStringVI = (ts) => {
@@ -78,34 +105,7 @@ const toDateStringVI = (ts) => {
   return new Date().toLocaleDateString("vi-VN");
 };
 
-// Tạo danh sách đơn hàng rút gọn để hiển thị nhanh
-const buildRecentOrdersForUser = (orders = []) =>
-  orders.slice(0, 5).map((o) => ({
-    id: o.id,
-    orderCode: o.orderCode,
-    date: toDateStringVI(o.createdAt),
-    amount: o?.totals?.grandTotal || 0,
-    items: (o.items || []).map((it) => it.name).filter(Boolean),
-    raw: o,
-  }));
-
-const buildTopDishes = (orders = []) => {
-  const dishCount = new Map();
-  for (const order of orders) {
-    for (const item of order.items || []) {
-      const name = item?.name?.trim();
-      if (!name) continue;
-      dishCount.set(
-        name,
-        (dishCount.get(name) || 0) + Number(item.quantity || 1),
-      );
-    }
-  }
-  return [...dishCount.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([dishName]) => dishName);
-};
+const buildTopDishes = (topDishes = []) => (topDishes || []).map((dish) => dish?.dishName).filter(Boolean);
 
 // Định dạng số lượng hiển thị trên nút lọc (VD: 1.2k)
 const formatCompactCount = (n) =>
@@ -176,8 +176,6 @@ const CustomerManagement = () => {
     getCustomers,
   } = useUserManagement();
 
-  const { loadOrdersAll, ordersAll, ordersAllLoading } = useOrderManagement();
-
   const defaultRestaurantId = restaurants?.[0]?.id || "";
   const [selectedRestaurantId, setSelectedRestaurantId] =
     useState(defaultRestaurantId);
@@ -218,42 +216,38 @@ const CustomerManagement = () => {
     }
   }, [restaurants, selectedRestaurantId]);
 
-  // Fetch dữ liệu khách hàng và đơn hàng khi thay đổi nhà hàng
+  const summaryUserIds = useMemo(
+    () => [...new Set((filteredCustomers || []).map((c) => c?.id).filter(Boolean))],
+    [filteredCustomers],
+  );
+  const { data: summaryData, refetch: refetchSummaries } = useQuery(
+    GET_CUSTOMER_LIST_SUMMARIES,
+    {
+      skip: !selectedRestaurantId || !summaryUserIds.length,
+      variables: {
+        restaurantId: selectedRestaurantId,
+        userIds: summaryUserIds,
+        recentLimit: 5,
+        topDishLimit: 3,
+      },
+      fetchPolicy: "network-only",
+    },
+  );
+
+  // Fetch dữ liệu khách hàng khi thay đổi nhà hàng
   useEffect(() => {
     getCustomers({
       restaurantId: selectedRestaurantId,
       includeGuests: true,
       search: "",
     });
-
-    if (selectedRestaurantId) {
-      loadOrdersAll({
-        variables: {
-          restaurantId: selectedRestaurantId,
-          limit: 300,
-          cursor: null,
-        },
-        fetchPolicy: "network-only",
-      });
-    }
-  }, [getCustomers, loadOrdersAll, selectedRestaurantId]);
+  }, [getCustomers, selectedRestaurantId]);
 
   // --- 3. Handlers ---
 
   const handleSearch = (query) => {
     setSearchQuery(query);
     searchCustomers(query);
-    // Reload orders để đảm bảo dữ liệu mới nhất khi search
-    if (selectedRestaurantId) {
-      loadOrdersAll({
-        variables: {
-          restaurantId: selectedRestaurantId,
-          limit: 300,
-          cursor: null,
-        },
-        fetchPolicy: "network-only",
-      });
-    }
   };
 
   const handleFilter = (filterKey) => {
@@ -293,16 +287,7 @@ const CustomerManagement = () => {
       includeGuests: true,
       search: "",
     });
-    if (selectedRestaurantId) {
-      await loadOrdersAll({
-        variables: {
-          restaurantId: selectedRestaurantId,
-          limit: 300,
-          cursor: null,
-        },
-        fetchPolicy: "network-only",
-      });
-    }
+    if (selectedRestaurantId) await refetchSummaries();
 
     if (!createdUser) {
       return { visibleInCurrentList: null };
@@ -344,25 +329,13 @@ const CustomerManagement = () => {
   // --- 4. Data Processing (Memoized) ---
 
   // Gom nhóm đơn hàng theo UserID để map vào Customer
-  const ordersByUserId = useMemo(() => {
+  const summaryByUserId = useMemo(() => {
     const map = new Map();
-    (ordersAll || []).forEach((o) => {
-      const uid = o?.user?.id;
-      if (!uid) return;
-      if (!map.has(uid)) map.set(uid, []);
-      map.get(uid).push(o);
+    (summaryData?.customerListSummaries || []).forEach((row) => {
+      if (row?.userId) map.set(row.userId, row);
     });
-
-    // Sort đơn hàng mới nhất lên đầu cho mỗi user
-    for (const [, list] of map.entries()) {
-      list.sort((a, b) => {
-        const ta = new Date(a.createdAt).getTime();
-        const tb = new Date(b.createdAt).getTime();
-        return tb - ta;
-      });
-    }
     return map;
-  }, [ordersAll]);
+  }, [summaryData]);
   const rankSettings = useMemo(
     () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
     [rankSettingsData],
@@ -372,9 +345,12 @@ const CustomerManagement = () => {
   const customersDecorated = useMemo(() => {
     return (filteredCustomers || []).map((c) => {
       const uid = c.id;
-      const userOrders = (uid && ordersByUserId.get(uid)) || [];
-      const recentOrders = buildRecentOrdersForUser(userOrders);
-      const topDishes = buildTopDishes(userOrders);
+      const summary = (uid && summaryByUserId.get(uid)) || null;
+      const recentOrders = (summary?.recentOrders || []).map((o) => ({
+        ...o,
+        date: toDateStringVI(o?.createdAt),
+      }));
+      const topDishes = buildTopDishes(summary?.topDishes || []);
       return {
         ...c,
         displayName: c.name || "Khách hàng",
@@ -385,7 +361,7 @@ const CustomerManagement = () => {
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
-  }, [filteredCustomers, ordersByUserId, rankSettings]);
+  }, [filteredCustomers, rankSettings, summaryByUserId]);
 
   const onlineCount = useMemo(
     () => customersDecorated.filter((c) => c.online).length,
@@ -443,7 +419,7 @@ const CustomerManagement = () => {
     ];
   }, [customersDecorated, tierFilters]);
 
-  const loading = usersLoading || ordersAllLoading;
+  const loading = usersLoading;
 
   const toCustomerRow = (customer, index) => [
     index + 1,
