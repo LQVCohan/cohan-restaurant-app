@@ -7,6 +7,10 @@ const modelMocks = vi.hoisted(() => ({
   Order: {
     findById: (...args) => findByIdMock(...args),
   },
+  KitchenOrderWorkItem: {
+    findOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+  },
   Reservation: {}, TableCustomer: {}, Warehouse: {}, Recipe: {}, Ingredient: {}, ModifierGroup: {}, CheckoutSession: {}, Coupon: {}, Customer: {}, User: {}, WalletTransaction: {}, PrintSetting: {},
 }));
 
