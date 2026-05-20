@@ -60,7 +60,8 @@ const buildBulkPreview = (prevPriceChanges, bulkChange, operation) => {
   const nextPriceChanges = prevPriceChanges.map((item) => {
     const shouldApply =
       bulkChange.applyTo === "all" ||
-      (bulkChange.applyTo === "category" && item.category === bulkChange.category);
+      (bulkChange.applyTo === "category" &&
+        item.category === bulkChange.category);
 
     if (!shouldApply) return item;
 
@@ -132,21 +133,20 @@ const PriceEditModal = ({
         category: item.categoryName || item.categoryId || "Khác",
         lastBulkOperationKey: null,
         methods: normalizeMethodDefaults(
-          (
-            Array.isArray(item.servingVariants) && item.servingVariants.length
-              ? item.servingVariants
-              : [
-                  {
-                    key: "default",
-                    name: "Mặc định",
-                    price: item.basePrice || 0,
-                    mode: "PORTION",
-                    sellQty: 1,
-                    sellUnit: "portion",
-                    ingredients: [],
-                    isDefault: true,
-                  },
-                ]
+          (Array.isArray(item.servingVariants) && item.servingVariants.length
+            ? item.servingVariants
+            : [
+                {
+                  key: "default",
+                  name: "Mặc định",
+                  price: item.basePrice || 0,
+                  mode: "PORTION",
+                  sellQty: 1,
+                  sellUnit: "portion",
+                  ingredients: [],
+                  isDefault: true,
+                },
+              ]
           ).map((method, idx) => ({
             key: method.key || method.name,
             name: method.name || method.key || "Mặc định",
@@ -155,13 +155,15 @@ const PriceEditModal = ({
             sellUnit: method.sellUnit || "portion",
             ingredients: cloneIngredients(method.ingredients),
             isDefault:
-              typeof method.isDefault === "boolean" ? method.isDefault : idx === 0,
+              typeof method.isDefault === "boolean"
+                ? method.isDefault
+                : idx === 0,
             originalPrice: Number(method.price || 0),
             newPrice: Number(method.price || 0),
             changed: false,
             changeSource: null,
             bulkOperationKey: null,
-          }))
+          })),
         ),
       }));
       setPriceChanges(changes);
@@ -208,7 +210,7 @@ const PriceEditModal = ({
           ...item,
           methods: normalizeMethodDefaults(methods),
         };
-      })
+      }),
     );
   };
 
@@ -247,7 +249,7 @@ const PriceEditModal = ({
     const { nextPriceChanges, affectedItemIds } = buildBulkPreview(
       priceChanges,
       bulkChange,
-      operation
+      operation,
     );
 
     setSubmitError(null);
@@ -278,9 +280,9 @@ const PriceEditModal = ({
             changed: false,
             changeSource: null,
             bulkOperationKey: null,
-          }))
+          })),
         ),
-      }))
+      })),
     );
   };
 
@@ -297,15 +299,15 @@ const PriceEditModal = ({
 
   const categories = useMemo(
     () => [...new Set(priceChanges.map((item) => item.category))],
-    [priceChanges]
+    [priceChanges],
   );
 
   const changedItems = useMemo(
     () =>
       priceChanges.filter((item) =>
-        item.methods.some((method) => method.changed)
+        item.methods.some((method) => method.changed),
       ),
-    [priceChanges]
+    [priceChanges],
   );
 
   const changedCount = changedItems.length;
@@ -323,7 +325,7 @@ const PriceEditModal = ({
         ingredients: cloneIngredients(method.ingredients),
         isDefault: method.isDefault,
         price: method.newPrice,
-      }))
+      })),
     ),
   });
 
@@ -333,7 +335,7 @@ const PriceEditModal = ({
 
     changedItems.forEach((item) => {
       const hasManualChanges = item.methods.some(
-        (method) => method.changed && method.changeSource === "manual"
+        (method) => method.changed && method.changeSource === "manual",
       );
 
       if (hasManualChanges) {
@@ -352,7 +354,7 @@ const PriceEditModal = ({
       const isBulkOnlyItem = changedMethods.every(
         (method) =>
           method.changeSource === "bulk" &&
-          method.bulkOperationKey === bulkOperationKey
+          method.bulkOperationKey === bulkOperationKey,
       );
 
       if (!bulkOperation || !isBulkOnlyItem) {
@@ -414,280 +416,285 @@ const PriceEditModal = ({
         <div className="pem-container">
           <div className="pem-toolbar">
             <div className="pem-row">
-            <div className="pem-control-group" style={{ flex: "0 0 auto" }}>
-              <label>Áp dụng cho</label>
-              <select
-                className="pem-select"
-                value={bulkChange.applyTo}
-                onChange={(e) =>
-                  setBulkChange({ ...bulkChange, applyTo: e.target.value })
-                }
-                disabled={submitting}
-              >
-                <option value="all">Tất cả món ăn</option>
-                <option value="category">Theo danh mục</option>
-              </select>
-            </div>
-
-            {bulkChange.applyTo === "category" && (
-              <div className="pem-control-group">
-                <label>Chọn danh mục</label>
+              <div className="pem-control-group" style={{ flex: "0 0 auto" }}>
+                <label>Áp dụng cho</label>
                 <select
                   className="pem-select"
-                  value={bulkChange.category}
+                  value={bulkChange.applyTo}
                   onChange={(e) =>
-                    setBulkChange({ ...bulkChange, category: e.target.value })
+                    setBulkChange({ ...bulkChange, applyTo: e.target.value })
                   }
                   disabled={submitting}
                 >
-                  <option value="">-- Chọn --</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
+                  <option value="all">Tất cả món ăn</option>
+                  <option value="category">Theo danh mục</option>
                 </select>
+              </div>
+
+              {bulkChange.applyTo === "category" && (
+                <div className="pem-control-group">
+                  <label>Chọn danh mục</label>
+                  <select
+                    className="pem-select"
+                    value={bulkChange.category}
+                    onChange={(e) =>
+                      setBulkChange({ ...bulkChange, category: e.target.value })
+                    }
+                    disabled={submitting}
+                  >
+                    <option value="">-- Chọn --</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="pem-control-group">
+                <label>Loại điều chỉnh</label>
+                <select
+                  className="pem-select"
+                  value={bulkChange.type}
+                  onChange={(e) =>
+                    setBulkChange({ ...bulkChange, type: e.target.value })
+                  }
+                  disabled={submitting}
+                >
+                  <option value="percentage">Tăng/Giảm %</option>
+                  <option value="fixed">Cộng/Trừ tiền (VNĐ)</option>
+                </select>
+              </div>
+
+              <div className="pem-control-group">
+                <label>
+                  Giá trị {bulkChange.type === "percentage" ? "(%)" : "(VNĐ)"}
+                </label>
+                <input
+                  type="number"
+                  className="pem-input"
+                  placeholder={
+                    bulkChange.type === "percentage"
+                      ? "VD: 10 hoặc -10"
+                      : "VD: 5000 hoặc -5000"
+                  }
+                  value={bulkChange.value}
+                  onChange={(e) =>
+                    setBulkChange({ ...bulkChange, value: e.target.value })
+                  }
+                  disabled={submitting}
+                />
+              </div>
+
+              <button
+                className="pem-btn-apply"
+                onClick={applyBulkChange}
+                disabled={submitting}
+              >
+                <FiZap /> Áp dụng
+              </button>
+              <button
+                className="pem-btn-reset"
+                onClick={() => setIsResetConfirmOpen(true)}
+                disabled={submitting}
+              >
+                <FiRefreshCw /> Đặt lại
+              </button>
+            </div>
+          </div>
+
+          <div className="pem-table-wrapper">
+            {submitError?.message && (
+              <div
+                className="pem-empty"
+                style={{ marginBottom: 12, color: "#b91c1c" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <FiAlertCircle />
+                  <strong>{submitError.message}</strong>
+                </div>
+                {submitError.failureCount > 0 && (
+                  <div style={{ marginTop: 8, textAlign: "left" }}>
+                    {submitError.successCount > 0 && (
+                      <div style={{ marginBottom: 6 }}>
+                        Đã lưu thành công {submitError.successCount} món.
+                      </div>
+                    )}
+                    {submitError.failures.map((failure, index) => (
+                      <div
+                        key={`${
+                          failure.itemId || failure.itemName || "failure"
+                        }-${index}`}
+                      >
+                        {(failure.itemName ||
+                          failure.itemId ||
+                          "Món không xác định") +
+                          ": " +
+                          failure.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="pem-control-group">
-              <label>Loại điều chỉnh</label>
+            <div className="pem-search-bar">
+              <FiSearch className="search-icon" size={18} />
+              <input
+                type="text"
+                placeholder="Tìm món ăn..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={submitting}
+              />
+              <div
+                style={{
+                  width: 1,
+                  height: 20,
+                  background: "#e2e8f0",
+                  margin: "0 8px",
+                }}
+              ></div>
+              <FiFilter className="search-icon" size={16} />
               <select
-                className="pem-select"
-                value={bulkChange.type}
-                onChange={(e) =>
-                  setBulkChange({ ...bulkChange, type: e.target.value })
-                }
+                style={{
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  fontSize: 13,
+                  color: "#64748b",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
                 disabled={submitting}
               >
-                <option value="percentage">Tăng/Giảm %</option>
-                <option value="fixed">Cộng/Trừ tiền (VNĐ)</option>
+                <option value="all">Tất cả danh mục</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="pem-control-group">
-              <label>
-                Giá trị {bulkChange.type === "percentage" ? "(%)" : "(VNĐ)"}
-              </label>
-              <input
-                type="number"
-                className="pem-input"
-                placeholder={
-                  bulkChange.type === "percentage"
-                    ? "VD: 10 hoặc -10"
-                    : "VD: 5000 hoặc -5000"
-                }
-                value={bulkChange.value}
-                onChange={(e) =>
-                  setBulkChange({ ...bulkChange, value: e.target.value })
-                }
-                disabled={submitting}
-              />
-            </div>
-
-            <button
-              className="pem-btn-apply"
-              onClick={applyBulkChange}
-              disabled={submitting}
-            >
-              <FiZap /> Áp dụng
-            </button>
-            <button
-              className="pem-btn-reset"
-              onClick={() => setIsResetConfirmOpen(true)}
-              disabled={submitting}
-            >
-              <FiRefreshCw /> Đặt lại
-            </button>
-          </div>
-        </div>
-
-        <div className="pem-table-wrapper">
-          {submitError?.message && (
-            <div
-              className="pem-empty"
-              style={{ marginBottom: 12, color: "#b91c1c" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <FiAlertCircle />
-                <strong>{submitError.message}</strong>
-              </div>
-              {submitError.failureCount > 0 && (
-                <div style={{ marginTop: 8, textAlign: "left" }}>
-                  {submitError.successCount > 0 && (
-                    <div style={{ marginBottom: 6 }}>
-                      Đã lưu thành công {submitError.successCount} món.
-                    </div>
-                  )}
-                  {submitError.failures.map((failure, index) => (
-                    <div
-                      key={`${
-                        failure.itemId || failure.itemName || "failure"
-                      }-${index}`}
-                    >
-                      {(failure.itemName || failure.itemId || "Món không xác định") +
-                        ": " +
-                        failure.message}
-                    </div>
-                  ))}
+            <div className="pem-scroll-area">
+              {filteredItems.length === 0 ? (
+                <div className="pem-empty">
+                  Không tìm thấy món ăn nào phù hợp.
                 </div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Món ăn</th>
+                      <th>Quy cách</th>
+                      <th>Giá hiện tại</th>
+                      <th>Giá mới (VNĐ)</th>
+                      <th>Chênh lệch</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredItems.map((item) => (
+                      <React.Fragment key={item.itemId}>
+                        {item.methods.map((method, idx) => (
+                          <tr
+                            key={`${item.itemId}-${method.key || idx}`}
+                            className={method.changed ? "is-changed" : ""}
+                          >
+                            <td>
+                              {idx === 0 && (
+                                <div>
+                                  <div style={{ fontWeight: 600 }}>
+                                    {item.itemName}
+                                  </div>
+                                  <span className="pem-cate-tag">
+                                    {item.category}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td>{method.name}</td>
+                            <td style={{ color: "#64748b" }}>
+                              {formatPrice(method.originalPrice)}
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className={`pem-input-price ${
+                                  method.changed ? "changed" : ""
+                                }`}
+                                value={method.newPrice}
+                                step={1000}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) =>
+                                  handlePriceChange(
+                                    item.itemId,
+                                    method.key,
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={submitting}
+                              />
+                            </td>
+                            <td>
+                              {method.changed && (
+                                <>
+                                  {method.newPrice > method.originalPrice ? (
+                                    <span className="pem-indicator inc">
+                                      <FiTrendingUp />{" "}
+                                      {formatPrice(
+                                        method.newPrice - method.originalPrice,
+                                      )}
+                                    </span>
+                                  ) : method.newPrice < method.originalPrice ? (
+                                    <span className="pem-indicator dec">
+                                      <FiTrendingDown />{" "}
+                                      {formatPrice(
+                                        method.originalPrice - method.newPrice,
+                                      )}
+                                    </span>
+                                  ) : null}
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
-          )}
-
-          <div className="pem-search-bar">
-            <FiSearch className="search-icon" size={18} />
-            <input
-              type="text"
-              placeholder="Tìm món ăn..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={submitting}
-            />
-            <div
-              style={{
-                width: 1,
-                height: 20,
-                background: "#e2e8f0",
-                margin: "0 8px",
-              }}
-            ></div>
-            <FiFilter className="search-icon" size={16} />
-            <select
-              style={{
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                fontSize: 13,
-                color: "#64748b",
-                cursor: submitting ? "not-allowed" : "pointer",
-              }}
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              disabled={submitting}
-            >
-              <option value="all">Tất cả danh mục</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
           </div>
 
-          <div className="pem-scroll-area">
-            {filteredItems.length === 0 ? (
-              <div className="pem-empty">
-                Không tìm thấy món ăn nào phù hợp.
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Món ăn</th>
-                    <th>Quy cách</th>
-                    <th>Giá hiện tại</th>
-                    <th>Giá mới (VNĐ)</th>
-                    <th>Chênh lệch</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.map((item) => (
-                    <React.Fragment key={item.itemId}>
-                      {item.methods.map((method, idx) => (
-                        <tr
-                          key={`${item.itemId}-${method.key || idx}`}
-                          className={method.changed ? "is-changed" : ""}
-                        >
-                          <td>
-                            {idx === 0 && (
-                              <div>
-                                <div style={{ fontWeight: 600 }}>
-                                  {item.itemName}
-                                </div>
-                                <span className="pem-cate-tag">{item.category}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td>{method.name}</td>
-                          <td style={{ color: "#64748b" }}>
-                            {formatPrice(method.originalPrice)}
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className={`pem-input-price ${
-                                method.changed ? "changed" : ""
-                              }`}
-                              value={method.newPrice}
-                              step={1000}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) =>
-                                handlePriceChange(
-                                  item.itemId,
-                                  method.key,
-                                  e.target.value
-                                )
-                              }
-                              disabled={submitting}
-                            />
-                          </td>
-                          <td>
-                            {method.changed && (
-                              <>
-                                {method.newPrice > method.originalPrice ? (
-                                  <span className="pem-indicator inc">
-                                    <FiTrendingUp />{" "}
-                                    {formatPrice(
-                                      method.newPrice - method.originalPrice
-                                    )}
-                                  </span>
-                                ) : method.newPrice < method.originalPrice ? (
-                                  <span className="pem-indicator dec">
-                                    <FiTrendingDown />{" "}
-                                    {formatPrice(
-                                      method.originalPrice - method.newPrice
-                                    )}
-                                  </span>
-                                ) : null}
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          <div className="pem-footer">
+            <div className="pem-stats">
+              Đang hiển thị <strong>{filteredItems.length}</strong> món. Đã sửa
+              đổi
+              <strong>{` ${changedCount} `}</strong>món.
+            </div>
+            <div className="pem-actions">
+              <button
+                className="btn-cancel"
+                onClick={handleRequestClose}
+                disabled={submitting}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                className="btn-save"
+                onClick={handleSave}
+                disabled={changedCount === 0 || submitting}
+              >
+                <FiCheck style={{ marginRight: 6 }} />
+                {submitting
+                  ? "Đang lưu..."
+                  : `Lưu${changedCount > 0 ? ` (${changedCount})` : ""} thay đổi`}
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="pem-footer">
-          <div className="pem-stats">
-            Đang hiển thị <strong>{filteredItems.length}</strong> món. Đã sửa đổi
-            <strong>{` ${changedCount} `}</strong>món.
-          </div>
-          <div className="pem-actions">
-            <button
-              className="btn-cancel"
-              onClick={handleRequestClose}
-              disabled={submitting}
-            >
-              Hủy bỏ
-            </button>
-            <button
-              className="btn-save"
-              onClick={handleSave}
-              disabled={changedCount === 0 || submitting}
-            >
-              <FiCheck style={{ marginRight: 6 }} />
-              {submitting
-                ? "Đang lưu..."
-                : `Lưu${changedCount > 0 ? ` (${changedCount})` : ""} thay đổi`}
-            </button>
-          </div>
-        </div>
         </div>
       </Modal>
       <MenuConfirmDialog
