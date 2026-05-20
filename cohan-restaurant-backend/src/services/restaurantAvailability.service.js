@@ -5,6 +5,57 @@ function toZonedDate(now, timezone = DEFAULT_TIMEZONE) {
   return new Date(now.toLocaleString("en-US", { timeZone: timezone }));
 }
 
+function getZonedParts(date, timezone = DEFAULT_TIMEZONE) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(date);
+  const map = {};
+  for (const part of parts) {
+    if (part.type !== "literal") map[part.type] = part.value;
+  }
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    second: Number(map.second),
+  };
+}
+
+function getTimezoneOffsetMs(date, timezone = DEFAULT_TIMEZONE) {
+  const parts = getZonedParts(date, timezone);
+  const asUTC = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return asUTC - date.getTime();
+}
+
+function zonedLocalToUtcDate(localDateTime, timezone = DEFAULT_TIMEZONE) {
+  const {
+    year, month, day, hour, minute, second = 0,
+  } = localDateTime;
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, 0);
+  let offset = getTimezoneOffsetMs(new Date(utcGuess), timezone);
+  let result = utcGuess - offset;
+  offset = getTimezoneOffsetMs(new Date(result), timezone);
+  result = utcGuess - offset;
+  return new Date(result);
+}
+
 function parseTimeToMinutes(timeText) {
   const [h, m] = String(timeText || "").split(":").map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
@@ -88,18 +139,34 @@ function resolveTodaySlots(restaurant, now, timezone) {
 export function getNextOpeningTime(restaurant = {}, now = new Date()) {
   const timezone = restaurant.timezone || DEFAULT_TIMEZONE;
   const weekly = normalizeWeeklyOpeningHours(restaurant);
-  const localNow = toZonedDate(now, timezone);
-  const nowMin = localNow.getHours() * 60 + localNow.getMinutes();
+  const localNowParts = getZonedParts(now, timezone);
+  const nowMin = localNowParts.hour * 60 + localNowParts.minute;
+  const specials = Array.isArray(restaurant.specialHours) ? restaurant.specialHours : [];
 
-  // TODO: timezone conversion currently relies on Date/toLocaleString; consider a dedicated timezone library for DST-safe behavior.
   for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
-    const candidate = new Date(localNow);
-    candidate.setDate(localNow.getDate() + dayOffset);
-    candidate.setHours(0, 0, 0, 0);
+    const candidateBase = new Date(Date.UTC(
+      localNowParts.year,
+      localNowParts.month - 1,
+      localNowParts.day + dayOffset,
+    ));
+    const candidateParts = {
+      year: candidateBase.getUTCFullYear(),
+      month: candidateBase.getUTCMonth() + 1,
+      day: candidateBase.getUTCDate(),
+    };
 
-    const dayName = DAY_KEYS[candidate.getDay()];
-    const dateKey = getDateKey(candidate);
-    const special = (restaurant.specialHours || []).find((entry) => entry?.date === dateKey);
+    const dateKey = [
+      String(candidateParts.year).padStart(4, "0"),
+      String(candidateParts.month).padStart(2, "0"),
+      String(candidateParts.day).padStart(2, "0"),
+    ].join("-");
+    const special = specials.find((entry) => entry?.date === dateKey);
+    const candidateDayOfWeek = zonedLocalToUtcDate({
+      ...candidateParts,
+      hour: 12,
+      minute: 0,
+    }, timezone).getUTCDay();
+    const dayName = DAY_KEYS[candidateDayOfWeek];
 
     if (special?.isClosed) continue;
 
@@ -119,26 +186,34 @@ export function getNextOpeningTime(restaurant = {}, now = new Date()) {
 
       if (dayOffset === 0) {
         if (isTwentyFourHours) {
-          const openDate = new Date(candidate);
-          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
-          return openDate.toISOString();
+          return zonedLocalToUtcDate({
+            ...candidateParts,
+            hour: Math.floor(openMin / 60),
+            minute: openMin % 60,
+          }, timezone).toISOString();
         }
 
         if (isSameDaySlot && openMin > nowMin) {
-          const openDate = new Date(candidate);
-          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
-          return openDate.toISOString();
+          return zonedLocalToUtcDate({
+            ...candidateParts,
+            hour: Math.floor(openMin / 60),
+            minute: openMin % 60,
+          }, timezone).toISOString();
         }
 
         if (isOvernightSlot && nowMin < openMin) {
-          const openDate = new Date(candidate);
-          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
-          return openDate.toISOString();
+          return zonedLocalToUtcDate({
+            ...candidateParts,
+            hour: Math.floor(openMin / 60),
+            minute: openMin % 60,
+          }, timezone).toISOString();
         }
       } else {
-        const openDate = new Date(candidate);
-        openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
-        return openDate.toISOString();
+        return zonedLocalToUtcDate({
+          ...candidateParts,
+          hour: Math.floor(openMin / 60),
+          minute: openMin % 60,
+        }, timezone).toISOString();
       }
     }
   }
