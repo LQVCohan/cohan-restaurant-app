@@ -160,6 +160,25 @@ describe("adjustment display helpers", () => {
 });
 
 describe("buildPerformanceReportData", () => {
+  it("includes previous snapshot trend fields when previous snapshot exists", () => {
+    const report = buildPerformanceReportData({
+      snapshot: { finalPerformanceScore: 85 },
+      previousSnapshot: { finalPerformanceScore: 80 },
+    });
+    expect(report.previousScore).toBe(80);
+    expect(report.hasPreviousSnapshot).toBe(true);
+    expect(report.trendText).toBe("+5 điểm so với kỳ trước");
+  });
+
+  it("returns hasPreviousSnapshot false when previous snapshot is missing", () => {
+    const report = buildPerformanceReportData({
+      snapshot: { finalPerformanceScore: 85 },
+    });
+    expect(report.hasPreviousSnapshot).toBe(false);
+    expect(report.previousScore).toBeNull();
+    expect(report.trendText).toBe("Chưa có dữ liệu kỳ trước");
+  });
+
   it("uses employee.fullName as fallback when snapshot employeeName is missing", () => {
     const report = buildPerformanceReportData({
       snapshot: {},
@@ -203,6 +222,30 @@ describe("escapeHtml", () => {
 });
 
 describe("buildPerformanceReportHtml", () => {
+  it("includes previous period comparison section", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      previousScore: 84,
+      trendText: "+6 điểm so với kỳ trước",
+      performanceLevel: "Tốt",
+      previousLevel: "Ổn định",
+      hasPreviousSnapshot: true,
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+    });
+    expect(html).toContain("So sánh kỳ trước");
+    expect(html).toContain("Điểm kỳ trước");
+    expect(html).toContain("Level kỳ này / kỳ trước");
+  });
+
   it("does not include raw html from adjustment reason", () => {
     const html = buildPerformanceReportHtml({
       employeeName: "An",
