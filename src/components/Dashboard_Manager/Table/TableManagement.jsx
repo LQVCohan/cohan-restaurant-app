@@ -26,28 +26,14 @@ import {
   getRawTableById,
   sortTableRowsByNumber,
 } from "@/utils/tableManagementDisplay";
+import {
+  TABLE_STATUS_OPTIONS,
+  TABLE_AREA_OPTIONS,
+  getTableStatusConfig,
+  getTableAreaLabel,
+} from "@/utils/tableManagementOptions";
 
 const ALL_FLOORS_KEY = "all";
-const TABLE_STATUS_FILTER_OPTIONS = [
-  { value: "available", icon: "🟢", label: "Trống" },
-  { value: "occupied", icon: "🔴", label: "Có khách" },
-  { value: "payment_pending", icon: "🟡", label: "Chờ thanh toán" },
-  { value: "reserved", icon: "🔵", label: "Đã đặt" },
-  { value: "cleaning", icon: "🧽", label: "Dọn dẹp" },
-  { value: "offline", icon: "⚫", label: "Tạm ngưng" },
-];
-const TABLE_AREA_OPTIONS = [
-  { value: "standard", label: "Trong nhà" },
-  { value: "booth", label: "Booth" },
-  { value: "vip", label: "VIP" },
-  { value: "outdoor", label: "Ngoài trời" },
-  { value: "bar", label: "Bar" },
-  { value: "private", label: "Riêng" },
-];
-const TABLE_AREA_LABELS = TABLE_AREA_OPTIONS.reduce((acc, item) => {
-  acc[item.value] = item.label;
-  return acc;
-}, {});
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -292,17 +278,8 @@ const TableManagement = () => {
   };
 
   // --- Helpers ---
-  const getStatusConfig = (status) =>
-    ({
-      available: { text: "Trống", color: "success" },
-      occupied: { text: "Có khách", color: "danger" },
-      reserved: { text: "Đã đặt", color: "primary" },
-      cleaning: { text: "Dọn dẹp", color: "secondary" },
-      payment_pending: { text: "Chờ thanh toán", color: "warning" },
-      offline: { text: "Tạm ngưng", color: "secondary" },
-    }[status] || { text: status, color: "secondary" });
-
-  const getAreaText = (area) => TABLE_AREA_LABELS[area] || area;
+  const getStatusConfig = getTableStatusConfig;
+  const getAreaText = getTableAreaLabel;
 
   const formatCurrency = (amount) =>
     `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
@@ -704,7 +681,7 @@ const TableManagement = () => {
               }
             >
               <option value="">Tất cả trạng thái</option>
-              {TABLE_STATUS_FILTER_OPTIONS.map((statusOption) => (
+              {TABLE_STATUS_OPTIONS.map((statusOption) => (
                 <option key={statusOption.value} value={statusOption.value}>
                   {statusOption.icon} {statusOption.label}
                 </option>
