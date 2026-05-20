@@ -128,10 +128,15 @@ const fmtMoney = (v) =>
     v
   );
 const toVNDateTime = (iso) => new Date(iso).toLocaleString("vi-VN");
-const normalizeOrderType = (raw) =>
-  ["delivery", "ship", "giao_hang"].includes((raw || "").toLowerCase())
-    ? "delivery"
-    : "dinein";
+const normalizeOrderType = (raw) => {
+  const value = String(raw || "").toLowerCase();
+
+  if (["delivery", "ship", "giao_hang"].includes(value)) return "delivery";
+  if (["takeaway", "pickup", "take_away", "mang_di"].includes(value)) return "takeaway";
+  if (["dinein", "dine_in", "eat_in", "tai_quan"].includes(value)) return "dinein";
+
+  return "dinein";
+};
 
 const getOrderTypeLabel = (raw) => {
   const value = String(raw || "").toLowerCase();
@@ -161,10 +166,14 @@ function OrderDetailModal({ detailTarget, onClose }) {
   return (
     <Modal isOpen={!!detailTarget} onClose={onClose} size="md">
       <Modal.Header>
-        {kind === "dinein" ? "Chi tiết đơn tại quán" : "Chi tiết đặt bàn"}
+        {kind === "dinein"
+          ? "Chi tiết đơn tại quán"
+          : kind === "takeaway"
+            ? "Chi tiết đơn mang đi"
+            : "Chi tiết đặt bàn"}
       </Modal.Header>
       <Modal.Body className="order-detail-modal">
-        {kind === "dinein" ? (
+        {["dinein", "takeaway"].includes(kind) ? (
           <>
             {renderField("Mã đơn", orderCode)}
             {renderField("Trạng thái", data.currentStatus || "--")}
@@ -390,12 +399,12 @@ export default function OrdersPage() {
       return;
     }
 
-    if (item?.kind === "dinein") {
+    if (item?.kind === "dinein" || item?.kind === "takeaway") {
       if (!raw) {
         pushToast("Không đủ thông tin để mở chi tiết đơn.");
         return;
       }
-      setDetailTarget({ kind: "dinein", data: raw });
+      setDetailTarget({ kind: item.kind, data: raw });
       return;
     }
 
@@ -555,7 +564,7 @@ export default function OrdersPage() {
             value:
               type === "delivery"
                 ? o.shipping?.deliveryTime || "--"
-                : "Tại quán",
+                : getOrderTypeLabel(o.orderType),
           },
         ],
         actions: actions,
@@ -571,6 +580,7 @@ export default function OrdersPage() {
     if (activeTab === "all") return true;
     if (activeTab === "reservation") return item.kind === "reservation";
     if (activeTab === "dinein") return item.kind === "dinein";
+    if (activeTab === "takeaway") return item.kind === "takeaway";
     if (activeTab === "delivery") return item.kind === "delivery";
     if (activeTab === "history")
       return ["cancelled", "completed", "rejected", "expired"].includes(
@@ -608,6 +618,7 @@ export default function OrdersPage() {
           { id: "all", label: "Tất cả", icon: "📑" },
           { id: "reservation", label: "Đặt bàn", icon: "📅" },
           { id: "dinein", label: "Tại quán", icon: "🍽️" },
+          { id: "takeaway", label: "Mang đi", icon: "🥡" },
           { id: "delivery", label: "Giao hàng", icon: "🚚" },
           { id: "history", label: "Lịch sử", icon: "📜" },
         ].map((tab) => (

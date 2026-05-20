@@ -42,6 +42,7 @@ const OrderItem = ({
       color: "orange",
       label: "Giao hàng",
     },
+    takeaway: { icon: <Receipt size={14} />, color: "blue", label: "Mang đi" },
     dinein: { icon: <Receipt size={14} />, color: "green", label: "Tại quán" },
   };
   const currentKind = kindConfig[kind] || kindConfig.dinein;
