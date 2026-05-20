@@ -549,7 +549,7 @@ const MenuManagement = () => {
   );
 
   const handleSelectToggle = useCallback((item, checked) => {
-    const itemId = item?.id;
+    const itemId = String(item?.id || "");
     if (!itemId) return;
     setSelectedItemIds((prev) => {
       const next = new Set(prev);
@@ -753,6 +753,12 @@ const MenuManagement = () => {
     ],
   );
 
+
+  useEffect(() => {
+    if (isBulkUpdatingStatus) return;
+    setSelectedItemIds(new Set());
+  }, [currentRestaurant, isBulkUpdatingStatus, selectedTimeSlot]);
+
   const displayItems = useMemo(
     () => {
       const mapped = (items || []).map((item) => ({
@@ -782,6 +788,23 @@ const MenuManagement = () => {
     },
     [items, categories, inventoryFilter],
   );
+
+  const visibleItemIds = useMemo(
+    () => new Set((displayItems || []).map((item) => String(item.id))),
+    [displayItems],
+  );
+
+  useEffect(() => {
+    if (isBulkUpdatingStatus) return;
+    setSelectedItemIds((prev) => {
+      if (!prev.size) return prev;
+      const next = new Set(
+        Array.from(prev).filter((id) => visibleItemIds.has(String(id))),
+      );
+      return next.size === prev.size ? prev : next;
+    });
+  }, [isBulkUpdatingStatus, visibleItemIds]);
+
   const inventoryFilterCounts = useMemo(() => {
     const sourceItems = Array.isArray(items) ? items : [];
     return sourceItems.reduce(
@@ -1094,7 +1117,7 @@ const MenuManagement = () => {
                     viewMode={currentView}
                     onStatusChange={canUpdateMenuItem ? handleChangeItemStatus : undefined}
                     updatingStatus={updatingStatusItemId === item.id}
-                    selected={selectedItemIds.has(item.id)}
+                    selected={selectedItemIds.has(String(item.id))}
                     onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
                   />
                 ))}
