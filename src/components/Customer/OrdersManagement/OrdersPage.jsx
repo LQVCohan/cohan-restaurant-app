@@ -301,6 +301,9 @@ export default function OrdersPage() {
   const userId = auth?.user?.id;
   const [activeTab, setActiveTab] = useState("all");
   const [toasts, setToasts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
 
   // State Modals
@@ -573,28 +576,112 @@ export default function OrdersPage() {
     });
   }, [orderConn]);
 
-  const allItems = [...reservationItems, ...orderItems];
+  const allItems = useMemo(
+    () => [...reservationItems, ...orderItems],
+    [reservationItems, orderItems]
+  );
+  const isDefaultFilters = !searchTerm.trim() && statusFilter === "all" && sortBy === "newest";
 
-  // Filter logic
-  const visibleItems = allItems.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "reservation") return item.kind === "reservation";
-    if (activeTab === "dinein") return item.kind === "dinein";
-    if (activeTab === "takeaway") return item.kind === "takeaway";
-    if (activeTab === "delivery") return item.kind === "delivery";
-    if (activeTab === "history")
-      return ["cancelled", "completed", "rejected", "expired"].includes(
-        item.status
-      );
-    return true;
-  });
+  // Filter + Search + Sort logic
+  const visibleItems = useMemo(() => {
+    const searchText = searchTerm.trim().toLowerCase();
+    const completedStatuses = ["completed", "seated"];
+    const cancelledStatuses = ["cancelled", "rejected", "expired"];
+
+    const tabFiltered = allItems.filter((item) => {
+      if (activeTab === "all") return true;
+      if (activeTab === "reservation") return item.kind === "reservation";
+      if (activeTab === "dinein") return item.kind === "dinein";
+      if (activeTab === "takeaway") return item.kind === "takeaway";
+      if (activeTab === "delivery") return item.kind === "delivery";
+      if (activeTab === "history") {
+        return ["cancelled", "completed", "rejected", "expired"].includes(item.status);
+      }
+      return true;
+    });
+
+    const searched = tabFiltered.filter((item) => {
+      if (!searchText) return true;
+      const raw = item?.raw || {};
+      const itemNames = Array.isArray(raw?.items)
+        ? raw.items.map((it) => it?.name).filter(Boolean).join(" ")
+        : "";
+
+      const haystack = [
+        item?.orderId,
+        item?.restaurantName,
+        item?.status,
+        item?.kind,
+        raw?.orderCode,
+        raw?.id,
+        raw?.restaurantId,
+        raw?.currentStatus,
+        raw?.status,
+        itemNames,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(searchText);
+    });
+
+    const statusFiltered = searched.filter((item) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "completed") return completedStatuses.includes(item.status);
+      if (statusFilter === "cancelled") return cancelledStatuses.includes(item.status);
+      if (statusFilter === "active") {
+        return !completedStatuses.includes(item.status) && !cancelledStatuses.includes(item.status);
+      }
+      return true;
+    });
+
+    const getDateValue = (item) => {
+      const raw = item?.raw || {};
+      const ts = raw?.timeTo || raw?.createdAt;
+      const parsed = ts ? Date.parse(ts) : NaN;
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const getAmountValue = (item) => {
+      const raw = item?.raw || {};
+      const amount = raw?.totals?.grandTotal ?? raw?.depositAmount;
+      const parsed = Number(amount);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    return [...statusFiltered].sort((a, b) => {
+      if (sortBy === "newest" || sortBy === "oldest") {
+        const av = getDateValue(a);
+        const bv = getDateValue(b);
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return sortBy === "newest" ? bv - av : av - bv;
+      }
+
+      if (sortBy === "amount_desc" || sortBy === "amount_asc") {
+        const av = getAmountValue(a);
+        const bv = getAmountValue(b);
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return sortBy === "amount_desc" ? bv - av : av - bv;
+      }
+
+      return 0;
+    });
+  }, [activeTab, allItems, searchTerm, statusFilter, sortBy]);
 
   const hasAnyError = Boolean(ordersError || resvError);
+  const hasLoadedItems = allItems.length > 0;
   const hasVisibleItems = visibleItems.length > 0;
   const isLoading = ordersLoading || resvLoading;
-  const shouldShowFullError = !isLoading && hasAnyError && !hasVisibleItems;
-  const shouldShowPartialWarning = !isLoading && hasAnyError && hasVisibleItems;
-  const shouldShowEmpty = !isLoading && !hasAnyError && !hasVisibleItems;
+  const shouldShowFullError = !isLoading && hasAnyError && !hasLoadedItems;
+  const shouldShowPartialWarning = !isLoading && hasAnyError && hasLoadedItems;
+  const shouldShowEmpty = !isLoading && !hasVisibleItems && !shouldShowFullError;
+  const hasFilterOrSearch = !isDefaultFilters;
+  const hasScopedFilter = hasFilterOrSearch || activeTab !== "all";
 
   return (
     <div className="orders-page">
@@ -630,6 +717,43 @@ export default function OrdersPage() {
             {tab.icon} {tab.label}
           </button>
         ))}
+      </div>
+      <div className="orders-controls">
+        <input
+          className="orders-search"
+          type="text"
+          placeholder="Tìm theo mã đơn, món, nhà hàng..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          className="orders-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">Đang xử lý</option>
+          <option value="completed">Hoàn tất</option>
+          <option value="cancelled">Đã hủy/từ chối/hết hạn</option>
+        </select>
+        <select className="orders-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="newest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="amount_desc">Tổng tiền cao đến thấp</option>
+          <option value="amount_asc">Tổng tiền thấp đến cao</option>
+        </select>
+        {hasFilterOrSearch && (
+          <button
+            className="btn-clear-filters"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("all");
+              setSortBy("newest");
+            }}
+          >
+            Xóa lọc
+          </button>
+        )}
       </div>
 
       <div className="orders-grid">
@@ -667,7 +791,7 @@ export default function OrdersPage() {
         )}
         {shouldShowEmpty && (
           <div className="empty-state">
-            <p>Bạn chưa có đơn hàng nào.</p>
+            <p>{hasScopedFilter ? "Không tìm thấy đơn phù hợp." : "Bạn chưa có đơn hàng nào."}</p>
             <Link to="/" className="btn-create">Tiếp tục xem món</Link>
           </div>
         )}

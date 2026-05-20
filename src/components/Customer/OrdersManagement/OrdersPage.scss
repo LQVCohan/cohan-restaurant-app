@@ -94,6 +94,49 @@ $radius: 12px;
   }
 }
 
+.orders-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.orders-search,
+.orders-select {
+  background: $white;
+  border: 1px solid $border;
+  border-radius: 10px;
+  color: $text-main;
+  font-size: 0.92rem;
+  padding: 10px 12px;
+}
+
+.orders-search {
+  flex: 1;
+  min-width: 260px;
+}
+
+.orders-select {
+  min-width: 170px;
+}
+
+.btn-clear-filters {
+  padding: 10px 14px;
+  border: 1px solid $border;
+  border-radius: 10px;
+  background: $white;
+  color: $text-sub;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary;
+  }
+}
+
 /* LIST GRID */
 .orders-grid {
   display: flex;
