@@ -296,6 +296,7 @@ $st-cleaning-text: #7e22ce;
           cursor: not-allowed;
           opacity: 0.55;
           filter: grayscale(0.15);
+          pointer-events: none;
         }
         &:disabled:hover {
           transform: none;

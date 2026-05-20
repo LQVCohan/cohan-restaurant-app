@@ -447,6 +447,7 @@ const TableManagement = () => {
   };
 
   const handleTableCardKeyDown = (event, tableRow) => {
+    if (event.target !== event.currentTarget) return;
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     handleOpenTableDetail(tableRow);
