@@ -510,6 +510,38 @@ type CustomerTopDish {
   quantity: Int!
 }
 
+enum CustomerKindFilter {
+  ALL
+  REGISTERED
+  GUEST
+}
+
+enum CustomerSortBy {
+  CREATED_AT
+  LAST_LOGIN_AT
+  TOTAL_SPENDING
+  TOTAL_ORDERS
+  LOYALTY_POINTS
+  NAME
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+type CustomerPageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+  limit: Int!
+}
+
+type CustomerListPage {
+  items: [User!]!
+  pageInfo: CustomerPageInfo!
+  totalCount: Int!
+}
+
 type CustomerDetailAnalytics {
   userId: ID!
   favoriteFoods: [String!]!
@@ -2661,6 +2693,16 @@ type Query {
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean, restaurantId: ID): [User!]!
+  customerListPage(
+    restaurantId: ID!
+    search: String
+    includeGuests: Boolean = true
+    customerKind: CustomerKindFilter = ALL
+    sortBy: CustomerSortBy = CREATED_AT
+    sortDirection: SortDirection = DESC
+    limit: Int = 30
+    cursor: String
+  ): CustomerListPage!
   customerDetailAnalytics(
     userId: ID!
     restaurantId: ID

@@ -142,6 +142,58 @@ export const GET_CUSTOMERS = gql`
     }
   }
 `;
+export const GET_CUSTOMER_LIST_PAGE = gql`
+  query GetCustomerListPage(
+    $restaurantId: ID!
+    $search: String
+    $includeGuests: Boolean
+    $customerKind: CustomerKindFilter
+    $sortBy: CustomerSortBy
+    $sortDirection: SortDirection
+    $limit: Int
+    $cursor: String
+  ) {
+    customerListPage(
+      restaurantId: $restaurantId
+      search: $search
+      includeGuests: $includeGuests
+      customerKind: $customerKind
+      sortBy: $sortBy
+      sortDirection: $sortDirection
+      limit: $limit
+      cursor: $cursor
+    ) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+        limit
+      }
+      items {
+        id
+        fullName
+        username
+        email
+        phone
+        role { id name slug }
+        status
+        avatarUrl
+        refRestaurants { id name }
+        loyaltyPoints
+        customerType
+        totalOrders
+        totalSpending
+        emailVerified
+        isOnline
+        loyaltyDurationScore
+        lastLoginAt
+        noteInternal
+        isGuest
+        createdAt
+      }
+    }
+  }
+`;
 
 export const GET_CUSTOMERS_FOR_TABLE_INFO = gql`
   query GetCustomersForTableInfo($search: String, $includeGuests: Boolean) {
@@ -481,6 +533,9 @@ const useUserManagement = () => {
 
   // Data
   const [usersCache, setUsersCache] = useState([]);
+  const [customerPageItems, setCustomerPageItems] = useState([]);
+  const [customerPageInfo, setCustomerPageInfo] = useState(null);
+  const [customerTotalCount, setCustomerTotalCount] = useState(0);
 
   // Remember last fetch purpose
   const lastFetch = useRef({ purpose: null, variables: {} });
@@ -508,6 +563,8 @@ const useUserManagement = () => {
       fetchPolicy: "network-only",
       onCompleted: (d) => setUsersCache(d?.customers || []),
     });
+  const [fetchCustomerPage, { loading: customerPageLoading, error: customerPageError }] =
+    useLazyQuery(GET_CUSTOMER_LIST_PAGE, { fetchPolicy: "network-only" });
 
   // Mutations
   const [createUserMut, { loading: creating }] = useMutation(CREATE_USER, {
@@ -596,6 +653,38 @@ const useUserManagement = () => {
     },
     [fetchCustomers, searchQuery],
   );
+  const mapCustomerCard = useCallback((u) => {
+    const computedType = (u.customerType || "").toUpperCase();
+    return {
+      id: u.id,
+      name: u.fullName || u.username || "Khách hàng",
+      avatar: u.avatarUrl || avatarEmojiFromType(computedType),
+      status: u.isOnline ? "online" : statusToCardStatus(u.status),
+      customerType: toVietnamCustomerType(computedType || "NEW"),
+      loyaltyPoints: Number(u.loyaltyPoints ?? 0),
+      totalOrders: Number(u.totalOrders || 0),
+      totalSpending: Number(u.totalSpending || 0),
+      noteInternal: u.noteInternal || "",
+      isGuest: !!u.isGuest,
+      refRestaurants: u.refRestaurants || [],
+      joinDate: toISODateOrNull(u.createdAt),
+      raw: u,
+      email: u.email || null,
+      phone: u.phone || null,
+    };
+  }, []);
+  const getCustomersPage = useCallback(async ({
+    restaurantId, search, includeGuests = true, customerKind = "ALL", sortBy = "CREATED_AT", sortDirection = "DESC", limit = 30, cursor, append = false,
+  } = {}) => {
+    const variables = { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, sortBy, sortDirection, limit, cursor };
+    const { data } = await fetchCustomerPage({ variables });
+    const page = data?.customerListPage;
+    const mapped = (page?.items || []).map(mapCustomerCard);
+    setCustomerPageItems((prev) => (append ? [...prev, ...mapped] : mapped));
+    setCustomerPageInfo(page?.pageInfo || null);
+    setCustomerTotalCount(Number(page?.totalCount || 0));
+    return page;
+  }, [fetchCustomerPage, mapCustomerCard]);
 
   /* ===== Derived ===== */
 
@@ -750,6 +839,9 @@ const useUserManagement = () => {
     users: allUsers,
     customers,
     filteredCustomers,
+    customerPageItems,
+    customerPageInfo,
+    customerTotalCount,
 
     // ui
     selectedRestaurant,
@@ -760,6 +852,7 @@ const useUserManagement = () => {
     loading:
       usersLoading ||
       customersLoading ||
+      customerPageLoading ||
       creating ||
       creatingGuest ||
       updatingMe ||
@@ -778,11 +871,12 @@ const useUserManagement = () => {
     settingStatus,
     softDeleting,
     updatingMetrics,
-    error: usersError || customersError || null,
+    error: usersError || customersError || customerPageError || null,
 
     // fetch
     getAllUsers,
     getCustomers,
+    getCustomersPage,
 
     // ui helpers
     searchUsers,
