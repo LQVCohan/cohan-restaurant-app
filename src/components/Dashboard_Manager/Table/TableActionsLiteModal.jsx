@@ -86,6 +86,22 @@ const buildMovedTablePosition = (targetTable, nextCoordinates) => {
   };
 };
 
+const POS_MANAGED_STATUS_TRANSITIONS = new Set([
+  "available->occupied",
+  "reserved->occupied",
+  "occupied->payment_pending",
+  "payment_pending->cleaning",
+  "occupied->available",
+  "payment_pending->available",
+  "occupied->cleaning",
+  "reserved->cleaning",
+]);
+
+const isPosManagedStatusTransition = (currentStatus, nextStatus) =>
+  POS_MANAGED_STATUS_TRANSITIONS.has(
+    `${String(currentStatus || "").toLowerCase()}->${String(nextStatus || "").toLowerCase()}`
+  );
+
 const getAvailablePositionForFloor = (allTables, targetFloorId) => {
   const occupiedPositions = new Set(
     (allTables || [])
@@ -198,9 +214,9 @@ export default function TableActionsLiteModal({
 
   const initialDraft = useMemo(
     () => ({
-      code: table?.code || "",
-      capacity: Number(table?.capacity || 0),
-      type: table?.type || "standard",
+      code: table?.code ?? table?.number ?? "",
+      capacity: Number(table?.capacity ?? table?.seats ?? 0),
+      type: table?.type ?? table?.area ?? "standard",
       tags: joinUniqueLabels(table?.tags || [], ", "),
       status: table?.status || "available",
       depositAmount: table?.deposit ?? "",
@@ -306,9 +322,9 @@ export default function TableActionsLiteModal({
     if (!isOpen) return;
     if (didRestore) return;
 
-    setCode(table?.code || "");
-    setCapacity(Number(table?.capacity || 0));
-    setType(table?.type || "standard");
+    setCode(table?.code ?? table?.number ?? "");
+    setCapacity(Number(table?.capacity ?? table?.seats ?? 0));
+    setType(table?.type ?? table?.area ?? "standard");
     setTags(joinUniqueLabels(table?.tags || [], ", "));
     setStatusLocal(table?.status || "available");
     const storedImage = loadTableVrImage(table?.id);
@@ -526,6 +542,13 @@ export default function TableActionsLiteModal({
 
   const handleChangeStatus = async (next) => {
     if (!table?.id || next === status || busy.status) return;
+    if (isPosManagedStatusTransition(status, next)) {
+      showNotification(
+        "Vui lòng thao tác nhận khách, thanh toán hoặc dọn bàn tại POS để đồng bộ order và phiên bàn.",
+        "warning"
+      );
+      return;
+    }
     setBusyKey("status", true);
     try {
       await actions.setTableStatus({ id: table.id, status: next });
@@ -1079,14 +1102,19 @@ export default function TableActionsLiteModal({
             </div>
             <div className="chips">
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
-                (st) => (
+                (st) => {
+                  const posManagedReason = isPosManagedStatusTransition(status, st)
+                    ? "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn."
+                    : "";
+
+                  return (
                   <button
                     type="button"
                     key={st}
                     className={`chip ${status === st ? "active" : ""}`}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status || !!getStatusDisabledReason(st)}
-                    title={getStatusDisabledReason(st) || ""}
+                    disabled={busy.status || !!getStatusDisabledReason(st) || !!posManagedReason}
+                    title={getStatusDisabledReason(st) || posManagedReason || ""}
                   >
                     {st === "available" && "Trống"}
                     {st === "occupied" && "Có khách"}
@@ -1094,7 +1122,8 @@ export default function TableActionsLiteModal({
                     {st === "cleaning" && "Đang dọn"}
                     {st === "offline" && "Ngưng"}
                   </button>
-                )
+                  );
+                }
               )}
             </div>
             {guardState.hasGuard && (

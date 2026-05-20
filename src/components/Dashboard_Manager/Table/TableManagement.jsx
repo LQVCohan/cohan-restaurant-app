@@ -44,6 +44,10 @@ const filterTablesByFloor = (tables, floorId) =>
     (t) => String(getTableFloorId(t)) === String(floorId)
   );
 
+
+const getRawTableById = (tablesRaw, tableId) =>
+  (tablesRaw || []).find((raw) => String(raw.id) === String(tableId)) || null;
+
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
   const { showNotification } = useNotification();
@@ -704,7 +708,8 @@ const TableManagement = () => {
                     key={t.id}
                     className={`tm-table-card ${t.status}`}
                     onDoubleClick={() => {
-                      setLiteTable(t);
+                      const rawTable = getRawTableById(tablesRaw, t.id);
+                      setLiteTable(rawTable || t);
                       setShowLiteModal(true);
                     }}
                   >
