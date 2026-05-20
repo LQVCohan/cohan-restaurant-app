@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing";
 import CustomerRequestQueuePanel, { ACK, Q, RES } from "./CustomerRequestQueuePanel";
@@ -8,7 +8,7 @@ const mk = (overrides = {}) => ({
   ...overrides,
 });
 
-const renderPanel = (mocks, restaurantId = "res-1") => render(<MockedProvider mocks={mocks}><CustomerRequestQueuePanel restaurantId={restaurantId} /></MockedProvider>);
+const renderPanel = (mocks, props = {}) => render(<MockedProvider mocks={mocks}><CustomerRequestQueuePanel restaurantId="res-1" {...props} /></MockedProvider>);
 
 describe("CustomerRequestQueuePanel", () => {
   it("empty state does not crash", async () => {
@@ -43,7 +43,8 @@ describe("CustomerRequestQueuePanel", () => {
       { request: { query: Q, variables: { restaurantId: "res-1", type: null, limit: 50, status: "ACKNOWLEDGED" } }, result: { data: { customerServiceRequests: [] } } },
     ]);
     fireEvent.click(await screen.findByRole("button", { name: "Nhận xử lý" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Đã xử lý" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Đã hỗ trợ" }));
     expect(true).toBe(true);
   });
 });
+

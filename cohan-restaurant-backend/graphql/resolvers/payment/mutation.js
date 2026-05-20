@@ -20,7 +20,7 @@ import { createReservationPayment } from "../../../src/services/payment/paymentS
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
-import { emitOrderEvent } from "../order/helper/emitOrderEvent.js";
+import { emitOrderEvent, emitRestaurantEvent } from "../order/helper/emitOrderEvent.js";
 import {
   INACTIVE_ORDER_STATUSES,
   activeTableSessionLookupFilter,
@@ -31,7 +31,18 @@ import {
   SESSION_STATUS,
   ORDER_PAYMENT_STATUS,
 } from "../../../utils/orderLifecycle.js";
+import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/orderTracking.service.js";
 
+
+function resolveActivePaymentRequest(orderDoc, actorId = null) {
+  const req = (orderDoc?.customerRequests || []).find((r) => r?.type === "PAYMENT_REQUEST" && ["PENDING", "ACKNOWLEDGED"].includes(String(r?.status || "").toUpperCase()));
+  if (!req) return null;
+  req.status = "RESOLVED";
+  req.resolvedAt = new Date();
+  req.resolvedBy = actorId || null;
+  orderDoc.customerVisibleNote = "Đơn hàng đã thanh toán. Cảm ơn quý khách.";
+  return req;
+}
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
 function hasPendingItemWork(order) {
@@ -1216,6 +1227,15 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
 
     const paidOrders = await Order.find({ _id: { $in: orderIds } });
     for (const paidOrder of paidOrders) {
+      const resolvedRequest = resolveActivePaymentRequest(paidOrder, actorId);
+      if (resolvedRequest) {
+        await paidOrder.save();
+        await emitRestaurantEvent(ctx, String(paidOrder.restaurantId), "CUSTOMER_REQUEST_RESOLVED", {
+          request: { requestId: resolvedRequest.requestId, type: resolvedRequest.type, status: resolvedRequest.status, message: resolvedRequest.message || null, createdAt: resolvedRequest.createdAt || null, acknowledgedAt: resolvedRequest.acknowledgedAt || null, resolvedAt: resolvedRequest.resolvedAt || null, orderCode: paidOrder.orderCode || null, tableCode: paidOrder.tableCode || paidOrder.table?.code || null },
+          message: "Đơn hàng đã thanh toán. Cảm ơn quý khách.",
+        });
+        emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: paidOrder, force: true });
+      }
       await emitOrderEvent(
         ctx,
         String(paidOrder.restaurantId),
@@ -1519,6 +1539,15 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
 
     const paidOrders = await Order.find({ _id: { $in: activeOrderIds } });
     for (const paidOrder of paidOrders) {
+      const resolvedRequest = resolveActivePaymentRequest(paidOrder, actorId);
+      if (resolvedRequest) {
+        await paidOrder.save();
+        await emitRestaurantEvent(ctx, String(paidOrder.restaurantId), "CUSTOMER_REQUEST_RESOLVED", {
+          request: { requestId: resolvedRequest.requestId, type: resolvedRequest.type, status: resolvedRequest.status, message: resolvedRequest.message || null, createdAt: resolvedRequest.createdAt || null, acknowledgedAt: resolvedRequest.acknowledgedAt || null, resolvedAt: resolvedRequest.resolvedAt || null, orderCode: paidOrder.orderCode || null, tableCode: paidOrder.tableCode || paidOrder.table?.code || null },
+          message: "Đơn hàng đã thanh toán. Cảm ơn quý khách.",
+        });
+        emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: paidOrder, force: true });
+      }
       await emitOrderEvent(
         ctx,
         String(paidOrder.restaurantId),
