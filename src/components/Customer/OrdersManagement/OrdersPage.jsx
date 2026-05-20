@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext } from "react";
+import React, { useMemo, useState, useContext, useCallback } from "react";
 import Modal from "@/components/common/Modal";
 import { Link, useNavigate } from "react-router-dom";
 import "./OrdersPage.scss";
@@ -21,6 +21,7 @@ import {
   getReservationActionErrorMessage,
 } from "@/utils/commerceActionErrorMessages";
 import ConfirmationModal from "../../Customer/TableBooking/ConfirmationModal/ConfirmationModal";
+import { useCart } from "@/context/CartProvider";
 
 /* ───────────────── GraphQL Queries (Giữ nguyên) ───────────────── */
 const ORDERS_BY_USER = gql`
@@ -48,11 +49,35 @@ const ORDERS_BY_USER = gql`
           }
           items {
             _id
+            dishId
+            menuId
+            categoryId
             name
-            price
-            quantity
             unit
+            image
             proofImages
+            quantity
+            unitPrice
+            lineSubtotal
+            servingKey
+            servingVariant {
+              key
+              name
+              mode
+              price
+              sellQty
+              sellUnit
+            }
+            modifiers {
+              groupId
+              groupName
+              optionId
+              optionName
+              priceRule {
+                rule
+                amount
+              }
+            }
           }
           totals {
             grandTotal
@@ -186,7 +211,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
                 <ul>
                   {(data.items || []).map((it, idx) => (
                     <li key={it?._id || `${it?.name}_${idx}`}>
-                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(it?.price || 0)}
+                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(Number(it?.unitPrice ?? it?.price ?? it?.servingVariant?.price ?? 0))}
                     </li>
                   ))}
                 </ul>
@@ -221,7 +246,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
   );
 }
 
-function ReceiptModal({ receiptTarget, onClose }) {
+function ReceiptModal({ receiptTarget, onClose, onReorder }) {
   if (!receiptTarget) return null;
 
   const orderCode = receiptTarget?.orderCode || receiptTarget?.id || "--";
@@ -233,6 +258,8 @@ function ReceiptModal({ receiptTarget, onClose }) {
       <span className="detail-value">{value || "--"}</span>
     </div>
   );
+  const getOrderItemUnitPrice = (item) =>
+    Number(item?.unitPrice ?? item?.price ?? item?.servingVariant?.price ?? 0);
 
   return (
     <Modal isOpen={!!receiptTarget} onClose={onClose} size="md">
@@ -263,13 +290,17 @@ function ReceiptModal({ receiptTarget, onClose }) {
           {(receiptTarget?.items || []).length ? (
             <ul>
               {(receiptTarget?.items || []).map((it, idx) => {
-                const unitPrice = Number(it?.price);
+                const unitPrice = getOrderItemUnitPrice(it);
                 const quantity = Number(it?.quantity);
-                const hasSubtotal = Number.isFinite(unitPrice) && Number.isFinite(quantity);
+                const hasSubtotal = Number.isFinite(quantity);
+                const lineSubtotal = Number(it?.lineSubtotal);
+                const resolvedSubtotal = Number.isFinite(lineSubtotal)
+                  ? lineSubtotal
+                  : unitPrice * quantity;
 
                 return (
                   <li key={it?._id || `${it?.name}_${idx}`}>
-                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(unitPrice * quantity) : "--"}
+                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(resolvedSubtotal) : "--"}
                   </li>
                 );
               })}
@@ -289,6 +320,14 @@ function ReceiptModal({ receiptTarget, onClose }) {
           renderField("Liên kết đặt bàn", receiptTarget?.reservationId)}
       </Modal.Body>
       <Modal.Footer>
+        {!!(receiptTarget?.items || []).length && (
+          <button
+            className="btn btn--outline"
+            onClick={() => onReorder?.(receiptTarget)}
+          >
+            Đặt lại đơn này
+          </button>
+        )}
         <button className="btn btn--primary" onClick={onClose}>
           Đóng
         </button>
@@ -305,6 +344,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
+  const { cart, addToCart, clearCart } = useCart();
 
   // State Modals
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -423,6 +463,81 @@ export default function OrdersPage() {
     pushToast("Không đủ thông tin để mở chi tiết đơn.");
   };
 
+  const resolveOrderRestaurantId = (order) =>
+    order?.restaurantId || order?.raw?.restaurantId || null;
+
+  const mapOrderItemToCartItem = (orderItem, restaurantId) => {
+    const id = orderItem?.dishId || orderItem?.menuItemId || orderItem?.itemId;
+    if (!id) return null;
+    const price =
+      Number(orderItem?.unitPrice) ||
+      Number(orderItem?.servingVariant?.price) ||
+      Number(orderItem?.price) ||
+      0;
+
+    return {
+      id,
+      dishId: orderItem?.dishId || id,
+      restaurantId,
+      name: orderItem?.name || "Món ăn",
+      price,
+      quantity: Number(orderItem?.quantity) > 0 ? Number(orderItem.quantity) : 1,
+      unit: orderItem?.unit || "phần",
+      image:
+        orderItem?.image ||
+        orderItem?.thumbnail ||
+        (Array.isArray(orderItem?.proofImages) ? orderItem.proofImages[0] : "") ||
+        "",
+      modifiers: orderItem?.modifiers || orderItem?.options || [],
+    };
+  };
+
+  const performReorder = useCallback((order, restaurantId) => {
+    const sourceItems = Array.isArray(order?.items) ? order.items : [];
+    const mapped = sourceItems
+      .map((item) => mapOrderItemToCartItem(item, restaurantId))
+      .filter(Boolean);
+
+    if (!mapped.length) {
+      pushToast("Một số món trong đơn cũ không còn đủ thông tin để đặt lại.");
+      return false;
+    }
+
+    mapped.forEach((item) => addToCart(item));
+    pushToast("Đã thêm món từ đơn cũ vào giỏ hàng.");
+    navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}`);
+    return true;
+  }, [addToCart, navigate]);
+
+  const handleReorder = useCallback((order) => {
+    const sourceItems = Array.isArray(order?.items) ? order.items : [];
+    if (!sourceItems.length) {
+      pushToast("Đơn này không có món để đặt lại.");
+      return false;
+    }
+
+    const restaurantId = resolveOrderRestaurantId(order);
+    if (!restaurantId) {
+      pushToast("Không đủ thông tin nhà hàng để đặt lại đơn.");
+      return false;
+    }
+
+    const cartRestaurantIds = [...new Set((cart || []).map((item) => item?.restaurantId).filter(Boolean))];
+    const hasConflict =
+      cartRestaurantIds.length > 0 &&
+      (cartRestaurantIds.length > 1 || String(cartRestaurantIds[0]) !== String(restaurantId));
+
+    if (hasConflict) {
+      const confirmed = window.confirm(
+        "Giỏ hàng hiện tại sẽ được thay bằng các món từ đơn này. Tiếp tục?"
+      );
+      if (!confirmed) return false;
+      clearCart();
+    }
+
+    return performReorder(order, restaurantId);
+  }, [cart, clearCart, performReorder]);
+
   /* --- 1. MAPPING RESERVATION DATA --- */
   const reservationItems = useMemo(() => {
     return (resvList?.myReservations || []).map((r) => {
@@ -525,6 +640,13 @@ export default function OrdersPage() {
           onClick: () => setReceiptTarget(o),
         },
       ];
+      if ((o.items || []).length > 0) {
+        actions.push({
+          label: "Đặt lại",
+          variant: "primary",
+          onClick: () => handleReorder(o),
+        });
+      }
 
       if (!isCancelled && o.currentStatus !== "completed") {
         actions.push({
@@ -574,7 +696,7 @@ export default function OrdersPage() {
         raw: o,
       };
     });
-  }, [orderConn]);
+  }, [orderConn, handleReorder]);
 
   const allItems = useMemo(
     () => [...reservationItems, ...orderItems],
@@ -857,6 +979,10 @@ export default function OrdersPage() {
       <ReceiptModal
         receiptTarget={receiptTarget}
         onClose={() => setReceiptTarget(null)}
+        onReorder={(order) => {
+          const ok = handleReorder(order);
+          if (ok) setReceiptTarget(null);
+        }}
       />
       <ChangeTableModal
         isOpen={!!changeTableOpen}
