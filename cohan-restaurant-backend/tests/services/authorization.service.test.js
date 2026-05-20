@@ -1,26 +1,27 @@
 import fs from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getUserEffectivePermissions,
   hasPermission,
   requirePermission,
   requireRestaurantPermission,
 } from "../../src/services/auth/authorization.service.js";
-vi.mock("../../models/index.js", async () => {
-  const actual = await vi.importActual("../../models/index.js");
-  return {
-    ...actual,
-    Restaurant: {
-      ...actual.Restaurant,
-      exists: vi.fn().mockResolvedValue(false),
-    },
-  };
-});
+const modelMocks = vi.hoisted(() => ({
+  Restaurant: {
+    exists: vi.fn(),
+  },
+}));
 
+vi.mock("../../models/index.js", () => modelMocks);
 
 const RESTAURANT_ID = "rest-main-1";
 
 describe("authorization.service RBAC", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    modelMocks.Restaurant.exists.mockResolvedValue(false);
+  });
+
   it("allows admin to create permissions through wildcard/system authority", async () => {
     await expect(
       requirePermission({ user: { id: "admin-1", roleName: "admin" } }, "permission.write"),
