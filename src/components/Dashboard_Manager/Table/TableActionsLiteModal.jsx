@@ -17,6 +17,12 @@ import {
   POS_MANAGED_STATUS_TRANSITION_MESSAGE,
   POS_MANAGED_STATUS_TRANSITION_TITLE,
 } from "@/utils/tableStatusTransitionGuard";
+import {
+  getTableDisplayCapacity,
+  getTableDisplayCode,
+  getTableDisplayType,
+  getTableFloorId,
+} from "@/utils/tableManagementDisplay";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -73,23 +79,6 @@ const isValidPosition = (position) =>
   position &&
   Number.isFinite(Number(position.x)) &&
   Number.isFinite(Number(position.y));
-
-const getTableFloorId = (targetTable) =>
-  targetTable?.floorId?.id ||
-  targetTable?.floorId?._id ||
-  targetTable?.floorId ||
-  targetTable?.floor?.id ||
-  targetTable?.floor?._id ||
-  null;
-
-const getTableDisplayCode = (targetTable) =>
-  String(targetTable?.code ?? targetTable?.number ?? "").trim();
-
-const getTableDisplayCapacity = (targetTable) =>
-  Number(targetTable?.capacity ?? targetTable?.seats ?? 0);
-
-const getTableDisplayType = (targetTable) =>
-  targetTable?.type ?? targetTable?.area ?? "standard";
 
 const buildMovedTablePosition = (targetTable, nextCoordinates) => {
   const currentPosition = getTablePosition(targetTable);
