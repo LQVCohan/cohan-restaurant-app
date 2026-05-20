@@ -1,12 +1,11 @@
 // src/components/CustomerManagement/CustomerModal.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useMutation } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   Mail,
   Phone,
   Star,
   Zap,
-  Sparkles,
   ShoppingBag,
   Wallet,
   Edit3,
@@ -26,6 +25,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
 import { UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
+import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* ===== Helpers & Utils ===== */
 const normalizeEpochToMs = (v) => {
@@ -59,24 +59,6 @@ const getEntryAmount = (entry) => {
 };
 
 /* ===== Config ===== */
-const CUSTOMER_TIERS = {
-  VIP: {
-    label: "VIP",
-    color: "bg-gradient-to-r from-amber-400 to-orange-500",
-    icon: <Star size={12} fill="white" />,
-  },
-  OFTEN: {
-    label: "Thân thiết",
-    color: "bg-gradient-to-r from-blue-500 to-indigo-600",
-    icon: <Zap size={12} fill="white" />,
-  },
-  NEW: {
-    label: "Mới",
-    color: "bg-gradient-to-r from-emerald-400 to-teal-500",
-    icon: <Sparkles size={12} />,
-  },
-};
-
 const STATUS_CONFIG = {
   pending: { label: "Chờ xác nhận", color: "#b45309", bg: "#fef3c7" },
   confirmed: { label: "Đã xác nhận", color: "#0369a1", bg: "#e0f2fe" },
@@ -84,6 +66,20 @@ const STATUS_CONFIG = {
   cancelled: { label: "Đã hủy", color: "#b91c1c", bg: "#fee2e2" },
   default: { label: "Khác", color: "#475569", bg: "#f1f5f9" },
 };
+
+const GET_CUSTOMER_DETAIL_ANALYTICS = gql`
+  query GetCustomerDetailAnalytics($userId: ID!, $restaurantId: ID) {
+    customerDetailAnalytics(userId: $userId, restaurantId: $restaurantId) {
+      rankPoints
+      loyaltyDurationScore
+      favoriteFoods
+      topDishes {
+        dishName
+        quantity
+      }
+    }
+  }
+`;
 
 // Thêm prop isOpen vào đây để điều khiển modal
 const CustomerModal = ({
@@ -127,24 +123,40 @@ const CustomerModal = ({
   // 1. Data Processing
   const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
 
+  const { data: detailAnalyticsData } = useQuery(GET_CUSTOMER_DETAIL_ANALYTICS, {
+    skip: !isOpen || !customer?.id,
+    variables: { userId: String(customer?.id || ""), restaurantId },
+    fetchPolicy: "network-only",
+    errorPolicy: "all",
+  });
+  const detailAnalytics = detailAnalyticsData?.customerDetailAnalytics || null;
+
+  const rankConfig = useMemo(
+    () => getRankDisplayConfig(customer?.customerType || customer?.rankName, customer?.rankSettings || []),
+    [customer?.customerType, customer?.rankName, customer?.rankSettings],
+  );
+
   const stats = useMemo(() => {
-    const count = recentOrders.length;
-    const totalRaw = recentOrders.reduce(
-      (sum, e) => sum + getEntryAmount(e),
-      0
-    );
-    const avg = count > 0 ? totalRaw / count : 0;
-    const pts = Number(customer?.loyaltyPoints || 0);
+    const fallbackCount = recentOrders.length;
+    const fallbackTotal = recentOrders.reduce((sum, e) => sum + getEntryAmount(e), 0);
+    const total = Number(customer?.totalSpending);
+    const count = Number(customer?.totalOrders);
+    const safeCount = Number.isFinite(count) && count >= 0 ? count : fallbackCount;
+    const safeTotal = Number.isFinite(total) && total >= 0 ? total : fallbackTotal;
+    const avg = safeCount > 0 ? safeTotal / safeCount : 0;
+    const points = Number(customer?.loyaltyPoints || detailAnalytics?.rankPoints || 0);
 
-    let type = "NEW";
-    if (pts > 15000) type = "VIP";
-    else if (pts > 5000) type = "OFTEN";
-
-    return { count, total: totalRaw, avg, points: pts, type };
-  }, [recentOrders, customer?.loyaltyPoints]);
+    return { count: safeCount, total: safeTotal, avg, points };
+  }, [customer?.totalSpending, customer?.totalOrders, customer?.loyaltyPoints, detailAnalytics?.rankPoints, recentOrders]);
 
   const topItems = useMemo(() => {
     if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
+    if (detailAnalytics?.favoriteFoods?.length) {
+      return detailAnalytics.favoriteFoods.filter(Boolean).slice(0, 5);
+    }
+    if (detailAnalytics?.topDishes?.length) {
+      return detailAnalytics.topDishes.map((dish) => dish?.dishName).filter(Boolean).slice(0, 5);
+    }
     const itemMap = {};
     recentOrders.forEach((order) => {
       const items = order.items || order.raw?.items || [];
@@ -157,7 +169,7 @@ const CustomerModal = ({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map((entry) => entry[0]);
-  }, [recentOrders, customer?.favoriteItems]);
+  }, [recentOrders, customer?.favoriteItems, detailAnalytics?.favoriteFoods, detailAnalytics?.topDishes]);
 
   const walletStatus = useMemo(() => {
     const hasWallet = customer?.wallet?.id || customer?.hasWallet;
@@ -166,8 +178,9 @@ const CustomerModal = ({
     return { label: "Chưa kích hoạt", cls: "inactive" };
   }, [customer]);
 
-  const tier = CUSTOMER_TIERS[stats.type] || CUSTOMER_TIERS.NEW;
+  
   const joinDate = formatDate(customer?.joinDate);
+  const loyaltyDuration = Number(customer?.loyaltyDurationScore ?? detailAnalytics?.loyaltyDurationScore ?? 0);
 
   useEffect(() => {
     setChatOpen(false);
@@ -307,8 +320,8 @@ const CustomerModal = ({
                   <span className="badge-id">
                     #{String(customer?.id || 0).padStart(4, "0")}
                   </span>
-                  <span className={`badge-tier ${tier.color}`}>
-                    {tier.icon} {tier.label}
+                  <span className={`badge-tier tier-${rankConfig.variant}`}>
+                    {rankConfig.label}
                   </span>
                 </div>
               </div>
@@ -354,7 +367,7 @@ const CustomerModal = ({
                 <Clock size={18} />
               </div>
               <div className="stat-value">
-                {Number(customer?.loyaltyDurationScore || 0)} ngày
+                {loyaltyDuration} ngày
               </div>
               <div className="stat-label">Điểm gắn bó</div>
             </div>
@@ -374,7 +387,7 @@ const CustomerModal = ({
                   >
                     ●
                   </span>{" "}
-                  {customer?.online ? "Online" : "Offline"}
+                  {customer?.online ? "Hoạt động gần đây" : "Không hoạt động gần đây"}
                 </div>
                 <div className="c-item" title="Xác minh">
                   <UserCheck size={14} className="icon" />{" "}
@@ -441,20 +454,16 @@ const CustomerModal = ({
               <div className="order-rows">
                 {recentOrders.length > 0 ? (
                   recentOrders.slice(0, 5).map((order, i) => {
-                    const stKey = (
-                      order.status ||
-                      order.raw?.currentStatus ||
-                      "default"
-                    ).toLowerCase();
+                    const stKey = (order.status || order.raw?.currentStatus || "default").toLowerCase();
                     const st = STATUS_CONFIG[stKey] || STATUS_CONFIG.default;
                     return (
                       <div
                         key={i}
                         className="order-row"
-                        onClick={() => onShowBill && onShowBill(order)}
+                        onClick={() => onShowBill && onShowBill(order?.raw || order)}
                       >
                         <div className="o-date">
-                          {formatDate(order.raw?.createdAt || Date.now())}
+                          {formatDate(order.createdAt || order.raw?.createdAt || order.date)}
                         </div>
                         <div className="o-price">
                           {formatMoney(getEntryAmount(order))}
