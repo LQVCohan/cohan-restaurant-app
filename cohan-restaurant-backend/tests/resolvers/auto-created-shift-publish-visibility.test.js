@@ -56,6 +56,12 @@ const modelMocks = vi.hoisted(() => ({
   Table: { find: vi.fn() },
   Category: { countDocuments: vi.fn() },
   Promotion: { countDocuments: vi.fn() },
+  KitchenShiftRosterSnapshot: {
+    updateMany: vi.fn(),
+    insertMany: vi.fn(),
+    find: vi.fn(),
+    deleteMany: vi.fn(),
+  },
 }));
 
 const validationMocks = vi.hoisted(() => ({
@@ -503,6 +509,16 @@ describe("auto-created shift publish and staff visibility regression", () => {
     modelMocks.Table.find.mockReturnValue(queryResult([]));
     modelMocks.Category.countDocuments.mockResolvedValue(0);
     modelMocks.Promotion.countDocuments.mockResolvedValue(0);
+    modelMocks.KitchenShiftRosterSnapshot.updateMany.mockResolvedValue({
+      modifiedCount: 0,
+    });
+    modelMocks.KitchenShiftRosterSnapshot.insertMany.mockResolvedValue([]);
+    modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    modelMocks.KitchenShiftRosterSnapshot.deleteMany.mockResolvedValue({
+      deletedCount: 0,
+    });
 
     modelMocks.ScheduleAcknowledgement.findOneAndUpdate.mockImplementation(
       (filter, update = {}) => {
