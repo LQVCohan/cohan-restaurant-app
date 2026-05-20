@@ -105,31 +105,6 @@ const SLOT_CONFIG = {
 };
 
 const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
-const TIME_SLOT_VALUES = new Set(TIME_SLOT_ORDER);
-
-const getHeaderTimeSlotSelect = () => {
-  if (typeof document === "undefined") return null;
-  return Array.from(document.querySelectorAll("select.mm-select")).find((select) =>
-    Array.from(select.options || []).some((option) => TIME_SLOT_VALUES.has(option.value)),
-  );
-};
-
-const getSelectedHeaderTimeSlot = () => {
-  const select = getHeaderTimeSlotSelect();
-  return TIME_SLOT_VALUES.has(select?.value) ? select.value : null;
-};
-
-const dispatchSelectChange = (timeSlot) => {
-  const select = getHeaderTimeSlotSelect();
-  if (!select || !TIME_SLOT_VALUES.has(timeSlot)) return;
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLSelectElement.prototype,
-    "value",
-  )?.set;
-  if (setter) setter.call(select, timeSlot);
-  else select.value = timeSlot;
-  select.dispatchEvent(new Event("change", { bubbles: true }));
-};
 
 const firstFreeSlot = (menus) => {
   const used = new Set((menus || []).map((menu) => menu.timeSlot));
@@ -182,6 +157,8 @@ const CompactMenuStrip = ({
   onToggleMenuActive,
   onCopyMenu,
   activeMenuId,
+  selectedTimeSlot,
+  onTimeSlotChange,
   onSelectMenu,
   onSyncInventory,
 }) => {
@@ -253,22 +230,11 @@ const CompactMenuStrip = ({
     onSelectMenu?.(menus[0]);
   }, [menus, currentActiveId, activeMenuId, onSelectMenu]);
 
-  useEffect(() => {
-    const select = getHeaderTimeSlotSelect();
-    if (!select) return undefined;
-    const sync = () => {
-      const selected = menus.find((menu) => menu.timeSlot === select.value);
-      if (selected) setInternalActiveId(selected.id);
-    };
-    sync();
-    select.addEventListener("change", sync);
-    return () => select.removeEventListener("change", sync);
-  }, [menus]);
 
   const selectMenu = (menu) => {
     setInternalActiveId(menu.id);
-    if (typeof onSelectMenu === "function") onSelectMenu(menu);
-    else dispatchSelectChange(menu.timeSlot);
+    onSelectMenu?.(menu);
+    onTimeSlotChange?.(menu?.timeSlot || null);
   };
 
   const handleCopyMenu = async (menu) => {
@@ -301,7 +267,8 @@ const CompactMenuStrip = ({
       });
       if (data?.copyMenu) {
         setInternalActiveId(data.copyMenu.id);
-        dispatchSelectChange(data.copyMenu.timeSlot);
+        if (data.copyMenu.timeSlot) onTimeSlotChange?.(data.copyMenu.timeSlot);
+        onSelectMenu?.(data.copyMenu);
       }
     } catch (error) {
       setActionError(errorText(error, "Không thể sao chép thực đơn. Vui lòng thử lại."));
@@ -312,7 +279,7 @@ const CompactMenuStrip = ({
 
   const handleSyncInventory = async () => {
     if (!restaurantId || isSyncingInventory || typeof onSyncInventory !== "function") return;
-    const timeSlot = getSelectedHeaderTimeSlot() || menus[0]?.timeSlot || "breakfast";
+    const timeSlot = selectedTimeSlot || menus[0]?.timeSlot || "breakfast";
 
     setIsSyncingInventory(true);
     setActionError("");
@@ -357,7 +324,10 @@ const CompactMenuStrip = ({
       const nextMenu = menus.find((candidate) => candidate.id !== menu.id);
       if (nextMenu) {
         setInternalActiveId(nextMenu.id);
-        dispatchSelectChange(nextMenu.timeSlot);
+        onTimeSlotChange?.(nextMenu.timeSlot);
+        onSelectMenu?.(nextMenu);
+      } else {
+        onTimeSlotChange?.(null);
       }
       setDeleteCandidate(null);
     } catch (error) {
@@ -555,9 +525,10 @@ const CompactMenuStrip = ({
                             className="cms-tool-btn"
                             title="Sao chép thực đơn kèm món và recipe"
                             disabled={!!busyMenuId}
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              handleCopyMenu(menu);
+                              if (typeof onCopyMenu === "function") await onCopyMenu(menu);
+                              else await handleCopyMenu(menu);
                             }}
                           >
                             <FiCopy />{busy && <span>...</span>}

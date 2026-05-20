@@ -219,6 +219,9 @@ const MenuModal = ({
       categoryMenuId: formData.categoryMenuId || null,
       coverImage: formData.coverImage.trim() || null,
       isActive: !!formData.isActive,
+      __mode: initialData?.__mode,
+      isCopyDraft: initialData?.isCopyDraft,
+      sourceMenuId: initialData?.sourceMenuId || null,
     };
 
     onSubmit?.(payload);

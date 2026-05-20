@@ -327,6 +327,7 @@ const MenuManagement = () => {
   const [updatingStatusItemIds, setUpdatingStatusItemIds] = useState(() => new Set());
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set());
   const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false);
+  const [pendingBulkStatusAction, setPendingBulkStatusAction] = useState(null);
   const priceEditSubmitRef = useRef(false);
   const deleteItemSubmitRef = useRef(false);
 
@@ -357,6 +358,7 @@ const MenuManagement = () => {
     menusLoading,
     menusError,
     ensureMenu,
+    copyMenu,
     refetchMenus,
     items,
     itemsLoading,
@@ -493,6 +495,60 @@ const MenuManagement = () => {
     if (!currentRestaurant) return;
 
     setMenuSubmitError("");
+
+    const isCopySubmission = form?.__mode === "copy" || form?.isCopyDraft;
+
+    if (isCopySubmission) {
+      if (!currentRestaurant) {
+        setMenuSubmitError("Vui lòng chọn nhà hàng trước khi sao chép thực đơn.");
+        return;
+      }
+      if (!form?.sourceMenuId) {
+        setMenuSubmitError("Không tìm thấy menu nguồn để sao chép.");
+        return;
+      }
+      if (!form?.timeSlot) {
+        setMenuSubmitError("Vui lòng chọn khung giờ đích để sao chép thực đơn.");
+        return;
+      }
+
+      const hasMenuInTargetSlot = (menus || []).some(
+        (menu) => menu?.timeSlot === form.timeSlot,
+      );
+      if (hasMenuInTargetSlot) {
+        setMenuSubmitError(
+          "Khung giờ này đã có thực đơn. Vui lòng chọn khung giờ còn trống để sao chép.",
+        );
+        return;
+      }
+
+      setIsSavingMenu(true);
+      try {
+        const copied = await copyMenu({
+          sourceMenuId: form.sourceMenuId,
+          targetTimeSlot: form.timeSlot,
+          name: form.name,
+          description: form.description || null,
+          coverImage: form.coverImage || null,
+          categoryMenuId: form.categoryMenuId || null,
+          isActive: form.isActive || false,
+          copyItems: true,
+          copyRecipes: true,
+        });
+
+        await refetchMenus?.();
+        setSelectedTimeSlot(copied?.timeSlot || form.timeSlot);
+        toggleModal("menu", false);
+        pushMenuToast("Đã sao chép thực đơn kèm món và recipe.", "success");
+      } catch (err) {
+        setMenuSubmitError(
+          getGraphQLErrorMessage(err, "Không thể sao chép thực đơn. Vui lòng thử lại."),
+        );
+      } finally {
+        setIsSavingMenu(false);
+      }
+      return;
+    }
 
     const isCreatingMenu = !form?.id;
     const hasMenuInSelectedSlot = (menus || []).some((menu) => {
@@ -678,10 +734,9 @@ const MenuManagement = () => {
     setSelectedItemIds(new Set());
   }, []);
 
-  const handleBulkUpdateStatus = useCallback(
-    async (status) => {
+  const runBulkUpdateStatus = useCallback(
+    async (status, ids = []) => {
       if (!canUpdateMenuItem || !status || isBulkUpdatingStatus) return;
-      const ids = Array.from(selectedItemIds);
       if (!ids.length) return;
 
       setIsBulkUpdatingStatus(true);
@@ -697,34 +752,34 @@ const MenuManagement = () => {
         }
       }
 
-      try {
-        await refetchItems?.();
-      } catch (error) {
-        pushMenuToast(getGraphQLErrorMessage(error, "Không thể tải lại danh sách món."), "error");
-      }
+      try { await refetchItems?.(); } catch (error) { pushMenuToast(getGraphQLErrorMessage(error, "Không thể tải lại danh sách món."), "error"); }
 
-      if (successCount > 0 && failCount === 0) {
-        pushMenuToast(`Đã cập nhật ${successCount} món.`, "success");
-      } else if (successCount > 0 && failCount > 0) {
-        pushMenuToast(`Đã cập nhật ${successCount} món, ${failCount} món lỗi.`, "warning");
-      } else {
-        pushMenuToast("Không thể cập nhật trạng thái món đã chọn.", "error");
-      }
+      if (successCount > 0 && failCount === 0) pushMenuToast(`Đã cập nhật ${successCount} món.`, "success");
+      else if (successCount > 0 && failCount > 0) pushMenuToast(`Đã cập nhật ${successCount} món, ${failCount} món lỗi.`, "warning");
+      else pushMenuToast("Không thể cập nhật trạng thái món đã chọn.", "error");
 
-      if (successCount > 0) {
-        setSelectedItemIds(new Set());
-      }
+      if (successCount > 0) setSelectedItemIds(new Set());
+      setPendingBulkStatusAction(null);
       setIsBulkUpdatingStatus(false);
     },
-    [
-      canUpdateMenuItem,
-      isBulkUpdatingStatus,
-      pushMenuToast,
-      refetchItems,
-      selectedItemIds,
-      toggleMenuItemStatus,
-    ],
+    [canUpdateMenuItem, isBulkUpdatingStatus, pushMenuToast, refetchItems, toggleMenuItemStatus],
   );
+
+  const handleBulkUpdateStatus = useCallback((status) => {
+    if (!canUpdateMenuItem || !status || isBulkUpdatingStatus) return;
+    const ids = Array.from(selectedItemIds);
+    if (!ids.length) return;
+
+    if (status === "hidden") {
+      setPendingBulkStatusAction({ status, ids, title: "Ẩn nhiều món?", message: "Các món đã chọn sẽ không hiển thị trên menu bán hàng. Bạn vẫn có thể bật lại sau.", confirmText: "Ẩn món đã chọn", tone: "danger" });
+      return;
+    }
+    if (status === "out_of_stock") {
+      setPendingBulkStatusAction({ status, ids, title: "Đánh dấu hết hàng?", message: "Các món đã chọn sẽ tạm thời không bán được cho khách.", confirmText: "Đánh dấu hết hàng", tone: "warning" });
+      return;
+    }
+    runBulkUpdateStatus(status, ids);
+  }, [canUpdateMenuItem, isBulkUpdatingStatus, selectedItemIds, runBulkUpdateStatus]);
 
   const handleSavePriceChanges = useCallback(
     async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
@@ -1116,6 +1171,9 @@ const MenuManagement = () => {
           onToggleMenuActive={
             canToggleMenu ? handleToggleMenuActive : undefined
           }
+          selectedTimeSlot={selectedTimeSlot}
+          onTimeSlotChange={setSelectedTimeSlot}
+          activeMenuId={menus.find((m) => m.timeSlot === selectedTimeSlot)?.id}
           onDeleteMenu={undefined}
           onCopyMenu={canCopyMenu ? handleCopyMenu : undefined}
           onSyncInventory={handleSyncInventory}
@@ -1152,27 +1210,12 @@ const MenuManagement = () => {
           itemCount={displayItems.length}
           minPrice={priceRange.minPrice ?? ""}
           maxPrice={priceRange.maxPrice ?? ""}
+          inventoryFilter={inventoryFilter}
+          onInventoryFilterChange={setInventoryFilter}
+          inventoryFilterCounts={inventoryFilterCounts}
         />
 
         <div className="mm-body__content">
-          <div className="mm-inventory-quick-filters">
-            {[
-              ["all", "Tất cả"],
-              ["low_stock", "Sắp hết"],
-              ["out_of_stock", "Hết nguyên liệu"],
-              ["needs_check", "Cần kiểm kho"],
-              ["not_tracked", "Chưa tracking recipe"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                className={`mm-btn mm-btn--secondary ${inventoryFilter === key ? "active" : ""}`}
-                onClick={() => setInventoryFilter(key)}
-              >
-                <span>{label}</span>
-                <span className="mm-filter-count">{inventoryFilterCounts[key] || 0}</span>
-              </button>
-            ))}
-          </div>
           {deleteListRefreshError && (
             <div role="alert" className="mm-inline-alert">
               <FiAlertCircle size={18} className="mm-inline-alert__icon" />
@@ -1409,6 +1452,17 @@ const MenuManagement = () => {
           )}
         </div>
       </MenuConfirmDialog>
+      <MenuConfirmDialog
+        isOpen={!!pendingBulkStatusAction}
+        onCancel={() => (!isBulkUpdatingStatus ? setPendingBulkStatusAction(null) : null)}
+        onConfirm={() => runBulkUpdateStatus(pendingBulkStatusAction?.status, pendingBulkStatusAction?.ids || [])}
+        isLoading={isBulkUpdatingStatus}
+        tone={pendingBulkStatusAction?.tone || "warning"}
+        title={pendingBulkStatusAction?.title || "Xác nhận cập nhật"}
+        message={pendingBulkStatusAction?.message || ""}
+        confirmText={pendingBulkStatusAction?.confirmText || "Xác nhận"}
+        cancelText="Hủy"
+      />
       <MenuToast toasts={menuToasts} onDismiss={(id) => setMenuToasts((prev) => prev.filter((toast) => toast.id !== id))} />
     </div>
   );
