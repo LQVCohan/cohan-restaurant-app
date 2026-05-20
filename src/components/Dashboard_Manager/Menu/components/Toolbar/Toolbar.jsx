@@ -56,6 +56,9 @@ const Toolbar = ({
   itemCount = 0,
   minPrice,
   maxPrice,
+  inventoryFilter = "all",
+  onInventoryFilterChange,
+  inventoryFilterCounts = {},
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({
@@ -77,10 +80,11 @@ const Toolbar = ({
     if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
+    onInventoryFilterChange?.("all");
   };
 
   const hasActiveFilters =
-    searchTerm || currentCategory || statusFilter || minPrice || maxPrice;
+    searchTerm || currentCategory || statusFilter || minPrice || maxPrice || inventoryFilter !== "all";
 
   const formatCurrency = (val) =>
     val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
@@ -284,6 +288,21 @@ const Toolbar = ({
           </button>
         </div>
 
+        <div className="inventory-filter-row">
+          {[
+            ["all", "Tất cả"],
+            ["low_stock", "Sắp hết"],
+            ["out_of_stock", "Hết nguyên liệu"],
+            ["needs_check", "Cần kiểm kho"],
+            ["not_tracked", "Chưa tracking recipe"],
+          ].map(([key, label]) => (
+            <button key={key} className={`inventory-chip ${inventoryFilter === key ? "active" : ""}`} onClick={() => onInventoryFilterChange?.(key)} type="button">
+              <span>{label}</span>
+              <span className="count">{inventoryFilterCounts[key] || 0}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="result-count">
           Hiển thị <strong>{itemCount}</strong> kết quả
         </div>
@@ -334,6 +353,12 @@ const Toolbar = ({
               <FiX onClick={() => onStatusFilterChange("")} />
             </span>
           )}
+          {inventoryFilter !== "all" && (
+            <span className="chip">
+              {{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}
+              <FiX onClick={() => onInventoryFilterChange?.("all")} />
+            </span>
+          )}
           {(minPrice || maxPrice) && (
             <span className="chip">
               Giá: {formatCurrency(minPrice) || "0"} -{" "}
@@ -342,6 +367,7 @@ const Toolbar = ({
                 onClick={() => {
                   setPriceRange({ min: "", max: "" });
                   onPriceRangeChange({ minPrice: "", maxPrice: "" });
+    onInventoryFilterChange?.("all");
                 }}
               />
             </span>

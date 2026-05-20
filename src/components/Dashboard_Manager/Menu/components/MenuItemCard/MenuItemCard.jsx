@@ -105,7 +105,7 @@ const MenuItemCard = ({
 
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
-    MENU_MANAGEMENT_ACTIONS.VIEW,
+    MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT,
   );
 
   const formatPrice = (price) =>
