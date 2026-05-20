@@ -229,7 +229,7 @@ const MenuManagement = () => {
   const [isDeletingItem, setIsDeletingItem] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
-  const [updatingStatusItemId, setUpdatingStatusItemId] = useState(null);
+  const [updatingStatusItemIds, setUpdatingStatusItemIds] = useState(() => new Set());
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set());
   const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false);
   const priceEditSubmitRef = useRef(false);
@@ -525,13 +525,26 @@ const MenuManagement = () => {
     }
   }, [deleteMenuItem, deletingItem, refetchItems]);
 
+
+  const markItemStatusUpdating = useCallback((itemId, isUpdating) => {
+    const key = String(itemId || "");
+    if (!key) return;
+    setUpdatingStatusItemIds((prev) => {
+      const next = new Set(prev);
+      if (isUpdating) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
   const handleChangeItemStatus = useCallback(
     async (item, status) => {
-      const itemId = item?.id;
+      const itemId = String(item?.id || "");
       if (!itemId || !status) return;
       if (!canUpdateMenuItem) return;
+      if (updatingStatusItemIds.has(itemId)) return;
 
-      setUpdatingStatusItemId(itemId);
+      markItemStatusUpdating(itemId, true);
       try {
         await toggleMenuItemStatus({ id: itemId, status });
         await refetchItems?.();
@@ -542,10 +555,17 @@ const MenuManagement = () => {
           "error",
         );
       } finally {
-        setUpdatingStatusItemId(null);
+        markItemStatusUpdating(itemId, false);
       }
     },
-    [canUpdateMenuItem, pushMenuToast, refetchItems, toggleMenuItemStatus],
+    [
+      updatingStatusItemIds,
+      markItemStatusUpdating,
+      canUpdateMenuItem,
+      pushMenuToast,
+      refetchItems,
+      toggleMenuItemStatus,
+    ],
   );
 
   const handleSelectToggle = useCallback((item, checked) => {
@@ -1115,8 +1135,15 @@ const MenuManagement = () => {
                         : undefined
                     }
                     viewMode={currentView}
-                    onStatusChange={canUpdateMenuItem ? handleChangeItemStatus : undefined}
-                    updatingStatus={updatingStatusItemId === item.id}
+                    onStatusChange={
+                      canUpdateMenuItem && !isBulkUpdatingStatus
+                        ? handleChangeItemStatus
+                        : undefined
+                    }
+                    updatingStatus={
+                      isBulkUpdatingStatus ||
+                      updatingStatusItemIds.has(String(item.id))
+                    }
                     selected={selectedItemIds.has(String(item.id))}
                     onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
                   />
