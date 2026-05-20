@@ -39,6 +39,23 @@ function buildSearchCond(search) {
     ],
   };
 }
+const CUSTOMER_PAGE_LIMIT_DEFAULT = 30;
+const CUSTOMER_PAGE_LIMIT_MAX = 100;
+
+function encodeOffsetCursor(offset) {
+  return Buffer.from(JSON.stringify({ offset }), "utf8").toString("base64");
+}
+
+function decodeOffsetCursor(cursor) {
+  if (!cursor) return 0;
+  try {
+    const raw = Buffer.from(String(cursor), "base64").toString("utf8");
+    const parsed = JSON.parse(raw);
+    return Math.max(0, Number(parsed?.offset) || 0);
+  } catch {
+    throw new GraphQLError("Invalid cursor", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+}
 
 const ONLINE_MINUTES = 5;
 const VND_PER_RANK_POINT = 1_000_000;
@@ -258,6 +275,86 @@ export const UserQuery = {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
     }
+  },
+
+  async customerListPage(
+    _,
+    {
+      restaurantId,
+      search,
+      includeGuests = true,
+      customerKind = "ALL",
+      sortBy = "CREATED_AT",
+      sortDirection = "DESC",
+      limit = CUSTOMER_PAGE_LIMIT_DEFAULT,
+      cursor,
+    },
+    ctx,
+  ) {
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    await requireRestaurantAccess(ctx, restaurantId);
+
+    const normalizedLimit = Math.min(
+      CUSTOMER_PAGE_LIMIT_MAX,
+      Math.max(1, Number(limit) || CUSTOMER_PAGE_LIMIT_DEFAULT),
+    );
+    const offset = decodeOffsetCursor(cursor);
+    const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
+    const searchCond = buildSearchCond(search);
+    const customerRole = await Role.findOne({ slug: "customer" }).lean();
+
+    const customerRoleClause = customerRole?._id ? { role: customerRole._id } : null;
+    const guestClause = { isGuest: true };
+    let kindClause = null;
+    if (customerKind === "GUEST") {
+      if (!includeGuests) {
+        return { items: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null, limit: normalizedLimit } };
+      }
+      kindClause = guestClause;
+    } else if (customerKind === "REGISTERED") {
+      kindClause = customerRoleClause || { _id: { $exists: false } };
+    } else {
+      if (includeGuests) kindClause = customerRoleClause ? { $or: [customerRoleClause, guestClause] } : guestClause;
+      else kindClause = customerRoleClause || { _id: { $exists: false } };
+    }
+
+    const clauses = [restaurantScopeCond, kindClause].filter(Boolean);
+    if (searchCond) clauses.push(searchCond);
+    const finalCond = clauses.length === 1 ? clauses[0] : { $and: clauses };
+    const dir = String(sortDirection).toUpperCase() === "ASC" ? 1 : -1;
+    const sortMap = {
+      CREATED_AT: { createdAt: dir, _id: dir },
+      LAST_LOGIN_AT: { lastLoginAt: dir, _id: dir },
+      TOTAL_SPENDING: { totalSpending: dir, _id: dir },
+      TOTAL_ORDERS: { totalOrders: dir, _id: dir },
+      LOYALTY_POINTS: { loyaltyPoints: dir, _id: dir },
+      NAME: { fullName: dir, username: dir, _id: dir },
+    };
+    const sort = sortMap[sortBy] || sortMap.CREATED_AT;
+
+    const totalCount = await Customer.countDocuments(finalCond);
+    const items = await Customer.find(finalCond)
+      .populate({ path: "role", select: "name slug" })
+      .populate({ path: "refRestaurants", select: "name" })
+      .sort(sort)
+      .skip(offset)
+      .limit(normalizedLimit)
+      .lean();
+    const nextOffset = offset + items.length;
+    const hasNextPage = nextOffset < totalCount;
+    return {
+      items,
+      totalCount,
+      pageInfo: {
+        hasNextPage,
+        endCursor: hasNextPage ? encodeOffsetCursor(nextOffset) : null,
+        limit: normalizedLimit,
+      },
+    };
   },
 
   async customerDetailAnalytics(_, { userId, restaurantId }, ctx) {

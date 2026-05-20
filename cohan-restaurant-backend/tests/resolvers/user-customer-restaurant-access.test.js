@@ -7,7 +7,7 @@ const requirePermissionMock = vi.hoisted(() => vi.fn());
 const modelMocks = vi.hoisted(() => ({
   User: { findById: vi.fn() },
   Role: {},
-  Customer: { find: vi.fn() },
+  Customer: { find: vi.fn(), countDocuments: vi.fn() },
   Order: { find: vi.fn() },
   CustomerRankSetting: {
     findOne: vi.fn(),
@@ -276,5 +276,80 @@ describe("user/customer restaurant access guards", () => {
 
     expect(calls).toEqual(["guard", "write"]);
     expect(requireRestaurantAccessMock).toHaveBeenCalled();
+  });
+
+  it("customerListPage invalid restaurantId => BAD_USER_INPUT", async () => {
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await expect(
+      UserQuery.customerListPage(null, { restaurantId: "invalid-r1" }, ctxFor()),
+    ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
+  });
+
+  it("customerListPage includeGuests=false excludes guests", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne = vi.fn(() => ({ lean: async () => ({ _id: "role-customer" }) }));
+    modelMocks.Customer.countDocuments.mockResolvedValue(1);
+    modelMocks.Customer.find.mockReturnValue({
+      populate: () => ({ populate: () => ({ sort: () => ({ skip: () => ({ limit: () => ({ lean: async () => [{ id: "u1" }] }) }) }) }) }),
+    });
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    const result = await UserQuery.customerListPage(
+      null,
+      { restaurantId: "valid-r1", includeGuests: false },
+      ctxFor(),
+    );
+    expect(modelMocks.Customer.countDocuments).toHaveBeenCalled();
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("customerListPage ALL + includeGuests=true + search keeps both kind/search clauses", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne = vi.fn(() => ({ lean: async () => ({ _id: "role-customer" }) }));
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    modelMocks.Customer.find.mockReturnValue({
+      populate: () => ({ populate: () => ({ sort: () => ({ skip: () => ({ limit: () => ({ lean: async () => [] }) }) }) }) }),
+    });
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerListPage(
+      null,
+      {
+        restaurantId: "valid-r1",
+        customerKind: "ALL",
+        includeGuests: true,
+        search: "abc",
+      },
+      ctxFor(),
+    );
+
+    const countCond = modelMocks.Customer.countDocuments.mock.calls.at(-1)?.[0];
+    const findCond = modelMocks.Customer.find.mock.calls.at(-1)?.[0];
+    expect(countCond).toEqual(findCond);
+    const andClauses = countCond?.$and || [];
+    const restaurantClause = andClauses.find((x) =>
+      Array.isArray(x?.refRestaurants?.$in) &&
+      x.refRestaurants.$in.some((id) => String(id?._mockObjectId || id) === "valid-r1"),
+    );
+    expect(restaurantClause).toBeTruthy();
+    const kindClause = andClauses.find((x) =>
+      Array.isArray(x?.$or) &&
+      x.$or.some((item) => item?.role === "role-customer") &&
+      x.$or.some((item) => item?.isGuest === true),
+    );
+    expect(kindClause).toBeTruthy();
+    const searchClause = andClauses.find((x) =>
+      Array.isArray(x?.$or) &&
+      ["fullName", "username", "email", "phone"].every((field) =>
+        x.$or.some((item) => Object.prototype.hasOwnProperty.call(item || {}, field)),
+      ),
+    );
+    expect(searchClause).toBeTruthy();
+    expect(searchClause?.$or).toEqual(
+      expect.arrayContaining([
+        { fullName: expect.any(RegExp) },
+        { username: expect.any(RegExp) },
+        { email: expect.any(RegExp) },
+        { phone: expect.any(RegExp) },
+      ]),
+    );
   });
 });
