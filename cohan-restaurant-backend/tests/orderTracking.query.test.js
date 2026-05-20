@@ -61,6 +61,33 @@ describe("OrderQuery customerTrackOrder", () => {
     });
     expect(out.latestRequest.acknowledgedBy).toBeUndefined();
   });
+  it("handles legacy/partial customerRequests without crash and sanitizes latestRequest", async () => {
+    const order = {
+      trackingQrRevokedAt: null,
+      currentStatus: "pending",
+      kitchenStatus: "pending",
+      sessionStatus: "open",
+      customerRequests: [
+        null,
+        { requestId: "legacy-1", type: "STAFF_CALL", status: "PENDING" },
+        { requestId: "ok-1", type: "STAFF_CALL", status: "ACKNOWLEDGED", createdAt: new Date("2026-05-01T10:00:00.000Z"), acknowledgedBy: "internal" },
+      ],
+      toObject: () => ({ trackingCode: "ORD", publicStatus: "ORDER_RECEIVED", items: [], statusHistory: [], totals: {}, customerRequests: order.customerRequests, _id: "secret", trackingToken: "secret-token" }),
+    };
+    mocks.findOneMock.mockReturnValue({ select: () => order });
+    const out = await OrderQuery.customerTrackOrder(null, { trackingToken: "x" });
+    expect(out.latestRequest).toEqual({
+      requestId: "ok-1",
+      type: "STAFF_CALL",
+      status: "ACKNOWLEDGED",
+      message: null,
+      createdAt: new Date("2026-05-01T10:00:00.000Z"),
+      acknowledgedAt: null,
+      resolvedAt: null,
+    });
+    expect(out._id).toBeUndefined();
+    expect(out.trackingToken).toBeUndefined();
+  });
   it("requires auth for QR svg", async () => {
     mocks.existsMock.mockResolvedValue(null);
     const order = {
