@@ -276,8 +276,7 @@ const MenuSection = ({
 
   const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
   const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
-  const cannotOrderReason =
-    openingStatusReason || getCannotOrderReason(resolvedOpeningStatus);
+  const cannotOrderReason = getCannotOrderReason(resolvedOpeningStatus);
 
   const openFoodDetail = (item) => {
     if (!resolvedCanOrder) return;
@@ -381,8 +380,9 @@ const MenuSection = ({
                       if (!resolvedCanOrder) return;
                       openFoodDetail(item);
                     }}
-                    role="button"
-                    tabIndex={0}
+                    role={resolvedCanOrder ? "button" : undefined}
+                    tabIndex={resolvedCanOrder ? 0 : -1}
+                    aria-disabled={!resolvedCanOrder || undefined}
                     onKeyDown={(event) => {
                       if (!resolvedCanOrder) return;
                       if (event.key === "Enter" || event.key === " ") {
