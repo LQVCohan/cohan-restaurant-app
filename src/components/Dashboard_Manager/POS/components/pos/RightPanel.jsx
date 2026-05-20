@@ -36,6 +36,12 @@ import MenuItemModal from "../modals/MenuItemModal";
 import OrderConfirmModal from "../modals/OrderConfirmModal";
 import { PrintModal } from "../modals/PrintModal";
 import { PrintQueueModal } from "../modals/PrintQueueModal";
+import {
+  getPaymentRequestGroupLabel,
+  isOffPremiseOrderType,
+  isRealDineInOrderType,
+  isRealTableCode,
+} from "./posDisplayLabels";
 
 const IconDraft = () => (
   <svg
@@ -119,62 +125,6 @@ const IconDashboard = () => (
     <rect x="3" y="14" width="7" height="7"></rect>
   </svg>
 );
-
-const VIRTUAL_TABLE_CODES = new Set([
-  "TAKEAWAY",
-  "DELIVERY",
-  "REMOTE",
-  "ONLINE",
-]);
-
-const normalizeOrderType = (orderType) =>
-  String(orderType || "")
-    .trim()
-    .toLowerCase();
-
-const isOffPremiseOrderType = (orderType) =>
-  ["delivery", "takeaway", "remote", "online", "pickup"].includes(
-    normalizeOrderType(orderType),
-  );
-
-const isRealDineInOrderType = (orderType) =>
-  normalizeOrderType(orderType) === "dine_in";
-
-const getVirtualTableCodeLabel = (tableCode) => {
-  const normalizedCode = String(tableCode || "").trim().toUpperCase();
-  if (normalizedCode === "DELIVERY") return "Giao hàng";
-  if (normalizedCode === "TAKEAWAY") return "Mang đi";
-  if (normalizedCode === "REMOTE" || normalizedCode === "ONLINE")
-    return "Đặt từ xa";
-  return "";
-};
-
-const isRealTableCode = (orderType, tableCode) => {
-  const normalizedCode = String(tableCode || "").trim().toUpperCase();
-  return (
-    isRealDineInOrderType(orderType) &&
-    Boolean(normalizedCode) &&
-    !VIRTUAL_TABLE_CODES.has(normalizedCode)
-  );
-};
-
-const getOrderTypeDisplayLabel = (orderType) => {
-  switch (normalizeOrderType(orderType)) {
-    case "delivery":
-      return "Giao hàng";
-    case "takeaway":
-      return "Mang đi";
-    case "pickup":
-      return "Nhận tại quầy";
-    case "remote":
-    case "online":
-      return "Đặt từ xa";
-    case "dine_in":
-      return "Tại bàn";
-    default:
-      return "Không gắn bàn";
-  }
-};
 
 const IconOrderList = () => (
   <svg
@@ -1577,19 +1527,7 @@ export default function RightPanel() {
 
               <div>
                 {groupedPaymentRequests.slice(0, 3).map((req) => {
-                  const normalizedOrderType = normalizeOrderType(req?.orderType);
-                  const safeTableCode = String(req?.tableCode || "").trim();
-                  const virtualTableLabel = getVirtualTableCodeLabel(safeTableCode);
-                  const tableLikeLabel =
-                    req.isTableGroup &&
-                    isRealTableCode(normalizedOrderType, safeTableCode)
-                      ? `Bàn ${safeTableCode}`
-                      : isOffPremiseOrderType(normalizedOrderType)
-                        ? getOrderTypeDisplayLabel(normalizedOrderType)
-                        : virtualTableLabel ||
-                          req.orderCode ||
-                          req.orderId ||
-                          "Không gắn bàn";
+                  const tableLikeLabel = getPaymentRequestGroupLabel(req);
 
                   return (
                   <div key={req.groupKey}>
