@@ -1595,7 +1595,7 @@ export const OrderMutation = {
             tableId: toId(tableInfo.tableId),
           }),
           null,
-          { session, restaurantId: rid },
+          { session },
         );
 
         if (
