@@ -212,6 +212,93 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
   ).session(session);
 }
 
+export async function upsertKitchenOrderWorkItemForKitchenEntry({
+  order,
+  item,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order?._id || !order?.restaurantId || !item?._id) return null;
+
+  const station = resolveOrderItemStation(item);
+  const existingWorkItem = await KitchenOrderWorkItem.findOne({
+    orderId: order._id,
+    orderItemId: item._id,
+  })
+    .lean()
+    .session(session);
+
+  const at = existingWorkItem?.kitchenEnteredAt || now || order?.createdAt || new Date();
+  const roster = await findKitchenRosterForOrderItem({
+    restaurantId: order.restaurantId,
+    station,
+    at,
+  });
+
+  const set = {
+    status: item?.status || "pending",
+    kitchenEnteredAt: existingWorkItem?.kitchenEnteredAt || at,
+    lastStatusChangedAt: existingWorkItem?.lastStatusChangedAt || at,
+    updatedBy: actorUserId || null,
+  };
+
+  if (roster) {
+    set.noRoster = false;
+    set.noRosterReason = null;
+    Object.assign(set, roster);
+  } else {
+    set.noRoster = true;
+    set.noRosterReason = "Không tìm thấy roster bếp/bar active theo thời điểm món vào bếp.";
+  }
+
+  return KitchenOrderWorkItem.findOneAndUpdate(
+    { orderId: order._id, orderItemId: item._id },
+    {
+      $setOnInsert: {
+        restaurantId: order?.restaurantId || null,
+        orderId: order?._id || null,
+        orderCode: order?.orderCode || null,
+        orderItemId: item?._id || null,
+        dishId: item?.dishId || null,
+        menuId: item?.menuId || null,
+        categoryId: item?.categoryId || null,
+        dishName: item?.name || null,
+        quantity: Number(item?.quantity || 0),
+        station,
+        createdBy: actorUserId || null,
+      },
+      $set: set,
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  ).session(session);
+}
+
+export async function syncKitchenOrderWorkItemsForKitchenEntry({
+  order,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order || !Array.isArray(order.items)) return { syncedCount: 0 };
+
+  let syncedCount = 0;
+  for (const item of order.items) {
+    const normalizedStatus = String(item?.status || "").toLowerCase();
+    if (!item?._id || ["cancelled", "returned"].includes(normalizedStatus)) continue;
+    await upsertKitchenOrderWorkItemForKitchenEntry({
+      order,
+      item,
+      actorUserId,
+      now,
+      session,
+    });
+    syncedCount += 1;
+  }
+
+  return { syncedCount };
+}
+
 
 export async function syncKitchenOrderWorkItemForVoidOrReturn({
   order,
