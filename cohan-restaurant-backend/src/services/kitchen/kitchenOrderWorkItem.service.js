@@ -1,5 +1,10 @@
 import { KitchenOrderWorkItem, KitchenShiftRosterSnapshot } from "../../../models/index.js";
 
+export const DEFAULT_KITCHEN_TARGET_PREP_MINUTES = 20;
+export const DEFAULT_BAR_TARGET_PREP_MINUTES = 10;
+export const DEFAULT_LATE_GRACE_MINUTES = 5;
+export const DEFAULT_VERY_LATE_GRACE_MINUTES = 15;
+
 const BAR_KEYWORDS = [
   "drink",
   "beverage",
@@ -25,6 +30,10 @@ function toUniqueIds(values = []) {
   return [...new Set(values.map((v) => String(v || "")).filter(Boolean))];
 }
 
+function toPositiveNumber(value) {
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function resolveOrderItemStation(item = {}) {
   const signals = [item?.name, item?.categoryName, item?.category?.name]
     .map(normalizeText)
@@ -32,6 +41,31 @@ export function resolveOrderItemStation(item = {}) {
 
   const isBar = BAR_KEYWORDS.some((keyword) => signals.includes(keyword));
   return isBar ? "bar" : "kitchen";
+}
+
+export function resolveTargetPrepMinutes(item, station) {
+  const resolved =
+    toPositiveNumber(item?.targetPrepMinutes) ||
+    toPositiveNumber(item?.prepTimeMinutes) ||
+    toPositiveNumber(item?.estimatedPrepMinutes) ||
+    toPositiveNumber(item?.servingVariant?.targetPrepMinutes);
+
+  if (resolved) return resolved;
+  return station === "bar" ? DEFAULT_BAR_TARGET_PREP_MINUTES : DEFAULT_KITCHEN_TARGET_PREP_MINUTES;
+}
+
+export function resolvePrepTimeLevel(actualPrepMinutes, targetPrepMinutes) {
+  if (!Number.isFinite(actualPrepMinutes) || actualPrepMinutes < 0) return null;
+  if (!Number.isFinite(targetPrepMinutes) || targetPrepMinutes <= 0) return null;
+
+  const lateThreshold = targetPrepMinutes + DEFAULT_LATE_GRACE_MINUTES;
+
+  if (actualPrepMinutes <= targetPrepMinutes) return "on_time";
+  // "late": target < actual <= target + DEFAULT_LATE_GRACE_MINUTES
+  if (actualPrepMinutes <= lateThreshold) return "late";
+  // "very_late": actual > target + DEFAULT_LATE_GRACE_MINUTES
+  // DEFAULT_VERY_LATE_GRACE_MINUTES is reserved for future threshold tuning.
+  return "very_late";
 }
 
 export async function findKitchenRosterForOrderItem({ restaurantId, station, at }) {
@@ -137,6 +171,13 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     if (baseStart) {
       set.actualPrepMinutes = Math.max(0, Math.round((new Date(set.readyAt) - new Date(baseStart)) / 60000));
     }
+
+    const hasExistingTarget = Number.isFinite(existingWorkItem?.targetPrepMinutes) && existingWorkItem.targetPrepMinutes > 0;
+    const targetPrepMinutes = hasExistingTarget
+      ? existingWorkItem.targetPrepMinutes
+      : resolveTargetPrepMinutes(item, station);
+    set.targetPrepMinutes = targetPrepMinutes;
+    set.timeLevel = resolvePrepTimeLevel(set.actualPrepMinutes, targetPrepMinutes);
   }
   if (nextStatus === "served") set.servedAt = existingWorkItem?.servedAt || atNow;
   if (nextStatus === "cancelled") set.cancelledAt = existingWorkItem?.cancelledAt || atNow;
@@ -170,7 +211,6 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).session(session);
 }
-
 
 export async function syncKitchenOrderWorkItemsForOrderStatusChange({
   order,
