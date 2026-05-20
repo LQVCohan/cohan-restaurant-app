@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFormulaScore,
+  PERFORMANCE_FORMULA_ITEMS,
   buildAdjustmentHistoryItems,
   formatDelta,
   formatCustomerRating,
@@ -23,6 +24,38 @@ import {
   resolveEffectivePerformanceRestaurantId,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
+
+
+const EXPECTED_FORMULA_WEIGHTS = {
+  productivity: 25,
+  punctuality: 25,
+  quality: 20,
+  managerReview: 20,
+  compliance: 10,
+};
+
+describe("PERFORMANCE_FORMULA_ITEMS", () => {
+  it("includes exactly the required 5 keys", () => {
+    const actualKeys = PERFORMANCE_FORMULA_ITEMS.map((item) => item.key).sort();
+    expect(actualKeys).toEqual(Object.keys(EXPECTED_FORMULA_WEIGHTS).sort());
+  });
+
+  it("matches expected display weights", () => {
+    const mapped = Object.fromEntries(
+      PERFORMANCE_FORMULA_ITEMS.map((item) => [item.key, item.weight]),
+    );
+
+    expect(mapped).toEqual(EXPECTED_FORMULA_WEIGHTS);
+  });
+
+  it("sums display weights to 100", () => {
+    const total = PERFORMANCE_FORMULA_ITEMS.reduce(
+      (sum, item) => sum + Number(item.weight || 0),
+      0,
+    );
+    expect(total).toBe(100);
+  });
+});
 
 describe("formatCustomerRating", () => {
   it("shows X/5 and review count when rating exists", () => {
@@ -285,6 +318,27 @@ describe("buildPerformanceReportHtml", () => {
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
   });
+
+  it("includes customer rating reference note and snapshot update line when available", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: true, label: "Đánh giá khách hàng: 4.5/5 (4 lượt)", hint: "Quy đổi tham khảo: 90/100" },
+      snapshotUpdatedAt: "2026-05-12T10:00:00.000Z",
+      adjustmentHistory: [],
+    });
+    expect(html).toContain("Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.");
+    expect(html).toContain("Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.");
+    expect(html).toContain("Snapshot cập nhật lần cuối:");
+  });
 });
 
 describe("openPerformanceReportPrintWindow", () => {
@@ -487,6 +541,23 @@ describe("csv helpers", () => {
     expect(result[0][5]).toBe("--");
     expect(result[0][7]).toBe("Không");
     expect(result[0][8]).toBe("--");
+    expect(result[0][10]).toBe("");
+  });
+
+  it("buildPerformanceOverviewCsvRows adds customer rating note when rating exists", () => {
+    const rows = [
+      {
+        employee: { code: "E001", name: "An", role: "Phục vụ" },
+        snapshot: { factors: { staffRate: 4.2, staffRateCount: 5 } },
+        previousSnapshot: null,
+        score: 88,
+        level: { label: "Tốt" },
+        trendDelta: 3,
+      },
+    ];
+    const result = buildPerformanceOverviewCsvRows(rows);
+    expect(result[0][8]).toContain("Đánh giá khách hàng:");
+    expect(result[0][10]).toBe("Rating khách hàng chỉ tham khảo");
   });
 
   it("buildPerformanceOverviewCsvBlobContent prepends UTF-8 BOM", () => {

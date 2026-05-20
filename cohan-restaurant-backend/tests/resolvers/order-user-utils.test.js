@@ -75,6 +75,7 @@ describe("order userUtils identity helpers", () => {
 
     expect(out.userId).toBe("u1");
     expect(out.conflict).toBeUndefined();
+    expect(guest.save).not.toHaveBeenCalled();
   });
 
   it("returns conflict when email and phone map to different users", async () => {

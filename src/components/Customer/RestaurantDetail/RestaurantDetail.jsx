@@ -141,7 +141,7 @@ const RestaurantDetail = () => {
   };
 
   const canReserve = !!resolvedRestaurant.canReserve;
-
+  const galleryPhotos = resolvedRestaurant.photos || resolvedRestaurant.spaceImages || [];
 
   const reviewStats = reviewStatsData?.reviewStats;
   const headerReviewCount = reviewStats?.total ?? resolvedRestaurant.reviewCount ?? 0;
@@ -290,10 +290,18 @@ const RestaurantDetail = () => {
 
       <div className="rd-container container">
         <div className="main-content">
-          {activeTab === "menu" && <MenuSection restaurantId={resolvedRestaurant.id} />}
+          {activeTab === "menu" && (
+            <MenuSection
+              restaurantId={resolvedRestaurant.id}
+              canOrder={resolvedRestaurant.canOrder}
+              openingStatus={resolvedRestaurant.openingStatus}
+              openingStatusReason={resolvedRestaurant.openingStatusReason}
+              restaurant={resolvedRestaurant}
+            />
+          )}
           {activeTab === "reviews" && <ReviewsSection restaurantId={resolvedRestaurant.id} />}
           {activeTab === "promotions" && <PromotionsSection restaurantId={resolvedRestaurant.id} />}
-          {activeTab === "photos" && <PhotoGallery photos={resolvedRestaurant.photos} />}
+          {activeTab === "photos" && <PhotoGallery photos={galleryPhotos} />}
           {activeTab === "info" && <RestaurantInfo restaurant={resolvedRestaurant} isPreviewMode={isPreviewMode} />}
         </div>
 
