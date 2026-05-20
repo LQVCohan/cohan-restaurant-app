@@ -229,6 +229,11 @@ $st-cleaning-text: #7e22ce;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
 
+    &:focus-visible {
+      outline: 3px solid rgba(184, 147, 101, 0.35);
+      outline-offset: 3px;
+    }
+
     .card-top {
       display: flex;
       justify-content: space-between;
@@ -287,6 +292,15 @@ $st-cleaning-text: #7e22ce;
         font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+          filter: grayscale(0.15);
+        }
+        &:disabled:hover {
+          transform: none;
+          box-shadow: none;
+        }
         &.success {
           background: #22c55e;
           color: white;
