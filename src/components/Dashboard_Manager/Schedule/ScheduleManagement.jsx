@@ -1073,6 +1073,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
   const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] =
     useState(false);
+  const [availabilityPanelTouched, setAvailabilityPanelTouched] =
+    useState(false);
   const [isAvailabilitySnapshotOpen, setIsAvailabilitySnapshotOpen] =
     useState(false);
   const lastAvailabilityTargetPublicationKeyRef = useRef("");
@@ -1845,6 +1847,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
     !canReopenAvailabilityWindowForTargetPeriod
       ? "Không thể mở lại vì lịch tuần này đã được công bố/khóa."
       : "";
+  const availabilityWindowEffectiveStatus = String(
+    managerCurrentWindow?.effectiveStatus || managerCurrentWindow?.status || "",
+  ).toLowerCase();
+
+  useEffect(() => {
+    if (availabilityPanelTouched) return;
+    setIsAvailabilityPanelCollapsed(
+      ["closed", "locked", "used_for_schedule", "expired"].includes(
+        availabilityWindowEffectiveStatus,
+      ),
+    );
+  }, [availabilityPanelTouched, availabilityWindowEffectiveStatus]);
 
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
@@ -3985,7 +3999,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </div>
 
           <div className="schedule-quality-panel__metrics">
-            {scheduleQualitySummary.metrics.map((metric) => (
+            {scheduleQualitySummary.metrics.slice(0, 3).map((metric) => (
               <div key={metric.key} className="schedule-quality-panel__metric">
                 <span className="label">{metric.label}</span>
                 <span className="value">{metric.value}</span>
@@ -3995,12 +4009,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
           <div className="schedule-quality-panel__body">
             <ul>
-              {scheduleQualitySummary.reasons.map((reason) => (
+              {scheduleQualitySummary.reasons.slice(0, 2).map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
             <ul>
-              {scheduleQualitySummary.nextActions.map((action) => (
+              {scheduleQualitySummary.nextActions.slice(0, 1).map((action) => (
                 <li key={action}>{action}</li>
               ))}
             </ul>
@@ -4019,7 +4033,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
           ) : null}
         </section>
       </header>
-      <section className="declined-shift-review-panel">
+      {(declinedShiftAcksLoading ||
+        declinedShiftAcksError ||
+        declinedShiftAcks.length > 0) && (
+        <section className="declined-shift-review-panel">
         <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>
         {declinedShiftAcksLoading ? (
           <p>Đang tải ca bị từ chối...</p>
@@ -4034,9 +4051,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         ) : null}
         {!declinedShiftAcksLoading &&
         !declinedShiftAcksError &&
-        declinedShiftAcks.length === 0 ? (
-          <p>Chưa có ca bị từ chối trong tuần này.</p>
-        ) : null}
+        declinedShiftAcks.length === 0
+          ? null
+          : null}
         {declinedShiftAcks.map((ack) => (
           <div key={ack.id} className="declined-shift-review-item">
             {(() => {
@@ -4162,7 +4179,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
             })()}
           </div>
         ))}
-      </section>
+        </section>
+      )}
 
       <div className="schedule-toolbar">
         <div className="schedule-print-header" aria-hidden="true">
@@ -4402,9 +4420,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
           collapsed={isAvailabilityPanelCollapsed}
-          onToggleCollapse={() =>
-            setIsAvailabilityPanelCollapsed((prev) => !prev)
-          }
+          onToggleCollapse={() => {
+            setAvailabilityPanelTouched(true);
+            setIsAvailabilityPanelCollapsed((prev) => !prev);
+          }}
           reopenBlockedReason={reopenAvailabilityBlockedReason}
           availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
           onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}

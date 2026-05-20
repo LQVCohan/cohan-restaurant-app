@@ -223,18 +223,45 @@ export default function AvailabilityRegistrationPanel({
       </div>
       {collapsed ? (
         <div className="schedule-availability-panel__compact-summary">
-          <span>
-            Tuần: {formatDateTime(targetWeekStart)} -{" "}
-            {formatDateTime(targetWeekEnd)}
-          </span>
-          <span>Tổng submission: {submissionSummary.total}</span>
-          <span>
-            Đã gửi/duyệt/khóa:{" "}
-            {submissionSummary.submitted +
-              submissionSummary.approved +
-              submissionSummary.locked}
-          </span>
-          <span>Trạng thái: {statusLabel}</span>
+          <div className="schedule-availability-panel__compact-main">
+            <strong>Đăng ký lịch nhân viên</strong>
+            <span className={`schedule-availability-panel__status is-${windowStatus}`}>
+              {statusLabel}
+            </span>
+          </div>
+          <div className="schedule-availability-panel__compact-meta">
+            <span>
+              Tuần áp dụng: {formatDateOnly(targetWeekStart)} -{" "}
+              {formatDateOnly(targetWeekEnd)}
+            </span>
+            <span>
+              Submissions: {submissionSummary.total} · Chờ review:{" "}
+              {submissionSummary.pending + submissionSummary.late_change_requested}
+            </span>
+          </div>
+          <div className="schedule-availability-panel__compact-actions">
+            {canOpen && !manualActionsDisabled ? (
+              <button type="button" onClick={onOpenWindow} disabled={!canOpen}>
+                {loading ? "Đang xử lý..." : openActionLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setShowSubmissions((prev) => !prev)}
+              disabled={!canViewSubmissions}
+            >
+              <Eye size={14} />{" "}
+              {showSubmissions ? "Ẩn submissions" : "Xem submissions"}
+            </button>
+            <button type="button" onClick={openPolicyModal} disabled={policySaving}>
+              Thiết lập
+            </button>
+            {typeof onToggleCollapse === "function" ? (
+              <button type="button" className="btn-collapse-panel" onClick={onToggleCollapse}>
+                Mở rộng
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {!collapsed ? (
