@@ -16,6 +16,9 @@ import {
   FiSliders,
   FiPauseCircle,
   FiFolderPlus,
+  FiBarChart2,
+  FiLayers,
+  FiTrendingUp,
 } from "react-icons/fi";
 import "./Toolbar.scss";
 
@@ -81,6 +84,50 @@ const Toolbar = ({
 
   const formatCurrency = (val) =>
     val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
+
+  const getSelectedCategoryName = () => {
+    if (!currentCategory) return "Tất cả";
+    return (
+      categories.find((cat) => String(cat.id) === String(currentCategory))
+        ?.name || "Đã chọn"
+    );
+  };
+
+  const getPriceRangeLabel = () => {
+    if (!minPrice && !maxPrice) return "Chưa giới hạn";
+    return `${formatCurrency(minPrice) || "0"} - ${formatCurrency(maxPrice) || "∞"}`;
+  };
+
+  const overviewCards = [
+    {
+      key: "items",
+      icon: <FiBarChart2 />,
+      label: "Món đang hiển thị",
+      value: itemCount,
+      hint: hasActiveFilters ? "Theo bộ lọc hiện tại" : "Tất cả kết quả",
+    },
+    {
+      key: "categories",
+      icon: <FiLayers />,
+      label: "Danh mục món",
+      value: categories.length,
+      hint: currentCategory ? getSelectedCategoryName() : "Có thể phân loại món",
+    },
+    {
+      key: "status",
+      icon: <FiCheck />,
+      label: "Trạng thái lọc",
+      value: statusFilter ? STATUS_LABELS[statusFilter] || statusFilter : "Tất cả",
+      hint: statusFilter ? "Đang áp dụng" : "Không giới hạn",
+    },
+    {
+      key: "price",
+      icon: <FiTrendingUp />,
+      label: "Khoảng giá",
+      value: getPriceRangeLabel(),
+      hint: minPrice || maxPrice ? "Đang lọc giá" : "Chưa áp dụng lọc giá",
+    },
+  ];
 
   const renderStatusIcon = () => {
     switch (statusFilter) {
@@ -162,6 +209,19 @@ const Toolbar = ({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="toolbar-overview-cards">
+        {overviewCards.map((card) => (
+          <div key={card.key} className="toolbar-overview-card">
+            <span className="toolbar-overview-card__icon">{card.icon}</span>
+            <span className="toolbar-overview-card__content">
+              <span className="toolbar-overview-card__label">{card.label}</span>
+              <strong className="toolbar-overview-card__value">{card.value}</strong>
+              <small className="toolbar-overview-card__hint">{card.hint}</small>
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="toolbar-filters">
