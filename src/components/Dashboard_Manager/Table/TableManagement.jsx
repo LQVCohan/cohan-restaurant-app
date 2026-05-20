@@ -28,6 +28,26 @@ import {
 } from "@/utils/tableManagementDisplay";
 
 const ALL_FLOORS_KEY = "all";
+const TABLE_STATUS_FILTER_OPTIONS = [
+  { value: "available", icon: "🟢", label: "Trống" },
+  { value: "occupied", icon: "🔴", label: "Có khách" },
+  { value: "payment_pending", icon: "🟡", label: "Chờ thanh toán" },
+  { value: "reserved", icon: "🔵", label: "Đã đặt" },
+  { value: "cleaning", icon: "🧽", label: "Dọn dẹp" },
+  { value: "offline", icon: "⚫", label: "Tạm ngưng" },
+];
+const TABLE_AREA_OPTIONS = [
+  { value: "standard", label: "Trong nhà" },
+  { value: "booth", label: "Booth" },
+  { value: "vip", label: "VIP" },
+  { value: "outdoor", label: "Ngoài trời" },
+  { value: "bar", label: "Bar" },
+  { value: "private", label: "Riêng" },
+];
+const TABLE_AREA_LABELS = TABLE_AREA_OPTIONS.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -278,17 +298,11 @@ const TableManagement = () => {
       occupied: { text: "Có khách", color: "danger" },
       reserved: { text: "Đã đặt", color: "primary" },
       cleaning: { text: "Dọn dẹp", color: "secondary" },
-      payment_pending: { text: "T.Toán", color: "warning" },
+      payment_pending: { text: "Chờ thanh toán", color: "warning" },
+      offline: { text: "Tạm ngưng", color: "secondary" },
     }[status] || { text: status, color: "secondary" });
 
-  const getAreaText = (area) =>
-    ({
-      standard: "Trong nhà",
-      vip: "VIP",
-      outdoor: "Ngoài trời",
-      bar: "Bar",
-      private: "Riêng",
-    }[area] || area);
+  const getAreaText = (area) => TABLE_AREA_LABELS[area] || area;
 
   const formatCurrency = (amount) =>
     `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
@@ -336,7 +350,10 @@ const TableManagement = () => {
     return (
       <button
         className={className}
-        onClick={() => handleTableStatusChange(targetTable, nextStatus)}
+        onClick={(event) => {
+          event.stopPropagation();
+          handleTableStatusChange(targetTable, nextStatus);
+        }}
         disabled={!!reason}
         title={reason}
       >
@@ -344,6 +361,9 @@ const TableManagement = () => {
       </button>
     );
   };
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || currentFilters.status || currentFilters.area
+  );
 
   const baseFilteredTables = useMemo(
     () =>
@@ -418,6 +438,32 @@ const TableManagement = () => {
       return;
     }
     navigate(`/manager/floor-map/${restaurantId}`);
+  };
+
+  const handleOpenTableDetail = (tableRow) => {
+    const rawTable = getRawTableById(tablesRaw, tableRow.id);
+    setLiteTable(rawTable || tableRow);
+    setShowLiteModal(true);
+  };
+
+  const handleTableCardKeyDown = (event, tableRow) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleOpenTableDetail(tableRow);
+  };
+
+  const handleOpenAddTableModal = () => {
+    setTableForm((prev) => ({
+      ...prev,
+      floorId: prev.floorId || (isAllFloorsSelected ? "" : currentFloor),
+    }));
+    setShowAddTableModal(true);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setCurrentFilters({ status: "", area: "" });
   };
 
   const handleSaveTable = async () => {
@@ -598,7 +644,7 @@ const TableManagement = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setShowAddTableModal(true)}
+            onClick={handleOpenAddTableModal}
           >
             ➕ Thêm bàn
           </Button>
@@ -658,10 +704,11 @@ const TableManagement = () => {
               }
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="available">🟢 Trống</option>
-              <option value="occupied">🔴 Có khách</option>
-              <option value="payment_pending">🟡 Chờ thanh toán</option>
-              <option value="reserved">🔵 Đã đặt</option>
+              {TABLE_STATUS_FILTER_OPTIONS.map((statusOption) => (
+                <option key={statusOption.value} value={statusOption.value}>
+                  {statusOption.icon} {statusOption.label}
+                </option>
+              ))}
             </select>
             <select
               value={currentFilters.area}
@@ -670,11 +717,11 @@ const TableManagement = () => {
               }
             >
               <option value="">Tất cả khu vực</option>
-              <option value="standard">Trong nhà</option>
-              <option value="vip">VIP</option>
-              <option value="outdoor">Ngoài trời</option>
-              <option value="bar">Bar</option>
-              <option value="private">Riêng</option>
+              {TABLE_AREA_OPTIONS.map((areaOption) => (
+                <option key={areaOption.value} value={areaOption.value}>
+                  {areaOption.label}
+                </option>
+              ))}
             </select>
           </div>
         </aside>
@@ -683,7 +730,21 @@ const TableManagement = () => {
         <main className="tm-grid-area">
           {filteredTables.length === 0 ? (
             <div className="tm-empty">
-              <span>🪑</span> <p>Không có bàn nào hiển thị.</p>
+              <span>🪑</span>
+              <p>
+                {hasActiveFilters
+                  ? "Không tìm thấy bàn phù hợp với bộ lọc hiện tại."
+                  : "Không có bàn nào hiển thị."}
+              </p>
+              {hasActiveFilters ? (
+                <Button variant="secondary" size="sm" onClick={handleResetFilters}>
+                  Xóa bộ lọc
+                </Button>
+              ) : (
+                <Button variant="primary" size="sm" onClick={handleOpenAddTableModal}>
+                  Thêm bàn đầu tiên
+                </Button>
+              )}
             </div>
           ) : (
             <div className="tm-table-grid">
@@ -695,11 +756,11 @@ const TableManagement = () => {
                   <div
                     key={t.id}
                     className={`tm-table-card ${t.status}`}
-                    onDoubleClick={() => {
-                      const rawTable = getRawTableById(tablesRaw, t.id);
-                      setLiteTable(rawTable || t);
-                      setShowLiteModal(true);
-                    }}
+                    onDoubleClick={() => handleOpenTableDetail(t)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
+                    onKeyDown={(event) => handleTableCardKeyDown(event, t)}
                   >
                     <div className="card-top">
                       <span className="table-no">{t.number}</span>
@@ -727,6 +788,15 @@ const TableManagement = () => {
                       </div>
                     </div>
                     <div className="card-actions">
+                      <button
+                        className="btn-mini secondary"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenTableDetail(t);
+                        }}
+                      >
+                        Chi tiết
+                      </button>
                       {t.status === "available" && (
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
@@ -881,9 +951,11 @@ const TableManagement = () => {
                     setTableForm({ ...tableForm, area: e.target.value })
                   }
                 >
-                  <option value="standard">Trong nhà</option>
-                  <option value="outdoor">Ngoài trời</option>
-                  <option value="vip">VIP</option>
+                  {TABLE_AREA_OPTIONS.map((areaOption) => (
+                    <option key={areaOption.value} value={areaOption.value}>
+                      {areaOption.label}
+                    </option>
+                  ))}
                 </select>
                 <div className="tm-field-meta">
                   <span className="tm-field-hint">Giúp lọc nhanh khi điều phối khách theo nhu cầu.</span>
