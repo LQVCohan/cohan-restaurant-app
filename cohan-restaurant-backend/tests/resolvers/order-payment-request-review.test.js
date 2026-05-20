@@ -349,6 +349,71 @@ describe("payment request + confirm guards", () => {
     },
   );
 
+
+  it.each([
+    ["delivery", "failed"],
+    ["delivery", "cancelled"],
+    ["takeaway", "failed"],
+    ["takeaway", "cancelled"],
+  ])(
+    "payOrdersByOrderIds ignores %s order when payment/current status is %s",
+    async (orderType, terminalStatus) => {
+      const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+      const orderId = `65f0000000000000000004${orderType === "delivery" ? "01" : "02"}`;
+      const terminalOrder = {
+        _id: orderId,
+        id: orderId,
+        restaurantId: "65f000000000000000000099",
+        orderType,
+        tableId: null,
+        tableCode: null,
+        currentStatus: terminalStatus,
+        payment: { status: terminalStatus },
+        items: [{ status: "served", quantity: 1, lineSubtotal: 100000, unitPrice: 100000, dishId: "dish-terminal-1", name: "Terminal dish", voidRequests: [], returnRequests: [] }],
+        totals: { grandTotal: 100000 },
+        code: `OFF-${orderType}-${terminalStatus}`,
+      };
+
+      modelMocks.Order.find.mockImplementationOnce((filter) => ({
+        lean: vi.fn().mockResolvedValue(
+          filter.currentStatus?.$nin?.includes(terminalOrder.currentStatus)
+            ? []
+            : [terminalOrder],
+        ),
+      }));
+
+      const out = await payOrdersByOrderIds(
+        null,
+        {
+          input: {
+            restaurantId: "65f000000000000000000099",
+            orderIds: [orderId],
+            method: "cash",
+          },
+        },
+        AUTH_CONTEXT,
+      );
+
+      const orderFindFilter = modelMocks.Order.find.mock.calls[0][0];
+      expect(orderFindFilter.currentStatus).toEqual({ $nin: ["completed", "cancelled", "failed"] });
+      expect(orderFindFilter.currentStatus.$nin).toContain(terminalStatus);
+      expect(orderFindFilter._id.$in.map(String)).toContain(orderId);
+      expect(orderFindFilter.restaurantId.toString()).toBe("65f000000000000000000099");
+      expect(terminalOrder.currentStatus).toBe(terminalStatus);
+      expect(orderFindFilter.currentStatus.$nin.includes(terminalOrder.currentStatus)).toBe(true);
+      expect(out).toEqual({
+        warning: true,
+        pendingOrderCodes: [],
+        invoice: null,
+        transaction: null,
+        cashflow: null,
+      });
+      expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
+      expect(modelMocks.Table.findById).not.toHaveBeenCalled();
+      expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+    },
+  );
+
   it("payOrdersByTableId returns warning for unserved child with active parent and does not close parent", async () => {
     const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
     const unservedChild = {

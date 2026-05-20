@@ -391,6 +391,7 @@ export const buildPerformanceOverviewCsvContent = (rows = []) => {
 };
 export const buildPerformanceReportData = ({
   snapshot = {},
+  previousSnapshot = null,
   employee = null,
   adjustmentHistory = [],
   restaurantName = "Nhà hàng hiện tại",
@@ -402,6 +403,9 @@ export const buildPerformanceReportData = ({
   const employeeName = snapshot?.employeeName || employee?.fullName || employee?.name || "Nhân viên";
   const periodLabel = `${formatDate(snapshot?.periodStart)} - ${formatDate(snapshot?.periodEnd)}`;
   const performanceLevel = getScoreLevel(snapshot?.finalPerformanceScore || 0)?.label || "--";
+  const previousScore = Number(previousSnapshot?.finalPerformanceScore);
+  const hasPreviousSnapshot = Number.isFinite(previousScore);
+  const previousLevel = hasPreviousSnapshot ? getScoreLevel(previousScore)?.label || "--" : "--";
   const formulaBreakdown = PERFORMANCE_FORMULA_ITEMS.map((item) => {
     const component = snapshot?.[item.key];
     const score = Number(component?.score || 0);
@@ -421,6 +425,10 @@ export const buildPerformanceReportData = ({
     restaurantName,
     finalPerformanceScore,
     performanceLevel,
+    previousScore: hasPreviousSnapshot ? previousScore : null,
+    previousLevel,
+    trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore),
+    hasPreviousSnapshot,
     formulaScore,
     adjustmentDelta,
     hasAdjustment: shouldDisplayAdjustment(adjustmentDelta),
@@ -448,6 +456,13 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
       <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
       <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <h3>So sánh kỳ trước</h3>
+      ${reportData.hasPreviousSnapshot ? `
+      <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <p>Điểm kỳ trước: ${scoreText(reportData.previousScore)}</p>
+      <p>Chênh lệch: ${escapeHtml(reportData.trendText)}</p>
+      <p>Level kỳ này / kỳ trước: ${escapeHtml(reportData.performanceLevel)} / ${escapeHtml(reportData.previousLevel)}</p>
+      ` : "<p>Chưa có dữ liệu kỳ trước.</p>"}
       <h3>Đánh giá khách hàng</h3>
       <p>${escapeHtml(reportData.customerRating.label)}</p>
       ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
@@ -634,6 +649,9 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
   if (!snapshot && !employee) return null;
 
   const level = getScoreLevel(snapshot?.finalPerformanceScore || 0);
+  const previousScore = Number(previousSnapshot?.finalPerformanceScore);
+  const hasPreviousSnapshot = Number.isFinite(previousScore);
+  const previousLevel = hasPreviousSnapshot ? getScoreLevel(previousScore) : null;
   const customerRating = formatCustomerRating(snapshot?.factors);
   const formulaScore = calculateFormulaScore(snapshot);
   const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
@@ -663,6 +681,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
     if (!snapshot) return;
     const reportData = buildPerformanceReportData({
       snapshot,
+      previousSnapshot,
       employee,
       adjustmentHistory,
       restaurantName: snapshot?.restaurantName || employee?.restaurantName || "Nhà hàng hiện tại",
@@ -702,6 +721,32 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
             <strong>{scoreText(snapshot.finalPerformanceScore)}</strong>
             <span>{level.label}</span>
             <p>{level.description}</p>
+          </div>
+
+          <div className="score-formula-card">
+            <strong>So sánh kỳ trước</strong>
+            {hasPreviousSnapshot ? (
+              <ul>
+                <li>
+                  <span>Điểm kỳ này</span>
+                  <strong>{scoreText(finalPerformanceScore)}</strong>
+                </li>
+                <li>
+                  <span>Điểm kỳ trước</span>
+                  <strong>{scoreText(previousScore)}</strong>
+                </li>
+                <li>
+                  <span>Chênh lệch</span>
+                  <strong>{formatTrendDelta(finalPerformanceScore, previousScore)}</strong>
+                </li>
+                <li>
+                  <span>Level kỳ này / kỳ trước</span>
+                  <strong>{level.label} / {previousLevel?.label || "--"}</strong>
+                </li>
+              </ul>
+            ) : (
+              <p>Chưa có dữ liệu kỳ trước.</p>
+            )}
           </div>
 
           <div className="component-list">

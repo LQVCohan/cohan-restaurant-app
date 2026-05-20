@@ -1,0 +1,118 @@
+.manager-page-shell--schedules .schedule-quality-panel {
+  margin-top: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #dbe2ea;
+  background: #fff;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__headline {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  color: #475569;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__score-wrap {
+  text-align: right;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__score {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #eef2ff;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__level {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: #334155;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric {
+  min-width: 120px;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  background: #f8fafc;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric .label {
+  display: block;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric .value {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__body ul {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+  color: #334155;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__link {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel.tone-success { border-color: #86efac; }
+.manager-page-shell--schedules .schedule-quality-panel.tone-info { border-color: #93c5fd; }
+.manager-page-shell--schedules .schedule-quality-panel.tone-warning { border-color: #fcd34d; }
+.manager-page-shell--schedules .schedule-quality-panel.tone-danger { border-color: #fca5a5; }
+
+@media (max-width: 1024px) {
+  .manager-page-shell--schedules .schedule-quality-panel__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-page-shell--schedules .schedule-quality-panel__header {
+    flex-direction: column;
+  }
+
+  .manager-page-shell--schedules .schedule-quality-panel__score-wrap {
+    text-align: left;
+  }
+}

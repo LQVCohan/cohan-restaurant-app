@@ -204,6 +204,15 @@ export default function PublicOrderTrackingPage() {
         {paymentRequested && <p>Yêu cầu thanh toán đã được gửi.</p>}
         {!canRequestPayment && !isPaid && !paymentRequested && <p>Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
       </div>
+      {tracking.latestRequest && (
+        <div className="section">
+          <h3>Yêu cầu gần nhất</h3>
+          <p><strong>Nội dung:</strong> {tracking.latestRequest.message || "-"}</p>
+          <p><strong>Trạng thái:</strong> {tracking.latestRequest.status || "-"}</p>
+          {tracking.latestRequest.createdAt && <p><strong>Tạo lúc:</strong> {new Date(tracking.latestRequest.createdAt).toLocaleString("vi-VN")}</p>}
+        </div>
+      )}
+
       <div className="section">
         <h3>Cần hỗ trợ?</h3>
         <button type="button" disabled={disableActions} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>Gọi nhân viên</button>

@@ -1,3 +1,5 @@
+scalar JSON
+
 type Address {
   line1: String
   line2: String
@@ -77,6 +79,24 @@ type Restaurant {
   notesOnAmenities: String
   cuisineType: String
   status: String
+  timezone: String
+  weeklyOpeningHours: JSON
+  specialHours: [JSON!]
+  capabilities: JSON
+  reservationPolicy: JSON
+  orderPolicy: JSON
+  businessStatus: String
+  publicationStatus: String
+  operationalStatus: String
+  openingStatus: String
+  openingStatusReason: String
+  nextOpeningTime: String
+  canView: Boolean
+  canReserve: Boolean
+  canOrder: Boolean
+  canTableOrder: Boolean
+  canDelivery: Boolean
+  canPickup: Boolean
   manager: User
   tables: [Table]
   categories: [Category]
@@ -98,6 +118,10 @@ input RestaurantFilter {
   priceRange: [String!]
   search: String
   restaurantIds: [ID!]
+  openingStatus: String
+  openNow: Boolean
+  acceptsReservations: Boolean
+  acceptsOrders: Boolean
 }
 
 
@@ -133,6 +157,7 @@ type RestaurantEdge {
 type RestaurantConnection {
   edges: [RestaurantEdge!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 extend type Query {
@@ -148,6 +173,10 @@ extend type Query {
     limit: Int = 6
     restaurantFilter: RestaurantFilter
   ): [Restaurant!]!
+
+  publicRestaurants(limit: Int = 20, cursor: ID, filter: RestaurantFilter): RestaurantConnection!
+  publicRestaurant(id: ID!): Restaurant
+  similarRestaurants(restaurantId: ID!, limit: Int = 6): [Restaurant!]!
 
   restaurantsByManager(
     managerId: ID!
@@ -205,6 +234,15 @@ input CreateRestaurantInput {
   notesOnAmenities: String
   cuisineType: String
   status: String
+  businessStatus: String
+  publicationStatus: String
+  operationalStatus: String
+  timezone: String
+  weeklyOpeningHours: JSON
+  specialHours: [JSON!]
+  capabilities: JSON
+  reservationPolicy: JSON
+  orderPolicy: JSON
   managerId: ID!
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
@@ -232,6 +270,15 @@ input UpdateRestaurantInput {
   notesOnAmenities: String
   cuisineType: String
   status: String
+  businessStatus: String
+  publicationStatus: String
+  operationalStatus: String
+  timezone: String
+  weeklyOpeningHours: JSON
+  specialHours: [JSON!]
+  capabilities: JSON
+  reservationPolicy: JSON
+  orderPolicy: JSON
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
   defaultCurrency: String

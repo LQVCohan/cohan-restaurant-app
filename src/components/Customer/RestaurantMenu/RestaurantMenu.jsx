@@ -15,13 +15,16 @@ import MenuDetailView from "./components/MenuDetailView";
 
 const GET_CUSTOMER_RESTAURANTS = gql`
   query GetCustomerRestaurants($limit: Int) {
-    restaurantsTop(limit: $limit) {
+    publicRestaurants(limit: $limit) {
+      edges {
+        node {
       id
       name
       cuisineType
       avgRating
-      orderCount
-      reservationCount
+      reviewCount
+      canOrder
+      openingStatus
       coverImage
       avatar
       address {
@@ -31,19 +34,22 @@ const GET_CUSTOMER_RESTAURANTS = gql`
         district
         city
       }
+        }
+      }
     }
   }
 `;
 
 const GET_CUSTOMER_RESTAURANT_BY_ID = gql`
   query GetCustomerRestaurantById($id: ID!) {
-    restaurant(id: $id) {
+    publicRestaurant(id: $id) {
       id
       name
       cuisineType
       avgRating
-      orderCount
-      reservationCount
+      reviewCount
+      canOrder
+      openingStatus
       coverImage
       avatar
       address {
@@ -85,13 +91,9 @@ const normalizeRestaurant = (restaurant) => ({
   rating:
     typeof restaurant?.avgRating === "number"
       ? Number(restaurant.avgRating).toFixed(1)
-      : "5.0",
-  reviews:
-    typeof restaurant?.reservationCount === "number"
-      ? restaurant.reservationCount
-      : typeof restaurant?.orderCount === "number"
-        ? restaurant.orderCount
-        : 0,
+      : null,
+  reviews: typeof restaurant?.reviewCount === "number" ? restaurant.reviewCount : 0,
+  canOrder: !!restaurant?.canOrder,
   address: formatAddress(restaurant?.address),
 });
 
@@ -123,7 +125,7 @@ const RestaurantMenu = () => {
   );
 
   const normalizedRestaurants = useMemo(
-    () => (restaurantsData?.restaurantsTop || []).map(normalizeRestaurant),
+    () => (restaurantsData?.publicRestaurants?.edges || []).map((e) => normalizeRestaurant(e.node)),
     [restaurantsData?.restaurantsTop]
   );
 
@@ -168,7 +170,7 @@ const RestaurantMenu = () => {
       return;
     }
 
-    const detailRestaurant = restaurantByIdData?.restaurant;
+    const detailRestaurant = restaurantByIdData?.publicRestaurant;
     if (detailRestaurant?.id && String(detailRestaurant.id) === String(restaurantParam)) {
       setSelectedRes(normalizeRestaurant(detailRestaurant));
     }

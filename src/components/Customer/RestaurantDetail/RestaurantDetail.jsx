@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
-import { useRestaurant } from "../../../hooks/useRestaurant";
 
 // Components (Tách nhỏ để dễ quản lý)
 import RestaurantInfo from "./components/RestaurantInfo/RestaurantInfo";
@@ -17,6 +16,17 @@ import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";
 
 import "./RestaurantDetail.scss";
 
+const GET_PUBLIC_RESTAURANT = gql`
+  query GetPublicRestaurant($id: ID!) {
+    publicRestaurant(id: $id) {
+      id name avatar coverImage spaceImages description cuisineType avgRating reviewCount
+      openingStatus openingStatusReason canReserve canOrder
+      address { line1 district city lat lng }
+      phone website
+    }
+  }
+`;
+
 const GET_RESTAURANT_REVIEW_STATS = gql`
   query GetRestaurantReviewStatsForHeader($restaurantId: ID!) {
     reviewStats(restaurantId: $restaurantId, targetType: "restaurant") {
@@ -31,7 +41,8 @@ const RestaurantDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isPreviewMode = new URLSearchParams(location.search).get("preview") === "1";
-  const { restaurant, loading, error } = useRestaurant(id);
+  const { data: restaurantData, loading, error } = useQuery(GET_PUBLIC_RESTAURANT, { variables: { id }, skip: !id });
+  const restaurant = restaurantData?.publicRestaurant;
   const { data: reviewStatsData } = useQuery(GET_RESTAURANT_REVIEW_STATS, {
     variables: { restaurantId: id },
     skip: !id,
@@ -120,10 +131,8 @@ const RestaurantDetail = () => {
     "/default-cover.jpg";
 
   const reviewStats = reviewStatsData?.reviewStats;
-  const headerRating = Number(
-    reviewStats?.avgRating ?? resolvedRestaurant.rating ?? 0
-  ).toFixed(1);
-  const headerReviewCount = reviewStats?.total ?? 0;
+  const headerReviewCount = reviewStats?.total ?? resolvedRestaurant.reviewCount ?? 0;
+  const headerRating = headerReviewCount > 0 ? Number(reviewStats?.avgRating ?? resolvedRestaurant.avgRating ?? 0).toFixed(1) : "Chưa có đánh giá";
 
   const handleBookTable = () => {
     if (isPreviewMode) return;
@@ -181,12 +190,10 @@ const RestaurantDetail = () => {
                 <span className="dot">•</span>
                 <span
                   className={`status ${
-                    resolvedRestaurant.status === "open" ? "open" : "closed"
+                    resolvedRestaurant.openingStatus === "open" ? "open" : "closed"
                   }`}
                 >
-                  {resolvedRestaurant.status === "open"
-                    ? "Đang mở cửa"
-                    : "Đóng cửa"}
+                  {resolvedRestaurant.openingStatus === "open" ? "Đang mở cửa" : "Đóng cửa"}
                 </span>
               </div>
 
@@ -207,7 +214,7 @@ const RestaurantDetail = () => {
                 onClick={handleBookTable}
                 disabled={isPreviewMode}
               >
-                Đặt bàn ngay
+                {resolvedRestaurant.canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
               </button>
             </div>
           </div>
@@ -260,7 +267,7 @@ const RestaurantDetail = () => {
             <h3>Đặt bàn giữ chỗ</h3>
             <p>Giữ chỗ miễn phí - Xác nhận tức thì</p>
             <div className="time-picker-mock">
-              <Clock size={16} /> 19:00, Hôm nay
+              <Clock size={16} /> {resolvedRestaurant.openingStatusReason || "Kiểm tra lịch trống khi đặt bàn"}
             </div>
             <button className="btn-book-full" onClick={handleBookTable} disabled={isPreviewMode}>
               Tiếp tục đặt bàn
@@ -282,7 +289,7 @@ const RestaurantDetail = () => {
       {/* Mobile Floating Button */}
       <div className="mobile-action-bar mobile-only">
         <button className="btn-book-mobile" onClick={handleBookTable} disabled={isPreviewMode}>
-          Đặt bàn ngay
+          {resolvedRestaurant.canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
         </button>
       </div>
     </div>

@@ -133,6 +133,16 @@ const normalizeOrderType = (raw) =>
     ? "delivery"
     : "dinein";
 
+const getOrderTypeLabel = (raw) => {
+  const value = String(raw || "").toLowerCase();
+
+  if (["delivery", "ship", "giao_hang"].includes(value)) return "Giao hàng";
+  if (["takeaway", "pickup", "take_away", "mang_di"].includes(value)) return "Mang đi";
+  if (["dinein", "dine_in", "eat_in", "tai_quan"].includes(value)) return "Tại quán";
+
+  return raw ? String(raw) : "--";
+};
+
 
 
 function OrderDetailModal({ detailTarget, onClose }) {
@@ -160,7 +170,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
             {renderField("Trạng thái", data.currentStatus || "--")}
             {renderField("Nhà hàng", data.restaurantId || "--")}
             {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
-            {renderField("Hình thức", data.orderType || "--")}
+            {renderField("Hình thức", getOrderTypeLabel(data.orderType))}
             <div className="detail-items">
               <p className="detail-section-title">Danh sách món</p>
               {(data.items || []).length ? (
@@ -201,6 +211,82 @@ function OrderDetailModal({ detailTarget, onClose }) {
     </Modal>
   );
 }
+
+function ReceiptModal({ receiptTarget, onClose }) {
+  if (!receiptTarget) return null;
+
+  const orderCode = receiptTarget?.orderCode || receiptTarget?.id || "--";
+  const orderType = normalizeOrderType(receiptTarget?.orderType);
+
+  const renderField = (label, value) => (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      <span className="detail-value">{value || "--"}</span>
+    </div>
+  );
+
+  return (
+    <Modal isOpen={!!receiptTarget} onClose={onClose} size="md">
+      <Modal.Header>Hóa đơn</Modal.Header>
+      <Modal.Body className="order-detail-modal">
+        {renderField("Mã đơn", orderCode)}
+        {renderField("Trạng thái", receiptTarget?.currentStatus || "--")}
+        {renderField("Hình thức", getOrderTypeLabel(receiptTarget?.orderType))}
+        {renderField(
+          "Nhà hàng",
+          receiptTarget?.restaurantName || receiptTarget?.restaurantId || "--"
+        )}
+        {renderField(
+          "Thời gian tạo",
+          receiptTarget?.createdAt ? toVNDateTime(receiptTarget.createdAt) : "--"
+        )}
+
+        {orderType === "delivery" && receiptTarget?.shipping && (
+          <>
+            {renderField("Người nhận", receiptTarget?.shipping?.fullName || "--")}
+            {renderField("Số điện thoại", receiptTarget?.shipping?.phone || "--")}
+            {renderField("Địa chỉ", receiptTarget?.shipping?.address || "--")}
+          </>
+        )}
+
+        <div className="detail-items">
+          <p className="detail-section-title">Danh sách món</p>
+          {(receiptTarget?.items || []).length ? (
+            <ul>
+              {(receiptTarget?.items || []).map((it, idx) => {
+                const unitPrice = Number(it?.price);
+                const quantity = Number(it?.quantity);
+                const hasSubtotal = Number.isFinite(unitPrice) && Number.isFinite(quantity);
+
+                return (
+                  <li key={it?._id || `${it?.name}_${idx}`}>
+                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(unitPrice * quantity) : "--"}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p>--</p>
+          )}
+        </div>
+
+        {renderField(
+          "Tổng tiền",
+          Number.isFinite(Number(receiptTarget?.totals?.grandTotal))
+            ? fmtMoney(Number(receiptTarget?.totals?.grandTotal))
+            : "--"
+        )}
+        {receiptTarget?.reservationId &&
+          renderField("Liên kết đặt bàn", receiptTarget?.reservationId)}
+      </Modal.Body>
+      <Modal.Footer>
+        <button className="btn btn--primary" onClick={onClose}>
+          Đóng
+        </button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
 export default function OrdersPage() {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id;
@@ -216,6 +302,7 @@ export default function OrdersPage() {
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [changeTableOpen, setChangeTableOpen] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
+  const [receiptTarget, setReceiptTarget] = useState(null);
 
   // Queries
   const {
@@ -423,7 +510,7 @@ export default function OrdersPage() {
         {
           label: "Hóa đơn",
           variant: "outline",
-          onClick: () => pushToast("Xem hóa đơn..."),
+          onClick: () => setReceiptTarget(o),
         },
       ];
 
@@ -507,7 +594,13 @@ export default function OrdersPage() {
 
       <div className="page-header">
         <h1 className="title">📦 Quản lý Đơn hàng</h1>
-        <button className="btn-create">➕ Tạo đơn mới</button>
+        <button
+          className="btn-create"
+          aria-label="Tạo đơn mới"
+          onClick={() => navigate("/restaurants")}
+        >
+          ➕ Tạo đơn mới
+        </button>
       </div>
 
       <div className="tabs-container">
@@ -625,6 +718,10 @@ export default function OrdersPage() {
       <OrderDetailModal
         detailTarget={detailTarget}
         onClose={() => setDetailTarget(null)}
+      />
+      <ReceiptModal
+        receiptTarget={receiptTarget}
+        onClose={() => setReceiptTarget(null)}
       />
       <ChangeTableModal
         isOpen={!!changeTableOpen}

@@ -36,6 +36,31 @@ describe("OrderQuery customerTrackOrder", () => {
     expect(order.save).toBeUndefined();
   });
 
+
+  it("returns latestRequest when customerRequests exist", async () => {
+    const order = {
+      trackingQrRevokedAt: null,
+      currentStatus: "pending",
+      kitchenStatus: "pending",
+      sessionStatus: "open",
+      customerRequests: [
+        { requestId: "req-1", type: "CALL_STAFF", status: "ACKNOWLEDGED", message: "Cần hỗ trợ", createdAt: new Date("2026-05-01T10:00:00.000Z"), acknowledgedAt: new Date("2026-05-01T10:01:00.000Z"), acknowledgedBy: "internal-user" },
+      ],
+      toObject: () => ({ trackingCode: "ORD", publicStatus: "ORDER_RECEIVED", items: [], statusHistory: [], totals: {}, customerRequests: order.customerRequests }),
+    };
+    mocks.findOneMock.mockReturnValue({ select: () => order });
+    const out = await OrderQuery.customerTrackOrder(null, { trackingToken: "x" });
+    expect(out.latestRequest).toEqual({
+      requestId: "req-1",
+      type: "CALL_STAFF",
+      status: "ACKNOWLEDGED",
+      message: "Cần hỗ trợ",
+      createdAt: order.customerRequests[0].createdAt,
+      acknowledgedAt: order.customerRequests[0].acknowledgedAt,
+      resolvedAt: null,
+    });
+    expect(out.latestRequest.acknowledgedBy).toBeUndefined();
+  });
   it("requires auth for QR svg", async () => {
     mocks.existsMock.mockResolvedValue(null);
     const order = {

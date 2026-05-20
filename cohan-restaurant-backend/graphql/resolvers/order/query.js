@@ -271,7 +271,7 @@ export const OrderQuery = {
   },
   async customerTrackOrder(_, { trackingToken }) {
     const order = await Order.findOne({ trackingToken }).select({
-      trackingCode: 1, publicStatus: 1, customerVisibleNote: 1, estimatedReadyAt: 1, statusHistory: 1, items: 1, orderPaymentStatus: 1, payment: 1, totals: 1, trackingQrRevokedAt: 1, currentStatus: 1, kitchenStatus: 1, sessionStatus: 1,
+      trackingCode: 1, publicStatus: 1, customerVisibleNote: 1, estimatedReadyAt: 1, statusHistory: 1, items: 1, orderPaymentStatus: 1, payment: 1, totals: 1, customerRequests: 1, trackingQrRevokedAt: 1, currentStatus: 1, kitchenStatus: 1, sessionStatus: 1,
     });
     if (!order) return null;
     if (order.trackingQrRevokedAt) throw new Error("Tracking link has expired");

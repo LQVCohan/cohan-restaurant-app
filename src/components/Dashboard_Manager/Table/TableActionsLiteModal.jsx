@@ -11,6 +11,7 @@ import useModalDraft from "@/hooks/useModalDraft";
 import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
 import { mapTableMutationError } from "@/utils/tableMutationError";
+import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -134,6 +135,13 @@ export default function TableActionsLiteModal({
 
 }) {
   const isOpen = !!open && !!table;
+  const guardState = useMemo(() => getTableGuardState(table), [table]);
+  const deleteDisabledReason = useMemo(
+    () => getTableActionDisabledReason(table, "delete"),
+    [table]
+  );
+  const getStatusDisabledReason = (nextStatus) =>
+    getTableActionDisabledReason(table, "set_status", nextStatus);
 
   // ------- local states -------
   const [code, setCode] = useState("");
@@ -1077,7 +1085,8 @@ export default function TableActionsLiteModal({
                     key={st}
                     className={`chip ${status === st ? "active" : ""}`}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status}
+                    disabled={busy.status || !!getStatusDisabledReason(st)}
+                    title={getStatusDisabledReason(st) || ""}
                   >
                     {st === "available" && "Trống"}
                     {st === "occupied" && "Có khách"}
@@ -1088,6 +1097,11 @@ export default function TableActionsLiteModal({
                 )
               )}
             </div>
+            {guardState.hasGuard && (
+              <div className="hint" style={{ marginTop: 8 }}>
+                {guardState.reason}
+              </div>
+            )}
 
             {/* Yêu cầu đặc biệt: nếu đang Reserved -> có nút Dọn dẹp; nếu Cleaning -> có nút Sẵn sàng */}
             <div className="actions-end" style={{ marginTop: 8 }}>
@@ -1428,11 +1442,13 @@ export default function TableActionsLiteModal({
           <div className="actions-end">
             <button
               className="btn danger"
-              disabled={busy.delete}
+              disabled={busy.delete || !!deleteDisabledReason}
+              title={deleteDisabledReason || ""}
               onClick={handleDelete}
             >
               {busy.delete ? "Đang xoá…" : "Xoá bàn"}
             </button>
+            {deleteDisabledReason && <div className="hint">{deleteDisabledReason}</div>}
           </div>
         </div>
 
