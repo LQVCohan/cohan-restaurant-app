@@ -80,7 +80,6 @@ const Toolbar = ({
     if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
-    onInventoryFilterChange?.("all");
   };
 
   const hasActiveFilters =
@@ -367,7 +366,6 @@ const Toolbar = ({
                 onClick={() => {
                   setPriceRange({ min: "", max: "" });
                   onPriceRangeChange({ minPrice: "", maxPrice: "" });
-    onInventoryFilterChange?.("all");
                 }}
               />
             </span>
