@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import "./MenuManagement.scss";
 import "./MenuManagementPolish.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 // Sub-components
 import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
@@ -1071,78 +1072,23 @@ const MenuManagement = () => {
   }
   return (
     <div className="mm-page-container">
-      <header className="mm-header">
-        <div className="mm-header__left">
-          <h1 className="mm-title">Quản lý Thực Đơn</h1>
-          <p className="mm-subtitle">
-            Thiết lập món ăn, danh mục món và nhóm thực đơn
-          </p>
-        </div>
-
-        <div className="mm-header__right">
-          <div className="mm-global-filter">
-            <div className="mm-select-wrapper">
-              <FiMapPin className="mm-icon" />
-              <select
-                className="mm-select"
-                value={currentRestaurant || ""}
-                onChange={(e) => setCurrentRestaurant(e.target.value)}
-                disabled={managerRestaurants.length <= 1}
-              >
-                {managerRestaurants.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mm-select-wrapper">
-              <FiClock className="mm-icon" />
-              <select
-                className="mm-select"
-                value={selectedTimeSlot || "breakfast"}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-              >
-                {Object.entries(TIME_SLOT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mm-actions">
-            {canManageDishCategory && (
-              <button
-                className="mm-btn mm-btn--secondary"
-                onClick={() => toggleModal("dishCategory", true)}
-              >
-                <FiTag /> Danh mục món
-              </button>
-            )}
-
-            {canManageMenuGroup && (
-              <button
-                className="mm-btn mm-btn--secondary"
-                onClick={() => toggleModal("menuGroup", true)}
-              >
-                <FiFolderPlus /> Nhóm thực đơn
-              </button>
-            )}
-
-            {canCreateMenuItem && (
-              <button
-                className="mm-btn mm-btn--primary"
-                onClick={() => toggleModal("menuItem", true)}
-              >
-                <FiPlus /> Thêm món
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <ManagementPageHeader
+        eyebrow="MENU MANAGER"
+        title="Quản lý Thực Đơn"
+        subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"
+        icon="📋"
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Tìm món, mã món, danh mục..."
+        selectedRestaurant={currentRestaurant || ""}
+        onRestaurantChange={setCurrentRestaurant}
+        restaurantList={managerRestaurants}
+        quickActions={[
+          ...(canManageDishCategory ? [{ icon: "🏷️", label: "Danh mục món", onClick: () => toggleModal("dishCategory", true) }] : []),
+          ...(canManageMenuGroup ? [{ icon: "📁", label: "Nhóm thực đơn", onClick: () => toggleModal("menuGroup", true) }] : []),
+        ]}
+        primaryAction={canCreateMenuItem ? { icon: "➕", label: "Thêm món", onClick: () => toggleModal("menuItem", true) } : null}
+      />
 
       <section className="mm-stats-section">
         <CompactMenuStrip

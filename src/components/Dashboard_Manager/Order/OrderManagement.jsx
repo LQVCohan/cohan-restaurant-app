@@ -27,6 +27,7 @@ import { gql, useLazyQuery, useMutation } from "@apollo/client";
 
 import OrderCard from "./components/OrderCard";
 import OrderModal from "./components/OrderModal";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
 import NewOrderModal from "./components/NewOrderModal";
@@ -989,68 +990,33 @@ const OrderManagement = () => {
   return (
     <div className={`om-container ${focusMode ? "om-container--focus" : ""}`}>
       <div className="om-wrapper">
-        <header className="om-header">
-          {!focusMode ? (
-            <div className="om-header__titles">
-              <h1 className="om-header__title">🍽️ Quản Lý Đơn Hàng</h1>
-              <p className="om-header__subtitle">
-                Theo dõi và xử lý đơn hàng thời gian thực
-              </p>
-            </div>
-          ) : (
-            <div className="om-header__focus-title">
-              <span className="om-badge-live">LIVE</span>
-              <h1>KITCHEN DISPLAY</h1>
-            </div>
-          )}
-
-          <div className="om-header__actions">
-            {!focusMode && (
-              <>
-                {restaurantList.length > 0 && (
-                  <div className="om-select-wrapper">
-                    <select
-                      value={selectedRestaurantId}
-                      onChange={(e) => setSelectedRestaurantId(e.target.value)}
-                      className="om-select"
-                    >
-                      {restaurantList.map((res) => (
-                        <option key={res.id} value={res.id}>
-                          {res.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="om-select-icon" />
-                  </div>
-                )}
-                <button
-                  onClick={() => setShowHistory(true)}
-                  className="om-btn-icon"
-                  title="Lịch sử"
-                >
-                  <History size={20} />
-                </button>
-                <button
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="om-btn-icon"
-                  title="Cài đặt"
-                >
-                  <Settings size={20} />
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => setFocusMode(!focusMode)}
-              className={`om-btn-focus ${
-                focusMode ? "om-btn-focus--active" : ""
-              }`}
-            >
-              {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              <span>{focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp"}</span>
-            </button>
-          </div>
-        </header>
+        {!focusMode ? (
+          <ManagementPageHeader
+            eyebrow="ORDER MANAGER"
+            title="Quản Lý Đơn Hàng"
+            subtitle="Theo dõi và xử lý đơn hàng thời gian thực"
+            icon="🍽️"
+            stats={[
+              { id: "total", icon: "🧾", label: "Đợt gọi món", value: stats.total },
+              { id: "pending", icon: "⏳", label: "Chưa hoàn thành", value: stats.pending },
+              { id: "preparing", icon: "👨‍🍳", label: "Đang chuẩn bị", value: stats.preparing },
+              { id: "completed", icon: "✅", label: "Đã xong (phiên)", value: stats.completed },
+            ]}
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Tìm ID, Tên KH, Món..."
+            selectedRestaurant={selectedRestaurantId}
+            onRestaurantChange={setSelectedRestaurantId}
+            restaurantList={restaurantList}
+            quickActions={[
+              { icon: "🕘", label: "Lịch sử", onClick: () => setShowHistory(true) },
+              { icon: "⚙️", label: "Cài đặt", onClick: () => setIsSettingsOpen(true) },
+            ]}
+            primaryAction={{ icon: focusMode ? "🡼" : "🡾", label: focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp", onClick: () => setFocusMode(!focusMode) }}
+          />
+        ) : (
+          <header className="om-header"><div className="om-header__focus-title"><span className="om-badge-live">LIVE</span><h1>KITCHEN DISPLAY</h1></div><div className="om-header__actions"><button onClick={() => setFocusMode(!focusMode)} className={`om-btn-focus ${focusMode ? "om-btn-focus--active" : ""}`}>{focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}<span>{focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp"}</span></button></div></header>
+        )}
 
         {!focusMode && (
           <div className="om-stats-grid">
