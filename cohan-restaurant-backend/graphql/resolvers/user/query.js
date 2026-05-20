@@ -11,6 +11,8 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
 
 function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
@@ -316,6 +318,73 @@ export const UserQuery = {
       loyaltyDurationScore,
       rankPoints,
     };
+  },
+
+  async customerListSummaries(
+    _,
+    { restaurantId, userIds = [], recentLimit = 5, topDishLimit = 3 },
+    ctx,
+  ) {
+    const authUser = ctx?.user;
+    requireRole(authUser, ["admin", "manager", "staff"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const rid = toObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
+    const validUserIds = [...new Set((userIds || []).filter(mongoose.isValidObjectId))]
+      .slice(0, 200)
+      .map((id) => toObjectId(id));
+    if (!validUserIds.length) return [];
+
+    const safeRecentLimit = Math.min(Math.max(Number(recentLimit) || 5, 1), 10);
+    const safeTopDishLimit = Math.min(Math.max(Number(topDishLimit) || 3, 1), 10);
+
+    const orders = await Order.find({
+      restaurantId: rid,
+      userId: { $in: validUserIds },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const ordersByUserId = new Map();
+    for (const o of orders) {
+      const uid = String(o?.userId || "");
+      if (!uid) continue;
+      if (!ordersByUserId.has(uid)) ordersByUserId.set(uid, []);
+      ordersByUserId.get(uid).push(o);
+    }
+
+    return validUserIds.map((id) => {
+      const uid = String(id);
+      const userOrders = ordersByUserId.get(uid) || [];
+      const dishCount = new Map();
+      for (const order of userOrders) {
+        for (const item of order.items || []) {
+          const name = item?.name?.trim();
+          if (!name) continue;
+          dishCount.set(name, (dishCount.get(name) || 0) + Number(item.quantity || 1));
+        }
+      }
+      return {
+        userId: uid,
+        recentOrders: userOrders.slice(0, safeRecentLimit).map((o) => ({
+          id: String(o?._id || o?.id || ""),
+          orderCode: o?.orderCode || null,
+          createdAt: o?.createdAt || null,
+          amount: Number(o?.totals?.grandTotal || 0),
+          items: (o?.items || []).map((it) => it?.name).filter(Boolean),
+        })),
+        topDishes: [...dishCount.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, safeTopDishLimit)
+          .map(([dishName, quantity]) => ({ dishName, quantity })),
+      };
+    });
   },
 
   async customerAnalytics(_, { restaurantId }, ctx) {
