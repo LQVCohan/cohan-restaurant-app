@@ -43,6 +43,7 @@ import {
   buildPerformanceReportData,
   buildPerformanceReportHtml,
   escapeHtml,
+  formatMinutesDuration,
   openPerformanceReportPrintWindow,
 } from "./utils/performanceReport";
 
@@ -65,6 +66,7 @@ export {
   buildPerformanceOverviewCsvContent,
   buildPerformanceOverviewCsvBlobContent,
   escapeHtml,
+  formatMinutesDuration,
   buildPerformanceReportData,
   buildPerformanceReportHtml,
   openPerformanceReportPrintWindow,
@@ -544,7 +546,20 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
           <div className="factor-box">
             <strong>Dữ liệu đầu vào</strong>
             <div className="factor-grid">
-              <span>Order xử lý: {snapshot.factors?.orderCount ?? 0}</span>
+              <span>
+                Số order tham khảo: {snapshot.factors?.orderCount ?? 0}
+              </span>
+              <span>
+                Mốc order tham khảo trong kỳ: {snapshot.factors?.peerMaxOrderCount ?? "--"}
+              </span>
+              <span>
+                Thời lượng ca được phân công:{" "}
+                {formatMinutesDuration(snapshot.factors?.scheduledMinutes)}
+              </span>
+              <span>
+                Thời lượng làm thực tế:{" "}
+                {formatMinutesDuration(snapshot.factors?.actualWorkedMinutes)}
+              </span>
               <span>Ca làm: {snapshot.factors?.shiftsCount ?? 0}</span>
               <span>Đi trễ: {snapshot.factors?.lateEvents ?? 0}</span>
               <span>Về sớm: {snapshot.factors?.earlyEvents ?? 0}</span>
@@ -558,6 +573,23 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
             <p className="formula-note">
               Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.
             </p>
+            {snapshot.factors?.productivitySource === "shift_completion" ? (
+              <p className="formula-note">
+                Năng suất dựa trên tỷ lệ hoàn thành ca được phân công, không dựa trực tiếp vào số order.
+              </p>
+            ) : null}
+            {snapshot.factors?.insufficientData === true ? (
+              <p className="formula-note">
+                <strong>Không đủ dữ liệu hiệu suất trong kỳ.</strong>{" "}
+                Nhân viên không có ca làm, chấm công, order, đánh giá hoặc dữ liệu điều chỉnh trong kỳ nên không chấm theo điểm trung lập.
+              </p>
+            ) : null}
+            {snapshot.factors?.hasManagerReview === false &&
+            snapshot.factors?.insufficientData !== true ? (
+              <p className="formula-note">
+                Thiếu đánh giá quản lý; Quality và Manager Review đang dùng điểm trung lập.
+              </p>
+            ) : null}
             <p className="formula-note">
               Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.
             </p>

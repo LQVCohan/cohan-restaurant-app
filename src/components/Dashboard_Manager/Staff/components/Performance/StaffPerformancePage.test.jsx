@@ -9,6 +9,7 @@ import {
   resolveComponentWeight,
   shouldDisplayAdjustment,
   buildPerformanceReportData,
+  formatMinutesDuration,
   escapeHtml,
   buildPerformanceReportHtml,
   openPerformanceReportPrintWindow,
@@ -265,6 +266,43 @@ describe("buildPerformanceReportData", () => {
     const report = buildPerformanceReportData({ snapshot: {}, adjustmentHistory: [] });
     expect(report.adjustmentHistory).toEqual([]);
   });
+
+  it("maps new productivity factor fields into report data", () => {
+    const report = buildPerformanceReportData({
+      snapshot: {
+        factors: {
+          scheduledMinutes: 480,
+          actualWorkedMinutes: 450,
+          productivitySource: "shift_completion",
+          insufficientData: true,
+          hasManagerReview: false,
+          orderCount: 12,
+          peerMaxOrderCount: 20,
+        },
+      },
+    });
+    expect(report.scheduledMinutes).toBe(480);
+    expect(report.actualWorkedMinutes).toBe(450);
+    expect(report.productivitySource).toBe("shift_completion");
+    expect(report.insufficientData).toBe(true);
+    expect(report.hasManagerReview).toBe(false);
+    expect(report.orderCount).toBe(12);
+    expect(report.peerMaxOrderCount).toBe(20);
+  });
+});
+
+describe("formatMinutesDuration", () => {
+  it("formats minute totals into readable Vietnamese hour/minute strings", () => {
+    expect(formatMinutesDuration(480)).toBe("8 giờ");
+    expect(formatMinutesDuration(510)).toBe("8 giờ 30 phút");
+    expect(formatMinutesDuration(45)).toBe("45 phút");
+  });
+
+  it("returns placeholder for zero/empty/invalid values", () => {
+    expect(formatMinutesDuration(0)).toBe("--");
+    expect(formatMinutesDuration(null)).toBe("--");
+    expect(formatMinutesDuration(undefined)).toBe("--");
+  });
 });
 
 describe("escapeHtml", () => {
@@ -338,6 +376,69 @@ describe("buildPerformanceReportHtml", () => {
     expect(html).toContain("Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.");
     expect(html).toContain("Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.");
     expect(html).toContain("Snapshot cập nhật lần cuối:");
+  });
+
+  it("includes shift-completion productivity source details", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+      productivitySource: "shift_completion",
+      scheduledMinutes: 480,
+      actualWorkedMinutes: 510,
+      orderCount: 25,
+    });
+    expect(html).toContain("Năng suất dựa trên tỷ lệ hoàn thành ca được phân công");
+    expect(html).toContain("Thời lượng ca được phân công");
+    expect(html).toContain("Thời lượng làm thực tế");
+  });
+
+  it("shows insufficient data warning and manager review fallback note rules", () => {
+    const withInsufficientData = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+      insufficientData: true,
+      hasManagerReview: false,
+    });
+    expect(withInsufficientData).toContain("Không đủ dữ liệu hiệu suất trong kỳ.");
+    expect(withInsufficientData).not.toContain("Thiếu đánh giá quản lý");
+
+    const withoutInsufficientData = buildPerformanceReportHtml({
+      employeeName: "An",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 90,
+      performanceLevel: "Tốt",
+      formulaScore: 90,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+      insufficientData: false,
+      hasManagerReview: false,
+    });
+    expect(withoutInsufficientData).toContain("Thiếu đánh giá quản lý");
   });
 });
 
@@ -563,5 +664,17 @@ describe("csv helpers", () => {
   it("buildPerformanceOverviewCsvBlobContent prepends UTF-8 BOM", () => {
     const csv = buildPerformanceOverviewCsvBlobContent([]);
     expect(csv.startsWith("\uFEFF")).toBe(true);
+  });
+
+  it("appends manager review note when manager review is missing and data is sufficient", () => {
+    const rows = [
+      {
+        employee: { code: "E001", name: "An", role: "Phục vụ" },
+        snapshot: { factors: { hasManagerReview: false, insufficientData: false } },
+        previousSnapshot: null,
+      },
+    ];
+    const result = buildPerformanceOverviewCsvRows(rows);
+    expect(result[0][10]).toBe("Thiếu đánh giá quản lý");
   });
 });
