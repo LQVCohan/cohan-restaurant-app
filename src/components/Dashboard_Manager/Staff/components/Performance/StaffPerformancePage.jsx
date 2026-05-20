@@ -363,6 +363,7 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
     const previousSnapshot = row?.previousSnapshot || null;
     const customerRating = formatCustomerRating(snapshot?.factors);
     const customerRatingCount = Number(snapshot?.factors?.staffRateCount);
+    const note = customerRating?.hasRating ? "Rating khách hàng chỉ tham khảo" : "";
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
       employee.name || snapshot.employeeName || CSV_EMPTY_VALUE,
@@ -374,7 +375,7 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
       previousSnapshot ? "Có" : "Không",
       customerRating?.hasRating ? customerRating.label : CSV_EMPTY_VALUE,
       Number.isFinite(customerRatingCount) ? customerRatingCount : CSV_EMPTY_VALUE,
-      "",
+      note,
     ];
   });
 export const buildPerformanceOverviewCsvContent = (rows = []) => {
@@ -425,6 +426,7 @@ export const buildPerformanceReportData = ({
     };
   });
   const hasCustomWeight = formulaBreakdown.some((item, idx) => item.weight !== PERFORMANCE_FORMULA_ITEMS[idx].weight);
+  const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
 
   return {
     employeeName,
@@ -442,6 +444,7 @@ export const buildPerformanceReportData = ({
     formulaBreakdown,
     hasCustomWeight,
     customerRating,
+    snapshotUpdatedAt,
     adjustmentHistory,
   };
 };
@@ -473,7 +476,9 @@ export const buildPerformanceReportHtml = (reportData) => `
       <h3>Đánh giá khách hàng</h3>
       <p>${escapeHtml(reportData.customerRating.label)}</p>
       ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
-      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo, không tự động thay đổi điểm hiệu suất.</em></p>
+      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.</em></p>
+      <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
+      ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>
       ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
       </body></html>`;
@@ -668,6 +673,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
   const restaurantId = snapshot?.restaurantId || employee?.restaurantForStaff;
   const periodStart = snapshot?.periodStart;
   const periodEnd = snapshot?.periodEnd;
+  const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
   const { data: historyData } = useQuery(GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY, {
     skip: !snapshot || !employeeId || !restaurantId || !periodStart || !periodEnd,
     variables: {
@@ -836,6 +842,17 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <span>{customerRating.label}</span>
               {customerRating.hasRating ? <span>{customerRating.hint}</span> : null}
             </div>
+            <p className="formula-note">
+              Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.
+            </p>
+            <p className="formula-note">
+              Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.
+            </p>
+            {snapshotUpdatedAt ? (
+              <p className="formula-note">
+                Snapshot cập nhật lần cuối: {formatDate(snapshotUpdatedAt)}
+              </p>
+            ) : null}
           </div>
           <div className="adjustment-history-card">
             <strong>Lịch sử điều chỉnh điểm</strong>
