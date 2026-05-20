@@ -2,44 +2,14 @@
   display: grid;
   gap: 12px;
 
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-
-    h3 {
-      margin: 0;
-      font-size: 16px;
-      color: #111827;
-    }
+  &__header { display: flex; justify-content: space-between; gap: 10px; align-items: center;
+    h3 { margin: 0; font-size: 16px; color: #111827; }
   }
 
-  .btn-link {
-    border: 0;
-    background: transparent;
-    color: #2563eb;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
+  .btn-link { border: 0; background: transparent; color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .performance-kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
-    &:focus-visible {
-      outline: 2px solid rgba(37, 99, 235, 0.35);
-      border-radius: 8px;
-    }
-  }
-
-  .performance-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .kpi-card,
-  .simple-table__row,
-  .action-list li,
-  .performance-empty--compact,
-  .action-list__empty {
+  .kpi-card, .action-list li, .performance-summary-note, .action-list__empty {
     background: #f9fafb;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -47,67 +17,13 @@
     font-size: 13px;
   }
 
-  .kpi-card {
-    display: grid;
-    gap: 4px;
+  .kpi-card { display: grid; gap: 4px; span { color: #6b7280; } strong { font-size: 18px; color: #111827; line-height: 1.2; } }
+  .performance-summary-note p { margin: 0; color: #4b5563; + p { margin-top: 4px; } }
 
-    span { color: #6b7280; }
-    strong { font-size: 18px; color: #111827; line-height: 1.2; }
-  }
-
-  .performance-section h4 {
-    margin: 0 0 8px;
-    font-size: 14px;
-    color: #111827;
-  }
-
-  .simple-table,
-  .action-list {
-    display: grid;
-    gap: 10px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .simple-table__row {
-    display: grid;
-    grid-template-columns: 1.2fr auto auto;
-    gap: 10px;
-    align-items: center;
-
-    .employee-name { font-weight: 600; color: #1f2937; }
-    span { color: #4b5563; }
-  }
-
-  .action-list li {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-    color: #374151;
-
-    strong { color: #111827; }
-  }
-
-  .performance-empty--compact p {
-    margin: 0;
-    color: #4b5563;
-
-    + p { margin-top: 4px; color: #6b7280; }
-  }
-
-  .action-list__empty {
-    margin: 0;
-    color: #6b7280;
-  }
+  .performance-section h4 { margin: 0 0 8px; font-size: 14px; color: #111827; }
+  .action-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .action-list li { display: flex; justify-content: space-between; gap: 10px; align-items: center; color: #374151; strong { color: #111827; } }
+  .action-list__empty { margin: 0; color: #6b7280; }
 }
 
-@media (max-width: 768px) {
-  .performance-panel {
-    .performance-kpi-grid,
-    .simple-table__row {
-      grid-template-columns: 1fr;
-    }
-  }
-}
+@media (max-width: 768px) { .performance-panel .performance-kpi-grid { grid-template-columns: 1fr; } }

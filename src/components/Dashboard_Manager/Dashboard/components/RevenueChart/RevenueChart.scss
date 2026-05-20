@@ -1,31 +1,27 @@
 .revenue-chart-widget {
-  background: #fff;
-  border-radius: 16px;
-  padding: 8px 0 0;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 
-  .widget-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .widget-title { font-size: 13px; font-weight: 600; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; }
-  .total-value-group { display: flex; align-items: center; gap: 10px; }
-  .total-amount { font-size: 28px; font-weight: 700; color: #111827; }
+  .widget-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .widget-title { font-size: 13px; font-weight: 700; color: #6b7280; margin: 0; text-transform: uppercase; }
+  .total-amount { margin: 0; font-size: 30px; font-weight: 800; color: #111827; }
 
-  .growth-badge {
-    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; font-size: 13px; font-weight: 600;
-    &.positive { background: #ecfdf5; color: #047857; }
-    &.negative { background: #fef2f2; color: #b91c1c; }
+  .growth-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    &.positive { background: #ecfdf5; color: #166534; }
+    &.negative { background: #fef2f2; color: #991b1b; }
   }
 
   .chart-empty-state {
-    min-height: 260px;
+    min-height: 190px;
     border: 1px dashed #dbe4f3;
     border-radius: 12px;
     display: grid;
     place-content: center;
-    gap: 8px;
+    gap: 6px;
     text-align: center;
     color: #6b7280;
-    h4 { margin: 0; font-size: 15px; color: #111827; }
-    p { margin: 0; font-size: 13px; }
+    padding: 14px;
+    h4 { margin: 0; font-size: 14px; color: #111827; }
+    p { margin: 0; font-size: 12px; }
   }
 }
