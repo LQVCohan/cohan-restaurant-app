@@ -44,7 +44,10 @@ const buildReasonInfo = ({ late, earlyLeave, missedCheckout, noShow, offSchedule
   return { reasonLabels, primaryFilter };
 };
 
-export const buildAttendanceReconciliationSummary = (records = [], now = new Date()) => {
+export const buildAttendanceReconciliationSummary = (records = [], now = new Date(), graceMinutes = 30) => {
+  const safeGraceMinutes = Number.isFinite(Number(graceMinutes))
+    ? Number(graceMinutes)
+    : 30;
   const safeRecords = Array.isArray(records) ? records : [];
 
   const summary = {
@@ -75,7 +78,7 @@ export const buildAttendanceReconciliationSummary = (records = [], now = new Dat
       record?.actualCheckInAt &&
       !record?.actualCheckOutAt &&
       Number.isFinite(plannedEndMs) &&
-      plannedEndMs <= now.getTime();
+      plannedEndMs + safeGraceMinutes * 60 * 1000 <= now.getTime();
     const missedCheckout =
       displayStatus === "missed_checkout" || status === "missed_checkout" || shouldInferMissedCheckout;
 

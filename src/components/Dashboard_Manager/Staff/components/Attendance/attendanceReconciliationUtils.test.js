@@ -36,6 +36,37 @@ describe("attendanceReconciliationUtils", () => {
     expect(summary.needsReview).toBe(5);
   });
 
+
+  it("does not infer missed checkout within grace window", () => {
+    const now = new Date("2026-05-20T08:20:00.000Z");
+    const summary = buildAttendanceReconciliationSummary([
+      {
+        id: "within-grace",
+        status: "checked_in",
+        actualCheckInAt: "2026-05-20T01:00:00.000Z",
+        plannedEndTime: "2026-05-20T08:00:00.000Z",
+      },
+    ], now, 30);
+
+    expect(summary.missedCheckout).toBe(0);
+    expect(summary.needsReview).toBe(0);
+  });
+
+  it("infers missed checkout after grace window", () => {
+    const now = new Date("2026-05-20T08:31:00.000Z");
+    const summary = buildAttendanceReconciliationSummary([
+      {
+        id: "after-grace",
+        status: "checked_in",
+        actualCheckInAt: "2026-05-20T01:00:00.000Z",
+        plannedEndTime: "2026-05-20T08:00:00.000Z",
+      },
+    ], now, 30);
+
+    expect(summary.missedCheckout).toBe(1);
+    expect(summary.needsReview).toBe(1);
+  });
+
   it("clamps score between zero and one hundred", () => {
     const manyRisks = [
       ...new Array(20).fill(null).map((_, i) => ({ id: `absent-${i}`, status: "scheduled_absent" })),

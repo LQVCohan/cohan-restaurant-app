@@ -934,7 +934,7 @@ const AttendancePage = () => {
                             <p className="issue-meta">{item.reasonLabels.join(" • ")}</p>
                             <p className="issue-meta">Ca dự kiến: {item.plannedTimeLabel} • Thực tế: {item.actualTimeLabel}</p>
                           </div>
-                          <button type="button" className="issue-filter-btn" onClick={() => handleReviewFilter(item)}>
+                          <button type="button" className="issue-filter-btn" onClick={() => handleReviewFilter(item)} aria-label={`Lọc bảng công để xem ${item.reasonLabels.join(", ")} của ${item.employeeName}`}>
                             Lọc để xem
                           </button>
                         </li>
