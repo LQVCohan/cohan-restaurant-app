@@ -19,6 +19,7 @@ import {
   Send,
 } from "lucide-react";
 import "./PrintManagement.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const DEFAULT_TEMPLATES = [
   { key: "kitchen", name: "Phiếu bếp", enabled: true, content: "[KITCHEN] {{orderCode}}" },
@@ -413,35 +414,20 @@ export default function PrintManagement() {
     <div className="print-ui">
       <div className="print-ui__bg-circle"></div>
 
-      <header className="print-ui__header">
-        <div className="header-content">
-          <div className="header-title">
-            <div className="icon-box">
-              <Printer size={28} />
-            </div>
-            <div>
-              <h1>Print Hub</h1>
-              <p>Trung tâm kiểm soát thiết bị in</p>
-            </div>
-          </div>
-
-          <div className="header-controls">
-            <div className="select-wrapper">
-              <select value={selectedRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)}>
-                {restaurantList.map((r) => (
-                  <option key={r.id} value={String(r.id)}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button className="btn-primary" onClick={openAddPrinter}>
-              <Plus size={18} strokeWidth={3} />
-              <span>Thiết bị mới</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <ManagementPageHeader
+        eyebrow="PRINT MANAGER"
+        title="Print Hub"
+        subtitle="Trung tâm kiểm soát thiết bị in"
+        icon="🖨️"
+        stats={[
+          { id: "printers", icon: "🧩", label: "Thiết bị", value: printers.length },
+          { id: "jobs", icon: "📄", label: "Print jobs", value: printJobs.length },
+        ]}
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={setSelectedRestaurantId}
+        restaurantList={restaurantList.map((r)=>({id:String(r.id), name:r.name}))}
+        primaryAction={{ icon: "➕", label: "Thiết bị mới", onClick: openAddPrinter }}
+      />
 
       {loading && <div className="ui-card">Đang tải cấu hình in...</div>}
       {error && <div className="ui-card">Không thể tải dữ liệu in ấn. Vui lòng thử lại.</div>}
