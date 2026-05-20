@@ -122,6 +122,7 @@ const RestaurantList = ({ restaurantFilter }) => {
   // --- QUERY DATA ---
   const filterKey = JSON.stringify(gqlFilters);
   const prevFilterKeyRef = useRef(filterKey);
+  const isFetchingMoreRef = useRef(false);
 
   const { data, loading, error, fetchMore, refetch } = useQuery(
     GET_RESTAURANTS,
@@ -144,9 +145,11 @@ const RestaurantList = ({ restaurantFilter }) => {
     }
   }, [filterKey]);
 
-  // Handle Initial Load
+  // Handle initial/refetch load (avoid clobbering local merged list during fetchMore)
   useEffect(() => {
     if (!data?.publicRestaurants) return;
+    if (isFetchingMoreRef.current) return;
+
     const edges = data.publicRestaurants.edges ?? [];
     setAccumulated(edges.map(({ node }) => node));
     setEndCursor(data.publicRestaurants.pageInfo?.endCursor ?? null);
@@ -156,17 +159,27 @@ const RestaurantList = ({ restaurantFilter }) => {
   // Handle Load More
   const handleLoadMore = async () => {
     if (!hasNextPage || !endCursor) return;
-    const more = await fetchMore({
+
+    isFetchingMoreRef.current = true;
+    try {
+      const more = await fetchMore({
       variables: {
         limit: LIMIT,
         cursor: endCursor,
         filter: gqlFilters,
       },
     });
-    const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
-    setAccumulated((prev) => { const map = new Map(prev.map((x) => [x.id, x])); edgesMore.forEach(({ node }) => map.set(node.id, node)); return [...map.values()]; });
-    setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
-    setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
+      const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
+      setAccumulated((prev) => {
+        const map = new Map(prev.map((x) => [x.id, x]));
+        edgesMore.forEach(({ node }) => map.set(node.id, node));
+        return [...map.values()];
+      });
+      setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
+      setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
+    } finally {
+      isFetchingMoreRef.current = false;
+    }
   };
 
   // Refetch when filters change

@@ -3,7 +3,6 @@ import "./DiscoveryHero.scss";
 
 const QUICK_TAGS = [
     { id: "top_rated", label: "⭐ Đánh giá 5*", value: "rating" },
-  { id: "promo", label: "💎 Deal hời", value: "promo" },
   { id: "open_now", label: "🕒 Đang mở cửa", value: "open" },
 ];
 

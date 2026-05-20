@@ -447,32 +447,8 @@ async function publicRestaurants(_, { limit = 20, cursor, filter }) {
     totalCount,
   };
 }
-async function publicRestaurants(_, { limit = 20, cursor, filter }) {
-  const lim = clampLimit(limit, 1, 100);
-  const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
-  const countFilter = { ...baseFilter };
 
-  const cId = toObjectIdOrNull(cursor);
-  if (cId) baseFilter._id = { ...(baseFilter._id || {}), $gt: cId };
 
-  const rawDocs = await Restaurant.find(baseFilter).sort({ _id: 1 }).limit(500).lean();
-  const filtered = applyPublicAvailabilityFilters(rawDocs, filter);
-  const pageSlice = filtered.slice(0, lim + 1);
-  const hasNextPage = pageSlice.length > lim;
-  const slice = hasNextPage ? pageSlice.slice(0, lim) : pageSlice;
-
-  const allCountDocs = await Restaurant.find(countFilter).lean();
-  const totalCount = applyPublicAvailabilityFilters(allCountDocs, filter).length;
-
-  return {
-    edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-    pageInfo: {
-      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-      hasNextPage,
-    },
-    totalCount,
-  };
-}
 async function publicRestaurant(_, { id }) {
   if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
   return Restaurant.findOne({ _id: id, businessStatus: "active", publicationStatus: "published" }).lean();
