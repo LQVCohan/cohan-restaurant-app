@@ -4,6 +4,8 @@ export const DEFAULT_KITCHEN_TARGET_PREP_MINUTES = 20;
 export const DEFAULT_BAR_TARGET_PREP_MINUTES = 10;
 export const DEFAULT_LATE_GRACE_MINUTES = 5;
 export const DEFAULT_VERY_LATE_GRACE_MINUTES = 15;
+export const DEFAULT_UNACCEPTED_GRACE_MINUTES = 5;
+export const DEFAULT_BAR_UNACCEPTED_GRACE_MINUTES = 3;
 
 const BAR_KEYWORDS = [
   "drink",
@@ -32,6 +34,34 @@ function toUniqueIds(values = []) {
 
 function toPositiveNumber(value) {
   return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export function resolveUnacceptedGraceMinutes(workItem = {}) {
+  return workItem?.station === "bar"
+    ? DEFAULT_BAR_UNACCEPTED_GRACE_MINUTES
+    : DEFAULT_UNACCEPTED_GRACE_MINUTES;
+}
+
+export function resolveUnacceptedResponsibleEmployeeIds(workItem = {}) {
+  if (workItem?.station === "bar") {
+    return toUniqueIds(
+      workItem?.barStaffIds?.length
+        ? workItem.barStaffIds
+        : workItem?.barLeadId
+          ? [workItem.barLeadId]
+          : workItem?.teamEmployeeIds || [],
+    );
+  }
+
+  return toUniqueIds(
+    workItem?.assistantChefIds?.length
+      ? workItem.assistantChefIds
+      : workItem?.teamEmployeeIds?.length
+        ? workItem.teamEmployeeIds
+        : workItem?.headChefId
+          ? [workItem.headChefId]
+          : [],
+  );
 }
 
 export function resolveOrderItemStation(item = {}) {
@@ -297,6 +327,61 @@ export async function syncKitchenOrderWorkItemsForKitchenEntry({
   }
 
   return { syncedCount };
+}
+
+export async function markUnacceptedKitchenOrderWorkItems({
+  restaurantId,
+  now,
+  graceMinutes,
+  session,
+}) {
+  if (!restaurantId) return { matchedCount: 0, modifiedCount: 0 };
+
+  const atNow = now || new Date();
+  const sharedGraceMinutes = toPositiveNumber(graceMinutes);
+  const query = {
+    restaurantId,
+    status: "pending",
+    unaccepted: { $ne: true },
+    kitchenEnteredAt: { $exists: true },
+  };
+
+  if (sharedGraceMinutes) {
+    query.kitchenEnteredAt.$lte = new Date(atNow.getTime() - sharedGraceMinutes * 60000);
+  }
+
+  const candidates = await KitchenOrderWorkItem.find(query).session(session);
+  let matchedCount = 0;
+  let modifiedCount = 0;
+
+  for (const workItem of candidates || []) {
+    const grace = sharedGraceMinutes || resolveUnacceptedGraceMinutes(workItem);
+    const enteredAt = workItem?.kitchenEnteredAt ? new Date(workItem.kitchenEnteredAt) : null;
+    if (!enteredAt) continue;
+
+    const overdue = atNow.getTime() - enteredAt.getTime() >= grace * 60000;
+    if (!overdue) continue;
+
+    matchedCount += 1;
+    const updateResult = await KitchenOrderWorkItem.updateOne(
+      { _id: workItem._id, unaccepted: { $ne: true } },
+      {
+        $set: {
+          unaccepted: true,
+          unacceptedAt: atNow,
+          unacceptedAfterMinutes: grace,
+          unacceptedResponsibleEmployeeIds: resolveUnacceptedResponsibleEmployeeIds(workItem),
+          unacceptedReason: "Món chưa được nhận sau ngưỡng thời gian cho phép.",
+          updatedAt: atNow,
+        },
+      },
+      { session },
+    );
+
+    if (updateResult?.modifiedCount > 0) modifiedCount += updateResult.modifiedCount;
+  }
+
+  return { matchedCount, modifiedCount };
 }
 
 
