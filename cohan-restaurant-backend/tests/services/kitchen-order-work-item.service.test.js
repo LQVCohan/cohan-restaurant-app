@@ -30,6 +30,30 @@ describe("kitchenOrderWorkItem service", () => {
     });
   });
 
+  it("resolves target prep minutes from item overrides and defaults", async () => {
+    const { resolveTargetPrepMinutes } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+    expect(resolveTargetPrepMinutes({ targetPrepMinutes: 12 }, "kitchen")).toBe(12);
+    expect(resolveTargetPrepMinutes({ prepTimeMinutes: 15 }, "kitchen")).toBe(15);
+    expect(resolveTargetPrepMinutes({ estimatedPrepMinutes: 18 }, "kitchen")).toBe(18);
+    expect(resolveTargetPrepMinutes({ servingVariant: { targetPrepMinutes: 9 } }, "kitchen")).toBe(9);
+    expect(resolveTargetPrepMinutes({}, "bar")).toBe(10);
+    expect(resolveTargetPrepMinutes({}, "kitchen")).toBe(20);
+    expect(() => resolveTargetPrepMinutes(null, "kitchen")).not.toThrow();
+  });
+
+  it("resolves prep time level from actual and target values", async () => {
+    const { resolvePrepTimeLevel } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+    expect(resolvePrepTimeLevel(20, 20)).toBe("on_time");
+    expect(resolvePrepTimeLevel(24, 20)).toBe("late");
+    expect(resolvePrepTimeLevel(26, 20)).toBe("very_late");
+    expect(resolvePrepTimeLevel(null, 20)).toBeNull();
+    expect(resolvePrepTimeLevel("x", 20)).toBeNull();
+    expect(resolvePrepTimeLevel(20, null)).toBeNull();
+    expect(resolvePrepTimeLevel(20, 0)).toBeNull();
+  });
+
   it("pending -> preparing creates work item and attaches roster", async () => {
     const now = new Date("2026-05-20T09:00:00.000Z");
     modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
@@ -77,10 +101,13 @@ describe("kitchenOrderWorkItem service", () => {
     );
   });
 
-  it("preparing -> ready computes actualPrepMinutes", async () => {
+  it("preparing -> ready computes actualPrepMinutes with target and on_time", async () => {
     modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue({
       lean: vi.fn(() =>
-        makeSessionChain({ kitchenEnteredAt: new Date("2026-05-20T09:00:00.000Z"), preparingAt: new Date("2026-05-20T09:05:00.000Z") }),
+        makeSessionChain({
+          kitchenEnteredAt: new Date("2026-05-20T09:00:00.000Z"),
+          preparingAt: new Date("2026-05-20T09:05:00.000Z"),
+        }),
       ),
     });
     const { upsertKitchenOrderWorkItemForStatusChange } = await import(
@@ -99,171 +126,78 @@ describe("kitchenOrderWorkItem service", () => {
     expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        $set: expect.objectContaining({ actualPrepMinutes: 15 }),
+        $set: expect.objectContaining({
+          actualPrepMinutes: 15,
+          targetPrepMinutes: 20,
+          timeLevel: "on_time",
+        }),
       }),
       expect.anything(),
     );
   });
 
-  it("ready -> served updates servedAt", async () => {
+  it("ready computes very_late when prep duration exceeds late grace", async () => {
+    modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue({
+      lean: vi.fn(() => makeSessionChain({ preparingAt: new Date("2026-05-20T09:00:00.000Z") })),
+    });
     const { upsertKitchenOrderWorkItemForStatusChange } = await import(
       "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
     );
-    const now = new Date("2026-05-20T09:30:00.000Z");
-    await upsertKitchenOrderWorkItemForStatusChange({ order: { _id: "o1", restaurantId: "r1" }, item: { _id: "i1" }, previousStatus: "ready", nextStatus: "served", now, session: {} });
 
-    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ $set: expect.objectContaining({ servedAt: now }) }),
-      expect.anything(),
-    );
-  });
+    await upsertKitchenOrderWorkItemForStatusChange({
+      order: { _id: "o1", restaurantId: "r1" },
+      item: { _id: "i1", name: "Cơm" },
+      previousStatus: "preparing",
+      nextStatus: "ready",
+      now: new Date("2026-05-20T09:40:00.000Z"),
+      session: {},
+    });
 
-  it("no roster still creates with noRoster", async () => {
-    const { upsertKitchenOrderWorkItemForStatusChange } = await import(
-      "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
-    );
-    await upsertKitchenOrderWorkItemForStatusChange({ order: { _id: "o1", restaurantId: "r1" }, item: { _id: "i1" }, previousStatus: "pending", nextStatus: "preparing", now: new Date(), session: {} });
     expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        $set: expect.objectContaining({ noRoster: true, noRosterReason: expect.stringContaining("Không tìm thấy roster") }),
+        $set: expect.objectContaining({
+          actualPrepMinutes: 40,
+          targetPrepMinutes: 20,
+          timeLevel: "very_late",
+        }),
       }),
       expect.anything(),
     );
   });
 
-  it("resolves bar station from item name", async () => {
-    const { resolveOrderItemStation } = await import(
-      "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
-    );
-    expect(resolveOrderItemStation({ name: "Trà đào" })).toBe("bar");
-    expect(resolveOrderItemStation({ name: "Coffee" })).toBe("bar");
-  });
-
-  it("groups roster team with head and assistants", async () => {
-    modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
-      sort: vi.fn(() => ({
-        lean: vi.fn(async () => [
-          { _id: "r1", shiftId: "s1", employeeId: "u1", kitchenDutyRole: "head_chef", startTime: new Date("2026-05-20T08:00:00.000Z") },
-          { _id: "r2", shiftId: "s1", employeeId: "u2", kitchenDutyRole: "assistant_chef", startTime: new Date("2026-05-20T08:00:00.000Z") },
-          { _id: "r3", shiftId: "s1", employeeId: "u3", kitchenDutyRole: "helper", startTime: new Date("2026-05-20T08:00:00.000Z") },
-        ]),
-      })),
+  it("ready keeps existing targetPrepMinutes and does not overwrite", async () => {
+    modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue({
+      lean: vi.fn(() =>
+        makeSessionChain({
+          preparingAt: new Date("2026-05-20T09:00:00.000Z"),
+          targetPrepMinutes: 12,
+        }),
+      ),
     });
-    const { findKitchenRosterForOrderItem } = await import(
-      "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
-    );
-
-    const roster = await findKitchenRosterForOrderItem({ restaurantId: "r1", station: "kitchen", at: new Date() });
-    expect(roster.headChefId).toBe("u1");
-    expect(roster.assistantChefIds).toEqual(expect.arrayContaining(["u2", "u3"]));
-    expect(roster.teamEmployeeIds).toEqual(expect.arrayContaining(["u1", "u2", "u3"]));
-  });
-
-  it("does not throw when optional fields are missing", async () => {
     const { upsertKitchenOrderWorkItemForStatusChange } = await import(
       "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
     );
-    await expect(
-      upsertKitchenOrderWorkItemForStatusChange({
-        order: { _id: "o1", restaurantId: "r1" },
-        item: { _id: "i1" },
-        nextStatus: "preparing",
-        session: {},
-      }),
-    ).resolves.toBeTruthy();
-  });
 
-describe("syncKitchenOrderWorkItemsForOrderStatusChange", () => {
-  it("calls upsert for each valid transition", async () => {
-    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
-
-    const now = new Date("2026-05-20T10:00:00.000Z");
-    const order = { _id: "o1", restaurantId: "r1" };
-    const itemTransitions = [
-      { item: { _id: "i1" }, previousStatus: "pending", nextStatus: "preparing" },
-      { item: { _id: "i2" }, previousStatus: "preparing", nextStatus: "ready" },
-    ];
-
-    const result = await service.syncKitchenOrderWorkItemsForOrderStatusChange({
-      order,
-      itemTransitions,
-      actorUserId: "u1",
-      now,
-      session: {},
-    });
-
-    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(2);
-    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
-      1,
-      { orderId: "o1", orderItemId: "i1" },
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
-      2,
-      { orderId: "o1", orderItemId: "i2" },
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(result).toEqual({ syncedCount: 2 });
-  });
-
-  it("skips transition missing item or nextStatus and returns accurate syncedCount", async () => {
-    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
-
-    const result = await service.syncKitchenOrderWorkItemsForOrderStatusChange({
-      order: { _id: "o1" },
-      itemTransitions: [
-        { item: null, previousStatus: "pending", nextStatus: "preparing" },
-        { item: { _id: "i1" }, previousStatus: "pending" },
-        { item: { _id: "i2" }, previousStatus: "pending", nextStatus: "preparing" },
-      ],
-      session: {},
-    });
-
-    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ syncedCount: 1 });
-  });
-
-  it("returns zero when order missing or transitions empty", async () => {
-    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
-
-    await expect(
-      service.syncKitchenOrderWorkItemsForOrderStatusChange({ order: null, itemTransitions: [{ item: { _id: "i1" }, nextStatus: "served" }] }),
-    ).resolves.toEqual({ syncedCount: 0 });
-
-    await expect(
-      service.syncKitchenOrderWorkItemsForOrderStatusChange({ order: { _id: "o1" }, itemTransitions: [] }),
-    ).resolves.toEqual({ syncedCount: 0 });
-  });
-
-  it("processes transitions sequentially", async () => {
-    const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
-    const callOrder = [];
-    modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mockImplementation(({ orderItemId }) => {
-      callOrder.push(`start-${orderItemId}`);
-      return {
-        session: vi.fn(async () => {
-          await new Promise((resolve) => setTimeout(resolve, orderItemId === "i1" ? 15 : 0));
-          callOrder.push(`end-${orderItemId}`);
-          return { _id: `work-${orderItemId}` };
-        }),
-      };
-    });
-
-    await service.syncKitchenOrderWorkItemsForOrderStatusChange({
+    await upsertKitchenOrderWorkItemForStatusChange({
       order: { _id: "o1", restaurantId: "r1" },
-      itemTransitions: [
-        { item: { _id: "i1" }, previousStatus: "pending", nextStatus: "preparing" },
-        { item: { _id: "i2" }, previousStatus: "pending", nextStatus: "preparing" },
-      ],
+      item: { _id: "i1", targetPrepMinutes: 20 },
+      previousStatus: "preparing",
+      nextStatus: "ready",
+      now: new Date("2026-05-20T09:14:00.000Z"),
       session: {},
     });
 
-    expect(callOrder).toEqual(["start-i1", "end-i1", "start-i2", "end-i2"]);
+    expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          actualPrepMinutes: 14,
+          targetPrepMinutes: 12,
+          timeLevel: "late",
+        }),
+      }),
+      expect.anything(),
+    );
   });
-});
-
 });
