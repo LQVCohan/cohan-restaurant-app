@@ -15,6 +15,7 @@ import {
   isForbiddenError,
   isUnauthenticatedError,
 } from "@/utils/graphqlErrorUtils";
+import { buildAttendanceReconciliationSummary } from "./attendanceReconciliationUtils";
 
 const MISSED_CHECKOUT_GRACE_MINUTES = 30;
 
@@ -462,6 +463,25 @@ const AttendancePage = () => {
     [employees, quickId],
   );
 
+  const reconciliationSummary = useMemo(
+    () => buildAttendanceReconciliationSummary(records),
+    [records],
+  );
+
+  const reconciliationMetrics = [
+    { key: "onTime", label: "Đúng lịch", value: reconciliationSummary.onTime },
+    { key: "late", label: "Đi muộn", value: reconciliationSummary.late },
+    { key: "earlyLeave", label: "Về sớm", value: reconciliationSummary.earlyLeave },
+    { key: "missedCheckout", label: "Thiếu check-out", value: reconciliationSummary.missedCheckout },
+    { key: "noShow", label: "Vắng lịch", value: reconciliationSummary.noShow },
+    { key: "offSchedule", label: "Ngoài lịch", value: reconciliationSummary.offSchedule },
+  ];
+
+  const handleReviewFilter = (item) => {
+    if (item?.primaryFilter) setFilterStatus(item.primaryFilter);
+    setActiveView("attendance");
+  };
+
   const effectiveRestaurantId =
     selectedEmployee?.restaurantForStaff ||
     userRestaurantId ||
@@ -881,6 +901,51 @@ const AttendancePage = () => {
 
       {activeView === "attendance" ? (
         <div className="table-section">
+          <section className={`attendance-reconciliation-panel card tone-${reconciliationSummary.tone}`} aria-label="Đối chiếu lịch và công thực tế">
+            <header className="attendance-reconciliation-header">
+              <div>
+                <h3>Đối chiếu lịch & công thực tế</h3>
+                <p>So sánh ca dự kiến với giờ vào/ra thực tế trong ngày đã chọn.</p>
+              </div>
+              <span className={`reconciliation-score-badge tone-${reconciliationSummary.tone}`}>
+                {reconciliationSummary.score === null ? "--" : `${reconciliationSummary.score}/100`} • {reconciliationSummary.headline}
+              </span>
+            </header>
+            {reconciliationSummary.total === 0 ? (
+              <p className="attendance-reconciliation-empty">Chưa có dữ liệu chấm công để đối chiếu cho ngày này.</p>
+            ) : (
+              <>
+                <div className="attendance-reconciliation-metrics">
+                  {reconciliationMetrics.map((metric) => (
+                    <span key={metric.key} className="reconciliation-chip">
+                      <strong>{metric.value}</strong>
+                      <span>{metric.label}</span>
+                    </span>
+                  ))}
+                </div>
+                {reconciliationSummary.reviewItems.length > 0 && (
+                  <div className="attendance-reconciliation-issues">
+                    <h4>Điểm cần rà soát nhanh</h4>
+                    <ul>
+                      {reconciliationSummary.reviewItems.map((item) => (
+                        <li key={item.id || `${item.employeeCode}-${item.status}`}>
+                          <div>
+                            <p className="issue-employee">{item.employeeName} <span>({item.employeeCode})</span></p>
+                            <p className="issue-meta">{item.reasonLabels.join(" • ")}</p>
+                            <p className="issue-meta">Ca dự kiến: {item.plannedTimeLabel} • Thực tế: {item.actualTimeLabel}</p>
+                          </div>
+                          <button type="button" className="issue-filter-btn" onClick={() => handleReviewFilter(item)}>
+                            Lọc để xem
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
           <div className="table-toolbar">
             <div className="tabs">
               {STATUS_TABS.map((tab) => (

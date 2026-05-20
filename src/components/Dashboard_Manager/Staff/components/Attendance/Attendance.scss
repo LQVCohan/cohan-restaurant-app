@@ -1557,3 +1557,121 @@ $border: #e2e8f0;
   margin-bottom: 12px;
   font-size: 13px;
 }
+
+.attendance-reconciliation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: #64748b;
+  }
+}
+
+.attendance-reconciliation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reconciliation-score-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.reconciliation-score-badge.tone-success { background: #dcfce7; color: #166534; }
+.reconciliation-score-badge.tone-info { background: #e0f2fe; color: #075985; }
+.reconciliation-score-badge.tone-warning { background: #fef3c7; color: #92400e; }
+.reconciliation-score-badge.tone-danger { background: #fee2e2; color: #991b1b; }
+.reconciliation-score-badge.tone-neutral { background: #e2e8f0; color: #334155; }
+
+.attendance-reconciliation-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reconciliation-chip {
+  min-width: 120px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong {
+    font-size: 1rem;
+  }
+
+  span {
+    font-size: 0.82rem;
+    color: #475569;
+  }
+}
+
+.attendance-reconciliation-issues ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.attendance-reconciliation-issues li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.issue-employee {
+  margin: 0;
+  font-weight: 600;
+}
+
+.issue-meta {
+  margin: 3px 0 0;
+  font-size: 0.83rem;
+  color: #64748b;
+}
+
+.issue-filter-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.issue-filter-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1366px) {
+  .attendance-reconciliation-header,
+  .attendance-reconciliation-issues li {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1024px) {
+  .reconciliation-chip {
+    min-width: calc(50% - 6px);
+  }
+}
