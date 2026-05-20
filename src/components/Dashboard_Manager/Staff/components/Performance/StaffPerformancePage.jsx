@@ -79,7 +79,7 @@ const COMPONENT_META = {
 
 
 
-const PERFORMANCE_FORMULA_ITEMS = [
+export const PERFORMANCE_FORMULA_ITEMS = [
   { key: "productivity", label: "Năng suất", weight: 25 },
   { key: "punctuality", label: "Đúng giờ", weight: 25 },
   { key: "quality", label: "Chất lượng", weight: 20 },
