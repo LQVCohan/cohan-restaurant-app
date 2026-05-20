@@ -82,6 +82,14 @@ const getTableFloorId = (targetTable) =>
   targetTable?.floor?._id ||
   null;
 
+const getTableDisplayCode = (targetTable) =>
+  String(targetTable?.code ?? targetTable?.number ?? "").trim();
+
+const getTableDisplayCapacity = (targetTable) =>
+  Number(targetTable?.capacity ?? targetTable?.seats ?? 0);
+
+const getTableDisplayType = (targetTable) =>
+  targetTable?.type ?? targetTable?.area ?? "standard";
 
 const buildMovedTablePosition = (targetTable, nextCoordinates) => {
   const currentPosition = getTablePosition(targetTable);
@@ -387,7 +395,7 @@ export default function TableActionsLiteModal({
   const hasVrConfigured = Boolean(vrUrl?.trim() || hasStoredImage);
   const vrContextLabel = joinUniqueLabels(
     [
-      `Bàn ${code || table?.code || "--"}`,
+      `Bàn ${code || getTableDisplayCode(table) || "--"}`,
       zoneLabel?.trim() ? `Khu vực ${zoneLabel.trim()}` : null,
       table?.floorLevel != null ? `Tầng ${table.floorLevel}` : null,
     ],
@@ -609,9 +617,10 @@ export default function TableActionsLiteModal({
     if (busy.merge) return;
     const raw = (mergeCodes || "").trim();
     if (!raw) return;
+    const anchorCode = getTableDisplayCode(table);
     const ids = Array.from(
       new Set(
-        [table.number, ...raw.split(/[,\s]+/)]
+        [anchorCode, ...raw.split(/[,\s]+/)]
           .map((c) => c.trim())
           .filter(Boolean)
           .map((c) => actions.fetchTableByCode?.(c))
@@ -654,7 +663,7 @@ export default function TableActionsLiteModal({
 
   const handleDelete = async () => {
     if (!table?.id || busy.delete) return;
-    if (!window.confirm(`Xoá bàn ${table.number}?`)) return;
+    if (!window.confirm(`Xoá bàn ${getTableDisplayCode(table) || "này"}?`)) return;
     setBusyKey("delete", true);
     try {
       await actions.deleteTable(table.id);
@@ -788,7 +797,7 @@ export default function TableActionsLiteModal({
         <div className="talite-header">
           <div>
             <h3 className="talite-title">
-              Cấu hình bàn ăn <b>{table?.code}</b>
+              Cấu hình bàn ăn <b>{getTableDisplayCode(table) || "--"}</b>
             </h3>
             <p className="talite-subtitle">
               Thiết lập thông tin, VR và ưu đãi đi kèm cho bàn.
@@ -810,7 +819,7 @@ export default function TableActionsLiteModal({
           <div className="talite-info">
             <div className="kv">
               <span className="k">Mã bàn:</span>
-              <span className="v">{table?.code}</span>
+              <span className="v">{getTableDisplayCode(table) || "--"}</span>
             </div>
             <div className="kv">
               <span className="k">Tầng:</span>
@@ -818,16 +827,16 @@ export default function TableActionsLiteModal({
             </div>
             <div className="kv">
               <span className="k">Sức chứa:</span>
-              <span className="v">{table?.capacity ?? 0} chỗ</span>
+              <span className="v">{getTableDisplayCapacity(table)} chỗ</span>
             </div>
             <div className="kv">
               <span className="k">Loại:</span>
-              <span className="v">{table?.type || "standard"}</span>
+              <span className="v">{getTableDisplayType(table)}</span>
             </div>
             <div className="kv">
               <span className="k">Khu vực:</span>
               <span className="v">
-                {areaLabelMap[table?.type] || table?.type || "Chưa rõ"}
+                {areaLabelMap[getTableDisplayType(table)] || getTableDisplayType(table) || "Chưa rõ"}
               </span>
             </div>
             <div className="kv">
@@ -1002,7 +1011,7 @@ export default function TableActionsLiteModal({
                       <img
                         className="talite-vr-preview"
                         src={vrPreviewUrl}
-                        alt={`Ảnh 360 xem trước cho bàn ${code || table?.code || ""}`}
+                        alt={`Ảnh 360 xem trước cho bàn ${code || getTableDisplayCode(table) || ""}`}
                       />
                     </div>
                   ) : (
@@ -1089,6 +1098,7 @@ export default function TableActionsLiteModal({
             <div className="chips">
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
                 (st) => {
+                  const guardReason = getStatusDisabledReason(st);
                   const posManagedReason = isPosManagedStatusTransition(status, st)
                     ? POS_MANAGED_STATUS_TRANSITION_TITLE
                     : "";
@@ -1099,8 +1109,8 @@ export default function TableActionsLiteModal({
                     key={st}
                     className={`chip ${status === st ? "active" : ""}`}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status || !!getStatusDisabledReason(st) || !!posManagedReason}
-                    title={getStatusDisabledReason(st) || posManagedReason || ""}
+                    disabled={busy.status || !!guardReason || !!posManagedReason}
+                    title={guardReason || posManagedReason || ""}
                   >
                     {st === "available" && "Trống"}
                     {st === "occupied" && "Có khách"}
@@ -1120,14 +1130,28 @@ export default function TableActionsLiteModal({
 
             {/* Yêu cầu đặc biệt: nếu đang Reserved -> có nút Dọn dẹp; nếu Cleaning -> có nút Sẵn sàng */}
             <div className="actions-end" style={{ marginTop: 8 }}>
-              {status === "reserved" && (
-                <button
-                  className="btn"
-                  onClick={() => handleChangeStatus("cleaning")}
-                >
-                  🧹 Dọn dẹp
-                </button>
-              )}
+              {status === "reserved" && (() => {
+                const reservedCleaningReason = isPosManagedStatusTransition(status, "cleaning")
+                  ? POS_MANAGED_STATUS_TRANSITION_TITLE
+                  : "";
+                return (
+                  <>
+                    <button
+                      className="btn"
+                      onClick={() => handleChangeStatus("cleaning")}
+                      disabled={!!reservedCleaningReason || busy.status}
+                      title={reservedCleaningReason}
+                    >
+                      🧹 Dọn dẹp
+                    </button>
+                    {reservedCleaningReason && (
+                      <div className="hint" style={{ marginTop: 6 }}>
+                        {reservedCleaningReason}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {status === "cleaning" && (
                 <button
                   className="btn success"
