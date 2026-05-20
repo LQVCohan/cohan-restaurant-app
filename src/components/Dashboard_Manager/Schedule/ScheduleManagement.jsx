@@ -3796,6 +3796,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
       (restaurant) => String(restaurant.id) === String(effectiveRestaurantId),
     )?.name || "Nhà hàng hiện tại";
 
+  const handlePrintWeeklySchedule = () => {
+    if (readOnly) return;
+    document.body.classList.add("schedule-print-mode");
+    window.setTimeout(() => {
+      window.print();
+    }, 50);
+  };
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      document.body.classList.remove("schedule-print-mode");
+    };
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("afterprint", handleAfterPrint);
+      document.body.classList.remove("schedule-print-mode");
+    };
+  }, []);
+
   return (
     <div className={`schedule-container ${readOnly ? "read-only" : ""}`}>
       <header className="schedule-header">
@@ -4146,6 +4165,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
       </section>
 
       <div className="schedule-toolbar">
+        <div className="schedule-print-header" aria-hidden="true">
+          <h2>Lịch làm việc tuần</h2>
+          <p>
+            {selectedRestaurantName} · {dateLabel}
+          </p>
+          <p>Trạng thái: {getScheduleStatusLabel()}</p>
+        </div>
         <div className="toolbar-left">
           <div className="view-toggles">
             <button
@@ -4231,6 +4257,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
             >
               <CalendarCheck2 size={16} />
               Xem availability đã chốt
+            </button>
+          )}
+
+          {!readOnly && (
+            <button
+              type="button"
+              className="btn-print-schedule"
+              onClick={handlePrintWeeklySchedule}
+              aria-label="In lịch làm việc tuần hiện tại"
+            >
+              <ClipboardList size={16} />
+              In lịch tuần
             </button>
           )}
 
