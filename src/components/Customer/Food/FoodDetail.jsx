@@ -220,6 +220,30 @@ const resolveFoodDetailSocketUrl = () => {
   return "http://localhost:4000";
 };
 
+const getAddToCartButtonText = ({
+  addingToBackendCart,
+  restaurantLoading,
+  restaurantUnavailable,
+  restaurantCanOrder,
+  restaurantOrderBlockReason,
+  selectedServingKey,
+  liveStateReady,
+  isBlocked,
+  isOutOfStock,
+  quantityExceedsAvailable,
+}) => {
+  if (addingToBackendCart) return "Đang giữ món...";
+  if (restaurantLoading) return "Đang kiểm tra nhà hàng...";
+  if (restaurantUnavailable) return "Nhà hàng không khả dụng";
+  if (!restaurantCanOrder) return restaurantOrderBlockReason;
+  if (!selectedServingKey) return "Đang tải tùy chọn...";
+  if (!liveStateReady) return "Đang kiểm tra tồn...";
+  if (isBlocked) return "Tạm chặn giữ món";
+  if (isOutOfStock) return "Hết hàng";
+  if (quantityExceedsAvailable) return "Không đủ số lượng";
+  return "Thêm vào giỏ";
+};
+
 const FoodDetail = () => {
   const { foodId } = useParams();
   const navigate = useNavigate();
@@ -500,25 +524,18 @@ const FoodDetail = () => {
         isOutOfStock ||
         (maxAvailableQty > 0 && quantity >= maxAvailableQty)));
 
-  const addToCartButtonText = addingToBackendCart
-    ? "Đang giữ món..."
-    : restaurantLoading
-      ? "Đang kiểm tra nhà hàng..."
-    : restaurantUnavailable
-      ? "Nhà hàng không khả dụng"
-      : !restaurantCanOrder
-        ? restaurantOrderBlockReason
-    : !selectedServingKey
-      ? "Đang tải tùy chọn..."
-      : !liveStateReady
-        ? "Đang kiểm tra tồn..."
-        : isBlocked
-          ? "Tạm chặn giữ món"
-          : isOutOfStock
-            ? "Hết hàng"
-            : quantityExceedsAvailable
-              ? "Không đủ số lượng"
-              : "Thêm vào giỏ";
+  const addToCartButtonText = getAddToCartButtonText({
+    addingToBackendCart,
+    restaurantLoading,
+    restaurantUnavailable,
+    restaurantCanOrder,
+    restaurantOrderBlockReason,
+    selectedServingKey,
+    liveStateReady,
+    isBlocked,
+    isOutOfStock,
+    quantityExceedsAvailable,
+  });
 
   const makeCartPayload = () => {
     if (!resolvedDish) return null;
