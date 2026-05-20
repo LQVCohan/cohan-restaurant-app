@@ -108,6 +108,12 @@ const RestaurantDetail = () => {
 
   const restaurant = restaurantData?.publicRestaurant;
 
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    const ids = readFavoriteIds();
+    setFavoriteActive(ids.has(String(restaurant.id)));
+  }, [restaurant?.id]);
+
   if (loading) {
     return (
       <div className="detail-loading">
@@ -136,11 +142,6 @@ const RestaurantDetail = () => {
 
   const canReserve = !!resolvedRestaurant.canReserve;
 
-  useEffect(() => {
-    if (!resolvedRestaurant?.id) return;
-    const ids = readFavoriteIds();
-    setFavoriteActive(ids.has(String(resolvedRestaurant.id)));
-  }, [resolvedRestaurant?.id]);
 
   const reviewStats = reviewStatsData?.reviewStats;
   const headerReviewCount = reviewStats?.total ?? resolvedRestaurant.reviewCount ?? 0;

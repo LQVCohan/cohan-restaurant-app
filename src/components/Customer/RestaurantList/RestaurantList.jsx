@@ -165,9 +165,9 @@ const RestaurantList = ({ restaurantFilter }) => {
     try {
       const more = await fetchMore({
         variables: {
-        limit: LIMIT,
-        cursor: endCursor,
-        filter: gqlFilters,
+          limit: LIMIT,
+          cursor: endCursor,
+          filter: gqlFilters,
         },
       });
       const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
