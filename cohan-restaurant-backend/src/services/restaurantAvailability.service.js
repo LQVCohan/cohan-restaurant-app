@@ -89,7 +89,9 @@ export function getNextOpeningTime(restaurant = {}, now = new Date()) {
   const timezone = restaurant.timezone || DEFAULT_TIMEZONE;
   const weekly = normalizeWeeklyOpeningHours(restaurant);
   const localNow = toZonedDate(now, timezone);
+  const nowMin = localNow.getHours() * 60 + localNow.getMinutes();
 
+  // TODO: timezone conversion currently relies on Date/toLocaleString; consider a dedicated timezone library for DST-safe behavior.
   for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
     const candidate = new Date(localNow);
     candidate.setDate(localNow.getDate() + dayOffset);
@@ -97,20 +99,48 @@ export function getNextOpeningTime(restaurant = {}, now = new Date()) {
 
     const dayName = DAY_KEYS[candidate.getDay()];
     const dateKey = getDateKey(candidate);
-    const special = (restaurant.specialHours || []).find((s) => s?.date === dateKey);
+    const special = (restaurant.specialHours || []).find((entry) => entry?.date === dateKey);
+
+    if (special?.isClosed) continue;
+
     const slots = special
-      ? (special.isClosed ? [] : (special.slots || []).map(normalizeSlot).filter(Boolean))
+      ? (Array.isArray(special.slots) ? special.slots : []).map(normalizeSlot).filter(Boolean)
       : (weekly[dayName] || []);
 
     if (!slots.length) continue;
 
-    const nowMin = dayOffset === 0 ? (localNow.getHours() * 60 + localNow.getMinutes()) : -1;
-    const nextSlot = slots.find((slot) => slot.openMin > nowMin || slot.openMin <= slot.closeMin === false);
-    if (!nextSlot) continue;
+    const sortedSlots = [...slots].sort((a, b) => a.openMin - b.openMin);
 
-    const openDate = new Date(candidate);
-    openDate.setHours(Math.floor(nextSlot.openMin / 60), nextSlot.openMin % 60, 0, 0);
-    return openDate.toISOString();
+    for (const slot of sortedSlots) {
+      const { openMin, closeMin } = slot;
+      const isTwentyFourHours = openMin === closeMin;
+      const isSameDaySlot = openMin < closeMin;
+      const isOvernightSlot = openMin > closeMin;
+
+      if (dayOffset === 0) {
+        if (isTwentyFourHours) {
+          const openDate = new Date(candidate);
+          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
+          return openDate.toISOString();
+        }
+
+        if (isSameDaySlot && openMin > nowMin) {
+          const openDate = new Date(candidate);
+          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
+          return openDate.toISOString();
+        }
+
+        if (isOvernightSlot && nowMin < openMin) {
+          const openDate = new Date(candidate);
+          openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
+          return openDate.toISOString();
+        }
+      } else {
+        const openDate = new Date(candidate);
+        openDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
+        return openDate.toISOString();
+      }
+    }
   }
 
   return null;

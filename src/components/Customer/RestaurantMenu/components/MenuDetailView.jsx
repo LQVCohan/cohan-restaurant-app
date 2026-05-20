@@ -59,7 +59,23 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 
 const ITEMS_PER_PAGE = 8;
 
-const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
+const getCannotOrderReason = (restaurant, canOrder) => {
+  if (canOrder) return "";
+  switch (restaurant?.openingStatus) {
+    case "closed":
+      return "Nhà hàng đang đóng cửa";
+    case "paused":
+      return "Nhà hàng đang tạm ngưng nhận đơn";
+    case "maintenance":
+      return "Nhà hàng đang bảo trì";
+    case "holiday":
+      return "Nhà hàng nghỉ hôm nay";
+    default:
+      return "Nhà hàng chưa nhận đặt món";
+  }
+};
+
+const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
   const [timeSlot, setTimeSlot] = useState("lunch");
@@ -272,6 +288,10 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
           </div>
         </div>
 
+
+        {!canOrder && (
+          <div className="menu-inline-note">{getCannotOrderReason(restaurant, canOrder)}</div>
+        )}
         {isLoading ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
             Đang tải thực đơn...
@@ -298,7 +318,9 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                 <MenuItemCard
                   key={item.id}
                   item={item}
-                  onClick={(clickedItem) =>
+                  disabled={!canOrder}
+                  onClick={(clickedItem) => {
+                    if (!canOrder) return;
                     onOpenFoodDetail?.(
                       clickedItem?.id,
                       buildFoodDetailState(clickedItem, {
@@ -306,8 +328,8 @@ const MenuDetailView = ({ restaurant, onBack, onOpenFoodDetail }) => {
                         timeSlot,
                         categoryId: clickedItem?.categoryId || null,
                       }),
-                    )
-                  }
+                    );
+                  }}
                 />
               ))}
             </div>

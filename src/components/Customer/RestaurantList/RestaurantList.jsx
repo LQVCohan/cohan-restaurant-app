@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useContext } from "react";
+import React, { useMemo, useState, useEffect, useContext, useRef } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -49,6 +49,7 @@ const GET_RESTAURANTS = gql`
         hasNextPage
         endCursor
       }
+      totalCount
     }
   }
 `;
@@ -114,12 +115,17 @@ const RestaurantList = ({ restaurantFilter }) => {
       cuisineTypes: filters.cuisines.length ? filters.cuisines : undefined,
       minRating: minRating || undefined,
       priceRange: filters.priceRanges.length ? filters.priceRanges : undefined,
-      search: searchTerm?.trim() || restaurantFilter?.search || undefined, // Ưu tiên search local -> prop
+      search: searchTerm?.trim() || restaurantFilter?.search || undefined,
+      openNow: quickFilter === "open" ? true : undefined,
     };
   }, [filters, searchTerm, restaurantFilter, quickFilter]);
 
   // --- QUERY DATA ---
-  const { data, loading, error, fetchMore, refetch } = useQuery(
+  const filterKey = JSON.stringify(gqlFilters);
+  const prevFilterKeyRef = useRef(filterKey);
+  const isFetchingMoreRef = useRef(false);
+
+  const { data, loading, error, fetchMore } = useQuery(
     GET_RESTAURANTS,
     {
       variables: {
@@ -131,11 +137,22 @@ const RestaurantList = ({ restaurantFilter }) => {
     }
   );
 
-  // Handle Initial Load
+  useEffect(() => {
+    if (prevFilterKeyRef.current !== filterKey) {
+      prevFilterKeyRef.current = filterKey;
+      setAccumulated([]);
+      setEndCursor(null);
+      setHasNextPage(false);
+    }
+  }, [filterKey]);
+
+  // Handle initial/refetch load (avoid clobbering local merged list during fetchMore)
   useEffect(() => {
     if (!data?.publicRestaurants) return;
+    if (isFetchingMoreRef.current) return;
+
     const edges = data.publicRestaurants.edges ?? [];
-    setAccumulated((prev) => (prev.length ? prev : edges.map(({ node }) => node)));
+    setAccumulated(edges.map(({ node }) => node));
     setEndCursor(data.publicRestaurants.pageInfo?.endCursor ?? null);
     setHasNextPage(!!data.publicRestaurants.pageInfo?.hasNextPage);
   }, [data]);
@@ -143,33 +160,33 @@ const RestaurantList = ({ restaurantFilter }) => {
   // Handle Load More
   const handleLoadMore = async () => {
     if (!hasNextPage || !endCursor) return;
-    const more = await fetchMore({
-      variables: {
-        limit: LIMIT,
-        cursor: endCursor,
-        filter: gqlFilters,
-      },
-      updateQuery: (prev, { fetchMoreResult }) => fetchMoreResult || prev,
-    });
-    const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
-    setAccumulated((prev) => { const map = new Map(prev.map((x) => [x.id, x])); edgesMore.forEach(({ node }) => map.set(node.id, node)); return [...map.values()]; });
-    setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
-    setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
+
+    isFetchingMoreRef.current = true;
+    try {
+      const more = await fetchMore({
+        variables: {
+          limit: LIMIT,
+          cursor: endCursor,
+          filter: gqlFilters,
+        },
+      });
+      const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
+      setAccumulated((prev) => {
+        const map = new Map(prev.map((x) => [x.id, x]));
+        edgesMore.forEach(({ node }) => map.set(node.id, node));
+        return [...map.values()];
+      });
+      setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
+      setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
+    } finally {
+      isFetchingMoreRef.current = false;
+    }
   };
 
-  // Refetch when filters change
-  useEffect(() => {
-    refetch({
-      limit: LIMIT,
-      cursor: null,
-      filter: gqlFilters,
-    });
-  }, [gqlFilters, refetch]);
 
   // --- HANDLERS ---
   const handleQuickFilter = (type) => {
     setQuickFilter(type);
-    if (type === "distance") setSortBy("distance");
     if (type === "rating") setSortBy("rating");
     // Scroll xuống list
     document
@@ -254,7 +271,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                   <option value="relevance">✨ Liên quan nhất</option>
                   <option value="rating">⭐ Đánh giá cao</option>
                   <option value="price-low">💲 Giá thấp đến cao</option>
-                  <option value="distance">📍 Gần nhất</option>
+                  
                 </select>
               </div>
             </div>
@@ -264,6 +281,14 @@ const RestaurantList = ({ restaurantFilter }) => {
               <div className="state-box loading">
                 <LoadingSpinner size="large" />
               </div>
+            )}
+
+            {error && accumulated.length === 0 && (
+              <div className="state-box error">Không thể tải dữ liệu nhà hàng.</div>
+            )}
+
+            {!loading && !error && accumulated.length === 0 && (
+              <div className="state-box empty">Không tìm thấy nhà hàng phù hợp.</div>
             )}
 
             {accumulated.length > 0 && (
@@ -292,7 +317,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                     <button
                       className="btn-load-more"
                       onClick={handleLoadMore}
-                      disabled={loading}
+                      disabled={loading && accumulated.length === 0}
                     >
                       {loading ? "Đang tải..." : "Xem thêm nhà hàng"}
                     </button>

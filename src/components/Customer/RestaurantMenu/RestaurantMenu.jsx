@@ -126,7 +126,7 @@ const RestaurantMenu = () => {
 
   const normalizedRestaurants = useMemo(
     () => (restaurantsData?.publicRestaurants?.edges || []).map((e) => normalizeRestaurant(e.node)),
-    [restaurantsData?.restaurantsTop]
+    [restaurantsData?.publicRestaurants?.edges]
   );
 
   // 👉 Dùng cart context
@@ -174,7 +174,7 @@ const RestaurantMenu = () => {
     if (detailRestaurant?.id && String(detailRestaurant.id) === String(restaurantParam)) {
       setSelectedRes(normalizeRestaurant(detailRestaurant));
     }
-  }, [normalizedRestaurants, restaurantByIdData?.restaurant, restaurantParam]);
+  }, [normalizedRestaurants, restaurantByIdData?.publicRestaurant, restaurantParam]);
 
   const handleOpenFoodDetail = (foodId, state = {}) => {
     navigate(buildFoodDetailPath(foodId, state || {}), { state });
@@ -202,6 +202,7 @@ const RestaurantMenu = () => {
       {selectedRes ? (
         <MenuDetailView
           restaurant={selectedRes}
+          canOrder={!!selectedRes?.canOrder}
           onBack={() => setSelectedRes(null)}
           onOpenFoodDetail={handleOpenFoodDetail}
         />
