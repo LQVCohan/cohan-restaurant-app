@@ -1,5 +1,4 @@
 import React from "react";
-import { Coffee, Utensils } from "lucide-react";
 import "./TopDishes.scss";
 
 const formatCurrency = (amount) =>
@@ -9,71 +8,57 @@ const formatCurrency = (amount) =>
     maximumFractionDigits: 0,
   }).format(Number(amount || 0));
 
-const TopDishes = ({ data = [], lowStockItems = [], loading }) => {
+const TopDishes = ({ data = [], lowStockItems = [], loading, variant = "card" }) => {
+  const safeDishes = Array.isArray(data) ? data : [];
+  const safeLowStock = Array.isArray(lowStockItems) ? lowStockItems : [];
+  const maxQty = Math.max(...safeDishes.map((item) => Number(item?.quantity || 0)), 1);
+  const shellClass = variant === "bare" ? "top-dishes-widget top-dishes-widget--bare" : "top-dishes-widget";
+
   return (
-    <div className="top-dishes-widget">
-      <div className="widget-header">
-        <h3 className="widget-title">Top Món Bán Chạy</h3>
-      </div>
+    <div className={shellClass}>
+      {variant !== "bare" ? (
+        <div className="widget-header">
+          <h3 className="widget-title">Món bán chạy</h3>
+        </div>
+      ) : null}
+
       <div className="dishes-list custom-scrollbar">
-        {loading ? <div className="empty-state">Đang tải...</div> : null}
-        {!loading && data.length === 0 ? (
-          <div className="empty-state">Chưa có dữ liệu top món</div>
+        {loading ? <div className="empty-state">Đang tải dữ liệu...</div> : null}
+        {!loading && safeDishes.length === 0 ? (
+          <div className="empty-state">Chưa có dữ liệu món bán chạy.</div>
         ) : null}
-        {!loading &&
-          data.map((dish, index) => (
-            <div key={`${dish.dishName}-${index}`} className="dish-row fade-in">
-              <div className="col-visual">
-                <div className={`rank-badge rank-${index + 1}`}>#{index + 1}</div>
-                <div className="img-wrapper">
-                  <div className="placeholder-img">
-                    <Utensils size={14} />
-                  </div>
-                </div>
-              </div>
-              <div className="col-info">
+
+        {!loading && safeDishes.map((dish, index) => {
+          const progress = Math.max(0, Math.min(100, (Number(dish?.quantity || 0) / maxQty) * 100));
+          return (
+            <div key={`${dish.dishName}-${index}`} className="dish-row">
+              <div className={`rank-badge ${index === 0 ? "rank-top" : ""}`}>#{index + 1}</div>
+              <div className="dish-content">
                 <div className="info-top">
-                  <h4 className="dish-name">{dish.dishName}</h4>
-                  <div className="value-display">
-                    <span className="primary-val">{dish.quantity}</span>
-                    <span className="unit">suất</span>
-                  </div>
+                  <h4 className="dish-name">{dish?.dishName || "—"}</h4>
+                  <span className="dish-meta">{Number(dish?.quantity || 0)} suất</span>
                 </div>
-                <div className="info-bottom">{formatCurrency(dish.revenue)}</div>
+                <p className="revenue-meta">{formatCurrency(dish?.revenue || 0)}</p>
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                </div>
               </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {safeLowStock.length > 0 ? (
+        <div className="low-stock-box">
+          <p className="low-stock-title">Cảnh báo tồn kho thấp</p>
+          {safeLowStock.slice(0, 3).map((item) => (
+            <div className="low-stock-row" key={item.id}>
+              <span>{item.name}</span>
+              <strong>{item.onHand}</strong>
             </div>
           ))}
-      </div>
-      <div className="widget-header" style={{ marginTop: 8 }}>
-        <h3 className="widget-title">Cảnh báo tồn kho thấp</h3>
-      </div>
-      <div className="dishes-list custom-scrollbar">
-        {lowStockItems.length === 0 ? (
-          <div className="empty-state">Không có cảnh báo</div>
-        ) : (
-          lowStockItems.map((item) => (
-            <div className="dish-row fade-in" key={item.id}>
-              <div className="col-visual">
-                <div className="img-wrapper">
-                  <div className="placeholder-img">
-                    <Coffee size={14} />
-                  </div>
-                </div>
-              </div>
-              <div className="col-info">
-                <div className="info-top">
-                  <h4 className="dish-name">{item.name}</h4>
-                  <div className="value-display">
-                    <span className="primary-val">{item.onHand}</span>
-                    <span className="unit">còn lại</span>
-                  </div>
-                </div>
-                <div className="info-bottom">Đã giữ: {item.reserved}</div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 };
