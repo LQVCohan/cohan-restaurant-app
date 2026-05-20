@@ -141,6 +141,27 @@ const resolveCustomerRank = (loyaltyPoints, ranks = []) => {
   );
 };
 
+const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
+const EXCEL_INVALID_SHEET_NAME_CHARS = /[\[\]:*?/\\]/g;
+
+const createSafeSheetName = (baseName, usedNames) => {
+  const rawName = String(baseName || "").replace(EXCEL_INVALID_SHEET_NAME_CHARS, "").trim();
+  const fallback = "Rank";
+  const normalizedBase = (rawName || fallback).slice(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+  let candidate = normalizedBase;
+  let seq = 2;
+
+  while (usedNames.has(candidate)) {
+    const suffix = ` - ${seq}`;
+    const maxBaseLength = Math.max(1, EXCEL_SHEET_NAME_MAX_LENGTH - suffix.length);
+    candidate = `${normalizedBase.slice(0, maxBaseLength)}${suffix}`;
+    seq += 1;
+  }
+
+  usedNames.add(candidate);
+  return candidate;
+};
+
 /* ================== Main Component ================== */
 
 const CustomerManagement = () => {
@@ -456,9 +477,10 @@ const CustomerManagement = () => {
       return acc;
     }, new Map());
 
+    const usedSheetNames = new Set();
     return normalizeRanks(ranks).map((rank) => {
       const customersByRank = groupedByRank.get(rank.name) || [];
-      const safeSheetName = String(rank.name || "Rank").replace(/[^A-Za-z0-9]/g, "").slice(0, 31) || "Rank";
+      const safeSheetName = createSafeSheetName(rank?.name, usedSheetNames);
       return { name: safeSheetName, rows: [header, ...customersByRank.map(toCustomerRow)] };
     });
   };

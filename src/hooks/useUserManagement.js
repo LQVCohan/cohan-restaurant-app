@@ -55,6 +55,7 @@ export const GET_USERS = gql`
       point
       loyaltyPoints
       customerType
+      noteInternal
       totalOrders
       totalSpending
       emailVerified

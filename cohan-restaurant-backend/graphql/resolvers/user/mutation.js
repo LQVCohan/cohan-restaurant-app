@@ -892,6 +892,36 @@ export const UserMutation = {
       });
     }
 
+    const actorRestaurantIds = new Set(
+      [
+        authUser?.restaurantForStaff,
+        authUser?.restaurantId,
+        ...(Array.isArray(authUser?.restaurantIds) ? authUser.restaurantIds : []),
+        ...(Array.isArray(authUser?.refRestaurants) ? authUser.refRestaurants : []),
+      ]
+        .map((id) => String(id || ""))
+        .filter(Boolean),
+    );
+    const targetRestaurantIds = new Set(
+      [
+        u?.restaurantForStaff,
+        ...(Array.isArray(u?.refRestaurants) ? u.refRestaurants : []),
+      ]
+        .map((id) => String(id || ""))
+        .filter(Boolean),
+    );
+
+    if (actorRestaurantIds.size && targetRestaurantIds.size) {
+      const inScope = [...targetRestaurantIds].some((id) =>
+        actorRestaurantIds.has(id),
+      );
+      if (!inScope) {
+        throw new GraphQLError("FORBIDDEN_SCOPE", {
+          extensions: { code: "FORBIDDEN" },
+        });
+      }
+    }
+
     const updates = {};
     if (typeof input.fullName === "string")
       updates.fullName = input.fullName.trim();

@@ -496,7 +496,7 @@ const CustomerModal = ({
                   />
                   <div className="action-row">
                     <button className="save" onClick={handleSaveNotes} disabled={savingNotes}>
-                      Lưu
+                      {savingNotes ? "Đang lưu..." : "Lưu"}
                     </button>
                     <button
                       className="cancel"
