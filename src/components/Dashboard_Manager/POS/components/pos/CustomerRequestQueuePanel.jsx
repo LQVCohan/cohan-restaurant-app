@@ -11,7 +11,7 @@ export const Q = gql`
 export const ACK = gql`mutation A($restaurantId: ID!, $orderId: ID!, $requestId: String!){acknowledgeCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
 export const RES = gql`mutation R($restaurantId: ID!, $orderId: ID!, $requestId: String!){resolveCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
 
-export default function CustomerRequestQueuePanel({ restaurantId, onOpenOrder, onOpenPayment }) {
+export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment }) {
   const [typeFilter, setTypeFilter] = useState(null);
   const shared = useMemo(() => ({ restaurantId, type: typeFilter, limit: 50 }), [restaurantId, typeFilter]);
   const pollInterval = restaurantId && process.env.NODE_ENV !== "test" ? 10000 : 0;
@@ -44,7 +44,7 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenOrder, o
         <div>{isStaffCall ? "Khách cần hỗ trợ" : "Khách yêu cầu thanh toán"} • Bàn {r.tableCode || "-"} • #{r.orderCode}</div>
         {r.message ? <div style={{ fontSize: 13 }}>{r.message}</div> : null}
         <div style={{ marginTop: 6 }}>
-          {isStaffCall && isPending && <button type="button" onClick={async () => { await acknowledge(r); await onOpenOrder?.(r.orderId); }}>Nhận xử lý</button>}
+          {isStaffCall && isPending && <button type="button" onClick={async () => { await acknowledge(r); }}>Nhận xử lý</button>}
           {isStaffCall && isAcknowledged && <button type="button" onClick={async () => { await resolve({ variables: { restaurantId, orderId: r.orderId, requestId: r.requestId } }); await refetchAll(); }}>Đã hỗ trợ</button>}
 
           {!isStaffCall && isPending && <button type="button" onClick={async () => { await acknowledge(r); await onOpenPayment?.(r.orderId); }}>Nhận thanh toán</button>}

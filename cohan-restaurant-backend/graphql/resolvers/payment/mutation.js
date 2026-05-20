@@ -34,7 +34,7 @@ import {
 import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/orderTracking.service.js";
 
 
-function resolveActivePaymentRequest(orderDoc, actorId = null) {
+export function resolveActivePaymentRequest(orderDoc, actorId = null) {
   const req = (orderDoc?.customerRequests || []).find((r) => r?.type === "PAYMENT_REQUEST" && ["PENDING", "ACKNOWLEDGED"].includes(String(r?.status || "").toUpperCase()));
   if (!req) return null;
   req.status = "RESOLVED";
