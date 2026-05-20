@@ -95,7 +95,19 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             gap: 4px;
             color: white;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            // Các class màu từ JSX sẽ áp dụng background gradient tại đây
+
+            &.tier-vip {
+              background: linear-gradient(to right, #f59e0b, #ea580c);
+            }
+            &.tier-regular {
+              background: linear-gradient(to right, #3b82f6, #4f46e5);
+            }
+            &.tier-new {
+              background: linear-gradient(to right, #10b981, #14b8a6);
+            }
+            &.tier-custom {
+              background: linear-gradient(to right, #0ea5e9, #6366f1);
+            }
           }
         }
       }

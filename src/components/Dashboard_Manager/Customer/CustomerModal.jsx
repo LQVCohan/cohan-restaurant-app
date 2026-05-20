@@ -72,8 +72,9 @@ const GET_CUSTOMER_DETAIL_ANALYTICS = gql`
     customerDetailAnalytics(userId: $userId, restaurantId: $restaurantId) {
       rankPoints
       loyaltyDurationScore
-      topItems {
-        itemName
+      favoriteFoods
+      topDishes {
+        dishName
         quantity
       }
     }
@@ -150,8 +151,11 @@ const CustomerModal = ({
 
   const topItems = useMemo(() => {
     if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
-    if (detailAnalytics?.topItems?.length) {
-      return detailAnalytics.topItems.map((item) => item?.itemName).filter(Boolean).slice(0, 5);
+    if (detailAnalytics?.favoriteFoods?.length) {
+      return detailAnalytics.favoriteFoods.filter(Boolean).slice(0, 5);
+    }
+    if (detailAnalytics?.topDishes?.length) {
+      return detailAnalytics.topDishes.map((dish) => dish?.dishName).filter(Boolean).slice(0, 5);
     }
     const itemMap = {};
     recentOrders.forEach((order) => {
@@ -165,7 +169,7 @@ const CustomerModal = ({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map((entry) => entry[0]);
-  }, [recentOrders, customer?.favoriteItems, detailAnalytics?.topItems]);
+  }, [recentOrders, customer?.favoriteItems, detailAnalytics?.favoriteFoods, detailAnalytics?.topDishes]);
 
   const walletStatus = useMemo(() => {
     const hasWallet = customer?.wallet?.id || customer?.hasWallet;
@@ -316,7 +320,7 @@ const CustomerModal = ({
                   <span className="badge-id">
                     #{String(customer?.id || 0).padStart(4, "0")}
                   </span>
-                  <span className={`badge-tier tier-${rankConfig.variant === "custom" ? "regular" : rankConfig.variant}`}>
+                  <span className={`badge-tier tier-${rankConfig.variant}`}>
                     {rankConfig.label}
                   </span>
                 </div>

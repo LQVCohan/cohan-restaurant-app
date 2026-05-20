@@ -38,12 +38,11 @@ export const getRankDisplayConfig = (rankName, ranks = []) => {
 
   const sortedAsc = [...normalizedRanks].sort((a, b) => a.minPoints - b.minPoints);
   const baseRankName = sortedAsc[0]?.name || DEFAULT_RANKS_FALLBACK[0].name;
-  const topRankName = sortedAsc[sortedAsc.length - 1]?.name || DEFAULT_RANKS_FALLBACK[2].name;
   const middleRankName =
     (sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1])?.name ||
     DEFAULT_RANKS_FALLBACK[1].name;
 
-  if (normalizedName === topRankName || normalizedName.toUpperCase() === "VIP") {
+  if (normalizedName.toUpperCase() === "VIP") {
     return { label: normalizedName, variant: "vip", iconKey: "star" };
   }
   if (normalizedName === baseRankName || normalizedName === "Mới") {
