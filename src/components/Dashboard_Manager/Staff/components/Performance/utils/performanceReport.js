@@ -16,6 +16,15 @@ const formatDate = (value) => {
   if (Number.isNaN(date.getTime())) return "--";
   return date.toLocaleDateString("vi-VN");
 };
+export const formatMinutesDuration = (value) => {
+  const totalMinutes = Number(value);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return "--";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0 && minutes > 0) return `${minutes} phút`;
+  if (minutes === 0) return `${hours} giờ`;
+  return `${hours} giờ ${minutes} phút`;
+};
 const SCORE_LEVELS = {
   excellent: { label: "Xuất sắc" }, good: { label: "Tốt" }, average: { label: "Ổn định" },
   needs_attention: { label: "Cần theo dõi" }, poor: { label: "Rủi ro cao" },
@@ -64,8 +73,16 @@ export const buildPerformanceReportData = ({ snapshot = {}, previousSnapshot = n
   });
   const hasCustomWeight = formulaBreakdown.some((item, idx) => item.weight !== PERFORMANCE_FORMULA_ITEMS[idx].weight);
   const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
+  const factors = snapshot?.factors || {};
+  const scheduledMinutes = factors?.scheduledMinutes;
+  const actualWorkedMinutes = factors?.actualWorkedMinutes;
+  const productivitySource = factors?.productivitySource || "";
+  const insufficientData = factors?.insufficientData === true;
+  const hasManagerReview = factors?.hasManagerReview !== false;
+  const orderCount = factors?.orderCount;
+  const peerMaxOrderCount = factors?.peerMaxOrderCount;
 
-  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory };
+  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory, scheduledMinutes, actualWorkedMinutes, productivitySource, insufficientData, hasManagerReview, orderCount, peerMaxOrderCount };
 };
 
 export const buildPerformanceReportHtml = (reportData) => `
@@ -77,7 +94,8 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p><strong>Điểm cuối:</strong> ${scoreText(reportData.finalPerformanceScore)}</p>
       <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
       <h3>Công thức tính điểm</h3>
-      <p>productivity 25% · punctuality 25% · quality 20% · managerReview 20% · compliance 10%</p>
+      <p>Năng suất 25% · Đúng giờ 25% · Chất lượng 20% · Đánh giá quản lý 20% · Tuân thủ 10%</p>
+      <p>Năng suất được tính bằng thời lượng làm thực tế / thời lượng ca được phân công.</p>
       <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
       <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
       ${reportData.formulaBreakdown.map((item) => `<tr><td>${escapeHtml(item.label)}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
@@ -99,6 +117,15 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.</em></p>
       <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
       ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
+      <h3>Nguồn dữ liệu năng suất</h3>
+      ${reportData.productivitySource === "shift_completion" ? `
+      <p>Năng suất dựa trên tỷ lệ hoàn thành ca được phân công.</p>
+      <p>Thời lượng ca được phân công: ${escapeHtml(formatMinutesDuration(reportData.scheduledMinutes))}</p>
+      <p>Thời lượng làm thực tế: ${escapeHtml(formatMinutesDuration(reportData.actualWorkedMinutes))}</p>
+      <p>Order chỉ là dữ liệu tham khảo: ${escapeHtml(reportData.orderCount ?? "--")}</p>
+      ` : ""}
+      ${reportData.insufficientData ? `<p><strong>Không đủ dữ liệu hiệu suất trong kỳ.</strong></p>` : ""}
+      ${!reportData.insufficientData && reportData.hasManagerReview === false ? `<p><em>Thiếu đánh giá quản lý; Quality và Manager Review đang dùng điểm trung lập.</em></p>` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>
       ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
       </body></html>`;
