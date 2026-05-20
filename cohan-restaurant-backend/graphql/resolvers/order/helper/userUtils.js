@@ -1,73 +1,25 @@
 // graphql/resolvers/order/helper/userUtils.js
 import mongoose from "mongoose";
-import { Customer, Table } from "../../../../models/index.js";
+import { Table } from "../../../../models/index.js";
+import {
+  compactCustomerContact,
+  normalizeCustomerEmail,
+  normalizeCustomerPhone,
+  resolveCustomerIdentityByContact,
+} from "../../shared/customerIdentity.js";
 
 import { toId } from "./orderUtils.js";
 
-const GUEST_TTL_DAYS = 30;
-const GUEST_TTL_MS = GUEST_TTL_DAYS * 24 * 60 * 60 * 1000;
+export const normalizeEmail = normalizeCustomerEmail;
 
-const buildGuestExpiresAt = () => new Date(Date.now() + GUEST_TTL_MS);
-
-export function normalizeEmail(value) {
-  const v = String(value || "").trim().toLowerCase();
-  return v || undefined;
-}
-
-export function normalizePhone(value) {
-  let v = String(value || "").trim();
-  if (!v) return undefined;
-  v = v.replace(/\s+/g, "");
-  if (v.startsWith("+84")) v = "0" + v.slice(3);
-  else if (v.startsWith("84")) v = "0" + v.slice(2);
-  return v || undefined;
-}
+export const normalizePhone = normalizeCustomerPhone;
 
 export function compactCustomerInput(input = {}) {
-  const fullName = String(input?.fullName || input?.name || "").trim() || undefined;
-  const email = normalizeEmail(input?.email);
-  const phone = normalizePhone(input?.phone);
-  return { fullName, email, phone };
-}
-
-async function findCustomerByField(field, value, session = null) {
-  if (!value) return null;
-  const query = Customer.findOne({ [field]: value }).sort({
-    isGuest: 1,
-    updatedAt: -1,
-  });
-  if (session) query.session(session);
-  return query;
-}
-
-function buildIdentityResult(byEmail, byPhone, selectedUserId) {
-  if (selectedUserId) return { userId: selectedUserId, mode: "selected" };
-
-  const emailUserId = byEmail?._id ? String(byEmail._id) : null;
-  const phoneUserId = byPhone?._id ? String(byPhone._id) : null;
-  if (emailUserId && phoneUserId && emailUserId !== phoneUserId) {
-    return { conflict: true, emailUserId, phoneUserId };
-  }
-
-  const matchedRegistered = [byEmail, byPhone].find(
-    (candidate) => candidate && !candidate.isGuest,
-  );
-  if (matchedRegistered) {
-    return {
-      userId: String(matchedRegistered._id),
-      mode: "registered",
-    };
-  }
-
+  const compact = compactCustomerContact(input);
   return {
-    userId: emailUserId || phoneUserId || null,
-    mode: emailUserId && phoneUserId
-      ? "both"
-      : emailUserId
-        ? "email"
-        : phoneUserId
-          ? "phone"
-          : "none",
+    fullName: compact.customerName,
+    email: compact.email,
+    phone: compact.phone,
   };
 }
 
@@ -77,14 +29,22 @@ export async function resolveCustomerIdentity({
   selectedUserId,
   session = null,
 }) {
-  if (selectedUserId) return { userId: selectedUserId, mode: "selected" };
+  const out = await resolveCustomerIdentityByContact({
+    email,
+    phone,
+    selectedUserId,
+    createIfMissing: false,
+    session,
+  });
 
-  const [byEmail, byPhone] = await Promise.all([
-    findCustomerByField("email", email, session),
-    findCustomerByField("phone", phone, session),
-  ]);
+  if (out?.conflict) {
+    return { conflict: true, ...out.conflict };
+  }
 
-  return buildIdentityResult(byEmail, byPhone, selectedUserId);
+  return {
+    userId: out?.userId ? String(out.userId) : null,
+    mode: out?.mode || "none",
+  };
 }
 
 export async function resolveOrCreateGuestCustomerForOrder({
@@ -93,6 +53,7 @@ export async function resolveOrCreateGuestCustomerForOrder({
   requireContact = false,
   createIfMissing = true,
   session = null,
+  restaurantId = null,
 }) {
   if (selectedUserId) {
     return { userId: selectedUserId, mode: "selected", isGuestCustomer: false };
@@ -106,75 +67,23 @@ export async function resolveOrCreateGuestCustomerForOrder({
     return { userId: null, mode: "none", isGuestCustomer: false };
   }
 
-  const [byEmail, byPhone] = await Promise.all([
-    findCustomerByField("email", compact.email, session),
-    findCustomerByField("phone", compact.phone, session),
-  ]);
+  const out = await resolveCustomerIdentityByContact({
+    email: compact.email,
+    phone: compact.phone,
+    customerName: compact.fullName,
+    createIfMissing,
+    session,
+    restaurantId,
+  });
 
-  const emailUserId = byEmail?._id ? String(byEmail._id) : null;
-  const phoneUserId = byPhone?._id ? String(byPhone._id) : null;
-  if (emailUserId && phoneUserId && emailUserId !== phoneUserId) {
-    throw new Error(
-      "Contact information matches multiple customer profiles. Please contact support.",
-    );
+  if (out?.conflict) {
+    throw new Error("Contact information matches multiple customer profiles. Please contact support.");
   }
-
-  const matchedRegistered = [byEmail, byPhone].find(
-    (candidate) => candidate && !candidate.isGuest,
-  );
-  if (matchedRegistered) {
-    return {
-      userId: matchedRegistered._id,
-      mode: "matched_registered",
-      isGuestCustomer: false,
-    };
-  }
-
-  const matchedGuest = byEmail || byPhone;
-  if (matchedGuest) {
-    const now = new Date();
-    matchedGuest.guestExpiresAt = buildGuestExpiresAt();
-    matchedGuest.guestLastSeenAt = now;
-    if (compact.fullName) matchedGuest.fullName = compact.fullName;
-    if (!matchedGuest.email && compact.email) matchedGuest.email = compact.email;
-    if (!matchedGuest.phone && compact.phone) matchedGuest.phone = compact.phone;
-    await matchedGuest.save(session ? { session } : undefined);
-
-    return {
-      userId: matchedGuest._id,
-      mode: "matched_guest",
-      isGuestCustomer: true,
-    };
-  }
-
-  if (!createIfMissing) {
-    return { userId: null, mode: "none", isGuestCustomer: false };
-  }
-
-  const now = new Date();
-  const createdGuest = await Customer.create(
-    [
-      {
-        fullName: compact.fullName || "Khách",
-        email: compact.email,
-        phone: compact.phone,
-        status: "pending",
-        customerType: "NEW",
-        loyaltyPoints: 0,
-        totalOrders: 0,
-        totalSpending: 0,
-        isGuest: true,
-        guestExpiresAt: buildGuestExpiresAt(),
-        guestLastSeenAt: now,
-      },
-    ],
-    session ? { session } : undefined,
-  ).then((rows) => rows[0]);
 
   return {
-    userId: createdGuest._id,
-    mode: "created_guest",
-    isGuestCustomer: true,
+    userId: out?.userId || null,
+    mode: out?.mode || "none",
+    isGuestCustomer: !!out?.isGuestCustomer,
   };
 }
 
