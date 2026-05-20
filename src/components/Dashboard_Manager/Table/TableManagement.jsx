@@ -20,6 +20,12 @@ import {
   POS_MANAGED_STATUS_TRANSITION_MESSAGE,
   POS_MANAGED_STATUS_TRANSITION_TITLE,
 } from "@/utils/tableStatusTransitionGuard";
+import {
+  filterTableRows,
+  filterTablesByFloor,
+  getRawTableById,
+  sortTableRowsByNumber,
+} from "@/utils/tableManagementDisplay";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -35,23 +41,6 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   }
   return "";
 };
-
-const getTableFloorId = (table) =>
-  table?.floorId?.id ||
-  table?.floorId?._id ||
-  table?.floorId ||
-  table?.floor?.id ||
-  table?.floor?._id ||
-  null;
-
-const filterTablesByFloor = (tables, floorId) =>
-  (tables || []).filter(
-    (t) => String(getTableFloorId(t)) === String(floorId)
-  );
-
-
-const getRawTableById = (tablesRaw, tableId) =>
-  (tablesRaw || []).find((raw) => String(raw.id) === String(tableId)) || null;
 
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
@@ -337,14 +326,6 @@ const TableManagement = () => {
     return { x: startX, y: startY };
   };
 
-  const normalizeSearch = (value) =>
-    String(value || "")
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .trim()
-      .replace(/\s+/g, " ")
-      .toLowerCase();
-
   const getQuickActionBlockReason = (currentStatus, nextStatus) =>
     isPosManagedStatusTransition(currentStatus, nextStatus)
       ? POS_MANAGED_STATUS_TRANSITION_TITLE
@@ -364,28 +345,15 @@ const TableManagement = () => {
     );
   };
 
-  const baseFilteredTables = useMemo(() => {
-    let filtered = [...tablesMapped];
-    const normalizedQuery = normalizeSearch(searchQuery);
-    if (normalizedQuery) {
-      const compactQuery = normalizedQuery.replace(/\s+/g, "");
-      filtered = filtered.filter((t) => {
-        const normalizedNumber = normalizeSearch(t.number);
-        const compactNumber = normalizedNumber.replace(/\s+/g, "");
-        return (
-          normalizedNumber.includes(normalizedQuery) ||
-          compactNumber.includes(compactQuery)
-        );
-      });
-    }
-
-    if (currentFilters.status)
-      filtered = filtered.filter((t) => t.status === currentFilters.status);
-    if (currentFilters.area) {
-      filtered = filtered.filter((t) => t.area === currentFilters.area);
-    }
-    return filtered;
-  }, [tablesMapped, searchQuery, currentFilters.status, currentFilters.area]);
+  const baseFilteredTables = useMemo(
+    () =>
+      filterTableRows(tablesMapped, {
+        searchQuery,
+        status: currentFilters.status,
+        area: currentFilters.area,
+      }),
+    [tablesMapped, searchQuery, currentFilters.status, currentFilters.area]
+  );
 
   const filteredTables = useMemo(() => {
     const shouldFilterByFloor =
@@ -395,12 +363,7 @@ const TableManagement = () => {
     const scopedTables = shouldFilterByFloor
       ? filterTablesByFloor(baseFilteredTables, currentFloor)
       : baseFilteredTables;
-    return [...scopedTables].sort((a, b) =>
-      String(a.number || "").localeCompare(String(b.number || ""), "vi", {
-        numeric: true,
-        sensitivity: "base",
-      })
-    );
+    return sortTableRowsByNumber(scopedTables);
   }, [baseFilteredTables, currentFloor]);
 
   const allFloorsCount = baseFilteredTables.length;
