@@ -6,6 +6,22 @@ const makeQuery = (doc) => ({
   then: (resolve, reject) => Promise.resolve(doc).then(resolve, reject),
 });
 
+const makeCustomerDoc = (doc = {}) => {
+  const out = { ...doc };
+  out.save = vi.fn().mockResolvedValue(out);
+  return out;
+};
+
+const makeGuestDoc = (overrides = {}) =>
+  makeCustomerDoc({
+    _id: "guest-1",
+    isGuest: true,
+    email: "",
+    phone: "",
+    fullName: "",
+    ...overrides,
+  });
+
 const modelMocks = vi.hoisted(() => ({
   Customer: { findOne: vi.fn(), create: vi.fn() },
   Table: {},
@@ -15,7 +31,8 @@ vi.mock("../../models/index.js", () => modelMocks);
 
 describe("order userUtils identity helpers", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    modelMocks.Customer.create.mockResolvedValue([{ _id: "guest-default" }]);
   });
 
   it("normalizes and compacts customer input without empty email/phone", async () => {
@@ -43,9 +60,10 @@ describe("order userUtils identity helpers", () => {
   });
 
   it("resolves same user for email + phone", async () => {
+    const matched = makeGuestDoc({ _id: "u1" });
     modelMocks.Customer.findOne
-      .mockReturnValueOnce(makeQuery({ _id: "u1", isGuest: true }))
-      .mockReturnValueOnce(makeQuery({ _id: "u1", isGuest: true }));
+      .mockReturnValueOnce(makeQuery(matched))
+      .mockReturnValueOnce(makeQuery(matched));
 
     const { resolveCustomerIdentity } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"
@@ -61,8 +79,8 @@ describe("order userUtils identity helpers", () => {
 
   it("returns conflict when email and phone map to different users", async () => {
     modelMocks.Customer.findOne
-      .mockReturnValueOnce(makeQuery({ _id: "u1", isGuest: true }))
-      .mockReturnValueOnce(makeQuery({ _id: "u2", isGuest: true }));
+      .mockReturnValueOnce(makeQuery(makeGuestDoc({ _id: "u1" })))
+      .mockReturnValueOnce(makeQuery(makeGuestDoc({ _id: "u2" })));
 
     const { resolveCustomerIdentity } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"
@@ -72,13 +90,17 @@ describe("order userUtils identity helpers", () => {
       phone: "0902",
     });
 
-    expect(out.conflict).toBe(true);
+    expect(out).toMatchObject({
+      conflict: true,
+      emailUserId: "u1",
+      phoneUserId: "u2",
+    });
   });
 
   it("returns conflict when email matches registered and phone matches guest", async () => {
     modelMocks.Customer.findOne
       .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }))
-      .mockReturnValueOnce(makeQuery({ _id: "guest-1", isGuest: true }));
+      .mockReturnValueOnce(makeQuery(makeGuestDoc({ _id: "guest-1" })));
 
     const { resolveCustomerIdentity } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"
@@ -94,7 +116,7 @@ describe("order userUtils identity helpers", () => {
   it("throws when email matches registered and phone matches guest", async () => {
     modelMocks.Customer.findOne
       .mockReturnValueOnce(makeQuery({ _id: "user-1", isGuest: false }))
-      .mockReturnValueOnce(makeQuery({ _id: "guest-1", isGuest: true }));
+      .mockReturnValueOnce(makeQuery(makeGuestDoc({ _id: "guest-1" })));
 
     const { resolveOrCreateGuestCustomerForOrder } = await import(
       "../../graphql/resolvers/order/helper/userUtils.js"
@@ -151,4 +173,75 @@ describe("order userUtils identity helpers", () => {
     });
     expect(modelMocks.Customer.create).toHaveBeenCalledTimes(1);
   });
+
+  it("updates matched guest when resolving/creating order customer", async () => {
+    const guest = makeGuestDoc({
+      _id: "guest-keep",
+      email: "guest@example.com",
+      fullName: "Old guest",
+    });
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(null))
+      .mockReturnValueOnce(makeQuery(guest));
+
+    const { resolveOrCreateGuestCustomerForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+    const out = await resolveOrCreateGuestCustomerForOrder({
+      customer: { email: "guest@example.com", phone: "0909888777", fullName: "New guest" },
+    });
+
+    expect(out).toEqual({
+      userId: "guest-keep",
+      mode: "matched_guest",
+      isGuestCustomer: true,
+    });
+    expect(guest.save).toHaveBeenCalledTimes(1);
+    expect(guest.fullName).toBe("New guest");
+    expect(guest.guestExpiresAt).toBeInstanceOf(Date);
+    expect(guest.guestLastSeenAt).toBeInstanceOf(Date);
+  });
+
+  it("creates guest when restaurantId is provided", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(null))
+      .mockReturnValueOnce(makeQuery(null));
+    modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "guest-2" }]);
+
+    const { resolveOrCreateGuestCustomerForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+    await resolveOrCreateGuestCustomerForOrder({
+      customer: { email: "guest2@example.com" },
+      restaurantId: "rest-xyz",
+    });
+
+    expect(modelMocks.Customer.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ email: "guest2@example.com", isGuest: true })],
+      undefined,
+    );
+  });
+
+  it("ensureUserForOrder forwards contact input for guest creation", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(null))
+      .mockReturnValueOnce(makeQuery(null));
+    modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "guest-3" }]);
+
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+    const userId = await ensureUserForOrder(
+      null,
+      { email: "ensure@example.com", phone: "0909000000" },
+      { restaurantId: "rest-r1" },
+    );
+
+    expect(userId).toBe("guest-3");
+    expect(modelMocks.Customer.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ email: "ensure@example.com", isGuest: true })],
+      undefined,
+    );
+  });
+
 });
