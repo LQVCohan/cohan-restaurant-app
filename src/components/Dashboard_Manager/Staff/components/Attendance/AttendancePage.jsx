@@ -335,6 +335,7 @@ const renderRequestDetails = (request) => (
               <p>--</p>
             )}
           </div>
+
         </div>
       </div>
 
@@ -434,6 +435,7 @@ const AttendancePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [quickId, setQuickId] = useState("");
   const [quickNote, setQuickNote] = useState("");
+  const [quickFeedback, setQuickFeedback] = useState(null);
   const [activeView, setActiveView] = useState("attendance");
   const [readinessFocus, setReadinessFocus] = useState(null);
   const [selectedCorrectionRecord, setSelectedCorrectionRecord] =
@@ -561,13 +563,21 @@ const AttendancePage = () => {
 
   const handleQuickAction = async (type) => {
     if (!quickId) {
-      alert("⚠️ Vui lòng chọn nhân viên!");
+      setQuickFeedback({
+        type: "warning",
+        message: "Vui lòng chọn nhân viên trước khi chấm công.",
+      });
       return;
     }
     if (!effectiveRestaurantId) {
-      alert("❌ Không xác định được nhà hàng để lưu chấm công.");
+      setQuickFeedback({
+        type: "error",
+        message: "Không xác định được nhà hàng để lưu chấm công.",
+      });
       return;
     }
+
+    setQuickFeedback(null);
 
     try {
       await mutateQuickAttendance({
@@ -585,7 +595,10 @@ const AttendancePage = () => {
       await refetch();
 
       const actionText = type === "in" ? "VÀO CA" : "TAN CA";
-      alert(`✅ Đã lưu chấm công ${actionText} thành công.`);
+      setQuickFeedback({
+        type: "success",
+        message: `Đã lưu chấm công ${actionText} thành công.`,
+      });
       setQuickId("");
       setQuickNote("");
     } catch (err) {
@@ -593,7 +606,10 @@ const AttendancePage = () => {
         err,
         err?.message || "Không thể lưu chấm công",
       );
-      alert(`❌ Lưu chấm công thất bại: ${message}`);
+      setQuickFeedback({
+        type: "error",
+        message: `Lưu chấm công thất bại: ${message}`,
+      });
     }
   };
 
@@ -841,7 +857,10 @@ const AttendancePage = () => {
             <label>Chọn nhân viên:</label>
             <select
               value={quickId}
-              onChange={(event) => setQuickId(event.target.value)}
+              onChange={(event) => {
+                setQuickId(event.target.value);
+                setQuickFeedback(null);
+              }}
               className="quick-select"
             >
               <option value="">-- Tìm theo tên / Mã NV --</option>
@@ -859,7 +878,12 @@ const AttendancePage = () => {
               type="text"
               placeholder="VD: Quên thẻ, máy lỗi..."
               value={quickNote}
-              onChange={(event) => setQuickNote(event.target.value)}
+              onChange={(event) => {
+                setQuickNote(event.target.value);
+                if (quickFeedback?.type !== "success") {
+                  setQuickFeedback(null);
+                }
+              }}
             />
           </div>
 
@@ -869,18 +893,33 @@ const AttendancePage = () => {
               type="button"
               onClick={() => handleQuickAction("in")}
               disabled={mutationState.loading}
+              aria-label="Chấm công vào ca cho nhân viên đã chọn"
             >
-              🟢 VÀO CA
+              🟢 {mutationState.loading ? "Đang lưu..." : "VÀO CA"}
             </button>
             <button
               className="btn-quick out"
               type="button"
               onClick={() => handleQuickAction("out")}
               disabled={mutationState.loading}
+              aria-label="Chấm công tan ca cho nhân viên đã chọn"
             >
-              🔴 TAN CA
+              🔴 {mutationState.loading ? "Đang lưu..." : "TAN CA"}
             </button>
           </div>
+
+          {quickFeedback && (
+            <div
+              className={`quick-feedback ${quickFeedback.type}`}
+              role={
+                quickFeedback.type === "success" || quickFeedback.type === "info"
+                  ? "status"
+                  : "alert"
+              }
+            >
+              {quickFeedback.message}
+            </div>
+          )}
         </div>
       </div>
 
