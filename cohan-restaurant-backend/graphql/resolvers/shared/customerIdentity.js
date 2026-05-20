@@ -63,6 +63,7 @@ export async function resolveCustomerIdentityByContact({
   restaurantId,
   guestFallbackName = "Khách",
   fillGuestProfile = true,
+  touchGuestOnMatch = true,
 }) {
   if (selectedUserId) {
     return { userId: selectedUserId, isGuestCustomer: false, mode: "selected" };
@@ -96,23 +97,15 @@ export async function resolveCustomerIdentityByContact({
 
   const matchedGuest = byEmail || byPhone;
   if (matchedGuest) {
-    matchedGuest.guestExpiresAt = buildGuestExpiresAt();
-    matchedGuest.guestLastSeenAt = new Date();
-    let changed = false;
-    if (customerName) {
-      matchedGuest.fullName = customerName;
-      changed = true;
+    if (touchGuestOnMatch) {
+      matchedGuest.guestExpiresAt = buildGuestExpiresAt();
+      matchedGuest.guestLastSeenAt = new Date();
+      if (customerName) matchedGuest.fullName = customerName;
+      if (fillGuestProfile && !matchedGuest.email && email) matchedGuest.email = email;
+      if (fillGuestProfile && !matchedGuest.phone && phone) matchedGuest.phone = phone;
+      ensureRestaurantRef(matchedGuest, restaurantId);
+      await matchedGuest.save(session ? { session } : undefined);
     }
-    if (fillGuestProfile && !matchedGuest.email && email) {
-      matchedGuest.email = email;
-      changed = true;
-    }
-    if (fillGuestProfile && !matchedGuest.phone && phone) {
-      matchedGuest.phone = phone;
-      changed = true;
-    }
-    changed = ensureRestaurantRef(matchedGuest, restaurantId) || changed;
-    await matchedGuest.save(session ? { session } : undefined);
 
     return {
       user: matchedGuest,

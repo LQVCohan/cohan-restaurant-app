@@ -34,6 +34,7 @@ export async function resolveCustomerIdentity({
     phone,
     selectedUserId,
     createIfMissing: false,
+    touchGuestOnMatch: false,
     session,
   });
 
@@ -96,6 +97,7 @@ export async function ensureUserForOrder(userId, customer, options = {}) {
     requireContact: !!options?.requireContact,
     createIfMissing: options?.createIfMissing ?? true,
     session: options?.session || null,
+    restaurantId: options?.restaurantId || null,
   });
 
   return identity?.userId || null;

@@ -36,6 +36,24 @@ describe("customerIdentity shared service", () => {
     expect(guest.save).toHaveBeenCalledTimes(1);
   });
 
+  it("does not mutate or save guest when touchGuestOnMatch=false", async () => {
+    const guest = { _id: "g2", isGuest: true, email: "g@x.com", phone: "0901", save: vi.fn() };
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(guest))
+      .mockReturnValueOnce(makeQuery(null));
+    const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const out = await resolveCustomerIdentityByContact({
+      email: "g@x.com",
+      customerName: "Changed Name",
+      restaurantId: "rest-1",
+      touchGuestOnMatch: false,
+    });
+    expect(out.mode).toBe("matched_guest");
+    expect(guest.save).not.toHaveBeenCalled();
+    expect(guest.fullName).toBeUndefined();
+    expect(guest.refRestaurants).toBeUndefined();
+  });
+
   it("returns conflict for registered email and different guest phone", async () => {
     modelMocks.Customer.findOne
       .mockReturnValueOnce(makeQuery({ _id: "u1", isGuest: false }))
@@ -53,6 +71,19 @@ describe("customerIdentity shared service", () => {
     const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
     const out = await resolveCustomerIdentityByContact({ email: "a@b.com", createIfMissing: true });
     expect(out.mode).toBe("created_guest");
+  });
+
+  it("creates guest with refRestaurants when restaurantId is provided", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(null))
+      .mockReturnValueOnce(makeQuery(null));
+    modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "g4", isGuest: true }]);
+    const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    await resolveCustomerIdentityByContact({ email: "a2@b.com", createIfMissing: true, restaurantId: "rest-abc" });
+    expect(modelMocks.Customer.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ refRestaurants: ["rest-abc"] })],
+      undefined,
+    );
   });
 
   it("returns none when no match and createIfMissing=false", async () => {
