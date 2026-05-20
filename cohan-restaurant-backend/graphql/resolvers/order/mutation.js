@@ -1,6 +1,7 @@
 // src/graphql/resolvers/order/mutation.js
 
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 import {
   Order,
@@ -108,6 +109,40 @@ function assertOrderCanRequestPayment(order) {
       "Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.",
     );
   }
+}
+
+function appendCustomerRequest(order, type, message = null) {
+  order.customerRequests = Array.isArray(order.customerRequests) ? order.customerRequests : [];
+  const request = {
+    requestId: crypto.randomUUID(),
+    type,
+    status: "PENDING",
+    message: message || null,
+    createdAt: new Date(),
+    source: "CUSTOMER_TRACKING",
+  };
+  order.customerRequests.push(request);
+  return request;
+}
+const ACTIVE_CUSTOMER_REQUEST_STATUSES = ["PENDING", "ACKNOWLEDGED"];
+function findActiveCustomerRequest(order, type) {
+  return (order.customerRequests || []).find((req) =>
+    req?.type === type && ACTIVE_CUSTOMER_REQUEST_STATUSES.includes(String(req?.status || "").toUpperCase()));
+}
+function serializeCustomerRequestForStaff(order, req) {
+  if (!req) return null;
+  return {
+    requestId: req.requestId,
+    type: req.type,
+    status: req.status,
+    message: req.message || null,
+    createdAt: req.createdAt || null,
+    acknowledgedAt: req.acknowledgedAt || null,
+    resolvedAt: req.resolvedAt || null,
+    trackingCode: order.trackingCode || null,
+    tableCode: order.tableCode || order.table?.code || null,
+    orderCode: order.orderCode || null,
+  };
 }
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
@@ -2156,7 +2191,8 @@ export const OrderMutation = {
     const normalizedPaymentStatus = String(order?.orderPaymentStatus || order?.payment?.status || "").toLowerCase();
     if (normalizedPaymentStatus === "paid") return { success: false, message: "Đơn hàng đã thanh toán.", tracking: toCustomerTrackingPayload(order.toObject()) };
     if (String(order.currentStatus || "").toLowerCase() === "cancelled") return { success: false, message: "Đơn hàng đã bị hủy.", tracking: toCustomerTrackingPayload(order.toObject()) };
-    if (normalizedPaymentStatus === "payment_requested") return { success: true, message: "Yêu cầu thanh toán đã được gửi trước đó.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    const existingPaymentRequest = findActiveCustomerRequest(order, "PAYMENT_REQUEST");
+    if (existingPaymentRequest || normalizedPaymentStatus === "payment_requested") return { success: true, message: "Yêu cầu thanh toán đã được gửi trước đó.", tracking: toCustomerTrackingPayload(order.toObject()) };
     const previousPublicStatus = order.publicStatus;
     order.payment = order.payment || {};
     order.payment.status = "payment_requested";
@@ -2165,11 +2201,13 @@ export const OrderMutation = {
     order.orderPaymentStatus = "payment_requested";
     order.lastCustomerPaymentRequestAt = new Date();
     order.customerVisibleNote = "Yêu cầu thanh toán đã được gửi cho nhân viên.";
+    const request = appendCustomerRequest(order, "PAYMENT_REQUEST", "Khách yêu cầu thanh toán");
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
     await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_PAYMENT_REQUESTED", {
       order: toCustomerTrackingPayload(order.toObject()),
+      request: serializeCustomerRequestForStaff(order, request),
       trackingCode: order.trackingCode || null,
       tableCode: order.tableCode || order.table?.code || null,
       message: "Khách yêu cầu thanh toán",
@@ -2185,6 +2223,10 @@ export const OrderMutation = {
     if (["cancelled", "completed", "failed"].includes(String(order.currentStatus || "").toLowerCase())) {
       return { success: false, message: "Đơn hàng không còn hoạt động.", tracking: toCustomerTrackingPayload(order.toObject()) };
     }
+    const existingStaffCall = findActiveCustomerRequest(order, "STAFF_CALL");
+    if (existingStaffCall) {
+      return { success: false, message: "Yêu cầu hỗ trợ đã được gửi. Vui lòng chờ nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
+    }
     const now = Date.now();
     const lastCallTs = order.lastCustomerStaffCallAt ? new Date(order.lastCustomerStaffCallAt).getTime() : 0;
     if (lastCallTs && now - lastCallTs < STAFF_CALL_RATE_LIMIT_MS) {
@@ -2194,16 +2236,71 @@ export const OrderMutation = {
     const previousPublicStatus = order.publicStatus;
     order.lastCustomerStaffCallAt = new Date(now);
     order.customerVisibleNote = normalizedReason;
+    const request = appendCustomerRequest(order, "STAFF_CALL", normalizedReason);
     updatePublicStatusHistory(order, "CUSTOMER");
     await order.save();
     emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus, force: true });
     await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_STAFF_CALL_REQUESTED", {
       order: toCustomerTrackingPayload(order.toObject()),
+      request: serializeCustomerRequestForStaff(order, request),
       trackingCode: order.trackingCode || null,
       tableCode: order.tableCode || order.table?.code || null,
       message: normalizedReason,
     });
     return { success: true, message: "Đã gửi yêu cầu hỗ trợ đến nhân viên.", tracking: toCustomerTrackingPayload(order.toObject()) };
+  },
+  async acknowledgeCustomerServiceRequest(_, { restaurantId, orderId, requestId }, ctx) {
+    const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
+    const order = await Order.findOne({ _id: toId(orderId), restaurantId: rid });
+    if (!order) throw new Error("Order not found");
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const req = (order.customerRequests || []).find((x) => x.requestId === requestId);
+    if (!req) throw new Error("Request not found");
+    if (String(req.status || "").toUpperCase() === "RESOLVED") {
+      return { ok: true, message: "Yêu cầu đã được xử lý." };
+    }
+    if (String(req.status || "").toUpperCase() === "ACKNOWLEDGED") {
+      return { ok: true, message: "Yêu cầu đã được nhận xử lý." };
+    }
+    req.status = "ACKNOWLEDGED";
+    req.acknowledgedAt = new Date();
+    req.acknowledgedBy = actorId || null;
+    order.customerVisibleNote = "Nhân viên đã nhận yêu cầu của bạn.";
+    await order.save();
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_REQUEST_ACKNOWLEDGED", {
+      request: serializeCustomerRequestForStaff(order, req),
+      trackingCode: order.trackingCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
+      message: "Nhân viên đã nhận yêu cầu.",
+    });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, force: true });
+    return { ok: true, message: "Đã nhận xử lý yêu cầu." };
+  },
+  async resolveCustomerServiceRequest(_, { restaurantId, orderId, requestId }, ctx) {
+    const rid = toId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_UPDATE);
+    const order = await Order.findOne({ _id: toId(orderId), restaurantId: rid });
+    if (!order) throw new Error("Order not found");
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const req = (order.customerRequests || []).find((x) => x.requestId === requestId);
+    if (!req) throw new Error("Request not found");
+    if (String(req.status || "").toUpperCase() === "RESOLVED") {
+      return { ok: true, message: "Yêu cầu đã được xử lý." };
+    }
+    req.status = "RESOLVED";
+    req.resolvedAt = new Date();
+    req.resolvedBy = actorId || null;
+    order.customerVisibleNote = "Yêu cầu của bạn đã được xử lý.";
+    await order.save();
+    await emitRestaurantEvent(ctx, String(order.restaurantId), "CUSTOMER_REQUEST_RESOLVED", {
+      request: serializeCustomerRequestForStaff(order, req),
+      trackingCode: order.trackingCode || null,
+      tableCode: order.tableCode || order.table?.code || null,
+      message: "Yêu cầu đã được xử lý.",
+    });
+    emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, force: true });
+    return { ok: true, message: "Đã đánh dấu xử lý xong." };
   },
   async remindOrderItem(_, { input }, ctx) {
     const { restaurantId, orderId, orderItemId, note } = input || {};

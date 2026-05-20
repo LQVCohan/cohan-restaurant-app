@@ -75,4 +75,19 @@ describe("OrderQuery customerTrackOrder", () => {
     await OrderQuery.orderTrackingQrSvg(null, { orderId: "o1" }, { user: { id: "u1" } });
     expect(mocks.requirePermMock).toHaveBeenCalled();
   });
+
+  it("customerServiceRequests filters by type and limit", async () => {
+    mocks.findOneMock.mockReset();
+    mocks.requirePermMock.mockResolvedValue(true);
+    const rows = [
+      { _id: "o1", orderCode: "ORD1", trackingCode: "T1", tableCode: "A1", customerRequests: [{ requestId: "1", type: "PAYMENT_REQUEST", status: "PENDING", createdAt: new Date("2026-05-01") }, { requestId: "2", type: "STAFF_CALL", status: "PENDING", createdAt: new Date("2026-05-03") }] },
+      { _id: "o2", orderCode: "ORD2", trackingCode: "T2", tableCode: "A2", customerRequests: [{ requestId: "3", type: "STAFF_CALL", status: "PENDING", createdAt: new Date("2026-05-02") }] },
+    ];
+    const findMock = vi.fn().mockReturnValue({ select: () => rows });
+    const { Order } = await import("../models/index.js");
+    Order.find = findMock;
+    const out = await OrderQuery.customerServiceRequests(null, { restaurantId: "507f1f77bcf86cd799439011", status: "pending", type: "STAFF_CALL", limit: 1 }, { user: { id: "u1" } });
+    expect(out).toHaveLength(1);
+    expect(out[0].type).toBe("STAFF_CALL");
+  });
 });

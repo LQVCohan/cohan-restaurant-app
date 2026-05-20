@@ -84,6 +84,17 @@ describe("order tracking public mutations", () => {
     expect(payload.order.userId).toBeUndefined();
     expect(payload.order.restaurantId).toBeUndefined();
     expect(payload.trackingToken).toBeUndefined();
+    expect(payload.request.type).toBe("PAYMENT_REQUEST");
+  });
+
+  it("requestPaymentFromTracking does not duplicate active PAYMENT_REQUEST", async () => {
+    const order = mkOrder({ customerRequests: [{ requestId: "r1", type: "PAYMENT_REQUEST", status: "PENDING", createdAt: new Date() }] });
+    mocks.findOneMock.mockResolvedValue(order);
+    const out = await OrderMutation.requestPaymentFromTracking(null, { trackingToken: "x" }, {});
+    expect(out.success).toBe(true);
+    expect(order.save).not.toHaveBeenCalled();
+    expect(order.customerRequests).toHaveLength(1);
+    expect(mocks.emitRestaurantEventMock).not.toHaveBeenCalled();
   });
 
   it("callStaffFromTracking invalid/revoked/inactive/rate-limit", async () => {
@@ -113,5 +124,15 @@ describe("order tracking public mutations", () => {
     expect(payload.order._id).toBeUndefined();
     expect(payload.order.restaurantId).toBeUndefined();
     expect(payload.trackingToken).toBeUndefined();
+    expect(payload.request.type).toBe("STAFF_CALL");
+  });
+
+  it("callStaffFromTracking does not duplicate active STAFF_CALL", async () => {
+    const order = mkOrder({ customerRequests: [{ requestId: "r1", type: "STAFF_CALL", status: "ACKNOWLEDGED", createdAt: new Date() }], lastCustomerStaffCallAt: new Date(Date.now() - 120000) });
+    mocks.findOneMock.mockResolvedValue(order);
+    const out = await OrderMutation.callStaffFromTracking(null, { trackingToken: "x" }, {});
+    expect(out.success).toBe(false);
+    expect(order.save).not.toHaveBeenCalled();
+    expect(mocks.emitRestaurantEventMock).not.toHaveBeenCalled();
   });
 });

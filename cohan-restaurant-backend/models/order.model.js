@@ -325,6 +325,36 @@ const OrderSchema = BaseSchemaModel({
   lastCustomerNotifiedAt: { type: Date, default: null },
   lastCustomerStaffCallAt: { type: Date, default: null },
   lastCustomerPaymentRequestAt: { type: Date, default: null },
+  customerRequests: {
+    type: [
+      {
+        _id: false,
+        requestId: { type: String, required: true },
+        type: {
+          type: String,
+          enum: ["STAFF_CALL", "PAYMENT_REQUEST"],
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ["PENDING", "ACKNOWLEDGED", "RESOLVED", "CANCELLED"],
+          default: "PENDING",
+        },
+        message: { type: String, default: null },
+        createdAt: { type: Date, default: Date.now },
+        acknowledgedAt: { type: Date, default: null },
+        resolvedAt: { type: Date, default: null },
+        acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        source: {
+          type: String,
+          enum: ["CUSTOMER_TRACKING"],
+          default: "CUSTOMER_TRACKING",
+        },
+      },
+    ],
+    default: [],
+  },
   parentOrderCode: { type: String, index: true },
   orderKind: {
     type: String,

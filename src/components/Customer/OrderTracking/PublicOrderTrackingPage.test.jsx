@@ -7,7 +7,7 @@ import PublicOrderTrackingPage, { CALL_STAFF_FROM_TRACKING, CUSTOMER_TRACK_ORDER
 vi.mock("socket.io-client", () => ({ io: () => ({ on: () => {}, off: () => {}, emit: () => {}, disconnect: () => {} }) }));
 
 const renderPage = (mocks, token = "token-1") => render(<MockedProvider mocks={mocks}><MemoryRouter initialEntries={[`/track-order/${token}`]}><Routes><Route path="/track-order/:trackingToken" element={<PublicOrderTrackingPage />} /></Routes></MemoryRouter></MockedProvider>);
-const baseTracking = { trackingCode: "ORD-1", publicStatusLabel: "Đang chuẩn bị", items: [{ name: "Phở", quantity: 1, publicStatusLabel: "Đang chuẩn bị", publicStatus: "PREPARING", __typename: "CustomerTrackingItem" }], payment: { status: "UNPAID", totalAmount: 100000, canRequestPayment: true, __typename: "CustomerTrackingPayment" }, timeline: [], publicStatus: "PREPARING", customerVisibleNote: null, estimatedReadyAt: null, __typename: "CustomerOrderTrackingView" };
+const baseTracking = { trackingCode: "ORD-1", publicStatusLabel: "Đang chuẩn bị", items: [{ name: "Phở", quantity: 1, publicStatusLabel: "Đang chuẩn bị", publicStatus: "PREPARING", __typename: "CustomerTrackingItem" }], payment: { status: "UNPAID", totalAmount: 100000, canRequestPayment: true, __typename: "CustomerTrackingPayment" }, timeline: [], publicStatus: "PREPARING", customerVisibleNote: null, estimatedReadyAt: null, latestRequest: null, __typename: "CustomerOrderTrackingView" };
 
 describe("PublicOrderTrackingPage", () => {
   it("renders buttons and not raw _id", async () => {
@@ -46,5 +46,13 @@ describe("PublicOrderTrackingPage", () => {
     renderPage(mocks, "token-4");
     fireEvent.click(await screen.findByRole("button", { name: "Gọi nhân viên" }));
     expect(await screen.findByText(/Không thể gửi yêu cầu lúc này/)).toBeInTheDocument();
+  });
+
+  it("renders latest request in dedicated section", async () => {
+    const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-5" } }, result: { data: { customerTrackOrder: { ...baseTracking, latestRequest: { requestId: "r1", type: "PAYMENT_REQUEST", status: "ACKNOWLEDGED", message: "Khách yêu cầu thanh toán", createdAt: new Date().toISOString(), acknowledgedAt: null, resolvedAt: null, __typename: "CustomerTrackingRequest" } } } } }];
+    renderPage(mocks, "token-5");
+    expect(await screen.findByText(/Trạng thái yêu cầu gần nhất/)).toBeInTheDocument();
+    expect(screen.getByText(/Yêu cầu thanh toán: Nhân viên đã nhận yêu cầu/)).toBeInTheDocument();
+    expect(screen.queryByText("r1")).not.toBeInTheDocument();
   });
 });
