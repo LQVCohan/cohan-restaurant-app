@@ -1689,7 +1689,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         icon="🏪"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
-        restaurantList={restaurantOptions.map((r) => ({ id: r.value, name: r.label }))}
+        restaurantList={restaurantOptions.map((r) => ({ id: r.id, name: r.name }))}
         restaurantDisabled={managerRestaurantsLoading || allRestaurantsLoading}
         customFilters={(
           <select
