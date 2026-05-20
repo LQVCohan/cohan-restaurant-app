@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFormulaScore,
+  PERFORMANCE_FORMULA_ITEMS,
   buildAdjustmentHistoryItems,
   formatDelta,
   formatCustomerRating,
@@ -23,6 +24,38 @@ import {
   resolveEffectivePerformanceRestaurantId,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
+
+
+const EXPECTED_FORMULA_WEIGHTS = {
+  productivity: 25,
+  punctuality: 25,
+  quality: 20,
+  managerReview: 20,
+  compliance: 10,
+};
+
+describe("PERFORMANCE_FORMULA_ITEMS", () => {
+  it("includes exactly the required 5 keys", () => {
+    const actualKeys = PERFORMANCE_FORMULA_ITEMS.map((item) => item.key).sort();
+    expect(actualKeys).toEqual(Object.keys(EXPECTED_FORMULA_WEIGHTS).sort());
+  });
+
+  it("matches expected display weights", () => {
+    const mapped = Object.fromEntries(
+      PERFORMANCE_FORMULA_ITEMS.map((item) => [item.key, item.weight]),
+    );
+
+    expect(mapped).toEqual(EXPECTED_FORMULA_WEIGHTS);
+  });
+
+  it("sums display weights to 100", () => {
+    const total = PERFORMANCE_FORMULA_ITEMS.reduce(
+      (sum, item) => sum + Number(item.weight || 0),
+      0,
+    );
+    expect(total).toBe(100);
+  });
+});
 
 describe("formatCustomerRating", () => {
   it("shows X/5 and review count when rating exists", () => {

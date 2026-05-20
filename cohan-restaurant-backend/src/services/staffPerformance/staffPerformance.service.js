@@ -12,7 +12,7 @@ import {
 
 const { Types } = mongoose;
 
-const PERFORMANCE_WEIGHTS = {
+export const PERFORMANCE_WEIGHTS = {
   productivity: 25,
   punctuality: 25,
   quality: 20,
