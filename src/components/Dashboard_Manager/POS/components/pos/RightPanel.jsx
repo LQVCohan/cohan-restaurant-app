@@ -120,6 +120,62 @@ const IconDashboard = () => (
   </svg>
 );
 
+const VIRTUAL_TABLE_CODES = new Set([
+  "TAKEAWAY",
+  "DELIVERY",
+  "REMOTE",
+  "ONLINE",
+]);
+
+const normalizeOrderType = (orderType) =>
+  String(orderType || "")
+    .trim()
+    .toLowerCase();
+
+const isOffPremiseOrderType = (orderType) =>
+  ["delivery", "takeaway", "remote", "online", "pickup"].includes(
+    normalizeOrderType(orderType),
+  );
+
+const isRealDineInOrderType = (orderType) =>
+  normalizeOrderType(orderType) === "dine_in";
+
+const getVirtualTableCodeLabel = (tableCode) => {
+  const normalizedCode = String(tableCode || "").trim().toUpperCase();
+  if (normalizedCode === "DELIVERY") return "Giao hàng";
+  if (normalizedCode === "TAKEAWAY") return "Mang đi";
+  if (normalizedCode === "REMOTE" || normalizedCode === "ONLINE")
+    return "Đặt từ xa";
+  return "";
+};
+
+const isRealTableCode = (orderType, tableCode) => {
+  const normalizedCode = String(tableCode || "").trim().toUpperCase();
+  return (
+    isRealDineInOrderType(orderType) &&
+    Boolean(normalizedCode) &&
+    !VIRTUAL_TABLE_CODES.has(normalizedCode)
+  );
+};
+
+const getOrderTypeDisplayLabel = (orderType) => {
+  switch (normalizeOrderType(orderType)) {
+    case "delivery":
+      return "Giao hàng";
+    case "takeaway":
+      return "Mang đi";
+    case "pickup":
+      return "Nhận tại quầy";
+    case "remote":
+    case "online":
+      return "Đặt từ xa";
+    case "dine_in":
+      return "Tại bàn";
+    default:
+      return "Không gắn bàn";
+  }
+};
+
 const IconOrderList = () => (
   <svg
     width="16"
@@ -276,8 +332,7 @@ export default function RightPanel() {
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
 
-  const isOffPremise =
-    currentOrderType === "delivery" || currentOrderType === "takeaway";
+  const isOffPremise = isOffPremiseOrderType(currentOrderType);
 
   const { promotions: activePromotions, loading: promotionsLoading } =
     useActiveDiscountPromotions(restaurantId, {
@@ -452,8 +507,10 @@ export default function RightPanel() {
   };
 
   const headerTitle = useMemo(() => {
-    if (currentOrderType === "dine_in") {
-      if (currentTable?.code) return `Bàn ${currentTable.code}`;
+    if (isRealDineInOrderType(currentOrderType)) {
+      if (isRealTableCode(currentOrderType, currentTable?.code)) {
+        return `Bàn ${String(currentTable.code).trim()}`;
+      }
       return "Chọn bàn";
     }
 
@@ -462,7 +519,7 @@ export default function RightPanel() {
     return currentOrderType === "delivery"
       ? "Đơn giao hàng"
       : currentOrderType === "takeaway"
-        ? "Đơn mang về"
+        ? "Đơn mang đi"
         : "Đơn hàng";
   }, [currentOrderCode, currentOrderType, currentTable?.code]);
 
@@ -1255,7 +1312,7 @@ export default function RightPanel() {
           );
         } else if (currentOrderType === "takeaway") {
           showNotification(
-            `Đã lưu đơn mang về (${currentOrderCode})`,
+            `Đã lưu đơn mang đi (${currentOrderCode})`,
             "success",
             2500,
           );
@@ -1483,7 +1540,11 @@ export default function RightPanel() {
         isSaving={saving}
         orderType={currentOrderType}
         orderCode={currentOrderCode}
-        tableCode={currentTable?.code || null}
+        tableCode={
+          isRealTableCode(currentOrderType, currentTable?.code)
+            ? String(currentTable.code).trim()
+            : null
+        }
         totals={finalTotals}
         newItems={newItems}
         shippingInfo={shippingInfo}
@@ -1515,11 +1576,24 @@ export default function RightPanel() {
               </span>
 
               <div>
-                {groupedPaymentRequests.slice(0, 3).map((req) => (
+                {groupedPaymentRequests.slice(0, 3).map((req) => {
+                  const normalizedOrderType = normalizeOrderType(req?.orderType);
+                  const safeTableCode = String(req?.tableCode || "").trim();
+                  const virtualTableLabel = getVirtualTableCodeLabel(safeTableCode);
+                  const tableLikeLabel =
+                    req.isTableGroup &&
+                    isRealTableCode(normalizedOrderType, safeTableCode)
+                      ? `Bàn ${safeTableCode}`
+                      : isOffPremiseOrderType(normalizedOrderType)
+                        ? getOrderTypeDisplayLabel(normalizedOrderType)
+                        : virtualTableLabel ||
+                          req.orderCode ||
+                          req.orderId ||
+                          "Không gắn bàn";
+
+                  return (
                   <div key={req.groupKey}>
-                    {req.isTableGroup
-                      ? `Bàn ${req.tableCode}`
-                      : req.orderCode || req.orderId}
+                    {tableLikeLabel}
                     {" · "}
                     {formatPrice(req?.totals?.grandTotal || 0)}
 
@@ -1537,7 +1611,8 @@ export default function RightPanel() {
                       Mở thanh toán
                     </button>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           )}
