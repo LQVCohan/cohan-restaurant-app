@@ -14,48 +14,112 @@
   border-color: #bbf7d0;
 }
 
+.payroll-readiness-panel__state-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 14px;
+}
+
+.payroll-readiness-panel__state-card--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.payroll-readiness-panel__state-text {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+}
+
 .payroll-readiness-panel__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.payroll-readiness-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .payroll-readiness-panel__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  color: #111827;
 }
 
 .payroll-readiness-panel__subtitle {
-  margin: 4px 0 0;
-  color: #6b7280;
+  margin: 6px 0 0;
+  color: #4b5563;
   font-size: 14px;
+  line-height: 1.4;
+  max-width: 680px;
 }
 
-.payroll-readiness-panel__refresh {
+.payroll-readiness-panel__badge {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.payroll-readiness-panel__badge--ready {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.payroll-readiness-panel__badge--blocked {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.payroll-readiness-panel__refresh,
+.payroll-readiness-issue__action {
   border: 1px solid #d1d5db;
   background: #fff;
+  color: #111827;
   border-radius: 10px;
   padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
-  white-space: nowrap;
+  font-weight: 600;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.payroll-readiness-panel__refresh:hover,
+.payroll-readiness-issue__action:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.payroll-readiness-panel__refresh:focus-visible,
+.payroll-readiness-issue__action:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .payroll-readiness-summary {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .payroll-readiness-summary__item {
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 13px;
-  background: #f3f4f6;
+  font-weight: 600;
 }
 
 .payroll-readiness-summary__item--error {
@@ -77,42 +141,79 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 12px;
-  background: #f9fafb;
+  background: #ffffff;
 }
 
 .payroll-readiness-section--error {
   border-color: #fecaca;
-  background: #fef2f2;
 }
 
 .payroll-readiness-section--warning {
   border-color: #fde68a;
-  background: #fffbeb;
+}
+
+.payroll-readiness-section--ready {
+  border-color: #bbf7d0;
 }
 
 .payroll-readiness-section__header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .payroll-readiness-section__title {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
+  color: #111827;
 }
 
-.payroll-readiness-section__raw-status {
+.payroll-readiness-section__subtitle {
   margin: 4px 0 0;
   color: #6b7280;
   font-size: 12px;
 }
 
-.payroll-readiness-section__status {
+.payroll-readiness-section__status-badge {
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.payroll-readiness-section__status-badge--error {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.payroll-readiness-section__status-badge--warning {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.payroll-readiness-section__status-badge--ready {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.payroll-readiness-section__count {
+  margin: 8px 0 0;
+  color: #374151;
   font-size: 13px;
   font-weight: 600;
-  text-align: right;
+}
+
+.payroll-readiness-section__empty {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #166534;
 }
 
 .payroll-readiness-issues {
@@ -136,45 +237,71 @@
   border-color: #fde68a;
 }
 
-.payroll-readiness-issue__main {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.payroll-readiness-issue__severity {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+}
+
+.payroll-readiness-issue__severity--error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.payroll-readiness-issue__severity--warning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.payroll-readiness-issue__severity--info {
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border-color: #bae6fd;
+}
+
+.payroll-readiness-issue__message {
+  margin: 8px 0 0;
   font-size: 14px;
+  color: #111827;
 }
 
 .payroll-readiness-issue__meta {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 8px;
+}
+
+.payroll-readiness-issue__chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: #4b5563;
+  background: #f3f4f6;
 }
 
 .payroll-readiness-issue__suggestion {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
-  color: #374151;
+  color: #6b7280;
 }
 
 .payroll-readiness-issue__action {
-  margin-top: 8px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 13px;
+  margin-top: 10px;
 }
 
-.payroll-action-hint {
-  margin: 8px 0 0;
-  font-size: 13px;
-}
-
-.payroll-action-hint--error {
-  color: #b91c1c;
+@media (max-width: 1024px) {
+  .payroll-readiness-panel__title {
+    font-size: 18px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -184,7 +311,8 @@
     align-items: flex-start;
   }
 
-  .payroll-readiness-section__status {
-    text-align: left;
+  .payroll-readiness-panel__header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
