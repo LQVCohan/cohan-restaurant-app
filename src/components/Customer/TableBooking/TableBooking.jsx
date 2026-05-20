@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { gql, useMutation } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
 import FloorMap from "./components/FloorMap/FloorMap";
@@ -45,6 +45,17 @@ const UPDATE_FLOOR_WATCHING = gql`
     }
   }
 `;
+const PUBLIC_RESTAURANT_CAPABILITY = gql`
+  query PublicRestaurantCapability($id: ID!) {
+    publicRestaurant(id: $id) {
+      id
+      name
+      canReserve
+      openingStatus
+      openingStatusReason
+    }
+  }
+`;
 
 const TableBooking = () => {
   const { id } = useParams();
@@ -65,6 +76,13 @@ const TableBooking = () => {
   const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
   const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
   const [releaseTableViewLock] = useMutation(RELEASE_TABLE_VIEW_LOCK);
+  const { data: restaurantData, loading: restaurantLoading } = useQuery(
+    PUBLIC_RESTAURANT_CAPABILITY,
+    { variables: { id: restaurantId }, skip: !restaurantId },
+  );
+  const publicRestaurant = restaurantData?.publicRestaurant || null;
+  const canReserve = !!publicRestaurant?.canReserve;
+  const canLoadFloorMap = !!publicRestaurant && canReserve;
 
   const {
     floors,
@@ -77,6 +95,7 @@ const TableBooking = () => {
   } = useFloorManagement({
     restaurantId,
     tableLimit: 200,
+    enabled: canLoadFloorMap,
   });
 
   const restaurantCartItems = (cart || []).filter(
@@ -99,6 +118,7 @@ const TableBooking = () => {
   })();
 
   useEffect(() => {
+    if (!canReserve) return;
     if (!canToggleWatching) return;
     const currentFloorId = activeFloorData?.id;
     if (!currentFloorId) return;
@@ -118,9 +138,10 @@ const TableBooking = () => {
         variables: { id: currentFloorId, isWatching: false },
       }).catch(() => {});
     };
-  }, [activeFloorData?.id, canToggleWatching, updateFloorWatching]);
+  }, [activeFloorData?.id, canReserve, canToggleWatching, updateFloorWatching]);
 
   const handleSelectTable = async (table) => {
+    if (!publicRestaurant || !canReserve) return;
     if (table.status !== "available") return;
 
     const lockedByOther =
@@ -191,6 +212,10 @@ const TableBooking = () => {
         <p>Đang chuẩn bị không gian...</p>
       </div>
     );
+  if (restaurantLoading)
+    return <div className="booking-loading-premium"><p>Đang tải thông tin nhà hàng...</p></div>;
+  if (!publicRestaurant)
+    return <div className="booking-loading-premium"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
 
   return (
     <div className="table-booking-premium">
@@ -218,6 +243,9 @@ const TableBooking = () => {
           trong bước thanh toán.
         </div>
       )}
+      {!canReserve && (
+        <div className="booking-alert">Nhà hàng hiện không nhận đặt bàn.</div>
+      )}
 
       <div className="booking-layout-grid">
         {/* LEFT COLUMN: Main Interaction Area */}
@@ -238,7 +266,9 @@ const TableBooking = () => {
 
           {/* Map Viewport */}
           <div className="map-viewport-frame">
-            {tablesLoading ? (
+            {!canReserve ? (
+              <div className="map-state-msg"><span>Nhà hàng hiện không nhận đặt bàn.</span></div>
+            ) : tablesLoading ? (
               <div className="map-state-msg">
                 <LoadingSpinner size="medium" />
                 <span>Đang tải dữ liệu bàn...</span>
@@ -289,7 +319,7 @@ const TableBooking = () => {
                   menuItemsCount={restaurantCartItems.length}
                   // Chúng ta sẽ ẩn nút mặc định của component con và dùng nút custom ở dưới nếu cần,
                   // hoặc style lại nút của component con qua CSS
-                  onConfirm={() => selectedTable && setShowBookingModal(true)}
+                  onConfirm={() => canReserve && selectedTable && setShowBookingModal(true)}
                   onCancel={() => setSelectedTable(null)}
                   onOrderDishes={() =>
                     navigate(

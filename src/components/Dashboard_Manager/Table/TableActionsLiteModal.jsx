@@ -12,6 +12,11 @@ import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
+import {
+  isPosManagedStatusTransition,
+  POS_MANAGED_STATUS_TRANSITION_MESSAGE,
+  POS_MANAGED_STATUS_TRANSITION_TITLE,
+} from "@/utils/tableStatusTransitionGuard";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -198,9 +203,9 @@ export default function TableActionsLiteModal({
 
   const initialDraft = useMemo(
     () => ({
-      code: table?.code || "",
-      capacity: Number(table?.capacity || 0),
-      type: table?.type || "standard",
+      code: table?.code ?? table?.number ?? "",
+      capacity: Number(table?.capacity ?? table?.seats ?? 0),
+      type: table?.type ?? table?.area ?? "standard",
       tags: joinUniqueLabels(table?.tags || [], ", "),
       status: table?.status || "available",
       depositAmount: table?.deposit ?? "",
@@ -306,9 +311,9 @@ export default function TableActionsLiteModal({
     if (!isOpen) return;
     if (didRestore) return;
 
-    setCode(table?.code || "");
-    setCapacity(Number(table?.capacity || 0));
-    setType(table?.type || "standard");
+    setCode(table?.code ?? table?.number ?? "");
+    setCapacity(Number(table?.capacity ?? table?.seats ?? 0));
+    setType(table?.type ?? table?.area ?? "standard");
     setTags(joinUniqueLabels(table?.tags || [], ", "));
     setStatusLocal(table?.status || "available");
     const storedImage = loadTableVrImage(table?.id);
@@ -526,6 +531,10 @@ export default function TableActionsLiteModal({
 
   const handleChangeStatus = async (next) => {
     if (!table?.id || next === status || busy.status) return;
+    if (isPosManagedStatusTransition(status, next)) {
+      showNotification(POS_MANAGED_STATUS_TRANSITION_MESSAGE, "warning");
+      return;
+    }
     setBusyKey("status", true);
     try {
       await actions.setTableStatus({ id: table.id, status: next });
@@ -1079,14 +1088,19 @@ export default function TableActionsLiteModal({
             </div>
             <div className="chips">
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
-                (st) => (
+                (st) => {
+                  const posManagedReason = isPosManagedStatusTransition(status, st)
+                    ? POS_MANAGED_STATUS_TRANSITION_TITLE
+                    : "";
+
+                  return (
                   <button
                     type="button"
                     key={st}
                     className={`chip ${status === st ? "active" : ""}`}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status || !!getStatusDisabledReason(st)}
-                    title={getStatusDisabledReason(st) || ""}
+                    disabled={busy.status || !!getStatusDisabledReason(st) || !!posManagedReason}
+                    title={getStatusDisabledReason(st) || posManagedReason || ""}
                   >
                     {st === "available" && "Trống"}
                     {st === "occupied" && "Có khách"}
@@ -1094,7 +1108,8 @@ export default function TableActionsLiteModal({
                     {st === "cleaning" && "Đang dọn"}
                     {st === "offline" && "Ngưng"}
                   </button>
-                )
+                  );
+                }
               )}
             </div>
             {guardState.hasGuard && (

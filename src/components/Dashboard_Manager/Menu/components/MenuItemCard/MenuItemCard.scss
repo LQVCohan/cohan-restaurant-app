@@ -348,3 +348,10 @@ $radius: 16px;
     }
   }
 }
+
+
+.menu-item-card .card-select-checkbox { position:absolute; top:12px; left:12px; z-index:5; background:#fff; border-radius:999px; padding:4px; box-shadow:0 4px 12px rgba(15,23,42,.2); }
+.menu-item-card .card-actions{ flex-wrap:wrap; }
+.menu-item-card .status-quick-actions{ display:flex; flex-wrap:wrap; gap:6px; padding:8px; width:100%; border-top:1px dashed #e2e8f0; }
+.menu-item-card .status-action-btn{ border:1px solid #e2e8f0; background:#fff; border-radius:999px; padding:6px 10px; font-size:11px; cursor:pointer; }
+.menu-item-card .status-action-btn:disabled{ opacity:.5; cursor:not-allowed; }

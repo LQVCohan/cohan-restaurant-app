@@ -8,11 +8,46 @@ import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
-import PosProvider from "../../../../../context/PosContext";
+import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 
+function POSContent({ restaurantId }) {
+  const { loadPaymentRequestToPOS } = usePos();
+
+  const handleOpenPayment = async (orderId) => {
+    if (!orderId) return;
+    await loadPaymentRequestToPOS?.({ orderId, orderType: "dine_in" });
+  };
+
+  return (
+    <div className={styles.shell}>
+      <div className={styles.leftCol}>
+        <div className={styles.card}>
+          <LeftPanel />
+        </div>
+      </div>
+
+      <div className={styles.centerCol}>
+        <div className={styles.card}>
+          <CenterPanel />
+        </div>
+      </div>
+
+      <div className={styles.rightCol}>
+        <div className={styles.card}>
+          <CustomerRequestQueuePanel
+            restaurantId={restaurantId}
+            onOpenPayment={handleOpenPayment}
+          />
+          <TablePaymentRequestNotice />
+          <RightPanel />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function POSLayout() {
-  // sau bạn truyền từ router cũng được
   const { user, restaurants } = useContext(AuthContext) || {};
 
   const lockKey = useMemo(
@@ -144,27 +179,7 @@ export default function POSLayout() {
         <PosProvider restaurantId={restaurantId}>
           <PosMenuAvailabilityRealtimeNotice restaurantId={restaurantId} />
           <PosReservationRealtimeNotice restaurantId={restaurantId} />
-          <div className={styles.shell}>
-            <div className={styles.leftCol}>
-              <div className={styles.card}>
-                <LeftPanel />
-              </div>
-            </div>
-
-            <div className={styles.centerCol}>
-              <div className={styles.card}>
-                <CenterPanel />
-              </div>
-            </div>
-
-            <div className={styles.rightCol}>
-              <div className={styles.card}>
-                <CustomerRequestQueuePanel restaurantId={restaurantId} />
-                <TablePaymentRequestNotice />
-                <RightPanel />
-              </div>
-            </div>
-          </div>
+          <POSContent restaurantId={restaurantId} />
         </PosProvider>
       )}
     </div>

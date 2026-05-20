@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const modelMocks = vi.hoisted(() => ({
   Menu: { find: vi.fn(), findOne: vi.fn() },
   MenuItem: { find: vi.fn(), findOne: vi.fn(), aggregate: vi.fn() },
+  Restaurant: { findById: vi.fn() },
   Category: { find: vi.fn() },
   Promotion: { find: vi.fn() },
   Coupon: { find: vi.fn(), findOne: vi.fn() },
@@ -33,6 +34,20 @@ vi.mock("mongoose", () => ({
   },
 }));
 
+
+function makeRestaurantQuery(restaurant = {}) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue({
+      _id: "valid-r1",
+      status: "active",
+      businessStatus: "open",
+      publicationStatus: "published",
+      ...restaurant,
+    }),
+  };
+}
+
 function findChain(rows = []) {
   return {
     sort: vi.fn().mockReturnThis(),
@@ -59,6 +74,7 @@ describe("public/customer permission flows", () => {
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
     modelMocks.MenuItem.find.mockReturnValue(findChain([]));
     modelMocks.MenuItem.findOne.mockReturnValue(findOneChain(null));
+    modelMocks.Restaurant.findById.mockReturnValue(findOneChain({ _id: "valid-r1", businessStatus: "active", publicationStatus: "published" }));
     modelMocks.Category.find.mockReturnValue(findChain([]));
     modelMocks.Promotion.find.mockReturnValue(findChain([]));
     modelMocks.Coupon.find.mockReturnValue(findChain([]));
@@ -241,6 +257,46 @@ describe("public/customer permission flows", () => {
       findOneChain({ _id: "valid-m1", restaurantId: "valid-r1", status: "available", inventoryStatus: "OUT_OF_STOCK" }),
     );
     await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+  });
+
+  it("returns null when restaurant is missing/inactive/not published for customerMenuItem", async () => {
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+    modelMocks.MenuItem.findOne.mockReturnValue(
+      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+    );
+    modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
+
+    modelMocks.Restaurant.findById.mockReturnValueOnce(findOneChain(null));
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+
+    modelMocks.Restaurant.findById.mockReturnValueOnce(
+      findOneChain({ _id: "valid-r1", businessStatus: "inactive", publicationStatus: "published" }),
+    );
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+
+    modelMocks.Restaurant.findById.mockReturnValueOnce(
+      findOneChain({ _id: "valid-r1", businessStatus: "active", publicationStatus: "hidden" }),
+    );
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+  });
+
+  it("still returns customerMenuItem when restaurant is closed but publicly visible", async () => {
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+    modelMocks.MenuItem.findOne.mockReturnValue(
+      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+    );
+    modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
+    modelMocks.Restaurant.findById.mockReturnValue(
+      findOneChain({
+        _id: "valid-r1",
+        businessStatus: "active",
+        publicationStatus: "published",
+        openingStatus: "closed",
+        orderPolicy: { allowWhenClosed: false },
+      }),
+    );
+
+    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toMatchObject({ id: "valid-m1" });
   });
 
 });

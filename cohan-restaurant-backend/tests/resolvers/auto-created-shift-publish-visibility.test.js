@@ -31,6 +31,7 @@ const modelMocks = vi.hoisted(() => ({
   EmployeeCodeCounter: {},
   Notification: { create: vi.fn(), insertMany: vi.fn() },
   Restaurant: { exists: vi.fn() },
+  KitchenShiftRosterSnapshot: { updateMany: vi.fn(), insertMany: vi.fn() },
   SchedulePublication: {
     findOne: vi.fn(),
     find: vi.fn(),
@@ -405,6 +406,10 @@ describe("auto-created shift publish and staff visibility regression", () => {
     ];
 
     modelMocks.Restaurant.exists.mockResolvedValue(true);
+    modelMocks.KitchenShiftRosterSnapshot.updateMany.mockResolvedValue({
+      modifiedCount: 0,
+    });
+    modelMocks.KitchenShiftRosterSnapshot.insertMany.mockResolvedValue([]);
     modelMocks.Staff.findById.mockImplementation((id) => queryResult(db.staff.find((row) => idOf(row._id) === idOf(id)) || null));
     modelMocks.Staff.find.mockImplementation((filter = {}) => {
       const ids = Array.isArray(filter?._id?.$in)

@@ -45,14 +45,14 @@ const buildReadiness = (overrides = {}) => ({
 describe("PayrollReadinessPanel", () => {
   it("shows loading text", () => {
     render(<PayrollReadinessPanel loading />);
-    expect(screen.getByText("Đang kiểm tra điều kiện chốt lương...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Đang kiểm tra điều kiện chốt lương...");
   });
 
   it("shows error state and calls refresh", () => {
     const onRefresh = vi.fn();
     render(<PayrollReadinessPanel error={new Error("boom")} onRefresh={onRefresh} />);
 
-    expect(screen.getByText("Không thể tải kiểm tra trước khi chốt lương.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải kiểm tra trước khi chốt lương.");
     fireEvent.click(screen.getByText("Thử lại"));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
@@ -89,7 +89,7 @@ describe("PayrollReadinessPanel", () => {
     const onGoToIssue = vi.fn();
     render(<PayrollReadinessPanel readiness={buildReadiness()} onGoToIssue={onGoToIssue} />);
 
-    fireEvent.click(screen.getByText("Đi tới lịch làm việc"));
+    fireEvent.click(screen.getByRole("button", { name: `Đi tới nơi xử lý: ${blockingIssue.message}` }));
     expect(onGoToIssue).toHaveBeenCalledWith(blockingIssue);
   });
 
@@ -119,5 +119,11 @@ describe("PayrollReadinessPanel", () => {
 
     fireEvent.click(screen.getByText("Làm mới"));
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows warning summary chip when warnings exist", () => {
+    render(<PayrollReadinessPanel readiness={buildReadiness()} />);
+
+    expect(screen.getByText("1 cảnh báo cần rà soát")).toBeInTheDocument();
   });
 });

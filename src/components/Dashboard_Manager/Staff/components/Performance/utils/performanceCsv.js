@@ -37,6 +37,9 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
     if (snapshot?.factors?.insufficientData === true) {
       notes.push("Không đủ dữ liệu hiệu suất");
     }
+    if (snapshot?.factors?.hasManagerReview === false && snapshot?.factors?.insufficientData !== true) {
+      notes.push("Thiếu đánh giá quản lý");
+    }
     const note = notes.join(" | ");
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,

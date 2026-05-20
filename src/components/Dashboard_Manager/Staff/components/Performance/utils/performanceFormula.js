@@ -1,9 +1,9 @@
 export const PERFORMANCE_FORMULA_ITEMS = [
-  { key: "productivity", label: "Năng suất", weight: 25 },
-  { key: "punctuality", label: "Đúng giờ", weight: 25 },
-  { key: "quality", label: "Chất lượng", weight: 20 },
-  { key: "managerReview", label: "Đánh giá quản lý", weight: 20 },
-  { key: "compliance", label: "Tuân thủ", weight: 10 },
+  { key: "productivity", label: "Năng suất", weight: 25, description: "Tỷ lệ hoàn thành ca được phân công" },
+  { key: "punctuality", label: "Đúng giờ", weight: 25, description: "Đi trễ, về sớm, vắng mặt" },
+  { key: "quality", label: "Chất lượng", weight: 20, description: "Kỹ năng/chất lượng chuyên môn theo vai trò" },
+  { key: "managerReview", label: "Đánh giá quản lý", weight: 20, description: "Đánh giá tổng quan của quản lý" },
+  { key: "compliance", label: "Tuân thủ", weight: 10, description: "Tuân thủ quy trình/chỉnh công" },
 ];
 
 export const formatContributionScore = (value) => {
