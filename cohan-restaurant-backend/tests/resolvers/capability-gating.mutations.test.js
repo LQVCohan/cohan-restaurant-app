@@ -78,4 +78,24 @@ describe("capability gating regressions", () => {
     model.Cart.findOne.mockReturnValue(sessionQuery(cart));
     await expect(CartMutation.clearCart(null, { input: { cartId: "c1" } }, { user: { id: "u1" } })).resolves.toBe(true);
   });
+
+
+  it("addCartItem fails when menuItem status not available", async () => {
+    const { CartMutation } = await import("../../graphql/resolvers/cart/mutation.js");
+    model.MenuItem.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "m1", restaurantId: "r1", status: "unavailable", inventoryStatus: "IN_STOCK", menuId: "menu1" }) });
+    await expect(CartMutation.addCartItem(null, { input: { restaurantId: "r1", menuItemId: "m1", quantity: 1, name: "A", price: 1 } }, { user: { id: "u1" } })).rejects.toBeTruthy();
+  });
+
+  it("addCartItem fails when inventoryStatus is OUT_OF_STOCK", async () => {
+    const { CartMutation } = await import("../../graphql/resolvers/cart/mutation.js");
+    model.MenuItem.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "m1", restaurantId: "r1", status: "available", inventoryStatus: "OUT_OF_STOCK", menuId: "menu1" }) });
+    await expect(CartMutation.addCartItem(null, { input: { restaurantId: "r1", menuItemId: "m1", quantity: 1, name: "A", price: 1 } }, { user: { id: "u1" } })).rejects.toBeTruthy();
+  });
+
+  it("addCartItem fails when menuId is not active", async () => {
+    const { CartMutation } = await import("../../graphql/resolvers/cart/mutation.js");
+    model.Menu.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
+    await expect(CartMutation.addCartItem(null, { input: { restaurantId: "r1", menuItemId: "m1", quantity: 1, name: "A", price: 1 } }, { user: { id: "u1" } })).rejects.toBeTruthy();
+  });
+
 });
