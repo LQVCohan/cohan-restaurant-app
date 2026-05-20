@@ -133,6 +133,16 @@ const normalizeOrderType = (raw) =>
     ? "delivery"
     : "dinein";
 
+const getOrderTypeLabel = (raw) => {
+  const value = String(raw || "").toLowerCase();
+
+  if (["delivery", "ship", "giao_hang"].includes(value)) return "Giao hàng";
+  if (["takeaway", "pickup", "take_away", "mang_di"].includes(value)) return "Mang đi";
+  if (["dinein", "dine_in", "eat_in", "tai_quan"].includes(value)) return "Tại quán";
+
+  return raw ? String(raw) : "--";
+};
+
 
 
 function OrderDetailModal({ detailTarget, onClose }) {
@@ -160,7 +170,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
             {renderField("Trạng thái", data.currentStatus || "--")}
             {renderField("Nhà hàng", data.restaurantId || "--")}
             {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
-            {renderField("Hình thức", data.orderType || "--")}
+            {renderField("Hình thức", getOrderTypeLabel(data.orderType))}
             <div className="detail-items">
               <p className="detail-section-title">Danh sách món</p>
               {(data.items || []).length ? (
@@ -221,7 +231,7 @@ function ReceiptModal({ receiptTarget, onClose }) {
       <Modal.Body className="order-detail-modal">
         {renderField("Mã đơn", orderCode)}
         {renderField("Trạng thái", receiptTarget?.currentStatus || "--")}
-        {renderField("Hình thức", orderType === "delivery" ? "Giao hàng" : "Tại quán")}
+        {renderField("Hình thức", getOrderTypeLabel(receiptTarget?.orderType))}
         {renderField(
           "Nhà hàng",
           receiptTarget?.restaurantName || receiptTarget?.restaurantId || "--"
