@@ -9,7 +9,6 @@ import {
   Gift,
   Star,
   Sparkles,
-  Zap,
   UserCheck,
   BarChart3,
 } from "lucide-react";
@@ -22,6 +21,7 @@ import CustomerDetailModal from "./CustomerModal";
 import AddCustomerModal from "./AddCustomerModal";
 import Modal from "../../common/Modal";
 import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
+import { normalizeRanks, resolveCustomerRank } from "./customerRankUtils";
 
 // Hooks & Context
 import useUserManagement from "../../../hooks/useUserManagement";
@@ -113,33 +113,6 @@ const formatCompactCount = (n) =>
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(Number(n || 0));
-
-const DEFAULT_RANKS_FALLBACK = [
-  { name: "Mới", minPoints: 0, benefits: "" },
-  { name: "Thân thiết", minPoints: 5, benefits: "" },
-  { name: "VIP", minPoints: 20, benefits: "" },
-];
-
-const normalizeRanks = (ranks = []) => {
-  const source = Array.isArray(ranks) && ranks.length ? ranks : DEFAULT_RANKS_FALLBACK;
-  return source
-    .map((rank) => ({
-      name: rank?.name || "",
-      minPoints: Number(rank?.minPoints || 0),
-      benefits: rank?.benefits || "",
-    }))
-    .sort((a, b) => b.minPoints - a.minPoints);
-};
-
-const resolveCustomerRank = (loyaltyPoints, ranks = []) => {
-  const points = Math.max(0, Number(loyaltyPoints || 0));
-  const sortedRanks = normalizeRanks(ranks);
-  return (
-    sortedRanks.find((rank) => points >= rank.minPoints) ||
-    sortedRanks[sortedRanks.length - 1] ||
-    DEFAULT_RANKS_FALLBACK[0]
-  );
-};
 
 const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
 const EXCEL_INVALID_SHEET_NAME_CHARS = /[\[\]:*?/\\]/g;
@@ -355,6 +328,8 @@ const CustomerManagement = () => {
         ...c,
         displayName: c.name || "Khách hàng",
         customerType: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
+        rankName: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
+        rankSettings,
         recentOrders,
         favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
         topDishes,

@@ -8,8 +8,10 @@ import {
   Star,
   Zap,
   Award,
+  UserCheck,
 } from "lucide-react";
 import "./CustomerCard.scss";
+import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* --- Helpers Functions (Giữ nguyên) --- */
 const normalizeEpochToMs = (v) => {
@@ -101,24 +103,20 @@ const CustomerCard = ({ customer, onClick }) => {
 
   // --- Handlers ---
   const renderCustomerType = () => {
-    const type = customer?.customerType || "Mới";
-    const map = {
-      VIP: {
-        cls: "vip",
-        icon: <Star size={10} fill="currentColor" />,
-        text: "VIP",
-      },
-      "Thường xuyên": {
-        cls: "regular",
-        icon: <Zap size={10} fill="currentColor" />,
-        text: "Thân thiết",
-      },
-      Mới: { cls: "new", icon: <Award size={10} />, text: "Mới" },
+    const rankConfig = getRankDisplayConfig(
+      customer?.customerType || customer?.rankName,
+      customer?.rankSettings || [],
+    );
+    const iconMap = {
+      star: <Star size={10} fill="currentColor" />,
+      award: <Award size={10} />,
+      zap: <Zap size={10} fill="currentColor" />,
+      userCheck: <UserCheck size={10} />,
     };
-    const config = map[type] || map["Mới"];
+
     return (
-      <span className={`cc-badge ${config.cls}`}>
-        {config.icon} {config.text}
+      <span className={`cc-badge ${rankConfig.variant === "custom" ? "regular" : rankConfig.variant}`}>
+        {iconMap[rankConfig.iconKey] || iconMap.zap} {rankConfig.label}
       </span>
     );
   };
