@@ -3,7 +3,6 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 export const buildScheduleQualitySummary = ({
   schedulePublishRiskSummary,
   scheduleLifecycleStatus,
-  effectiveScheduleStatus,
   shifts,
   staffShifts,
 }) => {
@@ -36,12 +35,18 @@ export const buildScheduleQualitySummary = ({
   const totalShifts = Number(shiftGroups.length);
   const assignedShiftCountFromGroups = Number(
     shiftGroups.filter((shift) => {
-      const recordCount = Array.isArray(shift.records) ? shift.records.length : 0;
-      const staffIdCount = Array.isArray(shift.staffIds) ? shift.staffIds.length : 0;
+      const recordCount = Array.isArray(shift.records)
+        ? shift.records.length
+        : 0;
+      const staffIdCount = Array.isArray(shift.staffIds)
+        ? shift.staffIds.length
+        : 0;
       return recordCount > 0 || staffIdCount > 0;
     }).length,
   );
-  const rawAssignedRowCount = Array.isArray(staffShifts) ? staffShifts.length : 0;
+  const rawAssignedRowCount = Array.isArray(staffShifts)
+    ? staffShifts.length
+    : 0;
   const assignedShiftCount = Number(
     assignedShiftCountFromGroups > 0 || totalShifts > 0
       ? assignedShiftCountFromGroups
@@ -57,11 +62,7 @@ export const buildScheduleQualitySummary = ({
     Math.min(changedAfterAcknowledgementCount * 6, 24) +
     (totalShifts === 0 ? 40 : 0) +
     (totalShifts > 0 && assignedShiftCount === 0 ? 30 : 0) +
-    (scheduleLifecycleStatus === "revision_draft" ? 8 : 0) +
-    (scheduleLifecycleStatus === "published" &&
-    effectiveScheduleStatus === "revision_draft"
-      ? 12
-      : 0);
+    (scheduleLifecycleStatus === "revision_draft" ? 8 : 0);
 
   const score = clamp(Math.round(100 - scorePenalty), 0, 100);
 
@@ -104,7 +105,9 @@ export const buildScheduleQualitySummary = ({
     reasons.push(
       `Có ${changedAfterAcknowledgementCount} trường hợp lịch đổi sau khi đã xác nhận.`,
     );
-    nextActions.push("Rà soát lại ca đã đổi và thông báo lại cho nhân sự liên quan.");
+    nextActions.push(
+      "Rà soát lại ca đã đổi và thông báo lại cho nhân sự liên quan.",
+    );
   }
 
   if (reasons.length === 0) {
@@ -141,6 +144,7 @@ export const buildScheduleQualitySummary = ({
         value: `${assignedShiftCount}/${totalShifts}`,
       },
     ],
-    hasTopIssues: Number(schedulePublishRiskSummary?.topIssues?.length || 0) > 0,
+    hasTopIssues:
+      Number(schedulePublishRiskSummary?.topIssues?.length || 0) > 0,
   };
 };

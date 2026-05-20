@@ -1162,7 +1162,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     () => () => {
       const resolver = assignmentOverrideResolverRef.current;
       assignmentOverrideResolverRef.current = null;
-      resolver?.reject(new Error("Đã hủy thao tác vì chưa nhập lý do override."));
+      resolver?.reject(
+        new Error("Đã hủy thao tác vì chưa nhập lý do override."),
+      );
     },
     [],
   );
@@ -2085,17 +2087,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
       buildScheduleQualitySummary({
         schedulePublishRiskSummary,
         scheduleLifecycleStatus,
-        effectiveScheduleStatus,
+
         shifts,
         staffShifts,
       }),
-    [
-      schedulePublishRiskSummary,
-      scheduleLifecycleStatus,
-      effectiveScheduleStatus,
-      shifts,
-      staffShifts,
-    ],
+    [schedulePublishRiskSummary, scheduleLifecycleStatus, shifts, staffShifts],
   );
   const minHoursSummaryRows = useMemo(
     () =>
@@ -3967,7 +3963,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         >
           <div className="schedule-quality-panel__header">
             <div>
-              <p className="schedule-quality-panel__title">Chất lượng lịch tuần</p>
+              <p className="schedule-quality-panel__title">
+                Chất lượng lịch tuần
+              </p>
               <p className="schedule-quality-panel__headline">
                 {scheduleQualitySummary.headline}
               </p>
@@ -4688,13 +4686,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
       )}
 
       {isInitialScheduleLoading && (
-        <div className="empty-state schedule-feedback" role="status" aria-live="polite">
+        <div
+          className="empty-state schedule-feedback"
+          role="status"
+          aria-live="polite"
+        >
           Đang tải dữ liệu lịch làm việc...
         </div>
       )}
 
       {isRefreshingSchedule && (
-        <div className="schedule-refresh-indicator" role="status" aria-live="polite">
+        <div
+          className="schedule-refresh-indicator"
+          role="status"
+          aria-live="polite"
+        >
           Đang làm mới lịch...
         </div>
       )}
@@ -4798,7 +4804,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       />
 
       {isPublishConfirmOpen ? (
-        <div className="schedule-publish-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="schedule-publish-title">
+        <div
+          className="schedule-publish-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="schedule-publish-title"
+        >
           <div className="schedule-publish-modal">
             <div className="schedule-publish-modal__header">
               <div>
@@ -4992,9 +5003,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
               ) : null}
               {publishIssueSnapshot.changedAfterAcknowledgementCount > 0 ? (
                 <div className="publish-confirm-error publish-confirm-error--changed">
-                  Có {publishIssueSnapshot.changedAfterAcknowledgementCount} nhân
-                  viên đã xác nhận lịch trước đó nhưng lịch đã thay đổi sau xác
-                  nhận. Khi công bố lại, nhân viên cần kiểm tra bản mới.
+                  Có {publishIssueSnapshot.changedAfterAcknowledgementCount}{" "}
+                  nhân viên đã xác nhận lịch trước đó nhưng lịch đã thay đổi sau
+                  xác nhận. Khi công bố lại, nhân viên cần kiểm tra bản mới.
                 </div>
               ) : null}
               {publishConfirmError ? (
@@ -5046,15 +5057,23 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
       {assignmentOverrideRequest ? (
-        <div className="publish-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
+        <div
+          className="publish-confirm-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="schedule-override-title"
+        >
           <div className="publish-confirm-card schedule-override-modal">
             <div className="publish-confirm-icon">
               <AlertTriangle size={24} />
             </div>
             <div className="publish-confirm-content">
-              <h3 id="schedule-override-title">Xác nhận override cảnh báo xếp ca</h3>
+              <h3 id="schedule-override-title">
+                Xác nhận override cảnh báo xếp ca
+              </h3>
               <p>
-                Bạn đang xếp ca cho <strong>{assignmentOverrideRequest.employeeName}</strong> và hệ
+                Bạn đang xếp ca cho{" "}
+                <strong>{assignmentOverrideRequest.employeeName}</strong> và hệ
                 thống ghi nhận cảnh báo:
               </p>
               <div className="publish-warning-list">
@@ -5123,7 +5142,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
       {isReopenModalOpen ? (
-        <div className="publish-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedule-reopen-title">
+        <div
+          className="publish-confirm-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="schedule-reopen-title"
+        >
           <div className="publish-confirm-card schedule-reopen-modal">
             <div className="publish-confirm-icon">
               <Edit3 size={24} />

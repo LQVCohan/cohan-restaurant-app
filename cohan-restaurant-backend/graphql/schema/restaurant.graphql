@@ -12,8 +12,6 @@ type Address {
   lng: Float
 }
 
-
-
 type PaymentProviderConfig {
   provider: String!
   label: String!
@@ -101,6 +99,7 @@ type Restaurant {
   tables: [Table]
   categories: [Category]
   avgRating: Float
+  reviewCount: Int
   orderCount: Int
   reservationCount: Int
   tableParticipationCount: Int
@@ -123,8 +122,6 @@ input RestaurantFilter {
   acceptsReservations: Boolean
   acceptsOrders: Boolean
 }
-
-
 
 type RestaurantCategoryIndexCategory {
   categoryId: ID!
@@ -174,7 +171,11 @@ extend type Query {
     restaurantFilter: RestaurantFilter
   ): [Restaurant!]!
 
-  publicRestaurants(limit: Int = 20, cursor: ID, filter: RestaurantFilter): RestaurantConnection!
+  publicRestaurants(
+    limit: Int = 20
+    cursor: ID
+    filter: RestaurantFilter
+  ): RestaurantConnection!
   publicRestaurant(id: ID!): Restaurant
   similarRestaurants(restaurantId: ID!, limit: Int = 6): [Restaurant!]!
 
@@ -199,7 +200,6 @@ extend type Query {
   ): [RestaurantCategoryIndex!]!
 
   refreshRestaurantCategoryIndexes(timeSlot: TimeSlot!): Int!
-
 }
 
 input AddressInput {
@@ -292,8 +292,6 @@ input UpdateRestaurantManagerInput {
   paymentSettings: PaymentSettingsInput
 }
 
-
-
 input UpdateRestaurantCategoryIndexInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
@@ -305,7 +303,9 @@ extend type Mutation {
   updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant!
   deleteRestaurant(id: ID!): Boolean!
   updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
-  updateRestaurantCategoryIndex(input: UpdateRestaurantCategoryIndexInput!): RestaurantCategoryIndex!
+  updateRestaurantCategoryIndex(
+    input: UpdateRestaurantCategoryIndexInput!
+  ): RestaurantCategoryIndex!
 }
 
 type Category {
