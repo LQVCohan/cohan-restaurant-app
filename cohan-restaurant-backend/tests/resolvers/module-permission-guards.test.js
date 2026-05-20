@@ -1,9 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../src/services/auth/authorization.service.js";
+const modelMocks = vi.hoisted(() => ({
+  Restaurant: {
+    exists: vi.fn(),
+  },
+}));
 
-const RESTAURANT_ID = "507f1f77bcf86cd799439011";
-const OTHER_RESTAURANT_ID = "507f1f77bcf86cd799439012";
+vi.mock("../../models/index.js", () => modelMocks);
+
+const RESTAURANT_ID = "rest-main-1";
+const OTHER_RESTAURANT_ID = "rest-other-1";
 
 function role(slug, permissions = []) {
   return {
@@ -14,6 +21,11 @@ function role(slug, permissions = []) {
 }
 
 describe("module permission guards", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    modelMocks.Restaurant.exists.mockResolvedValue(false);
+  });
+
   it("allows a manager with module permission inside restaurant scope", async () => {
     const ctx = {
       user: {
