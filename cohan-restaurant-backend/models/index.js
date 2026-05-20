@@ -83,6 +83,7 @@ export { default as StaffPerformanceSnapshot } from "./staffPerformanceSnapshot.
 export { default as StaffPerformanceScoreAdjustment } from "./staffPerformanceScoreAdjustment.model.js";
 export { default as StaffPerformanceScoreReversal } from "./staffPerformanceScoreReversal.model.js";
 export { default as SchedulePublication } from "./schedule-publication.model.js";
+export { default as KitchenShiftRosterSnapshot } from "./kitchen-shift-roster-snapshot.model.js";
 
 export { default as AvailabilityRegistrationWindow } from "./availability-registration-window.model.js";
 export { default as StaffAvailabilitySubmission } from "./staff-availability-submission.model.js";
