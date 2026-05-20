@@ -24,7 +24,7 @@ import ChatThreadPanel from "../../../components/common/ChatThreadPanel";
 import useCommunication from "../../../hooks/useCommunication";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
-import { ADMIN_UPDATE_USER } from "../../../hooks/useUserManagement";
+import { UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
 
 /* ===== Helpers & Utils ===== */
@@ -98,7 +98,7 @@ const CustomerModal = ({
   const [notes, setNotes] = useState(customer?.noteInternal || customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.noteInternal || customer?.notes || "");
-  const [saveNotesMut, { loading: savingNotes }] = useMutation(ADMIN_UPDATE_USER);
+  const [saveNotesMut, { loading: savingNotes }] = useMutation(UPDATE_CUSTOMER_NOTE);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatThreadId, setChatThreadId] = useState(null);
   const [chatError, setChatError] = useState("");
@@ -184,14 +184,21 @@ const CustomerModal = ({
 
   const handleSaveNotes = async () => {
     if (!customer?.id) return;
+    if (!restaurantId) {
+      showNotification("Thiếu ngữ cảnh nhà hàng để lưu ghi chú.", "error");
+      return;
+    }
     try {
-      await saveNotesMut({
+      const { data } = await saveNotesMut({
         variables: {
-          userId: customer.id,
-          input: { noteInternal: tempNotes || "" },
+          customerId: customer.id,
+          restaurantId,
+          noteInternal: tempNotes || "",
         },
       });
-      setNotes(tempNotes || "");
+      const persistedNote = data?.updateCustomerNote?.noteInternal ?? tempNotes ?? "";
+      setNotes(persistedNote);
+      setTempNotes(persistedNote);
       setIsEditingNotes(false);
       showNotification("Đã lưu ghi chú khách hàng.", "success");
     } catch (err) {

@@ -355,6 +355,32 @@ export const UPDATE_CUSTOMER_METRICS = gql`
   }
 `;
 
+export const UPDATE_CUSTOMER_NOTE = gql`
+  mutation UpdateCustomerNote(
+    $customerId: ID!
+    $restaurantId: ID!
+    $noteInternal: String
+  ) {
+    updateCustomerNote(
+      customerId: $customerId
+      restaurantId: $restaurantId
+      noteInternal: $noteInternal
+    ) {
+      id
+      fullName
+      email
+      phone
+      isGuest
+      noteInternal
+      refRestaurants {
+        id
+        name
+      }
+      updatedAt
+    }
+  }
+`;
+
 export const ASSIGN_ROLE_TO_USER = gql`
   mutation AssignRoleToUser($input: AssignRoleToUserInput!) {
     assignRoleToUser(input: $input) {

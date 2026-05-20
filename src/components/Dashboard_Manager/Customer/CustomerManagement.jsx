@@ -172,7 +172,6 @@ const CustomerManagement = () => {
     filteredCustomers,
     loading: usersLoading,
     searchCustomers,
-    filterCustomers,
     switchRestaurant,
     getCustomers,
   } = useUserManagement();
@@ -262,7 +261,6 @@ const CustomerManagement = () => {
       filterKey = filterKey.category;
     }
     setActiveFilter(filterKey);
-    filterCustomers(filterKey);
   };
 
   const handleRestaurantChange = (restaurantId) => {
@@ -324,14 +322,21 @@ const CustomerManagement = () => {
       email.includes(q) ||
       phone.includes(searchQuery || "");
 
-    const typeRaw = (createdUser.customerType || "NEW").toUpperCase();
-    const typeVN =
-      typeRaw === "VIP" ? "VIP" : typeRaw === "OFTEN" ? "Thường xuyên" : "Mới";
+    const createdUserRankName = resolveCustomerRank(
+      createdUser?.loyaltyPoints,
+      rankSettings,
+    ).name;
+    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const baseName = sortedAsc[0]?.name || "Mới";
+    const middleName =
+      (sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1])?.name ||
+      "Thân thiết";
+    const topName = sortedAsc[sortedAsc.length - 1]?.name || "VIP";
     const matchesFilter =
       activeFilter === "all" ||
-      (activeFilter === "vip" && typeVN === "VIP") ||
-      (activeFilter === "new" && typeVN === "Mới") ||
-      (activeFilter === "frequent" && typeVN === "Thường xuyên");
+      (activeFilter === "vip" && createdUserRankName === topName) ||
+      (activeFilter === "new" && createdUserRankName === baseName) ||
+      (activeFilter === "frequent" && createdUserRankName === middleName);
 
     return { visibleInCurrentList: matchesSearch && matchesFilter };
   };
@@ -388,35 +393,55 @@ const CustomerManagement = () => {
   );
 
   // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
+  const tierFilters = useMemo(() => {
+    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const base = sortedAsc[0];
+    const middle = sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1];
+    const top = sortedAsc[sortedAsc.length - 1];
+    return {
+      topName: top?.name || "VIP",
+      middleName: middle?.name || "Thân thiết",
+      baseName: base?.name || "Mới",
+    };
+  }, [rankSettings]);
+
+  const customersVisible = useMemo(() => {
+    if (activeFilter === "all") return customersDecorated;
+    if (activeFilter === "vip") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.topName);
+    }
+    if (activeFilter === "new") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.baseName);
+    }
+    if (activeFilter === "frequent") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.middleName);
+    }
+    return customersDecorated;
+  }, [activeFilter, customersDecorated, tierFilters]);
+
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
-    const vip = customersDecorated.filter(
-      (c) => c.customerType === "VIP",
-    ).length;
-    const isNew = customersDecorated.filter(
-      (c) => c.customerType === "Mới",
-    ).length;
-    const often = customersDecorated.filter(
-      (c) => c.customerType === "Thường xuyên",
-    ).length;
+    const vip = customersDecorated.filter((c) => c.customerType === tierFilters.topName).length;
+    const isNew = customersDecorated.filter((c) => c.customerType === tierFilters.baseName).length;
+    const often = customersDecorated.filter((c) => c.customerType === tierFilters.middleName).length;
 
     return [
       { key: "all", label: "Tất cả", icon: <Users size={16} />, count: total },
       {
         key: "vip",
-        label: "VIP",
+        label: tierFilters.topName,
         icon: <Star size={16} fill="currentColor" />,
         count: vip,
       },
-      { key: "new", label: "Mới", icon: <Sparkles size={16} />, count: isNew },
+      { key: "new", label: tierFilters.baseName, icon: <Sparkles size={16} />, count: isNew },
       {
         key: "frequent",
-        label: "Thân thiết",
+        label: tierFilters.middleName,
         icon: <UserCheck size={16} />,
         count: often,
       },
     ];
-  }, [customersDecorated]);
+  }, [customersDecorated, tierFilters]);
 
   const loading = usersLoading || ordersAllLoading;
 
@@ -490,7 +515,7 @@ const CustomerManagement = () => {
       setExporting(true);
       setExportError("");
 
-      const visibleRows = customersDecorated || [];
+      const visibleRows = customersVisible || [];
       if (!visibleRows.length) {
         setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
         return;
@@ -636,7 +661,7 @@ const CustomerManagement = () => {
       <main className="cm-layout">
         <section className="cm-main-area">
           <CustomerList
-            customers={customersDecorated}
+            customers={customersVisible}
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />
@@ -704,7 +729,7 @@ const CustomerManagement = () => {
       {showPromotionModal && (
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
-          customers={customersDecorated}
+          customers={customersVisible}
           restaurantId={selectedRestaurantId}
         />
       )}
