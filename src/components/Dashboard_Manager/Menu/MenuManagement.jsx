@@ -229,6 +229,9 @@ const MenuManagement = () => {
   const [isDeletingItem, setIsDeletingItem] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
+  const [updatingStatusItemId, setUpdatingStatusItemId] = useState(null);
+  const [selectedItemIds, setSelectedItemIds] = useState(() => new Set());
+  const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false);
   const priceEditSubmitRef = useRef(false);
   const deleteItemSubmitRef = useRef(false);
 
@@ -277,6 +280,7 @@ const MenuManagement = () => {
     fetchMoreItems,
     refetchItems,
     deleteMenuItem,
+    toggleMenuItemStatus,
     bulkUpdateMenuItemPrices,
     syncMenuItemInventoryStatuses,
   } = useMenuManagement({
@@ -520,6 +524,92 @@ const MenuManagement = () => {
       setIsDeletingItem(false);
     }
   }, [deleteMenuItem, deletingItem, refetchItems]);
+
+  const handleChangeItemStatus = useCallback(
+    async (item, status) => {
+      const itemId = item?.id;
+      if (!itemId || !status) return;
+      if (!canUpdateMenuItem) return;
+
+      setUpdatingStatusItemId(itemId);
+      try {
+        await toggleMenuItemStatus({ id: itemId, status });
+        await refetchItems?.();
+        pushMenuToast("Cập nhật trạng thái món thành công.", "success");
+      } catch (error) {
+        pushMenuToast(
+          getGraphQLErrorMessage(error, "Không thể cập nhật trạng thái món."),
+          "error",
+        );
+      } finally {
+        setUpdatingStatusItemId(null);
+      }
+    },
+    [canUpdateMenuItem, pushMenuToast, refetchItems, toggleMenuItemStatus],
+  );
+
+  const handleSelectToggle = useCallback((item, checked) => {
+    const itemId = item?.id;
+    if (!itemId) return;
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  }, []);
+
+  const handleClearSelected = useCallback(() => {
+    setSelectedItemIds(new Set());
+  }, []);
+
+  const handleBulkUpdateStatus = useCallback(
+    async (status) => {
+      if (!canUpdateMenuItem || !status || isBulkUpdatingStatus) return;
+      const ids = Array.from(selectedItemIds);
+      if (!ids.length) return;
+
+      setIsBulkUpdatingStatus(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const itemId of ids) {
+        try {
+          await toggleMenuItemStatus({ id: itemId, status });
+          successCount += 1;
+        } catch {
+          failCount += 1;
+        }
+      }
+
+      try {
+        await refetchItems?.();
+      } catch (error) {
+        pushMenuToast(getGraphQLErrorMessage(error, "Không thể tải lại danh sách món."), "error");
+      }
+
+      if (successCount > 0 && failCount === 0) {
+        pushMenuToast(`Đã cập nhật ${successCount} món.`, "success");
+      } else if (successCount > 0 && failCount > 0) {
+        pushMenuToast(`Đã cập nhật ${successCount} món, ${failCount} món lỗi.`, "warning");
+      } else {
+        pushMenuToast("Không thể cập nhật trạng thái món đã chọn.", "error");
+      }
+
+      if (successCount > 0) {
+        setSelectedItemIds(new Set());
+      }
+      setIsBulkUpdatingStatus(false);
+    },
+    [
+      canUpdateMenuItem,
+      isBulkUpdatingStatus,
+      pushMenuToast,
+      refetchItems,
+      selectedItemIds,
+      toggleMenuItemStatus,
+    ],
+  );
 
   const handleSavePriceChanges = useCallback(
     async ({ bulkOperations = [], manualUpdates = [] } = {}) => {
@@ -976,6 +1066,16 @@ const MenuManagement = () => {
 
           {displayItems.length > 0 && (
             <>
+              {canUpdateMenuItem && selectedItemIds.size > 0 && (
+                <div className="mm-bulk-status-bar">
+                  <span>Đã chọn {selectedItemIds.size} món</span>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={handleClearSelected} disabled={isBulkUpdatingStatus}>Bỏ chọn</button>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("available")} disabled={isBulkUpdatingStatus}>Sẵn sàng</button>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("unavailable")} disabled={isBulkUpdatingStatus}>Tạm dừng</button>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("out_of_stock")} disabled={isBulkUpdatingStatus}>Hết hàng</button>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("hidden")} disabled={isBulkUpdatingStatus}>Ẩn</button>
+                </div>
+              )}
               <div className={`mm-grid mm-grid--${currentView}`}>
                 {displayItems.map((item) => (
                   <MenuItemCard
@@ -992,6 +1092,10 @@ const MenuManagement = () => {
                         : undefined
                     }
                     viewMode={currentView}
+                    onStatusChange={canUpdateMenuItem ? handleChangeItemStatus : undefined}
+                    updatingStatus={updatingStatusItemId === item.id}
+                    selected={selectedItemIds.has(item.id)}
+                    onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
                   />
                 ))}
               </div>
