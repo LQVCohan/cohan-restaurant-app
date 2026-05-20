@@ -359,6 +359,7 @@ const MenuManagement = () => {
     menusLoading,
     menusError,
     ensureMenu,
+    copyMenu,
     refetchMenus,
     items,
     itemsLoading,
@@ -495,6 +496,60 @@ const MenuManagement = () => {
     if (!currentRestaurant) return;
 
     setMenuSubmitError("");
+
+    const isCopySubmission = form?.__mode === "copy" || form?.isCopyDraft;
+
+    if (isCopySubmission) {
+      if (!currentRestaurant) {
+        setMenuSubmitError("Vui lòng chọn nhà hàng trước khi sao chép thực đơn.");
+        return;
+      }
+      if (!form?.sourceMenuId) {
+        setMenuSubmitError("Không tìm thấy menu nguồn để sao chép.");
+        return;
+      }
+      if (!form?.timeSlot) {
+        setMenuSubmitError("Vui lòng chọn khung giờ đích để sao chép thực đơn.");
+        return;
+      }
+
+      const hasMenuInTargetSlot = (menus || []).some(
+        (menu) => menu?.timeSlot === form.timeSlot,
+      );
+      if (hasMenuInTargetSlot) {
+        setMenuSubmitError(
+          "Khung giờ này đã có thực đơn. Vui lòng chọn khung giờ còn trống để sao chép.",
+        );
+        return;
+      }
+
+      setIsSavingMenu(true);
+      try {
+        const copied = await copyMenu({
+          sourceMenuId: form.sourceMenuId,
+          targetTimeSlot: form.timeSlot,
+          name: form.name,
+          description: form.description || null,
+          coverImage: form.coverImage || null,
+          categoryMenuId: form.categoryMenuId || null,
+          isActive: form.isActive || false,
+          copyItems: true,
+          copyRecipes: true,
+        });
+
+        await refetchMenus?.();
+        setSelectedTimeSlot(copied?.timeSlot || form.timeSlot);
+        toggleModal("menu", false);
+        pushMenuToast("Đã sao chép thực đơn kèm món và recipe.", "success");
+      } catch (err) {
+        setMenuSubmitError(
+          getGraphQLErrorMessage(err, "Không thể sao chép thực đơn. Vui lòng thử lại."),
+        );
+      } finally {
+        setIsSavingMenu(false);
+      }
+      return;
+    }
 
     const isCreatingMenu = !form?.id;
     const hasMenuInSelectedSlot = (menus || []).some((menu) => {
