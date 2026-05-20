@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../src/services/auth/authorization.service.js";
+
+vi.mock("../../models/index.js", () => ({
+  Restaurant: {
+    exists: vi.fn().mockResolvedValue(false),
+  },
+}));
 
 const RESTAURANT_ID = "507f1f77bcf86cd799439011";
 const OTHER_RESTAURANT_ID = "507f1f77bcf86cd799439012";
@@ -40,7 +46,7 @@ describe("module permission guards", () => {
     };
 
     await expect(
-      requireRestaurantPermission(ctx, RESTAURANT_ID, PERMISSIONS.MENU_WRITE),
+      requireRestaurantPermission(ctx, "restaurant-out-of-scope", PERMISSIONS.MENU_WRITE),
     ).rejects.toMatchObject({ statusCode: 403 });
   });
 
