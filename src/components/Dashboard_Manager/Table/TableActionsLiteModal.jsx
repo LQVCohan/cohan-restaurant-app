@@ -12,6 +12,11 @@ import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
+import {
+  isPosManagedStatusTransition,
+  POS_MANAGED_STATUS_TRANSITION_MESSAGE,
+  POS_MANAGED_STATUS_TRANSITION_TITLE,
+} from "@/utils/tableStatusTransitionGuard";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -85,22 +90,6 @@ const buildMovedTablePosition = (targetTable, nextCoordinates) => {
     ...nextCoordinates,
   };
 };
-
-const POS_MANAGED_STATUS_TRANSITIONS = new Set([
-  "available->occupied",
-  "reserved->occupied",
-  "occupied->payment_pending",
-  "payment_pending->cleaning",
-  "occupied->available",
-  "payment_pending->available",
-  "occupied->cleaning",
-  "reserved->cleaning",
-]);
-
-const isPosManagedStatusTransition = (currentStatus, nextStatus) =>
-  POS_MANAGED_STATUS_TRANSITIONS.has(
-    `${String(currentStatus || "").toLowerCase()}->${String(nextStatus || "").toLowerCase()}`
-  );
 
 const getAvailablePositionForFloor = (allTables, targetFloorId) => {
   const occupiedPositions = new Set(
@@ -543,10 +532,7 @@ export default function TableActionsLiteModal({
   const handleChangeStatus = async (next) => {
     if (!table?.id || next === status || busy.status) return;
     if (isPosManagedStatusTransition(status, next)) {
-      showNotification(
-        "Vui lòng thao tác nhận khách, thanh toán hoặc dọn bàn tại POS để đồng bộ order và phiên bàn.",
-        "warning"
-      );
+      showNotification(POS_MANAGED_STATUS_TRANSITION_MESSAGE, "warning");
       return;
     }
     setBusyKey("status", true);
@@ -1104,7 +1090,7 @@ export default function TableActionsLiteModal({
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
                 (st) => {
                   const posManagedReason = isPosManagedStatusTransition(status, st)
-                    ? "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn."
+                    ? POS_MANAGED_STATUS_TRANSITION_TITLE
                     : "";
 
                   return (
