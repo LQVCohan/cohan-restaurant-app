@@ -59,12 +59,13 @@ export function resolvePrepTimeLevel(actualPrepMinutes, targetPrepMinutes) {
   if (!Number.isFinite(targetPrepMinutes) || targetPrepMinutes <= 0) return null;
 
   const lateThreshold = targetPrepMinutes + DEFAULT_LATE_GRACE_MINUTES;
-  const veryLateThreshold = targetPrepMinutes + DEFAULT_VERY_LATE_GRACE_MINUTES;
 
   if (actualPrepMinutes <= targetPrepMinutes) return "on_time";
+  // "late": target < actual <= target + DEFAULT_LATE_GRACE_MINUTES
   if (actualPrepMinutes <= lateThreshold) return "late";
-  if (actualPrepMinutes > lateThreshold || actualPrepMinutes > veryLateThreshold) return "very_late";
-  return null;
+  // "very_late": actual > target + DEFAULT_LATE_GRACE_MINUTES
+  // DEFAULT_VERY_LATE_GRACE_MINUTES is reserved for future threshold tuning.
+  return "very_late";
 }
 
 export async function findKitchenRosterForOrderItem({ restaurantId, station, at }) {
