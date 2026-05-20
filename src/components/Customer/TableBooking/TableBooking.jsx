@@ -82,6 +82,7 @@ const TableBooking = () => {
   );
   const publicRestaurant = restaurantData?.publicRestaurant || null;
   const canReserve = !!publicRestaurant?.canReserve;
+  const canLoadFloorMap = !!publicRestaurant && canReserve;
 
   const {
     floors,
@@ -94,6 +95,7 @@ const TableBooking = () => {
   } = useFloorManagement({
     restaurantId,
     tableLimit: 200,
+    enabled: canLoadFloorMap,
   });
 
   const restaurantCartItems = (cart || []).filter(
@@ -116,6 +118,7 @@ const TableBooking = () => {
   })();
 
   useEffect(() => {
+    if (!canReserve) return;
     if (!canToggleWatching) return;
     const currentFloorId = activeFloorData?.id;
     if (!currentFloorId) return;
@@ -135,7 +138,7 @@ const TableBooking = () => {
         variables: { id: currentFloorId, isWatching: false },
       }).catch(() => {});
     };
-  }, [activeFloorData?.id, canToggleWatching, updateFloorWatching]);
+  }, [activeFloorData?.id, canReserve, canToggleWatching, updateFloorWatching]);
 
   const handleSelectTable = async (table) => {
     if (!publicRestaurant || !canReserve) return;

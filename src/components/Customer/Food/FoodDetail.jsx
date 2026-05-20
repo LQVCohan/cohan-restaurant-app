@@ -303,7 +303,7 @@ const FoodDetail = () => {
   );
   const promotionLabel = getPromotionLabel(activePromotion);
 
-  const { data: restaurantData } = useQuery(PUBLIC_RESTAURANT_BY_ID, {
+  const { data: restaurantData, loading: restaurantLoading } = useQuery(PUBLIC_RESTAURANT_BY_ID, {
     variables: { id: resolvedDish?.restaurantId },
     skip: !resolvedDish?.restaurantId,
   });
@@ -463,6 +463,7 @@ const FoodDetail = () => {
   const totalPrice = currentUnitPrice * quantity;
 
   const publicRestaurant = restaurantData?.publicRestaurant || null;
+  const restaurantUnavailable = !restaurantLoading && !publicRestaurant;
   const restaurant = publicRestaurant;
   const restaurantCanOrder = !!publicRestaurant?.canOrder;
   const restaurantOrderBlockReason = getCannotOrderReason(publicRestaurant?.openingStatus);
@@ -483,6 +484,8 @@ const FoodDetail = () => {
     liveStateReady && maxAvailableQty > 0 && quantity > maxAvailableQty;
   const addDisabled =
     addingToBackendCart ||
+    restaurantLoading ||
+    restaurantUnavailable ||
     !restaurantCanOrder ||
     !selectedServingKey ||
     !liveStateReady ||
@@ -499,7 +502,9 @@ const FoodDetail = () => {
 
   const addToCartButtonText = addingToBackendCart
     ? "Đang giữ món..."
-    : !publicRestaurant
+    : restaurantLoading
+      ? "Đang kiểm tra nhà hàng..."
+    : restaurantUnavailable
       ? "Nhà hàng không khả dụng"
       : !restaurantCanOrder
         ? restaurantOrderBlockReason
@@ -778,7 +783,8 @@ const FoodDetail = () => {
             </div>
             {!customerVisible && <div className="availability-box info"><div className="promo-title">Món hiện không hiển thị cho khách.</div></div>}
             {availability?.customerMessage && <div className="availability-box info"><div className="promo-title">{availability.customerMessage}</div></div>}
-            {!publicRestaurant && <div className="availability-box info"><div className="promo-title">Nhà hàng không khả dụng hoặc chưa công khai.</div></div>}
+            {restaurantLoading && <div className="availability-box info"><div className="promo-title">Đang kiểm tra trạng thái nhà hàng...</div></div>}
+            {restaurantUnavailable && <div className="availability-box info"><div className="promo-title">Nhà hàng không khả dụng hoặc chưa công khai.</div></div>}
             {publicRestaurant && !restaurantCanOrder && (
               <div className="availability-box info">
                 <div className="promo-title">{restaurantOrderBlockReason}</div>

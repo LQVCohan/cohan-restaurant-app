@@ -88,6 +88,7 @@ export default function useFloorManagement({
   initialFloorId = null,
   tableStatus = null,
   tableLimit = 200,
+  enabled = true,
 }) {
   // 1. Query floors
   const {
@@ -97,7 +98,7 @@ export default function useFloorManagement({
     refetch: refetchFloors,
   } = useQuery(Q_FLOORS, {
     variables: { restaurantId },
-    skip: !restaurantId,
+    skip: !enabled || !restaurantId,
     fetchPolicy: "cache-and-network",
   });
 
@@ -146,7 +147,7 @@ export default function useFloorManagement({
       status: tableStatus,
       limit: tableLimit,
     },
-    skip: !restaurantId || !activeFloorId,
+    skip: !enabled || !restaurantId || !activeFloorId,
     fetchPolicy: "network-only",
   });
 

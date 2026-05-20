@@ -345,6 +345,7 @@ export const MenuQuery = {
     const restaurant = await Restaurant.findById(item.restaurantId)
       .select({ _id: 1, businessStatus: 1, publicationStatus: 1, status: 1, operationalStatus: 1 })
       .lean();
+    if (!restaurant) return null;
     const availability = computeRestaurantAvailability(restaurant || {});
     if (availability.businessStatus !== "active" || availability.publicationStatus !== "published") {
       return null;

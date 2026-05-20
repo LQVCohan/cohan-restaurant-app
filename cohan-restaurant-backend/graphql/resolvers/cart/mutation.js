@@ -267,10 +267,10 @@ export const CartMutation = {
     const qty = Number(quantity || 1);
     if (!(qty > 0)) throw new GraphQLError("quantity must be > 0");
 
-    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
-    const servingKey = getCartServingKey(servingVariantKey);
     const { availability } = await getPublicRestaurantOrThrow(restaurantId);
     assertRestaurantCanOrder(availability);
+    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+    const servingKey = getCartServingKey(servingVariantKey);
     const menuItem = await MenuItem.findById(menuItemId).lean();
     if (!menuItem) throw new GraphQLError("Món ăn không tồn tại.", { extensions: { code: "BAD_USER_INPUT" } });
     if (String(menuItem.restaurantId) !== String(restaurantId)) throw new GraphQLError("Món ăn không thuộc nhà hàng đã chọn.", { extensions: { code: "BAD_USER_INPUT" } });
