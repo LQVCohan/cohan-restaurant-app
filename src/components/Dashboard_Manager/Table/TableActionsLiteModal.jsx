@@ -23,6 +23,12 @@ import {
   getTableDisplayType,
   getTableFloorId,
 } from "@/utils/tableManagementDisplay";
+import {
+  TABLE_STATUS_OPTIONS,
+  TABLE_AREA_OPTIONS,
+  getTableStatusConfig,
+  getTableAreaLabel,
+} from "@/utils/tableManagementOptions";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -188,11 +194,6 @@ export default function TableActionsLiteModal({
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
   const { allPromotions } = usePromotions();
   const { showNotification } = useNotification();
-  const areaLabelMap = {
-    standard: "Trong nhà",
-    vip: "VIP",
-    outdoor: "Ngoài trời",
-  };
   const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:4000/graphql").replace(
     /\/graphql$/i,
     ""
@@ -820,17 +821,17 @@ export default function TableActionsLiteModal({
             </div>
             <div className="kv">
               <span className="k">Loại:</span>
-              <span className="v">{getTableDisplayType(table)}</span>
+              <span className="v">{getTableAreaLabel(getTableDisplayType(table))}</span>
             </div>
             <div className="kv">
               <span className="k">Khu vực:</span>
               <span className="v">
-                {areaLabelMap[getTableDisplayType(table)] || getTableDisplayType(table) || "Chưa rõ"}
+                {zoneLabel?.trim() || table?.zone || table?.areaLabel || "Chưa rõ"}
               </span>
             </div>
             <div className="kv">
               <span className="k">Trạng thái:</span>
-              <span className="v">{status}</span>
+              <span className="v">{getTableStatusConfig(status).text}</span>
             </div>
             {zoneLabel && (
               <div className="kv">
@@ -885,9 +886,11 @@ export default function TableActionsLiteModal({
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                 >
-                  <option value="standard">Standard</option>
-                  <option value="vip">VIP</option>
-                  <option value="outdoor">Outdoor</option>
+                  {TABLE_AREA_OPTIONS.map((areaOption) => (
+                    <option key={areaOption.value} value={areaOption.value}>
+                      {areaOption.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1085,8 +1088,9 @@ export default function TableActionsLiteModal({
               </div>
             </div>
             <div className="chips">
-              {["available", "occupied", "reserved", "cleaning", "offline"].map(
-                (st) => {
+              {TABLE_STATUS_OPTIONS.filter((item) => item.value !== "payment_pending").map(
+                (statusOption) => {
+                  const st = statusOption.value;
                   const guardReason = getStatusDisabledReason(st);
                   const posManagedReason = isPosManagedStatusTransition(status, st)
                     ? POS_MANAGED_STATUS_TRANSITION_TITLE
@@ -1101,11 +1105,7 @@ export default function TableActionsLiteModal({
                     disabled={busy.status || !!guardReason || !!posManagedReason}
                     title={guardReason || posManagedReason || ""}
                   >
-                    {st === "available" && "Trống"}
-                    {st === "occupied" && "Có khách"}
-                    {st === "reserved" && "Đã đặt"}
-                    {st === "cleaning" && "Đang dọn"}
-                    {st === "offline" && "Ngưng"}
+                    {statusOption.label}
                   </button>
                   );
                 }
