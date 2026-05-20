@@ -1,109 +1,20 @@
 .top-dishes-widget {
-  &--bare {
-    border: 0;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
-  }
+  &--bare { border: 0; box-shadow: none; border-radius: 0; padding: 0; background: transparent; }
 
-  .dishes-list {
-    display: grid;
-    gap: 12px;
-  }
+  .dishes-list { display: grid; gap: 12px; max-height: 300px; overflow: auto; }
+  .dish-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+  .rank-badge { width: 30px; height: 30px; border-radius: 10px; background: #f3f4f6; color: #374151; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; &.rank-top { background: #eff6ff; color: #2563eb; } }
+  .dish-name { margin: 0; font-size: 14px; font-weight: 700; color: #111827; }
+  .dish-meta, .revenue-meta { font-size: 13px; color: #4b5563; }
+  .revenue-meta { margin: 4px 0 8px; }
+  .info-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .progress-track { height: 6px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #2563eb; border-radius: 999px; }
+  .empty-state { padding: 16px 0; font-size: 13px; color: #6b7280; text-align: center; }
+  .empty-state--compact { min-height: 120px; display: grid; place-content: center; }
 
-  .dish-row {
-    display: grid;
-    grid-template-columns: 30px 1fr;
-    gap: 10px;
-    align-items: start;
-  }
-
-  .rank-badge {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
-    background: #f3f4f6;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    &.rank-top {
-      background: #eff6ff;
-      color: #2563eb;
-    }
-  }
-
-  .dish-name {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
-  }
-
-  .dish-meta,
-  .revenue-meta {
-    font-size: 13px;
-    color: #6b7280;
-  }
-
-  .revenue-meta {
-    margin: 4px 0 8px;
-  }
-
-  .info-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .progress-track {
-    height: 6px;
-    background: #f3f4f6;
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: #2563eb;
-    border-radius: 999px;
-  }
-
-  .empty-state {
-    padding: 16px 0;
-    font-size: 13px;
-    color: #6b7280;
-    text-align: center;
-  }
-
-  .low-stock-box {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid #f3f4f6;
-  }
-
-  .low-stock-title {
-    margin: 0 0 8px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #92400e;
-  }
-
-  .low-stock-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: 13px;
-    color: #6b7280;
-
-    strong {
-      color: #111827;
-    }
-  }
+  .low-stock-box { margin-top: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 12px; }
+  .low-stock-title { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #92400e; }
+  .low-stock-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 13px; color: #92400e; strong { color: #78350f; } }
+  .low-stock-more { margin: 8px 0 0; font-size: 12px; color: #92400e; }
 }
