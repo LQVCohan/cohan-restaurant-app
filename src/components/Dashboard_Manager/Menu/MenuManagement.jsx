@@ -141,6 +141,7 @@ const getMenuEmptyState = ({
   canCreateMenuItem,
   canCreateMenu,
   hasMenuForSelectedSlot,
+  hasAnyMenu,
 }) => {
   if (!restaurantId) {
     return {
@@ -148,6 +149,15 @@ const getMenuEmptyState = ({
       title: "Chọn nhà hàng để quản lý thực đơn",
       description: "Vui lòng chọn một nhà hàng trước khi xem hoặc chỉnh sửa món.",
       action: null,
+    };
+  }
+
+  if (!hasAnyMenu) {
+    return {
+      icon: "🕒",
+      title: "Chưa có menu cho nhà hàng này",
+      description: "Tạo menu đầu tiên trước khi thêm món vào thực đơn.",
+      action: canCreateMenu ? "create_menu" : null,
     };
   }
 
@@ -160,16 +170,10 @@ const getMenuEmptyState = ({
     };
   }
 
-  if ((items || []).length === 0 && !hasActiveMenuFilters) {
-    return {
-      icon: "🍽️",
-      title: "Chưa có món ăn nào",
-      description: "Thêm món đầu tiên để bắt đầu xây dựng thực đơn cho khung giờ này.",
-      action: canCreateMenuItem ? "add_item" : null,
-    };
-  }
+  const hasDisplayItems = (displayItems || []).length > 0;
+  const hasItems = (items || []).length > 0;
 
-  if ((items || []).length > 0 && (displayItems || []).length === 0 && hasActiveMenuFilters) {
+  if (!hasDisplayItems && hasActiveMenuFilters) {
     const inventoryFilterMap = {
       out_of_stock: {
         title: "Không có món hết hàng",
@@ -207,6 +211,15 @@ const getMenuEmptyState = ({
       title: "Không tìm thấy món phù hợp",
       description: "Thử đổi từ khóa tìm kiếm hoặc xóa bớt bộ lọc.",
       action: "clear_filters",
+    };
+  }
+
+  if (!hasActiveMenuFilters && !hasItems) {
+    return {
+      icon: "🍽️",
+      title: "Chưa có món ăn nào",
+      description: "Thêm món đầu tiên để bắt đầu xây dựng thực đơn cho khung giờ này.",
+      action: canCreateMenuItem ? "add_item" : null,
     };
   }
 
@@ -873,7 +886,7 @@ const MenuManagement = () => {
       if (inventoryFilter === "all") return mapped;
       return mapped.filter((item) => {
         const warnings = Array.isArray(item.stockWarnings) ? item.stockWarnings : [];
-        const hasRecipe = Array.isArray(item.servingVariants) && item.servingVariants.length > 0;
+
         if (inventoryFilter === "low_stock") {
           return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK;
         }
@@ -884,13 +897,15 @@ const MenuManagement = () => {
           return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR;
         }
         if (inventoryFilter === "not_tracked") {
-          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || !hasRecipe || warnings.some((w) => /chưa tracking recipe/i.test(String(w)));
+          return item.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || warnings.some((w) => /tracking recipe|chưa tracking|recipe/i.test(String(w)));
         }
         return true;
       });
     },
     [items, categories, inventoryFilter],
   );
+
+  const hasAnyMenu = (menus || []).length > 0;
 
   const hasMenuForSelectedSlot = useMemo(
     () => (menus || []).some((menu) => menu?.timeSlot === selectedTimeSlot),
@@ -931,6 +946,7 @@ const MenuManagement = () => {
         canCreateMenuItem,
         canCreateMenu,
         hasMenuForSelectedSlot,
+        hasAnyMenu,
       }),
     [
       canCreateMenu,
@@ -938,6 +954,7 @@ const MenuManagement = () => {
       currentRestaurant,
       displayItems,
       hasActiveMenuFilters,
+      hasAnyMenu,
       hasMenuForSelectedSlot,
       inventoryFilter,
       items,
@@ -966,12 +983,12 @@ const MenuManagement = () => {
     return sourceItems.reduce(
       (acc, item) => {
         const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
-        const hasRecipe = Array.isArray(item?.servingVariants) && item.servingVariants.length > 0;
+
         acc.all += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK) acc.low_stock += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK) acc.out_of_stock += 1;
         if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR) acc.needs_check += 1;
-        if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || !hasRecipe || warnings.some((w) => /chưa tracking recipe/i.test(String(w)))) acc.not_tracked += 1;
+        if (item?.inventoryStatus === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED || warnings.some((w) => /tracking recipe|chưa tracking|recipe/i.test(String(w)))) acc.not_tracked += 1;
         return acc;
       },
       { all: 0, low_stock: 0, out_of_stock: 0, needs_check: 0, not_tracked: 0 },

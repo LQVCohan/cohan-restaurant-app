@@ -30,7 +30,6 @@ const getInventoryWarningCta = (item, availability) => {
   const inventoryStatus = String(item?.inventoryStatus || "").toLowerCase();
   const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
   const stockShortages = Array.isArray(item?.stockShortages) ? item.stockShortages : [];
-  const hasRecipe = Array.isArray(item?.servingVariants) && item.servingVariants.length > 0;
   const warningText = [
     ...warnings,
     ...(availability?.warnings || []),
@@ -42,7 +41,7 @@ const getInventoryWarningCta = (item, availability) => {
     inventoryStatus === "not_tracked" ||
     warningText.includes("tracking recipe") ||
     warningText.includes("chưa tracking") ||
-    !hasRecipe;
+    warningText.includes("recipe");
 
   if (isNotTracked) {
     return {
