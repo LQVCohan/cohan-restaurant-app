@@ -252,7 +252,7 @@ $mm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
   background: transparent;
   border: none;
 
-  &__img {
+  &__icon {
     font-size: 64px;
     margin-bottom: 16px;
     opacity: 0.8;
@@ -315,3 +315,15 @@ $mm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
 
 .mm-bulk-status-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;border:1px solid #e2e8f0;background:#fff;border-radius:12px;}
 .mm-bulk-status-bar > span{font-weight:700;color:#334155;margin-right:4px;}
+
+
+.mm-empty-state__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mm-empty-state__title { margin: 0 0 8px; }
+.mm-empty-state__description { margin: 0 auto 20px; }

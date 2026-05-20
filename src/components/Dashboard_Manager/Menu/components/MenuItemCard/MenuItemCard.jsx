@@ -26,11 +26,73 @@ const STATUS_OPTIONS = [
   { value: "hidden", label: "Ẩn khỏi menu" },
 ];
 
+const getInventoryWarningCta = (item, availability) => {
+  const inventoryStatus = String(item?.inventoryStatus || "").toLowerCase();
+  const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
+  const stockShortages = Array.isArray(item?.stockShortages) ? item.stockShortages : [];
+  const warningText = [
+    ...warnings,
+    ...(availability?.warnings || []),
+  ]
+    .map((w) => String(w || "").toLowerCase())
+    .join(" ");
+
+  const isNotTracked =
+    inventoryStatus === "not_tracked" ||
+    warningText.includes("tracking recipe") ||
+    warningText.includes("chưa tracking") ||
+    warningText.includes("recipe");
+
+  if (isNotTracked) {
+    return {
+      type: "recipe_missing",
+      label: "Cập nhật recipe",
+      title: "Món chưa có recipe tracking",
+      description: "Thêm recipe để hệ thống tự kiểm tra nguyên liệu và tồn kho.",
+      action: "recipe",
+    };
+  }
+
+  if (stockShortages.length > 0) {
+    return {
+      type: "ingredients_missing",
+      label: "Xem nguyên liệu thiếu",
+      title: "Thiếu nguyên liệu",
+      description: "Một số nguyên liệu không đủ để bán món này.",
+      action: "inventory",
+    };
+  }
+
+  if (inventoryStatus === "out_of_stock") {
+    return {
+      type: "out_of_stock",
+      label: "Kiểm tra tồn kho",
+      title: "Món đang hết hàng",
+      description: "Kiểm tra recipe hoặc tồn kho nguyên liệu trước khi mở bán lại.",
+      action: "inventory",
+    };
+  }
+
+  if (inventoryStatus === "low_stock") {
+    return {
+      type: "low_stock",
+      label: "Kiểm tra nguyên liệu",
+      title: "Nguyên liệu sắp hết",
+      description: "Nên kiểm tra tồn kho trước giờ cao điểm.",
+      action: "inventory",
+    };
+  }
+
+  return null;
+};
+
 const MenuItemCard = ({
   item,
   onEdit,
   onDelete,
   onStatusChange,
+  onOpenRecipeIssue,
+  onOpenInventoryIssue,
   updatingStatus = false,
   selected = false,
   onSelectToggle,
@@ -108,6 +170,17 @@ const MenuItemCard = ({
 
   const hasActions = onEdit || onDelete || canViewHistory || canQuickChangeStatus;
   const primaryWarning = availability.warnings?.[0];
+  const warningCta = canUpdateItem ? getInventoryWarningCta(item, availability) : null;
+
+  const handleWarningCtaClick = (e) => {
+    e.stopPropagation();
+    if (!warningCta) return;
+    if (warningCta.action === "recipe") {
+      onOpenRecipeIssue?.(item);
+      return;
+    }
+    onOpenInventoryIssue?.(item);
+  };
 
   return (
     <>
@@ -158,6 +231,24 @@ const MenuItemCard = ({
             <div className="availability-warning" title={primaryWarning}>
               <AlertTriangle size={14} />
               <span>{primaryWarning}</span>
+            </div>
+          )}
+
+
+
+          {warningCta && (
+            <div className="menu-item-card__warning-cta" title={warningCta.title}>
+              <div className="menu-item-card__warning-cta-title">{warningCta.title}</div>
+              <div className="menu-item-card__warning-cta-description">
+                {warningCta.description}
+              </div>
+              <button
+                type="button"
+                className="menu-item-card__warning-cta-button"
+                onClick={handleWarningCtaClick}
+              >
+                {warningCta.label}
+              </button>
             </div>
           )}
 
