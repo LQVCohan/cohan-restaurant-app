@@ -68,7 +68,6 @@ const RestaurantList = ({ restaurantFilter }) => {
   const [hasNextPage, setHasNextPage] = useState(false);
 
   // Filter States
-  const [addressFilterState, setAddressFilterState] = useState(undefined);
   const [quickFilter, setQuickFilter] = useState(null); // Filter từ Hero
 
   // --- MAPPING DATA FOR HOOK ---
@@ -110,6 +109,8 @@ const RestaurantList = ({ restaurantFilter }) => {
     else if (quickFilter === "rating") minRating = 4.5; // Quick filter logic
 
     return {
+      city: filters.cities?.[0] || undefined,
+      district: filters.districts?.[0] || undefined,
       cuisineTypes: filters.cuisines.length ? filters.cuisines : undefined,
       minRating: minRating || undefined,
       priceRange: filters.priceRanges.length ? filters.priceRanges : undefined,
@@ -117,23 +118,12 @@ const RestaurantList = ({ restaurantFilter }) => {
     };
   }, [filters, searchTerm, restaurantFilter, quickFilter]);
 
-  // Sync Address Filter
-  useEffect(() => {
-    const city = filters.cities?.[0] || filters.city || undefined;
-    const district = filters.districts?.[0] || undefined;
-    const nextAF = city || district ? { city, district } : undefined;
-    setAddressFilterState((prev) =>
-      JSON.stringify(prev) === JSON.stringify(nextAF) ? prev : nextAF
-    );
-  }, [filters]);
-
   // --- QUERY DATA ---
   const { data, loading, error, fetchMore, refetch } = useQuery(
     GET_RESTAURANTS,
     {
       variables: {
         limit: LIMIT,
-        addressFilter: addressFilterState,
         filter: gqlFilters,
       },
       fetchPolicy: "cache-and-network",
@@ -145,7 +135,7 @@ const RestaurantList = ({ restaurantFilter }) => {
   useEffect(() => {
     if (!data?.publicRestaurants) return;
     const edges = data.publicRestaurants.edges ?? [];
-    setAccumulated(edges.map(({ node }) => node));
+    setAccumulated((prev) => (prev.length ? prev : edges.map(({ node }) => node)));
     setEndCursor(data.publicRestaurants.pageInfo?.endCursor ?? null);
     setHasNextPage(!!data.publicRestaurants.pageInfo?.hasNextPage);
   }, [data]);
@@ -157,13 +147,12 @@ const RestaurantList = ({ restaurantFilter }) => {
       variables: {
         limit: LIMIT,
         cursor: endCursor,
-        addressFilter: addressFilterState,
         filter: gqlFilters,
       },
       updateQuery: (prev, { fetchMoreResult }) => fetchMoreResult || prev,
     });
     const edgesMore = more?.data?.publicRestaurants?.edges ?? [];
-    setAccumulated((prev) => [...prev, ...edgesMore.map(({ node }) => node)]);
+    setAccumulated((prev) => { const map = new Map(prev.map((x) => [x.id, x])); edgesMore.forEach(({ node }) => map.set(node.id, node)); return [...map.values()]; });
     setEndCursor(more?.data?.publicRestaurants?.pageInfo?.endCursor ?? null);
     setHasNextPage(!!more?.data?.publicRestaurants?.pageInfo?.hasNextPage);
   };
@@ -173,10 +162,9 @@ const RestaurantList = ({ restaurantFilter }) => {
     refetch({
       limit: LIMIT,
       cursor: null,
-      addressFilter: addressFilterState,
       filter: gqlFilters,
     });
-  }, [addressFilterState, gqlFilters, refetch]);
+  }, [gqlFilters, refetch]);
 
   // --- HANDLERS ---
   const handleQuickFilter = (type) => {
@@ -220,7 +208,6 @@ const RestaurantList = ({ restaurantFilter }) => {
               onFilterChange={handleFilterChange}
               onClearFilters={() => {
                 handleClearFilters();
-                setAddressFilterState(undefined);
                 setQuickFilter(null);
               }}
             />

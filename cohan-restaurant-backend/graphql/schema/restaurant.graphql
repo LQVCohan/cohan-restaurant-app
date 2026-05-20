@@ -79,9 +79,6 @@ type Restaurant {
   notesOnAmenities: String
   cuisineType: String
   status: String
-  businessStatus: String
-  publicationStatus: String
-  operationalStatus: String
   timezone: String
   weeklyOpeningHours: JSON
   specialHours: [JSON!]
@@ -121,6 +118,10 @@ input RestaurantFilter {
   priceRange: [String!]
   search: String
   restaurantIds: [ID!]
+  openingStatus: String
+  openNow: Boolean
+  acceptsReservations: Boolean
+  acceptsOrders: Boolean
 }
 
 
@@ -242,18 +243,6 @@ input CreateRestaurantInput {
   capabilities: JSON
   reservationPolicy: JSON
   orderPolicy: JSON
-  businessStatus: String
-  publicationStatus: String
-  operationalStatus: String
-  openingStatus: String
-  openingStatusReason: String
-  nextOpeningTime: String
-  canView: Boolean
-  canReserve: Boolean
-  canOrder: Boolean
-  canTableOrder: Boolean
-  canDelivery: Boolean
-  canPickup: Boolean
   managerId: ID!
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
@@ -290,18 +279,6 @@ input UpdateRestaurantInput {
   capabilities: JSON
   reservationPolicy: JSON
   orderPolicy: JSON
-  businessStatus: String
-  publicationStatus: String
-  operationalStatus: String
-  openingStatus: String
-  openingStatusReason: String
-  nextOpeningTime: String
-  canView: Boolean
-  canReserve: Boolean
-  canOrder: Boolean
-  canTableOrder: Boolean
-  canDelivery: Boolean
-  canPickup: Boolean
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
   defaultCurrency: String
