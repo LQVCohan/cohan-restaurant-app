@@ -7,6 +7,7 @@ const modelMocks = vi.hoisted(() => ({
   Promotion: { find: vi.fn() },
   Coupon: { find: vi.fn(), findOne: vi.fn() },
   VoucherPackage: { find: vi.fn() },
+  Restaurant: { findById: vi.fn() },
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -63,6 +64,26 @@ describe("public/customer permission flows", () => {
     modelMocks.Coupon.find.mockReturnValue(findChain([]));
     modelMocks.Coupon.findOne.mockReturnValue(findOneChain(null));
     modelMocks.VoucherPackage.find.mockReturnValue(findChain([]));
+    modelMocks.Restaurant.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "valid-r1",
+        status: "active",
+        businessStatus: "active",
+        publicationStatus: "published",
+        operationalStatus: "normal",
+        capabilities: {
+          acceptsOrders: true,
+          acceptsTableOrders: true,
+          acceptsReservations: true,
+        },
+        orderPolicy: {
+          allowWhenClosed: true,
+        },
+        reservationPolicy: {
+          allowWhenClosed: true,
+        },
+      }),
+    });
   });
 
   it("lets public customers browse available menu items without menu.read", async () => {

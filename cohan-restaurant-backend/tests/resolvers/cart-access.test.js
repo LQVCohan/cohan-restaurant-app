@@ -83,11 +83,20 @@ describe("cart access hardening", () => {
     model.Restaurant.findById.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         _id: "valid-r1",
+        status: "active",
         businessStatus: "active",
         publicationStatus: "published",
-        availability: {
-          canOrder: true,
-          canReserve: true,
+        operationalStatus: "normal",
+        capabilities: {
+          acceptsOrders: true,
+          acceptsTableOrders: true,
+          acceptsReservations: true,
+        },
+        orderPolicy: {
+          allowWhenClosed: true,
+        },
+        reservationPolicy: {
+          allowWhenClosed: true,
         },
       }),
     });
