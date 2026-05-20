@@ -1,373 +1,89 @@
-// Variables
-@use "sass:list";
-@use "sass:color";
-$primary-bg: #ffffff;
-$secondary-bg: #f9fafb;
-$text-main: #111827;
-$text-secondary: #6b7280;
-$border-color: #e5e7eb;
-$brand-color: #d97706; // Amber
-$shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-
-// Mixins
-@mixin flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-// Color Map for Status
-$status-colors: (
-  "orange": (
-    #ffedd5,
-    #c2410c,
-  ),
-  "blue": (
-    #dbeafe,
-    #1d4ed8,
-  ),
-  "green": (
-    #dcfce7,
-    #15803d,
-  ),
-  "purple": (
-    #f3e8ff,
-    #7e22ce,
-  ),
-  "red": (
-    #fee2e2,
-    #b91c1c,
-  ),
-);
-
-.dashboard-widget.recent-orders {
-  background: $primary-bg;
-  border-radius: 16px;
-  box-shadow: $shadow-sm;
-  border: 1px solid $border-color;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  height: 100%; // Fill height nếu ở trong grid
-
-  // 1. Widget Header
-  .widget-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-
-    .widget-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: $text-main;
-      margin: 0;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-
-      .segmented-control {
-        background: $secondary-bg;
-        padding: 3px;
-        border-radius: 8px;
-        display: flex;
-
-        .segment-btn {
-          border: none;
-          background: transparent;
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 500;
-          color: $text-secondary;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &.active {
-            background: #fff;
-            color: $text-main;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            font-weight: 600;
-          }
-          &:hover:not(.active) {
-            color: $text-main;
-          }
-        }
-      }
-
-      .btn-link {
-        background: transparent;
-        border: none;
-        color: $brand-color;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-    }
+.recent-orders {
+  &--bare {
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
   }
 
-  // 2. Table Header
-  .table-header-row {
-    display: grid;
-    // GRID COLUMN DEFINITION: Quan trọng để thẳng hàng
-    grid-template-columns: 2fr 2fr 1.2fr 1fr 80px;
-    gap: 16px;
-    padding: 0 16px 12px 16px;
-    border-bottom: 1px solid $border-color;
-
-    span {
-      font-size: 12px;
-      font-weight: 600;
-      color: $text-secondary;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-
-      &.th-4 {
-        text-align: right;
-      } // Cột Tổng tiền căn phải
-    }
-  }
-
-  // 3. List Body
   .order-list-body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 300px;
-    padding-top: 8px;
+    display: grid;
+    gap: 0;
+  }
 
-    .order-row {
-      display: grid;
-      // Grid giống Header
-      grid-template-columns: 2fr 2fr 1.2fr 1fr 80px;
-      gap: 16px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      align-items: center;
-      transition: background 0.2s;
-      border-bottom: 1px solid transparent;
+  .order-row {
+    display: grid;
+    grid-template-columns: 1.4fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
 
-      &:hover {
-        background: $secondary-bg;
-        .col-actions {
-          opacity: 1;
-          pointer-events: auto;
-        }
-      }
-      &:not(:last-child) {
-        border-bottom-color: #f3f4f6;
-      }
-
-      // --- COL 1: Info ---
-      .col-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .avatar-box {
-          position: relative;
-          img {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            object-fit: cover;
-          }
-
-          .type-badge {
-            position: absolute;
-            bottom: -4px;
-            right: -4px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #fff;
-            border: 1px solid $border-color;
-            @include flex-center;
-            color: $text-secondary;
-            &.dine-in {
-              color: $brand-color;
-            }
-            &.delivery {
-              color: #0ea5e9;
-            }
-          }
-        }
-
-        .text-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-
-          .row-top {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            .customer-name {
-              font-size: 14px;
-              font-weight: 600;
-              color: $text-main;
-            }
-            .dot {
-              color: $border-color;
-            }
-            .order-id {
-              font-size: 12px;
-              color: $text-secondary;
-              background: #f3f4f6;
-              padding: 1px 6px;
-              border-radius: 4px;
-            }
-          }
-
-          .row-bottom {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: $text-secondary;
-            .location-tag {
-              display: flex;
-              align-items: center;
-              gap: 3px;
-              &.delivery {
-                color: #0ea5e9;
-              }
-            }
-          }
-        }
-      }
-
-      // --- COL 2: Menu ---
-      .col-menu {
-        .menu-text {
-          font-size: 13px;
-          color: #4b5563;
-          line-height: 1.4;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      }
-
-      // --- COL 3: Status ---
-      .col-status {
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          white-space: nowrap;
-
-          @each $name, $values in $status-colors {
-            &.#{$name} {
-              background: list.nth($values, 1);
-              color: list.nth($values, 2);
-            }
-          }
-        }
-      }
-
-      // --- COL 4: Total ---
-      .col-total {
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 2px;
-
-        .amount {
-          font-size: 14px;
-          font-weight: 700;
-          color: $text-main;
-        }
-        .payment-info {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 11px;
-          color: $text-secondary;
-        }
-      }
-
-      // --- COL 5: Actions ---
-      .col-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
-
-        .btn-icon {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          border: 1px solid $border-color;
-          background: #fff;
-          color: $text-secondary;
-          cursor: pointer;
-          @include flex-center;
-          &:hover {
-            background: #f9fafb;
-            color: $text-main;
-          }
-
-          &.primary {
-            background: $text-main;
-            color: #fff;
-            border: none;
-            &:hover {
-              background: color.adjust($text-main, $lightness: 10%);
-            }
-          }
-        }
-      }
+    &:last-child {
+      border-bottom: 0;
     }
+  }
+
+  .order-code {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .order-meta {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    &--pending { background: #fffbeb; color: #92400e; }
+    &--preparing { background: #eff6ff; color: #1d4ed8; }
+    &--completed { background: #ecfdf5; color: #166534; }
+    &--cancelled { background: #fef2f2; color: #991b1b; }
+    &--unknown { background: #f3f4f6; color: #374151; }
+  }
+
+  .order-row__side {
+    text-align: right;
+  }
+
+  .order-amount {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .order-time {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .empty-state {
+    padding: 20px 0;
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
   }
 }
 
-// Mobile Responsive
 @media (max-width: 768px) {
-  .dashboard-widget.recent-orders {
-    .table-header-row {
-      display: none;
-    }
-    .order-list-body .order-row {
-      grid-template-columns: 1fr auto; // Chuyển về 2 cột đơn giản
-      grid-template-rows: auto auto auto;
-      gap: 12px;
-      align-items: flex-start;
+  .recent-orders .order-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-      .col-info {
-        grid-column: 1 / -1;
-      }
-      .col-menu {
-        grid-column: 1 / -1;
-        font-size: 13px;
-        color: $text-secondary;
-      }
-      .col-status {
-        grid-column: 1;
-      }
-      .col-total {
-        grid-column: 2;
-        text-align: right;
-      }
-      .col-actions {
-        display: none;
-      } // Ẩn actions trên mobile, click vào row để xem
-    }
+  .recent-orders .order-row__side {
+    text-align: left;
   }
 }
