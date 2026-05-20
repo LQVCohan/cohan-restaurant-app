@@ -49,11 +49,35 @@ const ORDERS_BY_USER = gql`
           }
           items {
             _id
+            dishId
+            menuId
+            categoryId
             name
-            price
-            quantity
             unit
+            image
             proofImages
+            quantity
+            unitPrice
+            lineSubtotal
+            servingKey
+            servingVariant {
+              key
+              name
+              mode
+              price
+              sellQty
+              sellUnit
+            }
+            modifiers {
+              groupId
+              groupName
+              optionId
+              optionName
+              priceRule {
+                rule
+                amount
+              }
+            }
           }
           totals {
             grandTotal
@@ -187,7 +211,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
                 <ul>
                   {(data.items || []).map((it, idx) => (
                     <li key={it?._id || `${it?.name}_${idx}`}>
-                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(it?.price || 0)}
+                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(Number(it?.unitPrice ?? it?.price ?? it?.servingVariant?.price ?? 0))}
                     </li>
                   ))}
                 </ul>
@@ -234,6 +258,8 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
       <span className="detail-value">{value || "--"}</span>
     </div>
   );
+  const getOrderItemUnitPrice = (item) =>
+    Number(item?.unitPrice ?? item?.price ?? item?.servingVariant?.price ?? 0);
 
   return (
     <Modal isOpen={!!receiptTarget} onClose={onClose} size="md">
@@ -264,13 +290,17 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
           {(receiptTarget?.items || []).length ? (
             <ul>
               {(receiptTarget?.items || []).map((it, idx) => {
-                const unitPrice = Number(it?.price);
+                const unitPrice = getOrderItemUnitPrice(it);
                 const quantity = Number(it?.quantity);
-                const hasSubtotal = Number.isFinite(unitPrice) && Number.isFinite(quantity);
+                const hasSubtotal = Number.isFinite(quantity);
+                const lineSubtotal = Number(it?.lineSubtotal);
+                const resolvedSubtotal = Number.isFinite(lineSubtotal)
+                  ? lineSubtotal
+                  : unitPrice * quantity;
 
                 return (
                   <li key={it?._id || `${it?.name}_${idx}`}>
-                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(unitPrice * quantity) : "--"}
+                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(resolvedSubtotal) : "--"}
                   </li>
                 );
               })}
@@ -437,15 +467,20 @@ export default function OrdersPage() {
     order?.restaurantId || order?.raw?.restaurantId || null;
 
   const mapOrderItemToCartItem = (orderItem, restaurantId) => {
-    const id = orderItem?.menuItemId || orderItem?.itemId || orderItem?.id || orderItem?._id;
+    const id = orderItem?.dishId || orderItem?.menuItemId || orderItem?.itemId;
     if (!id) return null;
+    const price =
+      Number(orderItem?.unitPrice) ||
+      Number(orderItem?.servingVariant?.price) ||
+      Number(orderItem?.price) ||
+      0;
 
     return {
       id,
       dishId: orderItem?.dishId || id,
       restaurantId,
       name: orderItem?.name || "Món ăn",
-      price: Number(orderItem?.price) || 0,
+      price,
       quantity: Number(orderItem?.quantity) > 0 ? Number(orderItem.quantity) : 1,
       unit: orderItem?.unit || "phần",
       image:
