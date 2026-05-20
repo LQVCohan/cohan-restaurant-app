@@ -674,12 +674,14 @@ export default function OrdersPage() {
   }, [activeTab, allItems, searchTerm, statusFilter, sortBy]);
 
   const hasAnyError = Boolean(ordersError || resvError);
+  const hasLoadedItems = allItems.length > 0;
   const hasVisibleItems = visibleItems.length > 0;
   const isLoading = ordersLoading || resvLoading;
-  const shouldShowFullError = !isLoading && hasAnyError && !hasVisibleItems;
-  const shouldShowPartialWarning = !isLoading && hasAnyError && hasVisibleItems;
-  const shouldShowEmpty = !isLoading && !hasAnyError && !hasVisibleItems;
+  const shouldShowFullError = !isLoading && hasAnyError && !hasLoadedItems;
+  const shouldShowPartialWarning = !isLoading && hasAnyError && hasLoadedItems;
+  const shouldShowEmpty = !isLoading && !hasVisibleItems && !shouldShowFullError;
   const hasFilterOrSearch = !isDefaultFilters;
+  const hasScopedFilter = hasFilterOrSearch || activeTab !== "all";
 
   return (
     <div className="orders-page">
@@ -789,7 +791,7 @@ export default function OrdersPage() {
         )}
         {shouldShowEmpty && (
           <div className="empty-state">
-            <p>{hasFilterOrSearch ? "Không tìm thấy đơn phù hợp." : "Bạn chưa có đơn hàng nào."}</p>
+            <p>{hasScopedFilter ? "Không tìm thấy đơn phù hợp." : "Bạn chưa có đơn hàng nào."}</p>
             <Link to="/" className="btn-create">Tiếp tục xem món</Link>
           </div>
         )}
