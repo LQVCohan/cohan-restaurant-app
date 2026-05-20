@@ -322,7 +322,18 @@ describe("user/customer restaurant access guards", () => {
       ],
     });
     const andClauses = countCond?.$and || [];
-    const searchClause = andClauses.find((x) => Array.isArray(x?.$or));
+    const kindClause = andClauses.find((x) =>
+      Array.isArray(x?.$or) &&
+      x.$or.some((item) => Object.prototype.hasOwnProperty.call(item || {}, "role")) &&
+      x.$or.some((item) => Object.prototype.hasOwnProperty.call(item || {}, "isGuest")),
+    );
+    expect(kindClause).toBeTruthy();
+    const searchClause = andClauses.find((x) =>
+      Array.isArray(x?.$or) &&
+      x.$or.some((item) => ["fullName", "username", "email", "phone"]
+        .some((field) => Object.prototype.hasOwnProperty.call(item || {}, field))),
+    );
+    expect(searchClause).toBeTruthy();
     expect(searchClause?.$or).toEqual(
       expect.arrayContaining([
         { fullName: expect.any(RegExp) },
