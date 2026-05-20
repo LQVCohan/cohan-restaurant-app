@@ -68,6 +68,39 @@ describe("orderTracking.service", () => {
     expect(toCustomerTrackingPayload({ orderPaymentStatus: "paid", items: [], statusHistory: [] }).payment.canRequestPayment).toBe(false);
     expect(toCustomerTrackingPayload({ orderPaymentStatus: "unpaid", items: [], statusHistory: [] }).payment.canRequestPayment).toBe(true);
   });
+  it("handles latestRequest edge cases and sanitizes internal fields", () => {
+    const empty = toCustomerTrackingPayload({ customerRequests: [] });
+    expect(empty.latestRequest).toBeNull();
+
+    const withGarbage = toCustomerTrackingPayload({
+      customerRequests: [
+        null,
+        undefined,
+        { requestId: "", type: "STAFF_CALL", status: "PENDING", createdAt: new Date() },
+        { requestId: "req-ok", type: "STAFF_CALL", status: "ACKNOWLEDGED", createdAt: new Date("2026-05-01T10:00:00.000Z") },
+        { requestId: "req-latest", type: "PAYMENT_REQUEST", status: "PENDING", createdAt: new Date("2026-05-01T11:00:00.000Z") },
+      ],
+      _id: "secret",
+      restaurantId: "r1",
+      userId: "u1",
+      staffId: "s1",
+      trackingToken: "token",
+    });
+    expect(withGarbage.latestRequest).toEqual({
+      requestId: "req-latest",
+      type: "PAYMENT_REQUEST",
+      status: "PENDING",
+      message: null,
+      createdAt: new Date("2026-05-01T11:00:00.000Z"),
+      acknowledgedAt: null,
+      resolvedAt: null,
+    });
+    expect(withGarbage._id).toBeUndefined();
+    expect(withGarbage.restaurantId).toBeUndefined();
+    expect(withGarbage.userId).toBeUndefined();
+    expect(withGarbage.staffId).toBeUndefined();
+    expect(withGarbage.trackingToken).toBeUndefined();
+  });
   it("emits tracking update when forced even if status unchanged", () => {
     const emit = vi.fn();
     const to = vi.fn(() => ({ emit }));

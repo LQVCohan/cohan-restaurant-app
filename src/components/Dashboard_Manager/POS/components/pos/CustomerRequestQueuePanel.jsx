@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 
-const Q = gql`
+export const Q = gql`
   query CustomerServiceRequests($restaurantId: ID!, $status: String, $type: String, $limit: Int) {
     customerServiceRequests(restaurantId: $restaurantId, status: $status, type: $type, limit: $limit) {
       orderId orderCode tableCode requestId type status message createdAt
     }
   }
 `;
-const ACK = gql`mutation A($restaurantId: ID!, $orderId: ID!, $requestId: String!){acknowledgeCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
-const RES = gql`mutation R($restaurantId: ID!, $orderId: ID!, $requestId: String!){resolveCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
+export const ACK = gql`mutation A($restaurantId: ID!, $orderId: ID!, $requestId: String!){acknowledgeCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
+export const RES = gql`mutation R($restaurantId: ID!, $orderId: ID!, $requestId: String!){resolveCustomerServiceRequest(restaurantId:$restaurantId,orderId:$orderId,requestId:$requestId){ok message}}`;
 
 export default function CustomerRequestQueuePanel({ restaurantId }) {
   const [typeFilter, setTypeFilter] = useState(null);
