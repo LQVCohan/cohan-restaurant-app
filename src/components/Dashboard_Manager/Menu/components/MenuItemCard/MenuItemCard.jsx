@@ -19,7 +19,22 @@ import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./MenuItemCard.scss";
 
-const MenuItemCard = ({ item, onEdit, onDelete }) => {
+const STATUS_OPTIONS = [
+  { value: "available", label: "Sẵn sàng" },
+  { value: "unavailable", label: "Tạm dừng" },
+  { value: "out_of_stock", label: "Hết hàng" },
+  { value: "hidden", label: "Ẩn khỏi menu" },
+];
+
+const MenuItemCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  updatingStatus = false,
+  selected = false,
+  onSelectToggle,
+}) => {
   const auth = useContext(AuthContext);
   const [imgError, setImgError] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -83,12 +98,37 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
     );
   };
 
-  const hasActions = onEdit || onDelete || canViewHistory;
+  const canUpdateItem = canAccessMenuManagementAction(
+    auth?.user,
+    MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
+  );
+
+  const canQuickChangeStatus =
+    canUpdateItem && typeof onStatusChange === "function";
+
+  const hasActions = onEdit || onDelete || canViewHistory || canQuickChangeStatus;
   const primaryWarning = availability.warnings?.[0];
 
   return (
     <>
       <div className="menu-item-card" onClick={onEdit || undefined}>
+        {typeof onSelectToggle === "function" && (
+          <label
+            className="card-select-checkbox"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onSelectToggle(item, e.target.checked);
+              }}
+            />
+          </label>
+        )}
         <div className="card-image-wrapper">
           {renderImage()}
           <div className="badge-wrapper">{renderStatusBadge()}</div>
@@ -186,6 +226,36 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => {
               </>
             )}
 
+
+            {canQuickChangeStatus && (
+              <>
+                {(onEdit || canViewHistory || onDelete) && <div className="divider"></div>}
+                <div
+                  className={`status-quick-actions ${updatingStatus ? "disabled" : ""}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {STATUS_OPTIONS.map((option) => {
+                    const isCurrent = item?.status === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className="status-action-btn"
+                        disabled={updatingStatus || isCurrent}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (updatingStatus || isCurrent) return;
+                          onStatusChange(item, option.value);
+                        }}
+                        title={isCurrent ? `Đang ở trạng thái ${option.label}` : `Chuyển sang ${option.label}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             {onDelete && (
               <>
                 {(onEdit || canViewHistory) && <div className="divider"></div>}
