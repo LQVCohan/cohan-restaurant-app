@@ -261,7 +261,9 @@ describe("user/customer restaurant access guards", () => {
 
   it("customerListPage composes rank/search/kind with same finalCond for count and find", async () => {
     requireRestaurantAccessMock.mockResolvedValue(undefined);
-    modelMocks.Role.findOne.mockResolvedValue({ _id: { _mockObjectId: "valid-customer-role" } });
+    modelMocks.Role.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: "role-customer" }),
+    });
     const findLean = vi.fn(async () => []);
     modelMocks.Customer.find.mockReturnValue({
       populate: () => ({ populate: () => ({ sort: () => ({ skip: () => ({ limit: () => ({ lean: findLean }) }) }) }) }),
@@ -280,7 +282,9 @@ describe("user/customer restaurant access guards", () => {
 
   it("customerExportRows enforces guards and caps limit", async () => {
     requireRestaurantAccessMock.mockResolvedValue(undefined);
-    modelMocks.Role.findOne.mockResolvedValue({ _id: { _mockObjectId: "valid-customer-role" } });
+    modelMocks.Role.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: "role-customer" }),
+    });
     modelMocks.Customer.find.mockReturnValue({
       select: () => ({ populate: () => ({ populate: () => ({ sort: () => ({ limit: () => ({ lean: async () => [] }) }) }) }) }),
     });

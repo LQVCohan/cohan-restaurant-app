@@ -135,14 +135,39 @@ const createSafeSheetName = (baseName, usedNames) => {
   return candidate;
 };
 const getRankBoundsForFilter = (filterKey, rankSettings) => {
-  const ranks = normalizeRanks(rankSettings);
-  if (filterKey === "all" || !ranks.length) return null;
-  const top = ranks[ranks.length - 1];
-  const middle = ranks.length > 2 ? ranks[ranks.length - 2] : ranks[1];
-  const base = ranks[0];
-  if (filterKey === "vip" && top) return { minPoints: Number(top.minPoints || 0), maxPointsExclusive: null, rankName: top.name };
-  if (filterKey === "new" && base) return { minPoints: Number(base.minPoints || 0), maxPointsExclusive: Number(middle?.minPoints ?? top?.minPoints ?? 0), rankName: base.name };
-  if (filterKey === "frequent" && middle) return { minPoints: Number(middle.minPoints || 0), maxPointsExclusive: Number(top?.minPoints ?? 0), rankName: middle.name };
+  const ascending = [...normalizeRanks(rankSettings)].sort(
+    (a, b) => Number(a.minPoints || 0) - Number(b.minPoints || 0),
+  );
+  if (filterKey === "all" || !ascending.length) return null;
+
+  const base = ascending[0];
+  const middle = ascending[1] || null;
+  const top = ascending[ascending.length - 1];
+  const rankAt = (index) => ascending[index] || null;
+
+  if (filterKey === "new" && base) {
+    const next = rankAt(1);
+    return {
+      rankName: base.name,
+      minPoints: Number(base.minPoints || 0),
+      maxPointsExclusive: next ? Number(next.minPoints || 0) : null,
+    };
+  }
+  if (filterKey === "frequent" && middle) {
+    const next = rankAt(2);
+    return {
+      rankName: middle.name,
+      minPoints: Number(middle.minPoints || 0),
+      maxPointsExclusive: next ? Number(next.minPoints || 0) : null,
+    };
+  }
+  if (filterKey === "vip" && top) {
+    return {
+      rankName: top.name,
+      minPoints: Number(top.minPoints || 0),
+      maxPointsExclusive: null,
+    };
+  }
   return null;
 };
 
@@ -620,6 +645,9 @@ const CustomerManagement = () => {
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />
+          <div className="text-xs text-slate-500 mt-1">
+            Đang hiển thị {customersVisible.length} / tổng {customerPageInfo?.hasNextPage ? `${customersVisible.length}+` : customersVisible.length}
+          </div>
           {customerPageInfo?.hasNextPage ? (
             <div className="mt-3 flex justify-center">
               <button
@@ -903,6 +931,3 @@ const CustomerManagement = () => {
 };
 
 export default CustomerManagement;
-          <div className="text-xs text-slate-500 mt-1">
-            Đang hiển thị {customersVisible.length} / tổng {customerPageInfo?.hasNextPage ? `${customersVisible.length}+` : customersVisible.length}
-          </div>
