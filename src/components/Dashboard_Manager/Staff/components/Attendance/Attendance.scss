@@ -939,6 +939,48 @@ $border: #e2e8f0;
     }
   }
 
+
+  .correction-detail-panel {
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      border-radius: 12px;
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+
+        &:last-child {
+          align-items: flex-end;
+        }
+      }
+
+      strong { color: #0f172a; }
+      span { color: #334155; font-size: 0.82rem; }
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+      border: 0;
+      padding: 0;
+      background: transparent;
+    }
+
+    .changed-value {
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+  }
+
   .attendance-modal-overlay {
     position: fixed;
     inset: 0;
@@ -987,6 +1029,10 @@ $border: #e2e8f0;
       }
 
       .modal-close {
+        &:focus-visible {
+          outline: 2px solid rgba($primary, 0.45);
+          outline-offset: 2px;
+        }
         width: 34px;
         height: 34px;
         border-radius: 8px;
@@ -1065,10 +1111,37 @@ $border: #e2e8f0;
         color: #c2410c;
         border: 1px solid #fdba74;
       }
+
+      &.review-mode-approve {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #86efac;
+      }
+
+      &.review-mode-reject {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+      }
+
+      &.review-mode-cancel {
+        background: #fff7ed;
+        color: #b45309;
+        border: 1px solid #fdba74;
+      }
     }
 
     .form-grid {
       display: grid;
+
+      .form-section-heading {
+        margin-top: 0.25rem;
+        color: #334155;
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1rem;
     }
@@ -1113,6 +1186,12 @@ $border: #e2e8f0;
       }
     }
 
+    .field-helper {
+      color: #64748b;
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
     .field-error {
       color: #dc2626;
       font-size: 0.8rem;
@@ -1154,6 +1233,16 @@ $border: #e2e8f0;
 
           &:hover:not(:disabled) {
             background: #dc2626;
+          }
+        }
+
+        &.btn-warning {
+          background: #fff7ed;
+          color: #b45309;
+          border: 1px solid #fdba74;
+
+          &:hover:not(:disabled) {
+            background: #fed7aa;
           }
         }
 
@@ -1354,6 +1443,7 @@ $border: #e2e8f0;
 }
 
 @media (max-width: 1024px) {
+    .correction-detail-panel .comparison-grid { grid-template-columns: 1fr; }
   .attendance-management-page {
     .page-header {
       flex-direction: column;
