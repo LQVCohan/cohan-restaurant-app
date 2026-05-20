@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   KitchenOrderWorkItem: {
+    find: vi.fn(),
     findOne: vi.fn(),
     findOneAndUpdate: vi.fn(),
+    updateOne: vi.fn(),
   },
   KitchenShiftRosterSnapshot: {
     find: vi.fn(),
@@ -22,9 +24,13 @@ describe("kitchenOrderWorkItem service", () => {
     modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue({
       lean: vi.fn(() => makeSessionChain(null)),
     });
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue({
+      session: vi.fn(async () => []),
+    });
     modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mockReturnValue({
       session: vi.fn(async () => ({ _id: "work-1" })),
     });
+    modelMocks.KitchenOrderWorkItem.updateOne.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
       sort: vi.fn(() => ({ lean: vi.fn(async () => []) })),
     });
@@ -555,6 +561,109 @@ describe("kitchenOrderWorkItem service", () => {
       ).resolves.toBeNull();
 
       expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("unaccepted helpers and marking", () => {
+    it("resolveUnacceptedGraceMinutes returns 3 for bar and 5 for kitchen/default", async () => {
+      const { resolveUnacceptedGraceMinutes } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      expect(resolveUnacceptedGraceMinutes({ station: "bar" })).toBe(3);
+      expect(resolveUnacceptedGraceMinutes({ station: "kitchen" })).toBe(5);
+      expect(resolveUnacceptedGraceMinutes()).toBe(5);
+    });
+
+    it("resolveUnacceptedResponsibleEmployeeIds resolves by priority and de-duplicates", async () => {
+      const { resolveUnacceptedResponsibleEmployeeIds } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      expect(
+        resolveUnacceptedResponsibleEmployeeIds({
+          station: "kitchen",
+          assistantChefIds: ["a1", "a1", null, "a2"],
+          teamEmployeeIds: ["t1"],
+          headChefId: "h1",
+        }),
+      ).toEqual(["a1", "a2"]);
+      expect(resolveUnacceptedResponsibleEmployeeIds({ station: "kitchen", teamEmployeeIds: ["t1", "t1", undefined] })).toEqual(["t1"]);
+      expect(resolveUnacceptedResponsibleEmployeeIds({ station: "kitchen", headChefId: "h1" })).toEqual(["h1"]);
+      expect(resolveUnacceptedResponsibleEmployeeIds({ station: "bar", barStaffIds: ["b1", "b1", null, "b2"], barLeadId: "l1" })).toEqual(["b1", "b2"]);
+      expect(resolveUnacceptedResponsibleEmployeeIds({ station: "bar", barLeadId: "l1", teamEmployeeIds: ["t1"] })).toEqual(["l1"]);
+    });
+
+    it("markUnacceptedKitchenOrderWorkItems marks overdue pending items and keeps status unchanged", async () => {
+      const now = new Date("2026-05-20T10:00:00.000Z");
+      modelMocks.KitchenOrderWorkItem.find.mockReturnValue({
+        session: vi.fn(async () => [
+          { _id: "w-k", station: "kitchen", status: "pending", kitchenEnteredAt: new Date("2026-05-20T09:54:00.000Z"), assistantChefIds: ["a1"] },
+          { _id: "w-b", station: "bar", status: "pending", kitchenEnteredAt: new Date("2026-05-20T09:56:30.000Z"), barStaffIds: ["b1"] },
+        ]),
+      });
+      const { markUnacceptedKitchenOrderWorkItems } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      const result = await markUnacceptedKitchenOrderWorkItems({ restaurantId: "r1", now, session: {} });
+      expect(result).toEqual({ matchedCount: 2, modifiedCount: 2 });
+      expect(modelMocks.KitchenOrderWorkItem.updateOne).toHaveBeenCalledTimes(2);
+      expect(modelMocks.KitchenOrderWorkItem.updateOne).toHaveBeenNthCalledWith(
+        1,
+        { _id: "w-k", unaccepted: { $ne: true } },
+        expect.objectContaining({ $set: expect.objectContaining({ unaccepted: true, unacceptedAfterMinutes: 5, unacceptedResponsibleEmployeeIds: ["a1"], unacceptedAt: now, updatedAt: now }) }),
+        { session: {} },
+      );
+      expect(modelMocks.KitchenOrderWorkItem.updateOne).toHaveBeenNthCalledWith(
+        2,
+        { _id: "w-b", unaccepted: { $ne: true } },
+        expect.objectContaining({ $set: expect.objectContaining({ unaccepted: true, unacceptedAfterMinutes: 3, unacceptedResponsibleEmployeeIds: ["b1"] }) }),
+        { session: {} },
+      );
+      const firstSet = modelMocks.KitchenOrderWorkItem.updateOne.mock.calls[0][1].$set;
+      expect(firstSet).not.toHaveProperty("status");
+    });
+
+    it("does not mark pending items under threshold and skips non-modifying cases", async () => {
+      const now = new Date("2026-05-20T10:00:00.000Z");
+      modelMocks.KitchenOrderWorkItem.find.mockReturnValue({
+        session: vi.fn(async () => [
+          { _id: "w-1", station: "kitchen", status: "pending", kitchenEnteredAt: new Date("2026-05-20T09:56:00.000Z") },
+          { _id: "w-2", station: "bar", status: "pending", kitchenEnteredAt: new Date("2026-05-20T09:58:00.000Z") },
+        ]),
+      });
+      const { markUnacceptedKitchenOrderWorkItems } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      const result = await markUnacceptedKitchenOrderWorkItems({ restaurantId: "r1", now, session: {} });
+      expect(result).toEqual({ matchedCount: 0, modifiedCount: 0 });
+      expect(modelMocks.KitchenOrderWorkItem.updateOne).not.toHaveBeenCalled();
+    });
+
+    it("uses provided graceMinutes and builds threshold query", async () => {
+      const now = new Date("2026-05-20T10:00:00.000Z");
+      modelMocks.KitchenOrderWorkItem.find.mockReturnValue({
+        session: vi.fn(async () => [{ _id: "w-1", station: "kitchen", status: "pending", kitchenEnteredAt: new Date("2026-05-20T09:50:00.000Z"), headChefId: "h1" }]),
+      });
+      const { markUnacceptedKitchenOrderWorkItems } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await markUnacceptedKitchenOrderWorkItems({ restaurantId: "r1", now, graceMinutes: 7, session: {} });
+
+      expect(modelMocks.KitchenOrderWorkItem.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantId: "r1",
+          status: "pending",
+          unaccepted: { $ne: true },
+          kitchenEnteredAt: expect.objectContaining({ $exists: true, $lte: new Date("2026-05-20T09:53:00.000Z") }),
+        }),
+      );
+      expect(modelMocks.KitchenOrderWorkItem.updateOne).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $set: expect.objectContaining({ unacceptedAfterMinutes: 7, unacceptedResponsibleEmployeeIds: ["h1"] }) }),
+        expect.anything(),
+      );
+    });
+
+    it("returns zero when restaurantId missing", async () => {
+      const { markUnacceptedKitchenOrderWorkItems } = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await expect(markUnacceptedKitchenOrderWorkItems({ now: new Date(), session: {} })).resolves.toEqual({
+        matchedCount: 0,
+        modifiedCount: 0,
+      });
+      expect(modelMocks.KitchenOrderWorkItem.find).not.toHaveBeenCalled();
     });
   });
 
