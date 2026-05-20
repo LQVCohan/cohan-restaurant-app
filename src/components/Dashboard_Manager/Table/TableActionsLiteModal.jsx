@@ -198,9 +198,9 @@ export default function TableActionsLiteModal({
 
   const initialDraft = useMemo(
     () => ({
-      code: table?.code || "",
-      capacity: Number(table?.capacity || 0),
-      type: table?.type || "standard",
+      code: table?.code ?? table?.number ?? "",
+      capacity: Number(table?.capacity ?? table?.seats ?? 0),
+      type: table?.type ?? table?.area ?? "standard",
       tags: joinUniqueLabels(table?.tags || [], ", "),
       status: table?.status || "available",
       depositAmount: table?.deposit ?? "",
@@ -306,9 +306,9 @@ export default function TableActionsLiteModal({
     if (!isOpen) return;
     if (didRestore) return;
 
-    setCode(table?.code || "");
-    setCapacity(Number(table?.capacity || 0));
-    setType(table?.type || "standard");
+    setCode(table?.code ?? table?.number ?? "");
+    setCapacity(Number(table?.capacity ?? table?.seats ?? 0));
+    setType(table?.type ?? table?.area ?? "standard");
     setTags(joinUniqueLabels(table?.tags || [], ", "));
     setStatusLocal(table?.status || "available");
     const storedImage = loadTableVrImage(table?.id);
