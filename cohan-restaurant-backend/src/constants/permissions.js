@@ -21,6 +21,8 @@ export const PERMISSIONS = {
 
   STAFF_READ: "staff.read",
   STAFF_WRITE: "staff.write",
+  CUSTOMER_READ: "customer.read",
+  CUSTOMER_UPDATE: "customer.update",
 
   PAYMENT_READ: "payment.read",
   PAYMENT_WRITE: "payment.write",

@@ -14,6 +14,7 @@ import {
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import dayjs from "dayjs";
 
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
@@ -1062,7 +1063,7 @@ export const UserMutation = {
 
   async updateCustomerNote(_, { customerId, restaurantId, noteInternal }, ctx) {
     requireRole(ctx?.user, ["admin", "manager"]);
-    await requirePermission(ctx, "customer.update");
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
 
     if (!mongoose.isValidObjectId(customerId)) {
       throw new GraphQLError("Invalid customerId", {
