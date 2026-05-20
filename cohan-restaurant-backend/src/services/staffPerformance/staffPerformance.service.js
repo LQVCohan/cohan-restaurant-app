@@ -101,6 +101,40 @@ function clampScore(value, fallback = 75) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function getOverlapMinutes(start, end, rangeStart, rangeEnd) {
+  const startDate = start ? new Date(start) : null;
+  const endDate = end ? new Date(end) : null;
+  const fromDate = rangeStart ? new Date(rangeStart) : null;
+  const toDate = rangeEnd ? new Date(rangeEnd) : null;
+  if (
+    !startDate ||
+    !endDate ||
+    !fromDate ||
+    !toDate ||
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime()) ||
+    Number.isNaN(fromDate.getTime()) ||
+    Number.isNaN(toDate.getTime())
+  ) {
+    return 0;
+  }
+  const overlapStart = Math.max(startDate.getTime(), fromDate.getTime());
+  const overlapEnd = Math.min(endDate.getTime(), toDate.getTime());
+  if (overlapEnd <= overlapStart) return 0;
+  return (overlapEnd - overlapStart) / (1000 * 60);
+}
+
+function sumScheduledMinutes(shifts, periodStart, periodEnd) {
+  return Math.round(
+    (shifts || []).reduce(
+      (sum, shift) =>
+        sum +
+        getOverlapMinutes(shift?.startTime, shift?.endTime, periodStart, periodEnd),
+      0,
+    ),
+  );
+}
+
 function weightedFinalScore(components) {
   const totalWeight = Object.values(PERFORMANCE_WEIGHTS).reduce(
     (sum, value) => sum + Number(value || 0),
@@ -246,7 +280,7 @@ async function calculateSnapshotForEmployee({
     throw new Error("Không tìm thấy nhân viên.");
   }
 
-  const [timesheets, shiftsCount, correctionsCount, review, benchmark, customerRatingAgg] =
+  const [timesheets, shifts, correctionsCount, review, benchmark, customerRatingAgg] =
     await Promise.all([
       Timesheet.find({
         employeeId,
@@ -254,13 +288,13 @@ async function calculateSnapshotForEmployee({
         workDate: { $gte: periodStart, $lte: periodEnd },
       }).lean(),
 
-      Shift.countDocuments({
+      Shift.find({
         employeeId,
         restaurantId,
         startTime: { $lte: periodEnd },
         endTime: { $gte: periodStart },
         status: { $ne: "cancelled" },
-      }),
+      }).lean(),
 
       AttendanceCorrectionRequest.countDocuments({
         employeeId,
@@ -309,13 +343,28 @@ async function calculateSnapshotForEmployee({
   const customerRatingScore = clampScore(staffRate * 20, 0);
 
   const orderCount = benchmark.byEmployeeId.get(String(employeeId)) || 0;
-
-  const productivityScore =
-    benchmark.maxOrders > 0
-      ? clampScore((orderCount / benchmark.maxOrders) * 100, 75)
-      : shiftsCount > 0
-        ? 75
-        : 65;
+  const shiftsCount = shifts.length;
+  const scheduledMinutes = sumScheduledMinutes(shifts, periodStart, periodEnd);
+  const actualWorkedMinutes = Math.round(
+    timesheets.reduce((sum, row) => {
+      const workedMinutes = Number(row?.workedMinutes);
+      if (Number.isFinite(workedMinutes) && workedMinutes > 0) {
+        return sum + workedMinutes;
+      }
+      const checkIn = row?.actualCheckInAt ? new Date(row.actualCheckInAt) : null;
+      const checkOut = row?.actualCheckOutAt ? new Date(row.actualCheckOutAt) : null;
+      if (
+        !checkIn ||
+        !checkOut ||
+        Number.isNaN(checkIn.getTime()) ||
+        Number.isNaN(checkOut.getTime()) ||
+        checkOut <= checkIn
+      ) {
+        return sum;
+      }
+      return sum + (checkOut.getTime() - checkIn.getTime()) / (1000 * 60);
+    }, 0),
+  );
 
   const recordCount = timesheets.length;
   const lateEvents = timesheets.filter(
@@ -345,61 +394,78 @@ async function calculateSnapshotForEmployee({
   const punctualityScore =
     recordCount > 0 ? clampScore(100 - punctualityPenalty, 75) : 75;
 
-  const qualityScore = review
-    ? clampScore(
-        (Number(review.skillScore || 75) +
-          Number(review.attitudeScore || 75) +
-          Number(review.teamworkScore || 75)) /
-          3,
-        75,
-      )
-    : 75;
-
-  const managerBaseScore = review
-    ? clampScore(
-        (Number(review.managerRatingScore || 75) +
-          Number(review.attitudeScore || 75) +
-          Number(review.teamworkScore || 75) +
-          Number(review.skillScore || 75)) /
-          4,
-        75,
-      )
-    : 75;
+  const qualityScore = review ? clampScore(review.skillScore, 75) : 75;
+  const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;
 
   const compliancePenalty = correctionsCount * 7;
   const complianceScore = clampScore(100 - compliancePenalty, 75);
+
+  const hasPerformanceActivity =
+    scheduledMinutes > 0 ||
+    actualWorkedMinutes > 0 ||
+    recordCount > 0 ||
+    orderCount > 0 ||
+    Boolean(review) ||
+    correctionsCount > 0;
+  const insufficientData = !hasPerformanceActivity;
+
+  const productivityScore = insufficientData
+    ? 0
+    : scheduledMinutes > 0
+      ? clampScore((actualWorkedMinutes / scheduledMinutes) * 100, 0)
+      : recordCount > 0
+        ? 75
+        : 0;
+
+  const productivityNote = insufficientData
+    ? "Không có dữ liệu làm việc trong kỳ."
+    : scheduledMinutes > 0
+      ? "Dựa trên tỷ lệ hoàn thành thời lượng ca được phân công trong kỳ; order chỉ dùng làm dữ liệu tham khảo."
+      : "Có dữ liệu chấm công nhưng thiếu lịch phân ca, dùng điểm trung lập.";
 
   const components = {
     productivity: {
       score: productivityScore,
       weight: PERFORMANCE_WEIGHTS.productivity,
-      note: "Dựa trên số order/khối lượng xử lý trong kỳ so với nhân viên cùng nhà hàng.",
+      note: productivityNote,
     },
     punctuality: {
-      score: punctualityScore,
+      score: insufficientData ? 0 : punctualityScore,
       weight: PERFORMANCE_WEIGHTS.punctuality,
-      note: "Dựa trên đi trễ, về sớm, vắng mặt và tổng số phút vi phạm.",
+      note: insufficientData
+        ? "Không có dữ liệu làm việc trong kỳ."
+        : "Dựa trên đi trễ, về sớm, vắng mặt và tổng số phút vi phạm.",
     },
     quality: {
-      score: qualityScore,
+      score: insufficientData ? 0 : qualityScore,
       weight: PERFORMANCE_WEIGHTS.quality,
-      note: "Dựa trên đánh giá chất lượng hiện có của nhân viên.",
+      note: insufficientData
+        ? "Không có dữ liệu làm việc trong kỳ."
+        : review
+          ? "Dựa trên điểm kỹ năng/chất lượng chuyên môn theo vai trò do quản lý nhập."
+          : "Chưa có đánh giá quản lý, dùng điểm trung lập cho kỹ năng/chất lượng chuyên môn.",
     },
     managerReview: {
-      score: managerBaseScore,
+      score: insufficientData ? 0 : managerBaseScore,
       weight: PERFORMANCE_WEIGHTS.managerReview,
-      note: review
-        ? "Dựa trên đánh giá quản lý trong kỳ."
-        : "Chưa có đánh giá quản lý, dùng điểm trung lập.",
+      note: insufficientData
+        ? "Không có dữ liệu làm việc trong kỳ."
+        : review
+          ? "Dựa trên điểm đánh giá tổng quan của quản lý trong kỳ."
+          : "Chưa có đánh giá quản lý, dùng điểm trung lập.",
     },
     compliance: {
-      score: complianceScore,
+      score: insufficientData ? 0 : complianceScore,
       weight: PERFORMANCE_WEIGHTS.compliance,
-      note: "Dựa trên số yêu cầu chỉnh công và mức độ tuân thủ quy trình.",
+      note: insufficientData
+        ? "Không có dữ liệu làm việc trong kỳ."
+        : "Dựa trên số yêu cầu chỉnh công và mức độ tuân thủ quy trình.",
     },
   };
 
-  const finalPerformanceScore = weightedFinalScore(components);
+  const finalPerformanceScore = insufficientData
+    ? 0
+    : weightedFinalScore(components);
 
   const actorId = getActorId(ctx);
 
@@ -414,7 +480,9 @@ async function calculateSnapshotForEmployee({
       $set: {
         ...components,
         finalPerformanceScore,
-        performanceLevel: resolvePerformanceLevel(finalPerformanceScore),
+        performanceLevel: insufficientData
+          ? "poor"
+          : resolvePerformanceLevel(finalPerformanceScore),
         factors: {
           orderCount,
           peerMaxOrderCount: benchmark.maxOrders,
@@ -430,6 +498,11 @@ async function calculateSnapshotForEmployee({
           staffRateCount,
           customerRatingScore,
           hasManagerReview: Boolean(review),
+          scheduledMinutes,
+          actualWorkedMinutes,
+          productivitySource: "shift_completion",
+          hasPerformanceActivity,
+          insufficientData,
         },
         generatedBy: actorId,
         generatedByName: getActorName(ctx),
