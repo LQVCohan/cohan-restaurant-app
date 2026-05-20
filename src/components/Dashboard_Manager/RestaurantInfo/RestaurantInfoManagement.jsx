@@ -1690,8 +1690,27 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
         restaurantList={restaurantOptions.map((r) => ({ id: r.value, name: r.label }))}
-        primaryAction={{ icon: "💾", label: savingRestaurant ? "Đang lưu..." : "Lưu thay đổi", onClick: onSaveRestaurantInfo }}
+        restaurantDisabled={managerRestaurantsLoading || allRestaurantsLoading}
+        customFilters={(
+          <select
+            className="mph-select"
+            value=""
+            onChange={(e) => e.target.value && loadDraft(e.target.value)}
+          >
+            <option value="">Lịch sử bản nháp</option>
+            {drafts.map((item) => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+        )}
         secondaryActions={[{ icon: "📝", label: "Lưu nháp", onClick: () => saveDraftToLocal() }]}
+        primaryAction={{
+          icon: "💾",
+          label: "Lưu thay đổi",
+          onClick: onSaveRestaurantInfo,
+          loading: savingRestaurant,
+          disabled: savingRestaurant,
+        }}
         footerLeft={<span>{restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng"}</span>}
         footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã đồng bộ"}</span>}
       />

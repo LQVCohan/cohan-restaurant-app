@@ -8,8 +8,6 @@ import React, {
   useState,
 } from "react";
 import {
-  FiMapPin,
-  FiClock,
   FiPlus,
   FiFolderPlus,
   FiTag,
@@ -1077,12 +1075,22 @@ const MenuManagement = () => {
         title="Quản lý Thực Đơn"
         subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"
         icon="📋"
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Tìm món, mã món, danh mục..."
         selectedRestaurant={currentRestaurant || ""}
         onRestaurantChange={setCurrentRestaurant}
         restaurantList={managerRestaurants}
+        customFilters={(
+          <select
+            className="mph-select"
+            value={selectedTimeSlot || "breakfast"}
+            onChange={(e) => setSelectedTimeSlot(e.target.value)}
+          >
+            {Object.entries(TIME_SLOT_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        )}
         quickActions={[
           ...(canManageDishCategory ? [{ icon: "🏷️", label: "Danh mục món", onClick: () => toggleModal("dishCategory", true) }] : []),
           ...(canManageMenuGroup ? [{ icon: "📁", label: "Nhóm thực đơn", onClick: () => toggleModal("menuGroup", true) }] : []),

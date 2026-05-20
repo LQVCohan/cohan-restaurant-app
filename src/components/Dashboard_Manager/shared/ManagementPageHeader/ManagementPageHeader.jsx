@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./ManagementPageHeader.scss";
 
-const fmt = (v) => (typeof v === "number" ? v.toLocaleString("vi-VN") : (v ?? "--"));
+const formatValue = (value) =>
+  typeof value === "number" ? value.toLocaleString("vi-VN") : value ?? "--";
+
+const renderActionIcon = (icon) => icon || null;
 
 const ManagementPageHeader = ({
   eyebrow,
@@ -16,11 +19,19 @@ const ManagementPageHeader = ({
   selectedRestaurant,
   onRestaurantChange,
   restaurantList = [],
+  restaurantPlaceholder = "Chọn chi nhánh",
+  restaurantDisabled = false,
   quickActions = [],
   secondaryActions = [],
   primaryAction,
+  beforeControls,
+  customFilters,
+  afterControls,
+  customControls,
   footerLeft,
   footerRight,
+  customFooterLeft,
+  customFooterRight,
   loading = false,
   isCollapsed = false,
   onToggle,
@@ -28,35 +39,146 @@ const ManagementPageHeader = ({
   className = "",
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 60000); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const shiftInfo = useMemo(() => {
-    const h = currentTime.getHours();
-    if (h >= 5 && h < 12) return { label: "Ca Sáng", icon: "🌅", greeting: "Chào buổi sáng" };
-    if (h >= 12 && h < 18) return { label: "Ca Chiều", icon: "☀️", greeting: "Chào buổi chiều" };
-    return { label: "Ca Tối", icon: "🌙", greeting: "Buổi tối tốt lành" };
+    const hour = currentTime.getHours();
+    if (hour >= 5 && hour < 12) return { label: "Ca Sáng", icon: "🌅", greet: "Chào buổi sáng" };
+    if (hour >= 12 && hour < 18) return { label: "Ca Chiều", icon: "☀️", greet: "Chào buổi chiều" };
+    return { label: "Ca Tối", icon: "🌙", greet: "Buổi tối tốt lành" };
   }, [currentTime]);
 
+  const renderAction = (action, kind = "secondary") => {
+    if (!action?.onClick) return null;
+    const cls = kind === "primary" || action.variant === "primary" ? "mph-btn mph-btn--primary" : "mph-btn mph-btn--secondary";
+    return (
+      <button
+        key={action.label}
+        type="button"
+        onClick={action.onClick}
+        className={cls}
+        disabled={action.disabled || action.loading}
+        title={action.title || action.label}
+        aria-label={action.ariaLabel || action.label}
+      >
+        {renderActionIcon(action.icon)}
+        <span>{action.loading ? "Đang xử lý..." : action.label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className={`management-page-header ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}>
-      {onToggle && <button className="mph-toggle" onClick={onToggle} title="Thu gọn/Mở rộng"><span>{isCollapsed ? "▼" : "▲"}</span></button>}
+    <section className={`management-page-header ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}>
+      {onToggle && (
+        <button className="mph-toggle" onClick={onToggle} title="Thu gọn/Mở rộng" type="button">
+          <span>{isCollapsed ? "▼" : "▲"}</span>
+        </button>
+      )}
+
       <div className="mph-left">
         {eyebrow && <div className="mph-eyebrow">{eyebrow}</div>}
-        <h1 className="mph-title">{icon ? <span>{icon}</span> : null}{title}</h1>
-        {!isCollapsed && <><p className="mph-greeting">{greeting || shiftInfo.greeting}</p><p className="mph-subtitle">{subtitle}</p></>}
-        {!isCollapsed && showTimeWidget && <div className="mph-time"><strong>{currentTime.toLocaleTimeString("vi-VN", {hour:"2-digit",minute:"2-digit"})}</strong><span>{currentTime.toLocaleDateString("vi-VN", {weekday:"long",day:"2-digit",month:"2-digit"})}</span><em>{shiftInfo.icon} {shiftInfo.label}</em></div>}
+        <h1 className="mph-title">
+          {icon && <span className="mph-title__icon">{icon}</span>}
+          <span>{title}</span>
+        </h1>
+        {!isCollapsed && (
+          <>
+            <p className="mph-greeting">{greeting || shiftInfo.greet}</p>
+            {subtitle && <p className="mph-subtitle">{subtitle}</p>}
+          </>
+        )}
+
+        {!isCollapsed && showTimeWidget && (
+          <div className="mph-time-widget">
+            <div className="mph-time-widget__main">{currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</div>
+            <div className="mph-time-widget__sub">{currentTime.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" })}</div>
+            <div className="mph-time-widget__shift">{shiftInfo.icon} {shiftInfo.label}</div>
+          </div>
+        )}
       </div>
+
       <div className="mph-right">
-        {!isCollapsed && !!stats.length && <div className="mph-stats">{stats.slice(0,4).map((s)=> <div key={s.id||s.label} className="mph-stat"><div>{s.icon||"•"}</div><div><span>{s.label}</span><strong>{loading?"--":fmt(s.value)}{s.suffix?` ${s.suffix}`:""}</strong></div></div>)}</div>}
-        <div className="mph-controls">
-          {onSearchChange && <div className="mph-search"><span>🔍</span><input value={searchValue} onChange={(e)=>onSearchChange(e.target.value)} placeholder={searchPlaceholder} /></div>}
-          {onRestaurantChange && <select value={selectedRestaurant || ""} onChange={(e)=>onRestaurantChange(e.target.value)}>{!restaurantList.length && <option value="">Không có chi nhánh</option>}{restaurantList.map((r)=><option key={r.id||r._id} value={r.id||r._id}>{r.name}</option>)}</select>}
-          {!isCollapsed && quickActions.map((a)=><button key={a.label} onClick={a.onClick} title={a.label} aria-label={a.label} className="mph-icon-btn">{a.icon}</button>)}
-          {secondaryActions.map((a)=><button key={a.label} onClick={a.onClick} className="mph-btn mph-btn--secondary">{a.icon} {a.label}</button>)}
-          {primaryAction?.onClick && <button onClick={primaryAction.onClick} className="mph-btn mph-btn--primary">{primaryAction.icon} {primaryAction.label}</button>}
+        {!isCollapsed && stats.length > 0 && (
+          <div className="mph-stats-grid">
+            {stats.slice(0, 4).map((item) => (
+              <div key={item.id || item.label} className={`mph-stat-card tone-${item.tone || "default"}`}>
+                <div className="mph-stat-card__icon">{item.icon || "•"}</div>
+                <div className="mph-stat-card__body">
+                  <span className="mph-stat-card__label">{item.label}</span>
+                  <div className="mph-stat-card__value-wrap">
+                    <strong className="mph-stat-card__value">{loading ? "--" : formatValue(item.value)}</strong>
+                    {item.suffix && <span className="mph-stat-card__suffix">{item.suffix}</span>}
+                    {item.trend && <span className="mph-stat-card__trend">{item.trend}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mph-controls-row">
+          {beforeControls}
+
+          {onSearchChange && (
+            <label className="mph-search" aria-label="search">
+              <span>🔍</span>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+              />
+            </label>
+          )}
+
+          {onRestaurantChange && (
+            <select
+              className="mph-select"
+              value={selectedRestaurant || ""}
+              onChange={(e) => onRestaurantChange(e.target.value)}
+              disabled={restaurantDisabled}
+            >
+              {!restaurantList.length && <option value="">{restaurantPlaceholder}</option>}
+              {restaurantList.map((r) => (
+                <option key={r.id || r._id} value={r.id || r._id}>{r.name}</option>
+              ))}
+            </select>
+          )}
+
+          {customFilters}
+
+          {!isCollapsed && quickActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="mph-icon-btn"
+              onClick={action.onClick}
+              title={action.title || action.label}
+              aria-label={action.ariaLabel || action.label}
+              disabled={action.disabled || action.loading}
+            >
+              {renderActionIcon(action.icon)}
+            </button>
+          ))}
+
+          {secondaryActions.map((action) => renderAction(action))}
+          {renderAction(primaryAction, "primary")}
+          {afterControls}
+          {customControls}
         </div>
-        {!isCollapsed && (footerLeft || footerRight) && <div className="mph-footer"><div>{footerLeft}</div><div>{footerRight}</div></div>}
+
+        {!isCollapsed && (footerLeft || footerRight || customFooterLeft || customFooterRight) && (
+          <div className="mph-footer-row">
+            <div>{customFooterLeft || footerLeft}</div>
+            <div>{customFooterRight || footerRight}</div>
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 };
 

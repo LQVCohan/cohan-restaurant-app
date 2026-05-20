@@ -7,7 +7,6 @@ import React, {
   useContext,
 } from "react";
 import {
-  Clock,
   ChefHat,
   CheckCircle,
   AlertTriangle,
@@ -19,8 +18,6 @@ import {
   Settings,
   Plus,
   Filter,
-  Search,
-  ShoppingBag,
   Download,
 } from "lucide-react";
 import { gql, useLazyQuery, useMutation } from "@apollo/client";
@@ -31,7 +28,6 @@ import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
 import NewOrderModal from "./components/NewOrderModal";
-import StatsCard from "./components/StatsCard";
 import OrderSettingsModal from "./components/OrderSettingsModal";
 
 import useOrderManagement from "../../../hooks/useOrderManagement";
@@ -1015,52 +1011,28 @@ const OrderManagement = () => {
             primaryAction={{ icon: focusMode ? "🡼" : "🡾", label: focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp", onClick: () => setFocusMode(!focusMode) }}
           />
         ) : (
-          <header className="om-header"><div className="om-header__focus-title"><span className="om-badge-live">LIVE</span><h1>KITCHEN DISPLAY</h1></div><div className="om-header__actions"><button onClick={() => setFocusMode(!focusMode)} className={`om-btn-focus ${focusMode ? "om-btn-focus--active" : ""}`}>{focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}<span>{focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp"}</span></button></div></header>
+          <header className="om-header">
+            <div className="om-header__focus-title">
+              <span className="om-badge-live">LIVE</span>
+              <h1>KITCHEN DISPLAY</h1>
+            </div>
+            <div className="om-header__actions">
+              <button
+                onClick={() => setFocusMode(!focusMode)}
+                className={`om-btn-focus ${focusMode ? "om-btn-focus--active" : ""}`}
+              >
+                {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                <span>{focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp"}</span>
+              </button>
+            </div>
+          </header>
         )}
 
-        {!focusMode && (
-          <div className="om-stats-grid">
-            <StatsCard
-              icon={<ShoppingBag />}
-              title="Đợt gọi món"
-              value={stats.total}
-              variant="blue"
-            />
-            <StatsCard
-              icon={<Clock />}
-              title="Chưa hoàn thành"
-              value={stats.pending}
-              variant="warning"
-            />
-            <StatsCard
-              icon={<ChefHat />}
-              title="Đang chuẩn bị"
-              value={stats.preparing}
-              variant="purple"
-            />
-            <StatsCard
-              icon={<CheckCircle />}
-              title="Đã xong (phiên)"
-              value={stats.completed}
-              variant="success"
-            />
-          </div>
-        )}
 
         <div className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}>
+
           <div className="om-toolbar__inner">
             <div className="om-toolbar__filters">
-              <div className="om-search-box">
-                <Search size={18} className="om-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Tìm ID, Tên KH, Món..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="om-search-input"
-                />
-              </div>
-
               <div className="om-filter-group">
                 <div className="om-select-wrapper">
                   <select
