@@ -32,7 +32,12 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
     const previousSnapshot = row?.previousSnapshot || null;
     const customerRating = formatCustomerRating(snapshot?.factors);
     const customerRatingCount = Number(snapshot?.factors?.staffRateCount);
-    const note = customerRating?.hasRating ? "Rating khách hàng chỉ tham khảo" : "";
+    const notes = [];
+    if (customerRating?.hasRating) notes.push("Rating khách hàng chỉ tham khảo");
+    if (snapshot?.factors?.insufficientData === true) {
+      notes.push("Không đủ dữ liệu hiệu suất");
+    }
+    const note = notes.join(" | ");
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
       employee.name || snapshot.employeeName || CSV_EMPTY_VALUE,

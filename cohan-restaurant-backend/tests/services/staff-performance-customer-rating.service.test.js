@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   staffFindById: vi.fn(),
   staffFind: vi.fn(),
   timesheetFind: vi.fn(),
-  shiftCountDocuments: vi.fn(),
+  shiftFind: vi.fn(),
   acrCountDocuments: vi.fn(),
   reviewFindOne: vi.fn(),
   orderAggregate: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("../../models/index.js", () => ({
     find: mocks.staffFind,
   },
   Timesheet: { find: mocks.timesheetFind },
-  Shift: { countDocuments: mocks.shiftCountDocuments },
+  Shift: { find: mocks.shiftFind },
   AttendanceCorrectionRequest: { countDocuments: mocks.acrCountDocuments },
   StaffPerformanceReview: { findOne: mocks.reviewFindOne },
   Order: { aggregate: mocks.orderAggregate },
@@ -62,7 +62,7 @@ describe("staffPerformance customer rating factors", () => {
     mocks.staffFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([{ _id: employeeId }])) });
     mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null }));
     mocks.timesheetFind.mockReturnValue(chainLean([]));
-    mocks.shiftCountDocuments.mockResolvedValue(0);
+    mocks.shiftFind.mockReturnValue(chainLean([]));
     mocks.acrCountDocuments.mockResolvedValue(0);
     mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 60, attitudeScore: 60, teamworkScore: 60, skillScore: 60 }));
     mocks.orderAggregate.mockResolvedValue([]);
