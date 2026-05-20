@@ -55,6 +55,7 @@ export const GET_USERS = gql`
       point
       loyaltyPoints
       customerType
+      noteInternal
       totalOrders
       totalSpending
       emailVerified
@@ -349,6 +350,32 @@ export const UPDATE_CUSTOMER_METRICS = gql`
       id
       loyaltyPoints
       customerType
+      updatedAt
+    }
+  }
+`;
+
+export const UPDATE_CUSTOMER_NOTE = gql`
+  mutation UpdateCustomerNote(
+    $customerId: ID!
+    $restaurantId: ID!
+    $noteInternal: String
+  ) {
+    updateCustomerNote(
+      customerId: $customerId
+      restaurantId: $restaurantId
+      noteInternal: $noteInternal
+    ) {
+      id
+      fullName
+      email
+      phone
+      isGuest
+      noteInternal
+      refRestaurants {
+        id
+        name
+      }
       updatedAt
     }
   }

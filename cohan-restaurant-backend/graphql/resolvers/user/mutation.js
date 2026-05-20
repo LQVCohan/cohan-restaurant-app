@@ -13,6 +13,8 @@ import {
 } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import dayjs from "dayjs";
 
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
@@ -892,6 +894,36 @@ export const UserMutation = {
       });
     }
 
+    const actorRestaurantIds = new Set(
+      [
+        authUser?.restaurantForStaff,
+        authUser?.restaurantId,
+        ...(Array.isArray(authUser?.restaurantIds) ? authUser.restaurantIds : []),
+        ...(Array.isArray(authUser?.refRestaurants) ? authUser.refRestaurants : []),
+      ]
+        .map((id) => String(id || ""))
+        .filter(Boolean),
+    );
+    const targetRestaurantIds = new Set(
+      [
+        u?.restaurantForStaff,
+        ...(Array.isArray(u?.refRestaurants) ? u.refRestaurants : []),
+      ]
+        .map((id) => String(id || ""))
+        .filter(Boolean),
+    );
+
+    if (actorRestaurantIds.size && targetRestaurantIds.size) {
+      const inScope = [...targetRestaurantIds].some((id) =>
+        actorRestaurantIds.has(id),
+      );
+      if (!inScope) {
+        throw new GraphQLError("FORBIDDEN_SCOPE", {
+          extensions: { code: "FORBIDDEN" },
+        });
+      }
+    }
+
     const updates = {};
     if (typeof input.fullName === "string")
       updates.fullName = input.fullName.trim();
@@ -1027,6 +1059,55 @@ export const UserMutation = {
       .lean({ virtuals: true });
 
     return saved;
+  },
+
+  async updateCustomerNote(_, { customerId, restaurantId, noteInternal }, ctx) {
+    requireRole(ctx?.user, ["admin", "manager"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
+
+    if (!mongoose.isValidObjectId(customerId)) {
+      throw new GraphQLError("Invalid customerId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+    await requireRestaurantAccess(ctx, rid);
+
+    const customer = await User.findById(customerId).populate("role");
+    if (!customer) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    const roleSlug = String(customer.role?.slug || customer.role?.name || "").toLowerCase();
+    const isCustomerLike = customer.isGuest === true || roleSlug === "customer";
+    if (!isCustomerLike) {
+      throw new GraphQLError("Target must be customer", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
+    const targetRestaurantIds = (customer.refRestaurants || []).map((id) =>
+      String(id || ""),
+    );
+    if (!targetRestaurantIds.includes(String(rid))) {
+      throw new GraphQLError("FORBIDDEN_SCOPE", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
+    customer.noteInternal =
+      typeof noteInternal === "string" ? noteInternal.trim() : "";
+    await customer.save();
+
+    return loadUserForGraph(customer._id);
   },
 
   // === Quick status ===

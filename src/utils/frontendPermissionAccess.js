@@ -19,6 +19,8 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "payment.write",
     "staff.read",
     "staff.write",
+    "customer.read",
+    "customer.update",
     "shift.read",
     "shift.manage",
     "table.read",

@@ -45,6 +45,8 @@ export const permissions = [
   ["payment.write", "Xử lý thanh toán", "payment", "Tạo và xác nhận thanh toán"],
   ["staff.read", "Xem nhân viên", "staff", "Xem danh sách nhân viên"],
   ["staff.write", "Quản lý nhân viên", "staff", "Thêm, sửa, vô hiệu hóa nhân viên"],
+  ["customer.read", "Xem khách hàng CRM", "customer", "Xem danh sách và thông tin khách hàng CRM"],
+  ["customer.update", "Cập nhật khách hàng CRM", "customer", "Cập nhật thông tin CRM hẹp như ghi chú nội bộ khách hàng"],
   ["inventory.read", "Xem tồn kho", "inventory", "Xem danh sách hàng tồn kho và nguyên liệu"],
   ["inventory.write", "Quản lý tồn kho", "inventory", "Tạo, sửa, xóa dữ liệu tồn kho và nguyên liệu"],
   ["stock.read", "Xem nhập xuất kho", "inventory", "Xem số lượng và lịch sử nhập xuất kho"],

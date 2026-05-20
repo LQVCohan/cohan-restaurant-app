@@ -114,6 +114,54 @@ const formatCompactCount = (n) =>
     maximumFractionDigits: 1,
   }).format(Number(n || 0));
 
+const DEFAULT_RANKS_FALLBACK = [
+  { name: "Mới", minPoints: 0, benefits: "" },
+  { name: "Thân thiết", minPoints: 5, benefits: "" },
+  { name: "VIP", minPoints: 20, benefits: "" },
+];
+
+const normalizeRanks = (ranks = []) => {
+  const source = Array.isArray(ranks) && ranks.length ? ranks : DEFAULT_RANKS_FALLBACK;
+  return source
+    .map((rank) => ({
+      name: rank?.name || "",
+      minPoints: Number(rank?.minPoints || 0),
+      benefits: rank?.benefits || "",
+    }))
+    .sort((a, b) => b.minPoints - a.minPoints);
+};
+
+const resolveCustomerRank = (loyaltyPoints, ranks = []) => {
+  const points = Math.max(0, Number(loyaltyPoints || 0));
+  const sortedRanks = normalizeRanks(ranks);
+  return (
+    sortedRanks.find((rank) => points >= rank.minPoints) ||
+    sortedRanks[sortedRanks.length - 1] ||
+    DEFAULT_RANKS_FALLBACK[0]
+  );
+};
+
+const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
+const EXCEL_INVALID_SHEET_NAME_CHARS = /[\[\]:*?/\\]/g;
+
+const createSafeSheetName = (baseName, usedNames) => {
+  const rawName = String(baseName || "").replace(EXCEL_INVALID_SHEET_NAME_CHARS, "").trim();
+  const fallback = "Rank";
+  const normalizedBase = (rawName || fallback).slice(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+  let candidate = normalizedBase;
+  let seq = 2;
+
+  while (usedNames.has(candidate)) {
+    const suffix = ` - ${seq}`;
+    const maxBaseLength = Math.max(1, EXCEL_SHEET_NAME_MAX_LENGTH - suffix.length);
+    candidate = `${normalizedBase.slice(0, maxBaseLength)}${suffix}`;
+    seq += 1;
+  }
+
+  usedNames.add(candidate);
+  return candidate;
+};
+
 /* ================== Main Component ================== */
 
 const CustomerManagement = () => {
@@ -124,7 +172,6 @@ const CustomerManagement = () => {
     filteredCustomers,
     loading: usersLoading,
     searchCustomers,
-    filterCustomers,
     switchRestaurant,
     getCustomers,
   } = useUserManagement();
@@ -214,7 +261,6 @@ const CustomerManagement = () => {
       filterKey = filterKey.category;
     }
     setActiveFilter(filterKey);
-    filterCustomers(filterKey);
   };
 
   const handleRestaurantChange = (restaurantId) => {
@@ -276,14 +322,21 @@ const CustomerManagement = () => {
       email.includes(q) ||
       phone.includes(searchQuery || "");
 
-    const typeRaw = (createdUser.customerType || "NEW").toUpperCase();
-    const typeVN =
-      typeRaw === "VIP" ? "VIP" : typeRaw === "OFTEN" ? "Thường xuyên" : "Mới";
+    const createdUserRankName = resolveCustomerRank(
+      createdUser?.loyaltyPoints,
+      rankSettings,
+    ).name;
+    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const baseName = sortedAsc[0]?.name || "Mới";
+    const middleName =
+      (sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1])?.name ||
+      "Thân thiết";
+    const topName = sortedAsc[sortedAsc.length - 1]?.name || "VIP";
     const matchesFilter =
       activeFilter === "all" ||
-      (activeFilter === "vip" && typeVN === "VIP") ||
-      (activeFilter === "new" && typeVN === "Mới") ||
-      (activeFilter === "frequent" && typeVN === "Thường xuyên");
+      (activeFilter === "vip" && createdUserRankName === topName) ||
+      (activeFilter === "new" && createdUserRankName === baseName) ||
+      (activeFilter === "frequent" && createdUserRankName === middleName);
 
     return { visibleInCurrentList: matchesSearch && matchesFilter };
   };
@@ -310,6 +363,10 @@ const CustomerManagement = () => {
     }
     return map;
   }, [ordersAll]);
+  const rankSettings = useMemo(
+    () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
+    [rankSettingsData],
+  );
 
   // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
   const customersDecorated = useMemo(() => {
@@ -321,13 +378,14 @@ const CustomerManagement = () => {
       return {
         ...c,
         displayName: c.name || "Khách hàng",
+        customerType: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
         recentOrders,
         favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
         topDishes,
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
-  }, [filteredCustomers, ordersByUserId]);
+  }, [filteredCustomers, ordersByUserId, rankSettings]);
 
   const onlineCount = useMemo(
     () => customersDecorated.filter((c) => c.online).length,
@@ -335,35 +393,55 @@ const CustomerManagement = () => {
   );
 
   // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
+  const tierFilters = useMemo(() => {
+    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const base = sortedAsc[0];
+    const middle = sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1];
+    const top = sortedAsc[sortedAsc.length - 1];
+    return {
+      topName: top?.name || "VIP",
+      middleName: middle?.name || "Thân thiết",
+      baseName: base?.name || "Mới",
+    };
+  }, [rankSettings]);
+
+  const customersVisible = useMemo(() => {
+    if (activeFilter === "all") return customersDecorated;
+    if (activeFilter === "vip") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.topName);
+    }
+    if (activeFilter === "new") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.baseName);
+    }
+    if (activeFilter === "frequent") {
+      return customersDecorated.filter((c) => c.customerType === tierFilters.middleName);
+    }
+    return customersDecorated;
+  }, [activeFilter, customersDecorated, tierFilters]);
+
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
-    const vip = customersDecorated.filter(
-      (c) => c.customerType === "VIP",
-    ).length;
-    const isNew = customersDecorated.filter(
-      (c) => c.customerType === "Mới",
-    ).length;
-    const often = customersDecorated.filter(
-      (c) => c.customerType === "Thường xuyên",
-    ).length;
+    const vip = customersDecorated.filter((c) => c.customerType === tierFilters.topName).length;
+    const isNew = customersDecorated.filter((c) => c.customerType === tierFilters.baseName).length;
+    const often = customersDecorated.filter((c) => c.customerType === tierFilters.middleName).length;
 
     return [
       { key: "all", label: "Tất cả", icon: <Users size={16} />, count: total },
       {
         key: "vip",
-        label: "VIP",
+        label: tierFilters.topName,
         icon: <Star size={16} fill="currentColor" />,
         count: vip,
       },
-      { key: "new", label: "Mới", icon: <Sparkles size={16} />, count: isNew },
+      { key: "new", label: tierFilters.baseName, icon: <Sparkles size={16} />, count: isNew },
       {
         key: "frequent",
-        label: "Thân thiết",
+        label: tierFilters.middleName,
         icon: <UserCheck size={16} />,
         count: often,
       },
     ];
-  }, [customersDecorated]);
+  }, [customersDecorated, tierFilters]);
 
   const loading = usersLoading || ordersAllLoading;
 
@@ -373,7 +451,7 @@ const CustomerManagement = () => {
     customer.displayName || customer.name || "",
     customer.phone || "",
     customer.email || "",
-    customer.customerType || "",
+    resolveCustomerRank(customer?.loyaltyPoints, rankSettings).name || "",
     Number(customer.loyaltyPoints || 0),
     Number(customer.totalOrders || 0),
     Number(customer.totalSpending || 0),
@@ -382,7 +460,7 @@ const CustomerManagement = () => {
     customer.lastLoginAt ? toDateStringVI(customer.lastLoginAt) : "",
   ];
 
-  const buildScopeSheets = (scope, rows) => {
+  const buildScopeSheets = (scope, rows, ranks) => {
     const header = [
       "STT",
       "Mã KH",
@@ -416,17 +494,20 @@ const CustomerManagement = () => {
       ];
     }
 
-    const vipRows = rows.filter((c) => Number(c.loyaltyPoints || 0) > 15000);
-    const frequentRows = rows.filter((c) => {
-      const pts = Number(c.loyaltyPoints || 0);
-      return pts > 5000 && pts <= 15000;
+    const groupedByRank = rows.reduce((acc, customer) => {
+      const rank = resolveCustomerRank(customer?.loyaltyPoints, ranks);
+      const rankName = rank?.name || "KhongXacDinh";
+      if (!acc.has(rankName)) acc.set(rankName, []);
+      acc.get(rankName).push(customer);
+      return acc;
+    }, new Map());
+
+    const usedSheetNames = new Set();
+    return normalizeRanks(ranks).map((rank) => {
+      const customersByRank = groupedByRank.get(rank.name) || [];
+      const safeSheetName = createSafeSheetName(rank?.name, usedSheetNames);
+      return { name: safeSheetName, rows: [header, ...customersByRank.map(toCustomerRow)] };
     });
-    const newRows = rows.filter((c) => Number(c.loyaltyPoints || 0) <= 5000);
-    return [
-      { name: "VIP", rows: [header, ...vipRows.map(toCustomerRow)] },
-      { name: "ThanThiet", rows: [header, ...frequentRows.map(toCustomerRow)] },
-      { name: "Moi", rows: [header, ...newRows.map(toCustomerRow)] },
-    ];
   };
 
   const handleExportExcel = () => {
@@ -434,13 +515,13 @@ const CustomerManagement = () => {
       setExporting(true);
       setExportError("");
 
-      const visibleRows = customersDecorated || [];
+      const visibleRows = customersVisible || [];
       if (!visibleRows.length) {
         setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
         return;
       }
 
-      const sheets = buildScopeSheets(exportScope, visibleRows);
+      const sheets = buildScopeSheets(exportScope, visibleRows, rankSettings);
       const dateSuffix = new Date().toISOString().slice(0, 10);
       const scopeSuffix =
         exportScope === "current_list"
@@ -580,7 +661,7 @@ const CustomerManagement = () => {
       <main className="cm-layout">
         <section className="cm-main-area">
           <CustomerList
-            customers={customersDecorated}
+            customers={customersVisible}
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />
@@ -648,7 +729,7 @@ const CustomerManagement = () => {
       {showPromotionModal && (
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
-          customers={customersDecorated}
+          customers={customersVisible}
           restaurantId={selectedRestaurantId}
         />
       )}

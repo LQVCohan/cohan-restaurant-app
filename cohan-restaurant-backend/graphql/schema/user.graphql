@@ -2845,6 +2845,11 @@ type Mutation {
     loyaltyPoints: Int!
     customerType: CustomerType!
   ): User!
+  updateCustomerNote(
+    customerId: ID!
+    restaurantId: ID!
+    noteInternal: String
+  ): User!
   upsertCustomerRankSettings(
     restaurantId: ID!
     ranks: [RankThresholdInput!]!

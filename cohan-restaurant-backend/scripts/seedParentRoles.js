@@ -31,6 +31,7 @@ const parentRoleMatrix = {
       "restaurant.read", "restaurant.write", ...MENU_MANAGEMENT_PERMISSIONS,
       "order.read", "order.create", "order.update", "order.cancel",
       "payment.read", "payment.write", "staff.read", "staff.write",
+      "customer.read", "customer.update",
       "shift.read", "shift.manage", "table.read", "table.write",
       "report.read", "report.export", "dashboard.read",
       "inventory.read", "inventory.write", "stock.read", "stock.write",

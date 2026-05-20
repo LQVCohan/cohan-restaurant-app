@@ -56,7 +56,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       items: [
         {
           id: "customers",
-          permissions: ["customer.read", "staff.read"],
+          permissions: ["customer.read"],
           icon: "👤",
           label: "Khách hàng",
           page: "Khách hàng",
