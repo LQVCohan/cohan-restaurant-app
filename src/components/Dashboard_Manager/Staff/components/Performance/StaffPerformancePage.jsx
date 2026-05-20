@@ -250,6 +250,13 @@ export const resolveTrendDelta = (currentScore, previousScore) => {
   return Math.round((current - previous) * 100) / 100;
 };
 
+export const resolveEffectivePerformanceRestaurantId = (selectedRestaurant) => {
+  if (selectedRestaurant === null || selectedRestaurant === undefined) return null;
+  const normalizedValue = String(selectedRestaurant).trim();
+  if (!normalizedValue || normalizedValue === "all") return null;
+  return normalizedValue;
+};
+
 export const buildPerformanceOverview = (rows = []) => {
   const safeRows = Array.isArray(rows) ? rows : [];
   const withTrend = safeRows.filter((row) => Number.isFinite(row?.trendDelta));
@@ -880,10 +887,8 @@ const StaffPerformancePage = ({
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [reviewEmployee, setReviewEmployee] = useState(null);
 
-  const effectiveRestaurantId =
-    selectedRestaurant !== "all"
-      ? selectedRestaurant
-      : restaurantList?.[0]?.id || employees?.[0]?.restaurantForStaff || "";
+  const effectiveRestaurantId = resolveEffectivePerformanceRestaurantId(selectedRestaurant);
+  const hasSpecificRestaurantSelected = Boolean(effectiveRestaurantId);
 
   const {
     snapshots,
@@ -897,6 +902,7 @@ const StaffPerformancePage = ({
     restaurantId: effectiveRestaurantId,
     periodStart,
     periodEnd,
+    skip: !hasSpecificRestaurantSelected,
   });
 
   const snapshotByEmployee = useMemo(
@@ -909,6 +915,7 @@ const StaffPerformancePage = ({
     restaurantId: previousPeriod ? effectiveRestaurantId : undefined,
     periodStart: previousPeriod?.periodStart,
     periodEnd: previousPeriod?.periodEnd,
+    skip: !hasSpecificRestaurantSelected || !previousPeriod,
   });
   const previousSnapshotByEmployee = useMemo(
     () => buildPreviousSnapshotMap(previousSnapshots, periodStart),
@@ -1117,6 +1124,7 @@ const StaffPerformancePage = ({
 
   const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
   const handleExportCsv = () => {
+    if (!hasSpecificRestaurantSelected) return;
     const csvContent = buildPerformanceOverviewCsvBlobContent(rows);
     const filename = `staff-performance-overview-${periodStart}-${periodEnd}.csv`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -1161,6 +1169,7 @@ const StaffPerformancePage = ({
             type="button"
             className="btn-secondary"
             onClick={handleExportCsv}
+            disabled={!hasSpecificRestaurantSelected}
           >
             Xuất CSV
           </button>
@@ -1294,6 +1303,13 @@ productivity * 25%
         </div>
       </section>
 
+      {!hasSpecificRestaurantSelected ? (
+        <div className="performance-empty-state" role="status">
+          Vui lòng chọn một nhà hàng cụ thể để xem hiệu suất nhân viên.
+        </div>
+      ) : null}
+
+      {hasSpecificRestaurantSelected ? (
       <section className="performance-overview">
         <article className="overview-card">
           <h3>Tăng nhiều nhất</h3>
@@ -1329,13 +1345,15 @@ productivity * 25%
           ) : null}
         </article>
       </section>
+      ) : null}
 
-      {error ? (
+      {hasSpecificRestaurantSelected && error ? (
         <div className="performance-error">
           Không tải được dữ liệu hiệu suất: {error.message}
         </div>
       ) : null}
 
+      {hasSpecificRestaurantSelected ? (
       <section className="performance-layout">
         <div className="performance-table-card">
           <div className="table-header">
@@ -1490,6 +1508,7 @@ productivity * 25%
           }}
         />
       </section>
+      ) : null}
 
       <ReviewModal
         isOpen={Boolean(reviewEmployee)}

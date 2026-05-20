@@ -20,6 +20,7 @@ import {
   escapeCsvValue,
   buildPerformanceOverviewCsvRows,
   buildPerformanceOverviewCsvBlobContent,
+  resolveEffectivePerformanceRestaurantId,
 } from "./StaffPerformancePage";
 import { vi } from "vitest";
 
@@ -130,6 +131,22 @@ describe("calculateFormulaScore", () => {
     const adjustmentDelta = 80 - formulaScore;
     expect(formulaScore).toBe(85);
     expect(adjustmentDelta).toBe(-5);
+  });
+});
+
+describe("resolveEffectivePerformanceRestaurantId", () => {
+  it("returns null when selected restaurant is all", () => {
+    expect(resolveEffectivePerformanceRestaurantId("all")).toBeNull();
+  });
+
+  it("returns concrete restaurant id unchanged", () => {
+    expect(resolveEffectivePerformanceRestaurantId("r-001")).toBe("r-001");
+  });
+
+  it("returns null for null/undefined/empty values", () => {
+    expect(resolveEffectivePerformanceRestaurantId(null)).toBeNull();
+    expect(resolveEffectivePerformanceRestaurantId(undefined)).toBeNull();
+    expect(resolveEffectivePerformanceRestaurantId("")).toBeNull();
   });
 });
 
