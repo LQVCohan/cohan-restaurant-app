@@ -180,12 +180,12 @@ const getStatusBadge = (status) => {
     },
     unscheduled_checkin: {
       label: "Vào ca ngoài lịch",
-      className: "neutral",
+      className: "info",
       icon: "🧭",
     },
     unscheduled_completed: {
       label: "Hoàn tất ngoài lịch",
-      className: "neutral",
+      className: "info",
       icon: "🧭",
     },
   };
@@ -978,8 +978,14 @@ const AttendancePage = () => {
           </div>
 
           {error && (
-            <div className="empty-state">
-              ❌ Không tải được dữ liệu chấm công: {error.message}
+            <div className="inline-state error" role="alert">
+              ❌ Không tải được dữ liệu chấm công.
+            </div>
+          )}
+
+          {loading && !error && (
+            <div className="inline-state loading" aria-live="polite">
+              Đang tải dữ liệu chấm công...
             </div>
           )}
 
@@ -1000,7 +1006,7 @@ const AttendancePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {!loading && records.length === 0 && (
+                {!loading && !error && records.length === 0 && (
                   <tr>
                     <td colSpan={8} className="text-center">
                       Không có bản ghi chấm công cho ngày đã chọn.
@@ -1062,12 +1068,15 @@ const AttendancePage = () => {
                         <span className="source-badge">
                           {item.source === "manual_correction"
                             ? "Chỉnh công"
-                            : item.source || "--"}
+                            : item.source === "system"
+                              ? "Hệ thống"
+                              : item.source || "--"}
                         </span>
                       </td>
                       <td className="text-right">
                         <button
                           className="action-btn correction"
+                          aria-label={`Tạo yêu cầu chỉnh công cho ${displayName}`}
                           title="Tạo yêu cầu chỉnh công"
                           type="button"
                           onClick={() => openCorrectionModal(item)}
