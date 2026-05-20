@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext } from "react";
+import React, { useMemo, useState, useContext, useCallback } from "react";
 import Modal from "@/components/common/Modal";
 import { Link, useNavigate } from "react-router-dom";
 import "./OrdersPage.scss";
@@ -21,6 +21,7 @@ import {
   getReservationActionErrorMessage,
 } from "@/utils/commerceActionErrorMessages";
 import ConfirmationModal from "../../Customer/TableBooking/ConfirmationModal/ConfirmationModal";
+import { useCart } from "@/context/CartProvider";
 
 /* ───────────────── GraphQL Queries (Giữ nguyên) ───────────────── */
 const ORDERS_BY_USER = gql`
@@ -221,7 +222,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
   );
 }
 
-function ReceiptModal({ receiptTarget, onClose }) {
+function ReceiptModal({ receiptTarget, onClose, onReorder }) {
   if (!receiptTarget) return null;
 
   const orderCode = receiptTarget?.orderCode || receiptTarget?.id || "--";
@@ -289,6 +290,14 @@ function ReceiptModal({ receiptTarget, onClose }) {
           renderField("Liên kết đặt bàn", receiptTarget?.reservationId)}
       </Modal.Body>
       <Modal.Footer>
+        {!!(receiptTarget?.items || []).length && (
+          <button
+            className="btn btn--outline"
+            onClick={() => onReorder?.(receiptTarget)}
+          >
+            Đặt lại đơn này
+          </button>
+        )}
         <button className="btn btn--primary" onClick={onClose}>
           Đóng
         </button>
@@ -305,6 +314,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
+  const { cart, addToCart, clearCart } = useCart();
 
   // State Modals
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -423,6 +433,76 @@ export default function OrdersPage() {
     pushToast("Không đủ thông tin để mở chi tiết đơn.");
   };
 
+  const resolveOrderRestaurantId = (order) =>
+    order?.restaurantId || order?.raw?.restaurantId || null;
+
+  const mapOrderItemToCartItem = (orderItem, restaurantId) => {
+    const id = orderItem?.menuItemId || orderItem?.itemId || orderItem?.id || orderItem?._id;
+    if (!id) return null;
+
+    return {
+      id,
+      dishId: orderItem?.dishId || id,
+      restaurantId,
+      name: orderItem?.name || "Món ăn",
+      price: Number(orderItem?.price) || 0,
+      quantity: Number(orderItem?.quantity) > 0 ? Number(orderItem.quantity) : 1,
+      unit: orderItem?.unit || "phần",
+      image:
+        orderItem?.image ||
+        orderItem?.thumbnail ||
+        (Array.isArray(orderItem?.proofImages) ? orderItem.proofImages[0] : "") ||
+        "",
+      modifiers: orderItem?.modifiers || orderItem?.options || [],
+    };
+  };
+
+  const performReorder = useCallback((order, restaurantId) => {
+    const sourceItems = Array.isArray(order?.items) ? order.items : [];
+    const mapped = sourceItems
+      .map((item) => mapOrderItemToCartItem(item, restaurantId))
+      .filter(Boolean);
+
+    if (!mapped.length) {
+      pushToast("Một số món trong đơn cũ không còn đủ thông tin để đặt lại.");
+      return false;
+    }
+
+    mapped.forEach((item) => addToCart(item));
+    pushToast("Đã thêm món từ đơn cũ vào giỏ hàng.");
+    navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}`);
+    return true;
+  }, [addToCart, navigate]);
+
+  const handleReorder = useCallback((order) => {
+    const sourceItems = Array.isArray(order?.items) ? order.items : [];
+    if (!sourceItems.length) {
+      pushToast("Đơn này không có món để đặt lại.");
+      return false;
+    }
+
+    const restaurantId = resolveOrderRestaurantId(order);
+    if (!restaurantId) {
+      pushToast("Không đủ thông tin nhà hàng để đặt lại đơn.");
+      return false;
+    }
+
+    const cartRestaurantIds = [...new Set((cart || []).map((item) => item?.restaurantId).filter(Boolean))];
+    const hasConflict =
+      cartRestaurantIds.length > 0 &&
+      (cartRestaurantIds.length > 1 || String(cartRestaurantIds[0]) !== String(restaurantId));
+
+    if (hasConflict) {
+      const confirmed = window.confirm(
+        "Giỏ hàng hiện tại sẽ được thay bằng các món từ đơn này. Tiếp tục?"
+      );
+      if (!confirmed) return false;
+      clearCart();
+    }
+
+    return performReorder(order, restaurantId);
+  }, [cart, clearCart, performReorder]);
+
   /* --- 1. MAPPING RESERVATION DATA --- */
   const reservationItems = useMemo(() => {
     return (resvList?.myReservations || []).map((r) => {
@@ -525,6 +605,13 @@ export default function OrdersPage() {
           onClick: () => setReceiptTarget(o),
         },
       ];
+      if ((o.items || []).length > 0) {
+        actions.push({
+          label: "Đặt lại",
+          variant: "primary",
+          onClick: () => handleReorder(o),
+        });
+      }
 
       if (!isCancelled && o.currentStatus !== "completed") {
         actions.push({
@@ -574,7 +661,7 @@ export default function OrdersPage() {
         raw: o,
       };
     });
-  }, [orderConn]);
+  }, [orderConn, handleReorder]);
 
   const allItems = useMemo(
     () => [...reservationItems, ...orderItems],
@@ -857,6 +944,10 @@ export default function OrdersPage() {
       <ReceiptModal
         receiptTarget={receiptTarget}
         onClose={() => setReceiptTarget(null)}
+        onReorder={(order) => {
+          const ok = handleReorder(order);
+          if (ok) setReceiptTarget(null);
+        }}
       />
       <ChangeTableModal
         isOpen={!!changeTableOpen}
