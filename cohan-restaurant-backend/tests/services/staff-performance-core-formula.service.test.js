@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   reviewFindOne: vi.fn(),
   orderAggregate: vi.fn(),
   customerReviewAggregate: vi.fn(),
+  kitchenOrderWorkItemFind: vi.fn(),
   snapshotFindOneAndUpdate: vi.fn(),
 }));
 
@@ -20,6 +21,7 @@ vi.mock("../../models/index.js", () => ({
   StaffPerformanceReview: { findOne: mocks.reviewFindOne },
   Order: { aggregate: mocks.orderAggregate },
   Review: { aggregate: mocks.customerReviewAggregate },
+  KitchenOrderWorkItem: { find: mocks.kitchenOrderWorkItemFind },
   StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
 }));
 
@@ -63,6 +65,7 @@ describe("staffPerformance core formula", () => {
     mocks.reviewFindOne.mockReturnValue(chainLean(null));
     mocks.orderAggregate.mockResolvedValue([]);
     mocks.customerReviewAggregate.mockResolvedValue([]);
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([]));
     mocks.snapshotFindOneAndUpdate.mockReturnValue({ populate: vi.fn().mockReturnValue(chainLean(snapshotDoc())) });
   });
 
@@ -106,6 +109,47 @@ describe("staffPerformance core formula", () => {
     mocks.orderAggregate.mockResolvedValueOnce([{ _id: "u1", orderCount: 999 }, { _id: employeeId, orderCount: 1 }]);
     const second = await runCalc();
     expect(first.productivity.score).toBe(second.productivity.score);
+  });
+
+  it("aggregates kitchen metrics as reference data without changing scoring", async () => {
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    const baseline = await runCalc();
+
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
+      { headChefId: employeeId, station: "kitchen", status: "served", servedAt: new Date(), timeLevel: "very_late", actualPrepMinutes: 20, targetPrepMinutes: 15, noRoster: true },
+      { headChefId: employeeId, station: "kitchen", status: "ready", readyAt: new Date(), timeLevel: "on_time", actualPrepMinutes: 10, targetPrepMinutes: 10 },
+    ]));
+
+    const withKitchen = await runCalc();
+    expect(withKitchen.factors.kitchenMetrics.totalItems).toBe(2);
+    expect(withKitchen.factors.kitchenMetrics.headChefItems).toBe(2);
+    expect(withKitchen.factors.kitchenMetrics.veryLateItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.noRosterItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.avgPrepMinutes).toBe(15);
+    expect(withKitchen.factors.kitchenMetrics.affectsScore).toBe(false);
+    expect(withKitchen.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
+  });
+
+  it("counts assistant/unaccepted and bar staff role mappings", async () => {
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
+      { assistantChefIds: [employeeId], unacceptedResponsibleEmployeeIds: [employeeId], unaccepted: true, station: "kitchen", kitchenEnteredAt: new Date() },
+      { barStaffIds: [employeeId], station: "bar", kitchenEnteredAt: new Date() },
+    ]));
+
+    const set = await runCalc();
+    const km = set.factors.kitchenMetrics;
+    expect(km.assistantItems).toBe(1);
+    expect(km.unacceptedItems).toBe(1);
+    expect(km.unacceptedResponsibleItems).toBe(1);
+    expect(km.barItems).toBe(1);
+    expect(km.barStaffItems).toBe(1);
+  });
+
+  it("returns empty kitchen metrics note when no related work items", async () => {
+    const set = await runCalc();
+    expect(set.factors.kitchenMetrics.totalItems).toBe(0);
+    expect(set.factors.kitchenMetrics.note).toContain("Không có dữ liệu bếp/bar");
   });
 
   it("uses skillScore for quality and managerRatingScore for managerReview only", async () => {

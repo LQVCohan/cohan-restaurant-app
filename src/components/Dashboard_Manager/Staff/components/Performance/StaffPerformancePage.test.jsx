@@ -314,6 +314,21 @@ describe("escapeHtml", () => {
 });
 
 describe("buildPerformanceReportHtml", () => {
+
+
+  it("renders kitchen/bar reference section when kitchenMetrics exists", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "An", periodLabel: "01/05/2026 - 31/05/2026", restaurantName: "R1",
+      finalPerformanceScore: 90, previousScore: null, trendText: "", performanceLevel: "Tốt", previousLevel: "--",
+      hasPreviousSnapshot: false, formulaScore: 90, adjustmentDelta: 0, hasAdjustment: false, formulaBreakdown: [],
+      hasCustomWeight: false, customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [], insufficientData: false, hasManagerReview: true, productivitySource: "shift_completion",
+      kitchenMetrics: { totalItems: 3, onTimeItems: 1, lateItems: 1, veryLateItems: 1, cancelledItems: 1, returnedItems: 0, unacceptedItems: 1, avgPrepMinutes: 12.5, affectsScore: false },
+    });
+
+    expect(html).toContain("Dữ liệu bếp/bar tham khảo");
+    expect(html).toContain("Chưa ảnh hưởng điểm hiệu suất");
+  });
   it("includes previous period comparison section", () => {
     const html = buildPerformanceReportHtml({
       employeeName: "An",
@@ -676,5 +691,13 @@ describe("csv helpers", () => {
     ];
     const result = buildPerformanceOverviewCsvRows(rows);
     expect(result[0][10]).toBe("Thiếu đánh giá quản lý");
+  });
+});
+
+
+describe("kitchen metrics csv note", () => {
+  it("appends kitchen reference note without crashing", () => {
+    const rows = buildPerformanceOverviewCsvRows([{ snapshot: { factors: { kitchenMetrics: { totalItems: 2 } } } }]);
+    expect(rows[0][10]).toContain("Có dữ liệu bếp/bar tham khảo");
   });
 });

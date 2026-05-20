@@ -8,6 +8,7 @@ import {
   StaffPerformanceReview,
   StaffPerformanceSnapshot,
   Timesheet,
+  KitchenOrderWorkItem,
 } from "../../../models/index.js";
 
 const { Types } = mongoose;
@@ -267,6 +268,127 @@ async function getPeerOrderBenchmark({ restaurantId, periodStart, periodEnd }) {
   };
 }
 
+
+function buildKitchenMetricsMatchForEmployee({
+  employeeId,
+  restaurantId,
+  periodStart,
+  periodEnd,
+}) {
+  return {
+    restaurantId,
+    kitchenEnteredAt: { $gte: periodStart, $lte: periodEnd },
+    $or: [
+      { headChefId: employeeId },
+      { assistantChefIds: employeeId },
+      { teamEmployeeIds: employeeId },
+      { barLeadId: employeeId },
+      { barStaffIds: employeeId },
+      { unacceptedResponsibleEmployeeIds: employeeId },
+    ],
+  };
+}
+
+function resolveKitchenMetricRoleForEmployee(workItem, employeeId) {
+  const employeeIdText = String(employeeId || "");
+  const hasInArray = (arr) =>
+    Array.isArray(arr) && arr.some((item) => String(item || "") === employeeIdText);
+
+  return {
+    isHeadChef: String(workItem?.headChefId || "") === employeeIdText,
+    isAssistant: hasInArray(workItem?.assistantChefIds),
+    isTeam: hasInArray(workItem?.teamEmployeeIds),
+    isBarLead: String(workItem?.barLeadId || "") === employeeIdText,
+    isBarStaff: hasInArray(workItem?.barStaffIds),
+    isUnacceptedResponsible: hasInArray(workItem?.unacceptedResponsibleEmployeeIds),
+  };
+}
+
+function buildKitchenMetricsSummary(workItems = [], employeeId) {
+  const summary = {
+    totalItems: 0,
+    kitchenItems: 0,
+    barItems: 0,
+    preparedItems: 0,
+    servedItems: 0,
+    cancelledItems: 0,
+    returnedItems: 0,
+    onTimeItems: 0,
+    lateItems: 0,
+    veryLateItems: 0,
+    unacceptedItems: 0,
+    headChefItems: 0,
+    assistantItems: 0,
+    teamItems: 0,
+    barLeadItems: 0,
+    barStaffItems: 0,
+    unacceptedResponsibleItems: 0,
+    avgPrepMinutes: 0,
+    targetPrepMinutesAvg: 0,
+    noRosterItems: 0,
+    attributionSource: "kitchen_order_work_items",
+    affectsScore: false,
+    note: "Không có dữ liệu bếp/bar liên quan nhân viên trong kỳ.",
+  };
+
+  const actualPrepValues = [];
+  const targetPrepValues = [];
+
+  for (const workItem of workItems) {
+    summary.totalItems += 1;
+    const roleFlags = resolveKitchenMetricRoleForEmployee(workItem, employeeId);
+
+    if (workItem?.station === "kitchen") summary.kitchenItems += 1;
+    if (workItem?.station === "bar") summary.barItems += 1;
+    if (["ready", "served"].includes(workItem?.status) || workItem?.readyAt) summary.preparedItems += 1;
+    if (workItem?.status === "served" || workItem?.servedAt) summary.servedItems += 1;
+    if (workItem?.status === "cancelled" || workItem?.cancelledAt) summary.cancelledItems += 1;
+    if (workItem?.status === "returned" || workItem?.returnedAt) summary.returnedItems += 1;
+    if (workItem?.timeLevel === "on_time") summary.onTimeItems += 1;
+    if (workItem?.timeLevel === "late") summary.lateItems += 1;
+    if (workItem?.timeLevel === "very_late") summary.veryLateItems += 1;
+    if (workItem?.noRoster === true) summary.noRosterItems += 1;
+
+    if (roleFlags.isHeadChef) summary.headChefItems += 1;
+    if (roleFlags.isAssistant) summary.assistantItems += 1;
+    if (roleFlags.isTeam) summary.teamItems += 1;
+    if (roleFlags.isBarLead) summary.barLeadItems += 1;
+    if (roleFlags.isBarStaff) summary.barStaffItems += 1;
+    if (roleFlags.isUnacceptedResponsible) summary.unacceptedResponsibleItems += 1;
+
+    if (workItem?.unaccepted === true && roleFlags.isUnacceptedResponsible) {
+      summary.unacceptedItems += 1;
+    }
+
+    const actualPrepMinutes = Number(workItem?.actualPrepMinutes);
+    if (Number.isFinite(actualPrepMinutes) && actualPrepMinutes >= 0) actualPrepValues.push(actualPrepMinutes);
+
+    const targetPrepMinutes = Number(workItem?.targetPrepMinutes);
+    if (Number.isFinite(targetPrepMinutes) && targetPrepMinutes > 0) targetPrepValues.push(targetPrepMinutes);
+  }
+
+  if (actualPrepValues.length > 0) {
+    const avg = actualPrepValues.reduce((sum, v) => sum + v, 0) / actualPrepValues.length;
+    summary.avgPrepMinutes = Math.round(avg * 10) / 10;
+  }
+
+  if (targetPrepValues.length > 0) {
+    const avg = targetPrepValues.reduce((sum, v) => sum + v, 0) / targetPrepValues.length;
+    summary.targetPrepMinutesAvg = Math.round(avg * 10) / 10;
+  }
+
+  if (summary.totalItems > 0) {
+    summary.note = "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất.";
+  }
+
+  return summary;
+}
+
+async function getKitchenMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }) {
+  const match = buildKitchenMetricsMatchForEmployee({ employeeId, restaurantId, periodStart, periodEnd });
+  const workItems = await KitchenOrderWorkItem.find(match).lean();
+  return buildKitchenMetricsSummary(workItems, employeeId);
+}
 async function calculateSnapshotForEmployee({
   employeeId,
   restaurantId,
@@ -280,7 +402,7 @@ async function calculateSnapshotForEmployee({
     throw new Error("Không tìm thấy nhân viên.");
   }
 
-  const [timesheets, shifts, correctionsCount, review, benchmark, customerRatingAgg] =
+  const [timesheets, shifts, correctionsCount, review, benchmark, customerRatingAgg, kitchenMetrics] =
     await Promise.all([
       Timesheet.find({
         employeeId,
@@ -333,6 +455,7 @@ async function calculateSnapshotForEmployee({
           },
         },
       ]),
+      getKitchenMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }),
     ]);
 
   const staffRateRaw = Number(customerRatingAgg?.[0]?.averageRating || 0);
@@ -503,6 +626,7 @@ async function calculateSnapshotForEmployee({
           productivitySource: "shift_completion",
           hasPerformanceActivity,
           insufficientData,
+          kitchenMetrics,
         },
         generatedBy: actorId,
         generatedByName: getActorName(ctx),
