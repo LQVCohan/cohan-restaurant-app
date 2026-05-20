@@ -143,6 +143,10 @@ describe("resolveEffectivePerformanceRestaurantId", () => {
     expect(resolveEffectivePerformanceRestaurantId("r-001")).toBe("r-001");
   });
 
+  it("returns null when selected restaurant is spaced all", () => {
+    expect(resolveEffectivePerformanceRestaurantId(" all ")).toBeNull();
+  });
+
   it("returns null for null/undefined/empty values", () => {
     expect(resolveEffectivePerformanceRestaurantId(null)).toBeNull();
     expect(resolveEffectivePerformanceRestaurantId(undefined)).toBeNull();

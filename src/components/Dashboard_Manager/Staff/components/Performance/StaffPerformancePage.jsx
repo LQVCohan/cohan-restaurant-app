@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import {
   Award,
@@ -253,7 +253,7 @@ export const resolveTrendDelta = (currentScore, previousScore) => {
 export const resolveEffectivePerformanceRestaurantId = (selectedRestaurant) => {
   if (selectedRestaurant === null || selectedRestaurant === undefined) return null;
   const normalizedValue = String(selectedRestaurant).trim();
-  if (!normalizedValue || normalizedValue === "all") return null;
+  if (!normalizedValue || normalizedValue.toLowerCase() === "all") return null;
   return normalizedValue;
 };
 
@@ -889,6 +889,15 @@ const StaffPerformancePage = ({
 
   const effectiveRestaurantId = resolveEffectivePerformanceRestaurantId(selectedRestaurant);
   const hasSpecificRestaurantSelected = Boolean(effectiveRestaurantId);
+  const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
+
+  useEffect(() => {
+    if (hasSpecificRestaurantSelected) return;
+    setSelectedSnapshot(null);
+    setSelectedEmployee(null);
+    setSelectedPreviousSnapshot(null);
+    setReviewEmployee(null);
+  }, [effectiveRestaurantId, hasSpecificRestaurantSelected]);
 
   const {
     snapshots,
@@ -1096,6 +1105,7 @@ const StaffPerformancePage = ({
   };
 
   const handleSubmitReview = async (input) => {
+    if (!effectiveRestaurantId) return;
     try {
       await upsertStaffPerformanceReview({ variables: { input } });
 
@@ -1122,7 +1132,6 @@ const StaffPerformancePage = ({
     }
   };
 
-  const [selectedPreviousSnapshot, setSelectedPreviousSnapshot] = useState(null);
   const handleExportCsv = () => {
     if (!hasSpecificRestaurantSelected) return;
     const csvContent = buildPerformanceOverviewCsvBlobContent(rows);
@@ -1137,9 +1146,15 @@ const StaffPerformancePage = ({
   };
 
   const openDetail = (row) => {
+    if (!hasSpecificRestaurantSelected) return;
     setSelectedSnapshot(row.snapshot);
     setSelectedPreviousSnapshot(row.previousSnapshot);
     setSelectedEmployee(row.employee);
+  };
+
+  const openReviewModal = (employee) => {
+    if (!hasSpecificRestaurantSelected) return;
+    setReviewEmployee(employee);
   };
 
   return (
@@ -1476,7 +1491,7 @@ productivity * 25%
                         <button
                           type="button"
                           className="row-action"
-                          onClick={() => setReviewEmployee(employee)}
+                          onClick={() => openReviewModal(employee)}
                         >
                           Đánh giá
                         </button>
