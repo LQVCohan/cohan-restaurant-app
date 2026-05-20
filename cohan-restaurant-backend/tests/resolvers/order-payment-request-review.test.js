@@ -361,14 +361,13 @@ describe("payment request + confirm guards", () => {
       const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
       modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
 
+      const orderId = `65f0000000000000000004${orderType === "delivery" ? "01" : "02"}`;
       const out = await payOrdersByOrderIds(
         null,
         {
           input: {
             restaurantId: "65f000000000000000000099",
-            orderIds: [
-              `65f0000000000000000004${orderType === "delivery" ? "01" : "02"}`,
-            ],
+            orderIds: [orderId],
             method: "cash",
           },
         },
@@ -377,6 +376,8 @@ describe("payment request + confirm guards", () => {
 
       const orderFindFilter = modelMocks.Order.find.mock.calls[0][0];
       expect(orderFindFilter.currentStatus).toEqual({ $nin: ["completed", "cancelled", "failed"] });
+      expect(orderFindFilter.currentStatus.$nin).toContain(terminalStatus);
+      expect(orderFindFilter._id.$in.map(String)).toContain(orderId);
       expect(orderFindFilter.restaurantId.toString()).toBe("65f000000000000000000099");
       expect(out).toEqual({
         warning: true,
@@ -388,7 +389,6 @@ describe("payment request + confirm guards", () => {
       expect(modelMocks.Order.updateMany).not.toHaveBeenCalled();
       expect(modelMocks.Table.findById).not.toHaveBeenCalled();
       expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
-      expect(terminalStatus).toMatch(/failed|cancelled/);
     },
   );
 
