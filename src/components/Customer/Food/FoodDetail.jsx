@@ -31,6 +31,7 @@ import {
   getMenuItemAvailability,
   shouldShowMenuItemToCustomer,
 } from "../../../utils/menuItemAvailability";
+import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import "./FoodDetail.scss";
@@ -117,11 +118,14 @@ const ADD_CART_ITEM = gql`
 `;
 
 
-const RESTAURANT_BY_ID = gql`
-  query RestaurantByIdForFoodDetail($id: ID!) {
-    restaurant(id: $id) {
+const PUBLIC_RESTAURANT_BY_ID = gql`
+  query PublicRestaurantByIdForFoodDetail($id: ID!) {
+    publicRestaurant(id: $id) {
       id
       name
+      canOrder
+      openingStatus
+      openingStatusReason
       address {
         line1
         district
@@ -299,7 +303,7 @@ const FoodDetail = () => {
   );
   const promotionLabel = getPromotionLabel(activePromotion);
 
-  const { data: restaurantData } = useQuery(RESTAURANT_BY_ID, {
+  const { data: restaurantData, loading: restaurantLoading } = useQuery(PUBLIC_RESTAURANT_BY_ID, {
     variables: { id: resolvedDish?.restaurantId },
     skip: !resolvedDish?.restaurantId,
   });
@@ -458,7 +462,11 @@ const FoodDetail = () => {
   const currentUnitPrice = selectedSize?.price ?? Number(resolvedDish?.basePrice || 0);
   const totalPrice = currentUnitPrice * quantity;
 
-  const restaurant = restaurantData?.restaurant;
+  const publicRestaurant = restaurantData?.publicRestaurant || null;
+  const restaurantUnavailable = !restaurantLoading && !publicRestaurant;
+  const restaurant = publicRestaurant;
+  const restaurantCanOrder = !!publicRestaurant?.canOrder;
+  const restaurantOrderBlockReason = getCannotOrderReason(publicRestaurant?.openingStatus);
   const restaurantAddress = [
     restaurant?.address?.line1,
     restaurant?.address?.district,
@@ -476,6 +484,9 @@ const FoodDetail = () => {
     liveStateReady && maxAvailableQty > 0 && quantity > maxAvailableQty;
   const addDisabled =
     addingToBackendCart ||
+    restaurantLoading ||
+    restaurantUnavailable ||
+    !restaurantCanOrder ||
     !selectedServingKey ||
     !liveStateReady ||
     isBlocked ||
@@ -491,6 +502,12 @@ const FoodDetail = () => {
 
   const addToCartButtonText = addingToBackendCart
     ? "Đang giữ món..."
+    : restaurantLoading
+      ? "Đang kiểm tra nhà hàng..."
+    : restaurantUnavailable
+      ? "Nhà hàng không khả dụng"
+      : !restaurantCanOrder
+        ? restaurantOrderBlockReason
     : !selectedServingKey
       ? "Đang tải tùy chọn..."
       : !liveStateReady
@@ -534,6 +551,14 @@ const FoodDetail = () => {
   };
 
   const addCurrentSelectionToBackendCart = async () => {
+    if (!publicRestaurant) {
+      alert("Nhà hàng không khả dụng hoặc chưa công khai.");
+      return null;
+    }
+    if (!restaurantCanOrder) {
+      alert(restaurantOrderBlockReason);
+      return null;
+    }
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return null;
     if (!selectedServingKey) {
@@ -758,6 +783,13 @@ const FoodDetail = () => {
             </div>
             {!customerVisible && <div className="availability-box info"><div className="promo-title">Món hiện không hiển thị cho khách.</div></div>}
             {availability?.customerMessage && <div className="availability-box info"><div className="promo-title">{availability.customerMessage}</div></div>}
+            {restaurantLoading && <div className="availability-box info"><div className="promo-title">Đang kiểm tra trạng thái nhà hàng...</div></div>}
+            {restaurantUnavailable && <div className="availability-box info"><div className="promo-title">Nhà hàng không khả dụng hoặc chưa công khai.</div></div>}
+            {publicRestaurant && !restaurantCanOrder && (
+              <div className="availability-box info">
+                <div className="promo-title">{restaurantOrderBlockReason}</div>
+              </div>
+            )}
 
             <div className="availability-box info">
               <div className="promo-title">
