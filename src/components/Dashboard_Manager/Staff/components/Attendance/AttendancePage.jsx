@@ -336,14 +336,6 @@ const renderRequestDetails = (request) => (
             )}
           </div>
 
-          {quickFeedback && (
-            <div
-              className={`quick-feedback ${quickFeedback.type}`}
-              role={quickFeedback.type === "success" || quickFeedback.type === "info" ? "status" : "alert"}
-            >
-              {quickFeedback.message}
-            </div>
-          )}
         </div>
       </div>
 
