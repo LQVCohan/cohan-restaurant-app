@@ -18,6 +18,7 @@ import { getTableGuardState } from "@/utils/tableGuardState";
 import {
   isPosManagedStatusTransition,
   POS_MANAGED_STATUS_TRANSITION_MESSAGE,
+  POS_MANAGED_STATUS_TRANSITION_TITLE,
 } from "@/utils/tableStatusTransitionGuard";
 
 const ALL_FLOORS_KEY = "all";
@@ -344,6 +345,25 @@ const TableManagement = () => {
       .replace(/\s+/g, " ")
       .toLowerCase();
 
+  const getQuickActionBlockReason = (currentStatus, nextStatus) =>
+    isPosManagedStatusTransition(currentStatus, nextStatus)
+      ? POS_MANAGED_STATUS_TRANSITION_TITLE
+      : "";
+
+  const renderQuickAction = (targetTable, nextStatus, label, className) => {
+    const reason = getQuickActionBlockReason(targetTable?.status, nextStatus);
+    return (
+      <button
+        className={className}
+        onClick={() => handleTableStatusChange(targetTable, nextStatus)}
+        disabled={!!reason}
+        title={reason}
+      >
+        {label}
+      </button>
+    );
+  };
+
   const baseFilteredTables = useMemo(() => {
     let filtered = [...tablesMapped];
     const normalizedQuery = normalizeSearch(searchQuery);
@@ -361,8 +381,11 @@ const TableManagement = () => {
 
     if (currentFilters.status)
       filtered = filtered.filter((t) => t.status === currentFilters.status);
+    if (currentFilters.area) {
+      filtered = filtered.filter((t) => t.area === currentFilters.area);
+    }
     return filtered;
-  }, [tablesMapped, searchQuery, currentFilters.status]);
+  }, [tablesMapped, searchQuery, currentFilters.status, currentFilters.area]);
 
   const filteredTables = useMemo(() => {
     const shouldFilterByFloor =
@@ -677,6 +700,19 @@ const TableManagement = () => {
               <option value="payment_pending">🟡 Chờ thanh toán</option>
               <option value="reserved">🔵 Đã đặt</option>
             </select>
+            <select
+              value={currentFilters.area}
+              onChange={(e) =>
+                setCurrentFilters({ ...currentFilters, area: e.target.value })
+              }
+            >
+              <option value="">Tất cả khu vực</option>
+              <option value="standard">Trong nhà</option>
+              <option value="vip">VIP</option>
+              <option value="outdoor">Ngoài trời</option>
+              <option value="bar">Bar</option>
+              <option value="private">Riêng</option>
+            </select>
           </div>
         </aside>
 
@@ -729,46 +765,19 @@ const TableManagement = () => {
                     </div>
                     <div className="card-actions">
                       {t.status === "available" && (
-                        <button
-                          className="btn-mini success"
-                          onClick={() => handleTableStatusChange(t, "occupied")}
-                        >
-                          Nhận khách
-                        </button>
+                        renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
                       {t.status === "occupied" && (
-                        <button
-                          className="btn-mini warning"
-                          onClick={() =>
-                            handleTableStatusChange(t, "payment_pending")
-                          }
-                        >
-                          T.Toán
-                        </button>
+                        renderQuickAction(t, "payment_pending", "T.Toán", "btn-mini warning")
                       )}
                       {t.status === "payment_pending" && (
-                        <button
-                          className="btn-mini primary"
-                          onClick={() => handleTableStatusChange(t, "cleaning")}
-                        >
-                          Dọn
-                        </button>
+                        renderQuickAction(t, "cleaning", "Dọn", "btn-mini primary")
                       )}
                       {t.status === "cleaning" && (
-                        <button
-                          className="btn-mini secondary"
-                          onClick={() => handleTableStatusChange(t, "available")}
-                        >
-                          Xong
-                        </button>
+                        renderQuickAction(t, "available", "Xong", "btn-mini secondary")
                       )}
                       {t.status === "reserved" && (
-                        <button
-                          className="btn-mini success"
-                          onClick={() => handleTableStatusChange(t, "occupied")}
-                        >
-                          Nhận khách
-                        </button>
+                        renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
                     </div>
                   </div>

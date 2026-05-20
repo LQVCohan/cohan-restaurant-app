@@ -41,7 +41,7 @@ function makeRestaurantQuery(restaurant = {}) {
     lean: vi.fn().mockResolvedValue({
       _id: "valid-r1",
       status: "active",
-      businessStatus: "open",
+      businessStatus: "active",
       publicationStatus: "published",
       ...restaurant,
     }),
