@@ -33,7 +33,7 @@ vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
     Types: {
-      ObjectId: vi.fn((id) => ({ _mockObjectId: String(id) })),
+      ObjectId: vi.fn((id) => ({ _mockObjectId: String(id), toString: () => String(id) })),
     },
   },
 }));
@@ -155,8 +155,8 @@ describe("user/customer restaurant access guards", () => {
 
     expect(requireRestaurantAccessMock).toHaveBeenCalled();
     expect(modelMocks.Order.find).toHaveBeenCalledWith({
-      userId: { _mockObjectId: "valid-u1" },
-      restaurantId: { _mockObjectId: "valid-r1" },
+      userId: expect.objectContaining({ _mockObjectId: "valid-u1" }),
+      restaurantId: expect.objectContaining({ _mockObjectId: "valid-r1" }),
     });
   });
 
@@ -176,7 +176,9 @@ describe("user/customer restaurant access guards", () => {
     const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
 
     await UserQuery.customerDetailAnalytics(null, { userId: "valid-u1" }, ctxFor("ADMIN"));
-    expect(modelMocks.Order.find).toHaveBeenCalledWith({ userId: { _mockObjectId: "valid-u1" } });
+    expect(modelMocks.Order.find).toHaveBeenCalledWith({
+      userId: expect.objectContaining({ _mockObjectId: "valid-u1" }),
+    });
   });
 
   it("customerListSummaries returns [] when userIds empty", async () => {
@@ -205,15 +207,17 @@ describe("user/customer restaurant access guards", () => {
 
   it("customerListSummaries aggregates recentOrders/topDishes and scopes by restaurant", async () => {
     requireRestaurantAccessMock.mockResolvedValue(undefined);
-    modelMocks.Order.find.mockReturnValue({
-      sort: () => ({
-        lean: async () => ([
-          { _id: "o5", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-05T00:00:00.000Z", orderCode: "A5", totals: { grandTotal: 50000 }, items: [{ name: "Pho", quantity: 1 }, { name: "Bun", quantity: 2 }] },
-          { _id: "o4", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-04T00:00:00.000Z", orderCode: "A4", totals: { grandTotal: 40000 }, items: [{ name: "Pho", quantity: 3 }] },
-          { _id: "o3", restaurantId: "valid-r1", userId: "valid-u1", createdAt: "2026-01-03T00:00:00.000Z", orderCode: "A3", totals: { grandTotal: 30000 }, items: [{ name: "Com", quantity: 1 }] },
-          { _id: "o2", restaurantId: "valid-r1", userId: "valid-u2", createdAt: "2026-01-02T00:00:00.000Z", orderCode: "B2", totals: { grandTotal: 20000 }, items: [{ name: "Pho", quantity: 2 }] },
-        ]),
-      }),
+    modelMocks.Order.find.mockImplementation((cond) => {
+      return {
+        sort: () => ({
+          lean: async () => ([
+            { _id: "o5", restaurantId: cond?.restaurantId, userId: { toString: () => "valid-u1" }, createdAt: "2026-01-05T00:00:00.000Z", orderCode: "A5", totals: { grandTotal: 50000 }, items: [{ name: "Pho", quantity: 1 }, { name: "Bun", quantity: 2 }] },
+            { _id: "o4", restaurantId: cond?.restaurantId, userId: { toString: () => "valid-u1" }, createdAt: "2026-01-04T00:00:00.000Z", orderCode: "A4", totals: { grandTotal: 40000 }, items: [{ name: "Pho", quantity: 3 }] },
+            { _id: "o3", restaurantId: cond?.restaurantId, userId: { toString: () => "valid-u1" }, createdAt: "2026-01-03T00:00:00.000Z", orderCode: "A3", totals: { grandTotal: 30000 }, items: [{ name: "Com", quantity: 1 }] },
+            { _id: "o2", restaurantId: cond?.restaurantId, userId: { toString: () => "valid-u2" }, createdAt: "2026-01-02T00:00:00.000Z", orderCode: "B2", totals: { grandTotal: 20000 }, items: [{ name: "Pho", quantity: 2 }] },
+          ]),
+        }),
+      };
     });
     const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
     const result = await UserQuery.customerListSummaries(
@@ -222,8 +226,13 @@ describe("user/customer restaurant access guards", () => {
       ctxFor(),
     );
     expect(modelMocks.Order.find).toHaveBeenCalledWith({
-      restaurantId: { _mockObjectId: "valid-r1" },
-      userId: { $in: [{ _mockObjectId: "valid-u1" }, { _mockObjectId: "valid-u2" }] },
+      restaurantId: expect.objectContaining({ _mockObjectId: "valid-r1" }),
+      userId: {
+        $in: [
+          expect.objectContaining({ _mockObjectId: "valid-u1" }),
+          expect.objectContaining({ _mockObjectId: "valid-u2" }),
+        ],
+      },
     });
     expect(result[0].recentOrders.map((x) => x.orderCode)).toEqual(["A5", "A4"]);
     expect(result[0].topDishes).toEqual([
