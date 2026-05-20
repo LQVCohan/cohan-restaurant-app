@@ -403,17 +403,17 @@ const PriceEditModal = ({
   return (
     <>
       <Modal
-      isOpen={isOpen}
-      onClose={handleRequestClose}
-      title="Điều chỉnh giá hàng loạt"
-      size="xl"
-      className="price-edit-modal"
-      closeOnOverlayClick={!submitting}
-      closeOnEscape={!submitting}
-    >
-      <div className="pem-container">
-        <div className="pem-toolbar">
-          <div className="pem-row">
+        isOpen={isOpen}
+        onClose={handleRequestClose}
+        title="Điều chỉnh giá hàng loạt"
+        size="xl"
+        className="price-edit-modal"
+        closeOnOverlayClick={!submitting}
+        closeOnEscape={!submitting}
+      >
+        <div className="pem-container">
+          <div className="pem-toolbar">
+            <div className="pem-row">
             <div className="pem-control-group" style={{ flex: "0 0 auto" }}>
               <label>Áp dụng cho</label>
               <select
@@ -494,7 +494,7 @@ const PriceEditModal = ({
             </button>
             <button
               className="pem-btn-reset"
-                  onClick={() => setIsResetConfirmOpen(true)}
+              onClick={() => setIsResetConfirmOpen(true)}
               disabled={submitting}
             >
               <FiRefreshCw /> Đặt lại
@@ -688,7 +688,7 @@ const PriceEditModal = ({
             </button>
           </div>
         </div>
-      </div>
+        </div>
       </Modal>
       <MenuConfirmDialog
         isOpen={isResetConfirmOpen}
