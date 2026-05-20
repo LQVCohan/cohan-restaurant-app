@@ -212,6 +212,30 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
   ).session(session);
 }
 
+
+export async function syncKitchenOrderWorkItemForVoidOrReturn({
+  order,
+  item,
+  previousStatus,
+  nextStatus,
+  actorUserId,
+  now,
+  session,
+}) {
+  if (!order?._id || !item?._id || !nextStatus) return null;
+  if (!['cancelled', 'returned'].includes(nextStatus)) return null;
+
+  return upsertKitchenOrderWorkItemForStatusChange({
+    order,
+    item,
+    previousStatus,
+    nextStatus,
+    actorUserId,
+    now,
+    session,
+  });
+}
+
 export async function syncKitchenOrderWorkItemsForOrderStatusChange({
   order,
   itemTransitions,

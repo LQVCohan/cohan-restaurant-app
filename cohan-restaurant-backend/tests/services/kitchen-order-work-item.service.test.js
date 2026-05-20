@@ -346,4 +346,75 @@ describe("kitchenOrderWorkItem service", () => {
       expect(callOrder).toEqual(["start-i1", "end-i1", "start-i2", "end-i2"]);
     });
   });
+
+  describe("syncKitchenOrderWorkItemForVoidOrReturn", () => {
+    it("calls upsert for cancelled status", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      await service.syncKitchenOrderWorkItemForVoidOrReturn({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1" },
+        previousStatus: "served",
+        nextStatus: "cancelled",
+        actorUserId: "u1",
+        now: new Date("2026-05-20T10:00:00.000Z"),
+        session: {},
+      });
+
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        { orderId: "o1", orderItemId: "i1" },
+        expect.objectContaining({ $set: expect.objectContaining({ status: "cancelled" }) }),
+        expect.anything(),
+      );
+    });
+
+    it("calls upsert for returned status", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      await service.syncKitchenOrderWorkItemForVoidOrReturn({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1" },
+        previousStatus: "served",
+        nextStatus: "returned",
+        actorUserId: "u1",
+        now: new Date("2026-05-20T10:00:00.000Z"),
+        session: {},
+      });
+
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        { orderId: "o1", orderItemId: "i1" },
+        expect.objectContaining({ $set: expect.objectContaining({ status: "returned" }) }),
+        expect.anything(),
+      );
+    });
+
+    it("returns null when missing order/item/nextStatus", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      await expect(service.syncKitchenOrderWorkItemForVoidOrReturn({ order: null, item: { _id: "i1" }, nextStatus: "cancelled" })).resolves.toBeNull();
+      await expect(service.syncKitchenOrderWorkItemForVoidOrReturn({ order: { _id: "o1" }, item: null, nextStatus: "cancelled" })).resolves.toBeNull();
+      await expect(service.syncKitchenOrderWorkItemForVoidOrReturn({ order: { _id: "o1" }, item: { _id: "i1" }, nextStatus: null })).resolves.toBeNull();
+
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("returns null and skips upsert for unsupported status", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+
+      await expect(
+        service.syncKitchenOrderWorkItemForVoidOrReturn({
+          order: { _id: "o1", restaurantId: "r1" },
+          item: { _id: "i1" },
+          previousStatus: "served",
+          nextStatus: "served",
+          session: {},
+        }),
+      ).resolves.toBeNull();
+
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+  });
+
 });
