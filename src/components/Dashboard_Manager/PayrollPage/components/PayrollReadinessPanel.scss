@@ -316,3 +316,12 @@
     justify-content: flex-start;
   }
 }
+
+.payroll-action-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.payroll-action-hint--error {
+  color: #b91c1c;
+}

@@ -120,11 +120,10 @@ describe("PayrollReadinessPanel", () => {
     fireEvent.click(screen.getByText("Làm mới"));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
-});
 
+  it("shows warning summary chip when warnings exist", () => {
+    render(<PayrollReadinessPanel readiness={buildReadiness()} />);
 
-it("shows warning summary chip when warnings exist", () => {
-  render(<PayrollReadinessPanel readiness={buildReadiness()} />);
-
-  expect(screen.getByText("1 cảnh báo cần rà soát")).toBeInTheDocument();
+    expect(screen.getByText("1 cảnh báo cần rà soát")).toBeInTheDocument();
+  });
 });
