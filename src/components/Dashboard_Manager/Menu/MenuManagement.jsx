@@ -130,6 +130,89 @@ const normalizeServingVariantsForSave = (methods = []) => {
   }));
 };
 
+
+const getMenuEmptyState = ({
+  restaurantId,
+  selectedTimeSlot,
+  items,
+  displayItems,
+  inventoryFilter,
+  hasActiveMenuFilters,
+  canCreateMenuItem,
+  canCreateMenu,
+  hasMenuForSelectedSlot,
+}) => {
+  if (!restaurantId) {
+    return {
+      icon: "🏪",
+      title: "Chọn nhà hàng để quản lý thực đơn",
+      description: "Vui lòng chọn một nhà hàng trước khi xem hoặc chỉnh sửa món.",
+      action: null,
+    };
+  }
+
+  if (selectedTimeSlot && !hasMenuForSelectedSlot) {
+    return {
+      icon: "🕒",
+      title: "Chưa có menu cho khung giờ này",
+      description: "Tạo menu hoặc chọn khung giờ khác để bắt đầu quản lý món.",
+      action: canCreateMenu ? "create_menu" : null,
+    };
+  }
+
+  if ((items || []).length === 0 && !hasActiveMenuFilters) {
+    return {
+      icon: "🍽️",
+      title: "Chưa có món ăn nào",
+      description: "Thêm món đầu tiên để bắt đầu xây dựng thực đơn cho khung giờ này.",
+      action: canCreateMenuItem ? "add_item" : null,
+    };
+  }
+
+  if ((items || []).length > 0 && (displayItems || []).length === 0 && hasActiveMenuFilters) {
+    const inventoryFilterMap = {
+      out_of_stock: {
+        title: "Không có món hết hàng",
+        description: "Tất cả món đang đủ điều kiện bán hoặc không thuộc bộ lọc hiện tại.",
+      },
+      low_stock: {
+        title: "Không có món sắp hết nguyên liệu",
+        description: "Chưa phát hiện món nào có cảnh báo tồn kho thấp.",
+      },
+      not_tracked: {
+        title: "Không có món thiếu recipe tracking",
+        description: "Tất cả món trong phạm vi hiện tại đã có recipe hoặc không cần tracking.",
+      },
+      unavailable: {
+        title: "Không có món tạm dừng",
+        description: "Không có món nào ở trạng thái tạm dừng trong phạm vi hiện tại.",
+      },
+      hidden: {
+        title: "Không có món đang ẩn",
+        description: "Không có món nào đang bị ẩn theo bộ lọc hiện tại.",
+      },
+    };
+
+    const inventoryState = inventoryFilterMap[inventoryFilter];
+    if (inventoryState) {
+      return {
+        icon: "📦",
+        ...inventoryState,
+        action: "clear_filters",
+      };
+    }
+
+    return {
+      icon: "🔎",
+      title: "Không tìm thấy món phù hợp",
+      description: "Thử đổi từ khóa tìm kiếm hoặc xóa bớt bộ lọc.",
+      action: "clear_filters",
+    };
+  }
+
+  return null;
+};
+
 const buildPriceEditError = ({ successCount, failures }) => {
   const failureCount = failures.length;
   const headline =
@@ -809,6 +892,59 @@ const MenuManagement = () => {
     [items, categories, inventoryFilter],
   );
 
+  const hasMenuForSelectedSlot = useMemo(
+    () => (menus || []).some((menu) => menu?.timeSlot === selectedTimeSlot),
+    [menus, selectedTimeSlot],
+  );
+
+  const hasActiveMenuFilters = Boolean(
+    search?.trim() ||
+      categoryId ||
+      statusFilter ||
+      inventoryFilter !== "all" ||
+      priceRange?.minPrice ||
+      priceRange?.maxPrice,
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setSearch("");
+    setCategoryId(null);
+    setStatusFilter(null);
+    setInventoryFilter("all");
+    setPriceRange({ minPrice: null, maxPrice: null });
+  }, [setCategoryId, setPriceRange, setSearch, setStatusFilter]);
+
+  const handleOpenRecipeIssue = useCallback((item) => {
+    toggleModal("menuItem", true, item?.id);
+    pushMenuToast("Mở món để cập nhật recipe và tồn kho.", "info");
+  }, [pushMenuToast]);
+
+  const emptyState = useMemo(
+    () =>
+      getMenuEmptyState({
+        restaurantId: currentRestaurant,
+        selectedTimeSlot,
+        items,
+        displayItems,
+        inventoryFilter,
+        hasActiveMenuFilters,
+        canCreateMenuItem,
+        canCreateMenu,
+        hasMenuForSelectedSlot,
+      }),
+    [
+      canCreateMenu,
+      canCreateMenuItem,
+      currentRestaurant,
+      displayItems,
+      hasActiveMenuFilters,
+      hasMenuForSelectedSlot,
+      inventoryFilter,
+      items,
+      selectedTimeSlot,
+    ],
+  );
+
   const visibleItemIds = useMemo(
     () => new Set((displayItems || []).map((item) => String(item.id))),
     [displayItems],
@@ -1089,21 +1225,28 @@ const MenuManagement = () => {
             </div>
           )}
 
-          {!itemsLoading && displayItems.length === 0 && !itemsError && (
+          {!itemsLoading && displayItems.length === 0 && !itemsError && emptyState && (
             <div className="mm-empty-state">
-              <div className="mm-empty-state__img">🍽️</div>
-              <h3>Chưa có món ăn nào</h3>
-              <p>
-                Thực đơn của bạn đang trống hoặc không tìm thấy kết quả phù hợp.
-              </p>
-              {canCreateMenuItem && (
-                <button
-                  className="mm-btn mm-btn--primary"
-                  onClick={() => toggleModal("menuItem", true)}
-                >
-                  Thêm món ngay
-                </button>
-              )}
+              <div className="mm-empty-state__icon">{emptyState.icon}</div>
+              <h3 className="mm-empty-state__title">{emptyState.title}</h3>
+              <p className="mm-empty-state__description">{emptyState.description}</p>
+              <div className="mm-empty-state__actions">
+                {emptyState.action === "create_menu" && canCreateMenu && (
+                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menu", true)}>
+                    Tạo menu
+                  </button>
+                )}
+                {emptyState.action === "add_item" && canCreateMenuItem && (
+                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menuItem", true)}>
+                    Thêm món mới
+                  </button>
+                )}
+                {emptyState.action === "clear_filters" && (
+                  <button className="mm-btn mm-btn--secondary" onClick={handleClearFilters}>
+                    Xóa lọc
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1146,6 +1289,8 @@ const MenuManagement = () => {
                     }
                     selected={selectedItemIds.has(String(item.id))}
                     onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
+                    onOpenRecipeIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
+                    onOpenInventoryIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
                   />
                 ))}
               </div>
