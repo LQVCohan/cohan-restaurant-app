@@ -1,300 +1,159 @@
-// Variables
-$bg-app: #f8fafc; // Xám xanh rất nhạt (Modern Dashboard Background)
-$bg-white: #ffffff;
-$primary-color: #d97706; // Amber theme
-$text-main: #0f172a;
-$text-sub: #64748b;
-$border-color: #e2e8f0;
-$shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-$radius: 16px;
-$header-height: 80px;
+$dashboard-bg: #f6f7fb;
+$dashboard-surface: #ffffff;
+$dashboard-surface-soft: #f9fafb;
+$dashboard-border: #e5e7eb;
+$dashboard-text-main: #111827;
+$dashboard-text-sub: #6b7280;
+$dashboard-text-muted: #9ca3af;
+$dashboard-primary: #2563eb;
+$dashboard-primary-soft: #eff6ff;
+$dashboard-success: #16a34a;
+$dashboard-success-soft: #ecfdf5;
+$dashboard-warning: #f59e0b;
+$dashboard-warning-soft: #fffbeb;
+$dashboard-danger: #dc2626;
+$dashboard-danger-soft: #fef2f2;
 
-.dashboard-container {
-  background-color: $bg-app;
+.manager-dashboard {
+  background: $dashboard-bg;
   min-height: 100vh;
-  padding: 24px 32px;
-  font-family: "Inter", sans-serif;
-  color: $text-main;
+  padding: 24px;
+  display: grid;
+  gap: 22px;
+}
 
-  // --- 1. HEADER STYLES ---
-  .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
+.dashboard-hero,
+.dashboard-filterbar,
+.dashboard-card,
+.dashboard-error {
+  background: $dashboard-surface;
+  border: 1px solid $dashboard-border;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
 
-    .header-left {
-      .greeting {
-        font-size: 24px;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-
-        .highlight {
-          color: $primary-color;
-        }
-      }
-
-      .meta-info {
-        display: flex;
-        gap: 16px;
-        color: $text-sub;
-        font-size: 13px;
-        font-weight: 500;
-
-        .meta-item {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-      }
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-
-      .search-bar {
-        background: $bg-white;
-        border: 1px solid $border-color;
-        border-radius: 12px;
-        padding: 10px 16px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 300px;
-        color: $text-sub;
-        transition: all 0.2s;
-
-        &:focus-within {
-          border-color: $primary-color;
-          box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
-        }
-
-        input {
-          border: none;
-          outline: none;
-          background: transparent;
-          width: 100%;
-          font-size: 14px;
-          color: $text-main;
-          &::placeholder {
-            color: #94a3b8;
-          }
-        }
-      }
-    }
+.dashboard-hero {
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  &__greeting { margin: 0 0 4px; color: $dashboard-text-sub; font-size: 14px; font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.2; color: $dashboard-text-main; }
+  &__subtitle { margin: 10px 0 12px; font-size: 14px; color: $dashboard-text-sub; max-width: 680px; }
+  &__badge {
+    display: inline-flex; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    color: $dashboard-primary; background: $dashboard-primary-soft; border: 1px solid #bfdbfe;
   }
+  &__actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+}
 
-  // --- 2. STATS SECTION ---
-  .stats-section {
-    margin-bottom: 24px;
-  }
+.dashboard-btn {
+  height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid transparent;
+  font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  transition: all 160ms ease;
+  &:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.22); outline-offset: 2px; }
+  &:active { transform: translateY(1px); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+  &--primary { background: $dashboard-primary; color: #fff; }
+  &--secondary { background: $dashboard-surface; color: $dashboard-text-main; border-color: #d1d5db; }
+  &--ghost { background: #f8fafc; color: $dashboard-text-main; border-color: #e2e8f0; }
+}
 
-  // --- 3. MAIN GRID LAYOUT (BENTO) ---
-  .main-content-grid {
-    display: grid;
-    // Tỉ lệ vàng: Cột trái 2.5 phần - Cột phải 1 phần
-    grid-template-columns: minmax(0, 2.5fr) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start; // Quan trọng: Để các cột không bị kéo giãn chiều cao ép buộc
+.dashboard-filterbar {
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  &__context { margin-left: auto; font-size: 13px; color: $dashboard-text-sub; strong { color: $dashboard-text-main; margin-left: 6px; } }
+}
 
-    // Cột Trái
-    .col-primary {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-
-      .widget-wrapper {
-        background: $bg-white;
-        border-radius: $radius;
-        border: 1px solid $border-color;
-        box-shadow: $shadow-sm;
-        overflow: hidden;
-
-        &.orders-widget {
-          padding: 20px;
-          min-height: 400px;
-
-          .widget-header-simple {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            h3 {
-              font-size: 16px;
-              font-weight: 600;
-              margin: 0;
-            }
-            .btn-link {
-              background: none;
-              border: none;
-              color: $primary-color;
-              font-weight: 500;
-              cursor: pointer;
-              font-size: 13px;
-              &:hover {
-                text-decoration: underline;
-              }
-            }
-          }
-        }
-      }
+.dashboard-field {
+  display: grid; gap: 6px; min-width: 240px;
+  span { font-size: 12px; color: $dashboard-text-sub; font-weight: 600; }
+  &__control {
+    height: 40px; border: 1px solid #d1d5db; border-radius: 12px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+    select {
+      border: 0; outline: none; width: 100%; background: transparent; color: $dashboard-text-main; font-size: 14px;
     }
-
-    // Cột Phải
-    .col-secondary {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-
-      .widget-wrapper {
-        background: $bg-white;
-        border-radius: $radius;
-        border: 1px solid $border-color;
-        box-shadow: $shadow-sm;
-
-        // Top Dishes
-        &.dishes-widget {
-          flex: 1; // Tự dãn để lấp đầy khoảng trống nếu cần
-        }
-      }
-    }
-  }
-
-  // --- RESPONSIVE ---
-  @media (max-width: 1200px) {
-    .main-content-grid {
-      grid-template-columns: 1fr; // Chuyển về 1 cột dọc
-
-      .col-secondary {
-        flex-direction: row; // QuickAction và TopDish nằm ngang trên tablet
-        .widget-wrapper {
-          flex: 1;
-        }
-      }
-    }
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-
-    .dashboard-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
-
-      .header-right {
-        width: 100%;
-        flex-direction: column-reverse; // Đưa search bar xuống dưới nút control
-        .search-bar {
-          width: 100%;
-        }
-      }
-    }
-
-    .col-secondary {
-      flex-direction: column; // Mobile: Dọc hết
-    }
+    &:focus-within { border-color: $dashboard-primary; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
   }
 }
 
-// Animation
-.fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+.dashboard-section__head h2 { margin: 0; font-size: 18px; color: $dashboard-text-main; }
 
-.dashboard-error,
-.performance-loading,
-.performance-error,
-.performance-empty {
-  padding: 12px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-}
-
-.dashboard-error,
-.performance-error {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.performance-loading,
-.performance-empty {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.performance-panel {
-  padding: 16px;
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-
-    h3 { margin: 0; font-size: 16px; }
-  }
-
-  .btn-link { background: none; border: none; color: $primary-color; cursor: pointer; }
-
-  .performance-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .kpi-card { background: #f8fafc; border: 1px solid $border-color; border-radius: 10px; padding: 10px; }
-  .kpi-card span { display: block; font-size: 12px; color: $text-sub; }
-  .kpi-card strong { font-size: 18px; }
-
-  .performance-section { margin-top: 10px; }
-  .performance-section h4 { margin: 0 0 8px; font-size: 14px; }
-
-  .simple-table__head,
-  .simple-table__row {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr .8fr .8fr;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: 13px;
-  }
-
-  .simple-table__head { font-weight: 600; border-bottom: 1px solid $border-color; }
-  .simple-table__empty { font-size: 13px; color: $text-sub; padding-top: 8px; }
-
-  .action-list,
-  .event-list { list-style: none; margin: 0; padding: 0; }
-
-  .action-list li,
-  .event-list li {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    padding: 6px 0;
-    border-bottom: 1px dashed $border-color;
+.dashboard-kpi-grid {
+  .stats-grid-container { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .stat-card {
+    background: #fff; border: 1px solid $dashboard-border; border-radius: 18px; padding: 18px; min-height: 138px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035); transition: all 160ms ease;
+    &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06); border-color: #dbeafe; }
+    .card-header { align-items: center; }
+    .stat-label { font-size: 13px; color: $dashboard-text-sub; font-weight: 600; margin-top: 14px; }
+    .stat-value { margin-top: 6px; font-size: 28px; font-weight: 800; color: $dashboard-text-main; letter-spacing: -0.02em; }
   }
 }
 
-.incident-queue { margin-top: 14px; padding: 16px; background: #fff; border-radius: 10px; border: 1px solid $border-color; }
-.incident-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.incident-filters button.active { background: $primary-color; color: #fff; }
-.incident-grid { grid-template-columns: 1.2fr 1fr .8fr 1fr 1fr 1fr 1.2fr !important; align-items: center; }
-.incident-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.incident-read-only { font-size: 12px; color: $text-sub; }
-.incident-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.incident-modal { width: min(560px, 92vw); background: #fff; border-radius: 12px; padding: 16px; display: grid; gap: 8px; }
-.incident-modal input, .incident-modal select, .incident-modal textarea { width: 100%; padding: 8px; border: 1px solid $border-color; border-radius: 8px; }
-.incident-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dashboard-main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 22px; }
+.dashboard-list-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.dashboard-card { border-radius: 20px; padding: 20px; overflow: hidden; }
+.dashboard-chart-card { min-height: 360px; }
+.dashboard-card__head {
+  display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px;
+  h3 { margin: 0; font-size: 18px; color: $dashboard-text-main; }
+  p { margin: 6px 0 0; font-size: 13px; color: $dashboard-text-sub; }
+}
+.dashboard-mini-badge { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 9px; background: #f3f4f6; color: #4b5563; }
+.dashboard-link { font-size: 13px; font-weight: 600; color: $dashboard-primary; }
+
+.dashboard-empty {
+  min-height: 210px; border: 1px dashed #dbe4f3; border-radius: 14px; background: $dashboard-surface-soft;
+  display: grid; place-content: center; text-align: center; gap: 8px; color: $dashboard-text-sub; padding: 16px;
+  h4 { margin: 0; font-size: 15px; color: $dashboard-text-main; }
+  p { margin: 0; font-size: 13px; }
+  &--compact { min-height: auto; margin-top: 10px; }
+}
+
+.dashboard-error {
+  border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  color: #991b1b; background: $dashboard-danger-soft;
+  h3 { margin: 0; font-size: 14px; }
+  p { margin: 4px 0 0; font-size: 13px; color: #7f1d1d; }
+}
+
+.dashboard-skeleton {
+  border-radius: 14px;
+  background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%);
+  background-size: 400% 100%;
+  animation: dashboard-shimmer 1.35s ease-in-out infinite;
+  &--chart { height: 260px; }
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes dashboard-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+@media (max-width: 1200px) {
+  .manager-dashboard { padding: 20px; }
+  .dashboard-kpi-grid .stats-grid-container { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-main-grid,
+  .dashboard-list-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .manager-dashboard { padding: 16px; gap: 14px; }
+  .dashboard-hero { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .dashboard-hero h1 { font-size: 24px; }
+  .dashboard-hero__actions { width: 100%; }
+  .dashboard-filterbar { align-items: stretch; }
+  .dashboard-field { min-width: 100%; }
+  .dashboard-filterbar__context { margin-left: 0; }
+  .dashboard-kpi-grid .stats-grid-container { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .dashboard-btn { width: 100%; justify-content: center; }
+  .dashboard-kpi-grid .stat-card .stat-value { font-size: 24px; }
+}

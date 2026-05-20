@@ -1,19 +1,32 @@
-import React, { useMemo } from "react";
-import { Calendar, MapPin, Search } from "lucide-react";
+import React, { useContext, useMemo } from "react";
+import {
+  AlertTriangle,
+  BarChart3,
+  ClipboardList,
+  RefreshCw,
+  Monitor,
+  FileText,
+  CalendarRange,
+  Store,
+} from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "../../../hooks/useDashboard";
 
-// Components (Đã được nâng cấp ở các bước trước)
-import Header from "./components/Header"; // Tên mới cho component Header cũ
 import StatsGrid from "./components/StatsGrid";
 import RevenueChart from "./components/RevenueChart";
-import RecentOrders from "./components/RecentOrders"; // Giả định đã có
+import RecentOrders from "./components/RecentOrders";
 import TopDishes from "./components/TopDishes";
-import QuickActions from "./components/QuickActions"; // Component mới bên dưới
 import ManagerPerformancePanel from "../Performance/ManagerPerformancePanel";
 
 import "./Dashboard.scss";
 
+const RANGE_LABELS = {
+  week: "7 ngày gần nhất",
+  month: "30 ngày gần nhất",
+};
+
 const Dashboard = () => {
+  const { user } = useContext(AuthContext);
   const {
     selectedRestaurant,
     restaurants,
@@ -32,98 +45,169 @@ const Dashboard = () => {
     lowStockItems,
   } = useDashboard();
 
-  // 1. Logic Lời chào thông minh
-  const greetingInfo = useMemo(() => {
-    const hour = new Date().getHours();
-    let text = "Chào buổi tối";
-    if (hour < 12) text = "Chào buổi sáng";
-    else if (hour < 18) text = "Chào buổi chiều";
+  const safeRevenueTrend = Array.isArray(revenueTrend) ? revenueTrend : [];
+  const safeRecentOrders = Array.isArray(recentOrders) ? recentOrders : [];
+  const safeTopDishes = Array.isArray(topDishes) ? topDishes : [];
+  const safeLowStockItems = Array.isArray(lowStockItems) ? lowStockItems : [];
 
-    const dateStr = new Date().toLocaleDateString("vi-VN", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  const greetingText = useMemo(() => {
+    const fullName =
+      user?.fullName || user?.name || user?.role?.name || user?.roleName || "";
+    return fullName ? `Xin chào, ${fullName}` : "Tổng quan vận hành";
+  }, [user]);
 
-    return { text, dateStr };
-  }, []);
+  const rangeLabel = RANGE_LABELS[range] || "Hôm nay";
 
   return (
-    <div className="dashboard-container fade-in">
-      {/* SECTION 1: TOP BAR (Sticky Header) */}
-      <header className="dashboard-header">
-        <div className="header-left">
-          <h1 className="greeting">
-            {greetingInfo.text}, <span className="highlight">Admin</span>
-          </h1>
-          <div className="meta-info">
-            <span className="meta-item">
-              <Calendar size={14} /> {greetingInfo.dateStr}
-            </span>
-            <span className="meta-item">
-              <MapPin size={14} /> {selectedRestaurant?.name || "Toàn hệ thống"}
-            </span>
-          </div>
+    <div className="manager-dashboard">
+      <section className="dashboard-hero" aria-labelledby="dashboard-title">
+        <div className="dashboard-hero__main">
+          <p className="dashboard-hero__greeting">{greetingText}</p>
+          <h1 id="dashboard-title">Dashboard quản lý</h1>
+          <p className="dashboard-hero__subtitle">
+            Theo dõi doanh thu, đơn hàng và tình hình vận hành nhà hàng trong thời gian thực.
+          </p>
+          <span className="dashboard-hero__badge">Đang xem: {rangeLabel}</span>
         </div>
 
-        <div className="header-right">
-          {/* Thanh tìm kiếm nhanh */}
-          <div className="search-bar">
-            <Search size={18} />
-            <input type="text" placeholder="Tìm đơn hàng, món ăn..." />
-          </div>
-
-          {/* Các nút chức năng (POS, Export...) */}
-          <Header
-            selectedRestaurant={selectedRestaurantId}
-            restaurants={restaurants}
-            onRestaurantChange={handleRestaurantChange}
-            onSwitchToPOS={handleSwitchToPOS}
-            onGenerateReport={handleGenerateReport}
-          />
+        <div className="dashboard-hero__actions">
+          <button type="button" className="dashboard-btn dashboard-btn--secondary" onClick={() => handleGenerateReport?.()} disabled={loading}>
+            <FileText size={16} />
+            <span>Xuất báo cáo</span>
+          </button>
+          <button type="button" className="dashboard-btn dashboard-btn--ghost" onClick={() => handleGenerateReport?.()} disabled={loading}>
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+            <span>Làm mới</span>
+          </button>
+          <button type="button" className="dashboard-btn dashboard-btn--primary" onClick={() => handleSwitchToPOS?.()}>
+            <Monitor size={16} />
+            <span>Mở POS</span>
+          </button>
         </div>
-      </header>
-      {error ? <div className="dashboard-error">Không tải được dữ liệu dashboard.</div> : null}
-
-      {/* SECTION 2: STATS OVERVIEW */}
-      <section className="stats-section">
-        <StatsGrid stats={stats} isLoading={loading} />
       </section>
 
-      {/* SECTION 3: MAIN GRID (BENTO LAYOUT) */}
-      <section className="main-content-grid">
-        {/* LEFT COLUMN (70%) - Dữ liệu chi tiết & Rộng */}
-        <div className="col-primary">
-          <div className="widget-wrapper chart-widget">
-            <RevenueChart
-              data={revenueTrend}
-              loading={loading}
-              range={range}
-              onRangeChange={setRange}
-            />
+      <section className="dashboard-filterbar" aria-label="Bộ lọc dashboard">
+        <label className="dashboard-field">
+          <span>Nhà hàng</span>
+          <div className="dashboard-field__control">
+            <Store size={15} />
+            <select
+              aria-label="Chọn nhà hàng"
+              value={selectedRestaurantId || ""}
+              onChange={(e) => handleRestaurantChange?.(e.target.value)}
+            >
+              {(restaurants || []).map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="widget-wrapper orders-widget">
-            <RecentOrders orders={recentOrders} loading={loading} />
-          </div>
-        </div>
+        </label>
 
-        {/* RIGHT COLUMN (30%) - Thông tin bổ trợ & Thao tác */}
-        <div className="col-secondary">
-          <div className="widget-wrapper actions-widget">
-            <QuickActions />
+        <label className="dashboard-field">
+          <span>Khoảng thời gian</span>
+          <div className="dashboard-field__control">
+            <CalendarRange size={15} />
+            <select
+              aria-label="Chọn khoảng thời gian"
+              value={range}
+              onChange={(e) => setRange?.(e.target.value)}
+            >
+              <option value="week">7 ngày gần nhất</option>
+              <option value="month">30 ngày gần nhất</option>
+            </select>
           </div>
-          <div className="widget-wrapper performance-widget">
-            <ManagerPerformancePanel
-              restaurantId={selectedRestaurantId}
-              summaryOnly
-              showViewAll
-            />
-          </div>
-          <div className="widget-wrapper dishes-widget">
-            <TopDishes data={topDishes} lowStockItems={lowStockItems} loading={loading} />
-          </div>
+        </label>
+
+        <div className="dashboard-filterbar__context">
+          <span>Đang xem:</span>
+          <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong>
         </div>
+      </section>
+
+      {error ? (
+        <section className="dashboard-error" role="alert">
+          <AlertTriangle size={18} />
+          <div>
+            <h3>Không thể tải dữ liệu dashboard</h3>
+            <p>{error?.message || "Vui lòng thử lại sau."}</p>
+          </div>
+          <button type="button" className="dashboard-btn dashboard-btn--ghost" onClick={() => handleGenerateReport?.()}>
+            Thử lại
+          </button>
+        </section>
+      ) : null}
+
+      <section className="dashboard-section">
+        <div className="dashboard-section__head">
+          <h2>Tổng quan hôm nay</h2>
+        </div>
+        <div className="dashboard-kpi-grid">
+          <StatsGrid stats={stats} isLoading={loading} />
+        </div>
+      </section>
+
+      <section className="dashboard-main-grid">
+        <article className="dashboard-card dashboard-chart-card">
+          <div className="dashboard-card__head">
+            <div>
+              <h3>Doanh thu</h3>
+              <p>Xu hướng doanh thu theo khoảng thời gian đã chọn</p>
+            </div>
+            <span className="dashboard-mini-badge">{rangeLabel}</span>
+          </div>
+          {loading ? <div className="dashboard-skeleton dashboard-skeleton--chart" /> : null}
+          {!loading && safeRevenueTrend.length === 0 ? (
+            <div className="dashboard-empty">
+              <BarChart3 size={20} />
+              <h4>Chưa có dữ liệu doanh thu.</h4>
+              <p>Dữ liệu sẽ xuất hiện khi có đơn hàng hoàn tất trong khoảng thời gian này.</p>
+            </div>
+          ) : null}
+          {!loading && safeRevenueTrend.length > 0 ? (
+            <RevenueChart data={safeRevenueTrend} loading={loading} range={range} onRangeChange={setRange} />
+          ) : null}
+        </article>
+
+        <article className="dashboard-card dashboard-summary-card">
+          <div className="dashboard-card__head">
+            <div>
+              <h3>Hiệu suất vận hành</h3>
+              <p>Thông tin vận hành theo nhà hàng đã chọn</p>
+            </div>
+          </div>
+          <ManagerPerformancePanel restaurantId={selectedRestaurantId} summaryOnly showViewAll />
+        </article>
+      </section>
+
+      <section className="dashboard-list-grid">
+        <article className="dashboard-card dashboard-list-card">
+          <div className="dashboard-card__head">
+            <div>
+              <h3>Đơn hàng gần đây</h3>
+              <p>Theo dõi các đơn mới và trạng thái xử lý</p>
+            </div>
+            <span className="dashboard-link">Xem tất cả</span>
+          </div>
+          <RecentOrders orders={safeRecentOrders} loading={loading} />
+        </article>
+
+        <article className="dashboard-card dashboard-list-card">
+          <div className="dashboard-card__head">
+            <div>
+              <h3>Món bán chạy</h3>
+              <p>Các món có doanh số tốt nhất</p>
+            </div>
+          </div>
+          <TopDishes data={safeTopDishes} lowStockItems={safeLowStockItems} loading={loading} />
+          {!loading && safeTopDishes.length === 0 ? (
+            <div className="dashboard-empty dashboard-empty--compact">
+              <ClipboardList size={18} />
+              <h4>Chưa có dữ liệu món bán chạy.</h4>
+            </div>
+          ) : null}
+        </article>
       </section>
     </div>
   );
