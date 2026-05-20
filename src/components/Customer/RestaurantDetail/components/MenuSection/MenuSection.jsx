@@ -12,6 +12,7 @@ import { useCustomerCartActions } from "../../../../../hooks/useCustomerCartActi
 import { ShoppingCart, ChevronDown } from "lucide-react";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { buildFoodDetailPath, buildFoodDetailState } from "../../../../../utils/customerFoodNavigation";
+import { getCannotOrderReason } from "../../../../../utils/restaurantStatus";
 
 // Utils
 const formatPrice = (value) =>
@@ -97,7 +98,13 @@ const GET_FOOD_REVIEWS = gql`
   }
 `;
 
-const MenuSection = ({ restaurantId }) => {
+const MenuSection = ({
+  restaurantId,
+  restaurant,
+  canOrder: canOrderProp,
+  openingStatus: openingStatusProp,
+  openingStatusReason,
+}) => {
   const navigate = useNavigate();
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
   const [categories, setCategories] = useState([]);
@@ -267,7 +274,13 @@ const MenuSection = ({ restaurantId }) => {
   };
 
 
+  const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
+  const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
+  const cannotOrderReason =
+    openingStatusReason || getCannotOrderReason(resolvedOpeningStatus);
+
   const openFoodDetail = (item) => {
+    if (!resolvedCanOrder) return;
     if (!item?.id) return;
 
     const categoryId = item?.categoryId || activeCategory || null;
@@ -298,6 +311,7 @@ const MenuSection = ({ restaurantId }) => {
         {timeSlots.map((slot) => (
           <button
             key={slot.id}
+            type="button"
             className={`slot-btn ${
               selectedTimeSlot === slot.id ? "active" : ""
             }`}
@@ -319,6 +333,7 @@ const MenuSection = ({ restaurantId }) => {
               categories.map((cat) => (
                 <button
                   key={cat.id}
+                  type="button"
                   className={`category-item ${
                     activeCategory === cat.id ? "active" : ""
                   }`}
@@ -362,10 +377,14 @@ const MenuSection = ({ restaurantId }) => {
                   <div
                     key={item.id}
                     className="dish-card-horizontal"
-                    onClick={() => openFoodDetail(item)}
+                    onClick={() => {
+                      if (!resolvedCanOrder) return;
+                      openFoodDetail(item);
+                    }}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(event) => {
+                      if (!resolvedCanOrder) return;
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         openFoodDetail(item);
@@ -431,7 +450,9 @@ const MenuSection = ({ restaurantId }) => {
                         </div>
 
                         <button
+                          type="button"
                           className="btn-add"
+                          disabled={!resolvedCanOrder}
                           onClick={(event) => {
                             event.stopPropagation();
                             openFoodDetail(item);
@@ -447,6 +468,7 @@ const MenuSection = ({ restaurantId }) => {
 
               {hasNextPage && (
                 <button
+                  type="button"
                   className="btn-load-more"
                   onClick={loadMoreItems}
                   disabled={menuLoading}
@@ -464,8 +486,14 @@ const MenuSection = ({ restaurantId }) => {
         </main>
       </div>
 
+      {!resolvedCanOrder && (
+        <div className="menu-order-status-warning" role="status">
+          {cannotOrderReason}
+        </div>
+      )}
+
       {/* Floating Cart */}
-      <button className="cart-fab" onClick={() => setIsCartOpen(true)}>
+      <button type="button" className="cart-fab" onClick={() => setIsCartOpen(true)}>
         <ShoppingCart size={24} />
         {getTotalItems() > 0 && (
           <span className="count">{getTotalItems()}</span>
