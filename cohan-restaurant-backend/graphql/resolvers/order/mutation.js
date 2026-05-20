@@ -60,7 +60,10 @@ import {
   emitCustomerTrackingUpdateIfChanged,
   toCustomerTrackingPayload,
 } from "../../../src/services/orderTracking.service.js";
-import { upsertKitchenOrderWorkItemForStatusChange } from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
+import {
+  upsertKitchenOrderWorkItemForStatusChange,
+  syncKitchenOrderWorkItemsForOrderStatusChange,
+} from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
 
 const RESERVABLE_STATUSES = [
   "draft",
@@ -3211,18 +3214,19 @@ export const OrderMutation = {
 
         const prevPublicStatus = order.publicStatus;
         order.currentStatus = status;
+        const itemTransitions = [];
         if (status === "preparing") {
           for (const item of order.items || []) {
-            if (!["cancelled", "returned"].includes(item.status)) {
-              if (item.status === "pending") {
-                item.status = "preparing";
-              }
+            if (item.status === "pending") {
+              itemTransitions.push({ item, previousStatus: item.status, nextStatus: "preparing" });
+              item.status = "preparing";
             }
           }
         }
         if (status === "ready") {
           for (const item of order.items || []) {
             if (item.status === "preparing") {
+              itemTransitions.push({ item, previousStatus: item.status, nextStatus: "ready" });
               item.status = "ready";
             }
           }
@@ -3230,10 +3234,18 @@ export const OrderMutation = {
         if (status === "served") {
           for (const item of order.items || []) {
             if (["pending", "preparing", "ready"].includes(item.status)) {
+              itemTransitions.push({ item, previousStatus: item.status, nextStatus: "served" });
               item.status = "served";
             }
           }
         }
+        await syncKitchenOrderWorkItemsForOrderStatusChange({
+          order,
+          itemTransitions,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
         order.statusTimeline.push({
           status,
           at: new Date(),
