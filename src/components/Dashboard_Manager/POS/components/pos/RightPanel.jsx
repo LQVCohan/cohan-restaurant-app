@@ -462,7 +462,7 @@ export default function RightPanel() {
     return currentOrderType === "delivery"
       ? "Đơn giao hàng"
       : currentOrderType === "takeaway"
-        ? "Đơn mang về"
+        ? "Đơn mang đi"
         : "Đơn hàng";
   }, [currentOrderCode, currentOrderType, currentTable?.code]);
 
@@ -1483,7 +1483,7 @@ export default function RightPanel() {
         isSaving={saving}
         orderType={currentOrderType}
         orderCode={currentOrderCode}
-        tableCode={currentTable?.code || null}
+        tableCode={currentOrderType === "dine_in" ? (currentTable?.code || null) : null}
         totals={finalTotals}
         newItems={newItems}
         shippingInfo={shippingInfo}
@@ -1515,11 +1515,20 @@ export default function RightPanel() {
               </span>
 
               <div>
-                {groupedPaymentRequests.slice(0, 3).map((req) => (
+                {groupedPaymentRequests.slice(0, 3).map((req) => {
+                  const rawOrderType = String(req?.orderType || "").toLowerCase();
+                  const safeTableCode = String(req?.tableCode || "").trim();
+                  const tableLikeLabel = req.isTableGroup && safeTableCode
+                    ? `Bàn ${safeTableCode}`
+                    : rawOrderType === "delivery"
+                      ? "Giao hàng"
+                      : rawOrderType === "takeaway"
+                        ? "Mang đi"
+                        : req.orderCode || req.orderId || "Không gắn bàn";
+
+                  return (
                   <div key={req.groupKey}>
-                    {req.isTableGroup
-                      ? `Bàn ${req.tableCode}`
-                      : req.orderCode || req.orderId}
+                    {tableLikeLabel}
                     {" · "}
                     {formatPrice(req?.totals?.grandTotal || 0)}
 
@@ -1537,7 +1546,8 @@ export default function RightPanel() {
                       Mở thanh toán
                     </button>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           )}
