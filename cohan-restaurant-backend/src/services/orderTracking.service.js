@@ -93,13 +93,22 @@ export function updatePublicStatusHistory(orderDoc, changedByRole = "SYSTEM") {
   orderDoc.statusHistory = history;
 }
 
+function isValidLatestRequest(request) {
+  return Boolean(
+    request?.requestId &&
+    request?.type &&
+    request?.status &&
+    request?.createdAt,
+  );
+}
+
 export function toCustomerTrackingPayload(order = {}) {
   const normalizedPaymentStatus = String(
     order?.orderPaymentStatus || order?.payment?.status || "unpaid",
   ).toLowerCase();
   const latestRequest = Array.isArray(order?.customerRequests)
     ? [...order.customerRequests]
-        .filter(Boolean)
+        .filter(isValidLatestRequest)
         .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
     : null;
 
@@ -121,11 +130,11 @@ export function toCustomerTrackingPayload(order = {}) {
     },
     latestRequest: latestRequest
       ? {
-          requestId: latestRequest.requestId || null,
-          type: latestRequest.type || null,
-          status: latestRequest.status || null,
+          requestId: latestRequest.requestId,
+          type: latestRequest.type,
+          status: latestRequest.status,
           message: latestRequest.message || null,
-          createdAt: latestRequest.createdAt || null,
+          createdAt: latestRequest.createdAt,
           acknowledgedAt: latestRequest.acknowledgedAt || null,
           resolvedAt: latestRequest.resolvedAt || null,
         }
