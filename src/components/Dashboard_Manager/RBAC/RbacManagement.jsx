@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 import { useRbacManagement } from "@/hooks/useRbacManagement";
 import RbacAuditLogPanel from "./RbacAuditLogPanel";
 import { hasAnyPermission, hasPermission, NO_PERMISSION_MESSAGE } from "@/utils/frontendPermissionAccess";
@@ -255,10 +256,34 @@ export default function RbacManagement() {
 
   return (
     <div className="rbac-page">
-      <header className="rbac-hero">
-        <div><p className="rbac-eyebrow">Phân quyền nhân viên</p><h2>Quản lý phân quyền nhân viên</h2><p>Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng.</p><small>Backend vẫn kiểm tra quyền bắt buộc.</small></div>
-        <button type="button" onClick={() => rbac.refetch()} disabled={rbac.loading}>Làm mới</button>
-      </header>
+      <ManagementPageHeader
+        eyebrow="RBAC MANAGER"
+        title="Phân quyền nhân viên"
+        subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng."
+        icon="🛡️"
+        stats={[
+          {
+            label: "Vai trò",
+            value: rbac.roles.length,
+            icon: "👥",
+          },
+          {
+            label: "Nhân viên",
+            value: rbac.staff.length,
+            icon: "🧑‍🍳",
+          },
+        ]}
+        secondaryActions={[
+          {
+            label: "Làm mới",
+            onClick: () => rbac.refetch(),
+            disabled: rbac.loading,
+            loading: rbac.loading,
+          },
+        ]}
+        footerLeft={<small>Backend vẫn kiểm tra quyền bắt buộc.</small>}
+        showTimeWidget={false}
+      />
       {rbac.error ? <div className="rbac-status rbac-status--error">{getGraphQLErrorMessage(rbac.error, "Không tải được dữ liệu phân quyền.")}</div> : null}
       {rbac.loading ? <div className="rbac-status">Đang tải dữ liệu phân quyền...</div> : null}
       <nav className="rbac-tabs" aria-label="Quản lý phân quyền">

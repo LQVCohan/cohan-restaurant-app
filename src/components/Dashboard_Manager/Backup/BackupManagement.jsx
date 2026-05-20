@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 import "./BackupManagement.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const Q_BACKUP_READINESS = gql`
   query BackupReadiness($restaurantId: ID!) {
@@ -240,20 +241,32 @@ const BackupManagement = () => {
 
   return (
     <div className="backup-management">
-      <header className="backup-management__hero">
-        <div>
-          <h2>Sao lưu &amp; khôi phục</h2>
-          <p>
-            Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần
-            kiểm tra.
-          </p>
-        </div>
-        <div className="backup-management__badges" aria-label="Trạng thái trang">
-          <span>Backend metadata</span>
-          <span>Checklist vận hành</span>
-          <span>Không restore tự động</span>
-        </div>
-      </header>
+      <ManagementPageHeader
+        eyebrow="BACKUP CENTER"
+        title="Sao lưu & khôi phục"
+        subtitle="Theo dõi quy trình chuẩn bị sao lưu, đối soát dữ liệu và điều hướng tới các khu vực cần kiểm tra."
+        icon="🗄️"
+        stats={[
+          {
+            label: "Checklist",
+            value: `${completedChecklistCount}/${checklistItems.length}`,
+            icon: "✅",
+          },
+          {
+            label: "Backup runs",
+            value: runs.length,
+            icon: "🧾",
+          },
+        ]}
+        customControls={(
+          <div className="backup-management__badges" aria-label="Trạng thái trang">
+            <span>Backend metadata</span>
+            <span>Checklist vận hành</span>
+            <span>Không restore tự động</span>
+          </div>
+        )}
+        showTimeWidget={false}
+      />
 
       <section className="backup-management__alert" role="note">
         Trang này chưa tạo file backup, chưa download backup và chưa khôi phục dữ liệu.
