@@ -61,6 +61,7 @@ import {
   toCustomerTrackingPayload,
 } from "../../../src/services/orderTracking.service.js";
 import {
+  syncKitchenOrderWorkItemsForKitchenEntry,
   upsertKitchenOrderWorkItemForStatusChange,
   syncKitchenOrderWorkItemForVoidOrReturn,
   syncKitchenOrderWorkItemsForOrderStatusChange,
@@ -1697,6 +1698,12 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+        await syncKitchenOrderWorkItemsForKitchenEntry({
+          order: createdOrderDoc,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
 
         await Order.updateOne(
           { _id: parentSession._id },
@@ -1876,6 +1883,12 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+        await syncKitchenOrderWorkItemsForKitchenEntry({
+          order: createdOrderDoc,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
 
         if (totals?.couponId) {
           await incrementCouponUsageOnce({
@@ -2522,6 +2535,12 @@ export const OrderMutation = {
           );
 
           createdOrders.push(order);
+          await syncKitchenOrderWorkItemsForKitchenEntry({
+            order,
+            actorUserId: ctx?.user?.id || ctx?.user?._id,
+            now: new Date(),
+            session,
+          });
           checkoutTotals.subtotal += Number(totals.subtotal || 0);
           checkoutTotals.promotionDiscount += Number(
             totals.promotionDiscount || 0,

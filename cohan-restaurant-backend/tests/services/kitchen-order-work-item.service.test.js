@@ -347,6 +347,147 @@ describe("kitchenOrderWorkItem service", () => {
     });
   });
 
+  describe("upsertKitchenOrderWorkItemForKitchenEntry", () => {
+    it("creates pending work item with kitchenEnteredAt and no prep/ready metrics", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      const now = new Date("2026-05-20T10:00:00.000Z");
+      await service.upsertKitchenOrderWorkItemForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1", orderCode: "ORD-1", createdAt: now },
+        item: { _id: "i1", name: "Cơm gà", quantity: 2, status: "pending" },
+        actorUserId: "u1",
+        now,
+        session: {},
+      });
+
+      const updateArg = modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mock.calls[0][1];
+      expect(updateArg.$set).toMatchObject({
+        status: "pending",
+        kitchenEnteredAt: now,
+        lastStatusChangedAt: now,
+        updatedBy: "u1",
+      });
+      expect(updateArg.$set).not.toHaveProperty("preparingAt");
+      expect(updateArg.$set).not.toHaveProperty("readyAt");
+      expect(updateArg.$set).not.toHaveProperty("actualPrepMinutes");
+      expect(updateArg.$set).not.toHaveProperty("timeLevel");
+    });
+
+    it("attaches roster when active snapshot exists", async () => {
+      modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
+        sort: vi.fn(() => ({ lean: vi.fn(async () => [{ _id: "row-1", shiftId: "shift-1", employeeId: "chef-1", kitchenDutyRole: "head_chef", startTime: new Date("2026-05-20T08:00:00.000Z") }]) })),
+      });
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await service.upsertKitchenOrderWorkItemForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1", name: "Cơm gà", status: "pending" },
+        now: new Date("2026-05-20T10:00:00.000Z"),
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $set: expect.objectContaining({ noRoster: false, rosterSnapshotId: "row-1", shiftId: "shift-1" }) }),
+        expect.anything(),
+      );
+    });
+
+    it("marks noRoster when no active roster is found", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await service.upsertKitchenOrderWorkItemForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1", status: "pending" },
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $set: expect.objectContaining({ noRoster: true, noRosterReason: expect.stringContaining("Không tìm thấy roster") }) }),
+        expect.anything(),
+      );
+    });
+
+    it("does not overwrite existing kitchenEnteredAt", async () => {
+      const existingAt = new Date("2026-05-20T09:00:00.000Z");
+      modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue({
+        lean: vi.fn(() => makeSessionChain({ kitchenEnteredAt: existingAt, lastStatusChangedAt: existingAt })),
+      });
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await service.upsertKitchenOrderWorkItemForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1", createdAt: new Date("2026-05-20T08:00:00.000Z") },
+        item: { _id: "i1", status: "pending" },
+        now: new Date("2026-05-20T10:00:00.000Z"),
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $set: expect.objectContaining({ kitchenEnteredAt: existingAt, lastStatusChangedAt: existingAt }) }),
+        expect.anything(),
+      );
+    });
+
+    it("resolves bar station for Trà đào item", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await service.upsertKitchenOrderWorkItemForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1", name: "Trà đào", status: "pending" },
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $setOnInsert: expect.objectContaining({ station: "bar" }) }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("syncKitchenOrderWorkItemsForKitchenEntry", () => {
+    it("syncs eligible items and returns syncedCount", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      const result = await service.syncKitchenOrderWorkItemsForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1", items: [{ _id: "i1", status: "pending" }, { _id: "i2", status: "preparing" }] },
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ syncedCount: 2 });
+    });
+
+    it("skips cancelled and returned items", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      const result = await service.syncKitchenOrderWorkItemsForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1", items: [{ _id: "i1", status: "cancelled" }, { _id: "i2", status: "returned" }, { _id: "i3", status: "pending" }] },
+        session: {},
+      });
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ syncedCount: 1 });
+    });
+
+    it("returns zero when order missing or items invalid", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await expect(service.syncKitchenOrderWorkItemsForKitchenEntry({ order: null })).resolves.toEqual({ syncedCount: 0 });
+      await expect(service.syncKitchenOrderWorkItemsForKitchenEntry({ order: { _id: "o1", items: null } })).resolves.toEqual({ syncedCount: 0 });
+    });
+
+    it("processes items sequentially", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      const callOrder = [];
+      modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mockImplementation(({ orderItemId }) => {
+        callOrder.push(`start-${orderItemId}`);
+        return {
+          session: vi.fn(async () => {
+            await new Promise((resolve) => setTimeout(resolve, orderItemId === "i1" ? 15 : 0));
+            callOrder.push(`end-${orderItemId}`);
+            return { _id: `work-${orderItemId}` };
+          }),
+        };
+      });
+
+      await service.syncKitchenOrderWorkItemsForKitchenEntry({
+        order: { _id: "o1", restaurantId: "r1", items: [{ _id: "i1", status: "pending" }, { _id: "i2", status: "pending" }] },
+        session: {},
+      });
+
+      expect(callOrder).toEqual(["start-i1", "end-i1", "start-i2", "end-i2"]);
+    });
+  });
+
   describe("syncKitchenOrderWorkItemForVoidOrReturn", () => {
     it("calls upsert for cancelled status", async () => {
       const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
