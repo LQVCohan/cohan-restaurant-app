@@ -40,6 +40,10 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
     if (snapshot?.factors?.hasManagerReview === false && snapshot?.factors?.insufficientData !== true) {
       notes.push("Thiếu đánh giá quản lý");
     }
+    if (Number(snapshot?.factors?.kitchenMetrics?.totalItems || 0) > 0) {
+      const kitchenNote = "Có dữ liệu bếp/bar tham khảo";
+      if (!notes.includes(kitchenNote)) notes.push(kitchenNote);
+    }
     const note = notes.join(" | ");
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
