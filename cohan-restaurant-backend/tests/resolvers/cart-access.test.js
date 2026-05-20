@@ -36,6 +36,17 @@ const whChain = (val) => ({
   })),
 });
 const sessionQuery = (val) => ({ session: vi.fn().mockResolvedValue(val) });
+
+const makeRestaurantQuery = (restaurant = {}) => ({
+  select: vi.fn().mockReturnThis(),
+  lean: vi.fn().mockResolvedValue({
+    _id: "valid-r1",
+    status: "active",
+    businessStatus: "open",
+    publicationStatus: "published",
+    ...restaurant,
+  }),
+});
 const makeItems = (items = []) => {
   items.id = vi.fn((id) => items.find((it) => String(it._id) === String(id)));
   return items;
@@ -112,6 +123,7 @@ describe("cart access hardening", () => {
     const session = { withTransaction: vi.fn(async (fn) => fn()), endSession: vi.fn() };
     mg.startSession.mockResolvedValue(session);
     model.Cart.create.mockResolvedValue([{ _id: "valid-c1", items: [], status: "active", toObject: () => ({ _id: "valid-c1", items: [] }), save: vi.fn() }]);
+    model.Restaurant.findById.mockReturnValue(makeRestaurantQuery());
   });
 
   it("myCart rejects unauthenticated and cross-user", async () => {

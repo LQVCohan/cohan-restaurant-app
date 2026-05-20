@@ -15,6 +15,10 @@ import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableGuardState } from "@/utils/tableGuardState";
+import {
+  isPosManagedStatusTransition,
+  POS_MANAGED_STATUS_TRANSITION_MESSAGE,
+} from "@/utils/tableStatusTransitionGuard";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -381,24 +385,9 @@ const TableManagement = () => {
     filterTablesByFloor(baseFilteredTables, floorId).length;
 
   // --- Handlers ---
-  const POS_MANAGED_STATUS_TRANSITIONS = new Set([
-    "available->occupied",
-    "reserved->occupied",
-    "occupied->payment_pending",
-    "payment_pending->cleaning",
-    "occupied->available",
-    "payment_pending->available",
-  ]);
-
-  const isPosManagedStatusTransition = (currentStatus, nextStatus) =>
-    POS_MANAGED_STATUS_TRANSITIONS.has(`${currentStatus}->${nextStatus}`);
-
   const handleTableStatusChange = async (table, nextStatus) => {
     if (isPosManagedStatusTransition(table?.status, nextStatus)) {
-      showNotification(
-        "Vui lòng thao tác nhận khách, thanh toán hoặc dọn bàn tại POS để đồng bộ order và phiên bàn.",
-        "warning"
-      );
+      showNotification(POS_MANAGED_STATUS_TRANSITION_MESSAGE, "warning");
       return;
     }
     return changeTableStatus(table.id, nextStatus);

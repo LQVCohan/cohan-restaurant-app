@@ -60,6 +60,7 @@ import {
   emitCustomerTrackingUpdateIfChanged,
   toCustomerTrackingPayload,
 } from "../../../src/services/orderTracking.service.js";
+import { upsertKitchenOrderWorkItemForStatusChange } from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
 
 const RESERVABLE_STATUSES = [
   "draft",
@@ -3373,6 +3374,16 @@ export const OrderMutation = {
         }
         const prevPublicStatus = order.publicStatus;
         item.status = status;
+        await upsertKitchenOrderWorkItemForStatusChange({
+          order,
+          item,
+          previousStatus: prevItemStatus,
+          nextStatus: status,
+          actorUserId: ctx?.user?.id || ctx?.user?._id,
+          now: new Date(),
+          session,
+        });
+        // TODO: later sync work items for bulk order status transitions in updateOrderStatus.
         updatePublicStatusHistory(order, "KITCHEN");
         await order.save({ session });
         order.$locals = order.$locals || {};
