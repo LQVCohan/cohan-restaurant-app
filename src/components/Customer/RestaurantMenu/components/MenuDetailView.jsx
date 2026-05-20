@@ -5,6 +5,7 @@ import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotio
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuDetailView.scss";
 import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
+import { getCannotOrderReason } from "../../../../utils/restaurantStatus";
 
 export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
@@ -58,22 +59,6 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 `;
 
 const ITEMS_PER_PAGE = 8;
-
-const getCannotOrderReason = (restaurant, canOrder) => {
-  if (canOrder) return "";
-  switch (restaurant?.openingStatus) {
-    case "closed":
-      return "Nhà hàng đang đóng cửa";
-    case "paused":
-      return "Nhà hàng đang tạm ngưng nhận đơn";
-    case "maintenance":
-      return "Nhà hàng đang bảo trì";
-    case "holiday":
-      return "Nhà hàng nghỉ hôm nay";
-    default:
-      return "Nhà hàng chưa nhận đặt món";
-  }
-};
 
 const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -215,7 +200,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
       <header className="menu-header">
         <div className="header-content">
           <div className="top-row">
-            <button onClick={onBack} className="back-btn">
+            <button type="button" onClick={onBack} className="back-btn">
               ⬅ Quay lại
             </button>
             <h2>{restaurant?.name || "Thực đơn"}</h2>
@@ -229,12 +214,14 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             </div>
             <div className="view-toggle">
               <button
+                type="button"
                 className={viewMode === "grid" ? "active" : ""}
                 onClick={() => setViewMode("grid")}
               >
                 ⊞
               </button>
               <button
+                type="button"
                 className={viewMode === "list" ? "active" : ""}
                 onClick={() => setViewMode("list")}
               >
@@ -290,7 +277,9 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
 
 
         {!canOrder && (
-          <div className="menu-inline-note">{getCannotOrderReason(restaurant, canOrder)}</div>
+          <div className="menu-inline-note">
+            {getCannotOrderReason(restaurant?.openingStatus)}
+          </div>
         )}
         {isLoading ? (
           <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>

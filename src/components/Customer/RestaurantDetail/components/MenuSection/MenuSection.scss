@@ -352,6 +352,16 @@ $shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin: 0 auto;
 }
 
+.menu-order-status-warning {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
 /* FLOATING CART */
 .cart-fab {
   position: fixed;

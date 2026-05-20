@@ -83,7 +83,10 @@ const RestaurantList = ({ restaurantFilter }) => {
       district: node.address?.district,
       city: node.address?.city,
       image: node.coverImage || node.avatar || "/default-dishes.jpg",
-      openingStatus: node.openingStatus, canReserve: node.canReserve, canOrder: node.canOrder, reviewCount: node.reviewCount,
+      openingStatus: node.openingStatus,
+      canReserve: node.canReserve,
+      canOrder: node.canOrder,
+      reviewCount: node.reviewCount,
     }));
   }, [accumulated]);
 

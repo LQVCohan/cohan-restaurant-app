@@ -467,12 +467,27 @@ async function similarRestaurants(_, { restaurantId, limit = 6 }) {
 
   if (sameCuisine.length >= lim) return sameCuisine;
 
-  const fallback = await Restaurant.find({
+  const fallbackOrConditions = [];
+  if (root.address?.district) {
+    fallbackOrConditions.push({ "address.district": root.address.district });
+  }
+  if (root.address?.city) {
+    fallbackOrConditions.push({ "address.city": root.address.city });
+  }
+
+  const fallbackFilter = {
     _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) },
     businessStatus: "active",
     publicationStatus: "published",
-    $or: [{ "address.district": root.address?.district }, { "address.city": root.address?.city }],
-  }).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim - sameCuisine.length).lean();
+  };
+  if (fallbackOrConditions.length > 0) {
+    fallbackFilter.$or = fallbackOrConditions;
+  }
+
+  const fallback = await Restaurant.find(fallbackFilter)
+    .sort({ avgRating: -1, reviewCount: -1, _id: -1 })
+    .limit(lim - sameCuisine.length)
+    .lean();
 
   return [...sameCuisine, ...fallback];
 }
