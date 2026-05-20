@@ -758,32 +758,6 @@ const MenuManagement = () => {
     setPendingSyncPayload(null);
   }, [isSyncingInventory]);
 
-  const inlineAlertStyle = {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 12,
-    padding: "12px 14px",
-    marginBottom: 16,
-    borderRadius: 10,
-    border: "1px solid #fecaca",
-    background: "#fef2f2",
-    color: "#b91c1c",
-  };
-
-  const modalButtonBaseStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minWidth: 108,
-    padding: "10px 16px",
-    borderRadius: 8,
-    border: "1px solid transparent",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-  };
-
   if (!managerId)
     return (
       <div className="mm-state-box">
@@ -941,7 +915,7 @@ const MenuManagement = () => {
         />
 
         <div className="mm-body__content">
-          <div className="mm-inventory-quick-filters" style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <div className="mm-inventory-quick-filters">
             {[
               ["all", "Tất cả"],
               ["low_stock", "Sắp hết"],
@@ -960,21 +934,16 @@ const MenuManagement = () => {
             ))}
           </div>
           {deleteListRefreshError && (
-            <div role="alert" style={inlineAlertStyle}>
-              <FiAlertCircle
-                size={18}
-                style={{ flexShrink: 0, marginTop: 2 }}
-              />
-              <p style={{ margin: 0, lineHeight: 1.5 }}>
-                {deleteListRefreshError}
-              </p>
+            <div role="alert" className="mm-inline-alert">
+              <FiAlertCircle size={18} className="mm-inline-alert__icon" />
+              <p className="mm-inline-alert__text">{deleteListRefreshError}</p>
             </div>
           )}
 
           {itemsError && (
             <div className="mm-state-box error">
               <FiAlertCircle size={32} />
-              <p style={{ marginTop: 8 }}>
+              <p className="mm-state-box__message">
                 Lỗi tải dữ liệu: {itemsError.message}
               </p>
             </div>
@@ -1106,45 +1075,32 @@ const MenuManagement = () => {
       >
         <Modal.Header>Xác nhận xóa món</Modal.Header>
         <Modal.Body>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={{ margin: 0, color: "#334155", lineHeight: 1.6 }}>
+          <div className="mm-delete-confirm-body">
+            <p className="mm-delete-confirm-body__headline">
               Bạn có chắc chắn muốn xóa món
-              <strong style={{ color: "#1e293b" }}>
+              <strong className="mm-delete-confirm-body__item-name">
                 {` ${deletingItem?.name || "này"}`}
               </strong>
               ?
             </p>
-            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+            <p className="mm-delete-confirm-body__note">
               Món sẽ bị gỡ khỏi danh sách hiện tại sau khi bạn xác nhận.
             </p>
 
             {deleteError && (
-              <div
-                role="alert"
-                style={{ ...inlineAlertStyle, marginBottom: 0 }}
-              >
-                <FiAlertCircle
-                  size={18}
-                  style={{ flexShrink: 0, marginTop: 2 }}
-                />
-                <p style={{ margin: 0, lineHeight: 1.5 }}>{deleteError}</p>
+              <div role="alert" className="mm-inline-alert mm-inline-alert--tight">
+                <FiAlertCircle size={18} className="mm-inline-alert__icon" />
+                <p className="mm-inline-alert__text">{deleteError}</p>
               </div>
             )}
           </div>
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer className="mm-delete-confirm-actions">
           <button
             type="button"
             onClick={handleCloseDeleteModal}
             disabled={isDeletingItem}
-            style={{
-              ...modalButtonBaseStyle,
-              borderColor: "#cbd5e1",
-              background: "#ffffff",
-              color: "#475569",
-              cursor: isDeletingItem ? "not-allowed" : "pointer",
-              opacity: isDeletingItem ? 0.7 : 1,
-            }}
+            className="mm-modal-btn mm-modal-btn--secondary"
           >
             Hủy
           </button>
@@ -1152,13 +1108,7 @@ const MenuManagement = () => {
             type="button"
             onClick={handleConfirmDeleteItem}
             disabled={isDeletingItem}
-            style={{
-              ...modalButtonBaseStyle,
-              background: "#dc2626",
-              color: "#ffffff",
-              cursor: isDeletingItem ? "not-allowed" : "pointer",
-              opacity: isDeletingItem ? 0.75 : 1,
-            }}
+            className="mm-modal-btn mm-modal-btn--danger"
           >
             <FiTrash2 size={16} />
             <span>{isDeletingItem ? "Đang xóa..." : "Xóa"}</span>
@@ -1176,14 +1126,14 @@ const MenuManagement = () => {
         confirmText="Xác nhận đồng bộ"
         cancelText="Hủy"
       >
-        <div style={{ display: "grid", gap: 6, fontSize: 14, color: "#334155" }}>
+        <div className="mm-sync-preview">
           <div>Đã kiểm tra: <strong>{inventorySyncPreview?.checkedCount || 0}</strong></div>
           <div>Sẽ cập nhật: <strong>{inventorySyncPreview?.updatedCount || 0}</strong></div>
           <div>available → out_of_stock: <strong>{inventorySyncPreview?.toOutOfStockCount || 0}</strong></div>
           <div>out_of_stock → available: <strong>{inventorySyncPreview?.toAvailableCount || 0}</strong></div>
           {!!inventorySyncPreview?.warnings?.length && <div>Cảnh báo: <strong>{inventorySyncPreview.warnings.length}</strong></div>}
           {!!inventorySyncPreview?.warnings?.length && (
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+            <ul className="mm-sync-preview__warnings">
               {inventorySyncPreview.warnings.slice(0, 4).map((warning, idx) => <li key={`${idx}_${warning}`}>{warning}</li>)}
             </ul>
           )}

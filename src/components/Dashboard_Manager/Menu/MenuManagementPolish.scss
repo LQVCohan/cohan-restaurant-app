@@ -109,6 +109,10 @@
 }
 
 .mm-inventory-quick-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
   padding: 10px !important;
   border: 1px solid rgba(226, 232, 240, 0.9);
   background: rgba(255, 255, 255, 0.76);
@@ -236,6 +240,113 @@
   }
 }
 
+.mm-inline-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+
+  &--tight {
+    margin-bottom: 0;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__text {
+    margin: 0;
+    line-height: 1.5;
+  }
+}
+
+.mm-state-box__message {
+  margin-top: 8px;
+}
+
+.mm-delete-confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__headline {
+    margin: 0;
+    color: #334155;
+    line-height: 1.6;
+  }
+
+  &__item-name {
+    color: #1e293b;
+  }
+
+  &__note {
+    margin: 0;
+    font-size: 14px;
+    color: #64748b;
+  }
+}
+
+.mm-delete-confirm-actions {
+  gap: 10px;
+}
+
+.mm-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 108px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &--secondary {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+
+    &:disabled {
+      opacity: 0.7;
+    }
+  }
+
+  &--danger {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: #ffffff;
+    box-shadow: 0 10px 22px rgba(220, 38, 38, 0.2);
+
+    &:disabled {
+      opacity: 0.75;
+    }
+  }
+}
+
+.mm-sync-preview {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #334155;
+
+  &__warnings {
+    margin: 6px 0 0;
+    padding-left: 18px;
+  }
+}
+
 @media (max-width: 1100px) {
   .mm-header {
     align-items: flex-start;
@@ -296,6 +407,11 @@
     &--grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  .mm-modal-btn {
+    min-width: 96px;
+    padding: 9px 14px;
   }
 }
 
