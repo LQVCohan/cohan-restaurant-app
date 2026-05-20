@@ -16,6 +16,15 @@ function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function normalizeIdKey(value) {
+  if (!value) return "";
+  if (value?._mockObjectId) return String(value._mockObjectId);
+  if (typeof value?.toString === "function" && value.toString !== Object.prototype.toString) {
+    return String(value.toString());
+  }
+  return String(value);
+}
+
 function buildSearchCond(search) {
   if (!search || !search.trim()) return null;
   const q = search.trim();
@@ -345,7 +354,7 @@ export const UserQuery = {
         daily.set(key, (daily.get(key) || 0) + 1);
       }
       if (o.userId) {
-        const key = String(o.userId);
+        const key = normalizeIdKey(o.userId);
         customerCountByUserId.set(
           key,
           (customerCountByUserId.get(key) || 0) + 1,
