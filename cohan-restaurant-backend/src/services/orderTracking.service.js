@@ -93,15 +93,25 @@ export function updatePublicStatusHistory(orderDoc, changedByRole = "SYSTEM") {
   orderDoc.statusHistory = history;
 }
 
+function isValidLatestRequest(request) {
+  return Boolean(
+    request?.requestId &&
+    request?.type &&
+    request?.status &&
+    request?.createdAt,
+  );
+}
+
 export function toCustomerTrackingPayload(order = {}) {
   const normalizedPaymentStatus = String(
     order?.orderPaymentStatus || order?.payment?.status || "unpaid",
   ).toLowerCase();
   const latestRequest = Array.isArray(order?.customerRequests)
-  ? [...order.customerRequests]
-      .filter(Boolean)
-      .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
+    ? [...order.customerRequests]
+        .filter(isValidLatestRequest)
+        .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0]
     : null;
+
   return {
     trackingCode: order.trackingCode,
     publicStatus: order.publicStatus,
@@ -119,16 +129,16 @@ export function toCustomerTrackingPayload(order = {}) {
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
     latestRequest: latestRequest
-  ? {
-      requestId: latestRequest.requestId || null,
-      type: latestRequest.type || null,
-      status: latestRequest.status || null,
-      message: latestRequest.message || null,
-      createdAt: latestRequest.createdAt || null,
-      acknowledgedAt: latestRequest.acknowledgedAt || null,
-      resolvedAt: latestRequest.resolvedAt || null,
-    }
-  : null,
+      ? {
+          requestId: latestRequest.requestId,
+          type: latestRequest.type,
+          status: latestRequest.status,
+          message: latestRequest.message || null,
+          createdAt: latestRequest.createdAt,
+          acknowledgedAt: latestRequest.acknowledgedAt || null,
+          resolvedAt: latestRequest.resolvedAt || null,
+        }
+      : null,
   };
 }
 
