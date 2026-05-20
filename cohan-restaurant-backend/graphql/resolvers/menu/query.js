@@ -1,7 +1,8 @@
 // src/graphql/resolvers/menu/query.js (CLEAN + aligned with Recipe-as-source-of-truth)
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Menu, MenuItem, Category } from "../../../models/index.js";
+import { Menu, MenuItem, Category, Restaurant } from "../../../models/index.js";
+import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { requireRoles } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -340,6 +341,13 @@ export const MenuQuery = {
         .select({ _id: 1 })
         .lean();
       if (!menu) return null;
+    }
+    const restaurant = await Restaurant.findById(item.restaurantId)
+      .select({ _id: 1, businessStatus: 1, publicationStatus: 1, status: 1, operationalStatus: 1 })
+      .lean();
+    const availability = computeRestaurantAvailability(restaurant || {});
+    if (availability.businessStatus !== "active" || availability.publicationStatus !== "published") {
+      return null;
     }
 
     return item;

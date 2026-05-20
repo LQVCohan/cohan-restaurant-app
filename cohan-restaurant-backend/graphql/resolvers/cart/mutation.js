@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Cart, Warehouse } from "../../../models/index.js";
+import { Cart, Warehouse, MenuItem, Menu } from "../../../models/index.js";
+import { getPublicRestaurantOrThrow, assertRestaurantCanOrder } from "../shared/restaurantCapabilityGuards.js";
 import { logObjectEvent } from "../../../src/services/eventLog.service.js";
 import {
   reserveForOrderTx,
@@ -268,6 +269,17 @@ export const CartMutation = {
 
     const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
     const servingKey = getCartServingKey(servingVariantKey);
+    const { availability } = await getPublicRestaurantOrThrow(restaurantId);
+    assertRestaurantCanOrder(availability);
+    const menuItem = await MenuItem.findById(menuItemId).lean();
+    if (!menuItem) throw new GraphQLError("Món ăn không tồn tại.", { extensions: { code: "BAD_USER_INPUT" } });
+    if (String(menuItem.restaurantId) !== String(restaurantId)) throw new GraphQLError("Món ăn không thuộc nhà hàng đã chọn.", { extensions: { code: "BAD_USER_INPUT" } });
+    if (String(menuItem.status || "") !== "available") throw new GraphQLError("Món ăn hiện không khả dụng.", { extensions: { code: "BAD_USER_INPUT" } });
+    if (String(menuItem.inventoryStatus || "") === "OUT_OF_STOCK") throw outOfStockError("Món đã hết hàng.");
+    if (menuItem.menuId && mongoose.isValidObjectId(menuItem.menuId)) {
+      const menu = await Menu.findOne({ _id: menuItem.menuId, restaurantId, isActive: true }).lean();
+      if (!menu) throw new GraphQLError("Món ăn không thuộc menu đang hoạt động.", { extensions: { code: "BAD_USER_INPUT" } });
+    }
 
     const session = await mongoose.startSession();
     let after = null;
@@ -420,6 +432,8 @@ export const CartMutation = {
 
         if (delta > 0) {
           const restaurantId = it.restaurantId;
+          const { availability } = await getPublicRestaurantOrThrow(restaurantId);
+          assertRestaurantCanOrder(availability);
           const warehouseId = await resolveWarehouseIdOrDefault(restaurantId, session);
           const orderCode = holdOrderCode(cart._id, it._id);
           try {

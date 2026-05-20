@@ -28,6 +28,8 @@ import {
   ACTIVE_RESERVATION_STATUSES,
   hasActiveOrdersForTable,
 } from "../../../utils/tableStateGuards.js";
+import { assertRestaurantCanReserve } from "../shared/restaurantCapabilityGuards.js";
+import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
 const RESERVATION_OWNED_TABLE_STATUSES = ["reserved", "payment_pending"];
@@ -299,6 +301,7 @@ export const ReservationMutation = {
         const userId = String(resolvedIdentity.userId);
 
         const restaurant = await getRestaurantOrThrow(input.restaurantId, session);
+        assertRestaurantCanReserve(computeRestaurantAvailability(restaurant));
         const table = await getTableOrThrow(input.tableId, input.restaurantId, session);
 
         if (["offline", "occupied", "cleaning"].includes(table.status)) {

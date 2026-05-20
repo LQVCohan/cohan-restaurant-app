@@ -37,6 +37,8 @@ import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { getPublicRestaurantOrThrow } from "../shared/restaurantCapabilityGuards.js";
+import { GraphQLError } from "graphql";
 import {
   ORDER_KIND,
   SPLIT_STATUS,
@@ -2440,6 +2442,16 @@ export const OrderMutation = {
         );
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
+          const { restaurant, availability } = await getPublicRestaurantOrThrow(
+            restaurantId,
+            "Nhà hàng hiện chưa nhận đặt món.",
+          );
+          if (!availability?.canOrder) {
+            throw new GraphQLError(
+              `Nhà hàng ${restaurant?.name || ""} hiện chưa nhận đặt món. Vui lòng kiểm tra lại giỏ hàng.`,
+              { extensions: { code: "RESTAURANT_NOT_ACCEPTING_ORDERS" } },
+            );
+          }
           const normalizedItems = entries.map((entry) => entry.orderItem);
 
           await hydrateOrderItems({
