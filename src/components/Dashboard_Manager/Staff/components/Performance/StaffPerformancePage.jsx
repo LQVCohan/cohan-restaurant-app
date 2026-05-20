@@ -17,6 +17,58 @@ import {
 import useStaffPerformance from "../../../../../hooks/useStaffPerformance";
 import "./StaffPerformancePage.scss";
 import { getPerformanceActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
+import {
+  PERFORMANCE_FORMULA_ITEMS,
+  calculateFormulaScore,
+  formatContributionScore,
+  getWeightedContribution,
+  resolveComponentWeight,
+} from "./utils/performanceFormula";
+import { formatCustomerRating } from "./utils/performanceCustomerRating";
+import {
+  buildPerformanceOverview,
+  buildPreviousSnapshotMap,
+  formatTrendDelta,
+  resolveNeedsAttentionVisibleRows,
+  resolvePreviousPeriod,
+  resolveTrendDelta,
+} from "./utils/performanceTrend";
+import {
+  buildPerformanceOverviewCsvBlobContent,
+  buildPerformanceOverviewCsvContent,
+  buildPerformanceOverviewCsvRows,
+  escapeCsvValue,
+} from "./utils/performanceCsv";
+import {
+  buildPerformanceReportData,
+  buildPerformanceReportHtml,
+  escapeHtml,
+  openPerformanceReportPrintWindow,
+} from "./utils/performanceReport";
+
+
+export {
+  PERFORMANCE_FORMULA_ITEMS,
+  calculateFormulaScore,
+  formatContributionScore,
+  getWeightedContribution,
+  resolveComponentWeight,
+  formatCustomerRating,
+  resolvePreviousPeriod,
+  buildPreviousSnapshotMap,
+  formatTrendDelta,
+  resolveTrendDelta,
+  buildPerformanceOverview,
+  resolveNeedsAttentionVisibleRows,
+  escapeCsvValue,
+  buildPerformanceOverviewCsvRows,
+  buildPerformanceOverviewCsvContent,
+  buildPerformanceOverviewCsvBlobContent,
+  escapeHtml,
+  buildPerformanceReportData,
+  buildPerformanceReportHtml,
+  openPerformanceReportPrintWindow,
+};
 
 const SCORE_LEVELS = {
   excellent: {
@@ -79,57 +131,8 @@ const COMPONENT_META = {
 
 
 
-export const PERFORMANCE_FORMULA_ITEMS = [
-  { key: "productivity", label: "Năng suất", weight: 25 },
-  { key: "punctuality", label: "Đúng giờ", weight: 25 },
-  { key: "quality", label: "Chất lượng", weight: 20 },
-  { key: "managerReview", label: "Đánh giá quản lý", weight: 20 },
-  { key: "compliance", label: "Tuân thủ", weight: 10 },
-];
-const toDateInput = (date) => {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-};
-
-const getMonthRange = () => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return {
-    periodStart: toDateInput(start),
-    periodEnd: toDateInput(end),
-  };
-};
-
-const formatDate = (value) => {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleDateString("vi-VN");
-};
-
-const getScoreLevel = (score) => {
-  const n = Number(score || 0);
-  if (n >= 90) return SCORE_LEVELS.excellent;
-  if (n >= 80) return SCORE_LEVELS.good;
-  if (n >= 65) return SCORE_LEVELS.average;
-  if (n >= 50) return SCORE_LEVELS.needs_attention;
-  return SCORE_LEVELS.poor;
-};
-
-const getAvatarColor = (name = "?") => {
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-  return colors[name.length % colors.length];
-};
-
-const scoreText = (value) => `${Math.round(Number(value || 0))}/100`;
-const formatPercent = (value) => `${Math.round(Number(value || 0))}%`;
-const formatContributionScore = (value) => {
-  const n = Number(value || 0);
-  return `${Math.round(n * 100) / 100}`;
-};
 const ADJUSTMENT_TOLERANCE = 0.01;
+const CSV_EMPTY_VALUE = "--";
 const GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY = gql`
   query StaffPerformanceAdjustmentHistory(
     $adjustmentInput: StaffPerformanceScoreAdjustmentFilterInput!
@@ -160,129 +163,11 @@ const GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY = gql`
   }
 `;
 
-export const resolveComponentWeight = (component, defaultWeight) => {
-  const componentWeight = Number(component?.weight);
-  if (Number.isFinite(componentWeight)) return componentWeight;
-  return Number(defaultWeight) || 0;
-};
-
-export const getWeightedContribution = (score, weight) => {
-  const safeScore = Number(score);
-  const safeWeight = Number(weight);
-  if (!Number.isFinite(safeScore) || !Number.isFinite(safeWeight)) return 0;
-  return (safeScore * safeWeight) / 100;
-};
-
-export const calculateFormulaScore = (snapshot = {}) =>
-  PERFORMANCE_FORMULA_ITEMS.reduce((total, item) => {
-    const component = snapshot?.[item.key];
-    const componentWeight = resolveComponentWeight(component, item.weight);
-    return total + getWeightedContribution(component?.score, componentWeight);
-  }, 0);
-
-export const shouldDisplayAdjustment = (delta, tolerance = ADJUSTMENT_TOLERANCE) =>
-  Math.abs(Number(delta) || 0) >= tolerance;
-
-export const formatDelta = (value) => {
-  const delta = Number(value) || 0;
-  const absText = formatContributionScore(Math.abs(delta));
-  return `${delta >= 0 ? "+" : "-"}${absText}`;
-};
-
-export const resolvePreviousPeriod = (periodStart, periodEnd) => {
-  if (!periodStart || !periodEnd) return null;
-  const start = new Date(`${periodStart}T00:00:00.000Z`);
-  const end = new Date(`${periodEnd}T23:59:59.999Z`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
-
-  const isMonthlyView =
-    start.getUTCDate() === 1
-    && end.getUTCDate() === new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate()
-    && start.getUTCFullYear() === end.getUTCFullYear()
-    && start.getUTCMonth() === end.getUTCMonth();
-
-  if (isMonthlyView) {
-    const prevStart = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - 1, 1));
-    const prevEnd = new Date(Date.UTC(prevStart.getUTCFullYear(), prevStart.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-    return { periodStart: toDateInput(prevStart), periodEnd: toDateInput(prevEnd) };
-  }
-
-  const durationMs = end.getTime() - start.getTime() + 1;
-  const prevEnd = new Date(start.getTime() - 1);
-  const prevStart = new Date(prevEnd.getTime() - durationMs + 1);
-  return { periodStart: toDateInput(prevStart), periodEnd: toDateInput(prevEnd) };
-};
-
-export const buildPreviousSnapshotMap = (previousSnapshots = [], currentPeriodStart) => {
-  const currentStartMs = new Date(`${currentPeriodStart}T00:00:00.000Z`).getTime();
-  return (previousSnapshots || []).reduce((acc, snapshot) => {
-    const employeeId = String(snapshot?.employeeId || "");
-    const periodEndMs = new Date(snapshot?.periodEnd || 0).getTime();
-    if (!employeeId || Number.isNaN(periodEndMs) || (Number.isFinite(currentStartMs) && periodEndMs >= currentStartMs)) {
-      return acc;
-    }
-
-    const existing = acc[employeeId];
-    const existingEndMs = new Date(existing?.periodEnd || 0).getTime();
-    if (!existing || periodEndMs > existingEndMs) acc[employeeId] = snapshot;
-    return acc;
-  }, {});
-};
-
-export const formatTrendDelta = (currentScore, previousScore) => {
-  const current = Number(currentScore);
-  const previous = Number(previousScore);
-  if (!Number.isFinite(previous) || !Number.isFinite(current)) return "Chưa có dữ liệu kỳ trước";
-  const delta = Math.round((current - previous) * 100) / 100;
-  if (Math.abs(delta) < 0.01) return "Không đổi";
-  const absText = formatContributionScore(Math.abs(delta));
-  return `${delta > 0 ? "+" : "-"}${absText} điểm so với kỳ trước`;
-};
-
-export const resolveTrendDelta = (currentScore, previousScore) => {
-  const hasCurrent = currentScore !== null && currentScore !== undefined && currentScore !== "";
-  const hasPrevious = previousScore !== null && previousScore !== undefined && previousScore !== "";
-  if (!hasCurrent || !hasPrevious) return null;
-
-  const current = Number(currentScore);
-  const previous = Number(previousScore);
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
-  return Math.round((current - previous) * 100) / 100;
-};
-
 export const resolveEffectivePerformanceRestaurantId = (selectedRestaurant) => {
   if (selectedRestaurant === null || selectedRestaurant === undefined) return null;
   const normalizedValue = String(selectedRestaurant).trim();
   if (!normalizedValue || normalizedValue.toLowerCase() === "all") return null;
   return normalizedValue;
-};
-
-export const buildPerformanceOverview = (rows = []) => {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const withTrend = safeRows.filter((row) => Number.isFinite(row?.trendDelta));
-
-  return {
-    topImproved: withTrend
-      .filter((row) => row.trendDelta > 0)
-      .sort((a, b) => b.trendDelta - a.trendDelta)
-      .slice(0, 3),
-    topDeclined: withTrend
-      .filter((row) => row.trendDelta < 0)
-      .sort((a, b) => a.trendDelta - b.trendDelta)
-      .slice(0, 3),
-    needsAttention: safeRows.filter((row) => {
-      const performanceLevel = row?.snapshot?.performanceLevel;
-      return performanceLevel === "needs_attention" || performanceLevel === "poor";
-    }),
-    noPreviousDataCount: safeRows.filter((row) => row?.trendDelta === null).length,
-  };
-};
-
-export const resolveNeedsAttentionVisibleRows = (rows = [], showAll = false, limit = 5) => {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const safeLimit = Number.isFinite(Number(limit)) ? Math.max(0, Number(limit)) : 5;
-  if (showAll) return safeRows;
-  return safeRows.slice(0, safeLimit);
 };
 
 export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
@@ -309,185 +194,13 @@ export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
       })),
   ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-const safeFactorNumber = (value, fallback = 0) => {
-  if (value === null || value === undefined || value === "") return fallback;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-};
-export const formatCustomerRating = (factors = {}) => {
-  const staffRateCount = safeFactorNumber(factors?.staffRateCount, 0);
-  if (staffRateCount <= 0) {
-    return {
-      hasRating: false,
-      label: "Chưa có đánh giá khách hàng",
-      hint: "Đánh giá khách hàng không tự động thay đổi điểm hiệu suất. Quản lý có thể dùng thông tin này để cân nhắc khi nhập đánh giá.",
-    };
-  }
+export const shouldDisplayAdjustment = (delta, tolerance = ADJUSTMENT_TOLERANCE) =>
+  Math.abs(Number(delta) || 0) >= tolerance;
 
-  const staffRate = safeFactorNumber(factors?.staffRate, 0);
-  const customerRatingScore = safeFactorNumber(
-    factors?.customerRatingScore,
-    staffRate * 20,
-  );
-  const normalizedRate = Math.round(staffRate * 100) / 100;
-  const normalizedScore = Math.round(customerRatingScore * 100) / 100;
-
-  return {
-    hasRating: true,
-    label: `Đánh giá khách hàng: ${normalizedRate}/5 (${staffRateCount} lượt)`,
-    hint: `Quy đổi tham khảo: ${normalizedScore}/100`,
-  };
-};
-export const escapeHtml = (value) =>
-  String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-export const escapeCsvValue = (value) => {
-  const normalizedValue = value === null || value === undefined ? "" : String(value);
-  const shouldPrefixFormulaGuard =
-    typeof value === "string" && /^[=+\-@]/.test(normalizedValue.trimStart());
-  const safeValue = shouldPrefixFormulaGuard ? `'${normalizedValue}` : normalizedValue;
-  if (!/[",\n\r]/.test(safeValue)) return safeValue;
-  return `"${safeValue.replaceAll('"', '""')}"`;
-};
-const CSV_EMPTY_VALUE = "--";
-export const buildPerformanceOverviewCsvBlobContent = (rows = []) =>
-  `\uFEFF${buildPerformanceOverviewCsvContent(rows)}`;
-export const buildPerformanceOverviewCsvRows = (rows = []) =>
-  rows.map((row) => {
-    const employee = row?.employee || {};
-    const snapshot = row?.snapshot || {};
-    const previousSnapshot = row?.previousSnapshot || null;
-    const customerRating = formatCustomerRating(snapshot?.factors);
-    const customerRatingCount = Number(snapshot?.factors?.staffRateCount);
-    const note = customerRating?.hasRating ? "Rating khách hàng chỉ tham khảo" : "";
-    return [
-      employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
-      employee.name || snapshot.employeeName || CSV_EMPTY_VALUE,
-      employee.role || snapshot.employeeRole || CSV_EMPTY_VALUE,
-      row?.score ?? snapshot.finalPerformanceScore ?? CSV_EMPTY_VALUE,
-      row?.level?.label || snapshot.performanceLevel || CSV_EMPTY_VALUE,
-      previousSnapshot?.finalPerformanceScore ?? CSV_EMPTY_VALUE,
-      row?.trendDelta ?? CSV_EMPTY_VALUE,
-      previousSnapshot ? "Có" : "Không",
-      customerRating?.hasRating ? customerRating.label : CSV_EMPTY_VALUE,
-      Number.isFinite(customerRatingCount) ? customerRatingCount : CSV_EMPTY_VALUE,
-      note,
-    ];
-  });
-export const buildPerformanceOverviewCsvContent = (rows = []) => {
-  const header = [
-    "Mã nhân viên",
-    "Tên nhân viên",
-    "Vai trò",
-    "Điểm kỳ này",
-    "Mức kỳ này",
-    "Điểm kỳ trước",
-    "Chênh lệch",
-    "Có dữ liệu kỳ trước",
-    "Đánh giá khách hàng",
-    "Số lượt đánh giá khách hàng",
-    "Ghi chú",
-  ];
-  const csvRows = buildPerformanceOverviewCsvRows(rows);
-  return [header, ...csvRows]
-    .map((line) => line.map(escapeCsvValue).join(","))
-    .join("\n");
-};
-export const buildPerformanceReportData = ({
-  snapshot = {},
-  previousSnapshot = null,
-  employee = null,
-  adjustmentHistory = [],
-  restaurantName = "Nhà hàng hiện tại",
-} = {}) => {
-  const formulaScore = calculateFormulaScore(snapshot);
-  const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
-  const adjustmentDelta = finalPerformanceScore - formulaScore;
-  const customerRating = formatCustomerRating(snapshot?.factors);
-  const employeeName = snapshot?.employeeName || employee?.fullName || employee?.name || "Nhân viên";
-  const periodLabel = `${formatDate(snapshot?.periodStart)} - ${formatDate(snapshot?.periodEnd)}`;
-  const performanceLevel = getScoreLevel(snapshot?.finalPerformanceScore || 0)?.label || "--";
-  const previousScore = Number(previousSnapshot?.finalPerformanceScore);
-  const hasPreviousSnapshot = Number.isFinite(previousScore);
-  const previousLevel = hasPreviousSnapshot ? getScoreLevel(previousScore)?.label || "--" : "--";
-  const formulaBreakdown = PERFORMANCE_FORMULA_ITEMS.map((item) => {
-    const component = snapshot?.[item.key];
-    const score = Number(component?.score || 0);
-    const weight = resolveComponentWeight(component, item.weight);
-    return {
-      label: item.label,
-      score,
-      weight,
-      contribution: getWeightedContribution(score, weight),
-    };
-  });
-  const hasCustomWeight = formulaBreakdown.some((item, idx) => item.weight !== PERFORMANCE_FORMULA_ITEMS[idx].weight);
-  const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
-
-  return {
-    employeeName,
-    periodLabel,
-    restaurantName,
-    finalPerformanceScore,
-    performanceLevel,
-    previousScore: hasPreviousSnapshot ? previousScore : null,
-    previousLevel,
-    trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore),
-    hasPreviousSnapshot,
-    formulaScore,
-    adjustmentDelta,
-    hasAdjustment: shouldDisplayAdjustment(adjustmentDelta),
-    formulaBreakdown,
-    hasCustomWeight,
-    customerRating,
-    snapshotUpdatedAt,
-    adjustmentHistory,
-  };
-};
-export const buildPerformanceReportHtml = (reportData) => `
-      <html><head><title>Báo cáo hiệu suất - ${escapeHtml(reportData.employeeName)}</title></head><body>
-      <h2>Báo cáo hiệu suất nhân viên</h2>
-      <p><strong>Tên nhân viên:</strong> ${escapeHtml(reportData.employeeName)}</p>
-      <p><strong>Kỳ đánh giá:</strong> ${escapeHtml(reportData.periodLabel)}</p>
-      <p><strong>Nhà hàng:</strong> ${escapeHtml(reportData.restaurantName)}</p>
-      <p><strong>Điểm cuối:</strong> ${scoreText(reportData.finalPerformanceScore)}</p>
-      <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
-      <h3>Công thức tính điểm</h3>
-      <p>productivity 25% · punctuality 25% · quality 20% · managerReview 20% · compliance 10%</p>
-      <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
-      <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
-      ${reportData.formulaBreakdown.map((item) => `<tr><td>${escapeHtml(item.label)}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
-      </table>
-      <h3>Tổng hợp điểm</h3>
-      <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
-      <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
-      <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
-      <h3>So sánh kỳ trước</h3>
-      ${reportData.hasPreviousSnapshot ? `
-      <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>
-      <p>Điểm kỳ trước: ${scoreText(reportData.previousScore)}</p>
-      <p>Chênh lệch: ${escapeHtml(reportData.trendText)}</p>
-      <p>Level kỳ này / kỳ trước: ${escapeHtml(reportData.performanceLevel)} / ${escapeHtml(reportData.previousLevel)}</p>
-      ` : "<p>Chưa có dữ liệu kỳ trước.</p>"}
-      <h3>Đánh giá khách hàng</h3>
-      <p>${escapeHtml(reportData.customerRating.label)}</p>
-      ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
-      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.</em></p>
-      <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
-      ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
-      <h3>Lịch sử điều chỉnh điểm</h3>
-      ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
-      </body></html>`;
-export const openPerformanceReportPrintWindow = () => {
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-  if (printWindow) {
-    printWindow.opener = null;
-  }
-  return printWindow;
+export const formatDelta = (value) => {
+  const delta = Number(value) || 0;
+  const absText = formatContributionScore(Math.abs(delta));
+  return `${delta >= 0 ? "+" : "-"}${absText}`;
 };
 
 const buildSnapshotByEmployee = (snapshots = []) =>

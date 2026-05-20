@@ -1,0 +1,112 @@
+import {
+  calculateFormulaScore,
+  formatContributionScore,
+  getWeightedContribution,
+  PERFORMANCE_FORMULA_ITEMS,
+  resolveComponentWeight,
+} from "./performanceFormula";
+import { formatCustomerRating } from "./performanceCustomerRating";
+import { formatTrendDelta } from "./performanceTrend";
+
+const scoreText = (value) => `${Math.round(Number(value || 0))}/100`;
+const formatPercent = (value) => `${Math.round(Number(value || 0))}%`;
+const formatDate = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleDateString("vi-VN");
+};
+const SCORE_LEVELS = {
+  excellent: { label: "Xuất sắc" }, good: { label: "Tốt" }, average: { label: "Ổn định" },
+  needs_attention: { label: "Cần theo dõi" }, poor: { label: "Rủi ro cao" },
+};
+const getScoreLevel = (score) => {
+  const n = Number(score || 0);
+  if (n >= 90) return SCORE_LEVELS.excellent;
+  if (n >= 80) return SCORE_LEVELS.good;
+  if (n >= 65) return SCORE_LEVELS.average;
+  if (n >= 50) return SCORE_LEVELS.needs_attention;
+  return SCORE_LEVELS.poor;
+};
+const ADJUSTMENT_TOLERANCE = 0.01;
+const shouldDisplayAdjustment = (delta, tolerance = ADJUSTMENT_TOLERANCE) =>
+  Math.abs(Number(delta) || 0) >= tolerance;
+const formatDelta = (value) => {
+  const delta = Number(value) || 0;
+  const absText = formatContributionScore(Math.abs(delta));
+  return `${delta >= 0 ? "+" : "-"}${absText}`;
+};
+
+export const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+export const buildPerformanceReportData = ({ snapshot = {}, previousSnapshot = null, employee = null, adjustmentHistory = [], restaurantName = "Nhà hàng hiện tại" } = {}) => {
+  const formulaScore = calculateFormulaScore(snapshot);
+  const finalPerformanceScore = Number(snapshot?.finalPerformanceScore || 0);
+  const adjustmentDelta = finalPerformanceScore - formulaScore;
+  const customerRating = formatCustomerRating(snapshot?.factors);
+  const employeeName = snapshot?.employeeName || employee?.fullName || employee?.name || "Nhân viên";
+  const periodLabel = `${formatDate(snapshot?.periodStart)} - ${formatDate(snapshot?.periodEnd)}`;
+  const performanceLevel = getScoreLevel(snapshot?.finalPerformanceScore || 0)?.label || "--";
+  const previousScore = Number(previousSnapshot?.finalPerformanceScore);
+  const hasPreviousSnapshot = Number.isFinite(previousScore);
+  const previousLevel = hasPreviousSnapshot ? getScoreLevel(previousScore)?.label || "--" : "--";
+  const formulaBreakdown = PERFORMANCE_FORMULA_ITEMS.map((item) => {
+    const component = snapshot?.[item.key];
+    const score = Number(component?.score || 0);
+    const weight = resolveComponentWeight(component, item.weight);
+    return { label: item.label, score, weight, contribution: getWeightedContribution(score, weight) };
+  });
+  const hasCustomWeight = formulaBreakdown.some((item, idx) => item.weight !== PERFORMANCE_FORMULA_ITEMS[idx].weight);
+  const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
+
+  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory };
+};
+
+export const buildPerformanceReportHtml = (reportData) => `
+      <html><head><title>Báo cáo hiệu suất - ${escapeHtml(reportData.employeeName)}</title></head><body>
+      <h2>Báo cáo hiệu suất nhân viên</h2>
+      <p><strong>Tên nhân viên:</strong> ${escapeHtml(reportData.employeeName)}</p>
+      <p><strong>Kỳ đánh giá:</strong> ${escapeHtml(reportData.periodLabel)}</p>
+      <p><strong>Nhà hàng:</strong> ${escapeHtml(reportData.restaurantName)}</p>
+      <p><strong>Điểm cuối:</strong> ${scoreText(reportData.finalPerformanceScore)}</p>
+      <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
+      <h3>Công thức tính điểm</h3>
+      <p>productivity 25% · punctuality 25% · quality 20% · managerReview 20% · compliance 10%</p>
+      <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
+      <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
+      ${reportData.formulaBreakdown.map((item) => `<tr><td>${escapeHtml(item.label)}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
+      </table>
+      <h3>Tổng hợp điểm</h3>
+      <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
+      <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
+      <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <h3>So sánh kỳ trước</h3>
+      ${reportData.hasPreviousSnapshot ? `
+      <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <p>Điểm kỳ trước: ${scoreText(reportData.previousScore)}</p>
+      <p>Chênh lệch: ${escapeHtml(reportData.trendText)}</p>
+      <p>Level kỳ này / kỳ trước: ${escapeHtml(reportData.performanceLevel)} / ${escapeHtml(reportData.previousLevel)}</p>
+      ` : "<p>Chưa có dữ liệu kỳ trước.</p>"}
+      <h3>Đánh giá khách hàng</h3>
+      <p>${escapeHtml(reportData.customerRating.label)}</p>
+      ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
+      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.</em></p>
+      <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
+      ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
+      <h3>Lịch sử điều chỉnh điểm</h3>
+      ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}
+      </body></html>`;
+
+export const openPerformanceReportPrintWindow = () => {
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (printWindow) {
+    printWindow.opener = null;
+  }
+  return printWindow;
+};
