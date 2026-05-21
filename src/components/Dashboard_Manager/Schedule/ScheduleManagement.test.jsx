@@ -12,6 +12,8 @@ let mockDeclinedShiftAcksData;
 let mockDeclinedShiftAcksError;
 let mockDeclinedShiftAcksLoading;
 let capturedDeclinedShiftAckVariables;
+let mockAvailabilityWindowsData;
+let mockAvailabilitySubmissionsData;
 let mutationSpy;
 let lazyQuerySpy;
 
@@ -49,6 +51,22 @@ vi.mock("@apollo/client", async () => {
           data: mockDeclinedShiftAcksData,
           loading: mockDeclinedShiftAcksLoading,
           error: mockDeclinedShiftAcksError,
+          refetch: vi.fn(),
+        };
+      }
+      if (body.includes("query ScheduleAvailabilityWindows")) {
+        return {
+          data: mockAvailabilityWindowsData,
+          loading: false,
+          error: null,
+          refetch: vi.fn(),
+        };
+      }
+      if (body.includes("query ScheduleAvailabilitySubmissions")) {
+        return {
+          data: mockAvailabilitySubmissionsData,
+          loading: false,
+          error: null,
           refetch: vi.fn(),
         };
       }
@@ -130,6 +148,12 @@ describe("ScheduleManagement", () => {
     mockDeclinedShiftAcksError = null;
     mockDeclinedShiftAcksLoading = false;
     capturedDeclinedShiftAckVariables = null;
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [],
+    };
+    mockAvailabilitySubmissionsData = {
+      availabilitySubmissions: [],
+    };
   });
 
   afterEach(() => {
@@ -323,11 +347,10 @@ describe("ScheduleManagement", () => {
     );
   });
 
-  it("shows count 0 when declined acknowledgement query returns empty", () => {
+  it("hides declined panel when acknowledgement query returns empty", () => {
     mockDeclinedShiftAcksData = { shiftAcknowledgements: [] };
     render(<ScheduleManagement />);
-    expect(screen.getByText(/Ca bị từ chối \(0\)/)).toBeInTheDocument();
-    expect(screen.getByText("Chưa có ca bị từ chối trong tuần này.")).toBeInTheDocument();
+    expect(screen.queryByText(/Ca bị từ chối \(0\)/)).not.toBeInTheDocument();
   });
 
   it("shows GraphQL error for declined acknowledgement query", () => {
@@ -350,6 +373,64 @@ describe("ScheduleManagement", () => {
     expect(screen.queryByText("Availability đã chốt")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Xem availability đã chốt/i }));
     expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
+  });
+
+  it("renders board section before availability panel", () => {
+    const { container } = render(<ScheduleManagement />);
+    const board = container.querySelector(".schedule-board");
+    const availabilityPanel = container.querySelector(".schedule-availability-panel");
+    expect(board).toBeTruthy();
+    expect(availabilityPanel).toBeTruthy();
+    expect(board.compareDocumentPosition(availabilityPanel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("collapsed availability by default for closed-like window status", async () => {
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [
+        {
+          id: "window-1",
+          status: "closed",
+          effectiveStatus: "closed",
+          periodStart: "2026-04-27T00:00:00.000Z",
+          periodEnd: "2026-05-03T23:59:59.000Z",
+          registrationMode: "manual",
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+    await waitFor(() =>
+      expect(screen.getByText("Tuần áp dụng:")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("Quản lý thời gian nhân viên đăng ký khả dụng trước khi xếp lịch."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("manual collapse/expand toggle still works for availability panel", async () => {
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [
+        {
+          id: "window-2",
+          status: "open",
+          effectiveStatus: "open",
+          periodStart: "2026-04-27T00:00:00.000Z",
+          periodEnd: "2026-05-03T23:59:59.000Z",
+          registrationMode: "manual",
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+    const collapseBtn = await screen.findByRole("button", {
+      name: "Thu gọn đăng ký lịch nhân viên",
+    });
+    fireEvent.click(collapseBtn);
+    expect(await screen.findByRole("button", { name: "Mở rộng" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mở rộng" }));
+    expect(
+      await screen.findByRole("button", { name: "Thu gọn đăng ký lịch nhân viên" }),
+    ).toBeInTheDocument();
   });
 
 });
