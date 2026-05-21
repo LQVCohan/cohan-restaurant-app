@@ -296,8 +296,8 @@ const Toolbar = ({
             ["needs_check", "Cần kiểm kho"],
             ["not_tracked", "Chưa tracking recipe"],
           ].map(([key, label]) => (
-            <button key={key} className={`inventory-chip ${inventoryFilter === key ? "active" : ""}`} onClick={() => onInventoryFilterChange?.(key)} type="button">
-              <span>{label}</span>
+            <button key={key} className={`inventory-chip ${inventoryFilter === key ? "active" : ""}`} onClick={() => onInventoryFilterChange?.(key)} type="button" title={label}>
+              <span>{key === "not_tracked" ? <><span className="desktop-label">{label}</span><span className="mobile-label">Chưa tracking</span></> : label}</span>
               <span className="count">{inventoryFilterCounts[key] || 0}</span>
             </button>
           ))}
@@ -338,37 +338,25 @@ const Toolbar = ({
         <div className="active-chips-area">
           <span className="label">Đang lọc:</span>
           {searchTerm && (
-            <span className="chip">
-              Tìm: "{searchTerm}" <FiX onClick={() => onSearchChange("")} />
-            </span>
+            <span className="chip">Tìm: "{searchTerm}" <button type="button" className="chip-x" onClick={() => onSearchChange("")}><FiX /></button></span>
           )}
           {currentCategory && (
-            <span className="chip">
-              Danh mục món đã chọn <FiX onClick={() => onCategoryChange("")} />
-            </span>
+            <span className="chip">Danh mục món đã chọn <button type="button" className="chip-x" onClick={() => onCategoryChange("")}><FiX /></button></span>
           )}
           {statusFilter && (
-            <span className="chip">
-              {STATUS_LABELS[statusFilter] || statusFilter}
-              <FiX onClick={() => onStatusFilterChange("")} />
-            </span>
+            <span className="chip">{STATUS_LABELS[statusFilter] || statusFilter}<button type="button" className="chip-x" onClick={() => onStatusFilterChange("")}><FiX /></button></span>
           )}
           {inventoryFilter !== "all" && (
-            <span className="chip">
-              {{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}
-              <FiX onClick={() => onInventoryFilterChange?.("all")} />
-            </span>
+            <span className="chip">{{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
               Giá: {formatCurrency(minPrice) || "0"} -{" "}
               {formatCurrency(maxPrice) || "∞"}
-              <FiX
-                onClick={() => {
+              <button type="button" className="chip-x" onClick={() => {
                   setPriceRange({ min: "", max: "" });
                   onPriceRangeChange({ minPrice: "", maxPrice: "" });
-                }}
-              />
+                }}><FiX /></button>
             </span>
           )}
           <button className="clear-all-text" onClick={clearFilters}>

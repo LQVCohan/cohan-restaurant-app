@@ -528,3 +528,18 @@ $tb-radius: 16px;
 .inventory-chip { border:1px solid #d1d5db; background:#fff; border-radius:999px; padding:6px 10px; display:flex; gap:6px; align-items:center; }
 .inventory-chip.active { background:#eef2ff; border-color:#818cf8; }
 .inventory-chip .count { font-weight:600; }
+
+.inventory-filter-row{display:flex;gap:8px;flex-wrap:wrap}
+.inventory-chip{border:1px solid #d7dee7;background:#fff;border-radius:999px;padding:7px 11px;display:flex;gap:8px;align-items:center;font-weight:700;color:#475569}
+.inventory-chip.active{background:#eef2ff;border-color:#818cf8;color:#3730a3;box-shadow:0 4px 10px rgba(99,102,241,.18)}
+.inventory-chip .count{font-size:11px;min-width:20px;text-align:center;padding:2px 6px;border-radius:999px;background:#e2e8f0}
+.inventory-chip.active .count{background:#c7d2fe}
+.mobile-label{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px}
+.chip-x{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:none;border-radius:999px;background:#e2e8f0;color:#475569;cursor:pointer}
+.chip-x:hover{background:#cbd5e1}
+.toolbar-overview-card{padding:11px!important}
+.toolbar-overview-card__value{font-size:15px!important}
+@media (max-width:640px){
+  .desktop-label{display:none}.mobile-label{display:inline}
+}

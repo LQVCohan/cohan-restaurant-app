@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { gql, useMutation } from "@apollo/client";
 import {
   FiActivity,
   FiChevronDown,
@@ -26,47 +25,8 @@ import {
 import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
-import MenuConfirmDialog from "../common/MenuConfirmDialog";
 import "./CompactMenuStrip.scss";
 import "./CompactMenuStripPolish.scss";
-
-const MENU_FIELDS = gql`
-  fragment CompactMenuFields on Menu {
-    id
-    restaurantId
-    timeSlot
-    name
-    description
-    coverImage
-    isActive
-    itemCount
-    revenue
-    orderCount
-    soldItemCount
-    rating
-    categoryMenu {
-      id
-      name
-      description
-      isActive
-    }
-  }
-`;
-
-const MENUS_QUERY = gql`
-  query Menus($restaurantId: ID!) {
-    menus(restaurantId: $restaurantId) {
-      ...CompactMenuFields
-    }
-  }
-  ${MENU_FIELDS}
-`;
-
-const DELETE_MENU_MUTATION = gql`
-  mutation DeleteMenu($id: ID!, $force: Boolean = false) {
-    deleteMenu(id: $id, force: $force)
-  }
-`;
 
 const SLOT_CONFIG = {
   breakfast: {
@@ -94,14 +54,6 @@ const SLOT_CONFIG = {
     border: "#fbcfe8",
   },
 };
-
-const errorText = (error, fallback) =>
-  error?.graphQLErrors
-    ?.map((entry) => entry?.message)
-    .filter(Boolean)
-    .join("; ") ||
-  error?.message ||
-  fallback;
 
 const formatCompactRevenue = (value) => {
   const number = Number(value || 0);
@@ -136,34 +88,12 @@ const CompactMenuStrip = ({
   const [isSyncingInventory, setIsSyncingInventory] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [deleteCandidate, setDeleteCandidate] = useState(null);
-  const [isDeletingCandidate, setIsDeletingCandidate] = useState(false);
-
-  const [deleteMenuMutation] = useMutation(DELETE_MENU_MUTATION, {
-    update(cache, _result, { variables }) {
-      const id = variables?.id;
-      const target = menus.find((menu) => String(menu.id) === String(id));
-      if (!target?.restaurantId) return;
-      cache.updateQuery(
-        { query: MENUS_QUERY, variables: { restaurantId: target.restaurantId } },
-        (prev) => ({
-          menus: (prev?.menus || []).filter(
-            (menu) => String(menu.id) !== String(id),
-          ),
-        }),
-      );
-      cache.evict({ id: cache.identify({ __typename: "Menu", id }) });
-      cache.gc();
-    },
-  });
 
   const canAddMenu = typeof onAddMenu === "function";
   const canEditMenu = typeof onEditMenu === "function";
   const canToggleMenuActive = typeof onToggleMenuActive === "function";
   const canCopyMenu = typeof onCopyMenu === "function";
-  const canDeleteMenu =
-    typeof onDeleteMenu === "function" ||
-    canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.DELETE_MENU);
+  const canDeleteMenu = typeof onDeleteMenu === "function";
   const canSyncInventory =
     canAccessMenuManagementAction(auth?.user, MENU_MANAGEMENT_ACTIONS.SYNC_INVENTORY) &&
     typeof onSyncInventory === "function";
@@ -203,47 +133,18 @@ const CompactMenuStrip = ({
         : "";
       setActionMessage(`Đã kiểm tra ${result?.checkedCount || 0} món, cập nhật ${result?.updatedCount || 0} trạng thái.${warningText}`);
     } catch (error) {
-      setActionError(errorText(error, "Không thể đồng bộ tồn kho. Vui lòng thử lại."));
+      setActionError(error?.message || "Không thể đồng bộ tồn kho. Vui lòng thử lại.");
     } finally {
       setIsSyncingInventory(false);
     }
   };
 
   const handleDeleteMenu = async (menu) => {
-    if (!menu?.id || busyMenuId) return;
-    if (typeof onDeleteMenu === "function") return onDeleteMenu(menu);
-    const count = Number(menu.itemCount || 0);
-    const force = count > 0;
-    setDeleteCandidate({ menu, force, itemCount: count });
-  };
-
-  const handleCancelDeleteMenu = () => {
-    if (isDeletingCandidate) return;
-    setDeleteCandidate(null);
-  };
-
-  const handleConfirmDeleteMenu = async () => {
-    if (!deleteCandidate?.menu?.id || isDeletingCandidate) return;
-    const { menu, force } = deleteCandidate;
-    setIsDeletingCandidate(true);
+    if (!menu?.id || busyMenuId || typeof onDeleteMenu !== "function") return;
     setBusyMenuId(menu.id);
-    setActionError("");
-    setActionMessage("");
     try {
-      await deleteMenuMutation({ variables: { id: menu.id, force } });
-      const nextMenu = menus.find((candidate) => candidate.id !== menu.id);
-      if (nextMenu) {
-        setInternalActiveId(nextMenu.id);
-        onTimeSlotChange?.(nextMenu.timeSlot);
-        onSelectMenu?.(nextMenu);
-      } else {
-        onTimeSlotChange?.(null);
-      }
-      setDeleteCandidate(null);
-    } catch (error) {
-      setActionError(errorText(error, "Không thể xóa thực đơn. Vui lòng thử lại."));
+      await onDeleteMenu(menu);
     } finally {
-      setIsDeletingCandidate(false);
       setBusyMenuId(null);
     }
   };
@@ -495,22 +396,7 @@ const CompactMenuStrip = ({
         entityId={historyMenu?.id || historyMenu?._id}
         title={`Lịch sử menu: ${historyMenu?.name || "Thực đơn"}`}
       />
-      <MenuConfirmDialog
-        isOpen={!!deleteCandidate}
-        title={deleteCandidate?.itemCount > 0 ? "Xóa thực đơn có món?" : "Xóa thực đơn?"}
-        message={
-          deleteCandidate?.itemCount > 0
-            ? "Thực đơn này đang có món. Xóa thực đơn sẽ xóa kèm món/recipe thuộc thực đơn này."
-            : "Bạn có chắc muốn xóa thực đơn này?"
-        }
-        description={deleteCandidate?.itemCount > 0 ? `Số món hiện có: ${deleteCandidate.itemCount}` : ""}
-        tone={deleteCandidate?.itemCount > 0 ? "danger" : "default"}
-        confirmText={deleteCandidate?.itemCount > 0 ? "Xóa kèm món" : "Xóa"}
-        cancelText="Hủy"
-        isLoading={isDeletingCandidate}
-        onCancel={handleCancelDeleteMenu}
-        onConfirm={handleConfirmDeleteMenu}
-      />
+      
     </>
   );
 };
