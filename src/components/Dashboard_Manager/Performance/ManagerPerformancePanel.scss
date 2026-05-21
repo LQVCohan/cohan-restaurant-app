@@ -78,7 +78,8 @@
 
 .performance-panel .performance-summary-note--compact {
   background: #f8fafc;
-  border-style: dashed;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
 }
 
 .performance-panel .performance-section h4 {

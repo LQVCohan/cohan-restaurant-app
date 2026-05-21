@@ -1,151 +1,25 @@
 .recent-orders {
-  &--bare {
-    border: 0;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
+  &--bare { border:0; box-shadow:none; border-radius:0; padding:0; background:transparent; }
+  .order-list-body{display:grid;gap:10px;min-height:360px;max-height:430px;overflow:auto;padding-right:2px; scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent;}
+  .order-list-body::-webkit-scrollbar{width:6px}.order-list-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+  .order-row{display:grid;grid-template-columns:minmax(0,1fr) 112px 136px;gap:12px;align-items:center;padding:13px 14px;border:1px solid #e8eef7;border-radius:16px;background:#fff;position:relative;transition:all .15s ease;
+    &::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;background:#94a3b8}
+    &:hover{background:#f8fbff;border-color:#bfdbfe;transform:translateY(-1px);box-shadow:0 10px 22px rgba(15,23,42,.055)}
   }
-
-  .order-limit-note {
-    margin: 0 0 12px;
-    font-size: 12px;
-    font-weight: 650;
-    color: #64748b;
+  .order-row:has(.status-pill--pending)::before{background:#f59e0b}
+  .order-row:has(.status-pill--preparing)::before{background:#2563eb}
+  .order-row:has(.status-pill--completed)::before{background:#16a34a}
+  .order-row:has(.status-pill--cancelled)::before{background:#dc2626}
+  .order-code{margin:0;font-size:14px;font-weight:900;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .order-meta{margin:4px 0 0;font-size:12px;color:#64748b}
+  .status-pill{justify-self:center;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;white-space:nowrap;border:1px solid;
+    &--pending{background:#fffbeb;color:#92400e;border-color:#fcd34d}
+    &--preparing{background:#eff6ff;color:#1d4ed8;border-color:#93c5fd}
+    &--completed{background:#ecfdf5;color:#166534;border-color:#86efac}
+    &--cancelled{background:#fef2f2;color:#991b1b;border-color:#fca5a5}
+    &--unknown{background:#f3f4f6;color:#374151;border-color:#d1d5db}
   }
-
-  .order-list-body {
-    display: grid;
-    gap: 8px;
-    min-height: 360px;
-    max-height: 430px;
-    overflow: auto;
-    padding-right: 2px;
-  }
-
-  .order-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(92px, auto) minmax(116px, 132px);
-    gap: 12px;
-    align-items: center;
-    padding: 12px 12px;
-    border: 1px solid #edf2f7;
-    border-radius: 14px;
-    background: #ffffff;
-    transition:
-      background-color 150ms ease,
-      border-color 150ms ease,
-      transform 150ms ease,
-      box-shadow 150ms ease;
-  }
-
-  .order-row:hover {
-    background: #f8fbff;
-    border-color: #dbeafe;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
-    transform: translateY(-1px);
-  }
-
-  .order-row__main {
-    min-width: 0;
-  }
-
-  .order-code {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 850;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .order-meta {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  .status-pill {
-    justify-self: center;
-    border-radius: 999px;
-    padding: 5px 10px;
-    font-size: 12px;
-    font-weight: 800;
-    white-space: nowrap;
-
-    &--pending {
-      background: #fffbeb;
-      color: #92400e;
-      border: 1px solid #fde68a;
-    }
-
-    &--preparing {
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
-    }
-
-    &--completed {
-      background: #ecfdf5;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-
-    &--cancelled {
-      background: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-
-    &--unknown {
-      background: #f3f4f6;
-      color: #374151;
-      border: 1px solid #e5e7eb;
-    }
-  }
-
-  .order-row__side {
-    text-align: right;
-  }
-
-  .order-amount {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 850;
-    color: #0f172a;
-    white-space: nowrap;
-  }
-
-  .order-time {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  .empty-state {
-    min-height: 180px;
-    display: grid;
-    place-content: center;
-    gap: 8px;
-    text-align: center;
-    color: #64748b;
-    font-size: 13px;
-  }
+  .order-row__side{text-align:right}.order-amount{margin:0;font-size:14px;font-weight:900;color:#0f172a;white-space:nowrap}.order-time{margin:4px 0 0;font-size:12px;color:#64748b}
+  .empty-state{min-height:160px;display:grid;place-content:center;gap:8px;text-align:center;color:#64748b;font-size:13px}
 }
-
-@media (max-width: 768px) {
-  .recent-orders .order-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .recent-orders .status-pill {
-    justify-self: flex-start;
-  }
-
-  .recent-orders .order-row__side {
-    text-align: left;
-  }
-}
+@media (max-width:768px){.recent-orders .order-row{grid-template-columns:1fr;gap:8px}.recent-orders .status-pill{justify-self:flex-start}.recent-orders .order-row__side{text-align:left}}
