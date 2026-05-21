@@ -68,7 +68,10 @@ describe("staffPerformance customer rating factors", () => {
     mocks.acrCountDocuments.mockResolvedValue(0);
     mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 60, attitudeScore: 60, teamworkScore: 60, skillScore: 60 }));
     mocks.orderAggregate.mockResolvedValue([]);
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([]));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue({
+      session: vi.fn().mockResolvedValue([]),
+      lean: vi.fn().mockResolvedValue([]),
+    });
     mocks.snapshotFindOneAndUpdate.mockReturnValue({
       populate: vi.fn().mockReturnValue(chainLean(snapshotDocWithScore())),
     });
