@@ -62,15 +62,6 @@ const MENUS_QUERY = gql`
   ${MENU_FIELDS}
 `;
 
-const COPY_MENU_MUTATION = gql`
-  mutation CopyMenu($input: CopyMenuInput!) {
-    copyMenu(input: $input) {
-      ...CompactMenuFields
-    }
-  }
-  ${MENU_FIELDS}
-`;
-
 const DELETE_MENU_MUTATION = gql`
   mutation DeleteMenu($id: ID!, $force: Boolean = false) {
     deleteMenu(id: $id, force: $force)
@@ -102,31 +93,6 @@ const SLOT_CONFIG = {
     bg: "#fdf2f8",
     border: "#fbcfe8",
   },
-};
-
-const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
-
-const firstFreeSlot = (menus) => {
-  const used = new Set((menus || []).map((menu) => menu.timeSlot));
-  return TIME_SLOT_ORDER.find((slot) => !used.has(slot)) || null;
-};
-
-const copyName = (source, menus) => {
-  const base = `${source?.name || "Menu"} (bản sao)`;
-  const names = new Set(
-    (menus || []).map((menu) =>
-      String(menu?.name || "")
-        .trim()
-        .toLowerCase(),
-    ),
-  );
-  let name = base;
-  let i = 2;
-  while (names.has(name.trim().toLowerCase())) {
-    name = `${base} ${i}`;
-    i += 1;
-  }
-  return name;
 };
 
 const errorText = (error, fallback) =>
@@ -172,22 +138,6 @@ const CompactMenuStrip = ({
   const [actionMessage, setActionMessage] = useState("");
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [isDeletingCandidate, setIsDeletingCandidate] = useState(false);
-
-  const [copyMenuMutation] = useMutation(COPY_MENU_MUTATION, {
-    update(cache, { data }) {
-      const copied = data?.copyMenu;
-      if (!copied?.restaurantId) return;
-      cache.updateQuery(
-        { query: MENUS_QUERY, variables: { restaurantId: copied.restaurantId } },
-        (prev) => {
-          const current = prev?.menus || [];
-          return current.some((menu) => menu.id === copied.id)
-            ? prev
-            : { menus: [...current, copied] };
-        },
-      );
-    },
-  });
 
   const [deleteMenuMutation] = useMutation(DELETE_MENU_MUTATION, {
     update(cache, _result, { variables }) {
@@ -235,46 +185,6 @@ const CompactMenuStrip = ({
     setInternalActiveId(menu.id);
     onSelectMenu?.(menu);
     onTimeSlotChange?.(menu?.timeSlot || null);
-  };
-
-  const handleCopyMenu = async (menu) => {
-    if (!menu?.id || !menu?.restaurantId || busyMenuId) return;
-    const targetTimeSlot = firstFreeSlot(menus);
-    if (!targetTimeSlot) {
-      setActionMessage("");
-      setActionError("Không thể sao chép vì nhà hàng này đã có đủ 4 thực đơn theo khung giờ.");
-      return;
-    }
-    setBusyMenuId(menu.id);
-    setActionError("");
-    setActionMessage("");
-    try {
-      const { data } = await copyMenuMutation({
-        variables: {
-          input: {
-            restaurantId: menu.restaurantId,
-            sourceMenuId: menu.id,
-            targetTimeSlot,
-            name: copyName(menu, menus),
-            description: menu.description || null,
-            coverImage: menu.coverImage || null,
-            categoryMenuId: menu.categoryMenu?.id || null,
-            isActive: false,
-            copyItems: true,
-            copyRecipes: true,
-          },
-        },
-      });
-      if (data?.copyMenu) {
-        setInternalActiveId(data.copyMenu.id);
-        if (data.copyMenu.timeSlot) onTimeSlotChange?.(data.copyMenu.timeSlot);
-        onSelectMenu?.(data.copyMenu);
-      }
-    } catch (error) {
-      setActionError(errorText(error, "Không thể sao chép thực đơn. Vui lòng thử lại."));
-    } finally {
-      setBusyMenuId(null);
-    }
   };
 
   const handleSyncInventory = async () => {
@@ -527,8 +437,7 @@ const CompactMenuStrip = ({
                             disabled={!!busyMenuId}
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (typeof onCopyMenu === "function") await onCopyMenu(menu);
-                              else await handleCopyMenu(menu);
+                              await onCopyMenu(menu);
                             }}
                           >
                             <FiCopy />{busy && <span>...</span>}

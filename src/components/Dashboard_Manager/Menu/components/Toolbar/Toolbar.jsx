@@ -77,6 +77,7 @@ const Toolbar = ({
     onSearchChange("");
     onCategoryChange("");
     onStatusFilterChange("");
+    onInventoryFilterChange?.("all");
     if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
