@@ -20,6 +20,17 @@ const normalizeRole = (role) =>
 const normalizeMandatoryRoles = (roles = []) =>
   Array.from(new Set((roles || []).map(normalizeRole).filter(Boolean)));
 
+export const normalizeMandatoryShiftRoles = (value) => {
+  if (!Array.isArray(value)) return undefined;
+  return normalizeMandatoryRoles(value);
+};
+
+export const preserveMandatoryShiftRolesOnSave = (formState, existingPolicy) => {
+  const normalizedDraft = normalizeMandatoryShiftRoles(formState);
+  if (normalizedDraft) return normalizedDraft;
+  return normalizeMandatoryRoles(existingPolicy?.mandatoryShiftRoles || []);
+};
+
 const RULE_LEVEL_OPTIONS = [
   { value: "hard", label: "Chặn cứng" },
   { value: "warning", label: "Cảnh báo / Cho override" },
@@ -480,7 +491,10 @@ const ShiftRulesModal = ({
         ),
       },
       scoringWeights: normalizeScoringWeights(draftScoringWeights),
-      mandatoryShiftRoles: normalizeMandatoryRoles(draftMandatoryRoles),
+      mandatoryShiftRoles: preserveMandatoryShiftRolesOnSave(
+        draftMandatoryRoles,
+        policy,
+      ),
     });
 
     await onApply(draftRules, policyInput);
@@ -618,6 +632,10 @@ const ShiftRulesModal = ({
                 <span>
                   Các role này được dùng để cảnh báo khi một ca chưa đủ thành
                   phần. Không chặn tạo ca.
+                </span>
+                <span>
+                  Vai trò bắt buộc toàn cục sẽ được áp dụng khi thêm ca. Chỉ
+                  xóa khi muốn thay đổi chính sách.
                 </span>
               </div>
               <div className="mandatory-role-options">

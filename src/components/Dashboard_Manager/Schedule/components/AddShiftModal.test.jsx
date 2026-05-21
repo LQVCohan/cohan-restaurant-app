@@ -100,4 +100,34 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
     expect(screen.getByText("Cashier A").closest(".staff-item")).toHaveTextContent("Khớp vị trí");
     expect(screen.getByText("Server A").closest(".staff-item")).toHaveTextContent("Không khớp vị trí bắt buộc");
   });
+
+  it("renders policy mandatory roles once and avoids duplicate role labels", () => {
+    render(
+      <AddShiftModal
+        {...baseProps}
+        staffList={[
+          {
+            id: "s1",
+            name: "Cashier A",
+            employmentType: "full_time",
+            workingDays: ["mon"],
+            salary: 1000,
+            positionTitle: "Thu ngân",
+            roleName: "Thu ngân",
+            departmentLabel: "Front",
+          },
+        ]}
+        mandatoryShiftRoles={["cashier", "cashier", "CASHIER"]}
+      />, 
+    );
+
+    const roleCards = screen
+      .getAllByText("Thu ngân")
+      .filter((node) => node.closest(".job-checkbox"));
+    expect(roleCards).toHaveLength(1);
+    expect(screen.getByText("Cashier A").closest(".staff-item")).not.toHaveTextContent(
+      "Thu ngân · Thu ngân",
+    );
+    expect(screen.getByText(/Vai trò bắt buộc từ chính sách/)).toBeInTheDocument();
+  });
 });
