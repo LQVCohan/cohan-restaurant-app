@@ -60,6 +60,17 @@ const useSupply = (restaurantId, warehouseId = null) => {
   const [inboundSupply] = useMutation(M_STOCK_INBOUND);
   const [outboundSupply] = useMutation(M_STOCK_OUTBOUND);
   const [transferSupply] = useMutation(M_STOCK_TRANSFER);
+  const resolveMutationWarehouseId = useCallback(
+    (input = {}) => input.warehouseId ?? warehouseId ?? null,
+    [warehouseId],
+  );
+  const requireSpecificWarehouseId = useCallback((input = {}) => {
+    const mutationWarehouseId = resolveMutationWarehouseId(input);
+    if (typeof mutationWarehouseId !== "string" || !mutationWarehouseId.trim()) {
+      throw new Error("Vui lòng chọn kho cụ thể trước khi thao tác tồn kho.");
+    }
+    return mutationWarehouseId;
+  }, [resolveMutationWarehouseId]);
 
   // Helpers
   const writeSupplies = (cache, restaurantIdVar, warehouseIdVar, next) => {
@@ -129,6 +140,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
   const handleCreate = useCallback(
     async (input) => {
       const restId = input.restaurantId || restaurantId;
+      const mutationWarehouseId = resolveMutationWarehouseId(input);
       const tempId = "temp-supply-" + Date.now();
       const tempStockId = "temp-stockitem-" + tempId;
 
@@ -151,7 +163,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
           __typename: "StockItem",
           id: tempStockId, // ✅ non-null
           restaurantId: restId,
-          warehouseId: warehouseId || null,
+          warehouseId: mutationWarehouseId,
           costPerUnit: input.costPerUnit || 0,
           pricePerUnit: input.pricePerUnit || 0,
           note: input.notes || "",
@@ -207,7 +219,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
         },
       });
     },
-    [createSupply, mergeCreatedSupply, restaurantId, warehouseId]
+    [createSupply, mergeCreatedSupply, resolveMutationWarehouseId, restaurantId, warehouseId]
   );
 
   const handleUpdate = useCallback(
@@ -267,6 +279,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
 
   const handleAdjust = useCallback(
     async (input) => {
+      const mutationWarehouseId = requireSpecificWarehouseId(input);
       const restId = input.restaurantId || restaurantId;
       const current = getStockItem(input.supplyId);
       const nextOnHand = (current.onHand || 0) + Number(input.qty || 0);
@@ -278,7 +291,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
           adjustSupply: {
             __typename: "StockItem",
             id: tempStockId, // ✅ non-null
-            warehouseId: warehouseId || null,
+            warehouseId: mutationWarehouseId,
             onHand: nextOnHand,
             reserved: current.reserved || 0,
             costPerUnit: current.costPerUnit ?? null,
@@ -303,11 +316,12 @@ const useSupply = (restaurantId, warehouseId = null) => {
         },
       });
     },
-    [adjustSupply, getStockItem, restaurantId, warehouseId]
+    [adjustSupply, getStockItem, requireSpecificWarehouseId, restaurantId, warehouseId]
   );
 
   const handleInbound = useCallback(
     async (input) => {
+      const mutationWarehouseId = requireSpecificWarehouseId(input);
       const restId = input.restaurantId || restaurantId;
       const current = getStockItem(input.supplyId);
       const nextOnHand = (current.onHand || 0) + Number(input.qty || 0);
@@ -319,7 +333,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
           stockInbound: {
             __typename: "StockItem",
             id: tempStockId, // ✅ non-null
-            warehouseId: warehouseId || null,
+            warehouseId: mutationWarehouseId,
             onHand: nextOnHand,
             reserved: current.reserved || 0,
             costPerUnit: current.costPerUnit ?? null,
@@ -344,7 +358,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
         },
       });
     },
-    [inboundSupply, getStockItem, restaurantId, warehouseId]
+    [getStockItem, inboundSupply, requireSpecificWarehouseId, restaurantId, warehouseId]
   );
 
   const handleOutbound = useCallback(
@@ -378,11 +392,12 @@ const useSupply = (restaurantId, warehouseId = null) => {
       };
 
       if (canOptimistic) {
+        const mutationWarehouseId = requireSpecificWarehouseId(input);
         mutationConfig.optimisticResponse = {
           stockOutbound: {
             __typename: "StockItem",
             id: current.id,
-            warehouseId: warehouseId || null,
+            warehouseId: mutationWarehouseId,
             onHand: Number(current.onHand || 0) - nQty,
             reserved: current.reserved || 0,
             costPerUnit: current.costPerUnit ?? null,
@@ -395,7 +410,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
 
       await outboundSupply(mutationConfig);
     },
-    [outboundSupply, restaurantId, supplies, warehouseId]
+    [outboundSupply, requireSpecificWarehouseId, restaurantId, supplies, warehouseId]
   );
 
   const handleTransfer = useCallback(

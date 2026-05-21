@@ -529,6 +529,11 @@ enum SortDirection {
   ASC
   DESC
 }
+input CustomerRankFilterInput {
+  rankName: String
+  minPoints: Int
+  maxPointsExclusive: Int
+}
 
 type CustomerPageInfo {
   hasNextPage: Boolean!
@@ -2698,11 +2703,22 @@ type Query {
     search: String
     includeGuests: Boolean = true
     customerKind: CustomerKindFilter = ALL
+    customerRank: CustomerRankFilterInput
     sortBy: CustomerSortBy = CREATED_AT
     sortDirection: SortDirection = DESC
     limit: Int = 30
     cursor: String
   ): CustomerListPage!
+  customerExportRows(
+    restaurantId: ID!
+    search: String
+    includeGuests: Boolean = true
+    customerKind: CustomerKindFilter = ALL
+    customerRank: CustomerRankFilterInput
+    sortBy: CustomerSortBy = CREATED_AT
+    sortDirection: SortDirection = DESC
+    limit: Int = 1000
+  ): [User!]!
   customerDetailAnalytics(
     userId: ID!
     restaurantId: ID

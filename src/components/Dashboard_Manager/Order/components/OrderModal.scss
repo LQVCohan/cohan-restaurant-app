@@ -582,6 +582,22 @@ $st-cancelled-text: #b91c1c;
   gap: 10px;
   padding: 0 20px 18px;
 }
+
+.om-actionDialog__reasonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.om-actionDialog__select {
+  width: 100%;
+}
+
+.om-actionDialog__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: $text-sub;
+}
 .om-actionDialog__button {
   border: none;
   border-radius: 8px;

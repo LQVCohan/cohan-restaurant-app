@@ -148,6 +148,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
     $search: String
     $includeGuests: Boolean
     $customerKind: CustomerKindFilter
+    $customerRank: CustomerRankFilterInput
     $sortBy: CustomerSortBy
     $sortDirection: SortDirection
     $limit: Int
@@ -158,6 +159,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
       search: $search
       includeGuests: $includeGuests
       customerKind: $customerKind
+      customerRank: $customerRank
       sortBy: $sortBy
       sortDirection: $sortDirection
       limit: $limit
@@ -191,6 +193,14 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
         isGuest
         createdAt
       }
+    }
+  }
+`;
+export const GET_CUSTOMER_EXPORT_ROWS = gql`
+  query GetCustomerExportRows($restaurantId: ID!, $search: String, $includeGuests: Boolean, $customerKind: CustomerKindFilter, $customerRank: CustomerRankFilterInput, $sortBy: CustomerSortBy, $sortDirection: SortDirection, $limit: Int) {
+    customerExportRows(restaurantId: $restaurantId, search: $search, includeGuests: $includeGuests, customerKind: $customerKind, customerRank: $customerRank, sortBy: $sortBy, sortDirection: $sortDirection, limit: $limit) {
+      id fullName username email phone loyaltyPoints customerType totalOrders totalSpending isOnline lastLoginAt isGuest createdAt
+      refRestaurants { id name }
     }
   }
 `;
@@ -565,6 +575,8 @@ const useUserManagement = () => {
     });
   const [fetchCustomerPage, { loading: customerPageLoading, error: customerPageError }] =
     useLazyQuery(GET_CUSTOMER_LIST_PAGE, { fetchPolicy: "network-only" });
+  const [fetchCustomerExportRows] =
+    useLazyQuery(GET_CUSTOMER_EXPORT_ROWS, { fetchPolicy: "network-only" });
 
   // Mutations
   const [createUserMut, { loading: creating }] = useMutation(CREATE_USER, {
@@ -677,9 +689,9 @@ const useUserManagement = () => {
     };
   }, []);
   const getCustomersPage = useCallback(async ({
-    restaurantId, search, includeGuests = true, customerKind = "ALL", sortBy = "CREATED_AT", sortDirection = "DESC", limit = 30, cursor, append = false,
+    restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = 30, cursor, append = false,
   } = {}) => {
-    const variables = { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, sortBy, sortDirection, limit, cursor };
+    const variables = { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, customerRank, sortBy, sortDirection, limit, cursor };
     const { data } = await fetchCustomerPage({ variables });
     const page = data?.customerListPage;
     const mapped = (page?.items || []).map(mapCustomerCard);
@@ -688,6 +700,14 @@ const useUserManagement = () => {
     setCustomerTotalCount(Number(page?.totalCount || 0));
     return page;
   }, [fetchCustomerPage, mapCustomerCard]);
+  const getCustomerExportRows = useCallback(async ({
+    restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = 1000,
+  } = {}) => {
+    const { data } = await fetchCustomerExportRows({
+      variables: { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, customerRank, sortBy, sortDirection, limit },
+    });
+    return (data?.customerExportRows || []).map(mapCustomerCard);
+  }, [fetchCustomerExportRows, mapCustomerCard]);
 
   /* ===== Derived ===== */
 
@@ -880,6 +900,7 @@ const useUserManagement = () => {
     getAllUsers,
     getCustomers,
     getCustomersPage,
+    getCustomerExportRows,
 
     // ui helpers
     searchUsers,
