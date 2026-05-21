@@ -461,3 +461,9 @@
   line-height: 1.6;
   z-index: 1;
 }
+
+.mm-bulk-status-bar{position:sticky;top:6px;z-index:8;background:rgba(255,255,255,.97);border:1px solid #e2e8f0;box-shadow:0 10px 20px rgba(15,23,42,.08);padding:10px 12px;border-radius:12px;gap:8px}
+.mm-bulk-status-bar>span{font-weight:800}
+.mm-bulk-status-bar .mm-btn{min-height:34px;padding:7px 12px}
+.mm-bulk-status-bar .mm-btn:last-child{border-color:#f8caca;color:#b42318;background:#fff5f5}
+@media (max-width:768px){.mm-bulk-status-bar{top:0}.mm-bulk-status-bar .mm-btn{flex:1 1 calc(50% - 8px)}}

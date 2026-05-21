@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Activity,
   Edit3,
@@ -100,6 +100,8 @@ const MenuItemCard = ({
   const auth = useContext(AuthContext);
   const [imgError, setImgError] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef(null);
 
   const availability = getMenuItemAvailability(item);
 
@@ -108,6 +110,23 @@ const MenuItemCard = ({
     MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT,
   );
 
+
+  useEffect(() => {
+    if (!isStatusMenuOpen) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (!statusMenuRef.current?.contains(event.target)) {
+        setIsStatusMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isStatusMenuOpen]);
+
+  useEffect(() => {
+    if (updatingStatus) setIsStatusMenuOpen(false);
+  }, [updatingStatus]);
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -195,6 +214,7 @@ const MenuItemCard = ({
             <input
               type="checkbox"
               checked={selected}
+              aria-label={`Chọn món ${item?.name || ""} để thao tác hàng loạt`}
               onChange={(e) => {
                 e.stopPropagation();
                 onSelectToggle(item, e.target.checked);
@@ -291,6 +311,7 @@ const MenuItemCard = ({
             {onEdit && (
               <button
                 className="action-btn edit"
+                aria-label="Chỉnh sửa món"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit?.();
@@ -306,6 +327,7 @@ const MenuItemCard = ({
                 {(onEdit || onDelete) && <div className="divider"></div>}
                 <button
                   className="action-btn history"
+                  aria-label="Xem lịch sử món"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsHistoryOpen(true);
@@ -321,29 +343,50 @@ const MenuItemCard = ({
             {canQuickChangeStatus && (
               <>
                 {(onEdit || canViewHistory || onDelete) && <div className="divider"></div>}
-                <div
-                  className={`status-quick-actions ${updatingStatus ? "disabled" : ""}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {STATUS_OPTIONS.map((option) => {
-                    const isCurrent = item?.status === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className="status-action-btn"
-                        disabled={updatingStatus || isCurrent}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (updatingStatus || isCurrent) return;
-                          onStatusChange(item, option.value);
-                        }}
-                        title={isCurrent ? `Đang ở trạng thái ${option.label}` : `Chuyển sang ${option.label}`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <div className="status-dropdown" ref={statusMenuRef} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="action-btn status-trigger"
+                    disabled={updatingStatus}
+                    aria-label="Mở menu trạng thái món"
+                    aria-haspopup="menu"
+                    aria-expanded={isStatusMenuOpen}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsStatusMenuOpen((prev) => !prev);
+                    }}
+                    title="Cập nhật trạng thái nhanh"
+                  >
+                    <MoreHorizontal size={16} /> <span>Trạng thái</span>
+                  </button>
+
+                  {isStatusMenuOpen && (
+                    <div className="status-dropdown-menu" role="menu">
+                      {STATUS_OPTIONS.map((option) => {
+                        const isCurrent = item?.status === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className="status-dropdown-option"
+                            disabled={updatingStatus || isCurrent}
+                            role="menuitem"
+                            aria-disabled={updatingStatus || isCurrent}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (updatingStatus || isCurrent) return;
+                              onStatusChange(item, option.value);
+                              setIsStatusMenuOpen(false);
+                            }}
+                            title={isCurrent ? `Đang ở trạng thái ${option.label}` : `Chuyển sang ${option.label}`}
+                          >
+                            <span>{option.label}</span>
+                            {isCurrent && <span className="status-check">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -352,6 +395,7 @@ const MenuItemCard = ({
                 {(onEdit || canViewHistory) && <div className="divider"></div>}
                 <button
                   className="action-btn delete"
+                  aria-label="Xóa món"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete?.();

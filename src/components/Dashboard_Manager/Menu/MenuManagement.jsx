@@ -297,6 +297,10 @@ const MenuManagement = () => {
     currentUser,
     MENU_MANAGEMENT_ACTIONS.COPY_MENU,
   );
+  const canDeleteMenu = canAccessMenuManagementAction(
+    currentUser,
+    MENU_MANAGEMENT_ACTIONS.DELETE_MENU,
+  );
   // --- LOCAL STATE ---
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
@@ -327,6 +331,9 @@ const MenuManagement = () => {
   const [isDeletingItem, setIsDeletingItem] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteListRefreshError, setDeleteListRefreshError] = useState("");
+  const [deletingMenu, setDeletingMenu] = useState(null);
+  const [isDeletingMenu, setIsDeletingMenu] = useState(false);
+  const [deleteMenuError, setDeleteMenuError] = useState("");
   const [updatingStatusItemIds, setUpdatingStatusItemIds] = useState(() => new Set());
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set());
   const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false);
@@ -380,6 +387,7 @@ const MenuManagement = () => {
     fetchMoreItems,
     refetchItems,
     deleteMenuItem,
+    deleteMenu,
     toggleMenuItemStatus,
     bulkUpdateMenuItemPrices,
     syncMenuItemInventoryStatuses,
@@ -623,6 +631,62 @@ const MenuManagement = () => {
       setIsTogglingMenu(false);
     }
   };
+
+  const handleRequestDeleteMenu = useCallback((menu) => {
+    if (!menu?.id) return;
+    setDeleteMenuError("");
+    setDeletingMenu(menu);
+  }, []);
+
+  const handleCancelDeleteMenu = useCallback(() => {
+    if (isDeletingMenu) return;
+    setDeletingMenu(null);
+    setDeleteMenuError("");
+  }, [isDeletingMenu]);
+
+  const handleConfirmDeleteMenu = useCallback(async () => {
+    if (!deletingMenu?.id || isDeletingMenu) return;
+    const deletedMenu = deletingMenu;
+    const deletedId = deletedMenu.id;
+    const hasItems = Number(deletedMenu.itemCount || 0) > 0;
+
+    setIsDeletingMenu(true);
+    setDeleteMenuError("");
+    try {
+      try {
+        await deleteMenu({ id: deletedId, force: hasItems });
+      } catch (error) {
+        const message = getGraphQLErrorMessage(
+          error,
+          "Không thể xóa thực đơn. Vui lòng thử lại.",
+        );
+        setDeleteMenuError(message);
+        pushMenuToast(message, "error");
+        return;
+      }
+
+      setDeleteMenuError("");
+      setDeletingMenu(null);
+      const nextMenu = (menus || []).find((m) => String(m.id) !== String(deletedId));
+      setSelectedTimeSlot(nextMenu?.timeSlot || null);
+      pushMenuToast("Xóa thực đơn thành công.", "success");
+
+      try {
+        await refetchMenus?.();
+      } catch (error) {
+        pushMenuToast(
+          getGraphQLErrorMessage(
+            error,
+            "Đã xóa thực đơn nhưng chưa tải lại được danh sách. Hãy tải lại trang nếu cần.",
+          ),
+          "warning",
+        );
+      }
+    } finally {
+      setIsDeletingMenu(false);
+    }
+  }, [deleteMenu, deletingMenu, isDeletingMenu, menus, pushMenuToast, refetchMenus, setSelectedTimeSlot]);
+
   const handleRequestDeleteItem = useCallback((item) => {
     if (!item?.id) return;
 
@@ -1173,7 +1237,7 @@ const MenuManagement = () => {
           selectedTimeSlot={selectedTimeSlot}
           onTimeSlotChange={setSelectedTimeSlot}
           activeMenuId={menus.find((m) => m.timeSlot === selectedTimeSlot)?.id}
-          onDeleteMenu={undefined}
+          onDeleteMenu={canDeleteMenu ? handleRequestDeleteMenu : undefined}
           onCopyMenu={canCopyMenu ? handleCopyMenu : undefined}
           onSyncInventory={handleSyncInventory}
         />
@@ -1462,6 +1526,20 @@ const MenuManagement = () => {
         confirmText={pendingBulkStatusAction?.confirmText || "Xác nhận"}
         cancelText="Hủy"
       />
+      <MenuConfirmDialog
+        isOpen={!!deletingMenu}
+        onCancel={handleCancelDeleteMenu}
+        onConfirm={handleConfirmDeleteMenu}
+        isLoading={isDeletingMenu}
+        tone={Number(deletingMenu?.itemCount || 0) > 0 ? "danger" : "default"}
+        title={Number(deletingMenu?.itemCount || 0) > 0 ? "Xóa thực đơn có món?" : "Xóa thực đơn?"}
+        message={Number(deletingMenu?.itemCount || 0) > 0 ? "Thực đơn này đang có món. Xóa thực đơn sẽ xóa kèm món/recipe thuộc thực đơn này." : "Bạn có chắc muốn xóa thực đơn này?"}
+        description={Number(deletingMenu?.itemCount || 0) > 0 ? `Số món hiện có: ${deletingMenu?.itemCount || 0}` : deleteMenuError}
+        confirmText={Number(deletingMenu?.itemCount || 0) > 0 ? "Xóa kèm món" : "Xóa"}
+        cancelText="Hủy"
+      >
+        {!!deleteMenuError && <div className="mm-inline-alert mm-inline-alert--tight"><FiAlertCircle size={16} className="mm-inline-alert__icon"/><p className="mm-inline-alert__text">{deleteMenuError}</p></div>}
+      </MenuConfirmDialog>
       <MenuToast toasts={menuToasts} onDismiss={(id) => setMenuToasts((prev) => prev.filter((toast) => toast.id !== id))} />
     </div>
   );
