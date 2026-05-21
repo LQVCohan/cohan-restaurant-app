@@ -4,6 +4,8 @@ import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
 import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
 import "./Table3DSimulatorModal.scss";
+import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
+import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
 
 const MODEL_VIEWER_SRC =
   "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
@@ -25,6 +27,8 @@ const Table3DSimulatorModal = ({
   const [orbit, setOrbit] = useState(DEFAULT_ORBIT);
   const [modelError, setModelError] = useState("");
   const viewerRef = useRef(null);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
+  const [cameraModel, setCameraModel] = useState(null);
 
   useEffect(() => {
     if (customElements.get("model-viewer")) return;
@@ -149,6 +153,9 @@ const Table3DSimulatorModal = ({
           <Button variant="secondary" size="sm" onClick={reload}>
             Tải lại catalog online
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowCustomBuilder(true)}>
+            ✨ Tạo mẫu bàn tùy chỉnh
+          </Button>
         </aside>
 
         <section className="table-3d-modal__viewer-wrap">
@@ -227,6 +234,14 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__footer">
             <Button
+              variant="secondary"
+              onClick={() => selectedModel && setCameraModel(selectedModel)}
+              disabled={!selectedModel}
+              title={selectedModel ? "" : "Vui lòng chọn mẫu bàn trước"}
+            >
+              📷 Xem thử bằng camera
+            </Button>
+            <Button
               variant="primary"
               onClick={() => selectedModel && onApply(selectedModel)}
               disabled={!selectedModel}
@@ -236,6 +251,22 @@ const Table3DSimulatorModal = ({
           </div>
         </section>
       </div>
+      <CustomTableModelBuilderModal
+        open={showCustomBuilder}
+        onClose={() => setShowCustomBuilder(false)}
+        onApply={(customItem) => {
+          onApply?.(customItem);
+          setShowCustomBuilder(false);
+        }}
+      />
+      <TableCameraPlacementPreviewModal
+        open={!!cameraModel}
+        modelItem={cameraModel}
+        onClose={() => setCameraModel(null)}
+        onConfirmPlacement={() => {
+          setCameraModel(null);
+        }}
+      />
     </Modal>
   );
 };
