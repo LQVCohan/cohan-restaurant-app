@@ -249,11 +249,8 @@ const TableManagement = () => {
 
   useEffect(() => {
     if (vrDraft.didRestore) return;
-    const nextUrl = restaurant?.vrTourUrl || "";
-    setVrForm((prev) =>
-      prev.vrTourUrl === nextUrl ? prev : { ...prev, vrTourUrl: nextUrl }
-    );
-  }, [restaurant?.vrTourUrl, vrDraft.didRestore]);
+    setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
+  }, [restaurant, vrDraft.didRestore]);
 
   useEffect(() => {
     if (!showAddTableModal) {

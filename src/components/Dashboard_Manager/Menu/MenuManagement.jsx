@@ -307,9 +307,6 @@ const MenuManagement = () => {
   const [isSyncingInventory, setIsSyncingInventory] = useState(false);
   const [pendingSyncPayload, setPendingSyncPayload] = useState(null);
   const [menuToasts, setMenuToasts] = useState([]);
-  const pushMenuToast = useCallback((message, type = "info") => {
-    setMenuToasts((prev) => [...prev, { id: `${Date.now()}_${Math.random()}`, message, type }]);
-  }, []);
 
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
@@ -1051,6 +1048,10 @@ const MenuManagement = () => {
       { all: 0, low_stock: 0, out_of_stock: 0, needs_check: 0, not_tracked: 0 },
     );
   }, [items]);
+  const pushMenuToast = useCallback((message, type = "info") => {
+    setMenuToasts((prev) => [...prev, { id: `${Date.now()}_${Math.random()}`, message, type }]);
+  }, []);
+
   const handleSyncInventory = useCallback(
     async ({ restaurantId, timeSlot }) => {
       const dryRunResult = await syncMenuItemInventoryStatuses({

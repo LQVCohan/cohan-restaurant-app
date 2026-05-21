@@ -43,11 +43,6 @@ const Q_TABLES = gql`
       position {
         x
         y
-        w
-        h
-        rotation
-        shape
-        path
       }
       status
       isViewingLocked

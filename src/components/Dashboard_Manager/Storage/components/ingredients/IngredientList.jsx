@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.jsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   Filter,
@@ -311,12 +311,12 @@ const IngredientList = ({
     return null;
   };
 
-  const handleTemplate = useCallback(async () => {
+  const handleTemplate = async () => {
     downloadIngredientTemplate();
     showNotification("Đã tải file mẫu nguyên liệu.", "success");
-  }, [showNotification]);
+  };
 
-  const handleExport = useCallback(async (format = "xlsx") => {
+  const handleExport = async (format = "xlsx") => {
     exportIngredientsFile({
       ingredients: filteredIngredients,
       format,
@@ -326,9 +326,9 @@ const IngredientList = ({
           : defaultWarehouseName || "Chưa chọn kho",
     });
     showNotification(`Đã xuất danh sách nguyên liệu (${format.toUpperCase()}).`, "success");
-  }, [defaultWarehouseName, effectiveWarehouseId, filteredIngredients, showNotification]);
+  };
 
-  const handleImportClick = useCallback(() => fileInputRef.current?.click(), []);
+  const handleImportClick = () => fileInputRef.current?.click();
 
   const handleImportFile = async (event) => {
     const file = event.target.files?.[0];
@@ -449,7 +449,7 @@ const IngredientList = ({
     }
   };
 
-  const applyPreset = useCallback((preset) => {
+  const applyPreset = (preset) => {
     const now = new Date();
     let start = new Date(now);
     if (preset === "7d") start.setDate(now.getDate() - 6);
@@ -457,14 +457,14 @@ const IngredientList = ({
     if (preset === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
     setReportFrom(start.toISOString().slice(0, 10));
     setReportTo(now.toISOString().slice(0, 10));
-  }, []);
+  };
 
-  const openReportModal = useCallback(() => {
+  const openReportModal = () => {
     applyPreset("30d");
     setReportModalOpen(true);
-  }, [applyPreset]);
+  };
 
-  const handleGenerateReport = useCallback(async () => {
+  const handleGenerateReport = async () => {
     try {
       setBusyAction("report");
       const from = reportFrom || new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
@@ -493,23 +493,27 @@ const IngredientList = ({
     } finally {
       setBusyAction("");
     }
-  }, [defaultWarehouseName, effectiveWarehouseId, filteredIngredients, movements, reportFrom, reportTo, showNotification]);
-
-  const registeredActions = useMemo(() => ({
-    import: handleImportClick,
-    exportXlsx: () => handleExport("xlsx"),
-    exportCsv: () => handleExport("csv"),
-    template: handleTemplate,
-    report: openReportModal,
-    busy: Boolean(busyAction),
-  }), [busyAction, handleExport, handleImportClick, handleTemplate, openReportModal]);
+  };
 
   useEffect(() => {
-    onRegisterActions?.(registeredActions);
+    onRegisterActions?.({
+      import: handleImportClick,
+      exportXlsx: () => handleExport("xlsx"),
+      exportCsv: () => handleExport("csv"),
+      template: handleTemplate,
+      report: openReportModal,
+      busy: Boolean(busyAction),
+    });
     return () => onRegisterActions?.(null);
   }, [
+    busyAction,
     onRegisterActions,
-    registeredActions,
+    filteredIngredients,
+    effectiveWarehouseId,
+    defaultWarehouseName,
+    handleExport,
+    handleTemplate,
+    openReportModal,
   ]);
 
   const canInitStock =
