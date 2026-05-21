@@ -1,17 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import {
-  Users,
-  Search,
-  Plus,
-  Filter,
-  Download,
-  Gift,
-  Star,
-  Sparkles,
-  UserCheck,
-  BarChart3,
-} from "lucide-react";
+import { Star, Sparkles, UserCheck } from "lucide-react";
 
 // Components
 import CustomerList from "./CustomerList";
@@ -540,10 +529,10 @@ const CustomerManagement = () => {
           </div>
         )}
         actions={[
-          { label: "Export", icon: "📥", onClick: () => setShowExportModal(true) },
+          { label: "Xuất Excel", icon: "📥", onClick: () => setShowExportModal(true) },
           { label: "Gửi ưu đãi", icon: "🎁", onClick: () => setShowPromotionModal(true) },
           { label: "Phân tích người dùng", icon: "📊", onClick: () => (window.location.hash = "#customer-analytics") },
-          { label: "Bộ lọc", icon: "⚙️", onClick: () => setShowRightSidebar((v) => !v) },
+          { label: "Bộ lọc", icon: "⚙️", variant: showRightSidebar ? "primary" : undefined, onClick: () => setShowRightSidebar((v) => !v) },
         ]}
       />
 

@@ -73,3 +73,35 @@
   color: #fff;
   border-color: #b89365;
 }
+
+
+.mcb-view-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+
+  button {
+    height: 36px;
+    border: 1px solid #dbe3ed;
+    background: #fff;
+    border-radius: 8px;
+    padding: 0 0.65rem;
+  }
+
+  .is-active {
+    border-color: #1e293b;
+    color: #1e293b;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 768px) {
+  .mcb-left,
+  .mcb-right {
+    width: 100%;
+  }
+
+  .mcb-search {
+    width: 100%;
+    min-width: 0;
+  }
+}

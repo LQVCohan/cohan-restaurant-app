@@ -1127,6 +1127,7 @@ const MenuManagement = () => {
     <div className="mm-page-container">
       <ManagementPageHeader
         density="compact"
+        showTimeWidget={false}
         eyebrow="MENU MANAGER"
         title="Quản lý Thực Đơn"
         subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"

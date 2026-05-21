@@ -580,6 +580,7 @@ const TableManagement = () => {
     <div className="tm-container">
       <ManagementPageHeader
         density="compact"
+        showTimeWidget={false}
         eyebrow="TABLE MANAGER"
         title="Quản lý bàn"
         subtitle="Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ."

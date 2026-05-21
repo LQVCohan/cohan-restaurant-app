@@ -595,6 +595,13 @@ const PromotionManagement = () => {
         ? coupons.length
         : couponPackages.length;
 
+  const promotionSearchPlaceholder =
+    activeSection === "promotions"
+      ? "Tìm chương trình, mã..."
+      : activeSection === "coupons"
+        ? "Tìm coupon, mã..."
+        : "Tìm gói Coupon, mã...";
+
   const totalCount =
     activeSection === "promotions"
       ? allPromotions.length
@@ -851,6 +858,7 @@ const PromotionManagement = () => {
           else updateCouponPackageFilters({ status: "all" });
         }}
         searchValue={searchValue}
+        searchPlaceholder={promotionSearchPlaceholder}
         onSearchChange={(value) => {
           if (activeSection === "promotions") updateFilters({ search: value });
           else if (activeSection === "coupons") updateCouponFilters({ search: value });

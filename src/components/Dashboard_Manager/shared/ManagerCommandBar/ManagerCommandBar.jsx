@@ -8,6 +8,7 @@ const ManagerCommandBar = ({
   searchValue = "",
   onSearchChange,
   searchPlaceholder = "Tìm kiếm...",
+  searchAriaLabel = "Tìm kiếm",
   filters,
   leftSlot,
   rightSlot,
@@ -38,9 +39,10 @@ const ManagerCommandBar = ({
           {leftSlot}
 
           {onSearchChange && (
-            <label className="mcb-search" aria-label="search">
+            <label className="mcb-search" aria-label={searchAriaLabel}>
               <span>🔍</span>
               <input
+                aria-label={searchAriaLabel}
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder={searchPlaceholder}
@@ -57,14 +59,14 @@ const ManagerCommandBar = ({
                 className={viewMode === "grid" ? "is-active" : ""}
                 onClick={() => onViewModeChange("grid")}
               >
-                Grid
+                Lưới
               </button>
               <button
                 type="button"
                 className={viewMode === "list" ? "is-active" : ""}
                 onClick={() => onViewModeChange("list")}
               >
-                List
+                Danh sách
               </button>
             </div>
           )}
@@ -77,12 +79,13 @@ const ManagerCommandBar = ({
               type="button"
               className={`mcb-btn ${action.variant === "primary" ? "mcb-btn--primary" : ""}`}
               onClick={action.onClick}
-              disabled={action.disabled}
+              disabled={action.disabled || action.loading}
+              aria-busy={action.loading ? "true" : undefined}
               title={action.title || action.label}
               aria-label={action.ariaLabel || action.label}
             >
               {action.icon}
-              <span>{action.label}</span>
+              <span>{action.loading ? "Đang xử lý..." : action.label}</span>
             </button>
           ))}
           {rightSlot}
