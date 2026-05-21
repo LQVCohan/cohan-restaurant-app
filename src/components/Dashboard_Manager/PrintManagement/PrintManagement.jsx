@@ -421,7 +421,7 @@ export default function PrintManagement() {
         icon="🖨️"
         stats={[
           { id: "printers", icon: "🧩", label: "Thiết bị", value: printers.length },
-          { id: "jobs", icon: "📄", label: "Print jobs", value: printJobs.length },
+          { id: "jobs", icon: "📄", label: "Print jobs", value: jobs.length },
         ]}
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
