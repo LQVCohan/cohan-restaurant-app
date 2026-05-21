@@ -87,6 +87,24 @@ describe("table3dCatalog", () => {
       ).toBe("standard");
     });
 
+
+    it("maps custom model spec into custom area/seats/template", () => {
+      expect(
+        mapModelToTableForm({
+          key: "custom-booth-window",
+          customModelSpec: {
+            name: "Booth cửa sổ",
+            area: "booth",
+            capacity: 5,
+          },
+        })
+      ).toEqual({
+        area: "booth",
+        seats: 5,
+        visualTemplate: "custom-booth-window",
+      });
+    });
+
     it("uses defaults for missing capacity and key", () => {
       expect(mapModelToTableForm({ tableType: TABLE_3D_TYPES.RECT_4 })).toEqual({
         area: "standard",

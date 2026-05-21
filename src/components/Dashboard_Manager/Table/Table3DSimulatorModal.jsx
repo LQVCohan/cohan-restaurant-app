@@ -4,6 +4,7 @@ import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
 import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
 import "./Table3DSimulatorModal.scss";
+import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 
 const MODEL_VIEWER_SRC =
   "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
@@ -25,6 +26,7 @@ const Table3DSimulatorModal = ({
   const [orbit, setOrbit] = useState(DEFAULT_ORBIT);
   const [modelError, setModelError] = useState("");
   const viewerRef = useRef(null);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
 
   useEffect(() => {
     if (customElements.get("model-viewer")) return;
@@ -149,6 +151,9 @@ const Table3DSimulatorModal = ({
           <Button variant="secondary" size="sm" onClick={reload}>
             Tải lại catalog online
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowCustomBuilder(true)}>
+            ✨ Tạo mẫu bàn tùy chỉnh
+          </Button>
         </aside>
 
         <section className="table-3d-modal__viewer-wrap">
@@ -236,6 +241,14 @@ const Table3DSimulatorModal = ({
           </div>
         </section>
       </div>
+      <CustomTableModelBuilderModal
+        open={showCustomBuilder}
+        onClose={() => setShowCustomBuilder(false)}
+        onApply={(customItem) => {
+          onApply?.(customItem);
+          setShowCustomBuilder(false);
+        }}
+      />
     </Modal>
   );
 };
