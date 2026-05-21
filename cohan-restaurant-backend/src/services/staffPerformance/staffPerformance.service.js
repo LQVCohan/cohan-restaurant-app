@@ -62,6 +62,116 @@ function normalizeRole(value) {
     .trim()
     .toLowerCase();
 }
+function normalizeTextNoAccent(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+function safeRate(count, total) {
+  const c = Number(count || 0);
+  const t = Number(total || 0);
+  if (!Number.isFinite(c) || !Number.isFinite(t) || t <= 0) return 0;
+  return c / t;
+}
+function roundOneDecimal(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 10) / 10;
+}
+function resolveQualityRoleGroup(staff, kitchenMetrics = {}) {
+  const roleText = normalizeTextNoAccent(
+    [
+      staff?.roleName,
+      staff?.positionTitle,
+      staff?.department,
+      staff?.role?.slug,
+      staff?.role,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (roleText.includes("cashier") || roleText.includes("thu ngan")) return "cashier";
+  if (["waiter", "waitress", "server", "phuc vu", "order", "le tan", "host"].some((x) => roleText.includes(x))) return "order_staff";
+  if (Number(kitchenMetrics?.headChefItems || 0) > 0 || ["head chef", "chef", "bep truong", "dau bep chinh", "bep chinh"].some((x) => roleText.includes(x))) return "head_chef";
+  if (Number(kitchenMetrics?.assistantItems || 0) > 0 || ["assistant chef", "kitchen helper", "phu bep"].some((x) => roleText.includes(x))) return "assistant_chef";
+  if (Number(kitchenMetrics?.kitchenItems || 0) > 0) {
+    return Number(kitchenMetrics?.headChefItems || 0) >= Number(kitchenMetrics?.assistantItems || 0) ? "head_chef" : "assistant_chef";
+  }
+  return "other";
+}
+function calculateOrderStaffQualityPenalty({ customerRatingScore, staffRateCount }) {
+  if (Number(staffRateCount || 0) <= 0 || Number(customerRatingScore || 0) >= 75) return 0;
+  return Math.min(8, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.25));
+}
+function calculateCashierQualityPenalty({ customerRatingScore, staffRateCount }) {
+  if (Number(staffRateCount || 0) <= 0 || Number(customerRatingScore || 0) >= 75) return 0;
+  return Math.min(5, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.15));
+}
+function calculateHeadChefQualityPenalty(kitchenMetrics = {}) {
+  const denom = Number(kitchenMetrics?.headChefItems || kitchenMetrics?.kitchenItems || kitchenMetrics?.totalItems || 0);
+  if (denom <= 0) return 0;
+  const penalty =
+    safeRate(kitchenMetrics?.lateItems, denom) * 4 +
+    safeRate(kitchenMetrics?.veryLateItems, denom) * 12 +
+    safeRate(kitchenMetrics?.kitchenRelatedReturnedItems, denom) * 10 +
+    safeRate(kitchenMetrics?.kitchenRelatedCancelledItems, denom) * 6 +
+    safeRate(kitchenMetrics?.unacceptedItems, denom) * 3;
+  return Math.min(20, roundOneDecimal(penalty));
+}
+function calculateAssistantChefQualityPenalty(kitchenMetrics = {}) {
+  const denom = Number(kitchenMetrics?.assistantItems || kitchenMetrics?.teamItems || kitchenMetrics?.kitchenItems || kitchenMetrics?.totalItems || 0);
+  if (denom <= 0) return 0;
+  const penalty =
+    safeRate(kitchenMetrics?.unacceptedItems, denom) * 12 +
+    safeRate(kitchenMetrics?.lateItems, denom) * 3 +
+    safeRate(kitchenMetrics?.veryLateItems, denom) * 4 +
+    safeRate(kitchenMetrics?.kitchenRelatedReturnedItems, denom) * 3 +
+    safeRate(kitchenMetrics?.kitchenRelatedCancelledItems, denom) * 2;
+  return Math.min(18, roundOneDecimal(penalty));
+}
+function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, customerRatingScore, staffRateCount }) {
+  const roleGroup = resolveQualityRoleGroup(staff, kitchenMetrics);
+  const kitchenPenalty =
+    roleGroup === "head_chef"
+      ? calculateHeadChefQualityPenalty(kitchenMetrics)
+      : roleGroup === "assistant_chef"
+        ? calculateAssistantChefQualityPenalty(kitchenMetrics)
+        : 0;
+  const customerPenalty =
+    roleGroup === "order_staff"
+      ? calculateOrderStaffQualityPenalty({ customerRatingScore, staffRateCount })
+      : roleGroup === "cashier"
+        ? calculateCashierQualityPenalty({ customerRatingScore, staffRateCount })
+        : 0;
+  const hasKitchenEvidence = Number(kitchenMetrics?.totalItems || 0) > 0 && ["head_chef", "assistant_chef"].includes(roleGroup);
+  const hasCustomerEvidence = Number(staffRateCount || 0) > 0 && ["order_staff", "cashier"].includes(roleGroup);
+  const totalPenalty = roundOneDecimal(kitchenPenalty + customerPenalty);
+  let score = 75;
+  if (hasManagerReview || hasKitchenEvidence || hasCustomerEvidence) {
+    score = clampScore(baseSkillScore - totalPenalty, 75);
+    if (totalPenalty > 0) score = Math.max(50, score);
+  }
+  const evidenceSource = kitchenPenalty > 0 && customerPenalty > 0
+    ? "manager_skill+kitchen_metrics+customer_rating"
+    : kitchenPenalty > 0
+      ? "manager_skill+kitchen_metrics"
+      : customerPenalty > 0
+        ? "manager_skill+customer_rating"
+        : hasManagerReview
+          ? "manager_skill_only"
+          : "neutral_no_quality_evidence";
+  const notes = {
+    head_chef: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo món trễ, rất trễ, trả/hủy có lý do liên quan bếp phù hợp vai trò bếp chính.",
+    assistant_chef: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo món chưa nhận và lỗi bếp liên quan phù hợp vai trò phụ bếp.",
+    order_staff: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo đánh giá khách hàng gắn với nhân viên.",
+    cashier: "Quality dựa trên điểm kỹ năng quản lý; đánh giá khách hàng chỉ điều chỉnh nhẹ khi có dữ liệu liên quan.",
+    other: "Quality dựa trên điểm kỹ năng/chất lượng chuyên môn do quản lý nhập.",
+  };
+  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
+}
 
 function getActorId(ctx) {
   return toObjectId(ctx?.user?.id || ctx?.user?._id);
@@ -542,7 +652,17 @@ async function calculateSnapshotForEmployee({
   const punctualityScore =
     recordCount > 0 ? clampScore(100 - punctualityPenalty, 75) : 75;
 
-  const qualityScore = review ? clampScore(review.skillScore, 75) : 75;
+  const baseSkillScore = review ? clampScore(review.skillScore, 75) : 75;
+  const qualityEvidence = buildQualityEvidenceForEmployee({
+    staff,
+    baseSkillScore,
+    hasManagerReview: Boolean(review),
+    kitchenMetrics,
+    customerRatingScore,
+    staffRate,
+    staffRateCount,
+  });
+  const qualityScore = qualityEvidence.score;
   const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;
 
   const compliancePenalty = correctionsCount * 7;
@@ -589,9 +709,7 @@ async function calculateSnapshotForEmployee({
       weight: PERFORMANCE_WEIGHTS.quality,
       note: insufficientData
         ? "Không có dữ liệu làm việc trong kỳ."
-        : review
-          ? "Dựa trên điểm kỹ năng/chất lượng chuyên môn theo vai trò do quản lý nhập."
-          : "Chưa có đánh giá quản lý, dùng điểm trung lập cho kỹ năng/chất lượng chuyên môn.",
+        : qualityEvidence.note,
     },
     managerReview: {
       score: insufficientData ? 0 : managerBaseScore,
@@ -646,6 +764,20 @@ async function calculateSnapshotForEmployee({
           staffRateCount,
           customerRatingScore,
           hasManagerReview: Boolean(review),
+          qualityEvidence: {
+            baseSkillScore,
+            finalQualityScore: insufficientData ? 0 : qualityScore,
+            roleGroup: qualityEvidence.roleGroup,
+            kitchenPenalty: qualityEvidence.kitchenPenalty,
+            customerPenalty: qualityEvidence.customerPenalty,
+            totalPenalty: qualityEvidence.totalPenalty,
+            hasManagerReview: qualityEvidence.hasManagerReview,
+            hasKitchenEvidence: qualityEvidence.hasKitchenEvidence,
+            hasCustomerEvidence: qualityEvidence.hasCustomerEvidence,
+            evidenceSource: qualityEvidence.evidenceSource,
+            affectsScore: true,
+            note: qualityEvidence.note,
+          },
           scheduledMinutes,
           actualWorkedMinutes,
           productivitySource: "shift_completion",

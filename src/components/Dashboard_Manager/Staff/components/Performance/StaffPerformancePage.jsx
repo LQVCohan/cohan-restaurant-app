@@ -208,6 +208,13 @@ const formatMetricNumber = (value) =>
   Number.isFinite(Number(value)) ? Number(value) : 0;
 const formatMetricMinutes = (value) =>
   Number.isFinite(Number(value)) ? `${Number(value)} phút` : "--";
+const QUALITY_ROLE_LABELS = {
+  order_staff: "Nhân viên order/phục vụ",
+  cashier: "Thu ngân",
+  head_chef: "Bếp chính",
+  assistant_chef: "Phụ bếp",
+  other: "Khác",
+};
 
 const buildSnapshotByEmployee = (snapshots = []) =>
   snapshots.reduce((acc, snapshot) => {
@@ -394,6 +401,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
   const periodEnd = snapshot?.periodEnd;
   const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
   const kitchenMetrics = snapshot?.factors?.kitchenMetrics;
+  const qualityEvidence = snapshot?.factors?.qualityEvidence;
   const hasKitchenMetrics = Number(kitchenMetrics?.totalItems || 0) > 0;
   const { data: historyData } = useQuery(GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY, {
     skip: !snapshot || !employeeId || !restaurantId || !periodStart || !periodEnd,
@@ -641,8 +649,25 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                 </p>
               ) : null}
               <p className="formula-note kitchen-metrics-note">
-                {kitchenMetrics?.note || "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất."}
+                {(Number(kitchenMetrics?.totalItems || 0) > 0 && Number(qualityEvidence?.kitchenPenalty || 0) > 0)
+                  ? "Dữ liệu bếp/bar được dùng làm bằng chứng điều chỉnh nhẹ điểm Quality theo vai trò."
+                  : (kitchenMetrics?.note || "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất.")}
               </p>
+            </div>
+          ) : null}
+          {qualityEvidence ? (
+            <div className="factor-box">
+              <strong>Cơ sở điểm Quality</strong>
+              <div className="factor-grid">
+                <span>Nhóm vai trò: {QUALITY_ROLE_LABELS[qualityEvidence?.roleGroup] || QUALITY_ROLE_LABELS.other}</span>
+                <span>Điểm kỹ năng nền: {qualityEvidence?.baseSkillScore ?? 75}</span>
+                <span>Trừ theo bếp/bar: {qualityEvidence?.kitchenPenalty ?? 0}</span>
+                <span>Trừ theo đánh giá khách hàng: {qualityEvidence?.customerPenalty ?? 0}</span>
+                <span>Tổng điều chỉnh: {qualityEvidence?.totalPenalty ?? 0}</span>
+                <span>Điểm Quality cuối: {qualityEvidence?.finalQualityScore ?? snapshot?.quality?.score ?? 0}</span>
+                <span>Nguồn dữ liệu: {qualityEvidence?.evidenceSource || "--"}</span>
+              </div>
+              <p className="formula-note">{qualityEvidence?.note}</p>
             </div>
           ) : null}
           <div className="adjustment-history-card">

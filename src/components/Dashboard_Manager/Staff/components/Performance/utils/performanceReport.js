@@ -82,8 +82,9 @@ export const buildPerformanceReportData = ({ snapshot = {}, previousSnapshot = n
   const orderCount = factors?.orderCount;
   const peerMaxOrderCount = factors?.peerMaxOrderCount;
   const kitchenMetrics = factors?.kitchenMetrics || null;
+  const qualityEvidence = factors?.qualityEvidence || null;
 
-  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory, scheduledMinutes, actualWorkedMinutes, productivitySource, insufficientData, hasManagerReview, orderCount, peerMaxOrderCount, kitchenMetrics };
+  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory, scheduledMinutes, actualWorkedMinutes, productivitySource, insufficientData, hasManagerReview, orderCount, peerMaxOrderCount, kitchenMetrics, qualityEvidence };
 };
 
 export const buildPerformanceReportHtml = (reportData) => `
@@ -137,6 +138,17 @@ export const buildPerformanceReportHtml = (reportData) => `
       ${Number(reportData.kitchenMetrics.noRosterItems || 0) > 0 ? `<p>Chưa gắn được roster bếp/bar: ${escapeHtml(reportData.kitchenMetrics.noRosterItems ?? "--")}</p>` : ""}
       <p>TB thời gian hoàn thành món: ${escapeHtml(reportData.kitchenMetrics.avgPrepMinutes ?? 0)} phút</p>
       <p><em>Chưa ảnh hưởng điểm hiệu suất</em></p>
+      ` : ""}
+      ${reportData.qualityEvidence ? `
+      <h3>Cơ sở điểm Quality</h3>
+      <p>Nhóm vai trò: ${escapeHtml(reportData.qualityEvidence.roleGroup ?? "--")}</p>
+      <p>Điểm kỹ năng nền: ${escapeHtml(reportData.qualityEvidence.baseSkillScore ?? "--")}</p>
+      <p>Trừ theo bếp/bar: ${escapeHtml(reportData.qualityEvidence.kitchenPenalty ?? "--")}</p>
+      <p>Trừ theo đánh giá khách hàng: ${escapeHtml(reportData.qualityEvidence.customerPenalty ?? "--")}</p>
+      <p>Tổng điều chỉnh: ${escapeHtml(reportData.qualityEvidence.totalPenalty ?? "--")}</p>
+      <p>Điểm Quality cuối: ${escapeHtml(reportData.qualityEvidence.finalQualityScore ?? "--")}</p>
+      <p>Nguồn dữ liệu: ${escapeHtml(reportData.qualityEvidence.evidenceSource ?? "--")}</p>
+      <p>Ghi chú: ${escapeHtml(reportData.qualityEvidence.note ?? "--")}</p>
       ` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>
       ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}

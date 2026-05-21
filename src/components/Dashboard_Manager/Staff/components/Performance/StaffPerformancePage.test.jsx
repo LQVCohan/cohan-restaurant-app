@@ -721,4 +721,12 @@ describe("kitchen metrics csv note", () => {
     const note = rows[0][10];
     expect(note.match(/Có dữ liệu bếp\/bar tham khảo/g)).toHaveLength(1);
   });
+  it("appends quality role-adjustment note without duplication", () => {
+    const rows = buildPerformanceOverviewCsvRows([
+      { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
+      { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
+    ]);
+    expect(rows[0][10]).toContain("Quality có điều chỉnh theo dữ liệu vai trò");
+    expect(rows[0][10].match(/Quality có điều chỉnh theo dữ liệu vai trò/g)).toHaveLength(1);
+  });
 });

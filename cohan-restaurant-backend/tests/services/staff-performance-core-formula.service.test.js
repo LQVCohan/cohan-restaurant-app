@@ -120,7 +120,7 @@ describe("staffPerformance core formula", () => {
     expect(first.productivity.score).toBe(second.productivity.score);
   });
 
-  it("aggregates kitchen metrics as reference data without changing scoring", async () => {
+  it("aggregates kitchen metrics and records role-aware evidence", async () => {
     mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
     mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
     const baseline = await runCalc();
@@ -145,7 +145,9 @@ describe("staffPerformance core formula", () => {
     expect(withKitchen.factors.kitchenMetrics.nonKitchenReturnedItems).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.avgPrepMinutes).toBe(15);
     expect(withKitchen.factors.kitchenMetrics.affectsScore).toBe(false);
-    expect(withKitchen.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
+    expect(withKitchen.factors.qualityEvidence.roleGroup).toBe("head_chef");
+    expect(withKitchen.factors.qualityEvidence.kitchenPenalty).toBeGreaterThan(0);
+    expect(withKitchen.finalPerformanceScore).toBeLessThanOrEqual(baseline.finalPerformanceScore);
   });
 
   it("counts assistant/unaccepted and bar staff role mappings", async () => {
@@ -177,6 +179,36 @@ describe("staffPerformance core formula", () => {
     const set = await runCalc();
     expect(set.quality.score).toBe(61);
     expect(set.managerReview.score).toBe(92);
+  });
+
+  it("applies head chef kitchen penalty using kitchen-related returned metrics", async () => {
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Bếp chính" }));
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, status: "served", timeLevel: "very_late", kitchenEnteredAt: new Date(), issueReasonKitchenRelated: true, returnedAt: new Date() }]));
+    const set = await runCalc();
+    expect(set.quality.score).toBeLessThan(90);
+    expect(set.factors.qualityEvidence.roleGroup).toBe("head_chef");
+    expect(set.factors.qualityEvidence.kitchenPenalty).toBeGreaterThan(0);
+    expect(set.factors.qualityEvidence.customerPenalty).toBe(0);
+  });
+
+  it("applies customer penalty for order_staff and cashier with cashier lower", async () => {
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.customerReviewAggregate.mockResolvedValue([{ _id: null, averageRating: 3, totalReviews: 4 }]);
+
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phục vụ" }));
+    const orderSet = await runCalc();
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
+    const cashierSet = await runCalc();
+    expect(orderSet.factors.qualityEvidence.roleGroup).toBe("order_staff");
+    expect(cashierSet.factors.qualityEvidence.roleGroup).toBe("cashier");
+    expect(orderSet.factors.qualityEvidence.customerPenalty).toBeGreaterThan(0);
+    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeGreaterThan(0);
+    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeLessThan(orderSet.factors.qualityEvidence.customerPenalty);
   });
 
   it("refreshes unaccepted audit before recalculation using periodEnd and no graceMinutes", async () => {
