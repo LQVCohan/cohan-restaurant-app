@@ -8,7 +8,6 @@ const modelMocks = vi.hoisted(() => ({
   Promotion: { find: vi.fn() },
   Coupon: { find: vi.fn(), findOne: vi.fn() },
   VoucherPackage: { find: vi.fn() },
-  Restaurant: { findById: vi.fn() },
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -81,6 +80,7 @@ describe("public/customer permission flows", () => {
     modelMocks.Coupon.findOne.mockReturnValue(findOneChain(null));
     modelMocks.VoucherPackage.find.mockReturnValue(findChain([]));
     modelMocks.Restaurant.findById.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
       lean: vi.fn().mockResolvedValue({
         _id: "valid-r1",
         status: "active",
