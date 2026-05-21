@@ -36,12 +36,21 @@ $dashboard-primary: #2563eb;
   &__actions { display: flex; gap: 10px; }
 }
 .dashboard-btn { height: 38px; padding: 0 14px; border-radius: 12px; border: 1px solid transparent; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  &:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.22);
+    outline-offset: 2px;
+  }
 &--primary { background: $dashboard-primary; color: #fff; } &--ghost { background: #f8fafc; color: $dashboard-text-main; border-color: #e5e7eb; }}
 
 .dashboard-filterbar { border-radius: 14px; padding: 12px 14px; display: flex; align-items: end; gap: 12px; flex-wrap: wrap;
 &__context { margin-left: auto; font-size: 13px; color: $dashboard-text-sub; strong { color: $dashboard-text-main; margin-left: 6px; } }}
 .dashboard-field { display: grid; gap: 6px; min-width: 220px; span { font-size: 12px; color: $dashboard-text-sub; font-weight: 600; }
-&__control { height: 38px; border: 1px solid #d1d5db; border-radius: 10px; padding: 0 10px; display: flex; align-items: center; gap: 8px; select { border: 0; outline: none; width: 100%; background: transparent; font-size: 14px; } }}
+&__control { height: 38px; border: 1px solid #d1d5db; border-radius: 10px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+  &:focus-within {
+    border-color: $dashboard-primary;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+  select { border: 0; outline: none; width: 100%; background: transparent; font-size: 14px; } }}
 
 .dashboard-workspace { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.8fr); gap: 18px;
 &__main, &__side { display: grid; gap: 18px; align-content: start; }}
