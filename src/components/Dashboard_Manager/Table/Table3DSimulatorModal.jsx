@@ -343,6 +343,7 @@ const Table3DSimulatorModal = ({
         onConfirmPlacement={() => {
           setCameraModel(null);
         }}
+        placementScope={customModelScope}
       />
     </Modal>
   );
