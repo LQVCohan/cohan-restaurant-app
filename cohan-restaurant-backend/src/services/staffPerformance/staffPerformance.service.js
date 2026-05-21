@@ -324,6 +324,10 @@ function buildKitchenMetricsSummary(workItems = [], employeeId) {
     servedItems: 0,
     cancelledItems: 0,
     returnedItems: 0,
+    kitchenRelatedCancelledItems: 0,
+    kitchenRelatedReturnedItems: 0,
+    nonKitchenCancelledItems: 0,
+    nonKitchenReturnedItems: 0,
     onTimeItems: 0,
     lateItems: 0,
     veryLateItems: 0,
@@ -355,6 +359,14 @@ function buildKitchenMetricsSummary(workItems = [], employeeId) {
     if (workItem?.status === "served" || workItem?.servedAt) summary.servedItems += 1;
     if (workItem?.status === "cancelled" || workItem?.cancelledAt) summary.cancelledItems += 1;
     if (workItem?.status === "returned" || workItem?.returnedAt) summary.returnedItems += 1;
+    if (workItem?.status === "cancelled" || workItem?.cancelledAt) {
+      if (workItem?.issueReasonKitchenRelated === true) summary.kitchenRelatedCancelledItems += 1;
+      else summary.nonKitchenCancelledItems += 1;
+    }
+    if (workItem?.status === "returned" || workItem?.returnedAt) {
+      if (workItem?.issueReasonKitchenRelated === true) summary.kitchenRelatedReturnedItems += 1;
+      else summary.nonKitchenReturnedItems += 1;
+    }
     if (workItem?.timeLevel === "on_time") summary.onTimeItems += 1;
     if (workItem?.timeLevel === "late") summary.lateItems += 1;
     if (workItem?.timeLevel === "very_late") summary.veryLateItems += 1;

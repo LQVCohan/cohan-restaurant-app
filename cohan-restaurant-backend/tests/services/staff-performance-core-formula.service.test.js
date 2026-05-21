@@ -128,13 +128,21 @@ describe("staffPerformance core formula", () => {
     mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
       { headChefId: employeeId, station: "kitchen", status: "served", servedAt: new Date(), timeLevel: "very_late", actualPrepMinutes: 20, targetPrepMinutes: 15, noRoster: true },
       { headChefId: employeeId, station: "kitchen", status: "ready", readyAt: new Date(), timeLevel: "on_time", actualPrepMinutes: 10, targetPrepMinutes: 10 },
+      { headChefId: employeeId, station: "kitchen", status: "cancelled", cancelledAt: new Date(), issueReasonKitchenRelated: true },
+      { headChefId: employeeId, station: "kitchen", status: "cancelled", cancelledAt: new Date(), issueReasonKitchenRelated: false },
+      { headChefId: employeeId, station: "kitchen", status: "returned", returnedAt: new Date(), issueReasonKitchenRelated: true },
+      { headChefId: employeeId, station: "kitchen", status: "returned", returnedAt: new Date(), issueReasonKitchenRelated: false },
     ]));
 
     const withKitchen = await runCalc();
-    expect(withKitchen.factors.kitchenMetrics.totalItems).toBe(2);
-    expect(withKitchen.factors.kitchenMetrics.headChefItems).toBe(2);
+    expect(withKitchen.factors.kitchenMetrics.totalItems).toBe(6);
+    expect(withKitchen.factors.kitchenMetrics.headChefItems).toBe(6);
     expect(withKitchen.factors.kitchenMetrics.veryLateItems).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.noRosterItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.kitchenRelatedCancelledItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.nonKitchenCancelledItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.kitchenRelatedReturnedItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.nonKitchenReturnedItems).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.avgPrepMinutes).toBe(15);
     expect(withKitchen.factors.kitchenMetrics.affectsScore).toBe(false);
     expect(withKitchen.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
