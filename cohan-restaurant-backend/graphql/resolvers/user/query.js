@@ -41,6 +41,8 @@ function buildSearchCond(search) {
 }
 const CUSTOMER_PAGE_LIMIT_DEFAULT = 30;
 const CUSTOMER_PAGE_LIMIT_MAX = 100;
+const CUSTOMER_EXPORT_LIMIT_DEFAULT = 1000;
+const CUSTOMER_EXPORT_LIMIT_MAX = 2000;
 
 function encodeOffsetCursor(offset) {
   return Buffer.from(JSON.stringify({ offset }), "utf8").toString("base64");
@@ -55,6 +57,35 @@ function decodeOffsetCursor(cursor) {
   } catch {
     throw new GraphQLError("Invalid cursor", { extensions: { code: "BAD_USER_INPUT" } });
   }
+}
+function buildCustomerQueryCondition({
+  restaurantId,
+  search,
+  includeGuests = true,
+  customerKind = "ALL",
+  customerRoleId = null,
+  customerRank = null,
+}) {
+  const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
+  const searchCond = buildSearchCond(search);
+  const customerRoleClause = customerRoleId ? { role: customerRoleId } : null;
+  const guestClause = { isGuest: true };
+  let kindClause = null;
+  if (customerKind === "GUEST") {
+    if (!includeGuests) return { finalCond: { _id: { $exists: false } }, empty: true };
+    kindClause = guestClause;
+  } else if (customerKind === "REGISTERED") {
+    kindClause = customerRoleClause || { _id: { $exists: false } };
+  } else if (includeGuests) {
+    kindClause = customerRoleClause ? { $or: [customerRoleClause, guestClause] } : guestClause;
+  } else {
+    kindClause = customerRoleClause || { _id: { $exists: false } };
+  }
+  const rankClauses = [];
+  if (typeof customerRank?.minPoints === "number") rankClauses.push({ loyaltyPoints: { $gte: customerRank.minPoints } });
+  if (typeof customerRank?.maxPointsExclusive === "number") rankClauses.push({ loyaltyPoints: { $lt: customerRank.maxPointsExclusive } });
+  const clauses = [restaurantScopeCond, kindClause, searchCond, ...rankClauses].filter(Boolean);
+  return { finalCond: clauses.length === 1 ? clauses[0] : { $and: clauses }, empty: false };
 }
 
 const ONLINE_MINUTES = 5;
@@ -284,6 +315,7 @@ export const UserQuery = {
       search,
       includeGuests = true,
       customerKind = "ALL",
+      customerRank,
       sortBy = "CREATED_AT",
       sortDirection = "DESC",
       limit = CUSTOMER_PAGE_LIMIT_DEFAULT,
@@ -303,28 +335,11 @@ export const UserQuery = {
       Math.max(1, Number(limit) || CUSTOMER_PAGE_LIMIT_DEFAULT),
     );
     const offset = decodeOffsetCursor(cursor);
-    const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
-    const searchCond = buildSearchCond(search);
     const customerRole = await Role.findOne({ slug: "customer" }).lean();
-
-    const customerRoleClause = customerRole?._id ? { role: customerRole._id } : null;
-    const guestClause = { isGuest: true };
-    let kindClause = null;
-    if (customerKind === "GUEST") {
-      if (!includeGuests) {
-        return { items: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null, limit: normalizedLimit } };
-      }
-      kindClause = guestClause;
-    } else if (customerKind === "REGISTERED") {
-      kindClause = customerRoleClause || { _id: { $exists: false } };
-    } else {
-      if (includeGuests) kindClause = customerRoleClause ? { $or: [customerRoleClause, guestClause] } : guestClause;
-      else kindClause = customerRoleClause || { _id: { $exists: false } };
-    }
-
-    const clauses = [restaurantScopeCond, kindClause].filter(Boolean);
-    if (searchCond) clauses.push(searchCond);
-    const finalCond = clauses.length === 1 ? clauses[0] : { $and: clauses };
+    const { finalCond, empty } = buildCustomerQueryCondition({
+      restaurantId, search, includeGuests, customerKind, customerRoleId: customerRole?._id, customerRank,
+    });
+    if (empty) return { items: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null, limit: normalizedLimit } };
     const dir = String(sortDirection).toUpperCase() === "ASC" ? 1 : -1;
     const sortMap = {
       CREATED_AT: { createdAt: dir, _id: dir },
@@ -355,6 +370,32 @@ export const UserQuery = {
         limit: normalizedLimit,
       },
     };
+  },
+  async customerExportRows(
+    _,
+    { restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = CUSTOMER_EXPORT_LIMIT_DEFAULT },
+    ctx,
+  ) {
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
+    if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    await requireRestaurantAccess(ctx, restaurantId);
+    const customerRole = await Role.findOne({ slug: "customer" }).lean();
+    const { finalCond } = buildCustomerQueryCondition({
+      restaurantId, search, includeGuests, customerKind, customerRoleId: customerRole?._id, customerRank,
+    });
+    const normalizedLimit = Math.min(CUSTOMER_EXPORT_LIMIT_MAX, Math.max(1, Number(limit) || CUSTOMER_EXPORT_LIMIT_DEFAULT));
+    const dir = String(sortDirection).toUpperCase() === "ASC" ? 1 : -1;
+    const sortMap = {
+      CREATED_AT: { createdAt: dir, _id: dir }, LAST_LOGIN_AT: { lastLoginAt: dir, _id: dir }, TOTAL_SPENDING: { totalSpending: dir, _id: dir }, TOTAL_ORDERS: { totalOrders: dir, _id: dir }, LOYALTY_POINTS: { loyaltyPoints: dir, _id: dir }, NAME: { fullName: dir, username: dir, _id: dir },
+    };
+    return Customer.find(finalCond)
+      .select("fullName username phone email loyaltyPoints totalOrders totalSpending isGuest lastLoginAt isOnline createdAt customerType refRestaurants role")
+      .populate({ path: "role", select: "name slug" })
+      .populate({ path: "refRestaurants", select: "name" })
+      .sort(sortMap[sortBy] || sortMap.CREATED_AT)
+      .limit(normalizedLimit)
+      .lean();
   },
 
   async customerDetailAnalytics(_, { userId, restaurantId }, ctx) {

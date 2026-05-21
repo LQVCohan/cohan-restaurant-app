@@ -7,6 +7,10 @@ const modelMocks = vi.hoisted(() => ({
   Order: {
     findById: (...args) => findByIdMock(...args),
   },
+  KitchenOrderWorkItem: {
+    findOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+  },
   Reservation: {}, TableCustomer: {}, Warehouse: {}, Recipe: {}, Ingredient: {}, ModifierGroup: {}, CheckoutSession: {}, Coupon: {}, Customer: {}, User: {}, WalletTransaction: {}, PrintSetting: {},
 }));
 
@@ -57,11 +61,23 @@ function mockFindByIdWithOrder(order) {
     return query;
   });
 }
+function mockKitchenWorkItemFindOne(value = null) {
+  const query = {
+    lean: vi.fn(() => ({
+      session: vi.fn().mockResolvedValue(value),
+    })),
+  };
+  modelMocks.KitchenOrderWorkItem.findOne.mockReturnValue(query);
+}
 
 describe("reviewOrderItemReturn refund mode handling", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    mockKitchenWorkItemFindOne(null);
+    modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mockReturnValue({
+      session: vi.fn().mockResolvedValue({ _id: "work-item-1" }),
+    });
   });
 
   it("keeps quantity/status/totals for refundMode none", async () => {
