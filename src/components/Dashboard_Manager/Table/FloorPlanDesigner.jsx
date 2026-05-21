@@ -915,6 +915,18 @@ const FloorPlanDesigner = () => {
       };
     });
   };
+  const setAiCount = (section, key, value) => {
+    setAiForm((prev) => ({
+      ...prev,
+      components: {
+        ...prev.components,
+        [section]: {
+          ...prev.components[section],
+          [key]: Math.max(0, Number(value) || 0),
+        },
+      },
+    }));
+  };
 
   const handleGenerateSmartLayout = async () => {
     if (!activeFloorId) return false;
@@ -996,7 +1008,12 @@ const FloorPlanDesigner = () => {
       return [...withUpdatedTables, ...generatedDecor, ...newLocalTables];
     });
     setShowAiModal(false);
-    const warningText = Array.isArray(layoutPayload?.meta?.warnings) && layoutPayload.meta.warnings.length ? ` (${layoutPayload.meta.warnings.join("; ")})` : "";
+    const warnings = Array.isArray(layoutPayload?.meta?.warnings)
+      ? layoutPayload.meta.warnings
+      : [];
+    const warningText = warnings.length
+      ? ` Lưu ý: ${warnings[0]}${warnings.length > 1 ? ` (+${warnings.length - 1} cảnh báo)` : ""}`
+      : "";
     showNotification(`Đã tạo sơ đồ tự động. Nhấn Lưu để ghi nhận.${warningText}`, "success");
   };
   // Mouse handlers
@@ -1760,7 +1777,7 @@ const FloorPlanDesigner = () => {
                   <label>{label}</label>
                   <div className="fp-stepper">
                     <button type="button" onClick={() => updateAiCount(section, key, -1)}>-</button>
-                    <input type="number" min="0" value={aiForm.components?.[section]?.[key] ?? 0} onChange={(e) => updateAiCount(section, key, Number(e.target.value) - Number(aiForm.components?.[section]?.[key] || 0))} />
+                    <input type="number" min="0" value={aiForm.components?.[section]?.[key] ?? 0} onChange={(e) => setAiCount(section, key, e.target.value)} />
                     <button type="button" onClick={() => updateAiCount(section, key, 1)}>+</button>
                   </div>
                 </div>
