@@ -170,7 +170,9 @@ const Dashboard = () => {
               <p>Theo dõi trạng thái xử lý các đơn gần nhất.</p>
             </div>
             {safeRecentOrders.length > 0 ? (
-              <span className="orders-pill">6 đơn gần nhất</span>
+              <span className="orders-pill">
+                Hiển thị {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
+              </span>
             ) : null}
           </div>
           <RecentOrders orders={safeRecentOrders} loading={loading} variant="bare" />
