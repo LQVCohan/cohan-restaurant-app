@@ -4033,155 +4033,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
           ) : null}
         </section>
       </header>
-      {(declinedShiftAcksLoading ||
-        declinedShiftAcksError ||
-        declinedShiftAcks.length > 0) && (
-        <section className="declined-shift-review-panel">
-        <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>
-        {declinedShiftAcksLoading ? (
-          <p>Đang tải ca bị từ chối...</p>
-        ) : declinedShiftAcksError ? (
-          <p>
-            Không thể tải ca bị từ chối:{" "}
-            {getGraphQLErrorMessage(
-              declinedShiftAcksError,
-              declinedShiftAcksError.message || "Đã xảy ra lỗi.",
-            )}
-          </p>
-        ) : null}
-        {!declinedShiftAcksLoading &&
-        !declinedShiftAcksError &&
-        declinedShiftAcks.length === 0
-          ? null
-          : null}
-        {declinedShiftAcks.map((ack) => (
-          <div key={ack.id} className="declined-shift-review-item">
-            {(() => {
-              const shiftRow = shiftRowsById.get(String(ack.shiftId));
-              const personName =
-                ack.employeeName || shiftRow?.employeeName || "Nhân viên";
-              const personCode =
-                ack.employeeCode ||
-                staff.find((item) => String(item.id) === String(ack.employeeId))
-                  ?.employeeCode ||
-                "";
-              const shiftTypeLabel = (
-                ack.shiftType ||
-                shiftRow?.shiftType ||
-                ""
-              )
-                .toString()
-                .toLowerCase();
-              const shiftStart = ack.shiftStartTime || shiftRow?.startTime;
-              const shiftEnd = ack.shiftEndTime || shiftRow?.endTime;
-              const shiftDate = shiftStart
-                ? format(new Date(shiftStart), "dd/MM/yyyy")
-                : "";
-              const label = reasonCategoryLabels[ack.reasonCategory] || "Khác";
-              const classification = ack.declineClassification || "unknown";
-              const isResolved =
-                !shiftRow ||
-                String(shiftRow.employeeId) !== String(ack.employeeId);
-              const isReviewing = reviewingAckId === ack.id;
-              return (
-                <>
-                  <div>
-                    Nhân viên:{" "}
-                    <strong>
-                      {personName}
-                      {personCode ? ` - ${personCode}` : ""}
-                    </strong>
-                  </div>
-                  <div>
-                    Ca:{" "}
-                    <strong>
-                      {shiftTypeLabel || "ca làm"}, {shiftDate}
-                      {shiftStart && shiftEnd
-                        ? `, ${normalizeTime(shiftStart)} - ${normalizeTime(shiftEnd)}`
-                        : ""}
-                    </strong>
-                  </div>
-                  <div>Lý do: {label}</div>
-                  <div>Ghi chú: {ack.reason || "Không có"}</div>
-                  <div>
-                    Trạng thái xử lý:{" "}
-                    <span className={`decline-status-badge ${classification}`}>
-                      {isResolved
-                        ? "Đã xử lý lịch"
-                        : getDeclineStatusLabel(classification)}
-                    </span>
-                  </div>
-                  {import.meta.env.DEV ? (
-                    <small className="debug-ids">
-                      ID: {ack.employeeId} · {ack.shiftId}
-                    </small>
-                  ) : null}
-                  {!readOnly && classification === "unknown" ? (
-                    <div className="decline-action-row">
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() =>
-                          handleReviewDeclinedShiftAck(ack.id, "valid")
-                        }
-                      >
-                        {isReviewing ? "Đang xử lý..." : "Chấp nhận lý do"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() =>
-                          handleReviewDeclinedShiftAck(ack.id, "invalid")
-                        }
-                      >
-                        {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}
-                      </button>
-                    </div>
-                  ) : null}
-                  {readOnly ? (
-                    <small>
-                      Chế độ chỉ xem: không thể duyệt lý do từ chối.
-                    </small>
-                  ) : null}
-                  {classification === "valid" ? (
-                    <div className="decline-helper-block">
-                      <small>
-                        Lý do hợp lệ. Cần xử lý lịch: đổi nhân viên hoặc bỏ nhân
-                        viên khỏi ca.
-                      </small>
-                      <small>
-                        Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
-                        lịch.
-                      </small>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenShiftForResolution(ack)}
-                      >
-                        Mở ca để xử lý
-                      </button>
-                    </div>
-                  ) : null}
-                  {classification === "invalid" ? (
-                    <small>Nhân viên vẫn được kỳ vọng đi làm ca này.</small>
-                  ) : null}
-                  {classification === "late" ? (
-                    <small>
-                      Từ chối muộn - không thể duyệt lại trong màn này.
-                    </small>
-                  ) : null}
-                  {declineReviewErrors[ack.id] ? (
-                    <small className="decline-inline-error">
-                      {declineReviewErrors[ack.id]}
-                    </small>
-                  ) : null}
-                </>
-              );
-            })()}
-          </div>
-        ))}
-        </section>
-      )}
-
       <div className="schedule-toolbar">
         <div className="schedule-print-header" aria-hidden="true">
           <h2>Lịch làm việc tuần</h2>
@@ -4394,176 +4245,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
 
-      {!readOnly ? (
-        <AvailabilityRegistrationPanel
-          selectedRestaurantId={effectiveRestaurantId}
-          mode={availabilityMode}
-          targetWeekStart={availabilityTargetStart}
-          targetWeekEnd={availabilityTargetEnd}
-          nextWeekStart={nextWeekStart}
-          nextWeekEnd={nextWeekEnd}
-          availabilityWindow={managerCurrentWindow}
-          submissions={managerAvailabilitySubmissions}
-          loading={
-            creatingAvailabilityWindow ||
-            openingAvailabilityWindow ||
-            closingAvailabilityWindow
-          }
-          error={
-            managerAvailabilityWindowsError ||
-            managerAvailabilitySubmissionsError ||
-            availabilityWindowsState.error ||
-            availabilitySubmissionsState.error ||
-            null
-          }
-          onCreateWindow={handleCreateOrOpenAvailabilityWindow}
-          onOpenWindow={handleCreateOrOpenAvailabilityWindow}
-          onCloseWindow={handleCloseAvailabilityWindow}
-          collapsed={isAvailabilityPanelCollapsed}
-          onToggleCollapse={() => {
-            setAvailabilityPanelTouched(true);
-            setIsAvailabilityPanelCollapsed((prev) => !prev);
-          }}
-          reopenBlockedReason={reopenAvailabilityBlockedReason}
-          availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
-          onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
-          policySaving={updateSchedulingPolicyState.loading}
-          onReviewSubmission={handleReviewLateChange}
-          reviewingSubmission={reviewingAvailabilitySubmission}
-          firstWeekGraceActive={isFirstWeekGraceActive}
-          nextWeekWindowMissing={!managerNextWeekWindow?.id}
-          isSunday={isSunday}
-          shouldRemindNextWeekRegistration={shouldRemindNextWeekRegistration}
-        />
-      ) : null}
-      {isStatsPanelOpen ? (
-        <section className="schedule-insights-panel">
-          <div className="insights-header">
-            <div>
-              <h3>Thống kê chi tiết</h3>
-              <p>
-                Thông tin phụ được tách khỏi KPI chính để giao diện lịch không
-                bị rối.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="btn-close-panel"
-              onClick={handleCloseStatsPanel}
-              aria-label="Đóng thống kê chi tiết"
-              title="Đóng thống kê chi tiết"
-            >
-              {isStatsPanelOpen ? (
-                <ChevronUp size={18} />
-              ) : (
-                <ChevronDown size={18} />
-              )}
-            </button>
-          </div>
-          <div className="insights-grid">
-            <div className="insight-card">
-              <span className="label">Nhóm ca</span>
-              <strong>{scheduleInsights.totalShiftGroups}</strong>
-            </div>
-            <div className="insight-card">
-              <span className="label">Lượt xếp ca</span>
-              <strong>{scheduleInsights.totalAssignments}</strong>
-            </div>
-            <div className="insight-card">
-              <span className="label">Giờ trung bình / lượt</span>
-              <strong>
-                {compactNumber(scheduleInsights.averageHoursPerAssignment)}h
-              </strong>
-            </div>
-            <div className="insight-card">
-              <span className="label">Chi phí / giờ</span>
-              <strong>
-                {scheduleInsights.totalHours > 0
-                  ? formatCurrency(
-                      scheduleInsights.totalCost / scheduleInsights.totalHours,
-                    )
-                  : "0 đ"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="insights-columns">
-            <div className="insight-block">
-              <h4>Cần xử lý</h4>
-              <p>Bấm vào cảnh báo để trỏ tới ca cần sửa.</p>
-              {scheduleInsights.issues.length ? (
-                <div className="issue-list">
-                  {scheduleInsights.issues.slice(0, 8).map((issue) => (
-                    <button
-                      type="button"
-                      key={issue.id}
-                      className={`insight-issue-row ${issue.level || "warning"} ${
-                        focusedIssueId === issue.id ? "is-focused" : ""
-                      }`}
-                      onClick={() => handleFocusScheduleIssue(issue)}
-                      title="Bấm để trỏ tới ca cần xử lý"
-                    >
-                      <AlertTriangle size={14} />
-                      <div>
-                        <strong>{issue.title}</strong>
-                        <span>{issue.description}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-mini">
-                  Không có cảnh báo trong kỳ hiển thị.
-                </div>
-              )}
-            </div>
-
-            <div className="insight-block">
-              <h4>Chi phí theo bộ phận</h4>
-              {scheduleInsights.costBreakdown.length ? (
-                <ul className="metric-list">
-                  {scheduleInsights.costBreakdown.map((item) => (
-                    <li key={item.department}>
-                      <span>{item.department}</span>
-                      <strong>{formatCurrency(item.amount)}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="empty-mini">Chưa có chi phí dự kiến.</div>
-              )}
-            </div>
-
-            <div className="insight-block">
-              <h4>Nhân viên nhiều giờ nhất</h4>
-              {scheduleInsights.busiestStaff.length ? (
-                <ul className="metric-list">
-                  {scheduleInsights.busiestStaff.map((person) => (
-                    <li key={person.staffId}>
-                      {person.staffId ? (
-                        <button
-                          type="button"
-                          className="staff-stat-link"
-                          onClick={() => handleOpenStaffFromStats(person)}
-                          title="Mở trong Quản lý nhân viên"
-                        >
-                          {person.name}
-                        </button>
-                      ) : (
-                        <span>{person.name}</span>
-                      )}
-                      <strong>{compactNumber(person.hours)}h</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="empty-mini">Chưa có phân công.</div>
-              )}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       <ScheduleLegend />
 
       {!effectiveRestaurantId ? (
@@ -4705,6 +4386,315 @@ const ScheduleManagement = ({ readOnly = false }) => {
           })}
         </div>
       )}
+      {!readOnly ? (
+        <AvailabilityRegistrationPanel
+          selectedRestaurantId={effectiveRestaurantId}
+          mode={availabilityMode}
+          targetWeekStart={availabilityTargetStart}
+          targetWeekEnd={availabilityTargetEnd}
+          nextWeekStart={nextWeekStart}
+          nextWeekEnd={nextWeekEnd}
+          availabilityWindow={managerCurrentWindow}
+          submissions={managerAvailabilitySubmissions}
+          loading={
+            creatingAvailabilityWindow ||
+            openingAvailabilityWindow ||
+            closingAvailabilityWindow
+          }
+          error={
+            managerAvailabilityWindowsError ||
+            managerAvailabilitySubmissionsError ||
+            availabilityWindowsState.error ||
+            availabilitySubmissionsState.error ||
+            null
+          }
+          onCreateWindow={handleCreateOrOpenAvailabilityWindow}
+          onOpenWindow={handleCreateOrOpenAvailabilityWindow}
+          onCloseWindow={handleCloseAvailabilityWindow}
+          collapsed={isAvailabilityPanelCollapsed}
+          onToggleCollapse={() => {
+            setAvailabilityPanelTouched(true);
+            setIsAvailabilityPanelCollapsed((prev) => !prev);
+          }}
+          reopenBlockedReason={reopenAvailabilityBlockedReason}
+          availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
+          onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
+          policySaving={updateSchedulingPolicyState.loading}
+          onReviewSubmission={handleReviewLateChange}
+          reviewingSubmission={reviewingAvailabilitySubmission}
+          firstWeekGraceActive={isFirstWeekGraceActive}
+          nextWeekWindowMissing={!managerNextWeekWindow?.id}
+          isSunday={isSunday}
+          shouldRemindNextWeekRegistration={shouldRemindNextWeekRegistration}
+        />
+      ) : null}
+      {(declinedShiftAcksLoading ||
+        declinedShiftAcksError ||
+        declinedShiftAcks.length > 0) && (
+        <section className="declined-shift-review-panel">
+          <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>
+          {declinedShiftAcksLoading ? (
+            <p>Đang tải ca bị từ chối...</p>
+          ) : declinedShiftAcksError ? (
+            <p>
+              Không thể tải ca bị từ chối:{" "}
+              {getGraphQLErrorMessage(
+                declinedShiftAcksError,
+                declinedShiftAcksError.message || "Đã xảy ra lỗi.",
+              )}
+            </p>
+          ) : null}
+          {declinedShiftAcks.map((ack) => (
+            <div key={ack.id} className="declined-shift-review-item">
+              {(() => {
+                const shiftRow = shiftRowsById.get(String(ack.shiftId));
+                const personName =
+                  ack.employeeName || shiftRow?.employeeName || "Nhân viên";
+                const personCode =
+                  ack.employeeCode ||
+                  staff.find((item) => String(item.id) === String(ack.employeeId))
+                    ?.employeeCode ||
+                  "";
+                const shiftTypeLabel = (
+                  ack.shiftType ||
+                  shiftRow?.shiftType ||
+                  ""
+                )
+                  .toString()
+                  .toLowerCase();
+                const shiftStart = ack.shiftStartTime || shiftRow?.startTime;
+                const shiftEnd = ack.shiftEndTime || shiftRow?.endTime;
+                const shiftDate = shiftStart
+                  ? format(new Date(shiftStart), "dd/MM/yyyy")
+                  : "";
+                const label = reasonCategoryLabels[ack.reasonCategory] || "Khác";
+                const classification = ack.declineClassification || "unknown";
+                const isResolved =
+                  !shiftRow ||
+                  String(shiftRow.employeeId) !== String(ack.employeeId);
+                const isReviewing = reviewingAckId === ack.id;
+                return (
+                  <>
+                    <div>
+                      Nhân viên:{" "}
+                      <strong>
+                        {personName}
+                        {personCode ? ` - ${personCode}` : ""}
+                      </strong>
+                    </div>
+                    <div>
+                      Ca:{" "}
+                      <strong>
+                        {shiftTypeLabel || "ca làm"}, {shiftDate}
+                        {shiftStart && shiftEnd
+                          ? `, ${normalizeTime(shiftStart)} - ${normalizeTime(shiftEnd)}`
+                          : ""}
+                      </strong>
+                    </div>
+                    <div>Lý do: {label}</div>
+                    <div>Ghi chú: {ack.reason || "Không có"}</div>
+                    <div>
+                      Trạng thái xử lý:{" "}
+                      <span className={`decline-status-badge ${classification}`}>
+                        {isResolved
+                          ? "Đã xử lý lịch"
+                          : getDeclineStatusLabel(classification)}
+                      </span>
+                    </div>
+                    {import.meta.env.DEV ? (
+                      <small className="debug-ids">
+                        ID: {ack.employeeId} · {ack.shiftId}
+                      </small>
+                    ) : null}
+                    {!readOnly && classification === "unknown" ? (
+                      <div className="decline-action-row">
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() =>
+                            handleReviewDeclinedShiftAck(ack.id, "valid")
+                          }
+                        >
+                          {isReviewing ? "Đang xử lý..." : "Chấp nhận lý do"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() =>
+                            handleReviewDeclinedShiftAck(ack.id, "invalid")
+                          }
+                        >
+                          {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}
+                        </button>
+                      </div>
+                    ) : null}
+                    {readOnly ? (
+                      <small>
+                        Chế độ chỉ xem: không thể duyệt lý do từ chối.
+                      </small>
+                    ) : null}
+                    {classification === "valid" ? (
+                      <div className="decline-helper-block">
+                        <small>
+                          Lý do hợp lệ. Cần xử lý lịch: đổi nhân viên hoặc bỏ
+                          nhân viên khỏi ca.
+                        </small>
+                        <small>
+                          Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
+                          lịch.
+                        </small>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenShiftForResolution(ack)}
+                        >
+                          Mở ca để xử lý
+                        </button>
+                      </div>
+                    ) : null}
+                    {classification === "invalid" ? (
+                      <small>Nhân viên vẫn được kỳ vọng đi làm ca này.</small>
+                    ) : null}
+                    {classification === "late" ? (
+                      <small>
+                        Từ chối muộn - không thể duyệt lại trong màn này.
+                      </small>
+                    ) : null}
+                    {declineReviewErrors[ack.id] ? (
+                      <small className="decline-inline-error">
+                        {declineReviewErrors[ack.id]}
+                      </small>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </div>
+          ))}
+        </section>
+      )}
+      {isStatsPanelOpen ? (
+        <section className="schedule-insights-panel">
+          <div className="insights-header">
+            <div>
+              <h3>Thống kê chi tiết</h3>
+              <p>
+                Thông tin phụ được tách khỏi KPI chính để giao diện lịch không
+                bị rối.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-close-panel"
+              onClick={handleCloseStatsPanel}
+              aria-label="Đóng thống kê chi tiết"
+              title="Đóng thống kê chi tiết"
+            >
+              {isStatsPanelOpen ? (
+                <ChevronUp size={18} />
+              ) : (
+                <ChevronDown size={18} />
+              )}
+            </button>
+          </div>
+          <div className="insights-grid">
+            <div className="insight-card">
+              <span className="label">Nhóm ca</span>
+              <strong>{scheduleInsights.totalShiftGroups}</strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Lượt xếp ca</span>
+              <strong>{scheduleInsights.totalAssignments}</strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Giờ trung bình / lượt</span>
+              <strong>
+                {compactNumber(scheduleInsights.averageHoursPerAssignment)}h
+              </strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Chi phí / giờ</span>
+              <strong>
+                {scheduleInsights.totalHours > 0
+                  ? formatCurrency(
+                      scheduleInsights.totalCost / scheduleInsights.totalHours,
+                    )
+                  : "0 đ"}
+              </strong>
+            </div>
+          </div>
+          <div className="insights-columns">
+            <div className="insight-block">
+              <h4>Cần xử lý</h4>
+              <p>Bấm vào cảnh báo để trỏ tới ca cần sửa.</p>
+              {scheduleInsights.issues.length ? (
+                <div className="issue-list">
+                  {scheduleInsights.issues.slice(0, 8).map((issue) => (
+                    <button
+                      type="button"
+                      key={issue.id}
+                      className={`insight-issue-row ${issue.level || "warning"} ${
+                        focusedIssueId === issue.id ? "is-focused" : ""
+                      }`}
+                      onClick={() => handleFocusScheduleIssue(issue)}
+                      title="Bấm để trỏ tới ca cần xử lý"
+                    >
+                      <AlertTriangle size={14} />
+                      <div>
+                        <strong>{issue.title}</strong>
+                        <span>{issue.description}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-mini">
+                  Không có cảnh báo trong kỳ hiển thị.
+                </div>
+              )}
+            </div>
+            <div className="insight-block">
+              <h4>Chi phí theo bộ phận</h4>
+              {scheduleInsights.costBreakdown.length ? (
+                <ul className="metric-list">
+                  {scheduleInsights.costBreakdown.map((item) => (
+                    <li key={item.department}>
+                      <span>{item.department}</span>
+                      <strong>{formatCurrency(item.amount)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-mini">Chưa có chi phí dự kiến.</div>
+              )}
+            </div>
+            <div className="insight-block">
+              <h4>Nhân viên nhiều giờ nhất</h4>
+              {scheduleInsights.busiestStaff.length ? (
+                <ul className="metric-list">
+                  {scheduleInsights.busiestStaff.map((person) => (
+                    <li key={person.staffId}>
+                      {person.staffId ? (
+                        <button
+                          type="button"
+                          className="staff-stat-link"
+                          onClick={() => handleOpenStaffFromStats(person)}
+                          title="Mở trong Quản lý nhân viên"
+                        >
+                          {person.name}
+                        </button>
+                      ) : (
+                        <span>{person.name}</span>
+                      )}
+                      <strong>{compactNumber(person.hours)}h</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-mini">Chưa có phân công.</div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {isInitialScheduleLoading && (
         <div className="empty-state schedule-feedback" role="status" aria-live="polite">
