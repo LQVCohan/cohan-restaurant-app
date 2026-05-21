@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   Users,
@@ -222,6 +222,22 @@ const CustomerManagement = () => {
   const [saveRankSettings, { loading: savingRank }] = useMutation(
     UPSERT_CUSTOMER_RANK_SETTINGS,
   );
+  const refreshCustomerFilterCounts = useCallback(async () => {
+    if (!selectedRestaurantId) return null;
+    setCustomerFilterCountsLoading(true);
+    try {
+      const result = await getCustomerFilterCounts({
+        restaurantId: selectedRestaurantId,
+        search: searchDebounced,
+        includeGuests: true,
+        customerKind: "ALL",
+      });
+      setCustomerFilterCounts(result);
+      return result;
+    } finally {
+      setCustomerFilterCountsLoading(false);
+    }
+  }, [getCustomerFilterCounts, searchDebounced, selectedRestaurantId]);
 
   // --- 2. Effects ---
 
@@ -263,24 +279,9 @@ const CustomerManagement = () => {
   }, [activeFilter, getCustomersPage, rankSettings, searchDebounced, selectedRestaurantId]);
   useEffect(() => {
     if (!selectedRestaurantId) return;
-    let cancelled = false;
-    setCustomerFilterCountsLoading(true);
-    getCustomerFilterCounts({
-      restaurantId: selectedRestaurantId,
-      search: searchDebounced,
-      includeGuests: true,
-      customerKind: "ALL",
-    })
-      .then((result) => {
-        if (!cancelled) setCustomerFilterCounts(result);
-      })
-      .finally(() => {
-        if (!cancelled) setCustomerFilterCountsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [getCustomerFilterCounts, searchDebounced, selectedRestaurantId]);
+    refreshCustomerFilterCounts()
+      .catch(() => {});
+  }, [refreshCustomerFilterCounts, selectedRestaurantId]);
 
   // --- 3. Handlers ---
 
@@ -317,6 +318,7 @@ const CustomerManagement = () => {
       },
     });
     await refetchRankSettings();
+    await refreshCustomerFilterCounts();
   };
 
   const refreshCustomerListAfterCreate = async (createdUser = null) => {
