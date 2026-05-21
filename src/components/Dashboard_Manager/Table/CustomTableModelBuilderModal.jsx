@@ -5,6 +5,7 @@ import {
   buildCustomTableCatalogItem,
   CUSTOM_TABLE_SHAPES,
   DEFAULT_CUSTOM_TABLE_SPEC,
+  getCustomTableShapeLabel,
   normalizeCustomTableSpec,
 } from "@/config/table3dCustomModelBuilder";
 import { getTableAreaLabel, TABLE_AREA_OPTIONS } from "@/utils/tableManagementOptions";
@@ -169,7 +170,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
             <h6 className="card-title">Preview summary</h6>
             <ul className="mb-0">
               <li>Tên mẫu: {normalizedPreview.name || "Mẫu bàn tùy chỉnh"}</li>
-              <li>Shape: {normalizedPreview.shape}</li>
+              <li>Loại bàn: {getCustomTableShapeLabel(normalizedPreview.shape)}</li>
               <li>Số ghế: {normalizedPreview.capacity}</li>
               <li>
                 Kích thước: {normalizedPreview.widthCm} x {normalizedPreview.depthCm} x {normalizedPreview.heightCm} cm

@@ -34,6 +34,8 @@ const asPositiveNumber = (value, fallback) => {
 
 const slugify = (value) =>
   String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
@@ -59,13 +61,13 @@ export const normalizeCustomTableSpec = (input = {}) => {
   };
 };
 
-export const buildCustomTableCatalogItem = (spec) => {
+export const buildCustomTableCatalogItem = (spec, options = {}) => {
   const normalizedSpec = normalizeCustomTableSpec(spec);
-  const slug = slugify(normalizedSpec.name);
-  const suffix = slug || Date.now();
+  const slug = slugify(normalizedSpec.name) || "table";
+  const timestamp = options.timestamp ?? Date.now();
 
   return {
-    key: `custom-${suffix}`,
+    key: `custom-${slug}-${timestamp}`,
     label: normalizedSpec.name || "Mẫu bàn tùy chỉnh",
     tableType: "custom-parametric",
     capacity: normalizedSpec.capacity,
@@ -86,3 +88,7 @@ export const mapCustomTableSpecToTableForm = (spec) => {
     visualTemplate: normalizedSpec.name || "custom-parametric",
   };
 };
+
+
+export const getCustomTableShapeLabel = (shape) =>
+  CUSTOM_TABLE_SHAPES.find((item) => item.value === shape)?.label || "Bàn chữ nhật";

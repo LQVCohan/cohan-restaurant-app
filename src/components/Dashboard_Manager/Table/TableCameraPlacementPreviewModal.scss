@@ -1,0 +1,69 @@
+.camera-placement-modal__header p {
+  margin-bottom: 12px;
+  color: #6b7280;
+}
+
+.camera-placement-modal__preview {
+  position: relative;
+  width: 100%;
+  height: min(62vh, 520px);
+  background: #111827;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.camera-placement-modal__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111827;
+}
+
+.camera-placement-modal__overlay {
+  position: absolute;
+  width: 180px;
+  min-height: 100px;
+  padding: 10px;
+  border: 2px solid #22c55e;
+  color: #fff;
+  background: rgba(34, 197, 94, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.camera-placement-modal__overlay.shape-round { border-radius: 999px; }
+.camera-placement-modal__overlay.shape-square { aspect-ratio: 1 / 1; }
+.camera-placement-modal__overlay.shape-booth { border-radius: 14px; }
+.camera-placement-modal__overlay.shape-bar { width: 120px; min-height: 160px; }
+
+.sofa-badge {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.7);
+}
+
+.camera-placement-modal__error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: rgba(127, 29, 29, 0.92);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.camera-placement-modal__controls,
+.camera-placement-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.camera-placement-modal__note { margin-top: 10px; color: #6b7280; }

@@ -48,14 +48,33 @@ describe("table3dCustomModelBuilder", () => {
 
   describe("buildCustomTableCatalogItem", () => {
     it("builds parametric user-generated catalog item", () => {
-      const item = buildCustomTableCatalogItem({ name: "Booth Family", capacity: 6, area: "booth" });
+      const item = buildCustomTableCatalogItem(
+        { name: "Booth Family", capacity: 6, area: "booth" },
+        { timestamp: 999 }
+      );
 
-      expect(item.key).toMatch(/^custom-/);
+      expect(item.key).toBe("custom-booth-family-999");
       expect(item.source).toBe("user-generated");
       expect(item.fallbackKind).toBe("parametric");
       expect(item.customModelSpec).toBeTruthy();
       expect(item.capacity).toBe(6);
       expect(item.customModelSpec.area).toBe("booth");
+    });
+
+    it("creates vietnamese-friendly slug with deterministic timestamp", () => {
+      const item = buildCustomTableCatalogItem({ name: "Bàn cửa sổ" }, { timestamp: 123 });
+      expect(item.key).toContain("custom-ban-cua-so-123");
+    });
+
+    it("generates different keys for same name with different timestamps", () => {
+      const first = buildCustomTableCatalogItem({ name: "Bàn cửa sổ" }, { timestamp: 123 });
+      const second = buildCustomTableCatalogItem({ name: "Bàn cửa sổ" }, { timestamp: 124 });
+      expect(first.key).not.toBe(second.key);
+    });
+
+    it("falls back to table slug when name is empty", () => {
+      const item = buildCustomTableCatalogItem({ name: "" }, { timestamp: 123 });
+      expect(item.key).toBe("custom-table-123");
     });
   });
 
