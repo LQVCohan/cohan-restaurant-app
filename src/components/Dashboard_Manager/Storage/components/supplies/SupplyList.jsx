@@ -431,8 +431,6 @@ const SupplyList = ({
           onConfirm={submitTransfer}
           supply={current}
           warehouses={warehouses || []}
-          warehousesLoading={warehousesLoading}
-          currentWarehouseId={warehouseId || ""}
         />
       )}
     </div>
