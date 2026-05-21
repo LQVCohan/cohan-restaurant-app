@@ -116,6 +116,26 @@ const ITEM_STATUS_CONFIG = {
     icon: X,
   },
 };
+export const ORDER_ITEM_ISSUE_REASON_OPTIONS = [
+  { group: "kitchen", label: "Bếp", options: ["Món cháy / khét", "Món sống hoặc chưa chín", "Món nguội", "Món sai vị / không đạt chất lượng", "Bếp làm sai món", "Ra món quá lâu", "Hết món / hết nguyên liệu"] },
+  { group: "service", label: "Phục vụ/Order", options: ["Nhân viên nhập sai món", "Order sai món", "Phục vụ nhập sai"] },
+  { group: "customer", label: "Khách hàng", options: ["Khách đổi ý", "Khách gọi nhầm", "Khách không dùng nữa"] },
+  { group: "bill", label: "Bill/Thanh toán", options: ["Sai bill / sai hóa đơn", "Tách/gộp bill"] },
+  { group: "other", label: "Khác", options: ["Khác"] },
+];
+export function buildReturnReasonFromForm(formState = {}) {
+  const preset = String(formState.reasonPreset || "").trim();
+  const customReason = String(formState.reason || "").trim();
+  if (!preset && !customReason) throw new Error("Vui lòng chọn hoặc nhập lý do trả lại món.");
+  if (preset && preset !== "Khác") {
+    return customReason && customReason !== preset ? `${preset} - ${customReason}` : preset;
+  }
+  if (preset === "Khác") {
+    if (!customReason) throw new Error("Vui lòng nhập lý do trả lại món.");
+    return customReason;
+  }
+  return customReason;
+}
 
 const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
@@ -348,6 +368,7 @@ const OrderModal = ({
     note: "",
     quantity: 1,
     reason: "",
+    reasonPreset: "",
     refundMode: "none",
   });
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
@@ -447,6 +468,7 @@ const OrderModal = ({
         note: "",
         quantity: 1,
         reason: "",
+        reasonPreset: "",
         refundMode: "none",
       });
     } else {
@@ -523,12 +545,11 @@ const OrderModal = ({
           await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: false, note });
         } else if (actionDialog.type === "requestReturn") {
           const quantity = Number(formState.quantity);
-          const reason = String(formState.reason || "").trim();
+          const reason = buildReturnReasonFromForm(formState);
           const refundMode = formState.refundMode;
           const remainingReturnable = Number(actionDialog.remainingReturnable || 0);
           if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("Số lượng trả lại phải là số nguyên lớn hơn 0.");
           if (quantity > remainingReturnable) throw new Error("Số lượng trả lại lớn hơn số lượng còn có thể trả.");
-          if (!reason) throw new Error("Vui lòng nhập lý do trả lại món.");
           if (!["none", "remove_from_bill", "refund_after_payment"].includes(refundMode)) throw new Error("Chế độ xử lý không hợp lệ.");
           if (typeof onRequestItemReturn !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
           await onRequestItemReturn({ orderId: targetOrderId, orderItemId: actionDialog.item._id, quantity, reason, refundMode });
@@ -834,9 +855,51 @@ const OrderModal = ({
                     <label className="om-actionDialog__field">Số lượng
                       <input type="number" min={1} max={actionDialog.remainingReturnable || 1} value={actionForm.quantity} onChange={(e) => setActionForm((prev) => ({ ...prev, quantity: e.target.value }))} />
                     </label>
-                    <label className="om-actionDialog__field">Lý do
-                      <textarea value={actionForm.reason} onChange={(e) => setActionForm((prev) => ({ ...prev, reason: e.target.value }))} />
-                    </label>
+                    <div className="om-actionDialog__reasonGroup">
+                      <label className="om-actionDialog__field">Lý do chính
+                        <select
+                          className="om-actionDialog__select"
+                          value={actionForm.reasonPreset || ""}
+                          onChange={(e) => {
+                            const nextPreset = e.target.value;
+                            setActionForm((prev) => {
+                              const prevPreset = String(prev.reasonPreset || "");
+                              const prevReason = String(prev.reason || "");
+                              const shouldAutoFill = !prevReason.trim() || prevReason.trim() === prevPreset;
+                              return {
+                                ...prev,
+                                reasonPreset: nextPreset,
+                                reason: nextPreset !== "Khác" && shouldAutoFill ? nextPreset : prev.reason,
+                              };
+                            });
+                          }}
+                        >
+                          <option value="">-- Chọn lý do --</option>
+                          {ORDER_ITEM_ISSUE_REASON_OPTIONS.map((group) => (
+                            <optgroup key={group.group} label={group.label}>
+                              {group.options.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="om-actionDialog__field">
+                        {actionForm.reasonPreset === "Khác" ? "Lý do khác" : "Ghi chú thêm"}
+                        <textarea
+                          value={actionForm.reason}
+                          placeholder={
+                            actionForm.reasonPreset === "Khác"
+                              ? "Nhập lý do trả lại món..."
+                              : "Có thể bổ sung chi tiết, ví dụ bàn/số lượng/tình trạng món..."
+                          }
+                          onChange={(e) => setActionForm((prev) => ({ ...prev, reason: e.target.value }))}
+                        />
+                      </label>
+                      {actionForm.reasonPreset !== "Khác" ? (
+                        <p className="om-actionDialog__hint">Chọn lý do chuẩn giúp hệ thống phân loại lỗi bếp/khách/order/bill chính xác hơn.</p>
+                      ) : null}
+                    </div>
                     <label className="om-actionDialog__field">Cách xử lý
                       <select value={actionForm.refundMode} onChange={(e) => setActionForm((prev) => ({ ...prev, refundMode: e.target.value }))}>
                         <option value="none">Chỉ ghi nhận trả lại</option>
@@ -857,6 +920,7 @@ const OrderModal = ({
             </div>
           </div>
         )}
+        {/* TODO: apply the same preset reason pattern to item void request entry point when surfaced in this UI. */}
       </div>
     </div>,
     document.body,

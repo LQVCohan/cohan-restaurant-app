@@ -506,17 +506,47 @@ describe("kitchenOrderWorkItem service", () => {
         actorUserId: "u1",
         now: new Date("2026-05-20T10:00:00.000Z"),
         session: {},
+        issueType: "void",
+        issueReason: "món cháy",
       });
 
-      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
-      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
+        1,
         { orderId: "o1", orderItemId: "i1" },
         expect.objectContaining({ $set: expect.objectContaining({ status: "cancelled" }) }),
         expect.anything(),
       );
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
+        2,
+        { orderId: "o1", orderItemId: "i1" },
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            issueReasonCategory: "kitchen_quality",
+            issueReasonKitchenRelated: true,
+          }),
+        }),
+        expect.anything(),
+      );
     });
 
-    it("calls upsert for returned status", async () => {
+    it("sync void with customer reason as non-kitchen", async () => {
+      const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
+      await service.syncKitchenOrderWorkItemForVoidOrReturn({
+        order: { _id: "o1", restaurantId: "r1" },
+        item: { _id: "i1" },
+        previousStatus: "served",
+        nextStatus: "cancelled",
+        issueType: "void",
+        issueReason: "khách đổi ý",
+        session: {},
+      });
+      const issueSet = modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mock.calls[1][1].$set;
+      expect(issueSet.issueReasonCategory).toBe("customer_request");
+      expect(issueSet.issueReasonKitchenRelated).toBe(false);
+    });
+
+    it("calls upsert for returned status and kitchen reason", async () => {
       const service = await import("../../src/services/kitchen/kitchenOrderWorkItem.service.js");
 
       await service.syncKitchenOrderWorkItemForVoidOrReturn({
@@ -527,14 +557,19 @@ describe("kitchenOrderWorkItem service", () => {
         actorUserId: "u1",
         now: new Date("2026-05-20T10:00:00.000Z"),
         session: {},
+        issueType: "return",
+        issueReason: "món nguội",
       });
 
-      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(1);
-      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledWith(
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(modelMocks.KitchenOrderWorkItem.findOneAndUpdate).toHaveBeenNthCalledWith(
+        1,
         { orderId: "o1", orderItemId: "i1" },
         expect.objectContaining({ $set: expect.objectContaining({ status: "returned" }) }),
         expect.anything(),
       );
+      const issueSet = modelMocks.KitchenOrderWorkItem.findOneAndUpdate.mock.calls[1][1].$set;
+      expect(issueSet.issueReasonKitchenRelated).toBe(true);
     });
 
     it("returns null when missing order/item/nextStatus", async () => {

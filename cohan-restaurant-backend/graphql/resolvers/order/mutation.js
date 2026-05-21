@@ -2963,7 +2963,8 @@ export const OrderMutation = {
 
         req.status = approve ? "approved" : "rejected";
         req.reviewedBy = ctx?.user?.id || null;
-        req.reviewedAt = new Date();
+        const now = new Date();
+        req.reviewedAt = now;
         req.reviewNote = note || "";
 
         if (approve) {
@@ -2991,8 +2992,11 @@ export const OrderMutation = {
               previousStatus,
               nextStatus: "cancelled",
               actorUserId: ctx?.user?.id || ctx?.user?._id,
-              now: new Date(),
+              now,
               session,
+              issueType: "void",
+              issueReason: req.reason,
+              issueReviewNote: req.reviewNote || note || "",
             });
           }
 
@@ -3120,7 +3124,8 @@ export const OrderMutation = {
 
         req.status = approve ? "approved" : "rejected";
         req.reviewedBy = ctx?.user?.id || null;
-        req.reviewedAt = new Date();
+        const now = new Date();
+        req.reviewedAt = now;
         req.reviewNote = note || "";
 
         if (approve) {
@@ -3143,8 +3148,12 @@ export const OrderMutation = {
                 previousStatus,
                 nextStatus: "returned",
                 actorUserId: ctx?.user?.id || ctx?.user?._id,
-                now: new Date(),
+                now,
                 session,
+                issueType: "return",
+                issueReason: req.reason,
+                issueReviewNote: req.reviewNote || note || "",
+                issueRefundMode: req.refundMode,
               });
             }
             const plainItems = order.items.map((x) =>

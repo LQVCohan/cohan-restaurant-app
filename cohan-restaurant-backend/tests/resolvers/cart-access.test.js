@@ -4,6 +4,8 @@ const model = vi.hoisted(() => ({
   Cart: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), create: vi.fn() },
   Warehouse: { findOne: vi.fn() },
   Restaurant: { findById: vi.fn() },
+  MenuItem: { findById: vi.fn(), findOne: vi.fn(), find: vi.fn() },
+  Menu: { findOne: vi.fn() },
 }));
 const inv = vi.hoisted(() => ({ checkAvailabilityForLinesTx: vi.fn(), reserveForOrderTx: vi.fn(), cancelReservationForOrderTx: vi.fn() }));
 const event = vi.hoisted(() => ({ logObjectEvent: vi.fn() }));
