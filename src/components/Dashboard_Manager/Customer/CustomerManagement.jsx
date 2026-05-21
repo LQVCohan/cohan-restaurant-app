@@ -22,6 +22,8 @@ import AddCustomerModal from "./AddCustomerModal";
 import Modal from "../../common/Modal";
 import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 import { normalizeRanks, resolveCustomerRank } from "./customerRankUtils";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
+import ManagerCommandBar from "../shared/ManagerCommandBar";
 
 // Hooks & Context
 import useUserManagement from "../../../hooks/useUserManagement";
@@ -499,111 +501,52 @@ const CustomerManagement = () => {
   return (
     <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""}`}>
       {/* === HEADER SECTION === */}
-      <header className="cm-header">
-        <div className="cm-header-left">
-          <div className="cm-brand-icon">
-            <Users size={20} strokeWidth={2.5} />
-          </div>
-          <div className="cm-header-info">
-            <h1 className="cm-title">Quản lý Khách hàng</h1>
-            <div className="cm-select-wrapper">
-              <select
-                value={selectedRestaurantId}
-                onChange={(e) => handleRestaurantChange(e.target.value)}
-                className="cm-select"
-              >
-                {(restaurants || []).map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+      <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
+        eyebrow="CUSTOMER MANAGER"
+        title="Quản lý khách hàng"
+        subtitle="Thông tin khách, hạng thành viên, điểm và hành vi mua."
+        icon="👥"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={handleRestaurantChange}
+        restaurantList={(restaurants || []).map((r) => ({ id: r.id, name: r.name }))}
+        stats={[
+          { id: "total", icon: "👤", label: "Tổng khách", value: customersDecorated.length },
+          { id: "online", icon: "🟢", label: "Online", value: onlineCount },
+          { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0 },
+          { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0 },
+        ]}
+        primaryAction={{ label: "Thêm khách", icon: "➕", onClick: () => setShowAddModal(true) }}
+      />
 
-        <div className="cm-header-right">
-          <div className="cm-stat-badge">
-            <span className="cm-dot-pulse" />
-            <span>{onlineCount} Online</span>
-          </div>
-
-          <button
-            className="cm-btn cm-btn-primary"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            <span>Thêm khách</span>
-          </button>
-
-          <button
-            className={`cm-btn cm-btn-icon ${showRightSidebar ? "active" : ""}`}
-            onClick={() => setShowRightSidebar((v) => !v)}
-            title="Bộ lọc nâng cao"
-          >
-            <Filter size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* === TOOLBAR SECTION === */}
-      <div className="cm-toolbar">
-        <div className="cm-toolbar-left">
-          {/* Search Box */}
-          <div className="cm-search-box">
-            <Search className="cm-search-icon" size={18} />
-            <input
-              type="text"
-              placeholder="Tìm tên, SĐT, mã khách..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-            />
-          </div>
-
-          {/* Quick Filter Pills */}
+      <ManagerCommandBar
+        searchValue={searchQuery}
+        onSearchChange={handleSearch}
+        searchPlaceholder="Tìm tên, SĐT, mã khách..."
+        leftSlot={(
           <div className="cm-quick-filters">
             {quickFilters.map((f) => (
               <button
                 key={f.key}
                 onClick={() => handleFilter(f.key)}
-                className={`cm-pill ${
-                  activeFilter === f.key ? "is-active" : ""
-                }`}
+                className={`cm-pill ${activeFilter === f.key ? "is-active" : ""}`}
               >
                 <span className="cm-pill-icon">{f.icon}</span>
                 <span className="cm-pill-label">{f.label}</span>
-                <span className="cm-pill-count">
-                  {formatCompactCount(f.count)}
-                </span>
+                <span className="cm-pill-count">{formatCompactCount(f.count)}</span>
               </button>
             ))}
           </div>
-        </div>
+        )}
+        actions={[
+          { label: "Export", icon: "📥", onClick: () => setShowExportModal(true) },
+          { label: "Gửi ưu đãi", icon: "🎁", onClick: () => setShowPromotionModal(true) },
+          { label: "Phân tích người dùng", icon: "📊", onClick: () => (window.location.hash = "#customer-analytics") },
+          { label: "Bộ lọc", icon: "⚙️", onClick: () => setShowRightSidebar((v) => !v) },
+        ]}
+      />
 
-        <div className="cm-toolbar-right">
-          <button
-            className="cm-btn cm-btn-text"
-            title="Xuất danh sách Excel"
-            onClick={() => setShowExportModal(true)}
-          >
-            <Download size={20} />
-          </button>
-          <button
-            onClick={() => setShowPromotionModal(true)}
-            className="cm-btn cm-btn-secondary"
-          >
-            <Gift size={18} className="text-yellow-600" />
-            <span className="text-yellow-700">Gửi Ưu Đãi</span>
-          </button>
-          <button
-            className="cm-btn cm-btn-secondary"
-            onClick={() => (window.location.hash = "#customer-analytics")}
-          >
-            <BarChart3 size={18} />
-            <span>Phân tích người dùng</span>
-          </button>
-        </div>
-      </div>
 
       {/* === MAIN CONTENT LAYOUT === */}
       <main className="cm-layout">

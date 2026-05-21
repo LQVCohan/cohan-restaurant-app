@@ -37,6 +37,8 @@ import { useCoupons } from "../../../hooks/useCoupons";
 
 // --- Styles ---
 import "./PromotionManagement.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
+import ManagerCommandBar from "../shared/ManagerCommandBar";
 
 const PromotionManagement = () => {
   const { user } = useContext(AuthContext);
@@ -818,7 +820,23 @@ const PromotionManagement = () => {
   return (
     <div className="promotion-manager-page">
       {/* 1. HEADER */}
-      <header className="page-header">
+      <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
+        eyebrow="PROMOTION MANAGER"
+        title="Khuyến mãi"
+        subtitle="Quản lý campaign, coupon, điều kiện và thời gian hiệu lực."
+        icon="🎁"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={(value) => updateFilters({ restaurant: value })}
+        restaurantList={promotionRestaurants.map((restaurant) => ({ id: restaurant.id, name: restaurant.name || `Nha hang ${restaurant.id}` }))}
+        stats={[
+          { id: "total", icon: "📦", label: "Tổng", value: totalCount },
+          { id: "active", icon: "🟢", label: "Đang chạy", value: currentCount },
+          { id: "scheduled", icon: "🗓️", label: "Sắp tới/Nháp", value: statsData.hotPromotions },
+          { id: "usage", icon: "🎯", label: "Lượt dùng", value: statsData.totalUsage },
+        ]}
+      >
         <div className="header-title">
           <h1>{currentSection.title}</h1>
           <p>{currentSection.subtitle}</p>
@@ -845,36 +863,33 @@ const PromotionManagement = () => {
           </select>
           <ChevronDown size={16} />
         </div>
-      </header>
+      </ManagementPageHeader>
 
-      <div className="section-tabs">
-        {[
+      <ManagerCommandBar
+        tabs={[
           { id: "promotions", label: "Chương trình khuyến mãi" },
           { id: "coupons", label: "Coupon" },
           { id: "couponPackages", label: "Gói Coupon" },
-        ].map((section) => (
-          <button
-            key={section.id}
-            className={`section-tab ${
-              activeSection === section.id ? "active" : ""
-            }`}
-            onClick={() => {
-              setActiveSection(section.id);
-              setActiveTab("all");
-              setViewMode("grid");
-              if (section.id === "promotions") {
-                updateFilters({ status: "all" });
-              } else if (section.id === "coupons") {
-                updateCouponFilters({ status: "all" });
-              } else {
-                updateCouponPackageFilters({ status: "all" });
-              }
-            }}
-          >
-            {section.label}
-          </button>
-        ))}
-      </div>
+        ]}
+        activeTab={activeSection}
+        onTabChange={(sectionId) => {
+          setActiveSection(sectionId);
+          setActiveTab("all");
+          setViewMode("grid");
+          if (sectionId === "promotions") updateFilters({ status: "all" });
+          else if (sectionId === "coupons") updateCouponFilters({ status: "all" });
+          else updateCouponPackageFilters({ status: "all" });
+        }}
+        searchValue={searchValue}
+        onSearchChange={(value) => {
+          if (activeSection === "promotions") updateFilters({ search: value });
+          else if (activeSection === "coupons") updateCouponFilters({ search: value });
+          else updateCouponPackageFilters({ search: value });
+        }}
+        actions={[{ label: "Xuất", icon: "📥", onClick: handleExport, disabled: !currentCount }]}
+      />
+
+      
 
       {/* 2. STATS */}
       <section className="stats-section">

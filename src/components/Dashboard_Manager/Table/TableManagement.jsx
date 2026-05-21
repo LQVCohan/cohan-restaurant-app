@@ -32,6 +32,7 @@ import {
   getTableStatusConfig,
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const ALL_FLOORS_KEY = "all";
 
