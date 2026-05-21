@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   customerReviewAggregate: vi.fn(),
   kitchenOrderWorkItemFind: vi.fn(),
   snapshotFindOneAndUpdate: vi.fn(),
+  markUnacceptedKitchenOrderWorkItems: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", () => ({
@@ -23,6 +24,9 @@ vi.mock("../../models/index.js", () => ({
   Review: { aggregate: mocks.customerReviewAggregate },
   KitchenOrderWorkItem: { find: mocks.kitchenOrderWorkItemFind },
   StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
+}));
+vi.mock("../../src/services/kitchen/kitchenOrderWorkItem.service.js", () => ({
+  markUnacceptedKitchenOrderWorkItems: mocks.markUnacceptedKitchenOrderWorkItems,
 }));
 
 import { recalculateStaffPerformanceSnapshots } from "../../src/services/staffPerformance/staffPerformance.service.js";
@@ -67,6 +71,7 @@ describe("staffPerformance core formula", () => {
     mocks.customerReviewAggregate.mockResolvedValue([]);
     mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([]));
     mocks.snapshotFindOneAndUpdate.mockReturnValue({ populate: vi.fn().mockReturnValue(chainLean(snapshotDoc())) });
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
   });
 
   it("scores productivity at 100 for 8h scheduled and 480 worked", async () => {
@@ -160,5 +165,31 @@ describe("staffPerformance core formula", () => {
     const set = await runCalc();
     expect(set.quality.score).toBe(61);
     expect(set.managerReview.score).toBe(92);
+  });
+
+  it("refreshes unaccepted audit before recalculation using periodEnd and no graceMinutes", async () => {
+    await runCalc();
+    expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
+    const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
+    expect(String(args.restaurantId)).toBe(restaurantId);
+    expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
+    expect(args).not.toHaveProperty("graceMinutes");
+  });
+
+  it("persists unaccepted audit metadata in factors without affecting final score", async () => {
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({ matchedCount: 0, modifiedCount: 0 });
+    const baseline = await runCalc();
+
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({ matchedCount: 2, modifiedCount: 1 });
+    const next = await runCalc();
+
+    expect(next.factors.unacceptedAuditRefreshed).toBe(true);
+    expect(next.factors.unacceptedAuditMatchedCount).toBe(2);
+    expect(next.factors.unacceptedAuditModifiedCount).toBe(1);
+    expect(next.factors.unacceptedAuditRefreshedAt).toBeInstanceOf(Date);
+    expect(next.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
   });
 });

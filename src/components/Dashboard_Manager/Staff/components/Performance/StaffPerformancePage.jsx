@@ -204,6 +204,10 @@ export const formatDelta = (value) => {
   const absText = formatContributionScore(Math.abs(delta));
   return `${delta >= 0 ? "+" : "-"}${absText}`;
 };
+const formatMetricNumber = (value) =>
+  Number.isFinite(Number(value)) ? Number(value) : 0;
+const formatMetricMinutes = (value) =>
+  Number.isFinite(Number(value)) ? `${Number(value)} phút` : "--";
 
 const buildSnapshotByEmployee = (snapshots = []) =>
   snapshots.reduce((acc, snapshot) => {
@@ -389,6 +393,8 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
   const periodStart = snapshot?.periodStart;
   const periodEnd = snapshot?.periodEnd;
   const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
+  const kitchenMetrics = snapshot?.factors?.kitchenMetrics;
+  const hasKitchenMetrics = Number(kitchenMetrics?.totalItems || 0) > 0;
   const { data: historyData } = useQuery(GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY, {
     skip: !snapshot || !employeeId || !restaurantId || !periodStart || !periodEnd,
     variables: {
@@ -599,6 +605,46 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               </p>
             ) : null}
           </div>
+          {hasKitchenMetrics ? (
+            <div className="factor-box kitchen-metrics-card">
+              <strong>Dữ liệu bếp/bar tham khảo</strong>
+              <div className="factor-grid kitchen-metrics-grid">
+                <span>Tổng work items liên quan: {formatMetricNumber(kitchenMetrics?.totalItems)}</span>
+                <span>Bếp / Bar: {formatMetricNumber(kitchenMetrics?.kitchenItems)} / {formatMetricNumber(kitchenMetrics?.barItems)}</span>
+                <span>Đúng giờ / Trễ / Rất trễ: {formatMetricNumber(kitchenMetrics?.onTimeItems)} / {formatMetricNumber(kitchenMetrics?.lateItems)} / {formatMetricNumber(kitchenMetrics?.veryLateItems)}</span>
+                <span>Hủy / Trả / Không nhận: {formatMetricNumber(kitchenMetrics?.cancelledItems)} / {formatMetricNumber(kitchenMetrics?.returnedItems)} / {formatMetricNumber(kitchenMetrics?.unacceptedItems)}</span>
+                <span>Đầu bếp chính: {formatMetricNumber(kitchenMetrics?.headChefItems)}</span>
+                <span>Phụ bếp: {formatMetricNumber(kitchenMetrics?.assistantItems)}</span>
+                <span>Đội bếp: {formatMetricNumber(kitchenMetrics?.teamItems)}</span>
+                <span>Bar lead: {formatMetricNumber(kitchenMetrics?.barLeadItems)}</span>
+                <span>Bar staff: {formatMetricNumber(kitchenMetrics?.barStaffItems)}</span>
+                <span>TB thời gian hoàn thành món: {formatMetricMinutes(kitchenMetrics?.avgPrepMinutes)}</span>
+                {formatMetricNumber(kitchenMetrics?.noRosterItems) > 0 ? (
+                  <span className="kitchen-metrics-warning">
+                    Chưa gắn được roster bếp/bar: {formatMetricNumber(kitchenMetrics?.noRosterItems)}
+                  </span>
+                ) : null}
+              </div>
+              {formatMetricNumber(kitchenMetrics?.noRosterItems) > 0 ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Có món chưa xác định được đội bếp/bar theo lịch tại thời điểm vào bếp.
+                </p>
+              ) : null}
+              {snapshot?.factors?.unacceptedAuditRefreshed === true ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Đã cập nhật kiểm tra món chưa nhận trước khi tính lại hiệu suất.
+                </p>
+              ) : null}
+              {formatMetricNumber(snapshot?.factors?.unacceptedAuditModifiedCount) > 0 ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Món chưa nhận mới được đánh dấu: {formatMetricNumber(snapshot?.factors?.unacceptedAuditModifiedCount)}
+                </p>
+              ) : null}
+              <p className="formula-note kitchen-metrics-note">
+                {kitchenMetrics?.note || "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất."}
+              </p>
+            </div>
+          ) : null}
           <div className="adjustment-history-card">
             <strong>Lịch sử điều chỉnh điểm</strong>
             {adjustmentHistory.length === 0 ? (
