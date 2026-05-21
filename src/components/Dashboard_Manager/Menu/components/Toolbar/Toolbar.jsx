@@ -216,14 +216,14 @@ const Toolbar = ({
         </div>
       </div>
 
-      <div className="toolbar-overview-cards">
+      <div className="toolbar-metric-strip">
         {overviewCards.map((card) => (
-          <div key={card.key} className="toolbar-overview-card">
-            <span className="toolbar-overview-card__icon">{card.icon}</span>
-            <span className="toolbar-overview-card__content">
-              <span className="toolbar-overview-card__label">{card.label}</span>
-              <strong className="toolbar-overview-card__value">{card.value}</strong>
-              <small className="toolbar-overview-card__hint">{card.hint}</small>
+          <div key={card.key} className="toolbar-metric-pill">
+            <span className="toolbar-metric-pill__icon">{card.icon}</span>
+            <span className="toolbar-metric-pill__content">
+              <span className="toolbar-metric-pill__label">{card.label}</span>
+              <strong className="toolbar-metric-pill__value">{card.value}</strong>
+              <small className="toolbar-metric-pill__hint">{card.hint}</small>
             </span>
           </div>
         ))}

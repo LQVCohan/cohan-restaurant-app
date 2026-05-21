@@ -1,4 +1,5 @@
 @import "./components/MenuModal/MenuModalPolish.scss";
+@import "./MenuManagementContentUpgrade.scss";
 
 .mm-page-container {
   background:
@@ -467,3 +468,29 @@
 .mm-bulk-status-bar .mm-btn{min-height:34px;padding:7px 12px}
 .mm-bulk-status-bar .mm-btn:last-child{border-color:#f8caca;color:#b42318;background:#fff5f5}
 @media (max-width:768px){.mm-bulk-status-bar{top:0}.mm-bulk-status-bar .mm-btn{flex:1 1 calc(50% - 8px)}}
+
+
+.mm-page-container .mm-header {
+  padding: 10px 20px;
+  gap: 12px;
+}
+
+.mm-page-container .mm-header__left .mm-title {
+  font-size: clamp(18px, 1.25vw, 21px);
+  margin-bottom: 0;
+}
+
+.mm-page-container .mm-header__left .mm-subtitle {
+  display: none;
+}
+
+.mm-page-container .mm-header__right {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mm-page-container .mm-header__right .mm-actions {
+  border-left: 0;
+  padding-left: 0;
+  gap: 8px;
+}

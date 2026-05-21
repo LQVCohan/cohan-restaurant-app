@@ -1339,7 +1339,7 @@ const MenuManagement = () => {
                   <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("hidden")} disabled={isBulkUpdatingStatus}>Ẩn</button>
                 </div>
               )}
-              <div className={`mm-grid mm-grid--${currentView}`}>
+              <div className={`mm-grid mm-grid--${currentView} ${isSparseGrid ? "mm-grid--sparse" : ""}`}>
                 {displayItems.map((item) => (
                   <MenuItemCard
                     key={item.id}
