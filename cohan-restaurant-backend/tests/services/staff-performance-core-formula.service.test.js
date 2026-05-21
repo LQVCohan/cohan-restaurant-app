@@ -211,6 +211,47 @@ describe("staffPerformance core formula", () => {
     expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeLessThan(orderSet.factors.qualityEvidence.customerPenalty);
   });
 
+  it("keeps assistant_chef role from explicit text even when both assistant/head metrics exist", async () => {
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phụ bếp" }));
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
+      { assistantChefIds: [employeeId], headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() },
+    ]));
+    const set = await runCalc();
+    expect(set.factors.qualityEvidence.roleGroup).toBe("assistant_chef");
+  });
+
+  it("keeps head_chef role from explicit text", async () => {
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Bếp chính" }));
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    const set = await runCalc();
+    expect(set.factors.qualityEvidence.roleGroup).toBe("head_chef");
+  });
+
+  it("keeps cashier role priority even when kitchen metrics exist", async () => {
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() }]));
+    const set = await runCalc();
+    expect(set.factors.qualityEvidence.roleGroup).toBe("cashier");
+  });
+
+  it("keeps order_staff role priority even when kitchen metrics exist", async () => {
+    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phục vụ" }));
+    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
+    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() }]));
+    const set = await runCalc();
+    expect(set.factors.qualityEvidence.roleGroup).toBe("order_staff");
+  });
+
   it("refreshes unaccepted audit before recalculation using periodEnd and no graceMinutes", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-20T12:00:00.000Z"));

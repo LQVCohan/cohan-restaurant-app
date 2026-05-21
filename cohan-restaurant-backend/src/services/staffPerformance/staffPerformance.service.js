@@ -93,12 +93,25 @@ function resolveQualityRoleGroup(staff, kitchenMetrics = {}) {
       .filter(Boolean)
       .join(" "),
   );
-  if (roleText.includes("cashier") || roleText.includes("thu ngan")) return "cashier";
-  if (["waiter", "waitress", "server", "phuc vu", "order", "le tan", "host"].some((x) => roleText.includes(x))) return "order_staff";
-  if (Number(kitchenMetrics?.headChefItems || 0) > 0 || ["head chef", "chef", "bep truong", "dau bep chinh", "bep chinh"].some((x) => roleText.includes(x))) return "head_chef";
-  if (Number(kitchenMetrics?.assistantItems || 0) > 0 || ["assistant chef", "kitchen helper", "phu bep"].some((x) => roleText.includes(x))) return "assistant_chef";
-  if (Number(kitchenMetrics?.kitchenItems || 0) > 0) {
-    return Number(kitchenMetrics?.headChefItems || 0) >= Number(kitchenMetrics?.assistantItems || 0) ? "head_chef" : "assistant_chef";
+  const isCashierText = roleText.includes("cashier") || roleText.includes("thu ngan");
+  const isOrderStaffText = ["waiter", "waitress", "server", "phuc vu", "order", "le tan", "host"].some((x) => roleText.includes(x));
+  const isAssistantChefText = ["assistant chef", "kitchen helper", "phu bep"].some((x) => roleText.includes(x));
+  const isHeadChefText = ["head chef", "chef", "bep truong", "dau bep chinh", "bep chinh"].some((x) => roleText.includes(x));
+  const assistantItems = Number(kitchenMetrics?.assistantItems || 0);
+  const headChefItems = Number(kitchenMetrics?.headChefItems || 0);
+  const kitchenItems = Number(kitchenMetrics?.kitchenItems || 0);
+
+  if (isCashierText) return "cashier";
+  if (isOrderStaffText) return "order_staff";
+  if (isAssistantChefText) return "assistant_chef";
+  if (isHeadChefText) return "head_chef";
+  if (assistantItems > 0 && headChefItems <= 0) return "assistant_chef";
+  if (headChefItems > 0 && assistantItems <= 0) return "head_chef";
+  if (assistantItems > 0 && headChefItems > 0) {
+    return assistantItems > headChefItems ? "assistant_chef" : "head_chef";
+  }
+  if (kitchenItems > 0) {
+    return assistantItems > headChefItems ? "assistant_chef" : "head_chef";
   }
   return "other";
 }
@@ -659,7 +672,6 @@ async function calculateSnapshotForEmployee({
     hasManagerReview: Boolean(review),
     kitchenMetrics,
     customerRatingScore,
-    staffRate,
     staffRateCount,
   });
   const qualityScore = qualityEvidence.score;
