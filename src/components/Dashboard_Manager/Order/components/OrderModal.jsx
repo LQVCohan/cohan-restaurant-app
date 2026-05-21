@@ -897,7 +897,7 @@ const OrderModal = ({
                         />
                       </label>
                       {actionForm.reasonPreset !== "Khác" ? (
-                        <p className="om-actionDialog__hint">Có thể để trống phần ghi chú thêm.</p>
+                        <p className="om-actionDialog__hint">Chọn lý do chuẩn giúp hệ thống phân loại lỗi bếp/khách/order/bill chính xác hơn.</p>
                       ) : null}
                     </div>
                     <label className="om-actionDialog__field">Cách xử lý

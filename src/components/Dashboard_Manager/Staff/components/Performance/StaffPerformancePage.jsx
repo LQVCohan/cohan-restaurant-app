@@ -651,7 +651,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <p className="formula-note kitchen-metrics-note">
                 {(Number(kitchenMetrics?.totalItems || 0) > 0 && Number(qualityEvidence?.kitchenPenalty || 0) > 0)
                   ? "Dữ liệu bếp/bar được dùng làm bằng chứng điều chỉnh nhẹ điểm Quality theo vai trò."
-                  : (kitchenMetrics?.note || "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất.")}
+                  : "Dữ liệu bếp/bar dùng để tham khảo vận hành, chưa tạo điều chỉnh Quality trong kỳ này."}
               </p>
             </div>
           ) : null}
@@ -667,6 +667,11 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                 <span>Điểm Quality cuối: {qualityEvidence?.finalQualityScore ?? snapshot?.quality?.score ?? 0}</span>
                 <span>Nguồn dữ liệu: {qualityEvidence?.evidenceSource || "--"}</span>
               </div>
+              <p className="formula-note">
+                {Number(qualityEvidence?.totalPenalty || 0) > 0
+                  ? "Quality đã được điều chỉnh nhẹ theo dữ liệu phù hợp vai trò."
+                  : "Không có điều chỉnh trừ điểm từ dữ liệu vai trò trong kỳ."}
+              </p>
               <p className="formula-note">{qualityEvidence?.note}</p>
             </div>
           ) : null}
