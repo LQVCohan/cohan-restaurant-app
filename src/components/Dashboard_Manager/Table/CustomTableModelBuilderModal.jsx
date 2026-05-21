@@ -35,7 +35,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     <Modal isOpen={open} onClose={onClose} size="lg">
       <div className="p-3">
         <h3>✨ Tạo mẫu bàn tùy chỉnh</h3>
-        <p className="text-muted">Nhập thông tin để tạo mẫu parametric và áp dụng vào form thêm bàn.</p>
+        <p className="text-muted">Nhập thông tin để tạo mẫu parametric. Mẫu sẽ được lưu trên trình duyệt hiện tại để dùng lại khi mô phỏng 3D.</p>
 
         <div className="row g-3 mt-1">
           <div className="col-md-6">
@@ -186,7 +186,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
             Hủy
           </Button>
           <Button variant="primary" onClick={handleApply}>
-            Áp dụng mẫu
+            Lưu vào thư viện
           </Button>
         </div>
       </div>

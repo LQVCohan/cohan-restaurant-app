@@ -42,6 +42,9 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
       areaLabel: getTableAreaLabel(area),
       shape,
       shapeLabel: shapeLabelMap[shape] || "Bàn chữ nhật",
+      dimensions: modelItem?.customModelSpec
+        ? `${modelItem.customModelSpec.widthCm} x ${modelItem.customModelSpec.depthCm} x ${modelItem.customModelSpec.heightCm} cm`
+        : "",
     };
   }, [modelItem]);
 
@@ -141,6 +144,7 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
             <span>{modelSummary.seats} ghế</span>
             <span>{modelSummary.areaLabel}</span>
             <span>{modelSummary.shapeLabel}</span>
+            {modelSummary.dimensions && <span>{modelSummary.dimensions}</span>}
             {modelSummary.shape === "booth" && <em className="sofa-badge">Sofa</em>}
           </div>
           {cameraError && <div className="camera-placement-modal__error">{cameraError}</div>}

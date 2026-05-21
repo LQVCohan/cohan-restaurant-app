@@ -3,6 +3,13 @@ import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
 import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
+import {
+  deleteCustomTableModel,
+  isCustomTableModel,
+  loadCustomTableModels,
+  mergeCatalogWithCustomModels,
+  upsertCustomTableModel,
+} from "@/config/table3dCustomModelStorage";
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
@@ -18,6 +25,7 @@ const Table3DSimulatorModal = ({
   onApply,
   currentFloorName,
   restaurantName,
+  restaurantId,
 }) => {
   const { modelsByType, loading, error, reload } = useTable3DModels();
   const [tableType, setTableType] = useState(TABLE_3D_TYPE_OPTIONS[0].value);
@@ -29,6 +37,8 @@ const Table3DSimulatorModal = ({
   const viewerRef = useRef(null);
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
+  const [customModels, setCustomModels] = useState([]);
+  const customModelScope = restaurantName || restaurantId || "default";
 
   useEffect(() => {
     if (customElements.get("model-viewer")) return;
@@ -46,17 +56,32 @@ const Table3DSimulatorModal = ({
     [modelsByType, tableType]
   );
 
+  const typedCustomModels = useMemo(
+    () => customModels.filter((model) => model?.tableType === tableType),
+    [customModels, tableType]
+  );
+
+  const allModels = useMemo(
+    () => mergeCatalogWithCustomModels(models, typedCustomModels),
+    [models, typedCustomModels]
+  );
+
   const selectedModel = useMemo(
-    () => models.find((item) => item.key === selectedModelKey) || models[0] || null,
-    [models, selectedModelKey]
+    () => allModels.find((item) => item.key === selectedModelKey) || allModels[0] || null,
+    [allModels, selectedModelKey]
   );
 
   useEffect(() => {
-    setSelectedModelKey(models[0]?.key || "");
+    if (!open) return;
+    setCustomModels(loadCustomTableModels(customModelScope));
+  }, [open, customModelScope]);
+
+  useEffect(() => {
+    setSelectedModelKey(allModels[0]?.key || "");
     setOrbit(DEFAULT_ORBIT);
     setOffset({ x: 0, z: 0 });
-    setScale(models[0]?.defaultScale || 1);
-  }, [tableType, models]);
+    setScale(allModels[0]?.defaultScale || 1);
+  }, [tableType, allModels]);
 
   useEffect(() => {
     if (!selectedModel) return;
@@ -84,6 +109,21 @@ const Table3DSimulatorModal = ({
     setOrbit(DEFAULT_ORBIT);
     setOffset({ x: 0, z: 0 });
     if (selectedModel?.defaultScale) setScale(selectedModel.defaultScale);
+  };
+
+  const handleDeleteCustomModel = (event, model) => {
+    event.stopPropagation();
+    if (!window.confirm(`Xóa mẫu "${model.label}" khỏi thư viện tùy chỉnh?`)) return;
+
+    const saved = deleteCustomTableModel(model.key, customModelScope);
+    setCustomModels(saved);
+    if (selectedModel?.key === model.key) {
+      const nextVisible = mergeCatalogWithCustomModels(
+        models,
+        saved.filter((item) => item?.tableType === tableType)
+      );
+      setSelectedModelKey(nextVisible[0]?.key || "");
+    }
   };
 
   useEffect(() => {
@@ -121,7 +161,7 @@ const Table3DSimulatorModal = ({
           </select>
 
           <div className="table-3d-modal__models">
-            {models.map((model) => (
+            {allModels.map((model) => (
               <button
                 key={model.key}
                 className={`model-item ${selectedModel?.key === model.key ? "active" : ""}`}
@@ -132,10 +172,26 @@ const Table3DSimulatorModal = ({
                 <div>
                   <strong>{model.label}</strong>
                   <span>{model.capacity} ghế</span>
+                  {isCustomTableModel(model) && <span>Tùy chỉnh</span>}
+                  {model?.customModelSpec && (
+                    <span>
+                      {model.customModelSpec.widthCm} x {model.customModelSpec.depthCm} x {model.customModelSpec.heightCm} cm
+                    </span>
+                  )}
                 </div>
+                {isCustomTableModel(model) && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    onClick={(event) => handleDeleteCustomModel(event, model)}
+                  >
+                    Xóa
+                  </Button>
+                )}
               </button>
             ))}
-            {!models.length && <div className="model-empty">Không có mẫu phù hợp.</div>}
+            {!allModels.length && <div className="model-empty">Không có mẫu phù hợp.</div>}
           </div>
 
           <div className="table-3d-modal__meta">
@@ -255,7 +311,9 @@ const Table3DSimulatorModal = ({
         open={showCustomBuilder}
         onClose={() => setShowCustomBuilder(false)}
         onApply={(customItem) => {
-          onApply?.(customItem);
+          const saved = upsertCustomTableModel(customItem, customModelScope);
+          setCustomModels(saved);
+          setSelectedModelKey(customItem.key);
           setShowCustomBuilder(false);
         }}
       />
