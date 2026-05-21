@@ -541,6 +541,20 @@ type CustomerPageInfo {
   limit: Int!
 }
 
+type CustomerFilterCounts {
+  total: Int!
+  guest: Int!
+  registered: Int!
+  ranks: [CustomerRankCount!]!
+}
+
+type CustomerRankCount {
+  rankName: String!
+  minPoints: Int!
+  maxPointsExclusive: Int
+  count: Int!
+}
+
 type CustomerListPage {
   items: [User!]!
   pageInfo: CustomerPageInfo!
@@ -2698,6 +2712,13 @@ type Query {
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean, restaurantId: ID): [User!]!
+  customerFilterCounts(
+    restaurantId: ID!
+    search: String
+    includeGuests: Boolean = true
+    customerKind: CustomerKindFilter = ALL
+  ): CustomerFilterCounts!
+
   customerListPage(
     restaurantId: ID!
     search: String

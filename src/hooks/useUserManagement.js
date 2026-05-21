@@ -196,6 +196,32 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
     }
   }
 `;
+export const GET_CUSTOMER_FILTER_COUNTS = gql`
+  query GetCustomerFilterCounts(
+    $restaurantId: ID!
+    $search: String
+    $includeGuests: Boolean
+    $customerKind: CustomerKindFilter
+  ) {
+    customerFilterCounts(
+      restaurantId: $restaurantId
+      search: $search
+      includeGuests: $includeGuests
+      customerKind: $customerKind
+    ) {
+      total
+      guest
+      registered
+      ranks {
+        rankName
+        minPoints
+        maxPointsExclusive
+        count
+      }
+    }
+  }
+`;
+
 export const GET_CUSTOMER_EXPORT_ROWS = gql`
   query GetCustomerExportRows($restaurantId: ID!, $search: String, $includeGuests: Boolean, $customerKind: CustomerKindFilter, $customerRank: CustomerRankFilterInput, $sortBy: CustomerSortBy, $sortDirection: SortDirection, $limit: Int) {
     customerExportRows(restaurantId: $restaurantId, search: $search, includeGuests: $includeGuests, customerKind: $customerKind, customerRank: $customerRank, sortBy: $sortBy, sortDirection: $sortDirection, limit: $limit) {
@@ -577,6 +603,10 @@ const useUserManagement = () => {
     useLazyQuery(GET_CUSTOMER_LIST_PAGE, { fetchPolicy: "network-only" });
   const [fetchCustomerExportRows] =
     useLazyQuery(GET_CUSTOMER_EXPORT_ROWS, { fetchPolicy: "network-only" });
+  const [fetchCustomerFilterCounts, {
+    loading: customerFilterCountsLoading,
+    error: customerFilterCountsError,
+  }] = useLazyQuery(GET_CUSTOMER_FILTER_COUNTS, { fetchPolicy: "network-only" });
 
   // Mutations
   const [createUserMut, { loading: creating }] = useMutation(CREATE_USER, {
@@ -700,6 +730,14 @@ const useUserManagement = () => {
     setCustomerTotalCount(Number(page?.totalCount || 0));
     return page;
   }, [fetchCustomerPage, mapCustomerCard]);
+  const getCustomerFilterCounts = useCallback(async ({
+    restaurantId, search, includeGuests = true, customerKind = "ALL",
+  } = {}) => {
+    const { data } = await fetchCustomerFilterCounts({
+      variables: { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind },
+    });
+    return data?.customerFilterCounts || null;
+  }, [fetchCustomerFilterCounts]);
   const getCustomerExportRows = useCallback(async ({
     restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = 1000,
   } = {}) => {
@@ -886,6 +924,7 @@ const useUserManagement = () => {
       updatingMetrics,
     usersLoading,
     customersLoading,
+    customerFilterCountsLoading,
     creating,
     creatingGuest,
     updatingMe,
@@ -894,13 +933,14 @@ const useUserManagement = () => {
     settingStatus,
     softDeleting,
     updatingMetrics,
-    error: usersError || customersError || customerPageError || null,
+    error: usersError || customersError || customerPageError || customerFilterCountsError || null,
 
     // fetch
     getAllUsers,
     getCustomers,
     getCustomersPage,
     getCustomerExportRows,
+    getCustomerFilterCounts,
 
     // ui helpers
     searchUsers,

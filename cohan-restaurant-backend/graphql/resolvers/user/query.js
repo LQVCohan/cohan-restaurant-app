@@ -91,6 +91,30 @@ function buildCustomerQueryCondition({
 const ONLINE_MINUTES = 5;
 const VND_PER_RANK_POINT = 1_000_000;
 
+function getDefaultCustomerRanks() {
+  return [
+    { name: "Mới", minPoints: 0, benefits: "" },
+    { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" },
+    { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" },
+  ];
+}
+
+function normalizeRankRanges(ranks = []) {
+  const normalized = (Array.isArray(ranks) ? ranks : [])
+    .filter((rank) => rank && rank.name && Number.isFinite(Number(rank.minPoints)))
+    .map((rank) => ({
+      rankName: String(rank.name).trim(),
+      minPoints: Number(rank.minPoints),
+    }))
+    .sort((a, b) => a.minPoints - b.minPoints);
+
+  return normalized.map((rank, index) => ({
+    ...rank,
+    maxPointsExclusive:
+      index < normalized.length - 1 ? normalized[index + 1].minPoints : null,
+  }));
+}
+
 function computeLoyaltyDurationScore(createdAt) {
   const createdMs = new Date(createdAt || 0).getTime();
   if (!Number.isFinite(createdMs) || createdMs <= 0) return 0;
@@ -371,6 +395,57 @@ export const UserQuery = {
       },
     };
   },
+  async customerFilterCounts(
+    _,
+    { restaurantId, search, includeGuests = true, customerKind = "ALL" },
+    ctx,
+  ) {
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    await requireRestaurantAccess(ctx, restaurantId);
+
+    const customerRole = await Role.findOne({ slug: "customer" }).lean();
+    const { finalCond } = buildCustomerQueryCondition({
+      restaurantId,
+      search,
+      includeGuests,
+      customerKind,
+      customerRoleId: customerRole?._id,
+    });
+
+    const rankSettingDoc = await CustomerRankSetting.findOne({ restaurantId: toObjectId(restaurantId) }).lean();
+    const rankRanges = normalizeRankRanges(rankSettingDoc?.ranks?.length ? rankSettingDoc.ranks : getDefaultCustomerRanks());
+
+    const combineCond = (extra) => ({ $and: [finalCond, extra] });
+    const totalPromise = Customer.countDocuments(finalCond);
+    const guestPromise = Customer.countDocuments(combineCond({ isGuest: true }));
+    const registeredPromise = Customer.countDocuments(combineCond(customerRole?._id ? { role: customerRole._id } : { _id: { $exists: false } }));
+
+    const rankPromises = rankRanges.map((rank) => {
+      const loyaltyCond = rank.maxPointsExclusive == null
+        ? { loyaltyPoints: { $gte: rank.minPoints } }
+        : { loyaltyPoints: { $gte: rank.minPoints, $lt: rank.maxPointsExclusive } };
+      return Customer.countDocuments(combineCond(loyaltyCond)).then((count) => ({
+        rankName: rank.rankName,
+        minPoints: rank.minPoints,
+        maxPointsExclusive: rank.maxPointsExclusive,
+        count,
+      }));
+    });
+
+    const [total, guest, registered, ranks] = await Promise.all([
+      totalPromise,
+      guestPromise,
+      registeredPromise,
+      Promise.all(rankPromises),
+    ]);
+
+    return { total, guest, registered, ranks };
+  },
+
   async customerExportRows(
     _,
     { restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = CUSTOMER_EXPORT_LIMIT_DEFAULT },
@@ -613,11 +688,7 @@ export const UserQuery = {
     return (
       doc || {
         restaurantId,
-        ranks: [
-          { name: "Mới", minPoints: 0, benefits: "" },
-          { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" },
-          { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" },
-        ],
+        ranks: getDefaultCustomerRanks(),
       }
     );
   },

@@ -116,6 +116,7 @@ const formatCompactCount = (n) =>
 
 const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
 const EXCEL_INVALID_SHEET_NAME_CHARS = /[\[\]:*?/\\]/g;
+const EXPORT_LIMIT = 1000;
 
 const createSafeSheetName = (baseName, usedNames) => {
   const rawName = String(baseName || "").replace(EXCEL_INVALID_SHEET_NAME_CHARS, "").trim();
@@ -185,6 +186,7 @@ const CustomerManagement = () => {
     switchRestaurant,
     getCustomersPage,
     getCustomerExportRows,
+    getCustomerFilterCounts,
   } = useUserManagement();
 
   const defaultRestaurantId = restaurants?.[0]?.id || "";
@@ -206,6 +208,8 @@ const CustomerManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [rankDraft, setRankDraft] = useState([]);
+  const [customerFilterCounts, setCustomerFilterCounts] = useState(null);
+  const [customerFilterCountsLoading, setCustomerFilterCountsLoading] = useState(false);
 
   const { data: rankSettingsData, refetch: refetchRankSettings } = useQuery(
     GET_CUSTOMER_RANK_SETTINGS,
@@ -257,6 +261,26 @@ const CustomerManagement = () => {
       restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30, customerRank: getRankBoundsForFilter(activeFilter, rankSettings),
     });
   }, [activeFilter, getCustomersPage, rankSettings, searchDebounced, selectedRestaurantId]);
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    let cancelled = false;
+    setCustomerFilterCountsLoading(true);
+    getCustomerFilterCounts({
+      restaurantId: selectedRestaurantId,
+      search: searchDebounced,
+      includeGuests: true,
+      customerKind: "ALL",
+    })
+      .then((result) => {
+        if (!cancelled) setCustomerFilterCounts(result);
+      })
+      .finally(() => {
+        if (!cancelled) setCustomerFilterCountsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getCustomerFilterCounts, searchDebounced, selectedRestaurantId]);
 
   // --- 3. Handlers ---
 
@@ -392,14 +416,27 @@ const CustomerManagement = () => {
       baseName: base?.name || "Mới",
     };
   }, [rankSettings]);
+  const rankCountsByFilter = useMemo(() => {
+    const sortedByMin = [...(customerFilterCounts?.ranks || [])]
+      .sort((a, b) => Number(a?.minPoints || 0) - Number(b?.minPoints || 0));
+    const base = sortedByMin[0] || null;
+    const top = sortedByMin[sortedByMin.length - 1] || null;
+    const middle = sortedByMin.length > 2 ? sortedByMin[sortedByMin.length - 2] : sortedByMin[1] || null;
+    return {
+      all: Number(customerFilterCounts?.total || 0),
+      vip: Number(top?.count || 0),
+      new: Number(base?.count || 0),
+      frequent: Number(middle?.count || 0),
+    };
+  }, [customerFilterCounts]);
 
   const customersVisible = customersDecorated;
 
   const quickFilters = useMemo(() => {
-    const total = customersDecorated.length || 0;
-    const vip = customersDecorated.filter((c) => c.customerType === tierFilters.topName).length;
-    const isNew = customersDecorated.filter((c) => c.customerType === tierFilters.baseName).length;
-    const often = customersDecorated.filter((c) => c.customerType === tierFilters.middleName).length;
+    const total = customerFilterCounts ? rankCountsByFilter.all : (customersDecorated.length || 0);
+    const vip = customerFilterCounts ? rankCountsByFilter.vip : customersDecorated.filter((c) => c.customerType === tierFilters.topName).length;
+    const isNew = customerFilterCounts ? rankCountsByFilter.new : customersDecorated.filter((c) => c.customerType === tierFilters.baseName).length;
+    const often = customerFilterCounts ? rankCountsByFilter.frequent : customersDecorated.filter((c) => c.customerType === tierFilters.middleName).length;
 
     return [
       { key: "all", label: "Tất cả", icon: <Users size={16} />, count: total },
@@ -417,7 +454,12 @@ const CustomerManagement = () => {
         count: often,
       },
     ];
-  }, [customersDecorated, tierFilters]);
+  }, [customerFilterCounts, customersDecorated, rankCountsByFilter, tierFilters]);
+  const expectedFilteredExportTotal = useMemo(() => {
+    if (!customerFilterCounts) return null;
+    if (activeFilter === "all") return Number(customerFilterCounts.total || 0);
+    return Number(rankCountsByFilter[activeFilter] || 0);
+  }, [activeFilter, customerFilterCounts, rankCountsByFilter]);
 
   const loading = usersLoading;
 
@@ -493,7 +535,7 @@ const CustomerManagement = () => {
 
       const rankFilter = getRankBoundsForFilter(activeFilter, rankSettings);
       const visibleRows = exportScope === "filtered_all"
-        ? await getCustomerExportRows({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 1000, customerRank: rankFilter })
+        ? await getCustomerExportRows({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: EXPORT_LIMIT, customerRank: rankFilter })
         : (customersVisible || []);
       if (!visibleRows.length) {
         setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
@@ -514,6 +556,13 @@ const CustomerManagement = () => {
         sheets,
         `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`,
       );
+      if (
+        exportScope === "filtered_all" &&
+        Number(expectedFilteredExportTotal || 0) > EXPORT_LIMIT &&
+        visibleRows.length >= EXPORT_LIMIT
+      ) {
+        setExportError(`Bộ lọc hiện có khoảng ${new Intl.NumberFormat("vi-VN").format(expectedFilteredExportTotal)} khách. File xuất chỉ gồm tối đa ${new Intl.NumberFormat("vi-VN").format(EXPORT_LIMIT)} khách đầu tiên theo thứ tự hiện tại.`);
+      }
       setShowExportModal(false);
     } catch (err) {
       setExportError(err?.message || "Xuất Excel thất bại.");
@@ -606,7 +655,7 @@ const CustomerManagement = () => {
                 <span className="cm-pill-icon">{f.icon}</span>
                 <span className="cm-pill-label">{f.label}</span>
                 <span className="cm-pill-count">
-                  {formatCompactCount(f.count)}
+                  {customerFilterCountsLoading && !customerFilterCounts ? "…" : formatCompactCount(f.count)}
                 </span>
               </button>
             ))}
@@ -793,9 +842,14 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("filtered_all")}
                 />
                 <span>
-                  <strong>Tất cả theo bộ lọc hiện tại</strong> — gọi backend và xuất tối đa 1000 khách đầu tiên theo filter.
+                  <strong>Tất cả theo bộ lọc hiện tại</strong> — xuất tối đa 1.000 khách đầu tiên.
                 </span>
               </label>
+              {exportScope === "filtered_all" && Number(expectedFilteredExportTotal || 0) > EXPORT_LIMIT ? (
+                <div className="text-sm text-amber-700">
+                  Bộ lọc hiện có khoảng {new Intl.NumberFormat("vi-VN").format(expectedFilteredExportTotal)} khách. File xuất sẽ lấy tối đa 1.000 khách đầu tiên theo thứ tự hiện tại.
+                </div>
+              ) : null}
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="radio"

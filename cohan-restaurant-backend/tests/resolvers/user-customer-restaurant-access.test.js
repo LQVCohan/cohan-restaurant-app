@@ -295,6 +295,58 @@ describe("user/customer restaurant access guards", () => {
     const limitChain = modelMocks.Customer.find.mock.results[0].value.select().populate().populate().sort();
     expect(limitChain.limit).toBeTypeOf("function");
   });
+  it("customerFilterCounts requires CUSTOMER_READ and restaurant access", async () => {
+    requirePermissionMock.mockRejectedValue(new GraphQLError("FORBIDDEN"));
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await expect(
+      UserQuery.customerFilterCounts(null, { restaurantId: "valid-r1" }, ctxFor()),
+    ).rejects.toThrow("FORBIDDEN");
+    expect(requireRestaurantAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("customerFilterCounts composes search/kind/restaurant and rank ranges", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "role-customer" }) });
+    modelMocks.CustomerRankSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        ranks: [
+          { name: "A", minPoints: 0 },
+          { name: "B", minPoints: 5 },
+          { name: "C", minPoints: 20 },
+        ],
+      }),
+    });
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerFilterCounts(null, {
+      restaurantId: "valid-r1", search: "abc", includeGuests: false, customerKind: "REGISTERED",
+    }, ctxFor());
+    const calls = modelMocks.Customer.countDocuments.mock.calls.map((x) => x[0]);
+    expect(calls).toHaveLength(6);
+    expect(JSON.stringify(calls[0])).toContain("refRestaurants");
+    expect(JSON.stringify(calls[0])).toContain("fullName");
+    expect(JSON.stringify(calls[0])).toContain("role-customer");
+    expect(calls[3]).toMatchObject({ $and: [expect.anything(), { loyaltyPoints: { $gte: 0, $lt: 5 } }] });
+    expect(calls[4]).toMatchObject({ $and: [expect.anything(), { loyaltyPoints: { $gte: 5, $lt: 20 } }] });
+    expect(calls[5]).toMatchObject({ $and: [expect.anything(), { loyaltyPoints: { $gte: 20 } }] });
+    expect(JSON.stringify(calls[5])).not.toContain("\"$lt\"");
+  });
+
+  it("customerFilterCounts includeGuests=false excludes guest from total and invalid restaurantId => BAD_USER_INPUT", async () => {
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await expect(
+      UserQuery.customerFilterCounts(null, { restaurantId: "invalid-r1" }, ctxFor()),
+    ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
+
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "role-customer" }) });
+    modelMocks.CustomerRankSetting.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    await UserQuery.customerFilterCounts(null, { restaurantId: "valid-r1", includeGuests: false }, ctxFor());
+    const totalCond = modelMocks.Customer.countDocuments.mock.calls.at(-6)?.[0];
+    expect(JSON.stringify(totalCond)).toContain("role-customer");
+    expect(JSON.stringify(totalCond)).not.toContain("\"isGuest\":true");
+  });
 
   it("upsertCustomerRankSettings allowed calls requireRestaurantAccess before write", async () => {
     const calls = [];
