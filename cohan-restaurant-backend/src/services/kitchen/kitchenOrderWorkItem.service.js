@@ -1,4 +1,5 @@
 import { KitchenOrderWorkItem, KitchenShiftRosterSnapshot } from "../../../models/index.js";
+import { classifyKitchenOrderIssueReason } from "./kitchenOrderIssueReason.service.js";
 
 export const DEFAULT_KITCHEN_TARGET_PREP_MINUTES = 20;
 export const DEFAULT_BAR_TARGET_PREP_MINUTES = 10;
@@ -393,11 +394,15 @@ export async function syncKitchenOrderWorkItemForVoidOrReturn({
   actorUserId,
   now,
   session,
+  issueType,
+  issueReason,
+  issueReviewNote,
+  issueRefundMode,
 }) {
   if (!order?._id || !item?._id || !nextStatus) return null;
   if (!['cancelled', 'returned'].includes(nextStatus)) return null;
 
-  return upsertKitchenOrderWorkItemForStatusChange({
+  const workItem = await upsertKitchenOrderWorkItemForStatusChange({
     order,
     item,
     previousStatus,
@@ -406,6 +411,25 @@ export async function syncKitchenOrderWorkItemForVoidOrReturn({
     now,
     session,
   });
+
+  const reasonMeta = classifyKitchenOrderIssueReason(issueReason);
+  await KitchenOrderWorkItem.findOneAndUpdate(
+    { orderId: order._id, orderItemId: item._id },
+    {
+      $set: {
+        issueType: issueType || null,
+        issueReason: issueReason || null,
+        issueReasonCategory: reasonMeta.category || "unknown",
+        issueReasonKitchenRelated: Boolean(reasonMeta.isKitchenRelated),
+        issueReasonMatchedKeyword: reasonMeta.matchedKeyword || null,
+        issueReviewNote: issueReviewNote || null,
+        issueRefundMode: issueRefundMode || null,
+      },
+    },
+    { new: true },
+  ).session(session);
+
+  return workItem;
 }
 
 export async function syncKitchenOrderWorkItemsForOrderStatusChange({

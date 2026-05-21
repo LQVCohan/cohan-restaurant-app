@@ -44,6 +44,10 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
       const kitchenNote = "Có dữ liệu bếp/bar tham khảo";
       if (!notes.includes(kitchenNote)) notes.push(kitchenNote);
     }
+    if (Number(snapshot?.factors?.qualityEvidence?.totalPenalty || 0) > 0) {
+      const qualityNote = "Quality có điều chỉnh theo dữ liệu vai trò";
+      if (!notes.includes(qualityNote)) notes.push(qualityNote);
+    }
     const note = notes.join(" | ");
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
