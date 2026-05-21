@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   staffFindById: vi.fn(),
@@ -59,6 +59,10 @@ async function runCalc() {
 }
 
 describe("staffPerformance core formula", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.staffFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([{ _id: employeeId }])) });
@@ -176,7 +180,6 @@ describe("staffPerformance core formula", () => {
     expect(String(args.restaurantId)).toBe(restaurantId);
     expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
     expect(args).not.toHaveProperty("graceMinutes");
-    vi.useRealTimers();
   });
 
   it("uses current time for unaccepted audit when periodEnd is in the future", async () => {
@@ -193,7 +196,11 @@ describe("staffPerformance core formula", () => {
     expect(args.now).toEqual(new Date("2026-05-10T12:00:00.000Z"));
     expect(args.now).not.toEqual(new Date("2026-05-31T23:59:59.999Z"));
     expect(args).not.toHaveProperty("graceMinutes");
-    vi.useRealTimers();
+
+    const set = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
+    expect(set.factors.unacceptedAuditEffectiveAt).toEqual(
+      new Date("2026-05-10T12:00:00.000Z"),
+    );
   });
 
   it("uses periodEnd for unaccepted audit when periodEnd is in the past", async () => {
@@ -205,7 +212,11 @@ describe("staffPerformance core formula", () => {
     const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
     expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
     expect(args).not.toHaveProperty("graceMinutes");
-    vi.useRealTimers();
+
+    const set = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
+    expect(set.factors.unacceptedAuditEffectiveAt).toEqual(
+      new Date("2026-05-15T23:59:59.999Z"),
+    );
   });
 
   it("persists unaccepted audit metadata in factors without affecting final score", async () => {
@@ -222,6 +233,8 @@ describe("staffPerformance core formula", () => {
     expect(next.factors.unacceptedAuditMatchedCount).toBe(2);
     expect(next.factors.unacceptedAuditModifiedCount).toBe(1);
     expect(next.factors.unacceptedAuditRefreshedAt).toBeInstanceOf(Date);
+    const nextSet = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
+    expect(nextSet.factors.unacceptedAuditEffectiveAt).toBeInstanceOf(Date);
     expect(next.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
   });
 });

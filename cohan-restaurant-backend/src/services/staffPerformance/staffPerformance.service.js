@@ -407,6 +407,7 @@ async function calculateSnapshotForEmployee({
   periodEnd,
   ctx,
   unacceptedAuditResult,
+  unacceptedAuditNow,
 }) {
   const staff = await Staff.findById(employeeId).lean();
 
@@ -643,6 +644,7 @@ async function calculateSnapshotForEmployee({
             ? {
                 unacceptedAuditRefreshed: true,
                 unacceptedAuditRefreshedAt: new Date(),
+                unacceptedAuditEffectiveAt: unacceptedAuditNow,
                 unacceptedAuditMatchedCount: Number(unacceptedAuditResult?.matchedCount || 0),
                 unacceptedAuditModifiedCount: Number(unacceptedAuditResult?.modifiedCount || 0),
               }
@@ -759,6 +761,7 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
       periodEnd,
       ctx,
       unacceptedAuditResult,
+      unacceptedAuditNow,
     });
 
     results.push(result);
