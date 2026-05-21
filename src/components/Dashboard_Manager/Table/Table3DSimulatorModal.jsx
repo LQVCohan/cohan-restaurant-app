@@ -9,6 +9,8 @@ import {
   loadCustomTableModels,
   mergeCatalogWithCustomModels,
   upsertCustomTableModel,
+  doesCustomModelMatchTableType,
+  getCustomModelCatalogTableType,
 } from "@/config/table3dCustomModelStorage";
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
@@ -57,7 +59,7 @@ const Table3DSimulatorModal = ({
   );
 
   const typedCustomModels = useMemo(
-    () => customModels.filter((model) => model?.tableType === tableType),
+    () => customModels.filter((model) => doesCustomModelMatchTableType(model, tableType)),
     [customModels, tableType]
   );
 
@@ -120,7 +122,7 @@ const Table3DSimulatorModal = ({
     if (selectedModel?.key === model.key) {
       const nextVisible = mergeCatalogWithCustomModels(
         models,
-        saved.filter((item) => item?.tableType === tableType)
+        saved.filter((item) => doesCustomModelMatchTableType(item, tableType))
       );
       setSelectedModelKey(nextVisible[0]?.key || "");
     }
@@ -313,6 +315,7 @@ const Table3DSimulatorModal = ({
         onApply={(customItem) => {
           const saved = upsertCustomTableModel(customItem, customModelScope);
           setCustomModels(saved);
+          setTableType(getCustomModelCatalogTableType(customItem));
           setSelectedModelKey(customItem.key);
           setShowCustomBuilder(false);
         }}

@@ -1,6 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import {
   deleteCustomTableModel,
+  doesCustomModelMatchTableType,
+  getCustomModelCatalogTableType,
   getCustomTableModelStorageKey,
   isCustomTableModel,
   loadCustomTableModels,
@@ -95,4 +97,30 @@ describe("table3dCustomModelStorage", () => {
     expect(isCustomTableModel({ customModelSpec: { name: "x" } })).toBe(true);
     expect(isCustomTableModel({ source: "public", key: "round-oak-4" })).toBe(false);
   });
+
+
+  it("maps custom shapes to catalog table types and matches correctly", () => {
+    const round = buildCustom({ customModelSpec: { shape: "round" } });
+    const booth = buildCustom({ customModelSpec: { shape: "booth" } });
+    const square = buildCustom({ customModelSpec: { shape: "square" } });
+    const rect = buildCustom({ customModelSpec: { shape: "rect" } });
+    const bar = buildCustom({ customModelSpec: { shape: "bar" } });
+
+    expect(getCustomModelCatalogTableType(round)).toBe("round-table");
+    expect(getCustomModelCatalogTableType(booth)).toBe("booth-table");
+    expect(getCustomModelCatalogTableType(square)).toBe("rect-4-seat");
+    expect(getCustomModelCatalogTableType(rect)).toBe("rect-4-seat");
+    expect(getCustomModelCatalogTableType(bar)).toBe("rect-4-seat");
+
+    expect(doesCustomModelMatchTableType(round, "round-table")).toBe(true);
+    expect(doesCustomModelMatchTableType(booth, "booth-table")).toBe(true);
+    expect(doesCustomModelMatchTableType(square, "rect-4-seat")).toBe(true);
+    expect(doesCustomModelMatchTableType(rect, "rect-4-seat")).toBe(true);
+    expect(doesCustomModelMatchTableType(bar, "rect-4-seat")).toBe(true);
+  });
+
+  it("doesCustomModelMatchTableType returns false for non-custom catalog model", () => {
+    expect(doesCustomModelMatchTableType({ key: "round-oak-4", source: "public" }, "round-table")).toBe(false);
+  });
+
 });

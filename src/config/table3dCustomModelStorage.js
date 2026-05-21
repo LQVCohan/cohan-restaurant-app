@@ -102,5 +102,19 @@ export const mergeCatalogWithCustomModels = (catalogModels = [], customModels = 
   return [...safeCustom, ...catalog];
 };
 
+
+export const getCustomModelCatalogTableType = (model) => {
+  const shape = model?.customModelSpec?.shape;
+  if (shape === "round") return "round-table";
+  if (shape === "booth") return "booth-table";
+  if (shape === "bar") return "rect-4-seat";
+  if (shape === "square") return "rect-4-seat";
+  return "rect-4-seat";
+};
+
+export const doesCustomModelMatchTableType = (model, tableType) => {
+  if (!isCustomTableModel(model)) return false;
+  return getCustomModelCatalogTableType(model) === tableType;
+};
 export const isCustomTableModel = (item) =>
   item?.source === "user-generated" || !!item?.customModelSpec;
