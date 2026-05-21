@@ -211,7 +211,14 @@ const Dashboard = () => {
                 <p>{rangeLabel}</p>
               </div>
             </div>
-            {hasRevenue ? (
+            {loading ? (
+              <div className="revenue-compact-empty" role="status" aria-live="polite">
+                <div className="revenue-compact-empty__icon">
+                  <CircleCheck size={16} />
+                </div>
+                <p className="revenue-compact-empty__text">Đang tải dữ liệu doanh thu...</p>
+              </div>
+            ) : hasRevenue ? (
               <RevenueChart data={safeRevenueTrend} loading={loading} compact />
             ) : (
               <div className="revenue-compact-empty" role="status" aria-live="polite">
