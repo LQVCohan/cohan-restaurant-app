@@ -3,13 +3,13 @@ import "./TopDishes.scss";
 
 const formatCurrency = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(Number(amount || 0));
 
-const TopDishes = ({ data = [], loading, variant = "card" }) => {
+const TopDishes = ({ data = [], loading, variant = "card", compactWhenEmpty = false }) => {
   const safeDishes = Array.isArray(data) ? data.slice(0, 5) : [];
   const maxQty = Math.max(...safeDishes.map((item) => Number(item?.quantity || 0)), 1);
   const shellClass = variant === "bare" ? "top-dishes-widget top-dishes-widget--bare" : "top-dishes-widget";
 
   return (
-    <div className={shellClass}>
+    <div className={`${shellClass} ${compactWhenEmpty && safeDishes.length === 0 ? "top-dishes-widget--empty-compact" : ""}`}>
       <div className="dishes-list custom-scrollbar">
         {loading ? <div className="empty-state">Đang tải dữ liệu...</div> : null}
         {!loading && safeDishes.length === 0 ? <div className="empty-state empty-state--compact">Chưa có dữ liệu món bán chạy.</div> : null}

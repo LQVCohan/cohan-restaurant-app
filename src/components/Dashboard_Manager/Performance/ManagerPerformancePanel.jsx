@@ -3,23 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useManagerPerformanceDashboard } from "@/hooks/useManagerPerformanceDashboard";
 import "./ManagerPerformancePanel.scss";
 
-const ACTION_LABELS = {
-  review_overdue_incidents: "Xử lý incident quá hạn",
-  apply_or_waive_eligible_incidents: "Duyệt áp điểm hoặc miễn trừ",
-  review_low_score_employees: "Kiểm tra nhân viên điểm thấp",
-  check_repeated_off_schedule: "Kiểm tra làm ngoài lịch lặp lại",
-  check_repeated_corrections: "Kiểm tra sửa công lặp lại",
-};
-
 const formatScore = (value) => Number(value || 0).toFixed(1).replace(/\.0$/, "");
 
-const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAll = false }) => {
+const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAll = false, compactWhenHealthy = false }) => {
   const navigate = useNavigate();
   const { dashboard, loading, error, isEmpty } = useManagerPerformanceDashboard({ restaurantId });
 
   const actionableItems = useMemo(() => (dashboard.recommendedActions || []).filter((item) => Number(item?.count || 0) > 0), [dashboard.recommendedActions]);
-  const meaningfulRiskEmployees = useMemo(() => (dashboard.topRiskEmployees || []).filter((emp) => emp?.employeeName).slice(0, 3), [dashboard.topRiskEmployees]);
-  const unnamedRiskCount = Math.max(0, (dashboard.topRiskEmployees || []).length - meaningfulRiskEmployees.length);
+  const hasIncidentSignals = Number(dashboard?.incidentOverview?.pendingReviewCount || 0) > 0 || Number(dashboard?.incidentOverview?.overdueCount || 0) > 0;
+  const isHealthyCompact = compactWhenHealthy && summaryOnly && actionableItems.length === 0 && !hasIncidentSignals;
 
   if (!restaurantId) return <div className="performance-empty">Vui lòng chọn nhà hàng để xem hiệu suất.</div>;
   if (loading) return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
@@ -29,30 +21,29 @@ const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAl
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
       <div className="performance-panel__header">
-        <h3>Hiệu suất & trách nhiệm</h3>
-        {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager/performance")}>Xem dashboard hiệu suất</button> : null}
+        <h3>Hiệu suất</h3>
+        {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager/performance")}>Xem chi tiết</button> : null}
       </div>
 
-      <div className="performance-kpi-grid">
-        <div className="kpi-card"><span>Chờ duyệt</span><strong>{dashboard.incidentOverview.pendingReviewCount}</strong></div>
-        <div className="kpi-card"><span>Quá hạn</span><strong>{dashboard.incidentOverview.overdueCount}</strong></div>
-        <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{dashboard.incidentOverview.eligibleCount}</strong></div>
-        <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(dashboard.scoringOverview.averageScore)}</strong></div>
-      </div>
-
-      {summaryOnly ? (
-        <div className="performance-summary-note">
-          {actionableItems.length > 0 ? <p>Có {actionableItems.reduce((s, i) => s + Number(i.count || 0), 0)} mục hiệu suất cần xử lý.</p> : <p>Chưa có cảnh báo hiệu suất rõ ràng.</p>}
-          {!actionableItems.length && unnamedRiskCount > 0 ? <p>Có dữ liệu rủi ro hiệu suất cần kiểm tra.</p> : null}
+      {isHealthyCompact ? (
+        <div className="performance-summary-note performance-summary-note--compact">
+          <p>Chưa có cảnh báo hiệu suất rõ ràng.</p>
         </div>
-      ) : null}
-
-      {!summaryOnly ? (
-        <div className="performance-section">
-          <h4>Khuyến nghị hành động</h4>
-          {actionableItems.length ? <ul className="action-list">{actionableItems.map((item) => <li key={`${item.action}-${item.priority}`}><span>{ACTION_LABELS[item.action] || item.action}</span><strong>{item.count}</strong></li>)}</ul> : <p className="action-list__empty">Không có khuyến nghị cần xử lý.</p>}
-        </div>
-      ) : null}
+      ) : (
+        <>
+          <div className="performance-kpi-grid">
+            <div className="kpi-card"><span>Chờ duyệt</span><strong>{dashboard.incidentOverview.pendingReviewCount}</strong></div>
+            <div className="kpi-card"><span>Quá hạn</span><strong>{dashboard.incidentOverview.overdueCount}</strong></div>
+            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{dashboard.incidentOverview.eligibleCount}</strong></div>
+            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(dashboard.scoringOverview.averageScore)}</strong></div>
+          </div>
+          {summaryOnly ? (
+            <div className="performance-summary-note">
+              {actionableItems.length > 0 ? <p>Có {actionableItems.reduce((s, i) => s + Number(i.count || 0), 0)} mục hiệu suất cần xử lý.</p> : <p>Chưa có cảnh báo hiệu suất rõ ràng.</p>}
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 };

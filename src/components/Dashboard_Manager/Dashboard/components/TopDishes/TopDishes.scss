@@ -1,15 +1,15 @@
 .top-dishes-widget {
   &--bare { border: 0; box-shadow: none; border-radius: 0; padding: 0; background: transparent; }
-
-  .dishes-list { display: grid; gap: 12px; max-height: 280px; overflow: auto; }
-  .dish-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
-  .rank-badge { width: 30px; height: 30px; border-radius: 10px; background: #f3f4f6; color: #374151; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; &.rank-top { background: #eff6ff; color: #2563eb; } }
-  .dish-name { margin: 0; font-size: 14px; font-weight: 700; color: #111827; }
-  .dish-meta, .revenue-meta { font-size: 13px; color: #4b5563; }
-  .revenue-meta { margin: 4px 0 8px; }
+  .dishes-list { display: grid; gap: 10px; max-height: 240px; overflow: auto; }
+  .dish-row { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; }
+  .rank-badge { width: 28px; height: 28px; border-radius: 10px; background: #f3f4f6; color: #374151; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; &.rank-top { background: #eff6ff; color: #2563eb; } }
+  .dish-name { margin: 0; font-size: 13px; font-weight: 700; color: #111827; }
+  .dish-meta, .revenue-meta { font-size: 12px; color: #4b5563; }
+  .revenue-meta { margin: 3px 0 6px; }
   .info-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .progress-track { height: 6px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
+  .progress-track { height: 5px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
   .progress-fill { height: 100%; background: #2563eb; border-radius: 999px; }
   .empty-state { padding: 12px 0; font-size: 13px; color: #6b7280; text-align: center; }
-  .empty-state--compact { min-height: 96px; display: grid; place-content: center; }
+  .empty-state--compact { min-height: 78px; display: grid; place-content: center; }
+  &--empty-compact .dishes-list{max-height:100px}
 }
