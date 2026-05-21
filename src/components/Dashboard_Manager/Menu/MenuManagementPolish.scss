@@ -1,4 +1,5 @@
 @import "./components/MenuModal/MenuModalPolish.scss";
+@import "./MenuManagementContentUpgrade.scss";
 
 .mm-page-container {
   background:
@@ -467,3 +468,69 @@
 .mm-bulk-status-bar .mm-btn{min-height:34px;padding:7px 12px}
 .mm-bulk-status-bar .mm-btn:last-child{border-color:#f8caca;color:#b42318;background:#fff5f5}
 @media (max-width:768px){.mm-bulk-status-bar{top:0}.mm-bulk-status-bar .mm-btn{flex:1 1 calc(50% - 8px)}}
+
+// Scope-adjusted polish: content below the page header only.
+.mm-stats-section {
+  padding-top: 14px;
+  margin-bottom: 6px;
+}
+
+.mm-body {
+  padding-top: 12px;
+  gap: 20px;
+}
+
+.toolbar-container {
+  margin-bottom: 16px;
+  padding: 16px;
+
+  .toolbar-overview-cards {
+    gap: 10px;
+  }
+
+  .toolbar-filters {
+    align-items: flex-start;
+  }
+
+  .filter-row {
+    flex: 1 1 520px;
+  }
+
+  .inventory-filter-row {
+    flex: 1 1 100%;
+    margin-top: 0;
+    padding-top: 2px;
+  }
+
+  .inventory-chip {
+    min-height: 34px;
+  }
+}
+
+.mm-body__content {
+  animation: mmPolishFadeInUp 0.24s ease-out;
+}
+
+@media (max-width: 768px) {
+  .mm-stats-section {
+    padding-top: 12px;
+  }
+
+  .mm-body {
+    padding-top: 10px;
+  }
+
+  .toolbar-container {
+    padding: 12px;
+    border-radius: 14px;
+
+    .toolbar-overview-cards {
+      gap: 8px;
+    }
+
+    .actions-group .btn {
+      flex: 1 1 calc(50% - 6px);
+      justify-content: center;
+    }
+  }
+}
