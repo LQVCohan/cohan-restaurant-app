@@ -90,8 +90,19 @@ export const TABLE_3D_TYPE_OPTIONS = [
   { value: TABLE_3D_TYPES.BOOTH, label: "Booth/Sofa table" },
 ];
 
+export const TABLE_3D_TYPE_TO_AREA = {
+  [TABLE_3D_TYPES.ROUND]: "standard",
+  [TABLE_3D_TYPES.RECT_2]: "standard",
+  [TABLE_3D_TYPES.RECT_4]: "standard",
+  [TABLE_3D_TYPES.VIP]: "vip",
+  [TABLE_3D_TYPES.BOOTH]: "booth",
+};
+
+export const mapTable3DTypeToArea = (tableType) =>
+  TABLE_3D_TYPE_TO_AREA[tableType] || "standard";
+
 export const mapModelToTableForm = (model) => {
-  const area = model?.tableType === TABLE_3D_TYPES.VIP ? "vip" : "standard";
+  const area = mapTable3DTypeToArea(model?.tableType);
   return {
     area,
     seats: Number(model?.capacity || 4),
