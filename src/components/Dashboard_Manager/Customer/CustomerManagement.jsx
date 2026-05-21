@@ -556,13 +556,6 @@ const CustomerManagement = () => {
         sheets,
         `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`,
       );
-      if (
-        exportScope === "filtered_all" &&
-        Number(expectedFilteredExportTotal || 0) > EXPORT_LIMIT &&
-        visibleRows.length >= EXPORT_LIMIT
-      ) {
-        setExportError(`Bộ lọc hiện có khoảng ${new Intl.NumberFormat("vi-VN").format(expectedFilteredExportTotal)} khách. File xuất chỉ gồm tối đa ${new Intl.NumberFormat("vi-VN").format(EXPORT_LIMIT)} khách đầu tiên theo thứ tự hiện tại.`);
-      }
       setShowExportModal(false);
     } catch (err) {
       setExportError(err?.message || "Xuất Excel thất bại.");
