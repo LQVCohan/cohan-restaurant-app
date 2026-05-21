@@ -78,6 +78,8 @@ const ManagerCommandBar = ({
               className={`mcb-btn ${action.variant === "primary" ? "mcb-btn--primary" : ""}`}
               onClick={action.onClick}
               disabled={action.disabled}
+              title={action.title || action.label}
+              aria-label={action.ariaLabel || action.label}
             >
               {action.icon}
               <span>{action.label}</span>

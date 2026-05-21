@@ -467,7 +467,6 @@ const ReviewManagement = () => {
           searchPlaceholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
         />
 
-        
 
         <main className="reviews-main-content">
           <div className="reviews-content-grid">
@@ -480,12 +479,6 @@ const ReviewManagement = () => {
             <section className="reviews-content-area">
               <div className="reviews-content-header">
                 <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
-
-                <div className="reviews-content-header__actions">
-                  <button className="reviews-btn reviews-btn-secondary" onClick={handleExport}>
-                    📊 Xuất báo cáo
-                  </button>
-                </div>
               </div>
 
               {error ? (
