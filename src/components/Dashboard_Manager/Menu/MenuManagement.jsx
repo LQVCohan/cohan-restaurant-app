@@ -652,36 +652,36 @@ const MenuManagement = () => {
 
     setIsDeletingMenu(true);
     setDeleteMenuError("");
-
     try {
-      await deleteMenu({ id: deletedId, force: hasItems });
-    } catch (error) {
-      const message = getGraphQLErrorMessage(
-        error,
-        "Không thể xóa thực đơn. Vui lòng thử lại.",
-      );
-      setDeleteMenuError(message);
-      pushMenuToast(message, "error");
-      setIsDeletingMenu(false);
-      return;
-    }
-
-    setDeleteMenuError("");
-    setDeletingMenu(null);
-    const nextMenu = (menus || []).find((m) => String(m.id) !== String(deletedId));
-    setSelectedTimeSlot(nextMenu?.timeSlot || null);
-    pushMenuToast("Xóa thực đơn thành công.", "success");
-
-    try {
-      await refetchMenus?.();
-    } catch (error) {
-      pushMenuToast(
-        getGraphQLErrorMessage(
+      try {
+        await deleteMenu({ id: deletedId, force: hasItems });
+      } catch (error) {
+        const message = getGraphQLErrorMessage(
           error,
-          "Đã xóa thực đơn nhưng chưa tải lại được danh sách. Hãy tải lại trang nếu cần.",
-        ),
-        "warning",
-      );
+          "Không thể xóa thực đơn. Vui lòng thử lại.",
+        );
+        setDeleteMenuError(message);
+        pushMenuToast(message, "error");
+        return;
+      }
+
+      setDeleteMenuError("");
+      setDeletingMenu(null);
+      const nextMenu = (menus || []).find((m) => String(m.id) !== String(deletedId));
+      setSelectedTimeSlot(nextMenu?.timeSlot || null);
+      pushMenuToast("Xóa thực đơn thành công.", "success");
+
+      try {
+        await refetchMenus?.();
+      } catch (error) {
+        pushMenuToast(
+          getGraphQLErrorMessage(
+            error,
+            "Đã xóa thực đơn nhưng không thể làm mới danh sách.",
+          ),
+          "warning",
+        );
+      }
     } finally {
       setIsDeletingMenu(false);
     }
