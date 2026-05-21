@@ -257,6 +257,7 @@ export default function RbacManagement() {
   return (
     <div className="rbac-page">
       <ManagementPageHeader
+        density="compact"
         eyebrow="RBAC MANAGER"
         title="Phân quyền nhân viên"
         subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng."

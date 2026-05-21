@@ -1,11 +1,8 @@
 import React, { useContext, useMemo, useState } from "react";
 import {
   Plus,
-  Search,
   Download,
   FilterX,
-  LayoutGrid,
-  List,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -37,6 +34,8 @@ import { useCoupons } from "../../../hooks/useCoupons";
 
 // --- Styles ---
 import "./PromotionManagement.scss";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
+import ManagerCommandBar from "../shared/ManagerCommandBar";
 
 const PromotionManagement = () => {
   const { user } = useContext(AuthContext);
@@ -596,6 +595,13 @@ const PromotionManagement = () => {
         ? coupons.length
         : couponPackages.length;
 
+  const promotionSearchPlaceholder =
+    activeSection === "promotions"
+      ? "Tìm chương trình, mã..."
+      : activeSection === "coupons"
+        ? "Tìm coupon, mã..."
+        : "Tìm gói Coupon, mã...";
+
   const totalCount =
     activeSection === "promotions"
       ? allPromotions.length
@@ -818,63 +824,103 @@ const PromotionManagement = () => {
   return (
     <div className="promotion-manager-page">
       {/* 1. HEADER */}
-      <header className="page-header">
-        <div className="header-title">
-          <h1>{currentSection.title}</h1>
-          <p>{currentSection.subtitle}</p>
-        </div>
-        <div className="restaurant-selector">
-          <span className="restaurant-selector__icon">🏠</span>
-          <select
-            aria-label="Chon nha hang khuyen mai"
-            value={selectedRestaurantId}
-            onChange={(event) =>
-              updateFilters({ restaurant: event.target.value })
-            }
-            disabled={!promotionRestaurants.length}
-          >
-            {promotionRestaurants.length ? (
-              promotionRestaurants.map((restaurant) => (
-                <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name || `Nha hang ${restaurant.id}`}
-                </option>
-              ))
-            ) : (
-              <option value="">Chua co nha hang kha dung</option>
-            )}
-          </select>
-          <ChevronDown size={16} />
-        </div>
-      </header>
+      <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
+        eyebrow="PROMOTION MANAGER"
+        title="Khuyến mãi"
+        subtitle="Quản lý campaign, coupon, điều kiện và thời gian hiệu lực."
+        icon="🎁"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={(value) => updateFilters({ restaurant: value })}
+        restaurantList={promotionRestaurants.map((restaurant) => ({ id: restaurant.id, name: restaurant.name || `Nha hang ${restaurant.id}` }))}
+        stats={[
+          { id: "total", icon: "📦", label: "Tổng", value: totalCount },
+          { id: "active", icon: "🟢", label: "Đang chạy", value: currentCount },
+          { id: "scheduled", icon: "🗓️", label: "Sắp tới/Nháp", value: statsData.hotPromotions },
+          { id: "usage", icon: "🎯", label: "Lượt dùng", value: statsData.totalUsage },
+        ]}
+      />
 
-      <div className="section-tabs">
-        {[
+      <ManagerCommandBar
+        tabs={[
           { id: "promotions", label: "Chương trình khuyến mãi" },
           { id: "coupons", label: "Coupon" },
           { id: "couponPackages", label: "Gói Coupon" },
-        ].map((section) => (
-          <button
-            key={section.id}
-            className={`section-tab ${
-              activeSection === section.id ? "active" : ""
-            }`}
-            onClick={() => {
-              setActiveSection(section.id);
-              setActiveTab("all");
-              setViewMode("grid");
-              if (section.id === "promotions") {
-                updateFilters({ status: "all" });
-              } else if (section.id === "coupons") {
-                updateCouponFilters({ status: "all" });
-              } else {
-                updateCouponPackageFilters({ status: "all" });
-              }
-            }}
-          >
-            {section.label}
-          </button>
-        ))}
-      </div>
+        ]}
+        activeTab={activeSection}
+        onTabChange={(sectionId) => {
+          setActiveSection(sectionId);
+          setActiveTab("all");
+          setViewMode("grid");
+          if (sectionId === "promotions") updateFilters({ status: "all" });
+          else if (sectionId === "coupons") updateCouponFilters({ status: "all" });
+          else updateCouponPackageFilters({ status: "all" });
+        }}
+        searchValue={searchValue}
+        searchPlaceholder={promotionSearchPlaceholder}
+        onSearchChange={(value) => {
+          if (activeSection === "promotions") updateFilters({ search: value });
+          else if (activeSection === "coupons") updateCouponFilters({ search: value });
+          else updateCouponPackageFilters({ search: value });
+        }}
+        filters={(
+          <>
+            {activeSection === "coupons" && (
+              <div className="dropdown-filter">
+                <select
+                  value={couponFilters.category}
+                  onChange={(event) =>
+                    updateCouponFilters({ category: event.target.value })
+                  }
+                >
+                  <option value="all">Tất cả nhóm</option>
+                  {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} />
+              </div>
+            )}
+            <button
+              className="btn-clear-filter"
+              onClick={handleClearFilters}
+              disabled={!hasActiveFilters}
+            >
+              <FilterX size={14} />
+              <span>Xóa lọc</span>
+            </button>
+          </>
+        )}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        actions={[
+          {
+            label: "Xuất",
+            icon: <Download size={18} />,
+            onClick: handleExport,
+            disabled: !currentCount,
+          },
+          {
+            label: currentSection.createLabel,
+            icon: <Plus size={18} />,
+            variant: "primary",
+            disabled: !canWriteCurrentSection,
+            title: canWriteCurrentSection
+              ? currentSection.createLabel
+              : NO_PERMISSION_MESSAGE,
+            onClick: () => {
+              if (!canWriteCurrentSection) return;
+              if (activeSection === "promotions") handleOpenModal();
+              else if (activeSection === "coupons") handleOpenCouponModal();
+              else handleOpenCouponPackageModal();
+            },
+          },
+        ]}
+      />
+
 
       {/* 2. STATS */}
       <section className="stats-section">
@@ -920,116 +966,6 @@ const PromotionManagement = () => {
               {tab.label}
             </button>
           ))}
-        </div>
-
-        {/* B. Filter Toolbar */}
-        <div className="filter-toolbar">
-          <div className="filter-left">
-            <div className="search-box">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder={
-                  activeSection === "promotions"
-                    ? "Tìm kiếm chương trình, mã..."
-                    : activeSection === "coupons"
-                      ? "Tìm kiếm coupon, mã..."
-                      : "Tìm kiếm gói Coupon, mã..."
-                }
-                value={searchValue}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (activeSection === "promotions") {
-                    updateFilters({ search: value });
-                    return;
-                  }
-                  if (activeSection === "coupons") {
-                    updateCouponFilters({ search: value });
-                    return;
-                  }
-                  updateCouponPackageFilters({ search: value });
-                }}
-              />
-            </div>
-
-            {activeSection === "coupons" ? (
-              <div className="dropdown-filter">
-                <select
-                  value={couponFilters.category}
-                  onChange={(event) =>
-                    updateCouponFilters({ category: event.target.value })
-                  }
-                >
-                  <option value="all">Tất cả nhóm</option>
-                  {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} />
-              </div>
-            ) : (
-              <div className="dropdown-filter">
-                <span>Tất cả loại</span>
-                <ChevronDown size={14} />
-              </div>
-            )}
-
-            <button
-              className="btn-clear-filter"
-              onClick={handleClearFilters}
-              disabled={!hasActiveFilters}
-            >
-              <FilterX size={14} />
-              <span>Xóa lọc</span>
-            </button>
-          </div>
-
-          <div className="filter-right">
-            <div className="view-toggle">
-              <button
-                className={`toggle-btn ${viewMode === "list" ? "active" : ""}`}
-                onClick={() => setViewMode("list")}
-                title="Xem danh sách"
-              >
-                <List size={18} />
-              </button>
-              <button
-                className={`toggle-btn ${viewMode === "grid" ? "active" : ""}`}
-                onClick={() => setViewMode("grid")}
-                title="Xem lưới"
-              >
-                <LayoutGrid size={18} />
-              </button>
-            </div>
-
-            <button className="btn-secondary" onClick={handleExport}>
-              <Download size={18} />
-              <span>Xuất</span>
-            </button>
-
-            <button
-              className="btn-primary"
-              onClick={() => {
-                if (!canWriteCurrentSection) return;
-                if (activeSection === "promotions") {
-                  handleOpenModal();
-                  return;
-                }
-                if (activeSection === "coupons") {
-                  handleOpenCouponModal();
-                  return;
-                }
-                handleOpenCouponPackageModal();
-              }}
-              disabled={!canWriteCurrentSection}
-              title={canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE}
-            >
-              <Plus size={18} />
-              <span>{currentSection.createLabel}</span>
-            </button>
-          </div>
         </div>
 
         {!canWriteCurrentSection && (
