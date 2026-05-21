@@ -1026,6 +1026,12 @@ const MenuManagement = () => {
     [items, categories, inventoryFilter],
   );
 
+  const isSparseGrid =
+    currentView === "grid" &&
+    Array.isArray(displayItems) &&
+    displayItems.length > 0 &&
+    displayItems.length <= 3;
+
   const hasAnyMenu = (menus || []).length > 0;
 
   const hasMenuForSelectedSlot = useMemo(
@@ -1189,6 +1195,8 @@ const MenuManagement = () => {
   return (
     <div className="mm-page-container">
       <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
         eyebrow="MENU MANAGER"
         title="Quản lý Thực Đơn"
         subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"
@@ -1339,7 +1347,7 @@ const MenuManagement = () => {
                   <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("hidden")} disabled={isBulkUpdatingStatus}>Ẩn</button>
                 </div>
               )}
-              <div className={`mm-grid mm-grid--${currentView}`}>
+              <div className={`mm-grid mm-grid--${currentView} ${isSparseGrid ? "mm-grid--sparse" : ""}`}>
                 {displayItems.map((item) => (
                   <MenuItemCard
                     key={item.id}

@@ -469,68 +469,28 @@
 .mm-bulk-status-bar .mm-btn:last-child{border-color:#f8caca;color:#b42318;background:#fff5f5}
 @media (max-width:768px){.mm-bulk-status-bar{top:0}.mm-bulk-status-bar .mm-btn{flex:1 1 calc(50% - 8px)}}
 
-// Scope-adjusted polish: content below the page header only.
-.mm-stats-section {
-  padding-top: 14px;
-  margin-bottom: 6px;
+
+.mm-page-container .mm-header {
+  padding: 10px 20px;
+  gap: 12px;
 }
 
-.mm-body {
-  padding-top: 12px;
-  gap: 20px;
+.mm-page-container .mm-header__left .mm-title {
+  font-size: clamp(18px, 1.25vw, 21px);
+  margin-bottom: 0;
 }
 
-.toolbar-container {
-  margin-bottom: 16px;
-  padding: 16px;
-
-  .toolbar-overview-cards {
-    gap: 10px;
-  }
-
-  .toolbar-filters {
-    align-items: flex-start;
-  }
-
-  .filter-row {
-    flex: 1 1 520px;
-  }
-
-  .inventory-filter-row {
-    flex: 1 1 100%;
-    margin-top: 0;
-    padding-top: 2px;
-  }
-
-  .inventory-chip {
-    min-height: 34px;
-  }
+.mm-page-container .mm-header__left .mm-subtitle {
+  display: none;
 }
 
-.mm-body__content {
-  animation: mmPolishFadeInUp 0.24s ease-out;
+.mm-page-container .mm-header__right {
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
-  .mm-stats-section {
-    padding-top: 12px;
-  }
-
-  .mm-body {
-    padding-top: 10px;
-  }
-
-  .toolbar-container {
-    padding: 12px;
-    border-radius: 14px;
-
-    .toolbar-overview-cards {
-      gap: 8px;
-    }
-
-    .actions-group .btn {
-      flex: 1 1 calc(50% - 6px);
-      justify-content: center;
-    }
-  }
+.mm-page-container .mm-header__right .mm-actions {
+  border-left: 0;
+  padding-left: 0;
+  gap: 8px;
 }

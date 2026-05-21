@@ -329,7 +329,7 @@ describe("buildPerformanceReportHtml", () => {
     expect(html).toContain("Dữ liệu bếp/bar tham khảo");
     expect(html).toContain("Bếp / Bar");
     expect(html).toContain("Chưa gắn được roster bếp/bar");
-    expect(html).toContain("Chưa ảnh hưởng điểm hiệu suất");
+    expect(html).toContain("chưa tạo điều chỉnh Quality trong kỳ này");
   });
   it("does not render kitchen/bar reference section when totalItems is 0", () => {
     const html = buildPerformanceReportHtml({
@@ -341,7 +341,7 @@ describe("buildPerformanceReportHtml", () => {
       kitchenMetrics: { totalItems: 0, onTimeItems: 0 },
     });
     expect(html).not.toContain("Dữ liệu bếp/bar tham khảo");
-    expect(html).not.toContain("Chưa ảnh hưởng điểm hiệu suất");
+    expect(html).not.toContain("chưa tạo điều chỉnh Quality trong kỳ này");
   });
   it("includes previous period comparison section", () => {
     const html = buildPerformanceReportHtml({
@@ -720,5 +720,13 @@ describe("kitchen metrics csv note", () => {
     ]);
     const note = rows[0][10];
     expect(note.match(/Có dữ liệu bếp\/bar tham khảo/g)).toHaveLength(1);
+  });
+  it("appends quality role-adjustment note without duplication", () => {
+    const rows = buildPerformanceOverviewCsvRows([
+      { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
+      { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
+    ]);
+    expect(rows[0][10]).toContain("Quality có điều chỉnh theo dữ liệu vai trò");
+    expect(rows[0][10].match(/Quality có điều chỉnh theo dữ liệu vai trò/g)).toHaveLength(1);
   });
 });

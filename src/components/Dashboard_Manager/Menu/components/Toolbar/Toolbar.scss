@@ -184,14 +184,14 @@ $tb-radius: 16px;
     }
   }
 
-  .toolbar-overview-cards {
+  .toolbar-metric-strip {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     padding-top: 2px;
   }
 
-  .toolbar-overview-card {
+  .toolbar-metric-pill {
     display: flex;
     align-items: flex-start;
     gap: 11px;
@@ -478,7 +478,7 @@ $tb-radius: 16px;
   }
 
   @media (max-width: 1024px) {
-    .toolbar-overview-cards {
+    .toolbar-metric-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -498,7 +498,7 @@ $tb-radius: 16px;
       }
     }
 
-    .toolbar-overview-cards {
+    .toolbar-metric-strip {
       grid-template-columns: 1fr;
     }
 
@@ -540,8 +540,8 @@ $tb-radius: 16px;
 .active-chips-area .chip{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .chip-x{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:none;border-radius:999px;background:#e2e8f0;color:#475569;cursor:pointer}
 .chip-x:hover{background:#cbd5e1}
-.toolbar-overview-card{padding:11px!important}
-.toolbar-overview-card__value{font-size:15px!important}
+.toolbar-metric-pill{padding:11px!important}
+.toolbar-metric-pill__value{font-size:15px!important}
 @media (max-width:640px){
   .desktop-label{display:none}.mobile-label{display:inline}
   .inventory-chip{max-width:100%}
