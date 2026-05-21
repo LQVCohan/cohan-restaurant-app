@@ -10,6 +10,9 @@ describe("kitchenOrderIssueReason service", () => {
     expect(classifyKitchenOrderIssueReason("nhân viên nhập sai món")).toMatchObject({ category: "service_order_mistake", isKitchenRelated: false });
     expect(classifyKitchenOrderIssueReason("khách đổi ý")).toMatchObject({ category: "customer_request", isKitchenRelated: false });
     expect(classifyKitchenOrderIssueReason("sai bill")).toMatchObject({ category: "payment_or_bill", isKitchenRelated: false });
+    expect(classifyKitchenOrderIssueReason("Món nguội")).toMatchObject({ category: "kitchen_quality", isKitchenRelated: true });
+    expect(classifyKitchenOrderIssueReason("Khách đổi ý")).toMatchObject({ category: "customer_request", isKitchenRelated: false });
+    expect(classifyKitchenOrderIssueReason("Sai bill / sai hóa đơn")).toMatchObject({ category: "payment_or_bill", isKitchenRelated: false });
     expect(classifyKitchenOrderIssueReason("")).toMatchObject({ category: "unknown", isKitchenRelated: false });
     expect(classifyKitchenOrderIssueReason(null)).toMatchObject({ category: "unknown", isKitchenRelated: false });
   });
