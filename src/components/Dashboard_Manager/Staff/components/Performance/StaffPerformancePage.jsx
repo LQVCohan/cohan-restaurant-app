@@ -618,13 +618,28 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                 <span>Đội bếp: {formatMetricNumber(kitchenMetrics?.teamItems)}</span>
                 <span>Bar lead: {formatMetricNumber(kitchenMetrics?.barLeadItems)}</span>
                 <span>Bar staff: {formatMetricNumber(kitchenMetrics?.barStaffItems)}</span>
-                <span>TB thời gian chuẩn bị: {formatMetricMinutes(kitchenMetrics?.avgPrepMinutes)}</span>
+                <span>TB thời gian hoàn thành món: {formatMetricMinutes(kitchenMetrics?.avgPrepMinutes)}</span>
                 {formatMetricNumber(kitchenMetrics?.noRosterItems) > 0 ? (
                   <span className="kitchen-metrics-warning">
-                    No roster: {formatMetricNumber(kitchenMetrics?.noRosterItems)}
+                    Chưa gắn được roster bếp/bar: {formatMetricNumber(kitchenMetrics?.noRosterItems)}
                   </span>
                 ) : null}
               </div>
+              {formatMetricNumber(kitchenMetrics?.noRosterItems) > 0 ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Có món chưa xác định được đội bếp/bar theo lịch tại thời điểm vào bếp.
+                </p>
+              ) : null}
+              {snapshot?.factors?.unacceptedAuditRefreshed === true ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Đã cập nhật kiểm tra món chưa nhận trước khi tính lại hiệu suất.
+                </p>
+              ) : null}
+              {formatMetricNumber(snapshot?.factors?.unacceptedAuditModifiedCount) > 0 ? (
+                <p className="formula-note kitchen-metrics-note">
+                  Món chưa nhận mới được đánh dấu: {formatMetricNumber(snapshot?.factors?.unacceptedAuditModifiedCount)}
+                </p>
+              ) : null}
               <p className="formula-note kitchen-metrics-note">
                 {kitchenMetrics?.note || "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất."}
               </p>

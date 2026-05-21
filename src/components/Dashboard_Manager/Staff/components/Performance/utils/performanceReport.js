@@ -130,9 +130,12 @@ export const buildPerformanceReportHtml = (reportData) => `
       ${Number(reportData.kitchenMetrics?.totalItems || 0) > 0 ? `
       <h3>Dữ liệu bếp/bar tham khảo</h3>
       <p>Tổng work items liên quan: ${escapeHtml(reportData.kitchenMetrics.totalItems ?? "--")}</p>
+      <p>Bếp / Bar: ${escapeHtml(reportData.kitchenMetrics.kitchenItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.barItems ?? "--")}</p>
       <p>Đúng giờ / Trễ / Rất trễ: ${escapeHtml(reportData.kitchenMetrics.onTimeItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.lateItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.veryLateItems ?? "--")}</p>
       <p>Hủy / Trả / Không nhận: ${escapeHtml(reportData.kitchenMetrics.cancelledItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.returnedItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.unacceptedItems ?? "--")}</p>
-      <p>TB thời gian chuẩn bị: ${escapeHtml(reportData.kitchenMetrics.avgPrepMinutes ?? 0)} phút</p>
+      <p>Vai trò: Đầu bếp chính ${escapeHtml(reportData.kitchenMetrics.headChefItems ?? "--")} · Phụ bếp ${escapeHtml(reportData.kitchenMetrics.assistantItems ?? "--")} · Bar staff ${escapeHtml(reportData.kitchenMetrics.barStaffItems ?? "--")}</p>
+      ${Number(reportData.kitchenMetrics.noRosterItems || 0) > 0 ? `<p>Chưa gắn được roster bếp/bar: ${escapeHtml(reportData.kitchenMetrics.noRosterItems ?? "--")}</p>` : ""}
+      <p>TB thời gian hoàn thành món: ${escapeHtml(reportData.kitchenMetrics.avgPrepMinutes ?? 0)} phút</p>
       <p><em>Chưa ảnh hưởng điểm hiệu suất</em></p>
       ` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>

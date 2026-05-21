@@ -396,6 +396,7 @@ async function calculateSnapshotForEmployee({
   periodStart,
   periodEnd,
   ctx,
+  unacceptedAuditResult,
 }) {
   const staff = await Staff.findById(employeeId).lean();
 
@@ -628,6 +629,14 @@ async function calculateSnapshotForEmployee({
           hasPerformanceActivity,
           insufficientData,
           kitchenMetrics,
+          ...(unacceptedAuditResult
+            ? {
+                unacceptedAuditRefreshed: true,
+                unacceptedAuditRefreshedAt: new Date(),
+                unacceptedAuditMatchedCount: Number(unacceptedAuditResult?.matchedCount || 0),
+                unacceptedAuditModifiedCount: Number(unacceptedAuditResult?.modifiedCount || 0),
+              }
+            : {}),
         },
         generatedBy: actorId,
         generatedByName: getActorName(ctx),
@@ -709,7 +718,7 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
 
   const employeeId = toObjectId(input.employeeId);
 
-  await markUnacceptedKitchenOrderWorkItems({
+  const unacceptedAuditResult = await markUnacceptedKitchenOrderWorkItems({
     restaurantId,
     now: periodEnd,
   });
@@ -738,6 +747,7 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
       periodStart,
       periodEnd,
       ctx,
+      unacceptedAuditResult,
     });
 
     results.push(result);
