@@ -168,12 +168,44 @@ describe("staffPerformance core formula", () => {
   });
 
   it("refreshes unaccepted audit before recalculation using periodEnd and no graceMinutes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:00:00.000Z"));
     await runCalc();
     expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
     const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
     expect(String(args.restaurantId)).toBe(restaurantId);
     expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
     expect(args).not.toHaveProperty("graceMinutes");
+    vi.useRealTimers();
+  });
+
+  it("uses current time for unaccepted audit when periodEnd is in the future", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-10T12:00:00.000Z"));
+    await recalculateStaffPerformanceSnapshots({
+      input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-31" },
+      ctx: { user: { id: "m1", roleName: "manager", fullName: "Manager" } },
+    });
+
+    expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
+    const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
+    expect(String(args.restaurantId)).toBe(restaurantId);
+    expect(args.now).toEqual(new Date("2026-05-10T12:00:00.000Z"));
+    expect(args.now).not.toEqual(new Date("2026-05-31T23:59:59.999Z"));
+    expect(args).not.toHaveProperty("graceMinutes");
+    vi.useRealTimers();
+  });
+
+  it("uses periodEnd for unaccepted audit when periodEnd is in the past", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:00:00.000Z"));
+    await runCalc();
+
+    expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
+    const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
+    expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
+    expect(args).not.toHaveProperty("graceMinutes");
+    vi.useRealTimers();
   });
 
   it("persists unaccepted audit metadata in factors without affecting final score", async () => {

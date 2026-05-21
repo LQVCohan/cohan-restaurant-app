@@ -47,6 +47,16 @@ function toEndOfDay(value) {
   return date;
 }
 
+function resolveUnacceptedAuditNow(periodEnd, currentDate = new Date()) {
+  const periodEndDate = periodEnd ? new Date(periodEnd) : null;
+  const current = currentDate ? new Date(currentDate) : new Date();
+
+  if (!periodEndDate || Number.isNaN(periodEndDate.getTime())) return current;
+  if (!current || Number.isNaN(current.getTime())) return periodEndDate;
+
+  return periodEndDate.getTime() > current.getTime() ? current : periodEndDate;
+}
+
 function normalizeRole(value) {
   return String(value || "")
     .trim()
@@ -717,10 +727,11 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
   }
 
   const employeeId = toObjectId(input.employeeId);
+  const unacceptedAuditNow = resolveUnacceptedAuditNow(periodEnd);
 
   const unacceptedAuditResult = await markUnacceptedKitchenOrderWorkItems({
     restaurantId,
-    now: periodEnd,
+    now: unacceptedAuditNow,
   });
 
   const staffFilter = {
