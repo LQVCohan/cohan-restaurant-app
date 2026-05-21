@@ -113,6 +113,13 @@ const Table3DSimulatorModal = ({
     if (selectedModel?.defaultScale) setScale(selectedModel.defaultScale);
   };
 
+  const handleModelItemKeyDown = (event, model) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    setSelectedModelKey(model.key);
+  };
+
   const handleDeleteCustomModel = (event, model) => {
     event.stopPropagation();
     if (!window.confirm(`Xóa mẫu "${model.label}" khỏi thư viện tùy chỉnh?`)) return;
@@ -164,11 +171,14 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__models">
             {allModels.map((model) => (
-              <button
+              <div
                 key={model.key}
                 className={`model-item ${selectedModel?.key === model.key ? "active" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedModel?.key === model.key}
                 onClick={() => setSelectedModelKey(model.key)}
-                type="button"
+                onKeyDown={(event) => handleModelItemKeyDown(event, model)}
               >
                 <img src={model.thumbnailUrl} alt={model.label} loading="lazy" />
                 <div>
@@ -191,7 +201,7 @@ const Table3DSimulatorModal = ({
                     Xóa
                   </Button>
                 )}
-              </button>
+              </div>
             ))}
             {!allModels.length && <div className="model-empty">Không có mẫu phù hợp.</div>}
           </div>
