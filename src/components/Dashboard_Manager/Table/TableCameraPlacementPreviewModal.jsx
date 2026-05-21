@@ -4,11 +4,17 @@ import Button from "@/components/common/Button";
 import { CUSTOM_TABLE_SHAPES } from "@/config/table3dCustomModelBuilder";
 import { mapTable3DTypeToArea } from "@/config/table3dCatalog";
 import { getTableAreaLabel } from "@/utils/tableManagementOptions";
+import {
+  DEFAULT_CAMERA_PLACEMENT,
+  deleteCameraPlacement,
+  hasCameraPlacement,
+  loadCameraPlacement,
+  saveCameraPlacement,
+} from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
 
 const CAMERA_ERROR_MESSAGE =
   "Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera hoặc dùng HTTPS.";
-const DEFAULT_PLACEMENT = { x: 50, y: 55, scale: 1, rotation: 0 };
 
 const shapeLabelMap = CUSTOM_TABLE_SHAPES.reduce((acc, item) => {
   acc[item.value] = item.label;
@@ -25,13 +31,22 @@ const getShapeFromModel = (modelItem) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmPlacement }) => {
+const TableCameraPlacementPreviewModal = ({
+  open,
+  onClose,
+  modelItem,
+  onConfirmPlacement,
+  placementScope = "default",
+}) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const previewRef = useRef(null);
   const dragRef = useRef(null);
   const [cameraError, setCameraError] = useState("");
-  const [placement, setPlacement] = useState(DEFAULT_PLACEMENT);
+  const [placement, setPlacement] = useState(DEFAULT_CAMERA_PLACEMENT);
+  const [placementMessage, setPlacementMessage] = useState("");
+  const [savedPlacement, setSavedPlacement] = useState(false);
+  const modelKey = modelItem?.key || "preview";
 
   const modelSummary = useMemo(() => {
     const shape = getShapeFromModel(modelItem);
@@ -42,12 +57,17 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
       areaLabel: getTableAreaLabel(area),
       shape,
       shapeLabel: shapeLabelMap[shape] || "Bàn chữ nhật",
+      dimensions: modelItem?.customModelSpec
+        ? `${modelItem.customModelSpec.widthCm} x ${modelItem.customModelSpec.depthCm} x ${modelItem.customModelSpec.heightCm} cm`
+        : "",
     };
   }, [modelItem]);
 
   useEffect(() => {
     if (!open) return;
-    setPlacement(DEFAULT_PLACEMENT);
+    setPlacement(loadCameraPlacement(modelKey, placementScope));
+    setSavedPlacement(hasCameraPlacement(modelKey, placementScope));
+    setPlacementMessage("");
     setCameraError("");
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -80,7 +100,7 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
       streamRef.current = null;
       if (videoNode) videoNode.srcObject = null;
     };
-  }, [open]);
+  }, [open, modelKey, placementScope]);
 
   const handlePointerDown = (event) => {
     if (!previewRef.current) return;
@@ -141,6 +161,7 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
             <span>{modelSummary.seats} ghế</span>
             <span>{modelSummary.areaLabel}</span>
             <span>{modelSummary.shapeLabel}</span>
+            {modelSummary.dimensions && <span>{modelSummary.dimensions}</span>}
             {modelSummary.shape === "booth" && <em className="sofa-badge">Sofa</em>}
           </div>
           {cameraError && <div className="camera-placement-modal__error">{cameraError}</div>}
@@ -155,12 +176,38 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x + 2, 5, 95) }))}>→</Button>
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y - 2, 5, 95) }))}>↑</Button>
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y + 2, 5, 95) }))}>↓</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement(DEFAULT_PLACEMENT)}>Reset vị trí</Button>
+          <Button size="sm" variant="secondary" onClick={() => setPlacement(DEFAULT_CAMERA_PLACEMENT)}>Reset vị trí</Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              saveCameraPlacement(modelKey, placement, placementScope);
+              setSavedPlacement(true);
+              setPlacementMessage("Đã lưu vị trí trên trình duyệt này.");
+            }}
+          >
+            Lưu vị trí xem thử
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!savedPlacement}
+            onClick={() => {
+              deleteCameraPlacement(modelKey, placementScope);
+              setSavedPlacement(false);
+              setPlacement(DEFAULT_CAMERA_PLACEMENT);
+              setPlacementMessage("Đã xóa vị trí đã lưu trên trình duyệt này.");
+            }}
+          >
+            Xóa vị trí đã lưu
+          </Button>
         </div>
 
         <p className="camera-placement-modal__note">
           Bản xem trước này chưa lưu vào sơ đồ, chỉ dùng để ước lượng vị trí thực tế.
+          Vị trí lưu chỉ áp dụng trên trình duyệt hiện tại và dùng cho lần xem thử tiếp theo.
         </p>
+        {placementMessage && <p className="camera-placement-modal__note">{placementMessage}</p>}
 
         <div className="camera-placement-modal__actions">
           <Button variant="secondary" onClick={onClose}>Đóng</Button>
