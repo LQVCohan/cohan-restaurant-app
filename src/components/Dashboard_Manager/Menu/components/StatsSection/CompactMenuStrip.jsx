@@ -180,6 +180,7 @@ const CompactMenuStrip = ({
                 <div className="cms-nav-group">
                   <button
                     className="cms-nav-btn"
+                    aria-label="Cuộn menu sang trái"
                     onClick={() => scroll("left")}
                     disabled={!menus.length}
                   >
@@ -187,6 +188,7 @@ const CompactMenuStrip = ({
                   </button>
                   <button
                     className="cms-nav-btn"
+                    aria-label="Cuộn menu sang phải"
                     onClick={() => scroll("right")}
                     disabled={!menus.length}
                   >
@@ -196,6 +198,7 @@ const CompactMenuStrip = ({
                 {canSyncInventory && (
                   <button
                     className="cms-btn-add"
+                    aria-label="Đồng bộ tồn kho thực đơn"
                     onClick={handleSyncInventory}
                     disabled={!restaurantId || isSyncingInventory}
                     title="Đồng bộ trạng thái hết hàng theo tồn kho"
@@ -207,7 +210,7 @@ const CompactMenuStrip = ({
                   </button>
                 )}
                 {canAddMenu && (
-                  <button className="cms-btn-add" onClick={() => onAddMenu()}>
+                  <button className="cms-btn-add" aria-label="Tạo thực đơn mới" onClick={() => onAddMenu()}>
                     <FiPlus /> <span className="text">Tạo thực đơn</span>
                   </button>
                 )}
@@ -216,6 +219,7 @@ const CompactMenuStrip = ({
             <button
               className="cms-btn-toggle"
               onClick={() => onToggleCollapse?.()}
+              aria-label={isCollapsed ? "Mở rộng danh sách thực đơn" : "Thu gọn danh sách thực đơn"}
               title={isCollapsed ? "Mở rộng" : "Thu gọn"}
             >
               {isCollapsed ? <FiChevronDown size={20} /> : <FiChevronUp size={20} />}
@@ -307,6 +311,7 @@ const CompactMenuStrip = ({
                           <>
                             <button
                               className="cms-tool-btn is-edit"
+                              aria-label={`Chỉnh sửa thực đơn ${menu.name}`}
                               title="Chỉnh sửa thực đơn"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -321,6 +326,7 @@ const CompactMenuStrip = ({
                         {canToggleMenuActive && (
                           <button
                             className={`cms-tool-btn ${menu.isActive === false ? "is-show" : "is-hide"}`}
+                            aria-label={menu.isActive === false ? `Bật lại thực đơn ${menu.name}` : `Ẩn thực đơn ${menu.name}`}
                             title={menu.isActive === false ? "Bật lại thực đơn" : "Ẩn thực đơn"}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -334,6 +340,7 @@ const CompactMenuStrip = ({
                         {canCopyMenu && (
                           <button
                             className="cms-tool-btn"
+                            aria-label={`Sao chép thực đơn ${menu.name}`}
                             title="Sao chép thực đơn kèm món và recipe"
                             disabled={!!busyMenuId}
                             onClick={async (e) => {
@@ -347,6 +354,7 @@ const CompactMenuStrip = ({
                         {canViewHistory && (
                           <button
                             className="cms-tool-btn is-history"
+                            aria-label={`Xem lịch sử thực đơn ${menu.name}`}
                             title="Xem lịch sử thay đổi"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -359,6 +367,7 @@ const CompactMenuStrip = ({
                         {canDeleteMenu && (
                           <button
                             className="cms-tool-btn is-delete"
+                            aria-label={`Xóa thực đơn ${menu.name}`}
                             title="Xóa thực đơn"
                             disabled={!!busyMenuId}
                             onClick={(e) => {

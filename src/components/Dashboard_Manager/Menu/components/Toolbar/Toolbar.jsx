@@ -5,7 +5,6 @@ import {
   FiFilter,
   FiGrid,
   FiList,
-  FiPlus,
   FiTag,
   FiDollarSign,
   FiGift,
@@ -164,7 +163,7 @@ const Toolbar = ({
             onChange={(e) => onSearchChange(e.target.value)}
           />
           {searchTerm && (
-            <button className="clear-btn" onClick={() => onSearchChange("")}>
+            <button className="clear-btn" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm" onClick={() => onSearchChange("")}>
               <FiX />
             </button>
           )}
@@ -175,6 +174,7 @@ const Toolbar = ({
             <button
               className={`toggle-btn ${currentView === "grid" ? "active" : ""}`}
               onClick={() => onViewChange("grid")}
+              aria-label="Hiển thị dạng lưới"
               title="Xem dạng Lưới"
             >
               <FiGrid />
@@ -182,6 +182,7 @@ const Toolbar = ({
             <button
               className={`toggle-btn ${currentView === "list" ? "active" : ""}`}
               onClick={() => onViewChange("list")}
+              aria-label="Hiển thị dạng danh sách"
               title="Xem dạng Danh sách"
             >
               <FiList />
@@ -338,22 +339,22 @@ const Toolbar = ({
         <div className="active-chips-area">
           <span className="label">Đang lọc:</span>
           {searchTerm && (
-            <span className="chip">Tìm: "{searchTerm}" <button type="button" className="chip-x" onClick={() => onSearchChange("")}><FiX /></button></span>
+            <span className="chip">Tìm: "{searchTerm}" <button type="button" className="chip-x" aria-label="Xóa lọc tìm kiếm" title="Xóa lọc tìm kiếm" onClick={() => onSearchChange("")}><FiX /></button></span>
           )}
           {currentCategory && (
-            <span className="chip">Danh mục món đã chọn <button type="button" className="chip-x" onClick={() => onCategoryChange("")}><FiX /></button></span>
+            <span className="chip">Danh mục món đã chọn <button type="button" className="chip-x" aria-label="Xóa lọc danh mục" title="Xóa lọc danh mục" onClick={() => onCategoryChange("")}><FiX /></button></span>
           )}
           {statusFilter && (
-            <span className="chip">{STATUS_LABELS[statusFilter] || statusFilter}<button type="button" className="chip-x" onClick={() => onStatusFilterChange("")}><FiX /></button></span>
+            <span className="chip">{STATUS_LABELS[statusFilter] || statusFilter}<button type="button" className="chip-x" aria-label="Xóa lọc trạng thái" title="Xóa lọc trạng thái" onClick={() => onStatusFilterChange("")}><FiX /></button></span>
           )}
           {inventoryFilter !== "all" && (
-            <span className="chip">{{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
+            <span className="chip">{{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" aria-label="Xóa lọc tồn kho" title="Xóa lọc tồn kho" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
               Giá: {formatCurrency(minPrice) || "0"} -{" "}
               {formatCurrency(maxPrice) || "∞"}
-              <button type="button" className="chip-x" onClick={() => {
+              <button type="button" className="chip-x" aria-label="Xóa lọc giá" title="Xóa lọc giá" onClick={() => {
                   setPriceRange({ min: "", max: "" });
                   onPriceRangeChange({ minPrice: "", maxPrice: "" });
                 }}><FiX /></button>

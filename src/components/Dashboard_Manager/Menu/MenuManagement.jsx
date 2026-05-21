@@ -677,7 +677,7 @@ const MenuManagement = () => {
         pushMenuToast(
           getGraphQLErrorMessage(
             error,
-            "Đã xóa thực đơn nhưng không thể làm mới danh sách.",
+            "Đã xóa thực đơn nhưng chưa tải lại được danh sách. Hãy tải lại trang nếu cần.",
           ),
           "warning",
         );
