@@ -127,13 +127,13 @@ export const buildPerformanceReportHtml = (reportData) => `
       ` : ""}
       ${reportData.insufficientData ? `<p><strong>Không đủ dữ liệu hiệu suất trong kỳ.</strong></p>` : ""}
       ${!reportData.insufficientData && reportData.hasManagerReview === false ? `<p><em>Thiếu đánh giá quản lý; Quality và Manager Review đang dùng điểm trung lập.</em></p>` : ""}
-      ${reportData.kitchenMetrics ? `
+      ${Number(reportData.kitchenMetrics?.totalItems || 0) > 0 ? `
       <h3>Dữ liệu bếp/bar tham khảo</h3>
       <p>Tổng work items liên quan: ${escapeHtml(reportData.kitchenMetrics.totalItems ?? "--")}</p>
       <p>Đúng giờ / Trễ / Rất trễ: ${escapeHtml(reportData.kitchenMetrics.onTimeItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.lateItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.veryLateItems ?? "--")}</p>
       <p>Hủy / Trả / Không nhận: ${escapeHtml(reportData.kitchenMetrics.cancelledItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.returnedItems ?? "--")} / ${escapeHtml(reportData.kitchenMetrics.unacceptedItems ?? "--")}</p>
       <p>TB thời gian chuẩn bị: ${escapeHtml(reportData.kitchenMetrics.avgPrepMinutes ?? 0)} phút</p>
-      <p><em>${reportData.kitchenMetrics.affectsScore === false ? "Chưa ảnh hưởng điểm hiệu suất" : "Có ảnh hưởng điểm hiệu suất"}</em></p>
+      <p><em>Chưa ảnh hưởng điểm hiệu suất</em></p>
       ` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>
       ${reportData.adjustmentHistory.length === 0 ? "<p>Không có điều chỉnh điểm.</p>" : `<ul>${reportData.adjustmentHistory.map((item) => `<li>${formatDelta(item.scoreDelta)} điểm · ${escapeHtml(item.reason)} · ${escapeHtml(formatDate(item.createdAt))}${Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? ` · ${formatContributionScore(item.previousScore)} → ${formatContributionScore(item.newScore)}` : ""}</li>`).join("")}</ul>`}

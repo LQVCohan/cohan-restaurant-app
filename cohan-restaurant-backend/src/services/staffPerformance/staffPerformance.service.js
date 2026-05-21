@@ -10,6 +10,7 @@ import {
   Timesheet,
   KitchenOrderWorkItem,
 } from "../../../models/index.js";
+import { markUnacceptedKitchenOrderWorkItems } from "../kitchen/kitchenOrderWorkItem.service.js";
 
 const { Types } = mongoose;
 
@@ -707,6 +708,11 @@ export async function recalculateStaffPerformanceSnapshots({ input, ctx }) {
   }
 
   const employeeId = toObjectId(input.employeeId);
+
+  await markUnacceptedKitchenOrderWorkItems({
+    restaurantId,
+    now: periodEnd,
+  });
 
   const staffFilter = {
     userType: "STAFF",

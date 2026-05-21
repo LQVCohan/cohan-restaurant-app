@@ -914,6 +914,22 @@
       }
     }
 
+    .kitchen-metrics-card {
+      .kitchen-metrics-grid {
+        span {
+          color: #1e3a8a;
+        }
+      }
+
+      .kitchen-metrics-warning {
+        color: #92400e;
+      }
+
+      .kitchen-metrics-note {
+        margin-top: 0.55rem;
+      }
+    }
+
     .empty-detail {
       margin: 1rem;
       border: 1px dashed #cbd5e1;
