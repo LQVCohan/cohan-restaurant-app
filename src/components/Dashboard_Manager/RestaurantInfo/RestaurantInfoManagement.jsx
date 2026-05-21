@@ -1683,6 +1683,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     <div className="restaurant-management-container">
       {/* HEADER SECTION - Modern Style */}
       <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
         eyebrow="RESTAURANT INFO"
         title="Hồ sơ nhà hàng"
         subtitle="Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng"
