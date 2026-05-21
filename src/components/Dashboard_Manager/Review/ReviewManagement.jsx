@@ -3,11 +3,11 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 
 import "./ReviewManagement.scss";
 
-import ReviewsHeader from "./components/ReviewsHeader";
-import ReviewsNavTabs from "./components/ReviewsNavTabs";
 import ReviewsSidebarFilters from "./components/ReviewsSidebarFilters";
 import ReviewsList from "./components/ReviewsList";
 import ReviewModal from "./components/ReviewModal";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
+import ManagerCommandBar from "../shared/ManagerCommandBar";
 
 const ME_QUERY = gql`
   query Me {
@@ -435,12 +435,38 @@ const ReviewManagement = () => {
       )}
 
       <div className="reviews-container">
-        <ReviewsHeader total={stats.total} avg={stats.avg} pending={stats.pending} />
-        <ReviewsNavTabs
-          currentTab={currentTab}
-          onChangeTab={setCurrentTab}
-          pendingCount={stats.pending}
+        <ManagementPageHeader
+          density="compact"
+          showTimeWidget={false}
+          eyebrow="REVIEW MANAGER"
+          title="Đánh giá khách hàng"
+          subtitle="Xem đánh giá, phản hồi và kiểm duyệt nội dung review."
+          icon="⭐"
+          stats={[
+            { id: "total", icon: "🧾", label: "Tổng đánh giá", value: stats.total },
+            { id: "avg", icon: "⭐", label: "Điểm trung bình", value: stats.avg },
+            { id: "pending", icon: "⏳", label: "Chờ duyệt", value: stats.pending },
+            { id: "bad", icon: "⚠️", label: "Tiêu cực", value: filteredReviews.filter((r) => Number(r.rating || 0) <= 2).length },
+          ]}
+          secondaryActions={[{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }]}
         />
+
+        <ManagerCommandBar
+          tabs={[
+            { id: "all", label: "Tất cả" },
+            { id: "restaurant", label: "Nhà hàng" },
+            { id: "food", label: "Món ăn" },
+            { id: "service", label: "Dịch vụ" },
+            { id: "pending", label: "Chờ duyệt" },
+            { id: "reported", label: "Báo cáo" },
+          ]}
+          activeTab={currentTab}
+          onTabChange={setCurrentTab}
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
+        />
+
 
         <main className="reviews-main-content">
           <div className="reviews-content-grid">
@@ -453,23 +479,6 @@ const ReviewManagement = () => {
             <section className="reviews-content-area">
               <div className="reviews-content-header">
                 <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
-
-                <div className="reviews-content-header__actions">
-                  <div className="reviews-content-header__search-box">
-                    <span className="reviews-content-header__search-box-icon">🔍</span>
-                    <input
-                      type="text"
-                      className="reviews-content-header__search-box-input"
-                      placeholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <button className="reviews-btn reviews-btn-secondary" onClick={handleExport}>
-                    📊 Xuất báo cáo
-                  </button>
-                </div>
               </div>
 
               {error ? (

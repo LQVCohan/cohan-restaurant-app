@@ -1,0 +1,107 @@
+.manager-command-bar {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 16px;
+}
+
+.mcb-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.mcb-tab {
+  border: 1px solid #dbe3ed;
+  background: #fff;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+}
+
+.mcb-tab.is-active {
+  background: #1e293b;
+  color: #fff;
+  border-color: #1e293b;
+}
+
+.mcb-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mcb-left,
+.mcb-right {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mcb-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #dbe3ed;
+  border-radius: 10px;
+  padding: 0 0.55rem;
+  height: 40px;
+  min-width: 240px;
+}
+
+.mcb-search input {
+  border: none;
+  outline: none;
+}
+
+.mcb-btn {
+  height: 40px;
+  border: 1px solid #dbe3ed;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mcb-btn--primary {
+  background: #b89365;
+  color: #fff;
+  border-color: #b89365;
+}
+
+
+.mcb-view-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+
+  button {
+    height: 36px;
+    border: 1px solid #dbe3ed;
+    background: #fff;
+    border-radius: 8px;
+    padding: 0 0.65rem;
+  }
+
+  .is-active {
+    border-color: #1e293b;
+    color: #1e293b;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 768px) {
+  .mcb-left,
+  .mcb-right {
+    width: 100%;
+  }
+
+  .mcb-search {
+    width: 100%;
+    min-width: 0;
+  }
+}

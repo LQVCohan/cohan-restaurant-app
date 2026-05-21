@@ -37,6 +37,8 @@ const ManagementPageHeader = ({
   onToggle,
   showTimeWidget = true,
   className = "",
+  density = "hero",
+  statsPlacement = "right",
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
@@ -72,7 +74,7 @@ const ManagementPageHeader = ({
   };
 
   return (
-    <section className={`management-page-header ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}>
+    <section className={`management-page-header density-${density} stats-${statsPlacement} ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}>
       {onToggle && (
         <button className="mph-toggle" onClick={onToggle} title="Thu gọn/Mở rộng" type="button">
           <span>{isCollapsed ? "▼" : "▲"}</span>
@@ -102,7 +104,7 @@ const ManagementPageHeader = ({
       </div>
 
       <div className="mph-right">
-        {!isCollapsed && stats.length > 0 && (
+        {!isCollapsed && statsPlacement !== "none" && stats.length > 0 && (
           <div className="mph-stats-grid">
             {stats.slice(0, 4).map((item) => (
               <div key={item.id || item.label} className={`mph-stat-card tone-${item.tone || "default"}`}>

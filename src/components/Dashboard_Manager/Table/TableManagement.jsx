@@ -32,6 +32,7 @@ import {
   getTableStatusConfig,
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
+import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -577,56 +578,29 @@ const TableManagement = () => {
 
   return (
     <div className="tm-container">
-      {/* --- Header --- */}
-      <header className="tm-header">
-        <div className="tm-title">
-          <h1>🍽️ Quản Lý Bàn</h1>
-          <div className="tm-res-select">
-            <select
-              value={selectedRestaurantId}
-              onChange={(e) => setSelectedRestaurantId(e.target.value)}
-            >
-              {restaurantList.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="tm-actions">
-          {/* 3. Cập nhật hành động chuyển trang */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleOpenFloorDesigner}
-          >
-            🗺️ Thiết kế Sơ đồ
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowVrModal(true)}
-          >
-            🕶️ VR toàn quán
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowTable3DModal(true)}
-            disabled={!restaurantId}
-          >
-            🪑 Mô phỏng 3D
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleOpenAddTableModal}
-          >
-            ➕ Thêm bàn
-          </Button>
-        </div>
-      </header>
+      <ManagementPageHeader
+        density="compact"
+        showTimeWidget={false}
+        eyebrow="TABLE MANAGER"
+        title="Quản lý bàn"
+        subtitle="Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ."
+        icon="🍽️"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={setSelectedRestaurantId}
+        restaurantList={restaurantList.map((r) => ({ id: String(r.id), name: r.name }))}
+        stats={[
+          { id: "total", icon: "🪑", label: "Tổng bàn", value: tablesMapped.length },
+          { id: "busy", icon: "🔴", label: "Đang sử dụng", value: tablesMapped.filter((t) => t.status === "occupied").length },
+          { id: "free", icon: "🟢", label: "Trống", value: tablesMapped.filter((t) => t.status === "available").length },
+          { id: "floors", icon: "🏢", label: "Số tầng", value: floors.length },
+        ]}
+        secondaryActions={[
+          { label: "Thiết kế sơ đồ", icon: "🗺️", onClick: handleOpenFloorDesigner },
+          { label: "VR toàn quán", icon: "🕶️", onClick: () => setShowVrModal(true) },
+          { label: "Mô phỏng 3D", icon: "🪑", onClick: () => setShowTable3DModal(true), disabled: !restaurantId },
+        ]}
+        primaryAction={{ label: "Thêm bàn", icon: "➕", onClick: handleOpenAddTableModal }}
+      />
 
       {/* --- Main Layout --- */}
       <div className="tm-layout">
