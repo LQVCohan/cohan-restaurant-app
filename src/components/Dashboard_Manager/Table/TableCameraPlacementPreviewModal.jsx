@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import { CUSTOM_TABLE_SHAPES } from "@/config/table3dCustomModelBuilder";
+import { mapTable3DTypeToArea } from "@/config/table3dCatalog";
 import { getTableAreaLabel } from "@/utils/tableManagementOptions";
 import "./TableCameraPlacementPreviewModal.scss";
 
@@ -34,7 +35,7 @@ const TableCameraPlacementPreviewModal = ({ open, onClose, modelItem, onConfirmP
 
   const modelSummary = useMemo(() => {
     const shape = getShapeFromModel(modelItem);
-    const area = modelItem?.customModelSpec?.area || (modelItem?.tableType === "vip-table" ? "vip" : "standard");
+    const area = modelItem?.customModelSpec?.area || mapTable3DTypeToArea(modelItem?.tableType);
     return {
       name: modelItem?.label || modelItem?.customModelSpec?.name || "Mẫu bàn",
       seats: modelItem?.customModelSpec?.capacity || modelItem?.capacity || 4,
