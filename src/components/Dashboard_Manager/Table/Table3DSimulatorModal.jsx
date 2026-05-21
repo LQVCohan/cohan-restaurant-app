@@ -197,13 +197,19 @@ const Table3DSimulatorModal = ({
                     variant="secondary"
                     type="button"
                     onClick={(event) => handleDeleteCustomModel(event, model)}
+                    aria-label={`Xóa mẫu tùy chỉnh ${model.label}`}
+                    title={`Xóa mẫu tùy chỉnh ${model.label}`}
                   >
                     Xóa
                   </Button>
                 )}
               </div>
             ))}
-            {!allModels.length && <div className="model-empty">Không có mẫu phù hợp.</div>}
+            {!allModels.length && (
+              <div className="model-empty">
+                Không có mẫu phù hợp cho loại bàn này. Hãy thử tab khác hoặc tạo mẫu tùy chỉnh mới.
+              </div>
+            )}
           </div>
 
           <div className="table-3d-modal__meta">

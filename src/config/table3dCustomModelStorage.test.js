@@ -123,4 +123,20 @@ describe("table3dCustomModelStorage", () => {
     expect(doesCustomModelMatchTableType({ key: "round-oak-4", source: "public" }, "round-table")).toBe(false);
   });
 
+  it("doesCustomModelMatchTableType returns false when type mismatches", () => {
+    const custom = buildCustom({ customModelSpec: { shape: "round" } });
+    expect(doesCustomModelMatchTableType(custom, "booth-table")).toBe(false);
+  });
+
+  it("legacy custom model with missing shape falls back safely to rect-4-seat", () => {
+    const legacy = buildCustom({ tableType: "custom-parametric", customModelSpec: { name: "legacy" } });
+    expect(getCustomModelCatalogTableType(legacy)).toBe("rect-4-seat");
+    expect(doesCustomModelMatchTableType(legacy, "rect-4-seat")).toBe(true);
+  });
+
+  it("loadCustomTableModels does not crash with non-array JSON payload", () => {
+    localStorage.setItem(getCustomTableModelStorageKey("r1"), JSON.stringify({ bad: true }));
+    expect(loadCustomTableModels("r1")).toEqual([]);
+  });
+
 });
