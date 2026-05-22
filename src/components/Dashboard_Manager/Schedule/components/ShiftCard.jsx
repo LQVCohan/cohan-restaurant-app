@@ -64,9 +64,11 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
         : "Đủ yêu cầu";
   const isCritical = missingCount > 0;
   return (
-    <div
+    <button
+      type="button"
       className={`shift-card ${isCritical ? "critical" : "optimal"}`}
       onClick={() => onClick(shift)}
+      aria-label={`Xem chi tiết ca ${shift.startTime} - ${shift.endTime}, ${currentCount} nhân sự, ${coverageLabel}`}
     >
       {/* 1. Header: Thời gian & Cảnh báo */}
       <div className="card-header">
@@ -151,7 +153,7 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
           Xem chi tiết →
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 

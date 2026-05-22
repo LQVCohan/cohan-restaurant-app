@@ -17,10 +17,10 @@ let mockAvailabilitySubmissionsData;
 let mutationSpy;
 let lazyQuerySpy;
 const getFirstShiftCard = async () => {
-  await waitFor(() => {
-    expect(document.querySelector(".shift-card")).toBeTruthy();
+  const shiftCards = await screen.findAllByRole("button", {
+    name: /Xem chi tiết ca/i,
   });
-  return document.querySelector(".shift-card");
+  return shiftCards[0];
 };
 
 vi.mock("@apollo/client", async () => {
