@@ -98,6 +98,9 @@ describe("availability resolver", () => {
       periodStart: new Date("2026-05-01T00:00:00.000Z"),
       periodEnd: new Date("2026-05-07T23:59:59.999Z"),
     });
+    modelMocks.StaffAvailabilitySubmission.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    });
     modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "late_change_requested" });
 
     const res = await mutation.submitStaffAvailability(
@@ -116,6 +119,43 @@ describe("availability resolver", () => {
 
     expect(res.status).toBe("late_change_requested");
     expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.status).toBe("late_change_requested");
+  });
+
+  it("sets previousStatusBeforeLateChange from existing locked submission", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({
+      _id: "w1",
+      restaurantId: "r1",
+      status: "closed",
+      openAt: new Date(Date.now() - 100000),
+      closeAt: new Date(Date.now() - 1000),
+      lateChangeRequiresApproval: true,
+      periodStart: new Date("2026-05-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-05-07T23:59:59.999Z"),
+    });
+    modelMocks.StaffAvailabilitySubmission.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ status: "locked" }),
+    });
+    modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "late_change_requested" });
+
+    await mutation.submitStaffAvailability(
+      null,
+      {
+        input: {
+          availabilityWindowId: "w1",
+          employeeId: "e1",
+          employmentType: "part_time",
+          submissionType: "weekly_availability",
+          slots: [],
+        },
+      },
+      { user: { id: "e1", roles: [], restaurantId: "r1" } },
+    );
+
+    expect(
+      modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set
+        .previousStatusBeforeLateChange,
+    ).toBe("locked");
   });
 
   it("rejecting late change restores previous official status and keeps official slots", async () => {

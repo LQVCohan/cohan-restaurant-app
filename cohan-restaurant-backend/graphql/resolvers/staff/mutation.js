@@ -264,10 +264,11 @@ async function createStaffShiftInternal(input, ctx) {
     },
     ctx,
   });
-  if (hasNonInfoWarnings(validationResult) && input.allowOverride !== true) {
+  const hasWarnings = hasNonInfoWarnings(validationResult);
+  if (hasWarnings && input.allowOverride !== true) {
     throw new Error("Có cảnh báo policy khi xếp ca. Cần override có lý do để tiếp tục.");
   }
-  if (input.allowOverride === true && !String(input.overrideReason || "").trim()) {
+  if (hasWarnings && input.allowOverride === true && !String(input.overrideReason || "").trim()) {
     throw new Error("Cần nhập lý do override khi xếp ca có cảnh báo policy.");
   }
   const staff = await loadStaffForRestaurant(input.employeeId, restaurantId);

@@ -170,4 +170,17 @@ describe("createStaffShift lifecycle guard", () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(mutation.createStaffShift(null, { input: { ...baseInput, allowOverride: true, overrideReason: "manager approved" } }, { user: { id: "m1", roles: ["manager"] } })).resolves.toBeTruthy();
   });
+
+  it("allows createStaffShift with allowOverride true and empty reason when no warnings", async () => {
+    mockPublicationStatus(null);
+    validationMocks.hasNonInfoWarnings.mockReturnValueOnce(false);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await expect(
+      mutation.createStaffShift(
+        null,
+        { input: { ...baseInput, allowOverride: true, overrideReason: "" } },
+        { user: { id: "m1", roles: ["manager"] } },
+      ),
+    ).resolves.toBeTruthy();
+  });
 });
