@@ -9,6 +9,9 @@ import {
   StaffPerformanceSnapshot,
   Timesheet,
   KitchenOrderWorkItem,
+  PerformanceIncident,
+  StaffPerformanceScoreAdjustment,
+  StaffPerformanceScoreReversal,
 } from "../../../models/index.js";
 import { markUnacceptedKitchenOrderWorkItems } from "../kitchen/kitchenOrderWorkItem.service.js";
 
@@ -357,6 +360,66 @@ function weightedFinalScore(components) {
     totalWeight;
 
   return clampScore(raw);
+}
+
+async function resolvePerformanceScoreAdjustmentSummary({
+  employeeId,
+  restaurantId,
+  periodStart,
+  periodEnd,
+}) {
+  const incidents = await PerformanceIncident.find({
+    employeeId,
+    restaurantId,
+    occurredAt: { $gte: periodStart, $lte: periodEnd },
+    scoreImpactStatus: "applied",
+  })
+    .select("_id")
+    .lean();
+
+  const appliedIncidentIds = incidents.map((incident) => incident?._id).filter(Boolean);
+  if (!appliedIncidentIds.length) {
+    return {
+      formulaScoreAdjustmentDelta: 0,
+      incidentAdjustmentDelta: 0,
+      appealReversalDelta: 0,
+      finalAdjustmentDelta: 0,
+      appliedAdjustmentCount: 0,
+      reversedAppealCount: 0,
+      appliedIncidentIds: [],
+      reversalIds: [],
+    };
+  }
+
+  const [adjustments, reversals] = await Promise.all([
+    StaffPerformanceScoreAdjustment.find({ incidentId: { $in: appliedIncidentIds } })
+      .select("_id incidentId scoreDelta")
+      .lean(),
+    StaffPerformanceScoreReversal.find({ incidentId: { $in: appliedIncidentIds } })
+      .select("_id reversalDelta")
+      .lean(),
+  ]);
+
+  const incidentAdjustmentDelta = adjustments.reduce(
+    (sum, adjustment) => sum + Number(adjustment?.scoreDelta || 0),
+    0,
+  );
+  const appealReversalDelta = reversals.reduce(
+    (sum, reversal) => sum + Number(reversal?.reversalDelta || 0),
+    0,
+  );
+  const finalAdjustmentDelta = incidentAdjustmentDelta + appealReversalDelta;
+
+  return {
+    formulaScoreAdjustmentDelta: finalAdjustmentDelta,
+    incidentAdjustmentDelta,
+    appealReversalDelta,
+    finalAdjustmentDelta,
+    appliedAdjustmentCount: adjustments.length,
+    reversedAppealCount: reversals.length,
+    appliedIncidentIds: appliedIncidentIds.map((id) => String(id)),
+    reversalIds: reversals.map((reversal) => String(reversal._id)),
+  };
 }
 
 export function resolvePerformanceLevel(score) {
@@ -889,9 +952,17 @@ async function calculateSnapshotForEmployee({
     },
   };
 
-  const finalPerformanceScore = insufficientData
+  const baseFormulaScore = insufficientData ? 0 : weightedFinalScore(components);
+  const adjustmentSummary = await resolvePerformanceScoreAdjustmentSummary({
+    employeeId,
+    restaurantId,
+    periodStart,
+    periodEnd,
+  });
+  const hasAdjustmentDelta = Number(adjustmentSummary.finalAdjustmentDelta || 0) !== 0;
+  const finalPerformanceScore = insufficientData && !hasAdjustmentDelta
     ? 0
-    : weightedFinalScore(components);
+    : clampScore(baseFormulaScore + Number(adjustmentSummary.finalAdjustmentDelta || 0), 0);
 
   const actorId = getActorId(ctx);
 
@@ -947,6 +1018,14 @@ async function calculateSnapshotForEmployee({
           insufficientData,
           kitchenMetrics,
           cashierMetrics,
+          baseFormulaScore,
+          incidentAdjustmentDelta: adjustmentSummary.incidentAdjustmentDelta,
+          appealReversalDelta: adjustmentSummary.appealReversalDelta,
+          finalAdjustmentDelta: adjustmentSummary.finalAdjustmentDelta,
+          appliedAdjustmentCount: adjustmentSummary.appliedAdjustmentCount,
+          reversedAppealCount: adjustmentSummary.reversedAppealCount,
+          appliedIncidentIds: adjustmentSummary.appliedIncidentIds,
+          scoreReversalIds: adjustmentSummary.reversalIds,
           ...(unacceptedAuditResult
             ? {
                 unacceptedAuditRefreshed: true,
