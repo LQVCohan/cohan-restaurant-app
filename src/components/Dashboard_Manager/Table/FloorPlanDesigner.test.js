@@ -5,7 +5,7 @@ vi.mock("@/lib/browserStorage", () => ({
 }));
 
 import { readStorageValue } from "@/lib/browserStorage";
-import { buildAutoLayoutComponentsForRequest, getAuthHeaders } from "./FloorPlanDesigner";
+import { buildAutoLayoutComponentsForRequest, getAuthHeaders, resolveInitialFloorId } from "./FloorPlanDesigner";
 
 describe("FloorPlanDesigner helpers", () => {
   beforeEach(() => {
@@ -61,5 +61,20 @@ describe("FloorPlanDesigner helpers", () => {
     expect(result.tables.twoSeat).toBe(0);
     expect(result.tables.fourSeat).toBe(0);
     expect(result.objects.wall).toBe(0);
+  });
+
+  it("resolveInitialFloorId returns requested floor when valid", () => {
+    const floors = [{ id: "1" }, { id: "2" }];
+    expect(resolveInitialFloorId(floors, "2")).toBe("2");
+  });
+
+  it("resolveInitialFloorId falls back to first floor when requested floor invalid", () => {
+    const floors = [{ id: "1" }, { id: "2" }];
+    expect(resolveInitialFloorId(floors, "999")).toBe("1");
+  });
+
+  it("resolveInitialFloorId returns first floor when no requested floor", () => {
+    const floors = [{ id: "3" }, { id: "4" }];
+    expect(resolveInitialFloorId(floors, null)).toBe("3");
   });
 });

@@ -9,7 +9,19 @@ const avgNearestDistance = (tables) => tables.reduce((sum, t, idx) => {
   return sum + (Number.isFinite(nearest) ? nearest : 0);
 }, 0) / Math.max(1, tables.length);
 
-describe("aiTable.service layout engine v2", () => {
+describe("aiTable.service layout engine v3", () => {
+  it("compact layout for small table count", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } }, 0);
+    expect(out.tables.length).toBe(8);
+    const room = out.meta.zones.roomBounds;
+    const minX = Math.min(...out.tables.map((t) => t.x));
+    const maxX = Math.max(...out.tables.map((t) => t.x));
+    const minY = Math.min(...out.tables.map((t) => t.y));
+    const maxY = Math.max(...out.tables.map((t) => t.y));
+    expect(maxX - minX).toBeLessThan(room.w * 0.85);
+    expect(maxY - minY).toBeLessThan(room.h * 0.85);
+    expect(out.meta.scoreBreakdown.emptyCenterPenalty).toBeLessThan(200);
+  });
   it("main aisle is not blocked", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 12, vip: 2 }, objects: { door: 1, cashier: 1, kitchen: 1, plant: 2 } } }, 1);
     expect(out.meta.scoreBreakdown.aislePenalty).toBeLessThanOrEqual(20);
@@ -36,6 +48,18 @@ describe("aiTable.service layout engine v2", () => {
     expect(Math.hypot(cashier.x - door.x, cashier.y - door.y)).toBeLessThan(260);
     expect(__testables.isInAisle(cashier, out.meta.zones.mainAisle)).toBe(false);
   });
+  it("door and windows align to room edge", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 6 }, objects: { door: 1, window: 3, wall: 4 } } }, 4);
+    const room = out.meta.zones.roomBounds;
+    const nearEdge = (r) => {
+      const cx = r.x + r.w / 2; const cy = r.y + r.h / 2;
+      return Math.min(Math.abs(cx - room.x), Math.abs(cx - (room.x + room.w)), Math.abs(cy - room.y), Math.abs(cy - (room.y + room.h))) < 20;
+    };
+    const door = out.decor.find((d) => d.type === "door");
+    const windows = out.decor.filter((d) => d.type === "window");
+    expect(nearEdge(door)).toBe(true);
+    expect(windows.every((w) => nearEdge(w))).toBe(true);
+  });
 
   it("service objects stay out of main dining center", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 0);
@@ -44,6 +68,14 @@ describe("aiTable.service layout engine v2", () => {
     const services = out.decor.filter((d) => ["kitchen", "wc", "buffet"].includes(d.type));
     expect(services.some((d) => overlap(d, centerRect))).toBe(false);
     services.forEach((s) => out.tables.forEach((t) => expect(overlap(s, { x: t.x, y: t.y, w: t.type === "vip" ? 72 : 60, h: t.type === "vip" ? 72 : 60 })).toBe(false)));
+  });
+  it("service zone near edge and not inside dining center", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 6);
+    const services = out.decor.filter((d) => ["kitchen", "wc", "buffet"].includes(d.type));
+    services.forEach((s) => {
+      expect(__testables.isInAisle(s, out.meta.zones.mainAisle)).toBe(false);
+      out.tables.forEach((t) => expect(overlap(s, { x: t.x, y: t.y, w: t.type === "vip" ? 72 : 60, h: t.type === "vip" ? 72 : 60 })).toBe(false));
+    });
   });
 
   it("spacious has larger nearest-table distance than capacity", () => {
@@ -72,6 +104,18 @@ describe("aiTable.service layout engine v2", () => {
   it("output uses valid GraphQL table types", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { twoSeat: 2, fourSeat: 2, group: 2, vip: 2, standard: 1 }, objects: {} } }, 1);
     expect(out.tables.every((t) => allowedTypes.includes(t.type))).toBe(true);
+  });
+  it("balanced table distribution", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 12 }, objects: {} } }, 2);
+    const aisle = out.meta.zones.mainAisle;
+    let sideA = 0; let sideB = 0;
+    out.tables.forEach((t) => {
+      if (aisle.orientation === "vertical") {
+        if (t.x + 30 < aisle.x) sideA += 1; else sideB += 1;
+      } else if (t.y + 30 < aisle.y) sideA += 1; else sideB += 1;
+    });
+    expect(Math.abs(sideA - sideB)).toBeLessThanOrEqual(4);
+    expect(out.meta.scoreBreakdown.aislePenalty).toBeLessThan(100);
   });
 
   it("clamps total tables to 200 and adds warning", () => {
