@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerAnalyticsPage.scss";
@@ -22,13 +22,47 @@ const GET_CUSTOMER_ANALYTICS = gql`
   }
 `;
 
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
+const navigateManagerPage = (page) => {
+  if (!["orders", "customers", "menu"].includes(page)) return;
+
+  window.dispatchEvent(
+    new CustomEvent("manager:navigate", {
+      detail: {
+        page,
+        source: "customer-analytics",
+      },
+    }),
+  );
+};
+
 const CustomerAnalyticsPage = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
-  const restaurantId = restaurants?.[0]?.id;
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
-  const { data, loading } = useQuery(GET_CUSTOMER_ANALYTICS, {
-    skip: !restaurantId,
-    variables: { restaurantId },
+  const restaurantOptions = Array.isArray(restaurants) ? restaurants : [];
+  const effectiveRestaurantId =
+    selectedRestaurantId || restaurantOptions?.[0]?.id || "";
+
+  const selectedRestaurant = useMemo(
+    () =>
+      restaurantOptions.find((item) => item.id === effectiveRestaurantId),
+    [restaurantOptions, effectiveRestaurantId],
+  );
+
+  const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_ANALYTICS, {
+    skip: !effectiveRestaurantId,
+    variables: { restaurantId: effectiveRestaurantId },
     fetchPolicy: "network-only",
   });
 
@@ -36,52 +70,311 @@ const CustomerAnalyticsPage = () => {
   const topDishes = analytics?.mostPopularDishes || [];
   const busyDays = analytics?.busiestDays || [];
 
+  const activeCustomerCount = Number(analytics?.activeCustomerCount || 0);
+  const returningCustomerCount = Number(analytics?.returningCustomerCount || 0);
+  const averageMembershipDays = Number(analytics?.averageMembershipDays || 0);
+  const returningRate =
+    activeCustomerCount > 0
+      ? Math.round((returningCustomerCount / activeCustomerCount) * 100)
+      : 0;
+
+  const totalPopularDishOrders = topDishes.reduce(
+    (sum, item) => sum + Number(item?.quantity || 0),
+    0,
+  );
+  const totalBusyDayOrders = busyDays.reduce(
+    (sum, item) => sum + Number(item?.orderCount || 0),
+    0,
+  );
   const peakDay = busyDays[0];
 
-  return (
-    <div className="customer-analytics-page">
-      <h2>Phân tích người dùng</h2>
-      {loading ? <p>Đang tải dữ liệu...</p> : null}
-      <div className="cap-grid">
-        <div className="cap-card">
-          <div className="label">Khách hoạt động</div>
-          <div className="value">{analytics?.activeCustomerCount || 0}</div>
-        </div>
-        <div className="cap-card">
-          <div className="label">Khách quay lại</div>
-          <div className="value">{analytics?.returningCustomerCount || 0}</div>
-        </div>
-        <div className="cap-card">
-          <div className="label">Thời gian gắn bó TB</div>
-          <div className="value">{analytics?.averageMembershipDays || 0} ngày</div>
-        </div>
-        <div className="cap-card">
-          <div className="label">Ngày đông nhất</div>
-          <div className="value">{peakDay?.date || "—"}</div>
-        </div>
-      </div>
+  const maxDishQuantity = Math.max(
+    ...topDishes.map((dish) => Number(dish?.quantity || 0)),
+    1,
+  );
+  const maxDayOrders = Math.max(
+    ...busyDays.map((day) => Number(day?.orderCount || 0)),
+    1,
+  );
 
-      <div className="cap-panels">
-        <section className="cap-panel">
-          <h3>Món ăn thông dụng</h3>
-          {topDishes.map((x) => (
-            <div className="cap-row" key={x.dishName}>
-              <span>{x.dishName}</span>
-              <b>{x.quantity}</b>
-            </div>
-          ))}
+  const isAnalyticsEmpty =
+    !loading &&
+    !error &&
+    activeCustomerCount === 0 &&
+    returningCustomerCount === 0 &&
+    topDishes.length === 0 &&
+    busyDays.length === 0;
+
+  return (
+    <section className="customer-analytics-page">
+      <section className="customer-analytics-hero">
+        <div>
+          <p className="customer-analytics-hero__eyebrow">Phân tích khách hàng</p>
+          <h2>Hiểu hành vi và mức độ quay lại của khách</h2>
+          <p>
+            Theo dõi khách hoạt động, khách quay lại, món được quan tâm và ngày có
+            mật độ đơn cao.
+          </p>
+        </div>
+
+        <div className="customer-analytics-toolbar">
+          <label className="customer-analytics-field">
+            <span>Nhà hàng</span>
+            <select
+              value={effectiveRestaurantId}
+              onChange={(e) => setSelectedRestaurantId(e.target.value)}
+              disabled={restaurantOptions.length === 0}
+            >
+              {restaurantOptions.length === 0 ? (
+                <option value="">Chưa có nhà hàng</option>
+              ) : null}
+              {restaurantOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className="customer-analytics-refresh"
+            onClick={() => refetch?.()}
+            disabled={loading || !effectiveRestaurantId}
+          >
+            Làm mới
+          </button>
+        </div>
+      </section>
+
+      {error ? (
+        <section className="customer-analytics-error">
+          <span>Không thể tải dữ liệu phân tích khách hàng.</span>
+          <button
+            type="button"
+            className="customer-analytics-refresh"
+            onClick={() => refetch?.()}
+            disabled={loading || !effectiveRestaurantId}
+          >
+            Thử lại
+          </button>
         </section>
-        <section className="cap-panel">
-          <h3>Mật độ theo ngày</h3>
-          {busyDays.map((x) => (
-            <div className="cap-row" key={x.date}>
-              <span>{x.date}</span>
-              <b>{x.orderCount} đơn</b>
-            </div>
-          ))}
+      ) : null}
+
+      {!effectiveRestaurantId ? (
+        <section className="customer-empty-state customer-empty-state--page">
+          <h3>Chưa có nhà hàng để phân tích</h3>
+          <p>Vui lòng tạo hoặc chọn nhà hàng trước khi xem phân tích khách hàng.</p>
         </section>
-      </div>
-    </div>
+      ) : error ? null : (
+        <>
+          <div className="customer-analytics-kpis">
+            <article className="customer-kpi customer-kpi--primary">
+              <span className="customer-kpi__label">Khách hoạt động</span>
+              <strong className="customer-kpi__value">
+                {loading ? "..." : activeCustomerCount}
+              </strong>
+              <p className="customer-kpi__help">
+                Khách có tương tác/đơn hàng được ghi nhận.
+              </p>
+            </article>
+
+            <article className="customer-kpi customer-kpi--success">
+              <span className="customer-kpi__label">Khách quay lại</span>
+              <strong className="customer-kpi__value">
+                {loading ? "..." : returningCustomerCount}
+              </strong>
+              <p className="customer-kpi__help">Nhóm khách có dấu hiệu quay lại.</p>
+            </article>
+
+            <article className="customer-kpi customer-kpi--accent">
+              <span className="customer-kpi__label">Tỷ lệ quay lại</span>
+              <strong className="customer-kpi__value">
+                {loading ? "..." : `${returningRate}%`}
+              </strong>
+              <p className="customer-kpi__help">
+                Tính từ khách quay lại / khách hoạt động.
+              </p>
+            </article>
+
+            <article className="customer-kpi customer-kpi--neutral">
+              <span className="customer-kpi__label">Gắn bó trung bình</span>
+              <strong className="customer-kpi__value">
+                {loading ? "..." : `${averageMembershipDays} ngày`}
+              </strong>
+              <p className="customer-kpi__help">
+                Thời gian trung bình khách ở trong hệ thống.
+              </p>
+            </article>
+          </div>
+
+          <section className="customer-analytics-strip">
+            <div>
+              <span>Ngày đông nhất</span>
+              <strong>{formatDate(peakDay?.date)}</strong>
+              <small>{peakDay ? `${peakDay.orderCount || 0} đơn` : "Chưa có dữ liệu"}</small>
+            </div>
+            <div>
+              <span>Tổng đơn ghi nhận</span>
+              <strong>{loading ? "..." : totalBusyDayOrders}</strong>
+              <small>Từ dữ liệu mật độ theo ngày</small>
+            </div>
+            <div>
+              <span>Lượt món phổ biến</span>
+              <strong>{loading ? "..." : totalPopularDishOrders}</strong>
+              <small>Từ danh sách món được gọi nhiều</small>
+            </div>
+            <div>
+              <span>Nhà hàng</span>
+              <strong>{selectedRestaurant?.name || "—"}</strong>
+              <small>Đang phân tích</small>
+            </div>
+          </section>
+
+          <section className="customer-analytics-panels">
+            <section className="customer-panel customer-panel--primary">
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Món khách quan tâm</h3>
+                  <p>Các món được gọi nhiều trong dữ liệu phân tích khách hàng.</p>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="customer-panel__loading">Đang tải dữ liệu món...</div>
+              ) : topDishes.length > 0 ? (
+                <div className="customer-dish-list">
+                  {topDishes.map((item, index) => {
+                    const quantity = Number(item?.quantity || 0);
+                    const progress = Math.max(
+                      0,
+                      Math.min(100, (quantity / maxDishQuantity) * 100),
+                    );
+
+                    return (
+                      <div className="customer-dish-row" key={`${item.dishName}-${index}`}>
+                        <div className="customer-rank">#{index + 1}</div>
+                        <div className="customer-dish-row__body">
+                          <div className="customer-dish-row__meta">
+                            <strong>{item?.dishName || "Không rõ tên món"}</strong>
+                            <span>{quantity} lượt</span>
+                          </div>
+                          <div className="customer-progress">
+                            <span style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="customer-empty-state">
+                  <h4>Chưa có dữ liệu món phổ biến</h4>
+                  <p>
+                    Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị
+                    tại đây.
+                  </p>
+                </div>
+              )}
+            </section>
+
+            <section className="customer-panel">
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Mật độ đơn theo ngày</h3>
+                  <p>
+                    Nhận diện ngày có nhiều tương tác/đơn để chuẩn bị nhân sự và tồn
+                    kho.
+                  </p>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="customer-panel__loading">Đang tải dữ liệu ngày...</div>
+              ) : busyDays.length > 0 ? (
+                <div className="customer-day-list">
+                  {busyDays.map((item, index) => {
+                    const count = Number(item?.orderCount || 0);
+                    const progress = Math.max(
+                      0,
+                      Math.min(100, (count / maxDayOrders) * 100),
+                    );
+
+                    return (
+                      <div className="customer-day-row" key={`${item.date}-${index}`}>
+                        <div className="customer-day-row__top">
+                          <strong>{formatDate(item?.date)}</strong>
+                          <span>{count} đơn</span>
+                        </div>
+                        <div className="customer-progress customer-progress--day">
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="customer-empty-state">
+                  <h4>Chưa có dữ liệu mật độ đơn</h4>
+                  <p>
+                    Dữ liệu sẽ rõ hơn khi nhà hàng có đơn hàng trong nhiều ngày.
+                  </p>
+                </div>
+              )}
+            </section>
+          </section>
+
+          <section
+            className={`customer-guidance ${isAnalyticsEmpty ? "customer-guidance--empty" : ""}`}
+          >
+            {isAnalyticsEmpty ? (
+              <>
+                <div>
+                  <p className="customer-guidance__eyebrow">Bước tiếp theo</p>
+                  <h3>Chưa đủ dữ liệu để phân tích khách hàng</h3>
+                  <p>
+                    Hãy bắt đầu bằng việc ghi nhận đơn hàng, kiểm tra menu và quản lý
+                    thông tin khách hàng.
+                  </p>
+                </div>
+                <div className="customer-guidance__actions">
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý đơn hàng"
+                    onClick={() => navigateManagerPage("orders")}
+                  >
+                    Xem đơn hàng
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý khách hàng"
+                    onClick={() => navigateManagerPage("customers")}
+                  >
+                    Quản lý khách hàng
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý menu"
+                    onClick={() => navigateManagerPage("menu")}
+                  >
+                    Kiểm tra menu
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="customer-guidance__eyebrow">Gợi ý vận hành</p>
+                <h3>Tập trung vào nhóm khách quay lại và món được quan tâm</h3>
+                <p>
+                  Dùng dữ liệu này để chuẩn bị tồn kho, nhân sự và chương trình chăm
+                  sóc khách hàng phù hợp.
+                </p>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </section>
   );
 };
 
