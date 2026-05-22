@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "check:user-email": "node scripts/check-user-by-email.js",
     "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js",
+    "verify:demo:performance": "node scripts/verifyStaffPerformanceDemoRegression.js",
     "seed:permissions": "node scripts/seedPermissions.js",
     "seed:parent-roles": "node scripts/seedParentRoles.js",
     "seed:roles": "node scripts/seedRoles.js",

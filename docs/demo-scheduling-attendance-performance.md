@@ -9,6 +9,13 @@ cd cohan-restaurant-backend
 npm run seed:demo:scheduling
 # reset dữ liệu demo (không xoá dữ liệu thật)
 npm run seed:demo:scheduling -- --reset
+npm run verify:demo:performance
+```
+
+### Recommended flow
+```bash
+npm run seed:demo:scheduling -- --reset
+npm run verify:demo:performance
 ```
 
 ### Gán seed vào nhà hàng hiện có (không sửa profile nhà hàng)
