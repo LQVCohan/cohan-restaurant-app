@@ -1,7 +1,7 @@
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission, Staff } from "../../../models/index.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
-import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, getStaffEmploymentType, lockSubmissionsForClosedWindow } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
+import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
 import { AVAILABILITY_WINDOW_ADMIN_ROLES, AVAILABILITY_REVIEW_ROLES, userHasAnyRole } from "../../../src/services/scheduling/schedulingPermission.service.js";
 import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "../../../src/services/availability/availabilityRegistrationSchedule.service.js";
 
@@ -50,11 +50,9 @@ export default {
   },
   closeAvailabilityWindow: async (_, { id }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
-    const windowDoc = await getScopedAvailabilityWindow(id, ctx);
+    await getScopedAvailabilityWindow(id, ctx);
     const now = new Date();
-    const updatedWindow = await AvailabilityRegistrationWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closedAt: now } }, { new: true });
-    await lockSubmissionsForClosedWindow(windowDoc._id || id, now);
-    return updatedWindow;
+    return AvailabilityRegistrationWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closedAt: now } }, { new: true });
   },
   cancelAvailabilityWindow: async (_, { id, reason }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);

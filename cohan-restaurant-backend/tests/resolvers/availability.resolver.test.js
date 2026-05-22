@@ -168,7 +168,7 @@ describe("availability resolver", () => {
     expect(closeRes.status).toBe("closed");
     expect(cancelRes.status).toBe("cancelled");
     expect(modelMocks.AvailabilityRegistrationWindow.findById).toHaveBeenCalledTimes(3);
-    expect(modelMocks.StaffAvailabilitySubmission.updateMany).toHaveBeenCalledTimes(1);
+    expect(modelMocks.StaffAvailabilitySubmission.updateMany).not.toHaveBeenCalled();
   });
 
   it("allows manager without user.restaurantId when restaurant.managerId matches", async () => {
@@ -221,7 +221,7 @@ describe("availability resolver", () => {
     await expect(mutation.cancelAvailabilityWindow(null, { id: "missing", reason: "x" }, ctx)).rejects.toThrow("AVAILABILITY_WINDOW_NOT_FOUND");
   });
 
-  it("closeAvailabilityWindow sets closedAt and locks submitted/approved submissions", async () => {
+  it("closeAvailabilityWindow keeps configured closeAt deadline", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     const deadline = new Date("2026-06-20T10:00:00.000Z");
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", closeAt: deadline });
@@ -234,14 +234,11 @@ describe("availability resolver", () => {
     expect(modelMocks.AvailabilityRegistrationWindow.findByIdAndUpdate).toHaveBeenCalledWith(
       "w1",
       expect.objectContaining({
-        $set: expect.objectContaining({ status: "closed", closedBy: "m1", closedAt: expect.any(Date) }),
+        $set: expect.objectContaining({ status: "closed", closedBy: "m1" }),
       }),
       { new: true },
     );
-    expect(modelMocks.StaffAvailabilitySubmission.updateMany).toHaveBeenCalledWith(
-      { availabilityWindowId: "w1", status: { $in: ["submitted", "approved"] } },
-      { $set: { status: "locked", lockedAt: expect.any(Date) } },
-    );
+    expect(modelMocks.AvailabilityRegistrationWindow.findByIdAndUpdate.mock.calls[0][1].$set.closeAt).toBeUndefined();
   });
 
   it("allows staff to view their own submission", async () => {
