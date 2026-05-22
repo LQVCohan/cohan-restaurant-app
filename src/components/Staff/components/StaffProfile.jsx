@@ -1,5 +1,6 @@
 import React, { useState, useContext, useMemo } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import {
   ChefHat,
   Banknote,
@@ -24,7 +25,6 @@ import { AuthContext } from "../../../context/AuthContext";
 import StaffPersonalInfo from "./StaffPersonalInfo";
 import StaffSalarySummary from "./StaffSalarySummary";
 import StaffShiftHistory from "./StaffShiftHistory";
-import StaffAvailabilityRegistration from "./StaffAvailabilityRegistration";
 
 // --- GRAPHQL QUERIES ---
 const STAFF_ACCOUNT_OVERVIEW = gql`
@@ -102,13 +102,14 @@ const STAFF_SHIFT_HISTORY = gql`
 
 export default function StaffProfile() {
   const { user, logout } = useContext(AuthContext) || {};
+  const navigate = useNavigate();
 
   // States quản lý cài đặt
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
   // State quản lý luồng màn hình (Navigation)
-  // Các giá trị: "home", "profile", "salary", "shifts", "availability"
+  // Các giá trị: "home", "profile", "salary", "shifts"
   const [view, setView] = useState("home");
 
   // --- FETCH DATA ---
@@ -144,10 +145,6 @@ export default function StaffProfile() {
     "Nhân viên Order";
   const contactPhone = overview?.phone || user?.phone || "—";
   const contactEmail = overview?.email || user?.email || "—";
-  const employmentType = overview?.employmentType || user?.employmentType || "";
-  const restaurantId =
-    user?.restaurantForStaff || null;
-
   const shiftSummaryLabel = useMemo(() => {
     if (overview?.currentShift)
       return String(overview.currentShift).toUpperCase();
@@ -262,7 +259,7 @@ export default function StaffProfile() {
                 </button>
                 <button
                   className="menu-item"
-                  onClick={() => setView("availability")}
+                  onClick={() => navigate("/staff/schedule")}
                 >
                   <div className="item-left">
                     <div className="menu-icon text-blue">
@@ -352,13 +349,6 @@ export default function StaffProfile() {
         <StaffShiftHistory shifts={shifts} onBack={handleBack} />
       )}
 
-      {view === "availability" && (
-        <StaffAvailabilityRegistration
-          user={user}
-          employmentType={employmentType}
-          restaurantId={restaurantId}
-        />
-      )}
     </div>
   );
 }
