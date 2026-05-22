@@ -103,34 +103,41 @@ const RecentOrders = ({
 
             {hasEmptyActions ? (
               <div className="empty-state__actions">
-              {typeof onOpenPOS === "function" ? (
+                {typeof onOpenPOS === "function" ? (
                 <button
                   type="button"
                   className="empty-action empty-action--primary"
                   onClick={onOpenPOS}
+                  aria-label="Mở POS để tạo đơn mới"
                 >
                   <Monitor size={15} />
                   <span>Mở POS</span>
                 </button>
-              ) : null}
+                ) : null}
 
-              {typeof onGoToMenu === "function" ? (
-                <button type="button" className="empty-action" onClick={onGoToMenu}>
+                {typeof onGoToMenu === "function" ? (
+                <button
+                  type="button"
+                  className="empty-action"
+                  onClick={onGoToMenu}
+                  aria-label="Đi tới quản lý menu để kiểm tra món"
+                >
                   <Utensils size={15} />
                   <span>Quản lý menu</span>
                 </button>
-              ) : null}
+                ) : null}
 
-              {typeof onGoToTables === "function" ? (
+                {typeof onGoToTables === "function" ? (
                 <button
                   type="button"
                   className="empty-action"
                   onClick={onGoToTables}
+                  aria-label="Đi tới quản lý bàn để kiểm tra bàn"
                 >
                   <TableProperties size={15} />
                   <span>Quản lý bàn</span>
                 </button>
-              ) : null}
+                ) : null}
               </div>
             ) : null}
           </div>

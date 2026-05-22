@@ -82,6 +82,11 @@ const Dashboard = () => {
     resourceCounts.staff === 0;
   const hasCompletedOrders = Number(stats?.statusCounts?.completed || 0) > 0;
   const effectiveRestaurantId = selectedRestaurantId || selectedRestaurant?.id || "";
+  const alertsCardState = loading
+    ? "loading"
+    : alertsCount > 0
+      ? "warning"
+      : "healthy";
 
   const navigateManagerPage = (page) => {
     window.dispatchEvent(
@@ -127,6 +132,7 @@ const Dashboard = () => {
             type="button"
             className="dashboard-btn dashboard-btn--primary"
             onClick={() => handleSwitchToPOS?.()}
+            disabled={typeof handleSwitchToPOS !== "function"}
           >
             <Monitor size={16} />
             <span>Mở POS</span>
@@ -221,15 +227,16 @@ const Dashboard = () => {
         </article>
 
         <aside className="dashboard-side-stack">
-          <article className={`dashboard-card dashboard-card--side dashboard-card--alerts ${
-              alertsCount > 0
-                ? "dashboard-card--alerts-warning"
-                : "dashboard-card--alerts-healthy"
-            }`}>
+          <article className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}>
             <div className="dashboard-card__head">
               <h3>Cảnh báo vận hành</h3>
             </div>
-            {safeLowStockItems.length > 0 ? (
+            {loading ? (
+              <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
+                <h4>Đang tải cảnh báo</h4>
+                <p>Đang kiểm tra tồn kho và các cảnh báo vận hành.</p>
+              </div>
+            ) : safeLowStockItems.length > 0 ? (
               <div className="operational-alerts">
                 {safeLowStockItems.slice(0, 3).map((item, index) => (
                   <div
