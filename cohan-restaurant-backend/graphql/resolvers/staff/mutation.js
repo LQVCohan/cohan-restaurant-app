@@ -17,6 +17,7 @@ import {
   SchedulePublication,
   ShiftAcknowledgement,
   ScheduleAcknowledgement,
+  AvailabilityRegistrationWindow,
   AttendanceCorrectionRequest,
   OvertimeRequest,
 } from "../../../models/index.js";
@@ -1505,6 +1506,22 @@ const mutationResolvers = {
         },
       },
       { new: true, upsert: true },
+    );
+
+    await AvailabilityRegistrationWindow.updateOne(
+      {
+        restaurantId,
+        periodStart,
+        periodEnd,
+        status: { $in: ["closed", "open"] },
+      },
+      {
+        $set: {
+          status: "used_for_schedule",
+          usedForScheduleAt: publishAt,
+          usedForScheduleBy: actorUserId,
+        },
+      },
     );
 
     const shifts = await Shift.find({
