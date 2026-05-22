@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isPosManagedStatusTransition,
+  isBackendValidatedStatusTransition,
   normalizeTableStatus,
   POS_MANAGED_STATUS_TRANSITION_MESSAGE,
   POS_MANAGED_STATUS_TRANSITION_TITLE,
@@ -12,8 +13,6 @@ describe("tableStatusTransitionGuard", () => {
     expect(isPosManagedStatusTransition("reserved", "occupied")).toBe(true);
     expect(isPosManagedStatusTransition("occupied", "payment_pending")).toBe(true);
     expect(isPosManagedStatusTransition("payment_pending", "cleaning")).toBe(true);
-    expect(isPosManagedStatusTransition("occupied", "available")).toBe(true);
-    expect(isPosManagedStatusTransition("payment_pending", "available")).toBe(true);
     expect(isPosManagedStatusTransition("occupied", "cleaning")).toBe(true);
     expect(isPosManagedStatusTransition("reserved", "cleaning")).toBe(true);
   });
@@ -21,9 +20,18 @@ describe("tableStatusTransitionGuard", () => {
   it("không chặn các transition quản trị an toàn", () => {
     expect(isPosManagedStatusTransition("available", "cleaning")).toBe(false);
     expect(isPosManagedStatusTransition("available", "offline")).toBe(false);
+    expect(isPosManagedStatusTransition("occupied", "available")).toBe(false);
+    expect(isPosManagedStatusTransition("payment_pending", "available")).toBe(false);
     expect(isPosManagedStatusTransition("cleaning", "available")).toBe(false);
     expect(isPosManagedStatusTransition("offline", "available")).toBe(false);
     expect(isPosManagedStatusTransition("available", "reserved")).toBe(false);
+  });
+
+  it("đánh dấu transition cần backend validate", () => {
+    expect(isBackendValidatedStatusTransition("occupied", "available")).toBe(true);
+    expect(isBackendValidatedStatusTransition("payment_pending", "available")).toBe(true);
+    expect(isBackendValidatedStatusTransition("cleaning", "available")).toBe(true);
+    expect(isBackendValidatedStatusTransition("available", "occupied")).toBe(false);
   });
 
   it("normalize status đúng định dạng", () => {
