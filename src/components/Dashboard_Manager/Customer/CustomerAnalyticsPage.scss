@@ -103,7 +103,9 @@
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+
 
 .customer-analytics-refresh:disabled {
   opacity: 0.55;
@@ -189,6 +191,22 @@
   background: #94a3b8;
 }
 
+.customer-kpi__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #1e3a8a;
+}
+
+.customer-kpi--loading .customer-kpi__icon {
+  opacity: 0.72;
+}
+
 .customer-kpi__label {
   display: block;
   font-size: 12px;
@@ -248,6 +266,15 @@
   font-weight: 900;
 }
 
+.customer-analytics-strip--empty div {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.customer-analytics-strip--empty strong {
+  color: #334155;
+}
+
 .customer-analytics-strip small {
   display: block;
   margin-top: 3px;
@@ -264,6 +291,14 @@
 
 .customer-panel {
   padding: 16px;
+}
+
+.customer-analytics-panels--empty .customer-empty-state {
+  min-height: 104px;
+}
+
+.customer-analytics-panels--empty .customer-panel {
+  padding: 14px;
 }
 
 .customer-panel__head {
@@ -429,9 +464,38 @@
 
 .customer-guidance h3 {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #0f172a;
   font-size: 16px;
   font-weight: 900;
+}
+
+.customer-guidance--action-center {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.customer-guidance__steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.customer-guidance__steps div {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .customer-guidance p {
@@ -462,6 +526,10 @@
 }
 
 @media (max-width: 1024px) {
+  .customer-guidance--action-center {
+    grid-template-columns: 1fr;
+  }
+
   .customer-analytics-kpis,
   .customer-analytics-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -506,4 +574,16 @@
   .customer-guidance__actions {
     display: grid;
   }
+}
+
+.customer-analytics-field select:focus-visible,
+.customer-analytics-refresh:focus-visible,
+.customer-guidance__actions button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
+}
+
+.customer-analytics-refresh:hover:not(:disabled),
+.customer-guidance__actions button:hover {
+  transform: translateY(-1px);
 }
