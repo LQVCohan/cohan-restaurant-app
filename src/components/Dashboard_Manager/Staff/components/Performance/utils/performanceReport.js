@@ -98,8 +98,14 @@ export const buildPerformanceReportData = ({ snapshot = {}, previousSnapshot = n
   const kitchenMetrics = factors?.kitchenMetrics || null;
   const cashierMetrics = resolveCashierMetrics(factors);
   const qualityEvidence = factors?.qualityEvidence || null;
+  const incidentAdjustmentDelta = (adjustmentHistory || [])
+    .filter((item) => item?.type === "incident")
+    .reduce((sum, item) => sum + (Number(item?.scoreDelta) || 0), 0);
+  const appealReversalDelta = (adjustmentHistory || [])
+    .filter((item) => item?.type === "appeal")
+    .reduce((sum, item) => sum + (Number(item?.scoreDelta) || 0), 0);
 
-  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory, scheduledMinutes, actualWorkedMinutes, productivitySource, insufficientData, hasManagerReview, orderCount, peerMaxOrderCount, kitchenMetrics, cashierMetrics, qualityEvidence };
+  return { employeeName, periodLabel, restaurantName, finalPerformanceScore, performanceLevel, previousScore: hasPreviousSnapshot ? previousScore : null, previousLevel, trendText: formatTrendDelta(finalPerformanceScore, previousSnapshot?.finalPerformanceScore), hasPreviousSnapshot, formulaScore, adjustmentDelta, incidentAdjustmentDelta, appealReversalDelta, hasAdjustment: shouldDisplayAdjustment(adjustmentDelta), formulaBreakdown, hasCustomWeight, customerRating, snapshotUpdatedAt, adjustmentHistory, scheduledMinutes, actualWorkedMinutes, productivitySource, insufficientData, hasManagerReview, orderCount, peerMaxOrderCount, kitchenMetrics, cashierMetrics, qualityEvidence };
 };
 
 export const buildPerformanceReportHtml = (reportData) => `
@@ -119,6 +125,8 @@ export const buildPerformanceReportHtml = (reportData) => `
       </table>
       <h3>Tổng hợp điểm</h3>
       <p>Điểm theo công thức: ${formatContributionScore(reportData.formulaScore)}</p>
+      <p>Delta trừ do incident: ${formatDelta(reportData.incidentAdjustmentDelta)}</p>
+      <p>Delta hoàn từ appeal: ${formatDelta(reportData.appealReversalDelta)}</p>
       <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
       <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
       <h3>So sánh kỳ trước</h3>

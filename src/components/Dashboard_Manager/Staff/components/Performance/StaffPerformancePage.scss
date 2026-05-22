@@ -181,6 +181,14 @@
         border-top: 1px dashed #cbd5e1;
       }
     }
+    .warning-note {
+      color: #b45309;
+      margin-top: 0.5rem;
+    }
+    .success-note {
+      color: #166534;
+      margin-top: 0.25rem;
+    }
   }
 
   .adjustment-history-card {
@@ -225,6 +233,15 @@
       span {
         color: #334155;
         font-size: 0.82rem;
+      }
+      .status-badge {
+        display: inline-flex;
+        width: fit-content;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 700;
       }
 
       small {

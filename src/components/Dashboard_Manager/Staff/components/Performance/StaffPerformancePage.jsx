@@ -177,21 +177,24 @@ export const buildAdjustmentHistoryItems = (adjustments = [], appeals = []) =>
     ...(adjustments || []).map((item) => ({
       id: `adj-${item.id}`,
       type: "incident",
+      status: "applied",
       scoreDelta: Number(item.scoreDelta || 0),
       previousScore: item.previousScore,
       newScore: item.newScore,
-      reason: item.reason || item.note || "Incident điều chỉnh điểm",
+      reason: item.reason || "Incident điều chỉnh điểm",
+      managerNote: item.note || null,
       createdAt: item.createdAt || null,
     })),
-    ...(appeals || [])
-      .filter((appeal) => appeal?.status === "accepted" && Number(appeal?.scoreReversalDelta || 0) !== 0)
-      .map((appeal) => ({
+    ...(appeals || []).map((appeal) => ({
         id: `apl-${appeal.id}`,
         type: "appeal",
-        scoreDelta: Number(appeal.scoreReversalDelta || 0),
+        status: appeal?.status || "submitted",
+        scoreDelta: Number(appeal?.scoreReversalDelta || 0),
         previousScore: null,
         newScore: null,
-        reason: appeal.scoreReversalNote || appeal.reason || "Appeal được chấp nhận",
+        reason: appeal.scoreReversalNote || appeal.reason || "Khiếu nại hiệu suất",
+        appealReason: appeal.reason || null,
+        decisionReason: appeal.scoreReversalNote || null,
         createdAt: appeal.scoreReversedAt || appeal.reviewedAt || appeal.createdAt || null,
       })),
   ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -226,6 +229,16 @@ const QUALITY_ROLE_LABELS = {
   head_chef: "Bếp chính",
   assistant_chef: "Phụ bếp",
   other: "Khác",
+};
+const STATUS_BADGES = {
+  pending: "Chờ xem xét",
+  eligible: "Đủ điều kiện trừ điểm",
+  applied: "Đã áp dụng điểm",
+  waived: "Đã bỏ qua",
+  reversed: "Đã hoàn điểm",
+  submitted: "Đã gửi khiếu nại",
+  accepted: "Khiếu nại được chấp nhận",
+  rejected: "Khiếu nại bị từ chối",
 };
 
 const buildSnapshotByEmployee = (snapshots = []) =>
@@ -433,6 +446,16 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
       ),
     [historyData?.staffPerformanceScoreAdjustments, historyData?.performanceIncidentAppeals],
   );
+  const incidentAdjustmentDelta = useMemo(
+    () => (historyData?.staffPerformanceScoreAdjustments || []).reduce((sum, item) => sum + (Number(item?.scoreDelta) || 0), 0),
+    [historyData?.staffPerformanceScoreAdjustments],
+  );
+  const appealReversalDelta = useMemo(
+    () => (historyData?.performanceIncidentAppeals || [])
+      .filter((appeal) => appeal?.status === "accepted")
+      .reduce((sum, appeal) => sum + (Number(appeal?.scoreReversalDelta) || 0), 0),
+    [historyData?.performanceIncidentAppeals],
+  );
   const handlePrintReport = () => {
     if (!snapshot) return;
     const reportData = buildPerformanceReportData({
@@ -477,6 +500,20 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
             <strong>{scoreText(snapshot.finalPerformanceScore)}</strong>
             <span>{level.label}</span>
             <p>{level.description}</p>
+          </div>
+          <div className="score-formula-card">
+            <strong>Giải thích điểm cuối</strong>
+            <ul>
+              <li><span>Điểm cuối</span><strong>{scoreText(finalPerformanceScore)}</strong></li>
+              <li><span>Mức hiệu suất</span><strong>{level.label}</strong></li>
+              <li><span>Điểm theo công thức nền</span><strong>{formatContributionScore(formulaScore)}</strong></li>
+              <li><span>Delta trừ do incident</span><strong>{formatDelta(incidentAdjustmentDelta)}</strong></li>
+              <li><span>Delta hoàn từ appeal</span><strong>{formatDelta(appealReversalDelta)}</strong></li>
+              <li><span>Delta điều chỉnh cuối</span><strong>{hasAdjustment ? formatDelta(adjustmentDelta) : "0"}</strong></li>
+              <li className="total"><span>Final score = Base formula score + Final adjustment delta</span><strong>{scoreText(finalPerformanceScore)}</strong></li>
+            </ul>
+            {adjustmentDelta < 0 ? <p className="formula-note warning-note">Điểm cuối đã bao gồm điểm trừ từ sự cố đã được quản lý xác nhận.</p> : null}
+            {appealReversalDelta > 0 ? <p className="formula-note success-note">Điểm cuối đã bao gồm điểm hoàn từ khiếu nại được chấp nhận.</p> : null}
           </div>
 
           <div className="score-formula-card">
@@ -675,12 +712,12 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <div className="factor-grid">
                 <span>Nhóm vai trò: {QUALITY_ROLE_LABELS[qualityEvidence?.roleGroup] || QUALITY_ROLE_LABELS.other}</span>
                 <span>Điểm kỹ năng nền: {qualityEvidence?.baseSkillScore ?? 75}</span>
-                <span>Trừ theo bếp/bar: {qualityEvidence?.kitchenPenalty ?? 0}</span>
-                <span>Trừ theo đánh giá khách hàng: {qualityEvidence?.customerPenalty ?? 0}</span>
+                <span>Trừ phản hồi khách hàng: {qualityEvidence?.customerPenalty ?? 0}</span>
+                <span>Trừ vận hành bếp/bar: {qualityEvidence?.kitchenPenalty ?? 0}</span>
                 {(qualityEvidence?.roleGroup === "cashier" || Number(qualityEvidence?.cashierOperationalPenalty || 0) > 0) ? (
-                  <span>Trừ theo nghiệp vụ thu ngân: {qualityEvidence?.cashierOperationalPenalty ?? 0}</span>
+                  <span>Trừ nghiệp vụ thu ngân: {qualityEvidence?.cashierOperationalPenalty ?? 0}</span>
                 ) : null}
-                <span>Tổng điều chỉnh: {qualityEvidence?.totalPenalty ?? 0}</span>
+                <span>Tổng trừ: {qualityEvidence?.totalPenalty ?? 0}</span>
                 <span>Điểm Quality cuối: {qualityEvidence?.finalQualityScore ?? snapshot?.quality?.score ?? 0}</span>
                 <span>Nguồn dữ liệu: {qualityEvidence?.evidenceSource || "--"}</span>
               </div>
@@ -696,8 +733,8 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
             <div className="factor-box cashier-metrics-card">
               <strong>Dữ liệu nghiệp vụ thu ngân</strong>
               <div className="factor-grid cashier-metrics-grid">
-                <span>Giao dịch xử lý: {formatMetricNumber(cashierMetrics?.totalHandledPayments)}</span>
-                <span>Sai bill: {formatMetricNumber(cashierMetrics?.wrongBillIssues)}</span>
+                <span>Giao dịch xử lý: {cashierMetrics?.totalHandledPayments ?? "--"}</span>
+                <span>Sai bill: {cashierMetrics?.wrongBillIssues ?? "--"}</span>
                 <span>Lỗi thanh toán: {formatMetricNumber(cashierMetrics?.paymentErrors)}</span>
                 <span>Refund do thao tác thu ngân: {formatMetricNumber(cashierMetrics?.cashierRefunds)}</span>
                 <span>Yêu cầu thanh toán xử lý chậm: {formatMetricNumber(cashierMetrics?.latePaymentRequests)}</span>
@@ -736,7 +773,11 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                   <li key={item.id}>
                     <div>
                       <strong>{formatDelta(item.scoreDelta)} điểm</strong>
-                      <span>{item.reason}</span>
+                      <span className="status-badge">{STATUS_BADGES[item.status] || "Chờ xem xét"}</span>
+                      <span>Lý do: {item.reason || "--"}</span>
+                      {item.managerNote ? <span>Ghi chú quản lý: {item.managerNote}</span> : null}
+                      {item.appealReason ? <span>Lý do khiếu nại: {item.appealReason}</span> : null}
+                      {item.decisionReason ? <span>Lý do quyết định: {item.decisionReason}</span> : null}
                       <small>{formatDate(item.createdAt)}</small>
                     </div>
                     {Number.isFinite(Number(item.previousScore)) && Number.isFinite(Number(item.newScore)) ? (
@@ -752,7 +793,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
         </>
       ) : (
         <div className="empty-detail">
-          Chưa có dữ liệu hiệu suất. Hãy bấm “Tính lại hiệu suất kỳ này” hoặc
+          Chưa có dữ liệu hiệu suất. Hãy bấm “Tính lại hiệu suất kỳ này” để quản lý tạo snapshot mới, hoặc
           tính riêng nhân viên này.
         </div>
       )}
@@ -1290,6 +1331,13 @@ productivity * 25%
                   <tr>
                     <td colSpan={8} className="empty-row">
                       Không có nhân viên phù hợp bộ lọc.
+                    </td>
+                  </tr>
+                ) : null}
+                {!loading && rows.length > 0 && stats.generated === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="empty-row">
+                      Chưa có snapshot hiệu suất trong kỳ. Quản lý vui lòng bấm “Tính lại hiệu suất kỳ này” để tạo dữ liệu demo.
                     </td>
                   </tr>
                 ) : null}
