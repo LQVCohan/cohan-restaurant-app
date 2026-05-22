@@ -56,6 +56,22 @@ const requestTypeLabel = { STAFF_CALL: "Yêu cầu hỗ trợ", PAYMENT_REQUEST:
 const finalStatuses = new Set(["PAID", "CANCELLED"]);
 const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
+const resolveLatestTimelineIndex = (timelineItems = []) => {
+  if (!timelineItems.length) return -1;
+  let latestIndex = 0;
+  let latestTime = Number.NEGATIVE_INFINITY;
+
+  timelineItems.forEach((item, index) => {
+    const time = Date.parse(item?.changedAt || "");
+    if (Number.isFinite(time) && time >= latestTime) {
+      latestTime = time;
+      latestIndex = index;
+    }
+  });
+
+  return latestTime === Number.NEGATIVE_INFINITY ? timelineItems.length - 1 : latestIndex;
+};
+
 export default function PublicOrderTrackingPage() {
   const { trackingToken } = useParams();
   const [socketReady, setSocketReady] = useState(false);
@@ -152,22 +168,7 @@ export default function PublicOrderTrackingPage() {
   const paymentActionLocked = paymentReqActive || paymentAlreadyRequested;
 
   const timelineItems = Array.isArray(tracking.timeline) ? tracking.timeline : [];
-  const latestTimelineIndex = useMemo(() => {
-    if (!timelineItems.length) return -1;
-    let latestIndex = 0;
-    let latestTime = Number.NEGATIVE_INFINITY;
-
-    timelineItems.forEach((item, index) => {
-      const time = Date.parse(item?.changedAt || "");
-      if (Number.isFinite(time) && time >= latestTime) {
-        latestTime = time;
-        latestIndex = index;
-      }
-    });
-
-    if (latestTime === Number.NEGATIVE_INFINITY) return timelineItems.length - 1;
-    return latestIndex;
-  }, [timelineItems]);
+  const latestTimelineIndex = resolveLatestTimelineIndex(timelineItems);
 
   const updateModeLabel = isFinal
     ? "Đơn hàng đã hoàn tất"
