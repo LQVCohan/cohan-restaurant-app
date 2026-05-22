@@ -99,6 +99,7 @@ const CustomerAnalyticsPage = () => {
 
   const isAnalyticsEmpty =
     !loading &&
+    !error &&
     activeCustomerCount === 0 &&
     returningCustomerCount === 0 &&
     topDishes.length === 0 &&
@@ -165,7 +166,7 @@ const CustomerAnalyticsPage = () => {
           <h3>Chưa có nhà hàng để phân tích</h3>
           <p>Vui lòng tạo hoặc chọn nhà hàng trước khi xem phân tích khách hàng.</p>
         </section>
-      ) : (
+      ) : error ? null : (
         <>
           <div className="customer-analytics-kpis">
             <article className="customer-kpi customer-kpi--primary">
@@ -337,16 +338,25 @@ const CustomerAnalyticsPage = () => {
                   </p>
                 </div>
                 <div className="customer-guidance__actions">
-                  <button type="button" onClick={() => navigateManagerPage("orders")}>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý đơn hàng"
+                    onClick={() => navigateManagerPage("orders")}
+                  >
                     Xem đơn hàng
                   </button>
                   <button
                     type="button"
+                    aria-label="Đi tới quản lý khách hàng"
                     onClick={() => navigateManagerPage("customers")}
                   >
                     Quản lý khách hàng
                   </button>
-                  <button type="button" onClick={() => navigateManagerPage("menu")}>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý menu"
+                    onClick={() => navigateManagerPage("menu")}
+                  >
                     Kiểm tra menu
                   </button>
                 </div>
