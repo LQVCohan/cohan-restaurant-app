@@ -33,8 +33,8 @@ export const getAuthHeaders = () => {
 
 export const buildAutoLayoutComponentsForRequest = (form) => {
   const sourceComponents = form?.components || {};
-  const sourceTables = form?.components?.tables || {};
-  const sourceObjects = form?.components?.objects || {};
+  const sourceTables = sourceComponents.tables || {};
+  const sourceObjects = sourceComponents.objects || {};
   const standard = Number(sourceTables.standard) || 0;
   const vip = Number(sourceTables.vip) || 0;
   const group = Number(sourceTables.group) || 0;

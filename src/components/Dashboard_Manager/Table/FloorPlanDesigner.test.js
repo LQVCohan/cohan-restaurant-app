@@ -53,14 +53,13 @@ describe("FloorPlanDesigner helpers", () => {
   });
 
   it("buildAutoLayoutComponentsForRequest handles empty form defensively", () => {
+    expect(() => buildAutoLayoutComponentsForRequest({})).not.toThrow();
     const result = buildAutoLayoutComponentsForRequest({});
-    expect(result.tables).toMatchObject({
-      standard: 0,
-      vip: 0,
-      group: 0,
-      twoSeat: 0,
-      fourSeat: 0,
-    });
+    expect(result.tables.standard).toBe(0);
+    expect(result.tables.vip).toBe(0);
+    expect(result.tables.group).toBe(0);
+    expect(result.tables.twoSeat).toBe(0);
+    expect(result.tables.fourSeat).toBe(0);
     expect(result.objects.wall).toBe(0);
   });
 });
