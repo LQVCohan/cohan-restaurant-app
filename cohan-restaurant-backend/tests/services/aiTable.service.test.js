@@ -150,11 +150,12 @@ describe("aiTable.service layout engine", () => {
   });
 
   it("emits warning when not all requested tables can be placed", () => {
-    const blocking = Array.from({ length: 150 }).map((_, i) => ({
-      x: (i % 15) * 70,
-      y: Math.floor(i / 15) * 70,
-      w: 64,
-      h: 64,
+    const requested = 45;
+    const blocking = Array.from({ length: 500 }).map((_, i) => ({
+      x: -420 + (i % 25) * 56,
+      y: -420 + Math.floor(i / 25) * 56,
+      w: 56,
+      h: 56,
       isRealTable: true,
     }));
     const out = __testables.generateRuleBasedLayout({
@@ -164,8 +165,10 @@ describe("aiTable.service layout engine", () => {
       startY: 0,
       currentItems: blocking,
     });
-    if (out.tables.length < 45) {
+    if (out.tables.length < requested) {
       expect(out.meta.warnings.some((w) => w.includes("Chỉ đặt được"))).toBe(true);
+    } else {
+      expect(out.tables.length).toBe(requested);
     }
   });
 });
