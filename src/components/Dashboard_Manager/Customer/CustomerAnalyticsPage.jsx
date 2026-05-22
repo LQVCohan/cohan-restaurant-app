@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import {
   Users,
@@ -130,12 +130,6 @@ const CustomerAnalyticsPage = () => {
   const effectiveRestaurantId =
     selectedRestaurantId || restaurantOptions?.[0]?.id || "";
 
-  const selectedRestaurant = useMemo(
-    () =>
-      restaurantOptions.find((item) => item.id === effectiveRestaurantId),
-    [restaurantOptions, effectiveRestaurantId],
-  );
-
   const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_ANALYTICS, {
     skip: !effectiveRestaurantId,
     variables: { restaurantId: effectiveRestaurantId },
@@ -177,9 +171,8 @@ const CustomerAnalyticsPage = () => {
       ? Math.round((returningCustomerCount / activeCustomerCount) * 100)
       : 0;
 
-  const totalPopularDishOrders = topDishes.reduce(
-    (sum, item) => sum + Number(item?.quantity || 0),
-    0,
+  const visibleCustomerSegments = customerSegments.filter(
+    (item) => Number(item?.customerCount || 0) > 0,
   );
 
   const hasActionableInsight =
@@ -321,7 +314,12 @@ const CustomerAnalyticsPage = () => {
 
           <section className="customer-analytics-panels">
             <section className="customer-panel customer-panel--primary">
-              <div className="customer-panel__head"><div><h3>Món khách quan tâm</h3><p>Các món được gọi nhiều trong dữ liệu phân tích khách hàng.</p></div></div>
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Món khách quan tâm</h3>
+                  <p>Các món được gọi nhiều trong dữ liệu phân tích khách hàng.</p>
+                </div>
+              </div>
               {loading ? <div className="customer-panel__loading">Đang tải dữ liệu món...</div> : topDishes.length > 0 ? (
                 <div className="customer-dish-list">
                   {topDishes.map((item, index) => {
@@ -331,7 +329,10 @@ const CustomerAnalyticsPage = () => {
                       <div className="customer-dish-row" key={`${item.dishName}-${index}`}>
                         <div className="customer-rank">#{index + 1}</div>
                         <div className="customer-dish-row__body">
-                          <div className="customer-dish-row__meta"><strong>{item?.dishName || "Không rõ tên món"}</strong><span>{formatNumber(quantity)} lượt</span></div>
+                          <div className="customer-dish-row__meta">
+                            <strong>{item?.dishName || "Không rõ tên món"}</strong>
+                            <span>{formatNumber(quantity)} lượt</span>
+                          </div>
                           <div className="customer-progress"><span style={{ width: `${progress}%` }} /></div>
                         </div>
                       </div>
@@ -342,13 +343,31 @@ const CustomerAnalyticsPage = () => {
             </section>
 
             <section className="customer-panel">
-              <div className="customer-panel__head"><div><h3>Mật độ đơn theo ngày</h3><p>Nhận diện ngày có nhiều tương tác/đơn để chuẩn bị nhân sự và tồn kho.</p></div></div>
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Mật độ đơn theo ngày</h3>
+                  <p>
+                    Nhận diện ngày có nhiều tương tác/đơn để chuẩn bị nhân sự và tồn
+                    kho.
+                  </p>
+                </div>
+              </div>
               {loading ? <div className="customer-panel__loading">Đang tải dữ liệu ngày...</div> : busyDays.length > 0 ? (
                 <div className="customer-day-list">
                   {busyDays.map((item, index) => {
                     const count = Number(item?.orderCount || 0);
                     const progress = Math.max(0, Math.min(100, (count / maxDayOrders) * 100));
-                    return <div className="customer-day-row" key={`${item.date}-${index}`}><div className="customer-day-row__top"><strong>{formatDate(item?.date)}</strong><span>{formatNumber(count)} đơn</span></div><div className="customer-progress customer-progress--day"><span style={{ width: `${progress}%` }} /></div></div>;
+                    return (
+                      <div className="customer-day-row" key={`${item.date}-${index}`}>
+                        <div className="customer-day-row__top">
+                          <strong>{formatDate(item?.date)}</strong>
+                          <span>{formatNumber(count)} đơn</span>
+                        </div>
+                        <div className="customer-progress customer-progress--day">
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có dữ liệu mật độ đơn</h4><p>Dữ liệu sẽ rõ hơn khi nhà hàng có đơn hàng trong nhiều ngày.</p></div>}
@@ -357,10 +376,15 @@ const CustomerAnalyticsPage = () => {
 
           <section className="customer-insight-grid">
             <section className="customer-panel">
-              <div className="customer-panel__head"><div><h3>Phân khúc khách hàng</h3><p>Các nhóm khách hàng theo dữ liệu phân tích hiện tại.</p></div></div>
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Phân khúc khách hàng</h3>
+                  <p>Các nhóm khách hàng theo dữ liệu phân tích hiện tại.</p>
+                </div>
+              </div>
               {loading ? <div className="customer-panel__loading">Đang tải phân khúc khách hàng...</div> : customerSegments.length > 0 ? (
                 <div className="customer-segment-list">
-                  {customerSegments.map((segment, index) => {
+                  {visibleCustomerSegments.map((segment, index) => {
                     const percentage = Number(segment?.percentage || 0);
                     const progress = Math.max(0, Math.min(100, percentage));
                     return <div className="customer-segment-row" key={`${segment?.segmentKey || 'segment'}-${index}`}><div className="customer-segment-row__meta"><strong>{segment?.segmentLabel || 'Phân khúc chưa đặt tên'}</strong><span>{formatNumber(segment?.customerCount)} khách • {formatPercent(percentage)}</span></div><div className="customer-progress"><span style={{ width: `${progress}%` }} /></div></div>;
