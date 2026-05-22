@@ -1695,6 +1695,40 @@ const ScheduleManagement = ({ readOnly = false }) => {
       "info",
     );
   };
+  const handleQuickRemoveDeclinedShiftStaff = async (ack) => {
+    const shiftRow = shiftRowsById.get(String(ack?.shiftId));
+    const isResolved =
+      !shiftRow || String(shiftRow.employeeId) !== String(ack?.employeeId);
+    if (isResolved || !ack?.id) return;
+
+    const confirmed = window.confirm(
+      "Nhân viên đã từ chối ca với lý do hợp lệ. Xóa nhân viên khỏi ca này?",
+    );
+    if (!confirmed) return;
+
+    setDeclineReviewErrors((current) => ({ ...current, [ack.id]: "" }));
+    setReviewingAckId(ack.id);
+
+    try {
+      await handleRemoveStaffFromShift(ack.shiftId, ack.employeeId, {
+        reason: "Xử lý ca bị từ chối hợp lệ",
+      });
+      await refetch();
+      await refetchDeclinedShiftAcks();
+      await refetchScheduleLogs?.();
+      showNotification("Đã xóa nhân viên khỏi ca bị từ chối.", "success");
+    } catch (error) {
+      setDeclineReviewErrors((current) => ({
+        ...current,
+        [ack.id]: getGraphQLErrorMessage(
+          error,
+          "Không thể xóa nhân viên khỏi ca bị từ chối.",
+        ),
+      }));
+    } finally {
+      setReviewingAckId("");
+    }
+  };
 
   const selectedShiftForModal = useMemo(() => {
     if (!selectedShift?.id) return null;
@@ -3040,13 +3074,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
     } catch (error) {
       console.error(error);
-      showNotification(
-        getGraphQLErrorMessage(
-          error,
-          "Không thể xóa nhân viên khỏi ca. Vui lòng thử lại.",
-        ),
-        "error",
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể xóa nhân viên khỏi ca. Vui lòng thử lại.",
       );
+      showNotification(message, "error");
+      throw new Error(message);
     }
   };
 
@@ -4714,20 +4747,42 @@ const ScheduleManagement = ({ readOnly = false }) => {
                         <small>
                           Cần xử lý lịch: đổi nhân viên, xóa nhân viên khỏi ca, hoặc mở ca để chỉnh.
                         </small>
-                        <small>
-                          Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
-                          lịch.
-                        </small>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenShiftForResolution(ack)}
-                        >
-                          Mở ca để xử lý
-                        </button>
+                        {!isResolved ? (
+                          <>
+                            <small>
+                              Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
+                              lịch.
+                            </small>
+                            <div className="decline-action-row">
+                              <button
+                                type="button"
+                                disabled={isReviewing}
+                                onClick={() =>
+                                  handleQuickRemoveDeclinedShiftStaff(ack)
+                                }
+                              >
+                                {isReviewing
+                                  ? "Đang xử lý..."
+                                  : "Xóa nhân viên khỏi ca"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenShiftForResolution(ack)}
+                              >
+                                Mở ca để xử lý
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <small>Đã xử lý lịch.</small>
+                        )}
                       </div>
                     ) : null}
                     {classification === "invalid" ? (
-                      <small>Nhân viên vẫn được kỳ vọng đi làm ca này.</small>
+                      <small>
+                        Lý do không hợp lệ. Nhân viên vẫn được kỳ vọng đi làm ca
+                        này.
+                      </small>
                     ) : null}
                     {classification === "late" ? (
                       <small>
