@@ -210,16 +210,31 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
         ? calculateCashierQualityPenalty({ customerRatingScore, staffRateCount })
         : 0;
   const cashierOperationalPenalty = roleGroup === "cashier" ? calculateCashierOperationalPenalty(cashierMetrics) : 0;
+  const hasCashierOperationalEvidence = roleGroup === "cashier" && Number(cashierOperationalPenalty || 0) > 0;
   const hasKitchenEvidence = Number(kitchenMetrics?.totalItems || 0) > 0 && ["head_chef", "assistant_chef"].includes(roleGroup);
   const hasCustomerEvidence = Number(staffRateCount || 0) > 0 && ["order_staff", "cashier"].includes(roleGroup);
   const totalPenalty = roundOneDecimal(kitchenPenalty + customerPenalty + cashierOperationalPenalty);
   let score = 75;
-  if (hasManagerReview || hasKitchenEvidence || hasCustomerEvidence) {
+  if (hasManagerReview || hasKitchenEvidence || hasCustomerEvidence || hasCashierOperationalEvidence) {
     score = clampScore(baseSkillScore - totalPenalty, 75);
     if (totalPenalty > 0) score = Math.max(50, score);
   }
-  const evidenceSource = cashierOperationalPenalty > 0
-    ? "manager_skill+customer_rating+cashier_operational_metrics"
+  const evidenceSource = roleGroup === "cashier"
+    ? cashierOperationalPenalty > 0 && customerPenalty > 0 && hasManagerReview
+      ? "manager_skill+customer_rating+cashier_operational_metrics"
+      : cashierOperationalPenalty > 0 && customerPenalty > 0 && !hasManagerReview
+        ? "neutral_skill+customer_rating+cashier_operational_metrics"
+        : cashierOperationalPenalty > 0 && customerPenalty <= 0 && hasManagerReview
+          ? "manager_skill+cashier_operational_metrics"
+          : cashierOperationalPenalty > 0 && customerPenalty <= 0 && !hasManagerReview
+            ? "neutral_skill+cashier_operational_metrics"
+            : cashierOperationalPenalty <= 0 && customerPenalty > 0 && hasManagerReview
+              ? "manager_skill+customer_rating"
+              : cashierOperationalPenalty <= 0 && customerPenalty > 0 && !hasManagerReview
+                ? "neutral_skill+customer_rating"
+                : hasManagerReview
+                  ? "manager_skill_only"
+                  : "neutral_no_quality_evidence"
     : kitchenPenalty > 0 && customerPenalty > 0
     ? "manager_skill+kitchen_metrics+customer_rating"
     : kitchenPenalty > 0
@@ -238,7 +253,7 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
       : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.",
     other: "Quality dựa trên điểm kỹ năng/chất lượng chuyên môn do quản lý nhập.",
   };
-  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
+  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
 }
 
 function getActorId(ctx) {
@@ -591,6 +606,7 @@ async function getKitchenMetricsForEmployee({ employeeId, restaurantId, periodSt
   return buildKitchenMetricsSummary(workItems, employeeId);
 }
 async function getCashierMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }) {
+  // TODO: Integrate PaymentSession reconciliation when QR/provider callbacks are used as authoritative cashier scoring evidence. Current scoring relies on Order payment state and attribution text only to remain conservative.
   const orders = await Order.find({
     restaurantId,
     $or: [
@@ -619,9 +635,9 @@ async function getCashierMetricsForEmployee({ employeeId, restaurantId, periodSt
     }
 
     const paymentStatus = normalizeTextNoAccent(order?.payment?.status || order?.orderPaymentStatus);
-    const isPaymentIssueStatus = ["failed", "refunded", "partially_refunded"].some((x) => paymentStatus.includes(x));
-    if (isPaymentIssueStatus && hasCashierAttribution(...texts)) paymentErrors += 1;
+    const isFailedPayment = paymentStatus.includes("failed");
     const isRefunded = paymentStatus.includes("refunded");
+    if (isFailedPayment && hasCashierAttribution(...texts)) paymentErrors += 1;
     if (isRefunded) {
       const returnTexts = (order?.items || []).flatMap((item) => (item?.returnRequests || []).flatMap((req) => [req?.reason, req?.reviewNote]));
       if (hasCashierAttribution(...returnTexts, ...texts)) cashierRefunds += 1;
@@ -634,9 +650,14 @@ async function getCashierMetricsForEmployee({ employeeId, restaurantId, periodSt
       const inPeriod = (req?.acknowledgedAt && req.acknowledgedAt >= periodStart && req.acknowledgedAt <= periodEnd) || (req?.resolvedAt && req.resolvedAt >= periodStart && req.resolvedAt <= periodEnd);
       if (!inPeriod || (!ackByCashier && !resByCashier) || !req?.createdAt) continue;
       const base = new Date(req.createdAt).getTime();
-      const ackDelayMs = req?.acknowledgedAt ? new Date(req.acknowledgedAt).getTime() - base : 0;
-      const resDelayMs = req?.resolvedAt ? new Date(req.resolvedAt).getTime() - base : 0;
-      if (ackDelayMs > 3 * 60 * 1000 || resDelayMs > 8 * 60 * 1000) latePaymentRequests += 1;
+      if (!Number.isFinite(base)) continue;
+      const ackAtMs = req?.acknowledgedAt ? new Date(req.acknowledgedAt).getTime() : null;
+      const resolvedAtMs = req?.resolvedAt ? new Date(req.resolvedAt).getTime() : null;
+      const ackDelayMs = Number.isFinite(ackAtMs) ? ackAtMs - base : null;
+      const resDelayMs = Number.isFinite(resolvedAtMs) ? resolvedAtMs - base : null;
+      const isAckLate = ackByCashier && Number.isFinite(ackDelayMs) && ackDelayMs > 3 * 60 * 1000;
+      const isResolveLate = resByCashier && Number.isFinite(resDelayMs) && resDelayMs > 8 * 60 * 1000;
+      if (isAckLate || isResolveLate) latePaymentRequests += 1;
     }
 
     const discount = Number(order?.totals?.discount || 0);
@@ -914,6 +935,7 @@ async function calculateSnapshotForEmployee({
             hasManagerReview: qualityEvidence.hasManagerReview,
             hasKitchenEvidence: qualityEvidence.hasKitchenEvidence,
             hasCustomerEvidence: qualityEvidence.hasCustomerEvidence,
+            hasCashierOperationalEvidence: qualityEvidence.hasCashierOperationalEvidence,
             evidenceSource: qualityEvidence.evidenceSource,
             affectsScore: true,
             note: qualityEvidence.note,

@@ -33,3 +33,7 @@
 - [ ] Manual discount thiếu lý do hoặc sai quyền có thể bị tính issue.
 - [ ] Operational penalty capped at 15.
 - [ ] Quality evidence hiển thị cashierOperationalPenalty và cashierMetrics.
+- [ ] Cashier operational issue không có manager review/customer rating vẫn giảm Quality.
+- [ ] Late PAYMENT_REQUEST chỉ trừ điểm cashier thực sự acknowledge/resolve trễ.
+- [ ] Refund không bị double-count thành cả paymentError và cashierRefund.
+- [ ] evidenceSource phân biệt đúng neutral_skill và manager_skill.

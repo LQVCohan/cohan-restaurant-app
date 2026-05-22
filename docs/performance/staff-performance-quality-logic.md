@@ -227,3 +227,6 @@ Loại trừ (không phạt thu ngân):
 Ghi chú:
 - `cashVarianceRate` hiện đặt `0` (chưa có dữ liệu reconciliation ca thu ngân); sẽ bổ sung khi có mô hình dữ liệu phù hợp.
 - Điểm chất lượng vẫn giữ clamp hiện tại: nếu có penalty thì không thấp hơn `50`; fallback trung lập vẫn là `75` khi thiếu evidence.
+- `hasCashierOperationalEvidence` = `true` khi `cashierOperationalPenalty > 0`; trong trường hợp này điểm Quality vẫn bị điều chỉnh ngay cả khi chưa có manager review hoặc customer rating.
+- Refund được tính tách riêng (`cashierRefunds`) và không cộng vào `paymentErrors` để tránh double-counting cùng một sự cố.
+- TODO: tích hợp reconciliation từ `PaymentSession` cho các luồng QR/provider callback khi có thể dùng làm dữ liệu chuẩn để chấm điểm thu ngân.
