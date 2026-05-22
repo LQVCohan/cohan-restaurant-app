@@ -575,6 +575,47 @@ type CustomerAnalyticsDay {
   orderCount: Int!
 }
 
+type CustomerSegmentSummary {
+  segmentKey: String!
+  segmentLabel: String!
+  customerCount: Int!
+  percentage: Float!
+}
+
+type CustomerChurnRisk {
+  userId: ID!
+  fullName: String
+  phone: String
+  lastOrderAt: DateTime
+  daysSinceLastOrder: Int!
+  totalOrders: Int!
+  totalSpend: Float!
+}
+
+type TopValueCustomer {
+  userId: ID!
+  fullName: String
+  phone: String
+  totalOrders: Int!
+  totalSpend: Float!
+  averageOrderValue: Float!
+  lastOrderAt: DateTime
+}
+
+type CustomerCohortRetention {
+  cohortMonth: String!
+  cohortSize: Int!
+  retainedCount: Int!
+  retentionRate: Float!
+}
+
+type CustomerRecommendation {
+  key: String!
+  title: String!
+  description: String!
+  priority: String!
+}
+
 type CustomerAnalyticsSummary {
   restaurantId: ID!
   mostPopularDishes: [CustomerTopDish!]!
@@ -582,6 +623,17 @@ type CustomerAnalyticsSummary {
   averageMembershipDays: Int!
   activeCustomerCount: Int!
   returningCustomerCount: Int!
+  totalOrderCount: Int!
+  totalCustomerSpend: Float!
+  averageOrderValue: Float!
+  averageRepeatIntervalDays: Float!
+  dormantCustomerCount: Int!
+  highValueCustomerCount: Int!
+  customerSegments: [CustomerSegmentSummary!]!
+  churnRiskCustomers: [CustomerChurnRisk!]!
+  topValueCustomers: [TopValueCustomer!]!
+  cohortRetention: [CustomerCohortRetention!]!
+  recommendations: [CustomerRecommendation!]!
 }
 
 type RankThreshold {

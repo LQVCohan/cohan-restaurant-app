@@ -545,27 +545,68 @@ export const UserQuery = {
     const rid = toObjectId(restaurantId);
     await requireRestaurantAccess(ctx, rid);
 
-    const orders = await Order.find({ restaurantId: rid }).lean();
+    const orders = await Order.find({
+      restaurantId: rid,
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
+    })
+      .select(
+        "restaurantId userId createdAt currentStatus orderPaymentStatus payment.status items.name items.quantity totals.grandTotal",
+      )
+      .lean();
     const dishes = new Map();
     const daily = new Map();
     const customerCountByUserId = new Map();
+    const customerStats = new Map();
+    let totalCustomerSpend = 0;
+    const nowMs = Date.now();
+    const oneDayMs = 1000 * 60 * 60 * 24;
+
     for (const o of orders) {
+      const grandTotal = Number(o?.totals?.grandTotal || 0);
+      if (Number.isFinite(grandTotal) && grandTotal >= 0) {
+        totalCustomerSpend += grandTotal;
+      }
+
       for (const item of o.items || []) {
         const name = item?.name?.trim();
         if (!name) continue;
         dishes.set(name, (dishes.get(name) || 0) + Number(item.quantity || 1));
       }
-      const d = new Date(o.createdAt);
-      if (Number.isFinite(d.getTime())) {
+
+      const d = new Date(o?.createdAt);
+      const isValidCreatedAt = Number.isFinite(d.getTime());
+      if (isValidCreatedAt) {
         const key = d.toISOString().slice(0, 10);
         daily.set(key, (daily.get(key) || 0) + 1);
       }
+
       if (o.userId) {
         const key = normalizeIdKey(o.userId);
         customerCountByUserId.set(
           key,
           (customerCountByUserId.get(key) || 0) + 1,
         );
+        if (!customerStats.has(key)) {
+          customerStats.set(key, {
+            userId: key,
+            totalOrders: 0,
+            totalSpend: 0,
+            firstOrderAt: null,
+            lastOrderAt: null,
+            orderDates: [],
+          });
+        }
+
+        const stat = customerStats.get(key);
+        stat.totalOrders += 1;
+        if (Number.isFinite(grandTotal) && grandTotal >= 0) {
+          stat.totalSpend += grandTotal;
+        }
+        if (isValidCreatedAt) {
+          stat.orderDates.push(d);
+          if (!stat.firstOrderAt || d < stat.firstOrderAt) stat.firstOrderAt = d;
+          if (!stat.lastOrderAt || d > stat.lastOrderAt) stat.lastOrderAt = d;
+        }
       }
     }
 
@@ -577,13 +618,230 @@ export const UserQuery = {
         (sum, c) => sum + computeLoyaltyDurationScore(c.createdAt),
         0,
       ) || 0;
+    const customerProfileMap = new Map(
+      scopedCustomers.map((customer) => {
+        const normalizedId = normalizeIdKey(customer?._id || customer?.id);
+        const normalizedFullName = customer?.fullName || customer?.name || null;
+        const normalizedPhone = customer?.phone || null;
+        return [
+          normalizedId,
+          {
+            fullName: normalizedFullName || null,
+            phone: normalizedPhone || null,
+          },
+        ];
+      }),
+    );
+
+    const totalOrderCount = orders.length;
+    const averageOrderValue =
+      totalOrderCount > 0 ? totalCustomerSpend / totalOrderCount : 0;
+    const activeCustomerCount = customerCountByUserId.size;
+    const returningCustomerCount = [...customerCountByUserId.values()].filter(
+      (v) => v >= 2,
+    ).length;
+
+    const customerStatRows = [...customerStats.values()].map((stat) => {
+      const daysSinceLastOrder = stat.lastOrderAt
+        ? Math.max(0, Math.floor((nowMs - stat.lastOrderAt.getTime()) / oneDayMs))
+        : 0;
+      return {
+        ...stat,
+        daysSinceLastOrder,
+      };
+    });
+
+    let intervalCount = 0;
+    let intervalDaysTotal = 0;
+    for (const stat of customerStatRows) {
+      if (!Array.isArray(stat.orderDates) || stat.orderDates.length < 2) continue;
+      const sortedDates = [...stat.orderDates].sort((a, b) => a - b);
+      for (let i = 1; i < sortedDates.length; i += 1) {
+        const diffMs = sortedDates[i].getTime() - sortedDates[i - 1].getTime();
+        if (Number.isFinite(diffMs) && diffMs >= 0) {
+          intervalDaysTotal += diffMs / oneDayMs;
+          intervalCount += 1;
+        }
+      }
+    }
+    const averageRepeatIntervalDays =
+      intervalCount > 0 ? intervalDaysTotal / intervalCount : 0;
+
+    const dormantCustomerCount = customerStatRows.filter(
+      (stat) => stat.daysSinceLastOrder >= 45,
+    ).length;
+
+    const valueCustomers = customerStatRows
+      .filter((stat) => Number(stat.totalSpend) > 0)
+      .sort((a, b) => b.totalSpend - a.totalSpend);
+    const highValueCutoffCount = Math.ceil(valueCustomers.length * 0.2);
+    const highValueCustomers = valueCustomers.slice(0, highValueCutoffCount);
+    const highValueSet = new Set(highValueCustomers.map((c) => c.userId));
+    const highValueCustomerCount = highValueSet.size;
+
+    const churnRiskCustomers = customerStatRows
+      .filter((stat) => stat.totalOrders >= 2 && stat.daysSinceLastOrder >= 30)
+      .sort(
+        (a, b) =>
+          b.daysSinceLastOrder - a.daysSinceLastOrder ||
+          b.totalSpend - a.totalSpend,
+      )
+      .slice(0, 10)
+      .map((stat) => {
+        const profile = customerProfileMap.get(stat.userId);
+        return {
+          userId: stat.userId,
+          fullName: profile?.fullName || null,
+          phone: profile?.phone || null,
+          lastOrderAt: stat.lastOrderAt || null,
+          daysSinceLastOrder: stat.daysSinceLastOrder,
+          totalOrders: stat.totalOrders,
+          totalSpend: stat.totalSpend,
+        };
+      });
+
+    const topValueCustomers = [...customerStatRows]
+      .sort(
+        (a, b) =>
+          b.totalSpend - a.totalSpend ||
+          b.totalOrders - a.totalOrders ||
+          (b.lastOrderAt?.getTime?.() || 0) - (a.lastOrderAt?.getTime?.() || 0),
+      )
+      .slice(0, 10)
+      .map((stat) => {
+        const profile = customerProfileMap.get(stat.userId);
+        return {
+          userId: stat.userId,
+          fullName: profile?.fullName || null,
+          phone: profile?.phone || null,
+          totalOrders: stat.totalOrders,
+          totalSpend: stat.totalSpend,
+          averageOrderValue:
+            stat.totalOrders > 0 ? stat.totalSpend / stat.totalOrders : 0,
+          lastOrderAt: stat.lastOrderAt || null,
+        };
+      });
+
+    const segmentConfigs = [
+      { segmentKey: "NEW", segmentLabel: "Khách mới" },
+      { segmentKey: "REPEAT", segmentLabel: "Khách quay lại" },
+      { segmentKey: "DORMANT", segmentLabel: "Khách ngủ quên" },
+      { segmentKey: "HIGH_VALUE", segmentLabel: "Khách giá trị cao" },
+    ];
+    const segmentCounts = {
+      NEW: 0,
+      REPEAT: 0,
+      DORMANT: 0,
+      HIGH_VALUE: 0,
+    };
+    for (const stat of customerStatRows) {
+      if (stat.totalOrders === 1 && stat.daysSinceLastOrder < 45) segmentCounts.NEW += 1;
+      if (stat.totalOrders >= 2 && stat.daysSinceLastOrder < 45) segmentCounts.REPEAT += 1;
+      if (stat.daysSinceLastOrder >= 45) segmentCounts.DORMANT += 1;
+      if (highValueSet.has(stat.userId)) segmentCounts.HIGH_VALUE += 1;
+    }
+    const customerSegments = segmentConfigs.map(({ segmentKey, segmentLabel }) => {
+      const customerCount = segmentCounts[segmentKey] || 0;
+      return {
+        segmentKey,
+        segmentLabel,
+        customerCount,
+        percentage:
+          activeCustomerCount > 0
+            ? (customerCount / activeCustomerCount) * 100
+            : 0,
+      };
+    });
+
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    const cohortBuckets = new Map();
+    for (const stat of customerStatRows) {
+      if (!stat.firstOrderAt) continue;
+      const cohortMonth = stat.firstOrderAt.toISOString().slice(0, 7);
+      if (!cohortBuckets.has(cohortMonth)) {
+        cohortBuckets.set(cohortMonth, {
+          cohortMonth,
+          cohortSize: 0,
+          retainedCount: 0,
+        });
+      }
+      const bucket = cohortBuckets.get(cohortMonth);
+      bucket.cohortSize += 1;
+      const retained = (stat.orderDates || []).some((orderDate) => {
+        if (!orderDate || !Number.isFinite(orderDate.getTime())) return false;
+        return orderDate.toISOString().slice(0, 7) > cohortMonth;
+      });
+      if (retained) bucket.retainedCount += 1;
+    }
+    const cohortRetention = [...cohortBuckets.values()]
+      .filter((bucket) => bucket.cohortMonth !== currentMonthKey)
+      .sort((a, b) => b.cohortMonth.localeCompare(a.cohortMonth))
+      .slice(0, 6)
+      .map((bucket) => ({
+        cohortMonth: bucket.cohortMonth,
+        cohortSize: bucket.cohortSize,
+        retainedCount: bucket.retainedCount,
+        retentionRate:
+          bucket.cohortSize > 0
+            ? (bucket.retainedCount / bucket.cohortSize) * 100
+            : 0,
+      }));
+
+    const recommendations = [];
+    if (activeCustomerCount === 0) {
+      recommendations.push({
+        key: "NEED_CUSTOMER_DATA",
+        title: "Cần thêm dữ liệu khách hàng",
+        description:
+          "Khi có thêm đơn hàng và khách hàng, hệ thống sẽ tạo insight chính xác hơn.",
+        priority: "LOW",
+      });
+    }
+    if (
+      activeCustomerCount > 0 &&
+      returningCustomerCount / activeCustomerCount < 0.2
+    ) {
+      recommendations.push({
+        key: "LOW_RETURNING_RATE",
+        title: "Tỷ lệ quay lại thấp",
+        description:
+          "Cân nhắc tạo ưu đãi quay lại hoặc chăm sóc nhóm khách đã mua.",
+        priority: "HIGH",
+      });
+    }
+    if (dormantCustomerCount > 0) {
+      recommendations.push({
+        key: "DORMANT_CUSTOMERS",
+        title: "Có khách lâu chưa quay lại",
+        description: "Xem nhóm khách ngủ quên để tạo chiến dịch chăm sóc.",
+        priority: "MEDIUM",
+      });
+    }
+    const mostPopularDishes = [...dishes.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([dishName, quantity]) => ({ dishName, quantity }));
+    if (mostPopularDishes.length > 0) {
+      recommendations.push({
+        key: "POPULAR_DISH",
+        title: "Món được quan tâm nổi bật",
+        description: "Chuẩn bị tồn kho và nhân sự cho món đang được gọi nhiều.",
+        priority: "LOW",
+      });
+    }
+    if (recommendations.length === 0) {
+      recommendations.push({
+        key: "STABLE_CUSTOMER_SIGNALS",
+        title: "Tín hiệu khách hàng ổn định",
+        description:
+          "Tiếp tục theo dõi nhóm khách quay lại và món được quan tâm.",
+        priority: "LOW",
+      });
+    }
 
     return {
       restaurantId,
-      mostPopularDishes: [...dishes.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([dishName, quantity]) => ({ dishName, quantity })),
+      mostPopularDishes,
       busiestDays: [...daily.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 7)
@@ -592,10 +850,19 @@ export const UserQuery = {
         scopedCustomers.length > 0
           ? Math.round(membershipDays / scopedCustomers.length)
           : 0,
-      activeCustomerCount: customerCountByUserId.size,
-      returningCustomerCount: [...customerCountByUserId.values()].filter(
-        (v) => v >= 2,
-      ).length,
+      activeCustomerCount,
+      returningCustomerCount,
+      totalOrderCount,
+      totalCustomerSpend,
+      averageOrderValue,
+      averageRepeatIntervalDays,
+      dormantCustomerCount,
+      highValueCustomerCount,
+      customerSegments,
+      churnRiskCustomers,
+      topValueCustomers,
+      cohortRetention,
+      recommendations,
     };
   },
 
