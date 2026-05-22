@@ -50,3 +50,11 @@
 - [ ] Late PAYMENT_REQUEST chỉ trừ điểm cashier thực sự acknowledge/resolve trễ.
 - [ ] Refund không bị double-count thành cả paymentError và cashierRefund.
 - [ ] evidenceSource phân biệt đúng neutral_skill và manager_skill.
+
+## Quality gate
+
+- [ ] npm run test:performance passes.
+- [ ] cohan-restaurant-backend npm run test:performance passes.
+- [ ] verifyStaffPerformanceDemoRegression.js syntax check passes.
+- [ ] Local demo seed + verify:demo:performance passes before release.
+

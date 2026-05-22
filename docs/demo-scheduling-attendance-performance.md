@@ -79,6 +79,21 @@ Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 - Có incidents ở các trạng thái pending/eligible/applied/waived/reversed.
 - Có appeal accepted và score reversal.
 
+
+## Pre-release commands
+
+From repo root:
+```bash
+npm run test:performance
+```
+
+From backend:
+```bash
+cd cohan-restaurant-backend
+npm run seed:demo:scheduling -- --reset
+npm run verify:demo:performance
+```
+
 ## Ghi chú
 - PR21 không thay payroll runtime, scoring rule, lifecycle core.
 - Nếu thiếu biến môi trường DB (`MONGO_URI`/`MONGO_DB`) thì script không thể seed dữ liệu thật; vẫn có thể check syntax/import bằng lệnh node.
