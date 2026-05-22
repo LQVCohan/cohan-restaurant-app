@@ -273,7 +273,7 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 
 export const OrderQuery = {
   async customerServiceRequests(_, { restaurantId, status = "PENDING", type, limit = 50 }, ctx) {
-    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const normalized = String(status || "PENDING").toUpperCase();
     const normalizedType = type ? String(type).toUpperCase() : null;
     const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
@@ -344,7 +344,7 @@ export const OrderQuery = {
       promotionIds = [],
     } = input || {};
 
-    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const previewItems = await buildPricedOrderItems({
       restaurantId: rid,
@@ -409,7 +409,7 @@ export const OrderQuery = {
    * ACTIVE orders (exclude completed/cancelled) — cursor connection
    */
   async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
-    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
@@ -425,7 +425,7 @@ export const OrderQuery = {
    * (schema có ordersByRestaurant nhưng file cũ chưa implement)
    */
   async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }, ctx) {
-    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
@@ -815,6 +815,9 @@ export const OrderQuery = {
       StockItem.find({ restaurantId: rid }).limit(200).lean(),
     ]);
 
+    const operationalOrdersInRange = ordersInRange.filter(isOperationalOrder);
+    const operationalOrdersPrevRange = ordersPrevRange.filter(isOperationalOrder);
+
     const statusCounts = {
       pending: 0,
       preparing: 0,
@@ -823,7 +826,6 @@ export const OrderQuery = {
     };
     let revenue = 0;
     for (const o of ordersInRange) {
-      if (!isOperationalOrder(o)) continue;
       const st = String(o.currentStatus || "");
       if (["pending", "confirmed", "customer_attached"].includes(st))
         statusCounts.pending += 1;
@@ -857,13 +859,13 @@ export const OrderQuery = {
       current: 0,
       previous: 0,
     }));
-    for (const o of ordersInRange) {
+    for (const o of operationalOrdersInRange) {
       const bi = assignBucket(o.createdAt, false);
       if (bi < 0) continue;
       if (isRevenueEligibleOrder(o)) revenueBuckets[bi].current += getSafeGrandTotal(o);
       if (isOperationalOrder(o)) orderBuckets[bi].current += 1;
     }
-    for (const o of ordersPrevRange) {
+    for (const o of operationalOrdersPrevRange) {
       const bi = assignBucket(o.createdAt, true);
       if (bi < 0) continue;
       if (isRevenueEligibleOrder(o)) revenueBuckets[bi].previous += getSafeGrandTotal(o);
@@ -871,7 +873,7 @@ export const OrderQuery = {
     }
 
     const dishMap = new Map();
-    for (const o of ordersInRange) {
+    for (const o of operationalOrdersInRange) {
       for (const item of o.items || []) {
         const name = item?.name?.trim();
         if (!name) continue;
@@ -990,7 +992,7 @@ export const OrderQuery = {
     const hourSlots = [10, 12, 14, 16, 18, 20, 22];
     const dayLabels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
     const occupancyMap = new Map();
-    for (const o of ordersInRange) {
+    for (const o of operationalOrdersInRange) {
       const d = new Date(o.createdAt);
       if (!Number.isFinite(d.getTime())) continue;
       const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
@@ -1026,31 +1028,50 @@ export const OrderQuery = {
         listStaffPerformanceSummaries({ restaurantId: rid, fromDate: start, toDate: now, limit: 200, offset: 0 }, ctx.user || ctx.actor || ctx),
         getManagerPerformanceRiskEmployees({ restaurantId: rid, fromDate: start, toDate: now, limit: 100 }, ctx.user || ctx.actor || ctx),
       ]);
+
+      if (!Array.isArray(perfRows) || perfRows.length === 0) {
+        throw new Error("NO_PERFORMANCE_ROWS");
+      }
+
       const riskMap = new Map((riskRows || []).map((r) => [String(r.employeeId), r]));
-      const staffMap = new Map((staffDocs || []).map((s) => [String(s._id), s]));
-      staffPerformance = (perfRows || []).map((row) => {
-        const sid = String(row.employeeId || row.staffId || "");
-        const profile = staffMap.get(sid) || {};
-        const perfScore = Number(row.finalPerformanceScore ?? row.efficiency ?? 0);
-        const clamped = Number(Math.max(0, Math.min(100, Number.isFinite(perfScore) ? perfScore : 0)).toFixed(1));
+      const perfMap = new Map((perfRows || []).map((r) => [String(r.employeeId || r.staffId), r]));
+      const mergedRows = (staffDocs || []).map((staffDoc) => {
+        const sid = String(staffDoc._id);
+        const perf = perfMap.get(sid);
+        const perfScore = Number(perf?.finalPerformanceScore ?? perf?.efficiency ?? 0);
         return {
           staffId: sid,
-          fullName: profile.fullName || row.fullName || "Nhân viên",
-          role: profile.positionTitle || row.role || "Staff",
-          status: profile.employmentStatus || row.employmentStatus || "working",
-          ordersHandled: Number(row.orderCount || row.ordersHandled || 0),
-          efficiency: clamped,
+          fullName: staffDoc.fullName || perf?.fullName || "Nhân viên",
+          role: staffDoc.positionTitle || perf?.role || "Staff",
+          status: staffDoc.employmentStatus || perf?.employmentStatus || "working",
+          ordersHandled: Number(perf?.orderCount || perf?.ordersHandled || 0),
+          efficiency: Number(Math.max(0, Math.min(100, Number.isFinite(perfScore) ? perfScore : 0)).toFixed(1)),
           __risk: riskMap.get(sid)?.riskLevel || "low",
         };
-      }).sort((a,b)=> (a.__risk===b.__risk? a.efficiency-b.efficiency : ({critical:4,high:3,medium:2,low:1}[b.__risk]-({critical:4,high:3,medium:2,low:1}[a.__risk])))).slice(0,8).map(({__risk,...x})=>x);
+      });
+
+      const riskWeight = { critical: 4, high: 3, medium: 2, low: 1 };
+      staffPerformance = mergedRows
+        .sort((a, b) => (riskWeight[b.__risk] - riskWeight[a.__risk]) || (a.efficiency - b.efficiency))
+        .slice(0, 8)
+        .map(({ __risk, ...x }) => x);
     } catch {
-      staffPerformance = (staffDocs || []).map((s) => ({ staffId: String(s._id), fullName: s.fullName || "Nhân viên", role: s.positionTitle || "Staff", status: s.employmentStatus || "working", ordersHandled: 0, efficiency: 0 })).slice(0,8);
+      staffPerformance = (staffDocs || [])
+        .map((s) => ({
+          staffId: String(s._id),
+          fullName: s.fullName || "Nhân viên",
+          role: s.positionTitle || "Staff",
+          status: s.employmentStatus || "working",
+          ordersHandled: 0,
+          efficiency: 0,
+        }))
+        .slice(0, 8);
     }
 
     return {
       restaurantId: String(rid),
       revenue,
-      orders: ordersInRange.length,
+      orders: operationalOrdersInRange.length,
       customers: customerCount,
       tables: tableCount,
       menuItems: menuCount,

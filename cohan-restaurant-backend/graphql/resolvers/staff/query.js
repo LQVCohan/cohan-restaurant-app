@@ -1068,6 +1068,7 @@ export default {
       restaurantId,
       horizonDays,
       timezone,
+      actor: ctx?.user || null,
     });
   },
   schedulePublication: async (

@@ -60,9 +60,57 @@ function scoreExistingPromotion(promo, campaign, nowDate) {
     score += 0.1;
     reasons.push("discount_type_match");
   }
+  if (toNum(promo?.minOrderValue, 0) <= toNum(campaign?.recommendation?.minOrderValue, 0)) {
+    score += 0.08;
+    reasons.push("min_order_fit");
+  }
+  if (String(promo?.scope || "ORDER").toUpperCase() === String(campaign?.recommendation?.scope || "ORDER").toUpperCase()) {
+    score += 0.08;
+    reasons.push("scope_fit");
+  }
+  if (!promo?.stacking && campaign?.recommendation?.stacking === false) {
+    score += 0.05;
+    reasons.push("stacking_guardrail_fit");
+  }
 
   return {
     fitScore: Number(clamp(score, 0, 0.99).toFixed(2)),
+    fitReason: reasons.join(" + ") || "general_fit",
+  };
+}
+
+function scoreExistingCoupon(coupon, campaign, nowDate, avgOrderValue) {
+  let score = 0.3;
+  const reasons = [];
+  if (isActiveNow(coupon, nowDate)) {
+    score += 0.2;
+    reasons.push("active_now");
+  }
+  if (String(coupon?.discountType || "").toUpperCase() === String(campaign?.recommendation?.discountType || "").toUpperCase()) {
+    score += 0.2;
+    reasons.push("discount_type_match");
+  }
+  if (avgOrderValue > 0 && toNum(coupon?.minOrderValue, 0) <= avgOrderValue) {
+    score += 0.15;
+    reasons.push("min_order_fit");
+  } else if (avgOrderValue <= 0) {
+    score -= 0.08;
+    reasons.push("aov_missing");
+  }
+  const maxUsage = toNum(coupon?.maxUsage, 0);
+  const used = toNum(coupon?.used, 0);
+  if (maxUsage <= 0 || used / Math.max(1, maxUsage) < 0.85) {
+    score += 0.1;
+    reasons.push("usage_capacity_ok");
+  }
+  const segment = String(campaign?.targetSegment || "ALL").toUpperCase();
+  const constraintsText = JSON.stringify(coupon?.constraints || {}).toUpperCase();
+  if (!constraintsText || constraintsText.includes(segment) || constraintsText.includes("ALL")) {
+    score += 0.08;
+    reasons.push("constraints_segment_fit");
+  }
+  return {
+    fitScore: Number(clamp(score, 0, 0.95).toFixed(2)),
     fitReason: reasons.join(" + ") || "general_fit",
   };
 }
@@ -149,8 +197,8 @@ export async function buildSmartPromotionEngine({
     })
       .select({ createdAt: 1, orderType: 1, items: 1, totals: 1, currentStatus: 1 })
       .lean(),
-    Promotion.find({ restaurantId: rid }).select({ name: 1, targetAudience: 1, discountType: 1, usageLimit: 1, usageCount: 1, isActive: 1, startAt: 1, endAt: 1 }).lean(),
-    Coupon.find({ restaurantId: rid }).select({ name: 1, code: 1, discountType: 1, maxUsage: 1, used: 1, isActive: 1, publishAt: 1, startAt: 1, endAt: 1 }).lean(),
+    Promotion.find({ restaurantId: rid }).select({ name: 1, code: 1, promotionType: 1, scope: 1, discountType: 1, discountValue: 1, minOrderValue: 1, maxDiscount: 1, usageLimit: 1, usageCount: 1, targetAudience: 1, conditions: 1, startAt: 1, endAt: 1, isActive: 1, stacking: 1, level: 1 }).lean(),
+    Coupon.find({ restaurantId: rid }).select({ name: 1, code: 1, category: 1, discountType: 1, discountValue: 1, minOrderValue: 1, maxDiscount: 1, maxUsage: 1, used: 1, constraints: 1, publishAt: 1, startAt: 1, endAt: 1, isActive: 1 }).lean(),
     Customer.find({ refRestaurants: { $in: [rid] } }).select({ customerType: 1, totalOrders: 1, totalSpending: 1 }).lean(),
     StockItem.find({ restaurantId: rid }).select({ onHand: 1, reserved: 1 }).limit(200).lean(),
   ]);
@@ -207,12 +255,15 @@ export async function buildSmartPromotionEngine({
       targetOrderType: "dine_in",
       targetWindow: { days: ["Mon", "Tue", "Wed", "Thu", "Fri"], startHour: 15, endHour: 17 },
       recommendation: {
+        promotionType: "PERCENTAGE",
         scope: "ORDER",
         discountType: "PERCENT",
         discountValue: 10,
         minOrderValue: Math.max(79000, Math.round(avgOrderValue * 0.8)),
         maxDiscount: 30000,
         stacking: false,
+        targetAudience: "NEW",
+        conditions: ["off_peak_window"],
       },
       guardrails: ["không áp dụng cùng voucher khác", "tắt campaign khi demand tăng mạnh"],
       reason: "off-peak + khách mới + cần tăng conversion",
@@ -228,12 +279,15 @@ export async function buildSmartPromotionEngine({
       targetOrderType: "takeaway",
       targetWindow: { days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], startHour: 10, endHour: 22 },
       recommendation: {
+        promotionType: "FIXED",
         scope: "ORDER",
         discountType: "AMOUNT",
         discountValue: 25000,
         minOrderValue: Math.max(119000, Math.round(avgOrderValue * 1.25)),
         maxDiscount: 25000,
         stacking: false,
+        targetAudience: "OFTEN",
+        conditions: ["threshold_aov"],
       },
       guardrails: ["ưu tiên đơn chưa dùng voucher", "giới hạn theo usageLimit/khung giờ"],
       reason: "basket hiện thấp hơn ngưỡng mục tiêu, cần đẩy AOV",
@@ -249,12 +303,15 @@ export async function buildSmartPromotionEngine({
       targetOrderType: "delivery",
       targetWindow: { days: ["Fri", "Sat", "Sun"], startHour: 18, endHour: 21 },
       recommendation: {
+        promotionType: "COMBO",
         scope: "ORDER",
         discountType: "PERCENT",
         discountValue: 7,
         minOrderValue: Math.max(169000, Math.round(avgOrderValue * 1.4)),
         maxDiscount: 45000,
         stacking: false,
+        targetAudience: "VIP",
+        conditions: ["bundle_focus"],
       },
       guardrails: ["không giảm sâu món premium nhu cầu cao", "ưu tiên combo thay vì giảm thẳng"],
       reason: "khách VIP có chi tiêu cao, phù hợp upsell có kiểm soát",
@@ -294,13 +351,16 @@ export async function buildSmartPromotionEngine({
     .sort((a, b) => b.fitScore - a.fitScore)
     .slice(0, 4)
     .concat(
-      activeCoupons.map((coupon) => ({
-        source: "existing_coupon",
-        promotionId: String(coupon._id),
-        promotionName: coupon.code || coupon.name || "Coupon",
-        fitScore: Number(clamp(0.45 + (String(coupon.discountType || "").toUpperCase() === String(campaigns?.[0]?.recommendation?.discountType || "").toUpperCase() ? 0.2 : 0) + (toNum(coupon.minOrderValue, 0) <= avgOrderValue ? 0.15 : 0), 0, 0.95).toFixed(2)),
-        fitReason: "active_now + discount/min_order_fit",
-      })),
+      activeCoupons.map((coupon) => {
+        const fit = scoreExistingCoupon(coupon, campaigns[0], now, avgOrderValue);
+        return {
+          source: "existing_coupon",
+          promotionId: String(coupon._id),
+          promotionName: coupon.code || coupon.name || "Coupon",
+          fitScore: fit.fitScore,
+          fitReason: fit.fitReason,
+        };
+      }),
     )
     .sort((a, b) => b.fitScore - a.fitScore)
     .slice(0, 6);

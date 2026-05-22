@@ -3,6 +3,7 @@ import { Order, Shift, Staff } from "../../../models/index.js";
 import { buildDemandForecast } from "./demandForecast.service.js";
 import { getSchedulingPolicy } from "../scheduling/schedulingPolicy.service.js";
 import { resolveStaffAvailabilityForShift } from "../scheduling/staffAvailabilityContext.service.js";
+import { listStaffPerformanceSummaries } from "../performance/staffPerformanceReporting.service.js";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -235,6 +236,7 @@ export async function buildStaffSchedulingAssistant({
   restaurantId,
   timezone = "Asia/Ho_Chi_Minh",
   horizonDays = 2,
+  actor = null,
 }) {
   const safeHorizonDays = clamp(Number(horizonDays || 2), 1, 7);
   const now = new Date();
@@ -298,10 +300,21 @@ export async function buildStaffSchedulingAssistant({
   ]);
 
   const performanceByStaff = new Map();
-  for (const order of recentOrders) {
-    const sid = toId(order?.createdBy);
-    if (!sid) continue;
-    performanceByStaff.set(sid, (performanceByStaff.get(sid) || 50) + 1);
+  let usedPerformanceFallback = false;
+  if (actor) {
+    try {
+      const perfRows = await listStaffPerformanceSummaries(
+        { restaurantId: rid, fromDate: new Date(now.getTime() - 30 * 86400000), toDate: now, limit: 500, offset: 0 },
+        actor,
+      );
+      for (const row of perfRows || []) {
+        performanceByStaff.set(String(row.employeeId), Number(row.finalPerformanceScore || 50));
+      }
+    } catch {
+      usedPerformanceFallback = true;
+    }
+  } else {
+    usedPerformanceFallback = true;
   }
 
   let shiftDemand = [];
@@ -582,6 +595,7 @@ export async function buildStaffSchedulingAssistant({
     summaryNotes.push("Có ca đang overstaff, cân nhắc điều chuyển nhân sự.");
   if (!summaryNotes.length)
     summaryNotes.push("Phân bổ ca hiện tại tương đối cân bằng với dự báo.");
+  if (usedPerformanceFallback) summaryNotes.push("Thiếu dữ liệu performance xác thực, đang dùng điểm trung tính cho gợi ý nhân sự.");
 
   return {
     summary: {
