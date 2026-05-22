@@ -104,6 +104,7 @@ function TableActionsModalCore({
     splitTables,
     deleteTable,
     fetchTableByCode,
+    fetchOrderByTable,
   } = usePos();
 
   const { updateOrderCustomerByCode } =
@@ -207,9 +208,13 @@ function TableActionsModalCore({
   };
 
   const findConfirmedByTableRef = useRef(findConfirmedByTable);
+  const fetchOrderByTableRef = useRef(fetchOrderByTable);
   useEffect(() => {
     findConfirmedByTableRef.current = findConfirmedByTable;
   }, [findConfirmedByTable]);
+  useEffect(() => {
+    fetchOrderByTableRef.current = fetchOrderByTable;
+  }, [fetchOrderByTable]);
 
   const hydratedReservationFor = useRef(null);
   const hydratedOrderFor = useRef(null);
