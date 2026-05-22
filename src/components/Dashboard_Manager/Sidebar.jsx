@@ -11,7 +11,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
       title: "Tổng quan",
       items: [
         { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", permissions: ["dashboard.read", "report.read"] },
-        { id: "analytics", icon: "📈", label: "Phân tích", page: "Phân tích", permissions: ["report.read"] },
+        { id: "analytics", icon: "📈", label: "Phân tích kinh doanh", page: "Phân tích kinh doanh", permissions: ["report.read"] },
       ],
     },
     {
@@ -65,8 +65,8 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
           id: "customer-analytics",
           permissions: ["report.read"],
           icon: "🧠",
-          label: "Phân tích người dùng",
-          page: "Phân tích người dùng",
+          label: "Phân tích khách hàng",
+          page: "Phân tích khách hàng",
         },
         {
           id: "promotions",
