@@ -80,6 +80,7 @@ function aggregateOrderHistory(orders, timezone) {
   const dayMap = new Map();
   const hourTotals = createZeroHours();
   const dayHourMap = new Map();
+  const dowCountMap = new Map();
   const dishDaily = new Map();
   const recentDishDaily = new Map();
 
@@ -113,6 +114,8 @@ function aggregateOrderHistory(orders, timezone) {
     dayRow.hourOrders[hour] += 1;
     dayRow.hourGuests[hour] += guestCount;
     dayMap.set(dayKey, dayRow);
+    if (!dowCountMap.has(dow)) dowCountMap.set(dow, new Set());
+    dowCountMap.get(dow).add(dayKey);
 
     hourTotals[hour] += 1;
     const dayHourKey = `${dow}-${hour}`;
@@ -142,6 +145,7 @@ function aggregateOrderHistory(orders, timezone) {
     days: [...dayMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
     hourTotals,
     dayHourMap,
+    dowCountMap: new Map([...dowCountMap.entries()].map(([k, set]) => [k, set.size])),
     dishDaily: [...dishDaily.values()],
     recentDishDaily: [...recentDishDaily.values()],
   };
@@ -336,7 +340,8 @@ export function computeDemandForecastFromData({
 
     for (let hour = 6; hour <= 23; hour += 1) {
       const overallHourAvg = history.hourTotals[hour] / dayCount;
-      const dayHourAvg = (history.dayHourMap.get(`${dow}-${hour}`) || 0) / dayCount;
+      const dowCount = Number(history?.dowCountMap?.get(dow) || 1);
+      const dayHourAvg = (history.dayHourMap.get(`${dow}-${hour}`) || 0) / Math.max(1, dowCount);
       const recentHourAvg = recentHourTotals[hour] / recentDayCount;
 
       const rawExpectedOrders = overallHourAvg * 0.2 + dayHourAvg * 0.5 + recentHourAvg * 0.3;

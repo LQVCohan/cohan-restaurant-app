@@ -3,6 +3,7 @@ import { Order, Shift, Staff } from "../../../models/index.js";
 import { buildDemandForecast } from "./demandForecast.service.js";
 import { getSchedulingPolicy } from "../scheduling/schedulingPolicy.service.js";
 import { resolveStaffAvailabilityForShift } from "../scheduling/staffAvailabilityContext.service.js";
+import { listStaffPerformanceSummaries } from "../performance/staffPerformanceReporting.service.js";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -45,6 +46,11 @@ const toIsoDay = (date, timezone) => {
     day: "2-digit",
   });
   return formatter.format(date);
+};
+const toBusinessShiftDate = (dateKey, hour, timezone) => {
+  const safeHour = String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, "0");
+  if (timezone === "Asia/Ho_Chi_Minh") return new Date(`${dateKey}T${safeHour}:00:00+07:00`);
+  return new Date(`${dateKey}T${safeHour}:00:00Z`);
 };
 
 const getHour = (date, timezone) => {
@@ -230,6 +236,7 @@ export async function buildStaffSchedulingAssistant({
   restaurantId,
   timezone = "Asia/Ho_Chi_Minh",
   horizonDays = 2,
+  actor = null,
 }) {
   const safeHorizonDays = clamp(Number(horizonDays || 2), 1, 7);
   const now = new Date();
@@ -293,10 +300,21 @@ export async function buildStaffSchedulingAssistant({
   ]);
 
   const performanceByStaff = new Map();
-  for (const order of recentOrders) {
-    const sid = toId(order?.createdBy);
-    if (!sid) continue;
-    performanceByStaff.set(sid, (performanceByStaff.get(sid) || 0) + 1);
+  let usedPerformanceFallback = false;
+  if (actor) {
+    try {
+      const perfRows = await listStaffPerformanceSummaries(
+        { restaurantId: rid, fromDate: new Date(now.getTime() - 30 * 86400000), toDate: now, limit: 500, offset: 0 },
+        actor,
+      );
+      for (const row of perfRows || []) {
+        performanceByStaff.set(String(row.employeeId), Number(row.finalPerformanceScore || 50));
+      }
+    } catch {
+      usedPerformanceFallback = true;
+    }
+  } else {
+    usedPerformanceFallback = true;
   }
 
   let shiftDemand = [];
@@ -340,13 +358,14 @@ export async function buildStaffSchedulingAssistant({
           ? s.workingDays.map((day) => String(day || "").toUpperCase())
           : [],
         employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
-        score: Number(performanceByStaff.get(String(s._id)) || 0),
+        score: Number(performanceByStaff.get(String(s._id)) || 50),
       },
     ]),
   );
 
   const shiftMap = new Map();
   for (const row of shifts || []) {
+    if (String(row?.status || "").toLowerCase() === "cancelled") continue;
     const start = toDate(row?.startTime);
     const end = toDate(row?.endTime);
     if (!start || !end) continue;
@@ -438,12 +457,8 @@ export async function buildStaffSchedulingAssistant({
     const { status, severity } = resolveShiftStatus(deltaStaff);
 
     const shiftWindow = SHIFT_WINDOWS[group.shiftType] || SHIFT_WINDOWS.morning;
-    const shiftStart = new Date(
-      `${group.date}T${String(shiftWindow.startHour).padStart(2, "0")}:00:00.000Z`,
-    );
-    const shiftEnd = new Date(
-      `${group.date}T${String(shiftWindow.endHour).padStart(2, "0")}:00:00.000Z`,
-    );
+    const shiftStart = toBusinessShiftDate(group.date, shiftWindow.startHour, timezone);
+    const shiftEnd = toBusinessShiftDate(group.date, shiftWindow.endHour, timezone);
 
     const assignedIds = new Set([...group.staffIds].map(String));
     const suggestedCandidates = [];
@@ -497,6 +512,9 @@ export async function buildStaffSchedulingAssistant({
 
       const selectedPool = evaluatedPool
         .sort((a, b) => {
+          const leftHardBlock = (a.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
+          const rightHardBlock = (b.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
+          if (leftHardBlock !== rightHardBlock) return leftHardBlock - rightHardBlock;
           const leftWarn = (a.availabilityIssues || []).length > 0 ? 1 : 0;
           const rightWarn = (b.availabilityIssues || []).length > 0 ? 1 : 0;
           if (leftWarn !== rightWarn) return leftWarn - rightWarn;
@@ -577,6 +595,7 @@ export async function buildStaffSchedulingAssistant({
     summaryNotes.push("Có ca đang overstaff, cân nhắc điều chuyển nhân sự.");
   if (!summaryNotes.length)
     summaryNotes.push("Phân bổ ca hiện tại tương đối cân bằng với dự báo.");
+  if (usedPerformanceFallback) summaryNotes.push("Thiếu dữ liệu performance xác thực, đang dùng điểm trung tính cho gợi ý nhân sự.");
 
   return {
     summary: {
