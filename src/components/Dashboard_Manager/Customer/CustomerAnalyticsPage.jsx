@@ -382,12 +382,28 @@ const CustomerAnalyticsPage = () => {
                   <p>Các nhóm khách hàng theo dữ liệu phân tích hiện tại.</p>
                 </div>
               </div>
-              {loading ? <div className="customer-panel__loading">Đang tải phân khúc khách hàng...</div> : customerSegments.length > 0 ? (
+              {loading ? <div className="customer-panel__loading">Đang tải phân khúc khách hàng...</div> : visibleCustomerSegments.length > 0 ? (
                 <div className="customer-segment-list">
                   {visibleCustomerSegments.map((segment, index) => {
                     const percentage = Number(segment?.percentage || 0);
                     const progress = Math.max(0, Math.min(100, percentage));
-                    return <div className="customer-segment-row" key={`${segment?.segmentKey || 'segment'}-${index}`}><div className="customer-segment-row__meta"><strong>{segment?.segmentLabel || 'Phân khúc chưa đặt tên'}</strong><span>{formatNumber(segment?.customerCount)} khách • {formatPercent(percentage)}</span></div><div className="customer-progress"><span style={{ width: `${progress}%` }} /></div></div>;
+                    return (
+                      <div
+                        className="customer-segment-row"
+                        key={`${segment?.segmentKey || "segment"}-${index}`}
+                      >
+                        <div className="customer-segment-row__meta">
+                          <strong>{segment?.segmentLabel || "Phân khúc chưa đặt tên"}</strong>
+                          <span>
+                            {formatNumber(segment?.customerCount)} khách •{" "}
+                            {formatPercent(percentage)}
+                          </span>
+                        </div>
+                        <div className="customer-progress">
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có dữ liệu phân khúc khách hàng.</h4></div>}
@@ -399,7 +415,22 @@ const CustomerAnalyticsPage = () => {
                 <div className="customer-risk-list">
                   {churnRiskCustomers.map((customer, index) => {
                     const risk = getChurnRiskMeta(customer?.daysSinceLastOrder);
-                    return <div className="customer-risk-row" key={`${customer?.userId || 'risk'}-${index}`}><div className="customer-risk-row__top"><strong>{customer?.fullName || 'Khách chưa có tên'}</strong><span className={`customer-risk-badge customer-risk-badge--${risk.className}`}>{risk.label}</span></div><p>{customer?.phone || 'Chưa có số điện thoại'}</p><div className="customer-risk-row__meta"><span>{formatNumber(customer?.daysSinceLastOrder)} ngày chưa quay lại</span><span>{formatNumber(customer?.totalOrders)} đơn</span><span>{formatCurrency(customer?.totalSpend)}</span></div></div>;
+                    return (
+                      <div className="customer-risk-row" key={`${customer?.userId || "risk"}-${index}`}>
+                        <div className="customer-risk-row__top">
+                          <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
+                          <span className={`customer-risk-badge customer-risk-badge--${risk.className}`}>
+                            {risk.label}
+                          </span>
+                        </div>
+                        <p>{customer?.phone || "Chưa có số điện thoại"}</p>
+                        <div className="customer-risk-row__meta">
+                          <span>{formatNumber(customer?.daysSinceLastOrder)} ngày chưa quay lại</span>
+                          <span>{formatNumber(customer?.totalOrders)} đơn</span>
+                          <span>{formatCurrency(customer?.totalSpend)}</span>
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có khách có nguy cơ rời bỏ.</h4></div>}
@@ -412,7 +443,23 @@ const CustomerAnalyticsPage = () => {
                   {topValueCustomers.map((customer, index) => {
                     const spend = Number(customer?.totalSpend || 0);
                     const progress = Math.max(0, Math.min(100, (spend / maxTopValueSpend) * 100));
-                    return <div className="customer-value-row" key={`${customer?.userId || 'value'}-${index}`}><div className="customer-value-row__top"><span className="customer-value-rank">#{index + 1}</span><strong>{customer?.fullName || 'Khách chưa có tên'}</strong></div><div className="customer-value-row__meta"><span>{formatCurrency(spend)}</span><span>{formatNumber(customer?.totalOrders)} đơn</span><span>AOV: {formatCurrency(customer?.averageOrderValue)}</span><span>Đơn gần nhất: {formatDate(customer?.lastOrderAt)}</span></div><div className="customer-progress"><span style={{ width: `${progress}%` }} /></div></div>;
+                    return (
+                      <div className="customer-value-row" key={`${customer?.userId || "value"}-${index}`}>
+                        <div className="customer-value-row__top">
+                          <span className="customer-value-rank">#{index + 1}</span>
+                          <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
+                        </div>
+                        <div className="customer-value-row__meta">
+                          <span>{formatCurrency(spend)}</span>
+                          <span>{formatNumber(customer?.totalOrders)} đơn</span>
+                          <span>AOV: {formatCurrency(customer?.averageOrderValue)}</span>
+                          <span>Đơn gần nhất: {formatDate(customer?.lastOrderAt)}</span>
+                        </div>
+                        <div className="customer-progress">
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có khách giá trị cao.</h4></div>}
@@ -425,7 +472,20 @@ const CustomerAnalyticsPage = () => {
                   {cohortRetention.map((cohort, index) => {
                     const rate = Number(cohort?.retentionRate || 0);
                     const progress = Math.max(0, Math.min(100, rate));
-                    return <div className="customer-cohort-row" key={`${cohort?.cohortMonth || 'cohort'}-${index}`}><div className="customer-cohort-row__meta"><strong>{cohort?.cohortMonth || '—'}</strong><span>{formatNumber(cohort?.retainedCount)} / {formatNumber(cohort?.cohortSize)} khách ({formatPercent(rate)})</span></div><div className="customer-progress customer-progress--day"><span style={{ width: `${progress}%` }} /></div></div>;
+                    return (
+                      <div className="customer-cohort-row" key={`${cohort?.cohortMonth || "cohort"}-${index}`}>
+                        <div className="customer-cohort-row__meta">
+                          <strong>{cohort?.cohortMonth || "—"}</strong>
+                          <span>
+                            {formatNumber(cohort?.retainedCount)} / {formatNumber(cohort?.cohortSize)} khách (
+                            {formatPercent(rate)})
+                          </span>
+                        </div>
+                        <div className="customer-progress customer-progress--day">
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có đủ dữ liệu cohort.</h4></div>}
@@ -436,24 +496,83 @@ const CustomerAnalyticsPage = () => {
               {loading ? <div className="customer-panel__loading">Đang tải gợi ý hành động...</div> : recommendations.length > 0 ? (
                 <div className="customer-recommendation-list">
                   {recommendations.map((item, index) => {
-                    const priority = String(item?.priority || 'LOW').toLowerCase();
-                    const priorityClass = ['high','medium','low'].includes(priority) ? priority : 'low';
-                    return <article className={`customer-recommendation-card customer-recommendation-card--${priorityClass}`} key={`${item?.key || 'recommendation'}-${index}`}><h4>{item?.title || 'Gợi ý'}</h4><p>{item?.description || '—'}</p><span>{String(item?.priority || 'LOW')}</span></article>;
+                    const priority = String(item?.priority || "LOW").toLowerCase();
+                    const priorityClass = ["high", "medium", "low"].includes(priority)
+                      ? priority
+                      : "low";
+                    return (
+                      <article
+                        className={`customer-recommendation-card customer-recommendation-card--${priorityClass}`}
+                        key={`${item?.key || "recommendation"}-${index}`}
+                      >
+                        <h4>{item?.title || "Gợi ý"}</h4>
+                        <p>{item?.description || "—"}</p>
+                        <span>{String(item?.priority || "LOW")}</span>
+                      </article>
+                    );
                   })}
                 </div>
               ) : <div className="customer-empty-state"><h4>Chưa có gợi ý hành động.</h4></div>}
             </section>
           </section>
 
-          <section className={`customer-guidance ${!hasActionableInsight ? "customer-guidance--empty customer-guidance--action-center" : ""}`}>
+          <section
+            className={`customer-guidance ${!hasActionableInsight ? "customer-guidance--empty customer-guidance--action-center" : ""}`}
+          >
             {!hasActionableInsight ? (
               <>
-                <div><p className="customer-guidance__eyebrow">Bước tiếp theo</p><h3>Chưa đủ dữ liệu để phân tích khách hàng</h3><p>Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo insight hữu ích.</p></div>
-                <div className="customer-guidance__steps"><div><ClipboardList size={16} aria-hidden="true" /><span>Kiểm tra đơn</span></div><div><UserRoundCog size={16} aria-hidden="true" /><span>Quản lý khách</span></div><div><Utensils size={16} aria-hidden="true" /><span>Kiểm tra menu</span></div></div>
-                <div className="customer-guidance__actions"><button type="button" aria-label="Đi tới quản lý đơn hàng" onClick={() => navigateManagerPage("orders")}>Xem đơn hàng</button><button type="button" aria-label="Đi tới quản lý khách hàng" onClick={() => navigateManagerPage("customers")}>Quản lý khách hàng</button><button type="button" aria-label="Đi tới quản lý menu" onClick={() => navigateManagerPage("menu")}>Kiểm tra menu</button></div>
+                <div>
+                  <p className="customer-guidance__eyebrow">Bước tiếp theo</p>
+                  <h3>Chưa đủ dữ liệu để phân tích khách hàng</h3>
+                  <p>Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo insight hữu ích.</p>
+                </div>
+                <div className="customer-guidance__steps">
+                  <div>
+                    <ClipboardList size={16} aria-hidden="true" />
+                    <span>Kiểm tra đơn</span>
+                  </div>
+                  <div>
+                    <UserRoundCog size={16} aria-hidden="true" />
+                    <span>Quản lý khách</span>
+                  </div>
+                  <div>
+                    <Utensils size={16} aria-hidden="true" />
+                    <span>Kiểm tra menu</span>
+                  </div>
+                </div>
+                <div className="customer-guidance__actions">
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý đơn hàng"
+                    onClick={() => navigateManagerPage("orders")}
+                  >
+                    Xem đơn hàng
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý khách hàng"
+                    onClick={() => navigateManagerPage("customers")}
+                  >
+                    Quản lý khách hàng
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Đi tới quản lý menu"
+                    onClick={() => navigateManagerPage("menu")}
+                  >
+                    Kiểm tra menu
+                  </button>
+                </div>
               </>
             ) : (
-              <div><p className="customer-guidance__eyebrow">Gợi ý vận hành</p><h3><BarChart3 size={16} aria-hidden="true" /><span>Dùng insight để chăm sóc khách hàng hiệu quả hơn</span></h3><p>Tập trung vào nhóm có nguy cơ rời bỏ, khách giá trị cao và cohort giữ chân để tối ưu doanh thu.</p></div>
+              <div>
+                <p className="customer-guidance__eyebrow">Gợi ý vận hành</p>
+                <h3>
+                  <BarChart3 size={16} aria-hidden="true" />
+                  <span>Dùng insight để chăm sóc khách hàng hiệu quả hơn</span>
+                </h3>
+                <p>Tập trung vào nhóm có nguy cơ rời bỏ, khách giá trị cao và cohort giữ chân để tối ưu doanh thu.</p>
+              </div>
             )}
           </section>
         </>
