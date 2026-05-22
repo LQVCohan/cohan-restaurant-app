@@ -206,8 +206,20 @@ export const formatDelta = (value) => {
 };
 const formatMetricNumber = (value) =>
   Number.isFinite(Number(value)) ? Number(value) : 0;
+const formatMetricRate = (value) => {
+  const rate = Number(value);
+  if (!Number.isFinite(rate)) return "--";
+  return `${Math.round(rate * 1000) / 10}%`;
+};
 const formatMetricMinutes = (value) =>
   Number.isFinite(Number(value)) ? `${Number(value)} phút` : "--";
+const resolveCashierMetrics = (snapshot) => snapshot?.factors?.cashierMetrics || null;
+const hasCashierMetrics = (snapshot, qualityEvidence) =>
+  Boolean(
+    (qualityEvidence?.roleGroup === "cashier")
+      || Number(qualityEvidence?.cashierOperationalPenalty || 0) > 0
+      || resolveCashierMetrics(snapshot),
+  );
 const QUALITY_ROLE_LABELS = {
   order_staff: "Nhân viên order/phục vụ",
   cashier: "Thu ngân",
@@ -402,7 +414,9 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
   const snapshotUpdatedAt = snapshot?.updatedAt || snapshot?.calculatedAt || null;
   const kitchenMetrics = snapshot?.factors?.kitchenMetrics;
   const qualityEvidence = snapshot?.factors?.qualityEvidence;
+  const cashierMetrics = resolveCashierMetrics(snapshot);
   const hasKitchenMetrics = Number(kitchenMetrics?.totalItems || 0) > 0;
+  const shouldShowCashierMetrics = hasCashierMetrics(snapshot, qualityEvidence);
   const { data: historyData } = useQuery(GET_STAFF_PERFORMANCE_ADJUSTMENT_HISTORY, {
     skip: !snapshot || !employeeId || !restaurantId || !periodStart || !periodEnd,
     variables: {
@@ -663,6 +677,9 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                 <span>Điểm kỹ năng nền: {qualityEvidence?.baseSkillScore ?? 75}</span>
                 <span>Trừ theo bếp/bar: {qualityEvidence?.kitchenPenalty ?? 0}</span>
                 <span>Trừ theo đánh giá khách hàng: {qualityEvidence?.customerPenalty ?? 0}</span>
+                {(qualityEvidence?.roleGroup === "cashier" || Number(qualityEvidence?.cashierOperationalPenalty || 0) > 0) ? (
+                  <span>Trừ theo nghiệp vụ thu ngân: {qualityEvidence?.cashierOperationalPenalty ?? 0}</span>
+                ) : null}
                 <span>Tổng điều chỉnh: {qualityEvidence?.totalPenalty ?? 0}</span>
                 <span>Điểm Quality cuối: {qualityEvidence?.finalQualityScore ?? snapshot?.quality?.score ?? 0}</span>
                 <span>Nguồn dữ liệu: {qualityEvidence?.evidenceSource || "--"}</span>
@@ -673,6 +690,40 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
                   : "Không có điều chỉnh trừ điểm từ dữ liệu vai trò trong kỳ."}
               </p>
               <p className="formula-note">{qualityEvidence?.note}</p>
+            </div>
+          ) : null}
+          {shouldShowCashierMetrics ? (
+            <div className="factor-box cashier-metrics-card">
+              <strong>Dữ liệu nghiệp vụ thu ngân</strong>
+              <div className="factor-grid cashier-metrics-grid">
+                <span>Giao dịch xử lý: {formatMetricNumber(cashierMetrics?.totalHandledPayments)}</span>
+                <span>Sai bill: {formatMetricNumber(cashierMetrics?.wrongBillIssues)}</span>
+                <span>Lỗi thanh toán: {formatMetricNumber(cashierMetrics?.paymentErrors)}</span>
+                <span>Refund do thao tác thu ngân: {formatMetricNumber(cashierMetrics?.cashierRefunds)}</span>
+                <span>Yêu cầu thanh toán xử lý chậm: {formatMetricNumber(cashierMetrics?.latePaymentRequests)}</span>
+                <span>Giảm giá không hợp lệ: {formatMetricNumber(cashierMetrics?.unauthorizedDiscounts)}</span>
+                <span>Tổng trừ nghiệp vụ thu ngân: {formatMetricNumber(cashierMetrics?.operationalPenalty)}</span>
+                {Number(cashierMetrics?.cashVarianceRate || 0) > 0
+                  ? <span>Tỷ lệ lệch tiền mặt: {formatMetricRate(cashierMetrics?.cashVarianceRate)}</span>
+                  : <span>Tỷ lệ lệch tiền mặt: Chưa có dữ liệu chốt quỹ</span>}
+                <span>Trừ theo nghiệp vụ thu ngân (Quality): {formatMetricNumber(qualityEvidence?.cashierOperationalPenalty)}</span>
+                <span>Có bằng chứng nghiệp vụ thu ngân: {qualityEvidence?.hasCashierOperationalEvidence ? "Có" : "Không"}</span>
+              </div>
+              {Number(qualityEvidence?.cashierOperationalPenalty || 0) > 0 ? (
+                <p className="formula-note cashier-metrics-note">
+                  Điểm Quality của thu ngân đã được điều chỉnh theo lỗi nghiệp vụ có thể quy trách nhiệm, ví dụ sai bill, lỗi thanh toán, refund do thao tác sai, xử lý yêu cầu thanh toán chậm hoặc giảm giá không hợp lệ.
+                </p>
+              ) : null}
+              {Number(cashierMetrics?.operationalPenalty || 0) === 0 ? (
+                <p className="formula-note cashier-metrics-note">
+                  Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.
+                </p>
+              ) : null}
+              {Number(cashierMetrics?.cashVarianceRate || 0) === 0 ? (
+                <p className="formula-note cashier-metrics-note">
+                  Dữ liệu lệch tiền mặt chưa được tính vì chưa có reconciliation/chốt quỹ thu ngân.
+                </p>
+              ) : null}
             </div>
           ) : null}
           <div className="adjustment-history-card">

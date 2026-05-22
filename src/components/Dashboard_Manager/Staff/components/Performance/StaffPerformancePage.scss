@@ -930,6 +930,18 @@
       }
     }
 
+    .cashier-metrics-card {
+      .cashier-metrics-grid {
+        span {
+          color: #1e3a8a;
+        }
+      }
+
+      .cashier-metrics-note {
+        margin-top: 0.55rem;
+      }
+    }
+
     .empty-detail {
       margin: 1rem;
       border: 1px dashed #cbd5e1;
