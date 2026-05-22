@@ -1350,6 +1350,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [reviewShiftAck] = useMutation(REVIEW_SHIFT_ACK);
   const [reviewingAckId, setReviewingAckId] = useState("");
   const [declineReviewErrors, setDeclineReviewErrors] = useState({});
+  const [declinedFilter, setDeclinedFilter] = useState("all");
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
   const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), {
@@ -1628,17 +1629,33 @@ const ScheduleManagement = ({ readOnly = false }) => {
     no_reason: "Không có lý do",
   };
   const getDeclineStatusLabel = (classification) => {
-    if (classification === "valid") return "Đã chấp nhận lý do";
-    if (classification === "invalid") return "Không duyệt lý do";
+    if (classification === "valid") return "Lý do hợp lệ, cần xử lý lịch";
+    if (classification === "invalid") return "Lý do không hợp lệ";
     if (classification === "late") return "Từ chối muộn";
-    return "Chưa duyệt";
+    return "Chưa duyệt lý do";
   };
-  const handleReviewDeclinedShiftAck = async (ackId, classification) => {
+  const getDeclinedFilterStatus = (classification, isResolved) => {
+    if (isResolved) return "resolved";
+    if (classification === "valid") return "valid";
+    if (classification === "invalid") return "invalid";
+    return "pending";
+  };
+  const handleReviewDeclinedShiftAck = async (
+    ackId,
+    classification,
+    reviewNote,
+  ) => {
     setReviewingAckId(ackId);
     setDeclineReviewErrors((current) => ({ ...current, [ackId]: "" }));
     try {
       await reviewShiftAck({
-        variables: { input: { acknowledgementId: ackId, classification } },
+        variables: {
+          input: {
+            acknowledgementId: ackId,
+            classification,
+            reviewNote: String(reviewNote || "").trim() || undefined,
+          },
+        },
       });
       await refetchDeclinedShiftAcks();
     } catch (error) {
@@ -4564,7 +4581,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
         declinedShiftAcksError ||
         declinedShiftAcks.length > 0) && (
         <section className="declined-shift-review-panel">
-          <h3>Ca bị từ chối ({declinedShiftAcks.length})</h3>
+          <h3>Ca nhân viên từ chối cần xử lý ({declinedShiftAcks.length})</h3>
+          <div className="decline-filter-row">
+            {[
+              ["all", "Tất cả"],
+              ["pending", "Chưa xử lý"],
+              ["valid", "Lý do hợp lệ"],
+              ["resolved", "Đã xử lý"],
+              ["invalid", "Không hợp lệ"],
+            ].map(([value, label]) => (
+              <button key={value} type="button" className={declinedFilter === value ? "active" : ""} onClick={() => setDeclinedFilter(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
           {declinedShiftAcksLoading ? (
             <p>Đang tải ca bị từ chối...</p>
           ) : declinedShiftAcksError ? (
@@ -4576,7 +4606,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
               )}
             </p>
           ) : null}
-          {declinedShiftAcks.map((ack) => (
+          {declinedShiftAcks.filter((ack) => {
+            const shiftRow = shiftRowsById.get(String(ack.shiftId));
+            const isResolved = !shiftRow || String(shiftRow.employeeId) !== String(ack.employeeId);
+            const status = getDeclinedFilterStatus(ack.declineClassification || "unknown", isResolved);
+            return declinedFilter === "all" ? true : status === declinedFilter;
+          }).map((ack) => (
             <div key={ack.id} className="declined-shift-review-item">
               {(() => {
                 const shiftRow = shiftRowsById.get(String(ack.shiftId));
@@ -4644,7 +4679,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                           type="button"
                           disabled={isReviewing}
                           onClick={() =>
-                            handleReviewDeclinedShiftAck(ack.id, "valid")
+                            handleReviewDeclinedShiftAck(ack.id, "valid", "")
                           }
                         >
                           {isReviewing ? "Đang xử lý..." : "Chấp nhận lý do"}
@@ -4652,9 +4687,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
                         <button
                           type="button"
                           disabled={isReviewing}
-                          onClick={() =>
-                            handleReviewDeclinedShiftAck(ack.id, "invalid")
-                          }
+                          onClick={() => {
+                            const managerNote = window.prompt("Nhập ghi chú quản lý khi không duyệt lý do:");
+                            if (!managerNote || managerNote.trim().length < 3) {
+                              setDeclineReviewErrors((current) => ({ ...current, [ack.id]: "Vui lòng nhập ghi chú quản lý trước khi không duyệt lý do." }));
+                              return;
+                            }
+                            handleReviewDeclinedShiftAck(
+                              ack.id,
+                              "invalid",
+                              managerNote,
+                            );
+                          }}
                         >
                           {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}
                         </button>
@@ -4668,8 +4712,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     {classification === "valid" ? (
                       <div className="decline-helper-block">
                         <small>
-                          Lý do hợp lệ. Cần xử lý lịch: đổi nhân viên hoặc bỏ
-                          nhân viên khỏi ca.
+                          Cần xử lý lịch: đổi nhân viên, xóa nhân viên khỏi ca, hoặc mở ca để chỉnh.
                         </small>
                         <small>
                           Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
@@ -5157,9 +5200,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               ) : null}
               {publishIssueSnapshot.changedAfterAcknowledgementCount > 0 ? (
                 <div className="publish-confirm-error publish-confirm-error--changed">
-                  Có {publishIssueSnapshot.changedAfterAcknowledgementCount}{" "}
-                  nhân viên đã xác nhận lịch trước đó nhưng lịch đã thay đổi sau
-                  xác nhận. Khi công bố lại, nhân viên cần kiểm tra bản mới.
+                  Một số nhân viên đã xác nhận lịch cũ. Sau khi công bố lại, họ cần kiểm tra lịch mới.
+                  (Hiện có {publishIssueSnapshot.changedAfterAcknowledgementCount} nhân viên bị ảnh hưởng.)
                 </div>
               ) : null}
               {publishConfirmError ? (

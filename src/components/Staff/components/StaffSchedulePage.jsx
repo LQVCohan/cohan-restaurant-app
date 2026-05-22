@@ -176,6 +176,8 @@ const GET_MY_SHIFT_ACKS = gql`
       shiftId
       status
       declineClassification
+      reasonCategory
+      reason
     }
   }
 `;
@@ -260,6 +262,14 @@ const SUBMISSION_STATUS_LABELS = {
   locked: "Đã khóa để xếp lịch",
   late_change_requested: "Chờ duyệt thay đổi muộn",
   used_for_schedule: "Đã dùng để xếp lịch",
+};
+const reasonCategoryLabels = {
+  sick: "Bị ốm",
+  personal: "Việc cá nhân",
+  emergency: "Khẩn cấp",
+  schedule_conflict: "Trùng lịch",
+  transportation: "Vấn đề di chuyển",
+  other: "Khác",
 };
 
 const EMPLOYMENT_TYPE_LABELS = {
@@ -895,6 +905,10 @@ export default function StaffSchedulePage() {
 
   const shiftCountText =
     shifts.length > 0 ? `${shifts.length} ca đã công bố` : "Chưa có ca công bố";
+  const hasChangedAfterAcknowledgement = Boolean(
+    scheduleAck?.changedAfterAcknowledgement ||
+      scheduleAck?.status === "needs_review",
+  );
   const closeDeclinePanelForShift = (shiftId) => {
     setDeclineDraft((prev) => {
       const next = { ...prev };
@@ -1622,13 +1636,12 @@ export default function StaffSchedulePage() {
 
             {shifts.length > 0 ? (
               <div className="staff-feedback" style={{ marginBottom: 12 }}>
-                {scheduleAck?.changedAfterAcknowledgement ||
-                scheduleAck?.status === "needs_review" ? (
+                {hasChangedAfterAcknowledgement ? (
                   <>
                     <p>
-                      Lịch đã có thay đổi sau lần xác nhận trước. Vui lòng xem
-                      lại và xác nhận lại.
+                      Lịch đã được cập nhật sau lần xác nhận trước. Vui lòng kiểm tra lại các ca.
                     </p>
+                    <p>Lịch của bạn đã được cập nhật sau lần xác nhận trước.</p>
                     <button
                       className="staff-primary-btn"
                       disabled={acking || ackLoading}
@@ -1645,7 +1658,7 @@ export default function StaffSchedulePage() {
                         setScheduleAckFeedback({ type: "success", message: "Đã xác nhận lịch tuần." });
                       }}
                     >
-                      Xác nhận lại lịch
+                      Xác nhận lịch mới
                     </button>
                   </>
                 ) : scheduleAck?.status === "acknowledged" ? (
@@ -1721,7 +1734,7 @@ export default function StaffSchedulePage() {
             ) : shifts.length === 0 ? (
               <div className="staff-empty-state staff-empty-state--small">
                 <CalendarDays size={30} />
-                <h3>Lịch chưa được công bố</h3>
+                <h3>Chưa có ca làm được công bố cho tuần này.</h3>
                 <p>
                   Khi quản lý công bố lịch, các ca của bạn sẽ xuất hiện ở đây.
                 </p>
@@ -1757,24 +1770,32 @@ export default function StaffSchedulePage() {
                         <p className="staff-my-shift-card__note">
                           {ack
                             ? {
-                                pending: "Chưa phản hồi",
+                                pending: "Chờ xác nhận",
                                 accepted: "Đã nhận ca",
                                 declined: "Đã từ chối",
+                                expired: "Hết hạn phản hồi",
                                 cancelled: "Đã hủy",
-                              }[ack.status] || "Chưa phản hồi"
+                                needs_review: "Lịch đã thay đổi, cần kiểm tra lại",
+                              }[ack.status] || "Chờ xác nhận"
                             : "Chưa tạo yêu cầu phản hồi ca"}
                         </p>
+                        {ack?.status === "accepted" ? <p className="staff-my-shift-card__note">Bạn đã nhận ca này.</p> : null}
                         {ack?.status === "declined" ? (
-                          <p className="staff-my-shift-card__note">
-                            {
+                          <>
+                            <p className="staff-my-shift-card__note">Bạn đã gửi từ chối ca. Chờ quản lý xử lý.</p>
+                            <p className="staff-my-shift-card__note">
                               {
-                                valid: "Lý do hợp lệ - chờ quản lý xếp lại",
-                                invalid: "Lý do không được duyệt",
-                                unknown: "Chờ quản lý xem xét",
-                                late: "Từ chối muộn",
-                              }[ack?.declineClassification || "unknown"]
-                            }
-                          </p>
+                                {
+                                  valid: "Lý do hợp lệ - chờ quản lý xếp lại",
+                                  invalid: "Lý do không được duyệt",
+                                  unknown: "Chờ quản lý xem xét",
+                                  late: "Từ chối muộn",
+                                }[ack?.declineClassification || "unknown"]
+                              }
+                            </p>
+                            {ack?.reasonCategory ? <p className="staff-my-shift-card__note">Nhóm lý do: {reasonCategoryLabels?.[ack.reasonCategory] || ack.reasonCategory}</p> : null}
+                            {ack?.reason ? <p className="staff-my-shift-card__note">Ghi chú: {ack.reason}</p> : null}
+                          </>
                         ) : null}
                         {ack?.status === "pending" ? (
                           <div className="staff-shift-ack-actions">
@@ -1837,6 +1858,9 @@ export default function StaffSchedulePage() {
                               }
                               placeholder="Lý do từ chối (>= 5 ký tự)"
                             />
+                            <p className="staff-my-shift-card__note">
+                              Từ chối ca sẽ gửi yêu cầu để quản lý xem xét. Bạn vẫn có thể được yêu cầu đi làm cho đến khi quản lý xử lý.
+                            </p>
                             {declineErrorByShiftId[shift.id] ? <p className="staff-my-shift-card__note">{declineErrorByShiftId[shift.id]}</p> : null}
                             {respondingShiftId === shift.id ? <p className="staff-my-shift-card__note">Đang gửi từ chối ca...</p> : null}
                             <button
