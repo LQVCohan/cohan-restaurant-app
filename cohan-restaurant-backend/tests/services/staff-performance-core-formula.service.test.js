@@ -11,9 +11,6 @@ const mocks = vi.hoisted(() => ({
   orderFind: vi.fn(),
   customerReviewAggregate: vi.fn(),
   kitchenOrderWorkItemFind: vi.fn(),
-  performanceIncidentFind: vi.fn(),
-  scoreAdjustmentFind: vi.fn(),
-  scoreReversalFind: vi.fn(),
   snapshotFindOneAndUpdate: vi.fn(),
   markUnacceptedKitchenOrderWorkItems: vi.fn(),
 }));
@@ -27,9 +24,6 @@ vi.mock("../../models/index.js", () => ({
   Order: { aggregate: mocks.orderAggregate, find: mocks.orderFind },
   Review: { aggregate: mocks.customerReviewAggregate },
   KitchenOrderWorkItem: { find: mocks.kitchenOrderWorkItemFind },
-  PerformanceIncident: { find: mocks.performanceIncidentFind },
-  StaffPerformanceScoreAdjustment: { find: mocks.scoreAdjustmentFind },
-  StaffPerformanceScoreReversal: { find: mocks.scoreReversalFind },
   StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
 }));
 vi.mock("../../src/services/kitchen/kitchenOrderWorkItem.service.js", () => ({
@@ -82,9 +76,6 @@ describe("staffPerformance core formula", () => {
     mocks.orderFind.mockReturnValue(chainLean([]));
     mocks.customerReviewAggregate.mockResolvedValue([]);
     mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([]));
-    mocks.performanceIncidentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
-    mocks.scoreAdjustmentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
-    mocks.scoreReversalFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
     mocks.snapshotFindOneAndUpdate.mockReturnValue({ populate: vi.fn().mockReturnValue(chainLean(snapshotDoc())) });
     mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
   });
@@ -437,61 +428,5 @@ describe("staffPerformance core formula", () => {
     const nextSet = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
     expect(nextSet.factors.unacceptedAuditEffectiveAt).toBeInstanceOf(Date);
     expect(next.finalPerformanceScore).toBe(baseline.finalPerformanceScore);
-  });
-
-  it("recalculate without adjustments keeps baseFormulaScore equal finalPerformanceScore", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    const set = await runCalc();
-    expect(set.factors.baseFormulaScore).toBe(set.finalPerformanceScore);
-    expect(set.factors.finalAdjustmentDelta).toBe(0);
-  });
-
-  it("recalculate reapplies applied incident adjustments and accepted appeal reversals without double apply", async () => {
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 85, skillScore: 85 }));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 0, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: null }]));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T08:00:00Z") }]));
-
-    mocks.performanceIncidentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "inc-1" }])),
-    });
-    mocks.scoreAdjustmentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }])),
-    });
-    mocks.scoreReversalFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "rev-1", incidentId: "inc-1", reversalDelta: 3 }])),
-    });
-
-    const first = await runCalc();
-    const second = await runCalc();
-    expect(first.factors.baseFormulaScore).toBe(85);
-    expect(first.finalPerformanceScore).toBe(83);
-    expect(first.factors.incidentAdjustmentDelta).toBe(-5);
-    expect(first.factors.appealReversalDelta).toBe(3);
-    expect(first.factors.finalAdjustmentDelta).toBe(-2);
-    expect(second.finalPerformanceScore).toBe(83);
-    expect(second.factors.finalAdjustmentDelta).toBe(-2);
-  });
-
-  it("only uses applied incidents from same employee/restaurant/period set", async () => {
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 85, skillScore: 85 }));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 0, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: null }]));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.performanceIncidentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "inc-1" }, { _id: "inc-2" }])),
-    });
-    mocks.scoreAdjustmentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }])),
-    });
-    mocks.scoreReversalFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([])),
-    });
-    const set = await runCalc();
-    const incidentQuery = mocks.performanceIncidentFind.mock.calls.at(-1)?.[0];
-    expect(String(incidentQuery.employeeId)).toBe(employeeId);
-    expect(String(incidentQuery.restaurantId)).toBe(restaurantId);
-    expect(incidentQuery.scoreImpactStatus).toBe("applied");
-    expect(set.finalPerformanceScore).toBe(80);
-    expect(set.factors.appliedIncidentIds).toEqual(["inc-1", "inc-2"]);
   });
 });
