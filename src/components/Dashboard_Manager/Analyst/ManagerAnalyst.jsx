@@ -40,8 +40,8 @@ const ManagerAnalyst = () => {
     <div className="manager-analyst-page">
       <header className="analyst-header">
         <div className="header-titles">
-          <h1>Business Intelligence Hub</h1>
-          <p>Phân tích dữ liệu vận hành thực tế</p>
+          <h1>Phân tích kinh doanh</h1>
+          <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
         </div>
         <div className="header-actions">
           <div className="date-picker-mock">
