@@ -1989,18 +1989,19 @@ const ScheduleManagement = ({ readOnly = false }) => {
     await refetchManagerWindows();
   };
 
-  const handleReviewLateChange = async (submissionId, approved) => {
+  const handleReviewLateChange = async (submissionId, approved, reviewNote) => {
     await reviewAvailabilitySubmission({
       variables: {
         input: {
           id: submissionId,
           status: approved ? "approved" : "rejected",
+          reviewNote: String(reviewNote || (approved ? "Duyệt thay đổi muộn" : "Từ chối thay đổi muộn")).trim(),
         },
       },
     });
     await refetchManagerSubmissions();
     showNotification(
-      approved ? "Đã duyệt thay đổi muộn." : "Đã từ chối thay đổi muộn.",
+      approved ? "Đã duyệt thay đổi availability." : "Đã từ chối thay đổi muộn. Availability cũ vẫn được giữ.",
       "success",
     );
   };
@@ -2780,6 +2781,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsSubmittingAddShift(true);
 
     try {
+      const eligibleStaffIds = [];
       const validationFailures = [];
       const overrideByStaffId = new Map();
       for (const staffId of staffIds) {
@@ -2794,6 +2796,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             allowOverride: Boolean(overrideResult?.allowOverride),
             overrideReason: String(overrideResult?.overrideReason || "").trim(),
           });
+          eligibleStaffIds.push(staffId);
         } catch (error) {
           const employeeName =
             staff.find((person) => String(person.id) === String(staffId))
@@ -2804,7 +2807,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }
       }
 
-      if (validationFailures.length) {
+      if (eligibleStaffIds.length === 0) {
         throw new Error(
           `Không thể tạo ca vì có nhân viên không hợp lệ:\n${validationFailures.join("\n")}`,
         );
@@ -2817,7 +2820,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }
 
       const mutationResults = await Promise.allSettled(
-        staffIds.map((staffId) =>
+        eligibleStaffIds.map((staffId) =>
           createShift({
             variables: {
               input: {
@@ -2841,7 +2844,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
 
       const failedRows = mutationResults
-        .map((result, index) => ({ result, staffId: staffIds[index] }))
+        .map((result, index) => ({ result, staffId: eligibleStaffIds[index] }))
         .filter((row) => row.result.status === "rejected")
         .map((row) => {
           const employeeName =
@@ -2865,9 +2868,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setIsAddModalOpen(false);
       setAddModalContext({ date: "", shiftType: "" });
 
-      if (failedRows.length > 0 && successCount > 0) {
+      if ((failedRows.length > 0 || validationFailures.length > 0) && successCount > 0) {
         showNotification(
-          `Đã tạo ${successCount}/${staffIds.length} ca. Thất bại:\n${failedRows.join("\n")}`,
+          `Đã tạo ${successCount}/${staffIds.length} ca. Bỏ qua ${validationFailures.length + failedRows.length} nhân viên: ${[...validationFailures, ...failedRows].join(" | ")}`,
           "warning",
         );
       } else {
@@ -4548,6 +4551,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
           policySaving={updateSchedulingPolicyState.loading}
           onReviewSubmission={handleReviewLateChange}
+          shiftTemplates={schedulingPolicy?.shiftTemplates || []}
+          shiftConfig={configuredShiftTypes}
           reviewingSubmission={reviewingAvailabilitySubmission}
           firstWeekGraceActive={isFirstWeekGraceActive}
           nextWeekWindowMissing={!managerNextWeekWindow?.id}
@@ -5218,7 +5223,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </div>
             <div className="publish-confirm-content">
               <h3 id="schedule-override-title">
-                Xác nhận override cảnh báo xếp ca
+                Xác nhận override cảnh báo xếp ca theo nhân viên
               </h3>
               <p>
                 Bạn đang xếp ca cho{" "}
@@ -5242,10 +5247,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     if (assignmentOverrideError) setAssignmentOverrideError("");
                   }}
                   rows={3}
-                  placeholder="Nhập lý do override để tiếp tục..."
+                  placeholder="Ví dụ: Nhân viên đã xác nhận làm thay, quản lý chấp thuận override availability."
                 />
               </label>
-              <p>Lý do này sẽ được ghi vào log thay đổi lịch.</p>
+              <p>Lý do này sẽ được lưu trong ghi chú ca.</p>
               {assignmentOverrideError ? (
                 <div className="publish-confirm-error">
                   {assignmentOverrideError}
@@ -5264,7 +5269,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     );
                   }}
                 >
-                  Hủy thao tác
+                  Hủy tạo ca cho nhân viên này
                 </button>
                 <button
                   type="button"
@@ -5283,7 +5288,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     resolver?.resolve(trimmedReason);
                   }}
                 >
-                  Tiếp tục override
+                  Tiếp tục tạo ca cho nhân viên này
                 </button>
               </div>
             </div>

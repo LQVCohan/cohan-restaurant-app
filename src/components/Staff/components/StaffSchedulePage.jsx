@@ -246,6 +246,10 @@ const WINDOW_STATUS_LABELS = {
   open: "Đang mở",
   closed: "Đã đóng",
   cancelled: "Đã hủy",
+  used_for_schedule: "Đã dùng để xếp lịch",
+  locked: "Đã khóa để xếp lịch",
+  expired: "Hết hạn",
+  unknown: "Không xác định",
 };
 
 const SUBMISSION_STATUS_LABELS = {
@@ -784,9 +788,12 @@ export default function StaffSchedulePage() {
     [submission, shiftDurationMap],
   );
 
-  const submitLabel = isPartTime
-    ? "Gửi đăng ký ca khả dụng"
-    : "Gửi ca không khả dụng";
+  const isLateChangeFlow = windowStatus === "closed" && allowsLateChange;
+  const submitLabel = isLateChangeFlow
+    ? "Gửi yêu cầu thay đổi muộn"
+    : isPartTime
+      ? "Gửi đăng ký ca khả dụng"
+      : "Gửi ca không khả dụng";
 
   const formTitle = isPartTime
     ? "Đăng ký ca có thể làm"
@@ -847,10 +854,10 @@ export default function StaffSchedulePage() {
 
       const resultStatus = res?.data?.submitStaffAvailability?.status;
 
-      if (resultStatus === "late_change_requested") {
-        setAvailabilityFeedback({ type: "success", message: "Yêu cầu thay đổi muộn đã được gửi và chờ quản lý duyệt." });
+      if (resultStatus === "late_change_requested" || isLateChangeFlow) {
+        setAvailabilityFeedback({ type: "success", message: "Đã gửi yêu cầu thay đổi muộn, vui lòng chờ quản lý duyệt." });
       } else {
-        setAvailabilityFeedback({ type: "success", message: isPartTime ? "Đã gửi đăng ký ca khả dụng thành công." : "Đã gửi thông tin ca không khả dụng." });
+        setAvailabilityFeedback({ type: "success", message: `Đã gửi availability cho tuần ${availabilityTargetRangeLabel}.` });
       }
 
       setSlotsState({});
@@ -1289,9 +1296,27 @@ export default function StaffSchedulePage() {
                       </strong>
                       <p>
                         {allowsLateChange
-                          ? "Kỳ đăng ký đã đóng. Thay đổi của bạn sẽ được gửi như yêu cầu thay đổi muộn và chờ quản lý duyệt."
+                          ? "Kỳ đăng ký đã đóng. Thay đổi sau hạn sẽ gửi yêu cầu chờ quản lý duyệt."
                           : "Kỳ đăng ký đã đóng. Doanh nghiệp hiện không cho phép gửi thay đổi sau khi đóng."}
                       </p>
+                    </div>
+                  </div>
+                ) : null}
+                {windowStatus === "used_for_schedule" ? (
+                  <div className="staff-info-box staff-info-box--locked">
+                    <LockKeyhole size={18} />
+                    <div>
+                      <strong>Kỳ đăng ký đã dùng để xếp lịch</strong>
+                      <p>Kỳ đăng ký này đã được dùng để xếp lịch. Bạn không thể thay đổi availability tại đây.</p>
+                      <p>Nếu lịch tuần này đã được công bố, vui lòng xem lịch cá nhân ở phần bên dưới.</p>
+                    </div>
+                  </div>
+                ) : null}
+                {submissionStatus === "locked" ? (
+                  <div className="staff-info-box staff-info-box--locked">
+                    <LockKeyhole size={18} />
+                    <div>
+                      <strong>Availability đã được khóa để xếp lịch.</strong>
                     </div>
                   </div>
                 ) : null}
@@ -1364,6 +1389,7 @@ export default function StaffSchedulePage() {
                           Các thay đổi này chỉ được dùng để xếp lịch sau khi
                           quản lý duyệt.
                         </p>
+                        <p>Yêu cầu thay đổi muộn của bạn đang chờ quản lý duyệt.</p>
                       </div>
                     ) : null}
                   </div>
@@ -1475,6 +1501,7 @@ export default function StaffSchedulePage() {
                   </div>
                 ) : null}
 
+                {windowStatus !== "used_for_schedule" ? (
                 <div className="staff-action-bar">
                   <div className="staff-action-bar__copy">
                     <strong>
@@ -1525,6 +1552,7 @@ export default function StaffSchedulePage() {
                     </small>
                   ) : null}
                 </div>
+                ) : null}
 
                 {availabilityFeedback?.type === "success" ? (
                   <div className="staff-feedback staff-feedback--success">
