@@ -432,35 +432,85 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
-      const exists = transactionId ? await BankTransaction.findOne({ provider, transactionId }).session(session) : null;
+      const exists = transactionId
+        ? await BankTransaction.findOne({ provider, transactionId }).session(session)
+        : null;
       if (exists) return { duplicate: true, bankTransaction: exists };
-      const bankTx = await BankTransaction.create([{ provider, transactionId, amount, description, transferContent: description, bankAccountNumber, occurredAt, raw: payload, matchStatus: "unmatched" }], { session }).then((x) => x[0]);
-  const normalizedDescription = description.toUpperCase();
-  const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
-  const candidates = await PaymentSession.find({ status: "pending", $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }] }).session(session);
-  const payment = candidates.find((p) => {
-    const ref = String(p.reference || "").toUpperCase();
-    const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
-    return accountOk && (refs.includes(ref) || normalizedDescription.includes(ref));
-  });
-  if (!payment) return { matched: false, bankTransaction: bankTx };
+      const bankTx = await BankTransaction.create([{
+        provider,
+        transactionId,
+        amount,
+        description,
+        transferContent: description,
+        bankAccountNumber,
+        occurredAt,
+        raw: payload,
+        matchStatus: "unmatched",
+      }], { session }).then((x) => x[0]);
 
-  bankTx.matchedPaymentSessionId = payment._id;
-  if (Math.round(amount) !== Math.round(Number(payment.amount || 0))) {
-    bankTx.matchStatus = "amount_mismatch";
-    await bankTx.save({ session });
-    payment.callbackStatus = "rejected";
-    await payment.save({ session });
-    await PaymentReconciliation.create([{ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: amount - payment.amount, status: "amount_mismatch", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload, note: "Amount mismatch" }], { session });
-    return { matched: false, reason: "amount_mismatch", bankTransaction: bankTx };
-  }
-  bankTx.matchStatus = "matched";
-  await bankTx.save({ session });
-  payment.status = "success"; payment.callbackStatus = "verified"; payment.providerTransactionId = transactionId || payment.providerTransactionId; payment.reconciledAt = new Date(); payment.callbackRaw = payload;
-  await payment.save({ session });
-  await PaymentReconciliation.create([{ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: 0, status: "matched", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload }], { session });
-  await settlePaidOrderPaymentSession({ payment, source: "bank_webhook", session });
-  return { matched: true, payment, bankTransaction: bankTx };
+      const normalizedDescription = description.toUpperCase();
+      const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
+      const candidates = await PaymentSession.find({
+        status: "pending",
+        $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }],
+      }).session(session);
+      const payment = candidates.find((p) => {
+        const ref = String(p.reference || "").toUpperCase();
+        const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber
+          || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
+        return accountOk && (refs.includes(ref) || normalizedDescription.includes(ref));
+      });
+      if (!payment) return { matched: false, bankTransaction: bankTx };
+
+      bankTx.matchedPaymentSessionId = payment._id;
+      if (Math.round(amount) !== Math.round(Number(payment.amount || 0))) {
+        bankTx.matchStatus = "amount_mismatch";
+        await bankTx.save({ session });
+        payment.callbackStatus = "rejected";
+        await payment.save({ session });
+        await PaymentReconciliation.create([{
+          restaurantId: payment.restaurantId,
+          paymentSessionId: payment._id,
+          provider,
+          expectedAmount: payment.amount,
+          receivedAmount: amount,
+          varianceAmount: amount - payment.amount,
+          status: "amount_mismatch",
+          bankTransactionId: bankTx._id,
+          paymentReference: payment.reference,
+          matchedBy: "webhook",
+          matchedAt: new Date(),
+          raw: payload,
+          note: "Amount mismatch",
+        }], { session });
+        return { matched: false, reason: "amount_mismatch", bankTransaction: bankTx };
+      }
+
+      bankTx.matchStatus = "matched";
+      await bankTx.save({ session });
+      payment.status = "success";
+      payment.callbackStatus = "verified";
+      payment.providerTransactionId = transactionId || payment.providerTransactionId;
+      payment.reconciledAt = new Date();
+      payment.callbackRaw = payload;
+      await payment.save({ session });
+
+      await PaymentReconciliation.create([{
+        restaurantId: payment.restaurantId,
+        paymentSessionId: payment._id,
+        provider,
+        expectedAmount: payment.amount,
+        receivedAmount: amount,
+        varianceAmount: 0,
+        status: "matched",
+        bankTransactionId: bankTx._id,
+        paymentReference: payment.reference,
+        matchedBy: "webhook",
+        matchedAt: new Date(),
+        raw: payload,
+      }], { session });
+      await settlePaidOrderPaymentSession({ payment, source: "bank_webhook", session });
+      return { matched: true, payment, bankTransaction: bankTx };
     });
   } finally {
     await session.endSession();
