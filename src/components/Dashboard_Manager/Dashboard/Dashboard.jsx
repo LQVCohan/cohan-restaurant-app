@@ -62,6 +62,37 @@ const Dashboard = () => {
   const processingOrders =
     (stats?.statusCounts?.pending || 0) + (stats?.statusCounts?.preparing || 0);
   const alertsCount = safeLowStockItems.length;
+  const resourceCounts = {
+    customers: Number(stats?.customers || 0),
+    tables: Number(stats?.tables || 0),
+    menuItems: Number(stats?.menuItems || 0),
+    promotions: Number(stats?.promotions || 0),
+    staff: Number(stats?.staff || 0),
+  };
+  const isResourceSetupEmpty =
+    !loading &&
+    resourceCounts.customers === 0 &&
+    resourceCounts.tables === 0 &&
+    resourceCounts.menuItems === 0 &&
+    resourceCounts.promotions === 0 &&
+    resourceCounts.staff === 0;
+  const hasCompletedOrders = Number(stats?.statusCounts?.completed || 0) > 0;
+  const effectiveRestaurantId = selectedRestaurantId || selectedRestaurant?.id || "";
+
+  const navigateManagerPage = (page) => {
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: {
+          page,
+          source: "dashboard-empty-state",
+        },
+      }),
+    );
+  };
+
+  const handleGoToMenu = () => navigateManagerPage("menu");
+  const handleGoToTables = () => navigateManagerPage("tables");
+  const handleGoToStaff = () => navigateManagerPage("staff");
 
   return (
     <main className="manager-dashboard">
@@ -175,11 +206,22 @@ const Dashboard = () => {
               </span>
             ) : null}
           </div>
-          <RecentOrders orders={safeRecentOrders} loading={loading} variant="bare" />
+          <RecentOrders
+            orders={safeRecentOrders}
+            loading={loading}
+            variant="bare"
+            onOpenPOS={handleSwitchToPOS}
+            onGoToMenu={handleGoToMenu}
+            onGoToTables={handleGoToTables}
+          />
         </article>
 
         <aside className="dashboard-side-stack">
-          <article className="dashboard-card dashboard-card--side dashboard-card--alerts">
+          <article className={`dashboard-card dashboard-card--side dashboard-card--alerts ${
+              alertsCount > 0
+                ? "dashboard-card--alerts-warning"
+                : "dashboard-card--alerts-healthy"
+            }`}>
             <div className="dashboard-card__head">
               <h3>Cảnh báo vận hành</h3>
             </div>
@@ -239,7 +281,8 @@ const Dashboard = () => {
 
           <article className="dashboard-card dashboard-card--side">
             <ManagerPerformancePanel
-              restaurantId={selectedRestaurantId}
+              restaurantId={effectiveRestaurantId}
+              restaurantLoading={loading}
               summaryOnly
               showViewAll
               compactWhenHealthy
@@ -255,10 +298,39 @@ const Dashboard = () => {
               loading={loading}
               variant="bare"
               compactWhenEmpty
+              hasCompletedOrders={hasCompletedOrders}
             />
           </article>
         </aside>
       </section>
+
+      {isResourceSetupEmpty ? (
+        <section
+          className="dashboard-setup-hint"
+          aria-label="Gợi ý thiết lập dữ liệu vận hành"
+        >
+          <div>
+            <p className="dashboard-setup-hint__eyebrow">Thiết lập vận hành</p>
+            <h3>Thêm dữ liệu nền để dashboard hữu ích hơn</h3>
+            <p>
+              Bắt đầu bằng bàn, menu và nhân sự để hệ thống có thể ghi nhận đơn
+              hàng, doanh thu và hiệu suất chính xác.
+            </p>
+          </div>
+
+          <div className="dashboard-setup-hint__actions">
+            <button type="button" onClick={handleGoToTables}>
+              Thêm bàn
+            </button>
+            <button type="button" onClick={handleGoToMenu}>
+              Thêm món
+            </button>
+            <button type="button" onClick={handleGoToStaff}>
+              Thêm nhân viên
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <StatsGrid stats={stats} isLoading={loading} variant="compact" />
     </main>

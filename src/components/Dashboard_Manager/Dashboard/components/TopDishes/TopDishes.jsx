@@ -3,13 +3,32 @@ import "./TopDishes.scss";
 
 const formatCurrency = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(Number(amount || 0));
 
-const TopDishes = ({ data = [], loading, variant = "card", compactWhenEmpty = false }) => {
+const TopDishes = ({
+  data = [],
+  loading,
+  variant = "card",
+  compactWhenEmpty = false,
+  hasCompletedOrders = false,
+}) => {
   const safeDishes = Array.isArray(data) ? data.slice(0, 5) : [];
   const maxQty = Math.max(...safeDishes.map((item) => Number(item?.quantity || 0)), 1);
   const shellClass = variant === "bare" ? "top-dishes-widget top-dishes-widget--bare" : "top-dishes-widget";
+  const isEmpty = !loading && safeDishes.length === 0;
+
+  if (isEmpty && compactWhenEmpty) {
+    const emptyText = hasCompletedOrders
+      ? "Chưa có dữ liệu món bán chạy."
+      : "Chưa có dữ liệu món bán chạy.";
+
+    return (
+      <div className={`${shellClass} top-dishes-widget--empty-compact`}>
+        <div className="top-dishes-empty-note">{emptyText}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`${shellClass} ${compactWhenEmpty && safeDishes.length === 0 ? "top-dishes-widget--empty-compact" : ""}`}>
+    <div className={shellClass}>
       <div className="dishes-list custom-scrollbar">
         {loading ? <div className="empty-state">Đang tải dữ liệu...</div> : null}
         {!loading && safeDishes.length === 0 ? <div className="empty-state empty-state--compact">Chưa có dữ liệu món bán chạy.</div> : null}

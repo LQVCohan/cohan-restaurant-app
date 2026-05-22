@@ -13,7 +13,13 @@ const ACTION_LABELS = {
 
 const formatScore = (value) => Number(value || 0).toFixed(1).replace(/\.0$/, "");
 
-const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAll = false, compactWhenHealthy = false }) => {
+const ManagerPerformancePanel = ({
+  restaurantId,
+  restaurantLoading = false,
+  summaryOnly = false,
+  showViewAll = false,
+  compactWhenHealthy = false,
+}) => {
   const navigate = useNavigate();
   const { dashboard, loading, error, isEmpty } = useManagerPerformanceDashboard({ restaurantId });
 
@@ -21,10 +27,19 @@ const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAl
   const hasIncidentSignals = Number(dashboard?.incidentOverview?.pendingReviewCount || 0) > 0 || Number(dashboard?.incidentOverview?.overdueCount || 0) > 0;
   const isHealthyCompact = summaryOnly && compactWhenHealthy && actionableItems.length === 0 && !hasIncidentSignals;
 
-  if (!restaurantId) return <div className="performance-empty">Vui lòng chọn nhà hàng để xem hiệu suất.</div>;
+  if (!restaurantId && restaurantLoading) {
+    return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
+  }
+  if (!restaurantId) {
+    return (
+      <div className="performance-empty">
+        Chưa có nhà hàng được chọn để xem hiệu suất.
+      </div>
+    );
+  }
   if (loading) return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
   if (error) return <div className="performance-error">Không tải được dữ liệu hiệu suất.</div>;
-  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu incident hoặc hiệu suất trong kỳ này.</div>;
+  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu hiệu suất trong kỳ này.</div>;
 
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
