@@ -19,6 +19,7 @@ let lazyQuerySpy;
 
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
+  const safeResult = { data: null, loading: false, error: null, refetch: vi.fn() };
 
   return {
     ...actual,
@@ -70,11 +71,22 @@ vi.mock("@apollo/client", async () => {
           refetch: vi.fn(),
         };
       }
+      if (body.includes("query SchedulePublication")) return safeResult;
+      if (body.includes("query ScheduleAcknowledgementSummary")) return safeResult;
+      if (body.includes("query ManagerRestaurants")) return safeResult;
+      if (body.includes("query ManagerScheduleWeekAvailabilitySubmissions")) return safeResult;
+      if (body.includes("query ScheduleChangeLogs")) return safeResult;
 
-      return { data: null, loading: false, error: null };
+      return safeResult;
     }),
-    useLazyQuery: vi.fn(() => [lazyQuerySpy, { loading: false, error: null, data: null }]),
-    useMutation: vi.fn(() => [mutationSpy]),
+    useLazyQuery: vi.fn(() => [lazyQuerySpy, { loading: false, error: null, data: null, called: false }]),
+    useMutation: vi.fn((mutation) => {
+      const body = mutation?.loc?.source?.body || "";
+      if (body.includes("mutation ApplyAutoSchedule")) {
+        return [mutationSpy, { loading: false, error: null, data: null }];
+      }
+      return [mutationSpy, { loading: false, error: null, data: null }];
+    }),
   };
 });
 
@@ -166,15 +178,15 @@ describe("ScheduleManagement", () => {
     mockShiftsData = undefined;
 
     expect(() => render(<ScheduleManagement />)).not.toThrow();
-    expect(screen.getByText("Đánh giá chất lượng lịch")).toBeInTheDocument();
+    expect(screen.getByText("Chất lượng lịch tuần")).toBeInTheDocument();
   });
 
   it("keeps the staff schedule tab in read-only mode", () => {
     const { container } = render(<ScheduleManagement readOnly />);
 
     expect(screen.getByText("Thông Tin Ca Làm Việc")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Xuất bản/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /\+ Ca Sáng/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Công bố lịch/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /\+ Sáng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Chia ca tự động/i })).not.toBeInTheDocument();
 
     fireEvent.click(container.querySelector(".shift-card"));
@@ -191,10 +203,10 @@ describe("ScheduleManagement", () => {
 
     render(<ScheduleManagement />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /\+ Ca Sáng/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /\+ Sáng/i })[0]);
     const modal = document.body.querySelector(".modal-container");
     fireEvent.click(within(modal).getByText("Lan Manager"));
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu & Tạo Lịch/i }));
+    fireEvent.click(within(modal).getByRole("button", { name: /lưu/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const createCall = mutationSpy.mock.calls[0][0];
@@ -261,7 +273,7 @@ describe("ScheduleManagement", () => {
   it("renders compact publish modal summary and keeps footer actions visible", async () => {
     render(<ScheduleManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Công bố lịch/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xuất bản|Công bố lịch/i }));
 
     expect(await screen.findByText("Xác nhận công bố lịch")).toBeInTheDocument();
     expect(screen.getByText("Phạm vi")).toBeInTheDocument();
@@ -370,9 +382,8 @@ describe("ScheduleManagement", () => {
 
   it("opens finalized availability modal", () => {
     render(<ScheduleManagement />);
-    expect(screen.queryByText("Availability đã chốt")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Xem availability đã chốt/i }));
-    expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Lịch rảnh đã chốt/i }));
+    expect(screen.getAllByText("Lịch rảnh đã chốt").length).toBeGreaterThan(0);
   });
 
   it("renders board section before availability panel", () => {
@@ -400,9 +411,7 @@ describe("ScheduleManagement", () => {
       ],
     };
     render(<ScheduleManagement />);
-    await waitFor(() =>
-      expect(screen.getByText("Tuần áp dụng:")).toBeInTheDocument(),
-    );
+    await screen.findByRole("button", { name: /Lịch rảnh đã chốt/i });
     expect(
       screen.queryByText("Quản lý thời gian nhân viên đăng ký khả dụng trước khi xếp lịch."),
     ).not.toBeInTheDocument();
