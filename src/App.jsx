@@ -13,6 +13,7 @@ import FoodDetailAvailabilityGlobalMount from "./components/Customer/Food/FoodDe
 import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
+import AiChatbotWidget from "./components/common/AiChatbotWidget";
 function App() {
   return (
     <ApolloProvider client={apolloClient}>
@@ -28,6 +29,7 @@ function App() {
               </CartProvider>
             </CustomerNotificationProvider>
             <NotificationContainer />
+            <AiChatbotWidget />
           </NotificationProvider>
         </AuthProvider>
       </Router>
