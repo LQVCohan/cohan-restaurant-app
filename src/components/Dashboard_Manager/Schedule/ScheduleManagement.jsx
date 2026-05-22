@@ -1640,12 +1640,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (classification === "invalid") return "invalid";
     return "pending";
   };
-  const handleReviewDeclinedShiftAck = async (ackId, classification) => {
+  const handleReviewDeclinedShiftAck = async (
+    ackId,
+    classification,
+    reviewNote,
+  ) => {
     setReviewingAckId(ackId);
     setDeclineReviewErrors((current) => ({ ...current, [ackId]: "" }));
     try {
       await reviewShiftAck({
-        variables: { input: { acknowledgementId: ackId, classification } },
+        variables: {
+          input: {
+            acknowledgementId: ackId,
+            classification,
+            reviewNote: String(reviewNote || "").trim() || undefined,
+          },
+        },
       });
       await refetchDeclinedShiftAcks();
     } catch (error) {
@@ -4669,7 +4679,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                           type="button"
                           disabled={isReviewing}
                           onClick={() =>
-                            handleReviewDeclinedShiftAck(ack.id, "valid")
+                            handleReviewDeclinedShiftAck(ack.id, "valid", "")
                           }
                         >
                           {isReviewing ? "Đang xử lý..." : "Chấp nhận lý do"}
@@ -4683,7 +4693,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
                               setDeclineReviewErrors((current) => ({ ...current, [ack.id]: "Vui lòng nhập ghi chú quản lý trước khi không duyệt lý do." }));
                               return;
                             }
-                            handleReviewDeclinedShiftAck(ack.id, "invalid");
+                            handleReviewDeclinedShiftAck(
+                              ack.id,
+                              "invalid",
+                              managerNote,
+                            );
                           }}
                         >
                           {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}

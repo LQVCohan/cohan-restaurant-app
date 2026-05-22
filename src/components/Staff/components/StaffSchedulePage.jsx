@@ -178,7 +178,6 @@ const GET_MY_SHIFT_ACKS = gql`
       declineClassification
       reasonCategory
       reason
-      changedAfterAcknowledgement
     }
   }
 `;
@@ -908,10 +907,7 @@ export default function StaffSchedulePage() {
     shifts.length > 0 ? `${shifts.length} ca đã công bố` : "Chưa có ca công bố";
   const hasChangedAfterAcknowledgement = Boolean(
     scheduleAck?.changedAfterAcknowledgement ||
-      scheduleAck?.status === "needs_review" ||
-      (myShiftAcksData?.myShiftAcknowledgements || []).some(
-        (ack) => ack?.changedAfterAcknowledgement,
-      ),
+      scheduleAck?.status === "needs_review",
   );
   const closeDeclinePanelForShift = (shiftId) => {
     setDeclineDraft((prev) => {
@@ -1783,9 +1779,6 @@ export default function StaffSchedulePage() {
                               }[ack.status] || "Chờ xác nhận"
                             : "Chưa tạo yêu cầu phản hồi ca"}
                         </p>
-                        {ack?.changedAfterAcknowledgement ? (
-                          <p className="staff-my-shift-card__note">Đã thay đổi</p>
-                        ) : null}
                         {ack?.status === "accepted" ? <p className="staff-my-shift-card__note">Bạn đã nhận ca này.</p> : null}
                         {ack?.status === "declined" ? (
                           <>
