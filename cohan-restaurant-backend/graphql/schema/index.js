@@ -40,6 +40,7 @@ const files = [
   "orderTracking.graphql",
   "supplier.graphql",
   "communication.graphql",
+  "aiChatbot.graphql",
   "availability.graphql",
   "posCustomer.graphql",
   "attendance_overtime.graphql",
