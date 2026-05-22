@@ -66,6 +66,11 @@ function scoreExistingPromotion(promo, campaign, nowDate) {
     fitReason: reasons.join(" + ") || "general_fit",
   };
 }
+function isActiveNow(row, nowDate) {
+  const startAt = row?.startAt ? new Date(row.startAt) : null;
+  const endAt = row?.endAt ? new Date(row.endAt) : null;
+  return Boolean(row?.isActive && (!startAt || startAt <= nowDate) && (!endAt || endAt >= nowDate));
+}
 
 async function tryAiEnhanceCampaigns({ summary, campaigns, timezone }) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -160,11 +165,8 @@ export async function buildSmartPromotionEngine({
     forecastFallback = true;
   }
 
-  const activePromotions = (promotions || []).filter((p) => {
-    const startAt = p?.startAt ? new Date(p.startAt) : null;
-    const endAt = p?.endAt ? new Date(p.endAt) : null;
-    return p?.isActive && (!startAt || startAt <= now) && (!endAt || endAt >= now);
-  });
+  const activePromotions = (promotions || []).filter((p) => isActiveNow(p, now));
+  const activeCoupons = (coupons || []).filter((c) => isActiveNow(c, now));
 
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, row) => sum + toNum(row?.totals?.grandTotal, 0), 0);
@@ -290,7 +292,18 @@ export async function buildSmartPromotionEngine({
       };
     })
     .sort((a, b) => b.fitScore - a.fitScore)
-    .slice(0, 4);
+    .slice(0, 4)
+    .concat(
+      activeCoupons.map((coupon) => ({
+        source: "existing_coupon",
+        promotionId: String(coupon._id),
+        promotionName: coupon.code || coupon.name || "Coupon",
+        fitScore: Number(clamp(0.45 + (String(coupon.discountType || "").toUpperCase() === String(campaigns?.[0]?.recommendation?.discountType || "").toUpperCase() ? 0.2 : 0) + (toNum(coupon.minOrderValue, 0) <= avgOrderValue ? 0.15 : 0), 0, 0.95).toFixed(2)),
+        fitReason: "active_now + discount/min_order_fit",
+      })),
+    )
+    .sort((a, b) => b.fitScore - a.fitScore)
+    .slice(0, 6);
 
   const segmentInsights = [
     {
@@ -318,6 +331,8 @@ export async function buildSmartPromotionEngine({
     },
   ];
 
+  const nearLimitPromotions = (promotions || []).filter((p) => toNum(p.usageLimit, 0) > 0 && toNum(p.usageCount, 0) / Math.max(1, toNum(p.usageLimit, 0)) >= 0.85).length;
+  const nearLimitCoupons = (coupons || []).filter((c) => toNum(c.maxUsage, 0) > 0 && toNum(c.used, 0) / Math.max(1, toNum(c.maxUsage, 0)) >= 0.85).length;
   const summary = {
     recommendedCampaignCount: campaigns.length,
     topOpportunityWindow,
@@ -330,10 +345,18 @@ export async function buildSmartPromotionEngine({
         ? "Stock pressure cao: cần guardrail để tránh đẩy campaign sai món."
         : "Stock pressure trong ngưỡng an toàn.",
       activePromotions.length
-        ? `Đang có ${activePromotions.length} promotion active, đã chấm điểm tránh overlap cơ bản.`
+        ? `Đang có ${activePromotions.length} promotion active và ${activeCoupons.length} coupon active, đã chấm điểm tránh overlap cơ bản.`
         : "Chưa có promotion active phù hợp, ưu tiên khởi tạo campaign mới.",
+      totalOrders < 20 ? "Dữ liệu còn ít, nên review thủ công trước khi chạy campaign." : "Mẫu dữ liệu đủ để ưu tiên campaign có confidence cao hơn.",
     ],
   };
+  if (totalOrders < 20) {
+    for (const c of campaigns) {
+      c.priority = c.priority === "high" ? "medium" : c.priority;
+      c.expectedKpi.confidence = Number(Math.min(c.expectedKpi.confidence, 0.55).toFixed(2));
+      c.guardrails = [...c.guardrails, "dữ liệu còn ít: chạy draft/review trước khi publish"];
+    }
+  }
 
   let aiEnhanced = false;
   const aiResult = await tryAiEnhanceCampaigns({ summary, campaigns, timezone });
@@ -360,13 +383,8 @@ export async function buildSmartPromotionEngine({
     segmentInsights,
     timeWindowInsights,
     couponContext: {
-      activeCouponCount: (coupons || []).filter((c) => c.isActive).length,
-      nearUsageLimitCount: (coupons || []).filter((c) => {
-        const maxUsage = toNum(c.maxUsage, 0);
-        const used = toNum(c.used, 0);
-        if (maxUsage <= 0) return false;
-        return used / Math.max(1, maxUsage) >= 0.85;
-      }).length,
+      activeCouponCount: activeCoupons.length,
+      nearUsageLimitCount: nearLimitCoupons + nearLimitPromotions,
     },
     meta: {
       method: "smart_promo_v1",

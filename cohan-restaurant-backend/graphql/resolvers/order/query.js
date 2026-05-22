@@ -19,6 +19,8 @@ import TableCustomer from "../../../models/tableCustomer.model.js";
 import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
 import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
 import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
+import { listStaffPerformanceSummaries } from "../../../src/services/performance/staffPerformanceReporting.service.js";
+import { getManagerPerformanceRiskEmployees } from "../../../src/services/performance/managerPerformanceDashboard.service.js";
 import { requireRoles } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -109,6 +111,40 @@ async function requireQueryRestaurantAccess(ctx, restaurantId) {
   await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_READ);
   return rid;
 }
+
+async function requireAnalyticsRestaurantAccess(ctx, restaurantId) {
+  if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
+  const rid = toId(restaurantId);
+  const analyticsPermission = PERMISSIONS.REPORT_READ || PERMISSIONS.ORDER_READ;
+  await requireRestaurantPermission(ctx, rid, analyticsPermission);
+  return rid;
+}
+
+const NON_OPERATIONAL_ORDER_STATUSES = new Set(["draft", "cancelled", "failed"]);
+const REVENUE_PAYMENT_STATUSES = new Set(["paid", "partially_refunded"]);
+const INVALID_SOLD_ITEM_STATUSES = new Set(["cancelled", "returned"]);
+
+function isOperationalOrder(order) {
+  return !NON_OPERATIONAL_ORDER_STATUSES.has(String(order?.currentStatus || "").toLowerCase());
+}
+
+function isRevenueEligibleOrder(order) {
+  if (String(order?.currentStatus || "").toLowerCase() !== "completed") return false;
+  const paymentStatus = String(order?.payment?.status || order?.orderPaymentStatus || "").toLowerCase();
+  return REVENUE_PAYMENT_STATUSES.has(paymentStatus);
+}
+
+function getSafeGrandTotal(order) {
+  const v = Number(order?.totals?.grandTotal || 0);
+  return Number.isFinite(v) && v >= 0 ? v : 0;
+}
+
+function isValidSoldItem(item) {
+  const st = String(item?.status || "").toLowerCase();
+  const qty = Number(item?.quantity || 0);
+  return !INVALID_SOLD_ITEM_STATUSES.has(st) && Number.isFinite(qty) && qty > 0;
+}
+
 
 /** Group orders by orderCode (no parentOrderCode usage) */
 function groupOrdersByRootCode(orders = []) {
@@ -237,7 +273,7 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 
 export const OrderQuery = {
   async customerServiceRequests(_, { restaurantId, status = "PENDING", type, limit = 50 }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
     const normalized = String(status || "PENDING").toUpperCase();
     const normalizedType = type ? String(type).toUpperCase() : null;
     const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
@@ -308,7 +344,7 @@ export const OrderQuery = {
       promotionIds = [],
     } = input || {};
 
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
 
     const previewItems = await buildPricedOrderItems({
       restaurantId: rid,
@@ -373,7 +409,7 @@ export const OrderQuery = {
    * ACTIVE orders (exclude completed/cancelled) — cursor connection
    */
   async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
@@ -389,7 +425,7 @@ export const OrderQuery = {
    * (schema có ordersByRestaurant nhưng file cũ chưa implement)
    */
   async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
 
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
@@ -686,7 +722,7 @@ export const OrderQuery = {
     { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
     ctx,
   ) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
     return buildDemandForecast({
       restaurantId: rid,
       horizonDays,
@@ -699,7 +735,7 @@ export const OrderQuery = {
     { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" },
     ctx,
   ) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
     return buildMenuEngineeringAssistant({
       restaurantId: rid,
       lookbackDays,
@@ -717,7 +753,7 @@ export const OrderQuery = {
     },
     ctx,
   ) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
     return buildSmartPromotionEngine({
       restaurantId: rid,
       lookbackDays,
@@ -727,7 +763,7 @@ export const OrderQuery = {
   },
 
   async managerDashboard(_, { restaurantId, range = "week" }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireAnalyticsRestaurantAccess(ctx, restaurantId);
 
     const now = new Date();
     const days = String(range).toLowerCase() === "month" ? 30 : 7;
@@ -787,6 +823,7 @@ export const OrderQuery = {
     };
     let revenue = 0;
     for (const o of ordersInRange) {
+      if (!isOperationalOrder(o)) continue;
       const st = String(o.currentStatus || "");
       if (["pending", "confirmed", "customer_attached"].includes(st))
         statusCounts.pending += 1;
@@ -794,14 +831,7 @@ export const OrderQuery = {
         statusCounts.preparing += 1;
       if (st === "completed") statusCounts.completed += 1;
       if (st === "cancelled") statusCounts.cancelled += 1;
-      if (
-        st === "completed" &&
-        ["paid", "partially_refunded", "refunded"].includes(
-          String(o?.payment?.status || ""),
-        )
-      ) {
-        revenue += Number(o?.totals?.grandTotal || 0);
-      }
+      if (isRevenueEligibleOrder(o)) revenue += getSafeGrandTotal(o);
     }
 
     const bucketCount = String(range).toLowerCase() === "month" ? 4 : 7;
@@ -830,14 +860,14 @@ export const OrderQuery = {
     for (const o of ordersInRange) {
       const bi = assignBucket(o.createdAt, false);
       if (bi < 0) continue;
-      revenueBuckets[bi].current += Number(o?.totals?.grandTotal || 0);
-      orderBuckets[bi].current += 1;
+      if (isRevenueEligibleOrder(o)) revenueBuckets[bi].current += getSafeGrandTotal(o);
+      if (isOperationalOrder(o)) orderBuckets[bi].current += 1;
     }
     for (const o of ordersPrevRange) {
       const bi = assignBucket(o.createdAt, true);
       if (bi < 0) continue;
-      revenueBuckets[bi].previous += Number(o?.totals?.grandTotal || 0);
-      orderBuckets[bi].previous += 1;
+      if (isRevenueEligibleOrder(o)) revenueBuckets[bi].previous += getSafeGrandTotal(o);
+      if (isOperationalOrder(o)) orderBuckets[bi].previous += 1;
     }
 
     const dishMap = new Map();
@@ -845,7 +875,8 @@ export const OrderQuery = {
       for (const item of o.items || []) {
         const name = item?.name?.trim();
         if (!name) continue;
-        const qty = Number(item?.quantity || 1);
+        if (!isValidSoldItem(item)) continue;
+        const qty = Number(item?.quantity || 0);
         const rev = Number(item?.lineSubtotal || 0);
         const prev = dishMap.get(name) || { quantity: 0, revenue: 0 };
         dishMap.set(name, {
@@ -922,9 +953,9 @@ export const OrderQuery = {
     const reviews = await Review.find({
       restaurantId: rid,
       status: "published",
+      createdAt: { $gte: start, $lte: now },
     })
       .sort({ createdAt: -1 })
-      .limit(20)
       .lean();
     const totalReviews = reviews.length;
     const avgRating =
@@ -952,8 +983,8 @@ export const OrderQuery = {
     const feedbackSummary = {
       avgRating,
       total: totalReviews,
-      negative: feedbackItems.filter((x) => x.sentiment === "negative").length,
-      positive: feedbackItems.filter((x) => x.sentiment === "positive").length,
+      negative: reviews.filter((x) => Number(x.rating || 0) <= 2).length,
+      positive: reviews.filter((x) => Number(x.rating || 0) >= 4).length,
     };
 
     const hourSlots = [10, 12, 14, 16, 18, 20, 22];
@@ -975,12 +1006,12 @@ export const OrderQuery = {
     const occupancyHeatmap = dayLabels.flatMap((dayLabel, dayIndex) =>
       hourSlots.map((hour) => {
         const count = occupancyMap.get(`${dayIndex}-${hour}`) || 0;
-        const occupancyRate = count / peakOrders;
+        const occupancyRate = count > 0 ? count / peakOrders : 0;
         return {
           dayLabel,
           hourLabel: `${hour}:00`,
           occupancyRate,
-          staffRequired: Math.max(2, Math.ceil(occupancyRate * 10)),
+          staffRequired: count > 0 ? Math.max(1, Math.ceil(occupancyRate * 10)) : 0,
         };
       }),
     );
@@ -988,37 +1019,33 @@ export const OrderQuery = {
     const staffDocs = await Staff.find({ restaurantForStaff: rid })
       .select({ _id: 1, fullName: 1, positionTitle: 1, employmentStatus: 1 })
       .lean();
-    const staffPerfMap = new Map(
-      staffDocs.map((s) => [
-        String(s._id),
-        {
-          staffId: String(s._id),
-          fullName: s.fullName || "Nhân viên",
-          role: s.positionTitle || "Staff",
-          status: s.employmentStatus || "working",
-          ordersHandled: 0,
-          efficiency: 0,
-        },
-      ]),
-    );
-    for (const o of ordersInRange) {
-      const uid = o.createdBy ? String(o.createdBy) : null;
-      if (!uid || !staffPerfMap.has(uid)) continue;
-      const row = staffPerfMap.get(uid);
-      row.ordersHandled += 1;
+
+    let staffPerformance = [];
+    try {
+      const [perfRows, riskRows] = await Promise.all([
+        listStaffPerformanceSummaries({ restaurantId: rid, fromDate: start, toDate: now, limit: 200, offset: 0 }, ctx.user || ctx.actor || ctx),
+        getManagerPerformanceRiskEmployees({ restaurantId: rid, fromDate: start, toDate: now, limit: 100 }, ctx.user || ctx.actor || ctx),
+      ]);
+      const riskMap = new Map((riskRows || []).map((r) => [String(r.employeeId), r]));
+      const staffMap = new Map((staffDocs || []).map((s) => [String(s._id), s]));
+      staffPerformance = (perfRows || []).map((row) => {
+        const sid = String(row.employeeId || row.staffId || "");
+        const profile = staffMap.get(sid) || {};
+        const perfScore = Number(row.finalPerformanceScore ?? row.efficiency ?? 0);
+        const clamped = Number(Math.max(0, Math.min(100, Number.isFinite(perfScore) ? perfScore : 0)).toFixed(1));
+        return {
+          staffId: sid,
+          fullName: profile.fullName || row.fullName || "Nhân viên",
+          role: profile.positionTitle || row.role || "Staff",
+          status: profile.employmentStatus || row.employmentStatus || "working",
+          ordersHandled: Number(row.orderCount || row.ordersHandled || 0),
+          efficiency: clamped,
+          __risk: riskMap.get(sid)?.riskLevel || "low",
+        };
+      }).sort((a,b)=> (a.__risk===b.__risk? a.efficiency-b.efficiency : ({critical:4,high:3,medium:2,low:1}[b.__risk]-({critical:4,high:3,medium:2,low:1}[a.__risk])))).slice(0,8).map(({__risk,...x})=>x);
+    } catch {
+      staffPerformance = (staffDocs || []).map((s) => ({ staffId: String(s._id), fullName: s.fullName || "Nhân viên", role: s.positionTitle || "Staff", status: s.employmentStatus || "working", ordersHandled: 0, efficiency: 0 })).slice(0,8);
     }
-    const staffPerformance = [...staffPerfMap.values()]
-      .map((s) => ({
-        ...s,
-        efficiency: Number(
-          Math.min(
-            100,
-            (s.ordersHandled / Math.max(1, ordersInRange.length)) * 100,
-          ).toFixed(1),
-        ),
-      }))
-      .sort((a, b) => b.ordersHandled - a.ordersHandled)
-      .slice(0, 8);
 
     return {
       restaurantId: String(rid),

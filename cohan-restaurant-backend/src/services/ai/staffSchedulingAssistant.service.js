@@ -46,6 +46,11 @@ const toIsoDay = (date, timezone) => {
   });
   return formatter.format(date);
 };
+const toBusinessShiftDate = (dateKey, hour, timezone) => {
+  const safeHour = String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, "0");
+  if (timezone === "Asia/Ho_Chi_Minh") return new Date(`${dateKey}T${safeHour}:00:00+07:00`);
+  return new Date(`${dateKey}T${safeHour}:00:00Z`);
+};
 
 const getHour = (date, timezone) => {
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -296,7 +301,7 @@ export async function buildStaffSchedulingAssistant({
   for (const order of recentOrders) {
     const sid = toId(order?.createdBy);
     if (!sid) continue;
-    performanceByStaff.set(sid, (performanceByStaff.get(sid) || 0) + 1);
+    performanceByStaff.set(sid, (performanceByStaff.get(sid) || 50) + 1);
   }
 
   let shiftDemand = [];
@@ -340,13 +345,14 @@ export async function buildStaffSchedulingAssistant({
           ? s.workingDays.map((day) => String(day || "").toUpperCase())
           : [],
         employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
-        score: Number(performanceByStaff.get(String(s._id)) || 0),
+        score: Number(performanceByStaff.get(String(s._id)) || 50),
       },
     ]),
   );
 
   const shiftMap = new Map();
   for (const row of shifts || []) {
+    if (String(row?.status || "").toLowerCase() === "cancelled") continue;
     const start = toDate(row?.startTime);
     const end = toDate(row?.endTime);
     if (!start || !end) continue;
@@ -438,12 +444,8 @@ export async function buildStaffSchedulingAssistant({
     const { status, severity } = resolveShiftStatus(deltaStaff);
 
     const shiftWindow = SHIFT_WINDOWS[group.shiftType] || SHIFT_WINDOWS.morning;
-    const shiftStart = new Date(
-      `${group.date}T${String(shiftWindow.startHour).padStart(2, "0")}:00:00.000Z`,
-    );
-    const shiftEnd = new Date(
-      `${group.date}T${String(shiftWindow.endHour).padStart(2, "0")}:00:00.000Z`,
-    );
+    const shiftStart = toBusinessShiftDate(group.date, shiftWindow.startHour, timezone);
+    const shiftEnd = toBusinessShiftDate(group.date, shiftWindow.endHour, timezone);
 
     const assignedIds = new Set([...group.staffIds].map(String));
     const suggestedCandidates = [];
@@ -497,6 +499,9 @@ export async function buildStaffSchedulingAssistant({
 
       const selectedPool = evaluatedPool
         .sort((a, b) => {
+          const leftHardBlock = (a.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
+          const rightHardBlock = (b.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
+          if (leftHardBlock !== rightHardBlock) return leftHardBlock - rightHardBlock;
           const leftWarn = (a.availabilityIssues || []).length > 0 ? 1 : 0;
           const rightWarn = (b.availabilityIssues || []).length > 0 ? 1 : 0;
           if (leftWarn !== rightWarn) return leftWarn - rightWarn;
