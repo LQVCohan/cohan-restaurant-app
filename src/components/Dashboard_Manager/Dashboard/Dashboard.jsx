@@ -62,6 +62,46 @@ const Dashboard = () => {
   const processingOrders =
     (stats?.statusCounts?.pending || 0) + (stats?.statusCounts?.preparing || 0);
   const alertsCount = safeLowStockItems.length;
+  const resourceCounts = {
+    customers: Number(stats?.customers || 0),
+    tables: Number(stats?.tables || 0),
+    menuItems: Number(stats?.menuItems || 0),
+    promotions: Number(stats?.promotions || 0),
+    staff: Number(stats?.staff || 0),
+  };
+  const hasRestaurantContext =
+    Boolean(selectedRestaurantId || selectedRestaurant?.id) ||
+    (restaurants || []).length > 0;
+  const isResourceSetupEmpty =
+    !loading &&
+    hasRestaurantContext &&
+    resourceCounts.customers === 0 &&
+    resourceCounts.tables === 0 &&
+    resourceCounts.menuItems === 0 &&
+    resourceCounts.promotions === 0 &&
+    resourceCounts.staff === 0;
+  const hasCompletedOrders = Number(stats?.statusCounts?.completed || 0) > 0;
+  const effectiveRestaurantId = selectedRestaurantId || selectedRestaurant?.id || "";
+  const alertsCardState = loading
+    ? "loading"
+    : alertsCount > 0
+      ? "warning"
+      : "healthy";
+
+  const navigateManagerPage = (page) => {
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: {
+          page,
+          source: "dashboard-empty-state",
+        },
+      }),
+    );
+  };
+
+  const handleGoToMenu = () => navigateManagerPage("menu");
+  const handleGoToTables = () => navigateManagerPage("tables");
+  const handleGoToStaff = () => navigateManagerPage("staff");
 
   return (
     <main className="manager-dashboard">
@@ -92,6 +132,7 @@ const Dashboard = () => {
             type="button"
             className="dashboard-btn dashboard-btn--primary"
             onClick={() => handleSwitchToPOS?.()}
+            disabled={typeof handleSwitchToPOS !== "function"}
           >
             <Monitor size={16} />
             <span>Mở POS</span>
@@ -175,15 +216,27 @@ const Dashboard = () => {
               </span>
             ) : null}
           </div>
-          <RecentOrders orders={safeRecentOrders} loading={loading} variant="bare" />
+          <RecentOrders
+            orders={safeRecentOrders}
+            loading={loading}
+            variant="bare"
+            onOpenPOS={handleSwitchToPOS}
+            onGoToMenu={handleGoToMenu}
+            onGoToTables={handleGoToTables}
+          />
         </article>
 
         <aside className="dashboard-side-stack">
-          <article className="dashboard-card dashboard-card--side dashboard-card--alerts">
+          <article className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}>
             <div className="dashboard-card__head">
               <h3>Cảnh báo vận hành</h3>
             </div>
-            {safeLowStockItems.length > 0 ? (
+            {loading ? (
+              <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
+                <h4>Đang tải cảnh báo</h4>
+                <p>Đang kiểm tra tồn kho và các cảnh báo vận hành.</p>
+              </div>
+            ) : safeLowStockItems.length > 0 ? (
               <div className="operational-alerts">
                 {safeLowStockItems.slice(0, 3).map((item, index) => (
                   <div
@@ -239,7 +292,8 @@ const Dashboard = () => {
 
           <article className="dashboard-card dashboard-card--side">
             <ManagerPerformancePanel
-              restaurantId={selectedRestaurantId}
+              restaurantId={effectiveRestaurantId}
+              restaurantLoading={loading}
               summaryOnly
               showViewAll
               compactWhenHealthy
@@ -255,10 +309,51 @@ const Dashboard = () => {
               loading={loading}
               variant="bare"
               compactWhenEmpty
+              hasCompletedOrders={hasCompletedOrders}
             />
           </article>
         </aside>
       </section>
+
+      {isResourceSetupEmpty ? (
+        <section
+          className="dashboard-setup-hint"
+          aria-label="Gợi ý thiết lập dữ liệu vận hành"
+        >
+          <div>
+            <p className="dashboard-setup-hint__eyebrow">Thiết lập vận hành</p>
+            <h3>Thêm dữ liệu nền để dashboard hữu ích hơn</h3>
+            <p>
+              Bắt đầu bằng bàn, menu và nhân sự để hệ thống có thể ghi nhận đơn
+              hàng, doanh thu và hiệu suất chính xác.
+            </p>
+          </div>
+
+          <div className="dashboard-setup-hint__actions">
+            <button
+              type="button"
+              onClick={handleGoToTables}
+              aria-label="Đi tới trang quản lý bàn để thêm bàn"
+            >
+              Thêm bàn
+            </button>
+            <button
+              type="button"
+              onClick={handleGoToMenu}
+              aria-label="Đi tới trang quản lý menu để thêm món"
+            >
+              Thêm món
+            </button>
+            <button
+              type="button"
+              onClick={handleGoToStaff}
+              aria-label="Đi tới trang quản lý nhân viên để thêm nhân viên"
+            >
+              Thêm nhân viên
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <StatsGrid stats={stats} isLoading={loading} variant="compact" />
     </main>

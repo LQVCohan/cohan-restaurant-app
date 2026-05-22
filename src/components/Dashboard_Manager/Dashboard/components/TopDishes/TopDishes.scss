@@ -1,5 +1,19 @@
 .top-dishes-widget {
   &--bare { border:0; box-shadow:none; border-radius:0; padding:0; background:transparent; }
+  .top-dishes-empty-note {
+    min-height: 76px;
+    max-height: 90px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 12px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.4;
+  }
   .dishes-list { display:grid; gap:10px; max-height:230px; overflow:auto; }
   .dish-row { display:grid; grid-template-columns:32px 1fr; gap:10px; padding:9px; border:1px solid #e8eef7; border-radius:12px; background:#fff; }
   .rank-badge{width:32px;height:32px;border-radius:11px;background:#f1f5f9;color:#334155;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;&.rank-top{background:#dbeafe;color:#1d4ed8}}
@@ -8,5 +22,6 @@
   .progress-track{height:6px;background:#eaf0f8;border-radius:999px;overflow:hidden}.progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#06b6d4)}
   .empty-state{font-size:13px;color:#64748b;text-align:center}
   .empty-state--compact{min-height:76px;display:grid;place-content:center;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc}
-  &--empty-compact .dishes-list{max-height:110px;overflow:visible}
+  &--empty-compact{min-height:auto}
+  &--empty-compact .dishes-list{max-height:none;overflow:visible}
 }

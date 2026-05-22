@@ -1,5 +1,5 @@
 import React from "react";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Monitor, Utensils, TableProperties } from "lucide-react";
 import "./RecentOrders.scss";
 
 const MAX_ORDERS = 6;
@@ -46,13 +46,33 @@ const STATUS_CLASS = {
   cancelled: "cancelled",
 };
 
-const RecentOrders = ({ orders = [], loading, variant = "card" }) => {
+const RecentOrders = ({
+  orders = [],
+  loading,
+  variant = "card",
+  onOpenPOS,
+  onGoToMenu,
+  onGoToTables,
+}) => {
   const safeOrders = Array.isArray(orders) ? orders : [];
   const visibleOrders = safeOrders.slice(0, MAX_ORDERS);
   const shellClass =
     variant === "bare"
       ? "recent-orders recent-orders--bare"
       : "dashboard-widget recent-orders";
+  const isEmpty = !loading && safeOrders.length === 0;
+  const hasEmptyActions =
+    typeof onOpenPOS === "function" ||
+    typeof onGoToMenu === "function" ||
+    typeof onGoToTables === "function";
+  const bodyClass = [
+    "order-list-body",
+    "custom-scrollbar",
+    loading ? "order-list-body--loading" : "",
+    isEmpty ? "order-list-body--empty" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={shellClass}>
@@ -60,7 +80,7 @@ const RecentOrders = ({ orders = [], loading, variant = "card" }) => {
         <p className="order-limit-note">Hiển thị {MAX_ORDERS} đơn gần nhất</p>
       ) : null}
 
-      <div className="order-list-body custom-scrollbar">
+      <div className={bodyClass}>
         {loading ? (
           <div className="empty-state">
             <p>Đang tải dữ liệu...</p>
@@ -68,11 +88,58 @@ const RecentOrders = ({ orders = [], loading, variant = "card" }) => {
         ) : null}
 
         {!loading && safeOrders.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <ShoppingBag size={26} />
+          <div className="empty-state empty-state--operation">
+            <div className="empty-icon empty-icon--operation">
+              <ShoppingBag size={28} />
             </div>
-            <p>Chưa có đơn hàng trong khoảng thời gian này.</p>
+
+            <div className="empty-state__content">
+              <h4>Chưa có đơn hàng trong khoảng thời gian này</h4>
+              <p>
+                Mở POS để tạo đơn mới hoặc kiểm tra menu và bàn trước giờ vận
+                hành.
+              </p>
+            </div>
+
+            {hasEmptyActions ? (
+              <div className="empty-state__actions">
+                {typeof onOpenPOS === "function" ? (
+                <button
+                  type="button"
+                  className="empty-action empty-action--primary"
+                  onClick={onOpenPOS}
+                  aria-label="Mở POS để tạo đơn mới"
+                >
+                  <Monitor size={15} />
+                  <span>Mở POS</span>
+                </button>
+                ) : null}
+
+                {typeof onGoToMenu === "function" ? (
+                <button
+                  type="button"
+                  className="empty-action"
+                  onClick={onGoToMenu}
+                  aria-label="Đi tới quản lý menu để kiểm tra món"
+                >
+                  <Utensils size={15} />
+                  <span>Quản lý menu</span>
+                </button>
+                ) : null}
+
+                {typeof onGoToTables === "function" ? (
+                <button
+                  type="button"
+                  className="empty-action"
+                  onClick={onGoToTables}
+                  aria-label="Đi tới quản lý bàn để kiểm tra bàn"
+                >
+                  <TableProperties size={15} />
+                  <span>Quản lý bàn</span>
+                </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

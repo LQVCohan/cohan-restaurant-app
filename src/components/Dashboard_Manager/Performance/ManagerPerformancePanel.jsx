@@ -13,18 +13,44 @@ const ACTION_LABELS = {
 
 const formatScore = (value) => Number(value || 0).toFixed(1).replace(/\.0$/, "");
 
-const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAll = false, compactWhenHealthy = false }) => {
+const ManagerPerformancePanel = ({
+  restaurantId,
+  restaurantLoading = false,
+  summaryOnly = false,
+  showViewAll = false,
+  compactWhenHealthy = false,
+}) => {
   const navigate = useNavigate();
   const { dashboard, loading, error, isEmpty } = useManagerPerformanceDashboard({ restaurantId });
 
-  const actionableItems = useMemo(() => (dashboard.recommendedActions || []).filter((item) => Number(item?.count || 0) > 0), [dashboard.recommendedActions]);
-  const hasIncidentSignals = Number(dashboard?.incidentOverview?.pendingReviewCount || 0) > 0 || Number(dashboard?.incidentOverview?.overdueCount || 0) > 0;
+  const incidentOverview = dashboard?.incidentOverview || {};
+  const scoringOverview = dashboard?.scoringOverview || {};
+  const recommendedActions = Array.isArray(dashboard?.recommendedActions)
+    ? dashboard.recommendedActions
+    : [];
+
+  const actionableItems = useMemo(
+    () => recommendedActions.filter((item) => Number(item?.count || 0) > 0),
+    [recommendedActions],
+  );
+  const hasIncidentSignals =
+    Number(incidentOverview.pendingReviewCount || 0) > 0 ||
+    Number(incidentOverview.overdueCount || 0) > 0;
   const isHealthyCompact = summaryOnly && compactWhenHealthy && actionableItems.length === 0 && !hasIncidentSignals;
 
-  if (!restaurantId) return <div className="performance-empty">Vui lòng chọn nhà hàng để xem hiệu suất.</div>;
+  if (!restaurantId && restaurantLoading) {
+    return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
+  }
+  if (!restaurantId) {
+    return (
+      <div className="performance-empty">
+        Chưa có nhà hàng được chọn để xem hiệu suất.
+      </div>
+    );
+  }
   if (loading) return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
   if (error) return <div className="performance-error">Không tải được dữ liệu hiệu suất.</div>;
-  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu incident hoặc hiệu suất trong kỳ này.</div>;
+  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu hiệu suất trong kỳ này.</div>;
 
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
@@ -40,10 +66,10 @@ const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAl
       ) : (
         <>
           <div className="performance-kpi-grid">
-            <div className="kpi-card"><span>Chờ duyệt</span><strong>{dashboard.incidentOverview.pendingReviewCount}</strong></div>
-            <div className="kpi-card"><span>Quá hạn</span><strong>{dashboard.incidentOverview.overdueCount}</strong></div>
-            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{dashboard.incidentOverview.eligibleCount}</strong></div>
-            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(dashboard.scoringOverview.averageScore)}</strong></div>
+            <div className="kpi-card"><span>Chờ duyệt</span><strong>{incidentOverview.pendingReviewCount || 0}</strong></div>
+            <div className="kpi-card"><span>Quá hạn</span><strong>{incidentOverview.overdueCount || 0}</strong></div>
+            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{incidentOverview.eligibleCount || 0}</strong></div>
+            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(scoringOverview.averageScore || 0)}</strong></div>
           </div>
 
           {summaryOnly ? (
