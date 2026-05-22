@@ -197,8 +197,14 @@ const CustomerAnalyticsPage = () => {
       ) : error ? null : (
         <>
           <div className="customer-analytics-kpis">
-            <article className={`customer-kpi customer-kpi--primary ${loading ? "customer-kpi--loading" : ""}`}>
-              <span className="customer-kpi__icon"><Users size={18} /></span>
+            <article
+              className={`customer-kpi customer-kpi--primary ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <Users size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Khách hoạt động</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : activeCustomerCount}
@@ -208,8 +214,14 @@ const CustomerAnalyticsPage = () => {
               </p>
             </article>
 
-            <article className={`customer-kpi customer-kpi--success ${loading ? "customer-kpi--loading" : ""}`}>
-              <span className="customer-kpi__icon"><Repeat2 size={18} /></span>
+            <article
+              className={`customer-kpi customer-kpi--success ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <Repeat2 size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Khách quay lại</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : returningCustomerCount}
@@ -217,8 +229,14 @@ const CustomerAnalyticsPage = () => {
               <p className="customer-kpi__help">Nhóm khách có dấu hiệu quay lại.</p>
             </article>
 
-            <article className={`customer-kpi customer-kpi--accent ${loading ? "customer-kpi--loading" : ""}`}>
-              <span className="customer-kpi__icon"><TrendingUp size={18} /></span>
+            <article
+              className={`customer-kpi customer-kpi--accent ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <TrendingUp size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Tỷ lệ quay lại</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : `${returningRate}%`}
@@ -228,8 +246,14 @@ const CustomerAnalyticsPage = () => {
               </p>
             </article>
 
-            <article className={`customer-kpi customer-kpi--neutral ${loading ? "customer-kpi--loading" : ""}`}>
-              <span className="customer-kpi__icon"><CalendarDays size={18} /></span>
+            <article
+              className={`customer-kpi customer-kpi--neutral ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <CalendarDays size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Gắn bó trung bình</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : `${averageMembershipDays} ngày`}
@@ -377,15 +401,15 @@ const CustomerAnalyticsPage = () => {
                 </div>
                 <div className="customer-guidance__steps">
                   <div>
-                    <ClipboardList size={16} />
+                    <ClipboardList size={16} aria-hidden="true" />
                     <span>Kiểm tra đơn</span>
                   </div>
                   <div>
-                    <UserRoundCog size={16} />
+                    <UserRoundCog size={16} aria-hidden="true" />
                     <span>Quản lý khách</span>
                   </div>
                   <div>
-                    <Utensils size={16} />
+                    <Utensils size={16} aria-hidden="true" />
                     <span>Kiểm tra menu</span>
                   </div>
                 </div>
@@ -416,7 +440,10 @@ const CustomerAnalyticsPage = () => {
             ) : (
               <div>
                 <p className="customer-guidance__eyebrow">Gợi ý vận hành</p>
-                <h3><BarChart3 size={16} /> Tập trung vào nhóm khách quay lại và món được quan tâm</h3>
+                <h3>
+                  <BarChart3 size={16} aria-hidden="true" />
+                  <span>Tập trung vào nhóm khách quay lại và món được quan tâm</span>
+                </h3>
                 <p>
                   Dùng dữ liệu này để chuẩn bị tồn kho, nhân sự và chương trình chăm
                   sóc khách hàng phù hợp.
