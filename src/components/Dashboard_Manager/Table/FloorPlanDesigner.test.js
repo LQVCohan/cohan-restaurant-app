@@ -51,4 +51,16 @@ describe("FloorPlanDesigner helpers", () => {
 
     expect(getAuthHeaders()).toEqual({ authorization: "Bearer abc123" });
   });
+
+  it("buildAutoLayoutComponentsForRequest handles empty form defensively", () => {
+    const result = buildAutoLayoutComponentsForRequest({});
+    expect(result.tables).toMatchObject({
+      standard: 0,
+      vip: 0,
+      group: 0,
+      twoSeat: 0,
+      fourSeat: 0,
+    });
+    expect(result.objects.wall).toBe(0);
+  });
 });

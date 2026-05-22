@@ -32,6 +32,7 @@ export const getAuthHeaders = () => {
 };
 
 export const buildAutoLayoutComponentsForRequest = (form) => {
+  const sourceComponents = form?.components || {};
   const sourceTables = form?.components?.tables || {};
   const sourceObjects = form?.components?.objects || {};
   const standard = Number(sourceTables.standard) || 0;
@@ -44,7 +45,7 @@ export const buildAutoLayoutComponentsForRequest = (form) => {
     Number(sourceObjects.stairs || 0) > 0 ||
     totalTables > 0;
   return {
-    ...form.components,
+    ...sourceComponents,
     tables: {
       ...sourceTables,
       standard,
