@@ -874,7 +874,7 @@ export const buildAutoScheduleCreateInputs = ({
         status: "scheduled",
         allowOverride: Boolean(assignment.requiresOverride),
         overrideReason: assignment.requiresOverride
-          ? "Auto schedule: chấp nhận phân công có cảnh báo policy."
+          ? "Tự động xếp ca: chấp nhận phân công có cảnh báo chính sách."
           : "",
         notes: `Tự động xếp ca${scoreText}${warningText}${missingText}`,
       });

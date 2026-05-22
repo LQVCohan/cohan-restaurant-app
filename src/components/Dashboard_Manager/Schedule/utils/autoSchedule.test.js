@@ -629,7 +629,7 @@ describe("auto schedule policy alignment", () => {
 
     expect(inputs).toHaveLength(1);
     expect(inputs[0].allowOverride).toBe(true);
-    expect(inputs[0].overrideReason).toContain("Auto schedule");
+    expect(inputs[0].overrideReason).toContain("Tự động xếp ca");
     expect(inputs[0].notes).toContain("cần ghi đè khi áp dụng");
   });
 });
