@@ -16,11 +16,11 @@ let mockAvailabilityWindowsData;
 let mockAvailabilitySubmissionsData;
 let mutationSpy;
 let lazyQuerySpy;
-const getFirstShiftCard = async (container) => {
-  await waitFor(() => {
-    expect(container.querySelector(".shift-card")).toBeTruthy();
+const getFirstShiftCard = async () => {
+  const shiftCards = await screen.findAllByRole("button", {
+    name: /Xem chi tiết ca/i,
   });
-  return container.querySelector(".shift-card");
+  return shiftCards[0];
 };
 
 vi.mock("@apollo/client", async () => {
@@ -191,7 +191,7 @@ describe("ScheduleManagement", () => {
   });
 
   it("keeps the staff schedule tab in read-only mode", async () => {
-    const { container } = render(<ScheduleManagement readOnly />);
+    render(<ScheduleManagement readOnly />);
 
     expect(screen.getByText("Thông Tin Ca Làm Việc")).toBeInTheDocument();
     const readOnlyPublishButton = screen.queryByRole("button", { name: /Công bố lịch/i });
@@ -203,7 +203,7 @@ describe("ScheduleManagement", () => {
     expect(screen.queryByRole("button", { name: /\+ Sáng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Chia ca tự động/i })).not.toBeInTheDocument();
 
-    const shiftCard = await getFirstShiftCard(container);
+    const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
 
     expect(screen.getByDisplayValue("Ca quản lý đầu tuần")).toBeDisabled();
@@ -219,14 +219,16 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /\+ Sáng/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Tạo ca Sáng/i })[0]);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
       expect(node).toBeTruthy();
       return node;
     });
-    fireEvent.click(within(modal).getByText("Lan Manager").closest(".staff-item"));
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu|Tạo lịch|Tạo ca|Lưu & Tạo/i }));
+    const selectableStaff = within(modal).getByText("Lan Manager").closest(".staff-item");
+    expect(selectableStaff).toBeTruthy();
+    fireEvent.click(selectableStaff);
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch|Lưu|Tạo lịch|Tạo ca/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const createCall = mutationSpy.mock.calls.find(
@@ -244,12 +246,12 @@ describe("ScheduleManagement", () => {
 
   it("deletes a shift group through the detail modal", async () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const { container } = render(<ScheduleManagement />);
+    render(<ScheduleManagement />);
 
-    const shiftCard = await getFirstShiftCard(container);
+    const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
     mutationSpy.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca|Xóa nhóm ca/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     expect(confirmSpy).toHaveBeenCalled();
@@ -260,9 +262,9 @@ describe("ScheduleManagement", () => {
   });
 
   it("updates start and end time for the whole grouped shift", async () => {
-    const { container } = render(<ScheduleManagement />);
+    render(<ScheduleManagement />);
 
-    const shiftCard = await getFirstShiftCard(container);
+    const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
@@ -271,10 +273,10 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(within(modal).getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "07:30" } });
-    fireEvent.change(within(modal).getByLabelText(/Giờ kết thúc mới/i), { target: { value: "15:30" } });
-    fireEvent.change(within(modal).getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
-    fireEvent.click(within(modal).getByRole("button", { name: /Kiểm tra & lưu/i }));
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "07:30" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "15:30" } });
+    fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
+    fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const updateCall = mutationSpy.mock.calls.find(
@@ -295,9 +297,9 @@ describe("ScheduleManagement", () => {
   });
 
   it("shows a validation message when start and end time are identical", async () => {
-    const { container } = render(<ScheduleManagement />);
+    render(<ScheduleManagement />);
 
-    const shiftCard = await getFirstShiftCard(container);
+    const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
@@ -306,10 +308,10 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(within(modal).getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "09:00" } });
-    fireEvent.change(within(modal).getByLabelText(/Giờ kết thúc mới/i), { target: { value: "09:00" } });
-    fireEvent.change(within(modal).getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
-    fireEvent.click(within(modal).getByRole("button", { name: /Kiểm tra & lưu/i }));
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
+    fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
     expect(await screen.findByText("Giờ kết thúc phải khác giờ bắt đầu.")).toBeInTheDocument();
     expect(mutationSpy).not.toHaveBeenCalled();
@@ -324,19 +326,25 @@ describe("ScheduleManagement", () => {
     expect(publishTrigger).toBeTruthy();
     fireEvent.click(publishTrigger);
 
-    expect(await screen.findByText("Xác nhận công bố lịch")).toBeInTheDocument();
-    expect(screen.getByText("Phạm vi")).toBeInTheDocument();
-    expect(screen.getByText("Trạng thái hiện tại")).toBeInTheDocument();
-    expect(screen.getByText("Số nhóm ca")).toBeInTheDocument();
-    expect(screen.getByText("Tổng phân công")).toBeInTheDocument();
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+
+    expect(within(modal).getByText("Xác nhận công bố lịch")).toBeInTheDocument();
+    expect(within(modal).getByText("Phạm vi")).toBeInTheDocument();
+    expect(within(modal).getByText("Trạng thái hiện tại")).toBeInTheDocument();
+    expect(within(modal).getByText("Số nhóm ca")).toBeInTheDocument();
+    expect(within(modal).getByText("Tổng phân công")).toBeInTheDocument();
     expect(
-      screen.getByText("Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.")
+      within(modal).getByText("Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.")
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
-    const publishButton = screen.getByRole("button", { name: "Công bố lịch" });
+    expect(within(modal).getByRole("button", { name: "Hủy" })).toBeInTheDocument();
+    const publishButton = within(modal).getByRole("button", { name: "Công bố lịch" });
     expect(publishButton).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(within(modal).getByRole("checkbox"));
     expect(publishButton).not.toBeDisabled();
   });
 
@@ -443,13 +451,13 @@ describe("ScheduleManagement", () => {
       ],
     };
     render(<ScheduleManagement />);
-    fireEvent.click(screen.getByRole("button", { name: /^Lịch rảnh đã chốt$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Lịch rảnh đã chốt/i }));
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
       expect(node).toBeTruthy();
       return node;
     });
-    expect(within(modal).getByText(/Lịch rảnh đã chốt|Đăng ký lịch nhân viên|Tuần áp dụng/i)).toBeInTheDocument();
+    expect(modal.textContent).toMatch(/Đăng ký lịch nhân viên|Tuần áp dụng|Lịch rảnh đã chốt/i);
   });
 
   it("renders board section before availability panel", () => {

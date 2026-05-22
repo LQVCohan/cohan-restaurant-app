@@ -4519,6 +4519,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                           <button
                             type="button"
                             className="add-shift-btn"
+                            aria-label={`Tạo ca ${String(shiftConfig?.label || "Ca").replace(/^Ca\s+/i, "")} ngày ${format(day, "dd/MM/yyyy")}`}
                             onClick={() => openAddShiftModal(day, type)}
                           >
                             + {String(shiftConfig?.label || "Ca").replace(/^Ca\s+/i, "")}

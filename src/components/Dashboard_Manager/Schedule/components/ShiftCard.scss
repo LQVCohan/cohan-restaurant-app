@@ -3,8 +3,14 @@
    ========================================= */
 
 .shift-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  appearance: none;
   background:
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  color: inherit;
+  cursor: pointer;
   border: 1px solid var(--m-border, #e2e8f0);
   border-radius: 15px;
   padding: 0.72rem;
@@ -315,6 +321,11 @@
       transition: color 0.18s ease;
       white-space: nowrap;
     }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--m-primary, #4f46e5);
+    outline-offset: 2px;
   }
 
   &:hover {
