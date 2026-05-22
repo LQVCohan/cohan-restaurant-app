@@ -297,9 +297,15 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
   const services = decor.filter((d) => ["kitchen", "wc", "buffet"].includes(d.type)).map(normalizeRect);
   if (zones?.mainDining && services.length > 0) {
     const diningCenter = centerOf(zones.mainDining);
+    const diningCenterRect = {
+      x: zones.mainDining.x + zones.mainDining.w * 0.3,
+      y: zones.mainDining.y + zones.mainDining.h * 0.3,
+      w: zones.mainDining.w * 0.4,
+      h: zones.mainDining.h * 0.4,
+    };
     services.forEach((s) => {
       if (dist(centerOf(s), diningCenter) > Math.max(zones.mainDining.w, zones.mainDining.h) * 0.75) serviceIsolationPenalty += 24;
-      if (inZone(s, zones.mainDining)) serviceIsolationPenalty += 32;
+      if (rectsOverlap(s, diningCenterRect, 0)) serviceIsolationPenalty += 32;
     });
   }
   if (zones?.roomBounds && tableRects.length <= 12) {
@@ -424,6 +430,19 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   addCluster("vip", normalizedCounts.vip, zones.vipZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, extraGap: goal === "vip" ? 18 : 8 });
 
   const decor = [];
+  const pushDecorDirect = (type, rect, idx = 0) => {
+    decor.push({
+      id: `auto_${type}_${seed}_${idx}`,
+      type,
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      w: Math.round(rect.w),
+      h: Math.round(rect.h),
+      rotation: 0,
+      label: decorLabels[type] || type,
+      isRealTable: false,
+    });
+  };
   const addDecor = (type, count, builder, pad = 8, allowAisleEnd = false) => {
     for (let i = 0; i < count; i++) {
       const [defaultW, defaultH] = decorSize[type] || [60, 60];
@@ -456,8 +475,21 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
       });
     }
   };
+  const addWallFrame = (count = 0) => {
+    if (count <= 0) return;
+    const thickness = 10;
+    pushDecorDirect("wall", { x: room.x, y: room.y, w: room.w, h: thickness }, 0);
+    if (count >= 2) {
+      pushDecorDirect("wall", { x: room.x, y: room.y + room.h - thickness, w: room.w, h: thickness }, 1);
+    }
+    if (count >= 4) {
+      pushDecorDirect("wall", { x: room.x, y: room.y, w: thickness, h: room.h }, 2);
+      pushDecorDirect("wall", { x: room.x + room.w - thickness, y: room.y, w: thickness, h: room.h }, 3);
+    }
+  };
   const aisle = zones.mainAisle;
   const room = zones.roomBounds;
+  addWallFrame(components.objects.wall);
   addDecor("door", components.objects.door, (_i, w, h) => aisle.orientation === "vertical" ? { x: aisle.x + (aisle.w - w) / 2, y: room.y + room.h - h, w, h } : { x: room.x, y: aisle.y + (aisle.h - h) / 2, w, h }, 2, true);
   const placedDoor = decor.find((item) => item.type === "door");
   addDecor(
@@ -485,10 +517,6 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 8, y: zones.serviceZone.y + 12 + i * (h + 8), w, h }), 10);
   addDecor("buffet", components.objects.buffet, (i, w, h) => ({ x: zones.serviceZone.x - w - 16 - i * 10, y: zones.mainDining.y + zones.mainDining.h - h - 20, w, h }), 8);
   addDecor("window", components.objects.window, (i, w, h) => ({ x: room.x + 24 + i * Math.max(80, Math.floor((room.w - 64) / Math.max(1, components.objects.window))), y: room.y, w: Math.max(w, 56), h: 12 }), 2);
-  if (components.objects.wall > 0) {
-    addDecor("wall", Math.min(2, components.objects.wall), (i) => ({ x: zones.decorZone.x, y: i === 0 ? zones.decorZone.y - 18 : zones.decorZone.y + zones.decorZone.h + 10, w: zones.decorZone.w, h: 10 }), 0);
-    if (components.objects.wall >= 4) addDecor("wall", 2, (i) => ({ x: i === 0 ? zones.decorZone.x - 12 : zones.decorZone.x + zones.decorZone.w + 2, y: zones.decorZone.y, w: 10, h: zones.decorZone.h }), 0);
-  }
   addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 3 === 0 ? room.x + 12 : i % 3 === 1 ? room.x + room.w - w - 12 : zones.vipZone.x + zones.vipZone.w + 8, y: i % 2 === 0 ? room.y + 12 + i * 12 : room.y + room.h - h - 12 - i * 8, w, h }), 4);
   addDecor("stairs", components.objects.stairs, (i, w, h) => ({ x: zones.decorZone.x + zones.decorZone.w - w - 16 - i * 20, y: zones.decorZone.y + 16 + i * 20, w, h }), 8);
 

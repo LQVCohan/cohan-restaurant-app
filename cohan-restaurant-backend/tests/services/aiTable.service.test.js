@@ -77,6 +77,10 @@ describe("aiTable.service layout engine v3", () => {
       out.tables.forEach((t) => expect(overlap(s, { x: t.x, y: t.y, w: t.type === "vip" ? 72 : 60, h: t.type === "vip" ? 72 : 60 })).toBe(false));
     });
   });
+  it("service in serviceZone near edge should not create high serviceIsolationPenalty", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 1);
+    expect(out.meta.scoreBreakdown.serviceIsolationPenalty).toBeLessThan(80);
+  });
 
   it("spacious has larger nearest-table distance than capacity", () => {
     const payloadBase = { components: { tables: { standard: 12, fourSeat: 4, twoSeat: 2 }, objects: {} }, startX: 0, startY: 0 };
@@ -116,6 +120,22 @@ describe("aiTable.service layout engine v3", () => {
     });
     expect(Math.abs(sideA - sideB)).toBeLessThanOrEqual(4);
     expect(out.meta.scoreBreakdown.aislePenalty).toBeLessThan(100);
+  });
+  it("wall frame remains aligned to roomBounds even when windows exist", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 6 }, objects: { door: 1, window: 3, wall: 4 } } }, 4);
+    const room = out.meta.zones.roomBounds;
+    const walls = out.decor.filter((d) => d.type === "wall");
+    expect(walls.length).toBeGreaterThanOrEqual(4);
+    expect(walls.some((w) => Math.abs(w.y - room.y) <= 1 && w.w >= room.w - 2)).toBe(true);
+    expect(walls.some((w) => Math.abs((w.y + w.h) - (room.y + room.h)) <= 1 && w.w >= room.w - 2)).toBe(true);
+    expect(walls.some((w) => Math.abs(w.x - room.x) <= 1 && w.h >= room.h - 2)).toBe(true);
+    expect(walls.some((w) => Math.abs((w.x + w.w) - (room.x + room.w)) <= 1 && w.h >= room.h - 2)).toBe(true);
+    const windows = out.decor.filter((d) => d.type === "window");
+    const nearEdge = (r) => {
+      const cx = r.x + r.w / 2; const cy = r.y + r.h / 2;
+      return Math.min(Math.abs(cx - room.x), Math.abs(cx - (room.x + room.w)), Math.abs(cy - room.y), Math.abs(cy - (room.y + room.h))) < 20;
+    };
+    expect(windows.every((w) => nearEdge(w))).toBe(true);
   });
 
   it("clamps total tables to 200 and adds warning", () => {
