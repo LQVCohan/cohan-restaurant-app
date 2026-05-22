@@ -1,0 +1,45 @@
+type AiChatbotAction {
+  type: String
+  label: String
+  href: String
+}
+
+type AiChatbotSource {
+  type: String
+  id: ID
+  label: String
+}
+
+type AiChatbotContextSummary {
+  restaurantCount: Int
+  menuItemCount: Int
+  couponCount: Int
+  orderCount: Int
+  reservationCount: Int
+}
+
+type AiChatbotResponse {
+  answer: String!
+  intent: String
+  confidence: Float
+  quickReplies: [String!]!
+  actions: [AiChatbotAction!]!
+  sources: [AiChatbotSource!]!
+  contextSummary: AiChatbotContextSummary
+  isFallback: Boolean
+}
+
+input AiChatbotHistoryInput {
+  role: String!
+  content: String!
+}
+
+input AskAiChatbotInput {
+  message: String!
+  restaurantId: ID
+  history: [AiChatbotHistoryInput!]
+}
+
+extend type Mutation {
+  askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
+}
