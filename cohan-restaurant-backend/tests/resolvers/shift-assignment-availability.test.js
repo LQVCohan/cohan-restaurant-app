@@ -150,6 +150,44 @@ const closedWindow = {
 };
 
 describe("validateShiftAssignment availability rules", () => {
+  it("treats submitted part-time availability as usable after window closes", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+      windowDoc: closedWindow,
+      submission: {
+        _id: "submission-submitted-1",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "submitted",
+        slots: [
+          {
+            date: new Date("2026-04-20T00:00:00.000Z"),
+            shiftType: "morning",
+            status: "available",
+          },
+        ],
+      },
+    });
+
+    const result = await validate();
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings.map((warning) => warning.code)).not.toContain(
+      "PART_TIME_AVAILABILITY_REQUIRED",
+    );
+    expect(result.warnings.map((warning) => warning.code)).not.toContain(
+      "OUTSIDE_SUBMITTED_AVAILABILITY",
+    );
+  });
+
   it("passes part-time staff with submitted available slot", async () => {
     setupBase({
       staff: {
