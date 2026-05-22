@@ -604,9 +604,42 @@ export default function AvailabilityRegistrationPanel({
       {reviewDraft ? (
         <div className="publish-confirm-backdrop">
           <div className="availability-review-modal">
+            {(() => {
+              const officialSlots = reviewDraft.item.slots || [];
+              const pendingSlots = reviewDraft.item.pendingSlots || [];
+              return (
+                <>
             <h3>{reviewDraft.approved ? "Duyệt thay đổi muộn" : "Từ chối thay đổi muộn"}</h3>
             <p><strong>{reviewDraft.item.employeeName || reviewDraft.item.employee?.fullName || reviewDraft.item.employeeId}</strong></p>
-            <p>{reviewDraft.approved ? "Duyệt sẽ thay pending slots thành availability chính thức." : "Availability chính thức hiện tại vẫn được giữ. PendingSlots sẽ bị xóa."}</p>
+            <div className="availability-review-modal__section">
+              <h4>Availability chính thức hiện tại</h4>
+              {officialSlots.length === 0 ? (
+                <p>Chưa có slot chính thức</p>
+              ) : (
+                <ul className="availability-review-modal__slot-list">
+                  {officialSlots.map((slot, index) => (
+                    <li key={`official-${index}`}>
+                      {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="availability-review-modal__section">
+              <h4>Yêu cầu thay đổi muộn</h4>
+              {pendingSlots.length === 0 ? (
+                <p>Không có pending slot</p>
+              ) : (
+                <ul className="availability-review-modal__slot-list">
+                  {pendingSlots.map((slot, index) => (
+                    <li key={`pending-${index}`}>
+                      {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="availability-review-modal__warning">{reviewDraft.approved ? "Duyệt sẽ thay pending slots thành availability chính thức." : "Từ chối sẽ xóa pendingSlots và giữ availability chính thức hiện tại."}</p>
             <label>
               {reviewDraft.approved ? "Ghi chú duyệt" : "Lý do từ chối *"}
               <textarea value={reviewNote} onChange={(e) => { setReviewNote(e.target.value); if (reviewError) setReviewError(""); }} />
@@ -620,6 +653,9 @@ export default function AvailabilityRegistrationPanel({
                 setReviewDraft(null); setReviewNote(""); setReviewError("");
               }}>Xác nhận</button>
             </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       ) : null}

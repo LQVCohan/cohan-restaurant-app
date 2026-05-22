@@ -2781,6 +2781,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsSubmittingAddShift(true);
 
     try {
+      const eligibleStaffIds = [];
       const validationFailures = [];
       const overrideByStaffId = new Map();
       for (const staffId of staffIds) {
@@ -2795,6 +2796,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             allowOverride: Boolean(overrideResult?.allowOverride),
             overrideReason: String(overrideResult?.overrideReason || "").trim(),
           });
+          eligibleStaffIds.push(staffId);
         } catch (error) {
           const employeeName =
             staff.find((person) => String(person.id) === String(staffId))
@@ -2805,7 +2807,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }
       }
 
-      if (validationFailures.length) {
+      if (eligibleStaffIds.length === 0) {
         throw new Error(
           `Không thể tạo ca vì có nhân viên không hợp lệ:\n${validationFailures.join("\n")}`,
         );
@@ -2818,7 +2820,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }
 
       const mutationResults = await Promise.allSettled(
-        staffIds.map((staffId) =>
+        eligibleStaffIds.map((staffId) =>
           createShift({
             variables: {
               input: {
@@ -2842,7 +2844,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
 
       const failedRows = mutationResults
-        .map((result, index) => ({ result, staffId: staffIds[index] }))
+        .map((result, index) => ({ result, staffId: eligibleStaffIds[index] }))
         .filter((row) => row.result.status === "rejected")
         .map((row) => {
           const employeeName =
@@ -2866,9 +2868,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setIsAddModalOpen(false);
       setAddModalContext({ date: "", shiftType: "" });
 
-      if (failedRows.length > 0 && successCount > 0) {
+      if ((failedRows.length > 0 || validationFailures.length > 0) && successCount > 0) {
         showNotification(
-          `Đã tạo ${successCount}/${staffIds.length} ca. Thất bại:\n${failedRows.join("\n")}`,
+          `Đã tạo ${successCount}/${staffIds.length} ca. Bỏ qua ${validationFailures.length + failedRows.length} nhân viên: ${[...validationFailures, ...failedRows].join(" | ")}`,
           "warning",
         );
       } else {
