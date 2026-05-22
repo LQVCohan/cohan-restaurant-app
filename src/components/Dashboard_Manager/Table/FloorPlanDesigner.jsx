@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNotification } from "../../../hooks/useNotification";
 import Modal from "../../../components/common/Modal";
@@ -59,6 +59,14 @@ export const buildAutoLayoutComponentsForRequest = (form) => {
       wall: shouldAutoCreateWalls ? 4 : 0,
     },
   };
+};
+
+export const resolveInitialFloorId = (floors = [], requestedFloorId = null) => {
+  if (!Array.isArray(floors) || floors.length === 0) return null;
+  const requested = requestedFloorId
+    ? floors.find((floor) => String(floor.id) === String(requestedFloorId))
+    : null;
+  return requested?.id || floors[0].id;
 };
 
 /* --- GRAPHQL --- */
@@ -197,6 +205,8 @@ const FloorPlanDesigner = () => {
 
   const { restaurantId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedFloorId = new URLSearchParams(location.search).get("floorId");
   const { showNotification } = useNotification();
 
   // Apollo
@@ -262,17 +272,17 @@ const FloorPlanDesigner = () => {
   const dragStartItemsRef = useRef(null);
   const dragMovedRef = useRef(false);
   const lockNotifiedRef = useRef(false);
+  const initialFloorResolvedRef = useRef(false);
   const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:4000/graphql").replace(/\/graphql$/i, "");
 
   // Init floors
   useEffect(() => {
-    if (data?.floors) {
-      setFloors(data.floors);
-      if (!activeFloorId && data.floors.length > 0) {
-        setActiveFloorId(data.floors[0].id);
-      }
-    }
-  }, [data, activeFloorId]);
+    if (!data?.floors?.length) return;
+    setFloors(data.floors);
+    if (initialFloorResolvedRef.current) return;
+    setActiveFloorId(resolveInitialFloorId(data.floors, requestedFloorId));
+    initialFloorResolvedRef.current = true;
+  }, [data?.floors, requestedFloorId]);
 
   // Load items when floor changes
   useEffect(() => {
@@ -1313,7 +1323,13 @@ const FloorPlanDesigner = () => {
             <div className="floor-select-wrap">
               <select
                 value={activeFloorId || ""}
-                onChange={(e) => setActiveFloorId(e.target.value)}
+                onChange={(e) => {
+                  const nextFloorId = e.target.value;
+                  setActiveFloorId(nextFloorId);
+                  navigate(`/manager/floor-map/${restaurantId}?floorId=${nextFloorId}`, {
+                    replace: true,
+                  });
+                }}
               >
                 {floors.map((f) => (
                   <option key={f.id} value={f.id}>

@@ -132,6 +132,12 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const EMPTY_COMPONENTS = { tables: { standard: 0, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 }, objects: { plant: 0, door: 0, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 } };
 const DEFAULT_LEGACY_COMPONENTS = { tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 }, objects: { plant: 0, door: 1, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 } };
 const GOAL_SPACING = { capacity: { tableGap: 18, gridX: 82, gridY: 82, vipGap: 54 }, balanced: { tableGap: 28, gridX: 104, gridY: 98, vipGap: 72 }, spacious: { tableGap: 44, gridX: 132, gridY: 124, vipGap: 96 }, vip: { tableGap: 40, gridX: 122, gridY: 116, vipGap: 120 } };
+const ROOM_SIZE_BY_GOAL = {
+  capacity: { minW: 620, minH: 440, perTableW: 90, perTableH: 70, aisleW: 56 },
+  balanced: { minW: 700, minH: 500, perTableW: 105, perTableH: 82, aisleW: 64 },
+  spacious: { minW: 820, minH: 580, perTableW: 125, perTableH: 96, aisleW: 76 },
+  vip: { minW: 820, minH: 580, perTableW: 130, perTableH: 100, aisleW: 76 },
+};
 const CANDIDATE_COUNT = 16;
 const clampNonNegative = (value) => Math.max(0, Number(value) || 0);
 
@@ -180,10 +186,13 @@ const decorLabels = { plant:"Cây",door:"Cửa",window:"Cửa sổ",stairs:"Cầ
 const getOccupiedRectsFromCurrentItems = (currentItems = []) => Array.isArray(currentItems) ? currentItems.filter((item) => item && Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y))).map((item) => normalizeRect({ x: item.x, y: item.y, w: item.w || (item.isRealTable ? 60 : 80), h: item.h || (item.isRealTable ? 60 : 80) })) : [];
 
 const buildLayoutZones = ({ startX = 0, startY = 0, tableCount = 10, goal = "balanced", components = EMPTY_COMPONENTS, seed = 0 }) => {
-  const baseW = Math.max(760, Math.round(Math.sqrt(tableCount + 4) * 260));
-  const baseH = Math.max(560, Math.round(Math.sqrt(tableCount + 4) * 220));
+  const roomCfg = ROOM_SIZE_BY_GOAL[goal] || ROOM_SIZE_BY_GOAL.balanced;
+  const compactFactor = tableCount <= 10 ? 0.9 : 1;
+  const baseW = Math.max(roomCfg.minW, Math.round((roomCfg.minW + tableCount * roomCfg.perTableW * 0.45) * compactFactor));
+  const baseH = Math.max(roomCfg.minH, Math.round((roomCfg.minH + tableCount * roomCfg.perTableH * 0.35) * compactFactor));
   const orient = seed % 2 === 0 ? "vertical" : "horizontal";
-  const aisle = orient === "vertical" ? { x: startX + Math.floor(baseW / 2) - 48 + (seed % 3) * 6, y: startY + 30, w: 96, h: baseH - 60, orientation: "vertical" } : { x: startX + 30, y: startY + Math.floor(baseH / 2) - 48 + (seed % 3) * 6, w: baseW - 60, h: 96, orientation: "horizontal" };
+  const aisleWidth = roomCfg.aisleW + (seed % 3) * 4;
+  const aisle = orient === "vertical" ? { x: startX + Math.floor(baseW / 2) - Math.floor(aisleWidth / 2), y: startY + 28, w: aisleWidth, h: baseH - 56, orientation: "vertical" } : { x: startX + 28, y: startY + Math.floor(baseH / 2) - Math.floor(aisleWidth / 2), w: baseW - 56, h: aisleWidth, orientation: "horizontal" };
   const vipSide = seed % 4;
   const serviceSide = seed % 3;
   const diningPad = 40;
@@ -203,7 +212,7 @@ const buildLayoutZones = ({ startX = 0, startY = 0, tableCount = 10, goal = "bal
   ) {
     vipZone = { x: startX + 120, y: startY + 120, w: baseW - 240, h: baseH - 240 };
   }
-  return { mainDining, vipZone, serviceZone, decorZone, mainAisle: aisle };
+  return { mainDining, vipZone, serviceZone, decorZone, mainAisle: aisle, roomBounds: { x: startX, y: startY, w: baseW, h: baseH } };
 };
 
 const isInAisle = (rect, aisle, gap = 0) => !!aisle && rectsOverlap(expandRect(rect, gap), aisle, 0);
@@ -225,6 +234,10 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
   let aislePenalty = 0;
   let zoneReward = 0;
   let serviceFlowReward = 0;
+  let emptyCenterPenalty = 0;
+  let wallDoorPenalty = 0;
+  let serviceIsolationPenalty = 0;
+  let compactnessReward = 0;
 
   for (let i = 0; i < tableRects.length; i += 1) {
     for (let j = i + 1; j < tableRects.length; j += 1) {
@@ -266,6 +279,41 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
     const left = tableRects.filter((t) => centerOf(t).x < zones.mainAisle.x).length; const right = tableRects.length - left;
     balanceReward += Math.max(0, 80 - Math.abs(left - right) * 14);
   }
+  if (zones?.mainDining && tableRects.length > 0) {
+    const center = centerOf(zones.mainDining);
+    const avgDistanceToCenter = tableRects.reduce((sum, t) => sum + dist(centerOf(t), center), 0) / tableRects.length;
+    emptyCenterPenalty += Math.max(0, avgDistanceToCenter - Math.min(zones.mainDining.w, zones.mainDining.h) * 0.22) * 0.8;
+  }
+  if (zones?.roomBounds) {
+    const edgeDistance = (r) => {
+      const c = centerOf(r);
+      const b = zones.roomBounds;
+      return Math.min(Math.abs(c.x - b.x), Math.abs(c.x - (b.x + b.w)), Math.abs(c.y - b.y), Math.abs(c.y - (b.y + b.h)));
+    };
+    decor.filter((d) => d.type === "door" || d.type === "window").forEach((d) => {
+      wallDoorPenalty += Math.max(0, edgeDistance(normalizeRect(d)) - 16) * 1.2;
+    });
+  }
+  const services = decor.filter((d) => ["kitchen", "wc", "buffet"].includes(d.type)).map(normalizeRect);
+  if (zones?.mainDining && services.length > 0) {
+    const diningCenter = centerOf(zones.mainDining);
+    const diningCenterRect = {
+      x: zones.mainDining.x + zones.mainDining.w * 0.3,
+      y: zones.mainDining.y + zones.mainDining.h * 0.3,
+      w: zones.mainDining.w * 0.4,
+      h: zones.mainDining.h * 0.4,
+    };
+    services.forEach((s) => {
+      if (dist(centerOf(s), diningCenter) > Math.max(zones.mainDining.w, zones.mainDining.h) * 0.75) serviceIsolationPenalty += 24;
+      if (rectsOverlap(s, diningCenterRect, 0)) serviceIsolationPenalty += 32;
+    });
+  }
+  if (zones?.roomBounds && tableRects.length <= 12) {
+    const boundsArea = zones.roomBounds.w * zones.roomBounds.h;
+    const tableArea = tableRects.reduce((sum, t) => sum + t.w * t.h, 0);
+    const ratio = tableArea / Math.max(1, boundsArea);
+    compactnessReward += Math.max(0, 0.14 - Math.abs(ratio - 0.1)) * 320;
+  }
   if (zones) {
     tableRects.forEach((t) => { if (t.type === "vip" && inZone(t, zones.vipZone)) zoneReward += 16; if (t.type !== "vip" && inZone(t, zones.mainDining)) zoneReward += 8; });
     decor.forEach((d) => { if (["kitchen", "wc", "buffet"].includes(d.type) && inZone(normalizeRect(d), zones.serviceZone)) zoneReward += 10; });
@@ -279,8 +327,8 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
     const diningCenter = centerOf(zones.mainDining); const d1 = dist(centerOf(normalizeRect(door)), centerOf(normalizeRect(cashier))); const d2 = dist(centerOf(normalizeRect(cashier)), diningCenter);
     serviceFlowReward += Math.max(0, 220 - d1) * 0.2 + Math.max(0, 360 - d2) * 0.15;
   }
-  const score = 1200 - overlapPenalty - spacingPenalty - vipPenalty - decorPenalty - aislePenalty + cashierDoorReward + balanceReward + zoneReward + serviceFlowReward;
-  return { score, breakdown: { overlapPenalty, spacingPenalty, vipPenalty, cashierDoorReward, balanceReward, decorPenalty, aislePenalty, zoneReward, serviceFlowReward } };
+  const score = 1200 - overlapPenalty - spacingPenalty - vipPenalty - decorPenalty - aislePenalty - emptyCenterPenalty - wallDoorPenalty - serviceIsolationPenalty + cashierDoorReward + balanceReward + zoneReward + serviceFlowReward + compactnessReward;
+  return { score, breakdown: { overlapPenalty, spacingPenalty, vipPenalty, cashierDoorReward, balanceReward, decorPenalty, aislePenalty, zoneReward, serviceFlowReward, emptyCenterPenalty, wallDoorPenalty, serviceIsolationPenalty, compactnessReward } };
 };
 
 const generateRuleBasedLayout = (payload = {}, seed = 0) => {
@@ -349,12 +397,18 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   };
 
   const addCluster = (kind, count, zone, opts = {}) => {
-    const cols = Math.max(1, Math.ceil(Math.sqrt(count || 1))); const gapX = opts.gapX || spacingCfg.gridX; const gapY = opts.gapY || spacingCfg.gridY;
+    const gapX = opts.gapX || spacingCfg.gridX; const gapY = opts.gapY || spacingCfg.gridY;
+    const cols = Math.max(1, Math.min(count || 1, Math.floor(Math.max(gapX, zone.w - 20) / gapX)));
+    const rows = Math.max(1, Math.ceil((count || 1) / cols));
+    const clusterW = Math.max(0, (cols - 1) * gapX);
+    const clusterH = Math.max(0, (rows - 1) * gapY);
+    const originX = zone.x + Math.max(10, (zone.w - clusterW) / 2);
+    const originY = zone.y + Math.max(10, (zone.h - clusterH) / 2);
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / cols), col = i % cols;
       const stagger = ((seed + i) % 2) * (opts.stagger || 10);
-      const x = zone.x + (opts.offsetX || 0) + col * gapX + (opts.side === "right" ? zone.w * 0.5 : 0) + stagger;
-      const y = zone.y + (opts.offsetY || 0) + row * gapY + ((seed + row) % 3) * 6;
+      const x = originX + (opts.offsetX || 0) + col * gapX + stagger;
+      const y = originY + (opts.offsetY || 0) + row * gapY + ((seed + row) % 3) * 6;
       addTable(kind, x, y, opts.extraGap || 0);
     }
   };
@@ -376,6 +430,19 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   addCluster("vip", normalizedCounts.vip, zones.vipZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, extraGap: goal === "vip" ? 18 : 8 });
 
   const decor = [];
+  const pushDecorDirect = (type, rect, idx = 0) => {
+    decor.push({
+      id: `auto_${type}_${seed}_${idx}`,
+      type,
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      w: Math.round(rect.w),
+      h: Math.round(rect.h),
+      rotation: 0,
+      label: decorLabels[type] || type,
+      isRealTable: false,
+    });
+  };
   const addDecor = (type, count, builder, pad = 8, allowAisleEnd = false) => {
     for (let i = 0; i < count; i++) {
       const [defaultW, defaultH] = decorSize[type] || [60, 60];
@@ -408,8 +475,22 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
       });
     }
   };
+  const addWallFrame = (count = 0) => {
+    if (count <= 0) return;
+    const thickness = 10;
+    pushDecorDirect("wall", { x: room.x, y: room.y, w: room.w, h: thickness }, 0);
+    if (count >= 2) {
+      pushDecorDirect("wall", { x: room.x, y: room.y + room.h - thickness, w: room.w, h: thickness }, 1);
+    }
+    if (count >= 4) {
+      pushDecorDirect("wall", { x: room.x, y: room.y, w: thickness, h: room.h }, 2);
+      pushDecorDirect("wall", { x: room.x + room.w - thickness, y: room.y, w: thickness, h: room.h }, 3);
+    }
+  };
   const aisle = zones.mainAisle;
-  addDecor("door", components.objects.door, (_i, w, h) => aisle.orientation === "vertical" ? { x: aisle.x + (aisle.w - w) / 2, y: startY + 4, w, h } : { x: startX + 4, y: aisle.y + (aisle.h - h) / 2, w, h }, 2, true);
+  const room = zones.roomBounds;
+  addWallFrame(components.objects.wall);
+  addDecor("door", components.objects.door, (_i, w, h) => aisle.orientation === "vertical" ? { x: aisle.x + (aisle.w - w) / 2, y: room.y + room.h - h, w, h } : { x: room.x, y: aisle.y + (aisle.h - h) / 2, w, h }, 2, true);
   const placedDoor = decor.find((item) => item.type === "door");
   addDecor(
     "cashier",
@@ -432,15 +513,11 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
     },
     10,
   );
-  addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: zones.serviceZone.x + 10 + (i % 2) * 20, y: zones.serviceZone.y + 10 + i * (h + 10), w, h }), 10);
-  addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 10, y: zones.serviceZone.y + 20 + i * (h + 8), w, h }), 10);
+  addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: zones.serviceZone.x + 8, y: zones.serviceZone.y + 8 + i * (h + 8), w, h }), 10);
+  addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 8, y: zones.serviceZone.y + 12 + i * (h + 8), w, h }), 10);
   addDecor("buffet", components.objects.buffet, (i, w, h) => ({ x: zones.serviceZone.x - w - 16 - i * 10, y: zones.mainDining.y + zones.mainDining.h - h - 20, w, h }), 8);
-  addDecor("window", components.objects.window, (i, w, h) => ({ x: zones.decorZone.x + 30 + i * 110, y: zones.decorZone.y - h - 10, w, h }), 2);
-  if (components.objects.wall > 0) {
-    addDecor("wall", Math.min(2, components.objects.wall), (i) => ({ x: zones.decorZone.x, y: i === 0 ? zones.decorZone.y - 18 : zones.decorZone.y + zones.decorZone.h + 10, w: zones.decorZone.w, h: 10 }), 0);
-    if (components.objects.wall >= 4) addDecor("wall", 2, (i) => ({ x: i === 0 ? zones.decorZone.x - 12 : zones.decorZone.x + zones.decorZone.w + 2, y: zones.decorZone.y, w: 10, h: zones.decorZone.h }), 0);
-  }
-  addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 2 ? zones.vipZone.x - 24 : zones.mainDining.x + zones.mainDining.w + 10, y: zones.mainDining.y + 30 + i * 36, w, h }), 4);
+  addDecor("window", components.objects.window, (i, w, h) => ({ x: room.x + 24 + i * Math.max(80, Math.floor((room.w - 64) / Math.max(1, components.objects.window))), y: room.y, w: Math.max(w, 56), h: 12 }), 2);
+  addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 3 === 0 ? room.x + 12 : i % 3 === 1 ? room.x + room.w - w - 12 : zones.vipZone.x + zones.vipZone.w + 8, y: i % 2 === 0 ? room.y + 12 + i * 12 : room.y + room.h - h - 12 - i * 8, w, h }), 4);
   addDecor("stairs", components.objects.stairs, (i, w, h) => ({ x: zones.decorZone.x + zones.decorZone.w - w - 16 - i * 20, y: zones.decorZone.y + 16 + i * 20, w, h }), 8);
 
   if (tables.length < requested) {

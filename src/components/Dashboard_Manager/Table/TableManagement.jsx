@@ -418,7 +418,7 @@ const TableManagement = () => {
       showNotification(message, "warning");
       return;
     }
-    navigate(`/manager/floor-map/${restaurantId}`);
+    navigate(`/manager/floor-map/${restaurantId}?floorId=${targetFloorId}`);
   };
 
   const handleOpenTableDetail = (tableRow) => {
