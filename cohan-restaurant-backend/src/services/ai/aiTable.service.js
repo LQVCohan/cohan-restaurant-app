@@ -128,6 +128,15 @@ const expandRect = (rect, extra = 0) => ({
 const inZone = (r, z) => r.x >= z.x && r.y >= z.y && r.x + r.w <= z.x + z.w && r.y + r.h <= z.y + z.h;
 const centerOf = (r) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const clampRectInsideRoom = (rect, room, padding = 12) => {
+  const maxX = room.x + room.w - rect.w - padding;
+  const maxY = room.y + room.h - rect.h - padding;
+  return {
+    ...rect,
+    x: Math.round(Math.max(room.x + padding, Math.min(rect.x, maxX))),
+    y: Math.round(Math.max(room.y + padding, Math.min(rect.y, maxY))),
+  };
+};
 
 const EMPTY_COMPONENTS = { tables: { standard: 0, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 }, objects: { plant: 0, door: 0, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 } };
 const DEFAULT_LEGACY_COMPONENTS = { tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 }, objects: { plant: 0, door: 1, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 } };
@@ -238,6 +247,9 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
   let wallDoorPenalty = 0;
   let serviceIsolationPenalty = 0;
   let compactnessReward = 0;
+  let outsideRoomPenalty = 0;
+  let wallOverlapPenalty = 0;
+  let decorPurposePenalty = 0;
 
   for (let i = 0; i < tableRects.length; i += 1) {
     for (let j = i + 1; j < tableRects.length; j += 1) {
@@ -266,6 +278,25 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
       if (rectsOverlap(decorRect, tableRect, 12)) decorPenalty += 8;
     });
   });
+  const walls = decor.filter((d) => d.type === "wall").map(normalizeRect);
+  const nonWallDecor = decor.filter((d) => d.type !== "wall");
+  if (zones?.roomBounds) {
+    const room = zones.roomBounds;
+    [...tableRects, ...nonWallDecor.map(normalizeRect)].forEach((rect) => {
+      if (!inZone(rect, room)) outsideRoomPenalty += 260;
+    });
+    nonWallDecor.forEach((d) => {
+      const r = normalizeRect(d);
+      walls.forEach((w) => {
+        if (rectsOverlap(r, w, 0)) wallOverlapPenalty += 180;
+      });
+      if (d.type === "plant") {
+        if (rectsOverlap(r, zones.mainAisle, 0)) decorPurposePenalty += 120;
+        const mainRef = zones.mainDining ? centerOf(zones.mainDining) : centerOf(room);
+        if (dist(centerOf(r), mainRef) > Math.max(room.w, room.h) * 0.8) decorPurposePenalty += 60;
+      }
+    });
+  }
 
   const door = decor.find((item) => item.type === "door");
   const cashier = decor.find((item) => item.type === "cashier");
@@ -327,8 +358,8 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
     const diningCenter = centerOf(zones.mainDining); const d1 = dist(centerOf(normalizeRect(door)), centerOf(normalizeRect(cashier))); const d2 = dist(centerOf(normalizeRect(cashier)), diningCenter);
     serviceFlowReward += Math.max(0, 220 - d1) * 0.2 + Math.max(0, 360 - d2) * 0.15;
   }
-  const score = 1200 - overlapPenalty - spacingPenalty - vipPenalty - decorPenalty - aislePenalty - emptyCenterPenalty - wallDoorPenalty - serviceIsolationPenalty + cashierDoorReward + balanceReward + zoneReward + serviceFlowReward + compactnessReward;
-  return { score, breakdown: { overlapPenalty, spacingPenalty, vipPenalty, cashierDoorReward, balanceReward, decorPenalty, aislePenalty, zoneReward, serviceFlowReward, emptyCenterPenalty, wallDoorPenalty, serviceIsolationPenalty, compactnessReward } };
+  const score = 1200 - overlapPenalty - spacingPenalty - vipPenalty - decorPenalty - aislePenalty - emptyCenterPenalty - wallDoorPenalty - serviceIsolationPenalty - outsideRoomPenalty - wallOverlapPenalty - decorPurposePenalty + cashierDoorReward + balanceReward + zoneReward + serviceFlowReward + compactnessReward;
+  return { score, breakdown: { overlapPenalty, spacingPenalty, vipPenalty, cashierDoorReward, balanceReward, decorPenalty, aislePenalty, zoneReward, serviceFlowReward, emptyCenterPenalty, wallDoorPenalty, serviceIsolationPenalty, compactnessReward, outsideRoomPenalty, wallOverlapPenalty, decorPurposePenalty } };
 };
 
 const generateRuleBasedLayout = (payload = {}, seed = 0) => {
@@ -414,11 +445,15 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   };
 
   const stdCount = normalizedCounts.standard + normalizedCounts.fourSeat;
+  const hasWindow = (components.objects.window || 0) > 0;
   if (zones.mainAisle.orientation === "vertical") {
     const leftZone = { x: zones.mainDining.x, y: zones.mainDining.y, w: Math.max(120, zones.mainAisle.x - zones.mainDining.x - 24), h: zones.mainDining.h };
     const rightZone = { x: zones.mainAisle.x + zones.mainAisle.w + 24, y: zones.mainDining.y, w: Math.max(120, zones.mainDining.x + zones.mainDining.w - (zones.mainAisle.x + zones.mainAisle.w + 24)), h: zones.mainDining.h };
-    addCluster("standard", Math.ceil(normalizedCounts.standard / 2), leftZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 10 });
-    addCluster("standard", Math.floor(normalizedCounts.standard / 2), rightZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 12 });
+    const compactMode = stdCount <= 10;
+    const gapY = compactMode ? Math.max(72, spacingCfg.gridY - 16) : spacingCfg.gridY;
+    const windowBiasY = hasWindow ? -14 : 0;
+    addCluster("standard", Math.ceil(normalizedCounts.standard / 2), leftZone, { gapX: spacingCfg.gridX, gapY, stagger: compactMode ? 4 : 10, offsetY: windowBiasY, extraGap: compactMode ? 4 : 0 });
+    addCluster("standard", Math.floor(normalizedCounts.standard / 2), rightZone, { gapX: spacingCfg.gridX, gapY, stagger: compactMode ? 4 : 12, offsetY: windowBiasY, extraGap: compactMode ? 4 : 0 });
     addCluster("fourSeat", Math.ceil(normalizedCounts.fourSeat / 2), leftZone, { offsetX: 20, offsetY: 20 });
     addCluster("fourSeat", Math.floor(normalizedCounts.fourSeat / 2), rightZone, { offsetX: 24, offsetY: 26 });
   } else {
@@ -461,6 +496,13 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
         );
       }
       if (!rect) continue;
+      if (["cashier", "kitchen", "wc", "buffet", "plant"].includes(type)) {
+        occupied.pop();
+        rect = clampRectInsideRoom(rect, room, type === "plant" ? 12 : 16);
+        if (isInAisle(rect, zones.mainAisle, 0)) continue;
+        if (occupied.some((r) => rectsOverlap(expandRect(rect, pad), r, 0))) continue;
+        occupied.push(rect);
+      }
 
       decor.push({
         id: `auto_${type}_${seed}_${i}`,
@@ -497,6 +539,14 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
     components.objects.cashier,
     (_i, w, h) => {
       if (placedDoor) {
+        const doorOnBottom = placedDoor.y + placedDoor.h >= room.y + room.h - 2;
+        const doorOnLeft = placedDoor.x <= room.x + 2;
+        if (doorOnBottom) {
+          return { x: placedDoor.x + (placedDoor.w - w) / 2, y: room.y + room.h - placedDoor.h - h - 24, w, h };
+        }
+        if (doorOnLeft) {
+          return { x: room.x + placedDoor.w + 24, y: placedDoor.y + (placedDoor.h - h) / 2, w, h };
+        }
         return {
           x: placedDoor.x + placedDoor.w + 18,
           y: placedDoor.y + 18,
@@ -511,13 +561,34 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
         h,
       };
     },
-    10,
+    4,
   );
-  addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: zones.serviceZone.x + 8, y: zones.serviceZone.y + 8 + i * (h + 8), w, h }), 10);
-  addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 8, y: zones.serviceZone.y + 12 + i * (h + 8), w, h }), 10);
-  addDecor("buffet", components.objects.buffet, (i, w, h) => ({ x: zones.serviceZone.x - w - 16 - i * 10, y: zones.mainDining.y + zones.mainDining.h - h - 20, w, h }), 8);
+  if (components.objects.cashier > 0 && !decor.some((item) => item.type === "cashier")) {
+    const [w, h] = decorSize.cashier;
+    const fallback = clampRectInsideRoom({ x: aisle.x + aisle.w + 16, y: room.y + room.h - h - 24, w, h }, room, 16);
+    if (!isInAisle(fallback, zones.mainAisle, 0)) pushDecorDirect("cashier", fallback, 999);
+  }
+  addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 16, y: zones.serviceZone.y + 16 + i * (h + 8), w, h }), 12);
+  addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 16, y: zones.serviceZone.y + zones.serviceZone.h - h - 16 - i * (h + 8), w, h }), 12);
+  addDecor("buffet", components.objects.buffet, (i, w, h) => ({ x: zones.serviceZone.x + 16, y: zones.serviceZone.y + zones.serviceZone.h - h - 16 - i * 10, w, h }), 10);
   addDecor("window", components.objects.window, (i, w, h) => ({ x: room.x + 24 + i * Math.max(80, Math.floor((room.w - 64) / Math.max(1, components.objects.window))), y: room.y, w: Math.max(w, 56), h: 12 }), 2);
-  addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 3 === 0 ? room.x + 12 : i % 3 === 1 ? room.x + room.w - w - 12 : zones.vipZone.x + zones.vipZone.w + 8, y: i % 2 === 0 ? room.y + 12 + i * 12 : room.y + room.h - h - 12 - i * 8, w, h }), 4);
+  addDecor("plant", components.objects.plant, (i, w, h) => {
+    const hasVip = normalizedCounts.vip > 0;
+    if (hasVip) {
+      return {
+        x: i % 2 === 0 ? zones.vipZone.x - w - 12 : zones.vipZone.x + zones.vipZone.w + 12,
+        y: zones.vipZone.y + 18 + i * 28,
+        w,
+        h,
+      };
+    }
+    return {
+      x: i % 2 === 0 ? room.x + 16 : room.x + room.w - w - 16,
+      y: i % 3 === 0 ? room.y + 16 : Math.round(zones.mainDining.y + zones.mainDining.h * 0.5) + i * 10,
+      w,
+      h,
+    };
+  }, 6);
   addDecor("stairs", components.objects.stairs, (i, w, h) => ({ x: zones.decorZone.x + zones.decorZone.w - w - 16 - i * 20, y: zones.decorZone.y + 16 + i * 20, w, h }), 8);
 
   if (tables.length < requested) {
@@ -534,7 +605,7 @@ export const generateSmartFloorLayout = async (payload = {}) => {
   if (best?.tables?.length) return best;
   return generateRuleBasedLayout({ ...payload, goal });
 };
-export const __testables = { toComponents, generateRuleBasedLayout, scoreLayout, getOccupiedRectsFromCurrentItems, buildLayoutZones, isInAisle };
+export const __testables = { toComponents, generateRuleBasedLayout, scoreLayout, getOccupiedRectsFromCurrentItems, buildLayoutZones, isInAisle, clampRectInsideRoom };
 
 const callOpenAI = async (prompt) => {
   const apiKey = process.env.OPENAI_API_KEY;
