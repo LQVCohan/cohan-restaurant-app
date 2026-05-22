@@ -1710,7 +1710,19 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setReviewingAckId(ack.id);
 
     try {
-      await handleRemoveStaffFromShift(ack.shiftId, ack.employeeId, {
+      const shiftGroup =
+        shifts.find((shift) => String(shift.id) === String(ack.shiftId)) ||
+        shifts.find((shift) =>
+          (shift.records || []).some(
+            (record) => String(record.id) === String(ack.shiftId),
+          ),
+        );
+
+      if (!shiftGroup?.id) {
+        throw new Error("Không tìm thấy ca làm cần cập nhật.");
+      }
+
+      await handleRemoveStaffFromShift(shiftGroup.id, ack.employeeId, {
         reason: "Xử lý ca bị từ chối hợp lệ",
       });
       await refetch();
@@ -3036,11 +3048,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
         "Không thể xóa nhân viên khỏi ca ở trạng thái lịch hiện tại.",
       );
     }
-    const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
+    const shiftGroup = shifts.find(
+      (item) => String(item.id) === String(shiftGroupId),
+    );
 
     if (!shiftGroup) {
-      showNotification("Không tìm thấy ca làm cần cập nhật.", "error");
-      return;
+      const message = "Không tìm thấy ca làm cần cập nhật.";
+      showNotification(message, "error");
+      throw new Error(message);
     }
 
     const targetRecord = (shiftGroup.records || []).find(
@@ -3048,8 +3063,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     );
 
     if (!targetRecord?.id) {
-      showNotification("Không tìm thấy phân công ca của nhân viên.", "error");
-      return;
+      const message = "Không tìm thấy phân công ca của nhân viên.";
+      showNotification(message, "error");
+      throw new Error(message);
     }
 
     try {
@@ -4749,29 +4765,37 @@ const ScheduleManagement = ({ readOnly = false }) => {
                         </small>
                         {!isResolved ? (
                           <>
-                            <small>
-                              Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
-                              lịch.
-                            </small>
-                            <div className="decline-action-row">
-                              <button
-                                type="button"
-                                disabled={isReviewing}
-                                onClick={() =>
-                                  handleQuickRemoveDeclinedShiftStaff(ack)
-                                }
-                              >
-                                {isReviewing
-                                  ? "Đang xử lý..."
-                                  : "Xóa nhân viên khỏi ca"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenShiftForResolution(ack)}
-                              >
-                                Mở ca để xử lý
-                              </button>
-                            </div>
+                            {readOnly ? (
+                              <small>
+                                Chế độ chỉ xem: không thể xử lý lịch.
+                              </small>
+                            ) : (
+                              <>
+                                <small>
+                                  Nhân viên vẫn còn trong ca cho đến khi quản lý chỉnh
+                                  lịch.
+                                </small>
+                                <div className="decline-action-row">
+                                  <button
+                                    type="button"
+                                    disabled={isReviewing}
+                                    onClick={() =>
+                                      handleQuickRemoveDeclinedShiftStaff(ack)
+                                    }
+                                  >
+                                    {isReviewing
+                                      ? "Đang xử lý..."
+                                      : "Xóa nhân viên khỏi ca"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenShiftForResolution(ack)}
+                                  >
+                                    Mở ca để xử lý
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </>
                         ) : (
                           <small>Đã xử lý lịch.</small>
