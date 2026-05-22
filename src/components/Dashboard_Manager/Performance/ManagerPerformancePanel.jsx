@@ -25,6 +25,7 @@ const ManagerPerformancePanel = ({
 
   const incidentOverview = dashboard?.incidentOverview || {};
   const scoringOverview = dashboard?.scoringOverview || {};
+  const appealOverview = dashboard?.appealOverview || {};
   const recommendedActions = Array.isArray(dashboard?.recommendedActions)
     ? dashboard.recommendedActions
     : [];
@@ -49,8 +50,8 @@ const ManagerPerformancePanel = ({
     );
   }
   if (loading) return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
-  if (error) return <div className="performance-error">Không tải được dữ liệu hiệu suất.</div>;
-  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu hiệu suất trong kỳ này.</div>;
+  if (error) return <div className="performance-error">Không tải được dữ liệu hiệu suất. Vui lòng thử lại sau.</div>;
+  if (isEmpty) return <div className="performance-empty">Chưa có snapshot hiệu suất trong kỳ này. Quản lý vui lòng chạy tính lại hiệu suất.</div>;
 
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
@@ -66,10 +67,11 @@ const ManagerPerformancePanel = ({
       ) : (
         <>
           <div className="performance-kpi-grid">
-            <div className="kpi-card"><span>Chờ duyệt</span><strong>{incidentOverview.pendingReviewCount || 0}</strong></div>
-            <div className="kpi-card"><span>Quá hạn</span><strong>{incidentOverview.overdueCount || 0}</strong></div>
-            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{incidentOverview.eligibleCount || 0}</strong></div>
-            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(scoringOverview.averageScore || 0)}</strong></div>
+            <div className="kpi-card"><span>Tổng nhân viên có dữ liệu hiệu suất</span><strong>{scoringOverview?.scoredEmployeeCount ?? "--"}</strong></div>
+            <div className="kpi-card"><span>Điểm trung bình</span><strong>{scoringOverview?.averageScore !== undefined ? formatScore(scoringOverview.averageScore) : "--"}</strong></div>
+            <div className="kpi-card"><span>Số nhân viên cần chú ý</span><strong>{scoringOverview?.lowScoreEmployeeCount ?? "--"}</strong></div>
+            <div className="kpi-card"><span>Incident chờ duyệt / đủ điều kiện / đã áp dụng</span><strong>{incidentOverview ? `${incidentOverview.pendingReviewCount || 0} / ${incidentOverview.eligibleCount || 0} / ${incidentOverview.appliedCount || 0}` : "Chưa có dữ liệu"}</strong></div>
+            <div className="kpi-card"><span>Appeal chờ duyệt / được chấp nhận</span><strong>{appealOverview ? `${appealOverview.pendingCount ?? "--"} / ${appealOverview.acceptedCount ?? "--"}` : "Chưa có dữ liệu"}</strong></div>
           </div>
 
           {summaryOnly ? (
