@@ -30,7 +30,7 @@ const ManagerPerformancePanel = ({ restaurantId, summaryOnly = false, showViewAl
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
       <div className="performance-panel__header">
         <h3>Hiệu suất</h3>
-        {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager/performance")}>Xem chi tiết</button> : null}
+        {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager#staff")}>Xem chi tiết</button> : null}
       </div>
 
       {isHealthyCompact ? (
