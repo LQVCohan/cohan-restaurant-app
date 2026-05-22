@@ -30,7 +30,6 @@ export default defineConfig({
       'src/routes/__tests__/AppRouter.test.jsx',
       'src/routes/__tests__/routeGuard.test.js',
       'src/hooks/staffAvatarQueryContract.test.js',
-      'src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx',
     ],
     coverage: {
       provider: 'v8',
