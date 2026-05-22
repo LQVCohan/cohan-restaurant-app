@@ -126,6 +126,8 @@ const AvailabilityRegistrationPolicySchema = new Schema(
       enum: EMPLOYMENT_TYPE_VALUES,
       default: ["part_time", "seasonal"],
     },
+    // Deprecated legacy UI fields. Current availability window generation uses
+    // availabilityOpenDayOffset / availabilityOpenTime / availabilityCloseDayOffset / availabilityCloseTime.
     openDayOfWeek: {
       type: String,
       enum: DAY_OF_WEEK_VALUES,

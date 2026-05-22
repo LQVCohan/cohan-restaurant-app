@@ -32,6 +32,7 @@ import {
 } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import {
   assertShiftAssignmentValid,
+  hasNonInfoWarnings,
   validateShiftAssignment,
 } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
@@ -251,7 +252,7 @@ async function createStaffShiftInternal(input, ctx) {
     }
   }
 
-  await assertShiftAssignmentValid({
+  const validationResult = await assertShiftAssignmentValid({
     input: {
       employeeId: input.employeeId,
       restaurantId,
@@ -263,6 +264,12 @@ async function createStaffShiftInternal(input, ctx) {
     },
     ctx,
   });
+  if (hasNonInfoWarnings(validationResult) && input.allowOverride !== true) {
+    throw new Error("Có cảnh báo policy khi xếp ca. Cần override có lý do để tiếp tục.");
+  }
+  if (input.allowOverride === true && !String(input.overrideReason || "").trim()) {
+    throw new Error("Cần nhập lý do override khi xếp ca có cảnh báo policy.");
+  }
   const staff = await loadStaffForRestaurant(input.employeeId, restaurantId);
 
   const created = await Shift.create({

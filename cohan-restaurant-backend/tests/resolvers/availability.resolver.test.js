@@ -118,6 +118,41 @@ describe("availability resolver", () => {
     expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.status).toBe("late_change_requested");
   });
 
+  it("rejecting late change restores previous official status and keeps official slots", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.StaffAvailabilitySubmission.findById.mockResolvedValue({
+      _id: "s1",
+      restaurantId: "r1",
+      status: "late_change_requested",
+      previousStatusBeforeLateChange: "locked",
+      slots: [{ date: new Date(), shiftType: "morning", status: "available" }],
+      pendingSlots: [{ date: new Date(), shiftType: "evening", status: "available" }],
+    });
+    modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mockResolvedValue({ _id: "s1", status: "locked" });
+    const res = await mutation.reviewStaffAvailabilitySubmission(null, { input: { id: "s1", status: "rejected", reviewNote: "x" } }, { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });
+    expect(res.status).toBe("locked");
+    expect(modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate).toHaveBeenCalledWith(
+      "s1",
+      expect.objectContaining({ $set: expect.objectContaining({ status: "locked", pendingSlots: [], previousStatusBeforeLateChange: null }) }),
+      { new: true },
+    );
+  });
+
+  it("rejecting late change without official slots marks submission rejected", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.StaffAvailabilitySubmission.findById.mockResolvedValue({
+      _id: "s2",
+      restaurantId: "r1",
+      status: "late_change_requested",
+      previousStatusBeforeLateChange: null,
+      slots: [],
+      pendingSlots: [{ date: new Date(), shiftType: "evening", status: "available" }],
+    });
+    modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mockResolvedValue({ _id: "s2", status: "rejected" });
+    const res = await mutation.reviewStaffAvailabilitySubmission(null, { input: { id: "s2", status: "rejected" } }, { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });
+    expect(res.status).toBe("rejected");
+  });
+
   it("blocks submission when window is used_for_schedule or cancelled", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
 

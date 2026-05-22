@@ -844,3 +844,9 @@ export async function assertShiftAssignmentValid({ input, ctx }) {
 
   return result;
 }
+
+export function hasNonInfoWarnings(result) {
+  return (result?.warnings || []).some(
+    (warning) => String(warning?.severity || "warning").toLowerCase() !== "info",
+  );
+}
