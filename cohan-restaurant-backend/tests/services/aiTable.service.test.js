@@ -123,4 +123,49 @@ describe("aiTable.service layout engine", () => {
     const spacious = __testables.generateRuleBasedLayout({ ...payloadBase, goal: "spacious" });
     expect(avgNearestDistance(spacious.tables)).toBeGreaterThan(avgNearestDistance(compact.tables));
   });
+
+  it("places full requested tables in normal space", () => {
+    const out = __testables.generateRuleBasedLayout({
+      goal: "balanced",
+      components: {
+        tables: { standard: 8, vip: 2, twoSeat: 4, fourSeat: 4, group: 2 },
+        objects: { plant: 4, door: 1, cashier: 1 },
+      },
+      startX: 100,
+      startY: 100,
+    });
+    expect(out.tables.length).toBe(20);
+  });
+
+  it("supports wall custom width from placement function", () => {
+    const out = __testables.generateRuleBasedLayout({
+      goal: "balanced",
+      components: { tables: { standard: 6 }, objects: { wall: 2 } },
+      startX: 0,
+      startY: 0,
+    });
+    const walls = out.decor.filter((d) => d.type === "wall");
+    expect(walls.length).toBeGreaterThan(0);
+    expect(walls.some((w) => w.w > 200)).toBe(true);
+  });
+
+  it("emits warning when not all requested tables can be placed", () => {
+    const blocking = Array.from({ length: 150 }).map((_, i) => ({
+      x: (i % 15) * 70,
+      y: Math.floor(i / 15) * 70,
+      w: 64,
+      h: 64,
+      isRealTable: true,
+    }));
+    const out = __testables.generateRuleBasedLayout({
+      goal: "capacity",
+      components: { tables: { standard: 40, vip: 5 }, objects: {} },
+      startX: 0,
+      startY: 0,
+      currentItems: blocking,
+    });
+    if (out.tables.length < 45) {
+      expect(out.meta.warnings.some((w) => w.includes("Chỉ đặt được"))).toBe(true);
+    }
+  });
 });

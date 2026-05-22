@@ -317,6 +317,7 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   const seedOffset = (seed % 4) * 12;
   const tableEntries = [];
   Object.entries(components.tables).forEach(([k, n]) => { for (let i = 0; i < n; i += 1) tableEntries.push(k); });
+  const requestedTableCount = tableEntries.length;
   if (tableEntries.length > 200) {
     warnings.push("Tổng số bàn vượt 200, hệ thống đã giới hạn còn 200.");
     tableEntries.length = 200;
@@ -327,9 +328,14 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   const rows = Math.max(1, Math.round(Math.sqrt(tableEntries.length / 1.6)));
   const cols = Math.max(1, Math.ceil(tableEntries.length / rows));
   const tables = [];
+  let failedPlacementCount = 0;
   const placeTable = (tableKind, baseX, baseY, extraGap = 0) => {
     const cfg = typeMap[tableKind] || typeMap.standard;
     const baseRect = { x: Math.round(baseX), y: Math.round(baseY), w: cfg.w, h: cfg.h };
+    const canPlaceWithoutOverlap = (rect, pad) =>
+      !placed.some((occupiedRect) =>
+        rectsOverlap(expandRect(rect, Math.max(0, pad)), expandRect(occupiedRect, 0)),
+      );
     const fitted = findNearestFreeRect({
       baseRect,
       occupiedRects: placed,
@@ -337,8 +343,22 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
       step: 24 + (seed % 3) * 2,
       maxRing: 16,
     });
-    const finalRect = normalizeRect({ ...fitted, w: cfg.w, h: cfg.h });
-    if (placed.some((rect) => rectsOverlap(expandRect(finalRect, spacingCfg.tableGap - 4), expandRect(rect, 0)))) return false;
+    let finalRect = normalizeRect({ ...fitted, w: cfg.w, h: cfg.h });
+    if (!canPlaceWithoutOverlap(finalRect, spacingCfg.tableGap - 4)) {
+      const fallbackPadding = Math.max(2, Math.floor((spacingCfg.tableGap + extraGap) * 0.5));
+      const fallbackFitted = findNearestFreeRect({
+        baseRect,
+        occupiedRects: placed,
+        padding: fallbackPadding,
+        step: 18 + (seed % 3) * 2,
+        maxRing: 22,
+      });
+      finalRect = normalizeRect({ ...fallbackFitted, w: cfg.w, h: cfg.h });
+      if (!canPlaceWithoutOverlap(finalRect, 0)) {
+        failedPlacementCount += 1;
+        return false;
+      }
+    }
     placed.push(finalRect);
     tables.push({ code: `AI-${tables.length + 1}`, x: finalRect.x, y: finalRect.y, rotation: 0, capacity: cfg.capacity, type: VALID_TABLE_TYPES.has(cfg.apiType) ? cfg.apiType : "standard" });
     return true;
@@ -362,8 +382,11 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   const decor = [];
   const addDecor = (type, countDecor, posFn, padding = 10) => {
     for (let i = 0; i < countDecor; i += 1) {
-      const [w, h] = decorSize[type] || [60, 60];
-      const base = posFn(i, w, h);
+      const [defaultW, defaultH] = decorSize[type] || [60, 60];
+      const rawBase = posFn(i, defaultW, defaultH);
+      const w = Number(rawBase?.w) || defaultW;
+      const h = Number(rawBase?.h) || defaultH;
+      const base = { ...rawBase, w, h };
       const fit = findNearestFreeRect({ baseRect: { ...base, w, h }, occupiedRects: placed, padding, step: 22 + (seed % 2) * 2, maxRing: 10 });
       const rect = normalizeRect({ ...fit, w, h });
       placed.push(rect);
@@ -385,6 +408,11 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
     }
   }
   addDecor("plant", components.objects.plant, (i) => ({ x: i % 2 ? tableBounds.minX - 44 : tableBounds.maxX + 20, y: i % 2 ? tableBounds.minY + 24 + i * 24 : tableBounds.maxY - 40 - i * 20 }), 8);
+  if (tables.length < requestedTableCount) {
+    warnings.push(`Chỉ đặt được ${tables.length}/${requestedTableCount} bàn do không đủ không gian hoặc bị trùng vị trí.`);
+  } else if (failedPlacementCount > 0) {
+    warnings.push(`Chỉ đặt được ${tables.length}/${requestedTableCount} bàn do không đủ không gian hoặc bị trùng vị trí.`);
+  }
   const scored = scoreLayout({ tables, decor, goal, bounds: tableBounds });
   return { tables, decor, meta: { goal, score: scored.score, scoreBreakdown: scored.breakdown, warnings } };
 };
