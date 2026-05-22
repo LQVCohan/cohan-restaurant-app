@@ -1,5 +1,15 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import {
+  Users,
+  Repeat2,
+  TrendingUp,
+  CalendarDays,
+  Utensils,
+  BarChart3,
+  ClipboardList,
+  UserRoundCog,
+} from "lucide-react";
 import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerAnalyticsPage.scss";
 
@@ -105,6 +115,24 @@ const CustomerAnalyticsPage = () => {
     topDishes.length === 0 &&
     busyDays.length === 0;
 
+  const hasAnyCustomerSignal =
+    activeCustomerCount > 0 ||
+    returningCustomerCount > 0 ||
+    averageMembershipDays > 0;
+
+  const hasOrderSignal =
+    totalBusyDayOrders > 0 ||
+    totalPopularDishOrders > 0 ||
+    topDishes.length > 0 ||
+    busyDays.length > 0;
+
+  const membershipHelpText =
+    activeCustomerCount > 0
+      ? "Thời gian trung bình khách ở trong hệ thống."
+      : averageMembershipDays > 0
+        ? "Tính từ dữ liệu khách đã có, chưa phát sinh tương tác trong kỳ."
+        : "Chưa có dữ liệu gắn bó đủ rõ.";
+
   return (
     <section className="customer-analytics-page">
       <section className="customer-analytics-hero">
@@ -169,7 +197,14 @@ const CustomerAnalyticsPage = () => {
       ) : error ? null : (
         <>
           <div className="customer-analytics-kpis">
-            <article className="customer-kpi customer-kpi--primary">
+            <article
+              className={`customer-kpi customer-kpi--primary ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <Users size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Khách hoạt động</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : activeCustomerCount}
@@ -179,7 +214,14 @@ const CustomerAnalyticsPage = () => {
               </p>
             </article>
 
-            <article className="customer-kpi customer-kpi--success">
+            <article
+              className={`customer-kpi customer-kpi--success ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <Repeat2 size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Khách quay lại</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : returningCustomerCount}
@@ -187,7 +229,14 @@ const CustomerAnalyticsPage = () => {
               <p className="customer-kpi__help">Nhóm khách có dấu hiệu quay lại.</p>
             </article>
 
-            <article className="customer-kpi customer-kpi--accent">
+            <article
+              className={`customer-kpi customer-kpi--accent ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <TrendingUp size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Tỷ lệ quay lại</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : `${returningRate}%`}
@@ -197,41 +246,54 @@ const CustomerAnalyticsPage = () => {
               </p>
             </article>
 
-            <article className="customer-kpi customer-kpi--neutral">
+            <article
+              className={`customer-kpi customer-kpi--neutral ${
+                loading ? "customer-kpi--loading" : ""
+              }`}
+            >
+              <span className="customer-kpi__icon">
+                <CalendarDays size={18} aria-hidden="true" />
+              </span>
               <span className="customer-kpi__label">Gắn bó trung bình</span>
               <strong className="customer-kpi__value">
                 {loading ? "..." : `${averageMembershipDays} ngày`}
               </strong>
-              <p className="customer-kpi__help">
-                Thời gian trung bình khách ở trong hệ thống.
-              </p>
+              <p className="customer-kpi__help">{membershipHelpText}</p>
             </article>
           </div>
 
-          <section className="customer-analytics-strip">
+          <section
+            className={`customer-analytics-strip ${
+              isAnalyticsEmpty ? "customer-analytics-strip--empty" : ""
+            }`}
+          >
             <div>
               <span>Ngày đông nhất</span>
-              <strong>{formatDate(peakDay?.date)}</strong>
+              <strong>{isAnalyticsEmpty ? "Chưa đủ dữ liệu" : formatDate(peakDay?.date)}</strong>
               <small>{peakDay ? `${peakDay.orderCount || 0} đơn` : "Chưa có dữ liệu"}</small>
             </div>
             <div>
               <span>Tổng đơn ghi nhận</span>
-              <strong>{loading ? "..." : totalBusyDayOrders}</strong>
-              <small>Từ dữ liệu mật độ theo ngày</small>
+              <strong>{loading ? "..." : isAnalyticsEmpty ? 0 : totalBusyDayOrders}</strong>
+              <small>{hasOrderSignal ? "Từ dữ liệu mật độ theo ngày" : "Chưa ghi nhận đơn theo ngày"}</small>
             </div>
             <div>
               <span>Lượt món phổ biến</span>
-              <strong>{loading ? "..." : totalPopularDishOrders}</strong>
-              <small>Từ danh sách món được gọi nhiều</small>
+              <strong>{loading ? "..." : isAnalyticsEmpty ? 0 : totalPopularDishOrders}</strong>
+              <small>{hasOrderSignal ? "Từ danh sách món được gọi nhiều" : "Chưa có danh sách món phổ biến"}</small>
             </div>
             <div>
               <span>Nhà hàng</span>
               <strong>{selectedRestaurant?.name || "—"}</strong>
-              <small>Đang phân tích</small>
+              <small>{hasAnyCustomerSignal ? "Đang phân tích" : "Sẵn sàng khi có dữ liệu khách"}</small>
             </div>
           </section>
 
-          <section className="customer-analytics-panels">
+          <section
+            className={`customer-analytics-panels ${
+              isAnalyticsEmpty ? "customer-analytics-panels--empty" : ""
+            }`}
+          >
             <section className="customer-panel customer-panel--primary">
               <div className="customer-panel__head">
                 <div>
@@ -269,10 +331,11 @@ const CustomerAnalyticsPage = () => {
                 </div>
               ) : (
                 <div className="customer-empty-state">
-                  <h4>Chưa có dữ liệu món phổ biến</h4>
+                  <h4>{isAnalyticsEmpty ? "Chưa có món được ghi nhận" : "Chưa có dữ liệu món phổ biến"}</h4>
                   <p>
-                    Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị
-                    tại đây.
+                    {isAnalyticsEmpty
+                      ? "Khi có đơn hoàn thành, hệ thống sẽ hiển thị món khách quan tâm nhất."
+                      : "Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị tại đây."}
                   </p>
                 </div>
               )}
@@ -315,7 +378,7 @@ const CustomerAnalyticsPage = () => {
                 </div>
               ) : (
                 <div className="customer-empty-state">
-                  <h4>Chưa có dữ liệu mật độ đơn</h4>
+                  <h4>{isAnalyticsEmpty ? "Chưa có mật độ đơn" : "Chưa có dữ liệu mật độ đơn"}</h4>
                   <p>
                     Dữ liệu sẽ rõ hơn khi nhà hàng có đơn hàng trong nhiều ngày.
                   </p>
@@ -325,7 +388,7 @@ const CustomerAnalyticsPage = () => {
           </section>
 
           <section
-            className={`customer-guidance ${isAnalyticsEmpty ? "customer-guidance--empty" : ""}`}
+            className={`customer-guidance ${isAnalyticsEmpty ? "customer-guidance--empty customer-guidance--action-center" : ""}`}
           >
             {isAnalyticsEmpty ? (
               <>
@@ -333,9 +396,22 @@ const CustomerAnalyticsPage = () => {
                   <p className="customer-guidance__eyebrow">Bước tiếp theo</p>
                   <h3>Chưa đủ dữ liệu để phân tích khách hàng</h3>
                   <p>
-                    Hãy bắt đầu bằng việc ghi nhận đơn hàng, kiểm tra menu và quản lý
-                    thông tin khách hàng.
+                    Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo insight hữu ích.
                   </p>
+                </div>
+                <div className="customer-guidance__steps">
+                  <div>
+                    <ClipboardList size={16} aria-hidden="true" />
+                    <span>Kiểm tra đơn</span>
+                  </div>
+                  <div>
+                    <UserRoundCog size={16} aria-hidden="true" />
+                    <span>Quản lý khách</span>
+                  </div>
+                  <div>
+                    <Utensils size={16} aria-hidden="true" />
+                    <span>Kiểm tra menu</span>
+                  </div>
                 </div>
                 <div className="customer-guidance__actions">
                   <button
@@ -364,7 +440,10 @@ const CustomerAnalyticsPage = () => {
             ) : (
               <div>
                 <p className="customer-guidance__eyebrow">Gợi ý vận hành</p>
-                <h3>Tập trung vào nhóm khách quay lại và món được quan tâm</h3>
+                <h3>
+                  <BarChart3 size={16} aria-hidden="true" />
+                  <span>Tập trung vào nhóm khách quay lại và món được quan tâm</span>
+                </h3>
                 <p>
                   Dùng dữ liệu này để chuẩn bị tồn kho, nhân sự và chương trình chăm
                   sóc khách hàng phù hợp.
