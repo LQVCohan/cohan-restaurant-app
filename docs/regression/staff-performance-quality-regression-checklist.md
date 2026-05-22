@@ -23,3 +23,13 @@
 - [ ] Report HTML có section Quality evidence.
 - [ ] CSV không duplicate note.
 - [ ] OrderModal reason preset hoạt động.
+
+## Cashier Quality Regression
+
+- [ ] Sai bill có reason liên quan thu ngân mới trừ điểm.
+- [ ] Khách đổi ý / lỗi bếp / lỗi hệ thống không trừ thu ngân.
+- [ ] Payment request xử lý chậm có tính penalty.
+- [ ] Voucher/promotion hợp lệ không bị tính là discount issue.
+- [ ] Manual discount thiếu lý do hoặc sai quyền có thể bị tính issue.
+- [ ] Operational penalty capped at 15.
+- [ ] Quality evidence hiển thị cashierOperationalPenalty và cashierMetrics.
