@@ -138,7 +138,7 @@ describe("AvailabilityRegistrationPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Xem submissions/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xem đăng ký/i }));
     expect(screen.getByText("Yêu cầu thay đổi muộn")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
     fireEvent.click(screen.getByRole("button", { name: "Từ chối" }));

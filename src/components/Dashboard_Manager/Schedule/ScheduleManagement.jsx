@@ -1717,10 +1717,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const dateLabel = useMemo(() => {
     if (viewMode === "week") {
-      return `Tuần ${format(weekStart, "w")}, ${format(weekStart, "yyyy")} (${format(
+      return `Tuần ${format(weekStart, "w")} · ${format(
         weekStart,
         "dd/MM",
-      )} - ${format(weekEnd, "dd/MM")})`;
+      )} - ${format(weekEnd, "dd/MM/yyyy")}`;
     }
     if (viewMode === "month") {
       return `Tháng ${format(currentDate, "MM/yyyy")}`;
@@ -3981,7 +3981,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 Chất lượng lịch tuần
               </p>
               <p className="schedule-quality-panel__headline">
-                {scheduleQualitySummary.headline}
+                {scheduleQualitySummary.hasTopIssues
+                  ? `${scheduleQualitySummary.actionCount || 0} cảnh báo cần kiểm tra · ${scheduleQualitySummary.unacknowledgedCount || 0} nhân sự chưa xác nhận`
+                  : "Lịch tuần đang ổn định"}
               </p>
             </div>
             <div className="schedule-quality-panel__score-wrap">
@@ -3997,7 +3999,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </div>
 
           <div className="schedule-quality-panel__metrics">
-            {scheduleQualitySummary.metrics.slice(0, 3).map((metric) => (
+            {scheduleQualitySummary.metrics
+              .filter(
+                (metric) =>
+                  Number(metric.value) > 0 || metric.key === "criticalRiskCount",
+              )
+              .slice(0, 3)
+              .map((metric) => (
               <div key={metric.key} className="schedule-quality-panel__metric">
                 <span className="label">{metric.label}</span>
                 <span className="value">{metric.value}</span>
@@ -4007,7 +4015,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
           <div className="schedule-quality-panel__body">
             <ul>
-              {scheduleQualitySummary.reasons.slice(0, 2).map((reason) => (
+              {scheduleQualitySummary.reasons.slice(0, 1).map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
@@ -4039,28 +4047,28 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </p>
           <p>Trạng thái: {getScheduleStatusLabel()}</p>
         </div>
-        <div className="toolbar-left">
+        <div className="toolbar-group toolbar-group--view">
           <div className="view-toggles">
             <button
               type="button"
               className={viewMode === "week" ? "active" : ""}
               onClick={() => setViewMode("week")}
             >
-              Theo Tuần
+              Theo tuần
             </button>
             <button
               type="button"
               className={viewMode === "day" ? "active" : ""}
               onClick={() => setViewMode("day")}
             >
-              Theo Ngày
+              Theo ngày
             </button>
             <button
               type="button"
               className={viewMode === "month" ? "active" : ""}
               onClick={() => setViewMode("month")}
             >
-              Theo Tháng
+              Theo tháng
             </button>
           </div>
 
@@ -4070,7 +4078,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               onClick={() => handleNavigate("prev")}
               className="nav-btn"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} /> Trước
             </button>
             <span className="week-label">{dateLabel}</span>
             <button
@@ -4078,12 +4086,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
               onClick={() => handleNavigate("next")}
               className="nav-btn"
             >
-              <ChevronRight size={20} />
+              Sau <ChevronRight size={18} />
             </button>
           </div>
         </div>
 
-        <div className="toolbar-right">
+        <div className="toolbar-group toolbar-group--filters">
           <select
             value={selectedRestaurantId}
             onChange={(event) => handleRestaurantChange(event.target.value)}
@@ -4111,6 +4119,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               </option>
             ))}
           </select>
+        </div>
+        <div className="toolbar-group toolbar-group--actions">
 
           {!readOnly && (
             <button
@@ -4123,7 +4133,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               }}
             >
               <CalendarCheck2 size={16} />
-              Xem availability đã chốt
+              Lịch rảnh đã chốt
             </button>
           )}
 
@@ -4372,7 +4382,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                             className="add-shift-btn"
                             onClick={() => openAddShiftModal(day, type)}
                           >
-                            + {shiftConfig?.label || "Ca"}
+                            + {String(shiftConfig?.label || "Ca").replace(/^Ca\s+/i, "")}
                           </button>
                         )}
                       </div>
