@@ -113,6 +113,22 @@ const normalizeMandatoryRoles = (roles = []) =>
     ),
   );
 
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const buildCompactRoleLabel = ({ roleName, positionTitle, fallbackRole }) => {
+  const parts = [roleName, positionTitle, fallbackRole].reduce((acc, part) => {
+    const trimmed = String(part || "").trim();
+    if (!trimmed) return acc;
+    const key = normalizeLabel(trimmed);
+    if (acc.some((item) => normalizeLabel(item) === key)) return acc;
+    return [...acc, trimmed];
+  }, []);
+  return parts.join(" · ") || "Chưa xác định vị trí";
+};
+
 const AddShiftModal = ({
   isOpen,
   onClose,
@@ -437,8 +453,8 @@ const AddShiftModal = ({
         <div className="form-group">
           <label>Vị trí bắt buộc cho ca</label>
           <p className="job-helper-text">
-            Các vị trí đã thiết lập trong Cài đặt ca được tự chọn và không thể
-            bỏ tại đây. Bạn có thể chọn thêm vị trí riêng cho ca này.
+            Vai trò bắt buộc từ chính sách được tự chọn và không thể bỏ tại
+            đây. Bạn có thể chọn thêm vị trí riêng cho ca này.
           </p>
           <div className="job-grid">
             {jobOptions.map((job) => {
@@ -511,6 +527,11 @@ const AddShiftModal = ({
                 const visibility = getStaffAvailabilityVisibility(s);
                 const { roleLabel, matched: roleMatched } =
                   getStaffRoleMatch(s);
+                const compactRoleLabel = buildCompactRoleLabel({
+                  roleName: s.roleName,
+                  positionTitle: s.positionTitle,
+                  fallbackRole: roleLabel,
+                });
                 return (
                   <div
                     key={s.id}
@@ -523,7 +544,7 @@ const AddShiftModal = ({
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
                       <span className="role">
-                        {roleLabel} · {s.departmentLabel || "Khác"}
+                        {compactRoleLabel} · {s.departmentLabel || "Khác"}
                       </span>
                       <span className="role-match matched">
                         {visibility.label}

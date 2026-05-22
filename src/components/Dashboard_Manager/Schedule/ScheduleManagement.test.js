@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { buildVisibleScheduleInsights } from "./utils/scheduleInsights";
 import { buildScheduleQualitySummary } from "./utils/scheduleQuality";
+import {
+  normalizeMandatoryShiftRoles,
+  preserveMandatoryShiftRolesOnSave,
+} from "./components/ShiftRulesModal";
 
 const baseShift = {
   id: "shift-1",
@@ -199,5 +203,35 @@ describe("buildScheduleQualitySummary", () => {
     });
     expect(result.score).toBeLessThan(85);
     expect(result.tone === "info" || result.tone === "warning" || result.tone === "danger").toBeTruthy();
+  });
+});
+
+describe("ShiftRulesModal mandatory roles save helpers", () => {
+  it("does not clear mandatoryShiftRoles when draft value is undefined", () => {
+    const preserved = preserveMandatoryShiftRolesOnSave(undefined, {
+      mandatoryShiftRoles: ["cashier", "server"],
+    });
+    expect(preserved).toEqual(["cashier", "server"]);
+  });
+
+  it("preserves existing mandatoryShiftRoles when draft value is null", () => {
+    const preserved = preserveMandatoryShiftRolesOnSave(null, {
+      mandatoryShiftRoles: ["cashier"],
+    });
+    expect(preserved).toEqual(["cashier"]);
+  });
+
+  it("reflects explicit manager removal via empty array", () => {
+    const preserved = preserveMandatoryShiftRolesOnSave([], {
+      mandatoryShiftRoles: ["cashier", "server"],
+    });
+    expect(preserved).toEqual([]);
+  });
+
+  it("normalizes and deduplicates values", () => {
+    expect(normalizeMandatoryShiftRoles([" cashier ", "CASHIER", "server"])).toEqual([
+      "cashier",
+      "server",
+    ]);
   });
 });
