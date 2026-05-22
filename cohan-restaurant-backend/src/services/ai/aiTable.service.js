@@ -280,16 +280,20 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
   });
   const walls = decor.filter((d) => d.type === "wall").map(normalizeRect);
   const nonWallDecor = decor.filter((d) => d.type !== "wall");
+  const wallBlockingDecor = decor.filter((d) => !["wall", "door", "window"].includes(d.type));
   if (zones?.roomBounds) {
     const room = zones.roomBounds;
     [...tableRects, ...nonWallDecor.map(normalizeRect)].forEach((rect) => {
       if (!inZone(rect, room)) outsideRoomPenalty += 260;
     });
-    nonWallDecor.forEach((d) => {
+    wallBlockingDecor.forEach((d) => {
       const r = normalizeRect(d);
       walls.forEach((w) => {
         if (rectsOverlap(r, w, 0)) wallOverlapPenalty += 180;
       });
+    });
+    nonWallDecor.forEach((d) => {
+      const r = normalizeRect(d);
       if (d.type === "plant") {
         if (rectsOverlap(r, zones.mainAisle, 0)) decorPurposePenalty += 120;
         const mainRef = zones.mainDining ? centerOf(zones.mainDining) : centerOf(room);

@@ -72,6 +72,22 @@ describe("aiTable.service layout engine v3", () => {
     expect(nearEdge(door)).toBe(true);
     expect(windows.every((w) => nearEdge(w))).toBe(true);
   });
+  it("door and windows may overlap wall without wall overlap penalty", () => {
+    const out = __testables.generateRuleBasedLayout({
+      goal: "balanced",
+      components: { tables: { standard: 6 }, objects: { wall: 4, door: 1, window: 2 } },
+    }, 4);
+    const room = out.meta.zones.roomBounds;
+    const nearEdge = (r) => {
+      const cx = r.x + r.w / 2; const cy = r.y + r.h / 2;
+      return Math.min(Math.abs(cx - room.x), Math.abs(cx - (room.x + room.w)), Math.abs(cy - room.y), Math.abs(cy - (room.y + room.h))) < 20;
+    };
+    const door = out.decor.find((d) => d.type === "door");
+    const windows = out.decor.filter((d) => d.type === "window");
+    expect(nearEdge(door)).toBe(true);
+    expect(windows.every((w) => nearEdge(w))).toBe(true);
+    expect(out.meta.scoreBreakdown.wallOverlapPenalty).toBe(0);
+  });
 
   it("service objects stay out of main dining center", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 0);
