@@ -1861,6 +1861,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ),
     );
   }, [availabilityPanelTouched, availabilityWindowEffectiveStatus]);
+  useEffect(() => {
+    setAvailabilityPanelTouched(false);
+  }, [
+    effectiveRestaurantId,
+    availabilityTargetStartIso,
+    availabilityTargetEndIso,
+    managerCurrentWindow?.id,
+  ]);
 
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
@@ -1903,7 +1911,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ];
       if (currentWindowStatus === "closed") {
         confirmLines.push(
-          "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
+          "Sau khi mở lại, nhân viên có thể thay đổi đăng ký lịch rảnh.",
         );
       } else if (currentWindowStatus === "draft") {
         confirmLines.push(
@@ -1959,11 +1967,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     const confirmed = window.confirm(
       [
-        "Xác nhận đóng đăng ký availability?",
+        "Xác nhận đóng đăng ký lịch rảnh?",
         `Tuần áp dụng: ${targetWeek}`,
-        `Tổng submission: ${total}`,
-        `Submitted: ${Number(summaryByStatus.submitted || 0)} | Approved: ${Number(summaryByStatus.approved || 0)} | Locked: ${Number(summaryByStatus.locked || 0)} | Pending: ${Number(summaryByStatus.pending || 0)} | Missing part-time: ${missing}`,
-        "Sau khi đóng, dữ liệu đăng ký sẽ được dùng để kiểm tra hợp lệ khi xếp lịch.",
+        `Tổng đăng ký: ${total}`,
+        `Đã gửi: ${Number(summaryByStatus.submitted || 0)} | Đã duyệt: ${Number(summaryByStatus.approved || 0)} | Đã khóa: ${Number(summaryByStatus.locked || 0)} | Chờ duyệt: ${Number(summaryByStatus.pending || 0)} | Nhân viên bán thời gian chưa đăng ký: ${missing}`,
+        "Sau khi đóng, dữ liệu đăng ký khả dụng sẽ được dùng để kiểm tra hợp lệ khi xếp lịch.",
       ].join("\n"),
     );
 
@@ -3698,7 +3706,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     } catch (error) {
       const message = getGraphQLErrorMessage(
         error,
-        "Không thể đổi giờ ca. Vui lòng kiểm tra lại policy.",
+        "Không thể đổi giờ ca. Vui lòng kiểm tra lại chính sách.",
       );
 
       showNotification(message, "error");

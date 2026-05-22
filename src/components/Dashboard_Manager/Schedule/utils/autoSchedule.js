@@ -35,15 +35,15 @@ const shouldBlockAvailabilityIssue = (issue) =>
 
 const AVAILABILITY_WARNING_MESSAGES = {
   PART_TIME_AVAILABILITY_REQUIRED:
-    "Nhan vien part-time chua dang ky ca nay",
+    "Nhân viên part-time chưa đăng ký ca này",
   OUTSIDE_SUBMITTED_AVAILABILITY:
-    "Nhan vien part-time chua dang ky ca nay",
+    "Nhân viên part-time chưa đăng ký ca này",
   FULL_TIME_UNAVAILABLE_EXCEPTION:
-    "Nhan vien full-time da bao khong kha dung",
+    "Nhân viên full-time đã báo không khả dụng",
   AVAILABILITY_PENDING_SUBMISSION:
-    "Availability chua dong, du lieu con cho cap nhat",
+    "Đăng ký khả dụng chưa đóng, dữ liệu còn chờ cập nhật",
   LATE_AVAILABILITY_CHANGE_PENDING:
-    "Thay doi availability sau han dang cho quan ly duyet",
+    "Thay đổi khả dụng sau hạn đang chờ quản lý duyệt",
 };
 
 const formatYmd = (value) => format(new Date(value), "yyyy-MM-dd");
@@ -170,11 +170,11 @@ const findAvailabilitySlot = (submission, dateKey, shiftType, status) => {
 const buildAvailabilityIssue = (code, severity = "warning") => ({
   code,
   severity,
-  message: AVAILABILITY_WARNING_MESSAGES[code] || "Can xem lai availability",
+  message: AVAILABILITY_WARNING_MESSAGES[code] || "Cần xem lại dữ liệu khả dụng",
   suggestedAction:
     code === "AVAILABILITY_PENDING_SUBMISSION"
-      ? "Kiem tra lai sau khi window availability dong."
-      : "Uu tien nhan vien da available, hoac override co ly do neu van can xep.",
+      ? "Kiểm tra lại sau khi kỳ đăng ký khả dụng đã đóng."
+      : "Ưu tiên nhân viên đã sẵn sàng theo đăng ký, hoặc override có lý do nếu vẫn cần xếp.",
 });
 
 const getCandidateAvailabilityIssue = ({
@@ -857,7 +857,7 @@ export const buildAutoScheduleCreateInputs = ({
           : "";
 
       const warningText = assignment.requiresOverride
-        ? " • Có cảnh báo policy, cần override khi áp dụng"
+        ? " • Có cảnh báo chính sách, cần ghi đè khi áp dụng"
         : "";
 
       const missingText =
@@ -872,7 +872,11 @@ export const buildAutoScheduleCreateInputs = ({
         startTime: item.startTime,
         endTime: item.endTime,
         status: "scheduled",
-        notes: `Auto scheduled${scoreText}${warningText}${missingText}`,
+        allowOverride: Boolean(assignment.requiresOverride),
+        overrideReason: assignment.requiresOverride
+          ? "Tự động xếp ca: chấp nhận phân công có cảnh báo chính sách."
+          : "",
+        notes: `Tự động xếp ca${scoreText}${warningText}${missingText}`,
       });
     }
   }

@@ -604,5 +604,32 @@ describe("auto schedule policy alignment", () => {
     const inputs = buildAutoScheduleCreateInputs({ previewItems: items, selectedShiftKeys: { k1: true, k2: true }, restaurantId: "r1" });
     expect(inputs).toHaveLength(1);
     expect(inputs[0].notes).toContain("Ca còn thiếu 1 vị trí");
+    expect(inputs[0].notes).toContain("Tự động xếp ca");
+    expect(inputs[0].allowOverride).toBe(false);
+    expect(inputs[0].overrideReason).toBe("");
+  });
+
+  it("adds override reason when assignment has policy warning", async () => {
+    const { buildAutoScheduleCreateInputs } = await import("./autoSchedule");
+    const items = [{
+      shiftKey: "k-warning",
+      canApply: true,
+      shiftType: "evening",
+      startTime: "2026-05-02T14:00:00.000Z",
+      endTime: "2026-05-02T22:00:00.000Z",
+      unresolvedCount: 0,
+      plannedAssignments: [{ staffId: "s-warning", requiresOverride: true }],
+    }];
+
+    const inputs = buildAutoScheduleCreateInputs({
+      previewItems: items,
+      selectedShiftKeys: { "k-warning": true },
+      restaurantId: "r1",
+    });
+
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].allowOverride).toBe(true);
+    expect(inputs[0].overrideReason).toContain("Tự động xếp ca");
+    expect(inputs[0].notes).toContain("cần ghi đè khi áp dụng");
   });
 });
