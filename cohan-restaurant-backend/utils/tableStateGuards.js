@@ -4,6 +4,8 @@ import {
   INACTIVE_ORDER_STATUSES,
   activeTableSessionLookupFilter,
   withOrderBatchOrLegacyFilter,
+  childOrdersForSessionFilter,
+  isPaymentClosed,
 } from "./orderLifecycle.js";
 
 export const ACTIVE_RESERVATION_STATUSES = [
@@ -48,8 +50,6 @@ export async function hasActiveReservationsForTable({ restaurantId, tableId }) {
 }
 
 const SERVED_ITEM_STATUSES = new Set(["served", "cancelled", "returned"]);
-const PAID_STATUSES = new Set(["paid", "refunded", "partially_refunded"]);
-
 const hasUnservedItems = (items = []) =>
   (items || []).some((item) => !SERVED_ITEM_STATUSES.has(String(item?.status || "").toLowerCase()));
 
@@ -58,15 +58,16 @@ const isPaymentRequested = (order = {}) =>
   String(order?.payment?.status || "").toLowerCase() === "payment_requested";
 
 const hasUnpaidAmount = (order = {}) => {
-  const paymentStatus = String(order?.orderPaymentStatus || order?.payment?.status || "").toLowerCase();
+  if (isPaymentClosed(order)) return false;
   const grandTotal = Number(order?.totals?.grandTotal || 0);
-  return !PAID_STATUSES.has(paymentStatus) && grandTotal > 0;
+  return grandTotal > 0;
 };
 
 const activeOrderStatus = (order = {}) =>
   !INACTIVE_ORDER_STATUSES.includes(String(order?.currentStatus || "").toLowerCase());
 
 export async function getTableAvailabilityBlockReason({ restaurantId, tableId, tableCode }) {
+  const relatedOrders = [];
   const activeSession = await Order.findOne(
     activeTableSessionLookupFilter({ restaurantId, tableId, tableCode }),
   )
@@ -81,64 +82,22 @@ export async function getTableAvailabilityBlockReason({ restaurantId, tableId, t
     .lean();
 
   if (activeSession?._id) {
-    if (hasUnservedItems(activeSession.items)) {
-      return {
-        code: "TABLE_HAS_UNSERVED_ITEMS",
-        message: "Không thể trả bàn về trống vì còn món chưa phục vụ.",
-      };
-    }
-    if (isPaymentRequested(activeSession)) {
-      return {
-        code: "TABLE_PAYMENT_PENDING",
-        message: "Không thể trả bàn về trống vì bàn đang chờ thanh toán.",
-      };
-    }
-    if (hasUnpaidAmount(activeSession)) {
-      return {
-        code: "TABLE_HAS_UNPAID_ORDERS",
-        message: "Không thể trả bàn về trống vì còn hóa đơn chưa thanh toán.",
-      };
-    }
-
+    relatedOrders.push(activeSession);
     const childOrders = await Order.find(
-      withOrderBatchOrLegacyFilter({
-        restaurantId,
-        parentOrderId: activeSession._id,
+      {
+        ...childOrdersForSessionFilter({
+          restaurantId,
+          parentOrderId: activeSession._id,
+        }),
         currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-      }),
+      },
     )
       .select({ _id: 1, orderPaymentStatus: 1, payment: 1, totals: 1, items: 1, currentStatus: 1 })
       .lean();
-
-    for (const child of childOrders) {
-      if (hasUnservedItems(child.items)) {
-        return {
-          code: "TABLE_HAS_UNSERVED_ITEMS",
-          message: "Không thể trả bàn về trống vì còn món chưa phục vụ.",
-        };
-      }
-      if (isPaymentRequested(child)) {
-        return {
-          code: "TABLE_PAYMENT_PENDING",
-          message: "Không thể trả bàn về trống vì bàn đang chờ thanh toán.",
-        };
-      }
-      if (hasUnpaidAmount(child)) {
-        return {
-          code: "TABLE_HAS_UNPAID_ORDERS",
-          message: "Không thể trả bàn về trống vì còn hóa đơn chưa thanh toán.",
-        };
-      }
-      if (activeOrderStatus(child)) {
-        return {
-          code: "TABLE_HAS_ACTIVE_ORDERS",
-          message: "Không thể trả bàn về trống vì còn order hoạt động.",
-        };
-      }
-    }
+    relatedOrders.push(...childOrders);
   }
 
-  const activeLegacyOrBatchOrder = await Order.findOne(
+  const activeLegacyOrBatchOrders = await Order.find(
     withOrderBatchOrLegacyFilter({
       restaurantId,
       tableId,
@@ -148,25 +107,36 @@ export async function getTableAvailabilityBlockReason({ restaurantId, tableId, t
     .select({ _id: 1, orderPaymentStatus: 1, payment: 1, totals: 1, items: 1, currentStatus: 1 })
     .lean();
 
-  if (activeLegacyOrBatchOrder?._id) {
-    if (hasUnservedItems(activeLegacyOrBatchOrder.items)) {
-      return {
-        code: "TABLE_HAS_UNSERVED_ITEMS",
-        message: "Không thể trả bàn về trống vì còn món chưa phục vụ.",
-      };
-    }
-    if (isPaymentRequested(activeLegacyOrBatchOrder)) {
-      return {
-        code: "TABLE_PAYMENT_PENDING",
-        message: "Không thể trả bàn về trống vì bàn đang chờ thanh toán.",
-      };
-    }
-    if (hasUnpaidAmount(activeLegacyOrBatchOrder)) {
-      return {
-        code: "TABLE_HAS_UNPAID_ORDERS",
-        message: "Không thể trả bàn về trống vì còn hóa đơn chưa thanh toán.",
-      };
-    }
+  if (activeLegacyOrBatchOrders.length > 0) {
+    relatedOrders.push(...activeLegacyOrBatchOrders);
+  }
+
+  const hasAnyUnservedItems = relatedOrders.some((order) => hasUnservedItems(order.items));
+  if (hasAnyUnservedItems) {
+    return {
+      code: "TABLE_HAS_UNSERVED_ITEMS",
+      message: "Không thể trả bàn về trống vì còn món chưa phục vụ.",
+    };
+  }
+
+  const hasAnyPaymentRequested = relatedOrders.some((order) => isPaymentRequested(order));
+  if (hasAnyPaymentRequested) {
+    return {
+      code: "TABLE_PAYMENT_PENDING",
+      message: "Không thể trả bàn về trống vì bàn đang chờ thanh toán.",
+    };
+  }
+
+  const hasAnyUnpaidAmount = relatedOrders.some((order) => hasUnpaidAmount(order));
+  if (hasAnyUnpaidAmount) {
+    return {
+      code: "TABLE_HAS_UNPAID_ORDERS",
+      message: "Không thể trả bàn về trống vì còn hóa đơn chưa thanh toán.",
+    };
+  }
+
+  const hasAnyActiveOrder = relatedOrders.some((order) => activeOrderStatus(order));
+  if (hasAnyActiveOrder) {
     return {
       code: "TABLE_HAS_ACTIVE_ORDERS",
       message: "Không thể trả bàn về trống vì còn order hoạt động.",
