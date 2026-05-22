@@ -4,6 +4,10 @@
 - [ ] Tính lại kỳ quá khứ không dùng current time thay periodEnd.
 - [ ] Tính lại kỳ tương lai không mark unaccepted theo mốc tương lai.
 - [ ] Snapshot có unacceptedAuditEffectiveAt.
+- [ ] Recalculate sau khi apply incident không làm mất điểm trừ.
+- [ ] Recalculate sau khi appeal reversal không làm mất điểm hoàn.
+- [ ] Recalculate nhiều lần không double-apply adjustment.
+- [ ] Adjustment chỉ áp dụng đúng employee/restaurant/period.
 
 ## Order reason
 - [ ] Trả món với "Món nguội" tạo issueReasonKitchenRelated = true.

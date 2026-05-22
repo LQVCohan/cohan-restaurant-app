@@ -183,6 +183,18 @@ Ghi:
 - Nếu `totalPenalty = 0` thì không nói là đã bị trừ điểm.
 - Không hiển thị copy "chưa ảnh hưởng điểm" khi `kitchenPenalty > 0`.
 
+## Formula score vs final score
+
+- `baseFormulaScore`: điểm từ 5 thành phần có trọng số (Productivity, Punctuality, Quality, Manager Review, Compliance).
+- `finalPerformanceScore`: `baseFormulaScore + finalAdjustmentDelta`.
+- `finalAdjustmentDelta` được tổng hợp từ:
+  - `incidentAdjustmentDelta`: tổng `scoreDelta` của các incident đã `applied`.
+  - `appealReversalDelta`: tổng `reversalDelta` từ các appeal reversal đã ghi nhận.
+- Khi recalculate:
+  - Hệ thống **tính lại** `baseFormulaScore` theo dữ liệu kỳ đó.
+  - Sau đó **re-apply** adjustment/reversal đã persist theo đúng `employeeId + restaurantId + period`.
+  - Vì vậy không làm mất điểm trừ/hoàn điểm đã áp dụng trước đó.
+
 ## 10. Out of scope / phát triển sau
 
 Ghi rõ chưa làm:
