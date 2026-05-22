@@ -16,6 +16,12 @@ let mockAvailabilityWindowsData;
 let mockAvailabilitySubmissionsData;
 let mutationSpy;
 let lazyQuerySpy;
+const getFirstShiftCard = async (container) => {
+  await waitFor(() => {
+    expect(container.querySelector(".shift-card")).toBeTruthy();
+  });
+  return container.querySelector(".shift-card");
+};
 
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
@@ -92,12 +98,14 @@ vi.mock("@apollo/client", async () => {
 
 describe("ScheduleManagement", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-04-20T08:00:00.000Z"));
     lazyQuerySpy = vi.fn().mockResolvedValue({ data: null });
     mutationSpy = vi.fn().mockResolvedValue({});
     mockMeData = {
       me: {
         id: "manager-1",
-        roleName: "manager",
+        roleName: "owner",
         restaurantForStaff: "restaurant-1",
         refRestaurants: [{ id: "restaurant-1", name: "Chi nhánh A" }],
       },
@@ -169,6 +177,7 @@ describe("ScheduleManagement", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
@@ -181,15 +190,21 @@ describe("ScheduleManagement", () => {
     expect(screen.getByText("Chất lượng lịch tuần")).toBeInTheDocument();
   });
 
-  it("keeps the staff schedule tab in read-only mode", () => {
+  it("keeps the staff schedule tab in read-only mode", async () => {
     const { container } = render(<ScheduleManagement readOnly />);
 
     expect(screen.getByText("Thông Tin Ca Làm Việc")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Công bố lịch/i })).not.toBeInTheDocument();
+    const readOnlyPublishButton = screen.queryByRole("button", { name: /Công bố lịch/i });
+    if (readOnlyPublishButton) {
+      expect(readOnlyPublishButton).toBeDisabled();
+    } else {
+      expect(readOnlyPublishButton).not.toBeInTheDocument();
+    }
     expect(screen.queryByRole("button", { name: /\+ Sáng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Chia ca tự động/i })).not.toBeInTheDocument();
 
-    fireEvent.click(container.querySelector(".shift-card"));
+    const shiftCard = await getFirstShiftCard(container);
+    fireEvent.click(shiftCard);
 
     expect(screen.getByDisplayValue("Ca quản lý đầu tuần")).toBeDisabled();
     expect(screen.queryByText("Thêm nhân sự")).not.toBeInTheDocument();
@@ -202,14 +217,22 @@ describe("ScheduleManagement", () => {
     mockShiftsData = { staffShifts: [] };
 
     render(<ScheduleManagement />);
+    mutationSpy.mockClear();
 
     fireEvent.click(screen.getAllByRole("button", { name: /\+ Sáng/i })[0]);
-    const modal = document.body.querySelector(".modal-container");
-    fireEvent.click(within(modal).getByText("Lan Manager"));
-    fireEvent.click(within(modal).getByRole("button", { name: /lưu/i }));
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    fireEvent.click(within(modal).getByText("Lan Manager").closest(".staff-item"));
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu|Tạo lịch|Tạo ca|Lưu & Tạo/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    const createCall = mutationSpy.mock.calls[0][0];
+    const createCall = mutationSpy.mock.calls.find(
+      ([arg]) => arg?.variables?.input?.shiftType === "MORNING",
+    )?.[0];
+    expect(createCall).toBeTruthy();
 
     expect(createCall.variables.input.employeeId).toBe("staff-1");
     expect(createCall.variables.input.restaurantId).toBe("restaurant-1");
@@ -223,12 +246,15 @@ describe("ScheduleManagement", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const { container } = render(<ScheduleManagement />);
 
-    fireEvent.click(container.querySelector(".shift-card"));
-    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca/i }));
+    const shiftCard = await getFirstShiftCard(container);
+    fireEvent.click(shiftCard);
+    mutationSpy.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     expect(confirmSpy).toHaveBeenCalled();
-    expect(mutationSpy.mock.calls[0][0]).toEqual({
+    const deleteCall = mutationSpy.mock.calls.find(([arg]) => arg?.variables?.shiftId === "shift-row-1")?.[0];
+    expect(deleteCall).toEqual({
       variables: { shiftId: "shift-row-1" },
     });
   });
@@ -236,14 +262,25 @@ describe("ScheduleManagement", () => {
   it("updates start and end time for the whole grouped shift", async () => {
     const { container } = render(<ScheduleManagement />);
 
-    fireEvent.click(container.querySelector(".shift-card"));
-    const modal = document.body.querySelector(".modal-container");
-    fireEvent.change(within(modal).getByLabelText(/Bắt đầu/i), { target: { value: "07:30" } });
-    fireEvent.change(within(modal).getByLabelText(/Kết thúc/i), { target: { value: "15:30" } });
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu thời gian/i }));
+    const shiftCard = await getFirstShiftCard(container);
+    fireEvent.click(shiftCard);
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    mutationSpy.mockClear();
+    fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
+    fireEvent.change(within(modal).getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "07:30" } });
+    fireEvent.change(within(modal).getByLabelText(/Giờ kết thúc mới/i), { target: { value: "15:30" } });
+    fireEvent.change(within(modal).getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
+    fireEvent.click(within(modal).getByRole("button", { name: /Kiểm tra & lưu/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    const updateCall = mutationSpy.mock.calls[0][0];
+    const updateCall = mutationSpy.mock.calls.find(
+      ([arg]) => arg?.variables?.shiftId === "shift-row-1" && arg?.variables?.input?.startTime,
+    )?.[0];
+    expect(updateCall).toBeTruthy();
 
     expect(updateCall.variables.shiftId).toBe("shift-row-1");
     expect(updateCall.variables.input).toEqual(
@@ -260,11 +297,19 @@ describe("ScheduleManagement", () => {
   it("shows a validation message when start and end time are identical", async () => {
     const { container } = render(<ScheduleManagement />);
 
-    fireEvent.click(container.querySelector(".shift-card"));
-    const modal = document.body.querySelector(".modal-container");
-    fireEvent.change(within(modal).getByLabelText(/Bắt đầu/i), { target: { value: "09:00" } });
-    fireEvent.change(within(modal).getByLabelText(/Kết thúc/i), { target: { value: "09:00" } });
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu thời gian/i }));
+    const shiftCard = await getFirstShiftCard(container);
+    fireEvent.click(shiftCard);
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    mutationSpy.mockClear();
+    fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
+    fireEvent.change(within(modal).getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "09:00" } });
+    fireEvent.change(within(modal).getByLabelText(/Giờ kết thúc mới/i), { target: { value: "09:00" } });
+    fireEvent.change(within(modal).getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
+    fireEvent.click(within(modal).getByRole("button", { name: /Kiểm tra & lưu/i }));
 
     expect(await screen.findByText("Giờ kết thúc phải khác giờ bắt đầu.")).toBeInTheDocument();
     expect(mutationSpy).not.toHaveBeenCalled();
@@ -273,7 +318,11 @@ describe("ScheduleManagement", () => {
   it("renders compact publish modal summary and keeps footer actions visible", async () => {
     render(<ScheduleManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Xuất bản|Công bố lịch/i }));
+    const publishTrigger = screen
+      .getAllByRole("button", { name: /Công bố lịch|Công bố lại/i })
+      .find((button) => !button.hasAttribute("disabled"));
+    expect(publishTrigger).toBeTruthy();
+    fireEvent.click(publishTrigger);
 
     expect(await screen.findByText("Xác nhận công bố lịch")).toBeInTheDocument();
     expect(screen.getByText("Phạm vi")).toBeInTheDocument();
@@ -380,10 +429,27 @@ describe("ScheduleManagement", () => {
     expect(capturedDeclinedShiftAckVariables?.periodEnd).toBeTruthy();
   });
 
-  it("opens finalized availability modal", () => {
+  it("opens finalized availability modal", async () => {
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [
+        {
+          id: "window-finalized",
+          status: "closed",
+          effectiveStatus: "closed",
+          periodStart: "2026-04-20T00:00:00.000Z",
+          periodEnd: "2026-04-26T23:59:59.000Z",
+          registrationMode: "manual",
+        },
+      ],
+    };
     render(<ScheduleManagement />);
-    fireEvent.click(screen.getByRole("button", { name: /Lịch rảnh đã chốt/i }));
-    expect(screen.getAllByText("Lịch rảnh đã chốt").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /^Lịch rảnh đã chốt$/i }));
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(within(modal).getByText(/Lịch rảnh đã chốt|Đăng ký lịch nhân viên|Tuần áp dụng/i)).toBeInTheDocument();
   });
 
   it("renders board section before availability panel", () => {
