@@ -1,6 +1,7 @@
 # Staff Performance Quality Regression Checklist
 
 ## Recalculate
+
 - [ ] Tính lại kỳ quá khứ không dùng current time thay periodEnd.
 - [ ] Tính lại kỳ tương lai không mark unaccepted theo mốc tương lai.
 - [ ] Snapshot có unacceptedAuditEffectiveAt.
@@ -8,21 +9,20 @@
 - [ ] Recalculate sau khi appeal reversal không làm mất điểm hoàn.
 - [ ] Recalculate nhiều lần không double-apply adjustment.
 - [ ] Adjustment chỉ áp dụng đúng employee/restaurant/period.
-<<<<<<< codex/update-staff-performance-recalculation-logic-wffymw
 - [ ] Demo verifier passes after seed.
 - [ ] Snapshot final score equals baseFormulaScore + finalAdjustmentDelta.
 - [ ] Recalculate after incident/appeal keeps finalAdjustmentDelta.
 - [ ] Cashier quality evidence is present when cashier metrics exist.
 - [ ] verify:demo:performance exits non-zero on hard regression.
-=======
->>>>>>> main
 
 ## Order reason
+
 - [ ] Trả món với "Món nguội" tạo issueReasonKitchenRelated = true.
 - [ ] Trả món với "Khách đổi ý" tạo issueReasonKitchenRelated = false.
 - [ ] Sai bill không trừ bếp.
 
 ## Quality
+
 - [ ] Bếp chính bị điều chỉnh bởi veryLate/kitchen-related return/cancel.
 - [ ] Phụ bếp bị điều chỉnh chủ yếu bởi unaccepted.
 - [ ] Order staff bị điều chỉnh nhẹ bởi customer rating thấp.
@@ -31,6 +31,7 @@
 - [ ] Kitchen metrics không tự làm hasPerformanceActivity true.
 
 ## UI/report/CSV
+
 - [ ] Detail panel hiển thị "Cơ sở điểm Quality".
 - [ ] Report HTML có section Quality evidence.
 - [ ] CSV không duplicate note.
