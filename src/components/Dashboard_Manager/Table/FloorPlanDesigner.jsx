@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNotification } from "../../../hooks/useNotification";
 import Modal from "../../../components/common/Modal";
+import { readStorageValue } from "@/lib/browserStorage";
 
 import {
   ArrowLeft,
@@ -21,6 +22,43 @@ import {
 } from "lucide-react";
 
 import "./FloorPlanDesigner.scss";
+
+export const getAuthHeaders = () => {
+  const token =
+    readStorageValue("auth_token") ||
+    readStorageValue("token") ||
+    null;
+  return token ? { authorization: `Bearer ${token}` } : {};
+};
+
+export const buildAutoLayoutComponentsForRequest = (form) => {
+  const sourceTables = form?.components?.tables || {};
+  const sourceObjects = form?.components?.objects || {};
+  const standard = Number(sourceTables.standard) || 0;
+  const vip = Number(sourceTables.vip) || 0;
+  const group = Number(sourceTables.group) || 0;
+  const totalTables = standard + vip + group;
+  const shouldAutoCreateWalls =
+    Number(sourceObjects.door || 0) > 0 ||
+    Number(sourceObjects.window || 0) > 0 ||
+    Number(sourceObjects.stairs || 0) > 0 ||
+    totalTables > 0;
+  return {
+    ...form.components,
+    tables: {
+      ...sourceTables,
+      standard,
+      vip,
+      group,
+      twoSeat: 0,
+      fourSeat: 0,
+    },
+    objects: {
+      ...sourceObjects,
+      wall: shouldAutoCreateWalls ? 4 : 0,
+    },
+  };
+};
 
 /* --- GRAPHQL --- */
 const GET_FLOOR_PLAN_DATA = gql`
@@ -190,7 +228,7 @@ const FloorPlanDesigner = () => {
   const defaultAiForm = {
     goal: "balanced",
     components: {
-      tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 },
+      tables: { standard: 8, vip: 0, group: 0, twoSeat: 0, fourSeat: 0 },
       objects: { plant: 2, door: 1, window: 2, stairs: 0, cashier: 1, kitchen: 1, wc: 1, buffet: 0, wall: 2 },
     },
   };
@@ -935,7 +973,8 @@ const FloorPlanDesigner = () => {
       return;
     }
 
-    const totalTables = Object.values(aiForm.components.tables || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    const requestComponents = buildAutoLayoutComponentsForRequest(aiForm);
+    const totalTables = Object.values(requestComponents.tables || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
     if (totalTables <= 0) {
       showNotification("Vui lòng chọn ít nhất 1 bàn", "warning");
       return;
@@ -955,14 +994,18 @@ const FloorPlanDesigner = () => {
     try {
       const res = await fetch(`${apiBase}/api/ai/floor/generate-layout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           restaurantId,
           floorId: activeFloorId,
           startX,
           startY,
           goal: aiForm.goal,
-          components: aiForm.components,
+          components: requestComponents,
           currentItems: items.map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y, w: item.w, h: item.h, isRealTable: item.isRealTable })),
         }),
       });
@@ -1768,13 +1811,13 @@ const FloorPlanDesigner = () => {
         title="Tạo sơ đồ tự động"
       >
         <div className="fp-modal">
-          <div className="fp-modal-intro"><strong>Thiết lập nhanh</strong><p>Chọn số lượng, mục tiêu bố cục và nhấn Generate sơ đồ.</p></div>
-          {[['tables','Bàn', [['standard','Bàn thường'],['vip','Bàn VIP'],['twoSeat','Bàn 2 người'],['fourSeat','Bàn 4 người'],['group','Bàn nhóm / gia đình']]], ['objects','Thành phần sơ đồ', [['plant','Cây trang trí'],['door','Cửa'],['window','Cửa sổ'],['stairs','Cầu thang'],['cashier','Quầy thu ngân'],['kitchen','Bếp'],['wc','WC'],['buffet','Buffet'],['wall','Tường']]]].map(([section,title,entries]) => (
+          <div className="fp-modal-intro"><strong>Thiết lập nhanh</strong><p>Chọn số lượng bàn và các khu vực cần có. Hệ thống sẽ tự tính tường, lối đi và bố cục.</p></div>
+          {[['tables','Bàn', [['standard','Bàn thường','Mặc định 4 chỗ, dùng cho đa số khách.'],['vip','Bàn VIP','Không gian riêng hơn, hệ thống sẽ bố trí tách nhẹ.'],['group','Bàn nhóm / gia đình','Bàn lớn cho nhóm đông, khoảng 6–8 chỗ.']]], ['objects','Khu vực & vật dụng', [['plant','Cây trang trí'],['door','Cửa'],['window','Cửa sổ'],['stairs','Cầu thang'],['cashier','Quầy thu ngân'],['kitchen','Bếp'],['wc','WC'],['buffet','Buffet']]]].map(([section,title,entries]) => (
             <div key={section} className="fp-ai-section">
               <h4>{title}</h4>
-              {entries.map(([key,label]) => (
+              {entries.map(([key,label,helperText]) => (
                 <div className="fp-modal-row" key={key}>
-                  <label>{label}</label>
+                  <label>{label}{helperText ? <small>{helperText}</small> : null}</label>
                   <div className="fp-stepper">
                     <button type="button" onClick={() => updateAiCount(section, key, -1)}>-</button>
                     <input type="number" min="0" value={aiForm.components?.[section]?.[key] ?? 0} onChange={(e) => setAiCount(section, key, e.target.value)} />
@@ -1784,6 +1827,7 @@ const FloorPlanDesigner = () => {
               ))}
             </div>
           ))}
+          <p className="fp-ai-note">Hệ thống sẽ tự tạo tường/khung phòng phù hợp với sơ đồ.</p>
           <div className="fp-ai-section"><h4>Mục tiêu bố cục</h4><div className="fp-modal-row"><select value={aiForm.goal} onChange={(e)=>setAiForm((p)=>({...p,goal:e.target.value}))}><option value="balanced">Cân bằng</option><option value="capacity">Nhiều bàn nhất</option><option value="spacious">Đẹp / rộng rãi</option><option value="vip">Sang / VIP</option></select></div></div>
           <div className="fp-modal-actions">
             <button className="btn-secondary" onClick={() => setAiForm(defaultAiForm)}>Reset mặc định</button>
