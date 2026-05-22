@@ -202,3 +202,31 @@ Không sửa code.
 Không đổi test.
 Không đổi schema.
 Không đổi công thức.
+
+## Cashier Quality Logic
+
+- `baseSkillScore`: dùng `review.skillScore` nếu có đánh giá quản lý, nếu không dùng trung lập `75`.
+- `customerPenalty`: giữ nguyên logic hiện tại cho thu ngân (`<= 5` điểm khi `customerRatingScore < 75` và có review).
+- `cashierOperationalPenalty`: mới, tính theo các tỷ lệ issue nghiệp vụ thu ngân và giới hạn tối đa `15`.
+
+Công thức:
+- `cashierQualityScore = baseSkillScore - customerPenalty - cashierOperationalPenalty`
+- `cashierOperationalPenalty = min(15, wrongBillRate*8 + paymentErrorRate*6 + cashierRefundRate*8 + cashVarianceRate*20 + latePaymentRequestRate*4 + unauthorizedDiscountRate*6)`
+
+Bao gồm các nhóm issue:
+- Sai bill có thể quy trách nhiệm thu ngân (void/return đã duyệt và reason/reviewNote/payment clear reason có keyword phù hợp).
+- Lỗi thanh toán có thể quy trách nhiệm thu ngân (tránh phạt lỗi provider/system callback).
+- Refund do thao tác thu ngân.
+- Xử lý chậm `PAYMENT_REQUEST` (>3 phút để acknowledge hoặc >8 phút để resolve).
+- Discount không hợp lệ (discount thủ công thiếu lý do và không có voucher/promotion hợp lệ).
+
+Loại trừ (không phạt thu ngân):
+- Lý do thuộc khách/bếp/hệ thống/cổng thanh toán hoặc không đủ dữ liệu quy trách nhiệm.
+- Voucher/promotion hợp lệ.
+
+Ghi chú:
+- `cashVarianceRate` hiện đặt `0` (chưa có dữ liệu reconciliation ca thu ngân); sẽ bổ sung khi có mô hình dữ liệu phù hợp.
+- Điểm chất lượng vẫn giữ clamp hiện tại: nếu có penalty thì không thấp hơn `50`; fallback trung lập vẫn là `75` khi thiếu evidence.
+- `hasCashierOperationalEvidence` = `true` khi `cashierOperationalPenalty > 0`; trong trường hợp này điểm Quality vẫn bị điều chỉnh ngay cả khi chưa có manager review hoặc customer rating.
+- Refund được tính tách riêng (`cashierRefunds`) và không cộng vào `paymentErrors` để tránh double-counting cùng một sự cố.
+- TODO: tích hợp reconciliation từ `PaymentSession` cho các luồng QR/provider callback khi có thể dùng làm dữ liệu chuẩn để chấm điểm thu ngân.
