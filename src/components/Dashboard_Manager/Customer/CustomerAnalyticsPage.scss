@@ -586,3 +586,184 @@
 .customer-guidance__actions button:hover {
   transform: translateY(-1px);
 }
+
+.customer-kpi__value--compact {
+  font-size: 24px;
+}
+
+.customer-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.customer-panel--full {
+  grid-column: 1 / -1;
+}
+
+.customer-segment-list,
+.customer-risk-list,
+.customer-value-list,
+.customer-cohort-list,
+.customer-recommendation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.customer-segment-row,
+.customer-risk-row,
+.customer-value-row,
+.customer-cohort-row,
+.customer-recommendation-card {
+  border: 1px solid #e8eef7;
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.customer-segment-row__meta,
+.customer-cohort-row__meta,
+.customer-value-row__top,
+.customer-risk-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.customer-segment-row__meta strong,
+.customer-risk-row__top strong,
+.customer-value-row__top strong,
+.customer-cohort-row__meta strong {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.customer-segment-row__meta span,
+.customer-cohort-row__meta span {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 750;
+}
+
+.customer-risk-row p,
+.customer-value-row p,
+.customer-recommendation-card p {
+  margin: 6px 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.customer-risk-row__meta,
+.customer-value-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.customer-risk-row__meta span,
+.customer-value-row__meta span {
+  font-size: 12px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.customer-risk-badge {
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+}
+
+.customer-risk-badge--high {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.customer-risk-badge--medium {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.customer-risk-badge--low {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #0e7490;
+}
+
+.customer-value-rank {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.customer-recommendation-card h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.customer-recommendation-card span {
+  display: inline-flex;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.customer-recommendation-card--high {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.customer-recommendation-card--high span {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.customer-recommendation-card--medium {
+  border-color: #fde68a;
+  background: #fffcf2;
+}
+
+.customer-recommendation-card--medium span {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.customer-recommendation-card--low {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.customer-recommendation-card--low span {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+@media (max-width: 1200px) {
+  .customer-insight-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-segment-row__meta,
+  .customer-cohort-row__meta,
+  .customer-value-row__top,
+  .customer-risk-row__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
