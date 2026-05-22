@@ -145,6 +145,12 @@ export async function createServer() {
 
   app.post("/api/payments/webhooks/bank-transfer/:provider", async (req, reply) => {
     try {
+      const expectedSecret = process.env.BANK_TRANSFER_WEBHOOK_SECRET || "";
+      const receivedSecret = req.headers["x-bank-webhook-secret"];
+      if ((expectedSecret && receivedSecret !== expectedSecret) || (!expectedSecret && process.env.NODE_ENV === "production")) {
+        req.log.warn({ provider: req.params?.provider }, "bank transfer webhook rejected due to invalid/missing secret");
+        return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
+      }
       const result = await reconcileBankTransferWebhook({ provider: req.params?.provider || "bank_transfer", payload: req.body || {} });
       return reply.send({ ok: true, result });
     } catch (err) {

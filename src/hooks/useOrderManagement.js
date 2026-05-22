@@ -788,6 +788,39 @@ const PAY_ORDERS_BY_ORDER_IDS = gql`
     }
   }
 `;
+const CREATE_ORDER_PAYMENT = gql`
+  mutation CreateOrderPayment($input: CreateOrderPaymentInput!) {
+    createOrderPayment(input: $input) {
+      id
+      provider
+      reference
+      amount
+      status
+      callbackStatus
+      payUrl
+      qrCodeUrl
+      deeplink
+      metadata
+    }
+  }
+`;
+const GET_PAYMENT_SESSION = gql`
+  query PaymentSession($id: ID!) {
+    paymentSession(id: $id) {
+      id
+      status
+      callbackStatus
+      provider
+      providerTransactionId
+      reference
+      amount
+      payUrl
+      qrCodeUrl
+      deeplink
+      metadata
+    }
+  }
+`;
 
 /** ✅ Cập nhật trạng thái 1 order theo ID */
 const UPDATE_ORDER_STATUS = gql`
@@ -1331,6 +1364,7 @@ export default function useOrderManagement(pos = null) {
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
+  const [mutCreateOrderPayment] = useMutation(CREATE_ORDER_PAYMENT);
 
   // queries
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
@@ -3165,6 +3199,21 @@ export default function useOrderManagement(pos = null) {
     },
     [preparePayment, confirmPayment, totals.total],
   );
+  const createOnlineOrderPayment = useCallback(
+    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod }) => {
+      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod } } });
+      return data?.createOrderPayment || null;
+    },
+    [mutCreateOrderPayment],
+  );
+
+  const getPaymentSession = useCallback(
+    async (id) => {
+      const { data } = await apollo.query({ query: GET_PAYMENT_SESSION, variables: { id }, fetchPolicy: "network-only" });
+      return data?.paymentSession || null;
+    },
+    [apollo],
+  );
 
   /* ============================================================
      11) FETCH tiện ích (dine-in theo bàn)
@@ -3418,6 +3467,8 @@ export default function useOrderManagement(pos = null) {
     validatePayment,
     confirmPayment,
     checkoutOrder,
+    createOnlineOrderPayment,
+    getPaymentSession,
     payOrderByIds,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
     reviewOrderItemVoid,

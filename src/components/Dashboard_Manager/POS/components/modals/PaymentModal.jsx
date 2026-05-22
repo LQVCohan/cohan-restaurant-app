@@ -74,6 +74,7 @@ function PaymentModal({
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
   const [discountNeedsReapply, setDiscountNeedsReapply] = useState(false);
+  const [onlinePayment, setOnlinePayment] = useState(null);
 
   const pos = usePos?.() || null;
   const effectiveOrderId = pos?.currentOrderId || order?.[0]?.orderId || null;
@@ -87,7 +88,7 @@ function PaymentModal({
 
   const { activeCurrency, setActiveCurrency, usdToVndRate } =
     useRestaurantCurrency(restaurantId);
-  const { validatePayment, confirmPayment, payLoading } =
+  const { validatePayment, confirmPayment, payLoading, createOnlineOrderPayment, getPaymentSession } =
     useOrderManagement(pos);
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
@@ -380,6 +381,16 @@ function PaymentModal({
           : Number(payableTotalVnd || 0);
 
     let res;
+    if (["transfer", "momo", "vnpay"].includes(method)) {
+      const created = await createOnlineOrderPayment({
+        restaurantId,
+        orderIds: [effectiveOrderId].filter(Boolean),
+        provider: method === "transfer" ? "bank_transfer" : method,
+        paymentMethod: method,
+      });
+      setOnlinePayment(created);
+      return;
+    }
 
     try {
       if (hasValidDiscount) {
@@ -460,6 +471,19 @@ function PaymentModal({
 
   const isCash = method === "cash";
   const isTransfer = method === "transfer";
+  useEffect(() => {
+    if (!onlinePayment?.id) return;
+    const timer = setInterval(async () => {
+      const p = await getPaymentSession(onlinePayment.id);
+      if (!p) return;
+      setOnlinePayment(p);
+      if (p.status === "success") {
+        onComplete?.({ status: "COMPLETED", method, paymentSessionId: p.id });
+        onClose?.();
+      }
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [onlinePayment?.id, getPaymentSession, onClose, onComplete, method]);
   const disableConfirm =
     busy ||
     isPreviewingDiscount ||
@@ -740,7 +764,7 @@ function PaymentModal({
             <div className={s.group}>
               <label className={s.label}>Chọn phương thức</label>
               <div className={s.grid}>
-                {["cash", "card", "transfer"].map((paymentMethod) => (
+                {["cash", "card", "transfer", "momo", "vnpay"].map((paymentMethod) => (
                   <button
                     key={paymentMethod}
                     className={`${s.btn} ${method === paymentMethod ? s.active : ""}`}
@@ -751,7 +775,7 @@ function PaymentModal({
                       ? "Tiền mặt"
                       : paymentMethod === "card"
                         ? "Thẻ"
-                        : "Chuyển khoản"}
+                        : paymentMethod === "momo" ? "MoMo" : paymentMethod === "vnpay" ? "VNPAY" : "Chuyển khoản"}
                   </button>
                 ))}
               </div>
@@ -767,21 +791,21 @@ function PaymentModal({
                     <span>Số TK:</span> <b>1234567890</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số tiền:</span>{" "}
+                    <span>Số tiền cần chuyển:</span>{" "}
                     <b>
                       {formatPrice(convertedPayableTotal || 0, {
                         currency: activeCurrency,
                       })}
                     </b>
                   </div>
+                  <div className={s.detailItem}>
+                    <span>Nội dung chuyển khoản bắt buộc:</span> <b>{onlinePayment?.metadata?.bankTransfer?.transferContent || onlinePayment?.reference || "..."}</b>
+                  </div>
                 </div>
                 <div className={s.qrCode}>
-                  <QRCodePlaceholder
-                    value={formatPrice(convertedPayableTotal || 0, {
-                      currency: activeCurrency,
-                    })}
-                  />
+                  <QRCodePlaceholder value={onlinePayment?.reference || "PENDING"} />
                 </div>
+                <div>Đang chờ hệ thống xác nhận thanh toán tự động...</div>
               </div>
             )}
 

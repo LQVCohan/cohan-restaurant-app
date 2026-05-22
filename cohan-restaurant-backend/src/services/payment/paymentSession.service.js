@@ -161,18 +161,22 @@ export async function createReservationPayment({ reservationId, provider, userId
   return payment.toObject();
 }
 
-export async function createOrderPayment({ restaurantId, orderIds = [], provider, paymentMethod, baseApiUrl, clientIp }) {
+export async function createOrderPayment({ restaurantId, orderIds = [], provider, paymentMethod, baseApiUrl, clientIp, userId }) {
   if (!mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
+  if (!mongoose.isValidObjectId(userId)) throw new Error("Unauthorized");
   if (!Array.isArray(orderIds) || !orderIds.length) throw new Error("Invalid orderIds");
   const normalizedProvider = normalizeProvider(provider);
-  const uniqueOrderIds = [...new Set(orderIds.map(String))].filter((id) => mongoose.isValidObjectId(id));
+  const rawIds = [...new Set(orderIds.map(String))];
+  if (rawIds.some((id) => !mongoose.isValidObjectId(id))) throw new Error("Invalid orderIds");
+  const uniqueOrderIds = rawIds;
   const orders = await Order.find({ _id: { $in: uniqueOrderIds }, restaurantId });
-  if (!orders.length) throw new Error("No eligible orders");
+  if (!orders.length || orders.length !== uniqueOrderIds.length) throw new Error("No eligible orders");
 
   const forbidden = new Set(["cancelled", "completed"]);
   for (const order of orders) {
     const status = String(order?.currentStatus || "").toLowerCase();
     const payStatus = String(order?.payment?.status || "").toLowerCase();
+    if (payStatus === "paid") throw new Error("Order already paid");
     if (forbidden.has(status) && payStatus !== "payment_requested") throw new Error("Order is not payable");
   }
 
@@ -182,7 +186,7 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
   const payment = await PaymentSession.create({
     restaurantId,
     orderId: orders.length === 1 ? orders[0]._id : null,
-    userId: orders[0]?.userId || undefined,
+    userId,
     provider: normalizedProvider,
     paymentMethod: paymentMethod || normalizedProvider,
     amount: expectedAmount,
@@ -234,8 +238,30 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
   const orders = await Order.find({ _id: { $in: orderIds }, restaurantId: payment.restaurantId }).session(session);
   if (!orders.length) return null;
   const now = new Date();
-  const trx = await PaymentTransaction.create([{ restaurantId: payment.restaurantId, orderIds, paidAmount: payment.amount, method: payment.provider, status: "SUCCESS", paidAt: now, note: `Auto settlement from ${source}`, txnRef: payment.providerTransactionId || payment.reference }], { session }).then((x) => x[0]);
-  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines: [], totals: { subtotal: payment.amount, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: payment.amount }, paid: payment.amount, status: "PAID", currency: "VND", refTransactionId: trx._id }], { session }).then((x) => x[0]);
+  const existingTrx = await PaymentTransaction.findOne({ restaurantId: payment.restaurantId, txnRef: payment.providerTransactionId || payment.reference }).session(session);
+  const existingInvoice = await Invoice.findOne({ restaurantId: payment.restaurantId, refTransactionId: existingTrx?._id }).session(session);
+  if (existingTrx && existingInvoice) {
+    payment.metadata = { ...(payment.metadata || {}), settlement: { paymentTransactionId: existingTrx._id, invoiceId: existingInvoice._id } };
+    await payment.save({ session });
+    return payment.metadata.settlement;
+  }
+  const lines = [];
+  const totals = { subtotal: 0, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 0 };
+  for (const order of orders) {
+    totals.subtotal += Number(order?.totals?.subtotal || 0);
+    totals.discount += Number(order?.totals?.discount || 0);
+    totals.tax += Number(order?.totals?.tax || 0);
+    totals.service += Number(order?.totals?.service || 0);
+    totals.shippingFee += Number(order?.totals?.shippingFee || 0);
+    totals.grandTotal += Number(order?.totals?.grandTotal || 0);
+    for (const item of order.items || []) {
+      const st = String(item?.status || "").toLowerCase();
+      if (["cancelled", "returned"].includes(st)) continue;
+      lines.push({ dishId: String(item?.dishId || ""), menuId: String(item?.menuId || ""), categoryId: String(item?.categoryId || ""), name: item?.name, unit: item?.unit, price: Number(item?.unitPrice ?? item?.price ?? item?.basePrice ?? 0), modifiersPrice: Number(item?.modifiersPrice || 0), quantity: Number(item?.quantity || 0), totals: Number(item?.lineSubtotal || 0), modifiers: item?.modifiers || [] });
+    }
+  }
+  const trx = await PaymentTransaction.create([{ restaurantId: payment.restaurantId, orderIds, paidAmount: payment.amount, method: payment.provider, status: "SUCCESS", paidAt: now, note: `Auto settlement from ${source}`, txnRef: payment.providerTransactionId || payment.reference, externalRef: payment.reference }], { session }).then((x) => x[0]);
+  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: { ...totals, grandTotal: totals.grandTotal || payment.amount }, paid: payment.amount, status: "PAID", currency: "VND", refTransactionId: trx._id }], { session }).then((x) => x[0]);
   const cashflow = await Cashflow.create([{ restaurantId: payment.restaurantId, type: "INFLOW", amount: payment.amount, currency: "VND", ref: { kind: "Invoice", id: invoice._id, orderIds }, note: "Thanh toán tự động", occurredAt: now }], { session }).then((x) => x[0]);
   await Order.updateMany({ _id: { $in: orderIds } }, { $set: { "payment.method": payment.provider, "payment.provider": payment.provider, "payment.status": "paid", "payment.paidAmount": payment.amount, "payment.paidAt": now, "payment.txnRef": payment.providerTransactionId || payment.reference, currentStatus: "completed" } }, { session });
   payment.metadata = { ...(payment.metadata || {}), settlement: { paymentTransactionId: trx._id, invoiceId: invoice._id, cashflowId: cashflow._id } };
@@ -351,21 +377,6 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
         await settlePaidOrderPaymentSession({ payment, source, session });
       }
 
-      if (payment.orderId && payment.status === "success") {
-        await Order.updateOne(
-          { _id: payment.orderId, "payment.status": { $ne: "paid" } },
-          {
-            $set: {
-              "payment.method": normalizedProvider,
-              "payment.status": "paid",
-              "payment.paidAmount": payment.amount,
-              "payment.paidAt": new Date(),
-            },
-          },
-          { session }
-        );
-      }
-
       await EventLog.log({
         restaurantId: payment.restaurantId,
         actorUserId: payment.userId,
@@ -417,7 +428,14 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   if (exists) return { duplicate: true, bankTransaction: exists };
 
   const bankTx = await BankTransaction.create({ provider, transactionId, amount, description, transferContent: description, bankAccountNumber, occurredAt, raw: payload, matchStatus: "unmatched" });
-  const payment = await PaymentSession.findOne({ status: "pending", $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }], reference: { $regex: description.replace(/[.*+?^${}()|[\]\]/g, "\$&"), $options: "i" } });
+  const normalizedDescription = description.toUpperCase();
+  const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
+  const candidates = await PaymentSession.find({ status: "pending", $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }] });
+  const payment = candidates.find((p) => {
+    const ref = String(p.reference || "").toUpperCase();
+    const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
+    return accountOk && (refs.includes(ref) || normalizedDescription.includes(ref));
+  });
   if (!payment) return { matched: false, bankTransaction: bankTx };
 
   bankTx.matchedPaymentSessionId = payment._id;
