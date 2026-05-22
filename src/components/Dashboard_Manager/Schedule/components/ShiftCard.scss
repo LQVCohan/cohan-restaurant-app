@@ -3,12 +3,13 @@
    ========================================= */
 
 .shift-card {
-  background:
-    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-  border: 0;
   width: 100%;
   text-align: left;
   font: inherit;
+  appearance: none;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  color: inherit;
   cursor: pointer;
   border: 1px solid var(--m-border, #e2e8f0);
   border-radius: 15px;
@@ -54,12 +55,7 @@
       color: #dc2626;
     }
 
-    &:focus-visible {
-    outline: 2px solid var(--m-primary, #4f46e5);
-    outline-offset: 2px;
-  }
-
-  &:hover {
+    &:hover {
       border-color: #fecaca;
       background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
     }
@@ -78,12 +74,7 @@
       color: #047857;
     }
 
-    &:focus-visible {
-    outline: 2px solid var(--m-primary, #4f46e5);
-    outline-offset: 2px;
-  }
-
-  &:hover {
+    &:hover {
       border-color: #a7f3d0;
       background: linear-gradient(180deg, #ffffff 0%, #f8fffb 100%);
     }
@@ -148,12 +139,7 @@
           margin-left: 0;
         }
 
-        &:focus-visible {
-    outline: 2px solid var(--m-primary, #4f46e5);
-    outline-offset: 2px;
-  }
-
-  &:hover {
+        &:hover {
           transform: translateY(-3px);
           z-index: 10;
           box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);

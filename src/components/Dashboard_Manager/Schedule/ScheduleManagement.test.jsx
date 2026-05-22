@@ -219,14 +219,16 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /\+ Sáng/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Tạo ca Sáng/i })[0]);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
       expect(node).toBeTruthy();
       return node;
     });
-    fireEvent.click(within(modal).getByText("Lan Manager").closest(".staff-item"));
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu|Tạo lịch|Tạo ca|Lưu & Tạo/i }));
+    const selectableStaff = within(modal).getByText("Lan Manager").closest(".staff-item");
+    expect(selectableStaff).toBeTruthy();
+    fireEvent.click(selectableStaff);
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch|Lưu|Tạo lịch|Tạo ca/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const createCall = mutationSpy.mock.calls.find(
@@ -249,7 +251,7 @@ describe("ScheduleManagement", () => {
     const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
     mutationSpy.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca|Xóa nhóm ca/i }));
 
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     expect(confirmSpy).toHaveBeenCalled();
@@ -271,8 +273,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "07:30" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc mới/i), { target: { value: "15:30" } });
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "07:30" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "15:30" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -306,8 +308,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu mới/i), { target: { value: "09:00" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc mới/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "09:00" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -318,23 +320,31 @@ describe("ScheduleManagement", () => {
   it("renders compact publish modal summary and keeps footer actions visible", async () => {
     render(<ScheduleManagement />);
 
-    const publishTrigger = screen.queryByRole("button", { name: /Công bố lịch|Công bố lại/i });
+    const publishTrigger = screen
+      .getAllByRole("button", { name: /Công bố lịch|Công bố lại/i })
+      .find((button) => !button.hasAttribute("disabled"));
     expect(publishTrigger).toBeTruthy();
     fireEvent.click(publishTrigger);
 
-    expect(await screen.findByText("Xác nhận công bố lịch")).toBeInTheDocument();
-    expect(screen.getByText("Phạm vi")).toBeInTheDocument();
-    expect(screen.getByText("Trạng thái hiện tại")).toBeInTheDocument();
-    expect(screen.getByText("Số nhóm ca")).toBeInTheDocument();
-    expect(screen.getByText("Tổng phân công")).toBeInTheDocument();
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+
+    expect(within(modal).getByText("Xác nhận công bố lịch")).toBeInTheDocument();
+    expect(within(modal).getByText("Phạm vi")).toBeInTheDocument();
+    expect(within(modal).getByText("Trạng thái hiện tại")).toBeInTheDocument();
+    expect(within(modal).getByText("Số nhóm ca")).toBeInTheDocument();
+    expect(within(modal).getByText("Tổng phân công")).toBeInTheDocument();
     expect(
-      screen.getByText("Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.")
+      within(modal).getByText("Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.")
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
-    const publishButton = screen.getByRole("button", { name: "Công bố lịch" });
+    expect(within(modal).getByRole("button", { name: "Hủy" })).toBeInTheDocument();
+    const publishButton = within(modal).getByRole("button", { name: "Công bố lịch" });
     expect(publishButton).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(within(modal).getByRole("checkbox"));
     expect(publishButton).not.toBeDisabled();
   });
 
@@ -442,7 +452,12 @@ describe("ScheduleManagement", () => {
     };
     render(<ScheduleManagement />);
     fireEvent.click(screen.getByRole("button", { name: /Lịch rảnh đã chốt/i }));
-    expect(await screen.findByText(/Lịch rảnh đã chốt|Đăng ký lịch nhân viên|Tuần áp dụng/i)).toBeInTheDocument();
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(modal.textContent).toMatch(/Đăng ký lịch nhân viên|Tuần áp dụng|Lịch rảnh đã chốt/i);
   });
 
   it("renders board section before availability panel", () => {
