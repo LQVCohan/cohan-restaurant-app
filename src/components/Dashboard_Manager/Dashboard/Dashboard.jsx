@@ -134,8 +134,7 @@ const Dashboard = () => {
         </label>
 
         <div className="dashboard-filterbar__context">
-          <span>Đang xem:</span>
-          <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong>
+          <span>Đang xem: <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong></span>
         </div>
       </section>
 
@@ -170,6 +169,11 @@ const Dashboard = () => {
               <h3>Đơn hàng gần đây</h3>
               <p>Theo dõi trạng thái xử lý các đơn gần nhất.</p>
             </div>
+            {safeRecentOrders.length > 0 ? (
+              <span className="orders-pill">
+                Hiển thị {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
+              </span>
+            ) : null}
           </div>
           <RecentOrders orders={safeRecentOrders} loading={loading} variant="bare" />
         </article>
