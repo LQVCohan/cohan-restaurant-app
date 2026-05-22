@@ -26,6 +26,8 @@ import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
+const MANAGER_CANONICAL_PATH = "/manager";
+
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",
   "tables",
@@ -71,7 +73,7 @@ const buildManagerNavigationUrl = ({ page, query = {} }) => {
   });
 
   const search = params.toString() ? `?${params.toString()}` : "";
-  return `${window.location.pathname}${search}#${page}`;
+  return `${MANAGER_CANONICAL_PATH}${search}#${page}`;
 };
 
 const MANAGER_PAGE_PERMISSION_ACCESS = {
@@ -155,12 +157,12 @@ const ManagerLayout = () => {
   useEffect(() => {
     if (validPages.has(currentPage)) {
       localStorage.setItem("manager.currentPage", currentPage);
-      if (window.location.hash !== `#${currentPage}`) {
-        history.replaceState(
-          null,
-          "",
-          `${window.location.pathname}#${currentPage}`,
-        );
+      const expectedHash = `#${currentPage}`;
+      if (
+        window.location.pathname !== MANAGER_CANONICAL_PATH ||
+        window.location.hash !== expectedHash
+      ) {
+        history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
       }
     }
   }, [currentPage, validPages]);

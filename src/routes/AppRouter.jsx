@@ -32,7 +32,6 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import StaffLayout from "../layouts/StaffLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
-import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/ManagerPerformancePage";
 
 import StaffOrdering from "../components/Staff/StaffOrderingScoped";
 import StaffKitchenPage from "@/components/Staff/StaffKitchenPage";
@@ -142,7 +141,7 @@ const AppRouter = () => (
     <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
     <Route path="/manager/dashboard/POS" element={withPrivateRoute(<POSLayout />, ["manager", "admin"])} />
     <Route path="/manager/floor-map/:restaurantId" element={withPrivateRoute(<FloorPlanDesigner />, ["manager", "admin"], false)} />
-    <Route path="/manager/performance" element={withPrivateRoute(<ManagerLayout><ManagerPerformancePage /></ManagerLayout>, ["manager", "admin"])} />
+    <Route path="/manager/performance" element={withPrivateRoute(<Navigate to="/manager#staff" replace />, ["manager", "admin"])} />
     <Route path="/manager/restaurants/categories" element={withPrivateRoute(<ManagerRestaurantInfoManagement />, ["manager", "admin"])} />
     <Route path="/admin/restaurants/categories" element={withPrivateRoute(<AdminRestaurantInfoManagement />, ["admin"])} />
     <Route path="/admin/dashboard" element={withPrivateRoute(<Dashboard />, ["admin"])} />
