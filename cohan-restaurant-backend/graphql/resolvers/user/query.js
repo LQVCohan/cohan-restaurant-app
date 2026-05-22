@@ -570,7 +570,9 @@ export const UserQuery = {
       for (const item of o.items || []) {
         const name = item?.name?.trim();
         if (!name) continue;
-        dishes.set(name, (dishes.get(name) || 0) + Number(item.quantity || 1));
+        const quantity = Number(item?.quantity || 1);
+        const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+        dishes.set(name, (dishes.get(name) || 0) + safeQuantity);
       }
 
       const d = new Date(o?.createdAt);
@@ -700,7 +702,7 @@ export const UserQuery = {
         };
       });
 
-    const topValueCustomers = [...customerStatRows]
+    const topValueCustomers = [...valueCustomers]
       .sort(
         (a, b) =>
           b.totalSpend - a.totalSpend ||
