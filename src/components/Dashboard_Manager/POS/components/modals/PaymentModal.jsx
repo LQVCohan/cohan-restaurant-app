@@ -74,6 +74,8 @@ function PaymentModal({
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
   const [discountNeedsReapply, setDiscountNeedsReapply] = useState(false);
+  const [onlinePayment, setOnlinePayment] = useState(null);
+  const [onlinePaymentError, setOnlinePaymentError] = useState("");
 
   const pos = usePos?.() || null;
   const effectiveOrderId = pos?.currentOrderId || order?.[0]?.orderId || null;
@@ -87,7 +89,7 @@ function PaymentModal({
 
   const { activeCurrency, setActiveCurrency, usdToVndRate } =
     useRestaurantCurrency(restaurantId);
-  const { validatePayment, confirmPayment, payLoading } =
+  const { validatePayment, confirmPayment, payLoading, createOnlineOrderPayment, getPaymentSession, resolvePayableOrderIds } =
     useOrderManagement(pos);
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
@@ -380,6 +382,27 @@ function PaymentModal({
           : Number(payableTotalVnd || 0);
 
     let res;
+    if (["transfer", "momo", "vnpay"].includes(method)) {
+      const resolvedOrderIds = await resolvePayableOrderIds({
+        restaurantId,
+        tableId: table?.id || table?._id || pos?.currentTable?.id || pos?.currentTable?._id,
+        fallbackOrderId: effectiveOrderId,
+      });
+      if (!resolvedOrderIds.length) {
+        alert("Không xác định được danh sách đơn cần thanh toán. Vui lòng tải lại danh sách đơn trên bàn.");
+        return;
+      }
+      if (onlinePayment?.id && String(onlinePayment?.status || "").toLowerCase() === "pending") return;
+      const created = await createOnlineOrderPayment({
+        restaurantId,
+        orderIds: resolvedOrderIds,
+        provider: method === "transfer" ? "bank_transfer" : method,
+        paymentMethod: method,
+      });
+      setOnlinePayment(created);
+      setOnlinePaymentError("");
+      return;
+    }
 
     try {
       if (hasValidDiscount) {
@@ -460,8 +483,29 @@ function PaymentModal({
 
   const isCash = method === "cash";
   const isTransfer = method === "transfer";
+  useEffect(() => {
+    if (!onlinePayment?.id) return;
+    const timer = setInterval(async () => {
+      const p = await getPaymentSession(onlinePayment.id);
+      if (!p) return;
+      setOnlinePayment(p);
+      if (p.status === "success") {
+        onComplete?.({ status: "COMPLETED", method, paymentSessionId: p.id });
+        onClose?.();
+        return;
+      } else if (["failed", "cancelled", "expired"].includes(String(p.status || "").toLowerCase())) {
+        setOnlinePaymentError("Thanh toán online không thành công hoặc đã bị hủy/hết hạn.");
+        return;
+      } else if (String(p.callbackStatus || "").toLowerCase() === "rejected") {
+        setOnlinePaymentError("Số tiền chuyển khoản không khớp, chờ xử lý.");
+        return;
+      }
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [onlinePayment?.id, getPaymentSession, onClose, onComplete, method]);
   const disableConfirm =
     busy ||
+    (onlinePayment?.id && String(onlinePayment?.status || "").toLowerCase() === "pending") ||
     isPreviewingDiscount ||
     discountBlocksPayment ||
     (isCash && Number(paidAmount || 0) < Number(convertedPayableTotal || 0));
@@ -740,7 +784,7 @@ function PaymentModal({
             <div className={s.group}>
               <label className={s.label}>Chọn phương thức</label>
               <div className={s.grid}>
-                {["cash", "card", "transfer"].map((paymentMethod) => (
+                {["cash", "card", "transfer", "momo", "vnpay"].map((paymentMethod) => (
                   <button
                     key={paymentMethod}
                     className={`${s.btn} ${method === paymentMethod ? s.active : ""}`}
@@ -751,7 +795,7 @@ function PaymentModal({
                       ? "Tiền mặt"
                       : paymentMethod === "card"
                         ? "Thẻ"
-                        : "Chuyển khoản"}
+                        : paymentMethod === "momo" ? "MoMo" : paymentMethod === "vnpay" ? "VNPAY" : "Chuyển khoản"}
                   </button>
                 ))}
               </div>
@@ -759,6 +803,13 @@ function PaymentModal({
 
             {isTransfer && (
               <div className={s.transferInfo}>
+                {!onlinePayment?.id ? (
+                  <div>
+                    <div>Nhấn xác nhận để tạo mã thanh toán chuyển khoản.</div>
+                    <div>Chỉ chuyển khoản sau khi hệ thống tạo nội dung chuyển khoản bắt buộc.</div>
+                  </div>
+                ) : (
+                  <>
                 <div className={s.paymentDetails}>
                   <div className={s.detailItem}>
                     <span>Ngân hàng:</span> <b>Vietcombank</b>
@@ -767,21 +818,35 @@ function PaymentModal({
                     <span>Số TK:</span> <b>1234567890</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số tiền:</span>{" "}
+                    <span>Số tiền cần chuyển:</span>{" "}
                     <b>
                       {formatPrice(convertedPayableTotal || 0, {
                         currency: activeCurrency,
                       })}
                     </b>
                   </div>
+                  <div className={s.detailItem}>
+                    <span>Nội dung chuyển khoản bắt buộc:</span> <b>{onlinePayment?.metadata?.bankTransfer?.transferContent || onlinePayment?.reference || "..."}</b>
+                  </div>
                 </div>
                 <div className={s.qrCode}>
-                  <QRCodePlaceholder
-                    value={formatPrice(convertedPayableTotal || 0, {
-                      currency: activeCurrency,
-                    })}
-                  />
+                  <QRCodePlaceholder value={onlinePayment?.reference || ""} />
                 </div>
+                <div>Đang chờ hệ thống xác nhận thanh toán tự động...</div>
+                {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
+                  </>
+                )}
+              </div>
+            )}
+            {(method === "momo" || method === "vnpay") && onlinePayment?.id && (
+              <div className={s.transferInfo}>
+                <div>Tham chiếu: <b>{onlinePayment.reference}</b></div>
+                <div>Số tiền: <b>{formatPrice(onlinePayment.amount || 0, { currency: "VND" })}</b></div>
+                {onlinePayment.payUrl && <a href={onlinePayment.payUrl} target="_blank" rel="noreferrer">Mở trang thanh toán</a>}
+                {onlinePayment.deeplink && <div>Deeplink: {onlinePayment.deeplink}</div>}
+                {onlinePayment.qrCodeUrl && <div>QR: {onlinePayment.qrCodeUrl}</div>}
+                <div>Đang chờ hệ thống xác nhận thanh toán tự động...</div>
+                {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
               </div>
             )}
 

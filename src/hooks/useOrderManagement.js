@@ -788,6 +788,39 @@ const PAY_ORDERS_BY_ORDER_IDS = gql`
     }
   }
 `;
+const CREATE_ORDER_PAYMENT = gql`
+  mutation CreateOrderPayment($input: CreateOrderPaymentInput!) {
+    createOrderPayment(input: $input) {
+      id
+      provider
+      reference
+      amount
+      status
+      callbackStatus
+      payUrl
+      qrCodeUrl
+      deeplink
+      metadata
+    }
+  }
+`;
+const GET_PAYMENT_SESSION = gql`
+  query PaymentSession($id: ID!) {
+    paymentSession(id: $id) {
+      id
+      status
+      callbackStatus
+      provider
+      providerTransactionId
+      reference
+      amount
+      payUrl
+      qrCodeUrl
+      deeplink
+      metadata
+    }
+  }
+`;
 
 /** ✅ Cập nhật trạng thái 1 order theo ID */
 const UPDATE_ORDER_STATUS = gql`
@@ -1331,6 +1364,7 @@ export default function useOrderManagement(pos = null) {
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
+  const [mutCreateOrderPayment] = useMutation(CREATE_ORDER_PAYMENT);
 
   // queries
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
@@ -3165,6 +3199,55 @@ export default function useOrderManagement(pos = null) {
     },
     [preparePayment, confirmPayment, totals.total],
   );
+  const createOnlineOrderPayment = useCallback(
+    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod }) => {
+      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod } } });
+      return data?.createOrderPayment || null;
+    },
+    [mutCreateOrderPayment],
+  );
+  const resolvePayableOrderIds = useCallback(
+    async ({ restaurantId, tableId = null, explicitOrderIds = [], fallbackOrderId = null } = {}) => {
+      const fromActiveSession = [];
+      if (restaurantId && tableId) {
+        try {
+          const { data } = await apollo.query({
+            query: ACTIVE_TABLE_SESSION_ORDERS,
+            variables: { restaurantId, tableId },
+            fetchPolicy: "network-only",
+          });
+          const activeOrders = Array.isArray(data?.activeTableSessionOrders?.orders)
+            ? data.activeTableSessionOrders.orders
+            : [];
+          activeOrders.forEach((o) => {
+            const id = String(o?.id || "").trim();
+            const status = String(o?.currentStatus || "").toLowerCase();
+            if (!id) return;
+            if (["cancelled", "completed"].includes(status)) return;
+            fromActiveSession.push(id);
+          });
+        } catch (_) {}
+      }
+      const fromExplicit = Array.isArray(explicitOrderIds) ? explicitOrderIds : [];
+      const fromCurrentOrder = Array.isArray(currentOrder)
+        ? currentOrder.map((item) => item?.sourceOrderId || item?.orderId).filter(Boolean)
+        : [];
+      const prepared = lastPreparedOrderIdRef.current ? [lastPreparedOrderIdRef.current] : [];
+      const combined = [...fromActiveSession, ...fromExplicit, ...fromCurrentOrder, fallbackOrderId, ...prepared]
+        .map((id) => String(id || "").trim())
+        .filter(Boolean);
+      return [...new Set(combined)];
+    },
+    [apollo, currentOrder],
+  );
+
+  const getPaymentSession = useCallback(
+    async (id) => {
+      const { data } = await apollo.query({ query: GET_PAYMENT_SESSION, variables: { id }, fetchPolicy: "network-only" });
+      return data?.paymentSession || null;
+    },
+    [apollo],
+  );
 
   /* ============================================================
      11) FETCH tiện ích (dine-in theo bàn)
@@ -3418,6 +3501,9 @@ export default function useOrderManagement(pos = null) {
     validatePayment,
     confirmPayment,
     checkoutOrder,
+    createOnlineOrderPayment,
+    getPaymentSession,
+    resolvePayableOrderIds,
     payOrderByIds,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
     reviewOrderItemVoid,

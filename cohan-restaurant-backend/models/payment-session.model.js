@@ -20,7 +20,7 @@ const PaymentSessionSchema = BaseSchemaModel({
 
   provider: {
     type: String,
-    enum: ["momo", "vnpay"],
+    enum: ["momo", "vnpay", "bank_transfer"],
     required: true,
     index: true,
   },

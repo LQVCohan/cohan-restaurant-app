@@ -16,7 +16,7 @@ import {
   Promotion,
   UserCoupon,
 } from "../../../models/index.js";
-import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -1570,6 +1570,16 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
   }
 };
 
+
+export const createOrderPaymentMutation = async (_parent, { input }, ctx) => {
+  const rid = toId(input?.restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
+  if (!ctx?.user?.id) throw new Error("Unauthorized");
+  const baseApiUrl = process.env.PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL || "http://localhost:4000";
+  return createOrderPayment({ ...input, userId: ctx.user.id, baseApiUrl, clientIp: "127.0.0.1" });
+};
+
 export const createReservationPaymentMutation = async (
   _parent,
   { input },
@@ -1689,6 +1699,7 @@ export default {
   payOrdersByTableId,
   payOrdersByOrderIds,
   createReservationPayment: createReservationPaymentMutation,
+  createOrderPayment: createOrderPaymentMutation,
   syncPaymentStatus,
   updateRestaurantPaymentSettings,
 };

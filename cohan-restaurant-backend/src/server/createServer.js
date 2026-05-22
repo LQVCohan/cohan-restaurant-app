@@ -24,7 +24,7 @@ import {
 } from "../services/ai/aiTable.service.js";
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
-import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments } from "../services/payment/paymentSession.service.js";
+import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
@@ -139,6 +139,23 @@ export async function createServer() {
       return reply.send({ ok: true, items: list });
     } catch (err) {
       return reply.code(400).send({ ok: false, message: err?.message || "List payments failed" });
+    }
+  });
+
+
+  app.post("/api/payments/webhooks/bank-transfer/:provider", async (req, reply) => {
+    try {
+      const expectedSecret = process.env.BANK_TRANSFER_WEBHOOK_SECRET || "";
+      const receivedSecret = req.headers["x-bank-webhook-secret"];
+      if ((expectedSecret && receivedSecret !== expectedSecret) || (!expectedSecret && process.env.NODE_ENV === "production")) {
+        req.log.warn({ provider: req.params?.provider }, "bank transfer webhook rejected due to invalid/missing secret");
+        return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
+      }
+      const result = await reconcileBankTransferWebhook({ provider: req.params?.provider || "bank_transfer", payload: req.body || {} });
+      return reply.send({ ok: true, result });
+    } catch (err) {
+      req.log.error({ err }, "bank transfer webhook failed");
+      return reply.code(400).send({ ok: false, message: err?.message || "Webhook failed" });
     }
   });
 
