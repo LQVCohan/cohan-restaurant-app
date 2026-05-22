@@ -83,7 +83,18 @@ const fallbackSuggestion = (type, payload) => {
 
 const safeJsonParse = (raw) => {
   if (!raw || typeof raw !== "string") return null;
-  try { return JSON.parse(raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim()); } catch { return null; }
+
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
 };
 
 const rectsOverlap = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
@@ -97,8 +108,44 @@ const EMPTY_COMPONENTS = { tables: { standard: 0, vip: 0, twoSeat: 0, fourSeat: 
 const DEFAULT_LEGACY_COMPONENTS = { tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 }, objects: { plant: 0, door: 1, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 } };
 const GOAL_SPACING = { capacity: { tableGap: 18, gridX: 82, gridY: 82, vipGap: 54 }, balanced: { tableGap: 28, gridX: 104, gridY: 98, vipGap: 72 }, spacious: { tableGap: 44, gridX: 132, gridY: 124, vipGap: 96 }, vip: { tableGap: 40, gridX: 122, gridY: 116, vipGap: 120 } };
 const CANDIDATE_COUNT = 16;
-const clampNonNegative = (v) => Math.max(0, Number(v) || 0);
-const toComponents = (payload = {}) => payload?.components ? { tables: { ...EMPTY_COMPONENTS.tables, ...Object.fromEntries(Object.entries(payload.components.tables || {}).map(([k, v]) => [k, clampNonNegative(v)])) }, objects: { ...EMPTY_COMPONENTS.objects, ...Object.fromEntries(Object.entries(payload.components.objects || {}).map(([k, v]) => [k, clampNonNegative(v)])) } } : { tables: { ...DEFAULT_LEGACY_COMPONENTS.tables, standard: clampNonNegative(payload.tableCount || 8) }, objects: { ...DEFAULT_LEGACY_COMPONENTS.objects, wall: (payload.selectedComponents || []).includes("wall") ? 2 : 0, plant: (payload.selectedComponents || []).includes("plant") ? 2 : 0, stairs: (payload.selectedComponents || []).includes("stairs") ? 1 : 0, door: (payload.selectedComponents || []).includes("door") ? 1 : 0, window: (payload.selectedComponents || []).includes("window") ? 2 : 0, cashier: (payload.selectedComponents || []).includes("cashier") ? 1 : 0, kitchen: (payload.selectedComponents || []).includes("kitchen") ? 1 : 0, buffet: (payload.selectedComponents || []).includes("buffet") ? 1 : 0, wc: (payload.selectedComponents || []).includes("wc") ? 1 : 0 } };
+const clampNonNegative = (value) => Math.max(0, Number(value) || 0);
+
+const normalizeComponentMap = (baseMap, inputMap = {}) => {
+  const merged = { ...baseMap, ...inputMap };
+  Object.keys(merged).forEach((key) => {
+    merged[key] = clampNonNegative(merged[key]);
+  });
+  return merged;
+};
+
+const toComponents = (payload = {}) => {
+  if (payload?.components) {
+    return {
+      tables: normalizeComponentMap(EMPTY_COMPONENTS.tables, payload.components.tables || {}),
+      objects: normalizeComponentMap(EMPTY_COMPONENTS.objects, payload.components.objects || {}),
+    };
+  }
+
+  const selected = new Set(payload.selectedComponents || []);
+  return {
+    tables: {
+      ...DEFAULT_LEGACY_COMPONENTS.tables,
+      standard: clampNonNegative(payload.tableCount || 8),
+    },
+    objects: {
+      ...DEFAULT_LEGACY_COMPONENTS.objects,
+      wall: selected.has("wall") ? 2 : 0,
+      plant: selected.has("plant") ? 2 : 0,
+      stairs: selected.has("stairs") ? 1 : 0,
+      door: selected.has("door") ? 1 : 0,
+      window: selected.has("window") ? 2 : 0,
+      cashier: selected.has("cashier") ? 1 : 0,
+      kitchen: selected.has("kitchen") ? 1 : 0,
+      buffet: selected.has("buffet") ? 1 : 0,
+      wc: selected.has("wc") ? 1 : 0,
+    },
+  };
+};
 
 const VALID_TABLE_TYPES = new Set(["standard", "booth", "vip", "outdoor", "bar", "private"]);
 const typeMap = { standard: { capacity: 4, apiType: "standard", w: 60, h: 60 }, vip: { capacity: 6, apiType: "vip", w: 72, h: 72 }, twoSeat: { capacity: 2, apiType: "standard", w: 52, h: 52 }, fourSeat: { capacity: 4, apiType: "standard", w: 60, h: 60 }, group: { capacity: 8, apiType: "booth", w: 92, h: 72 } };
@@ -124,7 +171,11 @@ const buildLayoutZones = ({ startX = 0, startY = 0, tableCount = 10, goal = "bal
   if (serviceSide === 1) serviceZone = { x: startX + baseW - 260, y: startY + 40, w: 220, h: 180 };
   if (serviceSide === 2) serviceZone = { x: startX + 40, y: startY + baseH - 220, w: 220, h: 180 };
   const decorZone = { x: startX + 20, y: startY + 20, w: baseW - 40, h: baseH - 40 };
-  if (components.tables.standard + components.tables.fourSeat + components.tables.twoSeat === 0 && components.tables.vip > 0) {
+  if (
+    components.tables.standard + components.tables.fourSeat + components.tables.twoSeat ===
+      0 &&
+    components.tables.vip > 0
+  ) {
     vipZone = { x: startX + 120, y: startY + 120, w: baseW - 240, h: baseH - 240 };
   }
   return { mainDining, vipZone, serviceZone, decorZone, mainAisle: aisle };
@@ -134,14 +185,57 @@ const isInAisle = (rect, aisle, gap = 0) => !!aisle && rectsOverlap(expandRect(r
 
 const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null }) => {
   const spacingCfg = GOAL_SPACING[goal] || GOAL_SPACING.balanced;
-  const tableRects = tables.map((t) => ({ ...normalizeRect({ x: t.x, y: t.y, w: t.w || (t.capacity >= 6 ? 72 : 60), h: t.h || (t.capacity >= 6 ? 72 : 60) }), type: t.type }));
-  let overlapPenalty = 0, spacingPenalty = 0, vipPenalty = 0, cashierDoorReward = 0, balanceReward = 0, decorPenalty = 0, aislePenalty = 0, zoneReward = 0, serviceFlowReward = 0;
-  for (let i = 0; i < tableRects.length; i++) for (let j = i + 1; j < tableRects.length; j++) { if (rectsOverlap(tableRects[i], tableRects[j], 0)) overlapPenalty += 220; if (rectsOverlap(tableRects[i], tableRects[j], spacingCfg.tableGap)) spacingPenalty += 16; }
-  const vip = tableRects.filter((t) => t.type === "vip"); const standard = tableRects.filter((t) => t.type !== "vip");
-  vip.forEach((v) => { const nearest = standard.reduce((m, s) => Math.min(m, dist(centerOf(v), centerOf(s))), Infinity); if (Number.isFinite(nearest) && nearest < spacingCfg.vipGap) vipPenalty += spacingCfg.vipGap - nearest; });
-  decor.forEach((d) => tableRects.forEach((t) => { if (rectsOverlap(normalizeRect(d), t, 0)) overlapPenalty += 140; if (rectsOverlap(normalizeRect(d), t, 12)) decorPenalty += 8; }));
-  const door = decor.find((d) => d.type === "door"); const cashier = decor.find((d) => d.type === "cashier");
-  if (door && cashier) cashierDoorReward += Math.max(0, 180 - dist(centerOf(normalizeRect(door)), centerOf(normalizeRect(cashier)))) * 0.6;
+  const tableRects = tables.map((table) => {
+    const width = table.w || (table.capacity >= 6 ? 72 : 60);
+    const height = table.h || (table.capacity >= 6 ? 72 : 60);
+    return { ...normalizeRect({ x: table.x, y: table.y, w: width, h: height }), type: table.type };
+  });
+
+  let overlapPenalty = 0;
+  let spacingPenalty = 0;
+  let vipPenalty = 0;
+  let cashierDoorReward = 0;
+  let balanceReward = 0;
+  let decorPenalty = 0;
+  let aislePenalty = 0;
+  let zoneReward = 0;
+  let serviceFlowReward = 0;
+
+  for (let i = 0; i < tableRects.length; i += 1) {
+    for (let j = i + 1; j < tableRects.length; j += 1) {
+      if (rectsOverlap(tableRects[i], tableRects[j], 0)) overlapPenalty += 220;
+      if (rectsOverlap(tableRects[i], tableRects[j], spacingCfg.tableGap)) spacingPenalty += 16;
+    }
+  }
+
+  const vip = tableRects.filter((table) => table.type === "vip");
+  const standard = tableRects.filter((table) => table.type !== "vip");
+  vip.forEach((vipTable) => {
+    const nearest = standard.reduce(
+      (minDistance, normalTable) =>
+        Math.min(minDistance, dist(centerOf(vipTable), centerOf(normalTable))),
+      Infinity,
+    );
+    if (Number.isFinite(nearest) && nearest < spacingCfg.vipGap) {
+      vipPenalty += spacingCfg.vipGap - nearest;
+    }
+  });
+
+  decor.forEach((decorItem) => {
+    const decorRect = normalizeRect(decorItem);
+    tableRects.forEach((tableRect) => {
+      if (rectsOverlap(decorRect, tableRect, 0)) overlapPenalty += 140;
+      if (rectsOverlap(decorRect, tableRect, 12)) decorPenalty += 8;
+    });
+  });
+
+  const door = decor.find((item) => item.type === "door");
+  const cashier = decor.find((item) => item.type === "cashier");
+  if (door && cashier) {
+    const doorCenter = centerOf(normalizeRect(door));
+    const cashierCenter = centerOf(normalizeRect(cashier));
+    cashierDoorReward += Math.max(0, 180 - dist(doorCenter, cashierCenter)) * 0.6;
+  }
   if (zones?.mainAisle) {
     [...tableRects, ...decor.map(normalizeRect)].forEach((r) => { if (isInAisle(r, zones.mainAisle, 0)) aislePenalty += 180; });
     const left = tableRects.filter((t) => centerOf(t).x < zones.mainAisle.x).length; const right = tableRects.length - left;
@@ -165,15 +259,43 @@ const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null 
 };
 
 const generateRuleBasedLayout = (payload = {}, seed = 0) => {
-  const startX = Number(payload.startX || 0), startY = Number(payload.startY || 0), goal = String(payload.goal || "balanced");
-  const components = toComponents(payload); const warnings = [];
-  const tableCount = Object.values(components.tables).reduce((a, b) => a + b, 0);
-  const zones = buildLayoutZones({ startX, startY, tableCount, goal, components, seed });
+  const startX = Number(payload.startX || 0);
+  const startY = Number(payload.startY || 0);
+  const goal = String(payload.goal || "balanced");
+  const components = toComponents(payload);
+  const warnings = [];
+  const tableOrder = ["standard", "fourSeat", "twoSeat", "group", "vip"];
+  const tableEntries = [];
+  tableOrder.forEach((kind) => {
+    for (let i = 0; i < (components.tables[kind] || 0); i += 1) {
+      tableEntries.push(kind);
+    }
+  });
+
+  const originalRequested = tableEntries.length;
+  if (tableEntries.length > 200) {
+    warnings.push("Tổng số bàn vượt 200, hệ thống đã giới hạn còn 200.");
+    tableEntries.length = 200;
+  }
+
+  const normalizedCounts = {
+    standard: 0,
+    fourSeat: 0,
+    twoSeat: 0,
+    group: 0,
+    vip: 0,
+  };
+  tableEntries.forEach((kind) => {
+    normalizedCounts[kind] += 1;
+  });
+
+  const requested = tableEntries.length;
+  const zones = buildLayoutZones({ startX, startY, tableCount: requested, goal, components, seed });
   const occupiedFromCanvas = getOccupiedRectsFromCurrentItems(payload.currentItems);
   const occupied = [...occupiedFromCanvas, zones.mainAisle];
   const spacingCfg = GOAL_SPACING[goal] || GOAL_SPACING.balanced;
-  const requested = tableCount; if (requested > 200) warnings.push("Tổng số bàn vượt 200, hệ thống đã giới hạn còn 200.");
-  const tables = []; const placeRect = (baseRect, pad = 10) => {
+  const tables = [];
+  const placeRect = (baseRect, pad = 10) => {
     for (let ring = 0; ring < 18; ring++) for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) {
       if (ring > 0 && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
       const c = { ...baseRect, x: Math.round(baseRect.x + dx * (20 + (seed % 3) * 2)), y: Math.round(baseRect.y + dy * (20 + (seed % 3) * 2)) };
@@ -183,7 +305,23 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
     }
     return null;
   };
-  const addTable = (kind, x, y, extra = 0) => { const cfg = typeMap[kind] || typeMap.standard; const r = placeRect({ x, y, w: cfg.w, h: cfg.h }, spacingCfg.tableGap + extra); if (!r) return false; tables.push({ code: `AI-${tables.length + 1}`, x: r.x, y: r.y, rotation: 0, capacity: cfg.capacity, type: VALID_TABLE_TYPES.has(cfg.apiType) ? cfg.apiType : "standard", w: cfg.w, h: cfg.h }); return true; };
+  const addTable = (kind, x, y, extra = 0) => {
+    const cfg = typeMap[kind] || typeMap.standard;
+    const rect = placeRect({ x, y, w: cfg.w, h: cfg.h }, spacingCfg.tableGap + extra);
+    if (!rect) return false;
+
+    tables.push({
+      code: `AI-${tables.length + 1}`,
+      x: rect.x,
+      y: rect.y,
+      rotation: 0,
+      capacity: cfg.capacity,
+      type: VALID_TABLE_TYPES.has(cfg.apiType) ? cfg.apiType : "standard",
+      w: cfg.w,
+      h: cfg.h,
+    });
+    return true;
+  };
 
   const addCluster = (kind, count, zone, opts = {}) => {
     const cols = Math.max(1, Math.ceil(Math.sqrt(count || 1))); const gapX = opts.gapX || spacingCfg.gridX; const gapY = opts.gapY || spacingCfg.gridY;
@@ -196,34 +334,79 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
     }
   };
 
-  const stdCount = components.tables.standard + components.tables.fourSeat;
+  const stdCount = normalizedCounts.standard + normalizedCounts.fourSeat;
   if (zones.mainAisle.orientation === "vertical") {
     const leftZone = { x: zones.mainDining.x, y: zones.mainDining.y, w: Math.max(120, zones.mainAisle.x - zones.mainDining.x - 24), h: zones.mainDining.h };
     const rightZone = { x: zones.mainAisle.x + zones.mainAisle.w + 24, y: zones.mainDining.y, w: Math.max(120, zones.mainDining.x + zones.mainDining.w - (zones.mainAisle.x + zones.mainAisle.w + 24)), h: zones.mainDining.h };
-    addCluster("standard", Math.ceil(components.tables.standard / 2), leftZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 10 });
-    addCluster("standard", Math.floor(components.tables.standard / 2), rightZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 12 });
-    addCluster("fourSeat", Math.ceil(components.tables.fourSeat / 2), leftZone, { offsetX: 20, offsetY: 20 });
-    addCluster("fourSeat", Math.floor(components.tables.fourSeat / 2), rightZone, { offsetX: 24, offsetY: 26 });
+    addCluster("standard", Math.ceil(normalizedCounts.standard / 2), leftZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 10 });
+    addCluster("standard", Math.floor(normalizedCounts.standard / 2), rightZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 12 });
+    addCluster("fourSeat", Math.ceil(normalizedCounts.fourSeat / 2), leftZone, { offsetX: 20, offsetY: 20 });
+    addCluster("fourSeat", Math.floor(normalizedCounts.fourSeat / 2), rightZone, { offsetX: 24, offsetY: 26 });
   } else {
-    addCluster("standard", components.tables.standard, zones.mainDining, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 8 });
-    addCluster("fourSeat", components.tables.fourSeat, zones.mainDining, { offsetX: 22, offsetY: 16 });
+    addCluster("standard", normalizedCounts.standard, zones.mainDining, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, stagger: 8 });
+    addCluster("fourSeat", normalizedCounts.fourSeat, zones.mainDining, { offsetX: 22, offsetY: 16 });
   }
-  addCluster("twoSeat", components.tables.twoSeat, { x: zones.mainDining.x, y: zones.decorZone.y + 20, w: zones.mainDining.w, h: 160 }, { gapX: 72, gapY: 74, extraGap: -6 });
-  addCluster("group", components.tables.group, { x: zones.mainDining.x + zones.mainDining.w - 260, y: zones.mainDining.y + 50, w: 220, h: zones.mainDining.h - 100 }, { gapX: 110, gapY: 88, extraGap: 10 });
-  addCluster("vip", components.tables.vip, zones.vipZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, extraGap: goal === "vip" ? 18 : 8 });
+  addCluster("twoSeat", normalizedCounts.twoSeat, { x: zones.mainDining.x, y: zones.decorZone.y + 20, w: zones.mainDining.w, h: 160 }, { gapX: 72, gapY: 74, extraGap: -6 });
+  addCluster("group", normalizedCounts.group, { x: zones.mainDining.x + zones.mainDining.w - 260, y: zones.mainDining.y + 50, w: 220, h: zones.mainDining.h - 100 }, { gapX: 110, gapY: 88, extraGap: 10 });
+  addCluster("vip", normalizedCounts.vip, zones.vipZone, { gapX: spacingCfg.gridX, gapY: spacingCfg.gridY, extraGap: goal === "vip" ? 18 : 8 });
 
-  const decor = []; const addDecor = (type, count, builder, pad = 8, allowAisleEnd = false) => {
+  const decor = [];
+  const addDecor = (type, count, builder, pad = 8, allowAisleEnd = false) => {
     for (let i = 0; i < count; i++) {
-      const [w, h] = decorSize[type] || [60, 60]; const b = { ...builder(i, w, h), w: builder(i, w, h).w || w, h: builder(i, w, h).h || h };
-      let r = placeRect(b, pad);
-      if (!r && allowAisleEnd) r = placeRect({ ...b, x: zones.mainAisle.x, y: zones.mainAisle.y + zones.mainAisle.h + 10 }, pad);
-      if (!r) continue;
-      decor.push({ id: `auto_${type}_${seed}_${i}`, type, x: r.x, y: r.y, w: r.w, h: r.h, rotation: 0, label: decorLabels[type] || type, isRealTable: false });
+      const [defaultW, defaultH] = decorSize[type] || [60, 60];
+      const basePos = builder(i, defaultW, defaultH);
+      const baseRect = {
+        ...basePos,
+        w: basePos.w || defaultW,
+        h: basePos.h || defaultH,
+      };
+
+      let rect = placeRect(baseRect, pad);
+      if (!rect && allowAisleEnd) {
+        rect = placeRect(
+          { ...baseRect, x: zones.mainAisle.x, y: zones.mainAisle.y + zones.mainAisle.h + 10 },
+          pad,
+        );
+      }
+      if (!rect) continue;
+
+      decor.push({
+        id: `auto_${type}_${seed}_${i}`,
+        type,
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        rotation: 0,
+        label: decorLabels[type] || type,
+        isRealTable: false,
+      });
     }
   };
   const aisle = zones.mainAisle;
   addDecor("door", components.objects.door, (_i, w, h) => aisle.orientation === "vertical" ? { x: aisle.x + (aisle.w - w) / 2, y: startY + 4, w, h } : { x: startX + 4, y: aisle.y + (aisle.h - h) / 2, w, h }, 2, true);
-  addDecor("cashier", components.objects.cashier, (_i, w, h) => ({ x: aisle.x + aisle.w + 20, y: aisle.y + aisle.h - h - 30, w, h }), 10);
+  const placedDoor = decor.find((item) => item.type === "door");
+  addDecor(
+    "cashier",
+    components.objects.cashier,
+    (_i, w, h) => {
+      if (placedDoor) {
+        return {
+          x: placedDoor.x + placedDoor.w + 18,
+          y: placedDoor.y + 18,
+          w,
+          h,
+        };
+      }
+      return {
+        x: aisle.x + aisle.w + 20,
+        y: aisle.y + 24,
+        w,
+        h,
+      };
+    },
+    10,
+  );
   addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: zones.serviceZone.x + 10 + (i % 2) * 20, y: zones.serviceZone.y + 10 + i * (h + 10), w, h }), 10);
   addDecor("wc", components.objects.wc, (i, w, h) => ({ x: zones.serviceZone.x + zones.serviceZone.w - w - 10, y: zones.serviceZone.y + 20 + i * (h + 8), w, h }), 10);
   addDecor("buffet", components.objects.buffet, (i, w, h) => ({ x: zones.serviceZone.x - w - 16 - i * 10, y: zones.mainDining.y + zones.mainDining.h - h - 20, w, h }), 8);
@@ -235,7 +418,13 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 2 ? zones.vipZone.x - 24 : zones.mainDining.x + zones.mainDining.w + 10, y: zones.mainDining.y + 30 + i * 36, w, h }), 4);
   addDecor("stairs", components.objects.stairs, (i, w, h) => ({ x: zones.decorZone.x + zones.decorZone.w - w - 16 - i * 20, y: zones.decorZone.y + 16 + i * 20, w, h }), 8);
 
-  if (tables.length < requested) warnings.push(`Chỉ đặt được ${tables.length}/${requested} bàn do không đủ không gian hoặc bị trùng vị trí.`);
+  if (originalRequested > requested) {
+    warnings.push(`Đã chuẩn hóa số bàn từ ${originalRequested} xuống ${requested} theo giới hạn hệ thống.`);
+  }
+
+  if (tables.length < requested) {
+    warnings.push(`Chỉ đặt được ${tables.length}/${requested} bàn do không đủ không gian hoặc bị trùng vị trí.`);
+  }
   const scored = scoreLayout({ tables, decor, goal, zones });
   return { tables: tables.map(({ w, h, ...t }) => t), decor, meta: { goal, score: scored.score, scoreBreakdown: scored.breakdown, warnings, zones } };
 };

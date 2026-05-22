@@ -73,4 +73,13 @@ describe("aiTable.service layout engine v2", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { twoSeat: 2, fourSeat: 2, group: 2, vip: 2, standard: 1 }, objects: {} } }, 1);
     expect(out.tables.every((t) => allowedTypes.includes(t.type))).toBe(true);
   });
+
+  it("clamps total tables to 200 and adds warning", () => {
+    const out = __testables.generateRuleBasedLayout({
+      goal: "capacity",
+      components: { tables: { standard: 250 }, objects: {} },
+    });
+    expect(out.tables.length).toBeLessThanOrEqual(200);
+    expect(out.meta.warnings.some((w) => w.includes("giới hạn còn 200"))).toBe(true);
+  });
 });
