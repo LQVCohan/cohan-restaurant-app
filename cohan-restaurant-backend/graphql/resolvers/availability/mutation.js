@@ -103,6 +103,14 @@ export default {
 
     if (isEffectivelyClosed) {
       if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
+      const existingSubmission = await StaffAvailabilitySubmission.findOne({
+        availabilityWindowId: input.availabilityWindowId,
+        employeeId: input.employeeId,
+      }).lean();
+      const previousStatusBeforeLateChange =
+        existingSubmission?.status === "late_change_requested"
+          ? existingSubmission?.previousStatusBeforeLateChange || null
+          : existingSubmission?.status || null;
       return StaffAvailabilitySubmission.findOneAndUpdate(
         { availabilityWindowId: input.availabilityWindowId, employeeId: input.employeeId },
         {
@@ -119,6 +127,7 @@ export default {
             pendingSubmissionType: input.submissionType,
             pendingSource: source,
             pendingNote: input.note || "",
+            previousStatusBeforeLateChange,
             source,
           },
           $setOnInsert: {
@@ -180,6 +189,7 @@ export default {
               pendingSubmissionType: null,
               pendingSource: null,
               pendingNote: "",
+              previousStatusBeforeLateChange: null,
             },
           },
           { new: true },
@@ -187,17 +197,25 @@ export default {
       }
 
       if (input.status === "rejected") {
+        const previousStatus = String(existing.previousStatusBeforeLateChange || "").toLowerCase();
+        const hasOfficialSlots = Array.isArray(existing.slots) && existing.slots.length > 0;
+        const restoredStatus = ["submitted", "locked", "approved"].includes(previousStatus)
+          ? previousStatus
+          : hasOfficialSlots
+            ? "locked"
+            : "rejected";
         return StaffAvailabilitySubmission.findByIdAndUpdate(
           input.id,
           {
             $set: {
               ...reviewBase,
-              status: "rejected",
+              status: restoredStatus,
               pendingSlots: [],
               pendingSubmittedAt: null,
               pendingSubmissionType: null,
               pendingSource: null,
               pendingNote: "",
+              previousStatusBeforeLateChange: null,
             },
           },
           { new: true },

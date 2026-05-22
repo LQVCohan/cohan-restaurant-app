@@ -2781,14 +2781,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     try {
       const validationFailures = [];
+      const overrideByStaffId = new Map();
       for (const staffId of staffIds) {
         try {
-          await validateShiftAssignmentOrThrow({
+          const overrideResult = await validateShiftAssignmentOrThrow({
             employeeId: staffId,
             shiftType: payload.shiftType,
             startTime,
             endTime,
-            precheckOnly: true,
+          });
+          overrideByStaffId.set(String(staffId), {
+            allowOverride: Boolean(overrideResult?.allowOverride),
+            overrideReason: String(overrideResult?.overrideReason || "").trim(),
           });
         } catch (error) {
           const employeeName =
@@ -2824,6 +2828,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 endTime: endTime.toISOString(),
                 status: "scheduled",
                 notes: payload.notes || "",
+                allowOverride: Boolean(
+                  overrideByStaffId.get(String(staffId))?.allowOverride,
+                ),
+                overrideReason:
+                  overrideByStaffId.get(String(staffId))?.overrideReason ||
+                  undefined,
               },
             },
           }),
