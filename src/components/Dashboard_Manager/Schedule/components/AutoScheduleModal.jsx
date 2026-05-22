@@ -91,12 +91,28 @@ const AutoScheduleModal = ({
   onToggleShift,
   onApply,
   applying = false,
+  overrideReason = "",
+  onOverrideReasonChange,
+  overrideConfirmed = false,
+  onOverrideConfirmedChange,
+  overrideError = "",
+  overrideSummary = null,
 }) => {
   const previewItems = preview?.items || [];
   const selectedCount = previewItems.filter(
     (item) => selectedShiftKeys[item.shiftKey],
   ).length;
   const applicableCount = previewItems.filter((item) => item.canApply).length;
+  const selectedWarningAssignments =
+    Number(overrideSummary?.warningAssignments?.length || 0);
+  const selectedCleanAssignments = Number(overrideSummary?.cleanAssignments || 0);
+  const selectedUnresolvedPositions = Number(
+    overrideSummary?.unresolvedPositions || 0,
+  );
+  const requiresOverride = Boolean(overrideSummary?.requiresOverride);
+  const canApplyWithOverride =
+    !requiresOverride ||
+    (String(overrideReason || "").trim().length >= 5 && overrideConfirmed);
   const selectedRequiredRoles = Array.isArray(config.requiredRoles)
     ? config.requiredRoles
     : [];
@@ -128,7 +144,7 @@ const AutoScheduleModal = ({
             <strong>Trợ lý chia ca tự động</strong>
             <p>
               Hệ thống phân tích nhu cầu vận hành, nhân sự, lịch hiện có và
-              policy để tạo preview trước khi áp dụng.
+              chính sách để tạo preview trước khi áp dụng.
             </p>
             <p>
               Chỉ các phân công hợp lệ mới được lưu. Ca còn thiếu người sẽ được
@@ -142,7 +158,7 @@ const AutoScheduleModal = ({
             <div className="config-card">
               <div className="config-head">
                 <CalendarRange size={16} />
-                <span>Phạm vi assistant</span>
+                <span>Phạm vi trợ lý</span>
               </div>
               <label>
                 <span>Số ngày tới</span>
@@ -164,7 +180,7 @@ const AutoScheduleModal = ({
                 </select>
               </label>
               <p className="config-hint">
-                Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
+                Trợ lý hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
                 ngày tiếp theo.
               </p>
             </div>
@@ -301,8 +317,8 @@ const AutoScheduleModal = ({
                 className={`meta-pill ${assistantMeta.fallbackUsed ? "fallback" : "forecast"}`}
               >
                 {assistantMeta.fallbackUsed
-                  ? "Fallback demand"
-                  : "Forecast demand"}
+                  ? "Nhu cầu dự phòng"
+                  : "Nhu cầu dự báo"}
               </span>
               <span>TZ: {assistantMeta.timezone}</span>
             </div>
@@ -320,7 +336,7 @@ const AutoScheduleModal = ({
           <div className="auto-state loading">
             <Sparkles size={18} />
             <span>
-              Đang gọi scheduling assistant và kiểm tra xung đột lịch thật...
+              Đang gọi trợ lý chia ca và kiểm tra xung đột lịch thật...
             </span>
           </div>
         ) : null}
@@ -357,7 +373,7 @@ const AutoScheduleModal = ({
         {!generating && preview && !previewItems.length ? (
           <div className="auto-state empty">
             <Info size={18} />
-            <span>Assistant chưa có gợi ý nào trong phạm vi hiện tại.</span>
+            <span>Trợ lý chưa có gợi ý nào trong phạm vi hiện tại.</span>
           </div>
         ) : null}
 
@@ -490,7 +506,7 @@ const AutoScheduleModal = ({
                                 </div>
                               ) : (
                                 <div className="unfilled-empty-candidates">
-                                  Chưa có ứng viên cụ thể nào được assistant đưa
+                                  Chưa có ứng viên cụ thể nào được trợ lý đưa
                                   vào danh sách xét cho vai trò này.
                                 </div>
                               )}
@@ -548,7 +564,7 @@ const AutoScheduleModal = ({
                                     ) : null}
                                     {hasValidationIssues ? (
                                       <span className="explain-chip danger">
-                                        Cần kiểm tra availability
+                                        Cần kiểm tra lịch rảnh
                                       </span>
                                     ) : null}
                                   </div>
@@ -653,9 +669,58 @@ const AutoScheduleModal = ({
             ))}
           </div>
         ) : null}
+        {selectedCount > 0 && requiresOverride ? (
+          <div className="auto-override-panel">
+            <h5>Có phân công cần ghi đè cảnh báo</h5>
+            <p>
+              {selectedWarningAssignments} phân công đã chọn có cảnh báo chính
+              sách hoặc lịch rảnh. Cần nhập lý do trước khi áp dụng.
+            </p>
+            <label className="override-reason-field">
+              <span>Lý do ghi đè</span>
+              <textarea
+                value={overrideReason}
+                onChange={(event) =>
+                  onOverrideReasonChange?.(event.target.value)
+                }
+                placeholder="Ví dụ: Đã xác nhận trực tiếp với nhân viên và cần bổ sung người cho ca tối."
+                disabled={applying || generating}
+              />
+            </label>
+            <label className="override-confirm-row">
+              <input
+                type="checkbox"
+                checked={overrideConfirmed}
+                onChange={(event) =>
+                  onOverrideConfirmedChange?.(event.target.checked)
+                }
+                disabled={applying || generating}
+              />
+              <span>
+                Tôi xác nhận đã kiểm tra cảnh báo và chấp nhận ghi đè có lý do.
+              </span>
+            </label>
+            <small>
+              Lý do này sẽ được ghi vào ghi chú/log khi áp dụng chia ca tự động.
+            </small>
+            {overrideError ? (
+              <div className="override-error" role="alert">
+                {overrideError}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Modal.Body>
 
       <Modal.Footer className="auto-schedule-footer">
+        {selectedCount > 0 ? (
+          <div className="auto-apply-summary">
+            <span>Đã chọn: {selectedCount} ca</span>
+            <span>Phân công sạch: {selectedCleanAssignments}</span>
+            <span>Cần ghi đè: {selectedWarningAssignments}</span>
+            <span>Còn thiếu sau áp dụng: {selectedUnresolvedPositions} vị trí</span>
+          </div>
+        ) : null}
         <button
           type="button"
           className="btn-secondary"
@@ -667,8 +732,16 @@ const AutoScheduleModal = ({
         <button
           type="button"
           className="btn-primary"
-          onClick={onApply}
-          disabled={generating || applying || selectedCount === 0}
+          onClick={() =>
+            onApply?.({
+              allowOverride: requiresOverride,
+              overrideReason,
+              overrideConfirmed,
+            })
+          }
+          disabled={
+            generating || applying || selectedCount === 0 || !canApplyWithOverride
+          }
         >
           {applying ? "Đang áp dụng..." : `Áp dụng ${selectedCount} ca đã chọn`}
         </button>

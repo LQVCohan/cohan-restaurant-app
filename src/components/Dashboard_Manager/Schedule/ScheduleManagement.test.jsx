@@ -433,4 +433,39 @@ describe("ScheduleManagement", () => {
     ).toBeInTheDocument();
   });
 
+  it("resets manual availability collapse when changing week context", async () => {
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [
+        {
+          id: "window-week-1",
+          status: "open",
+          effectiveStatus: "open",
+          periodStart: "2026-04-27T00:00:00.000Z",
+          periodEnd: "2026-05-03T23:59:59.000Z",
+          registrationMode: "manual",
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+    fireEvent.click(await screen.findByRole("button", { name: "Thu gọn đăng ký lịch nhân viên" }));
+    expect(await screen.findByRole("button", { name: "Mở rộng" })).toBeInTheDocument();
+
+    mockAvailabilityWindowsData = {
+      availabilityWindows: [
+        {
+          id: "window-week-2",
+          status: "open",
+          effectiveStatus: "open",
+          periodStart: "2026-05-04T00:00:00.000Z",
+          periodEnd: "2026-05-10T23:59:59.000Z",
+          registrationMode: "manual",
+        },
+      ],
+    };
+    fireEvent.click(screen.getByRole("button", { name: /Sau/i }));
+    expect(
+      await screen.findByRole("button", { name: "Thu gọn đăng ký lịch nhân viên" }),
+    ).toBeInTheDocument();
+  });
+
 });
