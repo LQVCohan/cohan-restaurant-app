@@ -77,9 +77,14 @@ function getSubmissionStatusLabel(status) {
   return SUBMISSION_STATUS_LABELS[key] || status || "Không xác định";
 }
 
-function getShiftTypeLabel(shiftType) {
+function getShiftTypeLabel(shiftType, shiftTemplates = [], shiftConfig = {}) {
   const key = String(shiftType || "").toLowerCase();
-  return SHIFT_TYPE_LABELS[key] || shiftType || "Ca";
+  const template = (shiftTemplates || []).find((item) => String(item?.key || "").toLowerCase() === key);
+  const config = shiftConfig?.[key] || shiftConfig?.[shiftType];
+  const label = template?.label || config?.label || SHIFT_TYPE_LABELS[key] || shiftType || "Ca";
+  const startTime = template?.startTime || config?.startTime;
+  const endTime = template?.endTime || config?.endTime;
+  return startTime && endTime ? `${label} · ${startTime} - ${endTime}` : label;
 }
 
 function getSlotStatusLabel(status) {
@@ -126,8 +131,13 @@ export default function AvailabilityRegistrationPanel({
   nextWeekWindowMissing = false,
   isSunday = false,
   shouldRemindNextWeekRegistration = false,
+  shiftTemplates = [],
+  shiftConfig = {},
 }) {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewError, setReviewError] = useState("");
   const [policyDraft, setPolicyDraft] = useState({
     availabilityRegistrationMode: "manual",
     availabilityOpenDayOffset: -7,
@@ -545,7 +555,7 @@ export default function AvailabilityRegistrationPanel({
                                     title={slot.note || ""}
                                   >
                                     {formatDateOnly(slot.date)} ·{" "}
-                                    {getShiftTypeLabel(slot.shiftType)} ·{" "}
+                                    {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} ·{" "}
                                     {getSlotStatusLabel(slot.status)}
                                   </span>
                                 ))
@@ -563,7 +573,7 @@ export default function AvailabilityRegistrationPanel({
                                     ).toLowerCase()}`}
                                     title={slot.note || ""}
                                   >
-                                    {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType)} · {getSlotStatusLabel(slot.status)}
+                                    {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
                                   </span>
                                 ))}
                                 <span className="availability-submission-slot is-empty">
@@ -574,8 +584,8 @@ export default function AvailabilityRegistrationPanel({
 
                             {String(item.status || "").toLowerCase() === "late_change_requested" ? (
                               <div className="schedule-availability-panel__actions">
-                                <button type="button" disabled={reviewingSubmission} onClick={() => onReviewSubmission?.(item.id, true)}>Duyệt thay đổi</button>
-                                <button type="button" disabled={reviewingSubmission} onClick={() => onReviewSubmission?.(item.id, false)}>Từ chối</button>
+                                <button type="button" disabled={reviewingSubmission} onClick={() => { setReviewDraft({ item, approved: true }); setReviewNote(""); setReviewError(""); }}>Duyệt thay đổi</button>
+                                <button type="button" disabled={reviewingSubmission} onClick={() => { setReviewDraft({ item, approved: false }); setReviewNote(""); setReviewError(""); }}>Từ chối</button>
                               </div>
                             ) : null}
                           </article>
@@ -590,6 +600,28 @@ export default function AvailabilityRegistrationPanel({
             </>
           )}
         </>
+      ) : null}
+      {reviewDraft ? (
+        <div className="publish-confirm-backdrop">
+          <div className="availability-review-modal">
+            <h3>{reviewDraft.approved ? "Duyệt thay đổi muộn" : "Từ chối thay đổi muộn"}</h3>
+            <p><strong>{reviewDraft.item.employeeName || reviewDraft.item.employee?.fullName || reviewDraft.item.employeeId}</strong></p>
+            <p>{reviewDraft.approved ? "Duyệt sẽ thay pending slots thành availability chính thức." : "Availability chính thức hiện tại vẫn được giữ. PendingSlots sẽ bị xóa."}</p>
+            <label>
+              {reviewDraft.approved ? "Ghi chú duyệt" : "Lý do từ chối *"}
+              <textarea value={reviewNote} onChange={(e) => { setReviewNote(e.target.value); if (reviewError) setReviewError(""); }} />
+            </label>
+            {reviewError ? <div className="publish-confirm-error">{reviewError}</div> : null}
+            <div className="availability-policy-modal__actions">
+              <button type="button" className="btn-secondary" onClick={() => { setReviewDraft(null); setReviewNote(""); setReviewError(""); }}>Hủy</button>
+              <button type="button" className="btn-primary" disabled={reviewingSubmission} onClick={async () => {
+                if (!reviewDraft.approved && !reviewNote.trim()) { setReviewError("Vui lòng nhập lý do từ chối."); return; }
+                await onReviewSubmission?.(reviewDraft.item.id, reviewDraft.approved, reviewNote);
+                setReviewDraft(null); setReviewNote(""); setReviewError("");
+              }}>Xác nhận</button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {isPolicyModalOpen ? (
         <div className="publish-confirm-backdrop">

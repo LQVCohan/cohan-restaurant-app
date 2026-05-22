@@ -273,6 +273,11 @@ async function createStaffShiftInternal(input, ctx) {
   }
   const staff = await loadStaffForRestaurant(input.employeeId, restaurantId);
 
+  const overrideNote =
+    input.allowOverride === true && String(input.overrideReason || "").trim()
+      ? `[Override cảnh báo] ${String(input.overrideReason || "").trim()}`
+      : "";
+  const mergedNotes = [input.notes || "", overrideNote].filter(Boolean).join("\n");
   const created = await Shift.create({
     employeeId: input.employeeId,
     restaurantId,
@@ -280,7 +285,7 @@ async function createStaffShiftInternal(input, ctx) {
     startTime,
     endTime,
     status: input.status || "scheduled",
-    notes: input.notes || "",
+    notes: mergedNotes,
   });
 
   return {
