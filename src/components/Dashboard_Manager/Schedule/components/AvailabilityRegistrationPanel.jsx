@@ -55,6 +55,23 @@ function formatDateOnly(value) {
   }).format(date);
 }
 
+function formatDateRange(start, end) {
+  if (!start || !end) return "—";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "—";
+  }
+  return `${new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(startDate)} - ${new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(endDate)}`;
+}
+
 function getSubmissionStatusLabel(status) {
   const key = String(status || "").toLowerCase();
   return SUBMISSION_STATUS_LABELS[key] || status || "Không xác định";
@@ -195,8 +212,7 @@ export default function AvailabilityRegistrationPanel({
             Quản lý thời gian nhân viên đăng ký lịch rảnh trước khi xếp lịch.
           </p>
           <p>
-            Kỳ đăng ký cho tuần {formatDateTime(targetWeekStart)} -{" "}
-            {formatDateTime(targetWeekEnd)} (
+            Kỳ đăng ký cho tuần {formatDateRange(targetWeekStart, targetWeekEnd)} (
             {mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
           </p>
         </div>
@@ -235,8 +251,7 @@ export default function AvailabilityRegistrationPanel({
           </div>
           <div className="schedule-availability-panel__compact-meta">
             <span>
-              Tuần áp dụng: {formatDateOnly(targetWeekStart)} -{" "}
-              {formatDateOnly(targetWeekEnd)}
+              Tuần áp dụng: {formatDateRange(targetWeekStart, targetWeekEnd)}
             </span>
             <span>
               Đã gửi: {submissionSummary.total} · Chờ duyệt:{" "}
@@ -293,7 +308,7 @@ export default function AvailabilityRegistrationPanel({
               <h4>Chưa có kỳ đăng ký khả dụng</h4>
               <p>
                 Tạo kỳ đăng ký để nhân viên part-time đăng ký thời gian có thể
-                làm và nhân viên full-time đăng ký ngày không khả dụng.
+                làm và nhân viên toàn thời gian báo ngày không rảnh.
               </p>
               <button
                 type="button"
@@ -314,8 +329,10 @@ export default function AvailabilityRegistrationPanel({
                 <div>
                   <span>Tuần áp dụng</span>
                   <strong>
-                    {formatDateTime(availabilityWindow.periodStart)} -{" "}
-                    {formatDateTime(availabilityWindow.periodEnd)}
+                    {formatDateRange(
+                      availabilityWindow.periodStart,
+                      availabilityWindow.periodEnd,
+                    )}
                   </strong>
                 </div>
                 <div>
@@ -331,7 +348,7 @@ export default function AvailabilityRegistrationPanel({
                   <strong>{formatDateTime(availabilityWindow.closeAt || registrationSchedule.closeAt)}</strong>
                 </div>
                 <div>
-                  <span>Đối tượng đăng ký ca khả dụng</span>
+                  <span>Đối tượng đăng ký lịch rảnh</span>
                   <strong>
                     {(availabilityWindow.targetEmploymentTypes || [])
                       .map(
@@ -345,7 +362,7 @@ export default function AvailabilityRegistrationPanel({
                   </strong>
                 </div>
                 <div>
-                  <span>Full-time đăng ký unavailable</span>
+                  <span>Nhân viên toàn thời gian báo ngày không rảnh</span>
                   <strong>
                     {availabilityWindow.allowFullTimeUnavailableException
                       ? "Có"
@@ -355,8 +372,7 @@ export default function AvailabilityRegistrationPanel({
                 <div>
                   <span>Kỳ tạo sẵn</span>
                   <strong>
-                    {formatDateTime(nextWeekStart)} -{" "}
-                    {formatDateTime(nextWeekEnd)}
+                    {formatDateRange(nextWeekStart, nextWeekEnd)}
                   </strong>
                 </div>
               </div>
@@ -410,7 +426,7 @@ export default function AvailabilityRegistrationPanel({
               <div className="schedule-availability-panel__submissions">
                 <h4>Tổng quan đăng ký</h4>
                 <div className="metrics-grid">
-                  <span>Tổng submission: {submissionSummary.total}</span>
+                  <span>Tổng đăng ký: {submissionSummary.total}</span>
                   <span>
                     {SUBMISSION_STATUS_LABELS.late_change_requested}:
                     {submissionSummary.late_change_requested}
@@ -486,8 +502,8 @@ export default function AvailabilityRegistrationPanel({
                                   {" · "}
                                   {item.submissionType ===
                                   "unavailable_exception"
-                                    ? "Báo không khả dụng"
-                                    : "Đăng ký ca khả dụng"}
+                                    ? "Báo ngày không rảnh"
+                                    : "Đăng ký lịch rảnh"}
                                 </span>
                               </div>
 
@@ -636,7 +652,7 @@ export default function AvailabilityRegistrationPanel({
                 </select>
                 <small>
                   {policyDraft.lateChangeRequiresApproval
-                    ? "Nhân viên gửi sau khi đóng sẽ vào trạng thái chờ review, quản lý duyệt/từ chối."
+                    ? "Nhân viên gửi sau khi đóng sẽ vào trạng thái chờ duyệt, quản lý duyệt/từ chối."
                     : "Sau khi đóng kỳ đăng ký, nhân viên không thể gửi hoặc cập nhật đăng ký."}
                 </small>
               </label>
