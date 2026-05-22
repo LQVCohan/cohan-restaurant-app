@@ -17,6 +17,7 @@ import {
   SchedulePublication,
   ShiftAcknowledgement,
   ScheduleAcknowledgement,
+  AvailabilityRegistrationWindow,
   AttendanceCorrectionRequest,
   OvertimeRequest,
 } from "../../../models/index.js";
@@ -31,6 +32,7 @@ import {
 } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import {
   assertShiftAssignmentValid,
+  hasNonInfoWarnings,
   validateShiftAssignment,
 } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
@@ -250,7 +252,7 @@ async function createStaffShiftInternal(input, ctx) {
     }
   }
 
-  await assertShiftAssignmentValid({
+  const validationResult = await assertShiftAssignmentValid({
     input: {
       employeeId: input.employeeId,
       restaurantId,
@@ -262,6 +264,13 @@ async function createStaffShiftInternal(input, ctx) {
     },
     ctx,
   });
+  const hasWarnings = hasNonInfoWarnings(validationResult);
+  if (hasWarnings && input.allowOverride !== true) {
+    throw new Error("Có cảnh báo policy khi xếp ca. Cần override có lý do để tiếp tục.");
+  }
+  if (hasWarnings && input.allowOverride === true && !String(input.overrideReason || "").trim()) {
+    throw new Error("Cần nhập lý do override khi xếp ca có cảnh báo policy.");
+  }
   const staff = await loadStaffForRestaurant(input.employeeId, restaurantId);
 
   const created = await Shift.create({
@@ -1505,6 +1514,22 @@ const mutationResolvers = {
         },
       },
       { new: true, upsert: true },
+    );
+
+    await AvailabilityRegistrationWindow.updateOne(
+      {
+        restaurantId,
+        periodStart,
+        periodEnd,
+        status: { $in: ["closed", "open"] },
+      },
+      {
+        $set: {
+          status: "used_for_schedule",
+          usedForScheduleAt: publishAt,
+          usedForScheduleBy: actorUserId,
+        },
+      },
     );
 
     const shifts = await Shift.find({

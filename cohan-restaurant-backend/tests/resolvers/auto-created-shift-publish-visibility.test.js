@@ -51,6 +51,7 @@ const modelMocks = vi.hoisted(() => ({
     find: vi.fn(),
     updateMany: vi.fn(),
   },
+  AvailabilityRegistrationWindow: { updateOne: vi.fn() },
   AttendanceCorrectionRequest: {},
   OvertimeRequest: {},
   Order: { countDocuments: vi.fn() },
@@ -633,6 +634,10 @@ describe("auto-created shift publish and staff visibility regression", () => {
     modelMocks.ShiftAcknowledgement.updateMany.mockResolvedValue({
       modifiedCount: 0,
     });
+    modelMocks.AvailabilityRegistrationWindow.updateOne.mockResolvedValue({
+      acknowledged: true,
+      modifiedCount: 1,
+    });
   });
 
   it("publishes auto-created draft shifts, creates acknowledgements, exposes staff visibility, and preserves lifecycle guard", async () => {
@@ -688,6 +693,21 @@ describe("auto-created shift publish and staff visibility regression", () => {
       publication.effectiveStatus || publication.status,
     );
     expect(db.publications[0].status).toBe("published");
+    expect(modelMocks.AvailabilityRegistrationWindow.updateOne).toHaveBeenCalledWith(
+      {
+        restaurantId: expect.objectContaining({ value: "rest-1" }),
+        periodStart: weekStart,
+        periodEnd: weekEnd,
+        status: { $in: ["closed", "open"] },
+      },
+      {
+        $set: {
+          status: "used_for_schedule",
+          usedForScheduleAt: expect.any(Date),
+          usedForScheduleBy: expect.objectContaining({ value: "manager-1" }),
+        },
+      },
+    );
     expect(
       db.shiftAcknowledgements.map((ack) => idOf(ack.shiftId)).sort(),
     ).toEqual(db.shifts.map((shift) => idOf(shift._id)).sort());

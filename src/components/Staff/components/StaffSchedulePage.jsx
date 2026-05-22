@@ -191,7 +191,7 @@ const RESPOND_SHIFT_ACK = gql`
   }
 `;
 
-const SHIFT_TYPES = ["morning", "afternoon", "evening"];
+const FALLBACK_SHIFT_TYPES = ["morning", "afternoon", "evening"];
 
 const SHIFT_META = {
   morning: {
@@ -266,7 +266,7 @@ const EMPLOYMENT_TYPE_LABELS = {
   probation: "Thử việc",
 };
 
-const PART_TIME_TYPES = new Set(["part_time", "seasonal"]);
+const PART_TIME_LIKE_TYPES = new Set(["part_time", "seasonal", "probation", "contract"]);
 
 const pad2 = (value) => String(value).padStart(2, "0");
 
@@ -412,7 +412,7 @@ export default function StaffSchedulePage() {
   const employmentTypeLabel =
     EMPLOYMENT_TYPE_LABELS[employmentType] || "Nhân viên";
 
-  const isPartTime = PART_TIME_TYPES.has(employmentType);
+  const isPartTime = PART_TIME_LIKE_TYPES.has(employmentType);
 
   const [weekOffset, setWeekOffset] = useState(0);
   const [slotsState, setSlotsState] = useState({});
@@ -681,18 +681,6 @@ export default function StaffSchedulePage() {
       : existing.status === "unavailable";
   };
 
-  const selectedSlotCount = useMemo(() => {
-    let count = 0;
-
-    days.forEach((day) => {
-      const dateKey = toDateKey(day);
-      SHIFT_TYPES.forEach((shiftType) => {
-        if (checked(dateKey, shiftType)) count += 1;
-      });
-    });
-
-    return count;
-  }, [days, slotsState, submissionMap, isPartTime]);
   const schedulingPolicy = schedulingPolicyData?.schedulingPolicy || null;
   const shiftDurationMap = useMemo(
     () => buildShiftDurationMap(schedulingPolicy?.shiftTemplates || []),
@@ -706,6 +694,24 @@ export default function StaffSchedulePage() {
     });
     return map;
   }, [schedulingPolicy]);
+  const availabilityShiftTypes = useMemo(() => {
+    const templates = schedulingPolicy?.shiftTemplates || [];
+    const enabledKeys = templates
+      .filter((template) => template?.enabled !== false)
+      .map((template) => String(template?.key || "").toLowerCase().trim())
+      .filter(Boolean);
+    return enabledKeys.length ? enabledKeys : FALLBACK_SHIFT_TYPES;
+  }, [schedulingPolicy?.shiftTemplates]);
+  const selectedSlotCount = useMemo(() => {
+    let count = 0;
+    days.forEach((day) => {
+      const dateKey = toDateKey(day);
+      availabilityShiftTypes.forEach((shiftType) => {
+        if (checked(dateKey, shiftType)) count += 1;
+      });
+    });
+    return count;
+  }, [days, slotsState, submissionMap, isPartTime, availabilityShiftTypes]);
   const getShiftDisplayMeta = (shiftType) => {
     const key = String(shiftType || "").toLowerCase();
     const template = shiftTemplateMap.get(key);
@@ -734,13 +740,13 @@ export default function StaffSchedulePage() {
     let total = 0;
     days.forEach((day) => {
       const dateKey = toDateKey(day);
-      SHIFT_TYPES.forEach((shiftType) => {
+      availabilityShiftTypes.forEach((shiftType) => {
         if (checked(dateKey, shiftType))
           total += Number(shiftDurationMap[shiftType] || 0);
       });
     });
     return total;
-  }, [days, slotsState, submissionMap, shiftDurationMap, isPartTime]);
+  }, [days, slotsState, submissionMap, shiftDurationMap, isPartTime, availabilityShiftTypes]);
   const remainingMinimumHours = Math.max(
     0,
     minAvailabilityHours - selectedAvailabilityHours,
@@ -814,7 +820,7 @@ export default function StaffSchedulePage() {
         const dateIso = day.toISOString();
         const dateKey = toDateKey(day);
 
-        SHIFT_TYPES.forEach((shiftType) => {
+        availabilityShiftTypes.forEach((shiftType) => {
           if (checked(dateKey, shiftType)) {
             slots.push({
               date: dateIso,
@@ -1402,7 +1408,7 @@ export default function StaffSchedulePage() {
                           );
                         })}
 
-                        {SHIFT_TYPES.map((shiftType) => {
+                        {availabilityShiftTypes.map((shiftType) => {
                           const meta = getShiftDisplayMeta(shiftType);
                           const Icon = meta.icon || Clock3;
 

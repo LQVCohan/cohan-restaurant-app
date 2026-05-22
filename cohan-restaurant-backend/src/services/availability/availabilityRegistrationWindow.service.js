@@ -26,7 +26,7 @@ export async function getSubmissionStateForEmployee({ windowDoc, employeeId, now
 
 export async function lockSubmissionsForClosedWindow(windowId, lockedAt = new Date()) {
   return StaffAvailabilitySubmission.updateMany(
-    { availabilityWindowId: windowId, status: { $in: ["submitted", "approved", "rejected", "late_change_requested"] } },
+    { availabilityWindowId: windowId, status: { $in: ["submitted", "approved"] } },
     { $set: { status: "locked", lockedAt } },
   );
 }

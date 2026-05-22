@@ -28,6 +28,7 @@ const StaffAvailabilitySubmissionSchema = new Schema(
     pendingSubmittedAt: { type: Date, default: null },
     lockedAt: { type: Date },
     status: { type: String, enum: ["draft", "submitted", "locked", "late_change_requested", "approved", "rejected", "cancelled"], default: "draft", index: true },
+    previousStatusBeforeLateChange: { type: String, enum: ["draft", "submitted", "locked", "approved", "rejected", "cancelled"], default: null },
     reviewedBy: { type: Types.ObjectId, ref: "User" },
     reviewedAt: { type: Date },
     reviewNote: { type: String, trim: true, default: "" },

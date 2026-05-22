@@ -25,7 +25,8 @@ const scheduleLifecycleMocks = vi.hoisted(() => ({
 }));
 
 const validationMocks = vi.hoisted(() => ({
-  assertShiftAssignmentValid: vi.fn(async () => ({})),
+  assertShiftAssignmentValid: vi.fn(async () => ({ ok: true, blockingErrors: [], warnings: [] })),
+  hasNonInfoWarnings: vi.fn(() => false),
   validateShiftAssignment: vi.fn(async () => ({ ok: true, blockingErrors: [], warnings: [] })),
 }));
 
@@ -147,5 +148,39 @@ describe("createStaffShift lifecycle guard", () => {
     );
 
     expect(validationMocks.assertShiftAssignmentValid).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects createStaffShift when non-info warnings require override", async () => {
+    mockPublicationStatus(null);
+    validationMocks.hasNonInfoWarnings.mockReturnValueOnce(true);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await expect(mutation.createStaffShift(null, { input: baseInput }, { user: { id: "m1", roles: ["manager"] } })).rejects.toThrow("Cần override có lý do");
+  });
+
+  it("rejects createStaffShift when override enabled without reason", async () => {
+    mockPublicationStatus(null);
+    validationMocks.hasNonInfoWarnings.mockReturnValueOnce(true);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await expect(mutation.createStaffShift(null, { input: { ...baseInput, allowOverride: true, overrideReason: "" } }, { user: { id: "m1", roles: ["manager"] } })).rejects.toThrow("Cần nhập lý do override");
+  });
+
+  it("allows createStaffShift when warning override has reason", async () => {
+    mockPublicationStatus(null);
+    validationMocks.hasNonInfoWarnings.mockReturnValueOnce(true);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await expect(mutation.createStaffShift(null, { input: { ...baseInput, allowOverride: true, overrideReason: "manager approved" } }, { user: { id: "m1", roles: ["manager"] } })).resolves.toBeTruthy();
+  });
+
+  it("allows createStaffShift with allowOverride true and empty reason when no warnings", async () => {
+    mockPublicationStatus(null);
+    validationMocks.hasNonInfoWarnings.mockReturnValueOnce(false);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await expect(
+      mutation.createStaffShift(
+        null,
+        { input: { ...baseInput, allowOverride: true, overrideReason: "" } },
+        { user: { id: "m1", roles: ["manager"] } },
+      ),
+    ).resolves.toBeTruthy();
   });
 });

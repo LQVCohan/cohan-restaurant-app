@@ -8,11 +8,14 @@
 - [ ] Recalculate sau khi appeal reversal không làm mất điểm hoàn.
 - [ ] Recalculate nhiều lần không double-apply adjustment.
 - [ ] Adjustment chỉ áp dụng đúng employee/restaurant/period.
+<<<<<<< codex/update-staff-performance-recalculation-logic-wffymw
 - [ ] Demo verifier passes after seed.
 - [ ] Snapshot final score equals baseFormulaScore + finalAdjustmentDelta.
 - [ ] Recalculate after incident/appeal keeps finalAdjustmentDelta.
 - [ ] Cashier quality evidence is present when cashier metrics exist.
 - [ ] verify:demo:performance exits non-zero on hard regression.
+=======
+>>>>>>> main
 
 ## Order reason
 - [ ] Trả món với "Món nguội" tạo issueReasonKitchenRelated = true.

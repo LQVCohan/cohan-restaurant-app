@@ -104,10 +104,9 @@ function TableActionsModalCore({
     splitTables,
     deleteTable,
     fetchTableByCode,
-    fetchOrderByTable,
   } = usePos();
 
-  const { changeOrderStatusByCode, updateOrderCustomerByCode } =
+  const { updateOrderCustomerByCode } =
     useOrderManagement();
   const { findConfirmedByTable, checkInReservation, approveReservationChange, rejectReservationChange } = useReservation();
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
@@ -208,13 +207,9 @@ function TableActionsModalCore({
   };
 
   const findConfirmedByTableRef = useRef(findConfirmedByTable);
-  const fetchOrderByTableRef = useRef(fetchOrderByTable);
   useEffect(() => {
     findConfirmedByTableRef.current = findConfirmedByTable;
   }, [findConfirmedByTable]);
-  useEffect(() => {
-    fetchOrderByTableRef.current = fetchOrderByTable;
-  }, [fetchOrderByTable]);
 
   const hydratedReservationFor = useRef(null);
   const hydratedOrderFor = useRef(null);
@@ -736,42 +731,16 @@ function TableActionsModalCore({
 
   const handleChangeStatus = async (next) => {
     if (!table?.id || next === status) return;
-    if (next === "available" && table?.code && restaurantId) {
-      try {
-        const res = await fetchOrderByTableRef.current?.(
-          restaurantId,
-          table.code,
-          1,
-          0
-        );
-        const activeOrder = res?.data?.[0] || null;
-        if (activeOrder) {
-          if (
-            !window.confirm(
-              `Bàn có đơn #${activeOrder.orderCode}. Hủy đơn này?`
-            )
-          )
-            return;
-          await changeOrderStatusByCode({
-            restaurantId,
-            orderCode: activeOrder.orderCode,
-            status: "cancelled",
-            note: "Cancelled via TableActionsModal",
-          });
-        }
-      } catch (e) {
-        console.error(e);
-        return;
-      }
-    }
     setBusyKey("status", true);
     try {
       await setTableStatus({ id: table.id, status: next });
       setStatusLocal(next);
+      await refetchTables?.();
       onUpdated?.();
+      showNotification?.("Đã cập nhật trạng thái bàn.", "success");
     } catch (e) {
       console.error(e);
-      showNotification?.(mapTableMutationError(e), "error");
+      showNotification?.(mapTableMutationError(e), "warning");
     } finally {
       setBusyKey("status", false);
     }

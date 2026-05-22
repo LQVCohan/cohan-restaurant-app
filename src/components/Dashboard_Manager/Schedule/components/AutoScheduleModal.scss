@@ -288,6 +288,88 @@
     gap: 0.85rem;
   }
 
+  .auto-override-panel {
+    border: 1px solid #fdba74;
+    background: #fffbeb;
+    border-radius: 0.9rem;
+    padding: 0.9rem 1rem;
+
+    h5 {
+      margin: 0 0 0.35rem;
+      color: #9a3412;
+      font-size: 0.9rem;
+    }
+
+    p {
+      margin: 0;
+      color: #7c2d12;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    small {
+      display: block;
+      margin-top: 0.5rem;
+      color: #92400e;
+      font-size: 0.76rem;
+    }
+  }
+
+  .override-reason-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.7rem;
+
+    span {
+      font-size: 0.8rem;
+      color: #7c2d12;
+      font-weight: 700;
+    }
+
+    textarea {
+      min-height: 84px;
+      border-radius: 0.7rem;
+      border: 1px solid #fdba74;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.86rem;
+      color: #0f172a;
+      resize: vertical;
+      background: #fff;
+    }
+  }
+
+  .override-confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+
+    input {
+      margin-top: 0.15rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    span {
+      font-size: 0.8rem;
+      color: #7c2d12;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+  }
+
+  .override-error {
+    margin-top: 0.6rem;
+    border-radius: 0.65rem;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.6rem;
+    font-weight: 700;
+  }
+
   .preview-head {
     display: flex;
     align-items: flex-end;
@@ -750,6 +832,25 @@
 
     &.danger {
       color: #b91c1c;
+    }
+  }
+}
+
+.auto-schedule-footer {
+  .auto-apply-summary {
+    margin-right: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+
+    span {
+      border-radius: 999px;
+      border: 1px solid #dbe3ef;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.26rem 0.55rem;
     }
   }
 }

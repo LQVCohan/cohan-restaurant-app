@@ -24,6 +24,7 @@ function atLocalTime(baseDate, hhmm) {
 }
 
 export function buildAvailabilityRegistrationSchedule({ targetWeekStart, targetWeekEnd, policy }) {
+  // Source of truth: offset-based availabilityRegistrationPolicy fields.
   const settings = policy?.availabilityRegistrationPolicy || {};
   const mode = String(settings.availabilityRegistrationMode || DEFAULT_AVAILABILITY_REGISTRATION_SETTINGS.mode).toLowerCase();
   const openDayOffset = Number.isFinite(Number(settings.availabilityOpenDayOffset)) ? Number(settings.availabilityOpenDayOffset) : DEFAULT_AVAILABILITY_REGISTRATION_SETTINGS.openDayOffset;
