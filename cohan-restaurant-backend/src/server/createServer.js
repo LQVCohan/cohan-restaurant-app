@@ -26,6 +26,8 @@ import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments } from "../services/payment/paymentSession.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
+import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
+import { PERMISSIONS } from "../constants/permissions.js";
 
 const parseAllowedOrigins = () => {
   const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
@@ -257,6 +259,21 @@ export async function createServer() {
   });
   app.post("/api/ai/floor/generate-layout", async (req, reply) => {
     const payload = req.body || {};
+    const restaurantId = payload?.restaurantId;
+    if (!restaurantId) {
+      return reply.code(400).send({ ok: false, message: "restaurantId is required" });
+    }
+    const authUser = await resolveAuthenticatedUserFromRequest(req);
+    const userId = authUser?.id || authUser?._id;
+    if (!userId) {
+      return reply.code(401).send({ ok: false, message: "Unauthorized" });
+    }
+    try {
+      await requireRestaurantPermission({ user: authUser }, restaurantId, PERMISSIONS.TABLE_WRITE);
+    } catch (err) {
+      req.log.warn({ err, restaurantId, userId: String(userId) }, "Forbidden floor layout generation");
+      return reply.code(403).send({ ok: false, message: "Forbidden" });
+    }
     const layout = await generateSmartFloorLayout(payload);
     return reply.send({ ok: true, layout });
   });

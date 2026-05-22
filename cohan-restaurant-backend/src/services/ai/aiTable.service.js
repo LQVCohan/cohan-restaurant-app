@@ -184,62 +184,64 @@ const getBounds = (rects = []) => {
   );
 };
 
-const normalizeLayoutFromAi = (layout, payload = {}) => {
-  const tableCount = Math.max(1, Number(payload?.tableCount || 8));
-  const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
-  const selected = new Set(
-    (payload?.selectedComponents || []).map((i) => String(i || "").trim()),
-  );
-  const rawTables = Array.isArray(layout?.tables) ? layout.tables : [];
-  const rawDecor = Array.isArray(layout?.decor) ? layout.decor : [];
+const EMPTY_COMPONENTS = {
+  tables: { standard: 0, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 },
+  objects: { plant: 0, door: 0, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 },
+};
+const DEFAULT_LEGACY_COMPONENTS = {
+  tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 },
+  objects: { plant: 0, door: 1, window: 0, stairs: 0, cashier: 0, kitchen: 0, wc: 0, buffet: 0, wall: 0 },
+};
+const GOAL_SPACING = {
+  capacity: { tableGap: 18, gridX: 82, gridY: 82, vipGap: 54 },
+  balanced: { tableGap: 28, gridX: 104, gridY: 98, vipGap: 72 },
+  spacious: { tableGap: 44, gridX: 132, gridY: 124, vipGap: 96 },
+  vip: { tableGap: 40, gridX: 122, gridY: 116, vipGap: 120 },
+};
+const CANDIDATE_COUNT = 12;
 
-  const tables = rawTables.slice(0, tableCount).map((table, index) => ({
-    code: String(table?.code || `${prefix}-${index + 1}`).trim(),
-    x: Number.isFinite(Number(table?.x)) ? Number(table.x) : index * 120,
-    y: Number.isFinite(Number(table?.y))
-      ? Number(table.y)
-      : Math.floor(index / 4) * 120,
-    rotation: Number.isFinite(Number(table?.rotation))
-      ? Number(table.rotation)
-      : 0,
-    capacity: Number.isFinite(Number(table?.capacity))
-      ? Number(table.capacity)
-      : 4,
-    type: String(table?.type || "standard"),
-  }));
-
-  const decor = rawDecor
-    .filter((item) => item && selected.has(String(item.type || "")))
-    .map((item, idx) => ({
-      id: `ai_decor_${Date.now()}_${idx}`,
-      type: String(item.type || "plant"),
-      x: Number.isFinite(Number(item.x)) ? Number(item.x) : 0,
-      y: Number.isFinite(Number(item.y)) ? Number(item.y) : 0,
-      w: Number.isFinite(Number(item.w)) ? Number(item.w) : 60,
-      h: Number.isFinite(Number(item.h)) ? Number(item.h) : 60,
-      rotation: Number.isFinite(Number(item.rotation))
-        ? Number(item.rotation)
-        : 0,
-      label: String(item.label || ""),
-      isRealTable: false,
-    }));
-
-  return { tables, decor };
+const clampNonNegative = (value) => Math.max(0, Number(value) || 0);
+const toComponents = (payload = {}) => {
+  if (payload?.components) {
+    const tables = { ...EMPTY_COMPONENTS.tables, ...(payload.components.tables || {}) };
+    const objects = { ...EMPTY_COMPONENTS.objects, ...(payload.components.objects || {}) };
+    Object.keys(tables).forEach((k) => (tables[k] = clampNonNegative(tables[k])));
+    Object.keys(objects).forEach((k) => (objects[k] = clampNonNegative(objects[k])));
+    return { tables, objects };
+  }
+  const tableCount = clampNonNegative(payload.tableCount || 8);
+  const selected = new Set((payload?.selectedComponents || []).map((i) => String(i || "").trim()));
+  return {
+    tables: { ...DEFAULT_LEGACY_COMPONENTS.tables, standard: tableCount },
+    objects: {
+      ...DEFAULT_LEGACY_COMPONENTS.objects,
+      wall: selected.has("wall") ? 2 : 0,
+      plant: selected.has("plant") ? 2 : 0,
+      stairs: selected.has("stairs") ? 1 : 0,
+      door: selected.has("door") ? 1 : 0,
+      window: selected.has("window") ? 2 : 0,
+      cashier: selected.has("cashier") ? 1 : 0,
+      kitchen: selected.has("kitchen") ? 1 : 0,
+      buffet: selected.has("buffet") ? 1 : 0,
+      wc: selected.has("wc") ? 1 : 0,
+    },
+  };
 };
 
-const fallbackSmartLayout = (payload = {}) => {
-  const tableCount = Math.max(1, Number(payload?.tableCount || 8));
-  const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
-  const selected = new Set(
-    (payload?.selectedComponents || []).map((i) => String(i || "").trim()),
-  );
-  const startX = Number(payload?.startX || 0);
-  const startY = Number(payload?.startY || 0);
-  const now = Date.now();
-  const currentItems = Array.isArray(payload?.currentItems)
-    ? payload.currentItems
-    : [];
-  const occupiedRects = currentItems
+const VALID_TABLE_TYPES = new Set(["standard", "booth", "vip", "outdoor", "bar", "private"]);
+const typeMap = {
+  standard: { capacity: 4, apiType: "standard", w: 60, h: 60 },
+  vip: { capacity: 6, apiType: "vip", w: 72, h: 72 },
+  twoSeat: { capacity: 2, apiType: "standard", w: 52, h: 52 },
+  fourSeat: { capacity: 4, apiType: "standard", w: 60, h: 60 },
+  group: { capacity: 8, apiType: "booth", w: 92, h: 72 },
+};
+const decorSize = { plant:[40,40], door:[70,12], window:[12,80], stairs:[100,60], cashier:[120,50], kitchen:[140,90], wc:[80,80], buffet:[160,70], wall:[200,10] };
+const decorLabels = { plant: "Cây", door: "Cửa", window: "Cửa sổ", stairs: "Cầu thang", cashier: "Thu ngân", kitchen: "Bếp", wc: "WC", buffet: "Buffet", wall: "Tường" };
+
+const getOccupiedRectsFromCurrentItems = (currentItems = []) => {
+  if (!Array.isArray(currentItems)) return [];
+  return currentItems
     .filter((item) => item && Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y)))
     .map((item) =>
       normalizeRect({
@@ -249,164 +251,180 @@ const fallbackSmartLayout = (payload = {}) => {
         h: Number(item.h) || (item.isRealTable ? 60 : 80),
       }),
     );
+};
 
-  const estimatedRows = Math.max(1, Math.round(Math.sqrt(tableCount / 1.6)));
-  const estimatedCols = Math.max(1, Math.ceil(tableCount / estimatedRows));
-  const spacingX = 118;
-  const spacingY = 104;
-  const laneEvery = 3;
+const scoreLayout = ({ tables = [], decor = [], goal = "balanced", bounds = null }) => {
+  const spacingCfg = GOAL_SPACING[goal] || GOAL_SPACING.balanced;
+  const tableRects = tables.map((table) => {
+    const cfg = Object.values(typeMap).find((t) => t.apiType === table.type && t.capacity === table.capacity) || typeMap.standard;
+    return { x: table.x, y: table.y, w: cfg.w, h: cfg.h, type: table.type };
+  });
+  let overlapPenalty = 0;
+  let spacingPenalty = 0;
+  let vipPenalty = 0;
+  let cashierDoorReward = 0;
+  let balanceReward = 0;
+  let decorPenalty = 0;
+  for (let i = 0; i < tableRects.length; i += 1) {
+    for (let j = i + 1; j < tableRects.length; j += 1) {
+      const a = tableRects[i];
+      const b = tableRects[j];
+      if (rectsOverlap(a, b, 0)) overlapPenalty += 180;
+      if (rectsOverlap(a, b, spacingCfg.tableGap)) spacingPenalty += 16;
+    }
+  }
+  const vipTables = tableRects.filter((table) => table.type === "vip");
+  const normalTables = tableRects.filter((table) => table.type !== "vip");
+  vipTables.forEach((vip) => {
+    let nearest = Number.POSITIVE_INFINITY;
+    normalTables.forEach((other) => {
+      nearest = Math.min(nearest, Math.hypot(vip.x - other.x, vip.y - other.y));
+    });
+    if (Number.isFinite(nearest) && nearest < spacingCfg.vipGap) vipPenalty += spacingCfg.vipGap - nearest;
+    if (goal === "vip" && Number.isFinite(nearest) && nearest < spacingCfg.vipGap + 30) vipPenalty += 40;
+  });
+  decor.forEach((decorItem) => {
+    const dRect = normalizeRect(decorItem);
+    tableRects.forEach((table) => {
+      if (rectsOverlap(dRect, table, 0)) overlapPenalty += 140;
+      if (rectsOverlap(dRect, table, 12)) decorPenalty += 8;
+    });
+  });
+  const door = decor.find((item) => item.type === "door");
+  const cashier = decor.find((item) => item.type === "cashier");
+  if (door && cashier) {
+    const dist = Math.hypot(cashier.x - door.x, cashier.y - door.y);
+    cashierDoorReward += Math.max(0, 180 - dist) * 0.5;
+  }
+  if (bounds && tableRects.length > 2) {
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    const avgDist = tableRects.reduce((sum, table) => sum + Math.hypot(table.x - centerX, table.y - centerY), 0) / tableRects.length;
+    balanceReward += Math.max(0, 140 - avgDist * 0.5);
+  }
+  const score = 1000 - overlapPenalty - spacingPenalty - vipPenalty - decorPenalty + cashierDoorReward + balanceReward;
+  return { score, breakdown: { overlapPenalty, spacingPenalty, vipPenalty, cashierDoorReward, balanceReward, decorPenalty } };
+};
+
+const generateRuleBasedLayout = (payload = {}, seed = 0) => {
+  const startX = Number(payload.startX || 0); const startY = Number(payload.startY || 0);
+  const goal = String(payload.goal || "balanced");
+  const components = toComponents(payload);
+  const warnings = [];
+  const occupiedFromCanvas = getOccupiedRectsFromCurrentItems(payload.currentItems);
+  const placed = [...occupiedFromCanvas];
+  const spacingCfg = GOAL_SPACING[goal] || GOAL_SPACING.balanced;
+  const seedOffset = (seed % 4) * 12;
+  const tableEntries = [];
+  Object.entries(components.tables).forEach(([k, n]) => { for (let i = 0; i < n; i += 1) tableEntries.push(k); });
+  const requestedTableCount = tableEntries.length;
+  if (tableEntries.length > 200) {
+    warnings.push("Tổng số bàn vượt 200, hệ thống đã giới hạn còn 200.");
+    tableEntries.length = 200;
+  }
+  if (tableEntries.length <= 0) {
+    return { tables: [], decor: [], meta: { goal, score: 0, scoreBreakdown: {}, warnings: ["Vui lòng chọn ít nhất 1 bàn."] } };
+  }
+  const rows = Math.max(1, Math.round(Math.sqrt(tableEntries.length / 1.6)));
+  const cols = Math.max(1, Math.ceil(tableEntries.length / rows));
   const tables = [];
-
-  for (let idx = 0; idx < tableCount; idx += 1) {
-    const row = Math.floor(idx / estimatedCols);
-    const col = idx % estimatedCols;
-    const laneOffset = Math.floor(row / laneEvery) * 34;
-    const staggerOffset = row % 2 === 0 ? 0 : Math.round(spacingX * 0.34);
-    const baseRect = {
-      x: Math.round(startX + col * spacingX + staggerOffset),
-      y: Math.round(startY + row * spacingY + laneOffset),
-      w: 60,
-      h: 60,
-    };
+  let failedPlacementCount = 0;
+  const placeTable = (tableKind, baseX, baseY, extraGap = 0) => {
+    const cfg = typeMap[tableKind] || typeMap.standard;
+    const baseRect = { x: Math.round(baseX), y: Math.round(baseY), w: cfg.w, h: cfg.h };
+    const canPlaceWithoutOverlap = (rect, pad) =>
+      !placed.some((occupiedRect) =>
+        rectsOverlap(expandRect(rect, Math.max(0, pad)), expandRect(occupiedRect, 0)),
+      );
     const fitted = findNearestFreeRect({
       baseRect,
-      occupiedRects,
-      padding: 20,
-      step: 28,
+      occupiedRects: placed,
+      padding: spacingCfg.tableGap + extraGap,
+      step: 24 + (seed % 3) * 2,
       maxRing: 16,
     });
-    occupiedRects.push(expandRect(fitted, 16));
-    tables.push({
-      code: `${prefix}-${idx + 1}`,
-      x: fitted.x,
-      y: fitted.y,
-      rotation: 0,
-      capacity: 4,
-      type: "standard",
-    });
-  }
-
+    let finalRect = normalizeRect({ ...fitted, w: cfg.w, h: cfg.h });
+    if (!canPlaceWithoutOverlap(finalRect, spacingCfg.tableGap - 4)) {
+      const fallbackPadding = Math.max(2, Math.floor((spacingCfg.tableGap + extraGap) * 0.5));
+      const fallbackFitted = findNearestFreeRect({
+        baseRect,
+        occupiedRects: placed,
+        padding: fallbackPadding,
+        step: 18 + (seed % 3) * 2,
+        maxRing: 22,
+      });
+      finalRect = normalizeRect({ ...fallbackFitted, w: cfg.w, h: cfg.h });
+      if (!canPlaceWithoutOverlap(finalRect, 0)) {
+        failedPlacementCount += 1;
+        return false;
+      }
+    }
+    placed.push(finalRect);
+    tables.push({ code: `AI-${tables.length + 1}`, x: finalRect.x, y: finalRect.y, rotation: 0, capacity: cfg.capacity, type: VALID_TABLE_TYPES.has(cfg.apiType) ? cfg.apiType : "standard" });
+    return true;
+  };
+  const putCluster = (kind, count, baseFn, extraGap = 0) => {
+    for (let i = 0; i < count; i += 1) {
+      const p = baseFn(i);
+      placeTable(kind, p.x, p.y, extraGap);
+    }
+  };
+  const count = { standard: 0, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 };
+  tableEntries.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(count, key)) count[key] += 1;
+  });
+  putCluster("standard", count.standard, (i) => ({ x: startX + seedOffset + (i % cols) * spacingCfg.gridX, y: startY + Math.floor(i / cols) * spacingCfg.gridY + ((Math.floor(i / cols) + seed) % 2 ? 12 : 0) }));
+  putCluster("fourSeat", count.fourSeat, (i) => ({ x: startX + 32 + seedOffset + (i % cols) * spacingCfg.gridX, y: startY + 18 + Math.floor(i / cols) * spacingCfg.gridY }));
+  putCluster("twoSeat", count.twoSeat, (i) => ({ x: startX - 100 - (seed % 2) * 30 + (i % 2) * 70, y: startY + (i % Math.max(2, rows)) * Math.max(78, spacingCfg.gridY - 14) }));
+  putCluster("group", count.group, (i) => ({ x: startX + Math.floor(cols / 2) * spacingCfg.gridX + 64 + (i % 2) * 110, y: startY + Math.floor(rows / 2) * spacingCfg.gridY + (i % 3) * 84 }), 12);
+  putCluster("vip", count.vip, (i) => ({ x: startX + cols * spacingCfg.gridX + spacingCfg.vipGap + (seed % 3) * 16, y: startY + i * (spacingCfg.gridY + 8) + (goal === "vip" ? 24 : 0) }), goal === "vip" ? 24 : 14);
+  const tableBounds = getBounds(placed.slice(occupiedFromCanvas.length)) || { minX: startX, minY: startY, maxX: startX + 500, maxY: startY + 400 };
   const decor = [];
-  const tableBounds = getBounds(tables.map((table) => normalizeRect({ ...table, w: 60, h: 60 }))) || {
-    minX: startX,
-    minY: startY,
-    maxX: startX + 420,
-    maxY: startY + 300,
+  const addDecor = (type, countDecor, posFn, padding = 10) => {
+    for (let i = 0; i < countDecor; i += 1) {
+      const [defaultW, defaultH] = decorSize[type] || [60, 60];
+      const rawBase = posFn(i, defaultW, defaultH);
+      const w = Number(rawBase?.w) || defaultW;
+      const h = Number(rawBase?.h) || defaultH;
+      const base = { ...rawBase, w, h };
+      const fit = findNearestFreeRect({ baseRect: { ...base, w, h }, occupiedRects: placed, padding, step: 22 + (seed % 2) * 2, maxRing: 10 });
+      const rect = normalizeRect({ ...fit, w, h });
+      placed.push(rect);
+      decor.push({ id: `auto_${type}_${seed}_${i}`, type, x: rect.x, y: rect.y, w, h, rotation: 0, label: decorLabels[type] || type, isRealTable: false });
+    }
   };
-  const placeDecor = (id, config) => {
-    const fitted = findNearestFreeRect({
-      baseRect: normalizeRect(config),
-      occupiedRects,
-      padding: 18,
-      step: 26,
-      maxRing: 10,
-    });
-    occupiedRects.push(expandRect(fitted, 12));
-    decor.push({
-      id,
-      ...config,
-      x: fitted.x,
-      y: fitted.y,
-      isRealTable: false,
-    });
-  };
-
-  if (selected.has("wall")) {
-    placeDecor(`ai_wall_${now}_1`, {
-      type: "wall",
-      x: tableBounds.minX - 80,
-      y: tableBounds.minY - 70,
-      w: Math.max(640, tableBounds.maxX - tableBounds.minX + 160),
-      h: 10,
-      rotation: 0,
-      label: "Tường",
-    });
-    placeDecor(`ai_wall_${now}_2`, {
-      type: "wall",
-      x: tableBounds.minX - 80,
-      y: tableBounds.maxY + 58,
-      w: Math.max(640, tableBounds.maxX - tableBounds.minX + 160),
-      h: 10,
-      rotation: 0,
-      label: "Tường",
-    });
+  addDecor("door", components.objects.door, (i) => ({ x: tableBounds.minX + 20 + i * 90 + seedOffset, y: tableBounds.maxY + 32 }));
+  addDecor("cashier", components.objects.cashier, (i) => ({ x: tableBounds.minX + 12 + i * 40, y: tableBounds.maxY + 58 + i * 20 }));
+  addDecor("kitchen", components.objects.kitchen, (i, w, h) => ({ x: tableBounds.maxX + 32 + (i % 2) * 14, y: tableBounds.minY + i * (h + 20) }));
+  addDecor("wc", components.objects.wc, (i, w, h) => ({ x: tableBounds.minX - w - 24 - (i % 2) * 18, y: tableBounds.minY + i * (h + 20) }));
+  addDecor("buffet", components.objects.buffet, (i) => ({ x: tableBounds.maxX + 36 + (i % 2) * 20, y: tableBounds.maxY - 90 - i * 88 }));
+  addDecor("stairs", components.objects.stairs, (i) => ({ x: tableBounds.minX - 120 - i * 14, y: tableBounds.maxY - 40 - i * 68 }));
+  addDecor("window", components.objects.window, (i) => ({ x: tableBounds.minX + i * 100 + seedOffset, y: tableBounds.minY - 70 }));
+  if (components.objects.wall > 0) {
+    const wallCount = components.objects.wall;
+    addDecor("wall", Math.min(2, wallCount), (i) => ({ x: tableBounds.minX - 50, y: i === 0 ? tableBounds.minY - 44 : tableBounds.maxY + 52, w: Math.max(360, tableBounds.maxX - tableBounds.minX + 100), h: 10 }), 6);
+    if (wallCount >= 4) {
+      addDecor("wall", 2, (i) => ({ x: i === 0 ? tableBounds.minX - 52 : tableBounds.maxX + 42, y: tableBounds.minY - 44, w: 10, h: Math.max(260, tableBounds.maxY - tableBounds.minY + 108) }), 6);
+    }
   }
-  if (selected.has("plant")) {
-    placeDecor(`ai_plant_${now}_1`, {
-      type: "plant",
-      x: tableBounds.minX - 56,
-      y: tableBounds.minY + 18,
-      w: 40,
-      h: 40,
-      rotation: 0,
-      label: "Cây",
-    });
-    placeDecor(`ai_plant_${now}_2`, {
-      type: "plant",
-      x: tableBounds.maxX + 28,
-      y: tableBounds.maxY - 52,
-      w: 40,
-      h: 40,
-      rotation: 0,
-      label: "Cây",
-    });
+  addDecor("plant", components.objects.plant, (i) => ({ x: i % 2 ? tableBounds.minX - 44 : tableBounds.maxX + 20, y: i % 2 ? tableBounds.minY + 24 + i * 24 : tableBounds.maxY - 40 - i * 20 }), 8);
+  if (tables.length < requestedTableCount) {
+    warnings.push(`Chỉ đặt được ${tables.length}/${requestedTableCount} bàn do không đủ không gian hoặc bị trùng vị trí.`);
+  } else if (failedPlacementCount > 0) {
+    warnings.push(`Chỉ đặt được ${tables.length}/${requestedTableCount} bàn do không đủ không gian hoặc bị trùng vị trí.`);
   }
-  if (selected.has("stairs")) {
-    placeDecor(`ai_stairs_${now}`, {
-      type: "stairs",
-      x: tableBounds.maxX + 20,
-      y: tableBounds.minY - 10,
-      w: 100,
-      h: 60,
-      rotation: 0,
-      label: "Cầu thang",
-    });
-  }
-  const maybe = [
-    ["door", { type: "door", w: 70, h: 12, label: "Cửa" }],
-    ["window", { type: "window", w: 12, h: 80, label: "Cửa sổ" }],
-    ["cashier", { type: "cashier", w: 120, h: 50, label: "Thu ngân" }],
-    ["kitchen", { type: "kitchen", w: 140, h: 90, label: "Bếp" }],
-    ["buffet", { type: "buffet", w: 160, h: 70, label: "Buffet" }],
-    ["wc", { type: "wc", w: 80, h: 80, label: "WC" }],
-  ];
-  let offset = 0;
-  for (const [key, base] of maybe) {
-    if (!selected.has(key)) continue;
-    placeDecor(`ai_${key}_${now}_${offset}`, {
-      x: tableBounds.maxX + 28,
-      y: tableBounds.minY + offset * 78,
-      rotation: 0,
-      ...base,
-    });
-    offset += 1;
-  }
-
-  return { tables, decor };
+  const scored = scoreLayout({ tables, decor, goal, bounds: tableBounds });
+  return { tables, decor, meta: { goal, score: scored.score, scoreBreakdown: scored.breakdown, warnings } };
 };
 
 export const generateSmartFloorLayout = async (payload = {}) => {
-  const prompt = [
-    "Bạn là trợ lý thiết kế sơ đồ nhà hàng.",
-    "Trả về JSON thuần với shape {tables:[], decor:[]}.",
-    "tables gồm: code,x,y,rotation,capacity,type.",
-    "decor gồm: type,x,y,w,h,rotation,label.",
-    "Không trả markdown.",
-    "Ưu tiên không chồng lấn bàn với item hiện có; giữ lối đi tương đối thông thoáng.",
-    "Nếu có ít thành phần vẫn phải tạo bố cục cân đối, tránh dồn bàn vào một góc.",
-    `Yêu cầu: ${JSON.stringify(payload)}`,
-  ].join("\n");
-
-  const ai = await callOpenAI(prompt);
-  const parsed = safeJsonParse(ai);
-  if (parsed) {
-    const normalized = normalizeLayoutFromAi(parsed, payload);
-    if (Array.isArray(normalized?.tables) && normalized.tables.length > 0) {
-      return normalized;
-    }
-  }
-  return fallbackSmartLayout(payload);
+  const goal = String(payload.goal || "balanced");
+  const candidates = Array.from({ length: CANDIDATE_COUNT }).map((_, idx) => generateRuleBasedLayout(payload, idx));
+  const best = candidates.sort((a,b)=>(b.meta?.score||0)-(a.meta?.score||0))[0];
+  if (best?.tables?.length) return best;
+  return generateRuleBasedLayout({ ...payload, goal });
 };
+export const __testables = { toComponents, generateRuleBasedLayout, scoreLayout, getOccupiedRectsFromCurrentItems };
 const callOpenAI = async (prompt) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;

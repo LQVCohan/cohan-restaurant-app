@@ -187,19 +187,14 @@ const FloorPlanDesigner = () => {
     type: "standard",
   });
   const [showAiModal, setShowAiModal] = useState(false);
-  const [aiForm, setAiForm] = useState({
-    tableCount: 8,
-    codePrefix: "AI",
-    includeWalls: true,
-    includePlants: true,
-    includeStairs: false,
-    includeDoor: false,
-    includeWindow: false,
-    includeCashier: false,
-    includeKitchen: false,
-    includeBuffet: false,
-    includeWc: false,
-  });
+  const defaultAiForm = {
+    goal: "balanced",
+    components: {
+      tables: { standard: 8, vip: 0, twoSeat: 0, fourSeat: 0, group: 0 },
+      objects: { plant: 2, door: 1, window: 2, stairs: 0, cashier: 1, kitchen: 1, wc: 1, buffet: 0, wall: 2 },
+    },
+  };
+  const [aiForm, setAiForm] = useState(defaultAiForm);
   const [isLocked, setIsLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState("");
   const [canUndo, setCanUndo] = useState(false);
@@ -908,33 +903,53 @@ const FloorPlanDesigner = () => {
     return candidate;
   };
 
+  const updateAiCount = (section, key, delta) => {
+    setAiForm((prev) => {
+      const current = Number(prev.components?.[section]?.[key] || 0);
+      return {
+        ...prev,
+        components: {
+          ...prev.components,
+          [section]: { ...prev.components[section], [key]: Math.max(0, current + delta) },
+        },
+      };
+    });
+  };
+  const setAiCount = (section, key, value) => {
+    setAiForm((prev) => ({
+      ...prev,
+      components: {
+        ...prev.components,
+        [section]: {
+          ...prev.components[section],
+          [key]: Math.max(0, Number(value) || 0),
+        },
+      },
+    }));
+  };
+
   const handleGenerateSmartLayout = async () => {
     if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
     }
-    if (aiForm.tableCount <= 0) {
-      showNotification("Số bàn phải lớn hơn 0.", "warning");
+
+    const totalTables = Object.values(aiForm.components.tables || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    if (totalTables <= 0) {
+      showNotification("Vui lòng chọn ít nhất 1 bàn", "warning");
       return;
     }
+    if (totalTables > 200) {
+      showNotification("Tổng số bàn tối đa 200.", "warning");
+      return;
+    }
+
     const container = containerRef.current;
     const centerX = (container?.clientWidth || 800) / 2;
     const centerY = (container?.clientHeight || 600) / 2;
     const startX = -view.x + centerX / view.scale - 300;
     const startY = -view.y + centerY / view.scale - 200;
-
-    const selectedComponents = [
-      aiForm.includeWalls && "wall",
-      aiForm.includePlants && "plant",
-      aiForm.includeStairs && "stairs",
-      aiForm.includeDoor && "door",
-      aiForm.includeWindow && "window",
-      aiForm.includeCashier && "cashier",
-      aiForm.includeKitchen && "kitchen",
-      aiForm.includeBuffet && "buffet",
-      aiForm.includeWc && "wc",
-    ].filter(Boolean);
 
     let layoutPayload = null;
     try {
@@ -942,117 +957,65 @@ const FloorPlanDesigner = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tableCount: aiForm.tableCount,
-          codePrefix: aiForm.codePrefix,
-          selectedComponents,
+          restaurantId,
+          floorId: activeFloorId,
           startX,
           startY,
-          floorId: activeFloorId,
-          restaurantId,
-          currentItems: items.map((item) => ({
-            id: item.id,
-            type: item.type,
-            x: item.x,
-            y: item.y,
-            w: item.w,
-            h: item.h,
-            isRealTable: item.isRealTable,
-          })),
+          goal: aiForm.goal,
+          components: aiForm.components,
+          currentItems: items.map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y, w: item.w, h: item.h, isRealTable: item.isRealTable })),
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        layoutPayload = data?.layout || null;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.layout) {
+        showNotification(data?.message || "Không thể tạo sơ đồ tự động. Vui lòng thử lại.", "error");
+        return;
       }
+      layoutPayload = data.layout;
     } catch (err) {
       console.error(err);
+      showNotification("Không thể tạo sơ đồ tự động. Vui lòng thử lại.", "error");
+      return;
     }
 
     const generatedTables = layoutPayload?.tables || [];
     const generatedDecor = layoutPayload?.decor || [];
 
-    const existingRealTables = items
-      .filter((item) => item.isRealTable && !item.isLocalOnly)
-      .sort(sortTablesByCode);
-    const existingCodes = existingRealTables
-      .map((item) => String(item.code || item.label || "").trim())
-      .filter(Boolean);
-    const namingPattern = pickNamingPattern(existingCodes, aiForm.codePrefix);
+    const existingRealTables = items.filter((item) => item.isRealTable && !item.isLocalOnly).sort(sortTablesByCode);
+    const existingCodes = existingRealTables.map((item) => String(item.code || item.label || "").trim()).filter(Boolean);
+    const namingPattern = pickNamingPattern(existingCodes, "AI");
+    const usedCodes = new Set(items.filter((item) => item.isRealTable).map((item) => String(item.code || item.label || "").trim().toUpperCase()).filter(Boolean));
 
-    const usedCodes = new Set(
-      items
-        .filter((item) => item.isRealTable)
-        .map((item) => String(item.code || item.label || "").trim().toUpperCase())
-        .filter(Boolean)
-    );
-
-    const sourceTables = generatedTables.length
-      ? generatedTables
-      : Array.from({ length: aiForm.tableCount }).map((_, i) => ({
-          code: `${aiForm.codePrefix || "AI"}-${i + 1}`,
-          x: startX + (i % 4) * 120,
-          y: startY + Math.floor(i / 4) * 120,
-          rotation: 0,
-          capacity: 4,
-          type: "standard",
-        }));
-
+    const sourceTables = generatedTables;
     const mappedCount = Math.min(sourceTables.length, existingRealTables.length);
-    const mappedExistingTables = existingRealTables
-      .slice(0, mappedCount)
-      .map((table, index) => {
-        const pos = sourceTables[index];
-        const canonicalCode = String(table.code || table.label || "").trim();
-        if (canonicalCode) usedCodes.add(canonicalCode.toUpperCase());
-        return {
-          ...table,
-          x: Number(pos.x) || startX,
-          y: Number(pos.y) || startY,
-          rotation: Number(pos.rotation) || 0,
-          label: canonicalCode || table.label,
-          code: canonicalCode || table.code,
-        };
-      });
+    const mappedExistingTables = existingRealTables.slice(0, mappedCount).map((table, index) => {
+      const pos = sourceTables[index];
+      const canonicalCode = String(table.code || table.label || "").trim();
+      if (canonicalCode) usedCodes.add(canonicalCode.toUpperCase());
+      return { ...table, x: Number(pos.x) || startX, y: Number(pos.y) || startY, rotation: Number(pos.rotation) || 0, label: canonicalCode || table.label, code: canonicalCode || table.code };
+    });
 
-    const newLocalTables = sourceTables
-      .slice(mappedCount)
-      .map((pos, index) => {
-        const generatedCode = generateSequentialCode(usedCodes, namingPattern, index);
-        return {
-        id: `tmp_ai_${Date.now()}_${index}`,
-        type: "table",
-        x: Number(pos.x) || startX,
-        y: Number(pos.y) || startY,
-        w: 60,
-        h: 60,
-        rotation: Number(pos.rotation) || 0,
-        label: generatedCode,
-        code: generatedCode,
-        capacity: Number(pos.capacity) || 4,
-        tableType: pos.type || "standard",
-        isRealTable: true,
-        isLocalOnly: true,
-      };
-      });
+    const newLocalTables = sourceTables.slice(mappedCount).map((pos, index) => {
+      const generatedCode = generateSequentialCode(usedCodes, namingPattern, index);
+      return { id: `tmp_ai_${Date.now()}_${index}`, type: "table", x: Number(pos.x) || startX, y: Number(pos.y) || startY, w: 60, h: 60, rotation: Number(pos.rotation) || 0, label: generatedCode, code: generatedCode, capacity: Number(pos.capacity) || 4, tableType: pos.type || "standard", isRealTable: true, isLocalOnly: true };
+    });
 
     pushHistory(items);
     setItems((prev) => {
       const preservedItems = prev.filter((i) => !i.isLocalOnly);
       const mappedById = new Map(mappedExistingTables.map((table) => [table.id, table]));
-      const withUpdatedTables = preservedItems.map((item) =>
-        mappedById.get(item.id) || item
-      );
+      const withUpdatedTables = preservedItems.map((item) => mappedById.get(item.id) || item);
       return [...withUpdatedTables, ...generatedDecor, ...newLocalTables];
     });
     setShowAiModal(false);
-    showNotification(
-      layoutPayload?.tables?.length
-        ? "Đã tạo sơ đồ thông minh bằng AI. Nhấn Lưu để ghi nhận."
-        : "AI tạm không khả dụng, đã tạo sơ đồ bằng chế độ dự phòng thông minh hơn. Nhấn Lưu để ghi nhận.",
-      "success"
-    );
+    const warnings = Array.isArray(layoutPayload?.meta?.warnings)
+      ? layoutPayload.meta.warnings
+      : [];
+    const warningText = warnings.length
+      ? ` Lưu ý: ${warnings[0]}${warnings.length > 1 ? ` (+${warnings.length - 1} cảnh báo)` : ""}`
+      : "";
+    showNotification(`Đã tạo sơ đồ tự động. Nhấn Lưu để ghi nhận.${warningText}`, "success");
   };
-
   // Mouse handlers
   const handleMouseDown = (e, id = "CANVAS", mode = "move", resizeDir = null) => {
     if (e.button !== 0) return;
@@ -1369,10 +1332,10 @@ const FloorPlanDesigner = () => {
           <button
             className="btn-secondary"
             onClick={handleSmartLayout}
-            title="Sơ đồ thông minh"
+            title="Tạo sơ đồ tự động"
             disabled={isLocked}
           >
-            <Sparkles size={16} /> Sơ đồ thông minh
+            <Sparkles size={16} /> Tạo sơ đồ tự động
           </button>
           <button
             className="btn-secondary"
@@ -1802,181 +1765,30 @@ const FloorPlanDesigner = () => {
         isOpen={showAiModal}
         onClose={() => setShowAiModal(false)}
         className="fp-modal-shell fp-modal-shell--ai"
-        title="Sơ đồ thông minh"
+        title="Tạo sơ đồ tự động"
       >
         <div className="fp-modal">
-          <div className="fp-modal-intro">
-            <strong>Trợ lý tạo sơ đồ A.I</strong>
-            <p>
-              Chọn số bàn và thành phần cần có, hệ thống sẽ đề xuất bố cục cơ bản.
-            </p>
-          </div>
-          <div className="fp-modal-row">
-            <label>Số bàn</label>
-            <input
-              type="number"
-              min="1"
-              value={aiForm.tableCount}
-              onChange={(e) =>
-                setAiForm((prev) => ({
-                  ...prev,
-                  tableCount: Number(e.target.value),
-                }))
-              }
-            />
-          </div>
-          <div className="fp-modal-row">
-            <label>Prefix mã bàn</label>
-            <input
-              value={aiForm.codePrefix}
-              onChange={(e) =>
-                setAiForm((prev) => ({ ...prev, codePrefix: e.target.value }))
-              }
-              placeholder="AI"
-            />
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeWalls}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeWalls: e.target.checked,
-                  }))
-                }
-              />
-              Tự thêm tường
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includePlants}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includePlants: e.target.checked,
-                  }))
-                }
-              />
-              Thêm cây trang trí
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeStairs}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeStairs: e.target.checked,
-                  }))
-                }
-              />
-              Có cầu thang
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeDoor}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeDoor: e.target.checked,
-                  }))
-                }
-              />
-              Có cửa
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeWindow}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeWindow: e.target.checked,
-                  }))
-                }
-              />
-              Có cửa sổ
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeCashier}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeCashier: e.target.checked,
-                  }))
-                }
-              />
-              Có quầy thu ngân
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeKitchen}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeKitchen: e.target.checked,
-                  }))
-                }
-              />
-              Có bếp
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeBuffet}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeBuffet: e.target.checked,
-                  }))
-                }
-              />
-              Có buffet
-            </label>
-          </div>
-          <div className="fp-modal-row checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={aiForm.includeWc}
-                onChange={(e) =>
-                  setAiForm((prev) => ({
-                    ...prev,
-                    includeWc: e.target.checked,
-                  }))
-                }
-              />
-              Có WC
-            </label>
-          </div>
+          <div className="fp-modal-intro"><strong>Thiết lập nhanh</strong><p>Chọn số lượng, mục tiêu bố cục và nhấn Generate sơ đồ.</p></div>
+          {[['tables','Bàn', [['standard','Bàn thường'],['vip','Bàn VIP'],['twoSeat','Bàn 2 người'],['fourSeat','Bàn 4 người'],['group','Bàn nhóm / gia đình']]], ['objects','Thành phần sơ đồ', [['plant','Cây trang trí'],['door','Cửa'],['window','Cửa sổ'],['stairs','Cầu thang'],['cashier','Quầy thu ngân'],['kitchen','Bếp'],['wc','WC'],['buffet','Buffet'],['wall','Tường']]]].map(([section,title,entries]) => (
+            <div key={section} className="fp-ai-section">
+              <h4>{title}</h4>
+              {entries.map(([key,label]) => (
+                <div className="fp-modal-row" key={key}>
+                  <label>{label}</label>
+                  <div className="fp-stepper">
+                    <button type="button" onClick={() => updateAiCount(section, key, -1)}>-</button>
+                    <input type="number" min="0" value={aiForm.components?.[section]?.[key] ?? 0} onChange={(e) => setAiCount(section, key, e.target.value)} />
+                    <button type="button" onClick={() => updateAiCount(section, key, 1)}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="fp-ai-section"><h4>Mục tiêu bố cục</h4><div className="fp-modal-row"><select value={aiForm.goal} onChange={(e)=>setAiForm((p)=>({...p,goal:e.target.value}))}><option value="balanced">Cân bằng</option><option value="capacity">Nhiều bàn nhất</option><option value="spacious">Đẹp / rộng rãi</option><option value="vip">Sang / VIP</option></select></div></div>
           <div className="fp-modal-actions">
-            <button className="btn-secondary" onClick={() => setShowAiModal(false)}>
-              Hủy
-            </button>
-            <button className="btn-primary" onClick={handleGenerateSmartLayout}>
-              Tạo sơ đồ
-            </button>
+            <button className="btn-secondary" onClick={() => setAiForm(defaultAiForm)}>Reset mặc định</button>
+            <button className="btn-secondary" onClick={() => setShowAiModal(false)}>Hủy</button>
+            <button className="btn-primary" onClick={handleGenerateSmartLayout}>Generate sơ đồ</button>
           </div>
         </div>
       </Modal>
