@@ -1,14 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing";
-import OrderTrackingQrCard from "./OrderTrackingQrCard";
-import { gql } from "@apollo/client";
-
-const ORDER_TRACKING_QR_SVG = gql`
-  query OrderTrackingQrSvg($orderId: ID!) {
-    orderTrackingQrSvg(orderId: $orderId)
-  }
-`;
+import OrderTrackingQrCard, { ORDER_TRACKING_QR_SVG } from "./OrderTrackingQrCard";
 
 describe("OrderTrackingQrCard", () => {
   it("initially shows Hiển thị QR and then renders SVG after click", async () => {

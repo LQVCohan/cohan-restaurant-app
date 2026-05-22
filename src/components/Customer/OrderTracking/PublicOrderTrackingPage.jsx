@@ -73,6 +73,12 @@ export default function PublicOrderTrackingPage() {
 
   const tracking = liveData || data?.customerTrackOrder || null;
 
+  useEffect(() => {
+    setLiveData(null);
+    setActionMessage("");
+    setSocketReady(false);
+  }, [trackingToken]);
+
   const isFinal = useMemo(() => {
     const orderStatus = tracking?.publicStatus ? String(tracking.publicStatus).toUpperCase() : "";
     const payStatus = tracking?.payment?.status ? String(tracking.payment.status).toUpperCase() : "";
@@ -142,6 +148,32 @@ export default function PublicOrderTrackingPage() {
   const isCancelled = publicStatus === "CANCELLED";
   const isPaid = publicStatus === "PAID" || paymentStatus === "PAID";
   const canRequestPayment = Boolean(tracking.payment?.canRequestPayment);
+  const paymentAlreadyRequested = paymentStatus === "PAYMENT_REQUESTED";
+  const paymentActionLocked = paymentReqActive || paymentAlreadyRequested;
+
+  const timelineItems = Array.isArray(tracking.timeline) ? tracking.timeline : [];
+  const latestTimelineIndex = useMemo(() => {
+    if (!timelineItems.length) return -1;
+    let latestIndex = 0;
+    let latestTime = Number.NEGATIVE_INFINITY;
+
+    timelineItems.forEach((item, index) => {
+      const time = Date.parse(item?.changedAt || "");
+      if (Number.isFinite(time) && time >= latestTime) {
+        latestTime = time;
+        latestIndex = index;
+      }
+    });
+
+    if (latestTime === Number.NEGATIVE_INFINITY) return timelineItems.length - 1;
+    return latestIndex;
+  }, [timelineItems]);
+
+  const updateModeLabel = isFinal
+    ? "Đơn hàng đã hoàn tất"
+    : socketReady
+      ? "Đang cập nhật trực tiếp"
+      : "Tự động làm mới mỗi 12 giây";
 
   return (
     <div className="track-order-page">
@@ -149,19 +181,19 @@ export default function PublicOrderTrackingPage() {
         <section className="track-card hero-card">
           <div className="hero-head"><h1>Theo dõi đơn hàng</h1><span className={`status-badge ${publicStatus.toLowerCase()}`}>{tracking.publicStatusLabel || "Đang xử lý"}</span></div>
           <p className="tracking-code">Mã theo dõi: <strong>{tracking.trackingCode || "-"}</strong></p>
-          <p className="live-indicator" role="status">{socketReady ? "Đang cập nhật trực tiếp" : "Tự động làm mới mỗi 12 giây"}</p>
+          <p className={`live-indicator ${isFinal ? "live-indicator--final" : socketReady ? "live-indicator--live" : "live-indicator--polling"}`} role="status">{updateModeLabel}</p>
           {tracking.estimatedReadyAt && <p>Dự kiến sẵn sàng: {new Date(tracking.estimatedReadyAt).toLocaleString("vi-VN")}</p>}
           {tracking.customerVisibleNote && <p className="note">{tracking.customerVisibleNote}</p>}
         </section>
 
-        <section className="track-card"><h3>Tiến trình đơn hàng</h3>{(tracking.timeline || []).length === 0 ? <p>Chưa có cập nhật tiến trình.</p> : <ol className="timeline">{tracking.timeline.map((item, idx) => <li key={`${item.changedAt}-${idx}`} className={idx === 0 ? "current" : ""}><div><strong>{item.displayMessage}</strong><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("vi-VN") : ""}</p></div></li>)}</ol>}</section>
+        <section className="track-card"><h3>Tiến trình đơn hàng</h3>{timelineItems.length === 0 ? <p>Chưa có cập nhật tiến trình.</p> : <ol className="timeline">{timelineItems.map((item, idx) => <li key={`${item.changedAt}-${idx}`} className={idx === latestTimelineIndex ? "current" : ""}><div><strong>{item.displayMessage}</strong><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("vi-VN") : ""}</p></div></li>)}</ol>}</section>
 
         <section className="track-card"><h3>Món đã gọi</h3>{(tracking.items || []).length === 0 ? <p>Chưa có món trong đơn.</p> : <ul className="item-list">{tracking.items.map((item, idx) => <li key={`${item.name}-${idx}`}><div><strong>{item.name}</strong><p>Số lượng: {item.quantity}</p></div><span className={`status-badge ${String(item.publicStatus || "").toLowerCase()}`}>{item.publicStatusLabel || "Đang xử lý"}</span></li>)}</ul>}</section>
 
         <section className="track-card"><h3>Thanh toán</h3><p className="amount">{Number(tracking.payment?.totalAmount || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}</p><p>Trạng thái: <span className={`status-badge ${paymentStatus.toLowerCase()}`}>{paymentStatusLabel[paymentStatus] || "Đang cập nhật"}</span></p>
-          <button type="button" className="primary-btn" disabled={requestingPayment || callingStaff || isCancelled || isPaid || !canRequestPayment || paymentReqActive} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>{requestingPayment ? "Đang gửi yêu cầu..." : "Yêu cầu thanh toán"}</button>
-          {paymentReqActive && <p className="helper">Yêu cầu thanh toán đang được xử lý.</p>}
-          {!canRequestPayment && !isPaid && !paymentReqActive && <p className="helper">Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
+          <button type="button" className="primary-btn" disabled={requestingPayment || callingStaff || isCancelled || isPaid || !canRequestPayment || paymentActionLocked} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>{requestingPayment ? "Đang gửi yêu cầu..." : "Yêu cầu thanh toán"}</button>
+          {paymentActionLocked && <p className="helper">Yêu cầu thanh toán đang được xử lý.</p>}
+          {!canRequestPayment && !isPaid && !paymentActionLocked && <p className="helper">Hiện chưa thể yêu cầu thanh toán cho đơn này.</p>}
         </section>
 
         <section className="track-card"><h3>Cần hỗ trợ?</h3><button type="button" className="secondary-btn" disabled={requestingPayment || callingStaff || isCancelled || staffReqActive} onClick={() => handleActionResult(() => callStaff({ variables: { trackingToken } }))}>{callingStaff ? "Đang gọi nhân viên..." : "Gọi nhân viên hỗ trợ"}</button>{staffReqActive && <p className="helper">Nhân viên đã nhận yêu cầu hỗ trợ.</p>}</section>

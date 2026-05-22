@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { MockedProvider } from "@apollo/client/testing";
 import PublicOrderTrackingPage, { CUSTOMER_TRACK_ORDER } from "./PublicOrderTrackingPage";
@@ -20,6 +20,21 @@ describe("PublicOrderTrackingPage", () => {
     expect(screen.getByText("Phở")).toBeInTheDocument();
   });
 
+  it("highlights latest timeline item by changedAt", async () => {
+    const older = "2026-05-20T08:00:00.000Z";
+    const newer = "2026-05-20T09:00:00.000Z";
+    const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-timeline" } }, result: { data: { customerTrackOrder: { ...baseTracking, timeline: [{ status: "PREPARING", displayMessage: "Bếp đã nhận món", changedAt: older, __typename: "CustomerTrackingTimeline" }, { status: "READY", displayMessage: "Món đã sẵn sàng", changedAt: newer, __typename: "CustomerTrackingTimeline" }] } } } }];
+    renderPage(mocks, "token-timeline");
+    const latestText = await screen.findByText("Món đã sẵn sàng");
+    expect(latestText.closest("li")).toHaveClass("current");
+  });
+
+  it("shows final indicator when order is paid", async () => {
+    const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-final" } }, result: { data: { customerTrackOrder: { ...baseTracking, publicStatus: "PAID", publicStatusLabel: "Đã thanh toán", payment: { ...baseTracking.payment, status: "PAID", __typename: "CustomerTrackingPayment" } } } } }];
+    renderPage(mocks, "token-final");
+    expect(await screen.findByText("Đơn hàng đã hoàn tất")).toBeInTheDocument();
+  });
+
   it("renders only one latest request section and no raw enum", async () => {
     const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-5" } }, result: { data: { customerTrackOrder: { ...baseTracking, latestRequest: { requestId: "r1", type: "PAYMENT_REQUEST", status: "ACKNOWLEDGED", message: "Khách yêu cầu thanh toán", createdAt: new Date().toISOString(), __typename: "CustomerTrackingRequest" } } } } }];
     renderPage(mocks, "token-5");
@@ -31,6 +46,13 @@ describe("PublicOrderTrackingPage", () => {
   it("disables payment button when latest payment request is pending", async () => {
     const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-6" } }, result: { data: { customerTrackOrder: { ...baseTracking, latestRequest: { requestId: "r2", type: "PAYMENT_REQUEST", status: "PENDING", message: null, createdAt: null, __typename: "CustomerTrackingRequest" } } } } }];
     renderPage(mocks, "token-6");
+    expect(await screen.findByText("Yêu cầu thanh toán đang được xử lý.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Yêu cầu thanh toán" })).toBeDisabled();
+  });
+
+  it("disables payment button when payment status is PAYMENT_REQUESTED without latest request", async () => {
+    const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-6b" } }, result: { data: { customerTrackOrder: { ...baseTracking, latestRequest: null, payment: { ...baseTracking.payment, status: "PAYMENT_REQUESTED", __typename: "CustomerTrackingPayment" } } } } }];
+    renderPage(mocks, "token-6b");
     expect(await screen.findByText("Yêu cầu thanh toán đang được xử lý.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Yêu cầu thanh toán" })).toBeDisabled();
   });

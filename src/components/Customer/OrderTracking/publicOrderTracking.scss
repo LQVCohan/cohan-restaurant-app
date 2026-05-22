@@ -9,6 +9,9 @@
   .hero-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
   .tracking-code { color: #475569; margin: 4px 0; }
   .live-indicator { color: #0c4a6e; font-weight: 600; margin: 4px 0 8px; }
+  .live-indicator--live { color: #0369a1; }
+  .live-indicator--polling { color: #1d4ed8; }
+  .live-indicator--final { color: #166534; }
   .note { background: #fffbeb; color: #92400e; border-radius: 10px; padding: 8px 10px; }
 
   h3 { margin: 0 0 10px; }
@@ -44,6 +47,12 @@
   .loading .skeleton-line { height: 11px; background:#e2e8f0; border-radius:999px; margin:8px 0; }
   .loading .skeleton-line.short { width:65%; }
   .error h2 { margin-top:0; }
+
+  @media (max-width: 480px) {
+    .hero-head { flex-direction: column; align-items: flex-start; }
+    button { width: 100%; }
+    .item-list li { align-items: flex-start; flex-direction: column; }
+  }
 
   @media (min-width: 480px) { padding: 20px; .track-card { padding: 16px; } }
   @media (min-width: 768px) { padding: 24px; .hero-card h1 { font-size: 1.7rem; } }

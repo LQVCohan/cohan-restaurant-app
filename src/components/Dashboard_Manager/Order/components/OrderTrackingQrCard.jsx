@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { gql, useLazyQuery } from "@apollo/client";
 
-const ORDER_TRACKING_QR_SVG = gql`
+export const ORDER_TRACKING_QR_SVG = gql`
   query OrderTrackingQrSvg($orderId: ID!) {
     orderTrackingQrSvg(orderId: $orderId)
   }

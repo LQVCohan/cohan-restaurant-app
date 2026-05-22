@@ -632,6 +632,8 @@ $st-cancelled-text: #b91c1c;
     font-weight: 700;
     cursor: pointer;
     &:hover:not(:disabled) { background: color.adjust(#fdf8f3, $lightness: -3%); }
+    &:focus-visible { outline: 2px solid rgba($gold, 0.5); outline-offset: 2px; }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
   }
   .qr-sub-note { margin-top: 0.6rem; margin-bottom: 0.6rem; }
   .qr-error {
@@ -649,5 +651,13 @@ $st-cancelled-text: #b91c1c;
     border-radius: 10px;
     padding: 0.65rem;
     width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    svg {
+      display: block;
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+    }
   }
 }
