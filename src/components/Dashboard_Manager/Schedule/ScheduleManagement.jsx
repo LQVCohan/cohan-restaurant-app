@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
   addDays,
@@ -1122,6 +1122,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantAvailabilitySubmissions,
   ] = useState([]);
   const [selectedAutoShiftKeys, setSelectedAutoShiftKeys] = useState({});
+  const [autoScheduleOverrideReason, setAutoScheduleOverrideReason] =
+    useState("");
+  const [autoScheduleOverrideConfirmed, setAutoScheduleOverrideConfirmed] =
+    useState(false);
+  const [autoScheduleOverrideError, setAutoScheduleOverrideError] =
+    useState("");
   const [autoScheduleError, setAutoScheduleError] = useState("");
   const [isApplyingAutoSchedule, setIsApplyingAutoSchedule] = useState(false);
   const [validatedAutoSchedulePreview, setValidatedAutoSchedulePreview] =
@@ -2229,6 +2235,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantAvailabilityWindows([]);
     setAssistantAvailabilitySubmissions([]);
     setSelectedAutoShiftKeys({});
+    setAutoScheduleOverrideReason("");
+    setAutoScheduleOverrideConfirmed(false);
+    setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
     setSelectedShift(null);
@@ -2256,6 +2265,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantAvailabilityWindows([]);
     setAssistantAvailabilitySubmissions([]);
     setSelectedAutoShiftKeys({});
+    setAutoScheduleOverrideReason("");
+    setAutoScheduleOverrideConfirmed(false);
+    setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
 
@@ -3588,11 +3600,69 @@ const ScheduleManagement = ({ readOnly = false }) => {
   };
 
   const handleToggleAutoShift = (shiftKey) => {
+    setAutoScheduleOverrideError("");
     setSelectedAutoShiftKeys((prev) => ({
       ...prev,
       [shiftKey]: !prev[shiftKey],
     }));
   };
+  const getSelectedAutoScheduleOverrideSummary = useCallback(() => {
+    const selectedItems = (autoSchedulePreview.items || []).filter(
+      (item) => selectedAutoShiftKeys[item.shiftKey],
+    );
+    const warningAssignments = [];
+    let cleanAssignments = 0;
+    let unresolvedPositions = 0;
+
+    selectedItems.forEach((item) => {
+      unresolvedPositions += Number(item.unresolvedCount || 0);
+      (item.plannedAssignments || []).forEach((assignment) => {
+        const warningRows = [
+          ...(assignment.warnings || []),
+          ...(assignment.validationWarnings || []),
+        ];
+        const requiresOverride =
+          Boolean(assignment.requiresOverride) || warningRows.length > 0;
+
+        if (requiresOverride) {
+          warningAssignments.push({
+            shiftKey: item.shiftKey,
+            shiftType: item.shiftType,
+            date: item.date,
+            staffId: assignment.staffId,
+            fullName: assignment.fullName,
+            role: assignment.role,
+            warnings: warningRows,
+          });
+        } else {
+          cleanAssignments += 1;
+        }
+      });
+    });
+
+    return {
+      selectedItems,
+      warningAssignments,
+      requiresOverride: warningAssignments.length > 0,
+      cleanAssignments,
+      unresolvedPositions,
+    };
+  }, [autoSchedulePreview.items, selectedAutoShiftKeys]);
+  const autoScheduleOverrideSummary = useMemo(
+    () => getSelectedAutoScheduleOverrideSummary(),
+    [getSelectedAutoScheduleOverrideSummary],
+  );
+  useEffect(() => {
+    if (autoScheduleOverrideSummary.requiresOverride) return;
+    if (!autoScheduleOverrideReason && !autoScheduleOverrideConfirmed) return;
+    setAutoScheduleOverrideReason("");
+    setAutoScheduleOverrideConfirmed(false);
+    setAutoScheduleOverrideError("");
+  }, [
+    autoScheduleOverrideSummary.requiresOverride,
+    autoScheduleOverrideReason,
+    autoScheduleOverrideConfirmed,
+  ]);
   const getMissingRoleSummaryForSelectedPreview = () => {
     const selectedItems = (autoSchedulePreview.items || []).filter(
       (item) => selectedAutoShiftKeys[item.shiftKey],
@@ -3713,7 +3783,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       throw new Error(message);
     }
   };
-  const handleApplyAutoSchedule = async () => {
+  const handleApplyAutoSchedule = async (payload = {}) => {
     if (!schedulePermissions.canApplyAutoSchedule) {
       const message =
         "Không thể áp dụng chia ca tự động ở trạng thái lịch hiện tại.";
@@ -3746,8 +3816,33 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return;
     }
 
+    const overrideSummary = getSelectedAutoScheduleOverrideSummary();
+    const trimmedOverrideReason = String(payload.overrideReason || "").trim();
+    const overrideConfirmed = Boolean(payload.overrideConfirmed);
+    const needsOverride = overrideSummary.requiresOverride;
+
+    if (needsOverride) {
+      if (trimmedOverrideReason.length < 5) {
+        const message =
+          "Cần nhập lý do ghi đè tối thiểu 5 ký tự trước khi áp dụng.";
+        setAutoScheduleOverrideError(message);
+        setAutoScheduleError(message);
+        showNotification(message, "warning");
+        return;
+      }
+      if (!overrideConfirmed) {
+        const message =
+          "Vui lòng xác nhận đã kiểm tra cảnh báo trước khi ghi đè.";
+        setAutoScheduleOverrideError(message);
+        setAutoScheduleError(message);
+        showNotification(message, "warning");
+        return;
+      }
+    }
+
     setIsApplyingAutoSchedule(true);
     setAutoScheduleError("");
+    setAutoScheduleOverrideError("");
 
     try {
       const response = await applyAutoScheduleBackend({
@@ -3765,6 +3860,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
             ),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
+            allowOverride: needsOverride,
+            overrideReason: needsOverride ? trimmedOverrideReason : undefined,
             allowPartialApply: true,
             selectedShiftKeys,
           },
@@ -3781,6 +3878,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         setIsAutoScheduleOpen(false);
         setSelectedAutoShiftKeys({});
         setValidatedAutoSchedulePreview(null);
+        setAutoScheduleOverrideReason("");
+        setAutoScheduleOverrideConfirmed(false);
+        setAutoScheduleOverrideError("");
         showNotification(
           `Đã áp dụng ${successCount} phân công từ chia ca tự động.`,
           batchResult.failedCount ? "warning" : "success",
@@ -3803,6 +3903,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         "Không thể áp dụng chia ca tự động.",
       );
       setAutoScheduleError(message);
+      setAutoScheduleOverrideError(message);
       showNotification(message, "error");
     } finally {
       setIsApplyingAutoSchedule(false);
@@ -4788,7 +4889,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       {!readOnly && (
         <AutoScheduleModal
           isOpen={isAutoScheduleOpen}
-          onClose={() => setIsAutoScheduleOpen(false)}
+          onClose={() => {
+            setIsAutoScheduleOpen(false);
+            setAutoScheduleOverrideReason("");
+            setAutoScheduleOverrideConfirmed(false);
+            setAutoScheduleOverrideError("");
+          }}
           config={autoScheduleConfig}
           onConfigChange={setAutoScheduleConfig}
           requiredRoleOptions={AUTO_REQUIRED_ROLE_OPTIONS}
@@ -4802,6 +4908,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onToggleShift={handleToggleAutoShift}
           onApply={handleApplyAutoSchedule}
           applying={isApplyingAutoSchedule}
+          overrideReason={autoScheduleOverrideReason}
+          onOverrideReasonChange={setAutoScheduleOverrideReason}
+          overrideConfirmed={autoScheduleOverrideConfirmed}
+          onOverrideConfirmedChange={setAutoScheduleOverrideConfirmed}
+          overrideError={autoScheduleOverrideError}
+          overrideSummary={autoScheduleOverrideSummary}
         />
       )}
 
