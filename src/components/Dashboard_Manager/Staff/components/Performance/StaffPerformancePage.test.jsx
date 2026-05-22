@@ -469,6 +469,49 @@ describe("buildPerformanceReportHtml", () => {
     });
     expect(withoutInsufficientData).toContain("Thiếu đánh giá quản lý");
   });
+
+  it("includes cashier operations section and quality penalty lines in report html", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "Thu ngân A",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 80,
+      performanceLevel: "Tốt",
+      formulaScore: 80,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+      qualityEvidence: { roleGroup: "cashier", cashierOperationalPenalty: 3, hasCashierOperationalEvidence: true, kitchenPenalty: 0, customerPenalty: 0, totalPenalty: 3, finalQualityScore: 72 },
+      cashierMetrics: { totalHandledPayments: 10, wrongBillIssues: 1, paymentErrors: 1, cashierRefunds: 0, latePaymentRequests: 1, unauthorizedDiscounts: 1, operationalPenalty: 3, cashVarianceRate: 0 },
+    });
+    expect(html).toContain("Dữ liệu nghiệp vụ thu ngân");
+    expect(html).toContain("Trừ theo nghiệp vụ thu ngân");
+    expect(html).toContain("Giao dịch xử lý: 10");
+    expect(html).toContain("Dữ liệu lệch tiền mặt chưa được tính");
+  });
+
+  it("does not crash and still renders quality section when cashierMetrics is missing", () => {
+    const html = buildPerformanceReportHtml({
+      employeeName: "Thu ngân B",
+      periodLabel: "01/05/2026 - 31/05/2026",
+      restaurantName: "R1",
+      finalPerformanceScore: 75,
+      performanceLevel: "Ổn định",
+      formulaScore: 75,
+      adjustmentDelta: 0,
+      hasAdjustment: false,
+      formulaBreakdown: [],
+      hasCustomWeight: false,
+      customerRating: { hasRating: false, label: "Chưa có đánh giá khách hàng", hint: "" },
+      adjustmentHistory: [],
+      qualityEvidence: { roleGroup: "cashier", cashierOperationalPenalty: 0, kitchenPenalty: 0, customerPenalty: 0, totalPenalty: 0, finalQualityScore: 75 },
+    });
+    expect(html).toContain("Cơ sở điểm Quality");
+    expect(html).toContain("Trừ theo nghiệp vụ thu ngân");
+  });
 });
 
 describe("openPerformanceReportPrintWindow", () => {
@@ -671,7 +714,7 @@ describe("csv helpers", () => {
     expect(result[0][5]).toBe("--");
     expect(result[0][7]).toBe("Không");
     expect(result[0][8]).toBe("--");
-    expect(result[0][10]).toBe("");
+    expect(result[0][17]).toBe("");
   });
 
   it("buildPerformanceOverviewCsvRows adds customer rating note when rating exists", () => {
@@ -687,7 +730,7 @@ describe("csv helpers", () => {
     ];
     const result = buildPerformanceOverviewCsvRows(rows);
     expect(result[0][8]).toContain("Đánh giá khách hàng:");
-    expect(result[0][10]).toBe("Rating khách hàng chỉ tham khảo");
+    expect(result[0][17]).toBe("Rating khách hàng chỉ tham khảo");
   });
 
   it("buildPerformanceOverviewCsvBlobContent prepends UTF-8 BOM", () => {
@@ -704,7 +747,7 @@ describe("csv helpers", () => {
       },
     ];
     const result = buildPerformanceOverviewCsvRows(rows);
-    expect(result[0][10]).toBe("Thiếu đánh giá quản lý");
+    expect(result[0][17]).toBe("Thiếu đánh giá quản lý");
   });
 });
 
@@ -712,13 +755,13 @@ describe("csv helpers", () => {
 describe("kitchen metrics csv note", () => {
   it("appends kitchen reference note without crashing", () => {
     const rows = buildPerformanceOverviewCsvRows([{ snapshot: { factors: { kitchenMetrics: { totalItems: 2 } } } }]);
-    expect(rows[0][10]).toContain("Có dữ liệu bếp/bar tham khảo");
+    expect(rows[0][17]).toContain("Có dữ liệu bếp/bar tham khảo");
   });
   it("does not duplicate kitchen reference note", () => {
     const rows = buildPerformanceOverviewCsvRows([
       { snapshot: { factors: { staffRate: 4.8, staffRateCount: 2, kitchenMetrics: { totalItems: 3 } } } },
     ]);
-    const note = rows[0][10];
+    const note = rows[0][17];
     expect(note.match(/Có dữ liệu bếp\/bar tham khảo/g)).toHaveLength(1);
   });
   it("appends quality role-adjustment note without duplication", () => {
@@ -726,7 +769,34 @@ describe("kitchen metrics csv note", () => {
       { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
       { snapshot: { factors: { qualityEvidence: { totalPenalty: 1.5 } } } },
     ]);
-    expect(rows[0][10]).toContain("Quality có điều chỉnh theo dữ liệu vai trò");
-    expect(rows[0][10].match(/Quality có điều chỉnh theo dữ liệu vai trò/g)).toHaveLength(1);
+    expect(rows[0][17]).toContain("Quality có điều chỉnh theo dữ liệu vai trò");
+    expect(rows[0][17].match(/Quality có điều chỉnh theo dữ liệu vai trò/g)).toHaveLength(1);
+  });
+  it("includes cashier operational columns and values", () => {
+    const rows = buildPerformanceOverviewCsvRows([
+      {
+        snapshot: {
+          factors: {
+            qualityEvidence: { cashierOperationalPenalty: 4.5 },
+            cashierMetrics: {
+              totalHandledPayments: 20,
+              wrongBillIssues: 2,
+              paymentErrors: 1,
+              cashierRefunds: 1,
+              latePaymentRequests: 3,
+              unauthorizedDiscounts: 1,
+            },
+          },
+        },
+      },
+    ]);
+    expect(rows[0][10]).toBe(4.5);
+    expect(rows[0][11]).toBe(20);
+    expect(rows[0][12]).toBe(2);
+    expect(rows[0][13]).toBe(1);
+    expect(rows[0][14]).toBe(1);
+    expect(rows[0][15]).toBe(3);
+    expect(rows[0][16]).toBe(1);
+    expect(rows[0][17]).toContain("Quality có điều chỉnh nghiệp vụ thu ngân");
   });
 });

@@ -13,6 +13,13 @@ export const CSV_HEADERS = [
   "Có dữ liệu kỳ trước",
   "Đánh giá khách hàng",
   "Số lượt đánh giá khách hàng",
+  "Trừ nghiệp vụ thu ngân",
+  "Giao dịch thu ngân xử lý",
+  "Sai bill",
+  "Lỗi thanh toán",
+  "Refund thu ngân",
+  "Yêu cầu thanh toán chậm",
+  "Giảm giá không hợp lệ",
   "Ghi chú",
 ];
 
@@ -48,7 +55,12 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
       const qualityNote = "Quality có điều chỉnh theo dữ liệu vai trò";
       if (!notes.includes(qualityNote)) notes.push(qualityNote);
     }
+    if (Number(snapshot?.factors?.qualityEvidence?.cashierOperationalPenalty || 0) > 0) {
+      const cashierQualityNote = "Quality có điều chỉnh nghiệp vụ thu ngân";
+      if (!notes.includes(cashierQualityNote)) notes.push(cashierQualityNote);
+    }
     const note = notes.join(" | ");
+    const cashierMetrics = snapshot?.factors?.cashierMetrics || null;
     return [
       employee.code || snapshot.employeeCode || CSV_EMPTY_VALUE,
       employee.name || snapshot.employeeName || CSV_EMPTY_VALUE,
@@ -60,6 +72,13 @@ export const buildPerformanceOverviewCsvRows = (rows = []) =>
       previousSnapshot ? "Có" : "Không",
       customerRating?.hasRating ? customerRating.label : CSV_EMPTY_VALUE,
       Number.isFinite(customerRatingCount) ? customerRatingCount : CSV_EMPTY_VALUE,
+      Number(snapshot?.factors?.qualityEvidence?.cashierOperationalPenalty || 0),
+      cashierMetrics?.totalHandledPayments ?? CSV_EMPTY_VALUE,
+      Number(cashierMetrics?.wrongBillIssues || 0),
+      Number(cashierMetrics?.paymentErrors || 0),
+      Number(cashierMetrics?.cashierRefunds || 0),
+      Number(cashierMetrics?.latePaymentRequests || 0),
+      Number(cashierMetrics?.unauthorizedDiscounts || 0),
       note,
     ];
   });
