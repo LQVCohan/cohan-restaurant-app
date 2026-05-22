@@ -123,56 +123,6 @@ function calculateCashierQualityPenalty({ customerRatingScore, staffRateCount })
   if (Number(staffRateCount || 0) <= 0 || Number(customerRatingScore || 0) >= 75) return 0;
   return Math.min(5, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.15));
 }
-const CASHIER_REASON_KEYWORDS = [
-  "sai hoa don",
-  "tinh nham",
-  "thu nham",
-  "nham ban",
-  "nham order",
-  "in nham bill",
-  "ap sai gia",
-  "ap sai khuyen mai",
-  "sai voucher",
-  "sai discount",
-  "chon sai phuong thuc",
-  "xac nhan thanh toan sai",
-];
-const NON_CASHIER_REASON_KEYWORDS = [
-  "khach doi y",
-  "khach huy",
-  "bep",
-  "mon nguoi",
-  "mon sai",
-  "het mon",
-  "he thong",
-  "cong thanh toan",
-  "provider",
-  "callback",
-  "momo",
-  "vnpay",
-];
-function isCashierAttributableReason(value) {
-  const text = normalizeTextNoAccent(value);
-  return Boolean(text && CASHIER_REASON_KEYWORDS.some((kw) => text.includes(kw)));
-}
-function isNonCashierReason(value) {
-  const text = normalizeTextNoAccent(value);
-  return Boolean(text && NON_CASHIER_REASON_KEYWORDS.some((kw) => text.includes(kw)));
-}
-function hasCashierAttribution(...texts) {
-  if (texts.some((v) => isNonCashierReason(v))) return false;
-  return texts.some((v) => isCashierAttributableReason(v));
-}
-function calculateCashierOperationalPenalty(cashierMetrics = {}) {
-  const penalty =
-    Number(cashierMetrics?.wrongBillRate || 0) * 8 +
-    Number(cashierMetrics?.paymentErrorRate || 0) * 6 +
-    Number(cashierMetrics?.cashierRefundRate || 0) * 8 +
-    Number(cashierMetrics?.cashVarianceRate || 0) * 20 +
-    Number(cashierMetrics?.latePaymentRequestRate || 0) * 4 +
-    Number(cashierMetrics?.unauthorizedDiscountRate || 0) * 6;
-  return Math.min(15, roundOneDecimal(penalty));
-}
 function calculateHeadChefQualityPenalty(kitchenMetrics = {}) {
   const denom = Number(kitchenMetrics?.headChefItems || kitchenMetrics?.kitchenItems || kitchenMetrics?.totalItems || 0);
   if (denom <= 0) return 0;
@@ -195,7 +145,7 @@ function calculateAssistantChefQualityPenalty(kitchenMetrics = {}) {
     safeRate(kitchenMetrics?.kitchenRelatedCancelledItems, denom) * 2;
   return Math.min(18, roundOneDecimal(penalty));
 }
-function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, cashierMetrics, customerRatingScore, staffRateCount }) {
+function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, customerRatingScore, staffRateCount }) {
   const roleGroup = resolveQualityRoleGroup(staff, kitchenMetrics);
   const kitchenPenalty =
     roleGroup === "head_chef"
@@ -209,33 +159,15 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
       : roleGroup === "cashier"
         ? calculateCashierQualityPenalty({ customerRatingScore, staffRateCount })
         : 0;
-  const cashierOperationalPenalty = roleGroup === "cashier" ? calculateCashierOperationalPenalty(cashierMetrics) : 0;
-  const hasCashierOperationalEvidence = roleGroup === "cashier" && Number(cashierOperationalPenalty || 0) > 0;
   const hasKitchenEvidence = Number(kitchenMetrics?.totalItems || 0) > 0 && ["head_chef", "assistant_chef"].includes(roleGroup);
   const hasCustomerEvidence = Number(staffRateCount || 0) > 0 && ["order_staff", "cashier"].includes(roleGroup);
-  const totalPenalty = roundOneDecimal(kitchenPenalty + customerPenalty + cashierOperationalPenalty);
+  const totalPenalty = roundOneDecimal(kitchenPenalty + customerPenalty);
   let score = 75;
-  if (hasManagerReview || hasKitchenEvidence || hasCustomerEvidence || hasCashierOperationalEvidence) {
+  if (hasManagerReview || hasKitchenEvidence || hasCustomerEvidence) {
     score = clampScore(baseSkillScore - totalPenalty, 75);
     if (totalPenalty > 0) score = Math.max(50, score);
   }
-  const evidenceSource = roleGroup === "cashier"
-    ? cashierOperationalPenalty > 0 && customerPenalty > 0 && hasManagerReview
-      ? "manager_skill+customer_rating+cashier_operational_metrics"
-      : cashierOperationalPenalty > 0 && customerPenalty > 0 && !hasManagerReview
-        ? "neutral_skill+customer_rating+cashier_operational_metrics"
-        : cashierOperationalPenalty > 0 && customerPenalty <= 0 && hasManagerReview
-          ? "manager_skill+cashier_operational_metrics"
-          : cashierOperationalPenalty > 0 && customerPenalty <= 0 && !hasManagerReview
-            ? "neutral_skill+cashier_operational_metrics"
-            : cashierOperationalPenalty <= 0 && customerPenalty > 0 && hasManagerReview
-              ? "manager_skill+customer_rating"
-              : cashierOperationalPenalty <= 0 && customerPenalty > 0 && !hasManagerReview
-                ? "neutral_skill+customer_rating"
-                : hasManagerReview
-                  ? "manager_skill_only"
-                  : "neutral_no_quality_evidence"
-    : kitchenPenalty > 0 && customerPenalty > 0
+  const evidenceSource = kitchenPenalty > 0 && customerPenalty > 0
     ? "manager_skill+kitchen_metrics+customer_rating"
     : kitchenPenalty > 0
       ? "manager_skill+kitchen_metrics"
@@ -248,12 +180,10 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
     head_chef: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo món trễ, rất trễ, trả/hủy có lý do liên quan bếp phù hợp vai trò bếp chính.",
     assistant_chef: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo món chưa nhận và lỗi bếp liên quan phù hợp vai trò phụ bếp.",
     order_staff: "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh nhẹ theo đánh giá khách hàng gắn với nhân viên.",
-    cashier: cashierOperationalPenalty > 0
-      ? "Quality dựa trên điểm kỹ năng quản lý, điều chỉnh theo đánh giá khách hàng và các lỗi nghiệp vụ thu ngân có thể quy trách nhiệm như sai bill, lỗi thanh toán, refund do thao tác sai, phản hồi thanh toán chậm hoặc giảm giá không hợp lệ."
-      : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.",
+    cashier: "Quality dựa trên điểm kỹ năng quản lý; đánh giá khách hàng chỉ điều chỉnh nhẹ khi có dữ liệu liên quan.",
     other: "Quality dựa trên điểm kỹ năng/chất lượng chuyên môn do quản lý nhập.",
   };
-  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
+  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
 }
 
 function getActorId(ctx) {
@@ -605,82 +535,6 @@ async function getKitchenMetricsForEmployee({ employeeId, restaurantId, periodSt
   const workItems = await KitchenOrderWorkItem.find(match).lean();
   return buildKitchenMetricsSummary(workItems, employeeId);
 }
-async function getCashierMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }) {
-  // TODO: Integrate PaymentSession reconciliation when QR/provider callbacks are used as authoritative cashier scoring evidence. Current scoring relies on Order payment state and attribution text only to remain conservative.
-  const orders = await Order.find({
-    restaurantId,
-    $or: [
-      { "payment.paidBy": employeeId, "payment.paidAt": { $gte: periodStart, $lte: periodEnd } },
-      { "payment.requestedBy": employeeId, "payment.requestedAt": { $gte: periodStart, $lte: periodEnd } },
-      { customerRequests: { $elemMatch: { acknowledgedBy: employeeId, acknowledgedAt: { $gte: periodStart, $lte: periodEnd } } } },
-      { customerRequests: { $elemMatch: { resolvedBy: employeeId, resolvedAt: { $gte: periodStart, $lte: periodEnd } } } },
-    ],
-  }).lean();
-
-  let wrongBillIssues = 0;
-  let paymentErrors = 0;
-  let cashierRefunds = 0;
-  let latePaymentRequests = 0;
-  let unauthorizedDiscounts = 0;
-
-  for (const order of orders) {
-    const texts = [order?.payment?.requestClearReason, order?.payment?.requestNote];
-    for (const item of order?.items || []) {
-      for (const req of item?.voidRequests || []) {
-        if (["approved", "accepted", "resolved"].includes(String(req?.status || "").toLowerCase()) && hasCashierAttribution(req?.reason, req?.reviewNote, ...texts)) wrongBillIssues += 1;
-      }
-      for (const req of item?.returnRequests || []) {
-        if (["approved", "accepted", "resolved"].includes(String(req?.status || "").toLowerCase()) && hasCashierAttribution(req?.reason, req?.reviewNote, ...texts)) wrongBillIssues += 1;
-      }
-    }
-
-    const paymentStatus = normalizeTextNoAccent(order?.payment?.status || order?.orderPaymentStatus);
-    const isFailedPayment = paymentStatus.includes("failed");
-    const isRefunded = paymentStatus.includes("refunded");
-    if (isFailedPayment && hasCashierAttribution(...texts)) paymentErrors += 1;
-    if (isRefunded) {
-      const returnTexts = (order?.items || []).flatMap((item) => (item?.returnRequests || []).flatMap((req) => [req?.reason, req?.reviewNote]));
-      if (hasCashierAttribution(...returnTexts, ...texts)) cashierRefunds += 1;
-    }
-
-    for (const req of order?.customerRequests || []) {
-      if (req?.type !== "PAYMENT_REQUEST") continue;
-      const ackByCashier = req?.acknowledgedBy && String(req.acknowledgedBy) === String(employeeId);
-      const resByCashier = req?.resolvedBy && String(req.resolvedBy) === String(employeeId);
-      const inPeriod = (req?.acknowledgedAt && req.acknowledgedAt >= periodStart && req.acknowledgedAt <= periodEnd) || (req?.resolvedAt && req.resolvedAt >= periodStart && req.resolvedAt <= periodEnd);
-      if (!inPeriod || (!ackByCashier && !resByCashier) || !req?.createdAt) continue;
-      const base = new Date(req.createdAt).getTime();
-      if (!Number.isFinite(base)) continue;
-      const ackAtMs = req?.acknowledgedAt ? new Date(req.acknowledgedAt).getTime() : null;
-      const resolvedAtMs = req?.resolvedAt ? new Date(req.resolvedAt).getTime() : null;
-      const ackDelayMs = Number.isFinite(ackAtMs) ? ackAtMs - base : null;
-      const resDelayMs = Number.isFinite(resolvedAtMs) ? resolvedAtMs - base : null;
-      const isAckLate = ackByCashier && Number.isFinite(ackDelayMs) && ackDelayMs > 3 * 60 * 1000;
-      const isResolveLate = resByCashier && Number.isFinite(resDelayMs) && resDelayMs > 8 * 60 * 1000;
-      if (isAckLate || isResolveLate) latePaymentRequests += 1;
-    }
-
-    const discount = Number(order?.totals?.discount || 0);
-    const hasValidVoucherOrPromo = Boolean(order?.totals?.voucherCode || order?.totals?.promotionId);
-    if (discount > 0 && !hasValidVoucherOrPromo) {
-      const reason = String(order?.totals?.discountReason || "").trim();
-      if (!reason || hasCashierAttribution(reason)) unauthorizedDiscounts += 1;
-    }
-  }
-  const totalHandledPayments = orders.length;
-  const wrongBillRate = safeRate(wrongBillIssues, totalHandledPayments);
-  const paymentErrorRate = safeRate(paymentErrors, totalHandledPayments);
-  const cashierRefundRate = safeRate(cashierRefunds, totalHandledPayments);
-  const latePaymentRequestRate = safeRate(latePaymentRequests, totalHandledPayments);
-  const unauthorizedDiscountRate = safeRate(unauthorizedDiscounts, totalHandledPayments);
-  const cashVarianceRate = 0; // TODO: bổ sung từ dữ liệu reconciliation khi có model CashierShiftReconciliation.
-  const operationalPenalty = calculateCashierOperationalPenalty({ wrongBillRate, paymentErrorRate, cashierRefundRate, latePaymentRequestRate, unauthorizedDiscountRate, cashVarianceRate });
-  return {
-    totalHandledPayments, wrongBillIssues, paymentErrors, cashierRefunds, latePaymentRequests, unauthorizedDiscounts, cashVarianceRate,
-    wrongBillRate, paymentErrorRate, cashierRefundRate, latePaymentRequestRate, unauthorizedDiscountRate,
-    operationalPenalty, affectsScore: operationalPenalty > 0, attributionSource: "order_payment_customer_requests", note: operationalPenalty > 0 ? "Có lỗi nghiệp vụ thu ngân có quy trách nhiệm trong kỳ." : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.",
-  };
-}
 async function calculateSnapshotForEmployee({
   employeeId,
   restaurantId,
@@ -696,7 +550,7 @@ async function calculateSnapshotForEmployee({
     throw new Error("Không tìm thấy nhân viên.");
   }
 
-  const [timesheets, shifts, correctionsCount, review, benchmark, customerRatingAgg, kitchenMetrics, cashierMetrics] =
+  const [timesheets, shifts, correctionsCount, review, benchmark, customerRatingAgg, kitchenMetrics] =
     await Promise.all([
       Timesheet.find({
         employeeId,
@@ -750,7 +604,6 @@ async function calculateSnapshotForEmployee({
         },
       ]),
       getKitchenMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }),
-      getCashierMetricsForEmployee({ employeeId, restaurantId, periodStart, periodEnd }),
     ]);
 
   const staffRateRaw = Number(customerRatingAgg?.[0]?.averageRating || 0);
@@ -818,7 +671,6 @@ async function calculateSnapshotForEmployee({
     baseSkillScore,
     hasManagerReview: Boolean(review),
     kitchenMetrics,
-    cashierMetrics,
     customerRatingScore,
     staffRateCount,
   });
@@ -930,12 +782,10 @@ async function calculateSnapshotForEmployee({
             roleGroup: qualityEvidence.roleGroup,
             kitchenPenalty: qualityEvidence.kitchenPenalty,
             customerPenalty: qualityEvidence.customerPenalty,
-            cashierOperationalPenalty: qualityEvidence.cashierOperationalPenalty,
             totalPenalty: qualityEvidence.totalPenalty,
             hasManagerReview: qualityEvidence.hasManagerReview,
             hasKitchenEvidence: qualityEvidence.hasKitchenEvidence,
             hasCustomerEvidence: qualityEvidence.hasCustomerEvidence,
-            hasCashierOperationalEvidence: qualityEvidence.hasCashierOperationalEvidence,
             evidenceSource: qualityEvidence.evidenceSource,
             affectsScore: true,
             note: qualityEvidence.note,
@@ -946,7 +796,6 @@ async function calculateSnapshotForEmployee({
           hasPerformanceActivity,
           insufficientData,
           kitchenMetrics,
-          cashierMetrics,
           ...(unacceptedAuditResult
             ? {
                 unacceptedAuditRefreshed: true,

@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   acrCountDocuments: vi.fn(),
   reviewFindOne: vi.fn(),
   orderAggregate: vi.fn(),
-  orderFind: vi.fn(),
   customerReviewAggregate: vi.fn(),
   snapshotFindOneAndUpdate: vi.fn(),
   kitchenOrderWorkItemFind: vi.fn(),
@@ -23,7 +22,7 @@ vi.mock("../../models/index.js", () => ({
   Shift: { find: mocks.shiftFind },
   AttendanceCorrectionRequest: { countDocuments: mocks.acrCountDocuments },
   StaffPerformanceReview: { findOne: mocks.reviewFindOne },
-  Order: { aggregate: mocks.orderAggregate, find: mocks.orderFind },
+  Order: { aggregate: mocks.orderAggregate },
   Review: { aggregate: mocks.customerReviewAggregate },
   StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
   KitchenOrderWorkItem: { find: mocks.kitchenOrderWorkItemFind },
@@ -69,7 +68,6 @@ describe("staffPerformance customer rating factors", () => {
     mocks.acrCountDocuments.mockResolvedValue(0);
     mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 60, attitudeScore: 60, teamworkScore: 60, skillScore: 60 }));
     mocks.orderAggregate.mockResolvedValue([]);
-    mocks.orderFind.mockReturnValue(chainLean([]));
     mocks.kitchenOrderWorkItemFind.mockReturnValue({
       session: vi.fn().mockResolvedValue([]),
       lean: vi.fn().mockResolvedValue([]),
