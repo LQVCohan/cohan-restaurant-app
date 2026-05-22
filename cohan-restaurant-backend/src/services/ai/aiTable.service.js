@@ -59,22 +59,33 @@ const buildBasePrompt = (payload, task) => {
 const fallbackSuggestion = (type, payload) => {
   const capacity = payload?.table?.capacity || 0;
   const status = payload?.table?.status || "available";
-  if (type === "merge") return `Gợi ý ghép bàn: ưu tiên ghép 1-2 bàn trống cùng tầng để đạt khoảng ${Math.max(capacity + 2, 4)} chỗ.`;
+  if (type === "merge") {
+    const targetCapacity = Math.max(capacity + 2, 4);
+    return `Gợi ý ghép bàn: ưu tiên ghép 1-2 bàn trống cùng tầng để đạt khoảng ${targetCapacity} chỗ.`;
+  }
   if (type === "promo") {
     const promos = payload?.promotions || [];
     if (!promos.length) return "Chưa có promotion. Gợi ý ưu đãi nhanh: tặng nước/tráng miệng để kích cầu.";
     const tableLevel = getTableLevel(payload?.table || {});
-    const ranked = promos.map((promo) => ({ ...promo, __level: normalizeLevel(promo.level) })).sort((a, b) => b.__level - a.__level);
-    const list = (ranked.filter((promo) => promo.__level >= tableLevel).length ? ranked.filter((promo) => promo.__level >= tableLevel) : ranked).slice(0, 2);
+    const ranked = promos
+      .map((promo) => ({ ...promo, __level: normalizeLevel(promo.level) }))
+      .sort((a, b) => b.__level - a.__level);
+    const eligible = ranked.filter((promo) => promo.__level >= tableLevel);
+    const list = (eligible.length ? eligible : ranked).slice(0, 2);
     return `Ưu tiên gắn promotion: ${list.map((p) => p.name || p.code).join(", ")} (level phù hợp bàn ${tableLevel}).`;
   }
   if (type === "turnover") {
-    const durations = (payload?.history || []).map((item) => {
-      const start = Date.parse(item.checkIn || item.startAt); const end = Date.parse(item.checkOut || item.endAt);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-      return Math.max(0, Math.round((end - start) / 60000)) || null;
-    }).filter(Boolean);
-    const avg = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+    const durations = (payload?.history || [])
+      .map((item) => {
+        const start = Date.parse(item.checkIn || item.startAt);
+        const end = Date.parse(item.checkOut || item.endAt);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+        return Math.max(0, Math.round((end - start) / 60000)) || null;
+      })
+      .filter(Boolean);
+    const avg = durations.length
+      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+      : null;
     const base = avg ?? (status === "occupied" ? 60 : status === "reserved" ? 30 : 10);
     return `Ước lượng bàn trống sau ${base}–${base + 20} phút (phụ thuộc món và số khách).`;
   }
@@ -97,9 +108,23 @@ const safeJsonParse = (raw) => {
   }
 };
 
-const rectsOverlap = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
-const normalizeRect = (item = {}) => ({ x: Number(item.x) || 0, y: Number(item.y) || 0, w: Math.max(12, Number(item.w) || 60), h: Math.max(12, Number(item.h) || 60) });
-const expandRect = (rect, extra = 0) => ({ x: rect.x - extra, y: rect.y - extra, w: rect.w + extra * 2, h: rect.h + extra * 2 });
+const rectsOverlap = (a, b, gap = 0) =>
+  a.x < b.x + b.w + gap &&
+  a.x + a.w + gap > b.x &&
+  a.y < b.y + b.h + gap &&
+  a.y + a.h + gap > b.y;
+const normalizeRect = (item = {}) => ({
+  x: Number(item.x) || 0,
+  y: Number(item.y) || 0,
+  w: Math.max(12, Number(item.w) || 60),
+  h: Math.max(12, Number(item.h) || 60),
+});
+const expandRect = (rect, extra = 0) => ({
+  x: rect.x - extra,
+  y: rect.y - extra,
+  w: rect.w + extra * 2,
+  h: rect.h + extra * 2,
+});
 const inZone = (r, z) => r.x >= z.x && r.y >= z.y && r.x + r.w <= z.x + z.w && r.y + r.h <= z.y + z.h;
 const centerOf = (r) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -417,10 +442,6 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   }
   addDecor("plant", components.objects.plant, (i, w, h) => ({ x: i % 2 ? zones.vipZone.x - 24 : zones.mainDining.x + zones.mainDining.w + 10, y: zones.mainDining.y + 30 + i * 36, w, h }), 4);
   addDecor("stairs", components.objects.stairs, (i, w, h) => ({ x: zones.decorZone.x + zones.decorZone.w - w - 16 - i * 20, y: zones.decorZone.y + 16 + i * 20, w, h }), 8);
-
-  if (originalRequested > requested) {
-    warnings.push(`Đã chuẩn hóa số bàn từ ${originalRequested} xuống ${requested} theo giới hạn hệ thống.`);
-  }
 
   if (tables.length < requested) {
     warnings.push(`Chỉ đặt được ${tables.length}/${requested} bàn do không đủ không gian hoặc bị trùng vị trí.`);
