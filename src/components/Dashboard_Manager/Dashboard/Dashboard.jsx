@@ -69,8 +69,12 @@ const Dashboard = () => {
     promotions: Number(stats?.promotions || 0),
     staff: Number(stats?.staff || 0),
   };
+  const hasRestaurantContext =
+    Boolean(selectedRestaurantId || selectedRestaurant?.id) ||
+    (restaurants || []).length > 0;
   const isResourceSetupEmpty =
     !loading &&
+    hasRestaurantContext &&
     resourceCounts.customers === 0 &&
     resourceCounts.tables === 0 &&
     resourceCounts.menuItems === 0 &&
@@ -319,13 +323,25 @@ const Dashboard = () => {
           </div>
 
           <div className="dashboard-setup-hint__actions">
-            <button type="button" onClick={handleGoToTables}>
+            <button
+              type="button"
+              onClick={handleGoToTables}
+              aria-label="Đi tới trang quản lý bàn để thêm bàn"
+            >
               Thêm bàn
             </button>
-            <button type="button" onClick={handleGoToMenu}>
+            <button
+              type="button"
+              onClick={handleGoToMenu}
+              aria-label="Đi tới trang quản lý menu để thêm món"
+            >
               Thêm món
             </button>
-            <button type="button" onClick={handleGoToStaff}>
+            <button
+              type="button"
+              onClick={handleGoToStaff}
+              aria-label="Đi tới trang quản lý nhân viên để thêm nhân viên"
+            >
               Thêm nhân viên
             </button>
           </div>

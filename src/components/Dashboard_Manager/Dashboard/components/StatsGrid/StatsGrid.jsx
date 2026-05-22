@@ -34,18 +34,25 @@ const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) =
   const getCardConfig = (key) => {
     const baseConfig = CARD_CONFIG[key];
 
-    if (key === "alerts") {
-      const count = Number(alertsCount || 0);
+    if (key !== "alerts") return baseConfig;
 
+    if (isLoading) {
       return {
         ...baseConfig,
-        icon: count > 0 ? AlertTriangle : CircleCheck,
-        tone: count > 0 ? "danger" : "success",
-        help: count > 0 ? "Cần theo dõi" : "Ổn định",
+        icon: AlertTriangle,
+        tone: "neutral",
+        help: "Đang tải",
       };
     }
 
-    return baseConfig;
+    const count = Number(alertsCount || 0);
+
+    return {
+      ...baseConfig,
+      icon: count > 0 ? AlertTriangle : CircleCheck,
+      tone: count > 0 ? "danger" : "success",
+      help: count > 0 ? "Cần theo dõi" : "Ổn định",
+    };
   };
 
   return <div className={`stats-grid-container stats-grid-container--${variant}`}>{keys.map((key) => { const config = getCardConfig(key); return <StatCard key={key} label={config.label} value={isLoading ? "..." : getValue(key)} icon={config.icon} tone={config.tone} variant={variant} help={variant === "summary" ? config.help : ""} />; })}</div>;

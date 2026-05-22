@@ -18,7 +18,7 @@ const TopDishes = ({
   if (isEmpty && compactWhenEmpty) {
     const emptyText = hasCompletedOrders
       ? "Chưa có dữ liệu món bán chạy."
-      : "Chưa có dữ liệu món bán chạy.";
+      : "Có đơn hoàn thành thì món bán chạy sẽ hiển thị tại đây.";
 
     return (
       <div className={`${shellClass} top-dishes-widget--empty-compact`}>

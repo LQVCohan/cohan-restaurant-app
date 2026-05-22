@@ -60,6 +60,19 @@ const RecentOrders = ({
     variant === "bare"
       ? "recent-orders recent-orders--bare"
       : "dashboard-widget recent-orders";
+  const isEmpty = !loading && safeOrders.length === 0;
+  const hasEmptyActions =
+    typeof onOpenPOS === "function" ||
+    typeof onGoToMenu === "function" ||
+    typeof onGoToTables === "function";
+  const bodyClass = [
+    "order-list-body",
+    "custom-scrollbar",
+    loading ? "order-list-body--loading" : "",
+    isEmpty ? "order-list-body--empty" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={shellClass}>
@@ -67,7 +80,7 @@ const RecentOrders = ({
         <p className="order-limit-note">Hiển thị {MAX_ORDERS} đơn gần nhất</p>
       ) : null}
 
-      <div className="order-list-body custom-scrollbar">
+      <div className={bodyClass}>
         {loading ? (
           <div className="empty-state">
             <p>Đang tải dữ liệu...</p>
@@ -88,7 +101,8 @@ const RecentOrders = ({
               </p>
             </div>
 
-            <div className="empty-state__actions">
+            {hasEmptyActions ? (
+              <div className="empty-state__actions">
               {typeof onOpenPOS === "function" ? (
                 <button
                   type="button"
@@ -117,7 +131,8 @@ const RecentOrders = ({
                   <span>Quản lý bàn</span>
                 </button>
               ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

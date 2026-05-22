@@ -23,8 +23,19 @@ const ManagerPerformancePanel = ({
   const navigate = useNavigate();
   const { dashboard, loading, error, isEmpty } = useManagerPerformanceDashboard({ restaurantId });
 
-  const actionableItems = useMemo(() => (dashboard.recommendedActions || []).filter((item) => Number(item?.count || 0) > 0), [dashboard.recommendedActions]);
-  const hasIncidentSignals = Number(dashboard?.incidentOverview?.pendingReviewCount || 0) > 0 || Number(dashboard?.incidentOverview?.overdueCount || 0) > 0;
+  const incidentOverview = dashboard?.incidentOverview || {};
+  const scoringOverview = dashboard?.scoringOverview || {};
+  const recommendedActions = Array.isArray(dashboard?.recommendedActions)
+    ? dashboard.recommendedActions
+    : [];
+
+  const actionableItems = useMemo(
+    () => recommendedActions.filter((item) => Number(item?.count || 0) > 0),
+    [recommendedActions],
+  );
+  const hasIncidentSignals =
+    Number(incidentOverview.pendingReviewCount || 0) > 0 ||
+    Number(incidentOverview.overdueCount || 0) > 0;
   const isHealthyCompact = summaryOnly && compactWhenHealthy && actionableItems.length === 0 && !hasIncidentSignals;
 
   if (!restaurantId && restaurantLoading) {
@@ -55,10 +66,10 @@ const ManagerPerformancePanel = ({
       ) : (
         <>
           <div className="performance-kpi-grid">
-            <div className="kpi-card"><span>Chờ duyệt</span><strong>{dashboard.incidentOverview.pendingReviewCount}</strong></div>
-            <div className="kpi-card"><span>Quá hạn</span><strong>{dashboard.incidentOverview.overdueCount}</strong></div>
-            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{dashboard.incidentOverview.eligibleCount}</strong></div>
-            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(dashboard.scoringOverview.averageScore)}</strong></div>
+            <div className="kpi-card"><span>Chờ duyệt</span><strong>{incidentOverview.pendingReviewCount || 0}</strong></div>
+            <div className="kpi-card"><span>Quá hạn</span><strong>{incidentOverview.overdueCount || 0}</strong></div>
+            <div className="kpi-card"><span>Đủ điều kiện áp điểm</span><strong>{incidentOverview.eligibleCount || 0}</strong></div>
+            <div className="kpi-card"><span>Điểm trung bình</span><strong>{formatScore(scoringOverview.averageScore || 0)}</strong></div>
           </div>
 
           {summaryOnly ? (
