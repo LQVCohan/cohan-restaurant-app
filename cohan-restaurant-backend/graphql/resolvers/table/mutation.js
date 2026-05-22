@@ -8,6 +8,7 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 import {
   hasActiveOrdersForTable,
   hasActiveReservationsForTable,
+  getTableAvailabilityBlockReason,
 } from "../../../utils/tableStateGuards.js";
 const ensureFloorLevel = async (floorId) => {
   const f = await Floor.findById(floorId).select({ level: 1 }).lean();
@@ -386,7 +387,31 @@ export default {
     if (!existing) throw new GraphQLError("Table not found");
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.TABLE_WRITE);
     const normalizedStatus = String(status || "").trim().toLowerCase();
-    if (TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS.has(normalizedStatus)) {
+    if (normalizedStatus === "available") {
+      const tableId = existing._id || id;
+      const reason = await getTableAvailabilityBlockReason({
+        restaurantId: existing.restaurantId,
+        tableId,
+        tableCode: existing.code,
+      });
+      if (reason) {
+        throw new GraphQLError(reason.message, {
+          extensions: {
+            code: reason.code,
+            details: reason.details || null,
+          },
+        });
+      }
+      const activeReservationExists = await hasActiveReservationsForTable({
+        restaurantId: existing.restaurantId,
+        tableId,
+      });
+      if (activeReservationExists) {
+        throw new GraphQLError("Không thể trả bàn về trống vì còn đặt chỗ hoạt động.", {
+          extensions: { code: "TABLE_HAS_ACTIVE_RESERVATION" },
+        });
+      }
+    } else if (TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS.has(normalizedStatus)) {
       const tableId = existing._id || id;
       const activeOrderExists = await hasActiveOrdersForTable({
         restaurantId: existing.restaurantId,

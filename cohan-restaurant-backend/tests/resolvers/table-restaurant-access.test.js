@@ -6,7 +6,7 @@ const tableMocks = vi.hoisted(() => ({
   updateOne: vi.fn(), bulkWrite: vi.fn(), findOneAndUpdate: vi.fn(),
 }));
 const floorMocks = vi.hoisted(() => ({ findById: vi.fn() }));
-const orderMocks = vi.hoisted(() => ({ findOne: vi.fn() }));
+const orderMocks = vi.hoisted(() => ({ findOne: vi.fn(), find: vi.fn() }));
 const reservationMocks = vi.hoisted(() => ({ findOne: vi.fn() }));
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
 const authMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn() }));
@@ -78,6 +78,10 @@ describe("table restaurant access guards", () => {
     tableMocks.findOneAndUpdate.mockReturnValue(leanWrap({ _id: "valid-t1", restaurantId: "valid-r1" }));
     floorMocks.findById.mockReturnValue(selectLeanWrap({ restaurantId: "valid-r1", level: 1 }));
     orderMocks.findOne.mockReturnValue(mockFindOneChain(null));
+    orderMocks.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
     reservationMocks.findOne.mockReturnValue(mockFindOneChain(null));
   });
 
@@ -161,12 +165,14 @@ describe("table restaurant access guards", () => {
   it("setTableStatus denied after load", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.setTableStatus(null,{input:{id:"valid-t1",status:"OPEN"}},{})).rejects.toThrow(); expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled(); });
   it("setTableStatus blocked when active table_session exists and target is available", async () => {
     const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
-    orderMocks.findOne.mockReturnValueOnce(mockFindOneChain({ _id: "session-1" }));
+    orderMocks.findOne.mockReturnValueOnce(
+      mockFindOneChain({ _id: "session-1", items: [{ status: "preparing" }] })
+    );
     await expect(
       m.setTableStatus(null, { input: { id: "valid-t1", status: "available" } }, {})
     ).rejects.toMatchObject({
-      message: "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
-      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+      message: "Không thể trả bàn về trống vì còn món chưa phục vụ.",
+      extensions: { code: "TABLE_HAS_UNSERVED_ITEMS" },
     });
     expect(orderMocks.findOne).toHaveBeenCalledTimes(1);
     expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled();
@@ -175,12 +181,14 @@ describe("table restaurant access guards", () => {
     const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
     orderMocks.findOne
       .mockReturnValueOnce(mockFindOneChain(null))
-      .mockReturnValueOnce(mockFindOneChain({ _id: "legacy-1" }));
+      .mockReturnValueOnce(
+        mockFindOneChain({ _id: "legacy-1", orderPaymentStatus: "unpaid", totals: { grandTotal: 200 }, items: [{ status: "served" }] })
+      );
     await expect(
       m.setTableStatus(null, { input: { id: "valid-t1", status: "available" } }, {})
     ).rejects.toMatchObject({
-      message: "Không thể chuyển trạng thái bàn khi còn phiên hoặc order hoạt động.",
-      extensions: { code: "TABLE_HAS_ACTIVE_ORDERS" },
+      message: "Không thể trả bàn về trống vì còn hóa đơn chưa thanh toán.",
+      extensions: { code: "TABLE_HAS_UNPAID_ORDERS" },
     });
     expect(orderMocks.findOne).toHaveBeenCalledTimes(2);
     expect(tableMocks.findByIdAndUpdate).not.toHaveBeenCalled();
