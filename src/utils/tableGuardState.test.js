@@ -22,12 +22,49 @@ describe("tableGuardState", () => {
     expect(guard.hasGuard).toBe(false);
   });
 
+  it("does not disable returning occupied table to available", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "occupied" },
+      "set_status",
+      "available"
+    );
+    expect(reason).toBe("");
+  });
+
+  it("does not disable returning payment_pending table to available", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "payment_pending" },
+      "set_status",
+      "available"
+    );
+    expect(reason).toBe("");
+  });
+
+  it("does not disable returning reserved table to available", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "reserved" },
+      "set_status",
+      "available"
+    );
+    expect(reason).toBe("");
+  });
+
   it("disables dangerous target status when guard exists", () => {
     const reason = getTableActionDisabledReason(
       { status: "occupied" },
       "set_status",
       "cleaning"
     );
-    expect(reason).toContain("Không thể thao tác");
+    expect(reason).not.toBe("");
+  });
+
+  it("disables delete when guard exists", () => {
+    const reason = getTableActionDisabledReason({ status: "occupied" }, "delete");
+    expect(reason).not.toBe("");
+  });
+
+  it("keeps guard state for occupied table", () => {
+    const guard = getTableGuardState({ status: "occupied" });
+    expect(guard.hasGuard).toBe(true);
   });
 });

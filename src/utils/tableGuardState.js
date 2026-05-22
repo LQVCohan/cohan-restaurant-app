@@ -8,7 +8,6 @@ const ACTIVE_ORDER_SESSION_STATUSES = new Set([
 const RESERVATION_STATUSES = new Set(["reserved"]);
 
 export const TABLE_DANGEROUS_TARGET_STATUSES = new Set([
-  "available",
   "cleaning",
   "maintenance",
   "inactive",
@@ -63,6 +62,8 @@ export function getTableActionDisabledReason(table, action, targetStatus = "") {
 
   if (action === "set_status") {
     const normalizedTarget = String(targetStatus || "").toLowerCase();
+    // Returning to available is backend-validated by setTableStatus. Do not block it in the UI.
+    if (normalizedTarget === "available") return "";
     if (TABLE_DANGEROUS_TARGET_STATUSES.has(normalizedTarget)) {
       return "Không thể thao tác vì bàn đang có đặt chỗ/đơn hàng hoạt động.";
     }
