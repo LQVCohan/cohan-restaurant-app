@@ -3206,6 +3206,20 @@ export default function useOrderManagement(pos = null) {
     },
     [mutCreateOrderPayment],
   );
+  const resolvePayableOrderIds = useCallback(
+    ({ explicitOrderIds = [], fallbackOrderId = null } = {}) => {
+      const fromExplicit = Array.isArray(explicitOrderIds) ? explicitOrderIds : [];
+      const fromCurrentOrder = Array.isArray(currentOrder)
+        ? currentOrder.map((item) => item?.sourceOrderId || item?.orderId).filter(Boolean)
+        : [];
+      const prepared = lastPreparedOrderIdRef.current ? [lastPreparedOrderIdRef.current] : [];
+      const combined = [...fromExplicit, ...fromCurrentOrder, fallbackOrderId, ...prepared]
+        .map((id) => String(id || "").trim())
+        .filter(Boolean);
+      return [...new Set(combined)];
+    },
+    [currentOrder],
+  );
 
   const getPaymentSession = useCallback(
     async (id) => {
@@ -3469,6 +3483,7 @@ export default function useOrderManagement(pos = null) {
     checkoutOrder,
     createOnlineOrderPayment,
     getPaymentSession,
+    resolvePayableOrderIds,
     payOrderByIds,
     payLoading: payLoadingByTable || payLoadingByOrderIds,
     reviewOrderItemVoid,

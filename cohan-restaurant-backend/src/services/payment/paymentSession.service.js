@@ -166,6 +166,11 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
   if (!mongoose.isValidObjectId(userId)) throw new Error("Unauthorized");
   if (!Array.isArray(orderIds) || !orderIds.length) throw new Error("Invalid orderIds");
   const normalizedProvider = normalizeProvider(provider);
+  const restaurant = await Restaurant.findById(restaurantId).lean();
+  if (!restaurant) throw new Error("Restaurant not found");
+  const paymentSettings = getRestaurantPaymentSettings(restaurant);
+  const providerCfg = paymentSettings.providers.find((p) => p.provider === normalizedProvider);
+  if (normalizedProvider !== "bank_transfer" && (!providerCfg || !providerCfg.active)) throw new Error("Provider is inactive");
   const rawIds = [...new Set(orderIds.map(String))];
   if (rawIds.some((id) => !mongoose.isValidObjectId(id))) throw new Error("Invalid orderIds");
   const uniqueOrderIds = rawIds;
@@ -207,8 +212,8 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
     const ipnUrl = `${baseApiUrl}/api/payments/webhooks/${normalizedProvider}`;
     const returnUrl = `${baseApiUrl}/api/payments/return/${normalizedProvider}`;
     const providerResult = normalizedProvider === "momo"
-      ? await createMomoPayment({ payment, ipnUrl, returnUrl, mode: "sandbox" })
-      : createVnpayPayment({ payment, ipAddr: clientIp, returnUrl, mode: "sandbox" });
+      ? await createMomoPayment({ payment, ipnUrl, returnUrl, mode: providerCfg?.mode || "sandbox" })
+      : createVnpayPayment({ payment, ipAddr: clientIp, returnUrl, mode: providerCfg?.mode || "sandbox" });
     payment.payUrl = providerResult.payUrl;
     payment.qrCodeUrl = providerResult.qrCodeUrl || null;
     payment.deeplink = providerResult.deeplink || null;
@@ -424,13 +429,15 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   const bankAccountNumber = String(payload?.bankAccountNumber || payload?.accountNumber || "");
   const occurredAt = payload?.transactionDate ? new Date(payload.transactionDate) : new Date();
 
-  const exists = transactionId ? await BankTransaction.findOne({ provider, transactionId }) : null;
-  if (exists) return { duplicate: true, bankTransaction: exists };
-
-  const bankTx = await BankTransaction.create({ provider, transactionId, amount, description, transferContent: description, bankAccountNumber, occurredAt, raw: payload, matchStatus: "unmatched" });
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const exists = transactionId ? await BankTransaction.findOne({ provider, transactionId }).session(session) : null;
+      if (exists) return { duplicate: true, bankTransaction: exists };
+      const bankTx = await BankTransaction.create([{ provider, transactionId, amount, description, transferContent: description, bankAccountNumber, occurredAt, raw: payload, matchStatus: "unmatched" }], { session }).then((x) => x[0]);
   const normalizedDescription = description.toUpperCase();
   const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
-  const candidates = await PaymentSession.find({ status: "pending", $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }] });
+  const candidates = await PaymentSession.find({ status: "pending", $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }] }).session(session);
   const payment = candidates.find((p) => {
     const ref = String(p.reference || "").toUpperCase();
     const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
@@ -441,15 +448,21 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   bankTx.matchedPaymentSessionId = payment._id;
   if (Math.round(amount) !== Math.round(Number(payment.amount || 0))) {
     bankTx.matchStatus = "amount_mismatch";
-    await bankTx.save();
-    await PaymentReconciliation.create({ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: amount - payment.amount, status: "amount_mismatch", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload, note: "Amount mismatch" });
+    await bankTx.save({ session });
+    payment.callbackStatus = "rejected";
+    await payment.save({ session });
+    await PaymentReconciliation.create([{ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: amount - payment.amount, status: "amount_mismatch", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload, note: "Amount mismatch" }], { session });
     return { matched: false, reason: "amount_mismatch", bankTransaction: bankTx };
   }
   bankTx.matchStatus = "matched";
-  await bankTx.save();
+  await bankTx.save({ session });
   payment.status = "success"; payment.callbackStatus = "verified"; payment.providerTransactionId = transactionId || payment.providerTransactionId; payment.reconciledAt = new Date(); payment.callbackRaw = payload;
-  await payment.save();
-  await PaymentReconciliation.create({ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: 0, status: "matched", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload });
-  await settlePaidOrderPaymentSession({ payment, source: "bank_webhook" });
+  await payment.save({ session });
+  await PaymentReconciliation.create([{ restaurantId: payment.restaurantId, paymentSessionId: payment._id, provider, expectedAmount: payment.amount, receivedAmount: amount, varianceAmount: 0, status: "matched", bankTransactionId: bankTx._id, paymentReference: payment.reference, matchedBy: "webhook", matchedAt: new Date(), raw: payload }], { session });
+  await settlePaidOrderPaymentSession({ payment, source: "bank_webhook", session });
   return { matched: true, payment, bankTransaction: bankTx };
+    });
+  } finally {
+    await session.endSession();
+  }
 }
