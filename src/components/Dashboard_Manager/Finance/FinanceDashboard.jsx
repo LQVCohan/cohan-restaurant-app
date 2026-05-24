@@ -144,15 +144,23 @@ const FinanceDashboard = () => {
               <table className="clean-table">
                 <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Reference</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
                 <tbody>
-                  {(reconciliations || []).slice(0, 10).map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.time ? new Date(r.time).toLocaleString("vi-VN") : "-"}</td>
-                      <td>{Number(r.amount || 0).toLocaleString("vi-VN")}đ</td>
-                      <td>{r.reference || "-"}</td>
-                      <td>{r.status}</td>
-                      <td>{r.note || "-"}</td>
+                  {(reconciliations || []).length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center text-muted" style={{ padding: "1rem" }}>
+                        Chưa có dữ liệu đối soát chuyển khoản.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    (reconciliations || []).slice(0, 10).map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.time ? new Date(r.time).toLocaleString("vi-VN") : "-"}</td>
+                        <td>{Number(r.amount || 0).toLocaleString("vi-VN")}đ</td>
+                        <td>{r.reference || "-"}</td>
+                        <td>{r.status}</td>
+                        <td>{r.note || "-"}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
