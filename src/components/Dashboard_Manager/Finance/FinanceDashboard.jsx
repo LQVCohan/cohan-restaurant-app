@@ -47,11 +47,22 @@ const FinanceDashboard = () => {
     persistSettings,
   } = useRestaurantCurrency(restaurantId);
 
+  const safeCostBreakdown = {
+    cogs: Number(costBreakdown?.cogs || 0),
+    labor: Number(costBreakdown?.labor || 0),
+    operations: Number(costBreakdown?.operations || 0),
+    other: Number(costBreakdown?.other || 0),
+  };
+  const safeReconciliationSummary = {
+    matched: Number(reconciliationSummary?.matched || 0),
+    amountMismatch: Number(reconciliationSummary?.amountMismatch || 0),
+    unmatched: Number(reconciliationSummary?.unmatched || 0),
+  };
   const totalCost =
-    costBreakdown.cogs +
-    costBreakdown.labor +
-    costBreakdown.operations +
-    costBreakdown.other;
+    safeCostBreakdown.cogs +
+    safeCostBreakdown.labor +
+    safeCostBreakdown.operations +
+    safeCostBreakdown.other;
 
   const percent = (value) =>
     totalCost > 0 ? `${Math.round((Number(value || 0) / totalCost) * 100)}%` : "0%";
@@ -115,7 +126,7 @@ const FinanceDashboard = () => {
         </div>
       </header>
 
-      {error && <div className="finance-error">Không tải được dữ liệu tài chính: {error.message}</div>}
+      {error && <div className="finance-error">Không thể tải dữ liệu. Vui lòng thử lại.</div>}
 
       <section className="stats-section">
         <FinanceStats summary={summary} />
@@ -127,7 +138,7 @@ const FinanceDashboard = () => {
             <div className="card-header">
               <h3>Biểu đồ Thu / Chi / Lợi nhuận</h3>
             </div>
-            <div className="card-body">{loading ? <div>Đang tải...</div> : <RevenueChart trend={trend} />}</div>
+            <div className="card-body">{loading ? <div>Đang tải dữ liệu...</div> : <RevenueChart trend={trend || []} />}</div>
           </div>
 
           <div className="card-container transactions-card">
@@ -145,12 +156,12 @@ const FinanceDashboard = () => {
                 </button>
               </div>
             </div>
-            {loading ? <div className="card-body">Đang tải giao dịch...</div> : <TransactionTable transactions={transactions} />}
+            {loading ? <div className="card-body">Đang tải dữ liệu...</div> : <TransactionTable transactions={transactions || []} />}
           </div>
           <div className="card-container transactions-card">
             <div className="card-header"><h3>Đối soát chuyển khoản</h3></div>
             <div className="card-body">
-              <div>Khớp: <b>{reconciliationSummary.matched}</b> | Lệch tiền: <b>{reconciliationSummary.amountMismatch}</b> | Chưa khớp: <b>{reconciliationSummary.unmatched}</b></div>
+              <div>Khớp: <b>{safeReconciliationSummary.matched}</b> | Lệch tiền: <b>{safeReconciliationSummary.amountMismatch}</b> | Chưa khớp: <b>{safeReconciliationSummary.unmatched}</b></div>
               <table className="clean-table">
                 <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Mã tham chiếu</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
                 <tbody>
@@ -184,7 +195,7 @@ const FinanceDashboard = () => {
                 <AlertCircle size={16} /> Công nợ phải xử lý
               </h3>
             </div>
-            <div className="card-body no-padding">{loading ? <div className="p-3">Đang tải...</div> : <SupplierDebts debts={debts} />}</div>
+            <div className="card-body no-padding">{loading ? <div className="p-3">Đang tải dữ liệu...</div> : <SupplierDebts debts={debts || []} />}</div>
           </div>
 
           <div className="card-container cost-structure">
@@ -195,23 +206,23 @@ const FinanceDashboard = () => {
               <div className="cost-row">
                 <div className="label">COGS (Nguyên liệu)</div>
                 <div className="progress">
-                  <div className="fill red" style={{ width: percent(costBreakdown.cogs) }}></div>
+                  <div className="fill red" style={{ width: percent(safeCostBreakdown.cogs) }}></div>
                 </div>
-                <div className="value">{percent(costBreakdown.cogs)}</div>
+                <div className="value">{percent(safeCostBreakdown.cogs)}</div>
               </div>
               <div className="cost-row">
                 <div className="label">Nhân sự (Labor)</div>
                 <div className="progress">
-                  <div className="fill orange" style={{ width: percent(costBreakdown.labor) }}></div>
+                  <div className="fill orange" style={{ width: percent(safeCostBreakdown.labor) }}></div>
                 </div>
-                <div className="value">{percent(costBreakdown.labor)}</div>
+                <div className="value">{percent(safeCostBreakdown.labor)}</div>
               </div>
               <div className="cost-row">
                 <div className="label">Vận hành</div>
                 <div className="progress">
-                  <div className="fill blue" style={{ width: percent(costBreakdown.operations) }}></div>
+                  <div className="fill blue" style={{ width: percent(safeCostBreakdown.operations) }}></div>
                 </div>
-                <div className="value">{percent(costBreakdown.operations)}</div>
+                <div className="value">{percent(safeCostBreakdown.operations)}</div>
               </div>
 
               <div className="insight-text">
