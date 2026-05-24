@@ -1756,11 +1756,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
         if (row?.status === "scheduled" && shiftStart && now > shiftStart) {
           return { ...row, issueType: "missed_checkin", issueLabel: "Chưa check-in" };
         }
-        if (row?.isLate === true) {
-          return { ...row, issueType: "late", issueLabel: "Trễ giờ" };
-        }
         if (row?.status === "checked_in" && shiftEnd && now > shiftEnd) {
           return { ...row, issueType: "missed_checkout", issueLabel: "Chưa check-out" };
+        }
+        if (row?.isLate === true) {
+          return { ...row, issueType: "late", issueLabel: "Trễ giờ" };
         }
         return null;
       })
