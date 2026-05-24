@@ -478,7 +478,8 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
     : verifyVnpayCallback(payload);
 
   payment.callbackRaw = payload;
-  payment.callbackAt = new Date();
+  const now = new Date();
+  payment.callbackAt = now;
   payment.callbackStatus = signatureValid ? "verified" : "rejected";
   payment.events.push({ type: "callback_received", payload: { source, signatureValid } });
 
@@ -506,6 +507,20 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
 
   if (payment.status === "success") {
     payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
+    await payment.save();
+    return payment.toObject();
+  }
+  if (["cancelled", "expired"].includes(String(payment.status || "").toLowerCase())) {
+    payment.events.push({ type: "callback_ignored", payload: { reason: `status_${String(payment.status || "").toLowerCase()}` } });
+    await payment.save();
+    return payment.toObject();
+  }
+  if (String(payment.status || "").toLowerCase() === "pending" && payment.expiresAt && new Date(payment.expiresAt).getTime() <= now.getTime()) {
+    payment.status = "expired";
+    payment.cancelledAt = payment.cancelledAt || now;
+    payment.cancelReason = payment.cancelReason || "expired_by_ttl";
+    payment.events.push({ type: "payment_expired", payload: { reason: payment.cancelReason } });
+    payment.events.push({ type: "callback_ignored", payload: { reason: "expired_by_ttl" } });
     await payment.save();
     return payment.toObject();
   }
@@ -593,9 +608,10 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
 export async function getPaymentSessionById(paymentId, userId = null) {
   const query = { _id: paymentId };
   if (userId) query.userId = userId;
-  const session = await PaymentSession.findOne(query).lean();
-  if (!session) throw new Error("Payment session not found");
-  return session;
+  const paymentSession = await PaymentSession.findOne(query);
+  if (!paymentSession) throw new Error("Payment session not found");
+  await expirePendingPaymentSessionIfNeeded(paymentSession, new Date());
+  return paymentSession.toObject();
 }
 
 export async function listReservationPayments(reservationId, userId) {
@@ -635,18 +651,24 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
         matchStatus: "unmatched",
       }], { session }).then((x) => x[0]);
 
+      const now = new Date();
       const normalizedDescription = description.toUpperCase();
       const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
       const candidates = await PaymentSession.find({
         status: "pending",
         $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }],
       }).session(session);
-      const payment = candidates.find((p) => {
-        const ref = String(p.reference || "").toUpperCase();
-        const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber
-          || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
-        return accountOk && (refs.includes(ref) || normalizedDescription.includes(ref));
-      });
+      let payment = null;
+      for (const candidate of candidates) {
+        if (await expirePendingPaymentSessionIfNeeded(candidate, now)) continue;
+        const ref = String(candidate.reference || "").toUpperCase();
+        const accountOk = !candidate?.metadata?.bankTransfer?.bankAccountNumber
+          || String(candidate?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
+        if (accountOk && (refs.includes(ref) || normalizedDescription.includes(ref))) {
+          payment = candidate;
+          break;
+        }
+      }
       if (!payment) {
         await PaymentReconciliation.create([{ restaurantId: payloadRestaurantId, provider, status: "unmatched", receivedAmount: amount, bankTransactionId: bankTx._id, raw: payload, note: "No pending payment session matched" }], { session });
         return { matched: false, bankTransaction: bankTx };
