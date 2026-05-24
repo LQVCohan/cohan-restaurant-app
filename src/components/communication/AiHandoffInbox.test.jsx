@@ -1,19 +1,15 @@
-import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import AiHandoffInbox from "./AiHandoffInbox";
+import { AuthContext } from "@/context/AuthContext";
 
-const useCommunicationMock = vi.fn();
+const { useCommunicationMock } = vi.hoisted(() => ({
+  useCommunicationMock: vi.fn(),
+}));
 
 vi.mock("@/hooks/useCommunication", () => ({
   default: (...args) => useCommunicationMock(...args),
 }));
-
-vi.mock("@/context/AuthContext", () => ({
-  AuthContext: React.createContext({ user: null }),
-}));
-
-import { AuthContext } from "@/context/AuthContext";
 
 const renderWithUser = (ui, user = { restaurantForStaff: "r1" }) =>
   render(<AuthContext.Provider value={{ user }}>{ui}</AuthContext.Provider>);
@@ -57,7 +53,8 @@ describe("AiHandoffInbox", () => {
       notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: {}, createdAt: new Date().toISOString() }],
     });
     renderWithUser(<AiHandoffInbox />);
-    fireEvent.click(screen.getByRole("button", { name: /ai handoff/i }));
+    const previewNode = screen.getAllByText("Yêu cầu hỗ trợ từ chatbot")[1];
+    fireEvent.click(previewNode.closest("button"));
     expect(await screen.findByText(/chưa có threadId/i)).toBeInTheDocument();
   });
 
