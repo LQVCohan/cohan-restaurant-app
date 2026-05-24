@@ -159,3 +159,37 @@ Trạng thái conversation đã chuẩn hóa `open | closed | handoff_requested`
 - đánh dấu hội thoại cần nhân viên tiếp nhận,
 - hiển thị danh sách chat cần xử lý,
 - truy vết lịch sử đầy đủ trước khi nhân viên trả lời.
+
+## 12. Phase 3 - Human staff handoff
+
+Phase 3 bổ sung cơ chế chuyển hội thoại chatbot sang nhân viên thật theo hướng explicit và an toàn cho guest.
+
+### Thiết kế chính
+
+- Mutation mới `requestAiChatbotHandoff` để gửi yêu cầu gặp nhân viên một cách tường minh.
+- `askAiChatbot` **không tự động** tạo handoff, chỉ trả về gợi ý handoff (`handoffSuggested`, `handoffReason`, `handoffMessage`) khi intent support, fallback, low confidence hoặc có từ khóa yêu cầu người thật.
+- `AiChatConversation` được liên kết sang `ChatThread` nội bộ qua `chatThreadId`.
+- Reuse `ChatThread.channel = support`, `targetRole = support` để không mở rộng enum ở phase này.
+
+### Luồng handoff
+
+1. Client gọi `requestAiChatbotHandoff` với `conversationId` + `guestId` (guest flow) hoặc session user.
+2. Backend xác thực ownership hội thoại:
+   - user đăng nhập phải khớp `conversation.userId`
+   - guest phải khớp `conversation.guestId`
+3. Nếu đã `handoff_requested` và có `chatThreadId`, mutation trả idempotent success.
+4. Nếu chưa có, backend tạo/reuse `ChatThread` support cho staff/manager, kèm summary lịch sử AI gần nhất vào message đầu tiên.
+5. Tạo `Notification` loại `ai_chatbot_handoff` cho staff/manager theo nhà hàng.
+6. Cập nhật conversation status thành `handoff_requested` và lưu metadata handoff.
+
+### Quy tắc guest privacy
+
+- Guest không được đưa vào `ChatThread.participants` (participants là user ObjectId).
+- guestId/conversationId chỉ lưu trong metadata/payload cần thiết để staff đối soát.
+- conversationId sai hoặc không thuộc ownership sẽ trả lỗi an toàn, không rò rỉ dữ liệu.
+
+### Giới hạn hiện tại
+
+- Chưa có inbox staff chuyên biệt cho AI handoff.
+- Đang reuse kênh `support` của communication system.
+- Guest chưa tham gia trực tiếp vào luồng ChatThread yêu cầu đăng nhập; staff xử lý dựa trên summary + lịch sử AI đã bàn giao.

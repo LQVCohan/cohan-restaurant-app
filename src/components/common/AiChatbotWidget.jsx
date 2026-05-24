@@ -31,6 +31,22 @@ const ASK_AI_CHATBOT = gql`
         orderCount
         reservationCount
       }
+      handoffSuggested
+      handoffReason
+      handoffMessage
+    }
+  }
+`;
+const REQUEST_AI_CHATBOT_HANDOFF = gql`
+  mutation RequestAiChatbotHandoff($input: RequestAiChatbotHandoffInput!) {
+    requestAiChatbotHandoff(input: $input) {
+      ok
+      conversationId
+      handoffRequested
+      chatThreadId
+      notificationCount
+      message
+      alreadyRequested
     }
   }
 `;
@@ -45,6 +61,7 @@ const STARTER_MESSAGES = [
 const GUEST_ID_STORAGE_KEY = "cohan_ai_guest_id";
 
 const getConversationStorageKey = (restaurantId) => `cohan_ai_conversation_id:${restaurantId || "global"}`;
+const getHandoffStorageKey = (conversationId) => `cohan_ai_handoff_requested:${conversationId}`;
 
 const generateGuestId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -79,6 +96,7 @@ function AiChatbotWidget() {
   const [lastQuickReplies, setLastQuickReplies] = useState(STARTER_MESSAGES);
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
+  const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
   const [guestId, setGuestId] = useState(() => {
     if (typeof window === "undefined") return "";
     const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
@@ -88,6 +106,7 @@ function AiChatbotWidget() {
     return created;
   });
   const [conversationId, setConversationId] = useState("");
+  const [handoffRequested, setHandoffRequested] = useState(false);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,6 +129,11 @@ function AiChatbotWidget() {
     if (typeof window === "undefined") return;
     setConversationId(window.localStorage.getItem(restaurantStorageKey) || "");
   }, [restaurantStorageKey]);
+
+  useEffect(() => {
+    if (!conversationId || typeof window === "undefined") return setHandoffRequested(false);
+    setHandoffRequested(window.localStorage.getItem(getHandoffStorageKey(conversationId)) === "1");
+  }, [conversationId]);
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
@@ -174,6 +198,39 @@ function AiChatbotWidget() {
     navigate(action.href);
     setOpen(false);
   };
+  const handleRequestHandoff = async () => {
+    if (!conversationId || handoffRequested || handoffLoading) return;
+    try {
+      const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+      const { data } = await requestHandoff({
+        variables: {
+          input: {
+            conversationId,
+            guestId: guestId || undefined,
+            restaurantId: restaurantId || undefined,
+            reason: "user_click",
+            latestUserMessage,
+          },
+        },
+      });
+      const result = data?.requestAiChatbotHandoff;
+      if (result?.ok && result?.handoffRequested) {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(getHandoffStorageKey(conversationId), "1");
+        }
+        setHandoffRequested(true);
+      }
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: result?.message || "Đã gửi yêu cầu gặp nhân viên." },
+      ]);
+    } catch (err) {
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: err?.message || "Không thể gửi yêu cầu gặp nhân viên lúc này." },
+      ]);
+    }
+  };
 
   return (
     <div className="ai-chatbot-widget" aria-live="polite">
@@ -232,6 +289,23 @@ function AiChatbotWidget() {
                   {reply}
                 </button>
               ))}
+            </div>
+          ) : null}
+
+          <div className="ai-chatbot-actions">
+            <button
+              type="button"
+              onClick={handleRequestHandoff}
+              disabled={!conversationId || handoffRequested || handoffLoading}
+            >
+              {handoffRequested ? "Đã yêu cầu nhân viên" : "Gặp nhân viên"}
+            </button>
+          </div>
+
+          {handoffRequested ? (
+            <div className="ai-chatbot-context">
+              <Sparkles size={14} />
+              <span>Nhân viên đã được thông báo. Bạn có thể tiếp tục gửi tin nhắn, nhân viên sẽ xem lịch sử trước đó.</span>
             </div>
           ) : null}
 

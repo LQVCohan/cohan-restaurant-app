@@ -20,6 +20,7 @@ const AiChatConversationSchema = new Schema(
     messageCount: { type: Number, default: 0 },
     lastIntent: { type: String, default: "" },
     source: { type: String, default: "ai_chatbot" },
+    chatThreadId: { type: Types.ObjectId, ref: "ChatThread", index: true, default: null },
     metadata: { type: Schema.Types.Mixed, default: null },
   },
   { timestamps: true }
