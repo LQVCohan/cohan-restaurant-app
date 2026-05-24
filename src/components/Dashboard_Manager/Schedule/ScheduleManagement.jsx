@@ -1627,7 +1627,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
       if (Number.isNaN(start.getTime())) return false;
       return format(start, "yyyy-MM-dd") === today;
     });
-    const uniqueShiftIds = new Set(todayRows.map((row) => String(row.id)));
+    const todayShiftGroupKeys = new Set(
+      todayRows.map((row) => {
+        const start = new Date(row.startTime);
+        const dateKey = Number.isNaN(start.getTime())
+          ? "unknown-date"
+          : format(start, "yyyy-MM-dd");
+        return `${dateKey}|${String(row.shiftType || "").toLowerCase()}|${row.startTime || ""}|${row.endTime || ""}`;
+      }),
+    );
     const ackByShiftId = new Map();
     declinedShiftAcks.forEach((ack) => {
       ackByShiftId.set(String(ack.shiftId), ack);
@@ -1651,7 +1659,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return String(shiftRow.employeeId) === String(ack.employeeId);
     }).length;
     return {
-      totalShiftsToday: uniqueShiftIds.size,
+      totalShiftsToday: todayShiftGroupKeys.size,
       totalAssignmentsToday: todayRows.length,
       accepted,
       pending,
