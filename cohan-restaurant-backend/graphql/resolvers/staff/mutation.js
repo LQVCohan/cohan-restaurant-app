@@ -137,7 +137,18 @@ async function checkShiftAttendanceAction({ shiftId, ctx, action }) {
   if (!shift) throw new Error("Không tìm thấy ca làm.");
   if (String(shift.employeeId) !== String(actorId)) throw new Error("Bạn không thể chấm công cho ca của người khác.");
   const shiftStatus = String(shift.status || "").toLowerCase();
-  if (["cancelled", "draft"].includes(shiftStatus)) throw new Error("Ca làm không hợp lệ để chấm công.");
+  if (["cancelled"].includes(shiftStatus)) throw new Error("Ca làm không hợp lệ để chấm công.");
+  const publication = await SchedulePublication.findOne({
+    restaurantId: shift.restaurantId,
+    periodStart: { $lte: shift.startTime },
+    periodEnd: { $gte: shift.endTime },
+    status: { $in: ["published", "active"] },
+  })
+    .select({ _id: 1, status: 1 })
+    .lean();
+  if (!publication) {
+    throw new Error("Ca chưa được công bố nên không thể chấm công.");
+  }
   const now = new Date();
   const start = new Date(shift.startTime);
   const end = new Date(shift.endTime);
@@ -157,7 +168,53 @@ async function checkShiftAttendanceAction({ shiftId, ctx, action }) {
     if (now < timesheet.actualCheckInAt) throw new Error("Thời gian check-out không hợp lệ.");
     timesheet.actualCheckOutAt = now;
   }
-  await timesheet.save();
+  const toMinutes = (value) => Math.max(0, Math.round(value / (1000 * 60)));
+  const checkInAt = timesheet.actualCheckInAt;
+  const checkOutAt = timesheet.actualCheckOutAt;
+  const plannedStart = timesheet.plannedStartTime;
+  const plannedEnd = timesheet.plannedEndTime;
+
+  timesheet.latenessMinutes =
+    plannedStart && checkInAt
+      ? toMinutes(new Date(checkInAt) - new Date(plannedStart))
+      : 0;
+  timesheet.earlyLeaveMinutes =
+    plannedEnd && checkOutAt
+      ? toMinutes(new Date(plannedEnd) - new Date(checkOutAt))
+      : 0;
+  timesheet.workedMinutes =
+    checkInAt && checkOutAt
+      ? toMinutes(new Date(checkOutAt) - new Date(checkInAt))
+      : 0;
+  timesheet.overtimeMinutes =
+    plannedEnd && checkOutAt
+      ? toMinutes(new Date(checkOutAt) - new Date(plannedEnd))
+      : 0;
+  timesheet.hours = Number((timesheet.workedMinutes / 60).toFixed(2));
+  if (!checkOutAt) {
+    timesheet.status = timesheet.latenessMinutes > 0 ? "late" : "checked_in";
+  } else if (timesheet.latenessMinutes > 0 && timesheet.earlyLeaveMinutes > 0) {
+    timesheet.status = "late_early_leave";
+  } else if (timesheet.earlyLeaveMinutes > 0) {
+    timesheet.status = "early_leave";
+  } else if (timesheet.latenessMinutes > 0) {
+    timesheet.status = "late";
+  } else {
+    timesheet.status = "completed";
+  }
+
+  try {
+    await timesheet.save();
+  } catch (error) {
+    if (error?.code === 11000) {
+      const existing = await Timesheet.findOne({
+        employeeId: shift.employeeId,
+        shiftId: shift._id,
+      }).lean();
+      if (existing) throw new Error("Bạn đã chấm công cho ca này.");
+    }
+    throw error;
+  }
   return {
     id: String(timesheet._id),
     restaurantId: String(timesheet.restaurantId),

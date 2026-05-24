@@ -978,7 +978,7 @@ export default function StaffSchedulePage() {
     const timing = getShiftTimingState(shift);
     if (ack?.status === "declined") return false;
     if (timing.isEnded) return false;
-    return timing.isLive || timing.startsSoon || toDateKey(shift.startTime) === todayKey;
+    return timing.isLive || timing.startsSoon;
   };
   const handleAttendanceAction = async (shiftId, action) => {
     setAttendanceActionLoadingShiftId(shiftId);
@@ -1969,6 +1969,9 @@ export default function StaffSchedulePage() {
                           </>
                         ) : null}
                         {attendance ? <p className="staff-my-shift-card__note">{attendance.status === "checked_out" ? `Đã hoàn thành ca: ${fmtTime(attendance.checkInAt)} - ${fmtTime(attendance.checkOutAt)}` : attendance.status === "checked_in" ? `Đã check-in lúc ${fmtTime(attendance.checkInAt)}` : "Chưa check-in"}</p> : null}
+                        {!canAttendance && shiftDayKey === todayKey && !attendance ? (
+                          <p className="staff-my-shift-card__note">Chưa đến thời gian check-in.</p>
+                        ) : null}
                         {canAttendance && !attendance ? (
                           <button className="staff-primary-btn" type="button" disabled={attendanceActionLoadingShiftId===shift.id} onClick={() => handleAttendanceAction(shift.id, "check_in")}>{attendanceActionLoadingShiftId===shift.id?"Đang xử lý...":"Check-in"}</button>
                         ) : null}

@@ -134,6 +134,19 @@ const GET_MY_SHIFT_ACKS = gql`
       shiftId
       status
       declineClassification
+      reasonCategory
+      reason
+    }
+  }
+`;
+const MY_SHIFT_ATTENDANCES = gql`
+  query MyShiftAttendances($periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAttendances(periodStart: $periodStart, periodEnd: $periodEnd) {
+      id
+      shiftId
+      checkInAt
+      checkOutAt
+      status
     }
   }
 `;
@@ -261,6 +274,11 @@ const emptyShiftAcksMock = () => ({
   variableMatcher: matchShiftAckVars,
   result: { data: { myShiftAcknowledgements: [] } },
 });
+const emptyMyShiftAttendancesMock = () => ({
+  request: { query: MY_SHIFT_ATTENDANCES },
+  variableMatcher: matchShiftAckVars,
+  result: { data: { myShiftAttendances: [] } },
+});
 
 const buildIsoDate = (date) => date.toISOString();
 
@@ -335,6 +353,12 @@ function renderWithAuth(user, mocks = []) {
     emptyStaffShiftsMock(),
     emptyShiftAcksMock(),
     emptyShiftAcksMock(),
+    emptyShiftAcksMock(),
+    emptyShiftAcksMock(),
+    emptyMyShiftAttendancesMock(),
+    emptyMyShiftAttendancesMock(),
+    emptyMyShiftAttendancesMock(),
+    emptyMyShiftAttendancesMock(),
   ];
 
   return render(
