@@ -11,6 +11,16 @@ import { useFinance } from "@/hooks/useFinance";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 
 const FinanceDashboard = () => {
+  const formatVnd = (value) =>
+    Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+  const reconciliationStatusLabel = (status) => {
+    const key = String(status || "").toLowerCase();
+    if (key === "matched") return "Khớp";
+    if (key === "amount_mismatch") return "Lệch tiền";
+    if (key === "unmatched") return "Chưa khớp";
+    if (key === "duplicate") return "Trùng giao dịch";
+    return status || "-";
+  };
   const {
     range,
     setRange,
@@ -140,9 +150,9 @@ const FinanceDashboard = () => {
           <div className="card-container transactions-card">
             <div className="card-header"><h3>Đối soát chuyển khoản</h3></div>
             <div className="card-body">
-              <div>Matched: <b>{reconciliationSummary.matched}</b> | Amount mismatch: <b>{reconciliationSummary.amountMismatch}</b> | Unmatched: <b>{reconciliationSummary.unmatched}</b></div>
+              <div>Khớp: <b>{reconciliationSummary.matched}</b> | Lệch tiền: <b>{reconciliationSummary.amountMismatch}</b> | Chưa khớp: <b>{reconciliationSummary.unmatched}</b></div>
               <table className="clean-table">
-                <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Reference</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
+                <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Mã tham chiếu</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
                 <tbody>
                   {(reconciliations || []).length === 0 ? (
                     <tr>
@@ -154,9 +164,9 @@ const FinanceDashboard = () => {
                     (reconciliations || []).slice(0, 10).map((r) => (
                       <tr key={r.id}>
                         <td>{r.time ? new Date(r.time).toLocaleString("vi-VN") : "-"}</td>
-                        <td>{Number(r.amount || 0).toLocaleString("vi-VN")}đ</td>
+                        <td>{formatVnd(r.amount)}</td>
                         <td>{r.reference || "-"}</td>
-                        <td>{r.status}</td>
+                        <td>{reconciliationStatusLabel(r.status)}</td>
                         <td>{r.note || "-"}</td>
                       </tr>
                     ))

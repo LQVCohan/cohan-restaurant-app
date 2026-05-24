@@ -64,6 +64,14 @@ const statusCopyMap = {
   canceled: "Thanh toán không thành công hoặc đã hết hạn.",
   expired: "Thanh toán không thành công hoặc đã hết hạn.",
 };
+const statusBadgeMap = {
+  pending: { label: "Đang chờ xác nhận", className: "pending" },
+  success: { label: "Đã thanh toán", className: "success" },
+  failed: { label: "Không thành công", className: "failed" },
+  cancelled: { label: "Không thành công", className: "failed" },
+  canceled: { label: "Không thành công", className: "failed" },
+  expired: { label: "Không thành công", className: "failed" },
+};
 
 function PaymentModal({
   isOpen,
@@ -84,6 +92,7 @@ function PaymentModal({
   const [discountNeedsReapply, setDiscountNeedsReapply] = useState(false);
   const [onlinePayment, setOnlinePayment] = useState(null);
   const [onlinePaymentError, setOnlinePaymentError] = useState("");
+  const [copyFallback, setCopyFallback] = useState("");
 
   const pos = usePos?.() || null;
   const effectiveOrderId = pos?.currentOrderId || order?.[0]?.orderId || null;
@@ -500,6 +509,22 @@ function PaymentModal({
     : statusCopyMap[onlineStatus] || "";
   const transferMeta = onlinePayment?.metadata?.bankTransfer || {};
   const transferAmount = Number(onlinePayment?.amount || payableTotalVnd || 0);
+  const statusBadge = showRejected
+    ? { label: "Lệch số tiền", className: "rejected" }
+    : statusBadgeMap[onlineStatus] || statusBadgeMap.pending;
+  const hasClipboard = typeof navigator !== "undefined" && !!navigator?.clipboard?.writeText;
+  const safeCopy = useCallback(async (value, fallbackLabel = "") => {
+    if (!hasClipboard) {
+      if (fallbackLabel) setCopyFallback(`Không thể sao chép tự động: ${fallbackLabel}`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(String(value ?? ""));
+      setCopyFallback("");
+    } catch (_) {
+      if (fallbackLabel) setCopyFallback(`Không thể sao chép tự động: ${fallbackLabel}`);
+    }
+  }, [hasClipboard]);
   const vietQrUrl = useMemo(() => {
     const bankCode = String(transferMeta?.bankCode || "VCB").toUpperCase();
     const accountNumber = String(transferMeta?.bankAccountNumber || "").trim();
@@ -836,35 +861,35 @@ function PaymentModal({
                 ) : (
                   <>
                 <div className={s.paymentDetails}>
+                  <div className={`${s.statusBadge} ${s[`status_${statusBadge.className}`]}`}>{statusBadge.label}</div>
+                  <div className={s.transferWarning}>Vui lòng chuyển đúng số tiền và đúng nội dung. Hệ thống chỉ xác nhận khi ngân hàng gửi webhook khớp giao dịch.</div>
                   <div className={s.detailItem}>
                     <span>Ngân hàng:</span> <b>{transferMeta?.bankName || "Ngân hàng"}</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số TK:</span> <b>{transferMeta?.bankAccountNumber || "—"}</b>
-                    {!!transferMeta?.bankAccountNumber && <button className={s.suggestionBtn} onClick={() => navigator.clipboard?.writeText(String(transferMeta.bankAccountNumber))}>Copy</button>}
+                    <span>Số tài khoản:</span> <b>{transferMeta?.bankAccountNumber || "—"}</b>
+                    {!!transferMeta?.bankAccountNumber && <button className={s.suggestionBtn} onClick={() => safeCopy(transferMeta.bankAccountNumber, "Số tài khoản")}>Copy</button>}
                   </div>
                   <div className={s.detailItem}>
-                    <span>Chủ TK:</span> <b>{transferMeta?.accountName || "—"}</b>
+                    <span>Chủ tài khoản:</span> <b>{transferMeta?.accountName || "—"}</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số tiền cần chuyển:</span>{" "}
+                    <span>Số tiền:</span>{" "}
                     <b>{formatPrice(transferAmount, { currency: "VND" })}</b>
-                    <button className={s.suggestionBtn} onClick={() => navigator.clipboard?.writeText(String(Math.round(transferAmount)))}>Copy</button>
+                    <button className={s.suggestionBtn} onClick={() => safeCopy(Math.round(transferAmount), "Số tiền")}>Copy</button>
                   </div>
                   <div className={s.detailItem}>
                     <span>Nội dung chuyển khoản bắt buộc:</span> <b>{transferMeta?.transferContent || onlinePayment?.reference || "..."}</b>
-                    <button className={s.suggestionBtn} onClick={() => navigator.clipboard?.writeText(String(transferMeta?.transferContent || onlinePayment?.reference || ""))}>Copy</button>
+                    <button className={s.suggestionBtn} onClick={() => safeCopy(transferMeta?.transferContent || onlinePayment?.reference || "", "Nội dung chuyển khoản")}>Copy</button>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Tham chiếu:</span> <b>{onlinePayment?.reference || "—"}</b>
-                  </div>
-                  <div className={s.detailItem}>
-                    <span>Trạng thái:</span> <b>{onlineStatus || "pending"}</b>
+                    <span>Mã tham chiếu:</span> <b>{onlinePayment?.reference || "—"}</b>
                   </div>
                 </div>
                 <div className={s.qrCode}>
                   {vietQrUrl ? <img src={vietQrUrl} alt="QR chuyển khoản" style={{ width: 160, height: 160, objectFit: "contain" }} /> : <QRCodePlaceholder value={onlinePayment?.reference || "QR chuyển khoản"} />}
                 </div>
+                {copyFallback && <div className={s.discountWarning}>{copyFallback}</div>}
                 {statusMessage && <div>{statusMessage}</div>}
                 {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
                 {canRetryOnline && <button className={s.secondary} onClick={() => { setOnlinePayment(null); setOnlinePaymentError(""); setIsConfirming(true); }}>Tạo lại mã thanh toán</button>}
@@ -874,13 +899,25 @@ function PaymentModal({
             )}
             {(method === "momo" || method === "vnpay") && onlinePayment?.id && (
               <div className={s.transferInfo}>
-                <div><b>{String(onlinePayment?.provider || method || "").toUpperCase()}</b></div>
-                <div>Tham chiếu: <b>{onlinePayment.reference}</b></div>
-                <div>Số tiền: <b>{formatPrice(onlinePayment.amount || 0, { currency: "VND" })}</b></div>
-                <div>Trạng thái: <b>{onlineStatus || "pending"}</b></div>
-                {onlinePayment.payUrl && <a href={onlinePayment.payUrl} target="_blank" rel="noreferrer">Mở trang thanh toán</a>}
-                {onlinePayment.deeplink && <a href={onlinePayment.deeplink} target="_blank" rel="noreferrer">Mở deeplink</a>}
-                {onlinePayment.qrCodeUrl && <img src={onlinePayment.qrCodeUrl} alt="QR thanh toán" style={{ width: 160, height: 160, objectFit: "contain" }} />}
+                <div className={s.paymentDetails}>
+                  <div><b>{String(onlinePayment?.provider || method || "").toUpperCase()}</b></div>
+                  <div className={`${s.statusBadge} ${s[`status_${statusBadge.className}`]}`}>{statusBadge.label}</div>
+                  <div>Mã tham chiếu: <b>{onlinePayment?.reference || "—"}</b></div>
+                  <div>Số tiền thanh toán: <b>{formatPrice(onlinePayment?.amount || 0, { currency: "VND" })}</b></div>
+                  {onlinePayment?.payUrl && <a href={onlinePayment.payUrl} target="_blank" rel="noreferrer">Mở trang thanh toán</a>}
+                  {onlinePayment?.deeplink && <a href={onlinePayment.deeplink} target="_blank" rel="noreferrer">Mở ứng dụng thanh toán</a>}
+                  {!onlinePayment?.payUrl && !onlinePayment?.deeplink && !onlinePayment?.qrCodeUrl && (
+                    <div className={s.discountWarning}>Chưa nhận được liên kết thanh toán từ cổng thanh toán.</div>
+                  )}
+                </div>
+                <div className={s.qrCode}>
+                  {onlinePayment?.qrCodeUrl && (
+                    <>
+                      <p>Quét mã để thanh toán</p>
+                      <img src={onlinePayment.qrCodeUrl} alt="QR thanh toán" style={{ width: 160, height: 160, objectFit: "contain" }} />
+                    </>
+                  )}
+                </div>
                 {statusMessage && <div>{statusMessage}</div>}
                 {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
                 {canRetryOnline && <button className={s.secondary} onClick={() => { setOnlinePayment(null); setOnlinePaymentError(""); setIsConfirming(true); }}>Tạo lại mã thanh toán</button>}
