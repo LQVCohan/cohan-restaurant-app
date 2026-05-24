@@ -27,6 +27,7 @@ type AiChatbotResponse {
   sources: [AiChatbotSource!]!
   contextSummary: AiChatbotContextSummary
   isFallback: Boolean
+  conversationId: ID
 }
 
 input AiChatbotHistoryInput {
@@ -38,6 +39,8 @@ input AskAiChatbotInput {
   message: String!
   restaurantId: ID
   history: [AiChatbotHistoryInput!]
+  guestId: String
+  conversationId: ID
 }
 
 extend type Mutation {

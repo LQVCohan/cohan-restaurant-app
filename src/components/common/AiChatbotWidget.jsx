@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
@@ -13,6 +13,7 @@ const ASK_AI_CHATBOT = gql`
       confidence
       quickReplies
       isFallback
+      conversationId
       actions {
         type
         label
@@ -39,6 +40,16 @@ const STARTER_MESSAGES = [
   "Tôi muốn đặt bàn",
   "Có mã giảm giá nào không?",
 ];
+
+
+const GUEST_ID_STORAGE_KEY = "cohan_ai_guest_id";
+
+const getConversationStorageKey = (restaurantId) => `cohan_ai_conversation_id:${restaurantId || "global"}`;
+
+const generateGuestId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `guest_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
 
 const INITIAL_MESSAGES = [
   {
@@ -68,6 +79,15 @@ function AiChatbotWidget() {
   const [lastQuickReplies, setLastQuickReplies] = useState(STARTER_MESSAGES);
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
+  const [guestId, setGuestId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+    if (existing) return existing;
+    const created = generateGuestId();
+    window.localStorage.setItem(GUEST_ID_STORAGE_KEY, created);
+    return created;
+  });
+  const [conversationId, setConversationId] = useState("");
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -76,6 +96,20 @@ function AiChatbotWidget() {
     () => extractRestaurantId({ params, pathname: location.pathname }),
     [params, location.pathname],
   );
+
+  const restaurantStorageKey = useMemo(() => getConversationStorageKey(restaurantId), [restaurantId]);
+
+  useEffect(() => {
+    if (!guestId || typeof window === "undefined") return;
+    if (!window.localStorage.getItem(GUEST_ID_STORAGE_KEY)) {
+      window.localStorage.setItem(GUEST_ID_STORAGE_KEY, guestId);
+    }
+  }, [guestId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setConversationId(window.localStorage.getItem(restaurantStorageKey) || "");
+  }, [restaurantStorageKey]);
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
@@ -87,16 +121,29 @@ function AiChatbotWidget() {
     setLastQuickReplies([]);
 
     try {
+      let safeGuestId = guestId;
+      if (!safeGuestId && typeof window !== "undefined") {
+        safeGuestId = window.localStorage.getItem(GUEST_ID_STORAGE_KEY) || generateGuestId();
+        window.localStorage.setItem(GUEST_ID_STORAGE_KEY, safeGuestId);
+        setGuestId(safeGuestId);
+      }
+
       const { data } = await askAiChatbot({
         variables: {
           input: {
             message: content,
             restaurantId,
             history: normalizeHistory(messages),
+            guestId: safeGuestId || undefined,
+            conversationId: conversationId || undefined,
           },
         },
       });
       const response = data?.askAiChatbot;
+      if (response?.conversationId && typeof window !== "undefined") {
+        window.localStorage.setItem(restaurantStorageKey, response.conversationId);
+        setConversationId(response.conversationId);
+      }
       const answer =
         response?.answer ||
         "Mình chưa xử lý được câu hỏi này. Bạn có thể hỏi lại ngắn gọn hơn hoặc mở trung tâm hỗ trợ.";

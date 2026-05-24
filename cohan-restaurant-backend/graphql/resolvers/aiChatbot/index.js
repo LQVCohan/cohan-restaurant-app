@@ -8,6 +8,8 @@ const Mutation = {
         message: input?.message,
         restaurantId: input?.restaurantId,
         history: input?.history || [],
+        guestId: input?.guestId,
+        conversationId: input?.conversationId,
         user: ctx?.user || null,
       });
     } catch (err) {

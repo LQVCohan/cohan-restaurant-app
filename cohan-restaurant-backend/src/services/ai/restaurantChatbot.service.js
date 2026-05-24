@@ -6,6 +6,8 @@ import {
   Order,
   Reservation,
   Restaurant,
+  AiChatConversation,
+  AiChatMessage,
 } from "../../../models/index.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
@@ -65,6 +67,16 @@ const roleSlug = (user) =>
 const isManagerLike = (user) => ROLE_MANAGER_LIKE.has(roleSlug(user));
 
 const normalizeMessage = (message) => String(message || "").trim().slice(0, 1200);
+const normalizeGuestId = (guestId) => {
+  const value = String(guestId || "").trim().slice(0, 128);
+  return value ? value.replace(/[^a-zA-Z0-9_-]/g, "") : "";
+};
+
+const normalizeConversationId = (conversationId) => {
+  if (!conversationId || !mongoose.isValidObjectId(conversationId)) return null;
+  return String(conversationId);
+};
+
 
 const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -198,6 +210,39 @@ const recentHistoryForPrompt = (history = []) =>
       content: String(item?.content || "").slice(0, 500),
     }))
     .filter((item) => item.content);
+
+const buildConversationScopeFilter = ({ userId, guestId, restaurantObjectId }) => {
+  const filter = { status: "open" };
+  if (restaurantObjectId) filter.restaurantId = restaurantObjectId;
+  else filter.restaurantId = null;
+
+  if (userId) filter.userId = userId;
+  else if (guestId) filter.guestId = guestId;
+  else return null;
+
+  return filter;
+};
+
+const isConversationOwned = (conversation, { userId, guestId }) => {
+  if (!conversation) return false;
+  if (userId) return String(conversation.userId || "") === String(userId);
+  if (guestId) return String(conversation.guestId || "") === String(guestId);
+  return false;
+};
+
+const fetchPersistedHistoryForPrompt = async (conversationId) => {
+  if (!conversationId) return [];
+  const records = await AiChatMessage.find({ conversationId })
+    .sort({ createdAt: -1 })
+    .limit(MAX_HISTORY_MESSAGES)
+    .lean();
+
+  return records
+    .reverse()
+    .map((item) => ({ role: item?.role === "assistant" ? "assistant" : "user", content: String(item?.content || "") }))
+    .filter((item) => item.content);
+};
+
 
 const fetchRestaurants = async ({ restaurantId, message }) => {
   const rid = toObjectId(restaurantId);
@@ -515,6 +560,8 @@ export const handleRestaurantChatbotMessage = async ({
   restaurantId,
   user,
   history = [],
+  guestId,
+  conversationId,
 } = {}) => {
   const cleanMessage = normalizeMessage(message);
   if (!cleanMessage) {
@@ -523,9 +570,66 @@ export const handleRestaurantChatbotMessage = async ({
     throw err;
   }
 
+  const userObjectId = toObjectId(user?.id || user?._id);
+  const restaurantObjectId = toObjectId(restaurantId);
+  const normalizedGuestId = normalizeGuestId(guestId);
+  const normalizedConversationId = normalizeConversationId(conversationId);
+
+  let persistedConversation = null;
+  let persistedHistory = [];
+
+  try {
+    if (normalizedConversationId) {
+      const found = await AiChatConversation.findById(normalizedConversationId);
+      if (found && isConversationOwned(found, { userId: userObjectId, guestId: normalizedGuestId })) {
+        const sameRestaurant =
+          String(found.restaurantId || "") === String(restaurantObjectId || "") ||
+          (!found.restaurantId && !restaurantObjectId);
+        if (sameRestaurant) persistedConversation = found;
+      }
+    }
+
+    if (!persistedConversation) {
+      const scopeFilter = buildConversationScopeFilter({
+        userId: userObjectId,
+        guestId: normalizedGuestId,
+        restaurantObjectId,
+      });
+      if (scopeFilter) persistedConversation = await AiChatConversation.findOne(scopeFilter).sort({ updatedAt: -1 });
+    }
+
+    if (!persistedConversation && (userObjectId || normalizedGuestId)) {
+      persistedConversation = await AiChatConversation.create({
+        restaurantId: restaurantObjectId,
+        userId: userObjectId,
+        guestId: normalizedGuestId || null,
+      });
+    }
+
+    if (persistedConversation) {
+      persistedHistory = await fetchPersistedHistoryForPrompt(persistedConversation._id);
+
+      await AiChatMessage.create({
+        conversationId: persistedConversation._id,
+        restaurantId: restaurantObjectId,
+        userId: userObjectId,
+        guestId: normalizedGuestId || null,
+        role: "user",
+        content: cleanMessage,
+      });
+    }
+  } catch {
+    persistedConversation = null;
+    persistedHistory = [];
+  }
+
   const context = await buildContext({ message: cleanMessage, restaurantId, user });
-  const aiResult = await callOpenAI({ message: cleanMessage, context, history });
-  return {
+  const aiResult = await callOpenAI({
+    message: cleanMessage,
+    context,
+    history: persistedHistory.length ? persistedHistory : history,
+  });
+  const finalResponse = {
     ...(aiResult || fallbackAnswer(context)),
     contextSummary: {
       restaurantCount: context.restaurants.length,
@@ -534,7 +638,44 @@ export const handleRestaurantChatbotMessage = async ({
       orderCount: context.orders.length,
       reservationCount: context.reservations.length,
     },
+    conversationId: persistedConversation ? String(persistedConversation._id) : null,
   };
+
+  if (persistedConversation) {
+    try {
+      await AiChatMessage.create({
+        conversationId: persistedConversation._id,
+        restaurantId: restaurantObjectId,
+        userId: userObjectId,
+        guestId: normalizedGuestId || null,
+        role: "assistant",
+        content: String(finalResponse.answer || ""),
+        intent: finalResponse.intent || "",
+        confidence: Number.isFinite(Number(finalResponse.confidence)) ? Number(finalResponse.confidence) : null,
+        isFallback: Boolean(finalResponse.isFallback),
+        quickReplies: finalResponse.quickReplies || [],
+        actions: finalResponse.actions || [],
+        sources: finalResponse.sources || [],
+        contextSummary: finalResponse.contextSummary,
+      });
+
+      await AiChatConversation.updateOne(
+        { _id: persistedConversation._id },
+        {
+          $set: {
+            lastMessageAt: new Date(),
+            lastMessagePreview: String(finalResponse.answer || "").slice(0, 300),
+            lastIntent: String(finalResponse.intent || ""),
+          },
+          $inc: { messageCount: 2 },
+        }
+      );
+    } catch {
+      // swallow persistence errors to keep chatbot response working
+    }
+  }
+
+  return finalResponse;
 };
 
 export const __testables = {
@@ -542,4 +683,5 @@ export const __testables = {
   extractLookupCode,
   buildSearchRegex,
   fallbackAnswer,
+  normalizeGuestId,
 };
