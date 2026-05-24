@@ -10,6 +10,35 @@ const avgNearestDistance = (tables) => tables.reduce((sum, t, idx) => {
 }, 0) / Math.max(1, tables.length);
 
 describe("aiTable.service layout engine v3", () => {
+  const smallPayload = { goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } };
+  it("selects small balanced template for default small restaurant", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    expect(out.meta.template).toBe("small_balanced");
+    expect(__testables.passesHardQualityGate(out, smallPayload)).toBe(true);
+    expect(out.tables.length).toBe(8);
+  });
+  it("small balanced layout gets excellent quality grade", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    const issues = __testables.getLayoutQualityIssues(out, smallPayload);
+    expect(issues.some((i) => i.severity === "error")).toBe(false);
+    expect(out.meta.score).toBeGreaterThanOrEqual(1100);
+  });
+  it("entrance flow is clear", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    const door = out.decor.find((d) => d.type === "door");
+    const cashier = out.decor.find((d) => d.type === "cashier");
+    const entrance = __testables.getEntranceRect(door);
+    expect(cashier && door).toBeTruthy();
+    expect(door.y + door.h).toBeGreaterThanOrEqual(out.meta.zones.roomBounds.y + out.meta.zones.roomBounds.h - 14);
+    expect(Math.hypot((cashier.x + cashier.w / 2) - (door.x + door.w / 2), (cashier.y + cashier.h / 2) - (door.y + door.h / 2))).toBeLessThan(180);
+    expect(__testables.isInAisle(cashier, out.meta.zones.mainAisle)).toBe(false);
+    out.decor.filter((d) => ["plant", "kitchen", "wc"].includes(d.type)).forEach((d) => expect(overlap(d, entrance)).toBe(false));
+  });
+  it("fallback still works for non-small layout", () => {
+    const out = __testables.generateTemplateBasedLayout({ goal: "capacity", components: { tables: { standard: 24, group: 4, vip: 2 }, objects: { buffet: 1 } } }, 2);
+    expect(out.tables.length).toBeGreaterThan(0);
+    expect(out.tables.every((t) => allowedTypes.includes(t.type))).toBe(true);
+  });
   it("compact small restaurant room is not oversized", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } }, 0);
     expect(out.tables.length).toBe(8);
