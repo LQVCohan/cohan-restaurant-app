@@ -124,3 +124,38 @@ AI_CHATBOT_MODEL=gpt-5
 ```
 
 Nếu không cấu hình `OPENAI_API_KEY`, chatbot vẫn chạy bằng fallback rule-based.
+
+## 11. Phase 2 - Persisted conversation history
+
+Phase 2 bổ sung lưu lịch sử hội thoại chatbot vào MongoDB để chatbot không còn hoàn toàn stateless.
+
+### Vì sao cần lưu hội thoại
+
+- Duy trì ngữ cảnh giữa các lượt hỏi đáp liên tiếp.
+- Cho phép xem lại các câu hỏi phổ biến của khách hàng.
+- Tạo nền tảng cho handoff sang nhân viên thật ở phase sau.
+- Hỗ trợ phân tích như câu hỏi chưa được giải quyết hoặc tỉ lệ fallback.
+
+### Hai model mới
+
+- `AiChatConversation`: lưu metadata của phiên hội thoại (user/guest, nhà hàng, trạng thái open/closed/handoff_requested, messageCount, lastIntent, ...).
+- `AiChatMessage`: lưu từng tin nhắn user/assistant theo `conversationId`, cùng intent/confidence/isFallback/actions/sources/context.
+
+### Luồng guestId và conversationId
+
+1. Frontend tạo/đọc `guestId` trong localStorage (`cohan_ai_guest_id`).
+2. Frontend tạo khóa conversation theo nhà hàng: `cohan_ai_conversation_id:${restaurantId || "global"}`.
+3. Mỗi lần gửi `askAiChatbot`, frontend gửi `guestId` + `conversationId` (nếu có).
+4. Backend tìm conversation đang mở đúng chủ thể (user hoặc guest) và cùng ngữ cảnh nhà hàng.
+5. Backend lưu message user trước khi gọi AI/fallback.
+6. Backend tạo câu trả lời như cũ (ưu tiên OpenAI nếu có key, fallback nếu không có key hoặc lỗi).
+7. Backend lưu message assistant, cập nhật `lastMessageAt`, `lastMessagePreview`, `messageCount`, `lastIntent`.
+8. Backend trả `conversationId` để frontend lưu lại cho lần chat tiếp theo.
+
+### Chuẩn bị cho handoff nhân viên thật
+
+Trạng thái conversation đã chuẩn hóa `open | closed | handoff_requested` để phase sau có thể:
+
+- đánh dấu hội thoại cần nhân viên tiếp nhận,
+- hiển thị danh sách chat cần xử lý,
+- truy vết lịch sử đầy đủ trước khi nhân viên trả lời.

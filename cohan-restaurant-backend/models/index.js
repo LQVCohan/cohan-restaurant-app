@@ -101,3 +101,6 @@ export { default as PosCustomer } from "./pos-customer.model.js";
 
 export { default as SystemSetting } from "./system-setting.model.js";
 export { default as BackupRun } from "./backup-run.model.js";
+
+export { default as AiChatConversation } from "./ai-chat-conversation.model.js";
+export { default as AiChatMessage } from "./ai-chat-message.model.js";
