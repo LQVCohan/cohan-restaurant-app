@@ -1,158 +1,19 @@
 $gold: #c5a47e;
-$dark: #1a1a1a;
 
 .strategy-ai-widget {
-  overflow: hidden; // Để bo góc cho header
-  padding: 0 !important; // Override padding mặc định của widget-card
-  display: flex;
-  flex-direction: column;
+  padding: 0 !important;
+  .ai-header { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 16px; color: #fff; }
+  .ai-title { display: flex; align-items: center; gap: 10px; }
+  .icon-pulse { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba($gold, 0.2); }
+  .ai-content { padding: 16px; }
+  .subtitle { margin: 0 0 12px; color: #64748b; font-size: 0.88rem; }
+  .stable-state { border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px; color: #475569; }
 
-  .ai-header {
-    background: linear-gradient(135deg, $dark 0%, #2d2d2d 100%);
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-
-    .ai-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .icon-pulse {
-        width: 36px;
-        height: 36px;
-        background: rgba($gold, 0.2);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba($gold, 0.5);
-        animation: pulse 2s infinite;
-      }
-
-      h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        background: linear-gradient(to right, #fff, $gold);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-    }
-
-    .badge-ai {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-  }
-
-  .ai-content {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-
-    .insight-card {
-      display: flex;
-      gap: 12px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid transparent;
-
-      .icon-col {
-        padding-top: 2px;
-      }
-
-      .text-col {
-        h4 {
-          margin: 0 0 4px 0;
-          font-size: 0.9rem;
-          font-weight: 700;
-        }
-        p {
-          margin: 0;
-          font-size: 0.85rem;
-          line-height: 1.4;
-          color: #475569;
-        }
-        strong {
-          color: $dark;
-          font-weight: 600;
-        }
-      }
-
-      &.positive {
-        background: #f0fdfa;
-        border-color: #ccfbf1;
-        .icon-col {
-          color: #0d9488;
-        } // Teal
-        .text-col h4 {
-          color: #0f766e;
-        }
-      }
-
-      &.negative {
-        background: #fef2f2;
-        border-color: #fee2e2;
-        .icon-col {
-          color: #ef4444;
-        } // Red
-        .text-col h4 {
-          color: #b91c1c;
-        }
-      }
-    }
-
-    .action-plan {
-      margin-top: 8px;
-      padding-top: 16px;
-      border-top: 1px dashed #e2e8f0;
-
-      h4 {
-        margin: 0 0 12px 0;
-        font-size: 0.9rem;
-        color: $dark;
-      }
-
-      ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-
-        li {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          margin-bottom: 10px;
-          font-size: 0.85rem;
-          color: #334155;
-
-          .check-icon {
-            color: $gold;
-            flex-shrink: 0;
-            margin-top: 2px;
-          }
-        }
-      }
-    }
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba($gold, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba($gold, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba($gold, 0);
-  }
+  .action-plan { display: grid; gap: 10px; }
+  .action-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
+  .action-item.high { background: #fff7ed; border-color: #fed7aa; }
+  .line-title { display: flex; align-items: center; gap: 6px; color: #0f172a; }
+  .line-title h4 { margin: 0; font-size: 0.92rem; }
+  .action-item p { margin: 6px 0; font-size: 0.82rem; color: #475569; }
+  .action-link { font-size: 0.8rem; color: #1d4ed8; font-weight: 600; }
 }

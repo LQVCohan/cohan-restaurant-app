@@ -117,6 +117,18 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
               ) : null}
             </ul>
           </div>
+          {(summary?.notes?.length || assistant?.meta?.fallbackUsed) ? (
+            <div className="notes-block">
+              <h4>Ghi chú phân tích</h4>
+              {assistant?.meta?.fallbackUsed ? <span className="fallback-badge">Fallback đang được sử dụng</span> : null}
+              <ul>
+                {(summary?.notes || []).map((note, idx) => (
+                  <li key={idx} className={note.toLowerCase().includes("performance") ? "warning-note" : ""}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
         </>
       ) : null}
     </div>
