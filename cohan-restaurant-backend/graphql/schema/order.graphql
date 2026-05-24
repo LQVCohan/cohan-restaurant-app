@@ -988,6 +988,9 @@ type SmartPromotionTargetWindow {
 }
 
 type SmartPromotionRecommendation {
+  promotionType: String
+  targetAudience: String
+  conditions: [String!]
   scope: String!
   discountType: String!
   discountValue: Float!

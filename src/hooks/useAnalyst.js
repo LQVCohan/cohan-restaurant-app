@@ -19,6 +19,11 @@ const GET_ANALYST_DASHBOARD = gql`
         current
         previous
       }
+      orderTrend {
+        key
+        current
+        previous
+      }
       topDishes {
         dishName
         quantity
@@ -339,6 +344,7 @@ export const useAnalyst = () => {
     actionItems,
     kpiData,
     revenueTrend: analyst?.revenueTrend || [],
+    orderTrend: analyst?.orderTrend || [],
     topDishes: analyst?.topDishes || [],
     feedbackSummary: analyst?.feedbackSummary || { avgRating: 0, total: 0, negative: 0, positive: 0 },
     feedbackItems: analyst?.feedbackItems || [],

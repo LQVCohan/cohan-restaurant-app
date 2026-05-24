@@ -18,13 +18,17 @@ import "./ManagerAnalyst.scss";
 const formatVnd = (value) => `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
 const clamp = (value) => Math.max(0, Math.min(100, Number(value || 0)));
 
-const calculateTrendProgress = (trend, key) => {
-  const item = trend.find((entry) => entry.key === key) || trend[0];
-  const previous = Number(item?.previous || 0);
-  const current = Number(item?.current || 0);
+const calculateTrendProgress = (trend = []) => {
+  const totals = trend.reduce(
+    (acc, row) => ({
+      current: acc.current + Number(row?.current || 0),
+      previous: acc.previous + Number(row?.previous || 0),
+    }),
+    { current: 0, previous: 0 }
+  );
 
-  if (!previous || Number.isNaN(previous) || Number.isNaN(current)) return null;
-  return clamp((current / previous) * 100);
+  if (!totals.previous) return null;
+  return clamp((totals.current / totals.previous) * 100);
 };
 
 const ManagerAnalyst = () => {
@@ -40,6 +44,7 @@ const ManagerAnalyst = () => {
     hasBusinessData,
     kpiData,
     revenueTrend,
+    orderTrend,
     topDishes,
     feedbackSummary,
     feedbackItems,
@@ -52,8 +57,8 @@ const ManagerAnalyst = () => {
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
-  const revenueProgress = calculateTrendProgress(revenueTrend, "revenue");
-  const orderProgress = calculateTrendProgress(revenueTrend, "orders");
+  const revenueProgress = calculateTrendProgress(revenueTrend);
+  const orderProgress = calculateTrendProgress(orderTrend);
 
   const displayKpis = useMemo(
     () => [
@@ -66,7 +71,7 @@ const ManagerAnalyst = () => {
       {
         ...kpiData[1],
         value: Number(kpiData[1]?.value || 0),
-        progress: 0,
+        progress: null,
         period: loading ? "Đang tải..." : "Theo dữ liệu khách hàng",
       },
       {
