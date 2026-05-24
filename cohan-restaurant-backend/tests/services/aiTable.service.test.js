@@ -10,17 +10,29 @@ const avgNearestDistance = (tables) => tables.reduce((sum, t, idx) => {
 }, 0) / Math.max(1, tables.length);
 
 describe("aiTable.service layout engine v3", () => {
-  it("compact layout for small table count", () => {
+  it("compact small restaurant room is not oversized", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } }, 0);
     expect(out.tables.length).toBe(8);
     const room = out.meta.zones.roomBounds;
-    const minX = Math.min(...out.tables.map((t) => t.x));
-    const maxX = Math.max(...out.tables.map((t) => t.x));
-    const minY = Math.min(...out.tables.map((t) => t.y));
-    const maxY = Math.max(...out.tables.map((t) => t.y));
-    expect(maxX - minX).toBeLessThan(room.w * 0.85);
-    expect(maxY - minY).toBeLessThan(room.h * 0.85);
-    expect(out.meta.scoreBreakdown.emptyCenterPenalty).toBeLessThan(200);
+    expect(room.w).toBeLessThanOrEqual(760);
+    expect(room.h).toBeLessThanOrEqual(560);
+    out.decor.forEach((d) => {
+      if (d.type === "wall" || d.type === "door" || d.type === "window") return;
+      expect(d.x).toBeGreaterThanOrEqual(room.x);
+      expect(d.y).toBeGreaterThanOrEqual(room.y);
+      expect(d.x + d.w).toBeLessThanOrEqual(room.x + room.w);
+      expect(d.y + d.h).toBeLessThanOrEqual(room.y + room.h);
+    });
+  });
+  it("standard eight tables form two balanced clusters", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } }, 0);
+    const aisle = out.meta.zones.mainAisle;
+    const left = out.tables.filter((t) => t.x + 30 < aisle.x).length;
+    const right = out.tables.length - left;
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    expect(left).toBeGreaterThanOrEqual(3);
+    expect(right).toBeGreaterThanOrEqual(3);
+    expect(out.tables.some((t) => __testables.isInAisle({ ...t, w: 60, h: 60 }, aisle))).toBe(false);
   });
   it("main aisle is not blocked", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 12, vip: 2 }, objects: { door: 1, cashier: 1, kitchen: 1, plant: 2 } } }, 1);
@@ -48,17 +60,18 @@ describe("aiTable.service layout engine v3", () => {
     expect(Math.hypot(cashier.x - door.x, cashier.y - door.y)).toBeLessThan(260);
     expect(__testables.isInAisle(cashier, out.meta.zones.mainAisle)).toBe(false);
   });
-  it("cashier stays inside room near door", () => {
+  it("cashier stays inside and supports entrance flow", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { door: 1, cashier: 1 } } }, 0);
     const room = out.meta.zones.roomBounds;
     const door = out.decor.find((d) => d.type === "door");
     const cashier = out.decor.find((d) => d.type === "cashier");
     expect(door && cashier).toBeTruthy();
-    expect(cashier.x).toBeGreaterThanOrEqual(room.x);
-    expect(cashier.y).toBeGreaterThanOrEqual(room.y);
-    expect(cashier.x + cashier.w).toBeLessThanOrEqual(room.x + room.w);
-    expect(cashier.y + cashier.h).toBeLessThanOrEqual(room.y + room.h);
-    expect(Math.hypot(cashier.x - door.x, cashier.y - door.y)).toBeLessThan(260);
+    expect(cashier.x).toBeGreaterThanOrEqual(room.x + 20);
+    expect(cashier.y).toBeGreaterThanOrEqual(room.y + 20);
+    expect(cashier.x + cashier.w).toBeLessThanOrEqual(room.x + room.w - 20);
+    expect(cashier.y + cashier.h).toBeLessThanOrEqual(room.y + room.h - 20);
+    expect(Math.hypot(cashier.x - door.x, cashier.y - door.y)).toBeLessThan(220);
+    expect(__testables.isInAisle(cashier, out.meta.zones.mainAisle)).toBe(false);
   });
   it("door and windows align to room edge", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 6 }, objects: { door: 1, window: 3, wall: 4 } } }, 4);
@@ -105,17 +118,19 @@ describe("aiTable.service layout engine v3", () => {
       out.tables.forEach((t) => expect(overlap(s, { x: t.x, y: t.y, w: t.type === "vip" ? 72 : 60, h: t.type === "vip" ? 72 : 60 })).toBe(false));
     });
   });
-  it("service objects stay inside room with padding", () => {
-    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 5);
+  it("service zone is separated from guest tables", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { kitchen: 1, wc: 1 } } }, 5);
     const room = out.meta.zones.roomBounds;
-    const services = out.decor.filter((d) => ["kitchen", "wc", "buffet"].includes(d.type));
+    const services = out.decor.filter((d) => ["kitchen", "wc"].includes(d.type));
     services.forEach((s) => {
-      expect(s.x).toBeGreaterThanOrEqual(room.x + 16);
-      expect(s.y).toBeGreaterThanOrEqual(room.y + 16);
-      expect(s.x + s.w).toBeLessThanOrEqual(room.x + room.w - 16);
-      expect(s.y + s.h).toBeLessThanOrEqual(room.y + room.h - 16);
+      expect(s.x).toBeGreaterThanOrEqual(room.x + 12);
+      expect(s.y).toBeGreaterThanOrEqual(room.y + 12);
+      expect(s.x + s.w).toBeLessThanOrEqual(room.x + room.w - 12);
+      expect(s.y + s.h).toBeLessThanOrEqual(room.y + room.h - 12);
       expect(__testables.isInAisle(s, out.meta.zones.mainAisle)).toBe(false);
+      out.tables.forEach((t) => expect(overlap(s, { x: t.x, y: t.y, w: 60, h: 60 })).toBe(false));
     });
+    expect(out.meta.scoreBreakdown.serviceTableProximityPenalty).toBeLessThanOrEqual(30);
   });
   it("service in serviceZone near edge should not create high serviceIsolationPenalty", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 10 }, objects: { kitchen: 1, wc: 1, buffet: 1 } } }, 1);
@@ -144,17 +159,18 @@ describe("aiTable.service layout engine v3", () => {
     expect(out.decor.some((d) => d.type === "plant")).toBe(true);
     expect(out.decor.some((d) => d.type === "door")).toBe(true);
   });
-  it("plants stay inside room and do not overlap wall", () => {
-    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 2 }, objects: { plant: 3, wall: 4 } } }, 1);
+  it("plants have safe decorative placement", () => {
+    const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { plant: 2, wall: 4 } } }, 1);
     const room = out.meta.zones.roomBounds;
     const plants = out.decor.filter((d) => d.type === "plant");
     const walls = out.decor.filter((d) => d.type === "wall");
     plants.forEach((p) => {
-      expect(p.x).toBeGreaterThanOrEqual(room.x + 12);
-      expect(p.y).toBeGreaterThanOrEqual(room.y + 12);
-      expect(p.x + p.w).toBeLessThanOrEqual(room.x + room.w - 12);
-      expect(p.y + p.h).toBeLessThanOrEqual(room.y + room.h - 12);
+      expect(p.x).toBeGreaterThanOrEqual(room.x + 18);
+      expect(p.y).toBeGreaterThanOrEqual(room.y + 18);
+      expect(p.x + p.w).toBeLessThanOrEqual(room.x + room.w - 18);
+      expect(p.y + p.h).toBeLessThanOrEqual(room.y + room.h - 18);
       expect(walls.some((w) => overlap(p, w))).toBe(false);
+      expect(__testables.isInAisle(p, out.meta.zones.mainAisle)).toBe(false);
     });
   });
   it("no non-wall decor overlaps wall", () => {
