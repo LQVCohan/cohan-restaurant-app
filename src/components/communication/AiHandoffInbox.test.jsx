@@ -53,8 +53,7 @@ describe("AiHandoffInbox", () => {
       notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: {}, createdAt: new Date().toISOString() }],
     });
     renderWithUser(<AiHandoffInbox />);
-    const previewNode = screen.getAllByText("Yêu cầu hỗ trợ từ chatbot")[1];
-    fireEvent.click(previewNode.closest("button"));
+    fireEvent.click(screen.getByRole("button", { name: /yêu cầu hỗ trợ từ chatbot/i }));
     expect(await screen.findByText(/chưa có threadId/i)).toBeInTheDocument();
   });
 
