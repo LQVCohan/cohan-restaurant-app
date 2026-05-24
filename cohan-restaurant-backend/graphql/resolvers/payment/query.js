@@ -7,6 +7,8 @@ import {
   PaymentSession,
   Restaurant,
   Order,
+  BankTransaction,
+  PaymentReconciliation,
 } from "../../../models/index.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -191,11 +193,20 @@ export const PaymentQuery = {
     if (from) transactionFilter.paidAt.$gte = from;
     if (to) transactionFilter.paidAt.$lte = to;
 
-    const [cashflows, invoices, debtInvoices, payments] = await Promise.all([
+    const [cashflows, invoices, debtInvoices, payments, recentReconciliations, reconciliationAgg, unmatchedAgg] = await Promise.all([
       Cashflow.find(cashflowFilter).sort({ occurredAt: -1 }).lean(),
       Invoice.find(invoiceFilter).sort({ issuedAt: -1 }).lean(),
       Invoice.find({ restaurantId: rid, status: { $in: ["UNPAID", "PARTIAL"] } }).lean(),
       PaymentTransaction.find(transactionFilter).sort({ paidAt: -1 }).lean(),
+      PaymentReconciliation.find({ restaurantId: rid }).sort({ createdAt: -1 }).limit(10).lean(),
+      PaymentReconciliation.aggregate([
+        { $match: { restaurantId: rid, status: { $in: ["matched", "amount_mismatch"] } } },
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+      ]),
+      BankTransaction.aggregate([
+        { $match: { restaurantId: rid, matchStatus: "unmatched" } },
+        { $count: "count" }
+      ]),
     ]);
 
     const revenue = cashflows
@@ -306,6 +317,48 @@ export const PaymentQuery = {
       transactions,
       debts,
       costBreakdown,
+      reconciliations: (recentReconciliations || []).map((item) => ({
+        id: String(item._id),
+        time: item.matchedAt || item.createdAt,
+        amount: Number(item.receivedAmount ?? item.expectedAmount ?? 0),
+        reference: item.paymentReference || "",
+        status: item.status || "unmatched",
+        note: item.note || "",
+      })),
+      reconciliationSummary: {
+        matched: Number(reconciliationAgg.find((x) => x._id === "matched")?.count || 0),
+        amountMismatch: Number(reconciliationAgg.find((x) => x._id === "amount_mismatch")?.count || 0),
+        unmatched: Number(unmatchedAgg?.[0]?.count || 0),
+      },
     };
+  },
+  async paymentReconciliations(_, { restaurantId, status, limit = 10 }, ctx) {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    const filter = { restaurantId: rid };
+    if (status) filter.status = String(status).toLowerCase();
+    const docs = await PaymentReconciliation.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
+    return docs.map((doc) => ({
+      ...doc,
+      id: String(doc._id),
+      restaurantId: doc.restaurantId ? String(doc.restaurantId) : null,
+      paymentSessionId: doc.paymentSessionId ? String(doc.paymentSessionId) : null,
+      bankTransactionId: doc.bankTransactionId ? String(doc.bankTransactionId) : null,
+    }));
+  },
+  async bankTransactions(_, { restaurantId, matchStatus, limit = 10 }, ctx) {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    const filter = { restaurantId: rid };
+    if (matchStatus) filter.matchStatus = String(matchStatus).toLowerCase();
+    const docs = await BankTransaction.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
+    return docs.map((doc) => ({
+      ...doc,
+      id: String(doc._id),
+      restaurantId: doc.restaurantId ? String(doc.restaurantId) : null,
+      matchedPaymentSessionId: doc.matchedPaymentSessionId ? String(doc.matchedPaymentSessionId) : null,
+    }));
   },
 };

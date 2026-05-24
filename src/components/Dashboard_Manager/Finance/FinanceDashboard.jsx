@@ -20,6 +20,8 @@ const FinanceDashboard = () => {
     trend,
     transactions,
     debts,
+    reconciliations,
+    reconciliationSummary,
     costBreakdown,
     loading,
     error,
@@ -134,6 +136,34 @@ const FinanceDashboard = () => {
               </div>
             </div>
             {loading ? <div className="card-body">Đang tải giao dịch...</div> : <TransactionTable transactions={transactions} />}
+          </div>
+          <div className="card-container transactions-card">
+            <div className="card-header"><h3>Đối soát chuyển khoản</h3></div>
+            <div className="card-body">
+              <div>Matched: <b>{reconciliationSummary.matched}</b> | Amount mismatch: <b>{reconciliationSummary.amountMismatch}</b> | Unmatched: <b>{reconciliationSummary.unmatched}</b></div>
+              <table className="clean-table">
+                <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Reference</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
+                <tbody>
+                  {(reconciliations || []).length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center text-muted" style={{ padding: "1rem" }}>
+                        Chưa có dữ liệu đối soát chuyển khoản.
+                      </td>
+                    </tr>
+                  ) : (
+                    (reconciliations || []).slice(0, 10).map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.time ? new Date(r.time).toLocaleString("vi-VN") : "-"}</td>
+                        <td>{Number(r.amount || 0).toLocaleString("vi-VN")}đ</td>
+                        <td>{r.reference || "-"}</td>
+                        <td>{r.status}</td>
+                        <td>{r.note || "-"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

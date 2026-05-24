@@ -46,6 +46,19 @@ const GET_FINANCE_DASHBOARD = gql`
         operations
         other
       }
+      reconciliations {
+        id
+        amount
+        reference
+        status
+        note
+        time
+      }
+      reconciliationSummary {
+        matched
+        amountMismatch
+        unmatched
+      }
     }
   }
 `;
@@ -118,6 +131,12 @@ export const useFinance = () => {
       labor: 0,
       operations: 0,
       other: 0,
+    },
+    reconciliations: dashboard?.reconciliations || [],
+    reconciliationSummary: dashboard?.reconciliationSummary || {
+      matched: 0,
+      amountMismatch: 0,
+      unmatched: 0,
     },
   };
 };

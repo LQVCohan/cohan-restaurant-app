@@ -427,6 +427,11 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   const amount = Number(payload?.amount || 0);
   const description = String(payload?.description || payload?.content || "");
   const bankAccountNumber = String(payload?.bankAccountNumber || payload?.accountNumber || "");
+  const payloadRestaurantId = (
+    payload?.restaurantId && mongoose.isValidObjectId(payload.restaurantId)
+      ? new mongoose.Types.ObjectId(payload.restaurantId)
+      : null
+  );
   const occurredAt = payload?.transactionDate ? new Date(payload.transactionDate) : new Date();
 
   const session = await mongoose.startSession();
@@ -438,6 +443,7 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       if (exists) return { duplicate: true, bankTransaction: exists };
       const bankTx = await BankTransaction.create([{
         provider,
+        restaurantId: payloadRestaurantId || null,
         transactionId,
         amount,
         description,
@@ -463,6 +469,7 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       if (!payment) return { matched: false, bankTransaction: bankTx };
 
       bankTx.matchedPaymentSessionId = payment._id;
+      bankTx.restaurantId = payment.restaurantId || bankTx.restaurantId || null;
       if (Math.round(amount) !== Math.round(Number(payment.amount || 0))) {
         bankTx.matchStatus = "amount_mismatch";
         await bankTx.save({ session });
