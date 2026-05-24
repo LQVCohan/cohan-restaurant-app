@@ -12,8 +12,13 @@ import {
   Restaurant,
   Table,
   BankTransaction,
+  Coupon,
+  CouponRedemption,
+  Promotion,
+  UserCoupon,
 } from "../../../models/index.js";
 import { generateInvoiceNumber } from "../../../utils/generateInvoiceNumber.ts";
+import { calculateDiscountBreakdown } from "../discountCalculation.service.js";
 import {
   createMomoPayment,
   createVnpayPayment,
@@ -22,6 +27,61 @@ import {
 } from "./providers.js";
 
 const SUPPORTED = ["momo", "vnpay", "bank_transfer"];
+const RESERVATION_SUPPORTED = ["momo", "vnpay"];
+const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
+const CLOSED_CHILD_PAYMENT_STATUSES = new Set(["paid", "cancelled"]);
+function getPaymentSessionTtlMinutes() {
+  const raw = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 15);
+  return Number.isFinite(raw) && raw > 0 ? raw : 15;
+}
+export function buildOrderPaymentFingerprint({ orderIds = [], provider, paymentMethod, amount, pricing, promotionIds = [], discountTotals }) {
+  return JSON.stringify({
+    orderIds: [...new Set(orderIds.map(String))].sort(),
+    provider: String(provider || ""),
+    paymentMethod: String(paymentMethod || ""),
+    amount: Number(amount || 0),
+    pricing: pricing ? {
+      voucherCode: String(pricing?.voucherCode || "").trim().toUpperCase(),
+      taxRate: Number(pricing?.taxRate || 0),
+      serviceRate: Number(pricing?.serviceRate || 0),
+      shippingFee: Number(pricing?.shippingFee || 0),
+    } : null,
+    promotionIds: [...new Set((promotionIds || []).map(String).filter(Boolean))].sort(),
+    discountGrandTotal: Number(discountTotals?.grandTotal || 0),
+  });
+}
+export async function expirePendingPaymentSessionIfNeeded(payment, now = new Date()) {
+  if (!payment || String(payment.status) !== "pending") return false;
+  if (!payment.expiresAt || new Date(payment.expiresAt).getTime() > now.getTime()) return false;
+  payment.status = "expired";
+  payment.cancelledAt = payment.cancelledAt || now;
+  payment.cancelReason = payment.cancelReason || "expired_by_ttl";
+  payment.events = Array.isArray(payment.events) ? payment.events : [];
+  payment.events.push({ type: "payment_expired", payload: { reason: payment.cancelReason } });
+  await payment.save();
+  return true;
+}
+export async function cancelPaymentSession({ paymentId, reason, ctx }) {
+  const payment = await PaymentSession.findById(paymentId);
+  if (!payment) throw new Error("Payment session not found");
+  const actorId = ctx?.user?.id;
+  if (!actorId || !mongoose.isValidObjectId(actorId)) throw new Error("Unauthorized");
+  if (String(payment.userId || "") !== String(actorId)) {
+    const { requireRestaurantPermission } = await import("../auth/authorization.service.js");
+    const { PERMISSIONS } = await import("../../constants/permissions.js");
+    await requireRestaurantPermission(ctx, payment.restaurantId, PERMISSIONS.PAYMENT_WRITE);
+  }
+  if (String(payment.status || "") !== "pending") throw new Error("Only pending payment session can be cancelled");
+  const now = new Date();
+  payment.status = "cancelled";
+  payment.cancelledAt = now;
+  payment.cancelledBy = actorId;
+  payment.cancelReason = String(reason || "").trim() || "cancelled_by_user";
+  payment.events = Array.isArray(payment.events) ? payment.events : [];
+  payment.events.push({ type: "payment_cancelled", payload: { reason: payment.cancelReason, cancelledBy: actorId } });
+  await payment.save();
+  return payment.toObject();
+}
 
 function createRef(prefix = "PAY") {
   const ts = Date.now().toString(36).toUpperCase();
@@ -91,6 +151,9 @@ export async function createReservationPayment({ reservationId, provider, userId
   }
 
   const normalizedProvider = normalizeProvider(provider);
+  if (!RESERVATION_SUPPORTED.includes(normalizedProvider)) {
+    throw new Error("Reservation payment only supports momo/vnpay in this flow.");
+  }
   const restaurant = await Restaurant.findById(reservation.restaurantId).lean();
   if (!restaurant) throw new Error("Restaurant not found");
   const paymentSettings = getRestaurantPaymentSettings(restaurant);
@@ -161,7 +224,7 @@ export async function createReservationPayment({ reservationId, provider, userId
   return payment.toObject();
 }
 
-export async function createOrderPayment({ restaurantId, orderIds = [], provider, paymentMethod, baseApiUrl, clientIp, userId }) {
+export async function createOrderPayment({ restaurantId, orderIds = [], provider, paymentMethod, pricing = null, promotionIds = [], baseApiUrl, clientIp, userId }) {
   if (!mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
   if (!mongoose.isValidObjectId(userId)) throw new Error("Unauthorized");
   if (!Array.isArray(orderIds) || !orderIds.length) throw new Error("Invalid orderIds");
@@ -185,7 +248,58 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
     if (forbidden.has(status) && payStatus !== "payment_requested") throw new Error("Order is not payable");
   }
 
-  const expectedAmount = orders.reduce((sum, order) => sum + Number(order?.totals?.grandTotal || 0), 0);
+  const sortedOrderIds = orders.map((o) => String(o._id)).sort();
+  const aggregatedTotals = orders.reduce((acc, order) => ({
+    subtotal: acc.subtotal + Number(order?.totals?.subtotal || 0),
+    discount: acc.discount + Number(order?.totals?.discount || 0),
+    tax: acc.tax + Number(order?.totals?.tax || 0),
+    service: acc.service + Number(order?.totals?.service || 0),
+    shippingFee: acc.shippingFee + Number(order?.totals?.shippingFee || 0),
+    grandTotal: acc.grandTotal + Number(order?.totals?.grandTotal || 0),
+  }), { subtotal: 0, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 0 });
+  let discountTotals = null;
+  const normalizedPromotionIds = Array.isArray(promotionIds) ? promotionIds.map(String).filter(Boolean) : [];
+  const appliedDiscount = Boolean(pricing?.voucherCode || normalizedPromotionIds.length > 0);
+  if (appliedDiscount) {
+    const items = orders.flatMap((order) => (order.items || []).filter((item) => !EXCLUDED_ITEM_STATUSES.has(String(item?.status || "").toLowerCase())));
+    discountTotals = await calculateDiscountBreakdown({ restaurantId, items, pricing: { ...pricing }, promotionIds: normalizedPromotionIds, userId, paymentMethod: paymentMethod || normalizedProvider, orderType: orders[0]?.orderType || "dine_in" });
+  }
+  const expectedAmount = Number(appliedDiscount ? discountTotals?.grandTotal : aggregatedTotals.grandTotal);
+  const now = new Date();
+  const orderIdsKey = sortedOrderIds.join(":");
+  const discountFingerprint = buildOrderPaymentFingerprint({
+    orderIds: sortedOrderIds,
+    provider: normalizedProvider,
+    paymentMethod: paymentMethod || normalizedProvider,
+    amount: expectedAmount,
+    pricing,
+    promotionIds: normalizedPromotionIds,
+    discountTotals,
+  });
+  const existingPendingCandidates = await PaymentSession.find({
+    restaurantId,
+    provider: normalizedProvider,
+    paymentMethod: paymentMethod || normalizedProvider,
+    status: "pending",
+    "metadata.source": "order_payment",
+  }).sort({ createdAt: -1 });
+  for (const existingPending of existingPendingCandidates) {
+    if (await expirePendingPaymentSessionIfNeeded(existingPending, now)) continue;
+    const existingOrderIds = Array.isArray(existingPending?.metadata?.orderIds)
+      ? existingPending.metadata.orderIds.map(String).sort()
+      : [];
+    const orderIdsMatch = existingOrderIds.length === sortedOrderIds.length
+      && existingOrderIds.every((id, idx) => id === sortedOrderIds[idx]);
+    if (!orderIdsMatch) continue;
+    const existingFingerprint = String(existingPending?.metadata?.discountFingerprint || "");
+    if (existingFingerprint === discountFingerprint) return existingPending.toObject();
+    existingPending.status = "cancelled";
+    existingPending.cancelledAt = now;
+    existingPending.cancelReason = "superseded_by_new_payment_context";
+    existingPending.events = Array.isArray(existingPending.events) ? existingPending.events : [];
+    existingPending.events.push({ type: "payment_cancelled", payload: { reason: "superseded_by_new_payment_context" } });
+    await existingPending.save();
+  }
   const date = new Date();
   const reference = `ORD-${date.toISOString().slice(0, 10).replace(/-/g, "")}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
   const payment = await PaymentSession.create({
@@ -198,13 +312,20 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
     currency: "VND",
     status: "pending",
     callbackStatus: "none",
+    expiresAt: new Date(now.getTime() + getPaymentSessionTtlMinutes() * 60 * 1000),
     requestId: createRef("REQ"),
     reference,
     metadata: {
       orderIds: orders.map((o) => String(o._id)),
+      orderIdsKey,
       orderCodes: orders.map((o) => o.orderCode).filter(Boolean),
       expectedAmount,
       source: "order_payment",
+      discountFingerprint,
+      appliedDiscount,
+      discountTotals,
+      promotionIds: normalizedPromotionIds,
+      pricing: pricing || null,
     },
   });
 
@@ -226,6 +347,7 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
         bankName: process.env.BANK_TRANSFER_BANK_NAME || "Vietcombank",
         bankAccountNumber: process.env.BANK_TRANSFER_ACCOUNT_NUMBER || "1234567890",
         accountName: process.env.BANK_TRANSFER_ACCOUNT_NAME || "COHAN RESTAURANT",
+        bankCode: process.env.BANK_TRANSFER_BANK_CODE || "VCB",
         transferContent,
       },
     };
@@ -266,9 +388,68 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
     }
   }
   const trx = await PaymentTransaction.create([{ restaurantId: payment.restaurantId, orderIds, paidAmount: payment.amount, method: payment.provider, status: "SUCCESS", paidAt: now, note: `Auto settlement from ${source}`, txnRef: payment.providerTransactionId || payment.reference, externalRef: payment.reference }], { session }).then((x) => x[0]);
-  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: { ...totals, grandTotal: totals.grandTotal || payment.amount }, paid: payment.amount, status: "PAID", currency: "VND", refTransactionId: trx._id }], { session }).then((x) => x[0]);
+  const isDiscounted = Boolean(payment?.metadata?.appliedDiscount && payment?.metadata?.discountTotals);
+  const discountTotals = isDiscounted ? payment.metadata.discountTotals : null;
+  const authoritativeTotals = isDiscounted
+    ? {
+      subtotal: Number(discountTotals?.subtotal || 0),
+      discount: Number(discountTotals?.totalDiscount ?? discountTotals?.discount ?? 0),
+      discountReason: discountTotals?.discountReason || null,
+      voucherCode: discountTotals?.voucherCode || null,
+      promotionId: discountTotals?.appliedPromotions?.[0] || null,
+      tax: Number(discountTotals?.tax || 0),
+      service: Number(discountTotals?.service || 0),
+      shippingFee: Number(discountTotals?.shippingFee || 0),
+      grandTotal: Number(discountTotals?.grandTotal || 0),
+    }
+    : { ...totals, grandTotal: totals.grandTotal || payment.amount };
+  const invoiceMeta = isDiscounted ? { discountApplied: true, ...(discountTotals || {}), requestedPromotionIds: payment?.metadata?.promotionIds || [] } : undefined;
+  const invoiceStatus = Number(payment.amount || 0) >= Number(authoritativeTotals.grandTotal || 0) ? "PAID" : "PARTIAL";
+  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: authoritativeTotals, paid: payment.amount, status: invoiceStatus, currency: "VND", refTransactionId: trx._id, meta: invoiceMeta }], { session }).then((x) => x[0]);
   const cashflow = await Cashflow.create([{ restaurantId: payment.restaurantId, type: "INFLOW", amount: payment.amount, currency: "VND", ref: { kind: "Invoice", id: invoice._id, orderIds }, note: "Thanh toán tự động", occurredAt: now }], { session }).then((x) => x[0]);
   await Order.updateMany({ _id: { $in: orderIds } }, { $set: { "payment.method": payment.provider, "payment.provider": payment.provider, "payment.status": "paid", "payment.paidAmount": payment.amount, "payment.paidAt": now, "payment.txnRef": payment.providerTransactionId || payment.reference, currentStatus: "completed" } }, { session });
+  if (payment?.metadata?.appliedDiscount && payment?.metadata?.discountTotals?.couponId) {
+    const rawCouponId = String(payment.metadata.discountTotals.couponId || "");
+    if (!mongoose.isValidObjectId(rawCouponId)) throw new Error("Invalid couponId in payment discount metadata");
+    const couponId = new mongoose.Types.ObjectId(rawCouponId);
+    const exists = await CouponRedemption.findOne({ invoiceId: invoice._id, couponId }).session(session);
+    if (!exists) {
+      const coupon = await Coupon.findById(couponId).session(session);
+      const perUserLimit = Number(coupon?.constraints?.perUserLimit || 0);
+      if (mongoose.isValidObjectId(payment.userId) && perUserLimit > 0) {
+        const userRedemptionCount = await CouponRedemption.countDocuments({ couponId, userId: payment.userId }).session(session);
+        if (userRedemptionCount >= perUserLimit) throw new Error("Invalid coupon: per-user usage limit reached");
+      }
+      const updateResult = await Coupon.updateOne({
+        _id: couponId,
+        $expr: { $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }] },
+      }, { $inc: { used: 1 } }, { session });
+      if (!updateResult.modifiedCount) throw new Error("Invalid coupon: usage limit reached");
+      await CouponRedemption.create([{ couponId, userId: payment.userId, restaurantId: payment.restaurantId, orderIds, invoiceId: invoice._id, couponCode: String(payment?.metadata?.discountTotals?.voucherCode || ""), discountAmount: Number(payment?.metadata?.discountTotals?.voucherDiscount || 0), subtotal: Number(payment?.metadata?.discountTotals?.subtotal || 0), grandTotal: Number(payment?.metadata?.discountTotals?.grandTotal || 0), source: "online", redeemedAt: now }], { session });
+      await UserCoupon.updateMany({ userId: payment.userId, couponId, status: "saved" }, { $set: { status: "used", usedAt: now, invoiceId: invoice._id } }, { session });
+    }
+  }
+  for (const promotionId of (payment?.metadata?.discountTotals?.appliedPromotions || [])) {
+    if (mongoose.isValidObjectId(promotionId)) await Promotion.updateOne({ _id: promotionId }, { $inc: { usageCount: 1 } }, { session });
+  }
+  const parentSessionId = String(orders.find((o) => o?.parentOrderId)?.parentOrderId || orders.find((o) => o?.rootOrderId)?.rootOrderId || "");
+  if (mongoose.isValidObjectId(parentSessionId)) {
+    const childOrders = await Order.find({ restaurantId: payment.restaurantId, $or: [{ parentOrderId: parentSessionId }, { rootOrderId: parentSessionId }] }).session(session);
+    const allSettled = childOrders.every((order) => CLOSED_CHILD_PAYMENT_STATUSES.has(String(order?.payment?.status || "").toLowerCase()) || ["completed", "cancelled"].includes(String(order?.currentStatus || "").toLowerCase()));
+    if (allSettled) {
+      const parent = await Order.findById(parentSessionId).session(session);
+      if (parent) {
+        parent.sessionStatus = "CLOSED";
+        parent.orderPaymentStatus = "PAID";
+        parent.activeSessionKey = null;
+        parent.closedAt = now;
+        parent.currentStatus = "completed";
+        parent.payment = { ...(parent.payment || {}), status: "paid" };
+        await parent.save({ session });
+        if (parent.tableId) await Table.updateOne({ _id: parent.tableId }, { $set: { status: "available" } }, { session });
+      }
+    }
+  }
   payment.metadata = { ...(payment.metadata || {}), settlement: { paymentTransactionId: trx._id, invoiceId: invoice._id, cashflowId: cashflow._id } };
   await payment.save({ session });
   return payment.metadata.settlement;
@@ -297,7 +478,8 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
     : verifyVnpayCallback(payload);
 
   payment.callbackRaw = payload;
-  payment.callbackAt = new Date();
+  const now = new Date();
+  payment.callbackAt = now;
   payment.callbackStatus = signatureValid ? "verified" : "rejected";
   payment.events.push({ type: "callback_received", payload: { source, signatureValid } });
 
@@ -313,6 +495,20 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
       status: "failed",
       meta: { reason: "INVALID_SIGNATURE", provider: normalizedProvider },
     }).catch(() => {});
+    return payment.toObject();
+  }
+  if (["cancelled", "expired"].includes(String(payment.status || "").toLowerCase())) {
+    payment.events.push({ type: "callback_ignored", payload: { reason: `status_${String(payment.status || "").toLowerCase()}` } });
+    await payment.save();
+    return payment.toObject();
+  }
+  if (String(payment.status || "").toLowerCase() === "pending" && payment.expiresAt && new Date(payment.expiresAt).getTime() <= now.getTime()) {
+    payment.status = "expired";
+    payment.cancelledAt = payment.cancelledAt || now;
+    payment.cancelReason = payment.cancelReason || "expired_by_ttl";
+    payment.events.push({ type: "payment_expired", payload: { reason: payment.cancelReason } });
+    payment.events.push({ type: "callback_ignored", payload: { reason: "expired_by_ttl" } });
+    await payment.save();
     return payment.toObject();
   }
 
@@ -412,9 +608,10 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
 export async function getPaymentSessionById(paymentId, userId = null) {
   const query = { _id: paymentId };
   if (userId) query.userId = userId;
-  const session = await PaymentSession.findOne(query).lean();
-  if (!session) throw new Error("Payment session not found");
-  return session;
+  const paymentSession = await PaymentSession.findOne(query);
+  if (!paymentSession) throw new Error("Payment session not found");
+  await expirePendingPaymentSessionIfNeeded(paymentSession, new Date());
+  return paymentSession.toObject();
 }
 
 export async function listReservationPayments(reservationId, userId) {
@@ -454,19 +651,28 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
         matchStatus: "unmatched",
       }], { session }).then((x) => x[0]);
 
+      const now = new Date();
       const normalizedDescription = description.toUpperCase();
       const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
       const candidates = await PaymentSession.find({
         status: "pending",
         $or: [{ provider: "bank_transfer" }, { paymentMethod: "bank_transfer" }],
       }).session(session);
-      const payment = candidates.find((p) => {
-        const ref = String(p.reference || "").toUpperCase();
-        const accountOk = !p?.metadata?.bankTransfer?.bankAccountNumber
-          || String(p?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
-        return accountOk && (refs.includes(ref) || normalizedDescription.includes(ref));
-      });
-      if (!payment) return { matched: false, bankTransaction: bankTx };
+      let payment = null;
+      for (const candidate of candidates) {
+        if (await expirePendingPaymentSessionIfNeeded(candidate, now)) continue;
+        const ref = String(candidate.reference || "").toUpperCase();
+        const accountOk = !candidate?.metadata?.bankTransfer?.bankAccountNumber
+          || String(candidate?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
+        if (accountOk && (refs.includes(ref) || normalizedDescription.includes(ref))) {
+          payment = candidate;
+          break;
+        }
+      }
+      if (!payment) {
+        await PaymentReconciliation.create([{ restaurantId: payloadRestaurantId, provider, status: "unmatched", receivedAmount: amount, bankTransactionId: bankTx._id, raw: payload, note: "No pending payment session matched" }], { session });
+        return { matched: false, bankTransaction: bankTx };
+      }
 
       bankTx.matchedPaymentSessionId = payment._id;
       bankTx.restaurantId = payment.restaurantId || bankTx.restaurantId || null;

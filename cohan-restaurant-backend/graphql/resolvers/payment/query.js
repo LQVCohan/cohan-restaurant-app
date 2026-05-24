@@ -115,9 +115,26 @@ function buildBuckets({ from, to, mode, format }) {
 export const PaymentQuery = {
 
 
-  async paymentSession(_, { id }) {
+  async paymentSession(_, { id }, ctx) {
     if (!mongoose.isValidObjectId(id)) throw new Error("Invalid payment id");
-    return PaymentSession.findById(id).lean();
+    const session = await PaymentSession.findById(id);
+    if (!session) return null;
+    if (String(session.userId || "") !== String(ctx?.user?.id || "")) {
+      await requireRestaurantPermission(ctx, toObjectId(session.restaurantId), PERMISSIONS.PAYMENT_READ);
+    }
+    if (
+      String(session.status || "").toLowerCase() === "pending"
+      && session.expiresAt
+      && new Date(session.expiresAt).getTime() <= Date.now()
+    ) {
+      session.status = "expired";
+      session.cancelledAt = session.cancelledAt || new Date();
+      session.cancelReason = session.cancelReason || "expired_by_ttl";
+      session.events = Array.isArray(session.events) ? session.events : [];
+      session.events.push({ type: "payment_expired", payload: { reason: session.cancelReason } });
+      await session.save();
+    }
+    return session.toObject();
   },
 
   async reservationPaymentSessions(_, { reservationId }, ctx) {

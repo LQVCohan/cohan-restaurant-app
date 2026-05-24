@@ -49,6 +49,10 @@ const PaymentSessionSchema = BaseSchemaModel({
 
   callbackAt: { type: Date },
   reconciledAt: { type: Date },
+  expiresAt: { type: Date, index: true },
+  cancelledAt: { type: Date },
+  cancelledBy: { type: Types.ObjectId, ref: "User" },
+  cancelReason: { type: String },
 
   providerResponseRaw: { type: Schema.Types.Mixed },
   callbackRaw: { type: Schema.Types.Mixed },

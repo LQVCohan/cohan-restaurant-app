@@ -170,6 +170,9 @@ type PaymentSession {
   providerResponseRaw: JSON
   callbackRaw: JSON
   reconciledAt: DateTime
+  expiresAt: DateTime
+  cancelledAt: DateTime
+  cancelReason: String
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -210,11 +213,17 @@ input CreateOrderPaymentInput {
   orderIds: [ID!]!
   provider: String!
   paymentMethod: String
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
 }
 
 input CreateReservationPaymentInput {
   reservationId: ID!
   provider: String!
+}
+input CancelPaymentSessionInput {
+  paymentId: ID!
+  reason: String
 }
 
 input PaymentProviderConfigInputLite {
@@ -337,6 +346,7 @@ extend type Query {
 extend type Mutation {
   createReservationPayment(input: CreateReservationPaymentInput!): PaymentSession!
   createOrderPayment(input: CreateOrderPaymentInput!): PaymentSession!
+  cancelPaymentSession(input: CancelPaymentSessionInput!): PaymentSession!
   syncPaymentStatus(paymentId: ID!): PaymentSession!
   updateRestaurantPaymentSettings(input: UpdateRestaurantPaymentSettingsInput!): Restaurant!
 

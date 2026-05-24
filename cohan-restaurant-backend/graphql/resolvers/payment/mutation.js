@@ -16,7 +16,7 @@ import {
   Promotion,
   UserCoupon,
 } from "../../../models/index.js";
-import { createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { cancelPaymentSession, createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -1604,11 +1604,14 @@ export const createReservationPaymentMutation = async (
   return payment;
 };
 
-export const syncPaymentStatus = async (_parent, { paymentId }) => {
+export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
   if (!mongoose.isValidObjectId(paymentId))
     throw new Error("Invalid paymentId");
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
+  if (String(payment.userId || "") !== String(ctx?.user?.id || "")) {
+    await requireRestaurantPermission(ctx, toId(payment.restaurantId), PERMISSIONS.PAYMENT_READ);
+  }
 
   if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
     return payment;
@@ -1618,6 +1621,11 @@ export const syncPaymentStatus = async (_parent, { paymentId }) => {
   }
 
   return payment;
+};
+export const cancelPaymentSessionMutation = async (_parent, { input }, ctx) => {
+  if (!mongoose.isValidObjectId(input?.paymentId)) throw new Error("Invalid paymentId");
+  if (!ctx?.user?.id) throw new Error("Unauthorized");
+  return cancelPaymentSession({ paymentId: input.paymentId, reason: input?.reason, ctx });
 };
 
 export const updateRestaurantPaymentSettings = async (
@@ -1700,6 +1708,7 @@ export default {
   payOrdersByOrderIds,
   createReservationPayment: createReservationPaymentMutation,
   createOrderPayment: createOrderPaymentMutation,
+  cancelPaymentSession: cancelPaymentSessionMutation,
   syncPaymentStatus,
   updateRestaurantPaymentSettings,
 };

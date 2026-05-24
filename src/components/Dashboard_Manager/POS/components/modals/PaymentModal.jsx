@@ -106,7 +106,7 @@ function PaymentModal({
 
   const { activeCurrency, setActiveCurrency, usdToVndRate } =
     useRestaurantCurrency(restaurantId);
-  const { validatePayment, confirmPayment, payLoading, createOnlineOrderPayment, getPaymentSession, resolvePayableOrderIds } =
+  const { validatePayment, confirmPayment, payLoading, createOnlineOrderPayment, cancelOnlinePaymentSession, getPaymentSession, resolvePayableOrderIds } =
     useOrderManagement(pos);
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
@@ -415,6 +415,10 @@ function PaymentModal({
         orderIds: resolvedOrderIds,
         provider: method === "transfer" ? "bank_transfer" : method,
         paymentMethod: method,
+        pricing: hasValidDiscount
+          ? buildDiscountPricingInput({ taxRate: 0, serviceRate: 0, shippingFee: 0, couponCode })
+          : undefined,
+        promotionIds: hasValidDiscount ? selectedPromotionIds : undefined,
       });
       setOnlinePayment(created);
       setOnlinePaymentError("");
@@ -507,6 +511,7 @@ function PaymentModal({
   const statusMessage = showRejected
     ? "Số tiền chuyển khoản không khớp. Vui lòng kiểm tra đối soát."
     : statusCopyMap[onlineStatus] || "";
+  const expiresAtLabel = onlinePayment?.expiresAt ? new Date(onlinePayment.expiresAt).toLocaleString("vi-VN") : "";
   const transferMeta = onlinePayment?.metadata?.bankTransfer || {};
   const transferAmount = Number(onlinePayment?.amount || payableTotalVnd || 0);
   const statusBadge = showRejected
@@ -891,7 +896,18 @@ function PaymentModal({
                 </div>
                 {copyFallback && <div className={s.discountWarning}>{copyFallback}</div>}
                 {statusMessage && <div>{statusMessage}</div>}
+                {expiresAtLabel && <div>Mã thanh toán hết hạn lúc <b>{expiresAtLabel}</b></div>}
                 {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
+                {onlineStatus === "pending" && (
+                  <button className={s.secondary} onClick={async () => {
+                    try {
+                      const cancelled = await cancelOnlinePaymentSession({ paymentId: onlinePayment.id, reason: "cancelled_by_user" });
+                      if (cancelled) setOnlinePayment(cancelled);
+                    } catch (e) {
+                      setOnlinePaymentError(e?.message || "Không thể hủy mã thanh toán.");
+                    }
+                  }}>Hủy mã thanh toán</button>
+                )}
                 {canRetryOnline && <button className={s.secondary} onClick={() => { setOnlinePayment(null); setOnlinePaymentError(""); setIsConfirming(true); }}>Tạo lại mã thanh toán</button>}
                   </>
                 )}
@@ -919,7 +935,18 @@ function PaymentModal({
                   )}
                 </div>
                 {statusMessage && <div>{statusMessage}</div>}
+                {expiresAtLabel && <div>Mã thanh toán hết hạn lúc <b>{expiresAtLabel}</b></div>}
                 {onlinePaymentError && <div className={s.discountError}>{onlinePaymentError}</div>}
+                {onlineStatus === "pending" && (
+                  <button className={s.secondary} onClick={async () => {
+                    try {
+                      const cancelled = await cancelOnlinePaymentSession({ paymentId: onlinePayment.id, reason: "cancelled_by_user" });
+                      if (cancelled) setOnlinePayment(cancelled);
+                    } catch (e) {
+                      setOnlinePaymentError(e?.message || "Không thể hủy mã thanh toán.");
+                    }
+                  }}>Hủy mã thanh toán</button>
+                )}
                 {canRetryOnline && <button className={s.secondary} onClick={() => { setOnlinePayment(null); setOnlinePaymentError(""); setIsConfirming(true); }}>Tạo lại mã thanh toán</button>}
               </div>
             )}

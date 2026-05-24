@@ -18,10 +18,17 @@ Tài liệu này mô tả luồng online payment cho order sau khi đã có PR #
 - `BANK_TRANSFER_BANK_NAME`
 - `BANK_TRANSFER_ACCOUNT_NUMBER`
 - `BANK_TRANSFER_ACCOUNT_NAME`
+- `BANK_TRANSFER_BANK_CODE` (mặc định `VCB`)
+- `PAYMENT_SESSION_TTL_MINUTES` (mặc định `15`)
 
 ## Lưu ý demo an toàn
 
 - Chuyển khoản ngân hàng chỉ được xác nhận qua webhook khớp giao dịch, **không** xác nhận bằng thao tác staff bấm nút.
 - Hiển thị QR **không** đồng nghĩa order đã thanh toán.
+- Phiên thanh toán online `pending` sẽ hết hạn theo TTL khi được kiểm tra/tái sử dụng sau thời gian cấu hình.
+- Staff có thể hủy mã thanh toán `pending` để tạo lại mã mới.
+- Khi coupon/promotion thay đổi, hệ thống tạo fingerprint mới nên không tái sử dụng mã pending cũ.
+- Phiên `cancelled/expired` không đánh dấu đơn đã thanh toán.
+- Chỉ webhook/callback hợp lệ mới chuyển trạng thái thanh toán online sang `success`.
 - Giao dịch lệch số tiền **không** được đánh dấu paid.
 - Luồng POS tiền mặt/thẻ hiện tại giữ nguyên, không thay đổi trong phạm vi demo này.

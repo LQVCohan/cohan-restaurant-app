@@ -800,6 +800,25 @@ const CREATE_ORDER_PAYMENT = gql`
       payUrl
       qrCodeUrl
       deeplink
+      expiresAt
+      cancelledAt
+      cancelReason
+      metadata
+    }
+  }
+`;
+const CANCEL_PAYMENT_SESSION = gql`
+  mutation CancelPaymentSession($input: CancelPaymentSessionInput!) {
+    cancelPaymentSession(input: $input) {
+      id
+      status
+      callbackStatus
+      provider
+      reference
+      amount
+      expiresAt
+      cancelledAt
+      cancelReason
       metadata
     }
   }
@@ -814,6 +833,9 @@ const GET_PAYMENT_SESSION = gql`
       providerTransactionId
       reference
       amount
+      expiresAt
+      cancelledAt
+      cancelReason
       payUrl
       qrCodeUrl
       deeplink
@@ -1365,6 +1387,7 @@ export default function useOrderManagement(pos = null) {
     UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
   const [mutCreateOrderPayment] = useMutation(CREATE_ORDER_PAYMENT);
+  const [mutCancelPaymentSession] = useMutation(CANCEL_PAYMENT_SESSION);
 
   // queries
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
@@ -3200,8 +3223,8 @@ export default function useOrderManagement(pos = null) {
     [preparePayment, confirmPayment, totals.total],
   );
   const createOnlineOrderPayment = useCallback(
-    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod }) => {
-      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod } } });
+    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod, pricing, promotionIds = [] }) => {
+      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod, pricing, promotionIds } } });
       return data?.createOrderPayment || null;
     },
     [mutCreateOrderPayment],
@@ -3247,6 +3270,13 @@ export default function useOrderManagement(pos = null) {
       return data?.paymentSession || null;
     },
     [apollo],
+  );
+  const cancelOnlinePaymentSession = useCallback(
+    async ({ paymentId, reason }) => {
+      const { data } = await mutCancelPaymentSession({ variables: { input: { paymentId, reason } } });
+      return data?.cancelPaymentSession || null;
+    },
+    [mutCancelPaymentSession],
   );
 
   /* ============================================================
@@ -3502,6 +3532,7 @@ export default function useOrderManagement(pos = null) {
     confirmPayment,
     checkoutOrder,
     createOnlineOrderPayment,
+    cancelOnlinePaymentSession,
     getPaymentSession,
     resolvePayableOrderIds,
     payOrderByIds,
