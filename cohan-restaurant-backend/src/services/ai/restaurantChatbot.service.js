@@ -22,6 +22,15 @@ const INTENTS = {
   manager: ["doanh thu", "tồn kho", "nhân viên", "hiệu suất", "ca làm", "quản lý", "kpi"],
   support: ["hỗ trợ", "liên hệ", "khiếu nại", "phàn nàn", "gặp nhân viên", "support"],
 };
+const HANDOFF_KEYWORDS = [
+  "gặp nhân viên",
+  "người thật",
+  "support",
+  "liên hệ nhân viên",
+  "khiếu nại",
+  "phàn nàn",
+  "talk to human",
+];
 
 const STOP_WORDS = new Set([
   "toi",
@@ -193,6 +202,14 @@ const classifyIntent = (message) => {
     if (score > best.score) best = { intent, score };
   });
   return best.intent;
+};
+const shouldSuggestHandoff = ({ message, intent, confidence, isFallback }) => {
+  const raw = asLower(message);
+  if (intent === "support") return { suggested: true, reason: "support_intent" };
+  if (HANDOFF_KEYWORDS.some((k) => raw.includes(k))) return { suggested: true, reason: "user_request_human" };
+  if (isFallback) return { suggested: true, reason: "fallback_response" };
+  if (Number.isFinite(Number(confidence)) && Number(confidence) < 0.6) return { suggested: true, reason: "low_confidence" };
+  return { suggested: false, reason: null };
 };
 
 const extractLookupCode = (message) => {
@@ -640,6 +657,17 @@ export const handleRestaurantChatbotMessage = async ({
     },
     conversationId: persistedConversation ? String(persistedConversation._id) : null,
   };
+  const handoffDecision = shouldSuggestHandoff({
+    message: cleanMessage,
+    intent: finalResponse.intent,
+    confidence: finalResponse.confidence,
+    isFallback: finalResponse.isFallback,
+  });
+  finalResponse.handoffSuggested = handoffDecision.suggested;
+  finalResponse.handoffReason = handoffDecision.reason;
+  finalResponse.handoffMessage = handoffDecision.suggested
+    ? "Nếu bạn cần hỗ trợ thêm, bạn có thể bấm 'Gặp nhân viên' để được hỗ trợ bởi người thật."
+    : null;
 
   if (persistedConversation) {
     try {

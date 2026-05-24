@@ -28,6 +28,9 @@ type AiChatbotResponse {
   contextSummary: AiChatbotContextSummary
   isFallback: Boolean
   conversationId: ID
+  handoffSuggested: Boolean
+  handoffReason: String
+  handoffMessage: String
 }
 
 input AiChatbotHistoryInput {
@@ -43,6 +46,25 @@ input AskAiChatbotInput {
   conversationId: ID
 }
 
+input RequestAiChatbotHandoffInput {
+  conversationId: ID!
+  restaurantId: ID
+  guestId: String
+  reason: String
+  latestUserMessage: String
+}
+
+type AiChatbotHandoffResponse {
+  ok: Boolean!
+  conversationId: ID!
+  handoffRequested: Boolean!
+  chatThreadId: ID
+  notificationCount: Int!
+  message: String!
+  alreadyRequested: Boolean!
+}
+
 extend type Mutation {
   askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
+  requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
 }
