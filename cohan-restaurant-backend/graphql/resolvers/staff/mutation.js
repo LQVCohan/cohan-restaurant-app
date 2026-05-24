@@ -130,6 +130,35 @@ function toObjectId(id) {
 
 
 
+function mapShiftAttendanceMutationResult(timesheet) {
+  const hasCheckIn = Boolean(timesheet?.actualCheckInAt);
+  const hasCheckOut = Boolean(timesheet?.actualCheckOutAt);
+  const status = hasCheckOut ? "checked_out" : hasCheckIn ? "checked_in" : "scheduled";
+  const displayStatus = timesheet?.status || status;
+  const normalizedStatus = String(timesheet?.status || "").toLowerCase();
+  const isLate =
+    ["late", "late_early_leave"].includes(normalizedStatus) ||
+    (hasCheckIn && timesheet?.plannedStartTime
+      ? new Date(timesheet.actualCheckInAt).getTime() >
+        new Date(timesheet.plannedStartTime).getTime()
+      : false);
+
+  return {
+    id: String(timesheet._id),
+    restaurantId: String(timesheet.restaurantId),
+    employeeId: String(timesheet.employeeId),
+    shiftId: String(timesheet.shiftId),
+    checkInAt: timesheet.actualCheckInAt || null,
+    checkOutAt: timesheet.actualCheckOutAt || null,
+    status,
+    displayStatus,
+    isLate: Boolean(isLate),
+    createdAt: timesheet.createdAt || null,
+    updatedAt: timesheet.updatedAt || null,
+  };
+}
+
+
 async function checkShiftAttendanceAction({ shiftId, ctx, action }) {
   requireAuth(ctx);
   const actorId = ctx?.user?.id || ctx?.user?._id;
@@ -3782,6 +3811,41 @@ const mutationResolvers = {
   },
   checkInShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_in" }),
   checkOutShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_out" }),
+  markShiftAttendanceReviewed: async (_, { attendanceId, note }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
+
+    const attendanceKey = String(attendanceId || "").trim();
+    if (attendanceKey.startsWith("shift-")) {
+      throw new Error("Ca chưa có bản ghi chấm công để ghi chú xử lý.");
+    }
+
+    const trimmedNote = String(note || "").trim();
+    if (trimmedNote.length < 5) {
+      throw new Error("Ghi chú xử lý phải có ít nhất 5 ký tự.");
+    }
+
+    const timesheet = await Timesheet.findById(attendanceKey);
+    if (!timesheet) throw new Error("Không tìm thấy bản ghi chấm công.");
+    await requireRestaurantAccess(ctx, timesheet.restaurantId);
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hour = String(now.getHours()).padStart(2, "0");
+    const minute = String(now.getMinutes()).padStart(2, "0");
+    const reviewPrefix = `[Manager review ${year}-${month}-${day} ${hour}:${minute}]`;
+    const reviewLine = `${reviewPrefix} ${trimmedNote}`;
+
+    timesheet.note = timesheet.note?.trim()
+      ? `${timesheet.note.trim()}
+${reviewLine}`
+      : reviewLine;
+    await timesheet.save();
+
+    return mapShiftAttendanceMutationResult(timesheet);
+  },
   upsertStaffAttendance: async (_, { input }, ctx) => {
     requireAuth(ctx);
     const employeeId = toObjectId(input.employeeId);

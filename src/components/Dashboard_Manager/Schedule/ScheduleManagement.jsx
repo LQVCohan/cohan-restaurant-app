@@ -243,6 +243,14 @@ const REVIEW_SHIFT_ACK = gql`
   }
 `;
 
+const MARK_SHIFT_ATTENDANCE_REVIEWED = gql`
+  mutation MarkShiftAttendanceReviewed($attendanceId: ID!, $note: String!) {
+    markShiftAttendanceReviewed(attendanceId: $attendanceId, note: $note) {
+      id
+    }
+  }
+`;
+
 const GET_SCHEDULE_CHANGE_LOGS = gql`
   query ScheduleChangeLogs(
     $restaurantId: ID!
@@ -1707,6 +1715,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     data: managerShiftAttendancesData,
     loading: managerShiftAttendancesLoading,
     error: managerShiftAttendancesError,
+    refetch: managerShiftAttendancesRefetch,
   } = useQuery(MANAGER_SHIFT_ATTENDANCES, {
     variables: {
       restaurantId: effectiveRestaurantId,
@@ -1716,6 +1725,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     skip: !effectiveRestaurantId,
     fetchPolicy: "cache-and-network",
   });
+  const [markShiftAttendanceReviewed] = useMutation(
+    MARK_SHIFT_ATTENDANCE_REVIEWED,
+  );
+  const [attendanceReviewErrorByRowId, setAttendanceReviewErrorByRowId] = useState({});
+
   const todayAttendances = useMemo(
     () => managerShiftAttendancesData?.managerShiftAttendances || [],
     [managerShiftAttendancesData],
@@ -1732,16 +1746,58 @@ const ScheduleManagement = ({ readOnly = false }) => {
       { checkedIn: 0, checkedOut: 0, scheduled: 0, late: 0 },
     );
   }, [todayAttendances]);
-  const attentionAttendanceRows = useMemo(() => {
-    const priority = { scheduled: 0, checked_in: 1, late: 2 };
-    return [...todayAttendances]
-      .filter((row) => row?.status === "scheduled" || row?.status === "checked_in" || row?.isLate)
-      .sort((a, b) => {
-        const aKey = a?.isLate ? "late" : a?.status;
-        const bKey = b?.isLate ? "late" : b?.status;
-        return (priority[aKey] ?? 99) - (priority[bKey] ?? 99);
-      });
+  const attendanceIssueRows = useMemo(() => {
+    const now = new Date();
+    const priority = { missed_checkin: 0, late: 1, missed_checkout: 2 };
+    return todayAttendances
+      .map((row) => {
+        const shiftStart = row?.shiftStartTime ? new Date(row.shiftStartTime) : null;
+        const shiftEnd = row?.shiftEndTime ? new Date(row.shiftEndTime) : null;
+        if (row?.status === "scheduled" && shiftStart && now > shiftStart) {
+          return { ...row, issueType: "missed_checkin", issueLabel: "Chưa check-in" };
+        }
+        if (row?.isLate === true) {
+          return { ...row, issueType: "late", issueLabel: "Trễ giờ" };
+        }
+        if (row?.status === "checked_in" && shiftEnd && now > shiftEnd) {
+          return { ...row, issueType: "missed_checkout", issueLabel: "Chưa check-out" };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => (priority[a.issueType] ?? 99) - (priority[b.issueType] ?? 99));
   }, [todayAttendances]);
+
+  const handleAttendanceReview = useCallback(async (row) => {
+    const rawNote = window.prompt("Nhập ghi chú xử lý chấm công:");
+    if (rawNote === null) return;
+    const trimmedNote = String(rawNote || "").trim();
+    if (trimmedNote.length < 5) {
+      showNotification("error", "Ghi chú xử lý cần tối thiểu 5 ký tự.");
+      return;
+    }
+
+    if (String(row?.id || "").startsWith("shift-")) {
+      setAttendanceReviewErrorByRowId((prev) => ({
+        ...prev,
+        [String(row.id)]: "Ca chưa có bản ghi chấm công; hãy yêu cầu nhân viên check-in hoặc tạo điều chỉnh chấm công.",
+      }));
+      return;
+    }
+
+    try {
+      setAttendanceReviewErrorByRowId((prev) => {
+        const next = { ...prev };
+        delete next[String(row.id)];
+        return next;
+      });
+      await markShiftAttendanceReviewed({ variables: { attendanceId: row.id, note: trimmedNote } });
+      await managerShiftAttendancesRefetch?.();
+      showNotification("success", "Đã ghi chú xử lý chấm công.");
+    } catch (error) {
+      showNotification("error", error?.message || "Không thể ghi chú xử lý chấm công.");
+    }
+  }, [managerShiftAttendancesRefetch, markShiftAttendanceReviewed, showNotification]);
   const formatAttendanceTime = (value) => {
     if (!value) return "--:--";
     const date = new Date(value);
@@ -4324,27 +4380,30 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <div className="schedule-quality-panel__metric"><span className="label">Chưa check-in</span><span className="value">{todayAttendanceMetrics.scheduled}</span></div>
             <div className="schedule-quality-panel__metric"><span className="label">Trễ giờ</span><span className="value">{todayAttendanceMetrics.late}</span></div>
           </div>
-          {managerShiftAttendancesLoading ? (
-            <p className="schedule-quality-panel__headline">Đang tải chấm công...</p>
-          ) : managerShiftAttendancesError ? (
-            <p className="schedule-quality-panel__headline">Không tải được chấm công hôm nay.</p>
-          ) : null}
-          {!managerShiftAttendancesLoading && !managerShiftAttendancesError && attentionAttendanceRows.length > 0 ? (
-            <div className="schedule-quality-panel__body">
+          <div className="schedule-quality-panel__body">
+            <p className="schedule-quality-panel__title">Bất thường chấm công</p>
+            {managerShiftAttendancesLoading ? (
+              <p className="schedule-quality-panel__headline">Đang tải chấm công...</p>
+            ) : managerShiftAttendancesError ? (
+              <p className="schedule-quality-panel__headline">Không tải được dữ liệu bất thường.</p>
+            ) : attendanceIssueRows.length === 0 ? (
+              <p className="schedule-quality-panel__headline">Không có bất thường chấm công cần xử lý.</p>
+            ) : (
               <ul>
-                {attentionAttendanceRows.slice(0, 5).map((row) => (
+                {attendanceIssueRows.slice(0, 8).map((row) => (
                   <li key={row.id}>
-                    {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {getAttendanceStatusLabel(row)}
+                    {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {row.issueLabel}
+                    <button type="button" className="staff-secondary-btn" onClick={() => handleAttendanceReview(row)}>
+                      Ghi chú xử lý
+                    </button>
+                    {attendanceReviewErrorByRowId[row.id] ? (
+                      <p className="schedule-quality-panel__headline">{attendanceReviewErrorByRowId[row.id]}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
-              {attentionAttendanceRows.length > 5 ? (
-                <p className="schedule-quality-panel__headline">
-                  Còn {attentionAttendanceRows.length - 5} ca khác.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+            )}
+          </div>
           {todayScheduleSummary.validDeclinedUnresolved > 0 ? (
             <button
               type="button"
