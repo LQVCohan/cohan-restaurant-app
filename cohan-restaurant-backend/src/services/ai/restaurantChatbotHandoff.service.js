@@ -89,8 +89,11 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
 
   const recipientIds = [...new Set(recipientUsers.map((u) => String(u._id)))];
   const recipientObjectIds = recipientIds.map((id) => toObjectId(id)).filter(Boolean);
+  const hasDirectRecipients = recipientObjectIds.length > 0;
+  const desiredTargetRole = hasDirectRecipients ? "support" : "manager";
 
   let thread = null;
+  let shouldSaveThread = false;
   if (conversation.chatThreadId) {
     thread = await ChatThread.findById(conversation.chatThreadId);
   }
@@ -99,7 +102,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
     thread = await ChatThread.create({
       restaurantId: conversation.restaurantId,
       channel: "support",
-      targetRole: "support",
+      targetRole: desiredTargetRole,
       participants: recipientObjectIds,
       subject: "AI handoff - Khách cần hỗ trợ",
       status: "open",
@@ -123,6 +126,10 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
       ...recipientObjectIds.filter((id) => !existingParticipantIds.has(String(id))),
     ];
     thread.participants = mergedParticipants;
+    shouldSaveThread = true;
+  } else if (!thread.targetRole || thread.targetRole === "support") {
+    thread.targetRole = "manager";
+    shouldSaveThread = true;
   }
 
   let notifications = [];
@@ -164,6 +171,8 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
     await thread.save();
   } else if (thread && !thread.unreadBy) {
     thread.unreadBy = [];
+    await thread.save();
+  } else if (shouldSaveThread) {
     await thread.save();
   }
 

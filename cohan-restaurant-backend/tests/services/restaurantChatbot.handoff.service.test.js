@@ -62,6 +62,7 @@ describe("restaurantChatbot handoff service", () => {
     expect(threads.length).toBe(1);
     expect((threads[0].participants || []).map(String)).toContain(staffId);
     expect((threads[0].unreadBy || []).map(String)).toContain(staffId);
+    expect(threads[0].targetRole).toBe("support");
   });
 
   it("duplicate handoff is idempotent", async () => {
@@ -110,5 +111,21 @@ describe("restaurantChatbot handoff service", () => {
     expect((thread.participants || []).map(String)).toContain(newRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(newRecipient);
+    expect(thread.targetRole || "support").toBe("support");
+  });
+
+  it("fallback with no direct recipients sets manager role and keeps participants empty", async () => {
+    const convId = mkId();
+    const restaurantId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
+    messages.push({ conversationId: convId, role: "user", content: "need help" });
+
+    const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+    expect(out.ok).toBe(true);
+    expect(threads).toHaveLength(1);
+    expect(threads[0].targetRole).toBe("manager");
+    expect((threads[0].participants || []).map(String)).toEqual([]);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].toRole).toBe("manager");
   });
 });
