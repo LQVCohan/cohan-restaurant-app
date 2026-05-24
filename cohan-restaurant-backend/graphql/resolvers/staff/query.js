@@ -109,6 +109,12 @@ function mapAttendanceStatus(timesheet) {
   return "completed";
 }
 
+function mapShiftAttendanceStatus(timesheet) {
+  if (timesheet?.actualCheckOutAt) return "checked_out";
+  if (timesheet?.actualCheckInAt) return "checked_in";
+  return "scheduled";
+}
+
 function mapAttendanceRecord(timesheet, staff) {
   const isOffSchedule = Boolean(timesheet.isOffSchedule);
   const legacyStatus = String(
@@ -470,6 +476,103 @@ export default {
       createdAt: row.createdAt || null,
       updatedAt: row.updatedAt || null,
     }));
+  },
+  managerShiftAttendances: async (
+    _,
+    { restaurantId, periodStart, periodEnd },
+    ctx,
+  ) => {
+    requireAuth(ctx);
+    await requireRestaurantAccess(ctx, restaurantId);
+    requireRoles(ctx, ATTENDANCE_READ_ROLES);
+
+    const restaurantOid = toObjectId(restaurantId) || restaurantId;
+    const start = new Date(periodStart);
+    const end = new Date(periodEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+    const [shiftRows, timesheetRows] = await Promise.all([
+      Shift.find({
+        restaurantId: restaurantOid,
+        startTime: { $gte: start, $lte: end },
+      })
+        .select({
+          _id: 1,
+          restaurantId: 1,
+          employeeId: 1,
+          shiftType: 1,
+          startTime: 1,
+          endTime: 1,
+        })
+        .lean(),
+      Timesheet.find({
+        restaurantId: restaurantOid,
+        shiftId: { $ne: null },
+        isOffSchedule: { $ne: true },
+        workDate: { $gte: toStartOfDay(start), $lte: toEndOfDay(end) },
+      })
+        .select({
+          _id: 1,
+          restaurantId: 1,
+          employeeId: 1,
+          shiftId: 1,
+          actualCheckInAt: 1,
+          actualCheckOutAt: 1,
+          status: 1,
+          latenessMinutes: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        })
+        .lean(),
+    ]);
+
+    const staffRows = await Staff.find({
+      restaurantId: restaurantOid,
+      _id: { $in: [...new Set(shiftRows.map((s) => String(s.employeeId)).filter(Boolean))] },
+    })
+      .select({ _id: 1, fullName: 1, employeeCode: 1 })
+      .lean();
+
+    const staffById = new Map(staffRows.map((row) => [String(row._id), row]));
+    const shiftById = new Map(shiftRows.map((row) => [String(row._id), row]));
+    const timesheetByShiftId = new Map(
+      timesheetRows
+        .filter((row) => row.shiftId && shiftById.has(String(row.shiftId)))
+        .map((row) => [String(row.shiftId), row]),
+    );
+
+    return shiftRows.map((shift) => {
+      const timesheet = timesheetByShiftId.get(String(shift._id));
+      const employee = staffById.get(String(shift.employeeId));
+      const checkInAt = timesheet?.actualCheckInAt || null;
+      const checkOutAt = timesheet?.actualCheckOutAt || null;
+      const status = mapShiftAttendanceStatus(timesheet);
+      const isLateFromStatus = ["late", "late_early_leave"].includes(
+        String(timesheet?.status || "").toLowerCase(),
+      );
+      const isLateFromTime =
+        checkInAt && shift.startTime
+          ? new Date(checkInAt).getTime() > new Date(shift.startTime).getTime()
+          : false;
+      return {
+        id: timesheet?._id ? String(timesheet._id) : `shift-${String(shift._id)}`,
+        restaurantId: String(shift.restaurantId),
+        employeeId: String(shift.employeeId),
+        shiftId: String(shift._id),
+        checkInAt,
+        checkOutAt,
+        status,
+        employeeName: employee?.fullName || null,
+        employeeCode: employee?.employeeCode || null,
+        shiftStartTime: shift.startTime || null,
+        shiftEndTime: shift.endTime || null,
+        shiftType: shift.shiftType || null,
+        displayStatus: timesheet?.status || status,
+        isLate: Boolean(isLateFromStatus || isLateFromTime),
+        createdAt: timesheet?.createdAt || shift.createdAt || null,
+        updatedAt: timesheet?.updatedAt || shift.updatedAt || null,
+      };
+    });
   },
   myShiftAcknowledgements: async (
     _,
