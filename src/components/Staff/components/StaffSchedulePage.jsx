@@ -902,6 +902,43 @@ export default function StaffSchedulePage() {
     });
     return map;
   }, [myShiftAcksData, optimisticShiftAcks]);
+  const now = new Date();
+  const todayKey = toDateKey(now);
+  const getShiftTimingState = (shift) => {
+    const start = new Date(shift?.startTime);
+    const end = new Date(shift?.endTime);
+    const hasValidStart = !Number.isNaN(start.getTime());
+    const hasValidEnd = !Number.isNaN(end.getTime());
+    const isLive = hasValidStart && hasValidEnd && now >= start && now < end;
+    const isEnded = hasValidEnd ? now >= end : false;
+    const startsInMs = hasValidStart ? start.getTime() - now.getTime() : null;
+    const startsSoon =
+      startsInMs !== null && startsInMs >= 0 && startsInMs <= 2 * 60 * 60 * 1000;
+    return { hasValidStart, hasValidEnd, isLive, isEnded, startsSoon };
+  };
+  const shiftGroups = useMemo(() => {
+    const today = [];
+    const upcoming = [];
+    const past = [];
+    shifts.forEach((shift) => {
+      const start = new Date(shift?.startTime);
+      const dateKey = !Number.isNaN(start.getTime()) ? toDateKey(start) : "";
+      const timing = getShiftTimingState(shift);
+      if (dateKey === todayKey) {
+        today.push(shift);
+      }
+      if (!timing.isEnded) {
+        upcoming.push(shift);
+      } else {
+        past.push(shift);
+      }
+    });
+    return { today, upcoming, past };
+  }, [shifts, todayKey]);
+  const nextShift = useMemo(
+    () => shiftGroups.upcoming.find((shift) => !getShiftTimingState(shift).isEnded) || null,
+    [shiftGroups],
+  );
 
   const shiftCountText =
     shifts.length > 0 ? `${shifts.length} ca đã công bố` : "Chưa có ca công bố";
@@ -1741,10 +1778,73 @@ export default function StaffSchedulePage() {
               </div>
             ) : (
               <div className="staff-shift-list">
+                <article className="staff-my-shift-card">
+                  <div className="staff-my-shift-card__icon">
+                    <CalendarDays size={20} />
+                  </div>
+                  <div className="staff-my-shift-card__body">
+                    <div className="staff-my-shift-card__top">
+                      <strong>Ca làm gần nhất</strong>
+                    </div>
+                    {nextShift ? (
+                      <>
+                        {(() => {
+                          const nextShiftMeta = getShiftDisplayMeta(nextShift.shiftType);
+                          const nextShiftAck = shiftAckMap.get(String(nextShift.id));
+                          const timing = getShiftTimingState(nextShift);
+                          return (
+                            <>
+                              <p className="staff-my-shift-card__note">
+                                {nextShiftMeta.label || nextShift.shiftType}
+                              </p>
+                              <p className="staff-my-shift-card__note">
+                                Ngày: {fmtDate(nextShift.startTime)}
+                              </p>
+                              <p className="staff-my-shift-card__note">
+                                {timing.hasValidStart && timing.hasValidEnd
+                                  ? `${fmtTime(nextShift.startTime)} - ${fmtTime(nextShift.endTime)}`
+                                  : "Không rõ giờ"}
+                              </p>
+                              <p className="staff-my-shift-card__note">
+                                Nhà hàng: {nextShift.restaurantId || "—"}
+                              </p>
+                              <p className="staff-my-shift-card__note">
+                                Trạng thái: {(nextShiftAck && {
+                                  pending: "Chờ xác nhận",
+                                  accepted: "Đã nhận ca",
+                                  declined: "Đã từ chối",
+                                }[nextShiftAck.status]) || "Chờ xác nhận"}
+                              </p>
+                              {timing.isLive ? <p className="staff-my-shift-card__note">Đang trong ca</p> : null}
+                              {timing.startsSoon && !timing.isLive ? <p className="staff-my-shift-card__note">Sắp đến giờ làm</p> : null}
+                              {nextShiftAck?.status === "accepted" && timing.startsSoon ? (
+                                <p className="staff-my-shift-card__note">Hãy đến đúng giờ. Chấm công sẽ được đối chiếu theo ca đã công bố.</p>
+                              ) : null}
+                              {nextShiftAck?.status === "pending" && timing.startsSoon ? (
+                                <p className="staff-my-shift-card__note">Ca sắp đến giờ nhưng bạn chưa xác nhận.</p>
+                              ) : null}
+                              {nextShiftAck?.status === "declined" && nextShiftAck?.declineClassification !== "invalid" ? (
+                                <p className="staff-my-shift-card__note">Bạn đã từ chối ca. Vui lòng chờ quản lý xử lý trước giờ làm.</p>
+                              ) : null}
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <p className="staff-my-shift-card__note">
+                        Bạn chưa có ca sắp tới trong tuần này.
+                      </p>
+                    )}
+                  </div>
+                </article>
                 {shifts.map((shift) => {
                   const ack = shiftAckMap.get(String(shift.id));
                   const shiftMeta = getShiftDisplayMeta(shift.shiftType);
                   const Icon = shiftMeta.icon || Clock3;
+                  const timing = getShiftTimingState(shift);
+                  const start = new Date(shift?.startTime);
+                  const shiftDayKey = !Number.isNaN(start.getTime()) ? toDateKey(start) : "";
+                  const groupLabel = shiftDayKey === todayKey ? "Hôm nay" : timing.isEnded ? "Đã qua" : "Sắp tới";
 
                   return (
                     <article key={shift.id} className="staff-my-shift-card">
@@ -1755,11 +1855,14 @@ export default function StaffSchedulePage() {
                       <div className="staff-my-shift-card__body">
                         <div className="staff-my-shift-card__top">
                           <strong>{shiftMeta.label || shift.shiftType}</strong>
+                          <span>{groupLabel}</span>
                           <span>{fmtDate(shift.startTime)}</span>
                         </div>
 
                         <div className="staff-my-shift-card__time">
-                          {fmtTime(shift.startTime)} - {fmtTime(shift.endTime)}
+                          {timing.hasValidStart && timing.hasValidEnd
+                            ? `${fmtTime(shift.startTime)} - ${fmtTime(shift.endTime)}`
+                            : "Không rõ giờ"}
                         </div>
 
                         {shift.notes ? (
@@ -1780,9 +1883,16 @@ export default function StaffSchedulePage() {
                             : "Chưa tạo yêu cầu phản hồi ca"}
                         </p>
                         {ack?.status === "accepted" ? <p className="staff-my-shift-card__note">Bạn đã nhận ca này.</p> : null}
+                        {ack?.status === "accepted" && timing.startsSoon ? (
+                          <p className="staff-my-shift-card__note">Hãy đến đúng giờ. Chấm công sẽ được đối chiếu theo ca đã công bố.</p>
+                        ) : null}
+                        {ack?.status === "pending" && timing.startsSoon ? (
+                          <p className="staff-my-shift-card__note">Ca sắp đến giờ nhưng bạn chưa xác nhận.</p>
+                        ) : null}
                         {ack?.status === "declined" ? (
                           <>
                             <p className="staff-my-shift-card__note">Bạn đã gửi từ chối ca. Chờ quản lý xử lý.</p>
+                            <p className="staff-my-shift-card__note">Bạn đã từ chối ca. Vui lòng chờ quản lý xử lý trước giờ làm.</p>
                             <p className="staff-my-shift-card__note">
                               {
                                 {

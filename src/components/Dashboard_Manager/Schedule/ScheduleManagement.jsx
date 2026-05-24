@@ -1351,6 +1351,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [reviewingAckId, setReviewingAckId] = useState("");
   const [declineReviewErrors, setDeclineReviewErrors] = useState({});
   const [declinedFilter, setDeclinedFilter] = useState("all");
+  const declinedPanelRef = useRef(null);
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
   const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), {
@@ -1619,6 +1620,45 @@ const ScheduleManagement = ({ readOnly = false }) => {
     rows.forEach((row) => map.set(String(row.id), row));
     return map;
   }, [staffShifts]);
+  const todayScheduleSummary = useMemo(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const todayRows = staffShifts.filter((row) => {
+      const start = new Date(row?.startTime);
+      if (Number.isNaN(start.getTime())) return false;
+      return format(start, "yyyy-MM-dd") === today;
+    });
+    const uniqueShiftIds = new Set(todayRows.map((row) => String(row.id)));
+    const ackByShiftId = new Map();
+    declinedShiftAcks.forEach((ack) => {
+      ackByShiftId.set(String(ack.shiftId), ack);
+    });
+    let accepted = 0;
+    let pending = 0;
+    let declined = 0;
+    todayRows.forEach((row) => {
+      const ack = ackByShiftId.get(String(row.id));
+      if (!ack) return;
+      if (ack.status === "accepted") accepted += 1;
+      if (ack.status === "pending") pending += 1;
+      if (ack.status === "declined") declined += 1;
+    });
+    const validDeclinedUnresolved = declinedShiftAcks.filter((ack) => {
+      if (String(ack.declineClassification || "") !== "valid") return false;
+      const shiftRow = shiftRowsById.get(String(ack.shiftId));
+      if (!shiftRow) return false;
+      const start = new Date(shiftRow.startTime);
+      if (Number.isNaN(start.getTime()) || format(start, "yyyy-MM-dd") !== today) return false;
+      return String(shiftRow.employeeId) === String(ack.employeeId);
+    }).length;
+    return {
+      totalShiftsToday: uniqueShiftIds.size,
+      totalAssignmentsToday: todayRows.length,
+      accepted,
+      pending,
+      declined,
+      validDeclinedUnresolved,
+    };
+  }, [staffShifts, declinedShiftAcks, shiftRowsById]);
   const reasonCategoryLabels = {
     sick: "Bị ốm",
     personal: "Việc cá nhân",
@@ -4159,6 +4199,31 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </div>
           </div>
         </div>
+        <section className="schedule-quality-panel" aria-label="Ca hôm nay">
+          <div className="schedule-quality-panel__header">
+            <div>
+              <p className="schedule-quality-panel__title">Ca hôm nay</p>
+              <p className="schedule-quality-panel__headline">
+                Tổng ca: {todayScheduleSummary.totalShiftsToday} · Tổng phân công: {todayScheduleSummary.totalAssignmentsToday}
+              </p>
+            </div>
+          </div>
+          <div className="schedule-quality-panel__metrics">
+            <div className="schedule-quality-panel__metric"><span className="label">Đã nhận ca</span><span className="value">{todayScheduleSummary.accepted || "—"}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Chờ xác nhận</span><span className="value">{todayScheduleSummary.pending || "—"}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Đã từ chối</span><span className="value">{todayScheduleSummary.declined || "—"}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Ca cần xử lý do từ chối hợp lệ</span><span className="value">{todayScheduleSummary.validDeclinedUnresolved || 0}</span></div>
+          </div>
+          {todayScheduleSummary.validDeclinedUnresolved > 0 ? (
+            <button
+              type="button"
+              className="staff-primary-btn"
+              onClick={() => declinedPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Xem ca cần xử lý
+            </button>
+          ) : null}
+        </section>
         <section
           className={`schedule-quality-panel tone-${scheduleQualitySummary.tone}`}
           aria-label="Chất lượng lịch tuần"
@@ -4630,7 +4695,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       {(declinedShiftAcksLoading ||
         declinedShiftAcksError ||
         declinedShiftAcks.length > 0) && (
-        <section className="declined-shift-review-panel">
+        <section className="declined-shift-review-panel" ref={declinedPanelRef}>
           <h3>Ca nhân viên từ chối cần xử lý ({declinedShiftAcks.length})</h3>
           <div className="decline-filter-row">
             {[
