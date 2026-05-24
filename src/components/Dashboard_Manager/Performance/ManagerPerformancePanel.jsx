@@ -43,7 +43,7 @@ const ManagerPerformancePanel = ({
     (appealOverview.pendingCount !== undefined || appealOverview.acceptedCount !== undefined);
 
   if (!restaurantId && restaurantLoading) {
-    return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
+    return <div className="performance-loading">Đang tải dữ liệu...</div>;
   }
   if (!restaurantId) {
     return (
@@ -52,9 +52,9 @@ const ManagerPerformancePanel = ({
       </div>
     );
   }
-  if (loading) return <div className="performance-loading">Đang tải dữ liệu hiệu suất...</div>;
-  if (error) return <div className="performance-error">Không tải được dữ liệu hiệu suất. Vui lòng thử lại sau.</div>;
-  if (isEmpty) return <div className="performance-empty">Chưa có snapshot hiệu suất trong kỳ này. Quản lý vui lòng chạy tính lại hiệu suất.</div>;
+  if (loading) return <div className="performance-loading">Đang tải dữ liệu...</div>;
+  if (error) return <div className="performance-error">Không thể tải dữ liệu. Vui lòng thử lại.</div>;
+  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu để hiển thị.</div>;
 
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>

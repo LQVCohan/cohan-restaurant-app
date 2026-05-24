@@ -85,17 +85,17 @@ const SCORE_LEVELS = {
     description: "Có thể ưu tiên khi xếp lịch vận hành thường ngày.",
   },
   average: {
-    label: "Ổn định",
+    label: "Trung bình",
     className: "average",
     description: "Phù hợp với ca thông thường, cần tiếp tục theo dõi.",
   },
   needs_attention: {
-    label: "Cần theo dõi",
+    label: "Cần chú ý",
     className: "attention",
     description: "Nên hạn chế xếp ca quan trọng một mình.",
   },
   poor: {
-    label: "Rủi ro cao",
+    label: "Kém",
     className: "poor",
     description: "Cần quản lý/HR xem lại trước khi ưu tiên xếp lịch.",
   },
@@ -1202,9 +1202,9 @@ productivity * 25%
             <option value="all">Tất cả mức hiệu suất</option>
             <option value="excellent">Xuất sắc</option>
             <option value="good">Tốt</option>
-            <option value="average">Ổn định</option>
-            <option value="needs_attention">Cần theo dõi</option>
-            <option value="poor">Rủi ro cao</option>
+            <option value="average">Trung bình</option>
+            <option value="needs_attention">Cần chú ý</option>
+            <option value="poor">Kém</option>
             <option value="missing">Chưa có dữ liệu</option>
           </select>
         </div>
@@ -1242,7 +1242,7 @@ productivity * 25%
         <div className="kpi-card attention">
           <ShieldCheck size={20} />
           <div>
-            <span>Cần theo dõi</span>
+            <span>Cần chú ý</span>
             <strong>{stats.needsAttention}</strong>
           </div>
         </div>
@@ -1309,7 +1309,7 @@ productivity * 25%
                 xếp lịch.
               </p>
             </div>
-            {loading ? <span className="loading-pill">Đang tải...</span> : null}
+            {loading ? <span className="loading-pill">Đang tải dữ liệu...</span> : null}
           </div>
 
           <div className="performance-table-wrap">
