@@ -459,6 +459,31 @@
     color: var(--color-text-primary);
   }
 }
+.statusBadge {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.status_pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+.status_success {
+  color: #166534;
+  background: #dcfce7;
+}
+.status_failed,
+.status_rejected {
+  color: #991b1b;
+  background: #fee2e2;
+}
+.transferWarning {
+  font-size: 0.88rem;
+  color: var(--color-warning);
+  line-height: 1.4;
+}
 
 .qrCode {
   display: flex;
