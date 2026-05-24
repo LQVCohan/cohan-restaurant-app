@@ -124,15 +124,23 @@ export async function createServer() {
   app.get("/api/payments/:paymentId/status", async (req, reply) => {
     try {
       const authUser = await resolveAuthenticatedUserFromRequest(req);
+      if (!authUser?.id) return reply.code(401).send({ ok: false, message: "Unauthorized" });
       const payment = await getPaymentSessionById(req.params?.paymentId);
       const isOwner = authUser?.id && String(authUser.id) === String(payment.userId);
       if (!isOwner) {
-        const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
-        if (!token) return reply.code(403).send({ ok: false, message: "Forbidden" });
+        await requireRestaurantPermission(
+          { user: authUser },
+          payment.restaurantId,
+          PERMISSIONS.PAYMENT_READ,
+        );
       }
       return reply.send({ ok: true, payment: { id: payment._id, status: payment.status, callbackStatus: payment.callbackStatus, provider: payment.provider, amount: payment.amount, currency: payment.currency } });
     } catch (err) {
-      return reply.code(404).send({ ok: false, message: err?.message || "Payment not found" });
+      const message = err?.message || "Payment status lookup failed";
+      if (message.toLowerCase().includes("forbidden")) return reply.code(403).send({ ok: false, message: "Forbidden" });
+      if (message.toLowerCase().includes("unauthorized")) return reply.code(401).send({ ok: false, message: "Unauthorized" });
+      if (message.toLowerCase().includes("not found")) return reply.code(404).send({ ok: false, message });
+      return reply.code(400).send({ ok: false, message });
     }
   });
 

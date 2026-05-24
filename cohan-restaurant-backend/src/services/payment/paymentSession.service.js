@@ -197,16 +197,23 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
   }
 
   const sortedOrderIds = orders.map((o) => String(o._id)).sort();
-  const existingPending = await PaymentSession.findOne({
+  const existingPendingCandidates = await PaymentSession.find({
     restaurantId,
     provider: normalizedProvider,
     paymentMethod: paymentMethod || normalizedProvider,
     status: "pending",
     "metadata.source": "order_payment",
   }).sort({ createdAt: -1 });
-  if (existingPending) {
-    const existingOrderIds = Array.isArray(existingPending?.metadata?.orderIds) ? existingPending.metadata.orderIds.map(String).sort() : [];
-    if (existingOrderIds.length === sortedOrderIds.length && existingOrderIds.every((id, idx) => id === sortedOrderIds[idx])) return existingPending.toObject();
+  for (const existingPending of existingPendingCandidates) {
+    const existingOrderIds = Array.isArray(existingPending?.metadata?.orderIds)
+      ? existingPending.metadata.orderIds.map(String).sort()
+      : [];
+    if (
+      existingOrderIds.length === sortedOrderIds.length
+      && existingOrderIds.every((id, idx) => id === sortedOrderIds[idx])
+    ) {
+      return existingPending.toObject();
+    }
   }
   const aggregatedTotals = orders.reduce((acc, order) => ({
     subtotal: acc.subtotal + Number(order?.totals?.subtotal || 0),
@@ -309,21 +316,49 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
     }
   }
   const trx = await PaymentTransaction.create([{ restaurantId: payment.restaurantId, orderIds, paidAmount: payment.amount, method: payment.provider, status: "SUCCESS", paidAt: now, note: `Auto settlement from ${source}`, txnRef: payment.providerTransactionId || payment.reference, externalRef: payment.reference }], { session }).then((x) => x[0]);
-  const invoiceMeta = payment?.metadata?.appliedDiscount ? { discountApplied: true, ...((payment?.metadata?.discountTotals) || {}), requestedPromotionIds: payment?.metadata?.promotionIds || [] } : undefined;
-  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: { ...totals, grandTotal: totals.grandTotal || payment.amount }, paid: payment.amount, status: "PAID", currency: "VND", refTransactionId: trx._id, meta: invoiceMeta }], { session }).then((x) => x[0]);
+  const isDiscounted = Boolean(payment?.metadata?.appliedDiscount && payment?.metadata?.discountTotals);
+  const discountTotals = isDiscounted ? payment.metadata.discountTotals : null;
+  const authoritativeTotals = isDiscounted
+    ? {
+      subtotal: Number(discountTotals?.subtotal || 0),
+      discount: Number(discountTotals?.totalDiscount ?? discountTotals?.discount ?? 0),
+      discountReason: discountTotals?.discountReason || null,
+      voucherCode: discountTotals?.voucherCode || null,
+      promotionId: discountTotals?.appliedPromotions?.[0] || null,
+      tax: Number(discountTotals?.tax || 0),
+      service: Number(discountTotals?.service || 0),
+      shippingFee: Number(discountTotals?.shippingFee || 0),
+      grandTotal: Number(discountTotals?.grandTotal || 0),
+    }
+    : { ...totals, grandTotal: totals.grandTotal || payment.amount };
+  const invoiceMeta = isDiscounted ? { discountApplied: true, ...(discountTotals || {}), requestedPromotionIds: payment?.metadata?.promotionIds || [] } : undefined;
+  const invoiceStatus = Number(payment.amount || 0) >= Number(authoritativeTotals.grandTotal || 0) ? "PAID" : "PARTIAL";
+  const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: authoritativeTotals, paid: payment.amount, status: invoiceStatus, currency: "VND", refTransactionId: trx._id, meta: invoiceMeta }], { session }).then((x) => x[0]);
   const cashflow = await Cashflow.create([{ restaurantId: payment.restaurantId, type: "INFLOW", amount: payment.amount, currency: "VND", ref: { kind: "Invoice", id: invoice._id, orderIds }, note: "Thanh toán tự động", occurredAt: now }], { session }).then((x) => x[0]);
   await Order.updateMany({ _id: { $in: orderIds } }, { $set: { "payment.method": payment.provider, "payment.provider": payment.provider, "payment.status": "paid", "payment.paidAmount": payment.amount, "payment.paidAt": now, "payment.txnRef": payment.providerTransactionId || payment.reference, currentStatus: "completed" } }, { session });
   if (payment?.metadata?.appliedDiscount && payment?.metadata?.discountTotals?.couponId) {
-    const couponId = new mongoose.Types.ObjectId(String(payment.metadata.discountTotals.couponId));
+    const rawCouponId = String(payment.metadata.discountTotals.couponId || "");
+    if (!mongoose.isValidObjectId(rawCouponId)) throw new Error("Invalid couponId in payment discount metadata");
+    const couponId = new mongoose.Types.ObjectId(rawCouponId);
     const exists = await CouponRedemption.findOne({ invoiceId: invoice._id, couponId }).session(session);
     if (!exists) {
-      await Coupon.updateOne({ _id: couponId }, { $inc: { used: 1 } }, { session });
+      const coupon = await Coupon.findById(couponId).session(session);
+      const perUserLimit = Number(coupon?.constraints?.perUserLimit || 0);
+      if (mongoose.isValidObjectId(payment.userId) && perUserLimit > 0) {
+        const userRedemptionCount = await CouponRedemption.countDocuments({ couponId, userId: payment.userId }).session(session);
+        if (userRedemptionCount >= perUserLimit) throw new Error("Invalid coupon: per-user usage limit reached");
+      }
+      const updateResult = await Coupon.updateOne({
+        _id: couponId,
+        $expr: { $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }] },
+      }, { $inc: { used: 1 } }, { session });
+      if (!updateResult.modifiedCount) throw new Error("Invalid coupon: usage limit reached");
       await CouponRedemption.create([{ couponId, userId: payment.userId, restaurantId: payment.restaurantId, orderIds, invoiceId: invoice._id, couponCode: String(payment?.metadata?.discountTotals?.voucherCode || ""), discountAmount: Number(payment?.metadata?.discountTotals?.voucherDiscount || 0), subtotal: Number(payment?.metadata?.discountTotals?.subtotal || 0), grandTotal: Number(payment?.metadata?.discountTotals?.grandTotal || 0), source: "online", redeemedAt: now }], { session });
       await UserCoupon.updateMany({ userId: payment.userId, couponId, status: "saved" }, { $set: { status: "used", usedAt: now, invoiceId: invoice._id } }, { session });
     }
-    for (const promotionId of (payment?.metadata?.discountTotals?.appliedPromotions || [])) {
-      if (mongoose.isValidObjectId(promotionId)) await Promotion.updateOne({ _id: promotionId }, { $inc: { usageCount: 1 } }, { session });
-    }
+  }
+  for (const promotionId of (payment?.metadata?.discountTotals?.appliedPromotions || [])) {
+    if (mongoose.isValidObjectId(promotionId)) await Promotion.updateOne({ _id: promotionId }, { $inc: { usageCount: 1 } }, { session });
   }
   const parentSessionId = String(orders.find((o) => o?.parentOrderId)?.parentOrderId || orders.find((o) => o?.rootOrderId)?.rootOrderId || "");
   if (mongoose.isValidObjectId(parentSessionId)) {
