@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 
@@ -266,8 +266,23 @@ const GET_ANALYST_DASHBOARD = gql`
 
 export const useAnalyst = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
+  const restaurantOptions = Array.isArray(restaurants) ? restaurants : [];
+  const getRestaurantId = (restaurant) => restaurant?.id || restaurant?._id || "";
+  const [restaurantId, setRestaurantId] = useState("");
   const [range, setRange] = useState("week");
+
+
+  useEffect(() => {
+    if (restaurantOptions.length === 0) {
+      if (restaurantId) setRestaurantId("");
+      return;
+    }
+
+    const ids = restaurantOptions.map(getRestaurantId).filter(Boolean);
+    if (!restaurantId || !ids.includes(restaurantId)) {
+      setRestaurantId(ids[0] || "");
+    }
+  }, [restaurantOptions, restaurantId]);
 
   const { data, loading, error, refetch } = useQuery(GET_ANALYST_DASHBOARD, {
     skip: !restaurantId,
@@ -282,8 +297,8 @@ export const useAnalyst = () => {
   const smartPromotionEngine = data?.smartPromotionEngine;
 
   const selectedRestaurant = useMemo(
-    () => restaurants.find((restaurant) => restaurant.id === restaurantId) || null,
-    [restaurants, restaurantId]
+    () => restaurantOptions.find((restaurant) => getRestaurantId(restaurant) === restaurantId) || null,
+    [restaurantOptions, restaurantId]
   );
 
   const actionItems = useMemo(() => {
@@ -333,6 +348,7 @@ export const useAnalyst = () => {
     restaurantId,
     setRestaurantId,
     restaurants,
+    restaurantOptions,
     range,
     setRange,
     loading,

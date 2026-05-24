@@ -36,6 +36,7 @@ const ManagerAnalyst = () => {
     restaurantId,
     setRestaurantId,
     restaurants,
+    restaurantOptions,
     range,
     setRange,
     loading,
@@ -90,9 +91,12 @@ const ManagerAnalyst = () => {
     [kpiData, loading, revenueProgress, orderProgress]
   );
 
-  if (!restaurantId) {
-    return <div className="analyst-empty-page">Vui lòng chọn hoặc tạo nhà hàng trước khi xem phân tích kinh doanh.</div>;
-  }
+
+
+  const availableRestaurants = restaurantOptions.length > 0 ? restaurantOptions : restaurants;
+  const hasRestaurants = availableRestaurants.length > 0;
+  const getRestaurantId = (restaurant) => restaurant?.id || restaurant?._id || "";
+  const getRestaurantLabel = (restaurant) => restaurant?.name || restaurant?.restaurantName || "Nhà hàng chưa đặt tên";
 
   if (error) {
     return (
@@ -116,15 +120,23 @@ const ManagerAnalyst = () => {
           <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
         </div>
         <div className="header-actions">
-          {restaurants.length > 1 ? (
+          {hasRestaurants ? (
             <div className="picker-wrap">
               <Store size={16} />
-              <select value={restaurantId} onChange={(e) => setRestaurantId(e.target.value)}>
-                {restaurants.map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.name}
-                  </option>
-                ))}
+              <select
+                value={restaurantId}
+                onChange={(e) => setRestaurantId(e.target.value)}
+                disabled={!restaurantId}
+              >
+                {availableRestaurants.map((restaurant, idx) => {
+                  const optionId = getRestaurantId(restaurant);
+                  const optionLabel = getRestaurantLabel(restaurant);
+                  return (
+                    <option key={optionId || `restaurant-${idx}`} value={optionId}>
+                      {optionLabel}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           ) : null}
@@ -144,78 +156,86 @@ const ManagerAnalyst = () => {
         </div>
       </header>
 
-      {!loading && !hasBusinessData ? (
-        <div className="analyst-empty-data">Cần có đơn hàng, menu, nhân sự hoặc review để tạo phân tích kinh doanh.</div>
-      ) : null}
+      {!hasRestaurants ? (
+        <div className="analyst-empty-page">Chưa có nhà hàng để phân tích. Hãy tạo nhà hàng hoặc kiểm tra quyền quản lý nhà hàng.</div>
+      ) : !restaurantId ? (
+        <div className="analyst-empty-page">Đang chuẩn bị dữ liệu nhà hàng...</div>
+      ) : (
+        <>
+          {!loading && !hasBusinessData ? (
+            <div className="analyst-empty-data">Cần có đơn hàng, menu, nhân sự hoặc review để tạo phân tích kinh doanh.</div>
+          ) : null}
 
-      <section className="kpi-section">
-        {displayKpis.map((kpi, idx) => (
-          <KPIInsightCard
-            key={kpi.label}
-            label={kpi.label}
-            value={kpi.value}
-            trendValue={0}
-            period={kpi.period}
-            progress={kpi.progress}
-            icon={icons[idx]}
-          />
-        ))}
-      </section>
+          <section className="kpi-section">
+            {displayKpis.map((kpi, idx) => (
+              <KPIInsightCard
+                key={kpi.label}
+                label={kpi.label}
+                value={kpi.value}
+                trendValue={0}
+                period={kpi.period}
+                progress={kpi.progress}
+                icon={icons[idx]}
+              />
+            ))}
+          </section>
 
-      <section className="strategy-grid">
-        <div className="grid-item ai-assistant">
-          <StrategyAIRecommendation
-            topDish={topDishes[0]}
-            feedbackSummary={feedbackSummary}
-            demandForecast={demandForecast}
-            staffSchedulingAssistant={staffSchedulingAssistant}
-            menuEngineeringAssistant={menuEngineeringAssistant}
-            smartPromotionEngine={smartPromotionEngine}
-          />
-        </div>
-        <div className="grid-item revenue-chart">
-          <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
-        </div>
-      </section>
+          <section className="strategy-grid">
+            <div className="grid-item ai-assistant">
+              <StrategyAIRecommendation
+                topDish={topDishes[0]}
+                feedbackSummary={feedbackSummary}
+                demandForecast={demandForecast}
+                staffSchedulingAssistant={staffSchedulingAssistant}
+                menuEngineeringAssistant={menuEngineeringAssistant}
+                smartPromotionEngine={smartPromotionEngine}
+              />
+            </div>
+            <div className="grid-item revenue-chart">
+              <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
+            </div>
+          </section>
 
-      <h3 className="section-heading">Ưu tiên vận hành</h3>
-      <section className="operations-intel-grid">
-        <div className="grid-item demand-forecast">
-          <DemandForecastWidget forecast={demandForecast} loading={loading} />
-        </div>
-        <div className="grid-item scheduling-assistant">
-          <StaffSchedulingAssistantWidget assistant={staffSchedulingAssistant} loading={loading} />
-        </div>
-      </section>
+          <h3 className="section-heading">Ưu tiên vận hành</h3>
+          <section className="operations-intel-grid">
+            <div className="grid-item demand-forecast">
+              <DemandForecastWidget forecast={demandForecast} loading={loading} />
+            </div>
+            <div className="grid-item scheduling-assistant">
+              <StaffSchedulingAssistantWidget assistant={staffSchedulingAssistant} loading={loading} />
+            </div>
+          </section>
 
-      <h3 className="section-heading">Tăng trưởng doanh thu</h3>
-      <section className="growth-grid">
-        <div className="grid-item smart-promotion-engine">
-          <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
-        </div>
-        <div className="grid-item menu-engineering-assistant">
-          <MenuEngineeringAssistantWidget assistant={menuEngineeringAssistant} loading={loading} />
-        </div>
-      </section>
+          <h3 className="section-heading">Tăng trưởng doanh thu</h3>
+          <section className="growth-grid">
+            <div className="grid-item smart-promotion-engine">
+              <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
+            </div>
+            <div className="grid-item menu-engineering-assistant">
+              <MenuEngineeringAssistantWidget assistant={menuEngineeringAssistant} loading={loading} />
+            </div>
+          </section>
 
-      <h3 className="section-heading">Chất lượng & hiệu suất</h3>
-      <section className="product-customer-grid">
-        <div className="grid-item menu-matrix">
-          <MenuEngineeringMatrix dishes={topDishes} />
-        </div>
-        <div className="grid-item feedback-analysis">
-          <SmartFeedbackAnalysis summary={feedbackSummary} feedbacks={feedbackItems} loading={loading} />
-        </div>
-      </section>
+          <h3 className="section-heading">Chất lượng & hiệu suất</h3>
+          <section className="product-customer-grid">
+            <div className="grid-item menu-matrix">
+              <MenuEngineeringMatrix dishes={topDishes} />
+            </div>
+            <div className="grid-item feedback-analysis">
+              <SmartFeedbackAnalysis summary={feedbackSummary} feedbacks={feedbackItems} loading={loading} />
+            </div>
+          </section>
 
-      <section className="operations-grid">
-        <div className="grid-item heatmap">
-          <SmartOccupancyHeatmap points={occupancyHeatmap} loading={loading} />
-        </div>
-        <div className="grid-item staffing">
-          <StaffPerformance staffList={staffPerformance} loading={loading} />
-        </div>
-      </section>
+          <section className="operations-grid">
+            <div className="grid-item heatmap">
+              <SmartOccupancyHeatmap points={occupancyHeatmap} loading={loading} />
+            </div>
+            <div className="grid-item staffing">
+              <StaffPerformance staffList={staffPerformance} loading={loading} />
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 };
