@@ -497,19 +497,6 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
     }).catch(() => {});
     return payment.toObject();
   }
-
-  if (Math.round(Number(payment.amount || 0)) !== Math.round(Number(normalizedProvider === "momo" ? payload?.amount : Number(payload?.vnp_Amount || 0) / 100))) {
-    payment.callbackStatus = "rejected";
-    payment.events.push({ type: "callback_rejected", payload: { reason: "amount_mismatch" } });
-    await payment.save();
-    throw new Error("Amount mismatch");
-  }
-
-  if (payment.status === "success") {
-    payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
-    await payment.save();
-    return payment.toObject();
-  }
   if (["cancelled", "expired"].includes(String(payment.status || "").toLowerCase())) {
     payment.events.push({ type: "callback_ignored", payload: { reason: `status_${String(payment.status || "").toLowerCase()}` } });
     await payment.save();
@@ -521,6 +508,19 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
     payment.cancelReason = payment.cancelReason || "expired_by_ttl";
     payment.events.push({ type: "payment_expired", payload: { reason: payment.cancelReason } });
     payment.events.push({ type: "callback_ignored", payload: { reason: "expired_by_ttl" } });
+    await payment.save();
+    return payment.toObject();
+  }
+
+  if (Math.round(Number(payment.amount || 0)) !== Math.round(Number(normalizedProvider === "momo" ? payload?.amount : Number(payload?.vnp_Amount || 0) / 100))) {
+    payment.callbackStatus = "rejected";
+    payment.events.push({ type: "callback_rejected", payload: { reason: "amount_mismatch" } });
+    await payment.save();
+    throw new Error("Amount mismatch");
+  }
+
+  if (payment.status === "success") {
+    payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
     await payment.save();
     return payment.toObject();
   }
