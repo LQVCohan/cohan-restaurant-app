@@ -1748,7 +1748,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [todayAttendances]);
   const attendanceIssueRows = useMemo(() => {
     const now = new Date();
-    const priority = { missed_checkin: 0, late: 1, missed_checkout: 2 };
+    const priority = { missed_checkin: 0, missed_checkout: 1, late: 2 };
     return todayAttendances
       .map((row) => {
         const shiftStart = row?.shiftStartTime ? new Date(row.shiftStartTime) : null;
@@ -1773,7 +1773,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (rawNote === null) return;
     const trimmedNote = String(rawNote || "").trim();
     if (trimmedNote.length < 5) {
-      showNotification("error", "Ghi chú xử lý cần tối thiểu 5 ký tự.");
+      showNotification("Ghi chú xử lý cần tối thiểu 5 ký tự.", "error");
       return;
     }
 
@@ -1793,9 +1793,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       });
       await markShiftAttendanceReviewed({ variables: { attendanceId: row.id, note: trimmedNote } });
       await managerShiftAttendancesRefetch?.();
-      showNotification("success", "Đã ghi chú xử lý chấm công.");
+      showNotification("Đã ghi chú xử lý chấm công.", "success");
     } catch (error) {
-      showNotification("error", error?.message || "Không thể ghi chú xử lý chấm công.");
+      showNotification(error?.message || "Không thể ghi chú xử lý chấm công.", "error");
     }
   }, [managerShiftAttendancesRefetch, markShiftAttendanceReviewed, showNotification]);
   const formatAttendanceTime = (value) => {
