@@ -33,6 +33,7 @@ const StaffLayout = ({ children }) => {
       { label: "Lịch cá nhân", to: "/staff/schedule" },
       { label: "Hồ sơ", to: "/profile" },
       { label: "Thông báo", to: "/notifications" },
+      { label: "Handoff AI", to: "/staff/ai-handoff" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
     ],

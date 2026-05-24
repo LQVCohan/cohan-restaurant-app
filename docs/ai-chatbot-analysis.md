@@ -193,3 +193,18 @@ Phase 3 bổ sung cơ chế chuyển hội thoại chatbot sang nhân viên th�
 - Chưa có inbox staff chuyên biệt cho AI handoff.
 - Đang reuse kênh `support` của communication system.
 - Guest chưa tham gia trực tiếp vào luồng ChatThread yêu cầu đăng nhập; staff xử lý dựa trên summary + lịch sử AI đã bàn giao.
+
+
+## 13. Phase 4 - Staff handoff inbox
+
+Phase 4 bổ sung giao diện xử lý handoff AI tối thiểu cho nhân viên/quản lý, tái sử dụng communication system hiện có thay vì xây một live chat mới.
+
+- Staff có route riêng: `/staff/ai-handoff`.
+- Manager/Admin dùng hash page trong dashboard: `/manager#ai-handoff`.
+- Danh sách yêu cầu được nhận diện qua `Notification.type = ai_chatbot_handoff`, đồng thời có fallback nhận diện theo subject `AI handoff` của `ChatThread`.
+- Khi mở một yêu cầu: frontend lấy `payload.threadId` để tải `chatThread`, đồng thời thử `markNotificationRead` và `markChatThreadRead` theo best-effort.
+- Phản hồi của nhân viên dùng mutation `sendChatMessage` trên thread support hiện có, sau đó reload thread/list để đồng bộ UI.
+
+Giới hạn hiện tại:
+
+- Luồng trả lời của nhân viên đang là hỗ trợ nội bộ dựa trên `ChatThread` authenticated; guest có thể chưa nhận phản hồi trực tiếp theo thời gian thực cho đến khi có cơ chế guest messaging 2 chiều ở phase sau.

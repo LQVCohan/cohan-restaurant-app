@@ -57,6 +57,7 @@ import HelpPage from "@/components/Customer/HelpPage/HelpPage";
 import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
 import FoodDetail from "@/components/Customer/Food/FoodDetail";
+import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
 
 const useAuth = () => {
   const { token, user, loading, isAuthenticated, sessionState, sessionWarning } = useContext(AuthContext);
@@ -137,6 +138,7 @@ const AppRouter = () => (
     <Route path="/staff/kitchen" element={withPrivateRoute(withStaffLayout(<StaffKitchenPage />), STAFF_KITCHEN_ROLES)} />
     <Route path="/staff/performance" element={withPrivateRoute(withStaffLayout(<StaffPerformancePage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/schedule" element={withPrivateRoute(withStaffLayout(<StaffSchedulePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/ai-handoff" element={withPrivateRoute(withStaffLayout(<AiHandoffInbox />), STAFF_SHARED_ROLES)} />
 
     <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
     <Route path="/manager/dashboard/POS" element={withPrivateRoute(<POSLayout />, ["manager", "admin"])} />
