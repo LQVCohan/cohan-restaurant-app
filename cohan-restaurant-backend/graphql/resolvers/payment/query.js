@@ -7,6 +7,8 @@ import {
   PaymentSession,
   Restaurant,
   Order,
+  BankTransaction,
+  PaymentReconciliation,
 } from "../../../models/index.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -191,11 +193,16 @@ export const PaymentQuery = {
     if (from) transactionFilter.paidAt.$gte = from;
     if (to) transactionFilter.paidAt.$lte = to;
 
-    const [cashflows, invoices, debtInvoices, payments] = await Promise.all([
+    const [cashflows, invoices, debtInvoices, payments, recentReconciliations, bankTxAgg] = await Promise.all([
       Cashflow.find(cashflowFilter).sort({ occurredAt: -1 }).lean(),
       Invoice.find(invoiceFilter).sort({ issuedAt: -1 }).lean(),
       Invoice.find({ restaurantId: rid, status: { $in: ["UNPAID", "PARTIAL"] } }).lean(),
       PaymentTransaction.find(transactionFilter).sort({ paidAt: -1 }).lean(),
+      PaymentReconciliation.find({ restaurantId: rid }).sort({ createdAt: -1 }).limit(10).lean(),
+      BankTransaction.aggregate([
+        { $match: { restaurantId: rid } },
+        { $group: { _id: "$matchStatus", count: { $sum: 1 } } }
+      ]),
     ]);
 
     const revenue = cashflows
@@ -306,6 +313,35 @@ export const PaymentQuery = {
       transactions,
       debts,
       costBreakdown,
+      reconciliations: (recentReconciliations || []).map((item) => ({
+        id: String(item._id),
+        time: item.matchedAt || item.createdAt,
+        amount: Number(item.receivedAmount ?? item.expectedAmount ?? 0),
+        reference: item.paymentReference || "",
+        status: item.status || "unmatched",
+        note: item.note || "",
+      })),
+      reconciliationSummary: {
+        matched: Number(bankTxAgg.find((x) => x._id === "matched")?.count || 0),
+        amountMismatch: Number(bankTxAgg.find((x) => x._id === "amount_mismatch")?.count || 0),
+        unmatched: Number(bankTxAgg.find((x) => x._id === "unmatched")?.count || 0),
+      },
     };
+  },
+  async paymentReconciliations(_, { restaurantId, status, limit = 10 }, ctx) {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    const filter = { restaurantId: rid };
+    if (status) filter.status = String(status).toLowerCase();
+    return PaymentReconciliation.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
+  },
+  async bankTransactions(_, { restaurantId, matchStatus, limit = 10 }, ctx) {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    const filter = { restaurantId: rid };
+    if (matchStatus) filter.matchStatus = String(matchStatus).toLowerCase();
+    return BankTransaction.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
   },
 };

@@ -173,6 +173,37 @@ type PaymentSession {
   createdAt: DateTime
   updatedAt: DateTime
 }
+type BankTransaction {
+  id: ID!
+  provider: String
+  restaurantId: ID
+  transactionId: String
+  bankAccountNumber: String
+  amount: Float!
+  currency: String
+  description: String
+  transferContent: String
+  occurredAt: DateTime
+  matchedPaymentSessionId: ID
+  matchStatus: String
+  createdAt: DateTime
+}
+type PaymentReconciliation {
+  id: ID!
+  restaurantId: ID
+  paymentSessionId: ID
+  provider: String
+  expectedAmount: Float
+  receivedAmount: Float
+  varianceAmount: Float
+  status: String!
+  bankTransactionId: ID
+  paymentReference: String
+  matchedBy: String
+  matchedAt: DateTime
+  note: String
+  createdAt: DateTime
+}
 
 input CreateOrderPaymentInput {
   restaurantId: ID!
@@ -267,6 +298,21 @@ type FinanceDashboard {
   transactions: [FinanceTransaction!]!
   debts: [FinanceDebtItem!]!
   costBreakdown: FinanceCostBreakdown!
+  reconciliations: [FinanceReconciliationItem!]!
+  reconciliationSummary: FinanceReconciliationSummary!
+}
+type FinanceReconciliationItem {
+  id: ID!
+  time: DateTime
+  amount: Float!
+  reference: String
+  status: String!
+  note: String
+}
+type FinanceReconciliationSummary {
+  matched: Int!
+  amountMismatch: Int!
+  unmatched: Int!
 }
 
 input FinanceDashboardInput {
@@ -284,6 +330,8 @@ extend type Query {
   paymentTransactionsByOrder(orderId: ID!): [PaymentTransaction!]!
   invoicesByOrder(orderId: ID!): [Invoice!]!
   financeDashboard(input: FinanceDashboardInput!): FinanceDashboard!
+  paymentReconciliations(restaurantId: ID!, status: String, limit: Int): [PaymentReconciliation!]!
+  bankTransactions(restaurantId: ID!, matchStatus: String, limit: Int): [BankTransaction!]!
 }
 
 extend type Mutation {
