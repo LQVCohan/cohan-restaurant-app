@@ -64,30 +64,6 @@ vi.mock("../../models/index.js", () => {
     AiChatMessage,
   };
 
-  it("does not duplicate current user message in OpenAI prompt history", async () => {
-    process.env.OPENAI_API_KEY = "test_key";
-    const fetchMock = vi.fn(async (_url, options) => {
-      const body = JSON.parse(options.body);
-      const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
-      expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
-      return {
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) } }],
-        }),
-      };
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
-    await handleRestaurantChatbotMessage({
-      message: "Tin nhắn mới",
-      guestId: "guest_hist",
-      conversationId: first.conversationId,
-    });
-
-    expect(fetchMock).toHaveBeenCalled();
-  });
 
 });
 
@@ -119,11 +95,15 @@ describe("restaurantChatbot persistence", () => {
   });
 
   it("does not duplicate current user message in OpenAI prompt history", async () => {
+    delete process.env.OPENAI_API_KEY;
+    const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
+
     process.env.OPENAI_API_KEY = "test_key";
     const fetchMock = vi.fn(async (_url, options) => {
       const body = JSON.parse(options.body);
       const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
       expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
+      expect(userMessages.filter((message) => message === "Tin nhắn mới")).toHaveLength(1);
       return {
         ok: true,
         json: async () => ({
@@ -133,14 +113,14 @@ describe("restaurantChatbot persistence", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
     await handleRestaurantChatbotMessage({
       message: "Tin nhắn mới",
       guestId: "guest_hist",
       conversationId: first.conversationId,
     });
 
-    expect(fetchMock).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 
 });
