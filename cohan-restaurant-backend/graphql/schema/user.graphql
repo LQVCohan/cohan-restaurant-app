@@ -3058,6 +3058,7 @@ type Mutation {
   ): StaffAttendanceRecord!
   checkInShift(shiftId: ID!): ShiftAttendance!
   checkOutShift(shiftId: ID!): ShiftAttendance!
+  markShiftAttendanceReviewed(attendanceId: ID!, note: String!): ShiftAttendance!
 
   runAttendanceExceptionDetection(
     input: RunAttendanceExceptionDetectionInput!
