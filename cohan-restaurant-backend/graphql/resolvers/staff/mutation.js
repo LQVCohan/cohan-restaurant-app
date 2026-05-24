@@ -128,6 +128,48 @@ function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+
+
+async function checkShiftAttendanceAction({ shiftId, ctx, action }) {
+  requireAuth(ctx);
+  const actorId = ctx?.user?.id || ctx?.user?._id;
+  const shift = await Shift.findById(shiftId).lean();
+  if (!shift) throw new Error("Không tìm thấy ca làm.");
+  if (String(shift.employeeId) !== String(actorId)) throw new Error("Bạn không thể chấm công cho ca của người khác.");
+  const shiftStatus = String(shift.status || "").toLowerCase();
+  if (["cancelled", "draft"].includes(shiftStatus)) throw new Error("Ca làm không hợp lệ để chấm công.");
+  const now = new Date();
+  const start = new Date(shift.startTime);
+  const end = new Date(shift.endTime);
+  const checkInWindowStart = new Date(start.getTime() - 2 * 60 * 60 * 1000);
+  if (action === "check_in" && (now < checkInWindowStart || now > end)) throw new Error("Chỉ được check-in trong khoảng từ 2 giờ trước ca đến khi kết thúc ca.");
+
+  let timesheet = await Timesheet.findOne({ employeeId: shift.employeeId, shiftId: shift._id });
+  if (!timesheet) {
+    timesheet = new Timesheet({ employeeId: shift.employeeId, restaurantId: shift.restaurantId, shiftId: shift._id, workDate: toStartOfDay(start), plannedStartTime: shift.startTime, plannedEndTime: shift.endTime, isOffSchedule: false, source: "quick", offScheduleApprovalStatus: "not_required" });
+  }
+  if (action === "check_in") {
+    if (timesheet.actualCheckInAt) throw new Error("Bạn đã check-in cho ca này.");
+    timesheet.actualCheckInAt = now;
+  } else {
+    if (!timesheet.actualCheckInAt) throw new Error("Bạn chưa check-in ca này.");
+    if (timesheet.actualCheckOutAt) throw new Error("Bạn đã check-out ca này rồi.");
+    if (now < timesheet.actualCheckInAt) throw new Error("Thời gian check-out không hợp lệ.");
+    timesheet.actualCheckOutAt = now;
+  }
+  await timesheet.save();
+  return {
+    id: String(timesheet._id),
+    restaurantId: String(timesheet.restaurantId),
+    employeeId: String(timesheet.employeeId),
+    shiftId: String(timesheet.shiftId),
+    checkInAt: timesheet.actualCheckInAt || null,
+    checkOutAt: timesheet.actualCheckOutAt || null,
+    status: timesheet.actualCheckOutAt ? "checked_out" : "checked_in",
+    createdAt: timesheet.createdAt || null,
+    updatedAt: timesheet.updatedAt || null,
+  };
+}
 const EMPLOYEE_CODE_PREFIX = "NV";
 const EMPLOYEE_CODE_COUNTER_RETRIES = 3;
 
@@ -3681,6 +3723,8 @@ const mutationResolvers = {
     await requireRestaurantAccess(ctx, request.restaurantId);
     return completeOvertimeRequestService({ input, ctx });
   },
+  checkInShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_in" }),
+  checkOutShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_out" }),
   upsertStaffAttendance: async (_, { input }, ctx) => {
     requireAuth(ctx);
     const employeeId = toObjectId(input.employeeId);

@@ -447,6 +447,30 @@ export default {
       createdAt: -1,
     });
   },
+  myShiftAttendances: async (_, { periodStart, periodEnd }, ctx) => {
+    requireAuth(ctx);
+    const employeeId = ctx?.user?.id || ctx?.user?._id;
+    const actorOid = toObjectId(employeeId) || employeeId;
+    const filter = { employeeId: actorOid, shiftId: { $ne: null }, isOffSchedule: { $ne: true } };
+    if (periodStart || periodEnd) {
+      const start = periodStart ? new Date(periodStart) : null;
+      const end = periodEnd ? new Date(periodEnd) : null;
+      if (start && !Number.isNaN(start.getTime())) filter.workDate = { ...(filter.workDate || {}), $gte: toStartOfDay(start) };
+      if (end && !Number.isNaN(end.getTime())) filter.workDate = { ...(filter.workDate || {}), $lte: toEndOfDay(end) };
+    }
+    const rows = await Timesheet.find(filter).select({ _id:1, restaurantId:1, employeeId:1, shiftId:1, actualCheckInAt:1, actualCheckOutAt:1, createdAt:1, updatedAt:1 }).lean();
+    return rows.map((row) => ({
+      id: String(row._id),
+      restaurantId: String(row.restaurantId),
+      employeeId: String(row.employeeId),
+      shiftId: String(row.shiftId),
+      checkInAt: row.actualCheckInAt || null,
+      checkOutAt: row.actualCheckOutAt || null,
+      status: row.actualCheckOutAt ? "checked_out" : row.actualCheckInAt ? "checked_in" : "scheduled",
+      createdAt: row.createdAt || null,
+      updatedAt: row.updatedAt || null,
+    }));
+  },
   myShiftAcknowledgements: async (
     _,
     { periodStart, periodEnd, status },

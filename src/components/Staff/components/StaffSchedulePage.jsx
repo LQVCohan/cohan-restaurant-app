@@ -169,6 +169,30 @@ const GET_STAFF_SHIFTS = gql`
     }
   }
 `;
+const MY_SHIFT_ATTENDANCES = gql`
+  query MyShiftAttendances($periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAttendances(periodStart: $periodStart, periodEnd: $periodEnd) {
+      id
+      shiftId
+      checkInAt
+      checkOutAt
+      status
+    }
+  }
+`;
+
+const CHECK_IN_SHIFT = gql`
+  mutation CheckInShift($shiftId: ID!) {
+    checkInShift(shiftId: $shiftId) { id }
+  }
+`;
+
+const CHECK_OUT_SHIFT = gql`
+  mutation CheckOutShift($shiftId: ID!) {
+    checkOutShift(shiftId: $shiftId) { id }
+  }
+`;
+
 const GET_MY_SHIFT_ACKS = gql`
   query MyShiftAcknowledgements($periodStart: DateTime, $periodEnd: DateTime) {
     myShiftAcknowledgements(periodStart: $periodStart, periodEnd: $periodEnd) {
@@ -548,6 +572,8 @@ export default function StaffSchedulePage() {
   const [declineDraft, setDeclineDraft] = useState({});
   const [declineErrorByShiftId, setDeclineErrorByShiftId] = useState({});
   const [optimisticShiftAcks, setOptimisticShiftAcks] = useState({});
+  const [attendanceActionLoadingShiftId, setAttendanceActionLoadingShiftId] = useState("");
+  const [attendanceFeedbackByShiftId, setAttendanceFeedbackByShiftId] = useState({});
 
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
     GET_MY_SHIFT_ACKS,
@@ -557,6 +583,13 @@ export default function StaffSchedulePage() {
       fetchPolicy: "network-only",
     },
   );
+  const { data: myShiftAttendancesData, refetch: refetchMyShiftAttendances } = useQuery(MY_SHIFT_ATTENDANCES, {
+    variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
+    skip: !employeeId,
+    fetchPolicy: "network-only",
+  });
+  const [checkInShiftMutation] = useMutation(CHECK_IN_SHIFT);
+  const [checkOutShiftMutation] = useMutation(CHECK_OUT_SHIFT);
 
   useEffect(() => {
     if (!restaurantId || !availabilityQueryFromIso || !availabilityQueryToIso) {
@@ -890,6 +923,12 @@ export default function StaffSchedulePage() {
           new Date(right.startTime).getTime(),
       );
   }, [shiftsData]);
+  const shiftAttendanceMap = useMemo(() => {
+    const map = new Map();
+    (myShiftAttendancesData?.myShiftAttendances || []).forEach((item) => map.set(String(item.shiftId), item));
+    return map;
+  }, [myShiftAttendancesData]);
+
   const shiftAckMap = useMemo(() => {
     const map = new Map(
       (myShiftAcksData?.myShiftAcknowledgements || []).map((ack) => [
@@ -935,6 +974,24 @@ export default function StaffSchedulePage() {
     });
     return { today, upcoming, past };
   }, [shifts, todayKey]);
+  const canShowAttendanceAction = (shift, ack) => {
+    const timing = getShiftTimingState(shift);
+    if (ack?.status === "declined") return false;
+    if (timing.isEnded) return false;
+    return timing.isLive || timing.startsSoon || toDateKey(shift.startTime) === todayKey;
+  };
+  const handleAttendanceAction = async (shiftId, action) => {
+    setAttendanceActionLoadingShiftId(shiftId);
+    setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: null }));
+    try {
+      if (action === "check_in") await checkInShiftMutation({ variables: { shiftId } });
+      else await checkOutShiftMutation({ variables: { shiftId } });
+      await refetchMyShiftAttendances?.();
+      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "success", message: action === "check_in" ? "Check-in thành công." : "Check-out thành công." } }));
+    } catch (e) {
+      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "error", message: getGraphQLErrorMessage(e, "Không thể chấm công ca.") } }));
+    } finally { setAttendanceActionLoadingShiftId(""); }
+  };
   const nextShift = useMemo(
     () => shiftGroups.upcoming.find((shift) => !getShiftTimingState(shift).isEnded) || null,
     [shiftGroups],
@@ -1792,6 +1849,7 @@ export default function StaffSchedulePage() {
                           const nextShiftMeta = getShiftDisplayMeta(nextShift.shiftType);
                           const nextShiftAck = shiftAckMap.get(String(nextShift.id));
                           const timing = getShiftTimingState(nextShift);
+                          const nextShiftAttendance = shiftAttendanceMap.get(String(nextShift.id));
                           return (
                             <>
                               <p className="staff-my-shift-card__note">
@@ -1823,6 +1881,7 @@ export default function StaffSchedulePage() {
                               {nextShiftAck?.status === "pending" && timing.startsSoon ? (
                                 <p className="staff-my-shift-card__note">Ca sắp đến giờ nhưng bạn chưa xác nhận.</p>
                               ) : null}
+                              {nextShiftAttendance ? <p className="staff-my-shift-card__note">Chấm công: {nextShiftAttendance.status === "checked_out" ? "Đã hoàn thành ca" : nextShiftAttendance.status === "checked_in" ? `Đã check-in lúc ${fmtTime(nextShiftAttendance.checkInAt)}` : "Chưa check-in"}</p> : null}
                               {nextShiftAck?.status === "declined" && nextShiftAck?.declineClassification !== "invalid" ? (
                                 <p className="staff-my-shift-card__note">Bạn đã từ chối ca. Vui lòng chờ quản lý xử lý trước giờ làm.</p>
                               ) : null}
@@ -1845,6 +1904,8 @@ export default function StaffSchedulePage() {
                   const start = new Date(shift?.startTime);
                   const shiftDayKey = !Number.isNaN(start.getTime()) ? toDateKey(start) : "";
                   const groupLabel = shiftDayKey === todayKey ? "Hôm nay" : timing.isEnded ? "Đã qua" : "Sắp tới";
+                  const attendance = shiftAttendanceMap.get(String(shift.id));
+                  const canAttendance = canShowAttendanceAction(shift, ack);
 
                   return (
                     <article key={shift.id} className="staff-my-shift-card">
@@ -1907,6 +1968,14 @@ export default function StaffSchedulePage() {
                             {ack?.reason ? <p className="staff-my-shift-card__note">Ghi chú: {ack.reason}</p> : null}
                           </>
                         ) : null}
+                        {attendance ? <p className="staff-my-shift-card__note">{attendance.status === "checked_out" ? `Đã hoàn thành ca: ${fmtTime(attendance.checkInAt)} - ${fmtTime(attendance.checkOutAt)}` : attendance.status === "checked_in" ? `Đã check-in lúc ${fmtTime(attendance.checkInAt)}` : "Chưa check-in"}</p> : null}
+                        {canAttendance && !attendance ? (
+                          <button className="staff-primary-btn" type="button" disabled={attendanceActionLoadingShiftId===shift.id} onClick={() => handleAttendanceAction(shift.id, "check_in")}>{attendanceActionLoadingShiftId===shift.id?"Đang xử lý...":"Check-in"}</button>
+                        ) : null}
+                        {canAttendance && attendance?.status === "checked_in" ? (
+                          <button className="staff-primary-btn" type="button" disabled={attendanceActionLoadingShiftId===shift.id} onClick={() => handleAttendanceAction(shift.id, "check_out")}>{attendanceActionLoadingShiftId===shift.id?"Đang xử lý...":"Check-out"}</button>
+                        ) : null}
+                        {attendanceFeedbackByShiftId[shift.id] ? <p className="staff-my-shift-card__note">{attendanceFeedbackByShiftId[shift.id].message}</p> : null}
                         {ack?.status === "pending" ? (
                           <div className="staff-shift-ack-actions">
                             <button
