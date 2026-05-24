@@ -490,11 +490,21 @@ export default {
     const start = new Date(periodStart);
     const end = new Date(periodEnd);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+    const activePublication = await SchedulePublication.findOne({
+      restaurantId: restaurantOid,
+      periodStart: { $lte: start },
+      periodEnd: { $gte: end },
+      status: { $in: ["published", "active"] },
+    })
+      .select({ _id: 1 })
+      .lean();
+    if (!activePublication) return [];
 
     const [shiftRows, timesheetRows] = await Promise.all([
       Shift.find({
         restaurantId: restaurantOid,
-        startTime: { $gte: start, $lte: end },
+        startTime: { $lte: end },
+        endTime: { $gte: start },
       })
         .select({
           _id: 1,
@@ -527,10 +537,10 @@ export default {
     ]);
 
     const staffRows = await Staff.find({
-      restaurantId: restaurantOid,
+      restaurantForStaff: restaurantOid,
       _id: { $in: [...new Set(shiftRows.map((s) => String(s.employeeId)).filter(Boolean))] },
     })
-      .select({ _id: 1, fullName: 1, employeeCode: 1 })
+      .select({ _id: 1, fullName: 1, employeeCode: 1, restaurantForStaff: 1 })
       .lean();
 
     const staffById = new Map(staffRows.map((row) => [String(row._id), row]));
