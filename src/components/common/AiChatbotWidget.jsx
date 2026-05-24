@@ -79,7 +79,14 @@ function AiChatbotWidget() {
   const [lastQuickReplies, setLastQuickReplies] = useState(STARTER_MESSAGES);
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
-  const [guestId, setGuestId] = useState("");
+  const [guestId, setGuestId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+    if (existing) return existing;
+    const created = generateGuestId();
+    window.localStorage.setItem(GUEST_ID_STORAGE_KEY, created);
+    return created;
+  });
   const [conversationId, setConversationId] = useState("");
   const params = useParams();
   const location = useLocation();
@@ -93,16 +100,11 @@ function AiChatbotWidget() {
   const restaurantStorageKey = useMemo(() => getConversationStorageKey(restaurantId), [restaurantId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
-    if (existing) {
-      setGuestId(existing);
-      return;
+    if (!guestId || typeof window === "undefined") return;
+    if (!window.localStorage.getItem(GUEST_ID_STORAGE_KEY)) {
+      window.localStorage.setItem(GUEST_ID_STORAGE_KEY, guestId);
     }
-    const created = generateGuestId();
-    window.localStorage.setItem(GUEST_ID_STORAGE_KEY, created);
-    setGuestId(created);
-  }, []);
+  }, [guestId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -119,13 +121,20 @@ function AiChatbotWidget() {
     setLastQuickReplies([]);
 
     try {
+      let safeGuestId = guestId;
+      if (!safeGuestId && typeof window !== "undefined") {
+        safeGuestId = window.localStorage.getItem(GUEST_ID_STORAGE_KEY) || generateGuestId();
+        window.localStorage.setItem(GUEST_ID_STORAGE_KEY, safeGuestId);
+        setGuestId(safeGuestId);
+      }
+
       const { data } = await askAiChatbot({
         variables: {
           input: {
             message: content,
             restaurantId,
             history: normalizeHistory(messages),
-            guestId,
+            guestId: safeGuestId || undefined,
             conversationId: conversationId || undefined,
           },
         },

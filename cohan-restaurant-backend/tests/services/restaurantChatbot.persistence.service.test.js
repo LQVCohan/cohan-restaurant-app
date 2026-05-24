@@ -63,6 +63,32 @@ vi.mock("../../models/index.js", () => {
     AiChatConversation,
     AiChatMessage,
   };
+
+  it("does not duplicate current user message in OpenAI prompt history", async () => {
+    process.env.OPENAI_API_KEY = "test_key";
+    const fetchMock = vi.fn(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
+      expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) } }],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
+    await handleRestaurantChatbotMessage({
+      message: "Tin nhắn mới",
+      guestId: "guest_hist",
+      conversationId: first.conversationId,
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
 });
 
 import { handleRestaurantChatbotMessage } from "../../src/services/ai/restaurantChatbot.service.js";
@@ -91,4 +117,30 @@ describe("restaurantChatbot persistence", () => {
     const second = await handleRestaurantChatbotMessage({ message: "B", guestId: "guest_4", conversationId: first.conversationId });
     expect(second.conversationId).not.toBe(first.conversationId);
   });
+
+  it("does not duplicate current user message in OpenAI prompt history", async () => {
+    process.env.OPENAI_API_KEY = "test_key";
+    const fetchMock = vi.fn(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
+      expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) } }],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
+    await handleRestaurantChatbotMessage({
+      message: "Tin nhắn mới",
+      guestId: "guest_hist",
+      conversationId: first.conversationId,
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
 });

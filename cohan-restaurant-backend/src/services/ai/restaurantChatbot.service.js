@@ -607,6 +607,8 @@ export const handleRestaurantChatbotMessage = async ({
     }
 
     if (persistedConversation) {
+      persistedHistory = await fetchPersistedHistoryForPrompt(persistedConversation._id);
+
       await AiChatMessage.create({
         conversationId: persistedConversation._id,
         restaurantId: restaurantObjectId,
@@ -615,7 +617,6 @@ export const handleRestaurantChatbotMessage = async ({
         role: "user",
         content: cleanMessage,
       });
-      persistedHistory = await fetchPersistedHistoryForPrompt(persistedConversation._id);
     }
   } catch {
     persistedConversation = null;
