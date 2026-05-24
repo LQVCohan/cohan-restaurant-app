@@ -16,7 +16,7 @@ import {
   Promotion,
   UserCoupon,
 } from "../../../models/index.js";
-import { createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { cancelPaymentSession, createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -1622,6 +1622,11 @@ export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
 
   return payment;
 };
+export const cancelPaymentSessionMutation = async (_parent, { input }, ctx) => {
+  if (!mongoose.isValidObjectId(input?.paymentId)) throw new Error("Invalid paymentId");
+  if (!ctx?.user?.id) throw new Error("Unauthorized");
+  return cancelPaymentSession({ paymentId: input.paymentId, reason: input?.reason, ctx });
+};
 
 export const updateRestaurantPaymentSettings = async (
   _parent,
@@ -1703,6 +1708,7 @@ export default {
   payOrdersByOrderIds,
   createReservationPayment: createReservationPaymentMutation,
   createOrderPayment: createOrderPaymentMutation,
+  cancelPaymentSession: cancelPaymentSessionMutation,
   syncPaymentStatus,
   updateRestaurantPaymentSettings,
 };
