@@ -1475,6 +1475,20 @@ type LeaveRequest {
   updatedAt: DateTime
 }
 
+
+
+type ShiftAttendance {
+  id: ID!
+  restaurantId: ID!
+  employeeId: ID!
+  shiftId: ID!
+  checkInAt: DateTime
+  checkOutAt: DateTime
+  status: String!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 type StaffAttendanceRecord {
   id: ID!
   employeeId: ID!
@@ -2849,6 +2863,7 @@ type Query {
     employeeId: ID
     status: ShiftAcknowledgementStatus
   ): [ShiftAcknowledgement!]!
+  myShiftAttendances(periodStart: DateTime, periodEnd: DateTime): [ShiftAttendance!]!
   myShiftAcknowledgements(
     periodStart: DateTime
     periodEnd: DateTime
@@ -3029,6 +3044,8 @@ type Mutation {
   upsertStaffAttendance(
     input: UpsertStaffAttendanceInput!
   ): StaffAttendanceRecord!
+  checkInShift(shiftId: ID!): ShiftAttendance!
+  checkOutShift(shiftId: ID!): ShiftAttendance!
 
   runAttendanceExceptionDetection(
     input: RunAttendanceExceptionDetectionInput!

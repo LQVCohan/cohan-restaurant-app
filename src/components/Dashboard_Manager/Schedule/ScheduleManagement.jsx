@@ -4222,6 +4222,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <div className="schedule-quality-panel__metric"><span className="label">Đã từ chối</span><span className="value">{todayScheduleSummary.declined || "—"}</span></div>
             <div className="schedule-quality-panel__metric"><span className="label">Ca cần xử lý do từ chối hợp lệ</span><span className="value">{todayScheduleSummary.validDeclinedUnresolved || 0}</span></div>
           </div>
+          <p className="schedule-quality-panel__headline">Chấm công: sẽ cập nhật khi bật attendance.</p>
           {todayScheduleSummary.validDeclinedUnresolved > 0 ? (
             <button
               type="button"
