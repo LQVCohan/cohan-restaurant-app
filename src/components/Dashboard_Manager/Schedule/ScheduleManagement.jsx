@@ -5,10 +5,12 @@ import {
   addMonths,
   addWeeks,
   endOfMonth,
+  endOfDay,
   endOfWeek,
   format,
   isSameDay,
   startOfMonth,
+  startOfDay,
   startOfWeek,
   subDays,
   subMonths,
@@ -200,6 +202,33 @@ const GET_DECLINED_SHIFT_ACKS = gql`
       declineClassification
       respondedAt
       updatedAt
+    }
+  }
+`;
+const MANAGER_SHIFT_ATTENDANCES = gql`
+  query ManagerShiftAttendances(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
+    managerShiftAttendances(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
+      id
+      employeeId
+      shiftId
+      status
+      checkInAt
+      checkOutAt
+      employeeName
+      employeeCode
+      shiftStartTime
+      shiftEndTime
+      shiftType
+      displayStatus
+      isLate
     }
   }
 `;
@@ -1667,6 +1696,73 @@ const ScheduleManagement = ({ readOnly = false }) => {
       validDeclinedUnresolved,
     };
   }, [staffShifts, declinedShiftAcks, shiftRowsById]);
+  const todayAttendanceRange = useMemo(() => {
+    const now = new Date();
+    return {
+      periodStart: startOfDay(now).toISOString(),
+      periodEnd: endOfDay(now).toISOString(),
+    };
+  }, []);
+  const {
+    data: managerShiftAttendancesData,
+    loading: managerShiftAttendancesLoading,
+    error: managerShiftAttendancesError,
+  } = useQuery(MANAGER_SHIFT_ATTENDANCES, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      periodStart: todayAttendanceRange.periodStart,
+      periodEnd: todayAttendanceRange.periodEnd,
+    },
+    skip: !effectiveRestaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+  const todayAttendances = useMemo(
+    () => managerShiftAttendancesData?.managerShiftAttendances || [],
+    [managerShiftAttendancesData],
+  );
+  const todayAttendanceMetrics = useMemo(() => {
+    return todayAttendances.reduce(
+      (acc, row) => {
+        if (row?.status === "checked_out") acc.checkedOut += 1;
+        else if (row?.status === "checked_in") acc.checkedIn += 1;
+        else acc.scheduled += 1;
+        if (row?.isLate) acc.late += 1;
+        return acc;
+      },
+      { checkedIn: 0, checkedOut: 0, scheduled: 0, late: 0 },
+    );
+  }, [todayAttendances]);
+  const attentionAttendanceRows = useMemo(() => {
+    const priority = { scheduled: 0, checked_in: 1, late: 2 };
+    return [...todayAttendances]
+      .filter((row) => row?.status === "scheduled" || row?.status === "checked_in" || row?.isLate)
+      .sort((a, b) => {
+        const aKey = a?.isLate ? "late" : a?.status;
+        const bKey = b?.isLate ? "late" : b?.status;
+        return (priority[aKey] ?? 99) - (priority[bKey] ?? 99);
+      });
+  }, [todayAttendances]);
+  const formatAttendanceTime = (value) => {
+    if (!value) return "--:--";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "--:--";
+    return format(date, "HH:mm");
+  };
+  const formatShiftTimeRange = (row) => {
+    const start = formatAttendanceTime(row?.shiftStartTime);
+    const end = formatAttendanceTime(row?.shiftEndTime);
+    const shiftType = row?.shiftType ? ` (${row.shiftType})` : "";
+    return `${start} - ${end}${shiftType}`;
+  };
+  const getAttendanceStatusLabel = (row) => {
+    if (row?.status === "checked_out") {
+      return `Đã hoàn thành ${formatAttendanceTime(row?.checkInAt)} - ${formatAttendanceTime(row?.checkOutAt)}`;
+    }
+    if (row?.status === "checked_in") {
+      return `Đã check-in ${formatAttendanceTime(row?.checkInAt)}`;
+    }
+    return "Chưa check-in";
+  };
   const reasonCategoryLabels = {
     sick: "Bị ốm",
     personal: "Việc cá nhân",
@@ -4222,7 +4318,33 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <div className="schedule-quality-panel__metric"><span className="label">Đã từ chối</span><span className="value">{todayScheduleSummary.declined || "—"}</span></div>
             <div className="schedule-quality-panel__metric"><span className="label">Ca cần xử lý do từ chối hợp lệ</span><span className="value">{todayScheduleSummary.validDeclinedUnresolved || 0}</span></div>
           </div>
-          <p className="schedule-quality-panel__headline">Chấm công: sẽ cập nhật khi bật attendance.</p>
+          <div className="schedule-quality-panel__metrics">
+            <div className="schedule-quality-panel__metric"><span className="label">Đã check-in</span><span className="value">{todayAttendanceMetrics.checkedIn}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Đã hoàn thành</span><span className="value">{todayAttendanceMetrics.checkedOut}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Chưa check-in</span><span className="value">{todayAttendanceMetrics.scheduled}</span></div>
+            <div className="schedule-quality-panel__metric"><span className="label">Trễ giờ</span><span className="value">{todayAttendanceMetrics.late}</span></div>
+          </div>
+          {managerShiftAttendancesLoading ? (
+            <p className="schedule-quality-panel__headline">Đang tải chấm công...</p>
+          ) : managerShiftAttendancesError ? (
+            <p className="schedule-quality-panel__headline">Không tải được chấm công hôm nay.</p>
+          ) : null}
+          {!managerShiftAttendancesLoading && !managerShiftAttendancesError && attentionAttendanceRows.length > 0 ? (
+            <div className="schedule-quality-panel__body">
+              <ul>
+                {attentionAttendanceRows.slice(0, 5).map((row) => (
+                  <li key={row.id}>
+                    {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {getAttendanceStatusLabel(row)}
+                  </li>
+                ))}
+              </ul>
+              {attentionAttendanceRows.length > 5 ? (
+                <p className="schedule-quality-panel__headline">
+                  Còn {attentionAttendanceRows.length - 5} ca khác.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {todayScheduleSummary.validDeclinedUnresolved > 0 ? (
             <button
               type="button"

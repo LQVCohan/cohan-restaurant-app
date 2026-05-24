@@ -1485,6 +1485,13 @@ type ShiftAttendance {
   checkInAt: DateTime
   checkOutAt: DateTime
   status: String!
+  employeeName: String
+  employeeCode: String
+  shiftStartTime: DateTime
+  shiftEndTime: DateTime
+  shiftType: String
+  displayStatus: String
+  isLate: Boolean
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -2864,6 +2871,11 @@ type Query {
     status: ShiftAcknowledgementStatus
   ): [ShiftAcknowledgement!]!
   myShiftAttendances(periodStart: DateTime, periodEnd: DateTime): [ShiftAttendance!]!
+  managerShiftAttendances(
+    restaurantId: ID!
+    periodStart: DateTime!
+    periodEnd: DateTime!
+  ): [ShiftAttendance!]!
   myShiftAcknowledgements(
     periodStart: DateTime
     periodEnd: DateTime

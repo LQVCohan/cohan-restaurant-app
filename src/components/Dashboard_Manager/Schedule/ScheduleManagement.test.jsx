@@ -14,6 +14,7 @@ let mockDeclinedShiftAcksLoading;
 let capturedDeclinedShiftAckVariables;
 let mockAvailabilityWindowsData;
 let mockAvailabilitySubmissionsData;
+let mockManagerShiftAttendancesData;
 let mutationSpy;
 let lazyQuerySpy;
 const getFirstShiftCard = async () => {
@@ -72,6 +73,14 @@ vi.mock("@apollo/client", async () => {
       if (body.includes("query ScheduleAvailabilitySubmissions")) {
         return {
           data: mockAvailabilitySubmissionsData,
+          loading: false,
+          error: null,
+          refetch: vi.fn(),
+        };
+      }
+      if (body.includes("query ManagerShiftAttendances")) {
+        return {
+          data: mockManagerShiftAttendancesData,
           loading: false,
           error: null,
           refetch: vi.fn(),
@@ -173,6 +182,9 @@ describe("ScheduleManagement", () => {
     };
     mockAvailabilitySubmissionsData = {
       availabilitySubmissions: [],
+    };
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [],
     };
   });
 
