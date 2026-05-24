@@ -123,8 +123,14 @@ export async function createServer() {
 
   app.get("/api/payments/:paymentId/status", async (req, reply) => {
     try {
+      const authUser = await resolveAuthenticatedUserFromRequest(req);
       const payment = await getPaymentSessionById(req.params?.paymentId);
-      return reply.send({ ok: true, payment });
+      const isOwner = authUser?.id && String(authUser.id) === String(payment.userId);
+      if (!isOwner) {
+        const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+        if (!token) return reply.code(403).send({ ok: false, message: "Forbidden" });
+      }
+      return reply.send({ ok: true, payment: { id: payment._id, status: payment.status, callbackStatus: payment.callbackStatus, provider: payment.provider, amount: payment.amount, currency: payment.currency } });
     } catch (err) {
       return reply.code(404).send({ ok: false, message: err?.message || "Payment not found" });
     }

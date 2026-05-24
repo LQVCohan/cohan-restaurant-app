@@ -210,6 +210,8 @@ input CreateOrderPaymentInput {
   orderIds: [ID!]!
   provider: String!
   paymentMethod: String
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
 }
 
 input CreateReservationPaymentInput {

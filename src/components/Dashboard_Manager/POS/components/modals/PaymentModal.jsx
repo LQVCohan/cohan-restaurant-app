@@ -415,6 +415,10 @@ function PaymentModal({
         orderIds: resolvedOrderIds,
         provider: method === "transfer" ? "bank_transfer" : method,
         paymentMethod: method,
+        pricing: hasValidDiscount
+          ? buildDiscountPricingInput({ taxRate: 0, serviceRate: 0, shippingFee: 0, couponCode })
+          : undefined,
+        promotionIds: hasValidDiscount ? selectedPromotionIds : undefined,
       });
       setOnlinePayment(created);
       setOnlinePaymentError("");

@@ -18,6 +18,7 @@ Tài liệu này mô tả luồng online payment cho order sau khi đã có PR #
 - `BANK_TRANSFER_BANK_NAME`
 - `BANK_TRANSFER_ACCOUNT_NUMBER`
 - `BANK_TRANSFER_ACCOUNT_NAME`
+- `BANK_TRANSFER_BANK_CODE` (mặc định `VCB`)
 
 ## Lưu ý demo an toàn
 

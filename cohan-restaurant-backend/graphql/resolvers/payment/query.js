@@ -115,9 +115,13 @@ function buildBuckets({ from, to, mode, format }) {
 export const PaymentQuery = {
 
 
-  async paymentSession(_, { id }) {
+  async paymentSession(_, { id }, ctx) {
     if (!mongoose.isValidObjectId(id)) throw new Error("Invalid payment id");
-    return PaymentSession.findById(id).lean();
+    const session = await PaymentSession.findById(id).lean();
+    if (!session) return null;
+    if (String(session.userId || "") === String(ctx?.user?.id || "")) return session;
+    await requireRestaurantPermission(ctx, toObjectId(session.restaurantId), PERMISSIONS.PAYMENT_READ);
+    return session;
   },
 
   async reservationPaymentSessions(_, { reservationId }, ctx) {

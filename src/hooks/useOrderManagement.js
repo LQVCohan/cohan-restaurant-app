@@ -3200,8 +3200,8 @@ export default function useOrderManagement(pos = null) {
     [preparePayment, confirmPayment, totals.total],
   );
   const createOnlineOrderPayment = useCallback(
-    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod }) => {
-      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod } } });
+    async ({ restaurantId, orderIds = [], provider = "bank_transfer", paymentMethod, pricing, promotionIds = [] }) => {
+      const { data } = await mutCreateOrderPayment({ variables: { input: { restaurantId, orderIds, provider, paymentMethod, pricing, promotionIds } } });
       return data?.createOrderPayment || null;
     },
     [mutCreateOrderPayment],

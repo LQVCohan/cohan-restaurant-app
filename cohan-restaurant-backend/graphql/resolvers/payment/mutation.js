@@ -1604,11 +1604,14 @@ export const createReservationPaymentMutation = async (
   return payment;
 };
 
-export const syncPaymentStatus = async (_parent, { paymentId }) => {
+export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
   if (!mongoose.isValidObjectId(paymentId))
     throw new Error("Invalid paymentId");
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
+  if (String(payment.userId || "") !== String(ctx?.user?.id || "")) {
+    await requireRestaurantPermission(ctx, toId(payment.restaurantId), PERMISSIONS.PAYMENT_READ);
+  }
 
   if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
     return payment;
