@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import mongoose from "mongoose";
 
 const conversations = [];
 const messages = [];
@@ -6,7 +7,7 @@ const threads = [];
 const notifications = [];
 const users = [];
 
-const mkId = (seed) => `${seed}${Math.random().toString(16).slice(2, 10)}`;
+const mkId = () => new mongoose.Types.ObjectId().toString();
 
 vi.mock("../../models/index.js", () => {
   const AiChatConversation = {
@@ -25,7 +26,7 @@ vi.mock("../../models/index.js", () => {
   const ChatThread = {
     async findById(id) { return threads.find((t) => String(t._id) === String(id)) || null; },
     async create(payload) {
-      const row = { _id: mkId("thread_"), ...payload, save: async function () {} };
+      const row = { _id: mkId(), ...payload, save: async function () {} };
       threads.push(row);
       return row;
     },
@@ -47,32 +48,67 @@ describe("restaurantChatbot handoff service", () => {
   });
 
   it("guest valid handoff sets status and creates thread", async () => {
-    const convId = mkId("conv_");
-    conversations.push({ _id: convId, guestId: "guest_1", restaurantId: mkId("rest_"), status: "open", metadata: null });
+    const convId = mkId();
+    const restaurantId = mkId();
+    const staffId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
     messages.push({ conversationId: convId, role: "user", content: "help" });
-    users.push({ _id: mkId("u_"), userType: "STAFF" });
+    users.push({ _id: staffId, userType: "STAFF" });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
     expect(out.ok).toBe(true);
     expect(out.handoffRequested).toBe(true);
     expect(conversations[0].status).toBe("handoff_requested");
     expect(conversations[0].chatThreadId).toBeTruthy();
     expect(threads.length).toBe(1);
+    expect((threads[0].participants || []).map(String)).toContain(staffId);
+    expect((threads[0].unreadBy || []).map(String)).toContain(staffId);
   });
 
   it("duplicate handoff is idempotent", async () => {
-    const threadId = mkId("thread_");
-    const convId = mkId("conv_");
-    conversations.push({ _id: convId, guestId: "guest_1", restaurantId: mkId("rest_"), status: "handoff_requested", chatThreadId: threadId, metadata: {} });
+    const threadId = mkId();
+    const convId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId: mkId(), status: "handoff_requested", chatThreadId: threadId, metadata: {} });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
     expect(out.ok).toBe(true);
     expect(out.alreadyRequested).toBe(true);
     expect(out.chatThreadId).toBe(threadId);
+    expect(threads.length).toBe(0);
   });
 
   it("mismatched guest cannot access conversation", async () => {
-    const convId = mkId("conv_");
-    conversations.push({ _id: convId, guestId: "guest_owner", restaurantId: mkId("rest_"), status: "open", metadata: null });
+    const convId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_owner", restaurantId: mkId(), status: "open", metadata: null });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_other" } });
     expect(out.ok).toBe(false);
+  });
+
+  it("reused thread merges recipients into participants and sets unreadBy", async () => {
+    const convId = mkId();
+    const restaurantId = mkId();
+    const existingRecipient = mkId();
+    const newRecipient = mkId();
+    const threadId = mkId();
+    const thread = {
+      _id: threadId,
+      participants: [new mongoose.Types.ObjectId(existingRecipient)],
+      unreadBy: [],
+      save: async function () {},
+    };
+    threads.push(thread);
+    conversations.push({
+      _id: convId,
+      guestId: "guest_1",
+      restaurantId,
+      status: "open",
+      chatThreadId: threadId,
+      metadata: null,
+    });
+    users.push({ _id: existingRecipient, userType: "STAFF" }, { _id: newRecipient, userType: "MANAGER" });
+    const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+    expect(out.ok).toBe(true);
+    expect((thread.participants || []).map(String)).toContain(existingRecipient);
+    expect((thread.participants || []).map(String)).toContain(newRecipient);
+    expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);
+    expect((thread.unreadBy || []).map(String)).toContain(newRecipient);
   });
 });

@@ -80,6 +80,16 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
     messages: sortedMessages,
   });
 
+  const recipientUsers = await User.find({
+    userType: { $in: ["STAFF", "MANAGER", "ADMIN"] },
+    $or: [{ restaurantForStaff: conversation.restaurantId }, { refRestaurants: conversation.restaurantId }],
+  })
+    .select("_id userType")
+    .lean();
+
+  const recipientIds = [...new Set(recipientUsers.map((u) => String(u._id)))];
+  const recipientObjectIds = recipientIds.map((id) => toObjectId(id)).filter(Boolean);
+
   let thread = null;
   if (conversation.chatThreadId) {
     thread = await ChatThread.findById(conversation.chatThreadId);
@@ -90,7 +100,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
       restaurantId: conversation.restaurantId,
       channel: "support",
       targetRole: "support",
-      participants: [],
+      participants: recipientObjectIds,
       subject: "AI handoff - Khách cần hỗ trợ",
       status: "open",
       messages: [
@@ -104,18 +114,17 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
       ],
       lastMessageAt: new Date(),
       lastMessagePreview: preview(summaryText, 140),
-      unreadBy: [],
+      unreadBy: recipientObjectIds,
     });
+  } else if (recipientObjectIds.length > 0) {
+    const existingParticipantIds = new Set((thread.participants || []).map((id) => String(id)));
+    const mergedParticipants = [
+      ...(thread.participants || []),
+      ...recipientObjectIds.filter((id) => !existingParticipantIds.has(String(id))),
+    ];
+    thread.participants = mergedParticipants;
   }
 
-  const recipientUsers = await User.find({
-    userType: { $in: ["STAFF", "MANAGER", "ADMIN"] },
-    $or: [{ restaurantForStaff: conversation.restaurantId }, { refRestaurants: conversation.restaurantId }],
-  })
-    .select("_id userType")
-    .lean();
-
-  const recipientIds = [...new Set(recipientUsers.map((u) => String(u._id)))];
   let notifications = [];
   if (recipientIds.length > 0) {
     notifications = recipientIds.map((toUserId) => ({
@@ -150,8 +159,11 @@ export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) 
 
   if (notifications.length > 0) await Notification.insertMany(notifications);
 
-  if (recipientIds.length > 0) {
-    thread.unreadBy = recipientIds.map((id) => toObjectId(id)).filter(Boolean);
+  if (recipientObjectIds.length > 0) {
+    thread.unreadBy = recipientObjectIds;
+    await thread.save();
+  } else if (thread && !thread.unreadBy) {
+    thread.unreadBy = [];
     await thread.save();
   }
 
