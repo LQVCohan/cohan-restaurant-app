@@ -1,5 +1,5 @@
-import React from "react";
-import { Download, Calendar } from "lucide-react";
+import React, { useMemo } from "react";
+import { Download, Calendar, RefreshCw, Store } from "lucide-react";
 import { DollarSign, Users, ShoppingBag, Star } from "lucide-react";
 import { useAnalyst } from "../../../hooks/useAnalyst";
 import KPIInsightCard from "./components/KPIInsightCard";
@@ -15,12 +15,29 @@ import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistan
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
 import "./ManagerAnalyst.scss";
 
+const formatVnd = (value) => `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
+const clamp = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+
+const calculateTrendProgress = (trend, key) => {
+  const item = trend.find((entry) => entry.key === key) || trend[0];
+  const previous = Number(item?.previous || 0);
+  const current = Number(item?.current || 0);
+
+  if (!previous || Number.isNaN(previous) || Number.isNaN(current)) return null;
+  return clamp((current / previous) * 100);
+};
+
 const ManagerAnalyst = () => {
   const {
+    restaurantId,
+    setRestaurantId,
+    restaurants,
     range,
     setRange,
     loading,
     error,
+    refetch,
+    hasBusinessData,
     kpiData,
     revenueTrend,
     topDishes,
@@ -35,6 +52,56 @@ const ManagerAnalyst = () => {
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
+  const revenueProgress = calculateTrendProgress(revenueTrend, "revenue");
+  const orderProgress = calculateTrendProgress(revenueTrend, "orders");
+
+  const displayKpis = useMemo(
+    () => [
+      {
+        ...kpiData[0],
+        value: formatVnd(kpiData[0]?.value),
+        progress: revenueProgress,
+        period: loading ? "Đang tải..." : "So với kỳ trước theo doanh thu",
+      },
+      {
+        ...kpiData[1],
+        value: Number(kpiData[1]?.value || 0),
+        progress: 0,
+        period: loading ? "Đang tải..." : "Theo dữ liệu khách hàng",
+      },
+      {
+        ...kpiData[2],
+        value: Number(kpiData[2]?.value || 0),
+        progress: orderProgress,
+        period: loading ? "Đang tải..." : "So với kỳ trước theo đơn hàng",
+      },
+      {
+        ...kpiData[3],
+        value: `${Number(kpiData[3]?.value || 0).toFixed(1)}/5`,
+        progress: clamp((Number(kpiData[3]?.value || 0) / 5) * 100),
+        period: loading ? "Đang tải..." : "Điểm đánh giá trung bình",
+      },
+    ],
+    [kpiData, loading, revenueProgress, orderProgress]
+  );
+
+  if (!restaurantId) {
+    return <div className="analyst-empty-page">Vui lòng chọn hoặc tạo nhà hàng trước khi xem phân tích kinh doanh.</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="manager-analyst-page">
+        <header className="analyst-header">
+          <div className="header-titles">
+            <h1>Phân tích kinh doanh</h1>
+            <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
+          </div>
+        </header>
+        <div className="analyst-error">Không tải được dữ liệu phân tích kinh doanh. Vui lòng thử làm mới.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="manager-analyst-page">
@@ -44,29 +111,47 @@ const ManagerAnalyst = () => {
           <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
         </div>
         <div className="header-actions">
-          <div className="date-picker-mock">
+          {restaurants.length > 1 ? (
+            <div className="picker-wrap">
+              <Store size={16} />
+              <select value={restaurantId} onChange={(e) => setRestaurantId(e.target.value)}>
+                {restaurants.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className="picker-wrap">
             <Calendar size={16} />
             <select value={range} onChange={(e) => setRange(e.target.value)}>
               <option value="week">Tuần này</option>
               <option value="month">Tháng này</option>
             </select>
           </div>
-          <button className="btn-primary">
-            <Download size={18} /> Xuất Báo Cáo
+          <button className="btn-icon" type="button" onClick={() => refetch()}>
+            <RefreshCw size={16} />
+          </button>
+          <button className="btn-primary" type="button" disabled>
+            <Download size={18} /> Xuất báo cáo sắp có
           </button>
         </div>
       </header>
-      {error ? <div className="analyst-error">Không tải được dữ liệu Analyst.</div> : null}
+
+      {!loading && !hasBusinessData ? (
+        <div className="analyst-empty-data">Cần có đơn hàng, menu, nhân sự hoặc review để tạo phân tích kinh doanh.</div>
+      ) : null}
 
       <section className="kpi-section">
-        {kpiData.map((kpi, idx) => (
+        {displayKpis.map((kpi, idx) => (
           <KPIInsightCard
             key={kpi.label}
             label={kpi.label}
-            value={idx === 0 ? new Intl.NumberFormat("vi-VN").format(kpi.value) + "đ" : kpi.value}
+            value={kpi.value}
             trendValue={0}
-            period={loading ? "Đang tải..." : "Theo dữ liệu thật"}
-            progress={Math.min(100, Math.max(0, Number(kpi.value || 0) % 100))}
+            period={kpi.period}
+            progress={kpi.progress}
             icon={icons[idx]}
           />
         ))}
@@ -74,41 +159,41 @@ const ManagerAnalyst = () => {
 
       <section className="strategy-grid">
         <div className="grid-item ai-assistant">
-          <StrategyAIRecommendation topDish={topDishes[0]} feedbackSummary={feedbackSummary} />
+          <StrategyAIRecommendation
+            topDish={topDishes[0]}
+            feedbackSummary={feedbackSummary}
+            demandForecast={demandForecast}
+            staffSchedulingAssistant={staffSchedulingAssistant}
+            menuEngineeringAssistant={menuEngineeringAssistant}
+            smartPromotionEngine={smartPromotionEngine}
+          />
         </div>
         <div className="grid-item revenue-chart">
           <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
         </div>
       </section>
 
-
-
-      <section className="forecast-grid">
+      <h3 className="section-heading">Ưu tiên vận hành</h3>
+      <section className="operations-intel-grid">
         <div className="grid-item demand-forecast">
           <DemandForecastWidget forecast={demandForecast} loading={loading} />
         </div>
-      </section>
-
-
-
-      <section className="scheduling-assistant-grid">
         <div className="grid-item scheduling-assistant">
           <StaffSchedulingAssistantWidget assistant={staffSchedulingAssistant} loading={loading} />
         </div>
       </section>
 
-      <section className="menu-engineering-assistant-grid">
+      <h3 className="section-heading">Tăng trưởng doanh thu</h3>
+      <section className="growth-grid">
+        <div className="grid-item smart-promotion-engine">
+          <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
+        </div>
         <div className="grid-item menu-engineering-assistant">
           <MenuEngineeringAssistantWidget assistant={menuEngineeringAssistant} loading={loading} />
         </div>
       </section>
 
-      <section className="smart-promotion-engine-grid">
-        <div className="grid-item smart-promotion-engine">
-          <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
-        </div>
-      </section>
-
+      <h3 className="section-heading">Chất lượng & hiệu suất</h3>
       <section className="product-customer-grid">
         <div className="grid-item menu-matrix">
           <MenuEngineeringMatrix dishes={topDishes} />

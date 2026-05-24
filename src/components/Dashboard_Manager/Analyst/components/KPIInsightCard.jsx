@@ -21,8 +21,10 @@ const KPIInsightCard = ({
   icon: Icon,
   color = "#c5a47e", // Default Gold
 }) => {
-  const isPositive = parseFloat(trendValue) > 0;
-  const isNeutral = parseFloat(trendValue) === 0;
+  const normalizedTrend = Number(trendValue || 0);
+  const isPositive = normalizedTrend > 0;
+  const isNeutral = normalizedTrend === 0;
+  const hasProgress = progress !== null && progress !== undefined;
 
   // Render icon xu hướng
   const renderTrendIcon = () => {
@@ -56,7 +58,7 @@ const KPIInsightCard = ({
           }`}
         >
           {renderTrendIcon()}
-          <span>{Math.abs(trendValue)}%</span>
+          <span>{Math.abs(normalizedTrend)}%</span>
         </div>
       </div>
 
@@ -66,8 +68,7 @@ const KPIInsightCard = ({
       </div>
 
       <div className="card-footer">
-        {/* Progress Bar: Theo dõi mục tiêu */}
-        <div className="target-section">
+        {hasProgress ? <div className="target-section">
           <div className="target-info">
             <div className="target-label">
               <Target size={12} />
@@ -81,7 +82,7 @@ const KPIInsightCard = ({
               style={{ width: `${progress}%`, backgroundColor: color }}
             ></div>
           </div>
-        </div>
+        </div> : null}
 
         <p className="comparison-text">{period}</p>
       </div>

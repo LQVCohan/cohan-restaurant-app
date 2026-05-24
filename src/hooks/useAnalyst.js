@@ -48,8 +48,6 @@ const GET_ANALYST_DASHBOARD = gql`
       }
     }
 
-
-
     staffSchedulingAssistant(restaurantId: $restaurantId, horizonDays: 2) {
       summary {
         totalShiftGroups
@@ -205,6 +203,9 @@ const GET_ANALYST_DASHBOARD = gql`
           endHour
         }
         recommendation {
+          promotionType
+          targetAudience
+          conditions
           scope
           discountType
           discountValue
@@ -275,6 +276,44 @@ export const useAnalyst = () => {
   const menuEngineeringAssistant = data?.menuEngineeringAssistant;
   const smartPromotionEngine = data?.smartPromotionEngine;
 
+  const selectedRestaurant = useMemo(
+    () => restaurants.find((restaurant) => restaurant.id === restaurantId) || null,
+    [restaurants, restaurantId]
+  );
+
+  const actionItems = useMemo(() => {
+    const items = [];
+    if ((staffSchedulingAssistant?.summary?.underStaffedShifts || 0) > 0) {
+      items.push("staffing");
+    }
+    if ((smartPromotionEngine?.campaigns || []).length) {
+      items.push("promotion");
+    }
+    if ((demandForecast?.summary?.busiestPeriods || []).length) {
+      items.push("forecast");
+    }
+    if ((menuEngineeringAssistant?.recommendations || []).length) {
+      items.push("menu");
+    }
+    if ((analyst?.feedbackSummary?.negative || 0) > 0) {
+      items.push("feedback");
+    }
+    return items;
+  }, [staffSchedulingAssistant, smartPromotionEngine, demandForecast, menuEngineeringAssistant, analyst]);
+
+  const hasBusinessData = useMemo(() => {
+    const revenue = Number(analyst?.revenue || 0);
+    const orders = Number(analyst?.orders || 0);
+    const customers = Number(analyst?.customers || 0);
+    const reviews = Number(analyst?.feedbackSummary?.total || 0);
+    const staffing = (staffSchedulingAssistant?.shifts || []).length;
+    const menu = (menuEngineeringAssistant?.dishes || []).length;
+
+    return revenue > 0 || orders > 0 || customers > 0 || reviews > 0 || staffing > 0 || menu > 0;
+  }, [analyst, staffSchedulingAssistant, menuEngineeringAssistant]);
+
+  const hasOperationalRisk = actionItems.length > 0;
+
   const kpiData = useMemo(
     () => [
       { label: "Doanh Thu Thuần", value: analyst?.revenue || 0 },
@@ -294,103 +333,20 @@ export const useAnalyst = () => {
     loading,
     error,
     refetch,
+    selectedRestaurant,
+    hasBusinessData,
+    hasOperationalRisk,
+    actionItems,
     kpiData,
     revenueTrend: analyst?.revenueTrend || [],
     topDishes: analyst?.topDishes || [],
-    feedbackSummary: analyst?.feedbackSummary || {
-      avgRating: 0,
-      total: 0,
-      negative: 0,
-      positive: 0,
-    },
+    feedbackSummary: analyst?.feedbackSummary || { avgRating: 0, total: 0, negative: 0, positive: 0 },
     feedbackItems: analyst?.feedbackItems || [],
     occupancyHeatmap: analyst?.occupancyHeatmap || [],
     staffPerformance: analyst?.staffPerformance || [],
-    demandForecast: demandForecast || {
-      summary: {
-        busiestPeriods: [],
-        topRisingDishes: [],
-        totalRecommendedPrep: 0,
-        notes: [],
-      },
-      hourlyForecast: [],
-      dailyForecast: [],
-      risingDishes: [],
-      prepPlan: [],
-      meta: {
-        method: "time_series_v1",
-        fallbackUsed: true,
-        aiEnhanced: false,
-        generatedAt: null,
-        granularity: "hourly",
-        timezone: "Asia/Ho_Chi_Minh",
-        sampleOrders: 0,
-        sampleDays: 0,
-      },
-    },
-    staffSchedulingAssistant: staffSchedulingAssistant || {
-      summary: {
-        totalShiftGroups: 0,
-        underStaffedShifts: 0,
-        overStaffedShifts: 0,
-        highestRiskShift: null,
-        notes: [],
-      },
-      shifts: [],
-      meta: {
-        method: "staff_scheduling_v1",
-        basedOnForecast: false,
-        fallbackUsed: true,
-        generatedAt: null,
-        timezone: "Asia/Ho_Chi_Minh",
-      },
-    },
-    menuEngineeringAssistant: menuEngineeringAssistant || {
-      summary: {
-        totalDishes: 0,
-        starCount: 0,
-        plowhorseCount: 0,
-        puzzleCount: 0,
-        dogCount: 0,
-        avgMarginPct: 0,
-        notes: [],
-      },
-      dishes: [],
-      recommendations: [],
-      meta: {
-        method: "menu_engineering_v1",
-        fallbackUsed: true,
-        fallbackMarginRate: 0.65,
-        generatedAt: null,
-        timezone: "Asia/Ho_Chi_Minh",
-        sampleOrders: 0,
-        sampleDays: 30,
-      },
-    },
-    smartPromotionEngine: smartPromotionEngine || {
-      summary: {
-        recommendedCampaignCount: 0,
-        topOpportunityWindow: "15:00-17:00",
-        highestPrioritySegment: "NEW",
-        notes: [],
-      },
-      campaigns: [],
-      autoSelectedPromotions: [],
-      segmentInsights: [],
-      timeWindowInsights: [],
-      couponContext: {
-        activeCouponCount: 0,
-        nearUsageLimitCount: 0,
-      },
-      meta: {
-        method: "smart_promo_v1",
-        fallbackUsed: true,
-        aiEnhanced: false,
-        generatedAt: null,
-        timezone: "Asia/Ho_Chi_Minh",
-        sampleOrders: 0,
-        sampleDays: 30,
-      },
-    },
+    demandForecast: demandForecast || { summary: { busiestPeriods: [], topRisingDishes: [], totalRecommendedPrep: 0, notes: [] }, hourlyForecast: [], dailyForecast: [], risingDishes: [], prepPlan: [], meta: { method: "time_series_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, granularity: "hourly", timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 0 } },
+    staffSchedulingAssistant: staffSchedulingAssistant || { summary: { totalShiftGroups: 0, underStaffedShifts: 0, overStaffedShifts: 0, highestRiskShift: null, notes: [] }, shifts: [], meta: { method: "staff_scheduling_v1", basedOnForecast: false, fallbackUsed: true, generatedAt: null, timezone: "Asia/Ho_Chi_Minh" } },
+    menuEngineeringAssistant: menuEngineeringAssistant || { summary: { totalDishes: 0, starCount: 0, plowhorseCount: 0, puzzleCount: 0, dogCount: 0, avgMarginPct: 0, notes: [] }, dishes: [], recommendations: [], meta: { method: "menu_engineering_v1", fallbackUsed: true, fallbackMarginRate: 0.65, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
+    smartPromotionEngine: smartPromotionEngine || { summary: { recommendedCampaignCount: 0, topOpportunityWindow: "15:00-17:00", highestPrioritySegment: "NEW", notes: [] }, campaigns: [], autoSelectedPromotions: [], segmentInsights: [], timeWindowInsights: [], couponContext: { activeCouponCount: 0, nearUsageLimitCount: 0 }, meta: { method: "smart_promo_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
   };
 };

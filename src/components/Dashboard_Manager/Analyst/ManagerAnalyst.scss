@@ -1,241 +1,72 @@
-// Variables
-$bg-page: #f1f5f9; // Xám rất nhạt, sang trọng
+$bg-page: #f8fafc;
 $text-dark: #0f172a;
 $gold: #c5a47e;
 $white: #ffffff;
-$gap: 24px; // Khoảng cách chuẩn giữa các widget
+$gap: 20px;
 
 .manager-analyst-page {
-  padding: 32px;
+  padding: 24px;
   background-color: $bg-page;
   min-height: 100vh;
-  font-family: "Inter", sans-serif;
   color: $text-dark;
 
-  // --- 1. HEADER STYLES ---
   .analyst-header {
     display: flex;
     justify-content: space-between;
+    gap: 16px;
     align-items: flex-end;
-    margin-bottom: 32px;
-
-    .header-titles {
-      h1 {
-        font-size: 1.8rem;
-        font-weight: 800;
-        margin: 0 0 8px 0;
-        letter-spacing: -0.5px;
-      }
-      p {
-        margin: 0;
-        color: #64748b;
-        font-size: 0.95rem;
-      }
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-
-      .date-picker-mock {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: $white;
-        border: 1px solid #e2e8f0;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: $text-dark;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-
-      .btn-icon {
-        width: 42px;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: $white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        cursor: pointer;
-        color: #64748b;
-        &:hover {
-          border-color: $gold;
-          color: $gold;
-        }
-      }
-
-      .btn-primary {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: $text-dark;
-        color: $gold;
-        border: none;
-        padding: 0 20px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-
-        &:hover {
-          background: black;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-      }
-    }
-  }
-
-  .analyst-error {
-    margin-bottom: 16px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-  }
-
-  // --- COMMON GRID ITEM ---
-  .grid-item {
+    margin-bottom: 24px;
     background: $white;
-    border-radius: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-      0 2px 4px -1px rgba(0, 0, 0, 0.03);
     border: 1px solid #e2e8f0;
-    overflow: hidden;
-    height: 100%; // Fill chiều cao của row
-    animation: fadeIn 0.5s ease-out;
-  }
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
 
-  // --- 2. KPI SECTION ---
-  .kpi-section {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: $gap;
-    margin-bottom: $gap;
+    .header-titles h1 { margin: 0 0 6px; font-size: 1.8rem; }
+    .header-titles p { margin: 0; color: #64748b; }
 
-    @media (max-width: 1200px) {
-      grid-template-columns: repeat(2, 1fr);
+    .header-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .picker-wrap {
+      display: flex; align-items: center; gap: 8px; background: $white; border: 1px solid #e2e8f0;
+      padding: 10px 12px; border-radius: 8px;
+      select { border: none; background: transparent; font-weight: 600; color: #1e293b; }
     }
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
-  }
 
-  // --- 3. STRATEGY GRID (AI + Revenue) ---
-  .strategy-grid {
-    display: grid;
-    grid-template-columns: 3.5fr 8.5fr; // Tỉ lệ 3.5 : 8.5
-    gap: $gap;
-    margin-bottom: $gap;
-    align-items: stretch; // Kéo giãn chiều cao bằng nhau
+    .btn-icon, .btn-primary { border-radius: 8px; border: 1px solid #e2e8f0; background: $white; }
+    .btn-icon { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-primary { display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 600; background: #0f172a; color: $gold; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    @media (max-width: 1024px) {
-      grid-template-columns: 1fr;
-    } // Mobile xếp chồng
-
-    .ai-assistant {
-      // Style riêng nếu cần
-      border: 1px solid rgba($gold, 0.3); // Viền vàng nhẹ nhấn mạnh
+    select:focus-visible, .btn-icon:focus-visible, .btn-primary:focus-visible {
+      outline: 2px solid #1d4ed8;
+      outline-offset: 2px;
     }
   }
 
+  .analyst-error, .analyst-empty-data, .analyst-empty-page {
+    margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; border: 1px solid;
+  }
+  .analyst-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .analyst-empty-data, .analyst-empty-page { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 
+  .grid-item { background: $white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; height: 100%; }
+  .section-heading { margin: 8px 0 12px; font-size: 1rem; color: #334155; }
 
-  // --- 3.5 FORECAST GRID ---
-  .forecast-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: $gap;
-    margin-bottom: $gap;
+  .kpi-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: $gap; margin-bottom: $gap; }
+  .strategy-grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: $gap; margin-bottom: $gap; }
+  .operations-intel-grid, .growth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: $gap; margin-bottom: $gap; }
+  .product-customer-grid { display: grid; grid-template-columns: 7fr 5fr; gap: $gap; margin-bottom: $gap; }
+  .operations-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: $gap; margin-bottom: 20px; }
 
-    .demand-forecast {
-      border: 1px solid rgba($gold, 0.28);
-    }
+  @media (max-width: 1024px) {
+    .kpi-section { grid-template-columns: repeat(2, 1fr); }
+    .strategy-grid, .operations-intel-grid, .growth-grid, .product-customer-grid, .operations-grid { grid-template-columns: 1fr; }
   }
 
-
-
-  // --- 3.6 STAFF SCHEDULING ASSISTANT ---
-  .scheduling-assistant-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: $gap;
-    margin-bottom: $gap;
-
-    .scheduling-assistant {
-      border: 1px solid rgba($gold, 0.22);
-    }
-  }
-
-  .menu-engineering-assistant-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: $gap;
-    margin-bottom: $gap;
-
-    .menu-engineering-assistant {
-      border: 1px solid rgba($gold, 0.24);
-    }
-  }
-
-  .smart-promotion-engine-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: $gap;
-    margin-bottom: $gap;
-
-    .smart-promotion-engine {
-      border: 1px solid rgba($gold, 0.2);
-    }
-  }
-
-  // --- 4. PRODUCT & CUSTOMER GRID ---
-  .product-customer-grid {
-    display: grid;
-    grid-template-columns: 7fr 5fr; // Menu Matrix lớn hơn Feedback
-    gap: $gap;
-    margin-bottom: $gap;
-    min-height: 500px; // Đảm bảo chiều cao đủ cho Matrix
-
-    @media (max-width: 1024px) {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  // --- 5. OPERATIONS GRID ---
-  .operations-grid {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr; // Heatmap lớn hơn Staffing
-    gap: $gap;
-    margin-bottom: 32px;
-
-    @media (max-width: 1024px) {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  // --- FOOTER ---
-  .analyst-footer {
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.85rem;
-    padding-top: 20px;
-    border-top: 1px dashed #cbd5e1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  @media (max-width: 700px) {
+    padding: 14px;
+    .analyst-header { align-items: stretch; flex-direction: column; }
+    .kpi-section { grid-template-columns: 1fr; }
   }
 }
