@@ -627,7 +627,7 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Đã ghi chú \(1\)/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Đã xử lý \(1\)/i }));
     fireEvent.click(await screen.findByRole("button", { name: "Ghi chú xử lý" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Đã ghi chú xử lý")).toBeInTheDocument();
@@ -647,54 +647,16 @@ describe("ScheduleManagement", () => {
       }),
     );
   });
-  it("filters attendance issues by review note status", async () => {
-    mockManagerShiftAttendancesData = {
-      managerShiftAttendances: [
-        {
-          id: "attendance-unreviewed",
-          employeeId: "staff-1",
-          status: "checked_in",
-          checkInAt: "2026-04-20T06:10:00.000Z",
-          checkOutAt: null,
-          employeeName: "Lan Manager",
-          employeeCode: "MN001",
-          shiftStartTime: "2026-04-20T06:00:00.000Z",
-          shiftEndTime: "2026-04-20T07:00:00.000Z",
-          shiftType: "morning",
-          isLate: true,
-          reviewNote: null,
-        },
-        {
-          id: "attendance-reviewed",
-          employeeId: "staff-2",
-          status: "checked_in",
-          checkInAt: "2026-04-20T06:15:00.000Z",
-          checkOutAt: null,
-          employeeName: "Minh Server",
-          employeeCode: "SV001",
-          shiftStartTime: "2026-04-20T06:00:00.000Z",
-          shiftEndTime: "2026-04-20T07:00:00.000Z",
-          shiftType: "morning",
-          isLate: true,
-          reviewNote: "Đã nhắc nhở trước đó.",
-        },
-      ],
-    };
-
+  it("includes reviewed rows in resolved lifecycle filter", async () => {
+    mockManagerShiftAttendancesData = { managerShiftAttendances: [{ id: "attendance-unreviewed", employeeId: "staff-1", status: "checked_in", checkInAt: "2026-04-20T06:10:00.000Z", checkOutAt: null, employeeName: "Lan Manager", employeeCode: "MN001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: null }, { id: "attendance-reviewed", employeeId: "staff-2", status: "checked_in", checkInAt: "2026-04-20T06:15:00.000Z", checkOutAt: null, employeeName: "Minh Server", employeeCode: "SV001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: "Đã nhắc nhở trước đó." }] };
     render(<ScheduleManagement />);
-
-    expect(await screen.findByRole("button", { name: /Cần xử lý \(1\)/i })).toBeInTheDocument();
-    expect(screen.getByText(/MN001/i)).toBeInTheDocument();
-    expect(screen.queryByText(/SV001/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Đã ghi chú \(1\)/i }));
-    expect(await screen.findByText(/SV001/i)).toBeInTheDocument();
-    expect(screen.getByText("Đã ghi chú xử lý")).toBeInTheDocument();
-    expect(screen.queryByText(/MN001/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Tất cả \(2\)/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Tất cả \(2\)/i }));
     expect(await screen.findByText(/MN001/i)).toBeInTheDocument();
     expect(screen.getByText(/SV001/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Đã xử lý \(1\)/i }));
+    expect(await screen.findByText(/SV001/i)).toBeInTheDocument();
+    expect(screen.queryByText(/MN001/i)).not.toBeInTheDocument();
   });
 
   it("renders link CTA to attendance details with employeeId and date query", async () => {
@@ -819,6 +781,45 @@ describe("ScheduleManagement", () => {
     };
     render(<ScheduleManagement />);
     expect(await screen.findByText("Chỉnh công: Chưa có yêu cầu chỉnh công")).toBeInTheDocument();
+  });
+
+  it("shows lifecycle status and filters by lifecycle", async () => {
+    mockManagerShiftAttendancesData = { managerShiftAttendances: [
+      { id: "attendance-open", employeeId: "e01", status: "late", checkInAt: "2026-04-20T06:10:00.000Z", employeeName: "NV Open", employeeCode: "O01", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", isLate: true, reviewNote: null },
+      { id: "attendance-pending", employeeId: "e02", status: "late", checkInAt: "2026-04-20T06:11:00.000Z", employeeName: "NV Pending", employeeCode: "P01", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", isLate: true, reviewNote: null },
+      { id: "attendance-applied", employeeId: "e03", status: "late", checkInAt: "2026-04-20T06:12:00.000Z", employeeName: "NV Applied", employeeCode: "A01", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", isLate: true, reviewNote: null },
+      { id: "attendance-rejected", employeeId: "e04", status: "late", checkInAt: "2026-04-20T06:13:00.000Z", employeeName: "NV Rejected", employeeCode: "R01", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", isLate: true, reviewNote: null },
+      { id: "attendance-reviewed", employeeId: "e05", status: "late", checkInAt: "2026-04-20T06:14:00.000Z", employeeName: "NV Reviewed", employeeCode: "V01", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", isLate: true, reviewNote: "Đã xử lý thủ công." },
+    ] };
+    mockAttendanceCorrectionsData = { attendanceCorrectionRequests: [
+      { id: "cor-p", employeeId: "e02", workDate: "2026-04-20T00:00:00.000Z", status: "pending" },
+      { id: "cor-a", employeeId: "e03", workDate: "2026-04-20T00:00:00.000Z", status: "applied" },
+      { id: "cor-r", employeeId: "e04", workDate: "2026-04-20T00:00:00.000Z", status: "rejected" },
+    ] };
+    render(<ScheduleManagement />);
+
+    expect(await screen.findByText("Trạng thái: Đang xử lý")).toBeInTheDocument();
+    expect(screen.getByText("Đã có yêu cầu chỉnh công chờ duyệt.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Tất cả \(5\)/i }));
+    expect(screen.getByText("Trạng thái: Đã xử lý")).toBeInTheDocument();
+    expect(screen.getByText("Yêu cầu chỉnh công đã được áp dụng.")).toBeInTheDocument();
+    expect(screen.getByText("Trạng thái: Cần kiểm tra lại")).toBeInTheDocument();
+    expect(screen.getByText("Yêu cầu chỉnh công bị từ chối.")).toBeInTheDocument();
+    expect(screen.getByText("Trạng thái: Chưa xử lý")).toBeInTheDocument();
+    expect(screen.getByText("Trạng thái: Đã ghi chú")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Đang xử lý \(1\)/i }));
+    expect(await screen.findByText(/P01/i)).toBeInTheDocument();
+    expect(screen.queryByText(/R01/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Cần kiểm tra lại \(1\)/i }));
+    expect(await screen.findByText(/R01/i)).toBeInTheDocument();
+    expect(screen.queryByText(/P01/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Tất cả \(5\)/i }));
+    expect(await screen.findByText(/O01/i)).toBeInTheDocument();
+    expect(screen.getByText(/A01/i)).toBeInTheDocument();
   });
 
 
