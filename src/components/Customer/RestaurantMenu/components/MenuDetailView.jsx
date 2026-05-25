@@ -1,8 +1,14 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useContext } from "react";
 import { gql, useQuery } from "@apollo/client";
 import MenuItemCard from "./MenuItemCard";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
+import { AuthContext } from "../../../../context/AuthContext";
+import useFoodPreferences from "../../../../hooks/useFoodPreferences";
+import {
+  analyzeMenuItemForFoodPreferences,
+  sortMenuItemsByFoodPreference,
+} from "../../../../utils/foodPreferenceMatcher";
 import "../styles/MenuDetailView.scss";
 import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
 import { getCannotOrderReason } from "../../../../utils/restaurantStatus";
@@ -44,6 +50,9 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
           avgPrepTimeMin
           inventoryStatus
           stockWarnings
+          labels
+          rate
+          orderCounter
           servingVariants {
             key
             mode
@@ -68,6 +77,9 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
+  const [prioritizeFoodPreferences, setPrioritizeFoodPreferences] = useState(true);
+  const { isAuthenticated } = useContext(AuthContext);
+  const { preferences } = useFoodPreferences({ skip: !isAuthenticated });
   const restaurantId = restaurant?.id || restaurant?._id || "";
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
@@ -134,15 +146,37 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
     [getPromotionForMenuItem, getPromotionLabel, rawMenuItems],
   );
 
+  const itemsWithFoodPreferenceMeta = useMemo(() => {
+    return itemsWithPromotion.map((item) => ({
+      ...item,
+      foodPreferenceMeta: isAuthenticated
+        ? analyzeMenuItemForFoodPreferences(item, preferences)
+        : null,
+    }));
+  }, [itemsWithPromotion, isAuthenticated, preferences]);
+
   const filteredItems = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
-    return itemsWithPromotion.filter((item) => {
+    const baseItems = itemsWithFoodPreferenceMeta.filter((item) => {
       if (!shouldShowMenuItemToCustomer(item)) return false;
       if (activeCat !== "all" && item.categoryId !== activeCat) return false;
       if (!lowerSearch) return true;
       return String(item.name || "").toLowerCase().includes(lowerSearch);
     });
-  }, [activeCat, itemsWithPromotion, search]);
+
+    if (!isAuthenticated || !prioritizeFoodPreferences) {
+      return baseItems;
+    }
+
+    return sortMenuItemsByFoodPreference(baseItems, preferences);
+  }, [
+    activeCat,
+    isAuthenticated,
+    itemsWithFoodPreferenceMeta,
+    preferences,
+    prioritizeFoodPreferences,
+    search,
+  ]);
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const currentItems = filteredItems.slice(
@@ -245,6 +279,16 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
               </div>
             ))}
           </div>
+          {isAuthenticated && (
+            <label className="food-preference-toggle">
+              <input
+                type="checkbox"
+                checked={prioritizeFoodPreferences}
+                onChange={(e) => setPrioritizeFoodPreferences(e.target.checked)}
+              />
+              <span>Ưu tiên khẩu vị của tôi</span>
+            </label>
+          )}
         </div>
       </header>
 
