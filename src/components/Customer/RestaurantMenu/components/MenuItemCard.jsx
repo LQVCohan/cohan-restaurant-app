@@ -4,6 +4,7 @@ import { formatCurrency } from "../../../../utils/formatters";
 import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
 const MenuItemCard = ({ item, onClick }) => {
+  const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const isOrderable = canCustomerOrderMenuItem(item);
   const handleImageError = (e) => {
@@ -36,6 +37,21 @@ const MenuItemCard = ({ item, onClick }) => {
         {item.promotion?.name && (
           <div className="menu-item-card__promo-name">{item.promotion.name}</div>
         )}
+        {foodPreferenceMeta?.hasAllergyWarning ? (
+          <div
+            className="food-preference-badge food-preference-badge--warning"
+            title={foodPreferenceMeta.warningReason || `Có thể chứa: ${(foodPreferenceMeta.matchedAllergies || []).join(", ")}`}
+          >
+            ⚠ Có thể chứa dị ứng
+          </div>
+        ) : foodPreferenceMeta?.isRecommended ? (
+          <div
+            className="food-preference-badge food-preference-badge--match"
+            title={(foodPreferenceMeta.reasons || []).join(". ") || "Phù hợp khẩu vị của bạn"}
+          >
+            ✨ Phù hợp khẩu vị
+          </div>
+        ) : null}
         <p title={item.description}>{item.description}</p>
         {item.servingVariants?.length > 0 && (
           <div className="variants">

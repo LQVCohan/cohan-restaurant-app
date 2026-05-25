@@ -143,3 +143,27 @@
     }
   }
 }
+
+.food-preference-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin: 0 0 0.5rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.food-preference-badge--match {
+  background: #ecfdf3;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.food-preference-badge--warning {
+  background: #fff7ed;
+  color: #b45309;
+  border: 1px solid #fdba74;
+}
