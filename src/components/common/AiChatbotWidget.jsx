@@ -185,8 +185,8 @@ function AiChatbotWidget() {
     });
   };
 
-  const fetchGuestReplies = async () => {
-    if (!handoffRequested || !conversationId || !guestId) return;
+  const fetchGuestReplies = async ({ force = false } = {}) => {
+    if ((!handoffRequested && !force) || !conversationId || !guestId) return;
     try {
       const { data } = await loadGuestReplies({
         variables: {
@@ -295,7 +295,7 @@ function AiChatbotWidget() {
           window.localStorage.setItem(getHandoffStorageKey(conversationId), "1");
         }
         setHandoffRequested(true);
-        fetchGuestReplies();
+        fetchGuestReplies({ force: true });
       }
       setMessages((current) => [
         ...current,

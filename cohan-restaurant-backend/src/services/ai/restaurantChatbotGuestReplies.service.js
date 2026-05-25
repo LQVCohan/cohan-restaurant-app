@@ -13,7 +13,26 @@ const safeObjectId = (value) => {
   return new mongoose.Types.ObjectId(value);
 };
 
-const STAFF_ALLOWLIST = new Set(["staff", "manager", "admin", "support", "employee"]);
+const STAFF_ALLOWLIST = new Set([
+  "staff",
+  "manager",
+  "admin",
+  "support",
+  "employee",
+  "server",
+  "supervisor",
+  "host",
+  "cashier",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "cleaner",
+  "shipper",
+  "storekeeper",
+  "bartender",
+  "hr",
+  "accountant",
+]);
 const CUSTOMER_DENYLIST = new Set(["guest", "customer", "user"]);
 
 const parseAfterDate = (after) => {

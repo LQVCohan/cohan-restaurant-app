@@ -1,14 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { toGuestStaffReplies } from "../../src/services/ai/restaurantChatbotGuestReplies.service.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AiChatConversation, ChatThread } from "../../models/index.js";
+
+const {
+  toGuestStaffReplies,
+  getRestaurantChatbotGuestReplies,
+} = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
 
 describe("toGuestStaffReplies", () => {
   const baseDate = new Date("2026-05-20T10:00:00.000Z");
 
   it("maps valid staff replies to guest-safe payload", () => {
     const rows = toGuestStaffReplies({
-      messages: [
-        { _id: "m1", senderRole: "STAFF", senderId: "u1", content: "Xin chào", createdAt: baseDate },
-      ],
+      messages: [{ _id: "m1", senderRole: "STAFF", senderId: "u1", content: "Xin chào", createdAt: baseDate }],
     });
 
     expect(rows).toEqual([
@@ -22,18 +25,57 @@ describe("toGuestStaffReplies", () => {
     ]);
   });
 
-  it("excludes handoff summary, system, customer and empty messages", () => {
+  it("includes operational roles", () => {
     const rows = toGuestStaffReplies({
       messages: [
-        { senderRole: "system", senderName: "AI", content: "[AI HANDOFF] summary", createdAt: baseDate },
-        { senderRole: "guest", senderId: "g1", content: "Tôi cần hỗ trợ", createdAt: baseDate },
-        { senderRole: "staff", senderId: "u1", content: "   ", createdAt: baseDate },
-        { senderRole: "manager", senderId: "u2", content: "Mình hỗ trợ bạn nhé", createdAt: baseDate },
+        { _id: "server", senderRole: "server", senderId: "u1", content: "server", createdAt: baseDate },
+        { _id: "cashier", senderRole: "cashier", senderId: "u2", content: "cashier", createdAt: baseDate },
+        { _id: "chef", senderRole: "chef", senderId: "u3", content: "chef", createdAt: baseDate },
+        { _id: "cook", senderRole: "cook", senderId: "u4", content: "cook", createdAt: baseDate },
+        { _id: "helper", senderRole: "kitchen_helper", senderId: "u5", content: "helper", createdAt: baseDate },
+      ],
+    });
+
+    expect(rows.map((item) => item.id)).toEqual(["server", "cashier", "chef", "cook", "helper"]);
+  });
+
+  it("excludes customer/guest/user/system roles", () => {
+    const rows = toGuestStaffReplies({
+      messages: [
+        { senderRole: "system", senderName: "AI", content: "system", createdAt: baseDate },
+        { senderRole: "guest", senderId: "g1", content: "guest", createdAt: baseDate },
+        { senderRole: "customer", senderId: "c1", content: "customer", createdAt: baseDate },
+        { senderRole: "user", senderId: "u1", content: "user", createdAt: baseDate },
+        { senderRole: "manager", senderId: "m1", content: "visible", createdAt: baseDate },
       ],
     });
 
     expect(rows).toHaveLength(1);
-    expect(rows[0].content).toBe("Mình hỗ trợ bạn nhé");
+    expect(rows[0].content).toBe("visible");
+  });
+
+  it("excludes handoff summary message", () => {
+    const rows = toGuestStaffReplies({
+      messages: [
+        { senderRole: "manager", senderId: "u1", content: "[AI HANDOFF] summary", createdAt: baseDate },
+        { senderRole: "manager", senderId: "u1", content: "Tin nhắn hợp lệ", createdAt: baseDate },
+      ],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].content).toBe("Tin nhắn hợp lệ");
+  });
+
+  it("excludes wrong/invalid createdAt", () => {
+    const rows = toGuestStaffReplies({
+      messages: [
+        { senderRole: "manager", senderId: "u1", content: "bad", createdAt: "invalid-date" },
+        { senderRole: "manager", senderId: "u1", content: "good", createdAt: baseDate },
+      ],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].content).toBe("good");
   });
 
   it("filters by after cursor when valid", () => {
@@ -70,5 +112,63 @@ describe("toGuestStaffReplies", () => {
     });
 
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe("getRestaurantChatbotGuestReplies", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns staff replies for valid guest ownership", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    const threadId = "507f1f77bcf86cd799439012";
+
+    vi.spyOn(AiChatConversation, "findById").mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: conversationId,
+        guestId: "guest_abc",
+        status: "handoff_requested",
+        chatThreadId: threadId,
+      }),
+    });
+
+    vi.spyOn(ChatThread, "findById").mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          messages: [{ _id: "m1", senderRole: "server", senderId: "u1", content: "Xin chào", createdAt: "2026-05-20T10:00:00.000Z" }],
+        }),
+      }),
+    });
+
+    const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_abc" } });
+    expect(result.ok).toBe(true);
+    expect(result.replies).toHaveLength(1);
+    expect(result.replies[0].role).toBe("staff");
+  });
+
+  it("returns safe empty for wrong guestId", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: conversationId, guestId: "guest_real", status: "handoff_requested", chatThreadId: null }),
+    });
+
+    const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_other" } });
+    expect(result).toEqual({ ok: false, handoffRequested: false, conversationId, replies: [] });
+  });
+
+  it("returns safe empty for invalid conversationId", async () => {
+    const result = await getRestaurantChatbotGuestReplies({ input: { conversationId: "bad-id", guestId: "guest_abc" } });
+    expect(result).toEqual({ ok: false, handoffRequested: false, conversationId: "bad-id", replies: [] });
+  });
+
+  it("returns safe empty replies when no chatThreadId", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: conversationId, guestId: "guest_abc", status: "handoff_requested", chatThreadId: null }),
+    });
+
+    const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_abc" } });
+    expect(result).toEqual({ ok: true, handoffRequested: true, conversationId, replies: [] });
   });
 });
