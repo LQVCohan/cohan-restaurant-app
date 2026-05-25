@@ -33,7 +33,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
           </div>
         </div>
         <span className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {assistant?.meta?.fallbackUsed ? "Cost fallback" : "Dữ liệu món / công thức"}
+          {assistant?.meta?.fallbackUsed ? "Ước tính chi phí" : "Dữ liệu món / công thức"}
         </span>
       </div>
 
