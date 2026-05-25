@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import useAttendanceManagement, {
   toAttendanceIsoStartOfDay,
@@ -460,6 +460,7 @@ const AttendancePage = () => {
   const focusedDate = scheduleAttendanceFocus?.date || "";
   const focusedEmployeeId = scheduleAttendanceFocus?.employeeId || "";
   const focusedRestaurantId = scheduleAttendanceFocus?.restaurantId || "";
+  const focusScrollKeyRef = useRef("");
 
   const clearScheduleAttendanceFocus = useCallback(() => {
     setScheduleAttendanceFocus(null);
@@ -521,6 +522,25 @@ const AttendancePage = () => {
     () => buildAttendanceReconciliationSummary(records),
     [records],
   );
+  const focusedAttendanceRecords = useMemo(() => {
+    if (!focusedEmployeeId) return [];
+    return records.filter(
+      (record) => String(record.employeeId) === String(focusedEmployeeId),
+    );
+  }, [focusedEmployeeId, records]);
+  const focusedCorrectionRequests = useMemo(() => {
+    if (!focusedEmployeeId) return [];
+    return correctionRequests.filter(
+      (request) => String(request.employeeId) === String(focusedEmployeeId),
+    );
+  }, [focusedEmployeeId, correctionRequests]);
+  const pendingFocusedCorrections = useMemo(
+    () =>
+      focusedCorrectionRequests.filter(
+        (request) => String(request.status || "").toLowerCase() === "pending",
+      ),
+    [focusedCorrectionRequests],
+  );
 
   const reconciliationMetrics = [
     { key: "onTime", label: "Đúng lịch", value: reconciliationSummary.onTime },
@@ -534,6 +554,23 @@ const AttendancePage = () => {
   const handleReviewFilter = (item) => {
     if (item?.primaryFilter) setFilterStatus(item.primaryFilter);
     setActiveView("attendance");
+  };
+  const handleFocusAttendanceTable = () => {
+    setActiveView("attendance");
+    setFilterStatus("all");
+    if (focusedEmployeeId) setSearchQuery(focusedEmployeeId);
+  };
+
+  const handleFocusCorrections = () => {
+    setActiveView("corrections");
+    setCorrectionStatus("all");
+    if (focusedEmployeeId) setSearchQuery(focusedEmployeeId);
+  };
+
+  const handleCreateFocusedCorrection = () => {
+    if (focusedAttendanceRecords.length === 1) {
+      openCorrectionModal(focusedAttendanceRecords[0]);
+    }
   };
 
   const effectiveRestaurantId =
@@ -787,6 +824,42 @@ const AttendancePage = () => {
     }
   };
 
+  useEffect(() => {
+    if (
+      !hasScheduleAttendanceFocus ||
+      !focusedEmployeeId ||
+      activeView !== "attendance" ||
+      records.length === 0
+    ) {
+      return;
+    }
+
+    const scrollKey = `${focusedDate}:${focusedEmployeeId}`;
+    if (focusScrollKeyRef.current === scrollKey) return;
+
+    const row = document.querySelector(
+      '[data-focused-attendance-row="true"]',
+    );
+    if (!row) return;
+
+    focusScrollKeyRef.current = scrollKey;
+    const runScroll =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback) => window.setTimeout(callback, 0);
+    runScroll(() => {
+      if (typeof row.scrollIntoView === "function") {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, [
+    activeView,
+    focusedDate,
+    focusedEmployeeId,
+    hasScheduleAttendanceFocus,
+    records.length,
+  ]);
+
   return (
     <div className="attendance-management-page">
       <div className="page-header">
@@ -812,13 +885,61 @@ const AttendancePage = () => {
 
       {hasScheduleAttendanceFocus && (
         <div className="attendance-readiness-focus-banner" role="status">
-          <strong>Đang xem chấm công từ lịch làm việc</strong>
-          {focusedDate ? <span>Ngày: {focusedDate}</span> : null}
-          <span>Nhân viên: {focusedEmployeeId || searchQuery || "--"}</span>
-          {focusedRestaurantId ? <span>Nhà hàng: {focusedRestaurantId}</span> : null}
-          <button type="button" className="staff-secondary-btn" onClick={clearScheduleAttendanceFocus}>
-            Xoá bộ lọc từ lịch
-          </button>
+          <strong>Đang xử lý bất thường từ lịch làm việc</strong>
+          <div className="focus-meta-grid">
+            {focusedDate ? <span>Ngày: {focusedDate}</span> : null}
+            <span>Nhân viên: {focusedEmployeeId || searchQuery || "--"}</span>
+            {focusedRestaurantId ? <span>Nhà hàng: {focusedRestaurantId}</span> : null}
+            {focusedEmployeeId ? (
+              <span>Số bản ghi khớp: {focusedAttendanceRecords.length}</span>
+            ) : null}
+          </div>
+          {focusedEmployeeId && focusedAttendanceRecords.length === 0 && (
+            <>
+              <p className="focus-hint">Chưa tìm thấy bản ghi chấm công khớp nhân viên này trong ngày đã chọn.</p>
+              <p className="focus-hint">Có thể nhân viên chưa check-in hoặc bộ lọc nhà hàng/ngày chưa đúng.</p>
+            </>
+          )}
+          {focusedEmployeeId && focusedAttendanceRecords.length > 1 && (
+            <p className="focus-hint">Có nhiều bản ghi khớp. Hãy chọn dòng cụ thể trong bảng công.</p>
+          )}
+          {focusedEmployeeId && pendingFocusedCorrections.length > 0 && (
+            <span className="focus-pending-badge">
+              Đã có {pendingFocusedCorrections.length} yêu cầu chỉnh công chờ duyệt
+            </span>
+          )}
+          <div className="focus-actions">
+            <button type="button" className="staff-secondary-btn" onClick={handleFocusAttendanceTable}>
+              Lọc bảng công
+            </button>
+            <button
+              type="button"
+              className="staff-secondary-btn"
+              onClick={handleCreateFocusedCorrection}
+              disabled={focusedAttendanceRecords.length !== 1}
+            >
+              Tạo yêu cầu chỉnh công
+            </button>
+            <button
+              type="button"
+              className={`staff-secondary-btn ${pendingFocusedCorrections.length > 0 ? "focus-corrections-btn" : ""}`}
+              onClick={handleFocusCorrections}
+            >
+              Xem yêu cầu chỉnh công
+            </button>
+            <button type="button" className="staff-secondary-btn" onClick={clearScheduleAttendanceFocus}>
+              Xoá bộ lọc từ lịch
+            </button>
+          </div>
+          {focusedEmployeeId && focusedAttendanceRecords.length > 1 && (
+            <p className="focus-hint">Có nhiều bản ghi khớp, chọn dòng bên dưới để tạo chỉnh công.</p>
+          )}
+          {focusedEmployeeId && focusedAttendanceRecords.length === 0 && (
+            <p className="focus-hint">Chưa có bản ghi chấm công để tạo chỉnh công.</p>
+          )}
+          {!focusedEmployeeId && (
+            <p className="focus-hint">Đang hiển thị ngữ cảnh chung theo ngày/nhà hàng từ lịch làm việc.</p>
+          )}
         </div>
       )}
 
@@ -1074,12 +1195,19 @@ const AttendancePage = () => {
 
                 {records.map((item) => {
                   const displayName = item.employeeName || "Chưa có tên";
+                  const isFocusedRow =
+                    focusedEmployeeId &&
+                    String(item.employeeId) === String(focusedEmployeeId);
                   const checkInText = formatTime(item.actualCheckInAt);
                   const checkOutText = formatTime(item.actualCheckOutAt);
                   const displayStatus = resolveAttendanceDisplayStatus(item);
 
                   return (
-                    <tr key={item.id}>
+                    <tr
+                      key={item.id}
+                      className={isFocusedRow ? "focused-attendance-row" : ""}
+                      data-focused-attendance-row={isFocusedRow ? "true" : undefined}
+                    >
                       <td>
                         <div className="employee-cell">
                           <div
@@ -1096,7 +1224,12 @@ const AttendancePage = () => {
                             {!item.employeeAvatar && displayName.charAt(0)}
                           </div>
                           <div className="info">
-                            <div className="name">{displayName}</div>
+                            <div className="name">
+                              {displayName}
+                              {isFocusedRow ? (
+                                <span className="focus-source-badge">Từ lịch</span>
+                              ) : null}
+                            </div>
                             <div className="role">
                               {item.employeeCode || "--"} • {item.employeeRole || "--"}
                             </div>

@@ -1546,9 +1546,9 @@ $border: #e2e8f0;
 
 .attendance-readiness-focus-banner {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
   border: 1px solid #bfdbfe;
   background: #eff6ff;
   color: #1e3a8a;
@@ -1556,6 +1556,61 @@ $border: #e2e8f0;
   padding: 10px 12px;
   margin-bottom: 12px;
   font-size: 13px;
+
+  .focus-meta-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .focus-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .focus-hint {
+    margin: 0;
+    color: #1e40af;
+  }
+
+  .focus-pending-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-weight: 600;
+  }
+
+  .focus-corrections-btn {
+    background: #1d4ed8;
+    color: #fff;
+    border-color: #1d4ed8;
+  }
+}
+
+.attendance-management-page .attendance-table tbody tr.focused-attendance-row {
+  background: #eff6ff;
+}
+
+.attendance-management-page .attendance-table .employee-cell .name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.focus-source-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #1e3a8a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
 .attendance-management-page {
