@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { __testables } from "../../src/services/ai/aiTable.service.js";
+import { __testables, generateSmartFloorLayout } from "../../src/services/ai/aiTable.service.js";
 
 const allowedTypes = ["standard", "booth", "vip", "outdoor", "bar", "private"];
 const overlap = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
@@ -15,6 +15,49 @@ describe("aiTable.service layout engine v3", () => {
     const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
     expect(out.meta.template).toBe("small_balanced");
     expect(__testables.passesHardQualityGate(out, smallPayload)).toBe(true);
+    expect(out.tables.length).toBe(8);
+  });
+  it("small balanced template respects requested table count", () => {
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 6, vip: 0, group: 0 } } }, 0).tables.length).toBe(6);
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 8, vip: 0, group: 0 } } }, 0).tables.length).toBe(8);
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 10, vip: 0, group: 0 } } }, 0).tables.length).toBe(10);
+  });
+  it("quality issues detect extra tables", () => {
+    const fake = __testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 8, vip: 0, group: 0 } } }, 0);
+    const payloadReq6 = { ...smallPayload, components: { ...smallPayload.components, tables: { standard: 6, vip: 0, group: 0 } } };
+    const issues = __testables.getLayoutQualityIssues(fake, payloadReq6);
+    expect(issues.some((i) => i.code === "EXTRA_TABLES")).toBe(true);
+  });
+  it("template does not add unselected door/cashier", () => {
+    const noObjects = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: {} } }, 0);
+    expect(noObjects.decor.some((d) => d.type === "door")).toBe(false);
+    expect(noObjects.decor.some((d) => d.type === "cashier")).toBe(false);
+    const cashierOnly = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { cashier: 1 } } }, 0);
+    expect(cashierOnly.decor.some((d) => d.type === "cashier")).toBe(true);
+    expect(cashierOnly.decor.some((d) => d.type === "door")).toBe(false);
+    const room = cashierOnly.meta.zones.roomBounds;
+    const cashier = cashierOnly.decor.find((d) => d.type === "cashier");
+    expect(cashier.x).toBeGreaterThanOrEqual(room.x);
+    expect(cashier.y).toBeGreaterThanOrEqual(room.y);
+    expect(cashier.x + cashier.w).toBeLessThanOrEqual(room.x + room.w);
+    expect(cashier.y + cashier.h).toBeLessThanOrEqual(room.y + room.h);
+    const doorOnly = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { door: 1 } } }, 0);
+    expect(doorOnly.decor.some((d) => d.type === "door")).toBe(true);
+    expect(doorOnly.decor.some((d) => d.type === "cashier")).toBe(false);
+  });
+  it("small balanced template respects currentItems", () => {
+    const blocked = { x: 80, y: 140, w: 180, h: 180, isRealTable: false };
+    const out = __testables.generateTemplateBasedLayout({ ...smallPayload, currentItems: [blocked] }, 0);
+    const rects = [...out.tables.map((t) => ({ x: t.x, y: t.y, w: 60, h: 60 })), ...out.decor.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h }))];
+    expect(rects.some((r) => overlap(r, blocked))).toBe(false);
+  });
+  it("generateSmartFloorLayout attaches excellent quality for default small payload", async () => {
+    const out = await generateSmartFloorLayout(smallPayload);
+    expect(out.meta.quality).toBeTruthy();
+    expect(out.meta.quality.template).toBe("small_balanced");
+    expect(out.meta.quality.passedHardGate).toBe(true);
+    expect(out.meta.quality.gradeLabel).toBe("excellent");
+    expect(out.meta.quality.issues.some((i) => i.severity === "error")).toBe(false);
     expect(out.tables.length).toBe(8);
   });
   it("small balanced layout gets excellent quality grade", () => {
