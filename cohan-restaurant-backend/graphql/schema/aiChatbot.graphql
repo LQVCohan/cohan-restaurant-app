@@ -106,6 +106,46 @@ input ResolveAiChatbotHandoffInput {
   resolutionNote: String
 }
 
+
+type AiChatbotIntentMetric {
+  intent: String!
+  count: Int!
+}
+
+type AiChatbotRoleMetric {
+  role: String!
+  count: Int!
+}
+
+type AiChatbotRateLimitPolicy {
+  action: String!
+  max: Int!
+  windowMs: Int!
+}
+
+type AiChatbotAnalyticsResponse {
+  totalConversations: Int!
+  totalMessages: Int!
+  openConversations: Int!
+  handoffRequested: Int!
+  resolvedHandoffs: Int!
+  fallbackResponses: Int!
+  lowConfidenceResponses: Int!
+  handoffConversionRate: Float!
+  averageMessagesPerConversation: Float!
+  averageHandoffResolutionMinutes: Float
+  topIntents: [AiChatbotIntentMetric!]!
+  messagesByRole: [AiChatbotRoleMetric!]!
+  rateLimitStatus: [AiChatbotRateLimitPolicy!]!
+}
+
+input AiChatbotAnalyticsInput {
+  restaurantId: ID
+  from: DateTime
+  to: DateTime
+  groupBy: String
+}
+
 type ResolveAiChatbotHandoffResponse {
   ok: Boolean!
   conversationId: ID
@@ -117,6 +157,7 @@ type ResolveAiChatbotHandoffResponse {
 
 extend type Query {
   aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
+  aiChatbotAnalytics(input: AiChatbotAnalyticsInput!): AiChatbotAnalyticsResponse!
 }
 
 extend type Mutation {

@@ -4,6 +4,7 @@ import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaur
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
+import { getRestaurantChatbotAnalytics } from "../../../src/services/ai/restaurantChatbotAnalytics.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -19,6 +20,15 @@ const Query = {
         conversationId: String(input?.conversationId || ""),
         replies: [],
       };
+    }
+  },
+  aiChatbotAnalytics: async (_, { input }, ctx) => {
+    try {
+      return await getRestaurantChatbotAnalytics({ input, ctx });
+    } catch (err) {
+      throw new GraphQLError(err?.message || "Không thể tải thống kê AI chatbot", {
+        extensions: { code: err?.code || "AI_CHATBOT_ANALYTICS_FAILED" },
+      });
     }
   },
 };
