@@ -72,6 +72,8 @@ export async function getRestaurantChatbotGuestReplies({ input } = {}) {
   const safeEmpty = {
     ok: false,
     handoffRequested: false,
+    conversationStatus: null,
+    handoffClosed: false,
     conversationId,
     replies: [],
   };
@@ -84,22 +86,46 @@ export async function getRestaurantChatbotGuestReplies({ input } = {}) {
   }
 
   const hasHandoff = conversation.status === "handoff_requested";
+  const isClosed = conversation.status === "closed";
   if (!hasHandoff && !conversation.chatThreadId) {
-    return { ok: true, handoffRequested: false, conversationId: String(conversation._id), replies: [] };
+    return {
+      ok: true,
+      handoffRequested: false,
+      conversationStatus: String(conversation.status || ""),
+      handoffClosed: isClosed,
+      conversationId: String(conversation._id),
+      replies: [],
+    };
   }
 
   if (!conversation.chatThreadId) {
-    return { ok: true, handoffRequested: true, conversationId: String(conversation._id), replies: [] };
+    return {
+      ok: true,
+      handoffRequested: hasHandoff,
+      conversationStatus: String(conversation.status || ""),
+      handoffClosed: isClosed,
+      conversationId: String(conversation._id),
+      replies: [],
+    };
   }
 
   const thread = await ChatThread.findById(conversation.chatThreadId).select("messages").lean();
   if (!thread) {
-    return { ok: true, handoffRequested: hasHandoff, conversationId: String(conversation._id), replies: [] };
+    return {
+      ok: true,
+      handoffRequested: hasHandoff,
+      conversationStatus: String(conversation.status || ""),
+      handoffClosed: isClosed,
+      conversationId: String(conversation._id),
+      replies: [],
+    };
   }
 
   return {
     ok: true,
     handoffRequested: hasHandoff,
+    conversationStatus: String(conversation.status || ""),
+    handoffClosed: isClosed,
     conversationId: String(conversation._id),
     replies: toGuestStaffReplies({
       messages: thread.messages || [],

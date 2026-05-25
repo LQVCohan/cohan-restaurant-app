@@ -30,6 +30,12 @@ const baseHook = {
   refetchNotifications: vi.fn(),
 };
 
+const resolveMutationSpy = vi.fn();
+
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [resolveMutationSpy, { loading: false }],
+}));
+
 describe("AiHandoffInbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -108,5 +114,20 @@ describe("AiHandoffInbox", () => {
     fireEvent.change(screen.getByPlaceholderText(/nhập phản hồi/i), { target: { value: "Xin chào" } });
     fireEvent.click(screen.getByRole("button", { name: /gửi phản hồi/i }));
     await waitFor(() => expect(sendMessage).toHaveBeenCalledWith({ variables: { input: { threadId: "t1", content: "Xin chào" } } }));
+  });
+
+  it("renders resolve button and calls resolve mutation", async () => {
+    const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", status: "open", messages: [] } } });
+    useCommunicationMock.mockReturnValue({
+      ...baseHook,
+      notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
+      thread: { id: "t1", status: "open", subject: "AI handoff - Khách cần hỗ trợ", messages: [] },
+      loadThread,
+    });
+    resolveMutationSpy.mockResolvedValue({ data: { resolveAiChatbotHandoff: { ok: true } } });
+    renderWithUser(<AiHandoffInbox />);
+    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
+    fireEvent.click(screen.getByRole("button", { name: /đánh dấu đã xử lý/i }));
+    await waitFor(() => expect(resolveMutationSpy).toHaveBeenCalled());
   });
 });

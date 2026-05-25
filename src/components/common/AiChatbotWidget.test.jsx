@@ -86,6 +86,8 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     guestRepliesSpy = vi.fn().mockResolvedValue({
       data: {
         aiChatbotGuestReplies: {
+          handoffClosed: false,
+          conversationStatus: "handoff_requested",
           replies: [
             { id: "2026-05-25T10:00:00.000Z_0", content: "Mình là nhân viên hỗ trợ đây.", senderLabel: "Nhân viên", createdAt: "2026-05-25T10:00:00.000Z" },
           ],
@@ -193,5 +195,26 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     fireEvent.click(screen.getByRole("button", { name: /Đóng chatbot/i }));
     expect(socketEmit).toHaveBeenCalledWith("leaveAiChatbotConversation", { conversationId: "conv-1", guestId: "guest-1" });
     expect(socketDisconnect).toHaveBeenCalled();
+  });
+
+  it("handles aiChatbotHandoffResolved socket event and stops guest thread sending path", async () => {
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Cần hỗ trợ" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(askMutationSpy).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
+    await waitFor(() => expect(handoffMutationSpy).toHaveBeenCalled());
+
+    await waitFor(() => expect(socketOn.mock.calls.some((c) => c[0] === "aiChatbotHandoffResolved")).toBe(true));
+    await act(async () => {
+      const handoffResolvedCb = socketOn.mock.calls.find((c) => c[0] === "aiChatbotHandoffResolved")?.[1];
+      handoffResolvedCb?.({ conversationId: "conv-1", status: "closed", message: "Nhân viên đã kết thúc phiên hỗ trợ." });
+    });
+    await waitFor(() => expect(screen.getAllByText("Nhân viên đã kết thúc phiên hỗ trợ.").length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Sau close" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(askMutationSpy).toHaveBeenCalledTimes(2));
+    expect(guestMessageMutationSpy).toHaveBeenCalledTimes(0);
   });
 });

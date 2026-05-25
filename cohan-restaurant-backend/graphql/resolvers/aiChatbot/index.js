@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbot.service.js";
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
+import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }) => {
@@ -53,6 +54,15 @@ const Mutation = {
       return await sendRestaurantChatbotGuestMessage({ input, io: ctx?.io || null });
     } catch {
       return { ok: false, conversationId: String(input?.conversationId || ""), message: null };
+    }
+  },
+  resolveAiChatbotHandoff: async (_, { input }, ctx) => {
+    try {
+      return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });
+    } catch (err) {
+      throw new GraphQLError(err?.message || "Không thể đánh dấu phiên hỗ trợ đã xử lý", {
+        extensions: { code: err?.code || "AI_CHATBOT_HANDOFF_RESOLVE_FAILED" },
+      });
     }
   },
 };

@@ -122,4 +122,45 @@ describe("communication resolver restaurant access hardening", () => {
     expect(modelMocks.ChatThread.find).not.toHaveBeenCalled();
     expect(modelMocks.ChatThread.create).not.toHaveBeenCalled();
   });
+
+  it("sendChatMessage rejects closed thread", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    modelMocks.ChatThread.findById.mockResolvedValue({
+      _id: "valid-t1",
+      status: "closed",
+      participants: ["valid-u1"],
+      toObject: () => ({ _id: "valid-t1", status: "closed", participants: ["valid-u1"] }),
+    });
+
+    await expect(
+      resolver.Mutation.sendChatMessage(null, { input: { threadId: "valid-t1", content: "x" } }, ctx)
+    ).rejects.toMatchObject({ extensions: { code: "CHAT_THREAD_CLOSED" } });
+  });
+
+  it("sendChatMessage still works for open thread", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    const save = vi.fn().mockResolvedValue(true);
+    modelMocks.ChatThread.findById.mockResolvedValue({
+      _id: "valid-t1",
+      status: "open",
+      restaurantId: "valid-r1",
+      channel: "support",
+      targetRole: "support",
+      participants: ["valid-u1"],
+      messages: [],
+      unreadBy: [],
+      save,
+      toObject: () => ({ _id: "valid-t1", status: "open", restaurantId: "valid-r1", participants: ["valid-u1"], unreadBy: [] }),
+    });
+    modelMocks.User.find.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
+    modelMocks.Notification.insertMany = vi.fn().mockResolvedValue([]);
+
+    const out = await resolver.Mutation.sendChatMessage(
+      null,
+      { input: { threadId: "valid-t1", content: "xin chao" } },
+      { ...ctx, io: null }
+    );
+    expect(out.id).toBe("valid-t1");
+    expect(save).toHaveBeenCalled();
+  });
 });

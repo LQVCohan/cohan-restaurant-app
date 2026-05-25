@@ -82,6 +82,8 @@ type AiChatbotGuestReply {
 type AiChatbotGuestRepliesResponse {
   ok: Boolean!
   handoffRequested: Boolean!
+  conversationStatus: String
+  handoffClosed: Boolean!
   conversationId: ID!
   replies: [AiChatbotGuestReply!]!
 }
@@ -98,6 +100,21 @@ type SendAiChatbotGuestMessageResponse {
   message: AiChatbotGuestReply
 }
 
+input ResolveAiChatbotHandoffInput {
+  conversationId: ID
+  chatThreadId: ID
+  resolutionNote: String
+}
+
+type ResolveAiChatbotHandoffResponse {
+  ok: Boolean!
+  conversationId: ID
+  chatThreadId: ID
+  status: String
+  alreadyClosed: Boolean!
+  message: String!
+}
+
 extend type Query {
   aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
 }
@@ -106,4 +123,5 @@ extend type Mutation {
   askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
   sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
+  resolveAiChatbotHandoff(input: ResolveAiChatbotHandoffInput!): ResolveAiChatbotHandoffResponse!
 }
