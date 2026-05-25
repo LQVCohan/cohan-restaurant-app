@@ -12,6 +12,10 @@ import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
+const MENU_ITEM_DIET_TAGS = ["vegan", "keto", "halal"];
+const MENU_ITEM_ALLERGEN_TAGS = ["seafood", "peanut", "milk", "egg", "gluten"];
+const MENU_ITEM_SUGAR_LEVELS = [0, 30, 50, 70, 100];
+const MENU_ITEM_SPICE_LEVELS = ["Không", "Vừa", "Nồng", "Rất cay"];
 
 function isOid(v) {
   return mongoose.isValidObjectId(v);
@@ -30,6 +34,36 @@ function assertStatus(status) {
   if (!MENU_ITEM_STATUS.includes(status)) {
     throw new GraphQLError("Invalid status");
   }
+}
+function badInput(message) {
+  return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
+function normalizeStringTags(values, whitelist, fieldName) {
+  if (values === undefined) return undefined;
+  if (!Array.isArray(values)) throw badInput(`${fieldName} must be an array`);
+  const out = [];
+  const seen = new Set();
+  for (const raw of values) {
+    const value = String(raw || "").trim();
+    if (!value) continue;
+    if (!whitelist.includes(value)) throw badInput(`Invalid ${fieldName} value: ${value}`);
+    if (!seen.has(value)) {
+      seen.add(value);
+      out.push(value);
+    }
+  }
+  return out;
+}
+function normalizeTasteProfile(raw) {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object") throw badInput("tasteProfile must be an object");
+  const containsOnion = raw.containsOnion === undefined ? false : Boolean(raw.containsOnion);
+  const containsCilantro = raw.containsCilantro === undefined ? false : Boolean(raw.containsCilantro);
+  const sugar = raw.sugar === undefined ? 100 : Number(raw.sugar);
+  if (!MENU_ITEM_SUGAR_LEVELS.includes(sugar)) throw badInput("Invalid tasteProfile.sugar");
+  const spice = raw.spice === undefined ? "Vừa" : String(raw.spice).trim();
+  if (!MENU_ITEM_SPICE_LEVELS.includes(spice)) throw badInput("Invalid tasteProfile.spice");
+  return { containsOnion, containsCilantro, sugar, spice };
 }
 
 function getActorId(ctx) {
@@ -228,6 +262,9 @@ export const MenuMutation = {
       rate,
       orderCounter,
       notes,
+      dietTags,
+      allergenTags,
+      tasteProfile,
     } = input || {};
 
     if (!isOid(restaurantId) || !isOid(categoryId)) {
@@ -263,6 +300,17 @@ export const MenuMutation = {
     if (orderCounterNum !== undefined && orderCounterNum < 0) {
       throw new GraphQLError("orderCounter must be >= 0");
     }
+    const normalizedDietTags = normalizeStringTags(
+      dietTags,
+      MENU_ITEM_DIET_TAGS,
+      "dietTags",
+    );
+    const normalizedAllergenTags = normalizeStringTags(
+      allergenTags,
+      MENU_ITEM_ALLERGEN_TAGS,
+      "allergenTags",
+    );
+    const normalizedTasteProfile = normalizeTasteProfile(tasteProfile);
 
     const session = await mongoose.startSession();
     try {
@@ -302,6 +350,9 @@ export const MenuMutation = {
               rate: rateNum ?? undefined,
               orderCounter: orderCounterNum ?? undefined,
               notes,
+              dietTags: normalizedDietTags ?? [],
+              allergenTags: normalizedAllergenTags ?? [],
+              tasteProfile: normalizedTasteProfile,
               // byWeight: deprecated - derived from recipe variant mode
             },
           ],
@@ -388,9 +439,24 @@ export const MenuMutation = {
           "mediaAssetIds",
           "modifierGroupIds",
           "notes",
+          "dietTags",
+          "allergenTags",
         ];
         for (const f of fields) {
           if (input[f] !== undefined) item[f] = input[f];
+        }
+        if (input.dietTags !== undefined) {
+          item.dietTags = normalizeStringTags(input.dietTags, MENU_ITEM_DIET_TAGS, "dietTags");
+        }
+        if (input.allergenTags !== undefined) {
+          item.allergenTags = normalizeStringTags(
+            input.allergenTags,
+            MENU_ITEM_ALLERGEN_TAGS,
+            "allergenTags",
+          );
+        }
+        if (input.tasteProfile !== undefined) {
+          item.tasteProfile = normalizeTasteProfile(input.tasteProfile);
         }
 
         if (input.status !== undefined) {
@@ -602,6 +668,19 @@ export const MenuMutation = {
       if (n !== undefined && n < 0)
         throw new GraphQLError("orderCounter must be >= 0");
       patch.orderCounter = n;
+    }
+    if (input.dietTags !== undefined) {
+      patch.dietTags = normalizeStringTags(input.dietTags, MENU_ITEM_DIET_TAGS, "dietTags");
+    }
+    if (input.allergenTags !== undefined) {
+      patch.allergenTags = normalizeStringTags(
+        input.allergenTags,
+        MENU_ITEM_ALLERGEN_TAGS,
+        "allergenTags",
+      );
+    }
+    if (input.tasteProfile !== undefined) {
+      patch.tasteProfile = normalizeTasteProfile(input.tasteProfile);
     }
     const beforeItem = await MenuItem.findOne({
       _id: menuItemId,

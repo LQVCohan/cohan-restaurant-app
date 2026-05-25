@@ -101,6 +101,20 @@ type MenuItemStockShortage {
   unit: String
 }
 
+type MenuItemTasteProfile {
+  containsOnion: Boolean
+  containsCilantro: Boolean
+  sugar: Int
+  spice: String
+}
+
+input MenuItemTasteProfileInput {
+  containsOnion: Boolean
+  containsCilantro: Boolean
+  sugar: Int
+  spice: String
+}
+
 type MenuItem {
   id: ID!
   restaurantId: ID!
@@ -113,6 +127,9 @@ type MenuItem {
 
   sortOrder: Int
   labels: [String!]
+  dietTags: [String!]
+  allergenTags: [String!]
+  tasteProfile: MenuItemTasteProfile
   servingVariants: [ServingVariant]
   # cache sync từ Recipe
   basePrice: Float
@@ -211,6 +228,9 @@ input CreateMenuItemInput {
 
   sortOrder: Int
   labels: [String!]
+  dietTags: [String!]
+  allergenTags: [String!]
+  tasteProfile: MenuItemTasteProfileInput
 
   # cache: thường do Recipe sync, nhưng vẫn cho set nếu bạn muốn
   basePrice: Float
@@ -248,6 +268,9 @@ input UpdateMenuItemInput {
 
   sortOrder: Int
   labels: [String!]
+  dietTags: [String!]
+  allergenTags: [String!]
+  tasteProfile: MenuItemTasteProfileInput
 
   basePrice: Float
   defaultServingKey: String
@@ -284,6 +307,9 @@ input UpdateMenuItemBasicInput {
 
   sortOrder: Int
   labels: [String!]
+  dietTags: [String!]
+  allergenTags: [String!]
+  tasteProfile: MenuItemTasteProfileInput
 
   taxRate: Float
   servingPortion: Float
