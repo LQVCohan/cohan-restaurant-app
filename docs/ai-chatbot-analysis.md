@@ -208,3 +208,45 @@ Phase 4 bổ sung giao diện xử lý handoff AI tối thiểu cho nhân viên/
 Giới hạn hiện tại:
 
 - Luồng trả lời của nhân viên đang là hỗ trợ nội bộ dựa trên `ChatThread` authenticated; guest có thể chưa nhận phản hồi trực tiếp theo thời gian thực cho đến khi có cơ chế guest messaging 2 chiều ở phase sau.
+
+## 14. Phase 5 - Guest-facing staff replies (MVP polling)
+
+Phase 5 MVP cho phép guest nhận phản hồi của nhân viên/quản lý ngay trong `AiChatbotWidget` sau khi đã bấm handoff.
+
+### Kiến trúc MVP
+
+- Thêm query guest-safe mới: `aiChatbotGuestReplies(input)` trong schema `aiChatbot`.
+- Guest chỉ được truy vấn bằng cặp `conversationId + guestId` (không cho truy cập theo `threadId`).
+- Backend lấy `chatThreadId` từ `AiChatConversation`, sau đó đọc trực tiếp từ `ChatThread.messages`.
+- Chỉ trả về payload tối thiểu cho guest: `id`, `role=staff`, `senderLabel=Nhân viên`, `content`, `createdAt`.
+
+### Quy tắc bảo mật
+
+- Chuẩn hóa `guestId` cùng style sanitizer như handoff service.
+- Validate `conversationId` ObjectId.
+- Nếu conversation không tồn tại / không thuộc guest / input không hợp lệ: trả safe response `ok=false`, `handoffRequested=false`, `replies=[]`.
+- Không expose `senderId`, `participants`, `unreadBy`, hoặc toàn bộ object `ChatThread`.
+
+### Quy tắc lọc tin nhắn staff
+
+- Loại bỏ system message và mọi message chứa marker `[AI HANDOFF]`.
+- Loại bỏ message rỗng.
+- Loại bỏ vai trò guest/customer/user.
+- Chỉ giữ nhóm vai trò staff/manager/admin/support/employee (không phân biệt hoa thường).
+
+### Frontend polling
+
+- `AiChatbotWidget` chỉ polling khi đủ điều kiện: `handoffRequested=true`, có `conversationId`, có `guestId`, và widget đang mở.
+- Poll mỗi ~6 giây, có gọi fetch ngay khi handoff thành công.
+- Dedupe bằng `reply.id` hoặc fallback `createdAt + content` để tránh append trùng.
+- Luồng AI cũ trước handoff giữ nguyên (ask, quick replies, actions, context summary).
+
+### Chưa làm trong MVP
+
+- Chưa bật Socket.IO guest room cho phản hồi realtime.
+- Chưa mirror staff replies vào `AiChatMessage`.
+
+### Hướng Phase 5.1
+
+- Bổ sung Socket.IO bảo mật cho guest qua token/ownership check ở room-level (`conversationId + guestId`).
+- Duy trì polling như fallback khi socket mất kết nối.

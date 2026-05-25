@@ -64,6 +64,32 @@ type AiChatbotHandoffResponse {
   alreadyRequested: Boolean!
 }
 
+input GetAiChatbotGuestRepliesInput {
+  conversationId: ID!
+  guestId: String!
+  after: String
+  limit: Int = 30
+}
+
+type AiChatbotGuestReply {
+  id: String!
+  role: String!
+  senderLabel: String!
+  content: String!
+  createdAt: String!
+}
+
+type AiChatbotGuestRepliesResponse {
+  ok: Boolean!
+  handoffRequested: Boolean!
+  conversationId: ID!
+  replies: [AiChatbotGuestReply!]!
+}
+
+extend type Query {
+  aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
+}
+
 extend type Mutation {
   askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!

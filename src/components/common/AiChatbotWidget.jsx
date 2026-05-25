@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
-import { useMutation } from "@apollo/client/react";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./AiChatbotWidget.scss";
@@ -47,6 +47,22 @@ const REQUEST_AI_CHATBOT_HANDOFF = gql`
       notificationCount
       message
       alreadyRequested
+    }
+  }
+`;
+const Q_AI_CHATBOT_GUEST_REPLIES = gql`
+  query AiChatbotGuestReplies($input: GetAiChatbotGuestRepliesInput!) {
+    aiChatbotGuestReplies(input: $input) {
+      ok
+      handoffRequested
+      conversationId
+      replies {
+        id
+        role
+        senderLabel
+        content
+        createdAt
+      }
     }
   }
 `;
@@ -97,6 +113,7 @@ function AiChatbotWidget() {
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
+  const [loadGuestReplies] = useLazyQuery(Q_AI_CHATBOT_GUEST_REPLIES, { fetchPolicy: "network-only" });
   const [guestId, setGuestId] = useState(() => {
     if (typeof window === "undefined") return "";
     const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
@@ -107,6 +124,7 @@ function AiChatbotWidget() {
   });
   const [conversationId, setConversationId] = useState("");
   const [handoffRequested, setHandoffRequested] = useState(false);
+  const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -134,6 +152,64 @@ function AiChatbotWidget() {
     if (!conversationId || typeof window === "undefined") return setHandoffRequested(false);
     setHandoffRequested(window.localStorage.getItem(getHandoffStorageKey(conversationId)) === "1");
   }, [conversationId]);
+
+  useEffect(() => {
+    const latest = [...messages]
+      .reverse()
+      .find((item) => item?.role === "staff" && item?.meta?.createdAt)?.meta?.createdAt;
+    setLatestStaffReplyAt(latest || "");
+  }, [messages]);
+
+  const appendGuestReplies = (replies = []) => {
+    if (!Array.isArray(replies) || replies.length === 0) return;
+    setMessages((current) => {
+      const existing = new Set(
+        current
+          .filter((item) => item?.role === "staff")
+          .map((item) => item?.meta?.replyId || `${item?.meta?.createdAt || ""}_${item?.content || ""}`),
+      );
+
+      const incoming = [];
+      for (const reply of replies) {
+        const key = reply?.id || `${reply?.createdAt || ""}_${reply?.content || ""}`;
+        if (!reply?.content || existing.has(key)) continue;
+        existing.add(key);
+        incoming.push({
+          role: "staff",
+          content: reply.content,
+          meta: { senderLabel: reply.senderLabel || "Nhân viên", createdAt: reply.createdAt, replyId: key },
+        });
+      }
+
+      return incoming.length ? [...current, ...incoming] : current;
+    });
+  };
+
+  const fetchGuestReplies = async () => {
+    if (!handoffRequested || !conversationId || !guestId) return;
+    try {
+      const { data } = await loadGuestReplies({
+        variables: {
+          input: {
+            conversationId,
+            guestId,
+            after: latestStaffReplyAt || undefined,
+            limit: 30,
+          },
+        },
+      });
+      appendGuestReplies(data?.aiChatbotGuestReplies?.replies || []);
+    } catch {
+      // best effort polling only
+    }
+  };
+
+  useEffect(() => {
+    if (!open || !handoffRequested || !conversationId || !guestId) return undefined;
+    fetchGuestReplies();
+    const timer = window.setInterval(fetchGuestReplies, 6000);
+    return () => window.clearInterval(timer);
+  }, [open, handoffRequested, conversationId, guestId, latestStaffReplyAt]);
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
@@ -219,6 +295,7 @@ function AiChatbotWidget() {
           window.localStorage.setItem(getHandoffStorageKey(conversationId), "1");
         }
         setHandoffRequested(true);
+        fetchGuestReplies();
       }
       setMessages((current) => [
         ...current,
@@ -252,6 +329,7 @@ function AiChatbotWidget() {
           <div className="ai-chatbot-messages">
             {messages.map((item, index) => (
               <div key={`${item.role}-${index}`} className={`ai-chatbot-message ${item.role}`}>
+                {item.role === "staff" ? <small>{item?.meta?.senderLabel || "Nhân viên"}</small> : null}
                 <p>{item.content}</p>
                 {item.meta?.isFallback ? <span className="ai-chatbot-note">Fallback dữ liệu hệ thống</span> : null}
               </div>
