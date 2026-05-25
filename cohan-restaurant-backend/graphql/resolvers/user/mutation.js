@@ -54,20 +54,33 @@ const FOOD_PREFERENCE_SPICE = ["Không", "Vừa", "Nồng", "Rất cay"];
 
 function normalizeFoodPreferencesInput(input = {}) {
   const habits = input?.habits || {};
+
+  if (typeof input?.diet !== "undefined" && !FOOD_PREFERENCE_DIETS.includes(input.diet)) {
+    throw new GraphQLError("Invalid diet value", { extensions: { code: "BAD_USER_INPUT" } });
+  }
   const diet = FOOD_PREFERENCE_DIETS.includes(input?.diet) ? input.diet : "omni";
+
   const allergies = Array.isArray(input?.allergies) ? [...new Set(input.allergies)] : [];
   if (allergies.some((item) => !FOOD_PREFERENCE_ALLERGIES.includes(item))) {
     throw new GraphQLError("Invalid allergy value", { extensions: { code: "BAD_USER_INPUT" } });
   }
+
+  if (typeof habits?.sugar !== "undefined" && !FOOD_PREFERENCE_SUGAR.includes(habits.sugar)) {
+    throw new GraphQLError("Invalid sugar value", { extensions: { code: "BAD_USER_INPUT" } });
+  }
   const sugar = FOOD_PREFERENCE_SUGAR.includes(habits?.sugar) ? habits.sugar : 100;
+
+  if (typeof habits?.spice !== "undefined" && !FOOD_PREFERENCE_SPICE.includes(habits.spice)) {
+    throw new GraphQLError("Invalid spice value", { extensions: { code: "BAD_USER_INPUT" } });
+  }
   const spice = FOOD_PREFERENCE_SPICE.includes(habits?.spice) ? habits.spice : "Vừa";
 
   return {
     diet,
     allergies,
     habits: {
-      noOnion: Boolean(habits?.noOnion),
-      noCilantro: Boolean(habits?.noCilantro),
+      noOnion: typeof habits?.noOnion === "boolean" ? habits.noOnion : false,
+      noCilantro: typeof habits?.noCilantro === "boolean" ? habits.noCilantro : false,
       sugar,
       spice,
       ice: typeof habits?.ice === "boolean" ? habits.ice : true,
