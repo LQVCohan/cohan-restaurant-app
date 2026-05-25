@@ -10,11 +10,13 @@ const bankTransactionSchema = new mongoose.Schema({
   description: { type: String },
   transferContent: { type: String },
   occurredAt: { type: Date },
+  fingerprint: { type: String, index: true },
   raw: { type: mongoose.Schema.Types.Mixed },
   matchedPaymentSessionId: { type: mongoose.Schema.Types.ObjectId, ref: "payment_session" },
   matchStatus: { type: String, enum: ["unmatched", "matched", "amount_mismatch", "duplicate", "ignored"], default: "unmatched" },
 }, { timestamps: true });
 bankTransactionSchema.index({ provider: 1, transactionId: 1 }, { unique: true, sparse: true });
+bankTransactionSchema.index({ provider: 1, fingerprint: 1 }, { unique: true, sparse: true });
 bankTransactionSchema.index({ matchedPaymentSessionId: 1 });
 bankTransactionSchema.index({ matchStatus: 1, createdAt: -1 });
 

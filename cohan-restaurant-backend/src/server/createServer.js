@@ -6,6 +6,7 @@ import mercurius from "mercurius";
 import rateLimit from "@fastify/rate-limit";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import process from "process";
+import crypto from "crypto";
 import { Server as SocketIOServer } from "socket.io";
 import typeDefs from "../../graphql/schema/index.js";
 import resolvers from "../../graphql/resolvers/index.js";
@@ -159,10 +160,40 @@ export async function createServer() {
 
   app.post("/api/payments/webhooks/bank-transfer/:provider", async (req, reply) => {
     try {
-      const expectedSecret = process.env.BANK_TRANSFER_WEBHOOK_SECRET || "";
-      const receivedSecret = req.headers["x-bank-webhook-secret"];
-      if ((expectedSecret && receivedSecret !== expectedSecret) || (!expectedSecret && process.env.NODE_ENV === "production")) {
-        req.log.warn({ provider: req.params?.provider }, "bank transfer webhook rejected due to invalid/missing secret");
+      const inProduction = process.env.NODE_ENV === "production";
+      const hmacSecret = String(process.env.BANK_TRANSFER_WEBHOOK_HMAC_SECRET || "");
+      const expectedStaticSecret = String(process.env.BANK_TRANSFER_WEBHOOK_SECRET || "");
+      const toleranceSeconds = Math.max(1, Number(process.env.BANK_TRANSFER_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS || 300));
+      const timestampHeader = String(req.headers["x-bank-webhook-timestamp"] || "").trim();
+      const signatureHeader = String(req.headers["x-bank-webhook-signature"] || "").trim().toLowerCase();
+      const staticSecretHeader = String(req.headers["x-bank-webhook-secret"] || "");
+
+      let authorized = false;
+      if (hmacSecret) {
+        const timestampSeconds = Number(timestampHeader);
+        if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0 || !signatureHeader) {
+          return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
+        }
+        const skew = Math.abs(Math.floor(Date.now() / 1000) - Math.floor(timestampSeconds));
+        if (skew > toleranceSeconds) {
+          return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
+        }
+        const rawPayload = typeof req.rawBody === "string" ? req.rawBody : JSON.stringify(req.body || {});
+        const signedPayload = `${Math.floor(timestampSeconds)}.${rawPayload}`;
+        const expected = crypto.createHmac("sha256", hmacSecret).update(signedPayload).digest("hex");
+        const expectedBuffer = Buffer.from(expected, "hex");
+        const receivedBuffer = Buffer.from(signatureHeader, "hex");
+        authorized = expectedBuffer.length === receivedBuffer.length && crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+      } else if (expectedStaticSecret) {
+        authorized = staticSecretHeader === expectedStaticSecret;
+      } else if (!inProduction && staticSecretHeader) {
+        authorized = true;
+      } else {
+        authorized = false;
+      }
+
+      if (!authorized || (inProduction && !hmacSecret && !expectedStaticSecret)) {
+        req.log.warn({ provider: req.params?.provider }, "bank transfer webhook rejected");
         return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
       }
       const result = await reconcileBankTransferWebhook({ provider: req.params?.provider || "bank_transfer", payload: req.body || {} });

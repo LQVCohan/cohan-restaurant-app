@@ -16,7 +16,7 @@ import {
   Promotion,
   UserCoupon,
 } from "../../../models/index.js";
-import { cancelPaymentSession, createOrderPayment, createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
+import { cancelPaymentSession, createOrderPayment, createReservationPayment, sanitizePaymentSessionForClient } from "../../../src/services/payment/paymentSession.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -1577,7 +1577,8 @@ export const createOrderPaymentMutation = async (_parent, { input }, ctx) => {
   await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_WRITE);
   if (!ctx?.user?.id) throw new Error("Unauthorized");
   const baseApiUrl = process.env.PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL || "http://localhost:4000";
-  return createOrderPayment({ ...input, userId: ctx.user.id, baseApiUrl, clientIp: "127.0.0.1" });
+  const payment = await createOrderPayment({ ...input, userId: ctx.user.id, baseApiUrl, clientIp: "127.0.0.1" });
+  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 };
 
 export const createReservationPaymentMutation = async (
@@ -1601,7 +1602,7 @@ export const createReservationPaymentMutation = async (
     clientIp: "127.0.0.1",
   });
 
-  return payment;
+  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 };
 
 export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
@@ -1614,18 +1615,19 @@ export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
   }
 
   if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
-    return payment;
+    return sanitizePaymentSessionForClient(payment, { includeRaw: false });
   }
   if (payment.provider === "momo" && payment.providerResponseRaw?.orderId) {
-    return payment;
+    return sanitizePaymentSessionForClient(payment, { includeRaw: false });
   }
 
-  return payment;
+  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 };
 export const cancelPaymentSessionMutation = async (_parent, { input }, ctx) => {
   if (!mongoose.isValidObjectId(input?.paymentId)) throw new Error("Invalid paymentId");
   if (!ctx?.user?.id) throw new Error("Unauthorized");
-  return cancelPaymentSession({ paymentId: input.paymentId, reason: input?.reason, ctx });
+  const payment = await cancelPaymentSession({ paymentId: input.paymentId, reason: input?.reason, ctx });
+  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 };
 
 export const updateRestaurantPaymentSettings = async (

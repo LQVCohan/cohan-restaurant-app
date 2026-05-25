@@ -31,6 +31,7 @@ const TransactionSchema = BaseSchemaModel(
 TransactionSchema.index({ restaurantId: 1, orderId: 1 });
 TransactionSchema.index({ restaurantId: 1, orderIds: 1 });
 TransactionSchema.index({ paidAt: -1 });
+TransactionSchema.index({ restaurantId: 1, txnRef: 1 }, { unique: true, sparse: true });
 
 export default mongoose.models.Transaction ||
   mongoose.model("Transaction", TransactionSchema);

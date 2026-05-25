@@ -10,7 +10,7 @@ import {
   BankTransaction,
   PaymentReconciliation,
 } from "../../../models/index.js";
-import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
+import { getProviderPublicConfig, sanitizePaymentSessionForClient } from "../../../src/services/payment/paymentSession.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
@@ -134,7 +134,7 @@ export const PaymentQuery = {
       session.events.push({ type: "payment_expired", payload: { reason: session.cancelReason } });
       await session.save();
     }
-    return session.toObject();
+    return sanitizePaymentSessionForClient(session, { includeRaw: false });
   },
 
   async reservationPaymentSessions(_, { reservationId }, ctx) {
@@ -143,7 +143,8 @@ export const PaymentQuery = {
     if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) {
       q.userId = new mongoose.Types.ObjectId(ctx.user.id);
     }
-    return PaymentSession.find(q).sort({ createdAt: -1 }).lean();
+    const rows = await PaymentSession.find(q).sort({ createdAt: -1 }).lean();
+    return rows.map((row) => sanitizePaymentSessionForClient(row, { includeRaw: false }));
   },
 
   async restaurantPaymentPublicConfig(_, { restaurantId }) {

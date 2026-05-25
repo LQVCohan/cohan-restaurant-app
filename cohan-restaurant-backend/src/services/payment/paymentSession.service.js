@@ -30,6 +30,33 @@ const SUPPORTED = ["momo", "vnpay", "bank_transfer"];
 const RESERVATION_SUPPORTED = ["momo", "vnpay"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 const CLOSED_CHILD_PAYMENT_STATUSES = new Set(["paid", "cancelled"]);
+const normalizeBankAccountNumber = (value) => String(value || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+const normalizeDescription = (value) => String(value || "").toUpperCase().replace(/\s+/g, " ").trim();
+const normalizeOccurredAt = (value) => {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+const buildBankTransactionFingerprint = ({ provider, transactionId, bankAccountNumber, amount, occurredAt, description }) => {
+  const normalizedTxId = normalizeDescription(transactionId);
+  return JSON.stringify({
+    provider: String(provider || "").toLowerCase(),
+    tx: normalizedTxId || null,
+    account: normalizeBankAccountNumber(bankAccountNumber),
+    amount: Math.round(Number(amount || 0)),
+    occurredAt: normalizeOccurredAt(occurredAt),
+    description: normalizeDescription(description),
+  });
+};
+export function sanitizePaymentSessionForClient(session, { includeRaw = false } = {}) {
+  if (!session) return session;
+  const payload = typeof session.toObject === "function" ? session.toObject() : { ...session };
+  if (!includeRaw) {
+    payload.providerResponseRaw = null;
+    payload.callbackRaw = null;
+  }
+  return payload;
+}
 function getPaymentSessionTtlMinutes() {
   const raw = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 15);
   return Number.isFinite(raw) && raw > 0 ? raw : 15;
@@ -623,36 +650,63 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
   const transactionId = String(payload?.transactionId || payload?.id || payload?.txnId || "");
   const amount = Number(payload?.amount || 0);
   const description = String(payload?.description || payload?.content || "");
+  const normalizedDescription = normalizeDescription(description);
   const bankAccountNumber = String(payload?.bankAccountNumber || payload?.accountNumber || "");
+  const normalizedBankAccountNumber = normalizeBankAccountNumber(bankAccountNumber);
   const payloadRestaurantId = (
     payload?.restaurantId && mongoose.isValidObjectId(payload.restaurantId)
       ? new mongoose.Types.ObjectId(payload.restaurantId)
       : null
   );
   const occurredAt = payload?.transactionDate ? new Date(payload.transactionDate) : new Date();
+  const fingerprintOccurredAt = payload?.transactionDate || payload?.occurredAt || null;
+  const requiresBankAccount = process.env.NODE_ENV === "production" || Boolean(process.env.BANK_TRANSFER_ACCOUNT_NUMBER);
+  if (!Number.isFinite(amount) || amount <= 0) return { matched: false, reason: "invalid_amount", ignored: true };
+  if (!normalizedDescription) return { matched: false, reason: "missing_description", ignored: true };
+  if (requiresBankAccount && !normalizedBankAccountNumber) return { matched: false, reason: "missing_bank_account", ignored: true };
+  const bankTxFingerprint = buildBankTransactionFingerprint({
+    provider,
+    transactionId,
+    bankAccountNumber: normalizedBankAccountNumber,
+    amount,
+    occurredAt: fingerprintOccurredAt,
+    description: normalizedDescription,
+  });
 
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
-      const exists = transactionId
+      const existingByTxnId = transactionId
         ? await BankTransaction.findOne({ provider, transactionId }).session(session)
         : null;
-      if (exists) return { duplicate: true, bankTransaction: exists };
-      const bankTx = await BankTransaction.create([{
-        provider,
-        restaurantId: payloadRestaurantId || null,
-        transactionId,
-        amount,
-        description,
-        transferContent: description,
-        bankAccountNumber,
-        occurredAt,
-        raw: payload,
-        matchStatus: "unmatched",
-      }], { session }).then((x) => x[0]);
+      const existingByFingerprint = await BankTransaction.findOne({ provider, fingerprint: bankTxFingerprint }).session(session);
+      const existing = existingByTxnId || existingByFingerprint;
+      if (existing) return { duplicate: true, bankTransaction: existing };
+      let bankTx;
+      try {
+        bankTx = await BankTransaction.create([{
+          provider,
+          restaurantId: payloadRestaurantId || null,
+          transactionId,
+          amount,
+          description: normalizedDescription,
+          transferContent: normalizedDescription,
+          bankAccountNumber: normalizedBankAccountNumber,
+          occurredAt,
+          fingerprint: bankTxFingerprint,
+          raw: payload,
+          matchStatus: "unmatched",
+        }], { session }).then((x) => x[0]);
+      } catch (err) {
+        if (err?.code !== 11000) throw err;
+        const duplicate = (transactionId
+          ? await BankTransaction.findOne({ provider, transactionId }).session(session)
+          : null) || await BankTransaction.findOne({ provider, fingerprint: bankTxFingerprint }).session(session);
+        if (duplicate) return { duplicate: true, bankTransaction: duplicate };
+        throw err;
+      }
 
       const now = new Date();
-      const normalizedDescription = description.toUpperCase();
       const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];
       const candidates = await PaymentSession.find({
         status: "pending",
@@ -662,15 +716,16 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       for (const candidate of candidates) {
         if (await expirePendingPaymentSessionIfNeeded(candidate, now)) continue;
         const ref = String(candidate.reference || "").toUpperCase();
-        const accountOk = !candidate?.metadata?.bankTransfer?.bankAccountNumber
-          || String(candidate?.metadata?.bankTransfer?.bankAccountNumber) === bankAccountNumber;
+        const candidateAccount = normalizeBankAccountNumber(candidate?.metadata?.bankTransfer?.bankAccountNumber);
+        const accountOk = Boolean(candidateAccount) && candidateAccount === normalizedBankAccountNumber;
         if (accountOk && (refs.includes(ref) || normalizedDescription.includes(ref))) {
           payment = candidate;
           break;
         }
       }
       if (!payment) {
-        await PaymentReconciliation.create([{ restaurantId: payloadRestaurantId, provider, status: "unmatched", receivedAmount: amount, bankTransactionId: bankTx._id, raw: payload, note: "No pending payment session matched" }], { session });
+        const hasReference = refs.length > 0;
+        await PaymentReconciliation.create([{ restaurantId: payloadRestaurantId, provider, status: "unmatched", receivedAmount: amount, bankTransactionId: bankTx._id, raw: payload, note: hasReference ? "Bank account mismatch" : "No pending payment session matched" }], { session });
         return { matched: false, bankTransaction: bankTx };
       }
 
