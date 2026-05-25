@@ -5,7 +5,12 @@ vi.mock("@/lib/browserStorage", () => ({
 }));
 
 import { readStorageValue } from "@/lib/browserStorage";
-import { buildAutoLayoutComponentsForRequest, getAuthHeaders, resolveInitialFloorId } from "./FloorPlanDesigner";
+import {
+  buildAutoLayoutComponentsForRequest,
+  getAuthHeaders,
+  isSmartLayoutGeneratedItem,
+  resolveInitialFloorId,
+} from "./FloorPlanDesigner";
 
 describe("FloorPlanDesigner helpers", () => {
   beforeEach(() => {
@@ -76,5 +81,13 @@ describe("FloorPlanDesigner helpers", () => {
   it("resolveInitialFloorId returns first floor when no requested floor", () => {
     const floors = [{ id: "3" }, { id: "4" }];
     expect(resolveInitialFloorId(floors, null)).toBe("3");
+  });
+
+  it("isSmartLayoutGeneratedItem detects legacy auto ids", () => {
+    expect(isSmartLayoutGeneratedItem({ id: "auto_wall_1" })).toBe(true);
+  });
+
+  it("isSmartLayoutGeneratedItem detects smart_layout source", () => {
+    expect(isSmartLayoutGeneratedItem({ source: "smart_layout" })).toBe(true);
   });
 });

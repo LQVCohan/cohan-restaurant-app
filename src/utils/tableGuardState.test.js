@@ -49,13 +49,31 @@ describe("tableGuardState", () => {
     expect(reason).toBe("");
   });
 
-  it("disables dangerous target status when guard exists", () => {
+  it("does not disable occupied -> cleaning status change in UI", () => {
     const reason = getTableActionDisabledReason(
       { status: "occupied" },
       "set_status",
       "cleaning"
     );
-    expect(reason).not.toBe("");
+    expect(reason).toBe("");
+  });
+
+  it("does not disable occupied -> available status change in UI", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "occupied" },
+      "set_status",
+      "available"
+    );
+    expect(reason).toBe("");
+  });
+
+  it("does not disable available -> occupied status change in UI", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "available" },
+      "set_status",
+      "occupied"
+    );
+    expect(reason).toBe("");
   });
 
   it("disables delete when guard exists", () => {

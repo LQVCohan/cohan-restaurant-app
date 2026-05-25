@@ -131,9 +131,6 @@ function TableActionsModalCore({
     () => getTableActionDisabledReason(table, "delete"),
     [table]
   );
-  const getStatusDisabledReason = (nextStatus) =>
-    getTableActionDisabledReason(table, "set_status", nextStatus);
-
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
   const [mergeCodes, setMergeCodes] = useState("");
@@ -1100,8 +1097,7 @@ function TableActionsModalCore({
                     className={`${s.chip} ${status === st ? s.active : ""}`}
                     data-variant={st}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status || !!getStatusDisabledReason(st)}
-                    title={getStatusDisabledReason(st) || ""}
+                    disabled={busy.status}
                   >
                     {statusLabels[st] || st}
                   </button>

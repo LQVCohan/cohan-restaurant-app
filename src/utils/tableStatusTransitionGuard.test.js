@@ -9,7 +9,7 @@ import {
 
 describe("tableStatusTransitionGuard", () => {
   it("chặn các transition do POS quản lý", () => {
-    expect(isPosManagedStatusTransition("available", "occupied")).toBe(true);
+    expect(isPosManagedStatusTransition("available", "occupied")).toBe(false);
     expect(isPosManagedStatusTransition("reserved", "occupied")).toBe(true);
     expect(isPosManagedStatusTransition("occupied", "payment_pending")).toBe(true);
     expect(isPosManagedStatusTransition("payment_pending", "cleaning")).toBe(true);

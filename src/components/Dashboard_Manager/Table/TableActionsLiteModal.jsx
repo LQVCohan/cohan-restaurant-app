@@ -13,11 +13,6 @@ import { useNotification } from "@/hooks/useNotification";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
 import {
-  isPosManagedStatusTransition,
-  POS_MANAGED_STATUS_TRANSITION_MESSAGE,
-  POS_MANAGED_STATUS_TRANSITION_TITLE,
-} from "@/utils/tableStatusTransitionGuard";
-import {
   getTableDisplayCapacity,
   getTableDisplayCode,
   getTableDisplayType,
@@ -148,9 +143,6 @@ export default function TableActionsLiteModal({
     () => getTableActionDisabledReason(table, "delete"),
     [table]
   );
-  const getStatusDisabledReason = (nextStatus) =>
-    getTableActionDisabledReason(table, "set_status", nextStatus);
-
   // ------- local states -------
   const [code, setCode] = useState("");
   const [capacity, setCapacity] = useState(0);
@@ -1091,19 +1083,13 @@ export default function TableActionsLiteModal({
               {TABLE_STATUS_OPTIONS.filter((item) => item.value !== "payment_pending").map(
                 (statusOption) => {
                   const st = statusOption.value;
-                  const guardReason = getStatusDisabledReason(st);
-                  const posManagedReason = isPosManagedStatusTransition(status, st)
-                    ? POS_MANAGED_STATUS_TRANSITION_TITLE
-                    : "";
-
                   return (
                   <button
                     type="button"
                     key={st}
                     className={`chip ${status === st ? "active" : ""}`}
                     onClick={() => handleChangeStatus(st)}
-                    disabled={busy.status || !!guardReason || !!posManagedReason}
-                    title={guardReason || posManagedReason || ""}
+                    disabled={busy.status}
                   >
                     {statusOption.label}
                   </button>
@@ -1119,28 +1105,15 @@ export default function TableActionsLiteModal({
 
             {/* Yêu cầu đặc biệt: nếu đang Reserved -> có nút Dọn dẹp; nếu Cleaning -> có nút Sẵn sàng */}
             <div className="actions-end" style={{ marginTop: 8 }}>
-              {status === "reserved" && (() => {
-                const reservedCleaningReason = isPosManagedStatusTransition(status, "cleaning")
-                  ? POS_MANAGED_STATUS_TRANSITION_TITLE
-                  : "";
-                return (
-                  <>
-                    <button
-                      className="btn"
-                      onClick={() => handleChangeStatus("cleaning")}
-                      disabled={!!reservedCleaningReason || busy.status}
-                      title={reservedCleaningReason}
-                    >
-                      🧹 Dọn dẹp
-                    </button>
-                    {reservedCleaningReason && (
-                      <div className="hint" style={{ marginTop: 6 }}>
-                        {reservedCleaningReason}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              {status === "reserved" && (
+                <button
+                  className="btn"
+                  onClick={() => handleChangeStatus("cleaning")}
+                  disabled={busy.status}
+                >
+                  🧹 Dọn dẹp
+                </button>
+              )}
               {status === "cleaning" && (
                 <button
                   className="btn success"
