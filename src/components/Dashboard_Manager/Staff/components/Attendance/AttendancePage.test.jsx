@@ -3,6 +3,30 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest";
 import AttendancePage, { getAttendanceActionErrorMessage } from "./AttendancePage";
 const useAttendanceManagementMock = vi.fn();
+const createAttendanceHookData = (overrides = {}) => ({
+  employees: [],
+  records: [],
+  correctionRequests: [],
+  stats: {},
+  correctionStats: {},
+  loading: false,
+  error: "",
+  correctionsLoading: false,
+  correctionsError: "",
+  refetch: vi.fn(),
+  refreshAttendanceViews: vi.fn(),
+  mutateQuickAttendance: vi.fn(),
+  mutationState: { loading: false },
+  createAttendanceCorrectionRequest: vi.fn(),
+  approveAttendanceCorrectionRequest: vi.fn(),
+  rejectAttendanceCorrectionRequest: vi.fn(),
+  cancelAttendanceCorrectionRequest: vi.fn(),
+  createCorrectionState: { loading: false },
+  approveCorrectionState: { loading: false },
+  rejectCorrectionState: { loading: false },
+  cancelCorrectionState: { loading: false },
+  ...overrides,
+});
 
 vi.mock("@/context/AuthContext", () => ({
   AuthContext: React.createContext({ user: { restaurantForStaff: "r1" } }),
@@ -18,29 +42,7 @@ vi.mock("@/hooks/useAttendanceManagement", () => ({
 }));
 
 beforeEach(() => {
-  useAttendanceManagementMock.mockReturnValue({
-    employees: [],
-    records: [],
-    correctionRequests: [],
-    stats: {},
-    correctionStats: {},
-    loading: false,
-    error: "",
-    correctionsLoading: false,
-    correctionsError: "",
-    refetch: vi.fn(),
-    refreshAttendanceViews: vi.fn(),
-    mutateQuickAttendance: vi.fn(),
-    mutationState: { loading: false },
-    createAttendanceCorrectionRequest: vi.fn(),
-    approveAttendanceCorrectionRequest: vi.fn(),
-    rejectAttendanceCorrectionRequest: vi.fn(),
-    cancelAttendanceCorrectionRequest: vi.fn(),
-    createCorrectionState: { loading: false },
-    approveCorrectionState: { loading: false },
-    rejectCorrectionState: { loading: false },
-    cancelCorrectionState: { loading: false },
-  });
+  useAttendanceManagementMock.mockReturnValue(createAttendanceHookData());
 });
 
 describe("getAttendanceActionErrorMessage", () => {
@@ -129,7 +131,7 @@ describe("AttendancePage readiness navigation", () => {
 
     render(<AttendancePage />);
 
-    expect(await screen.findByText("Đang xem chấm công từ lịch làm việc")).toBeInTheDocument();
+    expect(await screen.findByText("Đang xử lý bất thường từ lịch làm việc")).toBeInTheDocument();
     expect(screen.getByText(/Ngày: 2026-05-03/)).toBeInTheDocument();
     expect(screen.getByText(/Nhân viên: e01/)).toBeInTheDocument();
     expect(screen.getByText(/Nhà hàng: r2/)).toBeInTheDocument();
@@ -158,7 +160,7 @@ describe("AttendancePage readiness navigation", () => {
     fireEvent.click(clearButton);
 
     await waitFor(() => {
-      expect(screen.queryByText("Đang xem chấm công từ lịch làm việc")).not.toBeInTheDocument();
+      expect(screen.queryByText("Đang xử lý bất thường từ lịch làm việc")).not.toBeInTheDocument();
     });
 
     const url = new URL(window.location.href);
@@ -174,5 +176,60 @@ describe("AttendancePage readiness navigation", () => {
         restaurantId: "r1",
       }),
     );
+  });
+
+  it("renders context panel details and highlights focused attendance row", async () => {
+    useAttendanceManagementMock.mockReturnValue({
+      ...createAttendanceHookData(),
+      records: [
+        { id: "a1", employeeId: "e01", employeeName: "Lan Manager", employeeCode: "L01", employeeRole: "Manager", source: "system" },
+        { id: "a2", employeeId: "e02", employeeName: "Minh Server", employeeCode: "M02", employeeRole: "Server", source: "system" },
+      ],
+      correctionRequests: [],
+    });
+    window.history.replaceState(null, "", "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff");
+    render(<AttendancePage />);
+
+    expect(await screen.findByText("Đang xử lý bất thường từ lịch làm việc")).toBeInTheDocument();
+    expect(screen.getByText(/Ngày: 2026-05-03/)).toBeInTheDocument();
+    expect(screen.getByText(/Nhân viên: e01/)).toBeInTheDocument();
+    expect(screen.getByText(/Nhà hàng: r2/)).toBeInTheDocument();
+    expect(screen.getByText(/Số bản ghi khớp: 1/)).toBeInTheDocument();
+    expect(screen.getByText("Từ lịch")).toBeInTheDocument();
+
+    const lanRow = screen.getByText("Lan Manager").closest("tr");
+    expect(lanRow).toHaveClass("focused-attendance-row");
+    expect(lanRow).toHaveAttribute("data-focused-attendance-row", "true");
+    const minhRow = screen.getByText("Minh Server").closest("tr");
+    expect(minhRow).not.toHaveClass("focused-attendance-row");
+  });
+
+  it("opens existing correction modal from context action when exactly one record matches", async () => {
+    useAttendanceManagementMock.mockReturnValue({
+      ...createAttendanceHookData(),
+      records: [
+        { id: "a1", employeeId: "e01", employeeName: "Lan Manager", employeeCode: "L01", employeeRole: "Manager", source: "system", workDate: "2026-05-03T00:00:00.000Z" },
+      ],
+      correctionRequests: [],
+    });
+    window.history.replaceState(null, "", "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff");
+    render(<AttendancePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Tạo yêu cầu chỉnh công" }));
+    expect(await screen.findByText("Tạo yêu cầu chỉnh công")).toBeInTheDocument();
+  });
+
+  it("shows pending correction summary and opens correction view from context action", async () => {
+    useAttendanceManagementMock.mockReturnValue({
+      ...createAttendanceHookData(),
+      records: [
+        { id: "a1", employeeId: "e01", employeeName: "Lan Manager", employeeCode: "L01", employeeRole: "Manager", source: "system" },
+      ],
+      correctionRequests: [{ id: "c1", employeeId: "e01", status: "pending", employeeName: "Lan Manager", workDate: "2026-05-03T00:00:00.000Z" }],
+    });
+    window.history.replaceState(null, "", "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff");
+    render(<AttendancePage />);
+    expect(await screen.findByText("Đã có 1 yêu cầu chỉnh công chờ duyệt")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Xem yêu cầu chỉnh công" }));
+    expect(await screen.findByText("Yêu cầu chỉnh công")).toBeInTheDocument();
   });
 });
