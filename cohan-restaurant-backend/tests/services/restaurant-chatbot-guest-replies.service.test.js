@@ -253,4 +253,67 @@ describe("sendRestaurantChatbotGuestMessage", () => {
     });
     expect(out.ok).toBe(false);
   });
+
+  it("fails when chatThreadId missing", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_abc",
+      status: "handoff_requested",
+      chatThreadId: null,
+    });
+
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_abc", content: "x" },
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it("fails for overlong content", async () => {
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: {
+        conversationId: "507f1f77bcf86cd799439011",
+        guestId: "guest_abc",
+        content: "x".repeat(1001),
+      },
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it("keeps mutation successful when notification insert fails", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    const threadId = "507f1f77bcf86cd799439012";
+    const saveThread = vi.fn().mockResolvedValue(true);
+
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_abc",
+      status: "handoff_requested",
+      chatThreadId: threadId,
+    });
+
+    vi.spyOn(ChatThread, "findById").mockResolvedValue({
+      _id: threadId,
+      restaurantId: "507f1f77bcf86cd799439013",
+      channel: "support",
+      targetRole: "support",
+      participants: ["507f1f77bcf86cd799439099"],
+      messages: [],
+      save: saveThread,
+    });
+
+    vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
+    vi.spyOn(Notification, "insertMany").mockRejectedValue(new Error("db down"));
+
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_abc", content: "Xin chào nhân viên" },
+      io: {
+        to: () => ({ emit: () => { throw new Error("socket issue"); } }),
+      },
+    });
+
+    expect(out.ok).toBe(true);
+    expect(saveThread).toHaveBeenCalled();
+  });
+
 });
