@@ -381,6 +381,8 @@ const AttendancePage = () => {
     const attendanceTab = params.get("attendanceTab");
     const status = params.get("status");
     const employeeId = params.get("employeeId");
+    const date = params.get("date") || params.get("workDate");
+    const search = params.get("search");
 
     if (attendanceTab || status || employeeId) {
       setReadinessFocus({
@@ -407,6 +409,15 @@ const AttendancePage = () => {
       if (params.get("correctionStatus")) {
         setCorrectionStatus(params.get("correctionStatus"));
       }
+    }
+
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setSelectedDate(date);
+    }
+    if (search) {
+      setSearchQuery(search);
+    } else if (employeeId) {
+      setSearchQuery(employeeId);
     }
   }, []);
 

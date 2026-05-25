@@ -2664,6 +2664,36 @@ const ScheduleManagement = ({ readOnly = false }) => {
     window.history.pushState(null, "", nextUrl);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
+  const handleOpenAttendanceDetails = (row) => {
+    const params = new URLSearchParams(window.location.search || "");
+    params.set("staffPage", "attendance");
+
+    const targetDateValue = row?.shiftStartTime || row?.checkInAt || null;
+    const parsedDate = targetDateValue ? new Date(targetDateValue) : null;
+    if (parsedDate && !Number.isNaN(parsedDate.getTime())) {
+      params.set("date", format(parsedDate, "yyyy-MM-dd"));
+    }
+
+    if (row?.employeeId) {
+      params.set("employeeId", String(row.employeeId));
+    }
+    if (effectiveRestaurantId) {
+      params.set("restaurantId", String(effectiveRestaurantId));
+    }
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}#staff`;
+    window.history.pushState(null, "", nextUrl);
+    window.dispatchEvent(
+      new CustomEvent("manager:navigation-query", {
+        detail: {
+          page: "staff",
+          query: Object.fromEntries(params.entries()),
+        },
+      }),
+    );
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  };
   const handlePublishSchedule = () => {
     if (!effectiveRestaurantId) {
       showNotification(
@@ -4489,6 +4519,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     ) : null}
                     <button type="button" className="staff-secondary-btn" onClick={() => handleAttendanceReview(row)}>
                       Ghi chú xử lý
+                    </button>
+                    <button
+                      type="button"
+                      className="staff-secondary-btn"
+                      onClick={() => handleOpenAttendanceDetails(row)}
+                    >
+                      Mở chấm công chi tiết
                     </button>
                     {attendanceReviewErrorByRowId[row.id] ? (
                       <p className="schedule-quality-panel__headline">{attendanceReviewErrorByRowId[row.id]}</p>

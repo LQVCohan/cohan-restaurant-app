@@ -685,5 +685,42 @@ describe("ScheduleManagement", () => {
     expect(screen.getByText(/SV001/i)).toBeInTheDocument();
   });
 
+  it("renders link CTA to attendance details with employeeId and date query", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [
+        {
+          id: "attendance-2",
+          employeeId: "staff-1",
+          status: "late",
+          checkInAt: "2026-04-20T06:10:00.000Z",
+          checkOutAt: null,
+          employeeName: "Lan Manager",
+          employeeCode: "MN001",
+          shiftStartTime: "2026-04-20T06:00:00.000Z",
+          shiftEndTime: "2026-04-20T07:00:00.000Z",
+          shiftType: "morning",
+          isLate: true,
+          reviewNote: null,
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+
+    const pushStateSpy = vi.spyOn(window.history, "pushState");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Mở chấm công chi tiết" }),
+    );
+
+    expect(pushStateSpy).toHaveBeenCalled();
+    const [, , nextUrl] = pushStateSpy.mock.calls.at(-1);
+    expect(String(nextUrl)).toContain("staffPage=attendance");
+    expect(String(nextUrl)).toContain("employeeId=staff-1");
+    expect(String(nextUrl)).toContain("date=2026-04-20");
+
+    expect(
+      await screen.findByRole("button", { name: "Ghi chú xử lý" }),
+    ).toBeInTheDocument();
+  });
+
 
 });
