@@ -1,4 +1,6 @@
 import React, { useContext, useMemo, useState } from "react";
+import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import AiHandoffBadge from "@/components/communication/AiHandoffBadge";
@@ -6,6 +8,18 @@ import "./AiHandoffInbox.scss";
 
 const HANDOFF_PREFIX = "ai handoff";
 const HANDOFF_MARKER = "[AI HANDOFF]";
+const RESOLVE_AI_CHATBOT_HANDOFF = gql`
+  mutation ResolveAiChatbotHandoff($input: ResolveAiChatbotHandoffInput!) {
+    resolveAiChatbotHandoff(input: $input) {
+      ok
+      conversationId
+      chatThreadId
+      status
+      alreadyClosed
+      message
+    }
+  }
+`;
 
 const formatTime = (iso) =>
   iso
@@ -49,6 +63,8 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   const [reply, setReply] = useState("");
   const [warning, setWarning] = useState("");
   const [actionError, setActionError] = useState("");
+  const [resolvedThreadIds, setResolvedThreadIds] = useState(() => new Set());
+  const [resolveHandoff, { loading: resolving }] = useMutation(RESOLVE_AI_CHATBOT_HANDOFF);
 
   const restaurantId = useMemo(
     () => resolveRestaurantId({ propRestaurantId, user }),
@@ -117,8 +133,10 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
         });
       }
     }
-    return [...map.values()].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
-  }, [notificationItems, threadItems]);
+    return [...map.values()]
+      .filter((item) => !resolvedThreadIds.has(String(item.threadId || "")))
+      .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+  }, [notificationItems, threadItems, resolvedThreadIds]);
 
   const openItem = async (item) => {
     setWarning("");
@@ -162,6 +180,24 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       runBestEffort(refetchThreads?.());
     } catch (error) {
       setActionError(error?.message || "Không thể gửi phản hồi lúc này.");
+    }
+  };
+  const isThreadClosed = String(thread?.status || "").toLowerCase() === "closed";
+
+  const onResolve = async () => {
+    const threadId = thread?.id || selectedItem?.threadId || null;
+    if (!threadId) return;
+    setActionError("");
+    try {
+      const { data } = await resolveHandoff({ variables: { input: { chatThreadId: threadId } } });
+      if (!data?.resolveAiChatbotHandoff?.ok) throw new Error(data?.resolveAiChatbotHandoff?.message || "Không thể kết thúc hỗ trợ.");
+      setResolvedThreadIds((current) => new Set(current).add(String(threadId)));
+      setReply("");
+      await loadThread({ variables: { id: threadId } });
+      runBestEffort(refetchThreads?.());
+      runBestEffort(refetchNotifications?.());
+    } catch (error) {
+      setActionError(error?.message || "Không thể kết thúc hỗ trợ lúc này.");
     }
   };
 
@@ -256,7 +292,11 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
             onChange={(e) => setReply(e.target.value)}
             placeholder="Nhập phản hồi cho luồng hỗ trợ..."
           />
-          <button type="submit" disabled={!reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
+          <button type="submit" disabled={isThreadClosed || !reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
+          <button type="button" onClick={onResolve} disabled={!selectedItem || isThreadClosed || resolving}>
+            {resolving ? "Đang xử lý..." : "Đánh dấu đã xử lý"}
+          </button>
+          {isThreadClosed ? <small>Phiên hỗ trợ này đã được đóng.</small> : null}
           <small>
             Hiện phản hồi của nhân viên được lưu trong luồng hỗ trợ nội bộ; khách guest có thể chưa nhận trực tiếp nếu chưa có guest messaging 2 chiều.
           </small>

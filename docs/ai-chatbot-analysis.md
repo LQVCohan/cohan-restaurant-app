@@ -326,3 +326,45 @@ Phase 6 hoàn thiện luồng handoff 2 chiều: sau khi đã handoff, guest ti�
 
 - Chưa bổ sung rate-limit riêng cho mutation guest send (để phase tiếp theo).
 - Chưa hỗ trợ attachment từ guest trong luồng handoff.
+
+## 16. Phase 7 - Close/resolve AI handoff lifecycle
+
+Phase 7 bổ sung khả năng cho staff/manager đóng phiên handoff sau khi xử lý xong yêu cầu của khách.
+
+### Trạng thái và vòng đời
+
+- `AiChatConversation.status` chuyển từ `handoff_requested` sang `closed`.
+- `ChatThread.status` chuyển từ `open` sang `closed`.
+- Không thêm enum mới; tái sử dụng `closed` để giữ tương thích.
+
+### Hành động của staff
+
+- Tại `AiHandoffInbox`, staff có nút `Đánh dấu đã xử lý`.
+- Khi bấm nút, frontend gọi mutation `resolveAiChatbotHandoff`.
+- Backend cập nhật trạng thái conversation/thread, ghi metadata resolve, và append system closure message vào thread.
+
+### Hành vi guest sau khi đóng
+
+- Guest widget nhận sự kiện realtime `aiChatbotHandoffResolved` hoặc thấy cờ đóng qua polling (`handoffClosed`, `conversationStatus`).
+- Widget hiển thị thông báo: `Nhân viên đã kết thúc phiên hỗ trợ.`
+- Widget dừng luồng handoff realtime/polling cho conversation đã đóng.
+- Guest không thể gửi thêm tin nhắn theo luồng staff-thread của handoff đã đóng (backend trả `ok=false`).
+- Guest vẫn có thể tiếp tục chat AI bình thường và yêu cầu handoff mới khi cần.
+
+### Bảo mật
+
+- Chỉ user đã xác thực và có quyền truy cập thread/restaurant mới resolve được handoff.
+- Guest/unauthenticated không được đóng handoff.
+- Cross-restaurant access bị chặn theo quyền truy cập communication hiện có.
+- Payload trả cho guest chỉ chứa field an toàn; không lộ internals của `ChatThread`.
+
+### Realtime + polling fallback
+
+- Realtime: emit `aiChatbotHandoffResolved` tới room guest `ai_conv_${conversationId}` (payload guest-safe).
+- Staff side: emit `threadUpdated` và closure marker (`chatMessageCreated`) theo pattern communication hiện hữu.
+- Polling fallback vẫn giữ nguyên; response `aiChatbotGuestReplies` bổ sung `conversationStatus` + `handoffClosed` để parity với realtime.
+
+### Giới hạn hiện tại
+
+- Inbox hiện ưu tiên danh sách open handoff; lịch sử closed chưa có trang archive riêng.
+- Closure note hiện chủ yếu phục vụ vận hành nội bộ trên thread/message log.

@@ -155,12 +155,12 @@ describe("getRestaurantChatbotGuestReplies", () => {
     });
 
     const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_other" } });
-    expect(result).toEqual({ ok: false, handoffRequested: false, conversationId, replies: [] });
+    expect(result).toEqual({ ok: false, handoffRequested: false, conversationStatus: null, handoffClosed: false, conversationId, replies: [] });
   });
 
   it("returns safe empty for invalid conversationId", async () => {
     const result = await getRestaurantChatbotGuestReplies({ input: { conversationId: "bad-id", guestId: "guest_abc" } });
-    expect(result).toEqual({ ok: false, handoffRequested: false, conversationId: "bad-id", replies: [] });
+    expect(result).toEqual({ ok: false, handoffRequested: false, conversationStatus: null, handoffClosed: false, conversationId: "bad-id", replies: [] });
   });
 
   it("returns safe empty replies when no chatThreadId", async () => {
@@ -170,7 +170,17 @@ describe("getRestaurantChatbotGuestReplies", () => {
     });
 
     const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_abc" } });
-    expect(result).toEqual({ ok: true, handoffRequested: true, conversationId, replies: [] });
+    expect(result).toEqual({ ok: true, handoffRequested: true, conversationStatus: "handoff_requested", handoffClosed: false, conversationId, replies: [] });
+  });
+
+  it("returns closed status fields when handoff was closed", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: conversationId, guestId: "guest_abc", status: "closed", chatThreadId: null }),
+    });
+    const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_abc" } });
+    expect(result.handoffClosed).toBe(true);
+    expect(result.conversationStatus).toBe("closed");
   });
 });
 
@@ -248,6 +258,19 @@ describe("sendRestaurantChatbotGuestMessage", () => {
       chatThreadId: "507f1f77bcf86cd799439012",
     });
 
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_abc", content: "x" },
+    });
+    expect(out.ok).toBe(false);
+  });
+  it("fails when conversation is closed", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_abc",
+      status: "closed",
+      chatThreadId: "507f1f77bcf86cd799439012",
+    });
     const out = await sendRestaurantChatbotGuestMessage({
       input: { conversationId, guestId: "guest_abc", content: "x" },
     });

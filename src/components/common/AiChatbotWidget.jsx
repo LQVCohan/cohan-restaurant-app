@@ -73,6 +73,8 @@ const Q_AI_CHATBOT_GUEST_REPLIES = gql`
     aiChatbotGuestReplies(input: $input) {
       ok
       handoffRequested
+      conversationStatus
+      handoffClosed
       conversationId
       replies {
         id
@@ -145,6 +147,7 @@ function AiChatbotWidget() {
   });
   const [conversationId, setConversationId] = useState("");
   const [handoffRequested, setHandoffRequested] = useState(false);
+  const [handoffClosed, setHandoffClosed] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const params = useParams();
   const location = useLocation();
@@ -172,6 +175,7 @@ function AiChatbotWidget() {
   useEffect(() => {
     if (!conversationId || typeof window === "undefined") return setHandoffRequested(false);
     setHandoffRequested(window.localStorage.getItem(getHandoffStorageKey(conversationId)) === "1");
+    setHandoffClosed(false);
   }, [conversationId]);
 
   useEffect(() => {
@@ -219,7 +223,18 @@ function AiChatbotWidget() {
           },
         },
       });
-      appendGuestReplies(data?.aiChatbotGuestReplies?.replies || []);
+      const guestReplies = data?.aiChatbotGuestReplies;
+      appendGuestReplies(guestReplies?.replies || []);
+      if (guestReplies?.handoffClosed || guestReplies?.conversationStatus === "closed") {
+        setHandoffRequested(false);
+        setHandoffClosed(true);
+        if (typeof window !== "undefined" && conversationId) window.localStorage.removeItem(getHandoffStorageKey(conversationId));
+        setMessages((current) =>
+          current.some((m) => m?.meta?.type === "handoff_closed_notice")
+            ? current
+            : [...current, { role: "assistant", content: "Nhân viên đã kết thúc phiên hỗ trợ.", meta: { type: "handoff_closed_notice" } }]
+        );
+      }
     } catch {
       // best effort polling only
     }
@@ -239,7 +254,20 @@ function AiChatbotWidget() {
       appendGuestReplies(payload ? [payload] : []);
     };
 
+    const onHandoffResolved = (payload) => {
+      if (String(payload?.status || "") !== "closed") return;
+      setHandoffRequested(false);
+      setHandoffClosed(true);
+      if (typeof window !== "undefined" && conversationId) window.localStorage.removeItem(getHandoffStorageKey(conversationId));
+      setMessages((current) =>
+        current.some((m) => m?.meta?.type === "handoff_closed_notice")
+          ? current
+          : [...current, { role: "assistant", content: payload?.message || "Nhân viên đã kết thúc phiên hỗ trợ.", meta: { type: "handoff_closed_notice" } }]
+      );
+    };
+
     socket.on("aiChatbotStaffReplyCreated", onStaffReply);
+    socket.on("aiChatbotHandoffResolved", onHandoffResolved);
 
     socket.on("connect", () => {
       socket.emit("joinAiChatbotConversation", { conversationId, guestId }, () => {});
@@ -247,6 +275,7 @@ function AiChatbotWidget() {
 
     return () => {
       socket.off("aiChatbotStaffReplyCreated", onStaffReply);
+      socket.off("aiChatbotHandoffResolved", onHandoffResolved);
       socket.emit("leaveAiChatbotConversation", { conversationId, guestId });
       socket.disconnect();
     };
@@ -276,16 +305,13 @@ function AiChatbotWidget() {
         setGuestId(safeGuestId);
       }
 
-      if (handoffRequested && conversationId) {
+      if (handoffRequested && conversationId && !handoffClosed) {
         const { data } = await sendGuestMessage({
           variables: { input: { conversationId, guestId: safeGuestId, content } },
         });
         const ok = data?.sendAiChatbotGuestMessage?.ok;
         if (!ok) {
-          setMessages((current) => [
-            ...current,
-            { role: "assistant", content: "Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại." },
-          ]);
+          setMessages((current) => [...current, { role: "assistant", content: "Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại." }]);
         }
         return;
       }
@@ -357,6 +383,7 @@ function AiChatbotWidget() {
           window.localStorage.setItem(getHandoffStorageKey(conversationId), "1");
         }
         setHandoffRequested(true);
+        setHandoffClosed(false);
         fetchGuestReplies({ force: true });
       }
       setMessages((current) => [
@@ -446,6 +473,12 @@ function AiChatbotWidget() {
             <div className="ai-chatbot-context">
               <Sparkles size={14} />
               <span>Nhân viên đã được thông báo. Bạn có thể tiếp tục gửi tin nhắn, nhân viên sẽ xem lịch sử trước đó.</span>
+            </div>
+          ) : null}
+          {handoffClosed ? (
+            <div className="ai-chatbot-context">
+              <Sparkles size={14} />
+              <span>Nhân viên đã kết thúc phiên hỗ trợ.</span>
             </div>
           ) : null}
 
