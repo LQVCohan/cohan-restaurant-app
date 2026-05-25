@@ -49,12 +49,15 @@ export default function useForYouRecommendations({
   maxRestaurants = 5,
   enabled = true,
   timeSlot,
+  preferencesOverride = null,
 } = {}) {
   const client = useApolloClient();
   const { restaurants, refRestaurant, isAuthenticated } = useContext(AuthContext) || {};
-  const { preferences, loading: prefLoading, error: prefError } = useFoodPreferences({
-    skip: !enabled || !isAuthenticated,
+  const shouldLoadPreferences = !preferencesOverride;
+  const { preferences: loadedPreferences, loading: prefLoading, error: prefError } = useFoodPreferences({
+    skip: !enabled || !isAuthenticated || !shouldLoadPreferences,
   });
+  const effectivePreferences = preferencesOverride || loadedPreferences;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
@@ -129,10 +132,10 @@ export default function useForYouRecommendations({
   const scoredItems = useMemo(() => sortMenuItemsByFoodPreference(
     items.map((item) => ({
       ...item,
-      foodPreferenceMeta: analyzeMenuItemForFoodPreferences(item, preferences),
+      foodPreferenceMeta: analyzeMenuItemForFoodPreferences(item, effectivePreferences),
     })),
-    preferences,
-  ), [items, preferences]);
+    effectivePreferences,
+  ), [effectivePreferences, items]);
 
   const recommendedItems = useMemo(
     () => scoredItems.filter((item) => item.foodPreferenceMeta?.isRecommended),
@@ -152,9 +155,12 @@ export default function useForYouRecommendations({
       });
   }, [recommendedItems.length, scoredItems]);
 
+  const effectivePrefLoading = shouldLoadPreferences ? prefLoading : false;
+  const effectivePrefError = shouldLoadPreferences ? prefError : null;
+
   return {
-    loading: loading || prefLoading,
-    error: error || prefError?.message || "",
+    loading: loading || effectivePrefLoading,
+    error: error || effectivePrefError?.message || "",
     items,
     scoredItems,
     recommendedItems,

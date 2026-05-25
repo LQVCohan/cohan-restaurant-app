@@ -27,7 +27,10 @@ const ForYou = () => {
     warningItems: allWarningItems,
     fallbackItems: allFallbackItems,
     accessibleRestaurants,
-  } = useForYouRecommendations({ enabled: true });
+  } = useForYouRecommendations({
+    enabled: true,
+    preferencesOverride: preferences,
+  });
 
   const recommendedItems = useMemo(() => allRecommendedItems.slice(0, 8), [allRecommendedItems]);
   const warningItems = useMemo(() => allWarningItems.slice(0, 6), [allWarningItems]);
