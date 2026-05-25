@@ -1729,6 +1729,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
     MARK_SHIFT_ATTENDANCE_REVIEWED,
   );
   const [attendanceReviewErrorByRowId, setAttendanceReviewErrorByRowId] = useState({});
+  const [attendanceReviewModalRow, setAttendanceReviewModalRow] = useState(null);
+  const [attendanceReviewNote, setAttendanceReviewNote] = useState("");
+  const [attendanceReviewModalError, setAttendanceReviewModalError] = useState("");
+  const [isSubmittingAttendanceReview, setIsSubmittingAttendanceReview] = useState(false);
 
   const todayAttendances = useMemo(
     () => managerShiftAttendancesData?.managerShiftAttendances || [],
@@ -1768,15 +1772,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       .sort((a, b) => (priority[a.issueType] ?? 99) - (priority[b.issueType] ?? 99));
   }, [todayAttendances]);
 
-  const handleAttendanceReview = useCallback(async (row) => {
-    const rawNote = window.prompt("Nhập ghi chú xử lý chấm công:");
-    if (rawNote === null) return;
-    const trimmedNote = String(rawNote || "").trim();
-    if (trimmedNote.length < 5) {
-      showNotification("Ghi chú xử lý cần tối thiểu 5 ký tự.", "error");
-      return;
-    }
-
+  const handleAttendanceReview = useCallback((row) => {
     if (String(row?.id || "").startsWith("shift-")) {
       setAttendanceReviewErrorByRowId((prev) => ({
         ...prev,
@@ -1784,20 +1780,53 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }));
       return;
     }
+    setAttendanceReviewErrorByRowId((prev) => {
+      const next = { ...prev };
+      delete next[String(row.id)];
+      return next;
+    });
+    setAttendanceReviewModalRow(row);
+    setAttendanceReviewNote("");
+    setAttendanceReviewModalError("");
+  }, []);
 
+  const closeAttendanceReviewModal = useCallback(() => {
+    if (isSubmittingAttendanceReview) return;
+    setAttendanceReviewModalRow(null);
+    setAttendanceReviewNote("");
+    setAttendanceReviewModalError("");
+  }, [isSubmittingAttendanceReview]);
+
+  const submitAttendanceReviewNote = useCallback(async () => {
+    if (!attendanceReviewModalRow) return;
+    const trimmedNote = String(attendanceReviewNote || "").trim();
+    if (trimmedNote.length < 5) {
+      setAttendanceReviewModalError("Ghi chú xử lý cần tối thiểu 5 ký tự.");
+      return;
+    }
     try {
-      setAttendanceReviewErrorByRowId((prev) => {
-        const next = { ...prev };
-        delete next[String(row.id)];
-        return next;
+      setAttendanceReviewModalError("");
+      setIsSubmittingAttendanceReview(true);
+      await markShiftAttendanceReviewed({
+        variables: { attendanceId: attendanceReviewModalRow.id, note: trimmedNote },
       });
-      await markShiftAttendanceReviewed({ variables: { attendanceId: row.id, note: trimmedNote } });
       await managerShiftAttendancesRefetch?.();
       showNotification("Đã ghi chú xử lý chấm công.", "success");
+      setAttendanceReviewModalRow(null);
+      setAttendanceReviewNote("");
+      setAttendanceReviewModalError("");
     } catch (error) {
       showNotification(error?.message || "Không thể ghi chú xử lý chấm công.", "error");
+    } finally {
+      setIsSubmittingAttendanceReview(false);
     }
-  }, [managerShiftAttendancesRefetch, markShiftAttendanceReviewed, showNotification]);
+  }, [
+    attendanceReviewModalRow,
+    attendanceReviewNote,
+    managerShiftAttendancesRefetch,
+    markShiftAttendanceReviewed,
+    showNotification,
+  ]);
   const formatAttendanceTime = (value) => {
     if (!value) return "--:--";
     const date = new Date(value);
@@ -4414,6 +4443,49 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </button>
           ) : null}
         </section>
+        {attendanceReviewModalRow ? (
+          <div
+            className="schedule-publish-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="attendance-review-modal-title"
+          >
+            <div className="publish-confirm-card schedule-override-modal">
+              <h3 id="attendance-review-modal-title">Ghi chú xử lý chấm công</h3>
+              <p>
+                {(attendanceReviewModalRow.employeeName || "Nhân viên chưa rõ")} /{" "}
+                {(attendanceReviewModalRow.employeeCode || "—")}
+              </p>
+              <p>Giờ ca: {formatShiftTimeRange(attendanceReviewModalRow)}</p>
+              <p>Loại bất thường: {attendanceReviewModalRow.issueLabel}</p>
+              <textarea
+                value={attendanceReviewNote}
+                onChange={(event) => {
+                  setAttendanceReviewNote(event.target.value);
+                  if (attendanceReviewModalError) setAttendanceReviewModalError("");
+                }}
+                placeholder="Nhập ghi chú xử lý..."
+                rows={4}
+              />
+              {attendanceReviewModalError ? (
+                <p className="schedule-quality-panel__headline">{attendanceReviewModalError}</p>
+              ) : null}
+              <div className="publish-confirm-card__actions">
+                <button type="button" className="staff-secondary-btn" onClick={closeAttendanceReviewModal}>
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="staff-primary-btn"
+                  onClick={submitAttendanceReviewNote}
+                  disabled={isSubmittingAttendanceReview}
+                >
+                  Lưu ghi chú
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <section
           className={`schedule-quality-panel tone-${scheduleQualitySummary.tone}`}
           aria-label="Chất lượng lịch tuần"

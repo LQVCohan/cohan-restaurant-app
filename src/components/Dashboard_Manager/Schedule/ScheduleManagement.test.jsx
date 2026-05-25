@@ -186,6 +186,7 @@ describe("ScheduleManagement", () => {
     mockManagerShiftAttendancesData = {
       managerShiftAttendances: [],
     };
+    vi.spyOn(window, "prompt").mockReturnValue("Ghi chú hợp lệ");
   });
 
   afterEach(() => {
@@ -561,6 +562,74 @@ describe("ScheduleManagement", () => {
     expect(
       await screen.findByRole("button", { name: "Thu gọn đăng ký lịch nhân viên" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows inline error for synthetic attendance rows instead of opening modal", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [
+        {
+          id: "shift-1",
+          employeeId: "staff-1",
+          status: "scheduled",
+          checkInAt: null,
+          checkOutAt: null,
+          employeeName: "Lan Manager",
+          employeeCode: "MN001",
+          shiftStartTime: "2026-04-20T06:00:00.000Z",
+          shiftEndTime: "2026-04-20T14:00:00.000Z",
+          shiftType: "morning",
+          isLate: false,
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+    fireEvent.click(await screen.findByRole("button", { name: "Ghi chú xử lý" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Ca chưa có bản ghi chấm công; hãy yêu cầu nhân viên check-in hoặc tạo điều chỉnh chấm công.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("opens attendance review modal and submits note without window.prompt", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [
+        {
+          id: "attendance-1",
+          employeeId: "staff-1",
+          status: "checked_in",
+          checkInAt: "2026-04-20T06:20:00.000Z",
+          checkOutAt: null,
+          employeeName: "Lan Manager",
+          employeeCode: "MN001",
+          shiftStartTime: "2026-04-20T06:00:00.000Z",
+          shiftEndTime: "2026-04-20T07:00:00.000Z",
+          shiftType: "morning",
+          isLate: true,
+        },
+      ],
+    };
+    render(<ScheduleManagement />);
+    mutationSpy.mockClear();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ghi chú xử lý" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
+    expect(await screen.findByText("Ghi chú xử lý cần tối thiểu 5 ký tự.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Nhập ghi chú xử lý..."), {
+      target: { value: "Đã nhắc nhở nhân viên." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
+
+    await waitFor(() =>
+      expect(mutationSpy).toHaveBeenCalledWith({
+        variables: { attendanceId: "attendance-1", note: "Đã nhắc nhở nhân viên." },
+      }),
+    );
   });
 
 });
