@@ -1712,6 +1712,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       periodStart: startOfDay(now).toISOString(),
       periodEnd: endOfDay(now).toISOString(),
     };
+  };
   }, []);
   const {
     data: managerShiftAttendancesData,
@@ -1736,6 +1737,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [attendanceReviewModalError, setAttendanceReviewModalError] = useState("");
   const [isSubmittingAttendanceReview, setIsSubmittingAttendanceReview] = useState(false);
   const [attendanceIssueFilter, setAttendanceIssueFilter] = useState("unreviewed");
+  const [attendanceIssueResolutionFilter, setAttendanceIssueResolutionFilter] = useState("active");
 
   const todayAttendances = useMemo(
     () => managerShiftAttendancesData?.managerShiftAttendances || [],
@@ -1776,6 +1778,57 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [todayAttendances]);
 
 
+  function getAttendanceIssueResolution(row) {
+    const correctionStatus = getCorrectionLinkStatus(row);
+    const hasReviewNote = String(row?.reviewNote || "").trim().length > 0;
+    if (correctionStatus.primaryStatus === "pending") {
+      return {
+        key: "in_progress",
+        label: "Đang xử lý",
+        tone: "warning",
+        description: "Đã có yêu cầu chỉnh công chờ duyệt.",
+      };
+    }
+    if (correctionStatus.primaryStatus === "applied") {
+      return {
+        key: "resolved",
+        label: "Đã xử lý",
+        tone: "success",
+        description: "Yêu cầu chỉnh công đã được áp dụng.",
+      };
+    }
+    if (correctionStatus.primaryStatus === "rejected") {
+      return {
+        key: "needs_follow_up",
+        label: "Cần kiểm tra lại",
+        tone: "danger",
+        description: "Yêu cầu chỉnh công bị từ chối.",
+      };
+    }
+    if (correctionStatus.primaryStatus === "cancelled") {
+      return {
+        key: "needs_follow_up",
+        label: "Cần kiểm tra lại",
+        tone: "danger",
+        description: "Yêu cầu chỉnh công đã hủy.",
+      };
+    }
+    if (hasReviewNote) {
+      return {
+        key: "reviewed",
+        label: "Đã ghi chú",
+        tone: "neutral",
+        description: "Manager đã ghi chú xử lý.",
+      };
+    }
+    return {
+      key: "open",
+      label: "Chưa xử lý",
+      tone: "warning",
+      description: "Chưa có ghi chú hoặc yêu cầu chỉnh công.",
+    };
+  }
+
   const attendanceIssueCounts = useMemo(() => {
     const reviewed = attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length > 0).length;
     const total = attendanceIssueRows.length;
@@ -1786,15 +1839,37 @@ const ScheduleManagement = ({ readOnly = false }) => {
     };
   }, [attendanceIssueRows]);
 
+  const attendanceIssueResolutionSummary = useMemo(() => {
+    return attendanceIssueRows.reduce((acc, row) => {
+      const resolution = getAttendanceIssueResolution(row);
+      if (resolution.key === "open") acc.open += 1;
+      if (resolution.key === "in_progress") acc.inProgress += 1;
+      if (resolution.key === "resolved" || resolution.key === "reviewed") acc.resolved += 1;
+      if (resolution.key === "needs_follow_up") acc.needsFollowUp += 1;
+      return acc;
+    }, { open: 0, inProgress: 0, resolved: 0, needsFollowUp: 0 });
+  }, [attendanceIssueRows, getAttendanceIssueResolution]);
+
   const visibleAttendanceIssueRows = useMemo(() => {
-    if (attendanceIssueFilter === "reviewed") {
-      return attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length > 0);
-    }
-    if (attendanceIssueFilter === "unreviewed") {
-      return attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length === 0);
-    }
-    return attendanceIssueRows;
-  }, [attendanceIssueFilter, attendanceIssueRows]);
+    const byReviewNote = attendanceIssueRows.filter((row) => {
+      const hasReviewNote = String(row?.reviewNote || "").trim().length > 0;
+      if (attendanceIssueFilter === "reviewed") return hasReviewNote;
+      if (attendanceIssueFilter === "unreviewed") return !hasReviewNote;
+      return true;
+    });
+    return byReviewNote.filter((row) => {
+      const resolution = getAttendanceIssueResolution(row);
+      if (attendanceIssueResolutionFilter === "active") {
+        return resolution.key === "open" || resolution.key === "needs_follow_up";
+      }
+      if (attendanceIssueResolutionFilter === "in_progress") return resolution.key === "in_progress";
+      if (attendanceIssueResolutionFilter === "resolved") {
+        return resolution.key === "resolved" || resolution.key === "reviewed";
+      }
+      if (attendanceIssueResolutionFilter === "needs_follow_up") return resolution.key === "needs_follow_up";
+      return true;
+    });
+  }, [attendanceIssueFilter, attendanceIssueResolutionFilter, attendanceIssueRows, getAttendanceIssueResolution]);
   const attendanceCorrectionFilter = useMemo(() => ({
     restaurantId: effectiveRestaurantId || undefined,
     startDate: todayAttendanceRange.periodStart,
@@ -1814,21 +1889,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
     () => attendanceCorrectionsData?.attendanceCorrectionRequests || [],
     [attendanceCorrectionsData],
   );
-  const toDateKey = useCallback((value) => {
+  function toDateKey(value) {
     if (!value) return null;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return format(date, "yyyy-MM-dd");
-  }, []);
-  const normalizeCorrectionStatus = useCallback((value) => {
+  }
+  function normalizeCorrectionStatus(value) {
     const status = String(value || "").toLowerCase();
     if (status === "pending") return "pending";
     if (["applied", "approved", "completed"].includes(status)) return "applied";
     if (["rejected", "declined"].includes(status)) return "rejected";
     if (["cancelled", "canceled"].includes(status)) return "cancelled";
     return "unknown";
-  }, []);
-  const getCorrectionLinkStatus = useCallback((row) => {
+  }
+  function getCorrectionLinkStatus(row) {
     const rowShiftId = row?.shiftId ? String(row.shiftId) : null;
     const rowEmployeeId = row?.employeeId ? String(row.employeeId) : null;
     const rowDateKey = toDateKey(row?.shiftStartTime || row?.checkInAt);
@@ -1874,7 +1949,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       tone: primaryStatus,
       latestRequest,
     };
-  }, [attendanceCorrectionRequests, normalizeCorrectionStatus, toDateKey]);
+  }
   const visibleAttendanceIssueCorrectionSummary = useMemo(() => {
     return visibleAttendanceIssueRows.reduce((acc, row) => {
       const status = getCorrectionLinkStatus(row);
@@ -4381,7 +4456,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     return () => {
       window.removeEventListener("afterprint", handleAfterPrint);
       document.body.classList.remove("schedule-print-mode");
-    };
+    }
   }, []);
 
   return (
@@ -4560,36 +4635,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
             ) : (
               <>
                 <div className="schedule-quality-panel__actions" role="group" aria-label="Lọc bất thường chấm công">
-                  <button
-                    type="button"
-                    className="staff-secondary-btn"
-                    aria-pressed={attendanceIssueFilter === "unreviewed"}
-                    onClick={() => setAttendanceIssueFilter("unreviewed")}
-                  >
-                    Cần xử lý ({attendanceIssueCounts.unreviewed})
-                  </button>
-                  <button
-                    type="button"
-                    className="staff-secondary-btn"
-                    aria-pressed={attendanceIssueFilter === "reviewed"}
-                    onClick={() => setAttendanceIssueFilter("reviewed")}
-                  >
-                    Đã ghi chú ({attendanceIssueCounts.reviewed})
-                  </button>
-                  <button
-                    type="button"
-                    className="staff-secondary-btn"
-                    aria-pressed={attendanceIssueFilter === "all"}
-                    onClick={() => setAttendanceIssueFilter("all")}
-                  >
-                    Tất cả ({attendanceIssueCounts.total})
-                  </button>
+                  <button type="button" className="staff-secondary-btn" aria-pressed={attendanceIssueResolutionFilter === "active"} onClick={() => setAttendanceIssueResolutionFilter("active")}>Cần xử lý ({attendanceIssueResolutionSummary.open + attendanceIssueResolutionSummary.needsFollowUp})</button>
+                  <button type="button" className="staff-secondary-btn" aria-pressed={attendanceIssueResolutionFilter === "in_progress"} onClick={() => setAttendanceIssueResolutionFilter("in_progress")}>Đang xử lý ({attendanceIssueResolutionSummary.inProgress})</button>
+                  <button type="button" className="staff-secondary-btn" aria-pressed={attendanceIssueResolutionFilter === "resolved"} onClick={() => setAttendanceIssueResolutionFilter("resolved")}>Đã xử lý ({attendanceIssueResolutionSummary.resolved})</button>
+                  <button type="button" className="staff-secondary-btn" aria-pressed={attendanceIssueResolutionFilter === "needs_follow_up"} onClick={() => setAttendanceIssueResolutionFilter("needs_follow_up")}>Cần kiểm tra lại ({attendanceIssueResolutionSummary.needsFollowUp})</button>
+                  <button type="button" className="staff-secondary-btn" aria-pressed={attendanceIssueResolutionFilter === "all"} onClick={() => setAttendanceIssueResolutionFilter("all")}>Tất cả ({attendanceIssueCounts.total})</button>
                 </div>
                 {attendanceCorrectionsLoading ? (
                   <p className="schedule-quality-panel__headline">Đang tải trạng thái chỉnh công...</p>
                 ) : attendanceCorrectionsError ? (
                   <p className="schedule-quality-panel__headline">Không tải được trạng thái chỉnh công.</p>
                 ) : null}
+                <p className="schedule-quality-panel__headline">
+                  Vòng xử lý: Chưa xử lý {attendanceIssueResolutionSummary.open} · Đang xử lý {attendanceIssueResolutionSummary.inProgress} · Đã xử lý {attendanceIssueResolutionSummary.resolved} · Cần kiểm tra lại {attendanceIssueResolutionSummary.needsFollowUp}
+                </p>
                 <p className="schedule-quality-panel__headline">
                   Có {visibleAttendanceIssueCorrectionSummary.withCorrections} bất thường đã có yêu cầu chỉnh công · {visibleAttendanceIssueCorrectionSummary.pending} yêu cầu đang chờ duyệt
                 </p>
@@ -4607,12 +4666,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   <li key={row.id}>
                     {(() => {
                       const correctionStatus = getCorrectionLinkStatus(row);
+                      const resolution = getAttendanceIssueResolution(row);
                       return (
                         <>
                     {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {row.issueLabel}
-                          <p className="schedule-quality-panel__headline">
-                            Chỉnh công: {correctionStatus.label}
-                          </p>
+                          <p className="schedule-quality-panel__headline">Trạng thái: {resolution.label}</p>
+                          <p className="schedule-quality-panel__headline">{resolution.description}</p>
+                          <p className="schedule-quality-panel__headline">Chỉnh công: {correctionStatus.label}</p>
                     {row.reviewNote ? (
                       <>
                         <p className="schedule-quality-panel__headline">Đã ghi chú xử lý</p>
@@ -4631,11 +4691,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     >
                       Mở chấm công chi tiết
                     </button>
-                          {correctionStatus.primaryStatus === "pending" ? (
-                            <p className="schedule-quality-panel__headline">
-                              Mở chấm công chi tiết để xem yêu cầu chỉnh công
-                            </p>
-                          ) : null}
+                          {resolution.key === "open" ? (<p className="schedule-quality-panel__headline">Mở chấm công chi tiết để tạo yêu cầu chỉnh công hoặc ghi chú xử lý.</p>) : null}
+                          {resolution.key === "in_progress" ? (<p className="schedule-quality-panel__headline">Mở chấm công chi tiết để xem yêu cầu chỉnh công đang chờ duyệt.</p>) : null}
+                          {resolution.key === "needs_follow_up" ? (<p className="schedule-quality-panel__headline">Yêu cầu chỉnh công chưa hoàn tất, cần kiểm tra lại.</p>) : null}
                     {attendanceReviewErrorByRowId[row.id] ? (
                       <p className="schedule-quality-panel__headline">{attendanceReviewErrorByRowId[row.id]}</p>
                     ) : null}
