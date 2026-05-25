@@ -48,9 +48,10 @@ const UPDATE_MY_FOOD_PREFERENCES = gql`
   }
 `;
 
-export default function useFoodPreferences() {
+export default function useFoodPreferences({ skip = false } = {}) {
   const { data, loading, error, refetch } = useQuery(ME_FOOD_PREFERENCES_QUERY, {
     fetchPolicy: "cache-and-network",
+    skip,
   });
   const [preferences, setPreferences] = useState(DEFAULT_FOOD_PREFERENCES);
   const [updateMyFoodPreferences, { loading: saving }] =

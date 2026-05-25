@@ -43,6 +43,7 @@ import {
   getDiscountPreviewErrorMessage,
   useDiscountPreview,
 } from "../../../hooks/useDiscountPreview";
+import useFoodPreferences from "../../../hooks/useFoodPreferences";
 const DEFAULT_SHIPPING = (prefill = {}) => ({
   fullName: prefill.fullName || "",
   phone: prefill.phone || "",
@@ -139,6 +140,7 @@ const OrderSummaryModal = ({
 
   const [shipping, setShipping] = useState(DEFAULT_SHIPPING());
   const [shippingTouched, setShippingTouched] = useState(false);
+  const [noteTouched, setNoteTouched] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -151,6 +153,15 @@ const OrderSummaryModal = ({
 
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
+  const { previewNote: foodPreferenceNote, loading: isLoadingFoodPreferences } =
+    useFoodPreferences({ skip: !isAuthenticated });
+  const hasMeaningfulFoodPreferenceNote =
+    !!foodPreferenceNote &&
+    foodPreferenceNote !== "Chưa có ghi chú đặc biệt." &&
+    !isLoadingFoodPreferences;
+  const isFoodPreferenceNoteApplied =
+    hasMeaningfulFoodPreferenceNote &&
+    (shipping?.note || "").includes(foodPreferenceNote);
   const handleCloseAll = () => {
     setIsSuccessOpen(false);
     onClose?.();
@@ -227,6 +238,7 @@ const OrderSummaryModal = ({
       setOrderData(mappedOrderData);
       setShipping(DEFAULT_SHIPPING(prefill));
       setShippingTouched(false);
+      setNoteTouched(false);
       setCouponCode("");
       setSelectedPromotionIds([]);
       setDiscountBreakdown(null);
@@ -284,7 +296,35 @@ const OrderSummaryModal = ({
   const handleShippingChange = useCallback((field, value) => {
     setShipping((prev) => ({ ...prev, [field]: value }));
     setShippingTouched(true);
+    if (field === "note") setNoteTouched(true);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || noteTouched) return;
+    if (!hasMeaningfulFoodPreferenceNote) return;
+    if ((shipping?.note || "").trim()) return;
+
+    setShipping((prev) => ({ ...prev, note: foodPreferenceNote }));
+  }, [
+    isOpen,
+    isAuthenticated,
+    noteTouched,
+    shipping?.note,
+    hasMeaningfulFoodPreferenceNote,
+    foodPreferenceNote,
+  ]);
+
+  const applyFoodPreferenceNote = useCallback(() => {
+    if (!hasMeaningfulFoodPreferenceNote) return;
+
+    setShipping((prev) => {
+      const currentNote = (prev.note || "").trim();
+      if (!currentNote) return { ...prev, note: foodPreferenceNote };
+      if (currentNote.includes(foodPreferenceNote)) return prev;
+      return { ...prev, note: `${currentNote}. ${foodPreferenceNote}` };
+    });
+    setNoteTouched(true);
+  }, [hasMeaningfulFoodPreferenceNote, foodPreferenceNote]);
 
   const isShippingValid = useMemo(() => {
     const nameOk = (shipping.fullName || "").trim().length >= 2;
@@ -696,6 +736,10 @@ const OrderSummaryModal = ({
             shipping={shipping}
             shippingErrors={shippingErrors}
             onShippingChange={handleShippingChange}
+            foodPreferenceNote={foodPreferenceNote}
+            hasMeaningfulFoodPreferenceNote={hasMeaningfulFoodPreferenceNote}
+            isFoodPreferenceNoteApplied={isFoodPreferenceNoteApplied}
+            onApplyFoodPreferenceNote={applyFoodPreferenceNote}
             selectedPaymentMethod={selectedPaymentMethod}
             onAddModifier={handleAddModifier}
             onPaymentMethodSelect={handlePaymentMethodSelect}
@@ -839,6 +883,10 @@ const SummaryContent = ({
   shipping,
   shippingErrors,
   onShippingChange,
+  foodPreferenceNote,
+  hasMeaningfulFoodPreferenceNote,
+  isFoodPreferenceNoteApplied,
+  onApplyFoodPreferenceNote,
   selectedPaymentMethod,
   onAddModifier,
   onPaymentMethodSelect,
@@ -876,6 +924,10 @@ const SummaryContent = ({
       value={shipping}
       errors={shippingErrors}
       onChange={onShippingChange}
+      foodPreferenceNote={foodPreferenceNote}
+      hasMeaningfulFoodPreferenceNote={hasMeaningfulFoodPreferenceNote}
+      isFoodPreferenceNoteApplied={isFoodPreferenceNoteApplied}
+      onApplyFoodPreferenceNote={onApplyFoodPreferenceNote}
     />
     <OrderItems
       groupedByRestaurant={groupedByRestaurant}
@@ -960,7 +1012,15 @@ const RestaurantInfo = ({ orderInfo, orderData, restaurantCount }) => {
   );
 };
 
-const ShippingForm = ({ value, errors = {}, onChange }) => {
+const ShippingForm = ({
+  value,
+  errors = {},
+  onChange,
+  foodPreferenceNote,
+  hasMeaningfulFoodPreferenceNote,
+  isFoodPreferenceNoteApplied,
+  onApplyFoodPreferenceNote,
+}) => {
   const {
     fullName,
     phone,
@@ -1046,6 +1106,24 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
               value={note}
               onChange={(e) => onChange("note", e.target.value)}
             />
+            {hasMeaningfulFoodPreferenceNote && (
+              <div className="food-preference-note-suggestion">
+                <div className="food-preference-note-suggestion__text">
+                  Gợi ý từ khẩu vị của bạn: {foodPreferenceNote}
+                </div>
+                <div className="food-preference-note-suggestion__actions">
+                  {isFoodPreferenceNoteApplied ? (
+                    <span className="food-preference-note-suggestion__applied">
+                      Đã áp dụng ghi chú khẩu vị
+                    </span>
+                  ) : (
+                    <button type="button" onClick={onApplyFoodPreferenceNote}>
+                      Dùng ghi chú này
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

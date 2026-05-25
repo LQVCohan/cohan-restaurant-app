@@ -205,6 +205,45 @@ $red: #ef4444;
   }
 }
 
+.food-preference-note-suggestion {
+  margin-top: 8px;
+  border: 1px dashed #ffd8b3;
+  background: $primary-light;
+  border-radius: 8px;
+  padding: 10px 12px;
+
+  &__text {
+    font-size: 13px;
+    color: $text-main;
+    line-height: 1.4;
+  }
+
+  &__actions {
+    margin-top: 8px;
+
+    button {
+      border: none;
+      background: transparent;
+      color: $primary-dark;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0;
+      cursor: pointer;
+
+      &:hover {
+        color: $primary;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  &__applied {
+    font-size: 12px;
+    color: $green;
+    font-weight: 600;
+  }
+}
+
 /* --- SEGMENTED CONTROL (Toggle Buttons) --- */
 .segmented {
   display: flex;
