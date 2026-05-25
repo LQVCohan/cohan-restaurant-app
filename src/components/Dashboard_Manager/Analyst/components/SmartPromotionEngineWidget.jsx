@@ -4,6 +4,15 @@ import "./SmartPromotionEngineWidget.scss";
 
 const formatNumber = (value) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
 const tokenMap = {
+  new: "Khách mới",
+  often: "Khách quay lại thường xuyên",
+  vip: "Khách VIP",
+  dine_in: "Tại quán",
+  takeaway: "Mang đi",
+  delivery: "Giao hàng",
+  medium: "Trung bình",
+  high: "Cao",
+  low: "Thấp",
   active_now: "Đang còn hiệu lực",
   segment_fit: "Phù hợp nhóm khách mục tiêu",
   scope_fit: "Phù hợp phạm vi áp dụng",
@@ -17,6 +26,25 @@ const tokenMap = {
 const priorityMap = { HIGH: "Cao", MEDIUM: "Trung bình", LOW: "Thấp" };
 const discountTypeMap = { PERCENT: "Giảm theo %", FIXED: "Giảm số tiền", BOGO: "Mua tặng", COMBO: "Combo" };
 const orderTypeMap = { OFFLINE: "Tại quán", DELIVERY: "Giao hàng", TAKEAWAY: "Mang đi", ORDER: "Đơn hàng" };
+const getTokenLabel = (value, fallback = "") => {
+  const cleaned = String(value || "").trim().toLowerCase();
+  return tokenMap[cleaned] || fallback;
+};
+
+const normalizeOrderType = (value) =>
+  orderTypeMap[String(value || "").toUpperCase()] ||
+  getTokenLabel(value) ||
+  "Loại đơn cần review";
+
+const normalizePriority = (value) =>
+  priorityMap[String(value || "").toUpperCase()] ||
+  getTokenLabel(value) ||
+  "Trung bình";
+
+const normalizeSegment = (value) =>
+  getTokenLabel(value) ||
+  "Nhóm khách cần review";
+
 const normalizeToken = (token = "") => {
   const cleaned = token.trim().toLowerCase();
   if (!cleaned) return "";
@@ -58,7 +86,7 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
         <>
           <div className="summary-row">
             <span><Clock3 size={14} /> Cửa sổ cơ hội: <strong>{summary.topOpportunityWindow}</strong></span>
-            <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{summary.highestPrioritySegment}</strong></span>
+            <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{normalizeSegment(summary.highestPrioritySegment)}</strong></span>
             <span><BadgePercent size={14} /> Số campaign: <strong>{summary.recommendedCampaignCount}</strong></span>
           </div>
 
@@ -74,8 +102,8 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
                 : "Khung giờ cần review";
               return (
               <div className="campaign-item" key={campaign.campaignKey}>
-                <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${(campaign.priority || "").toLowerCase()}`}>{priorityMap[campaign.priority] || campaign.priority}</span></div>
-                <div className="item-sub">{orderTypeMap[campaign.targetOrderType] || campaign.targetOrderType} • {windowLabel}</div>
+                <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${(campaign.priority || "").toLowerCase()}`}>{normalizePriority(campaign.priority)}</span></div>
+                <div className="item-sub">{normalizeOrderType(campaign.targetOrderType)} • {windowLabel}</div>
                 <div className="group-line"><strong>Mục tiêu:</strong> Tăng đơn +{formatNumber(campaign.expectedKpi?.expectedOrdersLiftPct)}%, doanh thu +{formatNumber(campaign.expectedKpi?.expectedRevenueLiftPct)}%.</div>
                 <div className="group-line"><strong>Nhóm khách:</strong> {roleTarget(campaign.targetSegment)}.</div>
                 <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {discountTypeMap[campaign.recommendation?.discountType] || campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>

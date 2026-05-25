@@ -105,14 +105,29 @@ const ManagerAnalyst = () => {
       },
       {
         ...kpiData[3],
-        value: `${Number(kpiData[3]?.value || 0).toFixed(1)}/5`,
-        progress: clamp((Number(kpiData[3]?.value || 0) / 5) * 100),
-        period: loading ? "Đang tải..." : "Điểm đánh giá trung bình",
+        value:
+          Number(feedbackSummary?.total || 0) === 0 && Number(kpiData[3]?.value || 0) === 0
+            ? "Chưa có"
+            : `${Number(kpiData[3]?.value || 0).toFixed(1)}/5`,
+        label:
+          Number(feedbackSummary?.total || 0) === 0 && Number(kpiData[3]?.value || 0) === 0
+            ? "Chưa có đánh giá"
+            : kpiData[3]?.label,
+        progress:
+          Number(feedbackSummary?.total || 0) === 0 && Number(kpiData[3]?.value || 0) === 0
+            ? null
+            : clamp((Number(kpiData[3]?.value || 0) / 5) * 100),
+        period:
+          loading
+            ? "Đang tải..."
+            : Number(feedbackSummary?.total || 0) === 0 && Number(kpiData[3]?.value || 0) === 0
+              ? "Chưa có đánh giá"
+              : "Điểm đánh giá trung bình",
         trendValue: null,
         showTrend: false,
       },
     ],
-    [kpiData, loading, revenueProgress, orderProgress, revenueTrendDelta, orderTrendDelta]
+    [feedbackSummary, kpiData, loading, revenueProgress, orderProgress, revenueTrendDelta, orderTrendDelta]
   );
 
 

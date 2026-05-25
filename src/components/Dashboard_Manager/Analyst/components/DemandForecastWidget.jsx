@@ -25,12 +25,12 @@ const DemandForecastWidget = ({ forecast, loading }) => {
             <Clock3 size={18} />
           </div>
           <div>
-            <h3>Dự báo nhu cầu V1</h3>
-            <p>Giờ đông, món tăng, kế hoạch prep</p>
+            <h3>Dự báo nhu cầu</h3>
+            <p>Giờ đông, món tăng, kế hoạch chuẩn bị món</p>
           </div>
         </div>
         <span className={`meta-pill ${forecast?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {forecast?.meta?.fallbackUsed ? "Fallback" : "Data+AI"}
+          {forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "AI hỗ trợ"}
         </span>
       </div>
 
@@ -66,8 +66,8 @@ const DemandForecastWidget = ({ forecast, loading }) => {
               <strong>{busiest[1] || "Đang cập nhật"}</strong>
               <p>
                 {forecast?.dailyForecast?.[0]
-                  ? `Peak hôm nay: ${forecast.dailyForecast[0].peakWindow}`
-                  : "Dựa trên đơn + reservation gần nhất"}
+                  ? `Cao điểm hôm nay: ${forecast.dailyForecast[0].peakWindow}`
+                  : "Dựa trên đơn và đặt bàn gần nhất"}
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
                     <span className="dish-uplift">+{toShortNumber(dish.upliftPct)}%</span>
                   </div>
                   <div className="dish-sub">
-                    Forecast {toShortNumber(dish.forecastQty)} • Prep {toShortNumber(dish.suggestedPrepQty)}
+                    Dự báo {toShortNumber(dish.forecastQty)} suất • Chuẩn bị {toShortNumber(dish.suggestedPrepQty)} suất
                     {dish.stockRisk === "high" ? (
                       <span className="risk high">
                         <AlertTriangle size={14} /> tồn kho rủi ro cao
@@ -98,7 +98,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
 
           <div className="list-section">
             <h4>
-              <ChefHat size={16} /> Kế hoạch prep đề xuất
+              <ChefHat size={16} /> Kế hoạch chuẩn bị đề xuất
             </h4>
             <ul>
               {prepPlan.slice(0, 4).map((item) => (
@@ -107,7 +107,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
                     <span className="dish-name">{item.dishName}</span>
                     <span className="dish-uplift">{toShortNumber(item.suggestedPrepQty)} suất</span>
                   </div>
-                  <div className="dish-sub">{item.inventoryNote || item.reason}</div>
+                  <div className="dish-sub">{(item.inventoryNote || item.reason || "").replace(/fallback theo orderCounter/gi, "ước tính từ dữ liệu đơn gần đây").replace(/orderCounter/gi, "dữ liệu đơn gần đây")}</div>
                 </li>
               ))}
             </ul>
