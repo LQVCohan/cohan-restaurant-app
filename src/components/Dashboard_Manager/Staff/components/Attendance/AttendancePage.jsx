@@ -367,6 +367,7 @@ const AttendancePage = () => {
   const [quickFeedback, setQuickFeedback] = useState(null);
   const [activeView, setActiveView] = useState("attendance");
   const [readinessFocus, setReadinessFocus] = useState(null);
+  const [scheduleAttendanceFocus, setScheduleAttendanceFocus] = useState(null);
   const [selectedCorrectionRecord, setSelectedCorrectionRecord] =
     useState(null);
   const [correctionForm, setCorrectionForm] = useState(null);
@@ -424,6 +425,15 @@ const AttendancePage = () => {
     if (restaurantId) {
       setQueryRestaurantId(restaurantId);
     }
+
+    if (date || employeeId || restaurantId) {
+      setScheduleAttendanceFocus({
+        date: date || "",
+        employeeId: employeeId || "",
+        restaurantId: restaurantId || "",
+        search: search || "",
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -440,6 +450,34 @@ const AttendancePage = () => {
       window.removeEventListener("manager:navigation-query", handleNavigationQuery);
   }, [applyReadinessFocusFromQuery]);
 
+
+
+  const hasScheduleAttendanceFocus = useMemo(
+    () => Boolean(scheduleAttendanceFocus?.date || scheduleAttendanceFocus?.employeeId || scheduleAttendanceFocus?.restaurantId),
+    [scheduleAttendanceFocus],
+  );
+
+  const focusedDate = scheduleAttendanceFocus?.date || "";
+  const focusedEmployeeId = scheduleAttendanceFocus?.employeeId || "";
+  const focusedRestaurantId = scheduleAttendanceFocus?.restaurantId || "";
+
+  const clearScheduleAttendanceFocus = useCallback(() => {
+    setScheduleAttendanceFocus(null);
+    setSearchQuery("");
+    setQueryRestaurantId("");
+
+    const params = new URLSearchParams(window.location.search || "");
+    params.delete("date");
+    params.delete("workDate");
+    params.delete("employeeId");
+    params.delete("restaurantId");
+    params.delete("search");
+    params.set("staffPage", "attendance");
+
+    const nextQuery = params.toString();
+    const nextUrl = `/manager${nextQuery ? `?${nextQuery}` : ""}#staff`;
+    window.history.replaceState(null, "", nextUrl);
+  }, []);
 
   const userRestaurantId =
     user?.restaurantForStaff || user?.refRestaurants?.[0]?.id || null;
@@ -771,6 +809,18 @@ const AttendancePage = () => {
           </button>
         </div>
       </div>
+
+      {hasScheduleAttendanceFocus && (
+        <div className="attendance-readiness-focus-banner" role="status">
+          <strong>Đang xem chấm công từ lịch làm việc</strong>
+          {focusedDate ? <span>Ngày: {focusedDate}</span> : null}
+          <span>Nhân viên: {focusedEmployeeId || searchQuery || "--"}</span>
+          {focusedRestaurantId ? <span>Nhà hàng: {focusedRestaurantId}</span> : null}
+          <button type="button" className="staff-secondary-btn" onClick={clearScheduleAttendanceFocus}>
+            Xoá bộ lọc từ lịch
+          </button>
+        </div>
+      )}
 
       <div className="stats-grid">
         <div className="stat-card total">

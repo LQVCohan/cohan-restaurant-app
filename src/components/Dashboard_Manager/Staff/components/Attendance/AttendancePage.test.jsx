@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AttendancePage, { getAttendanceActionErrorMessage } from "./AttendancePage";
 const useAttendanceManagementMock = vi.fn();
@@ -120,7 +120,7 @@ describe("AttendancePage readiness navigation", () => {
     expect(screen.queryByText("Overtime Panel")).not.toBeInTheDocument();
   });
 
-  it("reads date employeeId and restaurantId from query for initial attendance filters", async () => {
+  it("shows schedule deep-link banner and applies initial attendance filters from query", async () => {
     window.history.replaceState(
       null,
       "",
@@ -129,11 +129,49 @@ describe("AttendancePage readiness navigation", () => {
 
     render(<AttendancePage />);
 
+    expect(await screen.findByText("Đang xem chấm công từ lịch làm việc")).toBeInTheDocument();
+    expect(screen.getByText(/Ngày: 2026-05-03/)).toBeInTheDocument();
+    expect(screen.getByText(/Nhân viên: e01/)).toBeInTheDocument();
+    expect(screen.getByText(/Nhà hàng: r2/)).toBeInTheDocument();
+
     expect(useAttendanceManagementMock).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedDate: "2026-05-03",
         search: "e01",
         restaurantId: "r2",
+      }),
+    );
+  });
+
+  it("clears schedule deep-link filters without leaving attendance page", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff",
+    );
+
+    render(<AttendancePage />);
+
+    const clearButton = await screen.findByRole("button", {
+      name: "Xoá bộ lọc từ lịch",
+    });
+    fireEvent.click(clearButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Đang xem chấm công từ lịch làm việc")).not.toBeInTheDocument();
+    });
+
+    const url = new URL(window.location.href);
+    expect(url.searchParams.get("date")).toBeNull();
+    expect(url.searchParams.get("employeeId")).toBeNull();
+    expect(url.searchParams.get("restaurantId")).toBeNull();
+    expect(url.searchParams.get("staffPage")).toBe("attendance");
+    expect(url.hash).toBe("#staff");
+
+    expect(useAttendanceManagementMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        search: "",
+        restaurantId: "r1",
       }),
     );
   });
