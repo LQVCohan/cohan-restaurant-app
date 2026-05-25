@@ -233,6 +233,12 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     </button>
                     <button
                       className="header__menu-item"
+                      onClick={() => goto("/for-you")}
+                    >
+                      <span className="header__item-label">✨ Dành cho bạn</span>
+                    </button>
+                    <button
+                      className="header__menu-item"
                       onClick={() => goto(couponPath)}
                     >
                       <span className="header__item-label">🎟️ Kho Coupon</span>

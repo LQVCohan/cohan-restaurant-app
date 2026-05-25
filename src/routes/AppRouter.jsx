@@ -161,7 +161,7 @@ const AppRouter = () => (
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/owner/:id" element={withPrivateRoute(<OwnerProfilePage />, ["manager", "admin"])} />
-      <Route path="/for-you" element={<ForYou />} />
+      <Route path="/for-you" element={withPrivateRoute(<ForYou />, ["customer"])} />
       <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
       <Route path="/track-delivery/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
       <Route path="/restaurants" element={<RestaurantsList />} />

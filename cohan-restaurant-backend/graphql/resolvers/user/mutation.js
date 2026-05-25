@@ -47,6 +47,55 @@ const signToken = (user) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const FOOD_PREFERENCE_DIETS = ["omni", "vegan", "keto", "halal"];
+const FOOD_PREFERENCE_ALLERGIES = ["seafood", "peanut", "milk", "egg", "gluten"];
+const FOOD_PREFERENCE_SUGAR = [0, 30, 50, 70, 100];
+const FOOD_PREFERENCE_SPICE = ["Không", "Vừa", "Nồng", "Rất cay"];
+
+function normalizeFoodPreferencesInput(input = {}) {
+  const habits = input?.habits || {};
+  const diet = FOOD_PREFERENCE_DIETS.includes(input?.diet) ? input.diet : "omni";
+  const allergies = Array.isArray(input?.allergies) ? [...new Set(input.allergies)] : [];
+  if (allergies.some((item) => !FOOD_PREFERENCE_ALLERGIES.includes(item))) {
+    throw new GraphQLError("Invalid allergy value", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  const sugar = FOOD_PREFERENCE_SUGAR.includes(habits?.sugar) ? habits.sugar : 100;
+  const spice = FOOD_PREFERENCE_SPICE.includes(habits?.spice) ? habits.spice : "Vừa";
+
+  return {
+    diet,
+    allergies,
+    habits: {
+      noOnion: Boolean(habits?.noOnion),
+      noCilantro: Boolean(habits?.noCilantro),
+      sugar,
+      spice,
+      ice: typeof habits?.ice === "boolean" ? habits.ice : true,
+    },
+  };
+}
+
+function buildFoodPreferenceNote(preferences = {}) {
+  const allergyLabels = {
+    seafood: "Hải sản vỏ cứng",
+    peanut: "Đậu phộng",
+    milk: "Sữa / Lactose",
+    egg: "Trứng",
+    gluten: "Gluten",
+  };
+  const dietLabels = { omni: "Tiêu chuẩn", vegan: "Thuần chay", keto: "Keto / Low Carb", halal: "Halal" };
+  const notes = [];
+  if (preferences?.diet && preferences.diet !== "omni") notes.push(`Chế độ ${dietLabels[preferences.diet] || preferences.diet}`);
+  if (preferences?.allergies?.length) notes.push(`Dị ứng: ${preferences.allergies.map((a) => allergyLabels[a] || a).join(", ")}`);
+  if (preferences?.habits?.noOnion) notes.push("KHÔNG HÀNH");
+  if (preferences?.habits?.noCilantro) notes.push("KHÔNG NGÒ");
+  if (preferences?.habits?.sugar !== 100) notes.push(`${preferences.habits.sugar}% đường`);
+  if (preferences?.habits?.spice && preferences.habits.spice !== "Vừa") notes.push(`Cay: ${preferences.habits.spice}`);
+  if (preferences?.habits?.ice === false) notes.push("Không đá");
+  return notes.length ? notes.join(". ") : "Chưa có ghi chú đặc biệt.";
+}
+
+
 function ensureDirSync(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
@@ -745,6 +794,36 @@ export const UserMutation = {
     });
 
     return { token, user: { ...userObj, roleName } };
+  },
+
+  async updateMyFoodPreferences(_, { input }, ctx) {
+    const authUser = ctx?.user;
+    if (!authUser?.id) {
+      throw new GraphQLError("Unauthorized", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const customer = await Customer.findById(authUser.id);
+    if (!customer) {
+      throw new GraphQLError("Customer not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    const normalized = normalizeFoodPreferencesInput(input);
+    normalized.autoNote = buildFoodPreferenceNote(normalized);
+    normalized.updatedAt = new Date();
+
+    customer.foodPreferences = normalized;
+    await customer.save();
+
+    const saved = await User.findById(customer._id)
+      .populate("role")
+      .lean({ virtuals: true });
+
+    const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
+    return { ...saved, roleName };
   },
 
   // ========== Update current user ==========
