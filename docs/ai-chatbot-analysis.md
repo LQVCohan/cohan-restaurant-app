@@ -291,3 +291,38 @@ Phase 5.1 bổ sung realtime delivery cho phản hồi nhân viên sau AI handof
 
 - Hiện chưa thêm cơ chế token hóa socket riêng cho guest; ownership vẫn dựa trên cặp `conversationId + guestId`.
 - Có thể nâng cấp thêm rate-limit/join-throttle và audit log cho room join của guest ở phase sau.
+
+## 16. Phase 6 - Two-way guest → staff messaging after handoff
+
+Phase 6 hoàn thiện luồng handoff 2 chiều: sau khi đã handoff, guest tiếp tục nhắn trong `AiChatbotWidget` và tin nhắn sẽ đi vào `ChatThread` nội bộ để staff/manager xử lý trong cùng một luồng.
+
+### Thiết kế chính
+
+- Thêm mutation guest-safe mới trong `aiChatbot` schema: `sendAiChatbotGuestMessage(input)`.
+- Ownership bắt buộc theo cặp `conversationId + guestId`.
+- Chỉ cho phép gửi khi `AiChatConversation.status === handoff_requested` và có `chatThreadId` hợp lệ.
+- Không expose mutation authenticated của communication cho guest.
+
+### Data flow
+
+1. Guest gửi message trong widget khi `handoffRequested=true`.
+2. Frontend gọi `sendAiChatbotGuestMessage` (không gọi `askAiChatbot`).
+3. Backend validate ownership và trạng thái handoff.
+4. Backend append message vào `ChatThread.messages` với metadata cố định:
+   - `senderRole = guest`
+   - `senderName = Khách hàng`
+   - `messageType = text`
+5. Backend cập nhật `lastMessageAt`, `lastMessagePreview`, `unreadBy` và notification nội bộ.
+6. Backend emit event communication hiện có (`chatMessageCreated`, `threadUpdated`, `notificationCreated`) để staff inbox tự cập nhật nếu đang subscribe, đồng thời polling vẫn là fallback.
+
+### Quy tắc bảo mật
+
+- Guest không thể gửi vào thread tùy ý vì không nhận `threadId` từ client.
+- Guest không được tự set `senderRole`, `senderName`, `attachments`.
+- `content` bị giới hạn độ dài tối đa để tránh abuse cơ bản.
+- Trả lỗi an toàn (`ok=false`) cho input sai hoặc ownership không hợp lệ.
+
+### Giới hạn hiện tại
+
+- Chưa bổ sung rate-limit riêng cho mutation guest send (để phase tiếp theo).
+- Chưa hỗ trợ attachment từ guest trong luồng handoff.

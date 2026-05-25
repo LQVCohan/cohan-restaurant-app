@@ -51,6 +51,23 @@ const REQUEST_AI_CHATBOT_HANDOFF = gql`
     }
   }
 `;
+
+const SEND_AI_CHATBOT_GUEST_MESSAGE = gql`
+  mutation SendAiChatbotGuestMessage($input: SendAiChatbotGuestMessageInput!) {
+    sendAiChatbotGuestMessage(input: $input) {
+      ok
+      conversationId
+      message {
+        id
+        role
+        senderLabel
+        content
+        createdAt
+      }
+    }
+  }
+`;
+
 const Q_AI_CHATBOT_GUEST_REPLIES = gql`
   query AiChatbotGuestReplies($input: GetAiChatbotGuestRepliesInput!) {
     aiChatbotGuestReplies(input: $input) {
@@ -116,6 +133,7 @@ function AiChatbotWidget() {
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
+  const [sendGuestMessage, { loading: guestSendLoading }] = useMutation(SEND_AI_CHATBOT_GUEST_MESSAGE);
   const [loadGuestReplies] = useLazyQuery(Q_AI_CHATBOT_GUEST_REPLIES, { fetchPolicy: "network-only" });
   const [guestId, setGuestId] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -243,7 +261,7 @@ function AiChatbotWidget() {
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
-    if (!content || loading) return;
+    if (!content || loading || guestSendLoading) return;
 
     const nextMessages = [...messages, { role: "user", content }];
     setMessages(nextMessages);
@@ -256,6 +274,20 @@ function AiChatbotWidget() {
         safeGuestId = window.localStorage.getItem(GUEST_ID_STORAGE_KEY) || generateGuestId();
         window.localStorage.setItem(GUEST_ID_STORAGE_KEY, safeGuestId);
         setGuestId(safeGuestId);
+      }
+
+      if (handoffRequested && conversationId) {
+        const { data } = await sendGuestMessage({
+          variables: { input: { conversationId, guestId: safeGuestId, content } },
+        });
+        const ok = data?.sendAiChatbotGuestMessage?.ok;
+        if (!ok) {
+          setMessages((current) => [
+            ...current,
+            { role: "assistant", content: "Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại." },
+          ]);
+        }
+        return;
       }
 
       const { data } = await askAiChatbot({
@@ -393,7 +425,7 @@ function AiChatbotWidget() {
           {lastQuickReplies.length ? (
             <div className="ai-chatbot-quick-replies">
               {lastQuickReplies.map((reply) => (
-                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={loading}>
+                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={loading || guestSendLoading}>
                   {reply}
                 </button>
               ))}
@@ -430,7 +462,7 @@ function AiChatbotWidget() {
               placeholder="Hỏi về món ăn, đặt bàn, đơn hàng..."
               maxLength={500}
             />
-            <button type="submit" disabled={loading || !input.trim()} aria-label="Gửi tin nhắn">
+            <button type="submit" disabled={loading || guestSendLoading || !input.trim()} aria-label="Gửi tin nhắn">
               <Send size={18} />
             </button>
           </form>

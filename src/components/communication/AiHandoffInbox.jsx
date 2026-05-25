@@ -22,6 +22,14 @@ const isAiHandoffThread = (thread) =>
 
 const isAiHandoffNotification = (n) => String(n?.type || "").toLowerCase() === "ai_chatbot_handoff";
 
+
+const resolveSenderLabel = (msg) => {
+  const role = String(msg?.senderRole || "").toLowerCase();
+  if (role === "guest" || role === "customer") return "Khách hàng";
+  if (msg?.senderName) return msg.senderName;
+  return msg?.senderRole || "Hệ thống";
+};
+
 const runBestEffort = (result) => {
   if (!result || typeof result.catch !== "function") return;
   result.catch(() => {});
@@ -233,7 +241,7 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
               const isSummary = index === 0 && String(msg?.content || "").includes(HANDOFF_MARKER);
               return (
                 <div key={`${msg.createdAt || "na"}_${index}`} className={`ai-handoff-inbox__message ${isSummary ? "is-handoff-summary" : ""}`}>
-                  <strong>{msg.senderName || msg.senderRole || "Hệ thống"}</strong>
+                  <strong>{resolveSenderLabel(msg)}</strong>
                   <div>{msg.content}</div>
                   <small>{formatTime(msg.createdAt)}</small>
                 </div>
