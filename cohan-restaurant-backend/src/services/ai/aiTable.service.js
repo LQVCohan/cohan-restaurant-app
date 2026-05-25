@@ -296,11 +296,11 @@ const getLayoutQualityIssues = (layout, payload = {}) => {
   const generatedDecorCount = decor.reduce((acc, item) => ({ ...acc, [item.type]: (acc[item.type] || 0) + 1 }), {});
   ["door", "window", "cashier", "kitchen", "wc", "buffet", "plant", "stairs"].forEach((type) => {
     if ((requestedObjects[type] || 0) > (generatedDecorCount[type] || 0)) {
-      issues.push({ code: "MISSING_DECOR", message: `Missing required decor: ${type}`, severity: "error" });
+      issues.push({ code: "MISSING_DECOR", type, message: `Missing requested ${type}`, severity: "error" });
     }
   });
   if ((requestedObjects.wall || 0) > 0 && (generatedDecorCount.wall || 0) <= 0) {
-    issues.push({ code: "MISSING_DECOR", message: "Missing required decor: wall", severity: "error" });
+    issues.push({ code: "MISSING_DECOR", type: "wall", message: "Missing requested wall", severity: "error" });
   }
   for (let i = 0; i < tables.length; i += 1) for (let j = i + 1; j < tables.length; j += 1) if (rectsOverlap(tables[i], tables[j], 0)) issues.push({ code: "TABLE_OVERLAP", message: "Table overlaps table", severity: "error" });
   const walls = decor.filter((d) => d.type === "wall").map(normalizeRect);
@@ -319,6 +319,14 @@ const getLayoutQualityIssues = (layout, payload = {}) => {
     windows.forEach((w) => { if (!isNearRoomEdge(normalizeRect(w), room)) issues.push({ code: "WINDOW_NOT_EDGE", message: "Window not near edge", severity: "error" }); });
   }
   services.forEach((s) => tables.forEach((t) => { if (dist(centerOf(s), centerOf(t)) < 50) issues.push({ code: "SERVICE_TOO_CLOSE", message: "Service too close table", severity: "error" }); if (rectsOverlap(s, t, 0)) issues.push({ code: "SERVICE_TABLE_OVERLAP", message: "Service overlap table", severity: "error" }); }));
+  const currentRects = getOccupiedRectsFromCurrentItems(payload.currentItems || []);
+  const overlapBlocked = (rect, isWall = false) => !isWall && currentRects.some((c) => rectsOverlap(rect, c, 0));
+  tables.forEach((t) => {
+    if (overlapBlocked(getTableRect(t), false)) issues.push({ code: "CURRENT_ITEM_OVERLAP", message: "Table overlaps current item", severity: "error" });
+  });
+  decor.forEach((d) => {
+    if (overlapBlocked(normalizeRect(d), d.type === "wall")) issues.push({ code: "CURRENT_ITEM_OVERLAP", message: `${d.type} overlaps current item`, severity: "error" });
+  });
   return issues;
 };
 const passesHardQualityGate = (layout, payload = {}) => !getLayoutQualityIssues(layout, payload).some((i) => i.severity === "error");
