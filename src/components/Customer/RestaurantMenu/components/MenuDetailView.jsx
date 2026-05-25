@@ -52,6 +52,14 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
           inventoryStatus
           stockWarnings
           labels
+          dietTags
+          allergenTags
+          tasteProfile {
+            containsOnion
+            containsCilantro
+            sugar
+            spice
+          }
           rate
           orderCounter
           servingVariants {

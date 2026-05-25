@@ -40,6 +40,14 @@ const FRAG_MENU_ITEM = gql`
     description
     sortOrder
     labels
+    dietTags
+    allergenTags
+    tasteProfile {
+      containsOnion
+      containsCilantro
+      sugar
+      spice
+    }
 
     basePrice
     defaultServingKey

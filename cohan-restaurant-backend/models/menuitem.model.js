@@ -28,6 +28,32 @@ const menuItemSchema = BaseSchemaModel({
 
   sortOrder: { type: Number, default: 1000 },
   labels: [{ type: String }],
+  dietTags: [
+    {
+      type: String,
+      enum: ["vegan", "keto", "halal"],
+    },
+  ],
+  allergenTags: [
+    {
+      type: String,
+      enum: ["seafood", "peanut", "milk", "egg", "gluten"],
+    },
+  ],
+  tasteProfile: {
+    containsOnion: { type: Boolean, default: false },
+    containsCilantro: { type: Boolean, default: false },
+    sugar: {
+      type: Number,
+      enum: [0, 30, 50, 70, 100],
+      default: 100,
+    },
+    spice: {
+      type: String,
+      enum: ["Không", "Vừa", "Nồng", "Rất cay"],
+      default: "Vừa",
+    },
+  },
 
   // cache để list món nhanh (sync từ Recipe: min price)
   basePrice: { type: Number, default: 0, min: 0 },

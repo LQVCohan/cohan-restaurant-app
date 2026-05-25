@@ -132,6 +132,11 @@ const MENU_ITEM_STATUS_OPTIONS = [
 const MENU_ITEM_STATUS_SET = new Set(
   MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value)
 );
+const FOR_YOU_DEFAULTS = {
+  dietTags: [],
+  allergenTags: [],
+  tasteProfile: { containsOnion: false, containsCilantro: false, sugar: 100, spice: "Vừa" },
+};
 
 const normalizeMenuItemStatus = (status) =>
   MENU_ITEM_STATUS_SET.has(status) ? status : "available";
@@ -193,6 +198,7 @@ const MenuItemModal = ({
     thumbImage: "",
     description: "",
     preparationMethods: [],
+    ...FOR_YOU_DEFAULTS,
   });
 
   const [imgError, setImgError] = useState(false);
@@ -332,6 +338,12 @@ const MenuItemModal = ({
       status: normalizeMenuItemStatus(v?.status),
       thumbImage: v?.thumbImage || "",
       description: v?.description || "",
+      dietTags: Array.isArray(v?.dietTags) ? v.dietTags : [],
+      allergenTags: Array.isArray(v?.allergenTags) ? v.allergenTags : [],
+      tasteProfile: {
+        ...FOR_YOU_DEFAULTS.tasteProfile,
+        ...(v?.tasteProfile || {}),
+      },
       preparationMethods: Array.isArray(v?.preparationMethods)
         ? v.preparationMethods
         : [],
@@ -402,6 +414,9 @@ const MenuItemModal = ({
           thumbImage: currentItem.thumbImage || "",
           description: currentItem.description || "",
           preparationMethods: methods,
+          dietTags: Array.isArray(currentItem.dietTags) ? currentItem.dietTags : [],
+          allergenTags: Array.isArray(currentItem.allergenTags) ? currentItem.allergenTags : [],
+          tasteProfile: { ...FOR_YOU_DEFAULTS.tasteProfile, ...(currentItem.tasteProfile || {}) },
         });
       } else {
         setFormData({
@@ -411,6 +426,7 @@ const MenuItemModal = ({
           thumbImage: "",
           description: "",
           preparationMethods: [{ ...defaultMethod }],
+          ...FOR_YOU_DEFAULTS,
         });
       }
     } else {
@@ -441,6 +457,12 @@ const MenuItemModal = ({
         currentIndex === index ? { ...method, [field]: value } : method
       ),
     }));
+  };
+  const toggleArrayValue = (field, value) => {
+    setFormData((prev) => {
+      const values = Array.isArray(prev[field]) ? prev[field] : [];
+      return { ...prev, [field]: values.includes(value) ? values.filter((v) => v !== value) : [...values, value] };
+    });
   };
 
   const addPM = () => {
@@ -546,6 +568,9 @@ const MenuItemModal = ({
         ...(formData.thumbImage?.trim()
           ? { thumbImage: formData.thumbImage.trim() }
           : {}),
+        dietTags: Array.from(new Set((formData.dietTags || []).filter(Boolean))),
+        allergenTags: Array.from(new Set((formData.allergenTags || []).filter(Boolean))),
+        tasteProfile: { ...FOR_YOU_DEFAULTS.tasteProfile, ...(formData.tasteProfile || {}) },
       };
 
       let targetMenuItemId = editId || savedMenuItemIdRef.current || null;
@@ -735,6 +760,30 @@ const MenuItemModal = ({
                 placeholder="Mô tả ngắn về hương vị, thành phần..."
                 disabled={isSaving}
               />
+            </div>
+            <div className="for-you-meta-section">
+              <h5>FOR YOU - Khẩu vị & Dị ứng</h5>
+              <div className="for-you-meta-grid">
+                <div className="for-you-meta-check"><strong>Phù hợp chế độ ăn</strong>
+                  {["vegan", "keto", "halal"].map((tag) => <label key={tag}><input type="checkbox" checked={(formData.dietTags || []).includes(tag)} onChange={() => toggleArrayValue("dietTags", tag)} /> {tag}</label>)}
+                </div>
+                <div className="for-you-meta-check"><strong>Có thể chứa dị ứng</strong>
+                  {["seafood", "peanut", "milk", "egg", "gluten"].map((tag) => <label key={tag}><input type="checkbox" checked={(formData.allergenTags || []).includes(tag)} onChange={() => toggleArrayValue("allergenTags", tag)} /> {tag}</label>)}
+                </div>
+                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsOnion} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsOnion: e.target.checked } }))} /> Có hành</label>
+                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsCilantro} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsCilantro: e.target.checked } }))} /> Có ngò</label>
+                <label>Mức đường
+                  <select className="modern-select small" value={formData.tasteProfile?.sugar ?? 100} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, sugar: Number(e.target.value) } }))}>
+                    {[0,30,50,70,100].map((v)=><option key={v} value={v}>{v}%</option>)}
+                  </select>
+                </label>
+                <label>Mức cay
+                  <select className="modern-select small" value={formData.tasteProfile?.spice ?? "Vừa"} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, spice: e.target.value } }))}>
+                    {["Không","Vừa","Nồng","Rất cay"].map((v)=><option key={v} value={v}>{v}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="for-you-meta-help">Metadata chuẩn giúp FOR YOU ưu tiên hiển thị/cảnh báo chính xác hơn.</div>
             </div>
           </div>
 
