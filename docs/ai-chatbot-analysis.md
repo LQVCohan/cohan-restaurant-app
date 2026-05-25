@@ -250,3 +250,44 @@ Phase 5 MVP cho phép guest nhận phản hồi của nhân viên/quản lý nga
 
 - Bổ sung Socket.IO bảo mật cho guest qua token/ownership check ở room-level (`conversationId + guestId`).
 - Duy trì polling như fallback khi socket mất kết nối.
+
+## 15. Phase 5.1 - Realtime Socket.IO staff replies for guest
+
+Phase 5.1 bổ sung realtime delivery cho phản hồi nhân viên sau AI handoff, đồng thời giữ nguyên polling của Phase 5 làm fallback.
+
+### Thiết kế realtime
+
+- Guest join room theo conversation, không theo thread nội bộ.
+- Room name: `ai_conv_${conversationId}`.
+- Event join mới trên Socket.IO:
+  - `joinAiChatbotConversation({ conversationId, guestId })`
+  - `leaveAiChatbotConversation({ conversationId, guestId })`
+- Join chỉ thành công khi backend xác thực ownership:
+  - `conversationId` hợp lệ ObjectId.
+  - `guestId` được normalize theo sanitizer Phase 5.
+  - `AiChatConversation.guestId` phải khớp `guestId` đã normalize.
+
+### Phát sự kiện staff reply
+
+- Khi staff gửi `sendChatMessage`, backend kiểm tra thread có được link với `AiChatConversation` qua `chatThreadId` hay không.
+- Nếu có link và message đạt rule guest-safe, backend emit:
+  - event: `aiChatbotStaffReplyCreated`
+  - room: `ai_conv_${conversationId}`
+  - payload tối thiểu: `id`, `role=staff`, `senderLabel=Nhân viên`, `content`, `createdAt`.
+
+### Bảo mật dữ liệu
+
+- Guest không được join bằng `chatThreadId`.
+- Không leak thông tin ownership conversation qua lỗi chi tiết.
+- Không emit dữ liệu nội bộ như `threadId`, `senderId`, `participants`, `unreadBy`, email nhân viên.
+- Lọc message giữ nguyên rule Phase 5 (allowlist role staff-facing + denylist guest/system + loại marker `[AI HANDOFF]`).
+
+### Fallback và chống trùng
+
+- Polling `aiChatbotGuestReplies` vẫn hoạt động song song làm fallback khi socket không khả dụng.
+- Frontend tiếp tục dedupe theo `reply.id` (hoặc fallback key), nên nếu cùng reply đi qua socket + polling chỉ hiển thị một lần.
+
+### Giới hạn và bước tiếp theo
+
+- Hiện chưa thêm cơ chế token hóa socket riêng cho guest; ownership vẫn dựa trên cặp `conversationId + guestId`.
+- Có thể nâng cấp thêm rate-limit/join-throttle và audit log cho room join của guest ở phase sau.
