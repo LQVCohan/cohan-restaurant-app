@@ -30,7 +30,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
           </div>
         </div>
         <span className={`meta-pill ${forecast?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {forecast?.meta?.fallbackUsed ? "Fallback" : "Data+AI"}
+          {forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Data+AI"}
         </span>
       </div>
 
@@ -84,7 +84,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
                     <span className="dish-uplift">+{toShortNumber(dish.upliftPct)}%</span>
                   </div>
                   <div className="dish-sub">
-                    Forecast {toShortNumber(dish.forecastQty)} • Prep {toShortNumber(dish.suggestedPrepQty)}
+                    Dự báo {toShortNumber(dish.forecastQty)} suất • Chuẩn bị {toShortNumber(dish.suggestedPrepQty)} suất
                     {dish.stockRisk === "high" ? (
                       <span className="risk high">
                         <AlertTriangle size={14} /> tồn kho rủi ro cao
@@ -107,7 +107,7 @@ const DemandForecastWidget = ({ forecast, loading }) => {
                     <span className="dish-name">{item.dishName}</span>
                     <span className="dish-uplift">{toShortNumber(item.suggestedPrepQty)} suất</span>
                   </div>
-                  <div className="dish-sub">{item.inventoryNote || item.reason}</div>
+                  <div className="dish-sub">{(item.inventoryNote || item.reason || "").replace(/fallback theo orderCounter/gi, "ước tính từ dữ liệu đơn gần đây").replace(/orderCounter/gi, "dữ liệu đơn gần đây")}</div>
                 </li>
               ))}
             </ul>

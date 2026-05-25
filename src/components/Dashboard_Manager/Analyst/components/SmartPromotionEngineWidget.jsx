@@ -4,6 +4,15 @@ import "./SmartPromotionEngineWidget.scss";
 
 const formatNumber = (value) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
 const tokenMap = {
+  new: "Khách mới",
+  often: "Khách quay lại thường xuyên",
+  vip: "Khách VIP",
+  dine_in: "Tại quán",
+  takeaway: "Mang đi",
+  delivery: "Giao hàng",
+  medium: "Trung bình",
+  high: "Cao",
+  low: "Thấp",
   active_now: "Đang còn hiệu lực",
   segment_fit: "Phù hợp nhóm khách mục tiêu",
   scope_fit: "Phù hợp phạm vi áp dụng",
@@ -58,7 +67,7 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
         <>
           <div className="summary-row">
             <span><Clock3 size={14} /> Cửa sổ cơ hội: <strong>{summary.topOpportunityWindow}</strong></span>
-            <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{summary.highestPrioritySegment}</strong></span>
+            <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{normalizeText(summary.highestPrioritySegment) || "Đang cập nhật"}</strong></span>
             <span><BadgePercent size={14} /> Số campaign: <strong>{summary.recommendedCampaignCount}</strong></span>
           </div>
 

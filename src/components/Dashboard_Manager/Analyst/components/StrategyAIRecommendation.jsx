@@ -2,6 +2,18 @@ import React, { useMemo } from "react";
 import { Sparkles, AlertTriangle, CheckCircle2 } from "lucide-react";
 import "./StrategyAIRecommendation.scss";
 
+const shiftLabelMap = { morning: "ca sáng", afternoon: "ca chiều", evening: "ca tối" };
+const formatShiftKey = (shiftKey = "") => {
+  const [dateRaw, shiftRaw] = String(shiftKey).split("|");
+  if (!dateRaw && shiftLabelMap[shiftRaw]) return shiftLabelMap[shiftRaw];
+  if (!shiftRaw && shiftLabelMap[dateRaw]) return shiftLabelMap[dateRaw];
+  const shiftLabel = shiftLabelMap[shiftRaw] || shiftLabelMap[dateRaw] || "ca làm việc";
+  if (!dateRaw || !dateRaw.includes("-")) return shiftLabel;
+  const [y, m, d] = dateRaw.split("-");
+  const dateLabel = y && m && d ? `${d}/${m}` : dateRaw;
+  return `${shiftLabel} ngày ${dateLabel}`;
+};
+
 const StrategyAIRecommendation = ({
   topDish,
   feedbackSummary,
@@ -17,7 +29,7 @@ const StrategyAIRecommendation = ({
       items.push({
         priority: "high",
         title: "Có ca thiếu người",
-        description: `${underStaffedShifts} ca thiếu người, ca rủi ro cao nhất: ${staffSchedulingAssistant?.summary?.highestRiskShift || "N/A"}.`,
+        description: `${underStaffedShifts} ca thiếu người, ca rủi ro cao nhất: ${formatShiftKey(staffSchedulingAssistant?.summary?.highestRiskShift || "") || "N/A"}.`,
         action: "Kiểm tra gợi ý phân ca",
       });
     }

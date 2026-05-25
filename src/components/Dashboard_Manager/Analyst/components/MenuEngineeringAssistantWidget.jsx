@@ -8,10 +8,10 @@ const nf = (value) =>
   }).format(Number(value || 0));
 
 const quadrantLabel = {
-  star: "STAR",
-  plowhorse: "PLOWHORSE",
-  puzzle: "PUZZLE",
-  dog: "DOG",
+  star: "STAR • Món chủ lực",
+  plowhorse: "PLOWHORSE • Bán tốt, lời thấp",
+  puzzle: "PUZZLE • Lời cao, bán chậm",
+  dog: "DOG • Cần xem lại",
 };
 
 const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
@@ -28,12 +28,12 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
             <Sparkles size={18} />
           </div>
           <div>
-            <h3>Menu Engineering Assistant V1</h3>
+            <h3>Trợ lý tối ưu menu</h3>
             <p>Phân loại STAR / PLOWHORSE / PUZZLE / DOG theo dữ liệu thực tế</p>
           </div>
         </div>
         <span className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {assistant?.meta?.fallbackUsed ? "Cost fallback" : "Snapshot/Recipe"}
+          {assistant?.meta?.fallbackUsed ? "Cost fallback" : "Dữ liệu món / công thức"}
         </span>
       </div>
 

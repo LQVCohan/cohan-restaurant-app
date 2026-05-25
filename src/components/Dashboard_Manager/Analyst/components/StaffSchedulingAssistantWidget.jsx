@@ -145,7 +145,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
               {assistant?.meta?.fallbackUsed ? <span className="fallback-badge">Chưa đủ dữ liệu hiệu suất, hệ thống đang ưu tiên theo vai trò và lịch trống.</span> : null}
               <ul>
                 {(summary?.notes || []).map((note, idx) => (
-                  <li key={idx} className={note.toLowerCase().includes("performance") ? "warning-note" : ""}>{note}</li>
+                  <li key={idx} className={note.toLowerCase().includes("performance") ? "warning-note" : ""}>{String(note || "").replace(/\bserver\b/gi, "phục vụ").replace(/\bcook\b/gi, "bếp").replace(/\bcashier\b/gi, "thu ngân").replace(/\bbartender\b/gi, "pha chế")}</li>
                 ))}
               </ul>
             </div>
