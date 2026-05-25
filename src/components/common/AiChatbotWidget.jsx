@@ -461,6 +461,7 @@ function AiChatbotWidget() {
               onChange={(event) => setInput(event.target.value)}
               placeholder="Hỏi về món ăn, đặt bàn, đơn hàng..."
               maxLength={500}
+              disabled={loading || guestSendLoading}
             />
             <button type="submit" disabled={loading || guestSendLoading || !input.trim()} aria-label="Gửi tin nhắn">
               <Send size={18} />

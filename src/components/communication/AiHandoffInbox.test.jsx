@@ -75,6 +75,24 @@ describe("AiHandoffInbox", () => {
     expect(markNotificationRead).toHaveBeenCalledWith({ variables: { id: "n1" } });
   });
 
+
+  it("renders guest senderRole as Khách hàng", async () => {
+    const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", messages: [] } } });
+    useCommunicationMock.mockReturnValue({
+      ...baseHook,
+      thread: {
+        id: "t1",
+        subject: "AI handoff - Khách cần hỗ trợ",
+        messages: [{ senderRole: "guest", content: "Em cần giúp", createdAt: new Date().toISOString() }],
+      },
+      notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
+      loadThread,
+    });
+    renderWithUser(<AiHandoffInbox />);
+    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
+    await waitFor(() => expect(loadThread).toHaveBeenCalled());
+    expect(screen.getByText("Khách hàng")).toBeInTheDocument();
+  });
   it("send reply calls sendChatMessage with selected thread", async () => {
     const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", messages: [] } } });
     const sendMessage = vi.fn().mockResolvedValue({});

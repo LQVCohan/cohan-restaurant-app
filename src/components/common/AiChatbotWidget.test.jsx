@@ -14,6 +14,7 @@ let socketEmit;
 let socketDisconnect;
 let connectHandler;
 let staffReplyHandler;
+let guestSendLoadingState;
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
@@ -42,7 +43,7 @@ vi.mock("@apollo/client/react", async () => {
       const body = mutation?.loc?.source?.body || "";
       if (body.includes("AskAiChatbot")) return [askMutationSpy, { loading: false }];
       if (body.includes("RequestAiChatbotHandoff")) return [handoffMutationSpy, { loading: false }];
-      if (body.includes("SendAiChatbotGuestMessage")) return [guestMessageMutationSpy, { loading: false }];
+      if (body.includes("SendAiChatbotGuestMessage")) return [guestMessageMutationSpy, { loading: guestSendLoadingState }];
       return [vi.fn(), { loading: false }];
     }),
     useLazyQuery: vi.fn(() => [guestRepliesSpy, { loading: false, data: null, error: null }]),
@@ -54,6 +55,7 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     window.localStorage.clear();
     window.localStorage.setItem("cohan_ai_guest_id", "guest-1");
 
+    guestSendLoadingState = false;
     connectHandler = null;
     staffReplyHandler = null;
     socketOn = vi.fn((event, cb) => {
@@ -150,6 +152,35 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     expect(askMutationSpy).toHaveBeenCalledTimes(1);
   });
 
+
+  it("shows clear error when guest post-handoff send returns ok=false", async () => {
+    guestMessageMutationSpy.mockResolvedValueOnce({
+      data: { sendAiChatbotGuestMessage: { ok: false, conversationId: "conv-1", message: null } },
+    });
+
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Cần hỗ trợ" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(askMutationSpy).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
+    await waitFor(() => expect(handoffMutationSpy).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Tin mới" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+
+    await waitFor(() => expect(guestMessageMutationSpy).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại.")).toBeInTheDocument();
+    expect(askMutationSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables input while guest send is loading", async () => {
+    guestSendLoadingState = true;
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    expect(screen.getByPlaceholderText(/Hỏi về món ăn/i)).toBeDisabled();
+  });
   it("closes widget and leaves room", async () => {
     render(<AiChatbotWidget />);
     fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));

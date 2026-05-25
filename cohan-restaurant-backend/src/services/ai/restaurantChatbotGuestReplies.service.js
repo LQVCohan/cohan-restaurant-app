@@ -177,41 +177,49 @@ export async function sendRestaurantChatbotGuestMessage({ input, io } = {}) {
   await thread.save();
 
   if (recipientIds.length > 0) {
-    await Notification.insertMany(
-      recipientIds.map((toUserId) => ({
-        toUserId,
-        toRole: thread.targetRole || null,
-        restaurantId: thread.restaurantId,
-        type: "chat_message",
-        payload: {
-          threadId: String(thread._id),
-          channel: thread.channel,
-          senderId: null,
-          senderName: "Khách hàng",
-          messagePreview: thread.lastMessagePreview,
-        },
-      }))
-    );
+    try {
+      await Notification.insertMany(
+        recipientIds.map((toUserId) => ({
+          toUserId,
+          toRole: thread.targetRole || null,
+          restaurantId: thread.restaurantId,
+          type: "chat_message",
+          payload: {
+            threadId: String(thread._id),
+            channel: thread.channel,
+            senderId: null,
+            senderName: "Khách hàng",
+            messagePreview: thread.lastMessagePreview,
+          },
+        }))
+      );
+    } catch {
+      // best effort notification only
+    }
   }
 
   if (io) {
-    io.to(`chat_thread_${thread._id}`).emit("chatMessageCreated", {
-      threadId: String(thread._id),
-      restaurantId: String(thread.restaurantId || ""),
-      message,
-    });
-    io.to(`restaurant_${thread.restaurantId}`).emit("threadUpdated", {
-      threadId: String(thread._id),
-      lastMessagePreview: thread.lastMessagePreview,
-      lastMessageAt: thread.lastMessageAt,
-    });
-    recipientIds.forEach((uid) => {
-      io.to(`user_${uid}`).emit("notificationCreated", {
-        type: "chat_message",
+    try {
+      io.to(`chat_thread_${thread._id}`).emit("chatMessageCreated", {
         threadId: String(thread._id),
-        messagePreview: thread.lastMessagePreview,
+        restaurantId: String(thread.restaurantId || ""),
+        message,
       });
-    });
+      io.to(`restaurant_${thread.restaurantId}`).emit("threadUpdated", {
+        threadId: String(thread._id),
+        lastMessagePreview: thread.lastMessagePreview,
+        lastMessageAt: thread.lastMessageAt,
+      });
+      recipientIds.forEach((uid) => {
+        io.to(`user_${uid}`).emit("notificationCreated", {
+          type: "chat_message",
+          threadId: String(thread._id),
+          messagePreview: thread.lastMessagePreview,
+        });
+      });
+    } catch {
+      // best effort realtime only
+    }
   }
 
   return {
