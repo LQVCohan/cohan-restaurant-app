@@ -47,8 +47,8 @@ const TOP_MENU_ITEMS_FOR_YOU = gql`
       servingVariants {
         key
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
         name
         price
       }
@@ -142,7 +142,7 @@ const ForYou = () => {
     return () => {
       cancelled = true;
     };
-  }, [client, accessibleRestaurants, loading, preferences]);
+  }, [client, accessibleRestaurants, loading]);
 
   const scoredItems = useMemo(() => {
     return sortMenuItemsByFoodPreference(
