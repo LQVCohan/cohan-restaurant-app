@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AiChatConversation, ChatThread, Notification, User } from "../../../models/index.js";
 import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
+import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
 
 const HANDOFF_MARKER = "[AI HANDOFF]";
 
@@ -64,7 +65,7 @@ export const toGuestStaffReplies = ({ messages = [], after = null, limit = 30 } 
     .filter(Boolean);
 };
 
-export async function getRestaurantChatbotGuestReplies({ input } = {}) {
+export async function getRestaurantChatbotGuestReplies({ input, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
   const conversationObjectId = safeObjectId(conversationId);
@@ -77,6 +78,19 @@ export async function getRestaurantChatbotGuestReplies({ input } = {}) {
     conversationId,
     replies: [],
   };
+
+  const rateResult = consumeAiChatbotRateLimit({
+    policy: AI_CHATBOT_RATE_LIMIT_POLICIES.aiChatbotGuestReplies,
+    keyParts: {
+      guestId: normalizedGuestId,
+      conversationId,
+      restaurantId: "",
+      clientIp,
+    },
+  });
+  if (!rateResult.allowed) {
+    return { ...safeEmpty, ok: true };
+  }
 
   if (!conversationObjectId || !normalizedGuestId) return safeEmpty;
 
@@ -165,11 +179,17 @@ const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
   return users.map((u) => String(u._id)).filter((id) => id !== String(senderId));
 };
 
-export async function sendRestaurantChatbotGuestMessage({ input, io } = {}) {
+export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
   const content = String(input?.content || "").trim();
   const safeEmpty = { ok: false, conversationId, message: null };
+
+  const rateResult = consumeAiChatbotRateLimit({
+    policy: AI_CHATBOT_RATE_LIMIT_POLICIES.sendAiChatbotGuestMessage,
+    keyParts: { guestId: normalizedGuestId, conversationId, restaurantId: "", clientIp },
+  });
+  if (!rateResult.allowed) return { ...safeEmpty, message: { id: "", role: "assistant", senderLabel: "", content: rateResult.safeMessage, createdAt: "" } };
 
   if (!safeObjectId(conversationId) || !normalizedGuestId) return safeEmpty;
   if (!content || content.length > 1000) return safeEmpty;

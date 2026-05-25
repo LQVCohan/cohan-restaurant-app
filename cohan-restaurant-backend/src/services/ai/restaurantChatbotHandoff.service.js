@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
 import {
   AiChatConversation,
   AiChatMessage,
@@ -42,12 +43,25 @@ const ensureOwnership = (conversation, { user, guestId }) => {
   return !!guestId && String(conversation.guestId || "") === String(guestId);
 };
 
-export async function requestRestaurantChatbotHandoff({ input, user, io } = {}) {
+export async function requestRestaurantChatbotHandoff({ input, user, io, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
   const restaurantIdInput = toObjectId(input?.restaurantId);
   const reason = String(input?.reason || "user_click").trim().slice(0, 80);
   const latestUserMessage = String(input?.latestUserMessage || "").trim().slice(0, 500);
+
+  const rateResult = consumeAiChatbotRateLimit({
+    policy: AI_CHATBOT_RATE_LIMIT_POLICIES.requestAiChatbotHandoff,
+    keyParts: {
+      guestId: normalizedGuestId,
+      conversationId,
+      restaurantId: String(input?.restaurantId || ""),
+      clientIp,
+    },
+  });
+  if (!rateResult.allowed) {
+    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: rateResult.safeMessage, alreadyRequested: false };
+  }
 
   if (!toObjectId(conversationId)) {
     return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Yêu cầu không hợp lệ.", alreadyRequested: false };

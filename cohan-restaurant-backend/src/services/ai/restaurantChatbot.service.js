@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import process from "process";
+import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit, AI_CHATBOT_RATE_LIMIT_CODE, AI_CHATBOT_RATE_LIMIT_MESSAGE } from "./restaurantChatbotRateLimit.service.js";
 import {
   Coupon,
   MenuItem,
@@ -579,6 +580,7 @@ export const handleRestaurantChatbotMessage = async ({
   history = [],
   guestId,
   conversationId,
+  clientIp,
 } = {}) => {
   const cleanMessage = normalizeMessage(message);
   if (!cleanMessage) {
@@ -591,6 +593,21 @@ export const handleRestaurantChatbotMessage = async ({
   const restaurantObjectId = toObjectId(restaurantId);
   const normalizedGuestId = normalizeGuestId(guestId);
   const normalizedConversationId = normalizeConversationId(conversationId);
+
+  const askRateResult = consumeAiChatbotRateLimit({
+    policy: AI_CHATBOT_RATE_LIMIT_POLICIES.askAiChatbot,
+    keyParts: {
+      guestId: normalizedGuestId,
+      conversationId: normalizedConversationId || "",
+      restaurantId: String(restaurantId || ""),
+      clientIp,
+    },
+  });
+  if (!askRateResult.allowed) {
+    const err = new Error(AI_CHATBOT_RATE_LIMIT_MESSAGE);
+    err.code = AI_CHATBOT_RATE_LIMIT_CODE;
+    throw err;
+  }
 
   let persistedConversation = null;
   let persistedHistory = [];

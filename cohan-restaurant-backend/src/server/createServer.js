@@ -29,6 +29,7 @@ import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessi
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
+import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../services/ai/restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
 
 const parseAllowedOrigins = () => {
@@ -409,6 +410,20 @@ export async function createServer() {
 
     socket.on("joinAiChatbotConversation", async (payload = {}, ack) => {
       try {
+        const rateResult = consumeAiChatbotRateLimit({
+          policy: AI_CHATBOT_RATE_LIMIT_POLICIES.joinAiChatbotConversation,
+          keyParts: {
+            socketId: socket.id,
+            guestId: String(payload?.guestId || ""),
+            conversationId: String(payload?.conversationId || ""),
+            clientIp: socket.handshake?.address || "",
+          },
+        });
+        if (!rateResult.allowed) {
+          if (typeof ack === "function") ack({ ok: false, code: rateResult.code });
+          return;
+        }
+
         const result = await validateGuestConversationOwnership({
           conversationId: payload?.conversationId,
           guestId: payload?.guestId,

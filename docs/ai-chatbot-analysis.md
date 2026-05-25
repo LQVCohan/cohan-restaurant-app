@@ -414,3 +414,53 @@ Phase 8 bổ sung khả năng xem lịch sử handoff đã xử lý cho staff/ma
 - Archive closed handoff chỉ hiển thị cho staff/manager có quyền trong đúng restaurant scope.
 - Guest không được truy cập dữ liệu nội bộ `ChatThread` của inbox staff/manager.
 - Polling fallback các phase trước không bị loại bỏ.
+
+## 18. Phase 9 - Guest security hardening and rate limiting (MVP)
+
+Phase 9 tập trung vào hardening cho toàn bộ luồng guest-facing của chatbot/handoff, giữ nguyên hành vi Phase 5/6/7/8 nhưng thêm lớp chống abuse tập trung.
+
+### Rủi ro abuse cần chặn
+
+- Spam `askAiChatbot` gây tải AI/context query cao.
+- Spam `requestAiChatbotHandoff` tạo notification dồn dập cho staff/manager.
+- Spam `sendAiChatbotGuestMessage` sau handoff làm nhiễu inbox nội bộ.
+- Polling quá dày vào `aiChatbotGuestReplies` gây DB load không cần thiết.
+- Socket `joinAiChatbotConversation` bị spam khi reconnect flapping.
+- Cross-conversation probing/guestId spoofing (đã có ownership check, cần thêm giới hạn tần suất brute-force).
+
+### Centralized helper
+
+- Thêm service `restaurantChatbotRateLimit.service.js`.
+- In-memory fixed-window theo action policy, key chuẩn hóa từ: `action + guestId + conversationId + restaurantId + clientIp (+ socketId cho join)`.
+- Trả structured result:
+  - `allowed=true`
+  - hoặc `allowed=false`, `retryAfterSec`, `code=RATE_LIMITED`, `safeMessage`.
+- Safe message chuẩn hóa: `Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.`
+- Có cleanup định kỳ theo TTL/window để giảm rò rỉ bộ nhớ.
+
+### Policy MVP theo action
+
+- `askAiChatbot`: 20 request / 5 phút.
+- `requestAiChatbotHandoff`: 3 request / 10 phút.
+- `sendAiChatbotGuestMessage`: 30 request / 10 phút.
+- `aiChatbotGuestReplies`: soft throttle (quá nhanh thì trả safe empty response, tránh query DB nặng).
+- `joinAiChatbotConversation`: burst nhỏ 5 join / 30 giây cho mỗi `socket + guest + conversation`.
+
+### Frontend hardening
+
+- `AiChatbotWidget` thêm in-flight guard chống double-submit kể cả spam nhanh nút send/quick-reply.
+- Polling giữ nguyên fallback và interval ổn định, tránh overlapping fetch khi request trước chưa xong.
+- Socket join thêm guard join-once-per-connect để hạn chế join lặp khi kết nối dao động.
+- Nếu backend báo `RATE_LIMITED` hoặc message an toàn tương ứng, UI hiển thị thông điệp thân thiện bằng tiếng Việt.
+
+### Giới hạn MVP in-memory
+
+- Counter không chia sẻ giữa nhiều instance backend.
+- Restart process sẽ reset counter.
+- Phù hợp bước hardening nhanh cho single-instance hoặc scale nhỏ.
+
+### Hướng production tiếp theo
+
+- Chuyển storage của rate limiter sang Redis/shared store để đồng bộ đa instance.
+- Bổ sung observability dashboard cho tỉ lệ bị throttle theo action/restaurant.
+- Cân nhắc adaptive policy theo traffic thực tế từng nhà hàng.
