@@ -530,6 +530,7 @@ export default {
           actualCheckOutAt: 1,
           status: 1,
           latenessMinutes: 1,
+          note: 1,
           createdAt: 1,
           updatedAt: 1,
         })
@@ -579,6 +580,7 @@ export default {
         shiftType: shift.shiftType || null,
         displayStatus: timesheet?.status || status,
         isLate: Boolean(isLateFromStatus || isLateFromTime),
+        reviewNote: timesheet?.note || null,
         createdAt: timesheet?.createdAt || shift.createdAt || null,
         updatedAt: timesheet?.updatedAt || shift.updatedAt || null,
       };

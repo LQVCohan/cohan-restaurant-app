@@ -1492,6 +1492,7 @@ type ShiftAttendance {
   shiftType: String
   displayStatus: String
   isLate: Boolean
+  reviewNote: String
   createdAt: DateTime
   updatedAt: DateTime
 }

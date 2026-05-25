@@ -186,7 +186,6 @@ describe("ScheduleManagement", () => {
     mockManagerShiftAttendancesData = {
       managerShiftAttendances: [],
     };
-    vi.spyOn(window, "prompt").mockReturnValue("Ghi chú hợp lệ");
   });
 
   afterEach(() => {
@@ -608,6 +607,7 @@ describe("ScheduleManagement", () => {
           shiftEndTime: "2026-04-20T07:00:00.000Z",
           shiftType: "morning",
           isLate: true,
+          reviewNote: "Manager review: Đã nhắc nhân viên đi đúng giờ.",
         },
       ],
     };
@@ -616,6 +616,8 @@ describe("ScheduleManagement", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Ghi chú xử lý" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Đã ghi chú xử lý")).toBeInTheDocument();
+    expect(screen.getByText(/Ghi chú trước đó:/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu ghi chú" }));
     expect(await screen.findByText("Ghi chú xử lý cần tối thiểu 5 ký tự.")).toBeInTheDocument();
