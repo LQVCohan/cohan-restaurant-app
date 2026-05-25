@@ -90,6 +90,7 @@ InvoiceSchema.index({ restaurantId: 1, orderId: 1 });
 InvoiceSchema.index({ restaurantId: 1, orderIds: 1 });
 InvoiceSchema.index({ number: 1 }, { unique: true, sparse: true });
 InvoiceSchema.index({ code: 1 }, { unique: true, sparse: true });
+InvoiceSchema.index({ refTransactionId: 1 }, { unique: true, sparse: true });
 
 export const Invoice =
   mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);
