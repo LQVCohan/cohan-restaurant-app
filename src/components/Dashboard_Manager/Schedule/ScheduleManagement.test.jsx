@@ -627,7 +627,7 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Đã ghi chú \(1\)/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Đã xử lý \(1\)/i }));
     fireEvent.click(await screen.findByRole("button", { name: "Ghi chú xử lý" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Đã ghi chú xử lý")).toBeInTheDocument();
@@ -647,14 +647,14 @@ describe("ScheduleManagement", () => {
       }),
     );
   });
-  it("filters attendance issues by review note status", async () => {
+  it("includes reviewed rows in resolved lifecycle filter", async () => {
     mockManagerShiftAttendancesData = { managerShiftAttendances: [{ id: "attendance-unreviewed", employeeId: "staff-1", status: "checked_in", checkInAt: "2026-04-20T06:10:00.000Z", checkOutAt: null, employeeName: "Lan Manager", employeeCode: "MN001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: null }, { id: "attendance-reviewed", employeeId: "staff-2", status: "checked_in", checkInAt: "2026-04-20T06:15:00.000Z", checkOutAt: null, employeeName: "Minh Server", employeeCode: "SV001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: "Đã nhắc nhở trước đó." }] };
     render(<ScheduleManagement />);
     fireEvent.click(await screen.findByRole("button", { name: /Tất cả \(2\)/i }));
     expect(await screen.findByText(/MN001/i)).toBeInTheDocument();
     expect(screen.getByText(/SV001/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Đã ghi chú \(1\)/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Đã xử lý \(1\)/i }));
     expect(await screen.findByText(/SV001/i)).toBeInTheDocument();
     expect(screen.queryByText(/MN001/i)).not.toBeInTheDocument();
   });

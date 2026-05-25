@@ -1712,7 +1712,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
       periodStart: startOfDay(now).toISOString(),
       periodEnd: endOfDay(now).toISOString(),
     };
-  };
   }, []);
   const {
     data: managerShiftAttendancesData,
@@ -1736,7 +1735,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [attendanceReviewNote, setAttendanceReviewNote] = useState("");
   const [attendanceReviewModalError, setAttendanceReviewModalError] = useState("");
   const [isSubmittingAttendanceReview, setIsSubmittingAttendanceReview] = useState(false);
-  const [attendanceIssueFilter, setAttendanceIssueFilter] = useState("unreviewed");
   const [attendanceIssueResolutionFilter, setAttendanceIssueResolutionFilter] = useState("active");
 
   const todayAttendances = useMemo(
@@ -1778,57 +1776,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [todayAttendances]);
 
 
-  function getAttendanceIssueResolution(row) {
-    const correctionStatus = getCorrectionLinkStatus(row);
-    const hasReviewNote = String(row?.reviewNote || "").trim().length > 0;
-    if (correctionStatus.primaryStatus === "pending") {
-      return {
-        key: "in_progress",
-        label: "Đang xử lý",
-        tone: "warning",
-        description: "Đã có yêu cầu chỉnh công chờ duyệt.",
-      };
-    }
-    if (correctionStatus.primaryStatus === "applied") {
-      return {
-        key: "resolved",
-        label: "Đã xử lý",
-        tone: "success",
-        description: "Yêu cầu chỉnh công đã được áp dụng.",
-      };
-    }
-    if (correctionStatus.primaryStatus === "rejected") {
-      return {
-        key: "needs_follow_up",
-        label: "Cần kiểm tra lại",
-        tone: "danger",
-        description: "Yêu cầu chỉnh công bị từ chối.",
-      };
-    }
-    if (correctionStatus.primaryStatus === "cancelled") {
-      return {
-        key: "needs_follow_up",
-        label: "Cần kiểm tra lại",
-        tone: "danger",
-        description: "Yêu cầu chỉnh công đã hủy.",
-      };
-    }
-    if (hasReviewNote) {
-      return {
-        key: "reviewed",
-        label: "Đã ghi chú",
-        tone: "neutral",
-        description: "Manager đã ghi chú xử lý.",
-      };
-    }
-    return {
-      key: "open",
-      label: "Chưa xử lý",
-      tone: "warning",
-      description: "Chưa có ghi chú hoặc yêu cầu chỉnh công.",
-    };
-  }
-
   const attendanceIssueCounts = useMemo(() => {
     const reviewed = attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length > 0).length;
     const total = attendanceIssueRows.length;
@@ -1839,37 +1786,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     };
   }, [attendanceIssueRows]);
 
-  const attendanceIssueResolutionSummary = useMemo(() => {
-    return attendanceIssueRows.reduce((acc, row) => {
-      const resolution = getAttendanceIssueResolution(row);
-      if (resolution.key === "open") acc.open += 1;
-      if (resolution.key === "in_progress") acc.inProgress += 1;
-      if (resolution.key === "resolved" || resolution.key === "reviewed") acc.resolved += 1;
-      if (resolution.key === "needs_follow_up") acc.needsFollowUp += 1;
-      return acc;
-    }, { open: 0, inProgress: 0, resolved: 0, needsFollowUp: 0 });
-  }, [attendanceIssueRows, getAttendanceIssueResolution]);
-
-  const visibleAttendanceIssueRows = useMemo(() => {
-    const byReviewNote = attendanceIssueRows.filter((row) => {
-      const hasReviewNote = String(row?.reviewNote || "").trim().length > 0;
-      if (attendanceIssueFilter === "reviewed") return hasReviewNote;
-      if (attendanceIssueFilter === "unreviewed") return !hasReviewNote;
-      return true;
-    });
-    return byReviewNote.filter((row) => {
-      const resolution = getAttendanceIssueResolution(row);
-      if (attendanceIssueResolutionFilter === "active") {
-        return resolution.key === "open" || resolution.key === "needs_follow_up";
-      }
-      if (attendanceIssueResolutionFilter === "in_progress") return resolution.key === "in_progress";
-      if (attendanceIssueResolutionFilter === "resolved") {
-        return resolution.key === "resolved" || resolution.key === "reviewed";
-      }
-      if (attendanceIssueResolutionFilter === "needs_follow_up") return resolution.key === "needs_follow_up";
-      return true;
-    });
-  }, [attendanceIssueFilter, attendanceIssueResolutionFilter, attendanceIssueRows, getAttendanceIssueResolution]);
   const attendanceCorrectionFilter = useMemo(() => ({
     restaurantId: effectiveRestaurantId || undefined,
     startDate: todayAttendanceRange.periodStart,
@@ -1950,6 +1866,50 @@ const ScheduleManagement = ({ readOnly = false }) => {
       latestRequest,
     };
   }
+
+  function getAttendanceIssueResolution(row) {
+    const correctionStatus = getCorrectionLinkStatus(row);
+    const hasReviewNote = String(row?.reviewNote || "").trim().length > 0;
+    if (correctionStatus.primaryStatus === "pending") {
+      return { key: "in_progress", label: "Đang xử lý", tone: "warning", description: "Đã có yêu cầu chỉnh công chờ duyệt." };
+    }
+    if (correctionStatus.primaryStatus === "applied") {
+      return { key: "resolved", label: "Đã xử lý", tone: "success", description: "Yêu cầu chỉnh công đã được áp dụng." };
+    }
+    if (correctionStatus.primaryStatus === "rejected") {
+      return { key: "needs_follow_up", label: "Cần kiểm tra lại", tone: "danger", description: "Yêu cầu chỉnh công bị từ chối." };
+    }
+    if (correctionStatus.primaryStatus === "cancelled") {
+      return { key: "needs_follow_up", label: "Cần kiểm tra lại", tone: "danger", description: "Yêu cầu chỉnh công đã hủy." };
+    }
+    if (hasReviewNote) {
+      return { key: "reviewed", label: "Đã ghi chú", tone: "neutral", description: "Manager đã ghi chú xử lý." };
+    }
+    return { key: "open", label: "Chưa xử lý", tone: "warning", description: "Chưa có ghi chú hoặc yêu cầu chỉnh công." };
+  }
+
+  const attendanceIssueResolutionSummary = useMemo(() => {
+    return attendanceIssueRows.reduce((acc, row) => {
+      const resolution = getAttendanceIssueResolution(row);
+      if (resolution.key === "open") acc.open += 1;
+      if (resolution.key === "in_progress") acc.inProgress += 1;
+      if (resolution.key === "resolved" || resolution.key === "reviewed") acc.resolved += 1;
+      if (resolution.key === "needs_follow_up") acc.needsFollowUp += 1;
+      return acc;
+    }, { open: 0, inProgress: 0, resolved: 0, needsFollowUp: 0 });
+  }, [attendanceIssueRows, attendanceCorrectionRequests]);
+
+  const visibleAttendanceIssueRows = useMemo(() => {
+    return attendanceIssueRows.filter((row) => {
+      const resolution = getAttendanceIssueResolution(row);
+      if (attendanceIssueResolutionFilter === "active") return resolution.key === "open" || resolution.key === "needs_follow_up";
+      if (attendanceIssueResolutionFilter === "in_progress") return resolution.key === "in_progress";
+      if (attendanceIssueResolutionFilter === "resolved") return resolution.key === "resolved" || resolution.key === "reviewed";
+      if (attendanceIssueResolutionFilter === "needs_follow_up") return resolution.key === "needs_follow_up";
+      return true;
+    });
+  }, [attendanceIssueResolutionFilter, attendanceIssueRows, attendanceCorrectionRequests]);
+
   const visibleAttendanceIssueCorrectionSummary = useMemo(() => {
     return visibleAttendanceIssueRows.reduce((acc, row) => {
       const status = getCorrectionLinkStatus(row);
@@ -4654,11 +4614,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 </p>
                 {visibleAttendanceIssueRows.length === 0 ? (
                   <p className="schedule-quality-panel__headline">
-                    {attendanceIssueFilter === "unreviewed"
-                      ? "Không có bất thường chấm công chưa xử lý."
-                      : attendanceIssueFilter === "reviewed"
-                        ? "Chưa có bất thường nào đã ghi chú xử lý."
-                        : "Không có bất thường chấm công cần xử lý."}
+                    "Không có bất thường chấm công theo bộ lọc hiện tại."
                   </p>
                 ) : (
               <ul>
