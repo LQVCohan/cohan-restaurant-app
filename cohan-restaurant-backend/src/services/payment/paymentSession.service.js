@@ -33,8 +33,9 @@ const CLOSED_CHILD_PAYMENT_STATUSES = new Set(["paid", "cancelled"]);
 const normalizeBankAccountNumber = (value) => String(value || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 const normalizeDescription = (value) => String(value || "").toUpperCase().replace(/\s+/g, " ").trim();
 const normalizeOccurredAt = (value) => {
-  const d = value ? new Date(value) : new Date();
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 const buildBankTransactionFingerprint = ({ provider, transactionId, bankAccountNumber, amount, occurredAt, description }) => {
   const normalizedTxId = normalizeDescription(transactionId);
@@ -658,6 +659,7 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       : null
   );
   const occurredAt = payload?.transactionDate ? new Date(payload.transactionDate) : new Date();
+  const fingerprintOccurredAt = payload?.transactionDate || payload?.occurredAt || null;
   const requiresBankAccount = process.env.NODE_ENV === "production" || Boolean(process.env.BANK_TRANSFER_ACCOUNT_NUMBER);
   if (!Number.isFinite(amount) || amount <= 0) return { matched: false, reason: "invalid_amount", ignored: true };
   if (!normalizedDescription) return { matched: false, reason: "missing_description", ignored: true };
@@ -667,30 +669,42 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
     transactionId,
     bankAccountNumber: normalizedBankAccountNumber,
     amount,
-    occurredAt,
+    occurredAt: fingerprintOccurredAt,
     description: normalizedDescription,
   });
 
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
-      const exists = transactionId
+      const existingByTxnId = transactionId
         ? await BankTransaction.findOne({ provider, transactionId }).session(session)
-        : await BankTransaction.findOne({ provider, fingerprint: bankTxFingerprint }).session(session);
-      if (exists) return { duplicate: true, bankTransaction: exists };
-      const bankTx = await BankTransaction.create([{
-        provider,
-        restaurantId: payloadRestaurantId || null,
-        transactionId,
-        amount,
-        description: normalizedDescription,
-        transferContent: normalizedDescription,
-        bankAccountNumber: normalizedBankAccountNumber,
-        occurredAt,
-        fingerprint: bankTxFingerprint,
-        raw: payload,
-        matchStatus: "unmatched",
-      }], { session }).then((x) => x[0]);
+        : null;
+      const existingByFingerprint = await BankTransaction.findOne({ provider, fingerprint: bankTxFingerprint }).session(session);
+      const existing = existingByTxnId || existingByFingerprint;
+      if (existing) return { duplicate: true, bankTransaction: existing };
+      let bankTx;
+      try {
+        bankTx = await BankTransaction.create([{
+          provider,
+          restaurantId: payloadRestaurantId || null,
+          transactionId,
+          amount,
+          description: normalizedDescription,
+          transferContent: normalizedDescription,
+          bankAccountNumber: normalizedBankAccountNumber,
+          occurredAt,
+          fingerprint: bankTxFingerprint,
+          raw: payload,
+          matchStatus: "unmatched",
+        }], { session }).then((x) => x[0]);
+      } catch (err) {
+        if (err?.code !== 11000) throw err;
+        const duplicate = (transactionId
+          ? await BankTransaction.findOne({ provider, transactionId }).session(session)
+          : null) || await BankTransaction.findOne({ provider, fingerprint: bankTxFingerprint }).session(session);
+        if (duplicate) return { duplicate: true, bankTransaction: duplicate };
+        throw err;
+      }
 
       const now = new Date();
       const refs = normalizedDescription.match(/ORD-\d{8}-[A-Z0-9]{6}/g) || [];

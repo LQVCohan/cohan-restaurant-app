@@ -45,6 +45,7 @@ Tài liệu này mô tả luồng online payment cho order sau khi đã có PR #
 - Duplicate detection:
   - First key: `provider + transactionId` (unique sparse).
   - Fallback: `provider + fingerprint` (unique sparse), fingerprint derived from normalized transaction payload fields.
+  - If provider does not send `transactionId`, fingerprint fallback remains stable and does not include server receive time.
 - Strict bank account match for order payment settlement:
   - PaymentSession metadata must contain `metadata.bankTransfer.bankAccountNumber`, `bankCode`, `transferContent`.
   - Webhook bank account is normalized and must equal session bank account; mismatch never settles payment.
