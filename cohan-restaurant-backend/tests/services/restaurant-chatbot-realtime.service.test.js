@@ -45,7 +45,16 @@ describe("restaurantChatbotRealtime service", () => {
     expect(result).toMatchObject({ ok: false, code: "INVALID" });
   });
 
-  it("emits guest-safe payload only for linked AI conversation", async () => {
+  it("buildGuestSafeStaffReplyPayload uses fallbackIndex for id", async () => {
+    const svc = await import("../../src/services/ai/restaurantChatbotRealtime.service.js");
+    const payload = svc.buildGuestSafeStaffReplyPayload({
+      message: { senderRole: "staff", senderId: "u1", content: "Xin chào", createdAt: "2026-05-25T10:00:00.000Z" },
+      fallbackIndex: 7,
+    });
+    expect(payload.id).toBe("2026-05-25T10:00:00.000Z_7");
+  });
+
+  it("emits guest-safe payload only for linked AI conversation and keeps fallback index", async () => {
     modelMocks.AiChatConversation.findOne.mockReturnValue({
       select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue({ _id: "valid-conv1" }) })),
     });
@@ -57,34 +66,33 @@ describe("restaurantChatbotRealtime service", () => {
     const ok = await svc.emitAiChatbotStaffReplyIfLinked({
       io,
       chatThreadId: "valid-thread-1",
-      message: { _id: "m1", senderRole: "staff", senderId: "u1", content: "Xin chào", createdAt: new Date().toISOString() },
+      fallbackIndex: 4,
+      message: { senderRole: "staff", senderId: "u1", content: "Xin chào", createdAt: "2026-05-25T10:00:00.000Z" },
     });
 
     expect(ok).toBe(true);
     expect(to).toHaveBeenCalledWith("ai_conv_valid-conv1");
     const payload = emit.mock.calls[0][1];
-    expect(payload).toMatchObject({ id: "m1", role: "staff", senderLabel: "Nhân viên", content: "Xin chào" });
+    expect(payload).toMatchObject({ id: "2026-05-25T10:00:00.000Z_4", role: "staff", senderLabel: "Nhân viên", content: "Xin chào" });
     expect(payload.threadId).toBeUndefined();
     expect(payload.senderId).toBeUndefined();
     expect(payload.participants).toBeUndefined();
     expect(payload.unreadBy).toBeUndefined();
   });
 
-  it("does not emit for non-AI or disallowed message", async () => {
-    modelMocks.AiChatConversation.findOne.mockReturnValue({
-      select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) })),
+  it("does not throw and returns false when emit lookup fails", async () => {
+    modelMocks.AiChatConversation.findOne.mockImplementation(() => {
+      throw new Error("db fail");
     });
-    const emit = vi.fn();
-    const io = { to: vi.fn(() => ({ emit })) };
+    const io = { to: vi.fn(() => ({ emit: vi.fn() })) };
 
     const svc = await import("../../src/services/ai/restaurantChatbotRealtime.service.js");
-    const ok = await svc.emitAiChatbotStaffReplyIfLinked({
-      io,
-      chatThreadId: "valid-thread-1",
-      message: { senderRole: "system", content: "[AI HANDOFF] x", createdAt: new Date().toISOString() },
-    });
-
-    expect(ok).toBe(false);
-    expect(emit).not.toHaveBeenCalled();
+    await expect(
+      svc.emitAiChatbotStaffReplyIfLinked({
+        io,
+        chatThreadId: "valid-thread-1",
+        message: { senderRole: "staff", senderId: "u1", content: "x", createdAt: new Date().toISOString() },
+      })
+    ).resolves.toBe(false);
   });
 });

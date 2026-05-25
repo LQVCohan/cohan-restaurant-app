@@ -237,6 +237,8 @@ const Mutation = {
     };
 
     thread.messages.push(message);
+    const messageIndex = thread.messages.length - 1;
+    const realtimeMessage = thread.messages[messageIndex] || message;
     thread.lastMessageAt = message.createdAt;
     thread.lastMessagePreview = content.slice(0, 140);
 
@@ -289,7 +291,8 @@ const Mutation = {
       await emitAiChatbotStaffReplyIfLinked({
         io: ctx.io,
         chatThreadId: thread._id,
-        message,
+        message: realtimeMessage,
+        fallbackIndex: messageIndex,
       });
     }
 

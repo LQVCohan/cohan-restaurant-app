@@ -79,15 +79,19 @@ const parseStaffReplyForGuest = (message, index = 0) => {
 export const buildGuestSafeStaffReplyPayload = ({ message, fallbackIndex = 0 } = {}) =>
   parseStaffReplyForGuest(message, fallbackIndex);
 
-export async function emitAiChatbotStaffReplyIfLinked({ io, chatThreadId, message } = {}) {
+export async function emitAiChatbotStaffReplyIfLinked({ io, chatThreadId, message, fallbackIndex = 0 } = {}) {
   if (!io || !chatThreadId || !message) return false;
 
-  const conversation = await AiChatConversation.findOne({ chatThreadId }).select("_id").lean();
-  if (!conversation?._id) return false;
+  try {
+    const conversation = await AiChatConversation.findOne({ chatThreadId }).select("_id").lean();
+    if (!conversation?._id) return false;
 
-  const payload = buildGuestSafeStaffReplyPayload({ message });
-  if (!payload) return false;
+    const payload = buildGuestSafeStaffReplyPayload({ message, fallbackIndex });
+    if (!payload) return false;
 
-  io.to(getAiConversationGuestRoomName(conversation._id)).emit("aiChatbotStaffReplyCreated", payload);
-  return true;
+    io.to(getAiConversationGuestRoomName(conversation._id)).emit("aiChatbotStaffReplyCreated", payload);
+    return true;
+  } catch {
+    return false;
+  }
 }
