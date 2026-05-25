@@ -22,7 +22,8 @@ const normalizeToken = (token = "") => {
   if (!cleaned) return "";
   if (tokenMap[cleaned]) return tokenMap[cleaned];
   if (cleaned.includes("existing_promotion") || cleaned.includes("existing_coupon")) return "";
-  return cleaned.replaceAll("_", " ");
+  if (/^[a-z]+(_[a-z]+)+$/.test(cleaned) || /^[a-z_]+$/.test(cleaned)) return "Điều kiện hệ thống phù hợp";
+  return "";
 };
 const normalizeText = (value = "") =>
   String(value)
@@ -44,9 +45,9 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
       <div className="widget-head">
         <div className="title-wrap">
           <div className="icon-wrap"><Sparkles size={18} /></div>
-          <div><h3>Smart Promotion Engine</h3><p>Đề xuất campaign theo giờ vắng, tệp khách và bối cảnh vận hành</p></div>
+          <div><h3>Gợi ý khuyến mãi thông minh</h3><p>Đề xuất campaign theo giờ vắng, tệp khách và bối cảnh vận hành</p></div>
         </div>
-        <span className={`meta-pill ${engine?.meta?.fallbackUsed ? "fallback" : "data"}`}>{engine?.meta?.fallbackUsed ? "Heuristic/Fallback" : "AI Enhanced"}</span>
+        <span className={`meta-pill ${engine?.meta?.fallbackUsed ? "fallback" : "data"}`}>{engine?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "AI hỗ trợ"}</span>
       </div>
 
       {loading ? <div className="state-message">Đang phân tích chiến dịch khuyến mãi phù hợp...</div> : null}
@@ -57,13 +58,13 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
         <>
           <div className="summary-row">
             <span><Clock3 size={14} /> Cửa sổ cơ hội: <strong>{summary.topOpportunityWindow}</strong></span>
-            <span><Users2 size={14} /> Segment ưu tiên: <strong>{summary.highestPrioritySegment}</strong></span>
+            <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{summary.highestPrioritySegment}</strong></span>
             <span><BadgePercent size={14} /> Số campaign: <strong>{summary.recommendedCampaignCount}</strong></span>
           </div>
 
           <div className="coupon-context">
-            <span>Coupon hoạt động: <strong>{engine?.couponContext?.activeCouponCount || 0}</strong></span>
-            <span>Coupon gần giới hạn: <strong>{engine?.couponContext?.nearUsageLimitCount || 0}</strong></span>
+            <span>Voucher hoạt động: <strong>{engine?.couponContext?.activeCouponCount || 0}</strong></span>
+            <span>Voucher gần giới hạn: <strong>{engine?.couponContext?.nearUsageLimitCount || 0}</strong></span>
           </div>
 
           <div className="campaign-list">

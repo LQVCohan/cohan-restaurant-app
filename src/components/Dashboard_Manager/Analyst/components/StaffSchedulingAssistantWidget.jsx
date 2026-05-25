@@ -98,7 +98,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
                 return (
                   <li key={shift.shiftKey}>
                     <div className="line-top">
-                      <span className="shift-key">{shift.shiftKey}</span>
+                      <span className="shift-key">{formatShiftKey(shift.shiftKey)}</span>
                       <span className="shift-delta">{missingCount > 0 ? `Đang thiếu ${missingCount}` : "Thiếu nhẹ"}</span>
                     </div>
                     <p>{missingCount > 0 ? `Cần bổ sung ${missingCount} người cho ${formatShiftKey(shift.shiftKey)}: ${missingRolesList.join(", ") || "theo tổng headcount"}.` : "Thiếu nhẹ theo tổng headcount."}</p>
