@@ -151,6 +151,7 @@ function AiChatbotWidget() {
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
+  const [isSendInFlight, setIsSendInFlight] = useState(false);
   const sendInFlightRef = useRef(false);
   const pollInFlightRef = useRef(false);
   const hasJoinedSocketRef = useRef(false);
@@ -303,6 +304,7 @@ function AiChatbotWidget() {
     const content = String(rawMessage || input).trim();
     if (!content || loading || guestSendLoading || handoffLoading || sendInFlightRef.current) return;
     sendInFlightRef.current = true;
+    setIsSendInFlight(true);
 
     const nextMessages = [...messages, { role: "user", content }];
     setMessages(nextMessages);
@@ -362,6 +364,7 @@ function AiChatbotWidget() {
       setMessages((current) => [...current, { role: "assistant", content: safe }]);
     } finally {
       sendInFlightRef.current = false;
+      setIsSendInFlight(false);
     }
   };
 
@@ -464,7 +467,7 @@ function AiChatbotWidget() {
           {lastQuickReplies.length ? (
             <div className="ai-chatbot-quick-replies">
               {lastQuickReplies.map((reply) => (
-                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={loading || guestSendLoading}>
+                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={loading || guestSendLoading || handoffLoading || isSendInFlight}>
                   {reply}
                 </button>
               ))}
@@ -506,9 +509,9 @@ function AiChatbotWidget() {
               onChange={(event) => setInput(event.target.value)}
               placeholder="Hỏi về món ăn, đặt bàn, đơn hàng..."
               maxLength={500}
-              disabled={loading || guestSendLoading}
+              disabled={loading || guestSendLoading || handoffLoading || isSendInFlight}
             />
-            <button type="submit" disabled={loading || guestSendLoading || !input.trim()} aria-label="Gửi tin nhắn">
+            <button type="submit" disabled={loading || guestSendLoading || handoffLoading || isSendInFlight || !input.trim()} aria-label="Gửi tin nhắn">
               <Send size={18} />
             </button>
           </form>
