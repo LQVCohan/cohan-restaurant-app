@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
@@ -89,6 +89,8 @@ const Q_AI_CHATBOT_GUEST_REPLIES = gql`
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
+const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
+
 const STARTER_MESSAGES = [
   "Gợi ý món bán chạy cho tôi",
   "Tôi muốn đặt bàn",
@@ -149,6 +151,9 @@ function AiChatbotWidget() {
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
+  const sendInFlightRef = useRef(false);
+  const pollInFlightRef = useRef(false);
+  const hasJoinedSocketRef = useRef(false);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -211,7 +216,8 @@ function AiChatbotWidget() {
   };
 
   const fetchGuestReplies = async ({ force = false } = {}) => {
-    if ((!handoffRequested && !force) || !conversationId || !guestId) return;
+    if ((!handoffRequested && !force) || !conversationId || !guestId || pollInFlightRef.current) return;
+    pollInFlightRef.current = true;
     try {
       const { data } = await loadGuestReplies({
         variables: {
@@ -237,6 +243,8 @@ function AiChatbotWidget() {
       }
     } catch {
       // best effort polling only
+    } finally {
+      pollInFlightRef.current = false;
     }
   };
 
@@ -270,10 +278,13 @@ function AiChatbotWidget() {
     socket.on("aiChatbotHandoffResolved", onHandoffResolved);
 
     socket.on("connect", () => {
+      if (hasJoinedSocketRef.current) return;
+      hasJoinedSocketRef.current = true;
       socket.emit("joinAiChatbotConversation", { conversationId, guestId }, () => {});
     });
 
     return () => {
+      hasJoinedSocketRef.current = false;
       socket.off("aiChatbotStaffReplyCreated", onStaffReply);
       socket.off("aiChatbotHandoffResolved", onHandoffResolved);
       socket.emit("leaveAiChatbotConversation", { conversationId, guestId });
@@ -290,7 +301,8 @@ function AiChatbotWidget() {
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
-    if (!content || loading || guestSendLoading) return;
+    if (!content || loading || guestSendLoading || handoffLoading || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     const nextMessages = [...messages, { role: "user", content }];
     setMessages(nextMessages);
@@ -311,7 +323,8 @@ function AiChatbotWidget() {
         });
         const ok = data?.sendAiChatbotGuestMessage?.ok;
         if (!ok) {
-          setMessages((current) => [...current, { role: "assistant", content: "Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại." }]);
+          const safeContent = data?.sendAiChatbotGuestMessage?.message?.content || "Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại.";
+          setMessages((current) => [...current, { role: "assistant", content: safeContent.includes("gửi quá nhanh") ? RATE_LIMIT_MESSAGE : safeContent }]);
         }
         return;
       }
@@ -341,15 +354,14 @@ function AiChatbotWidget() {
       setLastQuickReplies(response?.quickReplies?.length ? response.quickReplies : STARTER_MESSAGES);
       setLastContextSummary(response?.contextSummary || null);
     } catch (err) {
-      setMessages((current) => [
-        ...current,
-        {
-          role: "assistant",
-          content:
-            err?.message ||
-            "Hiện chatbot chưa kết nối được với hệ thống. Vui lòng thử lại sau hoặc liên hệ nhân viên hỗ trợ.",
-        },
-      ]);
+      const code = err?.graphQLErrors?.[0]?.extensions?.code;
+      const msg = err?.graphQLErrors?.[0]?.message || err?.message || "";
+      const safe = code === "RATE_LIMITED" || String(msg).includes("gửi quá nhanh")
+        ? RATE_LIMIT_MESSAGE
+        : (err?.message || "Hiện chatbot chưa kết nối được với hệ thống. Vui lòng thử lại sau hoặc liên hệ nhân viên hỗ trợ.");
+      setMessages((current) => [...current, { role: "assistant", content: safe }]);
+    } finally {
+      sendInFlightRef.current = false;
     }
   };
 

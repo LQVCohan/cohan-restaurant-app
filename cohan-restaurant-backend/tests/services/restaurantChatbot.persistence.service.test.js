@@ -1,3 +1,4 @@
+import { __resetAiChatbotRateLimitStoreForTests } from "../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const conversationStore = [];
@@ -73,6 +74,7 @@ describe("restaurantChatbot persistence", () => {
   beforeEach(() => {
     conversationStore.length = 0;
     messageStore.length = 0;
+    __resetAiChatbotRateLimitStoreForTests();
     delete process.env.OPENAI_API_KEY;
   });
 

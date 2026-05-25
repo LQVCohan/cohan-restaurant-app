@@ -1,13 +1,17 @@
 import { GraphQLError } from "graphql";
+import { AI_CHATBOT_RATE_LIMIT_CODE } from "../../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbot.service.js";
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
 
 const Query = {
-  aiChatbotGuestReplies: async (_, { input }) => {
+  aiChatbotGuestReplies: async (_, { input }, ctx) => {
     try {
-      return await getRestaurantChatbotGuestReplies({ input });
+      return await getRestaurantChatbotGuestReplies({
+        input,
+        clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
+      });
     } catch {
       return {
         ok: false,
@@ -29,10 +33,11 @@ const Mutation = {
         guestId: input?.guestId,
         conversationId: input?.conversationId,
         user: ctx?.user || null,
+        clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể xử lý tin nhắn chatbot", {
-        extensions: { code: err?.statusCode === 400 ? "BAD_USER_INPUT" : "AI_CHATBOT_FAILED" },
+        extensions: { code: err?.code || (err?.statusCode === 400 ? "BAD_USER_INPUT" : "AI_CHATBOT_FAILED") },
       });
     }
   },
@@ -42,6 +47,7 @@ const Mutation = {
         input,
         user: ctx?.user || null,
         io: ctx?.io || null,
+        clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể gửi yêu cầu hỗ trợ nhân viên", {
@@ -51,7 +57,11 @@ const Mutation = {
   },
   sendAiChatbotGuestMessage: async (_, { input }, ctx) => {
     try {
-      return await sendRestaurantChatbotGuestMessage({ input, io: ctx?.io || null });
+      return await sendRestaurantChatbotGuestMessage({
+        input,
+        io: ctx?.io || null,
+        clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
+      });
     } catch {
       return { ok: false, conversationId: String(input?.conversationId || ""), message: null };
     }

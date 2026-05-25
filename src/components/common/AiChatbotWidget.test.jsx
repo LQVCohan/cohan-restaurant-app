@@ -101,6 +101,28 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     vi.restoreAllMocks();
   });
 
+
+  it("shows friendly message when ask is rate limited", async () => {
+    askMutationSpy.mockRejectedValueOnce({ graphQLErrors: [{ message: "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.", extensions: { code: "RATE_LIMITED" } }] });
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Xin chào" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(screen.getByText("Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.")).toBeInTheDocument());
+  });
+
+  it("prevents rapid quick-reply double submit while in flight", async () => {
+    let release;
+    askMutationSpy.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    const quick = screen.getByRole("button", { name: "Gợi ý món bán chạy cho tôi" });
+    fireEvent.click(quick);
+    fireEvent.click(quick);
+    expect(askMutationSpy).toHaveBeenCalledTimes(1);
+    await act(async () => release({ data: { askAiChatbot: { answer: "ok", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1" } } }));
+  });
+
   it("keeps normal AI flow before handoff", async () => {
     render(<AiChatbotWidget />);
     fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
@@ -157,7 +179,7 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
 
   it("shows clear error when guest post-handoff send returns ok=false", async () => {
     guestMessageMutationSpy.mockResolvedValueOnce({
-      data: { sendAiChatbotGuestMessage: { ok: false, conversationId: "conv-1", message: null } },
+      data: { sendAiChatbotGuestMessage: { ok: false, conversationId: "conv-1", message: { content: "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút." } } },
     });
 
     render(<AiChatbotWidget />);
@@ -173,7 +195,7 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
 
     await waitFor(() => expect(guestMessageMutationSpy).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("Không thể gửi tin nhắn cho nhân viên lúc này. Vui lòng thử lại.")).toBeInTheDocument();
+    expect(screen.getByText("Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.")).toBeInTheDocument();
     expect(askMutationSpy).toHaveBeenCalledTimes(1);
   });
 

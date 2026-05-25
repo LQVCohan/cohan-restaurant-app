@@ -1,3 +1,4 @@
+import { __resetAiChatbotRateLimitStoreForTests } from "../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 
@@ -45,6 +46,7 @@ import { requestRestaurantChatbotHandoff } from "../../src/services/ai/restauran
 describe("restaurantChatbot handoff service", () => {
   beforeEach(() => {
     conversations.length = 0; messages.length = 0; threads.length = 0; notifications.length = 0; users.length = 0;
+    __resetAiChatbotRateLimitStoreForTests();
   });
 
   it("guest valid handoff sets status and creates thread", async () => {

@@ -1,3 +1,4 @@
+import { __resetAiChatbotRateLimitStoreForTests } from "../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AiChatConversation, ChatThread, User, Notification } from "../../models/index.js";
 
@@ -119,6 +120,7 @@ describe("toGuestStaffReplies", () => {
 describe("getRestaurantChatbotGuestReplies", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    __resetAiChatbotRateLimitStoreForTests();
   });
 
   it("returns staff replies for valid guest ownership", async () => {
@@ -188,6 +190,7 @@ describe("getRestaurantChatbotGuestReplies", () => {
 describe("sendRestaurantChatbotGuestMessage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    __resetAiChatbotRateLimitStoreForTests();
   });
 
   it("appends guest message to linked handoff chat thread", async () => {
