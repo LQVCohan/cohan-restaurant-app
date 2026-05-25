@@ -50,9 +50,12 @@
 - `cohan-restaurant-backend/graphql/schema/user.graphql`
 - `cohan-restaurant-backend/graphql/resolvers/staff/query.js`
 - `cohan-restaurant-backend/graphql/resolvers/staff/mutation.js`
-- `cohan-restaurant-backend/models/*.js` (các file đã đọc trong bảng mục 13)
-- danh sách file từ `src/components/Dashboard_Manager/Schedule/{components,hooks,utils}`
-- danh sách file từ `cohan-restaurant-backend/tests/resolvers`, `cohan-restaurant-backend/tests/services`
+- `cohan-restaurant-backend/models/user.model.js`
+- `cohan-restaurant-backend/models/timesheet.model.js`
+- `cohan-restaurant-backend/models/shift.model.js`
+- `cohan-restaurant-backend/models/schedule-publication.model.js`
+- `cohan-restaurant-backend/models/availability-registration-window.model.js`
+- `cohan-restaurant-backend/models/staff-availability-submission.model.js`
 
 ## 4. Các domain/chức năng chính
 
@@ -82,7 +85,7 @@
 
 ### 4.5 Payroll
 - Vai trò: tổng hợp và xử lý payroll dựa trên timesheet + policy/settings.
-- File chính: `src/services/payroll/*`, resolver payroll trong staff query/mutation.
+- File chính: `cohan-restaurant-backend/src/services/payroll/*`, resolver payroll trong staff query/mutation.
 - Luồng dữ liệu: runtime build period items/summary/payment.
 - Lưu ý khi sửa: attendance basic không nên đụng logic payroll nếu không có yêu cầu.
 
@@ -239,9 +242,10 @@ Lệnh đã xác minh từ `package.json`:
   - `npm run test:frontend`
   - `npm run test:backend`
 - Backend package (`cohan-restaurant-backend/package.json`):
-  - `npm run dev --prefix cohan-restaurant-backend`
-  - `npm test --prefix cohan-restaurant-backend`
-  - `npm run lint --prefix cohan-restaurant-backend`
+  - `npm --prefix cohan-restaurant-backend run dev`
+  - `npm --prefix cohan-restaurant-backend test`
+  - `npm --prefix cohan-restaurant-backend run lint`
+  - `npm --prefix cohan-restaurant-backend run build`
 
 Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 
@@ -258,10 +262,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 **File đã xác minh cho section này**
 - `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx`
 - `src/components/Staff/components/StaffSchedulePage.test.jsx`
-- danh sách file trong `cohan-restaurant-backend/tests/resolvers/`
-- danh sách file trong `cohan-restaurant-backend/tests/services/`
 
-## 13. File nguồn đã đọc để tạo tài liệu
+## 13. Thư mục đã kiểm tra danh sách (không đọc nội dung từng file)
+- `src/context/`
+- `cohan-restaurant-backend/tests/resolvers/`
+- `cohan-restaurant-backend/tests/services/`
+
+## 14. File nguồn đã đọc để tạo tài liệu
 
 | File | Nội dung đã xác minh |
 |---|---|
@@ -283,7 +290,6 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 | `src/components/Staff/components/StaffSchedulePage.jsx` | Luồng staff availability/ack/check-in/out. |
 | `src/hooks/useNotification.js` | Hook lấy notification context. |
 | `src/utils/graphqlErrorUtils.js` | Helpers phân tích GraphQL error code. |
-| `src/context/*` (danh sách file) | Xác nhận có context cho Auth/Notification/Cart/... |
 | `cohan-restaurant-backend/package.json` | Script chạy backend thực tế tại `src/server/server.js`. |
 | `cohan-restaurant-backend/graphql/schema/user.graphql` | Type/query/mutation liên quan schedule/attendance/ack. |
 | `cohan-restaurant-backend/graphql/resolvers/staff/query.js` | Query staff-manager, `myShiftAttendances`, `managerShiftAttendances`. |
@@ -302,6 +308,3 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 | `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js` | Runtime payroll tổng quan (đã đọc mức ngắn). |
 | `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx` | Mock/query structure và behavior UI manager schedule. |
 | `src/components/Staff/components/StaffSchedulePage.test.jsx` | Query/mutation map cho staff page tests. |
-| `cohan-restaurant-backend/tests/resolvers/*` (danh sách file) | Xác nhận có coverage resolver rộng. |
-| `cohan-restaurant-backend/tests/services/*` (danh sách file) | Xác nhận có coverage service domain. |
-
