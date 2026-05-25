@@ -15,6 +15,7 @@ let capturedDeclinedShiftAckVariables;
 let mockAvailabilityWindowsData;
 let mockAvailabilitySubmissionsData;
 let mockManagerShiftAttendancesData;
+let mockAttendanceCorrectionsData;
 let mutationSpy;
 let lazyQuerySpy;
 const getFirstShiftCard = async () => {
@@ -81,6 +82,14 @@ vi.mock("@apollo/client", async () => {
       if (body.includes("query ManagerShiftAttendances")) {
         return {
           data: mockManagerShiftAttendancesData,
+          loading: false,
+          error: null,
+          refetch: vi.fn(),
+        };
+      }
+      if (body.includes("query AttendanceCorrectionRequests")) {
+        return {
+          data: mockAttendanceCorrectionsData,
           loading: false,
           error: null,
           refetch: vi.fn(),
@@ -185,6 +194,9 @@ describe("ScheduleManagement", () => {
     };
     mockManagerShiftAttendancesData = {
       managerShiftAttendances: [],
+    };
+    mockAttendanceCorrectionsData = {
+      attendanceCorrectionRequests: [],
     };
   });
 
@@ -720,6 +732,93 @@ describe("ScheduleManagement", () => {
     expect(
       await screen.findByRole("button", { name: "Ghi chú xử lý" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows pending correction status for matching issue row", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [{
+        id: "attendance-pending",
+        employeeId: "e01",
+        shiftId: null,
+        status: "late",
+        checkInAt: "2026-04-20T06:10:00.000Z",
+        employeeName: "Nhân viên A",
+        employeeCode: "E01",
+        shiftStartTime: "2026-04-20T06:00:00.000Z",
+        shiftEndTime: "2026-04-20T07:00:00.000Z",
+        shiftType: "morning",
+        isLate: true,
+        reviewNote: null,
+      }],
+    };
+    mockAttendanceCorrectionsData = {
+      attendanceCorrectionRequests: [{ id: "cor-1", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "pending" }],
+    };
+    render(<ScheduleManagement />);
+    expect(await screen.findByText("Chỉnh công: Có yêu cầu chỉnh công chờ duyệt")).toBeInTheDocument();
+  });
+
+  it("shows applied correction status for matching issue row", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [{
+        id: "attendance-applied",
+        employeeId: "e01",
+        status: "late",
+        checkInAt: "2026-04-20T06:10:00.000Z",
+        employeeName: "Nhân viên A",
+        employeeCode: "E01",
+        shiftStartTime: "2026-04-20T06:00:00.000Z",
+        shiftEndTime: "2026-04-20T07:00:00.000Z",
+        isLate: true,
+        reviewNote: null,
+      }],
+    };
+    mockAttendanceCorrectionsData = {
+      attendanceCorrectionRequests: [{ id: "cor-2", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "applied" }],
+    };
+    render(<ScheduleManagement />);
+    expect(await screen.findByText("Chỉnh công: Đã áp dụng chỉnh công")).toBeInTheDocument();
+  });
+
+  it("shows no correction request status when none matched", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [{
+        id: "attendance-none",
+        employeeId: "e01",
+        status: "late",
+        checkInAt: "2026-04-20T06:10:00.000Z",
+        employeeName: "Nhân viên A",
+        employeeCode: "E01",
+        shiftStartTime: "2026-04-20T06:00:00.000Z",
+        shiftEndTime: "2026-04-20T07:00:00.000Z",
+        isLate: true,
+        reviewNote: null,
+      }],
+    };
+    render(<ScheduleManagement />);
+    expect(await screen.findByText("Chỉnh công: Chưa có yêu cầu chỉnh công")).toBeInTheDocument();
+  });
+
+  it("does not match correction request from different date", async () => {
+    mockManagerShiftAttendancesData = {
+      managerShiftAttendances: [{
+        id: "attendance-date-check",
+        employeeId: "e01",
+        status: "late",
+        checkInAt: "2026-04-20T06:10:00.000Z",
+        employeeName: "Nhân viên A",
+        employeeCode: "E01",
+        shiftStartTime: "2026-04-20T06:00:00.000Z",
+        shiftEndTime: "2026-04-20T07:00:00.000Z",
+        isLate: true,
+        reviewNote: null,
+      }],
+    };
+    mockAttendanceCorrectionsData = {
+      attendanceCorrectionRequests: [{ id: "cor-3", employeeId: "e01", workDate: "2026-04-21T00:00:00.000Z", status: "pending" }],
+    };
+    render(<ScheduleManagement />);
+    expect(await screen.findByText("Chỉnh công: Chưa có yêu cầu chỉnh công")).toBeInTheDocument();
   });
 
 
