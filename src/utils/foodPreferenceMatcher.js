@@ -33,13 +33,21 @@ function uniqueMatches(haystack, keywords = []) {
   return [...new Set(keywords.filter((keyword) => haystack.includes(normalizeText(keyword))))];
 }
 
+export function hasMeaningfulFoodPreferences(preferences) {
+  return (
+    (preferences?.diet && preferences.diet !== "omni") ||
+    (Array.isArray(preferences?.allergies) && preferences.allergies.length > 0)
+  );
+}
+
 export function analyzeMenuItemForFoodPreferences(item, preferences) {
   const safePreferences = preferences || {};
   const diet = safePreferences?.diet || "omni";
   const allergies = Array.isArray(safePreferences?.allergies) ? safePreferences.allergies : [];
   const haystack = buildHaystack(item);
 
-  let score = 0;
+  let preferenceScore = 0;
+  let popularityScore = 0;
   const reasons = [];
 
   const matchedAllergies = allergies.filter((allergyId) => {
@@ -49,30 +57,37 @@ export function analyzeMenuItemForFoodPreferences(item, preferences) {
 
   const hasAllergyWarning = matchedAllergies.length > 0;
   if (hasAllergyWarning) {
-    score -= matchedAllergies.length * 4;
+    preferenceScore -= matchedAllergies.length * 4;
   }
 
   const positiveMatches = uniqueMatches(haystack, DIET_POSITIVE_KEYWORDS[diet] || []);
   const negativeMatches = uniqueMatches(haystack, DIET_NEGATIVE_KEYWORDS[diet] || []);
 
   if (positiveMatches.length > 0) {
-    score += positiveMatches.length * 2;
+    preferenceScore += positiveMatches.length * 2;
     reasons.push(`Khớp khẩu vị: ${positiveMatches.join(", ")}`);
   }
 
   if (negativeMatches.length > 0) {
-    score -= negativeMatches.length * 2;
+    preferenceScore -= negativeMatches.length * 2;
     reasons.push(`Có thành phần có thể không phù hợp: ${negativeMatches.join(", ")}`);
   }
 
-  score += Math.min(Number(item?.rate || 0), 5) * 0.2;
-  score += Math.min(Number(item?.orderCounter || 0), 50) * 0.02;
+  popularityScore += Math.min(Number(item?.rate || 0), 5) * 0.2;
+  popularityScore += Math.min(Number(item?.orderCounter || 0), 50) * 0.02;
+
+  const score = preferenceScore + popularityScore;
 
   const warningReason = hasAllergyWarning
     ? `Món có thể chứa thành phần dị ứng: ${matchedAllergies.join(", ")}. Vui lòng kiểm tra lại với nhà hàng trước khi đặt.`
     : "";
 
-  const isRecommended = score >= 2 && !hasAllergyWarning;
+  const hasPreferenceMatch = positiveMatches.length > 0;
+  const isRecommended =
+    hasMeaningfulFoodPreferences(safePreferences) &&
+    hasPreferenceMatch &&
+    preferenceScore >= 2 &&
+    !hasAllergyWarning;
 
   return {
     score,
@@ -85,6 +100,10 @@ export function analyzeMenuItemForFoodPreferences(item, preferences) {
 }
 
 export function sortMenuItemsByFoodPreference(items, preferences) {
+  if (!hasMeaningfulFoodPreferences(preferences)) {
+    return [...(items || [])];
+  }
+
   return [...(items || [])].sort((a, b) => {
     const metaA = a?.foodPreferenceMeta || analyzeMenuItemForFoodPreferences(a, preferences);
     const metaB = b?.foodPreferenceMeta || analyzeMenuItemForFoodPreferences(b, preferences);

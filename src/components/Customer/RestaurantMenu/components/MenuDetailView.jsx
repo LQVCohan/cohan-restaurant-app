@@ -8,6 +8,7 @@ import useFoodPreferences from "../../../../hooks/useFoodPreferences";
 import {
   analyzeMenuItemForFoodPreferences,
   sortMenuItemsByFoodPreference,
+  hasMeaningfulFoodPreferences,
 } from "../../../../utils/foodPreferenceMatcher";
 import "../styles/MenuDetailView.scss";
 import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
@@ -80,6 +81,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   const [prioritizeFoodPreferences, setPrioritizeFoodPreferences] = useState(true);
   const { isAuthenticated } = useContext(AuthContext);
   const { preferences } = useFoodPreferences({ skip: !isAuthenticated });
+  const hasFoodPreferences = hasMeaningfulFoodPreferences(preferences);
   const restaurantId = restaurant?.id || restaurant?._id || "";
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
@@ -149,11 +151,11 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   const itemsWithFoodPreferenceMeta = useMemo(() => {
     return itemsWithPromotion.map((item) => ({
       ...item,
-      foodPreferenceMeta: isAuthenticated
+      foodPreferenceMeta: isAuthenticated && hasFoodPreferences
         ? analyzeMenuItemForFoodPreferences(item, preferences)
         : null,
     }));
-  }, [itemsWithPromotion, isAuthenticated, preferences]);
+  }, [hasFoodPreferences, isAuthenticated, itemsWithPromotion, preferences]);
 
   const filteredItems = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
@@ -164,7 +166,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
       return String(item.name || "").toLowerCase().includes(lowerSearch);
     });
 
-    if (!isAuthenticated || !prioritizeFoodPreferences) {
+    if (!isAuthenticated || !hasFoodPreferences || !prioritizeFoodPreferences) {
       return baseItems;
     }
 
@@ -172,6 +174,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   }, [
     activeCat,
     isAuthenticated,
+    hasFoodPreferences,
     itemsWithFoodPreferenceMeta,
     preferences,
     prioritizeFoodPreferences,
@@ -279,7 +282,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
               </div>
             ))}
           </div>
-          {isAuthenticated && (
+          {isAuthenticated && hasFoodPreferences && (
             <label className="food-preference-toggle">
               <input
                 type="checkbox"
