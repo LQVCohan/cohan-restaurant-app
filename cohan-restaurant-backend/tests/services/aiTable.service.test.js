@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { __testables } from "../../src/services/ai/aiTable.service.js";
+import { __testables, generateSmartFloorLayout } from "../../src/services/ai/aiTable.service.js";
 
 const allowedTypes = ["standard", "booth", "vip", "outdoor", "bar", "private"];
 const overlap = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
@@ -10,6 +10,122 @@ const avgNearestDistance = (tables) => tables.reduce((sum, t, idx) => {
 }, 0) / Math.max(1, tables.length);
 
 describe("aiTable.service layout engine v3", () => {
+  const smallPayload = { goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } };
+  it("selects small balanced template for default small restaurant", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    expect(out.meta.template).toBe("small_balanced");
+    expect(__testables.passesHardQualityGate(out, smallPayload)).toBe(true);
+    expect(out.tables.length).toBe(8);
+  });
+  it("buffet payload selects buffet_service before small_balanced", () => {
+    const out = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { buffet: 1, kitchen: 1, wc: 1, cashier: 1 } } }, 0);
+    expect(out.meta.template).toBe("buffet_service");
+  });
+  it("quality gate detects missing required decor", () => {
+    const payload = { goal: "balanced", components: { tables: { standard: 8 }, objects: { kitchen: 1, plant: 2 } } };
+    const fake = { tables: Array.from({ length: 8 }).map((_, i) => ({ x: i * 70, y: 100, capacity: 4, type: "standard" })), decor: [{ type: "plant", x: 10, y: 10, w: 40, h: 40 }], meta: { zones: { roomBounds: { x: 0, y: 0, w: 800, h: 500 }, mainAisle: { x: 380, y: 40, w: 40, h: 420 } } } };
+    const issues = __testables.getLayoutQualityIssues(fake, payload);
+    expect(issues.some((i) => i.code === "MISSING_DECOR" && i.message.includes("kitchen"))).toBe(true);
+    expect(issues.some((i) => i.code === "MISSING_DECOR" && i.message.includes("plant"))).toBe(true);
+    expect(__testables.passesHardQualityGate(fake, payload)).toBe(false);
+  });
+  it("small balanced template respects requested table count", () => {
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 6, vip: 0, group: 0 } } }, 0).tables.length).toBe(6);
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 8, vip: 0, group: 0 } } }, 0).tables.length).toBe(8);
+    expect(__testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 10, vip: 0, group: 0 } } }, 0).tables.length).toBe(10);
+  });
+  it("small balanced respects spacious goal room size and meta goal", () => {
+    const balanced = __testables.generateTemplateBasedLayout({ ...smallPayload, goal: "balanced" }, 0);
+    const spacious = __testables.generateTemplateBasedLayout({ ...smallPayload, goal: "spacious" }, 0);
+    expect(spacious.meta.template).toBe("small_balanced");
+    expect(spacious.meta.goal).toBe("spacious");
+    expect(spacious.meta.zones.roomBounds.w).toBeGreaterThan(balanced.meta.zones.roomBounds.w);
+  });
+  it("small balanced zones are consistent with roomBounds", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    const { roomBounds, mainDining, serviceZone } = out.meta.zones;
+    const inRoom = (r) => r.x >= roomBounds.x && r.y >= roomBounds.y && r.x + r.w <= roomBounds.x + roomBounds.w && r.y + r.h <= roomBounds.y + roomBounds.h;
+    expect(inRoom(mainDining)).toBe(true);
+    expect(inRoom(serviceZone)).toBe(true);
+    const services = out.decor.filter((d) => ["kitchen", "wc"].includes(d.type));
+    services.forEach((s) => {
+      const serviceCenter = { x: serviceZone.x + serviceZone.w / 2, y: serviceZone.y + serviceZone.h / 2 };
+      const itemCenter = { x: s.x + s.w / 2, y: s.y + s.h / 2 };
+      expect(Math.hypot(itemCenter.x - serviceCenter.x, itemCenter.y - serviceCenter.y)).toBeLessThan(320);
+    });
+    expect(out.meta.scoreBreakdown.serviceIsolationPenalty).toBeLessThan(90);
+  });
+  it("quality issues detect extra tables", () => {
+    const fake = __testables.generateTemplateBasedLayout({ ...smallPayload, components: { ...smallPayload.components, tables: { standard: 8, vip: 0, group: 0 } } }, 0);
+    const payloadReq6 = { ...smallPayload, components: { ...smallPayload.components, tables: { standard: 6, vip: 0, group: 0 } } };
+    const issues = __testables.getLayoutQualityIssues(fake, payloadReq6);
+    expect(issues.some((i) => i.code === "EXTRA_TABLES")).toBe(true);
+  });
+  it("template does not add unselected door/cashier", () => {
+    const noObjects = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: {} } }, 0);
+    expect(noObjects.decor.some((d) => d.type === "door")).toBe(false);
+    expect(noObjects.decor.some((d) => d.type === "cashier")).toBe(false);
+    const cashierOnly = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { cashier: 1 } } }, 0);
+    expect(cashierOnly.decor.some((d) => d.type === "cashier")).toBe(true);
+    expect(cashierOnly.decor.some((d) => d.type === "door")).toBe(false);
+    const room = cashierOnly.meta.zones.roomBounds;
+    const cashier = cashierOnly.decor.find((d) => d.type === "cashier");
+    expect(cashier.x).toBeGreaterThanOrEqual(room.x);
+    expect(cashier.y).toBeGreaterThanOrEqual(room.y);
+    expect(cashier.x + cashier.w).toBeLessThanOrEqual(room.x + room.w);
+    expect(cashier.y + cashier.h).toBeLessThanOrEqual(room.y + room.h);
+    const doorOnly = __testables.generateTemplateBasedLayout({ goal: "balanced", components: { tables: { standard: 8 }, objects: { door: 1 } } }, 0);
+    expect(doorOnly.decor.some((d) => d.type === "door")).toBe(true);
+    expect(doorOnly.decor.some((d) => d.type === "cashier")).toBe(false);
+  });
+  it("small balanced template respects currentItems", () => {
+    const blocked = { x: 80, y: 140, w: 180, h: 180, isRealTable: false };
+    const out = __testables.generateTemplateBasedLayout({ ...smallPayload, currentItems: [blocked] }, 0);
+    const rects = [...out.tables.map((t) => ({ x: t.x, y: t.y, w: 60, h: 60 })), ...out.decor.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h }))];
+    expect(rects.some((r) => overlap(r, blocked))).toBe(false);
+  });
+  it("generateSmartFloorLayout attaches excellent quality for default small payload", async () => {
+    const out = await generateSmartFloorLayout(smallPayload);
+    expect(out.meta.quality).toBeTruthy();
+    expect(out.meta.quality.template).toBe("small_balanced");
+    expect(out.meta.quality.passedHardGate).toBe(true);
+    expect(out.meta.quality.gradeLabel).toBe("excellent");
+    expect(out.meta.quality.issues.some((i) => i.severity === "error")).toBe(false);
+    expect(out.tables.length).toBe(8);
+  });
+  it("currentItems blocking door/window does not pass hard gate", async () => {
+    const blockedDoor = { x: 290, y: 440, w: 120, h: 30, isRealTable: false };
+    const blockedWindow = { x: 10, y: 0, w: 200, h: 30, isRealTable: false };
+    const payload = { ...smallPayload, currentItems: [blockedDoor, blockedWindow] };
+    const template = __testables.generateTemplateBasedLayout(payload, 0);
+    const hasDoorOverlap = template.decor.filter((d) => d.type === "door" || d.type === "window").some((d) => overlap(d, blockedDoor) || overlap(d, blockedWindow));
+    expect(hasDoorOverlap).toBe(false);
+    const out = await generateSmartFloorLayout(payload);
+    const outHasDoorOverlap = out.decor.filter((d) => d.type === "door" || d.type === "window").some((d) => overlap(d, blockedDoor) || overlap(d, blockedWindow));
+    expect(outHasDoorOverlap).toBe(false);
+  });
+  it("small balanced layout gets excellent quality grade", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    const issues = __testables.getLayoutQualityIssues(out, smallPayload);
+    expect(issues.some((i) => i.severity === "error")).toBe(false);
+    expect(out.meta.score).toBeGreaterThanOrEqual(1100);
+  });
+  it("entrance flow is clear", () => {
+    const out = __testables.generateTemplateBasedLayout(smallPayload, 0);
+    const door = out.decor.find((d) => d.type === "door");
+    const cashier = out.decor.find((d) => d.type === "cashier");
+    const entrance = __testables.getEntranceRect(door);
+    expect(cashier && door).toBeTruthy();
+    expect(door.y + door.h).toBeGreaterThanOrEqual(out.meta.zones.roomBounds.y + out.meta.zones.roomBounds.h - 14);
+    expect(Math.hypot((cashier.x + cashier.w / 2) - (door.x + door.w / 2), (cashier.y + cashier.h / 2) - (door.y + door.h / 2))).toBeLessThan(180);
+    expect(__testables.isInAisle(cashier, out.meta.zones.mainAisle)).toBe(false);
+    out.decor.filter((d) => ["plant", "kitchen", "wc"].includes(d.type)).forEach((d) => expect(overlap(d, entrance)).toBe(false));
+  });
+  it("fallback still works for non-small layout", () => {
+    const out = __testables.generateTemplateBasedLayout({ goal: "capacity", components: { tables: { standard: 24, group: 4, vip: 2 }, objects: { buffet: 1 } } }, 2);
+    expect(out.tables.length).toBeGreaterThan(0);
+    expect(out.tables.every((t) => allowedTypes.includes(t.type))).toBe(true);
+  });
   it("compact small restaurant room is not oversized", () => {
     const out = __testables.generateRuleBasedLayout({ goal: "balanced", components: { tables: { standard: 8, vip: 0, group: 0 }, objects: { door: 1, window: 2, cashier: 1, kitchen: 1, wc: 1, plant: 2, wall: 4 } } }, 0);
     expect(out.tables.length).toBe(8);

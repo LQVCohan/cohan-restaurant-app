@@ -154,6 +154,14 @@ const SMALL_ROOM_BY_GOAL = {
   vip: { minW: 820, minH: 580, perTableW: 130, perTableH: 100, aisleW: 76 },
 };
 const CANDIDATE_COUNT = 16;
+const LAYOUT_TEMPLATES = {
+  SMALL_BALANCED: "small_balanced",
+  COMPACT_CAPACITY: "compact_capacity",
+  SPACIOUS_DINING: "spacious_dining",
+  VIP_PRIVATE: "vip_private",
+  FAMILY_GROUP: "family_group",
+  BUFFET_SERVICE: "buffet_service",
+};
 const clampNonNegative = (value) => Math.max(0, Number(value) || 0);
 const getRoomSizingConfig = (goal, tableCount) => {
   if (tableCount <= 10) return SMALL_ROOM_BY_GOAL[goal] || SMALL_ROOM_BY_GOAL.balanced;
@@ -254,6 +262,74 @@ const buildCompactPositions = (count, zone, gapX, gapY, seed, windowBiasY = 0) =
 };
 
 const isInAisle = (rect, aisle, gap = 0) => !!aisle && rectsOverlap(expandRect(rect, gap), aisle, 0);
+const isNearRoomEdge = (rect, room, threshold = 20) => {
+  const c = centerOf(rect);
+  return Math.min(Math.abs(c.x - room.x), Math.abs(c.x - (room.x + room.w)), Math.abs(c.y - room.y), Math.abs(c.y - (room.y + room.h))) <= threshold;
+};
+const getEntranceRect = (door) => ({ x: door.x - 40, y: door.y - 90, w: door.w + 80, h: 90 });
+const getTableRect = (t) => normalizeRect({ x: t.x, y: t.y, w: t.w || (t.capacity >= 6 ? 72 : 60), h: t.h || (t.capacity >= 6 ? 72 : 60) });
+
+const selectLayoutTemplate = ({ components, goal, tableCount }) => {
+  const vip = components.tables.vip || 0;
+  const group = components.tables.group || 0;
+  const standard = (components.tables.standard || 0) + (components.tables.fourSeat || 0);
+  const buffet = components.objects.buffet || 0;
+  const serviceCount = (components.objects.cashier || 0) + (components.objects.kitchen || 0) + (components.objects.wc || 0) + buffet;
+  if (buffet > 0 || serviceCount >= 4) return { template: LAYOUT_TEMPLATES.BUFFET_SERVICE, reason: "buffet_service", preferredAisleOrientation: "vertical", preferredDoorSide: "bottom", preferredServiceCorner: "right_bottom", clusterStrategy: "service_corner" };
+  if (tableCount <= 10 && standard > 0 && vip === 0 && group === 0 && buffet === 0 && ["balanced", "spacious"].includes(goal)) return { template: LAYOUT_TEMPLATES.SMALL_BALANCED, reason: "small_default", preferredAisleOrientation: "vertical", preferredDoorSide: "bottom", preferredServiceCorner: "bottom_right", clusterStrategy: "two_2x2" };
+  if (vip > 0 || goal === "vip") return { template: LAYOUT_TEMPLATES.VIP_PRIVATE, reason: "vip_private", preferredAisleOrientation: "vertical", preferredDoorSide: "bottom", preferredServiceCorner: "right_top", clusterStrategy: "vip_zone" };
+  if (group > 0) return { template: LAYOUT_TEMPLATES.FAMILY_GROUP, reason: "group_tables", preferredAisleOrientation: "horizontal", preferredDoorSide: "bottom", preferredServiceCorner: "bottom_right", clusterStrategy: "group_front" };
+  if (goal === "capacity" && tableCount >= 8 && vip <= 1 && group <= 1) return { template: LAYOUT_TEMPLATES.COMPACT_CAPACITY, reason: "max_capacity", preferredAisleOrientation: "vertical", preferredDoorSide: "bottom", preferredServiceCorner: "bottom_right", clusterStrategy: "dense" };
+  return { template: LAYOUT_TEMPLATES.SPACIOUS_DINING, reason: "spacious", preferredAisleOrientation: "vertical", preferredDoorSide: "bottom", preferredServiceCorner: "bottom_right", clusterStrategy: "spread" };
+};
+
+const getLayoutQualityIssues = (layout, payload = {}) => {
+  const issues = [];
+  const tables = (layout.tables || []).map(getTableRect);
+  const decor = layout.decor || [];
+  const room = layout.meta?.zones?.roomBounds;
+  const aisle = layout.meta?.zones?.mainAisle;
+  const req = Object.values(toComponents(payload).tables || {}).reduce((a, b) => a + b, 0);
+  const requestedObjects = toComponents(payload).objects || {};
+  if (layout.tables.length < req) issues.push({ code: "MISSING_TABLES", message: "Missing requested table count", severity: "error" });
+  if (layout.tables.length > req) issues.push({ code: "EXTRA_TABLES", message: "Generated extra tables", severity: "error" });
+  const generatedDecorCount = decor.reduce((acc, item) => ({ ...acc, [item.type]: (acc[item.type] || 0) + 1 }), {});
+  ["door", "window", "cashier", "kitchen", "wc", "buffet", "plant", "stairs"].forEach((type) => {
+    if ((requestedObjects[type] || 0) > (generatedDecorCount[type] || 0)) {
+      issues.push({ code: "MISSING_DECOR", type, message: `Missing requested ${type}`, severity: "error" });
+    }
+  });
+  if ((requestedObjects.wall || 0) > 0 && (generatedDecorCount.wall || 0) <= 0) {
+    issues.push({ code: "MISSING_DECOR", type: "wall", message: "Missing requested wall", severity: "error" });
+  }
+  for (let i = 0; i < tables.length; i += 1) for (let j = i + 1; j < tables.length; j += 1) if (rectsOverlap(tables[i], tables[j], 0)) issues.push({ code: "TABLE_OVERLAP", message: "Table overlaps table", severity: "error" });
+  const walls = decor.filter((d) => d.type === "wall").map(normalizeRect);
+  const services = decor.filter((d) => ["cashier", "kitchen", "wc", "buffet"].includes(d.type)).map(normalizeRect);
+  decor.forEach((d) => {
+    const r = normalizeRect(d);
+    if (room && d.type !== "wall" && !inZone(r, room)) issues.push({ code: "OUTSIDE_ROOM", message: `${d.type} outside room`, severity: "error" });
+    if (aisle && ["plant", "cashier", "kitchen", "wc", "buffet"].includes(d.type) && isInAisle(r, aisle, 0)) issues.push({ code: "IN_AISLE", message: `${d.type} in aisle`, severity: "error" });
+    if (!["wall", "door", "window"].includes(d.type) && walls.some((w) => rectsOverlap(r, w, 0))) issues.push({ code: "WALL_OVERLAP", message: `${d.type} overlap wall`, severity: "error" });
+  });
+  if (aisle && tables.some((t) => isInAisle(t, aisle, 0))) issues.push({ code: "TABLE_IN_AISLE", message: "Table in aisle", severity: "error" });
+  if (room) {
+    const door = decor.find((d) => d.type === "door");
+    const windows = decor.filter((d) => d.type === "window");
+    if (door && !isNearRoomEdge(normalizeRect(door), room)) issues.push({ code: "DOOR_NOT_EDGE", message: "Door not near edge", severity: "error" });
+    windows.forEach((w) => { if (!isNearRoomEdge(normalizeRect(w), room)) issues.push({ code: "WINDOW_NOT_EDGE", message: "Window not near edge", severity: "error" }); });
+  }
+  services.forEach((s) => tables.forEach((t) => { if (dist(centerOf(s), centerOf(t)) < 50) issues.push({ code: "SERVICE_TOO_CLOSE", message: "Service too close table", severity: "error" }); if (rectsOverlap(s, t, 0)) issues.push({ code: "SERVICE_TABLE_OVERLAP", message: "Service overlap table", severity: "error" }); }));
+  const currentRects = getOccupiedRectsFromCurrentItems(payload.currentItems || []);
+  const overlapBlocked = (rect, isWall = false) => !isWall && currentRects.some((c) => rectsOverlap(rect, c, 0));
+  tables.forEach((t) => {
+    if (overlapBlocked(getTableRect(t), false)) issues.push({ code: "CURRENT_ITEM_OVERLAP", message: "Table overlaps current item", severity: "error" });
+  });
+  decor.forEach((d) => {
+    if (overlapBlocked(normalizeRect(d), d.type === "wall")) issues.push({ code: "CURRENT_ITEM_OVERLAP", message: `${d.type} overlaps current item`, severity: "error" });
+  });
+  return issues;
+};
+const passesHardQualityGate = (layout, payload = {}) => !getLayoutQualityIssues(layout, payload).some((i) => i.severity === "error");
 
 const scoreLayout = ({ tables = [], decor = [], goal = "balanced", zones = null }) => {
   const spacingCfg = GOAL_SPACING[goal] || GOAL_SPACING.balanced;
@@ -646,14 +722,117 @@ const generateRuleBasedLayout = (payload = {}, seed = 0) => {
   return { tables: tables.map(({ w, h, ...t }) => t), decor, meta: { goal, score: scored.score, scoreBreakdown: scored.breakdown, warnings, zones } };
 };
 
-export const generateSmartFloorLayout = async (payload = {}) => {
-  const goal = String(payload.goal || "balanced");
-  const candidates = Array.from({ length: CANDIDATE_COUNT }).map((_, idx) => generateRuleBasedLayout(payload, idx));
-  const best = candidates.sort((a, b) => (b.meta?.score || 0) - (a.meta?.score || 0))[0];
-  if (best?.tables?.length) return best;
-  return generateRuleBasedLayout({ ...payload, goal });
+const generateSmallBalancedTemplate = ({ components, goal = "balanced", startX = 0, startY = 0, seed = 0, currentItems = [] }) => {
+  const isSpacious = goal === "spacious";
+  const room = { x: startX, y: startY, w: isSpacious ? 740 : 660, h: isSpacious ? 520 : 460 };
+  const requestedStandardCount = (components.tables.standard || 0) + (components.tables.fourSeat || 0);
+  const mainAisle = { x: room.x + room.w / 2 - (isSpacious ? 34 : 30), y: room.y + (isSpacious ? 64 : 56), w: isSpacious ? 68 : 60, h: room.h - (isSpacious ? 128 : 112), orientation: "vertical" };
+  const zones = {
+    roomBounds: room,
+    mainAisle,
+    mainDining: { x: room.x + 46, y: room.y + 84, w: room.w - 92, h: room.h - 166 },
+    serviceZone: { x: room.x + room.w - 250, y: room.y + room.h - 190, w: 220, h: 160 },
+    decorZone: { x: room.x + 20, y: room.y + 20, w: room.w - 40, h: room.h - 40 },
+    vipZone: { x: room.x + room.w - 240, y: room.y + 40, w: 200, h: 180 },
+  };
+  const leftZone = { x: room.x + (isSpacious ? 112 : 90), y: room.y + (isSpacious ? 172 : 150), w: 210, h: 220 };
+  const rightZone = { x: room.x + room.w - (isSpacious ? 322 : 300), y: room.y + (isSpacious ? 172 : 150), w: 210, h: 220 };
+  const occupied = [...getOccupiedRectsFromCurrentItems(currentItems), zones.mainAisle];
+  const canPlace = (rect, pad = 0) => inZone(rect, room) && !occupied.some((r) => rectsOverlap(expandRect(rect, pad), r, 0));
+  const placeTemplateRect = (base, pad = 0) => {
+    for (let ring = 0; ring < 10; ring += 1) {
+      const step = 16 + ring * 2;
+      for (let dx = -ring; dx <= ring; dx += 1) {
+        for (let dy = -ring; dy <= ring; dy += 1) {
+          if (ring > 0 && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
+          const c = clampRectInsideRoom({ ...base, x: Math.round(base.x + dx * step), y: Math.round(base.y + dy * step) }, room, 12);
+          if (isInAisle(c, zones.mainAisle, 0)) continue;
+          if (!canPlace(c, pad)) continue;
+          occupied.push(c);
+          return c;
+        }
+      }
+    }
+    return null;
+  };
+  const tables = [];
+  const pattern = [[0, 0], [92, 0], [0, 84], [92, 84], [0, 168], [92, 168]];
+  const leftCount = Math.ceil(Math.max(0, requestedStandardCount) / 2);
+  const rightCount = Math.floor(Math.max(0, requestedStandardCount) / 2);
+  [...pattern.slice(0, leftCount).map(([dx, dy]) => ({ x: leftZone.x + dx, y: leftZone.y + dy })), ...pattern.slice(0, rightCount).map(([dx, dy]) => ({ x: rightZone.x + dx, y: rightZone.y + dy }))].forEach((p) => {
+    const rect = placeTemplateRect({ x: p.x, y: p.y, w: 60, h: 60 }, 16);
+    if (rect) tables.push({ code: `AI-${tables.length + 1}`, x: rect.x, y: rect.y, rotation: 0, capacity: 4, type: "standard" });
+  });
+  const decor = [];
+  const tryPushDecor = (item, pad = 8, allowAisle = false) => {
+    const rect = allowAisle ? clampRectInsideRoom(item, room, 2) : placeTemplateRect(item, pad);
+    if (!rect) return false;
+    if (!allowAisle && isInAisle(rect, zones.mainAisle, 0)) return false;
+    decor.push({ ...item, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+    return true;
+  };
+  if (components.objects.door) {
+    const doorBase = { id: `auto_door_${seed}`, type: "door", x: room.x + room.w / 2 - 35, y: room.y + room.h - 12, w: 70, h: 12, rotation: 0, label: "Cửa", isRealTable: false };
+    const doorCandidates = [[0, 0], [80, 0], [-80, 0], [130, 0], [-130, 0]].map(([dx, dy]) => ({ ...doorBase, x: doorBase.x + dx, y: doorBase.y + dy }));
+    const placedDoor = doorCandidates.find((candidate) => canPlace(candidate, 2));
+    if (placedDoor) {
+      decor.push(placedDoor);
+      occupied.push(normalizeRect(placedDoor));
+    }
+  }
+  const placedDoor = decor.find((d) => d.type === "door");
+  if (components.objects.cashier) {
+    const base = placedDoor ? { x: placedDoor.x + 70, y: placedDoor.y - 72, w: 120, h: 50 } : { x: room.x + 22, y: room.y + room.h - 86, w: 120, h: 50 };
+    tryPushDecor({ id: `auto_cashier_${seed}`, type: "cashier", ...base, rotation: 0, label: "Thu ngân", isRealTable: false }, 8);
+  }
+  if (components.objects.kitchen) tryPushDecor({ id: `auto_kitchen_${seed}`, type: "kitchen", x: zones.serviceZone.x + 22, y: zones.serviceZone.y + 16, w: 140, h: 90, rotation: 0, label: "Bếp", isRealTable: false }, 10);
+  if (components.objects.wc) tryPushDecor({ id: `auto_wc_${seed}`, type: "wc", x: zones.serviceZone.x + zones.serviceZone.w - 96, y: zones.serviceZone.y + zones.serviceZone.h - 94, w: 80, h: 80, rotation: 0, label: "WC", isRealTable: false }, 10);
+  if (components.objects.window) {
+    for (let i = 0; i < components.objects.window; i += 1) {
+      const winBase = { id: `auto_window_${seed}_${i}`, type: "window", x: room.x + 24 + i * Math.max(100, Math.floor((room.w - 80) / Math.max(1, components.objects.window))), y: room.y, w: 70, h: 12, rotation: 0, label: "Cửa sổ", isRealTable: false };
+      const winCandidates = [[0, 0], [36, 0], [-36, 0], [72, 0], [-72, 0]].map(([dx, dy]) => ({ ...winBase, x: winBase.x + dx, y: winBase.y + dy }));
+      const placedWin = winCandidates.find((candidate) => canPlace(candidate, 2));
+      if (placedWin) {
+        decor.push(placedWin);
+        occupied.push(normalizeRect(placedWin));
+      }
+    }
+  }
+  if (components.objects.wall) ["top", "bottom", "left", "right"].slice(0, Math.min(4, components.objects.wall)).forEach((k, i) => decor.push({ id: `auto_wall_${seed}_${i}`, type: "wall", ...(k === "top" ? { x: room.x, y: room.y, w: room.w, h: 10 } : k === "bottom" ? { x: room.x, y: room.y + room.h - 10, w: room.w, h: 10 } : k === "left" ? { x: room.x, y: room.y, w: 10, h: room.h } : { x: room.x + room.w - 10, y: room.y, w: 10, h: room.h }), rotation: 0, label: "Tường", isRealTable: false }));
+  if (components.objects.plant) tryPushDecor({ id: `auto_plant_${seed}_0`, type: "plant", x: room.x + 24, y: room.y + 28, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false }, 8);
+  if ((components.objects.plant || 0) > 1) tryPushDecor({ id: `auto_plant_${seed}_1`, type: "plant", x: room.x + room.w - 84, y: room.y + 30, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false }, 8);
+  const scored = scoreLayout({ tables, decor, goal, zones });
+  const warnings = [];
+  if (tables.length < requestedStandardCount) warnings.push(`Template chỉ đặt được ${tables.length}/${requestedStandardCount} bàn do currentItems hoặc xung đột vị trí.`);
+  return { tables, decor, meta: { goal, template: LAYOUT_TEMPLATES.SMALL_BALANCED, score: scored.score + 120, scoreBreakdown: scored.breakdown, warnings, zones } };
 };
-export const __testables = { toComponents, generateRuleBasedLayout, scoreLayout, getOccupiedRectsFromCurrentItems, buildLayoutZones, isInAisle, clampRectInsideRoom };
+const generateTemplateBasedLayout = (payload = {}, seed = 0) => {
+  const components = toComponents(payload);
+  const goal = String(payload.goal || "balanced");
+  const tableCount = Object.values(components.tables).reduce((a, b) => a + b, 0);
+  const selected = selectLayoutTemplate({ components, goal, tableCount });
+  if (selected.template === LAYOUT_TEMPLATES.SMALL_BALANCED) return generateSmallBalancedTemplate({ components, goal, startX: Number(payload.startX || 0), startY: Number(payload.startY || 0), seed, currentItems: payload.currentItems || [] });
+  const base = generateRuleBasedLayout(payload, seed);
+  return { ...base, meta: { ...base.meta, template: selected.template } };
+};
+
+export const generateSmartFloorLayout = async (payload = {}) => {
+  const templateCandidates = Array.from({ length: CANDIDATE_COUNT }).map((_, idx) => generateTemplateBasedLayout(payload, idx)).filter((l) => l?.tables?.length);
+  const ruleCandidates = Array.from({ length: CANDIDATE_COUNT }).map((_, idx) => generateRuleBasedLayout(payload, idx));
+  const candidates = [...templateCandidates, ...ruleCandidates].map((layout) => {
+    const issues = getLayoutQualityIssues(layout, payload);
+    const passedHardGate = !issues.some((i) => i.severity === "error");
+    const baseGrade = Math.round((layout.meta?.score || 0) / 12);
+    const gateBonus = passedHardGate ? 5 : 0;
+    const templateBonus = (layout.meta?.template || "rule_based") === LAYOUT_TEMPLATES.SMALL_BALANCED ? 3 : 0;
+    const grade = Math.max(0, Math.min(100, baseGrade + gateBonus + templateBonus));
+    return { ...layout, meta: { ...layout.meta, quality: { template: layout.meta?.template || "rule_based", passedHardGate, issues, grade, gradeLabel: grade >= 95 ? "excellent" : grade >= 85 ? "good" : grade >= 70 ? "usable" : "needs_review" } } };
+  });
+  const valid = candidates.filter((l) => passesHardQualityGate(l, payload));
+  const pool = valid.length ? valid : candidates;
+  return pool.sort((a, b) => (b.meta?.score || 0) - (a.meta?.score || 0))[0];
+};
+export const __testables = { toComponents, generateRuleBasedLayout, generateTemplateBasedLayout, selectLayoutTemplate, passesHardQualityGate, getLayoutQualityIssues, scoreLayout, getOccupiedRectsFromCurrentItems, buildLayoutZones, isInAisle, clampRectInsideRoom, getEntranceRect };
 
 const callOpenAI = async (prompt) => {
   const apiKey = process.env.OPENAI_API_KEY;
