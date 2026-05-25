@@ -4,6 +4,7 @@ import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
 import DishGrid from "./components/DishGrid";
+import HomeForYouSection from "./components/HomeForYouSection";
 import HowItWorks from "./components/HowItWorks";
 import Cart from "./components/Cart";
 import TableBooking from "./components/TableBooking";
@@ -138,6 +139,8 @@ const Home = () => {
           onCategorySelect={handleCategorySelect}
           timeSlot={timeSlot}
         />
+
+        <HomeForYouSection timeSlot={timeSlot} />
 
         {/* DISH GRID: Fetch Top Món Ăn (Không cần props data, tự fetch trong component) */}
         <DishGrid

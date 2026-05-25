@@ -1,0 +1,36 @@
+.home-for-you {
+  padding: 12px 16px 0;
+}
+
+.home-for-you__container {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.home-for-you__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.home-for-you__title { margin: 0; font-size: 1.25rem; }
+.home-for-you__subtitle { margin: 6px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+.home-for-you__cta { border: none; background: #0f766e; color: #fff; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.home-for-you__grid { margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+.home-for-you-card { border: 1px solid #e8edf2; border-radius: 12px; overflow: hidden; cursor: pointer; background: #fff; }
+.home-for-you-card__image { width: 100%; height: 140px; object-fit: cover; display: block; }
+.home-for-you-card__body { padding: 10px; }
+.home-for-you-card__restaurant { margin: 4px 0; color: #637083; font-size: 0.85rem; }
+.home-for-you-card__price { margin: 2px 0 6px; font-weight: 700; color: #de3d2d; }
+.home-for-you-card__badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.home-for-you-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 999px; }
+.home-for-you-badge--match { background: #ecfdf3; color: #137333; }
+.home-for-you-badge--warning { background: #fff4e5; color: #ad6800; }
+.home-for-you__skeleton { padding: 12px; border: 1px dashed #d3dce5; border-radius: 12px; color: #728197; }
+
+@media (min-width: 900px) {
+  .home-for-you { padding: 20px 24px 0; }
+  .home-for-you__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
