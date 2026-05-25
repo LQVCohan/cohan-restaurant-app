@@ -31,6 +31,19 @@ const ME_QUERY = gql`
       loyaltyPoints
       totalOrders
       totalSpending
+      foodPreferences {
+        diet
+        allergies
+        habits {
+          noOnion
+          noCilantro
+          sugar
+          spice
+          ice
+        }
+        autoNote
+        updatedAt
+      }
       createdAt
       wallet {
         provider

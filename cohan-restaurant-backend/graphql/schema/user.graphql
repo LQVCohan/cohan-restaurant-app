@@ -428,6 +428,7 @@ type User {
   loyaltyPoints: Int
   roleName: String
   loyaltyRank: String
+  foodPreferences: FoodPreferences
 
   customerType: CustomerType
   totalOrders: Int
@@ -863,6 +864,36 @@ input AdminUpdateUserInput {
   lastTrainingAt: DateTime
   nextTrainingDueAt: DateTime
   emergencyContacts: [EmergencyContactExtendedInput!]
+}
+
+type FoodPreferenceHabits {
+  noOnion: Boolean
+  noCilantro: Boolean
+  sugar: Int
+  spice: String
+  ice: Boolean
+}
+
+type FoodPreferences {
+  diet: String
+  allergies: [String!]
+  habits: FoodPreferenceHabits
+  autoNote: String
+  updatedAt: DateTime
+}
+
+input FoodPreferenceHabitsInput {
+  noOnion: Boolean
+  noCilantro: Boolean
+  sugar: Int
+  spice: String
+  ice: Boolean
+}
+
+input FoodPreferencesInput {
+  diet: String
+  allergies: [String!]
+  habits: FoodPreferenceHabitsInput
 }
 
 # =========================
@@ -2982,6 +3013,7 @@ type Mutation {
   changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
 
   updateUser(input: UpdateUserInput!): User!
+  updateMyFoodPreferences(input: FoodPreferencesInput!): User!
   updateAvatar(input: UpdateAvatarInput!): User!
 
   requestEmailVerification(email: String!): Boolean!
