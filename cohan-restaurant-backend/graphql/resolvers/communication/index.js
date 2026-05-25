@@ -7,6 +7,7 @@ import {
   User,
 } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { emitAiChatbotStaffReplyIfLinked } from "../../../src/services/ai/restaurantChatbotRealtime.service.js";
 
 const toId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -284,6 +285,11 @@ const Mutation = {
           threadId: String(thread._id),
           messagePreview: thread.lastMessagePreview,
         });
+      });
+      await emitAiChatbotStaffReplyIfLinked({
+        io: ctx.io,
+        chatThreadId: thread._id,
+        message,
       });
     }
 

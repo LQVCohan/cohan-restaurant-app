@@ -1,12 +1,9 @@
 import mongoose from "mongoose";
 import { AiChatConversation, ChatThread } from "../../../models/index.js";
+import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
 
 const HANDOFF_MARKER = "[AI HANDOFF]";
 
-const normalizeGuestId = (guestId) => {
-  const value = String(guestId || "").trim().slice(0, 128);
-  return value ? value.replace(/[^a-zA-Z0-9_-]/g, "") : "";
-};
 
 const safeObjectId = (value) => {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -63,17 +60,8 @@ export const toGuestStaffReplies = ({ messages = [], after = null, limit = 30 } 
       return true;
     })
     .slice(-max)
-    .map(({ message, index }) => {
-      const createdAt = new Date(message.createdAt).toISOString();
-      const id = String(message?._id || `${createdAt}_${index}`);
-      return {
-        id,
-        role: "staff",
-        senderLabel: "Nhân viên",
-        content: String(message.content || "").trim(),
-        createdAt,
-      };
-    });
+    .map(({ message, index }) => buildGuestSafeStaffReplyPayload({ message, fallbackIndex: index }))
+    .filter(Boolean);
 };
 
 export async function getRestaurantChatbotGuestReplies({ input } = {}) {

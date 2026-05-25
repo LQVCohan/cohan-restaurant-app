@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { io } from "socket.io-client";
 import "./AiChatbotWidget.scss";
 
 const ASK_AI_CHATBOT = gql`
@@ -66,6 +67,8 @@ const Q_AI_CHATBOT_GUEST_REPLIES = gql`
     }
   }
 `;
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 const STARTER_MESSAGES = [
   "Gợi ý món bán chạy cho tôi",
@@ -203,6 +206,33 @@ function AiChatbotWidget() {
       // best effort polling only
     }
   };
+
+  useEffect(() => {
+    if (!open || !handoffRequested || !conversationId || !guestId) return undefined;
+
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
+    });
+
+    const onStaffReply = (payload) => {
+      appendGuestReplies(payload ? [payload] : []);
+    };
+
+    socket.on("aiChatbotStaffReplyCreated", onStaffReply);
+
+    socket.on("connect", () => {
+      socket.emit("joinAiChatbotConversation", { conversationId, guestId }, () => {});
+    });
+
+    return () => {
+      socket.off("aiChatbotStaffReplyCreated", onStaffReply);
+      socket.emit("leaveAiChatbotConversation", { conversationId, guestId });
+      socket.disconnect();
+    };
+  }, [open, handoffRequested, conversationId, guestId]);
 
   useEffect(() => {
     if (!open || !handoffRequested || !conversationId || !guestId) return undefined;

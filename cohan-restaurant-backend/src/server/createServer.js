@@ -28,6 +28,7 @@ import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
+import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
 
 const parseAllowedOrigins = () => {
@@ -403,6 +404,36 @@ export async function createServer() {
     socket.on("leaveChatThread", (threadId) => {
       if (!threadId) return;
       socket.leave(`chat_thread_${threadId}`);
+    });
+
+
+    socket.on("joinAiChatbotConversation", async (payload = {}, ack) => {
+      try {
+        const result = await validateGuestConversationOwnership({
+          conversationId: payload?.conversationId,
+          guestId: payload?.guestId,
+        });
+        if (!result.ok) {
+          if (typeof ack === "function") ack({ ok: false, code: result.code });
+          return;
+        }
+
+        socket.join(result.roomName);
+        if (typeof ack === "function") ack({ ok: true });
+        socket.emit("joinedAiChatbotConversation", { ok: true, room: result.roomName });
+      } catch {
+        if (typeof ack === "function") ack({ ok: false, code: "FORBIDDEN" });
+      }
+    });
+
+    socket.on("leaveAiChatbotConversation", (payload = {}, ack) => {
+      const conversationId = String(payload?.conversationId || "").trim();
+      if (!isValidConversationId(conversationId)) {
+        if (typeof ack === "function") ack({ ok: false, code: "INVALID" });
+        return;
+      }
+      socket.leave(getAiConversationGuestRoomName(conversationId));
+      if (typeof ack === "function") ack({ ok: true });
     });
     socket.on("joinOrder", (orderCode) => {
       if (!orderCode) return;
