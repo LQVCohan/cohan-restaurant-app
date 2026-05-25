@@ -2,6 +2,7 @@ import React from "react";
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AttendancePage, { getAttendanceActionErrorMessage } from "./AttendancePage";
+const useAttendanceManagementMock = vi.fn();
 
 vi.mock("@/context/AuthContext", () => ({
   AuthContext: React.createContext({ user: { restaurantForStaff: "r1" } }),
@@ -12,7 +13,12 @@ vi.mock("./OvertimePanel", () => ({
 }));
 
 vi.mock("@/hooks/useAttendanceManagement", () => ({
-  default: () => ({
+  default: (...args) => useAttendanceManagementMock(...args),
+  toAttendanceIsoStartOfDay: vi.fn(),
+}));
+
+beforeEach(() => {
+  useAttendanceManagementMock.mockReturnValue({
     employees: [],
     records: [],
     correctionRequests: [],
@@ -34,9 +40,8 @@ vi.mock("@/hooks/useAttendanceManagement", () => ({
     approveCorrectionState: { loading: false },
     rejectCorrectionState: { loading: false },
     cancelCorrectionState: { loading: false },
-  }),
-  toAttendanceIsoStartOfDay: vi.fn(),
-}));
+  });
+});
 
 describe("getAttendanceActionErrorMessage", () => {
   it("returns permission message for FORBIDDEN", () => {
@@ -113,5 +118,23 @@ describe("AttendancePage readiness navigation", () => {
     expect(screen.getByText("Bảng công")).toBeInTheDocument();
     expect(screen.getByText("Ngoài lịch")).toBeInTheDocument();
     expect(screen.queryByText("Overtime Panel")).not.toBeInTheDocument();
+  });
+
+  it("reads date employeeId and restaurantId from query for initial attendance filters", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff",
+    );
+
+    render(<AttendancePage />);
+
+    expect(useAttendanceManagementMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedDate: "2026-05-03",
+        search: "e01",
+        restaurantId: "r2",
+      }),
+    );
   });
 });
