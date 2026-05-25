@@ -368,3 +368,49 @@ Phase 7 bổ sung khả năng cho staff/manager đóng phiên handoff sau khi x�
 
 - Inbox hiện ưu tiên danh sách open handoff; lịch sử closed chưa có trang archive riêng.
 - Closure note hiện chủ yếu phục vụ vận hành nội bộ trên thread/message log.
+
+## 16. Phase 8 - AI handoff archive/history and status-filter inbox
+
+Phase 8 bổ sung khả năng xem lịch sử handoff đã xử lý cho staff/manager, thay vì chỉ nhìn được luồng đang mở.
+
+### Mục tiêu
+
+- Inbox handoff có 2 trạng thái rõ ràng:
+  - `Đang xử lý` (open handoff)
+  - `Đã xử lý` (closed handoff)
+- Staff/manager có thể mở lại lịch sử hội thoại đã đóng để tra cứu.
+
+### Backend thay đổi
+
+- Mở rộng query `chatThreads` với tham số tùy chọn `status`:
+  - `chatThreads(restaurantId, channel, limit, status: String)`
+- Quy tắc tương thích ngược:
+  - Nếu không truyền `status`, backend mặc định `open` (giữ nguyên hành vi cũ).
+- Validate status chặt chẽ:
+  - Chỉ chấp nhận `open` hoặc `closed`.
+  - Giá trị khác trả lỗi kiểm soát `BAD_USER_INPUT`.
+- Vẫn giữ nguyên guard truy cập:
+  - `requireRestaurantAccess`
+  - `canAccessThread`
+  - Không mở rộng quyền truy cập closed thread ngoài phạm vi nhà hàng/role hợp lệ.
+
+### Frontend inbox behavior
+
+- `AiHandoffInbox` có 2 tab:
+  - `Đang xử lý`: dùng open threads + notifications (`ai_chatbot_handoff`) như hiện tại.
+  - `Đã xử lý`: dùng closed threads, không phụ thuộc notifications.
+- Ở tab `Đã xử lý`:
+  - vẫn xem đầy đủ message history,
+  - không cho gửi phản hồi,
+  - không cho resolve lại (hiển thị trạng thái đã xử lý).
+
+### Quy tắc nhận diện AI handoff (MVP)
+
+- Vẫn giữ cách nhận diện theo subject prefix chuẩn hóa `AI handoff`.
+- Chưa thêm migration hoặc field mới cho `ChatThread` trong phase này.
+
+### Quy tắc bảo mật
+
+- Archive closed handoff chỉ hiển thị cho staff/manager có quyền trong đúng restaurant scope.
+- Guest không được truy cập dữ liệu nội bộ `ChatThread` của inbox staff/manager.
+- Polling fallback các phase trước không bị loại bỏ.

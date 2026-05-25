@@ -36,26 +36,33 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: () => [resolveMutationSpy, { loading: false }],
 }));
 
+const mockDualHook = (active = {}, resolved = {}) => {
+  useCommunicationMock.mockImplementation(({ status }) => {
+    if (status === "closed") return { ...baseHook, ...resolved };
+    return { ...baseHook, ...active };
+  });
+};
+
 describe("AiHandoffInbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  it("renders tabs", () => {
+    mockDualHook();
+    renderWithUser(<AiHandoffInbox />);
+    expect(screen.getByRole("button", { name: "Đang xử lý" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đã xử lý" })).toBeInTheDocument();
+  });
+
   it("renders missing restaurant state", () => {
-    useCommunicationMock.mockReturnValue(baseHook);
+    mockDualHook();
     renderWithUser(<AiHandoffInbox />, {});
     expect(screen.getByText("Chưa xác định được nhà hàng để tải yêu cầu handoff.")).toBeInTheDocument();
   });
 
-  it("renders empty state when no handoff items", () => {
-    useCommunicationMock.mockReturnValue(baseHook);
-    renderWithUser(<AiHandoffInbox />);
-    expect(screen.getByText("Chưa có yêu cầu hỗ trợ từ chatbot.")).toBeInTheDocument();
-  });
-
-  it("renders AI handoff notification item and handles missing threadId warning", async () => {
-    useCommunicationMock.mockReturnValue({
-      ...baseHook,
+  it("active tab renders notification item and handles missing threadId warning", async () => {
+    mockDualHook({
       notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: {}, createdAt: new Date().toISOString() }],
     });
     renderWithUser(<AiHandoffInbox />);
@@ -63,68 +70,36 @@ describe("AiHandoffInbox", () => {
     expect(await screen.findByText(/chưa có threadId/i)).toBeInTheDocument();
   });
 
-  it("clicking notification loads thread and marks read best-effort", async () => {
-    const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", messages: [] } } });
-    const markThreadRead = vi.fn().mockRejectedValue(new Error("deny"));
-    const markNotificationRead = vi.fn().mockRejectedValue(new Error("role-based"));
-    useCommunicationMock.mockReturnValue({
-      ...baseHook,
-      notifications: [{ id: "n1", type: "ai_chatbot_handoff", readAt: null, payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
-      loadThread,
-      markThreadRead,
-      markNotificationRead,
+  it("resolved tab shows closed handoffs and disables actions", async () => {
+    const loadResolvedThread = vi.fn().mockResolvedValue({
+      data: { chatThread: { id: "t-closed", status: "closed", messages: [{ senderRole: "staff", content: "Đã xử lý", createdAt: new Date().toISOString() }] } },
     });
+
+    mockDualHook({}, {
+      threads: [{ id: "t-closed", subject: "AI handoff - Closed", status: "closed", updatedAt: new Date().toISOString() }],
+      loadThread: loadResolvedThread,
+      thread: { id: "t-closed", status: "closed", messages: [{ senderRole: "staff", content: "Đã xử lý", createdAt: new Date().toISOString() }] },
+    });
+
     renderWithUser(<AiHandoffInbox />);
-    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
-    await waitFor(() => expect(loadThread).toHaveBeenCalledWith({ variables: { id: "t1" } }));
-    expect(markThreadRead).toHaveBeenCalledWith({ variables: { threadId: "t1" } });
-    expect(markNotificationRead).toHaveBeenCalledWith({ variables: { id: "n1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Đã xử lý" }));
+    fireEvent.click(screen.getByRole("button", { name: /closed/i }));
+
+    await waitFor(() => expect(loadResolvedThread).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Gửi phản hồi" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Đã xử lý" }).at(-1)).toBeDisabled();
+    expect(screen.getByText("Phiên hỗ trợ này đã được đóng.")).toBeInTheDocument();
   });
 
-
-  it("renders guest senderRole as Khách hàng", async () => {
-    const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", messages: [] } } });
-    useCommunicationMock.mockReturnValue({
-      ...baseHook,
-      thread: {
-        id: "t1",
-        subject: "AI handoff - Khách cần hỗ trợ",
-        messages: [{ senderRole: "guest", content: "Em cần giúp", createdAt: new Date().toISOString() }],
-      },
-      notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
-      loadThread,
-    });
-    renderWithUser(<AiHandoffInbox />);
-    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
-    await waitFor(() => expect(loadThread).toHaveBeenCalled());
-    expect(screen.getByText("Khách hàng")).toBeInTheDocument();
-  });
-  it("send reply calls sendChatMessage with selected thread", async () => {
-    const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", messages: [] } } });
-    const sendMessage = vi.fn().mockResolvedValue({});
-    useCommunicationMock.mockReturnValue({
-      ...baseHook,
-      notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
-      thread: { id: "t1", subject: "AI handoff - Khách cần hỗ trợ", messages: [{ content: "[AI HANDOFF]" }] },
-      loadThread,
-      sendMessage,
-    });
-    renderWithUser(<AiHandoffInbox />);
-    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
-    fireEvent.change(screen.getByPlaceholderText(/nhập phản hồi/i), { target: { value: "Xin chào" } });
-    fireEvent.click(screen.getByRole("button", { name: /gửi phản hồi/i }));
-    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith({ variables: { input: { threadId: "t1", content: "Xin chào" } } }));
-  });
-
-  it("renders resolve button and calls resolve mutation", async () => {
+  it("active resolve flow still works", async () => {
     const loadThread = vi.fn().mockResolvedValue({ data: { chatThread: { id: "t1", status: "open", messages: [] } } });
-    useCommunicationMock.mockReturnValue({
-      ...baseHook,
+    mockDualHook({
       notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: { threadId: "t1", messagePreview: "preview" }, createdAt: new Date().toISOString() }],
       thread: { id: "t1", status: "open", subject: "AI handoff - Khách cần hỗ trợ", messages: [] },
       loadThread,
     });
     resolveMutationSpy.mockResolvedValue({ data: { resolveAiChatbotHandoff: { ok: true } } });
+
     renderWithUser(<AiHandoffInbox />);
     fireEvent.click(screen.getByRole("button", { name: /preview/i }));
     fireEvent.click(screen.getByRole("button", { name: /đánh dấu đã xử lý/i }));

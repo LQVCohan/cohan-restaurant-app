@@ -2,8 +2,8 @@ import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { getCommunicationActionErrorMessage } from "@/utils/activityActionErrorMessages";
 
 export const Q_CHAT_THREADS = gql`
-  query ChatThreads($restaurantId: ID, $channel: ChatChannel, $limit: Int = 30) {
-    chatThreads(restaurantId: $restaurantId, channel: $channel, limit: $limit) {
+  query ChatThreads($restaurantId: ID, $channel: ChatChannel, $limit: Int = 30, $status: String) {
+    chatThreads(restaurantId: $restaurantId, channel: $channel, limit: $limit, status: $status) {
       id
       restaurantId
       participants
@@ -116,9 +116,9 @@ export const M_MARK_ALL_NOTIFICATIONS_READ = gql`
   }
 `;
 
-export default function useCommunication({ restaurantId = null } = {}) {
+export default function useCommunication({ restaurantId = null, status = "open" } = {}) {
   const threadsQuery = useQuery(Q_CHAT_THREADS, {
-    variables: { restaurantId, limit: 30 },
+    variables: { restaurantId, limit: 30, status },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 6000,

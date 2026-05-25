@@ -55,7 +55,7 @@ input SendChatMessageInput {
 }
 
 extend type Query {
-  chatThreads(restaurantId: ID, channel: ChatChannel, limit: Int = 30): [ChatThread!]!
+  chatThreads(restaurantId: ID, channel: ChatChannel, limit: Int = 30, status: String): [ChatThread!]!
   chatThread(id: ID!): ChatThread
   notifications(restaurantId: ID, unreadOnly: Boolean = false, limit: Int = 50): [AppNotification!]!
   unreadNotificationCount(restaurantId: ID): Int!
