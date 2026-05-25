@@ -13,7 +13,14 @@ const RevenueAnalyticsChart = ({ data = [], loading }) => {
   const hasRevenueData = data.some((x) => Number(x.current || 0) > 0 || Number(x.previous || 0) > 0);
 
   useEffect(() => {
-    if (!chartRef.current || !hasRevenueData) return;
+    if (!hasRevenueData) {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+      return;
+    }
+    if (!chartRef.current) return;
     const ctx = chartRef.current.getContext("2d");
     if (chartInstance.current) chartInstance.current.destroy();
     chartInstance.current = new Chart(ctx, {
@@ -40,7 +47,10 @@ const RevenueAnalyticsChart = ({ data = [], loading }) => {
       },
       options: { responsive: true, maintainAspectRatio: false },
     });
-    return () => chartInstance.current?.destroy();
+    return () => {
+      chartInstance.current?.destroy();
+      chartInstance.current = null;
+    };
   }, [data, hasRevenueData]);
 
   return (

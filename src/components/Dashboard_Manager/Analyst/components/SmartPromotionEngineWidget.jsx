@@ -4,13 +4,34 @@ import "./SmartPromotionEngineWidget.scss";
 
 const formatNumber = (value) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
 const tokenMap = {
+  active_now: "Đang còn hiệu lực",
+  segment_fit: "Phù hợp nhóm khách mục tiêu",
+  scope_fit: "Phù hợp phạm vi áp dụng",
   aov_missing: "Thiếu dữ liệu giá trị đơn trung bình",
-  usage_capacity_ok: "Dung lượng sử dụng mã còn đủ",
-  stacking_guardrail_fit: "Phù hợp giới hạn cộng dồn ưu đãi",
-  discount_type_match: "Loại ưu đãi phù hợp mục tiêu chiến dịch",
+  usage_capacity_ok: "Còn lượt sử dụng",
+  stacking_guardrail_fit: "Phù hợp giới hạn cộng dồn",
+  discount_type_match: "Loại ưu đãi phù hợp",
+  existing_promotion: "Khuyến mãi đang có",
+  existing_coupon: "Voucher đang có",
 };
-const normalizeText = (value = "") => tokenMap[value] || value.replaceAll("_", " ");
-const roleTarget = (segment) => segment || "Khách có khả năng quay lại";
+const priorityMap = { HIGH: "Cao", MEDIUM: "Trung bình", LOW: "Thấp" };
+const discountTypeMap = { PERCENT: "Giảm theo %", FIXED: "Giảm số tiền", BOGO: "Mua tặng", COMBO: "Combo" };
+const orderTypeMap = { OFFLINE: "Tại quán", DELIVERY: "Giao hàng", TAKEAWAY: "Mang đi", ORDER: "Đơn hàng" };
+const normalizeToken = (token = "") => {
+  const cleaned = token.trim().toLowerCase();
+  if (!cleaned) return "";
+  if (tokenMap[cleaned]) return tokenMap[cleaned];
+  if (cleaned.includes("existing_promotion") || cleaned.includes("existing_coupon")) return "";
+  return cleaned.replaceAll("_", " ");
+};
+const normalizeText = (value = "") =>
+  String(value)
+    .split(/[+,•]/)
+    .flatMap((item) => item.split(","))
+    .map((token) => normalizeToken(token))
+    .filter(Boolean)
+    .join(", ");
+const roleTarget = (segment) => normalizeText(segment) || "Khách có khả năng quay lại";
 
 const SmartPromotionEngineWidget = ({ engine, loading }) => {
   const summary = engine?.summary || {};
@@ -48,11 +69,11 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
           <div className="campaign-list">
             {topCampaigns.map((campaign) => (
               <div className="campaign-item" key={campaign.campaignKey}>
-                <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${campaign.priority}`}>{campaign.priority}</span></div>
-                <div className="item-sub">{campaign.targetOrderType} • {`${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`}</div>
+                <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${(campaign.priority || "").toLowerCase()}`}>{priorityMap[campaign.priority] || campaign.priority}</span></div>
+                <div className="item-sub">{orderTypeMap[campaign.targetOrderType] || campaign.targetOrderType} • {`${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`}</div>
                 <div className="group-line"><strong>Mục tiêu:</strong> Tăng đơn +{formatNumber(campaign.expectedKpi?.expectedOrdersLiftPct)}%, doanh thu +{formatNumber(campaign.expectedKpi?.expectedRevenueLiftPct)}%.</div>
                 <div className="group-line"><strong>Nhóm khách:</strong> {roleTarget(campaign.targetSegment)}.</div>
-                <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>
+                <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {discountTypeMap[campaign.recommendation?.discountType] || campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>
                 {!!campaign.recommendation?.conditions?.length ? <div className="group-line"><strong>Điều kiện áp dụng:</strong> {campaign.recommendation.conditions.slice(0, 2).map(normalizeText).join(" • ")}.</div> : null}
                 <div className="group-line"><strong>Lưu ý an toàn:</strong> {normalizeText(campaign.reason || "Theo dõi KPI sau 24h để tinh chỉnh chiến dịch")}.</div>
                 {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {normalizeText(campaign.guardrails[0])}</div> : null}
@@ -65,7 +86,7 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
             {selectedPromotions.length ? selectedPromotions.map((promo, idx) => (
               <div className="promo-item" key={`${promo.promotionId || promo.promotionName}-${idx}`}>
                 <strong>{promo.promotionName}</strong>
-                <span>{promo.source}</span>
+                <span>{normalizeText(promo.source) || "Đề xuất từ dữ liệu hiện có"}</span>
                 <p>Mức phù hợp: {formatNumber(promo.fitScore)} • {normalizeText(promo.fitReason)}</p>
               </div>
             )) : <div className="state-message">Chưa có khuyến mãi/voucher phù hợp để tận dụng.</div>}

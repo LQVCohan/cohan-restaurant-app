@@ -16,16 +16,19 @@ const KPIInsightCard = ({
   label,
   value,
   trendValue,
+  showTrend = true,
   period,
   progress,
   icon: Icon,
   color = "#c5a47e", // Default Gold
 }) => {
-  const normalizedTrend = Number(trendValue || 0);
+  const hasTrendValue = typeof trendValue === "number" && Number.isFinite(trendValue);
+  const normalizedTrend = hasTrendValue ? trendValue : 0;
   const isPositive = normalizedTrend > 0;
   const isNeutral = normalizedTrend === 0;
   const hasProgress = progress !== null && progress !== undefined;
   const hasComparableBaseline = !period?.toLowerCase().includes("chưa có kỳ so sánh");
+  const shouldShowTrend = showTrend !== false && hasComparableBaseline && hasTrendValue;
 
   // Render icon xu hướng
   const renderTrendIcon = () => {
@@ -53,7 +56,7 @@ const KPIInsightCard = ({
         </div>
 
         {/* Badge xu hướng */}
-        {hasComparableBaseline ? (
+        {shouldShowTrend ? (
           <div
             className={`trend-badge ${
               isPositive ? "up" : isNeutral ? "flat" : "down"
