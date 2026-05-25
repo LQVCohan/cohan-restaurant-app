@@ -229,6 +229,7 @@ const MANAGER_SHIFT_ATTENDANCES = gql`
       shiftType
       displayStatus
       isLate
+      reviewNote
     }
   }
 `;
@@ -4422,6 +4423,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 {attendanceIssueRows.slice(0, 8).map((row) => (
                   <li key={row.id}>
                     {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {row.issueLabel}
+                    {row.reviewNote ? (
+                      <>
+                        <p className="schedule-quality-panel__headline">Đã ghi chú xử lý</p>
+                        <p className="schedule-quality-panel__headline">
+                          Ghi chú: {row.reviewNote}
+                        </p>
+                      </>
+                    ) : null}
                     <button type="button" className="staff-secondary-btn" onClick={() => handleAttendanceReview(row)}>
                       Ghi chú xử lý
                     </button>
@@ -4458,6 +4467,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
               </p>
               <p>Giờ ca: {formatShiftTimeRange(attendanceReviewModalRow)}</p>
               <p>Loại bất thường: {attendanceReviewModalRow.issueLabel}</p>
+              {attendanceReviewModalRow.reviewNote ? (
+                <p className="schedule-quality-panel__headline">
+                  Ghi chú trước đó: {attendanceReviewModalRow.reviewNote}
+                </p>
+              ) : null}
               <textarea
                 value={attendanceReviewNote}
                 onChange={(event) => {
