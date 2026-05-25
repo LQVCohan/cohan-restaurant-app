@@ -428,7 +428,6 @@ type User {
   loyaltyPoints: Int
   roleName: String
   loyaltyRank: String
-  foodPreferences: FoodPreferences
 
   customerType: CustomerType
   totalOrders: Int
@@ -770,7 +769,6 @@ input UpdateUserInput {
   address: AddressInput
   avatarUrl: String
   loyaltyRank: String
-  foodPreferences: FoodPreferences
 }
 
 input UpdateAvatarInput {
