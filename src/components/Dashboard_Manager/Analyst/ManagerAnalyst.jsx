@@ -30,6 +30,17 @@ const calculateTrendProgress = (trend = []) => {
   if (!totals.previous) return null;
   return clamp((totals.current / totals.previous) * 100);
 };
+const calculateTrendDelta = (trend = []) => {
+  const totals = trend.reduce(
+    (acc, row) => ({
+      current: acc.current + Number(row?.current || 0),
+      previous: acc.previous + Number(row?.previous || 0),
+    }),
+    { current: 0, previous: 0 }
+  );
+  if (!totals.previous) return null;
+  return Number((((totals.current - totals.previous) / totals.previous) * 100).toFixed(1));
+};
 
 const ManagerAnalyst = () => {
   const {
@@ -60,6 +71,8 @@ const ManagerAnalyst = () => {
   const icons = [DollarSign, Users, ShoppingBag, Star];
   const revenueProgress = calculateTrendProgress(revenueTrend);
   const orderProgress = calculateTrendProgress(orderTrend);
+  const revenueTrendDelta = calculateTrendDelta(revenueTrend);
+  const orderTrendDelta = calculateTrendDelta(orderTrend);
 
   const displayKpis = useMemo(
     () => [
@@ -67,28 +80,39 @@ const ManagerAnalyst = () => {
         ...kpiData[0],
         value: formatVnd(kpiData[0]?.value),
         progress: revenueProgress,
-        period: loading ? "Đang tải..." : "So với kỳ trước theo doanh thu",
+        progressLabel: "So với kỳ trước",
+        period: loading ? "Đang tải..." : revenueProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo doanh thu",
+        trendValue: revenueTrendDelta,
+        showTrend: revenueTrendDelta !== null,
       },
       {
         ...kpiData[1],
+        label: "Khách đã ghi nhận",
         value: Number(kpiData[1]?.value || 0),
         progress: null,
-        period: loading ? "Đang tải..." : "Theo dữ liệu khách hàng",
+        period: loading ? "Đang tải..." : "Số khách từ hồ sơ khách hàng, không chỉ đơn trong kỳ",
+        trendValue: null,
+        showTrend: false,
       },
       {
         ...kpiData[2],
         value: Number(kpiData[2]?.value || 0),
         progress: orderProgress,
-        period: loading ? "Đang tải..." : "So với kỳ trước theo đơn hàng",
+        progressLabel: "So với kỳ trước",
+        period: loading ? "Đang tải..." : orderProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo đơn hàng",
+        trendValue: orderTrendDelta,
+        showTrend: orderTrendDelta !== null,
       },
       {
         ...kpiData[3],
         value: `${Number(kpiData[3]?.value || 0).toFixed(1)}/5`,
         progress: clamp((Number(kpiData[3]?.value || 0) / 5) * 100),
         period: loading ? "Đang tải..." : "Điểm đánh giá trung bình",
+        trendValue: null,
+        showTrend: false,
       },
     ],
-    [kpiData, loading, revenueProgress, orderProgress]
+    [kpiData, loading, revenueProgress, orderProgress, revenueTrendDelta, orderTrendDelta]
   );
 
 
@@ -106,8 +130,18 @@ const ManagerAnalyst = () => {
             <h1>Phân tích kinh doanh</h1>
             <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
           </div>
+          <div className="header-actions">
+            <button className="btn-icon" type="button" onClick={() => refetch()}>
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </header>
-        <div className="analyst-error">Không tải được dữ liệu phân tích kinh doanh. Vui lòng thử làm mới.</div>
+        <div className="analyst-error">
+          Không tải được dữ liệu phân tích kinh doanh. Vui lòng thử làm mới.
+          <button className="btn-icon" type="button" onClick={() => refetch()} style={{ marginLeft: 10 }}>
+            Thử lại
+          </button>
+        </div>
       </div>
     );
   }
@@ -172,9 +206,11 @@ const ManagerAnalyst = () => {
                 key={kpi.label}
                 label={kpi.label}
                 value={kpi.value}
-                trendValue={0}
+                trendValue={kpi.trendValue}
+                showTrend={kpi.showTrend}
                 period={kpi.period}
                 progress={kpi.progress}
+                progressLabel={kpi.progressLabel}
                 icon={icons[idx]}
               />
             ))}

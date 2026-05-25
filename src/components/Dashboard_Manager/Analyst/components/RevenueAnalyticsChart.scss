@@ -79,5 +79,31 @@ $text-secondary: #64748b;
     position: relative;
     min-height: 300px; // Chiều cao tối thiểu
     width: 100%;
+
+    .empty-state-inline {
+      height: 100%;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #64748b;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 16px;
+      gap: 6px;
+
+      p {
+        margin: 0;
+        color: #334155;
+        font-weight: 600;
+      }
+
+      span {
+        font-size: 0.83rem;
+      }
+    }
   }
 }

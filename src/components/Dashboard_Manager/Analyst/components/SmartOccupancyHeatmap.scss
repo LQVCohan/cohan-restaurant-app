@@ -251,6 +251,24 @@ $danger: #ef4444;
         }
       }
     }
+
+    .empty-state.compact {
+      height: 100%;
+      min-height: 180px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #64748b;
+      padding: 14px;
+      gap: 4px;
+      p { margin: 0; color: #334155; font-weight: 600; }
+      span { font-size: 0.82rem; }
+    }
   }
 
   // --- FOOTER ---

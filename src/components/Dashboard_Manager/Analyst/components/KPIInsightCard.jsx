@@ -16,15 +16,20 @@ const KPIInsightCard = ({
   label,
   value,
   trendValue,
+  showTrend = true,
   period,
   progress,
+  progressLabel = "Tiến độ mục tiêu",
   icon: Icon,
   color = "#c5a47e", // Default Gold
 }) => {
-  const normalizedTrend = Number(trendValue || 0);
+  const hasTrendValue = typeof trendValue === "number" && Number.isFinite(trendValue);
+  const normalizedTrend = hasTrendValue ? trendValue : 0;
   const isPositive = normalizedTrend > 0;
   const isNeutral = normalizedTrend === 0;
   const hasProgress = progress !== null && progress !== undefined;
+  const hasComparableBaseline = !period?.toLowerCase().includes("chưa có kỳ so sánh");
+  const shouldShowTrend = showTrend !== false && hasComparableBaseline && hasTrendValue;
 
   // Render icon xu hướng
   const renderTrendIcon = () => {
@@ -52,14 +57,16 @@ const KPIInsightCard = ({
         </div>
 
         {/* Badge xu hướng */}
-        <div
-          className={`trend-badge ${
-            isPositive ? "up" : isNeutral ? "flat" : "down"
-          }`}
-        >
-          {renderTrendIcon()}
-          <span>{Math.abs(normalizedTrend)}%</span>
-        </div>
+        {shouldShowTrend ? (
+          <div
+            className={`trend-badge ${
+              isPositive ? "up" : isNeutral ? "flat" : "down"
+            }`}
+          >
+            {renderTrendIcon()}
+            <span>{Math.abs(normalizedTrend)}%</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="card-body">
@@ -72,7 +79,7 @@ const KPIInsightCard = ({
           <div className="target-info">
             <div className="target-label">
               <Target size={12} />
-              <span>Tiến độ mục tiêu</span>
+              <span>{progressLabel}</span>
             </div>
             <span className="target-percent">{progress}%</span>
           </div>

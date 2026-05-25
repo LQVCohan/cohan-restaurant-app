@@ -9,6 +9,25 @@ const statusLabel = (status) => {
   if (status === "overstaffed") return "Dư người";
   return "Cân bằng";
 };
+const viRole = (role) => ({ server: "phục vụ", cook: "bếp", cashier: "thu ngân", bartender: "pha chế" }[role] || role);
+const shiftLabelMap = { morning: "ca sáng", afternoon: "ca chiều", evening: "ca tối" };
+const formatShiftKey = (shiftKey = "") => {
+  const [dateRaw, shiftRaw] = String(shiftKey).split("|");
+  const shiftLabel = shiftLabelMap[shiftRaw] || "ca làm việc";
+  if (!dateRaw) return shiftLabel;
+  const [y, m, d] = dateRaw.split("-");
+  const dateLabel = y && m && d ? `${d}/${m}` : dateRaw;
+  return `${shiftLabel} ngày ${dateLabel}`;
+};
+const normalizeReason = (reason = "") =>
+  String(reason)
+    .replaceAll("+", ", ")
+    .replaceAll("working", "đang làm việc")
+    .replaceAll("matching department", "đúng bộ phận")
+    .replaceAll("no overlap in current window", "không trùng ca hiện tại")
+    .replaceAll("performance fallback", "chưa đủ dữ liệu hiệu suất")
+    .replaceAll(/\s{2,}/g, " ")
+    .trim();
 
 const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
   const summary = assistant?.summary || {};
@@ -25,12 +44,12 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
             <UsersRound size={18} />
           </div>
           <div>
-            <h3>Staff Scheduling Assistant</h3>
-            <p>Gợi ý headcount + role theo forecast</p>
+            <h3>Gợi ý phân ca thông minh</h3>
+            <p>Đề xuất nhân sự theo nhu cầu từng ca</p>
           </div>
         </div>
         <span className={`mode-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "forecast"}`}>
-          {assistant?.meta?.fallbackUsed ? "Fallback" : "Forecast"}
+          {assistant?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo"}
         </span>
       </div>
 
@@ -61,7 +80,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
               <AlertTriangle size={16} />
               <span>Ca rủi ro cao nhất</span>
             </div>
-            <strong>{topRisk?.shiftKey || "N/A"}</strong>
+            <strong>{topRisk ? formatShiftKey(topRisk.shiftKey) : "N/A"}</strong>
             <p>
               {topRisk
                 ? `${statusLabel(topRisk.status)} • Đề xuất ${compact(topRisk.recommendedTotalStaff)} người • hiện tại ${compact(topRisk.currentAssignedStaff)}`
@@ -75,17 +94,17 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
             </h4>
             <ul>
               {underShifts.slice(0, 4).map((shift) => {
-                const missingRoles = (shift.recommendedRoles || [])
+                const missingRolesList = (shift.recommendedRoles || [])
                   .filter((r) => r.delta < 0)
-                  .map((r) => `${r.role} (${Math.abs(r.delta)})`)
-                  .join(", ");
+                  .map((r) => `${viRole(r.role)} (${Math.abs(r.delta)})`);
+                const missingCount = Math.max(0, Number(shift.recommendedTotalStaff || 0) - Number(shift.currentAssignedStaff || 0));
                 return (
                   <li key={shift.shiftKey}>
                     <div className="line-top">
-                      <span className="shift-key">{shift.shiftKey}</span>
-                      <span className="shift-delta">{shift.deltaStaff}</span>
+                      <span className="shift-key">{formatShiftKey(shift.shiftKey)}</span>
+                      <span className="shift-delta">{missingCount > 0 ? `Đang thiếu ${missingCount}` : "Thiếu nhẹ"}</span>
                     </div>
-                    <p>{missingRoles || "Thiếu nhẹ theo tổng headcount"}</p>
+                    <p>{missingCount > 0 ? `Cần bổ sung ${missingCount} người cho ${formatShiftKey(shift.shiftKey)}: ${missingRolesList.join(", ") || "theo tổng headcount"}.` : "Thiếu nhẹ theo tổng headcount."}</p>
                   </li>
                 );
               })}
@@ -94,16 +113,19 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
 
           <div className="list-block">
             <h4>
-              <UserPlus2 size={16} /> Gợi ý nhân sự lấp ca (best-effort)
+              <UserPlus2 size={16} /> Gợi ý nhân sự lấp ca (gợi ý tham khảo)
+            </h4>
+            <h4 className="subheading">
+              Nhân sự có thể xếp ca
             </h4>
             <ul>
               {(topRisk?.suggestedCandidates || []).slice(0, 4).map((candidate) => (
                 <li key={`${candidate.staffId}-${candidate.role}`}>
                   <div className="line-top">
                     <span className="shift-key">{candidate.fullName}</span>
-                    <span className="role-pill">{candidate.role}</span>
+                    <span className="role-pill">{viRole(candidate.role)}</span>
                   </div>
-                  <p>{candidate.reason}</p>
+                  <p>{normalizeReason(candidate.reason)}</p>
                 </li>
               ))}
               {!topRisk?.suggestedCandidates?.length ? (
@@ -120,7 +142,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
           {(summary?.notes?.length || assistant?.meta?.fallbackUsed) ? (
             <div className="notes-block">
               <h4>Ghi chú phân tích</h4>
-              {assistant?.meta?.fallbackUsed ? <span className="fallback-badge">Fallback đang được sử dụng</span> : null}
+              {assistant?.meta?.fallbackUsed ? <span className="fallback-badge">Chưa đủ dữ liệu hiệu suất, hệ thống đang ưu tiên theo vai trò và lịch trống.</span> : null}
               <ul>
                 {(summary?.notes || []).map((note, idx) => (
                   <li key={idx} className={note.toLowerCase().includes("performance") ? "warning-note" : ""}>{note}</li>

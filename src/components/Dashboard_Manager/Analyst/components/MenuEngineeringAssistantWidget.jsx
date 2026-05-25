@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Target, CircleDollarSign, TrendingUp } from "lucide-react";
+import { Sparkles, Target, CircleDollarSign, TrendingUp, LayoutGrid } from "lucide-react";
 import "./MenuEngineeringAssistantWidget.scss";
 
 const nf = (value) =>
@@ -18,6 +18,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
   const summary = assistant?.summary || {};
   const dishes = assistant?.dishes || [];
   const recommendations = assistant?.recommendations || [];
+  const hasDishData = Number(summary.totalDishes || 0) > 0;
 
   return (
     <div className="widget-card menu-engineering-assistant-widget">
@@ -68,6 +69,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
             </span>
           </div>
 
+          {hasDishData ? (
           <div className="list-section">
             <h4>
               <TrendingUp size={16} /> Top món theo doanh thu
@@ -85,7 +87,12 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
                 </li>
               ))}
             </ul>
-          </div>
+          </div>) : (
+            <div className="state-message compact">
+              <LayoutGrid size={16} />
+              <p>Chưa có món đủ dữ liệu để phân tích.</p>
+            </div>
+          )}
 
           <div className="list-section">
             <h4>

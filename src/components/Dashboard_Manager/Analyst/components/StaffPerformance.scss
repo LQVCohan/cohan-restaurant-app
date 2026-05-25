@@ -117,6 +117,17 @@ $border: #e2e8f0;
     padding-top: 8px;
     padding-right: 4px;
     min-height: 200px; // Đảm bảo dropdown có chỗ hiển thị
+    .empty-state.neutral {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #64748b;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      p { margin: 0; }
+    }
 
     &::-webkit-scrollbar {
       width: 4px;

@@ -1,10 +1,12 @@
 import React from "react";
+import { Grid3X3 } from "lucide-react";
 import "./SmartOccupancyHeatmap.scss";
 
 const SmartOccupancyHeatmap = ({ points = [], loading }) => {
   const hours = [...new Set(points.map((p) => p.hourLabel))];
   const days = [...new Set(points.map((p) => p.dayLabel))];
   const byKey = new Map(points.map((p) => [`${p.dayLabel}-${p.hourLabel}`, p]));
+  const hasHeatmapData = points.some((p) => Number(p.occupancyRate || 0) > 0);
 
   return (
     <div className="widget-card smart-heatmap-widget">
@@ -16,7 +18,7 @@ const SmartOccupancyHeatmap = ({ points = [], loading }) => {
       <div className="heatmap-scroll-wrapper">
         {loading ? (
           <div className="empty-state">Đang tải...</div>
-        ) : (
+        ) : hasHeatmapData ? (
           <div className="heatmap-grid">
             <div className="grid-cell header-corner"></div>
             {hours.map((h) => (
@@ -50,6 +52,12 @@ const SmartOccupancyHeatmap = ({ points = [], loading }) => {
                 })}
               </React.Fragment>
             ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">
+            <Grid3X3 size={16} />
+            <p>Chưa đủ dữ liệu để tạo bản đồ mật độ.</p>
+            <span>Cần thêm đơn theo nhiều khung giờ để phân tích chính xác.</span>
           </div>
         )}
       </div>

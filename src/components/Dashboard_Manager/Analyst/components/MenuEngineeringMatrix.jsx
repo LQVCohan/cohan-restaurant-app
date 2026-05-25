@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { LayoutGrid } from "lucide-react";
 import "./MenuEngineeringMatrix.scss";
 
 const classify = (pop, profit) => {
@@ -36,6 +37,13 @@ const MenuEngineeringMatrix = ({ dishes = [] }) => {
           <span className="subtitle">Phân tích từ top món bán chạy</span>
         </div>
       </div>
+      {mapped.length === 0 ? (
+        <div className="matrix-empty-state">
+          <LayoutGrid size={18} />
+          <p>Chưa có đủ dữ liệu để vẽ ma trận menu.</p>
+          <span>Cần thêm món đã bán để phân loại STAR / PLOWHORSE / PUZZLE / DOG.</span>
+        </div>
+      ) : (
       <div className="matrix-body">
         <div className="axis-y-label">
           <span>Tỷ suất lợi nhuận (Cao)</span>
@@ -69,6 +77,7 @@ const MenuEngineeringMatrix = ({ dishes = [] }) => {
           <span className="arrow">▶</span>
         </div>
       </div>
+      )}
     </div>
   );
 };
