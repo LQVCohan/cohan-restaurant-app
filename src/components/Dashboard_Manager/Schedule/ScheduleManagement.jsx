@@ -67,6 +67,7 @@ import {
   isForbiddenError,
   isUnauthenticatedError,
 } from "@/utils/graphqlErrorUtils";
+import { QUERY_ATTENDANCE_CORRECTIONS } from "@/hooks/useAttendanceManagement";
 const SCHEDULE_STATUS_LABELS = {
   draft: "Bản nháp",
   published: "Đã công bố",
@@ -1794,6 +1795,94 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
     return attendanceIssueRows;
   }, [attendanceIssueFilter, attendanceIssueRows]);
+  const attendanceCorrectionFilter = useMemo(() => ({
+    restaurantId: effectiveRestaurantId || undefined,
+    startDate: todayAttendanceRange.periodStart,
+    endDate: todayAttendanceRange.periodEnd,
+    status: undefined,
+  }), [effectiveRestaurantId, todayAttendanceRange.periodEnd, todayAttendanceRange.periodStart]);
+  const {
+    data: attendanceCorrectionsData,
+    loading: attendanceCorrectionsLoading,
+    error: attendanceCorrectionsError,
+  } = useQuery(QUERY_ATTENDANCE_CORRECTIONS, {
+    variables: { filter: attendanceCorrectionFilter },
+    skip: !effectiveRestaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+  const attendanceCorrectionRequests = useMemo(
+    () => attendanceCorrectionsData?.attendanceCorrectionRequests || [],
+    [attendanceCorrectionsData],
+  );
+  const toDateKey = useCallback((value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return format(date, "yyyy-MM-dd");
+  }, []);
+  const normalizeCorrectionStatus = useCallback((value) => {
+    const status = String(value || "").toLowerCase();
+    if (status === "pending") return "pending";
+    if (["applied", "approved", "completed"].includes(status)) return "applied";
+    if (["rejected", "declined"].includes(status)) return "rejected";
+    if (["cancelled", "canceled"].includes(status)) return "cancelled";
+    return "unknown";
+  }, []);
+  const getCorrectionLinkStatus = useCallback((row) => {
+    const rowShiftId = row?.shiftId ? String(row.shiftId) : null;
+    const rowEmployeeId = row?.employeeId ? String(row.employeeId) : null;
+    const rowDateKey = toDateKey(row?.shiftStartTime || row?.checkInAt);
+    const matched = attendanceCorrectionRequests.filter((correction) => {
+      if (rowShiftId && correction?.shiftId) {
+        return rowShiftId === String(correction.shiftId);
+      }
+      const correctionEmployeeId = correction?.employeeId ? String(correction.employeeId) : null;
+      if (!rowEmployeeId || !correctionEmployeeId || rowEmployeeId !== correctionEmployeeId) {
+        return false;
+      }
+      return rowDateKey && rowDateKey === toDateKey(correction?.workDate);
+    });
+    const count = matched.length;
+    const latestRequest = matched
+      .slice()
+      .sort((a, b) => new Date(b?.requestedAt || 0).getTime() - new Date(a?.requestedAt || 0).getTime())[0] || null;
+    const normalizedStatuses = matched.map((item) => normalizeCorrectionStatus(item?.status));
+    const uniqueStatusCount = new Set(normalizedStatuses).size;
+    let primaryStatus = "none";
+    if (normalizedStatuses.includes("pending")) primaryStatus = "pending";
+    else if (normalizedStatuses.includes("applied")) primaryStatus = "applied";
+    else if (normalizedStatuses.includes("rejected")) primaryStatus = "rejected";
+    else if (normalizedStatuses.includes("cancelled")) primaryStatus = "cancelled";
+    const isMultiple = count > 1 && uniqueStatusCount > 1;
+    const label = count === 0
+      ? "Chưa có yêu cầu chỉnh công"
+      : isMultiple
+        ? `Có ${count} yêu cầu chỉnh công`
+        : primaryStatus === "pending"
+          ? "Có yêu cầu chỉnh công chờ duyệt"
+          : primaryStatus === "applied"
+            ? "Đã áp dụng chỉnh công"
+            : primaryStatus === "rejected"
+              ? "Yêu cầu chỉnh công bị từ chối"
+              : primaryStatus === "cancelled"
+                ? "Yêu cầu chỉnh công đã hủy"
+                : `Có ${count} yêu cầu chỉnh công`;
+    return {
+      count,
+      primaryStatus,
+      label,
+      tone: primaryStatus,
+      latestRequest,
+    };
+  }, [attendanceCorrectionRequests, normalizeCorrectionStatus, toDateKey]);
+  const visibleAttendanceIssueCorrectionSummary = useMemo(() => {
+    return visibleAttendanceIssueRows.reduce((acc, row) => {
+      const status = getCorrectionLinkStatus(row);
+      if (status.count > 0) acc.withCorrections += 1;
+      if (status.primaryStatus === "pending") acc.pending += 1;
+      return acc;
+    }, { withCorrections: 0, pending: 0 });
+  }, [getCorrectionLinkStatus, visibleAttendanceIssueRows]);
 
   const handleAttendanceReview = useCallback((row) => {
     if (String(row?.id || "").startsWith("shift-")) {
@@ -4496,6 +4585,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     Tất cả ({attendanceIssueCounts.total})
                   </button>
                 </div>
+                {attendanceCorrectionsLoading ? (
+                  <p className="schedule-quality-panel__headline">Đang tải trạng thái chỉnh công...</p>
+                ) : attendanceCorrectionsError ? (
+                  <p className="schedule-quality-panel__headline">Không tải được trạng thái chỉnh công.</p>
+                ) : null}
+                <p className="schedule-quality-panel__headline">
+                  Có {visibleAttendanceIssueCorrectionSummary.withCorrections} bất thường đã có yêu cầu chỉnh công · {visibleAttendanceIssueCorrectionSummary.pending} yêu cầu đang chờ duyệt
+                </p>
                 {visibleAttendanceIssueRows.length === 0 ? (
                   <p className="schedule-quality-panel__headline">
                     {attendanceIssueFilter === "unreviewed"
@@ -4508,7 +4605,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <ul>
                 {visibleAttendanceIssueRows.slice(0, 8).map((row) => (
                   <li key={row.id}>
+                    {(() => {
+                      const correctionStatus = getCorrectionLinkStatus(row);
+                      return (
+                        <>
                     {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {row.issueLabel}
+                          <p className="schedule-quality-panel__headline">
+                            Chỉnh công: {correctionStatus.label}
+                          </p>
                     {row.reviewNote ? (
                       <>
                         <p className="schedule-quality-panel__headline">Đã ghi chú xử lý</p>
@@ -4527,9 +4631,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     >
                       Mở chấm công chi tiết
                     </button>
+                          {correctionStatus.primaryStatus === "pending" ? (
+                            <p className="schedule-quality-panel__headline">
+                              Mở chấm công chi tiết để xem yêu cầu chỉnh công
+                            </p>
+                          ) : null}
                     {attendanceReviewErrorByRowId[row.id] ? (
                       <p className="schedule-quality-panel__headline">{attendanceReviewErrorByRowId[row.id]}</p>
                     ) : null}
+                        </>
+                      );
+                    })()}
                   </li>
                 ))}
               </ul>
