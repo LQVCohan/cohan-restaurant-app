@@ -361,6 +361,7 @@ const AttendancePage = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [correctionStatus, setCorrectionStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [queryRestaurantId, setQueryRestaurantId] = useState("");
   const [quickId, setQuickId] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [quickFeedback, setQuickFeedback] = useState(null);
@@ -381,6 +382,7 @@ const AttendancePage = () => {
     const attendanceTab = params.get("attendanceTab");
     const status = params.get("status");
     const employeeId = params.get("employeeId");
+    const restaurantId = params.get("restaurantId");
     const date = params.get("date") || params.get("workDate");
     const search = params.get("search");
 
@@ -418,6 +420,9 @@ const AttendancePage = () => {
       setSearchQuery(search);
     } else if (employeeId) {
       setSearchQuery(employeeId);
+    }
+    if (restaurantId) {
+      setQueryRestaurantId(restaurantId);
     }
   }, []);
 
@@ -466,7 +471,7 @@ const AttendancePage = () => {
     status: filterStatus,
     correctionStatus,
     search: searchQuery,
-    restaurantId: userRestaurantId,
+    restaurantId: queryRestaurantId || userRestaurantId,
   });
 
   const selectedEmployee = useMemo(

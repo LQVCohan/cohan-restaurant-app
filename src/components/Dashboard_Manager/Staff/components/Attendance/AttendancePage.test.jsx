@@ -120,11 +120,11 @@ describe("AttendancePage readiness navigation", () => {
     expect(screen.queryByText("Overtime Panel")).not.toBeInTheDocument();
   });
 
-  it("reads date and employeeId from query for initial attendance filters", async () => {
+  it("reads date employeeId and restaurantId from query for initial attendance filters", async () => {
     window.history.replaceState(
       null,
       "",
-      "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01#staff",
+      "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff",
     );
 
     render(<AttendancePage />);
@@ -133,6 +133,7 @@ describe("AttendancePage readiness navigation", () => {
       expect.objectContaining({
         selectedDate: "2026-05-03",
         search: "e01",
+        restaurantId: "r2",
       }),
     );
   });
