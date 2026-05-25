@@ -60,14 +60,7 @@ export function getTableActionDisabledReason(table, action, targetStatus = "") {
     return "Không thể thao tác vì bàn đang có đặt chỗ/đơn hàng hoạt động.";
   }
 
-  if (action === "set_status") {
-    const normalizedTarget = String(targetStatus || "").toLowerCase();
-    // Returning to available is backend-validated by setTableStatus. Do not block it in the UI.
-    if (normalizedTarget === "available") return "";
-    if (TABLE_DANGEROUS_TARGET_STATUSES.has(normalizedTarget)) {
-      return "Không thể thao tác vì bàn đang có đặt chỗ/đơn hàng hoạt động.";
-    }
-  }
+  if (action === "set_status") return "";
 
   return "";
 }

@@ -1,5 +1,4 @@
 export const POS_MANAGED_STATUS_TRANSITIONS_STRICT = new Set([
-  "available->occupied",
   "reserved->occupied",
   "occupied->payment_pending",
   "payment_pending->cleaning",
