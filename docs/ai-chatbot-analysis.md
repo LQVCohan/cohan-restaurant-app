@@ -232,7 +232,7 @@ Phase 5 MVP cho phép guest nhận phản hồi của nhân viên/quản lý nga
 - Loại bỏ system message và mọi message chứa marker `[AI HANDOFF]`.
 - Loại bỏ message rỗng.
 - Loại bỏ vai trò guest/customer/user.
-- Chỉ giữ nhóm vai trò staff/manager/admin/support/employee (không phân biệt hoa thường).
+- Chỉ giữ nhóm vai trò staff-facing (không phân biệt hoa thường): staff, manager, admin, support, employee, server, supervisor, host, cashier, chef, cook, kitchen_helper, cleaner, shipper, storekeeper, bartender, hr, accountant.
 
 ### Frontend polling
 
