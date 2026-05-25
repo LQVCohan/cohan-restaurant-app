@@ -19,6 +19,7 @@ const KPIInsightCard = ({
   showTrend = true,
   period,
   progress,
+  progressLabel = "Tiến độ mục tiêu",
   icon: Icon,
   color = "#c5a47e", // Default Gold
 }) => {
@@ -78,7 +79,7 @@ const KPIInsightCard = ({
           <div className="target-info">
             <div className="target-label">
               <Target size={12} />
-              <span>Tiến độ mục tiêu</span>
+              <span>{progressLabel}</span>
             </div>
             <span className="target-percent">{progress}%</span>
           </div>

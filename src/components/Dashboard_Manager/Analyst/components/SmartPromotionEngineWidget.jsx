@@ -68,10 +68,14 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
           </div>
 
           <div className="campaign-list">
-            {topCampaigns.map((campaign) => (
+            {topCampaigns.map((campaign) => {
+              const windowLabel = campaign?.targetWindow
+                ? `${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`
+                : "Khung giờ cần review";
+              return (
               <div className="campaign-item" key={campaign.campaignKey}>
                 <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${(campaign.priority || "").toLowerCase()}`}>{priorityMap[campaign.priority] || campaign.priority}</span></div>
-                <div className="item-sub">{orderTypeMap[campaign.targetOrderType] || campaign.targetOrderType} • {`${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`}</div>
+                <div className="item-sub">{orderTypeMap[campaign.targetOrderType] || campaign.targetOrderType} • {windowLabel}</div>
                 <div className="group-line"><strong>Mục tiêu:</strong> Tăng đơn +{formatNumber(campaign.expectedKpi?.expectedOrdersLiftPct)}%, doanh thu +{formatNumber(campaign.expectedKpi?.expectedRevenueLiftPct)}%.</div>
                 <div className="group-line"><strong>Nhóm khách:</strong> {roleTarget(campaign.targetSegment)}.</div>
                 <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {discountTypeMap[campaign.recommendation?.discountType] || campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>
@@ -79,7 +83,7 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
                 <div className="group-line"><strong>Lưu ý an toàn:</strong> {normalizeText(campaign.reason || "Theo dõi KPI sau 24h để tinh chỉnh chiến dịch")}.</div>
                 {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {normalizeText(campaign.guardrails[0])}</div> : null}
               </div>
-            ))}
+            );})}
           </div>
 
           <div className="promo-block">

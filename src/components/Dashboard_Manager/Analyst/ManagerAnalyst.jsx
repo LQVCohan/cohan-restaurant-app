@@ -80,6 +80,7 @@ const ManagerAnalyst = () => {
         ...kpiData[0],
         value: formatVnd(kpiData[0]?.value),
         progress: revenueProgress,
+        progressLabel: "So với kỳ trước",
         period: loading ? "Đang tải..." : revenueProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo doanh thu",
         trendValue: revenueTrendDelta,
         showTrend: revenueTrendDelta !== null,
@@ -97,6 +98,7 @@ const ManagerAnalyst = () => {
         ...kpiData[2],
         value: Number(kpiData[2]?.value || 0),
         progress: orderProgress,
+        progressLabel: "So với kỳ trước",
         period: loading ? "Đang tải..." : orderProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo đơn hàng",
         trendValue: orderTrendDelta,
         showTrend: orderTrendDelta !== null,
@@ -128,8 +130,18 @@ const ManagerAnalyst = () => {
             <h1>Phân tích kinh doanh</h1>
             <p>Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành.</p>
           </div>
+          <div className="header-actions">
+            <button className="btn-icon" type="button" onClick={() => refetch()}>
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </header>
-        <div className="analyst-error">Không tải được dữ liệu phân tích kinh doanh. Vui lòng thử làm mới.</div>
+        <div className="analyst-error">
+          Không tải được dữ liệu phân tích kinh doanh. Vui lòng thử làm mới.
+          <button className="btn-icon" type="button" onClick={() => refetch()} style={{ marginLeft: 10 }}>
+            Thử lại
+          </button>
+        </div>
       </div>
     );
   }
@@ -198,6 +210,7 @@ const ManagerAnalyst = () => {
                 showTrend={kpi.showTrend}
                 period={kpi.period}
                 progress={kpi.progress}
+                progressLabel={kpi.progressLabel}
                 icon={icons[idx]}
               />
             ))}

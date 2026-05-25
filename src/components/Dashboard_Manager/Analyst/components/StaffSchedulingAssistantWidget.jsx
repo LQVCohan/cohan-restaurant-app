@@ -21,10 +21,13 @@ const formatShiftKey = (shiftKey = "") => {
 };
 const normalizeReason = (reason = "") =>
   String(reason)
+    .replaceAll("+", ", ")
     .replaceAll("working", "đang làm việc")
     .replaceAll("matching department", "đúng bộ phận")
     .replaceAll("no overlap in current window", "không trùng ca hiện tại")
-    .replaceAll("performance fallback", "chưa đủ dữ liệu hiệu suất");
+    .replaceAll("performance fallback", "chưa đủ dữ liệu hiệu suất")
+    .replaceAll(/\s{2,}/g, " ")
+    .trim();
 
 const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
   const summary = assistant?.summary || {};
@@ -46,7 +49,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
           </div>
         </div>
         <span className={`mode-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "forecast"}`}>
-          {assistant?.meta?.fallbackUsed ? "Fallback" : "Forecast"}
+          {assistant?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo"}
         </span>
       </div>
 
