@@ -618,6 +618,30 @@ export async function listReservationPayments(reservationId, userId) {
   return PaymentSession.find({ reservationId, userId }).sort({ createdAt: -1 }).lean();
 }
 
+const normalizeOccurredAt = (value) => {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+const normalizeBankFingerprintText = (value) =>
+  String(value || "").trim().replace(/\s+/g, " ").toUpperCase();
+
+const buildBankTransferFingerprint = ({
+  provider,
+  transactionId,
+  bankAccountNumber,
+  amount,
+  description,
+  occurredAtRaw,
+}) => JSON.stringify({
+  provider: String(provider || "").toLowerCase(),
+  transactionId: String(transactionId || "").trim() || null,
+  bankAccountNumber: normalizeBankFingerprintText(bankAccountNumber),
+  amount: Math.round(Number(amount || 0)),
+  description: normalizeBankFingerprintText(description),
+  occurredAt: normalizeOccurredAt(occurredAtRaw),
+});
 
 export async function reconcileBankTransferWebhook({ provider, payload }) {
   const transactionId = String(payload?.transactionId || payload?.id || payload?.txnId || "");
@@ -630,18 +654,33 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       : null
   );
   const occurredAt = payload?.transactionDate ? new Date(payload.transactionDate) : new Date();
+  const fingerprintOccurredAt = payload?.transactionDate || payload?.occurredAt || null;
+  // Note: when provider omits transactionId, duplicate detection falls back to
+  // a stable fingerprint that does not include server receive time.
+  const fingerprint = buildBankTransferFingerprint({
+    provider,
+    transactionId,
+    bankAccountNumber,
+    amount,
+    description,
+    occurredAtRaw: fingerprintOccurredAt,
+  });
 
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
-      const exists = transactionId
+      const existingByTransactionId = transactionId
         ? await BankTransaction.findOne({ provider, transactionId }).session(session)
         : null;
-      if (exists) return { duplicate: true, bankTransaction: exists };
+      if (existingByTransactionId) return { duplicate: true, bankTransaction: existingByTransactionId };
+      const existingByFingerprint = await BankTransaction.findOne({ provider, fingerprint }).session(session);
+      if (existingByFingerprint) return { duplicate: true, bankTransaction: existingByFingerprint };
+      let createdFromDuplicate = false;
       const bankTx = await BankTransaction.create([{
         provider,
         restaurantId: payloadRestaurantId || null,
         transactionId,
+        fingerprint,
         amount,
         description,
         transferContent: description,
@@ -649,7 +688,24 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
         occurredAt,
         raw: payload,
         matchStatus: "unmatched",
-      }], { session }).then((x) => x[0]);
+      }], { session }).then((x) => x[0]).catch(async (error) => {
+        if (error?.code !== 11000) throw error;
+        const duplicate = await BankTransaction.findOne({
+          provider,
+          $or: [
+            ...(transactionId ? [{ transactionId }] : []),
+            { fingerprint },
+          ],
+        }).session(session);
+        if (duplicate) {
+          createdFromDuplicate = true;
+          return duplicate;
+        }
+        throw error;
+      });
+      if (createdFromDuplicate) {
+        return { duplicate: true, bankTransaction: bankTx };
+      }
 
       const now = new Date();
       const normalizedDescription = description.toUpperCase();
