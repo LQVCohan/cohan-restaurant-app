@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AiChatConversation, ChatThread } from "../../models/index.js";
+import { AiChatConversation, ChatThread, User, Notification } from "../../models/index.js";
 
 const {
   toGuestStaffReplies,
   getRestaurantChatbotGuestReplies,
+  sendRestaurantChatbotGuestMessage,
 } = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
 
 describe("toGuestStaffReplies", () => {
@@ -170,5 +171,86 @@ describe("getRestaurantChatbotGuestReplies", () => {
 
     const result = await getRestaurantChatbotGuestReplies({ input: { conversationId, guestId: "guest_abc" } });
     expect(result).toEqual({ ok: true, handoffRequested: true, conversationId, replies: [] });
+  });
+});
+
+
+describe("sendRestaurantChatbotGuestMessage", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("appends guest message to linked handoff chat thread", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    const threadId = "507f1f77bcf86cd799439012";
+    const saveThread = vi.fn().mockResolvedValue(true);
+
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_abc",
+      status: "handoff_requested",
+      chatThreadId: threadId,
+    });
+
+    const thread = {
+      _id: threadId,
+      restaurantId: "507f1f77bcf86cd799439013",
+      channel: "support",
+      targetRole: "support",
+      participants: [],
+      messages: [],
+      save: saveThread,
+    };
+    vi.spyOn(ChatThread, "findById").mockResolvedValue(thread);
+
+    vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
+    vi.spyOn(Notification, "insertMany").mockResolvedValue([]);
+
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_abc", content: "Xin chào nhân viên" },
+    });
+
+    expect(out.ok).toBe(true);
+    expect(thread.messages).toHaveLength(1);
+    expect(thread.messages[0].senderRole).toBe("guest");
+    expect(thread.messages[0].senderName).toBe("Khách hàng");
+    expect(saveThread).toHaveBeenCalled();
+  });
+
+  it("safe fails for wrong guestId", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_real",
+      status: "handoff_requested",
+      chatThreadId: "507f1f77bcf86cd799439012",
+    });
+
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_other", content: "x" },
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it("safe fails for invalid conversationId", async () => {
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId: "bad-id", guestId: "guest_abc", content: "x" },
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it("fails when conversation is not handoff_requested", async () => {
+    const conversationId = "507f1f77bcf86cd799439011";
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: conversationId,
+      guestId: "guest_abc",
+      status: "open",
+      chatThreadId: "507f1f77bcf86cd799439012",
+    });
+
+    const out = await sendRestaurantChatbotGuestMessage({
+      input: { conversationId, guestId: "guest_abc", content: "x" },
+    });
+    expect(out.ok).toBe(false);
   });
 });

@@ -86,6 +86,18 @@ type AiChatbotGuestRepliesResponse {
   replies: [AiChatbotGuestReply!]!
 }
 
+input SendAiChatbotGuestMessageInput {
+  conversationId: ID!
+  guestId: String!
+  content: String!
+}
+
+type SendAiChatbotGuestMessageResponse {
+  ok: Boolean!
+  conversationId: ID!
+  message: AiChatbotGuestReply
+}
+
 extend type Query {
   aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
 }
@@ -93,4 +105,5 @@ extend type Query {
 extend type Mutation {
   askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
+  sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
 }
