@@ -56,11 +56,24 @@ export async function resolveRestaurantChatbotHandoff({ input, user, io } = {}) 
   if (!conversation && threadObjectId) conversation = await AiChatConversation.findOne({ chatThreadId: threadObjectId });
 
   if (!conversation) {
-    return { ok: false, conversationId: conversationId || null, chatThreadId: chatThreadId || null, status: null, alreadyClosed: false, message: "Không tìm thấy hội thoại handoff." };
+    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
+  }
+
+  const isClosed = conversation.status === "closed";
+  const isHandoffRequested = conversation.status === "handoff_requested";
+  if (!isClosed && !isHandoffRequested) {
+    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
   }
 
   let thread = null;
   if (conversation.chatThreadId) thread = await ChatThread.findById(conversation.chatThreadId);
+
+  if (isHandoffRequested && !conversation.chatThreadId) {
+    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
+  }
+  if (isHandoffRequested && conversation.chatThreadId && !thread) {
+    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
+  }
 
   if (thread && !canAccessThread(thread.toObject ? thread.toObject() : thread, user)) {
     const err = new Error("Forbidden");

@@ -55,6 +55,46 @@ describe("resolveRestaurantChatbotHandoff", () => {
     expect(out.alreadyClosed).toBe(true);
   });
 
+  it("returns ok=false for open non-handoff conversation and does not save", async () => {
+    const save = vi.fn();
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: "507f1f77bcf86cd799439011",
+      chatThreadId: "507f1f77bcf86cd799439012",
+      status: "open",
+      save,
+    });
+    const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
+    expect(out.ok).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("returns ok=false when handoff conversation has no chatThreadId", async () => {
+    const save = vi.fn();
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: "507f1f77bcf86cd799439011",
+      chatThreadId: null,
+      status: "handoff_requested",
+      save,
+    });
+    const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
+    expect(out.ok).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("returns ok=false when linked chatThread cannot be loaded", async () => {
+    const save = vi.fn();
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({
+      _id: "507f1f77bcf86cd799439011",
+      chatThreadId: "507f1f77bcf86cd799439012",
+      status: "handoff_requested",
+      save,
+    });
+    vi.spyOn(ChatThread, "findById").mockResolvedValue(null);
+    const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
+    expect(out.ok).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("fails unauthenticated", async () => {
     await expect(resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user: null })).rejects.toThrow("Unauthorized");
   });
@@ -69,7 +109,8 @@ describe("resolveRestaurantChatbotHandoff", () => {
   });
 
   it("realtime emit failure does not fail mutation", async () => {
-    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: null, status: "handoff_requested", metadata: {}, save: vi.fn() });
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "closed", metadata: {}, save: vi.fn() });
+    vi.spyOn(ChatThread, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439012", status: "closed", restaurantId: "507f1f77bcf86cd799439013", targetRole: "support", participants: [], toObject: () => ({ restaurantId: "507f1f77bcf86cd799439013", targetRole: "support", participants: [] }) });
     const out = await resolveRestaurantChatbotHandoff({
       input: { conversationId: "507f1f77bcf86cd799439011" },
       user,

@@ -226,6 +226,11 @@ const Mutation = {
         extensions: { code: "FORBIDDEN" },
       });
     }
+    if (String(thread.status || "").toLowerCase() === "closed") {
+      throw new GraphQLError("Phiên hỗ trợ đã được đóng.", {
+        extensions: { code: "CHAT_THREAD_CLOSED" },
+      });
+    }
 
     const message = {
       senderId,

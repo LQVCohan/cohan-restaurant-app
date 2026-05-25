@@ -298,7 +298,7 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
           </button>
           {isThreadClosed ? <small>Phiên hỗ trợ này đã được đóng.</small> : null}
           <small>
-            Hiện phản hồi của nhân viên được lưu trong luồng hỗ trợ nội bộ; khách guest có thể chưa nhận trực tiếp nếu chưa có guest messaging 2 chiều.
+            Sau khi đóng phiên hỗ trợ, khách có thể tiếp tục trò chuyện với AI hoặc tạo yêu cầu hỗ trợ mới khi cần.
           </small>
         </form>
       </section>
