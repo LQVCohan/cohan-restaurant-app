@@ -25,6 +25,7 @@ const KPIInsightCard = ({
   const isPositive = normalizedTrend > 0;
   const isNeutral = normalizedTrend === 0;
   const hasProgress = progress !== null && progress !== undefined;
+  const hasComparableBaseline = !period?.toLowerCase().includes("chưa có kỳ so sánh");
 
   // Render icon xu hướng
   const renderTrendIcon = () => {
@@ -52,14 +53,16 @@ const KPIInsightCard = ({
         </div>
 
         {/* Badge xu hướng */}
-        <div
-          className={`trend-badge ${
-            isPositive ? "up" : isNeutral ? "flat" : "down"
-          }`}
-        >
-          {renderTrendIcon()}
-          <span>{Math.abs(normalizedTrend)}%</span>
-        </div>
+        {hasComparableBaseline ? (
+          <div
+            className={`trend-badge ${
+              isPositive ? "up" : isNeutral ? "flat" : "down"
+            }`}
+          >
+            {renderTrendIcon()}
+            <span>{Math.abs(normalizedTrend)}%</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="card-body">

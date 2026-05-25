@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, BarChart2 } from "lucide-react";
 import "./StaffPerformance.scss";
 
 const StaffPerformance = ({ staffList = [], loading }) => {
@@ -8,6 +8,7 @@ const StaffPerformance = ({ staffList = [], loading }) => {
     if (filter === "all") return staffList;
     return staffList.filter((x) => x.status === filter);
   }, [staffList, filter]);
+  const hasRealPerformanceData = staffList.some((staff) => Number(staff.efficiency || 0) > 0 || Number(staff.ordersHandled || 0) > 0);
 
   return (
     <div className="widget-card staff-performance-widget">
@@ -29,7 +30,13 @@ const StaffPerformance = ({ staffList = [], loading }) => {
       </div>
       <div className="staff-scroll-area">
         {loading ? <div className="empty-state">Đang tải...</div> : null}
-        {!loading &&
+        {!loading && !hasRealPerformanceData ? (
+          <div className="empty-state neutral">
+            <BarChart2 size={16} />
+            <p>Chưa có dữ liệu hiệu suất nhân viên trong kỳ này.</p>
+          </div>
+        ) : null}
+        {!loading && hasRealPerformanceData &&
           filtered.map((staff) => (
             <div key={staff.staffId} className="staff-item">
               <div className="col-info">

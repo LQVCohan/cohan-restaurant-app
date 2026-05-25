@@ -3,6 +3,14 @@ import { Sparkles, Clock3, Users2, BadgePercent, ShieldCheck, TicketPercent } fr
 import "./SmartPromotionEngineWidget.scss";
 
 const formatNumber = (value) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
+const tokenMap = {
+  aov_missing: "Thiếu dữ liệu giá trị đơn trung bình",
+  usage_capacity_ok: "Dung lượng sử dụng mã còn đủ",
+  stacking_guardrail_fit: "Phù hợp giới hạn cộng dồn ưu đãi",
+  discount_type_match: "Loại ưu đãi phù hợp mục tiêu chiến dịch",
+};
+const normalizeText = (value = "") => tokenMap[value] || value.replaceAll("_", " ");
+const roleTarget = (segment) => segment || "Khách có khả năng quay lại";
 
 const SmartPromotionEngineWidget = ({ engine, loading }) => {
   const summary = engine?.summary || {};
@@ -41,15 +49,13 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
             {topCampaigns.map((campaign) => (
               <div className="campaign-item" key={campaign.campaignKey}>
                 <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${campaign.priority}`}>{campaign.priority}</span></div>
-                <div className="item-sub">{campaign.targetSegment} • {campaign.targetOrderType} • {`${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`}</div>
-                <div className="item-rec">
-                  {campaign.recommendation?.promotionType || "N/A"} • {campaign.recommendation?.scope || "N/A"} • {campaign.recommendation?.targetAudience || "N/A"}
-                </div>
-                <div className="item-kpi">Orders +{formatNumber(campaign.expectedKpi?.expectedOrdersLiftPct)}% • Revenue +{formatNumber(campaign.expectedKpi?.expectedRevenueLiftPct)}% • Conv +{formatNumber(campaign.expectedKpi?.expectedConversionLiftPct)}%</div>
-                <div className="item-rec">{campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Min {formatNumber(campaign.recommendation?.minOrderValue)}đ • Max {formatNumber(campaign.recommendation?.maxDiscount)}đ • Stacking: {String(campaign.recommendation?.stacking)}</div>
-                {!!campaign.recommendation?.conditions?.length ? <div className="conditions">Điều kiện: {campaign.recommendation.conditions.slice(0, 2).join(" • ")}</div> : null}
-                <div className="item-reason">{campaign.reason}</div>
-                {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {campaign.guardrails[0]}</div> : null}
+                <div className="item-sub">{campaign.targetOrderType} • {`${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`}</div>
+                <div className="group-line"><strong>Mục tiêu:</strong> Tăng đơn +{formatNumber(campaign.expectedKpi?.expectedOrdersLiftPct)}%, doanh thu +{formatNumber(campaign.expectedKpi?.expectedRevenueLiftPct)}%.</div>
+                <div className="group-line"><strong>Nhóm khách:</strong> {roleTarget(campaign.targetSegment)}.</div>
+                <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>
+                {!!campaign.recommendation?.conditions?.length ? <div className="group-line"><strong>Điều kiện áp dụng:</strong> {campaign.recommendation.conditions.slice(0, 2).map(normalizeText).join(" • ")}.</div> : null}
+                <div className="group-line"><strong>Lưu ý an toàn:</strong> {normalizeText(campaign.reason || "Theo dõi KPI sau 24h để tinh chỉnh chiến dịch")}.</div>
+                {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {normalizeText(campaign.guardrails[0])}</div> : null}
               </div>
             ))}
           </div>
@@ -60,7 +66,7 @@ const SmartPromotionEngineWidget = ({ engine, loading }) => {
               <div className="promo-item" key={`${promo.promotionId || promo.promotionName}-${idx}`}>
                 <strong>{promo.promotionName}</strong>
                 <span>{promo.source}</span>
-                <p>Fit score: {formatNumber(promo.fitScore)} • {promo.fitReason}</p>
+                <p>Mức phù hợp: {formatNumber(promo.fitScore)} • {normalizeText(promo.fitReason)}</p>
               </div>
             )) : <div className="state-message">Chưa có khuyến mãi/voucher phù hợp để tận dụng.</div>}
           </div>

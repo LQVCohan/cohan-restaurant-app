@@ -67,19 +67,20 @@ const ManagerAnalyst = () => {
         ...kpiData[0],
         value: formatVnd(kpiData[0]?.value),
         progress: revenueProgress,
-        period: loading ? "Đang tải..." : "So với kỳ trước theo doanh thu",
+        period: loading ? "Đang tải..." : revenueProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo doanh thu",
       },
       {
         ...kpiData[1],
+        label: "Khách đã ghi nhận",
         value: Number(kpiData[1]?.value || 0),
         progress: null,
-        period: loading ? "Đang tải..." : "Theo dữ liệu khách hàng",
+        period: loading ? "Đang tải..." : "Số khách từ hồ sơ khách hàng, không chỉ đơn trong kỳ",
       },
       {
         ...kpiData[2],
         value: Number(kpiData[2]?.value || 0),
         progress: orderProgress,
-        period: loading ? "Đang tải..." : "So với kỳ trước theo đơn hàng",
+        period: loading ? "Đang tải..." : orderProgress === null ? "Chưa có kỳ so sánh" : "So với kỳ trước theo đơn hàng",
       },
       {
         ...kpiData[3],
