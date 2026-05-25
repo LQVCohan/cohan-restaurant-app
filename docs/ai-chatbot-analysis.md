@@ -464,3 +464,44 @@ Phase 9 tập trung vào hardening cho toàn bộ luồng guest-facing của cha
 - Chuyển storage của rate limiter sang Redis/shared store để đồng bộ đa instance.
 - Bổ sung observability dashboard cho tỉ lệ bị throttle theo action/restaurant.
 - Cân nhắc adaptive policy theo traffic thực tế từng nhà hàng.
+
+## 19. Phase 10 - AI chatbot analytics / observability dashboard
+
+Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền theo nhà hàng để theo dõi hiệu quả vận hành chatbot.
+
+### Phạm vi dashboard
+
+- Query GraphQL mới: `aiChatbotAnalytics(input)`.
+- Chỉ trả về dữ liệu tổng hợp (aggregate-only), không trả transcript.
+- Bộ lọc nhanh 7 ngày / 30 ngày.
+- Các nhóm số liệu chính:
+  - tổng hội thoại AI, tổng tin nhắn AI, hội thoại đang mở,
+  - handoff đang xử lý / đã xử lý,
+  - fallback và low-confidence,
+  - top intents,
+  - messages by role,
+  - cấu hình rate-limit policy hiện tại.
+
+### Quy tắc bảo mật
+
+- Bắt buộc đăng nhập.
+- Chặn guest/customer truy vấn analytics.
+- Manager/staff phải có restaurant access theo pattern guard hiện có.
+- Dữ liệu chỉ ở mức aggregate.
+- Không trả raw message content, guestId, senderId, participants hoặc ChatThread internals.
+
+### Định nghĩa metric
+
+- `openConversations`: số `AiChatConversation.status = open`.
+- `handoffRequested`: số `AiChatConversation.status = handoff_requested`.
+- `resolvedHandoffs`: số conversation `status=closed` và có dấu hiệu handoff (`chatThreadId` hoặc metadata handoff).
+- `handoffConversionRate`: `handoffRequested / totalConversations`.
+- `averageMessagesPerConversation`: `totalMessages / totalConversations`.
+- `averageHandoffResolutionMinutes`: trung bình phút giữa `metadata.handoffRequestedAt` và `metadata.handoffResolvedAt`, chỉ tính record hợp lệ.
+
+### Giới hạn observability hiện tại
+
+- Chỉ hiển thị **rate-limit policy/config** (`action`, `max`, `windowMs`).
+- Chưa có historical rate-limit hit counts (vì limiter in-memory, không lưu bền).
+- Chưa có token/cost/latency metrics.
+- Chưa có CSAT.

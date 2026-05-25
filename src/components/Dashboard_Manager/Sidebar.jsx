@@ -76,6 +76,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
           page: "Chương trình khuyến mãi",
         },
         { id: "ai-handoff", permissions: ["dashboard.read", "order.read"], icon: "🤖", label: "Handoff AI", page: "Handoff AI" },
+        { id: "ai-chatbot-analytics", permissions: ["report.read"], icon: "📡", label: "AI Chatbot Analytics", page: "AI Chatbot Analytics" },
         { id: "reviews", permissions: ["review.read", "report.read"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
       ],
     },

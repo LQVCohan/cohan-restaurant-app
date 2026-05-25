@@ -11,6 +11,7 @@ import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement"
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
 import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
+import AiChatbotAnalyticsPage from "../components/Dashboard_Manager/Customer/AiChatbotAnalyticsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -54,6 +55,7 @@ const VALID_MANAGER_PAGES = new Set([
   "restaurant-info-management",
   "rbac",
   "ai-handoff",
+  "ai-chatbot-analytics",
 ]);
 
 const resolveInitialManagerPage = () => {
@@ -103,6 +105,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
   "ai-handoff": ["dashboard.read", "order.read"],
+  "ai-chatbot-analytics": ["report.read"],
 };
 
 const PAGE_CONFIG = {
@@ -126,6 +129,7 @@ const PAGE_CONFIG = {
   "restaurant-info-management": { title: "Thông tin nhà hàng", description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", icon: "🏪", keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"] },
   rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
   "ai-handoff": { title: "Handoff AI", description: "Xử lý yêu cầu hỗ trợ từ chatbot", icon: "🤖", keywords: ["handoff", "chatbot", "support"] },
+  "ai-chatbot-analytics": { title: "AI Chatbot Analytics", description: "Theo dõi số liệu tổng hợp chatbot và handoff", icon: "📡", keywords: ["ai", "chatbot", "analytics", "handoff"] },
   settings: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
   rates: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
   setting: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
@@ -278,6 +282,7 @@ const ManagerLayout = () => {
       case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
       case "rbac": return <RbacManagement />;
       case "ai-handoff": return <AiHandoffInbox />;
+      case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
       default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
     }
   };
