@@ -1734,6 +1734,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [attendanceReviewNote, setAttendanceReviewNote] = useState("");
   const [attendanceReviewModalError, setAttendanceReviewModalError] = useState("");
   const [isSubmittingAttendanceReview, setIsSubmittingAttendanceReview] = useState(false);
+  const [attendanceIssueFilter, setAttendanceIssueFilter] = useState("unreviewed");
 
   const todayAttendances = useMemo(
     () => managerShiftAttendancesData?.managerShiftAttendances || [],
@@ -1772,6 +1773,27 @@ const ScheduleManagement = ({ readOnly = false }) => {
       .filter(Boolean)
       .sort((a, b) => (priority[a.issueType] ?? 99) - (priority[b.issueType] ?? 99));
   }, [todayAttendances]);
+
+
+  const attendanceIssueCounts = useMemo(() => {
+    const reviewed = attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length > 0).length;
+    const total = attendanceIssueRows.length;
+    return {
+      total,
+      reviewed,
+      unreviewed: total - reviewed,
+    };
+  }, [attendanceIssueRows]);
+
+  const visibleAttendanceIssueRows = useMemo(() => {
+    if (attendanceIssueFilter === "reviewed") {
+      return attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length > 0);
+    }
+    if (attendanceIssueFilter === "unreviewed") {
+      return attendanceIssueRows.filter((row) => String(row?.reviewNote || "").trim().length === 0);
+    }
+    return attendanceIssueRows;
+  }, [attendanceIssueFilter, attendanceIssueRows]);
 
   const handleAttendanceReview = useCallback((row) => {
     if (String(row?.id || "").startsWith("shift-")) {
@@ -4416,11 +4438,45 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <p className="schedule-quality-panel__headline">Đang tải chấm công...</p>
             ) : managerShiftAttendancesError ? (
               <p className="schedule-quality-panel__headline">Không tải được dữ liệu bất thường.</p>
-            ) : attendanceIssueRows.length === 0 ? (
-              <p className="schedule-quality-panel__headline">Không có bất thường chấm công cần xử lý.</p>
             ) : (
+              <>
+                <div className="schedule-quality-panel__actions" role="group" aria-label="Lọc bất thường chấm công">
+                  <button
+                    type="button"
+                    className="staff-secondary-btn"
+                    aria-pressed={attendanceIssueFilter === "unreviewed"}
+                    onClick={() => setAttendanceIssueFilter("unreviewed")}
+                  >
+                    Cần xử lý ({attendanceIssueCounts.unreviewed})
+                  </button>
+                  <button
+                    type="button"
+                    className="staff-secondary-btn"
+                    aria-pressed={attendanceIssueFilter === "reviewed"}
+                    onClick={() => setAttendanceIssueFilter("reviewed")}
+                  >
+                    Đã ghi chú ({attendanceIssueCounts.reviewed})
+                  </button>
+                  <button
+                    type="button"
+                    className="staff-secondary-btn"
+                    aria-pressed={attendanceIssueFilter === "all"}
+                    onClick={() => setAttendanceIssueFilter("all")}
+                  >
+                    Tất cả ({attendanceIssueCounts.total})
+                  </button>
+                </div>
+                {visibleAttendanceIssueRows.length === 0 ? (
+                  <p className="schedule-quality-panel__headline">
+                    {attendanceIssueFilter === "unreviewed"
+                      ? "Không có bất thường chấm công chưa xử lý."
+                      : attendanceIssueFilter === "reviewed"
+                        ? "Chưa có bất thường nào đã ghi chú xử lý."
+                        : "Không có bất thường chấm công cần xử lý."}
+                  </p>
+                ) : (
               <ul>
-                {attendanceIssueRows.slice(0, 8).map((row) => (
+                {visibleAttendanceIssueRows.slice(0, 8).map((row) => (
                   <li key={row.id}>
                     {(row.employeeName || row.employeeCode || "Nhân viên chưa rõ")} · {formatShiftTimeRange(row)} · {row.issueLabel}
                     {row.reviewNote ? (
@@ -4440,6 +4496,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   </li>
                 ))}
               </ul>
+                )}
+              </>
             )}
           </div>
           {todayScheduleSummary.validDeclinedUnresolved > 0 ? (
