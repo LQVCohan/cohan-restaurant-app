@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { AuthContext } from "@/context/AuthContext";
@@ -36,6 +36,9 @@ const isAiHandoffThread = (thread) =>
 
 const isAiHandoffNotification = (n) => String(n?.type || "").toLowerCase() === "ai_chatbot_handoff";
 
+const TAB_ACTIVE = "active";
+const TAB_RESOLVED = "resolved";
+
 
 const resolveSenderLabel = (msg) => {
   const role = String(msg?.senderRole || "").toLowerCase();
@@ -64,6 +67,7 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   const [warning, setWarning] = useState("");
   const [actionError, setActionError] = useState("");
   const [resolvedThreadIds, setResolvedThreadIds] = useState(() => new Set());
+  const [activeTab, setActiveTab] = useState(TAB_ACTIVE);
   const [resolveHandoff, { loading: resolving }] = useMutation(RESOLVE_AI_CHATBOT_HANDOFF);
 
   const restaurantId = useMemo(
@@ -71,21 +75,33 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
     [propRestaurantId, user]
   );
 
+  const activeCommunication = useCommunication({ restaurantId, status: "open" });
+  const resolvedCommunication = useCommunication({ restaurantId, status: "closed" });
+
   const {
-    threads,
-    threadsLoading,
+    threads: activeThreads,
+    threadsLoading: activeThreadsLoading,
     notifications,
     notificationsLoading,
-    thread,
-    threadLoading,
-    loadThread,
+    thread: activeThread,
+    threadLoading: activeThreadLoading,
+    loadThread: loadActiveThread,
     sendMessage,
     sendMessageState,
     markThreadRead,
     markNotificationRead,
-    refetchThreads,
+    refetchThreads: refetchActiveThreads,
     refetchNotifications,
-  } = useCommunication({ restaurantId });
+  } = activeCommunication;
+
+  const {
+    threads: resolvedThreads,
+    threadsLoading: resolvedThreadsLoading,
+    thread: resolvedThread,
+    threadLoading: resolvedThreadLoading,
+    loadThread: loadResolvedThread,
+    refetchThreads: refetchResolvedThreads,
+  } = resolvedCommunication;
 
   const notificationItems = useMemo(
     () =>
@@ -105,7 +121,7 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   );
 
   const threadItems = useMemo(() => {
-    const rows = (threads || []).filter((t) => isAiHandoffThread(t));
+    const rows = (activeThreads || []).filter((t) => isAiHandoffThread(t));
     return rows.map((t) => ({
       kind: "thread",
       id: `thread_${t.id}`,
@@ -116,9 +132,28 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       time: t.updatedAt || t.lastMessageAt,
       restaurantId: t.restaurantId,
     }));
-  }, [threads]);
+  }, [activeThreads]);
+
+
+
+  const resolvedItems = useMemo(() => {
+    const rows = (resolvedThreads || []).filter((t) => isAiHandoffThread(t));
+    return rows
+      .map((t) => ({
+        kind: "thread",
+        id: `resolved_thread_${t.id}`,
+        notificationId: null,
+        threadId: t.id,
+        unread: false,
+        preview: t.lastMessagePreview || t.subject || "Handoff AI",
+        time: t.updatedAt || t.lastMessageAt,
+        restaurantId: t.restaurantId,
+      }))
+      .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+  }, [resolvedThreads]);
 
   const mergedItems = useMemo(() => {
+
     const map = new Map();
     for (const item of [...notificationItems, ...threadItems]) {
       const key = item.threadId || item.id;
@@ -137,6 +172,18 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       .filter((item) => !resolvedThreadIds.has(String(item.threadId || "")))
       .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
   }, [notificationItems, threadItems, resolvedThreadIds]);
+
+  const currentItems = activeTab === TAB_RESOLVED ? resolvedItems : mergedItems;
+  const thread = activeTab === TAB_RESOLVED ? resolvedThread : activeThread;
+  const threadLoading = activeTab === TAB_RESOLVED ? resolvedThreadLoading : activeThreadLoading;
+  const loadThread = activeTab === TAB_RESOLVED ? loadResolvedThread : loadActiveThread;
+
+  useEffect(() => {
+    setSelectedItem(null);
+    setReply("");
+    setWarning("");
+    setActionError("");
+  }, [activeTab]);
 
   const openItem = async (item) => {
     setWarning("");
@@ -162,7 +209,8 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       runBestEffort(markNotificationRead({ variables: { id: item.notificationId } }));
     }
     runBestEffort(markThreadRead({ variables: { threadId } }));
-    runBestEffort(refetchThreads?.());
+    runBestEffort(refetchActiveThreads?.());
+    runBestEffort(refetchResolvedThreads?.());
     runBestEffort(refetchNotifications?.());
   };
 
@@ -177,7 +225,8 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       await sendMessage({ variables: { input: { threadId, content } } });
       setReply("");
       await loadThread({ variables: { id: threadId } });
-      runBestEffort(refetchThreads?.());
+      runBestEffort(refetchActiveThreads?.());
+    runBestEffort(refetchResolvedThreads?.());
     } catch (error) {
       setActionError(error?.message || "Không thể gửi phản hồi lúc này.");
     }
@@ -194,7 +243,8 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       setResolvedThreadIds((current) => new Set(current).add(String(threadId)));
       setReply("");
       await loadThread({ variables: { id: threadId } });
-      runBestEffort(refetchThreads?.());
+      runBestEffort(refetchActiveThreads?.());
+    runBestEffort(refetchResolvedThreads?.());
       runBestEffort(refetchNotifications?.());
     } catch (error) {
       setActionError(error?.message || "Không thể kết thúc hỗ trợ lúc này.");
@@ -213,22 +263,29 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
     );
   }
 
-  const isLoading = threadsLoading || notificationsLoading;
+  const isActiveView = activeTab === TAB_ACTIVE;
+  const isLoading = isActiveView
+    ? activeThreadsLoading || notificationsLoading
+    : resolvedThreadsLoading;
 
   return (
     <div className="ai-handoff-inbox">
       <section className="ai-handoff-inbox__panel">
         <div className="ai-handoff-inbox__panel-header">
           <h2>Yêu cầu hỗ trợ từ chatbot</h2>
+          <div className="ai-handoff-inbox__tabs">
+            <button type="button" className={activeTab === TAB_ACTIVE ? "active" : ""} onClick={() => setActiveTab(TAB_ACTIVE)}>Đang xử lý</button>
+            <button type="button" className={activeTab === TAB_RESOLVED ? "active" : ""} onClick={() => setActiveTab(TAB_RESOLVED)}>Đã xử lý</button>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="ai-handoff-inbox__content">Đang tải dữ liệu handoff...</div>
-        ) : mergedItems.length === 0 ? (
+        ) : currentItems.length === 0 ? (
           <div className="ai-handoff-inbox__content">Chưa có yêu cầu hỗ trợ từ chatbot.</div>
         ) : (
           <div className="ai-handoff-inbox__list">
-            {mergedItems.map((item) => (
+            {currentItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -292,9 +349,9 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
             onChange={(e) => setReply(e.target.value)}
             placeholder="Nhập phản hồi cho luồng hỗ trợ..."
           />
-          <button type="submit" disabled={isThreadClosed || !reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
-          <button type="button" onClick={onResolve} disabled={!selectedItem || isThreadClosed || resolving}>
-            {resolving ? "Đang xử lý..." : "Đánh dấu đã xử lý"}
+          <button type="submit" disabled={activeTab === TAB_RESOLVED || isThreadClosed || !reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
+          <button type="button" onClick={onResolve} disabled={activeTab === TAB_RESOLVED || !selectedItem || isThreadClosed || resolving}>
+            {activeTab === TAB_RESOLVED || isThreadClosed ? "Đã xử lý" : resolving ? "Đang xử lý..." : "Đánh dấu đã xử lý"}
           </button>
           {isThreadClosed ? <small>Phiên hỗ trợ này đã được đóng.</small> : null}
           <small>

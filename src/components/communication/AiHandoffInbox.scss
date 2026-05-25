@@ -17,3 +17,7 @@
 .ai-handoff-inbox__reply button{ align-self:flex-end; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; }
 .ai-handoff-inbox__reply button:disabled{ opacity:.55; cursor:not-allowed; }
 .ai-handoff-badge{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; border-radius:999px; padding:2px 8px; color:#1d4ed8; background:#dbeafe; border:1px solid #93c5fd; }
+
+.ai-handoff-inbox__tabs{ display:inline-flex; gap:6px; }
+.ai-handoff-inbox__tabs button{ border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#334155; padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer; }
+.ai-handoff-inbox__tabs button.active{ background:#2563eb; color:#fff; border-color:#2563eb; }

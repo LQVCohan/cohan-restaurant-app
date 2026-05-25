@@ -58,6 +58,30 @@ describe("communication resolver restaurant access hardening", () => {
     expect(modelMocks.ChatThread.find).toHaveBeenCalledWith(expect.objectContaining({ $or: expect.any(Array), channel: "support" }));
   });
 
+
+
+  it("chatThreads without status defaults to open", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    await resolver.Query.chatThreads(null, { restaurantId: "valid-r1" }, ctx);
+    expect(modelMocks.ChatThread.find).toHaveBeenCalledWith(expect.objectContaining({ status: "open" }));
+  });
+
+  it("chatThreads supports explicit open/closed status", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    await resolver.Query.chatThreads(null, { restaurantId: "valid-r1", status: "open" }, ctx);
+    expect(modelMocks.ChatThread.find).toHaveBeenLastCalledWith(expect.objectContaining({ status: "open" }));
+    await resolver.Query.chatThreads(null, { restaurantId: "valid-r1", status: "closed" }, ctx);
+    expect(modelMocks.ChatThread.find).toHaveBeenLastCalledWith(expect.objectContaining({ status: "closed" }));
+  });
+
+  it("chatThreads rejects invalid status", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    await expect(resolver.Query.chatThreads(null, { restaurantId: "valid-r1", status: "archived" }, ctx)).rejects.toMatchObject({
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+    expect(modelMocks.ChatThread.find).not.toHaveBeenCalled();
+  });
+
   it("notifications denied scope blocks Notification.find", async () => {
     const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));

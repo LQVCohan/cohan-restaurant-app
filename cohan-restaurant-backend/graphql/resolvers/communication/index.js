@@ -99,14 +99,23 @@ async function requireRestaurantScopeIfProvided(ctx, restaurantId) {
   return rid;
 }
 
+const normalizeChatThreadStatus = (status) => {
+  if (status == null || status === "") return "open";
+  const normalized = String(status).trim().toLowerCase();
+  if (!["open", "closed"].includes(normalized)) {
+    throw badInput("Invalid chat thread status. Allowed values: open, closed");
+  }
+  return normalized;
+};
+
 const Query = {
-  chatThreads: async (_, { restaurantId, channel, limit = 30 }, ctx) => {
+  chatThreads: async (_, { restaurantId, channel, limit = 30, status }, ctx) => {
     ensureAuth(ctx);
     const user = ctx.user;
     const uid = toId(user.id);
     const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
 
-    const cond = { status: "open" };
+    const cond = { status: normalizeChatThreadStatus(status) };
     if (rid) cond.restaurantId = rid;
     if (channel) cond.channel = channel;
 
