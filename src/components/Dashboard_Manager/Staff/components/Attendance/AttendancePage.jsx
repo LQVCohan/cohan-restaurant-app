@@ -843,8 +843,14 @@ const AttendancePage = () => {
     if (!row) return;
 
     focusScrollKeyRef.current = scrollKey;
-    requestAnimationFrame(() => {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    const runScroll =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback) => window.setTimeout(callback, 0);
+    runScroll(() => {
+      if (typeof row.scrollIntoView === "function") {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     });
   }, [
     activeView,

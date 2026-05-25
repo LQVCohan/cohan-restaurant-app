@@ -1,8 +1,10 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AttendancePage, { getAttendanceActionErrorMessage } from "./AttendancePage";
 const useAttendanceManagementMock = vi.fn();
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+const originalRequestAnimationFrame = window.requestAnimationFrame;
 const createAttendanceHookData = (overrides = {}) => ({
   employees: [],
   records: [],
@@ -43,6 +45,24 @@ vi.mock("@/hooks/useAttendanceManagement", () => ({
 
 beforeEach(() => {
   useAttendanceManagementMock.mockReturnValue(createAttendanceHookData());
+  Element.prototype.scrollIntoView = vi.fn();
+  window.requestAnimationFrame = (callback) => {
+    callback();
+    return 0;
+  };
+});
+
+afterEach(() => {
+  if (originalScrollIntoView) {
+    Element.prototype.scrollIntoView = originalScrollIntoView;
+  } else {
+    delete Element.prototype.scrollIntoView;
+  }
+  if (originalRequestAnimationFrame) {
+    window.requestAnimationFrame = originalRequestAnimationFrame;
+  } else {
+    delete window.requestAnimationFrame;
+  }
 });
 
 describe("getAttendanceActionErrorMessage", () => {
@@ -215,7 +235,10 @@ describe("AttendancePage readiness navigation", () => {
     window.history.replaceState(null, "", "/manager?staffPage=attendance&date=2026-05-03&employeeId=e01&restaurantId=r2#staff");
     render(<AttendancePage />);
     fireEvent.click(await screen.findByRole("button", { name: "Tạo yêu cầu chỉnh công" }));
-    expect(await screen.findByText("Tạo yêu cầu chỉnh công")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu công.")).toBeInTheDocument();
   });
 
   it("shows pending correction summary and opens correction view from context action", async () => {
