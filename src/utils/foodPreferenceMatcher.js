@@ -36,7 +36,15 @@ function uniqueMatches(haystack, keywords = []) {
 const hasMetadataArray = (a) => Array.isArray(a) && a.some((x) => String(x || "").trim());
 
 export function hasMeaningfulFoodPreferences(preferences) {
-  return ((preferences?.diet && preferences.diet !== "omni") || (Array.isArray(preferences?.allergies) && preferences.allergies.length > 0));
+  const habits = preferences?.habits || {};
+  return (
+    (preferences?.diet && preferences.diet !== "omni") ||
+    (Array.isArray(preferences?.allergies) && preferences.allergies.length > 0) ||
+    habits?.noOnion === true ||
+    habits?.noCilantro === true ||
+    Number(habits?.sugar ?? 100) !== 100 ||
+    String(habits?.spice ?? "Vừa") !== "Vừa"
+  );
 }
 
 export function analyzeMenuItemForFoodPreferences(item, preferences) {
@@ -95,13 +103,15 @@ export function analyzeMenuItemForFoodPreferences(item, preferences) {
       preferenceScore -= 1;
       reasons.push("Có ngò - có thể không hợp khẩu vị của bạn");
     }
-    const userSpiceIdx = Math.max(0, SPICE_LEVELS.indexOf(String(safePreferences?.spice || "Vừa")));
+    const userSpiceIdx = Math.max(0, SPICE_LEVELS.indexOf(String(userHabits?.spice || "Vừa")));
     const itemSpiceIdx = Math.max(0, SPICE_LEVELS.indexOf(String(taste.spice || "Vừa")));
     if (itemSpiceIdx > userSpiceIdx) {
       preferenceScore -= 1;
       reasons.push("Mức cay có thể cao hơn khẩu vị của bạn");
     }
-    const userSugar = SUGAR_LEVELS.includes(Number(safePreferences?.sugar)) ? Number(safePreferences?.sugar) : 100;
+    const userSugar = SUGAR_LEVELS.includes(Number(userHabits?.sugar))
+      ? Number(userHabits?.sugar)
+      : 100;
     const itemSugar = SUGAR_LEVELS.includes(Number(taste.sugar)) ? Number(taste.sugar) : 100;
     if (itemSugar > userSugar) {
       preferenceScore -= 1;

@@ -407,6 +407,7 @@ export const MenuMutation = {
       });
       return doc;
     } catch (err) {
+      if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err?.message || "createMenuItem failed");
     } finally {
       await session.endSession();
@@ -577,6 +578,7 @@ export const MenuMutation = {
       });
       return updatedItem;
     } catch (err) {
+      if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err?.message || "updateMenuItem failed");
     } finally {
       await session.endSession();
@@ -621,6 +623,7 @@ export const MenuMutation = {
 
       return true;
     } catch (err) {
+      if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err?.message || "deleteMenuItem failed");
     } finally {
       await session.endSession();
@@ -922,6 +925,7 @@ export const MenuMutation = {
         items: updatedItems,
       };
     } catch (err) {
+      if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err?.message || "Bulk update failed", {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
