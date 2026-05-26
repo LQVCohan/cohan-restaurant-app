@@ -150,10 +150,10 @@ export function emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPub
   ctx.io.to(`order-tracking:${orderDoc.trackingToken}`).emit("customer-order-tracking-updated", payload);
 }
 
-export async function buildOrderTrackingQrSvg(orderDoc) {
+export async function buildOrderTrackingQrDataUrl(orderDoc) {
   const payload = orderDoc?.trackingQrPayload || orderDoc?.trackingUrl;
   if (!payload) throw new Error("Order tracking payload not found");
-  return QRCode.toString(payload, { type: "svg", margin: 1, width: 220 });
+  return QRCode.toDataURL(payload, { type: "image/svg+xml", margin: 1, width: 220 });
 }
 
 export { PUBLIC_STATUS_LABELS };

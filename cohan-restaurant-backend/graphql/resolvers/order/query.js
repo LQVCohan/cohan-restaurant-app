@@ -35,7 +35,7 @@ import {
   ensureOrderTracking,
   computePublicOrderStatus,
   toCustomerTrackingPayload,
-  buildOrderTrackingQrSvg,
+  buildOrderTrackingQrDataUrl,
 } from "../../../src/services/orderTracking.service.js";
 const INACTIVE_STATUSES = ["cancelled", "completed", "failed"];
 const ACTIVE_VIEW_PAYMENT_FILTER = {
@@ -320,7 +320,7 @@ export const OrderQuery = {
     await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_READ);
     await ensureOrderTracking(order);
     await order.save();
-    return buildOrderTrackingQrSvg(order);
+    return buildOrderTrackingQrDataUrl(order);
   },
   /** Single */
   async order(_, { id }, ctx) {

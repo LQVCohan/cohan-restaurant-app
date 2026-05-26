@@ -30,7 +30,9 @@ export default function OrderTrackingQrCard({ orderId, disabled = false }) {
       <p className="qr-sub-note">Khách không cần đăng nhập.</p>
       {error && <div className="qr-error" role="alert">{permissionDenied ? "Bạn không có quyền xem QR theo dõi đơn này." : "Không tải được mã QR. Vui lòng thử lại."}</div>}
       {show && !loading && data?.orderTrackingQrSvg && (
-        <div className="qr-frame" aria-label="Mã QR theo dõi đơn hàng" dangerouslySetInnerHTML={{ __html: data.orderTrackingQrSvg }} />
+        <div className="qr-frame">
+          <img src={data.orderTrackingQrSvg} alt="Mã QR theo dõi đơn hàng" />
+        </div>
       )}
     </div>
   );
