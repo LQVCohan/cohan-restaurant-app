@@ -244,6 +244,54 @@ $red: #ef4444;
   }
 }
 
+.checkout-for-you-review {
+  p {
+    margin: 0 0 10px;
+    font-size: 13px;
+  }
+}
+
+.checkout-for-you-review--warning {
+  background: #fff7e6;
+  border-color: #f7c97b;
+}
+
+.checkout-for-you-review--match {
+  background: #eefcf5;
+  border-color: #9fe0bd;
+}
+
+.checkout-for-you-review__title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.checkout-for-you-review__list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.checkout-for-you-review__item {
+  margin-bottom: 6px;
+}
+
+.checkout-for-you-review__item-name {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.checkout-for-you-review__reason {
+  color: $text-muted;
+  font-size: 13px;
+}
+
+.checkout-for-you-review__more {
+  margin-top: 8px;
+  font-size: 12px;
+  color: $text-muted;
+}
+
 /* --- SEGMENTED CONTROL (Toggle Buttons) --- */
 .segmented {
   display: flex;
@@ -429,6 +477,35 @@ $red: #ef4444;
       }
     }
   }
+}
+
+.order-item-for-you-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.order-item-for-you-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.order-item-for-you-badge--warning {
+  background: #fff3cd;
+  color: #8a5a00;
+}
+
+.order-item-for-you-badge--match {
+  background: #dff6e9;
+  color: #11643f;
+}
+
+.order-item-for-you-badge--note {
+  background: #eef2ff;
+  color: #3730a3;
 }
 
 /* --- PRICE BREAKDOWN --- */
