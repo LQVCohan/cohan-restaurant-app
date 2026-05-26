@@ -351,11 +351,13 @@ const FoodDetail = () => {
       !foodId,
     fetchPolicy: "network-only",
   });
-  const resolvedDish = {
-    ...(preloadedDish || {}),
-    ...(foundDish || {}),
-    ...(directDishData?.customerMenuItem || {}),
-  };
+  const serverDish = foundDish || directDishData?.customerMenuItem || null;
+  const resolvedDish = preloadedDish || serverDish
+    ? {
+        ...(preloadedDish || {}),
+        ...(serverDish || {}),
+      }
+    : null;
   const { getPromotionForMenuItem, getPromotionLabel } = useActiveMenuPromotions(
     resolvedDish?.restaurantId,
     { skip: !resolvedDish?.restaurantId },
