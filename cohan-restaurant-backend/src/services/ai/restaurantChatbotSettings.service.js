@@ -70,7 +70,7 @@ export async function getPublicAiChatbotSettings({ restaurantId }) {
 export async function updateRestaurantAiChatbotSettings({ input, user }) {
   const restaurantId = input?.restaurantId;
   await ensureRestaurantAccess({ restaurantId, user });
-  const next = {
+  const patch = {
     enabled: input?.enabled ?? undefined,
     welcomeMessage: input?.welcomeMessage == null ? undefined : String(input.welcomeMessage).trim().slice(0, 500),
     starterQuickReplies: input?.starterQuickReplies == null ? undefined : normalizeQuickReplies(input.starterQuickReplies),
@@ -78,11 +78,21 @@ export async function updateRestaurantAiChatbotSettings({ input, user }) {
     handoffUnavailableMessage: input?.handoffUnavailableMessage == null ? undefined : String(input.handoffUnavailableMessage).trim().slice(0, 500),
     lowConfidenceHandoffThreshold: input?.lowConfidenceHandoffThreshold == null ? undefined : clamp01(input.lowConfidenceHandoffThreshold),
     fallbackMessage: input?.fallbackMessage == null ? undefined : String(input.fallbackMessage).trim().slice(0, 800),
+  };
+  Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
+
+  const restaurant = await Restaurant.findById(restaurantId).select("aiChatbotSettings");
+  if (!restaurant) throw Object.assign(new Error("Không tìm thấy nhà hàng"), { code: "NOT_FOUND" });
+
+  const current = mergeWithDefaultAiChatbotSettings(restaurant.aiChatbotSettings || {});
+  const merged = mergeWithDefaultAiChatbotSettings({
+    ...current,
+    ...patch,
     updatedAt: new Date(),
     updatedBy: user?.id || user?._id || null,
-  };
-  Object.keys(next).forEach((k) => next[k] === undefined && delete next[k]);
+  });
 
-  const restaurant = await Restaurant.findByIdAndUpdate(restaurantId, { $set: { aiChatbotSettings: next } }, { new: true }).select("aiChatbotSettings").lean();
-  return mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || next);
+  restaurant.aiChatbotSettings = merged;
+  await restaurant.save();
+  return mergeWithDefaultAiChatbotSettings(restaurant.aiChatbotSettings || merged);
 }

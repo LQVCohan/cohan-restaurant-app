@@ -188,6 +188,10 @@ function AiChatbotWidget() {
   const chatbotEnabled = publicSettings?.enabled ?? true;
   const handoffEnabled = publicSettings?.handoffEnabled ?? true;
   const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
+  const visibleActions = useMemo(
+    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")),
+    [handoffEnabled, lastActions],
+  );
 
   useEffect(() => {
     if (!guestId || typeof window === "undefined") return;
@@ -491,9 +495,9 @@ function AiChatbotWidget() {
             </div>
           ) : null}
 
-          {lastActions.length ? (
-            {handoffEnabled ? <div className="ai-chatbot-actions">
-              {lastActions.map((action, index) => (
+          {visibleActions.length ? (
+            <div className="ai-chatbot-actions">
+              {visibleActions.map((action, index) => (
                 <button key={`${action.label}-${index}`} type="button" onClick={() => handleAction(action)}>
                   {action.label}
                 </button>
