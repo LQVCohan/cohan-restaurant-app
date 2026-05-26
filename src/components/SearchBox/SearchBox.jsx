@@ -76,7 +76,7 @@ const SearchBox = ({
     const safeText = String(text || "");
     if (!searchQuery) return safeText;
 
-    const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\]/g, "\$&");
+    const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "$&");
     const regex = new RegExp(`(${escapedQuery})`, "gi");
     return safeText.split(regex).map((part, index) =>
       part.toLowerCase() === String(searchQuery).toLowerCase() ? (
