@@ -6,10 +6,13 @@ vi.mock("@/lib/browserStorage", () => ({
 
 import { readStorageValue } from "@/lib/browserStorage";
 import {
+  applySmartLayoutToItems,
   buildAutoLayoutComponentsForRequest,
+  getItemZIndex,
   getAuthHeaders,
   isSmartLayoutGeneratedItem,
   resolveInitialFloorId,
+  shouldConfirmReplaceSmartLayout,
 } from "./FloorPlanDesigner";
 
 describe("FloorPlanDesigner helpers", () => {
@@ -89,5 +92,93 @@ describe("FloorPlanDesigner helpers", () => {
 
   it("isSmartLayoutGeneratedItem detects smart_layout source", () => {
     expect(isSmartLayoutGeneratedItem({ source: "smart_layout" })).toBe(true);
+  });
+
+  it("isSmartLayoutGeneratedItem returns false for manual/normal items", () => {
+    expect(isSmartLayoutGeneratedItem({ id: "d_123" })).toBe(false);
+    expect(isSmartLayoutGeneratedItem({ id: "real_1", type: "table" })).toBe(false);
+  });
+
+  it("shouldConfirmReplaceSmartLayout works", () => {
+    expect(shouldConfirmReplaceSmartLayout([])).toBe(false);
+    expect(shouldConfirmReplaceSmartLayout([{ id: "1" }])).toBe(true);
+  });
+
+  it("replaces previous AI decor instead of appending", () => {
+    const previousItems = [
+      { id: "auto_wall_1", type: "wall" },
+      { id: "auto_kitchen_1", type: "kitchen" },
+      { id: "t1", isRealTable: true, code: "A1", x: 0, y: 0 },
+      { id: "t2", isRealTable: true, code: "A2", x: 0, y: 0 },
+    ];
+    const { nextItems } = applySmartLayoutToItems({
+      previousItems,
+      generatedTables: [{ x: 10, y: 20 }, { x: 30, y: 40 }],
+      generatedDecor: [{ id: "new_wall", type: "wall" }, { id: "new_kitchen", type: "kitchen" }],
+      startX: 1,
+      startY: 1,
+      now: 1,
+    });
+    expect(nextItems.filter((i) => i.type === "wall")).toHaveLength(1);
+    expect(nextItems.filter((i) => i.type === "kitchen")).toHaveLength(1);
+    expect(nextItems.some((i) => i.id === "auto_wall_1")).toBe(false);
+  });
+
+  it("preserves manual decor while replacing old AI decor", () => {
+    const { nextItems } = applySmartLayoutToItems({
+      previousItems: [
+        { id: "d_manual_1", type: "plant" },
+        { id: "auto_plant_1", type: "plant" },
+      ],
+      generatedTables: [],
+      generatedDecor: [{ id: "new_plant", type: "plant" }],
+      startX: 0,
+      startY: 0,
+      now: 2,
+    });
+    expect(nextItems.some((i) => i.id === "d_manual_1")).toBe(true);
+    expect(nextItems.some((i) => i.id === "auto_plant_1")).toBe(false);
+    expect(nextItems.find((i) => i.id === "new_plant")?.source).toBe("smart_layout");
+  });
+
+  it("remaps existing real tables without duplicating", () => {
+    const previousItems = Array.from({ length: 8 }).map((_, i) => ({ id: `r${i}`, isRealTable: true, code: `A${i + 1}`, x: 0, y: 0 }));
+    const generatedTables = Array.from({ length: 8 }).map((_, i) => ({ x: i * 10, y: i * 20 }));
+    const { nextItems } = applySmartLayoutToItems({ previousItems, generatedTables, generatedDecor: [], startX: 0, startY: 0, now: 3 });
+    expect(nextItems.filter((i) => i.isRealTable)).toHaveLength(8);
+    expect(nextItems.some((i) => String(i.id).startsWith("tmp_ai_"))).toBe(false);
+    expect(nextItems.find((i) => i.id === "r3")).toMatchObject({ x: 30, y: 60 });
+  });
+
+  it("creates only missing local tables", () => {
+    const previousItems = Array.from({ length: 6 }).map((_, i) => ({ id: `r${i}`, isRealTable: true, code: `A${i + 1}`, x: 0, y: 0 }));
+    const generatedTables = Array.from({ length: 8 }).map((_, i) => ({ x: i, y: i }));
+    const { nextItems, stats } = applySmartLayoutToItems({ previousItems, generatedTables, generatedDecor: [], startX: 0, startY: 0, now: 4 });
+    expect(nextItems.filter((i) => i.isRealTable)).toHaveLength(8);
+    expect(nextItems.filter((i) => String(i.id).startsWith("tmp_ai_"))).toHaveLength(2);
+    expect(stats.createdLocalTableCount).toBe(2);
+  });
+
+  it("does not delete real tables when generated fewer", () => {
+    const previousItems = Array.from({ length: 8 }).map((_, i) => ({ id: `r${i}`, isRealTable: true, code: `A${i + 1}`, x: 0, y: 0 }));
+    const generatedTables = Array.from({ length: 6 }).map((_, i) => ({ x: i, y: i }));
+    const { nextItems, stats, warnings } = applySmartLayoutToItems({ previousItems, generatedTables, generatedDecor: [], startX: 0, startY: 0, now: 5 });
+    expect(nextItems.filter((i) => i.isRealTable && !i.isLocalOnly)).toHaveLength(8);
+    expect(stats.mappedTableCount).toBe(6);
+    expect(warnings[0]).toContain("Hệ thống giữ lại các bàn thật hiện có");
+  });
+});
+
+describe("FloorPlanDesigner z-index", () => {
+  it("keeps door/window above wall and below table", () => {
+    expect(getItemZIndex({ type: "wall" }, false)).toBeLessThan(getItemZIndex({ type: "door" }, false));
+    expect(getItemZIndex({ type: "wall" }, false)).toBeLessThan(getItemZIndex({ type: "window" }, false));
+    expect(getItemZIndex({ type: "door" }, false)).toBeLessThan(getItemZIndex({ type: "table" }, false));
+    expect(getItemZIndex({ type: "window" }, false)).toBeLessThan(getItemZIndex({ type: "table" }, false));
+  });
+
+  it("selected item has highest and rug is lowest", () => {
+    expect(getItemZIndex({ type: "table" }, true)).toBe(100);
+    expect(getItemZIndex({ type: "rug" }, false)).toBe(1);
   });
 });
