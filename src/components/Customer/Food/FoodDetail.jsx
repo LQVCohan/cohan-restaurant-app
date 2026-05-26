@@ -22,6 +22,7 @@ import {
   Flame,
   Tag,
   Store,
+  AlertTriangle,
 } from "lucide-react";
 import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
@@ -34,6 +35,8 @@ import {
 import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
+import useFoodPreferences from "../../../hooks/useFoodPreferences";
+import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -51,6 +54,17 @@ const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
       basePrice
       thumbImage
       point
+      labels
+      dietTags
+      allergenTags
+      tasteProfile {
+        containsOnion
+        containsCilantro
+        sugar
+        spice
+      }
+      rate
+      orderCounter
       avgPrepTimeMin
       restaurantId
       menuId
@@ -61,8 +75,8 @@ const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
       servingVariants {
         key
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
         name
         price
       }
@@ -143,6 +157,17 @@ const CUSTOMER_MENU_ITEM = gql`
       basePrice
       thumbImage
       point
+      labels
+      dietTags
+      allergenTags
+      tasteProfile {
+        containsOnion
+        containsCilantro
+        sugar
+        spice
+      }
+      rate
+      orderCounter
       avgPrepTimeMin
       restaurantId
       menuId
@@ -153,8 +178,8 @@ const CUSTOMER_MENU_ITEM = gql`
       servingVariants {
         key
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
         name
         price
       }
@@ -244,6 +269,11 @@ const getAddToCartButtonText = ({
   return "Thêm vào giỏ";
 };
 
+const hasFoodPreferenceMetadata = (dish) =>
+  Array.isArray(dish?.dietTags) ||
+  Array.isArray(dish?.allergenTags) ||
+  Boolean(dish?.tasteProfile);
+
 const FoodDetail = () => {
   const { foodId } = useParams();
   const navigate = useNavigate();
@@ -265,7 +295,8 @@ const FoodDetail = () => {
     categoryIdFromQuery ||
     null;
   const selectedVariantKeyFromState = location.state?.selectedVariantKey || null;
-  const { user } = useContext(AuthContext) || {};
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
 
   const {
     cart,
@@ -281,6 +312,7 @@ const FoodDetail = () => {
     String(preloadedDish?.id || "") === String(foodId || "") &&
     !!preloadedDish?.name &&
     !!(preloadedDish?.restaurantId || restaurantIdFromState);
+  const preloadedDishHasPreferenceMetadata = hasFoodPreferenceMetadata(preloadedDish);
 
   const menuItemFilter = useMemo(() => {
     if (!restaurantIdFromState) return null;
@@ -313,10 +345,19 @@ const FoodDetail = () => {
     error: directDishError,
   } = useQuery(CUSTOMER_MENU_ITEM, {
     variables: { id: foodId, restaurantId: restaurantIdFromState || undefined },
-    skip: hasUsablePreloadedDish || !!foundDish || !foodId,
+    skip:
+      (hasUsablePreloadedDish && preloadedDishHasPreferenceMetadata) ||
+      !!foundDish ||
+      !foodId,
     fetchPolicy: "network-only",
   });
-  const resolvedDish = foundDish || directDishData?.customerMenuItem || null;
+  const serverDish = foundDish || directDishData?.customerMenuItem || null;
+  const resolvedDish = preloadedDish || serverDish
+    ? {
+        ...(preloadedDish || {}),
+        ...(serverDish || {}),
+      }
+    : null;
   const { getPromotionForMenuItem, getPromotionLabel } = useActiveMenuPromotions(
     resolvedDish?.restaurantId,
     { skip: !resolvedDish?.restaurantId },
@@ -348,6 +389,22 @@ const FoodDetail = () => {
     const sum = foodReviews.reduce((acc, row) => acc + Number(row?.rating || 0), 0);
     return sum / foodReviews.length;
   }, [foodReviews]);
+
+  const {
+    preferences: customerFoodPreferences,
+    loading: foodPreferenceLoading,
+  } = useFoodPreferences({ skip: !isAuthenticated || !isCustomer });
+
+  const foodPreferenceMeta = useMemo(() => {
+    if (!isAuthenticated || !isCustomer || !resolvedDish?.id) return null;
+    return analyzeMenuItemForFoodPreferences(resolvedDish, customerFoodPreferences);
+  }, [customerFoodPreferences, isAuthenticated, isCustomer, resolvedDish]);
+
+  const shouldShowFoodPreferencePanel = useMemo(() => {
+    if (!foodPreferenceMeta || foodPreferenceLoading) return false;
+    if (foodPreferenceMeta.hasAllergyWarning || foodPreferenceMeta.isRecommended) return true;
+    return Array.isArray(foodPreferenceMeta.reasons) && foodPreferenceMeta.reasons.length > 0;
+  }, [foodPreferenceLoading, foodPreferenceMeta]);
 
   const sizes = useMemo(() => {
     if (!resolvedDish) return [];
@@ -839,6 +896,58 @@ const FoodDetail = () => {
               </ul>
             </div>
 
+            {shouldShowFoodPreferencePanel ? (
+              <div
+                className={`fd-for-you-panel ${
+                  foodPreferenceMeta.hasAllergyWarning
+                    ? "fd-for-you-panel--warning"
+                    : foodPreferenceMeta.isRecommended
+                      ? "fd-for-you-panel--match"
+                      : "fd-for-you-panel--note"
+                }`}
+                role="status"
+              >
+                <div className="fd-for-you-panel__badge-row">
+                  <span
+                    className={`fd-for-you-chip ${
+                      foodPreferenceMeta.hasAllergyWarning
+                        ? "fd-for-you-chip--warning"
+                        : "fd-for-you-chip--match"
+                    }`}
+                  >
+                    {foodPreferenceMeta.hasAllergyWarning ? "⚠ Có thể chứa dị ứng" : "✨ Phù hợp khẩu vị"}
+                  </span>
+                </div>
+                <div className="fd-for-you-panel__title">
+                  <AlertTriangle size={16} /> FOR YOU
+                </div>
+                {foodPreferenceMeta.hasAllergyWarning ? (
+                  <>
+                    <p>{foodPreferenceMeta.warningReason}</p>
+                    {foodPreferenceMeta.matchedAllergies?.length ? (
+                      <p>Món này có thể chứa: {foodPreferenceMeta.matchedAllergies.join(" / ")}.</p>
+                    ) : null}
+                  </>
+                ) : null}
+                {!foodPreferenceMeta.hasAllergyWarning && foodPreferenceMeta.isRecommended ? (
+                  <p>Món này phù hợp với khẩu vị/chế độ ăn bạn đã cài đặt.</p>
+                ) : null}
+                {!foodPreferenceMeta.hasAllergyWarning && !foodPreferenceMeta.isRecommended ? (
+                  <p>Lưu ý theo khẩu vị của bạn.</p>
+                ) : null}
+                {foodPreferenceMeta.reasons?.length ? (
+                  <ul className="fd-for-you-panel__list">
+                    {foodPreferenceMeta.reasons.slice(0, 2).map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {foodPreferenceMeta.hasAllergyWarning ? (
+                  <small>Vui lòng kiểm tra lại với nhà hàng trước khi đặt.</small>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="options-divider"></div>
 
             <div className="selection-area">
@@ -885,6 +994,8 @@ const FoodDetail = () => {
                 </div>
               </div>
             </div>
+
+
 
             <div className="action-area">
               <div className="quantity-control">
