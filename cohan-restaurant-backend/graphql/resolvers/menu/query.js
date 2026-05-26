@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Menu, MenuItem, Category, Restaurant } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
-import { requireRoles } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
@@ -357,7 +356,6 @@ export const MenuQuery = {
   topMenuItems: async (
     _p,
     { limit = 8, restaurantId, categoryId, categoryName, timeSlot },
-    ctx,
   ) => {
     const LIM = Math.min(Math.max(limit, 1), 200);
 
@@ -366,7 +364,28 @@ export const MenuQuery = {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
       q.restaurantId = restaurantId;
     } else {
-      requireRoles(ctx, ["ADMIN"]);
+      const restaurants = await Restaurant.find({})
+        .select({
+          _id: 1,
+          businessStatus: 1,
+          publicationStatus: 1,
+          status: 1,
+          operationalStatus: 1,
+        })
+        .lean();
+
+      const publicRestaurantIds = restaurants
+        .filter((restaurant) => {
+          const availability = computeRestaurantAvailability(restaurant || {});
+          return (
+            availability.businessStatus === "active"
+            && availability.publicationStatus === "published"
+          );
+        })
+        .map((restaurant) => restaurant._id);
+
+      if (!publicRestaurantIds.length) return [];
+      q.restaurantId = { $in: publicRestaurantIds };
     }
 
     if (timeSlot) {
