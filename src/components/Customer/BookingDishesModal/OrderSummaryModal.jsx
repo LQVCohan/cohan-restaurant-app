@@ -10,7 +10,7 @@ import Modal from "../../common/Modal";
 import ModifierModal from "./ModifierModal";
 import { formatCurrency, formatQuantity } from "../../../utils/formatters";
 import "./OrderSummaryModal.scss";
-import { gql } from "@apollo/client";
+import { gql, useApolloClient } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import SuccessModal from "../SuccessModal/SuccessModal";
 import { AuthContext } from "../../../context/AuthContext";
@@ -44,6 +44,7 @@ import {
   useDiscountPreview,
 } from "../../../hooks/useDiscountPreview";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
+import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 const DEFAULT_SHIPPING = (prefill = {}) => ({
   fullName: prefill.fullName || "",
   phone: prefill.phone || "",
@@ -107,6 +108,33 @@ const CREATE_CHECKOUT_ORDERS = gql`
     }
   }
 `;
+const CUSTOMER_MENU_ITEM_FOR_CHECKOUT_FOR_YOU = gql`
+  query CustomerMenuItemForCheckoutForYou($id: ID!, $restaurantId: ID) {
+    customerMenuItem(id: $id, restaurantId: $restaurantId) {
+      id
+      name
+      description
+      restaurantId
+      categoryId
+      menuId
+      labels
+      dietTags
+      allergenTags
+      tasteProfile {
+        containsOnion
+        containsCilantro
+        sugar
+        spice
+      }
+      rate
+      orderCounter
+    }
+  }
+`;
+
+const getCheckoutItemMenuItemId = (item) => item?.dishId || item?.menuItemId || item?.id;
+const getCheckoutItemMetadataKey = (item) =>
+  `${item?.restaurantId || ""}:${getCheckoutItemMenuItemId(item) || ""}`;
 
 function useRestaurantName(restaurantId) {
   const skip = !restaurantId;
@@ -127,6 +155,8 @@ const OrderSummaryModal = ({
   const { user, isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
   const walletBalance = Number(user?.wallet?.balance || 0);
+  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const apolloClient = useApolloClient();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [currentView, setCurrentView] = useState("summary");
@@ -150,11 +180,17 @@ const OrderSummaryModal = ({
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [discountError, setDiscountError] = useState("");
   const [discountTouched, setDiscountTouched] = useState(false);
+  const [menuItemMetadataByKey, setMenuItemMetadataByKey] = useState({});
 
   const { previewOrderDiscount, loading: isPreviewingDiscount } =
     useDiscountPreview();
-  const { previewNote: foodPreferenceNote, loading: isLoadingFoodPreferences } =
-    useFoodPreferences({ skip: !isAuthenticated });
+  const {
+    previewNote: foodPreferenceNote,
+    preferences: customerFoodPreferences,
+    loading: isLoadingFoodPreferences,
+  } = useFoodPreferences({
+    skip: !isAuthenticated || !isCustomer,
+  });
   const hasMeaningfulFoodPreferenceNote =
     !!foodPreferenceNote &&
     foodPreferenceNote !== "Chưa có ghi chú đặc biệt." &&
@@ -226,6 +262,19 @@ const OrderSummaryModal = ({
 
   const canPreviewDiscount =
     restaurantCount <= 1 && Boolean(previewRestaurantId);
+  const itemsNeedingMetadata = useMemo(() => {
+    const map = new Map();
+    for (const item of orderData || []) {
+      const menuItemId = getCheckoutItemMenuItemId(item);
+      const itemRestaurantId = item?.restaurantId;
+      if (!menuItemId) continue;
+      const key = `${itemRestaurantId || ""}:${menuItemId}`;
+      if (!map.has(key)) {
+        map.set(key, { menuItemId, restaurantId: itemRestaurantId });
+      }
+    }
+    return Array.from(map.values());
+  }, [orderData]);
   useEffect(() => {
     if (isOpen) {
       const prefill = {
@@ -470,6 +519,86 @@ const OrderSummaryModal = ({
     setDiscountError("");
     setDiscountTouched(false);
   }, [canPreviewDiscount]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMenuMetadata = async () => {
+      if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) return;
+      if (!itemsNeedingMetadata.length) return;
+
+      const results = await Promise.all(
+        itemsNeedingMetadata.map(async ({ menuItemId, restaurantId: itemRestaurantId }) => {
+          const key = `${itemRestaurantId || ""}:${menuItemId}`;
+          if (menuItemMetadataByKey[key]) return null;
+          try {
+            const { data } = await apolloClient.query({
+              query: CUSTOMER_MENU_ITEM_FOR_CHECKOUT_FOR_YOU,
+              variables: { id: menuItemId, restaurantId: itemRestaurantId || null },
+              fetchPolicy: "cache-first",
+            });
+            return { key, metadata: data?.customerMenuItem || null };
+          } catch (_error) {
+            return { key, metadata: null };
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      const updates = {};
+      for (const entry of results) {
+        if (!entry) continue;
+        updates[entry.key] = entry.metadata;
+      }
+      if (Object.keys(updates).length) {
+        setMenuItemMetadataByKey((prev) => ({ ...prev, ...updates }));
+      }
+    };
+    fetchMenuMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    apolloClient,
+    isAuthenticated,
+    isCustomer,
+    isLoadingFoodPreferences,
+    itemsNeedingMetadata,
+    menuItemMetadataByKey,
+  ]);
+
+  const foodPreferenceReviewItems = useMemo(() => {
+    if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) return [];
+    return (orderData || [])
+      .map((item) => {
+        const metadata = menuItemMetadataByKey[getCheckoutItemMetadataKey(item)];
+        const dishForAnalysis = {
+          ...item,
+          ...(metadata || {}),
+          id: metadata?.id || getCheckoutItemMenuItemId(item),
+          name: metadata?.name || item?.name,
+          description: metadata?.description || item?.description,
+          restaurantId: metadata?.restaurantId || item?.restaurantId,
+        };
+        const meta = analyzeMenuItemForFoodPreferences(
+          dishForAnalysis,
+          customerFoodPreferences,
+        );
+        return { item, dish: dishForAnalysis, meta };
+      })
+      .filter(
+        (entry) =>
+          entry.meta?.hasAllergyWarning ||
+          entry.meta?.isRecommended ||
+          entry.meta?.reasons?.length,
+      );
+  }, [
+    customerFoodPreferences,
+    isAuthenticated,
+    isCustomer,
+    isLoadingFoodPreferences,
+    menuItemMetadataByKey,
+    orderData,
+  ]);
   const validateCartHoldBeforeCheckout = useCallback(() => {
     const expiredHoldItems = getExpiredHoldItems(orderData);
     if (expiredHoldItems.length) {
@@ -757,6 +886,7 @@ const OrderSummaryModal = ({
             payableTotal={payableTotal}
             expiredHoldItems={expiredHoldItems}
             earliestHoldExpiry={earliestHoldExpiry}
+            foodPreferenceReviewItems={foodPreferenceReviewItems}
           />
         );
     }
@@ -903,6 +1033,7 @@ const SummaryContent = ({
   payableTotal,
   expiredHoldItems,
   earliestHoldExpiry,
+  foodPreferenceReviewItems,
 }) => (
   <>
     {!!earliestHoldExpiry && (
@@ -929,10 +1060,12 @@ const SummaryContent = ({
       isFoodPreferenceNoteApplied={isFoodPreferenceNoteApplied}
       onApplyFoodPreferenceNote={onApplyFoodPreferenceNote}
     />
+    <CheckoutForYouReview foodPreferenceReviewItems={foodPreferenceReviewItems} />
     <OrderItems
       groupedByRestaurant={groupedByRestaurant}
       onAddModifier={onAddModifier}
       calcGroupTotals={calcGroupTotals}
+      foodPreferenceReviewItems={foodPreferenceReviewItems}
     />
     <DiscountSection
       couponCode={couponCode}
@@ -1210,7 +1343,15 @@ const OrderItems = ({
   groupedByRestaurant,
   onAddModifier,
   calcGroupTotals,
+  foodPreferenceReviewItems,
 }) => {
+  const foodPreferenceMetaByOrderItemId = useMemo(() => {
+    const map = {};
+    for (const entry of foodPreferenceReviewItems || []) {
+      if (entry?.item?.id) map[entry.item.id] = entry.meta;
+    }
+    return map;
+  }, [foodPreferenceReviewItems]);
   if (!groupedByRestaurant || groupedByRestaurant.size === 0) {
     return (
       <div className="section">
@@ -1234,6 +1375,7 @@ const OrderItems = ({
           items={items}
           onAddModifier={onAddModifier}
           calcGroupTotals={calcGroupTotals}
+          foodPreferenceMetaByOrderItemId={foodPreferenceMetaByOrderItemId}
         />
       ))}
     </div>
@@ -1311,6 +1453,7 @@ const RestaurantGroup = ({
   items,
   onAddModifier,
   calcGroupTotals,
+  foodPreferenceMetaByOrderItemId = {},
 }) => {
   const rName = useRestaurantName(restaurantId) || `Nhà hàng ${restaurantId}`;
   const groupTotals = calcGroupTotals(items);
@@ -1324,7 +1467,12 @@ const RestaurantGroup = ({
 
       <div className="order-items-list">
         {items.map((item) => (
-          <OrderItem key={item.id} item={item} onAddModifier={onAddModifier} />
+          <OrderItem
+            key={item.id}
+            item={item}
+            onAddModifier={onAddModifier}
+            foodPreferenceMeta={foodPreferenceMetaByOrderItemId[item.id]}
+          />
         ))}
       </div>
 
@@ -1356,7 +1504,7 @@ const RestaurantGroup = ({
   );
 };
 
-const OrderItem = ({ item, onAddModifier }) => {
+const OrderItem = ({ item, onAddModifier, foodPreferenceMeta }) => {
   const itemTotal = (item.price + (item.modifiersPrice || 0)) * item.quantity;
   const unitPrice = item.price + (item.modifiersPrice || 0);
 
@@ -1395,6 +1543,23 @@ const OrderItem = ({ item, onAddModifier }) => {
           </span>
           <span className="item-unit-price">x {formatCurrency(unitPrice)}</span>
         </div>
+        {foodPreferenceMeta && (
+          <div className="order-item-for-you-badges">
+            {foodPreferenceMeta.hasAllergyWarning ? (
+              <span className="order-item-for-you-badge order-item-for-you-badge--warning">
+                ⚠ Có thể chứa dị ứng
+              </span>
+            ) : foodPreferenceMeta.isRecommended ? (
+              <span className="order-item-for-you-badge order-item-for-you-badge--match">
+                ✨ Phù hợp khẩu vị
+              </span>
+            ) : (
+              <span className="order-item-for-you-badge order-item-for-you-badge--note">
+                Lưu ý khẩu vị
+              </span>
+            )}
+          </div>
+        )}
 
         {item.modifiers && item.modifiers.length > 0 && (
           <div className="item-modifiers">
@@ -1614,6 +1779,42 @@ const PaymentMethods = ({
     </div>
   </div>
 );
+
+const CheckoutForYouReview = ({ foodPreferenceReviewItems = [] }) => {
+  if (!foodPreferenceReviewItems.length) return null;
+  const sorted = [...foodPreferenceReviewItems].sort(
+    (a, b) => Number(b?.meta?.hasAllergyWarning) - Number(a?.meta?.hasAllergyWarning),
+  );
+  const topItems = sorted.slice(0, 5);
+  const moreCount = sorted.length - topItems.length;
+  const hasAllergyWarning = sorted.some((entry) => entry?.meta?.hasAllergyWarning);
+  const title = hasAllergyWarning ? "⚠ Kiểm tra dị ứng trước khi đặt" : "✨ Gợi ý FOR YOU";
+  const description = hasAllergyWarning
+    ? "Một số món có thể chứa thành phần bạn đã đánh dấu dị ứng. Vui lòng kiểm tra lại với nhà hàng nếu cần."
+    : "Một số món trong đơn phù hợp với khẩu vị bạn đã cài đặt.";
+
+  return (
+    <div
+      className={`section checkout-for-you-review ${hasAllergyWarning ? "checkout-for-you-review--warning" : "checkout-for-you-review--match"}`}
+    >
+      <h3 className="checkout-for-you-review__title">{title}</h3>
+      <p>{description}</p>
+      <ul className="checkout-for-you-review__list">
+        {topItems.map((entry) => (
+          <li className="checkout-for-you-review__item" key={entry.item?.id}>
+            <span className="checkout-for-you-review__item-name">{entry.dish?.name || entry.item?.name}</span>
+            <span className="checkout-for-you-review__reason">
+              {entry.meta?.warningReason || entry.meta?.reasons?.[0] || "Món có thể liên quan đến khẩu vị của bạn."}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {moreCount > 0 && (
+        <div className="checkout-for-you-review__more">và {moreCount} món khác</div>
+      )}
+    </div>
+  );
+};
 
 const SuccessScreen = ({
   receipt,
