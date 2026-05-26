@@ -843,18 +843,14 @@ const useUserManagement = () => {
 
   /* ====== Expose helper để FE tái sử dụng trực tiếp ====== */
   const updateCustomerMetrics = async (userId, totalSpending, restaurantId = selectedRestaurant?.id) => {
+    if (!restaurantId) {
+      throw new Error("Missing restaurantId for customer metrics update");
+    }
     const loyaltyPoints = computePointsFromSpending(totalSpending);
     const customerType = computeTypeFromPoints(loyaltyPoints);
-    // dùng mutation chuyên biệt (nhanh) — nếu BE không bật có thể fallback adminUpdateUser
-    try {
-      await updateMetricsMut({
-        variables: { id: userId, restaurantId, loyaltyPoints, customerType },
-      });
-    } catch {
-      await adminUpdateUserMut({
-        variables: { userId, input: { loyaltyPoints, customerType } },
-      });
-    }
+    await updateMetricsMut({
+      variables: { id: userId, restaurantId, loyaltyPoints, customerType },
+    });
   };
 
   return {

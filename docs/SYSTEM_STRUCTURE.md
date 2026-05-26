@@ -99,6 +99,7 @@
 - `createMyWallet` vẫn cho phép khách tạo ví nội bộ, nhưng provider/currency bị giới hạn whitelist.
 - `topUpMyWallet` đã bị chặn cho khách hàng (temporary disable) cho tới khi có payment verification callback tin cậy.
 - Quy tắc vận hành: số dư ví chỉ được tăng thông qua luồng đã xác minh thanh toán hoặc thao tác nội bộ có kiểm soát quyền.
+- Avatar `fileUrl` chỉ chấp nhận đường dẫn an toàn dạng `/uploads/...` hoặc URL nằm trong `S3_PUBLIC_BASE_URL` với cùng origin + cùng phạm vi path prefix.
 
 ### 4.7 Manager UI
 - Vai trò: quản lý lịch, availability, decline queue, attendance issue.

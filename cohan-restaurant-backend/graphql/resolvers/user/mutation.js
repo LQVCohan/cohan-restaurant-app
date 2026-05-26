@@ -116,6 +116,44 @@ function ensureDirSync(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
+function hasPathTraversal(pathname = "") {
+  return pathname.split("/").some((part) => part === "..");
+}
+
+function normalizeAvatarFileUrl(rawInputUrl) {
+  const rawUrl = String(rawInputUrl || "").trim();
+  const lower = rawUrl.toLowerCase();
+  if (!rawUrl || rawUrl.startsWith("//") || lower.startsWith("javascript:") || lower.startsWith("data:")) {
+    throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+
+  if (rawUrl.startsWith("/")) {
+    if (!rawUrl.startsWith("/uploads/") || hasPathTraversal(rawUrl)) {
+      throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    return rawUrl;
+  }
+
+  const s3BaseRaw = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
+  if (!s3BaseRaw) throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+
+  let base;
+  let target;
+  try {
+    base = new URL(s3BaseRaw);
+    target = new URL(rawUrl);
+  } catch {
+    throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+
+  if (target.origin !== base.origin) throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+  const normalizedBasePath = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
+  if (!target.pathname.startsWith(normalizedBasePath) || hasPathTraversal(target.pathname)) {
+    throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  return target.toString();
+}
+
 async function saveBase64Avatar(base64, userId) {
   const m = String(base64 || "").match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,([A-Za-z0-9+/=]+)$/);
   if (!m) throw new GraphQLError("Invalid avatar format", { extensions: { code: "BAD_USER_INPUT" } });
@@ -342,20 +380,14 @@ export const UserMutation = {
       try {
         nextUrl = await saveBase64Avatar(input.fileBase64, user._id);
       } catch (err) {
-        console.error("saveBase64Avatar error:", err);
+        console.error("saveBase64Avatar error:", err?.message || err);
+        if (err instanceof GraphQLError) throw err;
         throw new GraphQLError("Failed to save avatar", {
           extensions: { code: "INTERNAL_SERVER_ERROR" },
         });
       }
     } else if (input?.fileUrl) {
-      const rawUrl = String(input.fileUrl || "").trim();
-      const s3Base = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
-      const allowRelative = rawUrl.startsWith("/uploads/");
-      const allowS3 = s3Base && rawUrl.startsWith(s3Base);
-      if (!allowRelative && !allowS3) {
-        throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
-      }
-      nextUrl = rawUrl;
+      nextUrl = normalizeAvatarFileUrl(input.fileUrl);
     } else if (typeof input?.clear === "boolean" && input.clear === true) {
       nextUrl = null;
     } else {
