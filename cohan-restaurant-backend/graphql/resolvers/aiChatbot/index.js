@@ -32,7 +32,7 @@ const Query = {
       });
     }
   },
-  restaurantAiChatbotSettings: async (_, { restaurantId }, ctx) => getRestaurantAiChatbotSettings({ restaurantId, user: ctx?.user || null }),
+  restaurantAiChatbotSettings: async (_, { restaurantId }, ctx) => getRestaurantAiChatbotSettings({ restaurantId, ctx }),
   publicAiChatbotSettings: async (_, { restaurantId }) => getPublicAiChatbotSettings({ restaurantId }),
 };
 
@@ -79,7 +79,7 @@ const Mutation = {
       return { ok: false, conversationId: String(input?.conversationId || ""), message: null };
     }
   },
-  updateRestaurantAiChatbotSettings: async (_, { input }, ctx) => updateRestaurantAiChatbotSettings({ input, user: ctx?.user || null }),
+  updateRestaurantAiChatbotSettings: async (_, { input }, ctx) => updateRestaurantAiChatbotSettings({ input, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });
