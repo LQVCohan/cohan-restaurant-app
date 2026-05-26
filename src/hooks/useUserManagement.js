@@ -401,11 +401,13 @@ export const ADMIN_UPDATE_USER = gql`
 export const UPDATE_CUSTOMER_METRICS = gql`
   mutation UpdateCustomerMetrics(
     $id: ID!
+    $restaurantId: ID!
     $loyaltyPoints: Int!
     $customerType: CustomerType!
   ) {
     updateCustomerMetrics(
       id: $id
+      restaurantId: $restaurantId
       loyaltyPoints: $loyaltyPoints
       customerType: $customerType
     ) {
@@ -840,13 +842,13 @@ const useUserManagement = () => {
   };
 
   /* ====== Expose helper để FE tái sử dụng trực tiếp ====== */
-  const updateCustomerMetrics = async (userId, totalSpending) => {
+  const updateCustomerMetrics = async (userId, totalSpending, restaurantId = selectedRestaurant?.id) => {
     const loyaltyPoints = computePointsFromSpending(totalSpending);
     const customerType = computeTypeFromPoints(loyaltyPoints);
     // dùng mutation chuyên biệt (nhanh) — nếu BE không bật có thể fallback adminUpdateUser
     try {
       await updateMetricsMut({
-        variables: { id: userId, loyaltyPoints, customerType },
+        variables: { id: userId, restaurantId, loyaltyPoints, customerType },
       });
     } catch {
       await adminUpdateUserMut({

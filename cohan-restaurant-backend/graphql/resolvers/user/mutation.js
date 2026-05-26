@@ -9,7 +9,6 @@ import {
   Role,
   Customer,
   CustomerRankSetting,
-  WalletTransaction,
 } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
@@ -51,6 +50,10 @@ const FOOD_PREFERENCE_DIETS = ["omni", "vegan", "keto", "halal"];
 const FOOD_PREFERENCE_ALLERGIES = ["seafood", "peanut", "milk", "egg", "gluten"];
 const FOOD_PREFERENCE_SUGAR = [0, 30, 50, 70, 100];
 const FOOD_PREFERENCE_SPICE = ["Không", "Vừa", "Nồng", "Rất cay"];
+const WALLET_ALLOWED_PROVIDERS = ["internal"];
+const WALLET_ALLOWED_CURRENCIES = ["VND"];
+const AVATAR_ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const AVATAR_MAX_FILE_SIZE_BYTES = Number(process.env.AVATAR_MAX_FILE_SIZE_BYTES || 2 * 1024 * 1024);
 
 function normalizeFoodPreferencesInput(input = {}) {
   const habits = input?.habits || {};
@@ -113,22 +116,27 @@ function ensureDirSync(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function saveBase64Avatar(base64, userId) {
-  const hasPrefix = /^data:image\/([a-zA-Z0-9+]+);base64,/.test(base64 || "");
-  const pureBase64 = hasPrefix ? base64.split(",")[1] : base64;
-
-  let ext = "png";
-  if (hasPrefix) {
-    const m = base64.match(/^data:image\/([a-zA-Z0-9+]+);base64,/);
-    if (m?.[1]) ext = m[1].toLowerCase();
+async function saveBase64Avatar(base64, userId) {
+  const m = String(base64 || "").match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) throw new GraphQLError("Invalid avatar format", { extensions: { code: "BAD_USER_INPUT" } });
+  const mimeType = m[1].toLowerCase();
+  if (!AVATAR_ALLOWED_MIME.has(mimeType)) throw new GraphQLError("Unsupported avatar MIME type", { extensions: { code: "BAD_USER_INPUT" } });
+  const rawBuffer = Buffer.from(m[2], "base64");
+  if (!rawBuffer.length || rawBuffer.length > AVATAR_MAX_FILE_SIZE_BYTES) throw new GraphQLError("Avatar file is too large", { extensions: { code: "BAD_USER_INPUT" } });
+  const { default: sharp } = await import("sharp");
+  let optimized;
+  try {
+    optimized = await sharp(rawBuffer).rotate().webp({ quality: 85 }).toBuffer();
+  } catch {
+    throw new GraphQLError("Invalid image payload", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
   const uploadsDir = path.join(process.cwd(), "uploads", "avatars");
   ensureDirSync(uploadsDir);
 
-  const filename = `${userId}-${Date.now()}.${ext}`;
+  const filename = `${String(userId)}-${Date.now()}.webp`;
   const absPath = path.join(uploadsDir, filename);
-  fs.writeFileSync(absPath, Buffer.from(pureBase64, "base64"));
+  fs.writeFileSync(absPath, optimized);
 
   return `/uploads/avatars/${filename}`;
 }
@@ -332,7 +340,7 @@ export const UserMutation = {
 
     if (input?.fileBase64) {
       try {
-        nextUrl = saveBase64Avatar(input.fileBase64, user._id);
+        nextUrl = await saveBase64Avatar(input.fileBase64, user._id);
       } catch (err) {
         console.error("saveBase64Avatar error:", err);
         throw new GraphQLError("Failed to save avatar", {
@@ -340,7 +348,14 @@ export const UserMutation = {
         });
       }
     } else if (input?.fileUrl) {
-      nextUrl = input.fileUrl;
+      const rawUrl = String(input.fileUrl || "").trim();
+      const s3Base = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
+      const allowRelative = rawUrl.startsWith("/uploads/");
+      const allowS3 = s3Base && rawUrl.startsWith(s3Base);
+      if (!allowRelative && !allowS3) {
+        throw new GraphQLError("Unsupported avatar URL", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+      nextUrl = rawUrl;
     } else if (typeof input?.clear === "boolean" && input.clear === true) {
       nextUrl = null;
     } else {
@@ -380,6 +395,9 @@ export const UserMutation = {
 
     const provider = input?.provider?.trim() || "internal";
     const currency = input?.currency?.trim() || "VND";
+    if (!WALLET_ALLOWED_PROVIDERS.includes(provider) || !WALLET_ALLOWED_CURRENCIES.includes(currency)) {
+      throw new GraphQLError("Unsupported wallet provider/currency", { extensions: { code: "BAD_USER_INPUT" } });
+    }
 
     user.wallet = {
       provider,
@@ -407,77 +425,9 @@ export const UserMutation = {
       });
     }
 
-    const amount = Number(input?.amount || 0);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      throw new GraphQLError("Top-up amount must be greater than 0", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    if (amount > 50_000_000) {
-      throw new GraphQLError("Top-up amount exceeds allowed limit", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-
-    const session = await mongoose.startSession();
-    let tx = null;
-    try {
-      await session.withTransaction(async () => {
-        const user = await User.findById(authUser.id).session(session);
-        if (!user) {
-          throw new GraphQLError("User not found", {
-            extensions: { code: "NOT_FOUND" },
-          });
-        }
-
-        if (!user.wallet || user.wallet.status !== "active") {
-          user.wallet = {
-            provider: user.wallet?.provider || "internal",
-            currency: user.wallet?.currency || "VND",
-            status: "active",
-            balance: Number(user.wallet?.balance || 0),
-            createdAt: user.wallet?.createdAt || new Date(),
-            updatedAt: new Date(),
-          };
-        }
-
-        const balanceBefore = Number(user.wallet?.balance || 0);
-        const balanceAfter = balanceBefore + amount;
-
-        user.wallet.balance = balanceAfter;
-        user.wallet.updatedAt = new Date();
-        await user.save({ session });
-
-        [tx] = await WalletTransaction.create(
-          [
-            {
-              userId: user._id,
-              type: "TOPUP",
-              amount,
-              currency: user.wallet.currency || "VND",
-              balanceBefore,
-              balanceAfter,
-              status: "SUCCESS",
-              referenceType: "WALLET_TOPUP",
-              metadata: {
-                note: input?.note || null,
-                idempotencyKey: input?.idempotencyKey || null,
-              },
-            },
-          ],
-          { session },
-        );
-      });
-    } finally {
-      await session.endSession();
-    }
-
-    const raw = tx?.toObject?.() || tx;
-    return {
-      ...raw,
-      id: String(raw?._id || raw?.id),
-      userId: String(raw?.userId || authUser.id),
-    };
+    throw new GraphQLError("Wallet top-up is temporarily disabled until payment verification is implemented", {
+      extensions: { code: "FORBIDDEN" },
+    });
   },
 
   // ========== Register ==========
@@ -1257,10 +1207,14 @@ export const UserMutation = {
   */
   async updateCustomerMetrics(
     _,
-    { id, loyaltyPoints, customerType },
-    { user: authUser },
+    { id, restaurantId, loyaltyPoints, customerType },
+    ctx,
   ) {
+    const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
+    if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    await requireRestaurantAccess(ctx, restaurantId);
     if (!mongoose.isValidObjectId(id)) {
       throw new GraphQLError("Invalid id", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -1274,22 +1228,13 @@ export const UserMutation = {
       });
     }
 
-    const saved = await Customer.findByIdAndUpdate(
-      id,
-      {
-        loyaltyPoints: lp,
-        customerType: ct,
-      },
-      { new: true },
-    )
+    const target = await Customer.findById(id).lean({ virtuals: true });
+    if (!target) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+    const hasRestaurant = Array.isArray(target.refRestaurants) && target.refRestaurants.some((rid) => String(rid) === String(restaurantId));
+    if (!hasRestaurant) throw new GraphQLError("Customer not in restaurant scope", { extensions: { code: "FORBIDDEN" } });
+    const saved = await Customer.findByIdAndUpdate(id, { loyaltyPoints: lp, customerType: ct }, { new: true })
       .populate("role")
       .lean({ virtuals: true });
-
-    if (!saved) {
-      throw new GraphQLError("User not found", {
-        extensions: { code: "NOT_FOUND" },
-      });
-    }
     return saved;
   },
 
