@@ -41,7 +41,6 @@ const GET_TOP_MENU_ITEMS = gql`
       avgPrepTimeMin
       servingVariants {
         key
-        id
         name
         price
       }

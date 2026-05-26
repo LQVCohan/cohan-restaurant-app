@@ -5,6 +5,7 @@ import process from "process";
 // 👉 chỉnh đường dẫn đúng tới models ESM của bạn
 
 import { User, Role, Permission } from "../models/index.js";
+import { validatePasswordStrong } from "../lib/passwordPolicy.js";
 async function main() {
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
   const DB_NAME = process.env.MONGO_DB || "foodhub";
@@ -46,8 +47,19 @@ async function main() {
   }
 
   // 3) Tạo user admin
-  const email = process.env.ADMIN_EMAIL || "admin@foodhub.local";
-  const password = process.env.ADMIN_PASSWORD || "Admin@12345";
+  const email = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.ADMIN_PASSWORD || "");
+
+  if (!email) {
+    throw new Error("Missing required ADMIN_EMAIL environment variable");
+  }
+  if (!password) {
+    throw new Error("Missing required ADMIN_PASSWORD environment variable");
+  }
+  const passwordPolicy = validatePasswordStrong(password);
+  if (!passwordPolicy.ok) {
+    throw new Error(`ADMIN_PASSWORD does not satisfy policy: ${passwordPolicy.reason || "invalid password"}`);
+  }
 
   let user = await User.findOne({ email });
   if (!user) {
@@ -65,7 +77,7 @@ async function main() {
     console.log("ℹ️ Admin existed:", email);
   }
 
-  console.log("🎉 DONE. Use credentials:", email, "/", password);
+  console.log("🎉 DONE. Admin account is ready for:", email);
   await mongoose.disconnect();
 }
 
