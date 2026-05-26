@@ -5,30 +5,62 @@ import SearchBox from "./SearchBox";
 
 const testItems = [
   {
-    id: "searchbox-regex-item",
+    id: "bracket",
     title: "Combo [A]+",
-    description: "Regex safe",
+    description: "Bracket plus safe",
     category: "Test",
     keywords: ["combo"],
+    icon: "🍽️",
+  },
+  {
+    id: "dot",
+    title: "Combo. Dot",
+    description: "Dot safe",
+    category: "Test",
+    keywords: ["dot"],
+    icon: "🍽️",
+  },
+  {
+    id: "slash",
+    title: "Path \\ Menu",
+    description: "Backslash safe",
+    category: "Test",
+    keywords: ["slash"],
+    icon: "🍽️",
+  },
+  {
+    id: "paren",
+    title: "Deal (A)",
+    description: "Parenthesis safe",
+    category: "Test",
+    keywords: ["paren"],
     icon: "🍽️",
   },
 ];
 
 describe("SearchBox regex-safe highlighting", () => {
-  it("does not crash for regex-special queries and still returns results", () => {
+  it("does not crash for regex-special queries and returns matching results", () => {
     render(<SearchBox items={testItems} />);
 
     const input = screen.getByPlaceholderText("Tìm kiếm mọi thứ trong trang...");
 
-    ["[", "+", ".", "\\", "(A)"] .forEach((query) => {
+    [
+      ["[", "Combo [A]+"],
+      ["+", "Combo [A]+"],
+      [".", "Combo. Dot"],
+      ["\\", "Path \\ Menu"],
+      ["(A)", "Deal (A)"],
+    ].forEach(([query, expectedTitle]) => {
       fireEvent.change(input, { target: { value: query } });
-      expect(screen.getByText("Combo [A]+", { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText((_, element) => element?.textContent === expectedTitle)
+      ).toBeInTheDocument();
     });
   });
 
   it("keeps highlight behavior for normal query and onSelectItem", () => {
     const onSelectItem = vi.fn();
-    render(<SearchBox items={testItems} onSelectItem={onSelectItem} />);
+    render(<SearchBox items={[testItems[0]]} onSelectItem={onSelectItem} />);
 
     const input = screen.getByPlaceholderText("Tìm kiếm mọi thứ trong trang...");
     fireEvent.change(input, { target: { value: "Combo" } });
@@ -39,6 +71,6 @@ describe("SearchBox regex-safe highlighting", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onSelectItem).toHaveBeenCalledTimes(1);
-    expect(onSelectItem).toHaveBeenCalledWith(expect.objectContaining({ id: "searchbox-regex-item" }));
+    expect(onSelectItem).toHaveBeenCalledWith(expect.objectContaining({ id: "bracket" }));
   });
 });
