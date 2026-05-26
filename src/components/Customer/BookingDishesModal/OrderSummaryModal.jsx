@@ -275,6 +275,14 @@ const OrderSummaryModal = ({
     }
     return Array.from(map.values());
   }, [orderData]);
+  const missingMetadataItems = useMemo(
+    () =>
+      itemsNeedingMetadata.filter(({ menuItemId, restaurantId: itemRestaurantId }) => {
+        const key = `${itemRestaurantId || ""}:${menuItemId}`;
+        return !Object.prototype.hasOwnProperty.call(menuItemMetadataByKey, key);
+      }),
+    [itemsNeedingMetadata, menuItemMetadataByKey],
+  );
   useEffect(() => {
     if (isOpen) {
       const prefill = {
@@ -524,12 +532,16 @@ const OrderSummaryModal = ({
     let cancelled = false;
     const fetchMenuMetadata = async () => {
       if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) return;
-      if (!itemsNeedingMetadata.length) return;
+      if (!missingMetadataItems.length) return;
 
       const results = await Promise.all(
-        itemsNeedingMetadata.map(async ({ menuItemId, restaurantId: itemRestaurantId }) => {
+        missingMetadataItems.map(async ({ menuItemId, restaurantId: itemRestaurantId }) => {
           const key = `${itemRestaurantId || ""}:${menuItemId}`;
-          if (menuItemMetadataByKey[key]) return null;
+          const hasFetchedMetadata = Object.prototype.hasOwnProperty.call(
+            menuItemMetadataByKey,
+            key,
+          );
+          if (hasFetchedMetadata) return null;
           try {
             const { data } = await apolloClient.query({
               query: CUSTOMER_MENU_ITEM_FOR_CHECKOUT_FOR_YOU,
@@ -562,7 +574,7 @@ const OrderSummaryModal = ({
     isAuthenticated,
     isCustomer,
     isLoadingFoodPreferences,
-    itemsNeedingMetadata,
+    missingMetadataItems,
     menuItemMetadataByKey,
   ]);
 
