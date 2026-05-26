@@ -71,4 +71,10 @@ describe('table access token production validation', () => {
     const { validateEnv } = await import('../../src/config/env.js');
     expect(() => validateEnv()).toThrow(/must differ/);
   });
+
+  it('fails when TABLE_ACCESS_TOKEN_SECRET uses the development fallback in production', async () => {
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'dev_table_access_secret_change_me';
+    const { validateEnv } = await import('../../src/config/env.js');
+    expect(() => validateEnv()).toThrow(/weak value/);
+  });
 });
