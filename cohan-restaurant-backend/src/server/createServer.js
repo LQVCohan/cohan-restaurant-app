@@ -31,6 +31,7 @@ import { requireRestaurantPermission } from "../services/auth/authorization.serv
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../services/ai/restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
+import { ChatThread, Order, OrderTracking } from "../../models/index.js";
 
 const parseAllowedOrigins = () => {
   const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
@@ -59,7 +60,26 @@ export async function createServer() {
     exposedHeaders: ["Content-Disposition"],
   });
 
-  await app.register(helmet, { contentSecurityPolicy: false });
+  const inProduction = process.env.NODE_ENV === "production";
+  const cspConnect = ["'self'", ...allowedOrigins];
+  const s3PublicBase = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
+  if (s3PublicBase) cspConnect.push(s3PublicBase);
+  await app.register(helmet, {
+    contentSecurityPolicy: inProduction
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            imgSrc: ["'self'", "data:", "blob:", s3PublicBase || ""].filter(Boolean),
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+            connectSrc: cspConnect,
+            objectSrc: ["'none'"],
+            frameAncestors: ["'self'"],
+          },
+        }
+      : false,
+  });
 
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
   const RL_GLOBAL_WINDOW = process.env.RL_GLOBAL_WINDOW || "1 minute";
@@ -364,16 +384,36 @@ export async function createServer() {
   app.decorate("io", io);
   app.decorate("menuPresenceStore", new Map());
 
+  io.use(async (socket, next) => {
+    try {
+      const rawAuth = socket.handshake?.headers?.authorization || socket.handshake?.auth?.token || "";
+      const normalized = String(rawAuth).toLowerCase().startsWith("bearer ") ? String(rawAuth) : `Bearer ${rawAuth}`;
+      const fakeReq = { headers: { authorization: normalized }, log: app.log };
+      const authUser = await resolveAuthenticatedUserFromRequest(fakeReq);
+      socket.user = authUser || null;
+      next();
+    } catch {
+      socket.user = null;
+      next();
+    }
+  });
+
   io.on("connection", (socket) => {
     const joinedMenuKeys = new Set();
     app.log.info(`🔌 Client connected: ${socket.id}`);
 
-    socket.on("joinRestaurant", (restaurantId) => {
+    socket.on("joinRestaurant", async (restaurantId, ack) => {
+      try {
+        if (!socket.user?.id) throw new Error("Unauthorized");
+        await requireRestaurantPermission({ user: socket.user }, restaurantId, PERMISSIONS.ORDER_READ);
+
       if (!restaurantId) return;
       const roomName = `restaurant_${restaurantId}`;
       socket.join(roomName);
       app.log.info(`👋 Socket ${socket.id} joined room ${roomName}`);
       socket.emit("joinedRoom", { room: roomName });
+      if (typeof ack === "function") ack({ ok: true });
+      } catch { if (typeof ack === "function") ack({ ok: false, code: "FORBIDDEN" }); }
     });
 
     socket.on("leaveRestaurant", (restaurantId) => {
@@ -383,11 +423,14 @@ export async function createServer() {
       app.log.info(`🚪 Socket ${socket.id} left room ${roomName}`);
     });
 
-    socket.on("joinUserChannel", (userId) => {
+    socket.on("joinUserChannel", (userId, ack) => {
+      const isAdmin = ["admin"].includes(String(socket.user?.roleName || "").toLowerCase());
+      if (!socket.user?.id || (!isAdmin && String(socket.user.id) !== String(userId))) { if (typeof ack==="function") ack({ ok:false, code:"FORBIDDEN"}); return; }
       if (!userId) return;
       const roomName = `user_${userId}`;
       socket.join(roomName);
       socket.emit("joinedUserChannel", { room: roomName });
+      if (typeof ack === "function") ack({ ok: true });
     });
 
     socket.on("leaveUserChannel", (userId) => {
@@ -395,11 +438,18 @@ export async function createServer() {
       socket.leave(`user_${userId}`);
     });
 
-    socket.on("joinChatThread", (threadId) => {
-      if (!threadId) return;
+    socket.on("joinChatThread", async (threadId, ack) => {
+      if (!threadId || !socket.user?.id) { if (typeof ack === "function") ack({ ok:false, code:"FORBIDDEN"}); return; }
+      const thread = await ChatThread.findById(threadId).lean();
+      if (!thread) { if (typeof ack === "function") ack({ ok:false, code:"NOT_FOUND"}); return; }
+      const owns = String(thread?.userId || thread?.customerId || "") === String(socket.user.id);
+      if (!owns && thread?.restaurantId) {
+        try { await requireRestaurantPermission({ user: socket.user }, thread.restaurantId, PERMISSIONS.ORDER_READ); } catch { if (typeof ack === "function") ack({ok:false, code:"FORBIDDEN"}); return; }
+      }
       const roomName = `chat_thread_${threadId}`;
       socket.join(roomName);
       socket.emit("joinedChatThread", { room: roomName });
+      if (typeof ack === "function") ack({ ok: true });
     });
 
     socket.on("leaveChatThread", (threadId) => {
@@ -450,12 +500,19 @@ export async function createServer() {
       socket.leave(getAiConversationGuestRoomName(conversationId));
       if (typeof ack === "function") ack({ ok: true });
     });
-    socket.on("joinOrder", (orderCode) => {
-      if (!orderCode) return;
+    socket.on("joinOrder", async (orderCode, ack) => {
+      if (!orderCode || !socket.user?.id) { if (typeof ack === "function") ack({ ok:false, code:"FORBIDDEN"}); return; }
+      const order = await Order.findOne({ orderCode: String(orderCode) }).select("restaurantId userId").lean();
+      if (!order) { if (typeof ack === "function") ack({ ok:false, code:"NOT_FOUND"}); return; }
+      const ownsOrder = String(order.userId || "") === String(socket.user.id);
+      if (!ownsOrder) {
+        try { await requireRestaurantPermission({ user: socket.user }, order.restaurantId, PERMISSIONS.ORDER_READ); } catch { if (typeof ack === "function") ack({ok:false, code:"FORBIDDEN"}); return; }
+      }
       const roomName = `order_${orderCode}`;
       socket.join(roomName);
       app.log.info(`👀 Socket ${socket.id} joined order room ${roomName}`);
       socket.emit("joinedOrderRoom", { room: roomName });
+      if (typeof ack === "function") ack({ ok: true });
     });
 
     socket.on("leaveOrder", (orderCode) => {
@@ -464,9 +521,12 @@ export async function createServer() {
       socket.leave(roomName);
       app.log.info(`🚪 Socket ${socket.id} left order room ${roomName}`);
     });
-    socket.on("join-order-tracking", ({ trackingToken } = {}) => {
-      if (!trackingToken || typeof trackingToken !== "string") return;
+    socket.on("join-order-tracking", async ({ trackingToken } = {}, ack) => {
+      if (!trackingToken || typeof trackingToken !== "string") { if (typeof ack === "function") ack({ ok:false, code:"INVALID"}); return; }
+      const exists = await OrderTracking.findOne({ trackingToken: String(trackingToken) }).select("_id").lean();
+      if (!exists) { if (typeof ack === "function") ack({ ok:false, code:"FORBIDDEN"}); return; }
       socket.join(`order-tracking:${trackingToken}`);
+      if (typeof ack === "function") ack({ ok:true });
     });
 
     socket.on("leave-order-tracking", ({ trackingToken } = {}) => {
