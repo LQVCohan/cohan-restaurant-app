@@ -254,7 +254,7 @@ export const CartMutation = {
       name,
       price,
       quantity = 1,
-      thumbImage,
+      thumbImage: serverSnapshotThumb,
       note,
       servingVariantKey,
     } = input;
@@ -273,6 +273,14 @@ export const CartMutation = {
     const servingKey = getCartServingKey(servingVariantKey);
     const menuItem = await MenuItem.findById(menuItemId).lean();
     if (!menuItem) throw new GraphQLError("Món ăn không tồn tại.", { extensions: { code: "BAD_USER_INPUT" } });
+    const availableVariants = Array.isArray(menuItem.servingVariants) ? menuItem.servingVariants : [];
+    const matchedVariant = availableVariants.find((variant) => String(variant?.key || "") === String(servingKey));
+    if (availableVariants.length && !matchedVariant) {
+      throw new GraphQLError("Biến thể phục vụ không hợp lệ.", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    const serverSnapshotPrice = Number(matchedVariant?.price ?? menuItem.basePrice ?? 0);
+    const serverSnapshotName = menuItem.name || "";
+    const serverSnapshotThumb = menuItem.thumbImage || null;
     if (String(menuItem.restaurantId) !== String(restaurantId)) throw new GraphQLError("Món ăn không thuộc nhà hàng đã chọn.", { extensions: { code: "BAD_USER_INPUT" } });
     if (String(menuItem.status || "") !== "available") throw new GraphQLError("Món ăn hiện không khả dụng.", { extensions: { code: "BAD_USER_INPUT" } });
     if (String(menuItem.inventoryStatus || "") === "OUT_OF_STOCK") throw outOfStockError("Món đã hết hàng.");
@@ -343,11 +351,11 @@ export const CartMutation = {
           cart.items.push({
             _id: reservedItemId,
             menuItemId,
-            name,
-            price,
+            name: serverSnapshotName,
+            price: serverSnapshotPrice,
             quantity: qty,
             restaurantId,
-            thumbImage,
+            thumbImage: serverSnapshotThumb,
             note,
             servingKey,
             holdExpiresAt,
@@ -371,7 +379,7 @@ export const CartMutation = {
           userId: uid,
           source: "web",
           status: "success",
-          meta: { menuItemId, quantity: qty, price, servingVariantKey: servingKey },
+          meta: { menuItemId, quantity: qty, price: serverSnapshotPrice, servingVariantKey: servingKey },
           diff: {
             before: {
               totalQuantity: before.totalQuantity,

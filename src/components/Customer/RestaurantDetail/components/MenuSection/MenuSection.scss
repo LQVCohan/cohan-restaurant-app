@@ -397,3 +397,4 @@ $shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     border: 2px solid white;
   }
 }
+.menu-toolbar{display:flex;gap:8px;justify-content:space-between;margin-bottom:12px}.menu-toolbar input,.menu-toolbar select{border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;background:#fff}.availability-badge{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-top:6px}.availability-badge.available{background:#ecfdf5;color:#047857}.availability-badge.out-of-stock{background:#fff7ed;color:#c2410c}.availability-badge.unavailable,.availability-badge.hidden{background:#f1f5f9;color:#475569}.dish-card-horizontal.is-disabled{opacity:.7;cursor:not-allowed}

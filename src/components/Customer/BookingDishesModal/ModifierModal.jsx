@@ -33,6 +33,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
   // item: { id, name, price (VND), modifierGroupIds: [ID!] }
   const [selected, setSelected] = useState({}); // { [groupId]: [optionId, ...] }
   const [totalPrice, setTotalPrice] = useState(0);
+  const [validationError, setValidationError] = useState("");
 
   // Query tất cả groups của nhà hàng => lọc theo item.modifierGroupIds
   const { data, loading, error } = useQuery(GET_MODIFIER_GROUPS, {
@@ -108,6 +109,12 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
   /** Áp dụng: trả kết quả lên cha */
   const handleApply = () => {
     if (!item) return;
+    const missingRequired = groupsForItem.filter((g) => g.required && !(selected[g.id] || []).length);
+    if (missingRequired.length) {
+      setValidationError(`Vui lòng chọn: ${missingRequired.map((g)=>g.name).join(", ")}`);
+      return;
+    }
+    setValidationError("");
     const newModifiers = [];
     let newModifiersPrice = 0;
 
@@ -146,6 +153,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
       </div>
 
       <div className="modifier-modal__content">
+        {validationError && <div className="modifier-validation-error" role="alert">{validationError}</div>}
         {loading ? (
           <div className="modifier-loading">Đang tải tuỳ chọn...</div>
         ) : error ? (

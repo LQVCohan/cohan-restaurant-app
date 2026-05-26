@@ -220,6 +220,12 @@ const resolveFoodDetailSocketUrl = () => {
   return "http://localhost:4000";
 };
 
+const getCartMutationErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.message ||
+  fallback;
+
 const getAddToCartButtonText = ({
   addingToBackendCart,
   restaurantLoading,
@@ -380,6 +386,7 @@ const FoodDetail = () => {
   const [mainImage, setMainImage] = useState("/default-dishes.jpg");
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [customerNote, setCustomerNote] = useState("");
   const [activeTab, setActiveTab] = useState("detail");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAnimatingCart, setIsAnimatingCart] = useState(false);
@@ -613,7 +620,7 @@ const FoodDetail = () => {
             price: payload.price,
             quantity,
             thumbImage: payload.image,
-            note: null,
+            note: customerNote.trim() || null,
             servingVariantKey: selectedServingKey || "portion",
           },
         },
@@ -736,6 +743,19 @@ const FoodDetail = () => {
           <ChevronRight size={14} />
           <span className="current">{resolvedDish.name}</span>
         </div>
+
+
+
+          <div className="fd-note-box">
+            <label htmlFor="dish-note">Ghi chú cho món</label>
+            <textarea
+              id="dish-note"
+              value={customerNote}
+              onChange={(e) => setCustomerNote(e.target.value)}
+              maxLength={180}
+              placeholder="Ví dụ: ít cay, không hành..."
+            />
+          </div>
 
         <div className="fd-main-grid">
           <div className="fd-gallery">

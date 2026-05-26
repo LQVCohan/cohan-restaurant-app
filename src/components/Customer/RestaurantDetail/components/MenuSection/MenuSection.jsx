@@ -13,6 +13,7 @@ import { ShoppingCart, ChevronDown } from "lucide-react";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { buildFoodDetailPath, buildFoodDetailState } from "../../../../../utils/customerFoodNavigation";
 import { getCannotOrderReason } from "../../../../../utils/restaurantStatus";
+import { getMenuItemAvailability, canCustomerOrderMenuItem } from "../../../../../utils/menuItemAvailability";
 
 // Utils
 const formatPrice = (value) =>
@@ -36,7 +37,9 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
   query GetMenuItemsByCategory(
     $restaurantId: ID!
     $timeSlot: TimeSlot!
-    $categoryId: ID!
+     $categoryId: ID!
+    $search: String
+    $sort: String
     $limit: Int = 20
     $cursor: ID
   ) {
@@ -47,6 +50,8 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
         restaurantId: $restaurantId
         timeSlot: $timeSlot
         categoryId: $categoryId
+        search: $search
+        sort: $sort
       }
     ) {
       edges {
@@ -116,6 +121,9 @@ const MenuSection = ({
   // State lưu biến thể đang chọn của từng món: { [itemId]: variantKey }
   const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortBy, setSortBy] = useState("default");
 
   const {
     cart,
@@ -178,6 +186,8 @@ const MenuSection = ({
           restaurantId,
           timeSlot: selectedTimeSlot,
           categoryId: activeCategory,
+          search: debouncedSearch || null,
+          sort: sortBy,
           cursor: null,
           limit: 20,
         }
@@ -255,6 +265,8 @@ const MenuSection = ({
         restaurantId,
         timeSlot: selectedTimeSlot,
         categoryId: activeCategory,
+        search: debouncedSearch || null,
+        sort: sortBy,
         limit: 20,
       },
       updateQuery: (prev, { fetchMoreResult }) => {
@@ -273,6 +285,7 @@ const MenuSection = ({
     });
   };
 
+  const isDishOrderable = (item) => resolvedCanOrder && canCustomerOrderMenuItem(item);
 
   const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
   const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
@@ -347,6 +360,12 @@ const MenuSection = ({
 
         {/* 3. MENU ITEMS LIST */}
         <main className="menu-content">
+          <div className="menu-toolbar">
+            <input aria-label="Tìm món" value={searchInput} onChange={(e)=>setSearchInput(e.target.value)} placeholder="Tìm món..." />
+            <select aria-label="Sắp xếp món" value={sortBy} onChange={(e)=>setSortBy(e.target.value)}>
+              <option value="default">Mặc định</option><option value="name_asc">Tên A-Z</option><option value="price_asc">Giá thấp-cao</option><option value="price_desc">Giá cao-thấp</option>
+            </select>
+          </div>
           {menuLoading && menuItems.length === 0 ? (
             <div className="loading-state">
               <LoadingSpinner size="large" />
@@ -372,19 +391,21 @@ const MenuSection = ({
                   variants.find((v) => v.key === selectedKey) || variants[0];
                 const displayPrice = currentVariant?.price ?? item.basePrice;
 
+                const availability = getMenuItemAvailability(item);
+                const orderable = isDishOrderable(item);
                 return (
                   <div
                     key={item.id}
-                    className="dish-card-horizontal"
+                    className={`dish-card-horizontal ${orderable ? "" : "is-disabled"}`}
                     onClick={() => {
-                      if (!resolvedCanOrder) return;
+                      if (!orderable) return;
                       openFoodDetail(item);
                     }}
-                    role={resolvedCanOrder ? "button" : undefined}
-                    tabIndex={resolvedCanOrder ? 0 : -1}
-                    aria-disabled={!resolvedCanOrder || undefined}
+                    role={orderable ? "button" : undefined}
+                    tabIndex={orderable ? 0 : -1}
+                    aria-disabled={!orderable || undefined}
                     onKeyDown={(event) => {
-                      if (!resolvedCanOrder) return;
+                      if (!orderable) return;
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         openFoodDetail(item);
@@ -410,7 +431,7 @@ const MenuSection = ({
                             {formatPrice(displayPrice)}
                           </span>
                         </div>
-                        <p className="dish-desc">{item.description}</p>
+                        <p className="dish-desc">{item.description}</p><span className={`availability-badge ${availability.badgeClassName}`}>{availability.label}</span>
                       </div>
 
                       <div className="info-bottom">
@@ -452,7 +473,7 @@ const MenuSection = ({
                         <button
                           type="button"
                           className="btn-add"
-                          disabled={!resolvedCanOrder}
+                          disabled={!orderable}
                           onClick={(event) => {
                             event.stopPropagation();
                             openFoodDetail(item);

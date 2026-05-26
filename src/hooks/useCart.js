@@ -3,6 +3,10 @@ import { useState, useCallback, useEffect } from "react";
 
 const CART_STORAGE_KEY = "cohan.customerCart.v1";
 
+const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).map((m) => ({ groupId: m?.groupId || m?.groupName || "", optionId: m?.optionId || m?.optionName || "" })).sort((a,b)=>(`${a.groupId}:${a.optionId}`).localeCompare(`${b.groupId}:${b.optionId}`)));
+
+const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
+
 const getStorage = () => {
   if (typeof window === "undefined") return null;
   try {
@@ -68,12 +72,11 @@ export const useCart = () => {
     const incoming = { ...dish, quantity: dish.quantity || 1 };
     setCart((prev) => {
       // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
-      const found = prev.find(
-        (i) => i.id === incoming.id && i.restaurantId === incoming.restaurantId,
-      );
+      const incomingLineKey = buildCartLineIdentity(incoming);
+      const found = prev.find((i) => buildCartLineIdentity(i) === incomingLineKey);
       if (found) {
         return prev.map((i) =>
-          i.id === incoming.id && i.restaurantId === incoming.restaurantId
+buildCartLineIdentity(i) === incomingLineKey
             ? {
                 ...i,
                 ...incoming,
