@@ -86,6 +86,8 @@ const hmac = (key, value, encoding) =>
 
 const UPLOAD_RATE_LIMIT_MAX = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || "30", 10);
 const UPLOAD_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
+// In-memory limiter is acceptable for single-instance/dev only.
+// In multi-instance production, use a shared store (e.g. Redis) or shared @fastify/rate-limit backend.
 const uploadRateStore = new Map();
 
 const ensureUploadAuth = async (req, reply) => {
@@ -111,6 +113,10 @@ const consumeUploadRateLimit = (req, userId) => {
 };
 
 const normalizeObjectKey = (value = "") => String(value).trim().replace(/^\/+/, "");
+
+const hasUnsafePathSegments = (key = "") => key.split("/").some((part) => !part || part === "." || part === "..");
+
+const buildUserScopedUploadPrefix = (basePrefix, userId) => `${normalizePrefix(basePrefix)}/${String(userId || "").trim()}/`;
 
 const createS3Context = () => {
   const bucket = process.env.S3_BUCKET;
@@ -295,7 +301,8 @@ export default fp(
 
       const requestedExt = String(body.extension || "").trim().toLowerCase();
       const ext = requestedExt || mimeType.split("/")[1] || "bin";
-      const key = `${s3.keyPrefix}/${randomName(ext)}`;
+      const userPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
+      const key = `${userPrefix}${randomName(ext)}`;
 
       return reply.send({
         ok: true,
@@ -322,9 +329,18 @@ export default fp(
       }
 
       const normalizedKey = normalizeObjectKey(key);
-      const allowedPrefix = `${normalizePrefix(s3.keyPrefix)}/`;
-      if (!normalizedKey.startsWith(allowedPrefix)) {
+      if (!normalizedKey || hasUnsafePathSegments(normalizedKey)) {
         return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+      }
+
+      const allowedBasePrefix = `${normalizePrefix(s3.keyPrefix)}/`;
+      if (!normalizedKey.startsWith(allowedBasePrefix)) {
+        return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+      }
+
+      const userScopedPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
+      if (!normalizedKey.startsWith(userScopedPrefix)) {
+        return reply.code(403).send({ ok: false, message: "Forbidden upload key" });
       }
 
       return reply.send({ ok: true, key: normalizedKey, url: `${s3.publicBase}/${normalizedKey}`, storage: "s3" });

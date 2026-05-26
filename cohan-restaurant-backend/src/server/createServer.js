@@ -33,6 +33,24 @@ import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../se
 import { PERMISSIONS } from "../constants/permissions.js";
 import { ChatThread, Order, OrderTracking } from "../../models/index.js";
 
+export async function authorizeChatThreadJoin({ socketUser, threadId, findThreadById, requireRestaurantPermissionFn, permissionCode }) {
+  if (!socketUser?.id || !threadId) return { ok: false, code: "FORBIDDEN" };
+  const thread = await findThreadById(threadId);
+  if (!thread) return { ok: false, code: "FORBIDDEN" };
+
+  const ownerId = String(thread?.userId || thread?.customerId || "");
+  if (ownerId && ownerId === String(socketUser.id)) return { ok: true, thread };
+
+  if (!thread?.restaurantId) return { ok: false, code: "FORBIDDEN" };
+
+  try {
+    await requireRestaurantPermissionFn({ user: socketUser }, thread.restaurantId, permissionCode);
+    return { ok: true, thread };
+  } catch {
+    return { ok: false, code: "FORBIDDEN" };
+  }
+}
+
 const parseAllowedOrigins = () => {
   const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
     .split(",")
@@ -386,9 +404,20 @@ export async function createServer() {
 
   io.use(async (socket, next) => {
     try {
-      const rawAuth = socket.handshake?.headers?.authorization || socket.handshake?.auth?.token || "";
-      const normalized = String(rawAuth).toLowerCase().startsWith("bearer ") ? String(rawAuth) : `Bearer ${rawAuth}`;
-      const fakeReq = { headers: { authorization: normalized }, log: app.log };
+      const headerAuth = String(socket.handshake?.headers?.authorization || "").trim();
+      const authTokenRaw = String(socket.handshake?.auth?.token || "").trim();
+      const resolvedAuthHeader = headerAuth
+        || (authTokenRaw
+          ? (authTokenRaw.toLowerCase().startsWith("bearer ") ? authTokenRaw : `Bearer ${authTokenRaw}`)
+          : "");
+
+      if (!resolvedAuthHeader) {
+        socket.user = null;
+        next();
+        return;
+      }
+
+      const fakeReq = { headers: { authorization: resolvedAuthHeader }, log: app.log };
       const authUser = await resolveAuthenticatedUserFromRequest(fakeReq);
       socket.user = authUser || null;
       next();
@@ -439,13 +468,19 @@ export async function createServer() {
     });
 
     socket.on("joinChatThread", async (threadId, ack) => {
-      if (!threadId || !socket.user?.id) { if (typeof ack === "function") ack({ ok:false, code:"FORBIDDEN"}); return; }
-      const thread = await ChatThread.findById(threadId).lean();
-      if (!thread) { if (typeof ack === "function") ack({ ok:false, code:"NOT_FOUND"}); return; }
-      const owns = String(thread?.userId || thread?.customerId || "") === String(socket.user.id);
-      if (!owns && thread?.restaurantId) {
-        try { await requireRestaurantPermission({ user: socket.user }, thread.restaurantId, PERMISSIONS.ORDER_READ); } catch { if (typeof ack === "function") ack({ok:false, code:"FORBIDDEN"}); return; }
+      const decision = await authorizeChatThreadJoin({
+        socketUser: socket.user,
+        threadId,
+        findThreadById: async (id) => ChatThread.findById(id).lean(),
+        requireRestaurantPermissionFn: requireRestaurantPermission,
+        permissionCode: PERMISSIONS.ORDER_READ,
+      });
+
+      if (!decision.ok) {
+        if (typeof ack === "function") ack({ ok: false, code: "FORBIDDEN" });
+        return;
       }
+
       const roomName = `chat_thread_${threadId}`;
       socket.join(roomName);
       socket.emit("joinedChatThread", { room: roomName });
