@@ -10,6 +10,7 @@ import {
   AiChatConversation,
   AiChatMessage,
 } from "../../../models/index.js";
+import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
@@ -204,12 +205,12 @@ const classifyIntent = (message) => {
   });
   return best.intent;
 };
-const shouldSuggestHandoff = ({ message, intent, confidence, isFallback }) => {
+const shouldSuggestHandoff = ({ message, intent, confidence, isFallback, threshold = 0.6 }) => {
   const raw = asLower(message);
   if (intent === "support") return { suggested: true, reason: "support_intent" };
   if (HANDOFF_KEYWORDS.some((k) => raw.includes(k))) return { suggested: true, reason: "user_request_human" };
   if (isFallback) return { suggested: true, reason: "fallback_response" };
-  if (Number.isFinite(Number(confidence)) && Number(confidence) < 0.6) return { suggested: true, reason: "low_confidence" };
+  if (Number.isFinite(Number(confidence)) && Number(confidence) < Number(threshold)) return { suggested: true, reason: "low_confidence" };
   return { suggested: false, reason: null };
 };
 
@@ -593,6 +594,27 @@ export const handleRestaurantChatbotMessage = async ({
   const restaurantObjectId = toObjectId(restaurantId);
   const normalizedGuestId = normalizeGuestId(guestId);
   const normalizedConversationId = normalizeConversationId(conversationId);
+  let aiSettings = mergeWithDefaultAiChatbotSettings({});
+  if (restaurantObjectId) {
+    const settingsRestaurant = await Restaurant.findById(restaurantObjectId).select("aiChatbotSettings").lean();
+    aiSettings = mergeWithDefaultAiChatbotSettings(settingsRestaurant?.aiChatbotSettings || {});
+    if (aiSettings.enabled === false) {
+      return {
+        answer: aiSettings.handoffUnavailableMessage || "Chatbot hiện chưa khả dụng cho nhà hàng này.",
+        intent: "general",
+        confidence: 1,
+        quickReplies: aiSettings.starterQuickReplies || [],
+        actions: [],
+        sources: [],
+        contextSummary: { restaurantCount: 0, menuItemCount: 0, couponCount: 0, orderCount: 0, reservationCount: 0 },
+        conversationId: null,
+        isFallback: true,
+        handoffSuggested: false,
+        handoffReason: null,
+        handoffMessage: null,
+      };
+    }
+  }
 
   const askRateResult = consumeAiChatbotRateLimit({
     policy: AI_CHATBOT_RATE_LIMIT_POLICIES.askAiChatbot,
@@ -663,8 +685,10 @@ export const handleRestaurantChatbotMessage = async ({
     context,
     history: persistedHistory.length ? persistedHistory : history,
   });
+  const responseData = aiResult || fallbackAnswer(context);
+  if (responseData?.isFallback && aiSettings.fallbackMessage) responseData.answer = aiSettings.fallbackMessage;
   const finalResponse = {
-    ...(aiResult || fallbackAnswer(context)),
+    ...responseData,
     contextSummary: {
       restaurantCount: context.restaurants.length,
       menuItemCount: context.menuItems.length,
@@ -679,6 +703,7 @@ export const handleRestaurantChatbotMessage = async ({
     intent: finalResponse.intent,
     confidence: finalResponse.confidence,
     isFallback: finalResponse.isFallback,
+    threshold: aiSettings.lowConfidenceHandoffThreshold,
   });
   finalResponse.handoffSuggested = handoffDecision.suggested;
   finalResponse.handoffReason = handoffDecision.reason;

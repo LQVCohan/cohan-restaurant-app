@@ -12,6 +12,7 @@ import TableManagement from "../components/Dashboard_Manager/Table/TableManageme
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
 import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import AiChatbotAnalyticsPage from "../components/Dashboard_Manager/Customer/AiChatbotAnalyticsPage";
+import AiChatbotSettingsPage from "../components/Dashboard_Manager/Customer/AiChatbotSettingsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -56,6 +57,7 @@ const VALID_MANAGER_PAGES = new Set([
   "rbac",
   "ai-handoff",
   "ai-chatbot-analytics",
+  "ai-chatbot-settings",
 ]);
 
 const resolveInitialManagerPage = () => {
@@ -106,6 +108,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   rbac: ["role.read", "permission.read", "staff.write"],
   "ai-handoff": ["dashboard.read", "order.read"],
   "ai-chatbot-analytics": ["report.read"],
+  "ai-chatbot-settings": ["report.read"],
 };
 
 const PAGE_CONFIG = {
@@ -283,6 +286,7 @@ const ManagerLayout = () => {
       case "rbac": return <RbacManagement />;
       case "ai-handoff": return <AiHandoffInbox />;
       case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
+      case "ai-chatbot-settings": return <AiChatbotSettingsPage />;
       default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
     }
   };
