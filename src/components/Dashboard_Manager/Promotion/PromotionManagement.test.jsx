@@ -257,14 +257,14 @@ describe("PromotionManagement", () => {
   it("renders without an AuthContext provider and disables mutation affordances", () => {
     const { container } = render(<PromotionManagement />);
 
-    expect(screen.getByText("Quản Lý Khuyến Mãi")).toBeInTheDocument();
-    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+    expect(screen.getByRole("heading", { name: /khuyến mãi/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tạo khuyến mãi/i })).toBeDisabled();
   });
 
   it("renders the real restaurant selector and updates the promotion filter", () => {
     renderPromotionManagement();
 
-    const selector = screen.getByLabelText("Chon nha hang khuyen mai");
+    const selector = screen.getByRole("combobox");
 
     fireEvent.change(selector, { target: { value: "restaurant-2" } });
 
@@ -275,9 +275,8 @@ describe("PromotionManagement", () => {
   });
 
   it("passes restaurant, category, and item data into the promotion modal", () => {
-    const { container } = renderPromotionManagement();
-
-    fireEvent.click(container.querySelector(".filter-toolbar .btn-primary"));
+    renderPromotionManagement();
+    fireEvent.click(screen.getByRole("button", { name: /tạo khuyến mãi/i }));
 
     expect(screen.getByTestId("promotion-modal-default")).toHaveTextContent(
       "restaurant-1",
@@ -294,9 +293,8 @@ describe("PromotionManagement", () => {
   });
 
   it("syncs the restaurant filter after saving a promotion for another restaurant", async () => {
-    const { container } = renderPromotionManagement();
-
-    fireEvent.click(container.querySelector(".filter-toolbar .btn-primary"));
+    renderPromotionManagement();
+    fireEvent.click(screen.getByRole("button", { name: /tạo khuyến mãi/i }));
     fireEvent.click(screen.getByRole("button", { name: "Luu promotion mock" }));
 
     await waitFor(() => {
@@ -331,9 +329,9 @@ describe("PromotionManagement", () => {
   it("disables promotion mutation buttons when promotion.write is missing", () => {
     const { container } = renderPromotionManagement(readOnlyPromotionUser);
 
-    fireEvent.click(screen.getByTitle("Xem danh sách"));
+    fireEvent.click(screen.getByRole("button", { name: /danh sách/i }));
 
-    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /tạo khuyến mãi/i })).toBeDisabled();
     container
       .querySelectorAll(".premium-table .action-buttons button")
       .forEach((button) => expect(button).toBeDisabled());
@@ -352,11 +350,9 @@ describe("PromotionManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
 
     const row = screen.getByText("Coupon Stack").closest("tr");
-    const cells = row.querySelectorAll("td");
-
-    expect(cells[4]).toHaveTextContent("+ Promotion");
-    expect(cells[4]).toHaveTextContent("+ Coupon");
-    expect(cells[5]).toHaveTextContent("Đang chạy");
+    expect(row).toHaveTextContent("+ Promotion");
+    expect(row).toHaveTextContent("+ Coupon");
+    expect(row).toHaveTextContent("Đang chạy");
   });
 
   it("disables coupon mutation buttons when coupon.write is missing", () => {
@@ -371,7 +367,7 @@ describe("PromotionManagement", () => {
     const { container } = renderPromotionManagement(readOnlyPromotionUser);
     fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
 
-    expect(container.querySelector(".filter-toolbar .btn-primary")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /tạo coupon/i })).toBeDisabled();
     container
       .querySelectorAll(".coupon-table .action-buttons button")
       .forEach((button) => expect(button).toBeDisabled());
@@ -446,8 +442,11 @@ describe("PromotionManagement", () => {
 
     renderPromotionManagement();
 
-    expect(statsCardMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
+    const promotionStatsCall = statsCardMock.mock.calls.find(
+      ([props]) => props.labels?.total === "Lượt dùng Promotion",
+    );
+
+    expect(promotionStatsCall?.[0]).toEqual(expect.objectContaining({
         stats: {
           totalSavings: 42000,
           usageRate: 175,
@@ -485,8 +484,11 @@ describe("PromotionManagement", () => {
     renderPromotionManagement();
     fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
 
-    expect(statsCardMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
+    const couponStatsCall = statsCardMock.mock.calls.find(
+      ([props]) => props.labels?.total === "Lượt dùng Coupon",
+    );
+
+    expect(couponStatsCall?.[0]).toEqual(expect.objectContaining({
         stats: {
           totalSavings: 90000,
           usageRate: 90,
