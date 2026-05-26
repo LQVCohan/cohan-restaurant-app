@@ -552,7 +552,7 @@ function AiChatbotWidget() {
               maxLength={500}
               disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight}
             />
-            <button type="submit" disabled={loading || guestSendLoading || handoffLoading || isSendInFlight || !input.trim()} aria-label="Gửi tin nhắn">
+            <button type="submit" disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight || !input.trim()} aria-label="Gửi tin nhắn">
               <Send size={18} />
             </button>
           </form>
