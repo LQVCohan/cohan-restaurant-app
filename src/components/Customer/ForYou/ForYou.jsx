@@ -1,14 +1,9 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { gql, useApolloClient } from "@apollo/client";
+import React, { useMemo, useState } from "react";
 import { ChevronLeft, Info, Check, Leaf, AlertTriangle, Flame, Droplet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import useFoodPreferences from "@/hooks/useFoodPreferences";
-import { AuthContext } from "@/context/AuthContext";
-import {
-  analyzeMenuItemForFoodPreferences,
-  sortMenuItemsByFoodPreference,
-} from "@/utils/foodPreferenceMatcher";
+import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import {
   DIETS,
@@ -19,161 +14,27 @@ import {
 } from "./foodPreferenceConfig";
 import "./ForYou.scss";
 
-const TOP_MENU_ITEMS_FOR_YOU = gql`
-  query TopMenuItemsForYou($restaurantId: ID!, $limit: Int = 12, $timeSlot: TimeSlot) {
-    topMenuItems(restaurantId: $restaurantId, limit: $limit, timeSlot: $timeSlot) {
-      id
-      restaurantId
-      menuId
-      categoryId
-      name
-      description
-      basePrice
-      thumbImage
-      status
-      inventoryStatus
-      stockWarnings
-      labels
-      dietTags
-      allergenTags
-      tasteProfile {
-        containsOnion
-        containsCilantro
-        sugar
-        spice
-      }
-      rate
-      orderCounter
-      servingVariants {
-        key
-        mode
-        sellQty
-        sellUnit
-        name
-        price
-      }
-    }
-  }
-`;
-
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
 
 const ForYou = () => {
   const navigate = useNavigate();
-  const client = useApolloClient();
-  const { restaurants, refRestaurant } = useContext(AuthContext) || {};
   const { preferences, setPreferences, loading, error, saving, savePreferences } = useFoodPreferences();
-
   const [saveMessage, setSaveMessage] = useState("");
-  const [recommendationLoading, setRecommendationLoading] = useState(false);
-  const [recommendationError, setRecommendationError] = useState("");
-  const [recommendationItems, setRecommendationItems] = useState([]);
+  const {
+    loading: recommendationLoading,
+    error: recommendationError,
+    recommendedItems: allRecommendedItems,
+    warningItems: allWarningItems,
+    fallbackItems: allFallbackItems,
+    accessibleRestaurants,
+  } = useForYouRecommendations({
+    enabled: true,
+    preferencesOverride: preferences,
+  });
 
-  const accessibleRestaurants = useMemo(() => {
-    const merged = [...(refRestaurant || []), ...(restaurants || [])];
-    const deduped = [];
-    const seen = new Set();
-
-    merged.forEach((restaurant) => {
-      const id = restaurant?.id || restaurant?._id;
-      if (!id || seen.has(id)) return;
-      seen.add(id);
-      deduped.push(restaurant);
-    });
-
-    return deduped;
-  }, [refRestaurant, restaurants]);
-
-  useEffect(() => {
-    if (loading || !accessibleRestaurants.length) {
-      setRecommendationItems([]);
-      setRecommendationError("");
-      setRecommendationLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setRecommendationLoading(true);
-    setRecommendationError("");
-
-    Promise.all(
-      accessibleRestaurants.slice(0, 5).map((restaurant) => {
-        const restaurantId = restaurant?.id || restaurant?._id;
-        return client.query({
-          query: TOP_MENU_ITEMS_FOR_YOU,
-          variables: {
-            restaurantId,
-            limit: 12,
-          },
-          fetchPolicy: "network-only",
-        }).then((result) => ({
-          restaurant,
-          items: result?.data?.topMenuItems || [],
-        }));
-      }),
-    )
-      .then((results) => {
-        if (cancelled) return;
-        const itemMap = new Map();
-
-        results.forEach(({ restaurant, items }) => {
-          const restaurantId = restaurant?.id || restaurant?._id;
-          items.forEach((item) => {
-            if (!item?.id || itemMap.has(item.id)) return;
-            itemMap.set(item.id, {
-              ...item,
-              restaurantId: item?.restaurantId || restaurantId,
-              restaurantName: restaurant?.name || "Nhà hàng",
-              restaurant,
-            });
-          });
-        });
-
-        setRecommendationItems(Array.from(itemMap.values()));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRecommendationError("Chưa thể tải gợi ý món. Bạn vẫn có thể chỉnh hồ sơ khẩu vị.");
-      })
-      .finally(() => {
-        if (!cancelled) setRecommendationLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [client, accessibleRestaurants, loading]);
-
-  const scoredItems = useMemo(() => {
-    return sortMenuItemsByFoodPreference(
-      recommendationItems.map((item) => ({
-        ...item,
-        foodPreferenceMeta: analyzeMenuItemForFoodPreferences(item, preferences),
-      })),
-      preferences,
-    );
-  }, [preferences, recommendationItems]);
-
-  const recommendedItems = useMemo(
-    () => scoredItems.filter((item) => item.foodPreferenceMeta?.isRecommended).slice(0, 8),
-    [scoredItems],
-  );
-
-  const warningItems = useMemo(
-    () => scoredItems.filter((item) => item.foodPreferenceMeta?.hasAllergyWarning).slice(0, 6),
-    [scoredItems],
-  );
-
-  const fallbackItems = useMemo(() => {
-    if (recommendedItems.length > 0) return [];
-    return [...scoredItems]
-      .filter((item) => !item.foodPreferenceMeta?.hasAllergyWarning)
-      .sort((a, b) => {
-        if (Number(b?.rate || 0) !== Number(a?.rate || 0)) return Number(b?.rate || 0) - Number(a?.rate || 0);
-        return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
-      })
-      .slice(0, 8);
-  }, [recommendedItems.length, scoredItems]);
+  const recommendedItems = useMemo(() => allRecommendedItems.slice(0, 8), [allRecommendedItems]);
+  const warningItems = useMemo(() => allWarningItems.slice(0, 6), [allWarningItems]);
+  const fallbackItems = useMemo(() => allFallbackItems.slice(0, 8), [allFallbackItems]);
 
   const handleAllergyToggle = (id) => {
     setPreferences((prev) => ({
