@@ -726,3 +726,44 @@ $green: #10b981;
 .review-author { font-weight:700; }
 .review-rating { color:#f59e0b; font-weight:600; }
 .review-content { color:#374151; }
+
+.for-you-alert {
+  margin: 16px 0 20px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: $text-main;
+
+  &.warning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  p {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+
+  ul {
+    margin: 0 0 8px 18px;
+    padding: 0;
+    li {
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+  }
+
+  small {
+    color: $text-muted;
+    font-size: 12px;
+  }
+}

@@ -22,6 +22,7 @@ import {
   Flame,
   Tag,
   Store,
+  AlertTriangle,
 } from "lucide-react";
 import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
@@ -34,6 +35,8 @@ import {
 import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
+import useFoodPreferences from "../../../hooks/useFoodPreferences";
+import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -61,8 +64,8 @@ const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
       servingVariants {
         key
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
         name
         price
       }
@@ -153,8 +156,8 @@ const CUSTOMER_MENU_ITEM = gql`
       servingVariants {
         key
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
         name
         price
       }
@@ -348,6 +351,15 @@ const FoodDetail = () => {
     const sum = foodReviews.reduce((acc, row) => acc + Number(row?.rating || 0), 0);
     return sum / foodReviews.length;
   }, [foodReviews]);
+
+  const {
+    preferences: customerFoodPreferences,
+  } = useFoodPreferences({ skip: !user?.id });
+
+  const foodPreferenceMeta = useMemo(() => {
+    if (!user?.id || !resolvedDish) return null;
+    return analyzeMenuItemForFoodPreferences(resolvedDish, customerFoodPreferences);
+  }, [customerFoodPreferences, resolvedDish, user?.id]);
 
   const sizes = useMemo(() => {
     if (!resolvedDish) return [];
@@ -886,6 +898,35 @@ const FoodDetail = () => {
               </div>
             </div>
 
+
+
+            {foodPreferenceMeta && (
+              <div
+                className={`for-you-alert ${foodPreferenceMeta.hasAllergyWarning ? "warning" : "info"}`}
+                role="status"
+              >
+                <div className="for-you-alert__title">
+                  <AlertTriangle size={16} /> FOR YOU
+                </div>
+                {foodPreferenceMeta.hasAllergyWarning ? (
+                  <p>{foodPreferenceMeta.warningReason}</p>
+                ) : foodPreferenceMeta.isRecommended ? (
+                  <p>Món này phù hợp với khẩu vị/chế độ ăn bạn đã cài đặt.</p>
+                ) : (
+                  <p>Món có thể chưa tối ưu với khẩu vị hiện tại của bạn. Bạn vẫn có thể đặt bình thường.</p>
+                )}
+                {foodPreferenceMeta.reasons?.length ? (
+                  <ul>
+                    {foodPreferenceMeta.reasons.slice(0, 3).map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {foodPreferenceMeta.hasAllergyWarning ? (
+                  <small>Hệ thống chỉ cảnh báo để bạn cân nhắc, không chặn đặt món.</small>
+                ) : null}
+              </div>
+            )}
             <div className="action-area">
               <div className="quantity-control">
                 <button
