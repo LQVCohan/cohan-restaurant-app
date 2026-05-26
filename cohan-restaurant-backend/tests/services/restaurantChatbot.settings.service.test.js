@@ -51,7 +51,7 @@ describe("restaurantChatbotSettings permission + merge", () => {
 
   it("public settings works without auth and excludes internal fields", async () => {
     vi.spyOn(Restaurant, "findById").mockReturnValue({
-      select: () => Promise.resolve({ aiChatbotSettings: { enabled: true, fallbackMessage: "internal", updatedBy: uid } }),
+      select: () => ({ lean: () => Promise.resolve({ aiChatbotSettings: { enabled: true, fallbackMessage: "internal", updatedBy: uid } }) }),
     });
     const out = await getPublicAiChatbotSettings({ restaurantId: rid });
     expect(out).toHaveProperty("enabled");
