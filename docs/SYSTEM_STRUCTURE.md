@@ -308,3 +308,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 | `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js` | Runtime payroll tổng quan (đã đọc mức ngắn). |
 | `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx` | Mock/query structure và behavior UI manager schedule. |
 | `src/components/Staff/components/StaffSchedulePage.test.jsx` | Query/mutation map cho staff page tests. |
+
+
+## 13. Security hardening (2026-05 update)
+- Public `createUser` chỉ tạo tài khoản `CUSTOMER`, ép `provider=local`, và status phụ thuộc `ENABLE_EMAIL_VERIFICATION` (pending/active); input role/status/provider đặc quyền từ client public không còn được áp dụng.
+- Upload API (`/api/upload`, `/api/upload/sign`, `/api/upload/complete`) yêu cầu Bearer JWT; có giới hạn tần suất upload theo user+IP; S3 complete chỉ chấp nhận key trong prefix cấu hình.
+- Socket.IO handshake cố gắng resolve JWT từ `Authorization` hoặc `auth.token`, sau đó room join cho restaurant/user/thread/order được kiểm tra quyền/ownership trước khi join.
+- Production bật Helmet CSP với whitelist origin frontend + static/image/font cần thiết; dev giữ chế độ nới lỏng.
+
+- CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.

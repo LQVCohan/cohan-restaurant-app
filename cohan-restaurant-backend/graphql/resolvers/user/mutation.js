@@ -489,11 +489,8 @@ export const UserMutation = {
       phone,
       address,
       password,
-      roleId,
       customerType,
       captchaToken,
-      provider = "local",
-      status = "active",
     } = input;
 
     if (!fullName?.trim()) {
@@ -527,20 +524,18 @@ export const UserMutation = {
       }
     }
 
-    let roleDoc = null;
-    if (roleId) {
-      if (!mongoose.isValidObjectId(roleId)) {
-        throw new GraphQLError("Invalid roleId", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      roleDoc = await Role.findById(roleId).lean();
-      if (!roleDoc) {
-        throw new GraphQLError("Role not found", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-    }
+
+
+    const emailVerificationEnabled =
+      String(process.env.ENABLE_EMAIL_VERIFICATION ?? "true").toLowerCase() ===
+      "true";
+    const enforcedStatus = emailVerificationEnabled ? "pending" : "active";
+
+    const defaultCustomerRole = await Role.findOne({
+      $or: [{ slug: "customer" }, { name: /^customer$/i }],
+    })
+      .select("_id")
+      .lean();
 
     const normalizedEmail = email?.toLowerCase().trim() || undefined;
     const normalizedPhone = phone ? normalizePhone(phone.trim()) : undefined;
@@ -582,10 +577,11 @@ export const UserMutation = {
         doc.phone = normalizedPhone;
       }
       doc.address = address || doc.address;
-      doc.provider = provider;
-      doc.status = status.toLowerCase();
+      doc.provider = "local";
+      doc.status = enforcedStatus;
+      doc.userType = "CUSTOMER";
       doc.customerType = customerType || doc.customerType || "NEW";
-      doc.role = roleId || doc.role;
+      doc.role = defaultCustomerRole?._id || doc.role;
       doc.isGuest = false;
       doc.guestExpiresAt = null;
       doc.registeredAt = new Date();
@@ -599,10 +595,11 @@ export const UserMutation = {
         email: normalizedEmail,
         phone: normalizedPhone,
         address: address || undefined,
-        provider,
-        status: status.toLowerCase(),
+        provider: "local",
+        status: enforcedStatus,
+        userType: "CUSTOMER",
         customerType: customerType || "NEW",
-        role: roleId || undefined,
+        role: defaultCustomerRole?._id || undefined,
         loyaltyPoints: 0,
         totalOrders: 0,
         totalSpending: 0,
@@ -611,10 +608,7 @@ export const UserMutation = {
       await doc.save();
     }
 
-    if (
-      String(process.env.ENABLE_EMAIL_VERIFICATION ?? "true").toLowerCase() ===
-      "true"
-    ) {
+    if (emailVerificationEnabled) {
       try {
         await issueAndSendVerificationForUser(doc);
       } catch (err) {
