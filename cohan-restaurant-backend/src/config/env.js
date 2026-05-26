@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const REQUIRED_ENV_VARS = ["MONGO_URI", "JWT_SECRET"]
+const REQUIRED_ENV_VARS = ["MONGO_URI", "JWT_SECRET"];
 
 const WEAK_SECRET_VALUES = new Set([
   "changeme",
@@ -16,6 +16,7 @@ const WEAK_SECRET_VALUES = new Set([
   "your-secret",
   "your-table-access-token-secret",
   "table-access-token-secret",
+  "dev_table_access_secret_change_me",
   "default",
   "secret",
   "test",
@@ -108,7 +109,6 @@ function applyDevelopmentDefaults() {
     process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN = "8h";
   }
 }
-
 
 function validateProductionTableAccessSecret() {
   if ((process.env.NODE_ENV || "development") !== "production") return [];
