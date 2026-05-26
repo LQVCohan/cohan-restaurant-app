@@ -198,6 +198,11 @@ describe("ScheduleManagement", () => {
     mockAttendanceCorrectionsData = {
       attendanceCorrectionRequests: [],
     };
+    window.print = vi.fn();
+    window.onafterprint = null;
+    window.requestAnimationFrame = vi.fn((cb) => setTimeout(cb, 0));
+    window.cancelAnimationFrame = vi.fn((id) => clearTimeout(id));
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
   afterEach(() => {

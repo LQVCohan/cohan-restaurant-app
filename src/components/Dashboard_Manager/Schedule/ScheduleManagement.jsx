@@ -1389,6 +1389,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [reviewShiftAck] = useMutation(REVIEW_SHIFT_ACK);
   const [reviewingAckId, setReviewingAckId] = useState("");
   const [declineReviewErrors, setDeclineReviewErrors] = useState({});
+  const [declineInvalidReviewModal, setDeclineInvalidReviewModal] = useState(null);
+  const [declineInvalidReviewNote, setDeclineInvalidReviewNote] = useState("");
+  const [declineInvalidReviewError, setDeclineInvalidReviewError] = useState("");
   const [declinedFilter, setDeclinedFilter] = useState("all");
   const declinedPanelRef = useRef(null);
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
@@ -2042,6 +2045,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
     } finally {
       setReviewingAckId("");
     }
+  };
+  const handleOpenDeclineInvalidReviewModal = (ack) => {
+    if (!ack?.id) return;
+    setDeclineReviewErrors((current) => ({ ...current, [ack.id]: "" }));
+    setDeclineInvalidReviewModal(ack);
+    setDeclineInvalidReviewNote("");
+    setDeclineInvalidReviewError("");
+  };
+  const handleCloseDeclineInvalidReviewModal = () => {
+    setDeclineInvalidReviewModal(null);
+    setDeclineInvalidReviewNote("");
+    setDeclineInvalidReviewError("");
+  };
+  const handleSubmitDeclineInvalidReview = async () => {
+    const ackId = declineInvalidReviewModal?.id;
+    if (!ackId) return;
+    const managerNote = String(declineInvalidReviewNote || "").trim();
+    if (managerNote.length < 3) {
+      setDeclineInvalidReviewError("Vui lòng nhập ghi chú quản lý trước khi không duyệt lý do.");
+      return;
+    }
+    await handleReviewDeclinedShiftAck(ackId, "invalid", managerNote);
+    handleCloseDeclineInvalidReviewModal();
   };
   const handleOpenShiftForResolution = (ack) => {
     const ackShiftId = String(ack?.shiftId || "");
@@ -4614,7 +4640,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 </p>
                 {visibleAttendanceIssueRows.length === 0 ? (
                   <p className="schedule-quality-panel__headline">
-                    "Không có bất thường chấm công theo bộ lọc hiện tại."
+                    Không có bất thường chấm công theo bộ lọc hiện tại.
                   </p>
                 ) : (
               <ul>
@@ -4716,6 +4742,39 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   disabled={isSubmittingAttendanceReview}
                 >
                   Lưu ghi chú
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {declineInvalidReviewModal ? (
+          <div
+            className="schedule-publish-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="decline-invalid-review-title"
+          >
+            <div className="publish-confirm-card schedule-override-modal">
+              <h3 id="decline-invalid-review-title">Không duyệt lý do từ chối ca</h3>
+              <p>Vui lòng nhập ghi chú quản lý trước khi xác nhận.</p>
+              <textarea
+                value={declineInvalidReviewNote}
+                onChange={(event) => {
+                  setDeclineInvalidReviewNote(event.target.value);
+                  if (declineInvalidReviewError) setDeclineInvalidReviewError("");
+                }}
+                rows={4}
+                placeholder="Nhập ghi chú quản lý..."
+              />
+              {declineInvalidReviewError ? (
+                <p className="schedule-quality-panel__headline">{declineInvalidReviewError}</p>
+              ) : null}
+              <div className="publish-confirm-card__actions">
+                <button type="button" className="staff-secondary-btn" onClick={handleCloseDeclineInvalidReviewModal}>
+                  Hủy
+                </button>
+                <button type="button" className="staff-primary-btn" onClick={handleSubmitDeclineInvalidReview}>
+                  Xác nhận không duyệt
                 </button>
               </div>
             </div>
@@ -5299,18 +5358,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                         <button
                           type="button"
                           disabled={isReviewing}
-                          onClick={() => {
-                            const managerNote = window.prompt("Nhập ghi chú quản lý khi không duyệt lý do:");
-                            if (!managerNote || managerNote.trim().length < 3) {
-                              setDeclineReviewErrors((current) => ({ ...current, [ack.id]: "Vui lòng nhập ghi chú quản lý trước khi không duyệt lý do." }));
-                              return;
-                            }
-                            handleReviewDeclinedShiftAck(
-                              ack.id,
-                              "invalid",
-                              managerNote,
-                            );
-                          }}
+                          onClick={() => handleOpenDeclineInvalidReviewModal(ack)}
                         >
                           {isReviewing ? "Đang xử lý..." : "Không duyệt lý do"}
                         </button>
