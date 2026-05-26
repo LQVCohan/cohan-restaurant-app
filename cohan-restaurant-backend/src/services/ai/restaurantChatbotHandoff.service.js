@@ -6,7 +6,9 @@ import {
   ChatThread,
   Notification,
   User,
+  Restaurant,
 } from "../../../models/index.js";
+import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 
 const toObjectId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -78,6 +80,20 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
 
   if (!conversation.restaurantId) {
     return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Hiện chưa xác định được nhà hàng để chuyển nhân viên hỗ trợ.", alreadyRequested: false };
+  }
+
+  const restaurant = await Restaurant.findById(conversation.restaurantId).select("aiChatbotSettings").lean();
+  const aiSettings = mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {});
+  if (!aiSettings.handoffEnabled) {
+    return {
+      ok: false,
+      conversationId: String(conversation._id),
+      handoffRequested: false,
+      chatThreadId: null,
+      notificationCount: 0,
+      message: aiSettings.handoffUnavailableMessage,
+      alreadyRequested: false,
+    };
   }
 
   if (conversation.status === "handoff_requested" && conversation.chatThreadId) {

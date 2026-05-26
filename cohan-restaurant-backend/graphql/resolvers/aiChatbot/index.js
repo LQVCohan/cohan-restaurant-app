@@ -5,6 +5,7 @@ import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restau
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
 import { getRestaurantChatbotAnalytics } from "../../../src/services/ai/restaurantChatbotAnalytics.service.js";
+import { getPublicAiChatbotSettings, getRestaurantAiChatbotSettings, updateRestaurantAiChatbotSettings } from "../../../src/services/ai/restaurantChatbotSettings.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -31,6 +32,8 @@ const Query = {
       });
     }
   },
+  restaurantAiChatbotSettings: async (_, { restaurantId }, ctx) => getRestaurantAiChatbotSettings({ restaurantId, user: ctx?.user || null }),
+  publicAiChatbotSettings: async (_, { restaurantId }) => getPublicAiChatbotSettings({ restaurantId }),
 };
 
 const Mutation = {
@@ -76,6 +79,7 @@ const Mutation = {
       return { ok: false, conversationId: String(input?.conversationId || ""), message: null };
     }
   },
+  updateRestaurantAiChatbotSettings: async (_, { input }, ctx) => updateRestaurantAiChatbotSettings({ input, user: ctx?.user || null }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });

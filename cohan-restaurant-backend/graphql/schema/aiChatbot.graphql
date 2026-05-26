@@ -155,9 +155,44 @@ type ResolveAiChatbotHandoffResponse {
   message: String!
 }
 
+
+
+type AiChatbotSettings {
+  enabled: Boolean!
+  welcomeMessage: String!
+  starterQuickReplies: [String!]!
+  handoffEnabled: Boolean!
+  handoffUnavailableMessage: String!
+  lowConfidenceHandoffThreshold: Float!
+  fallbackMessage: String!
+  updatedAt: DateTime
+  updatedBy: ID
+}
+
+type PublicAiChatbotSettings {
+  enabled: Boolean!
+  welcomeMessage: String!
+  starterQuickReplies: [String!]!
+  handoffEnabled: Boolean!
+  handoffUnavailableMessage: String!
+}
+
+input UpdateAiChatbotSettingsInput {
+  restaurantId: ID!
+  enabled: Boolean
+  welcomeMessage: String
+  starterQuickReplies: [String!]
+  handoffEnabled: Boolean
+  handoffUnavailableMessage: String
+  lowConfidenceHandoffThreshold: Float
+  fallbackMessage: String
+}
+
 extend type Query {
   aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
   aiChatbotAnalytics(input: AiChatbotAnalyticsInput!): AiChatbotAnalyticsResponse!
+  restaurantAiChatbotSettings(restaurantId: ID!): AiChatbotSettings!
+  publicAiChatbotSettings(restaurantId: ID): PublicAiChatbotSettings!
 }
 
 extend type Mutation {
@@ -165,4 +200,5 @@ extend type Mutation {
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
   sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
   resolveAiChatbotHandoff(input: ResolveAiChatbotHandoffInput!): ResolveAiChatbotHandoffResponse!
+  updateRestaurantAiChatbotSettings(input: UpdateAiChatbotSettingsInput!): AiChatbotSettings!
 }

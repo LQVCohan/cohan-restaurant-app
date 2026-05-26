@@ -505,3 +505,12 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
 - Chưa có historical rate-limit hit counts (vì limiter in-memory, không lưu bền).
 - Chưa có token/cost/latency metrics.
 - Chưa có CSAT.
+
+
+## 16. Phase 11 - Restaurant-level AI chatbot settings
+- Added embedded `Restaurant.aiChatbotSettings` for per-restaurant bot behavior (enable, greeting, quick replies, handoff, thresholds, fallback, audit metadata).
+- Added manager/staff settings APIs and guest-safe public settings API.
+- Widget now consumes public settings and respects disabled chatbot/handoff.
+- Runtime uses configurable low-confidence threshold and restaurant fallback message.
+- Handoff creation is blocked when restaurant handoff is disabled.
+- MVP intentionally excludes advanced support-hours scheduler/timezone logic.

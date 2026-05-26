@@ -308,3 +308,9 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 | `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js` | Runtime payroll tổng quan (đã đọc mức ngắn). |
 | `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx` | Mock/query structure và behavior UI manager schedule. |
 | `src/components/Staff/components/StaffSchedulePage.test.jsx` | Query/mutation map cho staff page tests. |
+
+
+### 4.8 AI Chatbot Settings (Phase 11)
+- Backend: `restaurantChatbotSettings.service.js` + new aiChatbot GraphQL settings operations.
+- Model: embedded `aiChatbotSettings` inside `Restaurant`.
+- Frontend: `AiChatbotSettingsPage.jsx` for manager; `AiChatbotWidget.jsx` reads guest-safe settings.
