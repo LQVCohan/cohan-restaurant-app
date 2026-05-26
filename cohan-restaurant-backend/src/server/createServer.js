@@ -32,6 +32,7 @@ import { validateGuestConversationOwnership, isValidConversationId, getAiConvers
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../services/ai/restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
 import { ChatThread, Order, OrderTracking } from "../../models/index.js";
+import mongoose from "mongoose";
 
 export async function authorizeChatThreadJoin({ socketUser, threadId, findThreadById, requireRestaurantPermissionFn, permissionCode }) {
   if (!socketUser?.id || !threadId) return { ok: false, code: "FORBIDDEN" };
@@ -342,20 +343,29 @@ export async function createServer() {
     }
   });
 
-  app.post("/api/ai/table/merge-suggestion", async (req, reply) => {
-    const payload = req.body || {};
+  app.post("/api/ai/table/merge-suggestion", {
+    config: { rateLimit: { max: Number(process.env.RL_AI_TABLE_MAX || 30), timeWindow: process.env.RL_AI_TABLE_WINDOW || "1 minute" } },
+  }, async (req, reply) => {
+    const payload = await aiRouteGuard(req, reply, PERMISSIONS.TABLE_WRITE);
+    if (!payload) return;
     const suggestion = await suggestTableMerge(payload);
     return reply.send({ ok: true, suggestion });
   });
 
-  app.post("/api/ai/table/promo-suggestion", async (req, reply) => {
-    const payload = req.body || {};
+  app.post("/api/ai/table/promo-suggestion", {
+    config: { rateLimit: { max: Number(process.env.RL_AI_TABLE_MAX || 30), timeWindow: process.env.RL_AI_TABLE_WINDOW || "1 minute" } },
+  }, async (req, reply) => {
+    const payload = await aiRouteGuard(req, reply, PERMISSIONS.TABLE_READ);
+    if (!payload) return;
     const suggestion = await suggestTablePromo(payload);
     return reply.send({ ok: true, suggestion });
   });
 
-  app.post("/api/ai/table/turnover-prediction", async (req, reply) => {
-    const payload = req.body || {};
+  app.post("/api/ai/table/turnover-prediction", {
+    config: { rateLimit: { max: Number(process.env.RL_AI_TABLE_MAX || 30), timeWindow: process.env.RL_AI_TABLE_WINDOW || "1 minute" } },
+  }, async (req, reply) => {
+    const payload = await aiRouteGuard(req, reply, PERMISSIONS.TABLE_READ);
+    if (!payload) return;
     const suggestion = await predictTableTurnover(payload);
     return reply.send({ ok: true, suggestion });
   });
@@ -689,3 +699,24 @@ export async function createServer() {
 
   return app;
 }
+  const aiRouteGuard = async (req, reply, permissionCode) => {
+    const payload = req.body || {};
+    const restaurantId = payload?.restaurantId;
+    if (!restaurantId || !mongoose.isValidObjectId(String(restaurantId))) {
+      reply.code(400).send({ ok: false, message: "restaurantId is required and must be valid" });
+      return null;
+    }
+    const authUser = await resolveAuthenticatedUserFromRequest(req);
+    const userId = authUser?.id || authUser?._id;
+    if (!userId) {
+      reply.code(401).send({ ok: false, message: "Unauthorized" });
+      return null;
+    }
+    try {
+      await requireRestaurantPermission({ user: authUser }, restaurantId, permissionCode);
+    } catch {
+      reply.code(403).send({ ok: false, message: "Forbidden" });
+      return null;
+    }
+    return payload;
+  };

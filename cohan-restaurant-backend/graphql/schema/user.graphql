@@ -3032,6 +3032,7 @@ type Mutation {
 
   updateCustomerMetrics(
     id: ID!
+    restaurantId: ID!
     loyaltyPoints: Int!
     customerType: CustomerType!
   ): User!
