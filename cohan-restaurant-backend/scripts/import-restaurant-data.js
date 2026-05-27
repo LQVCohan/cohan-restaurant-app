@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "process";
 import crypto from "node:crypto";
 import mongoose from "mongoose";
+import { safeDbInfo } from "./lib/scriptSafety.js";
 import {
   Category,
   CategoryMenu,
@@ -134,6 +135,7 @@ function normalizeEmail(v) {
 async function connectDb() {
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
   const DB_NAME = process.env.MONGO_DB || "foodhub";
+  console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   log("DB", "connected", { dbName: DB_NAME });
 }

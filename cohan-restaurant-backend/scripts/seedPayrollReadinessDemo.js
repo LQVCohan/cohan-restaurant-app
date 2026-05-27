@@ -18,7 +18,9 @@ import {
   User,
 } from "../models/index.js";
 
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "Demo@123456";
+import { assertDemoScriptAllowed, getDemoPassword, safeDbInfo } from "./lib/scriptSafety.js";
+
+const DEMO_PASSWORD = getDemoPassword();
 const RESET = process.argv.includes("--reset");
 const DEMO_TAG = "[demo-payroll-readiness]";
 const READY_START = new Date("2026-06-01T00:00:00.000Z");
@@ -547,9 +549,11 @@ async function seedBlockedScenario({ restaurant, staff }) {
 }
 
 async function main() {
+  assertDemoScriptAllowed('seedPayrollReadinessDemo.js');
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
   const DB_NAME = process.env.MONGO_DB || "foodhub";
 
+  console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   console.log("Connected Mongo for payroll readiness demo seed.");
 
@@ -641,7 +645,6 @@ async function main() {
     blockedPeriod.startDate.toISOString(),
     blockedPeriod.endDate.toISOString(),
   );
-  console.log("Demo accounts password:", DEMO_PASSWORD);
   console.log("Manager:", "payroll.ready.manager.demo@cohan.local");
   console.log("Accountant:", "payroll.ready.accountant.demo@cohan.local");
 

@@ -413,3 +413,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Production env validation blocks disabling reCAPTCHA unless `ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION=true`; production also rejects missing/placeholder `RECAPTCHA_SECRET` when enabled.
 - Production CSP blocks `unsafe-inline` styles by default; enable only with `CSP_ALLOW_UNSAFE_INLINE_STYLE=true`.
 
+
+
+## Demo script safety
+
+- Demo scripts are intended for local/development use only.
+- Production-like environments are blocked by default.
+- To intentionally run in production-like environments, set both `ALLOW_DEMO_SEED_IN_PRODUCTION=true` and `DEMO_PASSWORD=<strong temporary password>`.
+- Do not use `Demo@123456` outside local/dev.
+- Script logging masks MongoDB URI credentials to prevent secret leakage.

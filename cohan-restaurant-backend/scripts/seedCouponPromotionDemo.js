@@ -1,6 +1,7 @@
 import 'dotenv/config.js';
 import mongoose from 'mongoose';
 import { Coupon, Promotion, Restaurant, MenuItem } from '../models/index.js';
+import { assertDemoScriptAllowed, safeDbInfo } from './lib/scriptSafety.js';
 
 const DEMO_TAG = '[demo-coupon-promotion-2026]';
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || '';
@@ -215,8 +216,10 @@ async function seedPromotions(restaurantId) {
 }
 
 async function main() {
+  assertDemoScriptAllowed('seedCouponPromotionDemo.js');
   const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
   const DB_NAME = process.env.MONGO_DB || 'foodhub';
+  console.log('Connecting with DB settings:', safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
 
   const restaurant = await resolveRestaurant();

@@ -150,3 +150,12 @@ If MongoDB is unavailable, report that only `node --check` was run.
 The seed script is intended for local/dev/demo environments only. Do not run it against production data.
 
 The READY/BLOCKED expectations assume the demo is run with `--reset` on a local/dev database. Running without reset may preserve old demo blockers.
+
+
+## Demo script safety
+
+- Demo scripts are intended for local/development use only.
+- Production-like environments are blocked by default.
+- To intentionally run in production-like environments, set both `ALLOW_DEMO_SEED_IN_PRODUCTION=true` and `DEMO_PASSWORD=<strong temporary password>`.
+- Do not use `Demo@123456` outside local/dev.
+- Script logging masks MongoDB URI credentials to prevent secret leakage.
