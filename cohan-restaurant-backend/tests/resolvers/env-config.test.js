@@ -78,3 +78,28 @@ describe('table access token production validation', () => {
     expect(() => validateEnv()).toThrow(/weak value/);
   });
 });
+
+describe('production access token expiry validation', () => {
+  const originalEnv = process.env;
+  beforeEach(() => {
+    vi.resetModules();
+    process.env = { ...originalEnv, NODE_ENV: 'production', MONGO_URI: 'mongodb://127.0.0.1:27017', JWT_SECRET: 'this-is-a-strong-jwt-secret-with-32-characters-min', TABLE_ACCESS_TOKEN_SECRET: 'table-secret-123456789' };
+  });
+  afterAll(() => { process.env = originalEnv; });
+
+  it('accepts 15m and 30m', async () => {
+    const { validateEnv } = await import('../../src/config/env.js');
+    process.env.ACCESS_TOKEN_EXPIRES_IN = '15m';
+    expect(() => validateEnv()).not.toThrow();
+    process.env.ACCESS_TOKEN_EXPIRES_IN = '30m';
+    expect(() => validateEnv()).not.toThrow();
+  });
+
+  it('rejects >=1d and invalid values', async () => {
+    const { validateEnv } = await import('../../src/config/env.js');
+    for (const value of ['48h', '1440m', '2d', 'invalid']) {
+      process.env.ACCESS_TOKEN_EXPIRES_IN = value;
+      expect(() => validateEnv()).toThrow(/ACCESS_TOKEN_EXPIRES_IN/);
+    }
+  });
+});

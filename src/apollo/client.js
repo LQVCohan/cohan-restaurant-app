@@ -7,6 +7,8 @@ import {
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import { Observable } from "@apollo/client/utilities";
+import { buildBackendAuthUrl } from "@/lib/apiBase";
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
 
 /* ---------------- HTTP link ---------------- */
@@ -112,7 +114,7 @@ function dispatchOutOfStockPrompt({ operation, graphQLError }) {
 let refreshPromise = null;
 async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    refreshPromise = fetch(buildBackendAuthUrl("/api/auth/refresh"), { method: "POST", credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((payload) => {
         if (payload?.token) setAuth({ token: payload.token });
@@ -143,12 +145,18 @@ const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) 
   const unauthenticated = (graphQLErrors || []).some((e) => e?.extensions?.code === "UNAUTHENTICATED") || networkError?.statusCode === 401;
   if (unauthenticated && !operation.getContext()._retry) {
     operation.setContext({ _retry: true });
-    return new ApolloLink((obs) => {
-      refreshAccessToken().then((token) => {
-        if (!token) return obs.error(networkError || new Error("Unauthenticated"));
-        forward(operation).subscribe(obs);
-      }).catch((err) => obs.error(err));
-    }).request(operation);
+    return new Observable((observer) => {
+      refreshAccessToken()
+        .then((token) => {
+          if (!token) {
+            observer.error(networkError || new Error("Unauthenticated"));
+            return;
+          }
+          const subscription = forward(operation).subscribe(observer);
+          return () => subscription.unsubscribe();
+        })
+        .catch((err) => observer.error(err));
+    });
   }
 });
 

@@ -149,6 +149,17 @@ function validateProductionTableAccessSecret() {
   return issues;
 }
 
+
+function parseDurationMs(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const m = raw.match(/^(\d+)\s*(s|m|h|d)$/);
+  if (!m) return null;
+  const amount = Number(m[1]);
+  const unit = m[2];
+  const mul = unit == "s" ? 1000 : unit == "m" ? 60000 : unit == "h" ? 3600000 : 86400000;
+  return amount * mul;
+}
+
 function validateProductionAuthTokenSettings() {
   if ((process.env.NODE_ENV || "development") !== "production") return [];
   const issues = [];
@@ -157,9 +168,11 @@ function validateProductionAuthTokenSettings() {
     issues.push("JWT_SECRET (must be strong and >= 32 chars in production)");
   }
   const accessExp = String(process.env.ACCESS_TOKEN_EXPIRES_IN || "15m").toLowerCase();
-  if (accessExp.endsWith("d")) {
-    const d = Number(accessExp.replace("d", ""));
-    if (Number.isFinite(d) && d > 1) issues.push("ACCESS_TOKEN_EXPIRES_IN (must not exceed 1d in production)");
+  const accessMs = parseDurationMs(accessExp);
+  if (!accessMs) {
+    issues.push("ACCESS_TOKEN_EXPIRES_IN (invalid duration format)");
+  } else if (accessMs >= 24 * 60 * 60 * 1000) {
+    issues.push("ACCESS_TOKEN_EXPIRES_IN (must be less than 1d in production)");
   }
   return issues;
 }

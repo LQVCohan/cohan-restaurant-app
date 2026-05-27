@@ -4,7 +4,7 @@ import { AuthProvider } from '../AuthProvider';
 import { AuthContext } from '../AuthContext';
 
 const navigateMock = vi.fn();
-const originalLocalStorage = window.localStorage;
+const fetchMock = vi.fn(() => Promise.resolve({ ok: true, json: async () => ({ ok: true, token: 'new-token', user: { id: '1', roleName: 'customer' } }) }));
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal();
@@ -17,105 +17,26 @@ vi.mock('@apollo/client/react', () => ({
 
 function Consumer() {
   const ctx = useContext(AuthContext);
-  return (
-    <div>
-      <div data-testid="is-auth">{String(ctx?.isAuthenticated)}</div>
-      <button
-        onClick={() =>
-          ctx.login('abc', { roleName: 'manager' }, null, { persistSession: true })
-        }
-      >
-        login
-      </button>
-      <button onClick={() => ctx.logout()}>logout</button>
-    </div>
-  );
+  return <button onClick={() => ctx.logout()}>logout</button>;
 }
 
 describe('AuthProvider', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
-    localStorage.clear();
-    sessionStorage.clear();
+    global.fetch = fetchMock;
+    fetchMock.mockClear();
     navigateMock.mockReset();
   });
 
-  afterAll(() => {
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
+  it('calls refresh endpoint on startup with credentials include', async () => {
+    render(<AuthProvider><Consumer /></AuthProvider>);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/auth/refresh');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST', credentials: 'include' });
   });
 
-  it('writes auth data to storage on login', async () => {
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-
-    fireEvent.click(screen.getByText('login'));
-
-    await waitFor(() => {
-      expect(localStorage.getItem('auth_token')).toBe('abc');
-      expect(localStorage.getItem('token')).toBe('abc');
-      expect(screen.getByTestId('is-auth')).toHaveTextContent('true');
-    });
-  });
-
-  it('falls back to sessionStorage when localStorage is unavailable', async () => {
-    const quotaError = () => {
-      throw new DOMException('Quota exceeded', 'QuotaExceededError');
-    };
-
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: vi.fn(() => null),
-        setItem: vi.fn(quotaError),
-        removeItem: vi.fn(quotaError),
-        clear: vi.fn(),
-        key: vi.fn(() => null),
-        length: 0,
-      },
-    });
-
-    sessionStorage.clear();
-
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-
-    fireEvent.click(screen.getByText('login'));
-
-    await waitFor(() => {
-      expect(sessionStorage.getItem('auth_token')).toBe('abc');
-      expect(sessionStorage.getItem('token')).toBe('abc');
-      expect(screen.getByTestId('is-auth')).toHaveTextContent('true');
-    });
-  });
-
-  it('clears auth data and navigates to login on logout', async () => {
-    localStorage.setItem('auth_token', 'abc');
-    localStorage.setItem('token', 'abc');
-
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-
+  it('calls logout endpoint with credentials include', async () => {
+    render(<AuthProvider><Consumer /></AuthProvider>);
     fireEvent.click(screen.getByText('logout'));
-
-    await waitFor(() => {
-      expect(localStorage.getItem('auth_token')).toBeNull();
-      expect(localStorage.getItem('token')).toBeNull();
-      expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true });
-    });
+    await waitFor(() => expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/auth/logout'))).toBe(true));
   });
 });

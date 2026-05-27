@@ -20,11 +20,11 @@ export function signAccessToken(user) {
 export function refreshCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
   return {
-    path: "/api/auth/refresh",
+    path: "/api/auth",
     httpOnly: true,
     secure: isProduction,
     sameSite: String(process.env.REFRESH_TOKEN_COOKIE_SAMESITE || "lax").toLowerCase(),
-    maxAge: ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d"),
+    maxAge: Math.floor(ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d") / 1000),
   };
 }
 
@@ -38,7 +38,8 @@ export function clearRefreshCookie(reply) {
 export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
   const raw = crypto.randomBytes(48).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
-  const expiresAt = new Date(Date.now() + ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d"));
+  const refreshTtlMs = ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d");
+  const expiresAt = new Date(Date.now() + refreshTtlMs);
   await RefreshToken.create({ userId, tokenHash, expiresAt, userAgent: userAgent || null, ip: ip || null });
   reply.setCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", raw, refreshCookieOptions());
   return { raw, tokenHash };

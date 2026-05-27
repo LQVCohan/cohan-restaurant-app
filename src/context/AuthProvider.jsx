@@ -4,188 +4,9 @@ import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
-import {
-  clearStorageKeys,
-  readStorageValue,
-  readStorageValueFrom,
-  removeStorageValue,
-  writeStorageValue,
-} from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
-
-const TOKEN_KEYS = {
-  token: "auth_token",
-  legacy: "token",
-  user: "auth_user",
-  rememberUntil: "auth_remember_until",
-  rememberedIdentifier: "remembered_login_identifier",
-};
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-const AUTH_ERROR_CODES = new Set([
-  "UNAUTHENTICATED",
-  "FORBIDDEN",
-  "INVALID_TOKEN",
-  "TOKEN_EXPIRED",
-  "TOKEN_REVOKED",
-  "UNAUTHORIZED",
-]);
-const isStaffAccessRole = (roleName) => isStaffOperationalRole(roleName);
-
-// GraphQL query để lấy danh sách nhà hàng của người quản lý
-const GET_USER_REFRESTAURANTS = gql`
-  query GetRestaurants($userId: ID!) {
-    restaurantsByUser(userId: $userId) {
-      id
-      name
-      location
-      description
-      image
-    }
-  }
-`;
-const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
-      limit: $limit
-      cursor: $cursor
-    ) {
-      edges {
-        cursor
-        node {
-          id
-          name
-          avatar
-          address {
-            city
-          }
-        }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
-    }
-  }
-`;
-
-// GraphQL query: thông tin người dùng
-const ME_QUERY = gql`
-  query Me {
-    me {
-      id
-      fullName
-      email
-      phone
-      username
-      avatarUrl
-      roleName
-      emailVerified
-      wallet {
-        provider
-        status
-        balance
-        currency
-        updatedAt
-      }
-      refRestaurants {
-        id
-        name
-      }
-      restaurantForStaff
-      employmentType
-      department
-      positionTitle
-    }
-  }
-`;
-
-function readStoredAuth() {
-  const rememberUntil = Number(readStorageValueFrom("local", TOKEN_KEYS.rememberUntil) || 0);
-  if (rememberUntil && Date.now() > rememberUntil) {
-    clearStorageKeys([
-      TOKEN_KEYS.token,
-      TOKEN_KEYS.legacy,
-      TOKEN_KEYS.user,
-      TOKEN_KEYS.rememberUntil,
-    ]);
-  }
-
-  const token =
-    readStorageValue(TOKEN_KEYS.token) ||
-    readStorageValue(TOKEN_KEYS.legacy) ||
-    null;
-
-  const userStr = readStorageValue(TOKEN_KEYS.user) || null;
-
-  let user = null;
-  try {
-    user = userStr ? JSON.parse(userStr) : null;
-  } catch {
-    user = null;
-  }
-
-  return { token, user };
-}
-
-function prefersPersistentAuth() {
-  return Boolean(
-    readStorageValueFrom("local", TOKEN_KEYS.token) ||
-      readStorageValueFrom("local", TOKEN_KEYS.legacy) ||
-      readStorageValueFrom("local", TOKEN_KEYS.rememberUntil),
-  );
-}
-
-function writeStoredAuth(token, user, options = {}) {
-  const {
-    persistSession = true,
-    rememberIdentifier = false,
-    identifier = "",
-  } = options || {};
-
-  clearStorageKeys([
-    TOKEN_KEYS.token,
-    TOKEN_KEYS.legacy,
-    TOKEN_KEYS.user,
-    TOKEN_KEYS.rememberUntil,
-  ]);
-
-  const persistent = Boolean(persistSession);
-  writeStorageValue(TOKEN_KEYS.token, token, { persistent });
-  writeStorageValue(TOKEN_KEYS.legacy, token, { persistent });
-  writeStorageValue(TOKEN_KEYS.user, JSON.stringify(user || {}), { persistent });
-
-  if (persistent) {
-    writeStorageValue(
-      TOKEN_KEYS.rememberUntil,
-      String(Date.now() + THIRTY_DAYS_MS),
-      { persistent: true },
-    );
-  } else {
-    removeStorageValue(TOKEN_KEYS.rememberUntil);
-  }
-
-  if (rememberIdentifier && identifier) {
-    writeStorageValue(
-      TOKEN_KEYS.rememberedIdentifier,
-      String(identifier).trim(),
-      { persistent: true },
-    );
-  } else {
-    removeStorageValue(TOKEN_KEYS.rememberedIdentifier);
-  }
-}
-
-function clearStoredAuth() {
-  clearStorageKeys([
-    TOKEN_KEYS.token,
-    TOKEN_KEYS.legacy,
-    TOKEN_KEYS.user,
-    TOKEN_KEYS.rememberUntil,
-  ]);
-}
+import { buildBackendAuthUrl } from "@/lib/apiBase";
 
 function getNetworkStatusCode(error) {
   return (
@@ -291,7 +112,7 @@ export const AuthProvider = ({ children }) => {
   const [refRestaurant, setRefRestaurant] = useState([]);
   useEffect(() => {
     clearLegacyAuthStorage();
-    fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    fetch(buildBackendAuthUrl("/api/auth/refresh"), { method: "POST", credentials: "include" })
       .then(async (res) => (res.ok ? res.json() : null))
       .then((payload) => {
         if (payload?.token) {
@@ -325,16 +146,12 @@ export const AuthProvider = ({ children }) => {
       setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
-        const persistent = prefersPersistentAuth();
-        writeStorageValue(TOKEN_KEYS.user, JSON.stringify(merged), {
-          persistent,
-        });
         return merged;
       });
     },
     onError: (error) => {
       if (isAuthFailure(error)) {
-        clearStoredAuth();
+        clearLegacyAuthStorage();
         clearPersistedCart();
         setToken(null);
         setUser(null);
@@ -434,7 +251,7 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Logout
   const logout = useCallback(() => {
-    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    fetch(buildBackendAuthUrl("/api/auth/logout"), { method: "POST", credentials: "include" }).catch(() => {});
     setToken(null);
     setUser(null);
     setRestaurants([]);
@@ -458,7 +275,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       restaurants,
       refRestaurant,
-      rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
+      rememberedLoginIdentifier: "",
     }),
     [
       token,
