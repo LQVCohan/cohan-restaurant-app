@@ -768,76 +768,6 @@ const AI_SCHEDULE_PLANNER_PREVIEW = gql`
   }
 `;
 
-const PREVIEW_AUTO_SCHEDULE = gql`
-  mutation PreviewAutoSchedule($input: AutoSchedulePreviewInput!) {
-    previewAutoSchedule(input: $input) {
-      unresolvedCount
-      canApply
-      summary {
-        totalDemand
-        recommendedAssignments
-        warningAssignments
-        blockedAssignments
-        existingShiftCount
-      }
-      items {
-        shiftKey
-        shiftType
-        startTime
-        endTime
-        requiredRole
-        status
-        employeeId
-        employeeName
-        score
-        validationIssues {
-          code
-          severity
-          message
-          suggestedAction
-        }
-        warnings {
-          code
-          severity
-          message
-          suggestedAction
-        }
-      }
-      blockedCandidates {
-        shiftKey
-        employeeId
-        requiredRole
-        issues {
-          code
-          severity
-          message
-          suggestedAction
-        }
-      }
-      unfilledRoles {
-        shiftKey
-        shiftType
-        startTime
-        endTime
-        requiredRole
-        reason
-      }
-      validationIssues {
-        code
-        severity
-        message
-        suggestedAction
-      }
-      warnings {
-        code
-        severity
-        message
-        suggestedAction
-      }
-    }
-  }
-`;
-
 const APPLY_AUTO_SCHEDULE = gql`
   mutation ApplyAutoSchedule($input: ApplyAutoScheduleInput!) {
     applyAutoSchedule(input: $input) {
@@ -1582,7 +1512,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [createShifts] = useMutation(CREATE_STAFF_SHIFTS);
-  const [previewAutoScheduleBackend] = useMutation(PREVIEW_AUTO_SCHEDULE);
   const [loadAiSchedulePlannerPreview, aiSchedulePlannerState] = useLazyQuery(
     AI_SCHEDULE_PLANNER_PREVIEW,
     { fetchPolicy: "network-only" },
@@ -2780,6 +2709,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
     setSelectedShift(null);
     setAddModalContext({ date: "", shiftType: "" });
     setIsAddModalOpen(false);
@@ -2810,6 +2741,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
 
     if (nextRestaurantId) {
       showNotification(
@@ -4070,47 +4003,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
   };
 
-  const mapBackendAutoSchedulePreview = (payload) => {
-    const items = (payload?.items || []).map((item) => ({
-      ...item,
-      canApply: Boolean(item.employeeId && item.status !== "blocked"),
-      unresolvedCount: item.employeeId ? 0 : 1,
-      plannedAssignments: item.employeeId
-        ? [
-            {
-              staffId: item.employeeId,
-              fullName: item.employeeName,
-              role: item.requiredRole || item.shiftType,
-              validationScore: item.score,
-              warnings: item.warnings || [],
-              requiresOverride: (item.warnings || []).length > 0,
-            },
-          ]
-        : [],
-      unfilledRoles: item.employeeId
-        ? []
-        : [
-            {
-              role: item.requiredRole || item.shiftType,
-              reason: "NO_ELIGIBLE_CANDIDATE",
-            },
-          ],
-      blockedCandidates: (payload?.blockedCandidates || []).filter(
-        (row) => row.shiftKey === item.shiftKey,
-      ),
-    }));
-
-    return {
-      ...payload,
-      items,
-      summary: {
-        ...(payload?.summary || {}),
-        totalShiftGroups: Number(payload?.summary?.totalDemand || items.length),
-        unresolvedShifts: Number(payload?.unresolvedCount || 0),
-      },
-    };
-  };
-
   const mapAiPlannerPreview = (payload) => {
     const preview = payload?.preview || {};
     const explanations = payload?.explanations || [];
@@ -4182,6 +4074,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
     setSelectedAutoShiftKeys({});
     setAssistantAvailabilityWindows([]);
     setAssistantAvailabilitySubmissions([]);

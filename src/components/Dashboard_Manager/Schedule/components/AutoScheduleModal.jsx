@@ -242,7 +242,7 @@ const AutoScheduleModal = ({
             <div className="config-card role-required-card">
               <div className="config-head">
                 <Users size={16} />
-                <span>Role bắt buộc áp dụng cho lần chia ca này</span>
+                <span>Vai trò ưu tiên (tùy chọn)</span>
               </div>
 
               <div className="required-role-grid">
@@ -260,14 +260,12 @@ const AutoScheduleModal = ({
               </div>
 
               {!selectedRequiredRoles.length ? (
-                <p className="required-role-warning">
-                  Cần có ít nhất một role bắt buộc. Hãy chọn role hoặc cập nhật
-                  cài đặt chung.
+                <p className="config-hint">
+                  AI sẽ tự đề xuất vai trò cần xếp dựa trên forecast và lịch hiện có.
                 </p>
               ) : (
                 <p className="config-hint">
-                  Mặc định lấy từ cài đặt chung của nhà hàng. Bạn có thể điều
-                  chỉnh tạm cho lần preview này.
+                  AI sẽ ưu tiên các vai trò này khi tạo preview.
                 </p>
               )}
             </div>
@@ -307,7 +305,7 @@ const AutoScheduleModal = ({
             type="button"
             className="btn-primary"
             onClick={onGenerate}
-            disabled={generating || applying || !selectedRequiredRoles.length}
+            disabled={generating || applying}
           >
             <Sparkles size={16} />
             {generating ? "AI đang phân tích..." : "AI phân tích & tạo preview"}
@@ -584,23 +582,7 @@ const AutoScheduleModal = ({
                                         Có thể xếp
                                       </span>
                                     )}
-                                    {assignment.aiExplanation ? (
-                                    <div className="ai-explanation-box">
-                                      <p>{assignment.aiExplanation.reason}</p>
-                                      {!!(assignment.aiExplanation.factors || []).length && (
-                                        <div className="ai-factor-list">
-                                          {assignment.aiExplanation.factors.map((factor, factorIdx) => (
-                                            <span key={`${item.shiftKey}-${assignment.staffId}-factor-${factorIdx}`} className="ai-factor-chip">
-                                              {factor}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                      <small>Độ tin cậy: {compactNumber(Number(assignment.aiExplanation.confidence || 0) * 100)}%</small>
-                                    </div>
-                                  ) : null}
-
-                                  {(assignment.warnings || []).length ? (
+                                    {(assignment.warnings || []).length ? (
                                       <span className="explain-chip warning">
                                         Có cảnh báo
                                       </span>
