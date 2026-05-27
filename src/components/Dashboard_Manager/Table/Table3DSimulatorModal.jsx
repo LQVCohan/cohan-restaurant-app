@@ -6,6 +6,8 @@ import {
   TABLE_3D_TYPE_OPTIONS,
   canOpenModelViewerAr,
   getArUnavailableReason,
+  getModelAssetBadges,
+  getModelAssetSummary,
 } from "@/config/table3dCatalog";
 import {
   deleteCustomTableModel,
@@ -102,6 +104,7 @@ const Table3DSimulatorModal = ({
   const cameraTarget = `${offset.x}m 0m ${offset.z}m`;
   const canOpenAr = canOpenModelViewerAr(selectedModel);
   const arUnavailableReason = getArUnavailableReason(selectedModel);
+  const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
 
   const shiftModel = (x, z) => {
     setOffset((prev) => ({ x: Number((prev.x + x).toFixed(2)), z: Number((prev.z + z).toFixed(2)) }));
@@ -213,7 +216,13 @@ const Table3DSimulatorModal = ({
                 <div>
                   <strong>{model.label}</strong>
                   <span>{model.capacity} ghế</span>
-                  {isCustomTableModel(model) && <span>Tùy chỉnh</span>}
+                  <div className="model-item__badges">
+                    {getModelAssetBadges(model).map((badge) => (
+                      <span key={`${model.key}-${badge}`} className="model-badge">
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                   {model?.customModelSpec && (
                     <span>
                       {model.customModelSpec.widthCm} x {model.customModelSpec.depthCm} x {model.customModelSpec.heightCm} cm
@@ -243,13 +252,16 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__meta">
             <p>
-              <b>Nguồn:</b> {selectedModel?.source || "-"}
+              <b>Model 3D:</b> {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}
             </p>
             <p>
-              <b>Ghế gợi ý:</b> {selectedModel?.capacity || "-"}
+              <b>AR native:</b> {selectedModelAssetSummary.arReady ? "Có thể thử" : "Chưa khả dụng"}
             </p>
             <p>
-              <b>Model key:</b> {selectedModel?.key || "-"}
+              <b>Nguồn model:</b> {selectedModelAssetSummary.source}
+            </p>
+            <p>
+              <b>Model key:</b> {selectedModelAssetSummary.modelKey}
             </p>
           </div>
           {error && <div className="table-3d-modal__warning">{error}</div>}
@@ -298,7 +310,7 @@ const Table3DSimulatorModal = ({
           ) : (
             <div className="viewer-placeholder">
               {selectedModel
-                ? "Đang dùng placeholder bàn (không có model 3D công khai khả dụng)."
+                ? "Mẫu này chỉ có thông số mô phỏng. Hãy dùng Xem thử bằng camera hoặc chọn mẫu có model 3D để mở AR."
                 : "Chọn mẫu để bắt đầu mô phỏng."}
             </div>
           )}
