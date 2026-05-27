@@ -12,6 +12,7 @@ import {
   writeStorageValue,
 } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
+import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -289,15 +290,20 @@ export const AuthProvider = ({ children }) => {
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
   useEffect(() => {
-    const { token: t, user: u } = readStoredAuth();
-    if (t) {
-      setToken(t);
-      setUser(normalizeUserModel(u));
-      setSessionState("restoring");
-    } else {
-      setSessionState("anonymous");
-    }
-    setLoading(false);
+    clearLegacyAuthStorage();
+    fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (payload?.token) {
+          setAuth({ token: payload.token });
+          setToken(payload.token);
+          setUser(normalizeUserModel(payload.user));
+          setSessionState("authenticated");
+        } else {
+          setSessionState("anonymous");
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const isAuthenticated = !!token;
@@ -415,7 +421,7 @@ export const AuthProvider = ({ children }) => {
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, user, avatar);
 
-      writeStoredAuth(newToken, newUser, options);
+      setAuth({ token: newToken });
       setToken(newToken);
       setUser(newUser);
       setSessionState("authenticated");
@@ -428,13 +434,14 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Logout
   const logout = useCallback(() => {
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     setToken(null);
     setUser(null);
     setRestaurants([]);
     setRefRestaurant([]);
     setSessionState("anonymous");
     setSessionWarning("");
-    clearStoredAuth();
+    clearAuth();
     clearPersistedCart();
     navigate("/login", { replace: true });
   }, [navigate]);

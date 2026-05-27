@@ -33,6 +33,7 @@ export { default as PaymentReconciliation } from "./payment-reconciliation.model
 export { default as Invoice } from "./invoice.model.js";
 export { default as Review } from "./review.model.js";
 export { default as AuthProviderLink } from "./auth-provider-link.model.js";
+export { default as RefreshToken } from "./refresh-token.model.js";
 export { default as Promotion } from "./promotion.model.js";
 export { default as EventPackage } from "./event-package.model.js";
 export { default as TableEvent } from "./table-event.model.js";
@@ -104,3 +105,5 @@ export { default as BackupRun } from "./backup-run.model.js";
 
 export { default as AiChatConversation } from "./ai-chat-conversation.model.js";
 export { default as AiChatMessage } from "./ai-chat-message.model.js";
+
+export { default as AiChatbotKnowledgeItem } from "./ai-chatbot-knowledge-item.model.js";

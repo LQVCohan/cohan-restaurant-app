@@ -7,7 +7,7 @@ import {
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-import { readStorageValue } from "@/lib/browserStorage";
+import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -20,9 +20,7 @@ const httpLink = new HttpLink({
 /* ---------------- Auth link ---------------- */
 const authLink = setContext((_, { headers }) => {
   const token =
-    readStorageValue("auth_token") ||
-    readStorageValue("token") ||
-    null;
+    getToken();
 
   return {
     headers: {
@@ -111,7 +109,22 @@ function dispatchOutOfStockPrompt({ operation, graphQLError }) {
   );
 }
 
-const errorLink = onError(({ graphQLErrors, operation }) => {
+let refreshPromise = null;
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((payload) => {
+        if (payload?.token) setAuth({ token: payload.token });
+        else clearAuth();
+        return payload?.token || null;
+      })
+      .finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) => {
   const outOfStockError = (graphQLErrors || []).find((error) => {
     const code = error?.extensions?.code;
     const message = String(error?.message || "").toLowerCase();
@@ -125,6 +138,17 @@ const errorLink = onError(({ graphQLErrors, operation }) => {
 
   if (outOfStockError) {
     dispatchOutOfStockPrompt({ operation, graphQLError: outOfStockError });
+  }
+
+  const unauthenticated = (graphQLErrors || []).some((e) => e?.extensions?.code === "UNAUTHENTICATED") || networkError?.statusCode === 401;
+  if (unauthenticated && !operation.getContext()._retry) {
+    operation.setContext({ _retry: true });
+    return new ApolloLink((obs) => {
+      refreshAccessToken().then((token) => {
+        if (!token) return obs.error(networkError || new Error("Unauthenticated"));
+        forward(operation).subscribe(obs);
+      }).catch((err) => obs.error(err));
+    }).request(operation);
   }
 });
 

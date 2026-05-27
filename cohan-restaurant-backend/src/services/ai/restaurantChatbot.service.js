@@ -11,10 +11,12 @@ import {
   AiChatMessage,
 } from "../../../models/index.js";
 import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
+import { findRelevantKnowledgeForChatbot } from "./restaurantChatbotKnowledge.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
 const MAX_HISTORY_MESSAGES = 8;
+const MAX_KNOWLEDGE_CHARS = 1800;
 
 const INTENTS = {
   menu: ["món", "menu", "ăn", "đồ ăn", "giá", "recommend", "gợi ý", "ngon", "bán chạy"],
@@ -504,6 +506,19 @@ const fetchReservations = async ({ restaurantId, message, user }) => {
     .lean();
 };
 
+const buildKnowledgePrompt = (knowledgeItems = []) => {
+  const lines = [];
+  let used = 0;
+  for (const item of knowledgeItems || []) {
+    const row = `- [${item.sourceType || "manual"}] ${item.title || ""} | category: ${item.category || "N/A"} | tags: ${Array.isArray(item.tags) ? item.tags.join(", ") : ""}\n${String(item.content || "").slice(0, 500)}`.trim();
+    if (!row) continue;
+    if (used + row.length > MAX_KNOWLEDGE_CHARS) break;
+    lines.push(row);
+    used += row.length;
+  }
+  return lines;
+};
+
 const buildContext = async ({ message, restaurantId, user }) => {
   const intent = classifyIntent(message);
   const menuPreferences = extractMenuPreferences(message);
@@ -581,21 +596,33 @@ const normalizeAiResult = (parsed, context) => {
   };
 };
 
-const callOpenAI = async ({ message, context, history }) => {
+const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-  const prompt = [
-    "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
-    "Không bịa món, giá, trạng thái món, coupon, chính sách.",
-    "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
-    "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
-    "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
-    "Không tự đặt món/thanh toán.",
-    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
-    "Không dùng markdown code fence.",
-    `CONTEXT: ${JSON.stringify({ restaurants: context.restaurants?.slice(0, 1), menuPreferences: context.menuPreferences, recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8), menuItems: context.menuItems?.slice(0, 8), coupons: context.coupons?.slice(0, 3), intent: context.intent })}`,
-  ].join("\n");
+   const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
+    const prompt = [
+      "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+      "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
+      "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+      "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
+      "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
+      "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+      "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
+      "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
+      "Không tự đặt món/thanh toán.",
+      "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+      "Không dùng markdown code fence.",
+      `CONTEXT: ${JSON.stringify({
+        restaurants: context.restaurants?.slice(0, 1),
+        menuPreferences: context.menuPreferences,
+        recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
+        menuItems: context.menuItems?.slice(0, 8),
+        coupons: context.coupons?.slice(0, 3),
+        intent: context.intent,
+      })}`,
+      knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
+    ].join("\n");
 
   try {
     const res = await fetch(OPENAI_ENDPOINT, {
@@ -835,10 +862,12 @@ export const handleRestaurantChatbotMessage = async ({
   }
 
   const context = await buildContext({ message: cleanMessage, restaurantId, user });
+  const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId, message: cleanMessage, limit: 4 });
   const aiResult = await callOpenAI({
     message: cleanMessage,
     context,
     history: persistedHistory.length ? persistedHistory : history,
+    knowledgeItems,
   });
   const responseData = aiResult || fallbackAnswer(context);
   if (responseData?.isFallback && aiSettings.fallbackMessage) responseData.answer = aiSettings.fallbackMessage;

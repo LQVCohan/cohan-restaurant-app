@@ -33,6 +33,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
   // item: { id, name, price (VND), modifierGroupIds: [ID!] }
   const [selected, setSelected] = useState({}); // { [groupId]: [optionId, ...] }
   const [totalPrice, setTotalPrice] = useState(0);
+  const [validationError, setValidationError] = useState("");
 
   // Query tất cả groups của nhà hàng => lọc theo item.modifierGroupIds
   const { data, loading, error } = useQuery(GET_MODIFIER_GROUPS, {
@@ -47,7 +48,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
     return data.modifierGroups.filter((g) => setIds.has(String(g.id)));
   }, [data, item]);
 
-  /** Khởi tạo chọn mặc định mỗi khi mở modal / đổi item / dữ liệu groups sẵn sàng */
+/** Khởi tạo chọn mặc định mỗi khi mở modal / đổi item / dữ liệu groups sẵn sàng */
   useEffect(() => {
     if (!isOpen || !item || groupsForItem.length === 0) return;
 
@@ -84,6 +85,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
 
   /** Chọn / bỏ chọn 1 option trong group */
   const toggleOption = useCallback((group, optionId) => {
+    setValidationError("");
     setSelected((prev) => {
       const next = { ...prev };
       const arr = Array.isArray(next[group.id]) ? [...next[group.id]] : [];
@@ -108,6 +110,12 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
   /** Áp dụng: trả kết quả lên cha */
   const handleApply = () => {
     if (!item) return;
+    const missingRequired = groupsForItem.filter((g) => g.required && !(selected[g.id] || []).length);
+    if (missingRequired.length) {
+      setValidationError(`Vui lòng chọn: ${missingRequired.map((g)=>g.name).join(", ")}`);
+      return;
+    }
+    setValidationError("");
     const newModifiers = [];
     let newModifiersPrice = 0;
 
@@ -117,9 +125,11 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
         const op = g.options?.find((x) => String(x.id) === String(opId));
         if (!op) return;
         newModifiers.push({
+          groupId: g.id,
+          optionId: op.id,
           groupName: g.name,
           optionName: op.name,
-          price: Number(op.priceDelta || 0), // đồng bộ format bạn đang dùng
+          price: Number(op.priceDelta || 0),
         });
         newModifiersPrice += Number(op.priceDelta || 0);
       });
@@ -146,6 +156,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
       </div>
 
       <div className="modifier-modal__content">
+        {validationError && <div className="modifier-validation-error" role="alert">{validationError}</div>}
         {loading ? (
           <div className="modifier-loading">Đang tải tuỳ chọn...</div>
         ) : error ? (

@@ -810,9 +810,9 @@ const MenuItemModal = ({
             </div>
             <div className="for-you-meta-section">
               <div className="for-you-meta-section__header">
-                <h5 className="for-you-meta-section__title">FOR YOU - Dữ liệu khẩu vị & dị ứng</h5>
+                <h5 className="for-you-meta-section__title">Thông tin khẩu vị & dị ứng</h5>
                 <p className="for-you-meta-section__description">
-                  Dữ liệu này giúp khách được gợi ý món phù hợp và được cảnh báo dị ứng trước khi đặt.
+                  Thông tin này giúp khách nhận gợi ý món phù hợp và được nhắc kiểm tra dị ứng trước khi đặt.
                 </p>
               </div>
               <div className="for-you-option-group">
@@ -860,7 +860,7 @@ const MenuItemModal = ({
                 </label>
               </div>
               <div className="for-you-meta-preview">
-                <div className="for-you-meta-preview__title">FOR YOU sẽ hiểu món này là:</div>
+                <div className="for-you-meta-preview__title">Hệ thống sẽ hiểu món này là:</div>
                 {hasForYouMetadata ? (
                   <ul>
                     <li>Gợi ý cho: {selectedDietLabels.length ? selectedDietLabels.join(" / ") : "Chưa khai báo"}</li>
@@ -868,7 +868,7 @@ const MenuItemModal = ({
                     <li>Lưu ý khẩu vị: {tasteNotes.join(", ")}</li>
                   </ul>
                 ) : (
-                  <p>Chưa có metadata FOR YOU. Khách vẫn có thể được gợi ý/cảnh báo bằng từ khóa trong tên và mô tả, nhưng độ chính xác sẽ thấp hơn.</p>
+                  <p>Chưa có thông tin khẩu vị/dị ứng. Khách vẫn có thể nhận gợi ý/cảnh báo theo từ khóa trong tên và mô tả, nhưng độ chính xác sẽ thấp hơn.</p>
                 )}
               </div>
               <div className="for-you-meta-help">Mẹo: Nếu món có tôm/cua/mực, hãy chọn “Hải sản”. Nếu có sữa/phô mai, chọn “Sữa / phô mai”. Nếu là món chay, chọn “Món chay / thuần chay”.</div>
