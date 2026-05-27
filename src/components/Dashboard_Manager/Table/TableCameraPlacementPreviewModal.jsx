@@ -13,6 +13,7 @@ import {
   saveCameraPlacement,
 } from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
+import { buildPreviewModelItemFromVisualConfig } from "./tableVisualConfigHelpers";
 
 const CAMERA_ERROR_MESSAGE =
   "Vui lòng cấp quyền camera hoặc dùng HTTPS.";
@@ -34,38 +35,6 @@ const getShapeFromModel = (modelItem) => {
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-export const buildPreviewModelItemFromVisualConfig = (visualConfig) => {
-  const config = visualConfig && typeof visualConfig === "object" ? visualConfig : {};
-  const modelKey = config.modelKey || "saved-model";
-  const modelLabel = config.modelLabel || config.label || "Mẫu bàn đã lưu";
-
-  return {
-    key: modelKey,
-    label: modelLabel,
-    tableType: config.tableType || null,
-    capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
-    customModelSpec: config.dimensions
-      ? {
-          name: modelLabel,
-          capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
-          widthCm: Number(config.dimensions.widthCm) || 0,
-          depthCm: Number(config.dimensions.depthCm) || 0,
-          heightCm: Number(config.dimensions.heightCm) || 0,
-          area: config.tableArea || mapTable3DTypeToArea(config.tableType),
-          shape: config.shape || "rect",
-        }
-      : null,
-  };
-};
-
-
-export const formatVisualConfigSavedAt = (savedAt) => {
-  if (!savedAt) return "Không rõ thời gian lưu";
-  const date = new Date(savedAt);
-  if (Number.isNaN(date.getTime())) return "Không rõ thời gian lưu";
-  return date.toLocaleString("vi-VN");
-};
 const TableCameraPlacementPreviewModal = ({
   open,
   onClose,
@@ -273,7 +242,7 @@ const TableCameraPlacementPreviewModal = ({
         {backendConfigNote && <p className="camera-placement-modal__note">{backendConfigNote}</p>}
 
         <div className="camera-placement-modal__actions">
-          <Button type="button" variant="secondary" onClick={onClose}>Đóng</Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isConfirming}>Đóng</Button>
           <Button
             type="button"
             variant="primary"

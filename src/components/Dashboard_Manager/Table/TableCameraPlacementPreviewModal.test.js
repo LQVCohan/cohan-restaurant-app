@@ -3,7 +3,7 @@ import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/tab
 import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
-} from "./TableCameraPlacementPreviewModal";
+} from "./tableVisualConfigHelpers";
 
 describe("buildPreviewModelItemFromVisualConfig", () => {
   it("maps complete visualConfig to modelItem", () => {

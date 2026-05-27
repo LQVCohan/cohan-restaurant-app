@@ -24,10 +24,11 @@ import {
   getTableStatusConfig,
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
-import TableCameraPlacementPreviewModal, {
+import TableCameraPlacementPreviewModal from "@/components/Dashboard_Manager/Table/TableCameraPlacementPreviewModal";
+import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
-} from "@/components/Dashboard_Manager/Table/TableCameraPlacementPreviewModal";
+} from "@/components/Dashboard_Manager/Table/tableVisualConfigHelpers";
 import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
