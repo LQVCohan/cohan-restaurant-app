@@ -12,6 +12,7 @@ import {
 } from "../../../models/index.js";
 import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 import { findRelevantKnowledgeForChatbot } from "./restaurantChatbotKnowledge.service.js";
+import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSuggestion.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
@@ -730,6 +731,34 @@ export const handleRestaurantChatbotMessage = async ({
   finalResponse.handoffMessage = handoffDecision.suggested
     ? "Nếu bạn cần hỗ trợ thêm, bạn có thể bấm 'Gặp nhân viên' để được hỗ trợ bởi người thật."
     : null;
+
+  const shouldRecordKnowledgeGap = Boolean(
+    aiSettings.enabled && restaurantId && cleanMessage && (
+      finalResponse.isFallback ||
+      (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) ||
+      !knowledgeItems.length ||
+      finalResponse.handoffSuggested
+    )
+  );
+
+  if (shouldRecordKnowledgeGap) {
+    try {
+      let triggerType = "fallback";
+      if (!knowledgeItems.length) triggerType = "no_knowledge_match";
+      else if (finalResponse.handoffSuggested) triggerType = "handoff";
+      else if (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) triggerType = "low_confidence";
+
+      await recordKnowledgeGapSuggestion({
+        restaurantId,
+        question: cleanMessage,
+        triggerType,
+        confidence: finalResponse.confidence,
+        conversationId: persistedConversation ? String(persistedConversation._id) : null,
+      });
+    } catch (err) {
+      console.warn("[ai-chatbot] record knowledge suggestion failed", err?.message || err);
+    }
+  }
 
   if (persistedConversation) {
     try {
