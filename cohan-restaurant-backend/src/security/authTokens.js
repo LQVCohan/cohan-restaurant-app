@@ -58,6 +58,10 @@ export function clearRefreshCookie(reply) {
   });
 }
 
+export function hashRefreshToken(rawToken) {
+  return crypto.createHash("sha256").update(String(rawToken || "")).digest("hex");
+}
+
 export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
   const raw = crypto.randomBytes(48).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
@@ -67,10 +71,15 @@ export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
   return { raw, tokenHash };
 }
 
-export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip }) {
-  const currentHash = crypto.createHash("sha256").update(String(currentRawToken || "")).digest("hex");
+export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip, logger }) {
+  const currentHash = hashRefreshToken(currentRawToken);
   const existing = await RefreshToken.findOne({ tokenHash: currentHash });
-  if (!existing || existing.revokedAt || existing.expiresAt.getTime() <= Date.now()) return null;
+  if (!existing) return null;
+  if (existing.revokedAt) {
+    await handleRefreshTokenReuse(existing, logger);
+    return null;
+  }
+  if (existing.expiresAt.getTime() <= Date.now()) return null;
   const user = await User.findById(existing.userId).populate("role").lean({ virtuals: true });
   if (!user || user.status !== "active") return null;
   const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip });
@@ -83,9 +92,39 @@ export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip
 
 export async function revokeRefreshToken(rawToken) {
   if (!rawToken) return;
-  const tokenHash = crypto.createHash("sha256").update(String(rawToken)).digest("hex");
+  const tokenHash = hashRefreshToken(rawToken);
   await RefreshToken.updateOne(
     { tokenHash, revokedAt: null },
     { $set: { revokedAt: new Date() } },
   );
+}
+
+export async function revokeRefreshTokenFamilyFromHash(tokenHash) {
+  const visited = new Set();
+  let currentHash = tokenHash;
+  while (currentHash && !visited.has(currentHash)) {
+    visited.add(currentHash);
+    const node = await RefreshToken.findOne({ tokenHash: currentHash });
+    if (!node) break;
+    if (!node.revokedAt) {
+      node.revokedAt = new Date();
+      await node.save();
+    }
+    currentHash = node.replacedByTokenHash || null;
+  }
+}
+
+export async function handleRefreshTokenReuse(existing, logger = console) {
+  if (!existing?.revokedAt) return;
+  logger.warn?.(
+    {
+      userId: String(existing.userId || ""),
+      tokenHashPrefix: String(existing.tokenHash || "").slice(0, 12),
+      replacedTokenHashPrefix: String(existing.replacedByTokenHash || "").slice(0, 12),
+    },
+    "Refresh token reuse detected; revoking token family",
+  );
+  if (existing.replacedByTokenHash) {
+    await revokeRefreshTokenFamilyFromHash(existing.replacedByTokenHash);
+  }
 }

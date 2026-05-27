@@ -139,7 +139,24 @@ export async function createServer() {
 
   await app.register(uploadRoutes, { prefix: "/api" });
 
-  app.post("/api/auth/refresh", async (req, reply) => {
+  const RL_AUTH_REFRESH_MAX = Number(process.env.RL_AUTH_REFRESH_MAX || 30);
+  const RL_AUTH_REFRESH_WINDOW = process.env.RL_AUTH_REFRESH_WINDOW || "1 minute";
+  const RL_AUTH_LOGOUT_MAX = Number(process.env.RL_AUTH_LOGOUT_MAX || 60);
+  const RL_AUTH_LOGOUT_WINDOW = process.env.RL_AUTH_LOGOUT_WINDOW || "1 minute";
+  const allowNoOriginAuthCookieRequests = String(process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN || "true").toLowerCase() !== "false";
+  const isAllowedOrigin = (origin) => allowedOrigins.includes(String(origin || ""));
+  const enforceAuthCookieOrigin = (req, reply) => {
+    const origin = req.headers.origin;
+    if (!origin) return allowNoOriginAuthCookieRequests;
+    if (isAllowedOrigin(origin)) return true;
+    reply.code(403).send({ ok: false, message: "Forbidden" });
+    return false;
+  };
+
+  app.post("/api/auth/refresh", {
+    config: { rateLimit: { max: RL_AUTH_REFRESH_MAX, timeWindow: RL_AUTH_REFRESH_WINDOW } },
+  }, async (req, reply) => {
+    if (!enforceAuthCookieOrigin(req, reply)) return;
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     const currentToken = req.cookies?.[cookieName];
     if (!currentToken) {
@@ -151,6 +168,7 @@ export async function createServer() {
       reply,
       userAgent: req.headers["user-agent"],
       ip: req.ip,
+      logger: req.log,
     });
     if (!result) {
       clearRefreshCookie(reply);
@@ -159,7 +177,10 @@ export async function createServer() {
     return reply.send({ ok: true, token: result.token, user: result.user });
   });
 
-  app.post("/api/auth/logout", async (req, reply) => {
+  app.post("/api/auth/logout", {
+    config: { rateLimit: { max: RL_AUTH_LOGOUT_MAX, timeWindow: RL_AUTH_LOGOUT_WINDOW } },
+  }, async (req, reply) => {
+    if (!enforceAuthCookieOrigin(req, reply)) return;
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     await revokeRefreshToken(req.cookies?.[cookieName]);
     clearRefreshCookie(reply);

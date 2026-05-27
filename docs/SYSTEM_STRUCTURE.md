@@ -357,3 +357,14 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - New AI feedback service + GraphQL query/mutations for submit/review/convert workflow.
 - Widget now allows guest per-answer feedback and prevents duplicate feedback in-session.
 - Manager knowledge page now includes feedback review section.
+
+## 11. Auth refresh-token hardening (PR #832+)
+- Refresh token tiếp tục là opaque random string, lưu client bằng HttpOnly cookie path `/api/auth`, và chỉ lưu hash (`tokenHash`) trong DB.
+- Refresh flow quay vòng token (`rotateRefreshToken`): token cũ bị `revokedAt`, token mới lưu qua `replacedByTokenHash`.
+- Reuse detection: nếu refresh token cũ đã revoked bị dùng lại, backend coi là dấu hiệu token theft và revoke toàn bộ chuỗi hậu duệ (token family) qua `replacedByTokenHash`.
+- API trả lỗi generic `Authentication failed`; server chỉ log metadata an toàn (không log raw refresh token).
+- Endpoint `/api/auth/refresh` và `/api/auth/logout` có Origin guard: nếu có `Origin` phải nằm trong `CORS_ORIGINS`; no-Origin được điều khiển bởi `ALLOW_AUTH_COOKIE_NO_ORIGIN` (mặc định cho phép để không phá local/non-browser).
+- Refresh token có TTL index MongoDB tại `expiresAt` (`expireAfterSeconds: 0`) để dọn bản ghi hết hạn.
+- Rate limit theo route:
+  - `POST /api/auth/refresh`: `RL_AUTH_REFRESH_MAX` (default 30) / `RL_AUTH_REFRESH_WINDOW` (default `1 minute`).
+  - `POST /api/auth/logout`: `RL_AUTH_LOGOUT_MAX` (default 60) / `RL_AUTH_LOGOUT_WINDOW` (default `1 minute`).
