@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import mercurius from "mercurius";
 import rateLimit from "@fastify/rate-limit";
+import cookie from "@fastify/cookie";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import process from "process";
 import crypto from "crypto";
@@ -33,6 +34,7 @@ import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../se
 import { PERMISSIONS } from "../constants/permissions.js";
 import { ChatThread, Order, OrderTracking } from "../../models/index.js";
 import mongoose from "mongoose";
+import { clearRefreshCookie, revokeRefreshToken, rotateRefreshToken } from "../security/authTokens.js";
 
 export async function authorizeChatThreadJoin({ socketUser, threadId, findThreadById, requireRestaurantPermissionFn, permissionCode }) {
   if (!socketUser?.id || !threadId) return { ok: false, code: "FORBIDDEN" };
@@ -78,6 +80,7 @@ export async function createServer() {
     credentials: true,
     exposedHeaders: ["Content-Disposition"],
   });
+  await app.register(cookie);
 
   const inProduction = process.env.NODE_ENV === "production";
   const cspConnect = ["'self'", ...allowedOrigins];
@@ -135,6 +138,33 @@ export async function createServer() {
   });
 
   await app.register(uploadRoutes, { prefix: "/api" });
+
+  app.post("/api/auth/refresh", async (req, reply) => {
+    const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
+    const currentToken = req.cookies?.[cookieName];
+    if (!currentToken) {
+      clearRefreshCookie(reply);
+      return reply.code(401).send({ ok: false, message: "Authentication failed" });
+    }
+    const result = await rotateRefreshToken({
+      currentRawToken: currentToken,
+      reply,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip,
+    });
+    if (!result) {
+      clearRefreshCookie(reply);
+      return reply.code(401).send({ ok: false, message: "Authentication failed" });
+    }
+    return reply.send({ ok: true, token: result.token, user: result.user });
+  });
+
+  app.post("/api/auth/logout", async (req, reply) => {
+    const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
+    await revokeRefreshToken(req.cookies?.[cookieName]);
+    clearRefreshCookie(reply);
+    return reply.send({ ok: true });
+  });
 
   app.post("/api/payments/reservations/:reservationId/create", async (req, reply) => {
     try {

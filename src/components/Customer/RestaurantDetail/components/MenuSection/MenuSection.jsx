@@ -509,10 +509,20 @@ const MenuSection = ({
         </div>
       )}
 
-      <button type="button" className="cart-fab" onClick={() => setIsCartOpen(true)}>
+      <button type="button" className="cart-fab cart-fab--desktop" onClick={() => setIsCartOpen(true)}>
         <ShoppingCart size={24} />
         {getTotalItems() > 0 && <span className="count">{getTotalItems()}</span>}
       </button>
+
+      {getTotalItems() > 0 && (
+        <button
+          type="button"
+          className="mobile-cart-bar"
+          onClick={() => setIsCartOpen(true)}
+        >
+          <span>Xem giỏ hàng • {getTotalItems()} món • {formatPrice(getTotalPrice())}</span>
+        </button>
+      )}
 
       <Cart
         isOpen={isCartOpen}

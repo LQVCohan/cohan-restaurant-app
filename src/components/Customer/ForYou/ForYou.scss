@@ -246,3 +246,77 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     .recommendation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 }
+
+.foryou-container {
+  .food-preference-nudge {
+    background: #fff8f1;
+    border: 1px solid #ffdcbf;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .food-preference-nudge__eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #b45309;
+    margin-bottom: 6px;
+  }
+
+  .food-preference-nudge__content h3 {
+    margin: 0 0 6px;
+    font-size: 17px;
+  }
+
+  .food-preference-nudge__content p {
+    margin: 0;
+    color: $text-gray;
+    font-size: 13px;
+  }
+
+  .food-preference-nudge__chips {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .food-preference-nudge__chip {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #f9cfa5;
+    color: #92400e;
+  }
+
+  .food-preference-nudge__action {
+    border: none;
+    background: #111827;
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: fit-content;
+  }
+}
+
+@media (min-width: 768px) {
+  .foryou-container {
+    .food-preference-nudge {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .food-preference-nudge__action {
+      flex-shrink: 0;
+    }
+  }
+}

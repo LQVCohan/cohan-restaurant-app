@@ -8,8 +8,8 @@ type CartItem {
   restaurantId: ID!
   menuItemId: ID!
 
-  name: String!
-  price: Float!
+  name: String
+  price: Float
   quantity: Int!
 
   thumbImage: String
@@ -91,8 +91,8 @@ input AddCartItemInput {
   restaurantId: ID!
   menuItemId: ID!
 
-  name: String!
-  price: Float!
+  name: String
+  price: Float
   quantity: Int = 1
 
   thumbImage: String
