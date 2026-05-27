@@ -123,7 +123,13 @@ function buildDemandItems(input) {
     const endTime = parseTimeOnDay(day, template.endTime || template.end || template.to, shiftType === "evening" ? 22 : 16);
     if (endTime <= startTime) endTime.setDate(endTime.getDate() + 1);
 
-    const roles = Array.isArray(template.requiredRoles) && template.requiredRoles.length
+    const hasDateAwareTemplate = Boolean(template?.date);
+    const hasExplicitRequiredRoles = Array.isArray(template.requiredRoles);
+    if (hasDateAwareTemplate && hasExplicitRequiredRoles && template.requiredRoles.length === 0) {
+      return;
+    }
+
+    const roles = hasExplicitRequiredRoles
       ? template.requiredRoles.map(normalizeRole).filter(Boolean)
       : getRequiredRolesForShift(requiredRolesByShift, shiftType);
     const normalizedRoles = roles.length ? roles : [""];

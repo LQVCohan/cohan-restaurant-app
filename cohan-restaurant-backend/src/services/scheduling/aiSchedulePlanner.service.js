@@ -67,6 +67,8 @@ function buildRecommendationsFromAssistant(assistant = {}) {
       requiredRoles[shiftType].push("server", "cook");
     }
 
+    if (rowRoles.length === 0) continue;
+
     recommendedShiftTemplates.push({
       date: row?.date || null,
       shiftType,

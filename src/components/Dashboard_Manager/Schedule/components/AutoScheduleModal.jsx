@@ -146,7 +146,7 @@ const AutoScheduleModal = ({
                 <span>Phạm vi trợ lý</span>
               </div>
               <label>
-                <span>Phạm vi tạo lịch</span>
+                <span>Số ngày phân tích nhu cầu</span>
                 <select
                   value={config.horizonDays}
                   onChange={(event) =>
@@ -165,7 +165,7 @@ const AutoScheduleModal = ({
                 </select>
               </label>
               <p className="config-hint">
-                Hệ thống tạo preview theo tuần/ngày bạn đang xem trong lịch.
+                Preview tạo theo ngày/tuần đang xem; số ngày này chỉ dùng để mở rộng dữ liệu dự báo nhu cầu.
               </p>
             </div>
 
