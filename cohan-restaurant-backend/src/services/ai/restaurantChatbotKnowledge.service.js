@@ -36,6 +36,20 @@ const ensureRestaurantPermission = async (ctx, restaurantId, permissionCode) => 
   await requireRestaurantPermission(ctx, restaurantId, permissionCode);
 };
 
+
+const toKnowledgeDto = (item) => {
+  if (!item) return null;
+  return {
+    ...item,
+    id: String(item._id || item.id || ""),
+    restaurantId: item.restaurantId ? String(item.restaurantId) : "",
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    enabled: item.enabled !== false,
+    priority: Number(item.priority || 0),
+    sourceType: item.sourceType || "manual",
+  };
+};
+
 const sanitizeInput = (input = {}, { partial = false } = {}) => {
   const patch = {};
   if (!partial || input.title != null) {
@@ -69,7 +83,8 @@ export async function listRestaurantAiChatbotKnowledge({ restaurantId, filter, c
     const search = clean(filter.search, 80);
     if (search) q.$text = { $search: search };
   }
-  return AiChatbotKnowledgeItem.find(q).sort(filter?.search ? { score: { $meta: "textScore" }, priority: -1, updatedAt: -1 } : { priority: -1, updatedAt: -1 }).lean();
+  const rows = await AiChatbotKnowledgeItem.find(q).sort(filter?.search ? { score: { $meta: "textScore" }, priority: -1, updatedAt: -1 } : { priority: -1, updatedAt: -1 }).lean();
+  return rows.map(toKnowledgeDto);
 }
 
 export async function getRestaurantAiChatbotKnowledgeItem({ id, ctx }) {
@@ -78,7 +93,7 @@ export async function getRestaurantAiChatbotKnowledgeItem({ id, ctx }) {
   const item = await AiChatbotKnowledgeItem.findById(id).lean();
   if (!item) return null;
   await ensureRestaurantPermission(ctx, item.restaurantId, PERMISSIONS.REPORT_READ);
-  return item;
+  return toKnowledgeDto(item);
 }
 
 export async function createRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
@@ -90,7 +105,7 @@ export async function createRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
     createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
     updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
   });
-  return doc.toObject();
+  return toKnowledgeDto(doc.toObject());
 }
 
 export async function updateRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
@@ -100,7 +115,7 @@ export async function updateRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
   await ensureRestaurantPermission(ctx, found.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
   Object.assign(found, sanitizeInput(input, { partial: true }), { updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
   await found.save();
-  return found.toObject();
+  return toKnowledgeDto(found.toObject());
 }
 
 export async function deleteRestaurantAiChatbotKnowledgeItem({ id, ctx }) {
