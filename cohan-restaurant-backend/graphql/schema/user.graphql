@@ -2745,6 +2745,23 @@ type PublicStaffOption {
   avatarUrl: String
 }
 
+input AiSchedulePlannerPreviewInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  requiredRoles: JSON
+  mandatoryShiftRoles: JSON
+  weeklyHoursCap: Float
+  respectAvailability: Boolean = true
+  avoidOvertime: Boolean = true
+  shiftConfig: JSON
+  shiftTemplates: JSON
+  allowOverride: Boolean = false
+  overrideReason: String
+  horizonDays: Int = 2
+  timezone: String = "Asia/Ho_Chi_Minh"
+}
+
 type AiSchedulePlannerExplanation {
   shiftKey: String
   employeeId: ID
@@ -2916,7 +2933,7 @@ type Query {
     timezone: String = "Asia/Ho_Chi_Minh"
   ): StaffSchedulingAssistant!
   aiSchedulePlannerPreview(
-    input: AutoSchedulePreviewInput!
+    input: AiSchedulePlannerPreviewInput!
   ): AiSchedulePlannerPayload!
   myWalletTransactions(limit: Int = 20, offset: Int = 0): [WalletTransaction!]!
   shiftAcknowledgements(

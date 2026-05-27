@@ -25,6 +25,13 @@ function clamp01(v) {
   return Math.max(0, Math.min(1, Number(v || 0)));
 }
 
+const SHIFT_TEMPLATE_TIMES = {
+  morning: { startTime: "06:00", endTime: "12:00" },
+  afternoon: { startTime: "12:00", endTime: "18:00" },
+  evening: { startTime: "18:00", endTime: "23:00" },
+  full_day: { startTime: "06:00", endTime: "23:00" },
+};
+
 function buildRecommendationsFromAssistant(assistant = {}) {
   const templatesByShiftType = new Map();
   const requiredRoles = {};
@@ -32,22 +39,24 @@ function buildRecommendationsFromAssistant(assistant = {}) {
   for (const row of assistant.shifts || []) {
     const shiftType = normalizeShiftType(row?.shiftType);
     if (!templatesByShiftType.has(shiftType)) {
+      const fallbackTime = SHIFT_TEMPLATE_TIMES[shiftType] || SHIFT_TEMPLATE_TIMES.morning;
       templatesByShiftType.set(shiftType, {
         shiftType,
-        startTime: row?.window?.startTime || row?.startTime || (shiftType === "evening" ? "17:00" : "08:00"),
-        endTime: row?.window?.endTime || row?.endTime || (shiftType === "evening" ? "22:00" : "16:00"),
+        startTime: row?.window?.startTime || row?.startTime || fallbackTime.startTime,
+        endTime: row?.window?.endTime || row?.endTime || fallbackTime.endTime,
       });
     }
 
     const roleRows = Array.isArray(row?.recommendedRoles) ? row.recommendedRoles : [];
     for (const rr of roleRows) {
       const role = normalizeRole(rr?.role);
-      const requiredCount = Number(rr?.required || rr?.requiredCount || 0);
+      const requiredCountRaw = Number(rr?.required);
+      const requiredCount = Number.isFinite(requiredCountRaw) ? Math.max(0, Math.floor(requiredCountRaw)) : 0;
       const delta = Number(rr?.delta || 0);
       if (!role) continue;
       if (delta < 0 || requiredCount > 0) {
         if (!Array.isArray(requiredRoles[shiftType])) requiredRoles[shiftType] = [];
-        if (!requiredRoles[shiftType].includes(role)) requiredRoles[shiftType].push(role);
+        for (let i = 0; i < requiredCount; i += 1) requiredRoles[shiftType].push(role);
       }
     }
 
@@ -85,11 +94,11 @@ function buildRiskWarnings(preview, assistant) {
   return warnings;
 }
 
-function buildExplanations(preview, fallbackUsed) {
+function buildExplanations(preview) {
   return (preview?.plannedAssignments || []).map((item) => {
     const warningCount = Array.isArray(item?.warnings) ? item.warnings.length : 0;
     const validationCount = Array.isArray(item?.validationIssues) ? item.validationIssues.length : 0;
-    let confidence = clamp01(0.88 - warningCount * 0.12 - validationCount * 0.08 - (fallbackUsed ? 0.15 : 0));
+    const confidence = clamp01(0.88 - warningCount * 0.12 - validationCount * 0.08);
     const factors = [
       "Đúng vai trò theo nhu cầu ca",
       "Không trùng ca trong preview",
@@ -104,7 +113,16 @@ function buildExplanations(preview, fallbackUsed) {
       shiftKey: item?.shiftKey || null,
       employeeId: item?.employeeId || null,
       employeeName: item?.employeeName || null,
-      reason: "Đề xuất dựa trên vai trò ca, ràng buộc lịch và độ phù hợp tổng thể.",
+      reason: (() => {
+        const base = item?.requiredRole
+          ? `Đề xuất nhân viên cho vai trò ${item.requiredRole} dựa trên ràng buộc lịch và độ phù hợp.`
+          : "Đề xuất nhân viên dựa trên ràng buộc lịch và độ phù hợp tổng thể.";
+        const scorePart = Number.isFinite(Number(item?.score))
+          ? ` Điểm phù hợp ${Number(item.score).toFixed(2)}.`
+          : "";
+        const warningPart = warningCount > 0 ? " Có cảnh báo cần rà soát trước khi áp dụng." : "";
+        return `${base}${scorePart}${warningPart}`.trim();
+      })(),
       factors,
       confidence: Number(confidence.toFixed(3)),
     };
@@ -126,17 +144,27 @@ export async function buildAiSchedulePlannerPreview(input, ctx = {}) {
   });
 
   const { recommendedShiftTemplates, recommendedRoles } = buildRecommendationsFromAssistant(assistant);
-  const fallbackUsed = Boolean(assistant?.summary?.fallbackUsed || assistant?.metadata?.fallbackUsed || !(assistant?.forecast?.hourlyForecast || []).length);
+  const assistantMeta = assistant?.meta || {};
+  const fallbackUsed = Boolean(assistantMeta.fallbackUsed);
+  const basedOnForecast = assistantMeta.basedOnForecast === true;
 
-  const enrichedInput = {
-    ...input,
+  const previewInput = {
     restaurantId: String(restaurantId),
-    shiftTemplates: Array.isArray(input?.shiftTemplates) && input.shiftTemplates.length ? input.shiftTemplates : recommendedShiftTemplates,
+    periodStart: input?.periodStart,
+    periodEnd: input?.periodEnd,
     requiredRoles: input?.requiredRoles && Object.keys(input.requiredRoles || {}).length ? input.requiredRoles : recommendedRoles,
+    mandatoryShiftRoles: input?.mandatoryShiftRoles,
+    weeklyHoursCap: input?.weeklyHoursCap,
+    respectAvailability: input?.respectAvailability,
+    avoidOvertime: input?.avoidOvertime,
+    shiftConfig: input?.shiftConfig,
+    shiftTemplates: Array.isArray(input?.shiftTemplates) && input.shiftTemplates.length ? input.shiftTemplates : recommendedShiftTemplates,
+    allowOverride: input?.allowOverride,
+    overrideReason: input?.overrideReason,
   };
 
-  const preview = await buildAutoSchedulePreviewBackend(enrichedInput, ctx);
-  const explanations = buildExplanations(preview, fallbackUsed);
+  const preview = await buildAutoSchedulePreviewBackend(previewInput, ctx);
+  const explanations = buildExplanations(preview);
   const riskWarnings = buildRiskWarnings(preview, assistant);
 
   const baseConfidence = explanations.length
@@ -147,8 +175,10 @@ export async function buildAiSchedulePlannerPreview(input, ctx = {}) {
   return {
     preview,
     aiSummary: fallbackUsed
-      ? "AI Planner đã tạo preview theo rule-based fallback do dữ liệu dự báo/hiệu suất chưa đầy đủ."
-      : "AI Planner đã tạo preview dựa trên forecast, performance và availability hiện có.",
+      ? "AI Planner đã tạo preview bằng dữ liệu tham khảo vì dữ liệu dự báo chưa đủ ổn định."
+      : basedOnForecast
+        ? "AI Planner đã tạo preview dựa trên forecast, performance và availability hiện có."
+        : "AI Planner đã tạo preview dựa trên availability, policy và dữ liệu vận hành hiện có.",
     confidence,
     generatedFrom: ["staffSchedulingAssistant", "autoSchedulePreviewBackend", "shiftAssignmentValidation"],
     recommendedShiftTemplates,
