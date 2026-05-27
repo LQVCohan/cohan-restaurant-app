@@ -873,8 +873,6 @@ const AUTO_REQUIRED_ROLE_OPTIONS = [
   { role: "storekeeper", label: "Kho" },
 ];
 
-const DEFAULT_AUTO_REQUIRED_ROLES = ["server", "cook", "cashier"];
-
 const AUTO_SHIFT_LABELS = {
   morning: "Ca sáng",
   afternoon: "Ca chiều",
@@ -1146,7 +1144,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     weeklyHoursCap: 40,
     respectAvailability: true,
     avoidOvertime: true,
-    requiredRoles: DEFAULT_AUTO_REQUIRED_ROLES,
   });
   const [assistantPayload, setAssistantPayload] = useState(null);
   const [aiPlannerPayload, setAiPlannerPayload] = useState(null);
@@ -2598,14 +2595,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       })),
     [groupedPublishWarnings.minHoursIssues],
   );
-  const assistantForPreview = useMemo(
-    () =>
-      mergeAssistantWithRequiredRoles(
-        assistantPayload,
-        autoScheduleConfig.requiredRoles,
-      ),
-    [assistantPayload, autoScheduleConfig.requiredRoles],
-  );
+  const assistantForPreview = useMemo(() => assistantPayload, [assistantPayload]);
   const rawAutoSchedulePreview = useMemo(
     () =>
       buildAutoSchedulePreview({
@@ -2717,10 +2707,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [effectiveRestaurantId]);
   useEffect(() => {
     if (isAutoScheduleOpen && assistantPayload) return;
-    setAutoScheduleConfig((prev) => ({
-      ...prev,
-      requiredRoles: policyMandatoryShiftRoles,
-    }));
   }, [policyMandatoryShiftRoles, isAutoScheduleOpen, assistantPayload]);
   const handleRestaurantChange = (nextRestaurantId) => {
     const nextRestaurant = restaurantOptions.find(
@@ -4080,18 +4066,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantAvailabilityWindows([]);
     setAssistantAvailabilitySubmissions([]);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const fallbackStart = startOfDay(currentWeekStart || currentDate || new Date());
+    const fallbackEnd = endOfDay(currentWeekEnd || currentDate || new Date());
 
-    const analysisEnd = addDays(
-      today,
-      Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1),
-    );
+    const analysisStart =
+      viewMode === "day"
+        ? startOfDay(currentDate || new Date())
+        : fallbackStart;
+    const analysisEnd =
+      viewMode === "day"
+        ? endOfDay(currentDate || new Date())
+        : fallbackEnd;
 
     try {
       const aiInput = {
         restaurantId: effectiveRestaurantId,
-        periodStart: today.toISOString(),
+        periodStart: analysisStart.toISOString(),
         periodEnd: analysisEnd.toISOString(),
         weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
         respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
@@ -4100,14 +4090,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
         timezone: SCHEDULING_TIMEZONE,
         shiftConfig: configuredShiftTypes,
       };
-      if (
-        autoScheduleConfig.requiredRoles &&
-        typeof autoScheduleConfig.requiredRoles === "object" &&
-        !Array.isArray(autoScheduleConfig.requiredRoles) &&
-        Object.keys(autoScheduleConfig.requiredRoles).length > 0
-      ) {
-        aiInput.requiredRoles = autoScheduleConfig.requiredRoles;
-      }
 
       const backendResult = await loadAiSchedulePlannerPreview({ variables: { input: aiInput } });
       const payload = backendResult?.data?.aiSchedulePlannerPreview || null;
@@ -4397,7 +4379,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             requiredRoles:
               autoScheduleSource === "ai" && aiPlannerPayload?.recommendedRoles
                 ? aiPlannerPayload.recommendedRoles
-                : autoScheduleConfig.requiredRoles,
+                : policyMandatoryShiftRoles,
             weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
             respectAvailability: Boolean(
               autoScheduleConfig.respectAvailability,

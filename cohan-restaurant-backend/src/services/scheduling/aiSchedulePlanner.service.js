@@ -37,21 +37,15 @@ const SHIFT_TEMPLATE_TIMES = {
 };
 
 function buildRecommendationsFromAssistant(assistant = {}) {
-  const templatesByShiftType = new Map();
   const requiredRoles = {};
+  const recommendedShiftTemplates = [];
 
   for (const row of assistant.shifts || []) {
     const shiftType = normalizeShiftType(row?.shiftType);
-    if (!templatesByShiftType.has(shiftType)) {
-      const fallbackTime = SHIFT_TEMPLATE_TIMES[shiftType] || SHIFT_TEMPLATE_TIMES.morning;
-      templatesByShiftType.set(shiftType, {
-        shiftType,
-        startTime: row?.window?.startTime || row?.startTime || fallbackTime.startTime,
-        endTime: row?.window?.endTime || row?.endTime || fallbackTime.endTime,
-      });
-    }
-
+    const fallbackTime = SHIFT_TEMPLATE_TIMES[shiftType] || SHIFT_TEMPLATE_TIMES.morning;
     const roleRows = Array.isArray(row?.recommendedRoles) ? row.recommendedRoles : [];
+    const rowRoles = [];
+
     for (const rr of roleRows) {
       const role = normalizeRole(rr?.role);
       const requiredCountRaw = Number(rr?.required);
@@ -60,17 +54,30 @@ function buildRecommendationsFromAssistant(assistant = {}) {
       if (!role) continue;
       if (delta < 0 || requiredCount > 0) {
         if (!Array.isArray(requiredRoles[shiftType])) requiredRoles[shiftType] = [];
-        for (let i = 0; i < requiredCount; i += 1) requiredRoles[shiftType].push(role);
+        for (let i = 0; i < requiredCount; i += 1) {
+          requiredRoles[shiftType].push(role);
+          rowRoles.push(role);
+        }
       }
     }
 
-    if ((!requiredRoles[shiftType] || requiredRoles[shiftType].length === 0) && (Number(row?.expectedOrders || 0) > 0 || Number(row?.expectedGuests || 0) > 0)) {
-      requiredRoles[shiftType] = ["server", "cook"];
+    if (rowRoles.length === 0 && (Number(row?.expectedOrders || 0) > 0 || Number(row?.expectedGuests || 0) > 0)) {
+      rowRoles.push("server", "cook");
+      if (!Array.isArray(requiredRoles[shiftType])) requiredRoles[shiftType] = [];
+      requiredRoles[shiftType].push("server", "cook");
     }
+
+    recommendedShiftTemplates.push({
+      date: row?.date || null,
+      shiftType,
+      startTime: row?.window?.startTime || row?.startTime || fallbackTime.startTime,
+      endTime: row?.window?.endTime || row?.endTime || fallbackTime.endTime,
+      requiredRoles: rowRoles,
+    });
   }
 
   return {
-    recommendedShiftTemplates: [...templatesByShiftType.values()],
+    recommendedShiftTemplates,
     recommendedRoles: requiredRoles,
   };
 }
@@ -181,10 +188,10 @@ export async function buildAiSchedulePlannerPreview(input, ctx = {}) {
   return {
     preview,
     aiSummary: fallbackUsed
-      ? "AI Planner đã tạo preview bằng dữ liệu tham khảo vì dữ liệu dự báo chưa đủ ổn định."
+      ? "Dữ liệu dự báo chưa đủ ổn định nên hệ thống dùng dữ liệu tham khảo để tạo preview."
       : basedOnForecast
-        ? "AI Planner đã tạo preview dựa trên forecast, performance và availability hiện có."
-        : "AI Planner đã tạo preview dựa trên availability, policy và dữ liệu vận hành hiện có.",
+        ? "Hệ thống đã tạo preview dựa trên forecast, hiệu suất và availability hiện có."
+        : "Hệ thống đã tạo preview dựa trên availability, policy và dữ liệu vận hành hiện có.",
     confidence,
     generatedFrom: ["staffSchedulingAssistant", "autoSchedulePreviewBackend", "shiftAssignmentValidation"],
     recommendedShiftTemplates,
