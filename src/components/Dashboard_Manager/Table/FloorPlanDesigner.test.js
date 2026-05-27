@@ -167,6 +167,42 @@ describe("FloorPlanDesigner helpers", () => {
     expect(stats.mappedTableCount).toBe(6);
     expect(warnings[0]).toContain("Hệ thống giữ lại các bàn thật hiện có");
   });
+
+  it("generate twice before saving does not preserve old tmp_ai local tables", () => {
+    const previousItems = [
+      {
+        id: "tmp_ai_111_0",
+        type: "table",
+        isRealTable: true,
+        isLocalOnly: true,
+        source: "smart_layout",
+        x: 1,
+        y: 1,
+      },
+      {
+        id: "tmp_ai_111_1",
+        type: "table",
+        isRealTable: true,
+        isLocalOnly: true,
+        source: "smart_layout",
+        x: 2,
+        y: 2,
+      },
+    ];
+    const { nextItems } = applySmartLayoutToItems({
+      previousItems,
+      generatedTables: [{ x: 10, y: 10 }, { x: 20, y: 20 }],
+      generatedDecor: [],
+      startX: 0,
+      startY: 0,
+      now: 222,
+    });
+    const tableItems = nextItems.filter((item) => item.isRealTable);
+    expect(tableItems).toHaveLength(2);
+    expect(tableItems.some((item) => item.id === "tmp_ai_111_0")).toBe(false);
+    expect(tableItems.some((item) => item.id === "tmp_ai_111_1")).toBe(false);
+    expect(tableItems.every((item) => String(item.id).startsWith("tmp_ai_222_"))).toBe(true);
+  });
 });
 
 describe("FloorPlanDesigner z-index", () => {

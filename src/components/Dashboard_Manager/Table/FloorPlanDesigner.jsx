@@ -146,6 +146,7 @@ export const applySmartLayoutToItems = ({ previousItems, generatedTables, genera
 
   const mappedById = new Map(mappedExistingTables.map((table) => [table.id, table]));
   const preserved = previousItems.filter((item) => {
+    if (item.isLocalOnly && isSmartLayoutGeneratedItem(item)) return false;
     if (item.isRealTable) return true;
     if (item.isLocalOnly) return false;
     if (isSmartLayoutGeneratedItem(item)) return false;
