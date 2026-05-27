@@ -23,6 +23,7 @@ import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
 import Toolbar from "./components/Toolbar/Toolbar";
 import MenuItemCard from "./components/MenuItemCard/MenuItemCard";
 import ForYouReadinessPanel from "./components/ForYouReadinessPanel/ForYouReadinessPanel";
+import BulkForYouMetadataModal, { buildBulkForYouPatch } from "./components/BulkForYouMetadataModal/BulkForYouMetadataModal";
 // Modals
 import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
 import DishCategoryModal from "./components/DishCategoryModal/DishCategoryModal";
@@ -366,6 +367,10 @@ const MenuManagement = () => {
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set());
   const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false);
   const [pendingBulkStatusAction, setPendingBulkStatusAction] = useState(null);
+  const [bulkForYouModal, setBulkForYouModal] = useState({ isOpen: false, mode: "missing" });
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(null);
+  const [bulkErrors, setBulkErrors] = useState([]);
   const priceEditSubmitRef = useRef(false);
   const deleteItemSubmitRef = useRef(false);
 
@@ -419,6 +424,7 @@ const MenuManagement = () => {
     toggleMenuItemStatus,
     bulkUpdateMenuItemPrices,
     syncMenuItemInventoryStatuses,
+    updateMenuItem,
   } = useMenuManagement({
     restaurantId: currentRestaurant || null,
     defaultTimeSlot: "breakfast",
@@ -1167,6 +1173,46 @@ const MenuManagement = () => {
     () => enrichedItems.find((item) => item.forYouMetadata?.status === "missing"),
     [enrichedItems],
   );
+  const selectedItems = useMemo(() => enrichedItems.filter((item) => selectedItemIds.has(String(item.id))), [enrichedItems, selectedItemIds]);
+  const missingForYouItems = useMemo(() => enrichedItems.filter((item) => item.forYouMetadata?.status === "missing"), [enrichedItems]);
+  const openBulkForYouModal = (mode = "missing") => {
+    setBulkProgress(null);
+    setBulkErrors([]);
+    setBulkForYouModal({ isOpen: true, mode });
+  };
+  const closeBulkForYouModal = () => setBulkForYouModal({ isOpen: false, mode: "missing" });
+  const bulkForYouTargetItems = bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems;
+  const handleSubmitBulkForYouMetadata = async ({ form, enabledFields }) => {
+    setBulkSubmitting(true); setBulkProgress({ done: 0, total: bulkForYouTargetItems.length }); setBulkErrors([]);
+    const errors = [];
+    for (const item of bulkForYouTargetItems) {
+      try {
+        const patch = buildBulkForYouPatch(item, form, enabledFields);
+        if (!Object.keys(patch).length) continue;
+        await updateMenuItem({ id: item.id, ...patch });
+      } catch (error) {
+        errors.push({ id: item.id, name: item.name, message: error?.message || "Lỗi cập nhật" });
+      } finally {
+        setBulkProgress((prev) => ({ ...prev, done: (prev?.done || 0) + 1 }));
+      }
+    }
+    await refetchItems?.();
+    if (errors.length === 0) {
+      closeBulkForYouModal();
+      if (bulkForYouModal.mode === "selected") {
+        setSelectedItemIds((prev) => {
+          const next = new Set(prev);
+          bulkForYouTargetItems.forEach((item) => next.delete(String(item.id)));
+          return next;
+        });
+      }
+      pushMenuToast(`Đã cập nhật khẩu vị cho ${bulkForYouTargetItems.length} món.`, "success");
+    } else {
+      setBulkErrors(errors);
+      pushMenuToast("Cập nhật xong một phần. Vui lòng kiểm tra các món lỗi bên dưới.", "warning");
+    }
+    setBulkSubmitting(false);
+  };
 
   const handleShowMissingForYouItems = () => {
     setForYouMetadataFilter("missing");
@@ -1376,6 +1422,10 @@ const MenuManagement = () => {
             firstMissingItem={firstMissingForYouItem}
             onShowMissing={handleShowMissingForYouItems}
             onEditFirstMissing={handleEditFirstMissingForYouItem}
+            selectedCount={selectedItems.length}
+            bulkTargetCount={(selectedItems.length > 0 ? selectedItems : missingForYouItems).length}
+            canBulkEdit={canUpdateMenuItem}
+            onOpenBulkEdit={() => openBulkForYouModal(selectedItems.length > 0 ? "selected" : "missing")}
           />
         )}
 
@@ -1557,6 +1607,16 @@ const MenuManagement = () => {
         onClose={() => toggleModal("priceEdit", false)}
         onSave={handleSavePriceChanges}
         menuItems={items}
+      />
+
+      <BulkForYouMetadataModal
+        isOpen={bulkForYouModal.isOpen}
+        items={bulkForYouTargetItems}
+        isSubmitting={bulkSubmitting}
+        submitProgress={bulkProgress}
+        submitErrors={bulkErrors}
+        onClose={closeBulkForYouModal}
+        onSubmit={handleSubmitBulkForYouMetadata}
       />
 
       <Modal

@@ -944,7 +944,7 @@ const FoodDetail = () => {
                         : "fd-for-you-chip--match"
                     }`}
                   >
-                    {foodPreferenceMeta.hasAllergyWarning ? "⚠ Có thể chứa thành phần bạn dị ứng" : "✨ Món bạn có thể thích"}
+                    {foodPreferenceMeta.hasAllergyWarning ? "⚠ Có thể chứa thành phần bạn dị ứng" : "✨ Món phù hợp với bạn"}
                   </span>
                 </div>
                 <div className="fd-for-you-panel__title">
