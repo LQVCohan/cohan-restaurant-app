@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
   guestMessageMutationSpy: vi.fn(),
   submitFeedbackMutationSpy: vi.fn(),
   publicSettingsQuerySpy: vi.fn(),
+  addCartMutationSpy: vi.fn(),
+  addToCartSpy: vi.fn(),
   guestSendLoadingState: false,
+  authUser: { id: "user-1" },
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -27,11 +30,14 @@ vi.mock("@apollo/client/react", () => ({
     if (body.includes("RequestAiChatbotHandoff")) return [mocks.handoffMutationSpy, { loading: false }];
     if (body.includes("SendAiChatbotGuestMessage")) return [mocks.guestMessageMutationSpy, { loading: mocks.guestSendLoadingState }];
     if (body.includes("SubmitAiChatbotAnswerFeedback")) return [mocks.submitFeedbackMutationSpy, { loading: false }];
+    if (body.includes("AddCartItemFromAiChatbot")) return [mocks.addCartMutationSpy, { loading: false }];
     return [vi.fn(), { loading: false }];
   }),
   useLazyQuery: vi.fn(() => [mocks.guestRepliesSpy, { loading: false, data: null, error: null }]),
   useQuery: vi.fn(() => mocks.publicSettingsQuerySpy()),
 }));
+vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: mocks.addToCartSpy }) }));
+vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ user: mocks.authUser }) }));
 
 const open = () => fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
 const send = (t) => {
@@ -49,6 +55,9 @@ beforeEach(() => {
   mocks.submitFeedbackMutationSpy.mockResolvedValue({ data: { submitAiChatbotAnswerFeedback: { id: "f1", rating: "helpful" } } });
   mocks.guestRepliesSpy.mockResolvedValue({ data: { aiChatbotGuestReplies: { replies: [] } } });
   mocks.publicSettingsQuerySpy.mockReturnValue({ data: { publicAiChatbotSettings: { enabled: true, welcomeMessage: "Xin chào", starterQuickReplies: ["Gợi ý món bán chạy cho tôi"], handoffEnabled: true, handoffUnavailableMessage: "Không hỗ trợ" } } });
+  mocks.addCartMutationSpy.mockResolvedValue({ data: { addCartItem: { id: "cart-1", items: [{ id: "line-1", menuItemId: "food-1", servingVariantKey: "small", note: "it cay", holdExpiresAt: null, holdStatus: null }] } } });
+  mocks.addToCartSpy.mockReset();
+  mocks.authUser = { id: "user-1" };
 });
 
 afterEach(() => {
@@ -126,6 +135,7 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.getAllByRole("button", { name: "Chọn món" }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
     expect(screen.getByRole("button", { name: "Xem chi tiết món" })).toBeInTheDocument();
+    expect(screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng").className).toContain("is-expanded");
   });
 
   it("unavailable/optioned items do not show add button", async () => {

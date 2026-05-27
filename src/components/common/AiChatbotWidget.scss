@@ -300,3 +300,19 @@
   color: #fff;
   border-color: #059669;
 }
+
+.ai-chatbot-menu-detail {
+  margin: 0 12px 12px;
+  padding: 12px;
+  border: 1px solid #d9e2ff;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+.ai-chatbot-menu-detail__variants { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.ai-chatbot-menu-detail__variant { border: 1px solid #ccd7ff; border-radius: 10px; padding: 6px 10px; background: #fff; }
+.ai-chatbot-menu-detail__variant.is-selected { border-color: #4a6bff; background: #eef2ff; }
+.ai-chatbot-menu-detail__quantity { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.ai-chatbot-menu-detail__note { width: 100%; min-height: 72px; border-radius: 8px; border: 1px solid #cfd8ea; padding: 8px; }
+.ai-chatbot-menu-detail__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-chatbot-menu-detail__success { color: #0f8a43; }
+.ai-chatbot-menu-detail__error { color: #d62424; }
