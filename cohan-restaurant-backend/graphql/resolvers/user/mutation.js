@@ -224,11 +224,17 @@ const DUPLICATE_REGISTRATION_ERROR = "Email/Phone/Username already in use";
 const MULTIPLE_GUEST_MATCH_ERROR =
   "Contact information matches multiple guest profiles. Please contact support.";
 
-const loadUserForGraph = async (userId) =>
-  User.findById(userId)
+const loadUserForGraph = async (userId) => {
+  const userObj = await User.findById(userId)
     .populate("role")
     .populate("refRestaurants")
     .lean({ virtuals: true });
+
+  if (!userObj) return null;
+
+  const roleName = (userObj.role?.slug || userObj.role?.name || "").toLowerCase();
+  return sanitizeUserForClient({ ...userObj, roleName });
+};
 
 const buildAuthPayloadForUser = async (userId) => {
   const userObj = await User.findById(userId)

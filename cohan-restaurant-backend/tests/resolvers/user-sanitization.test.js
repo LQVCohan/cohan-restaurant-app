@@ -16,4 +16,23 @@ describe("sanitizeUserForClient", () => {
     expect(out.roleName).toBe("admin");
     expect(out.role.internal).toBeUndefined();
   });
+
+  it("preserves refRestaurants and strips sensitive fields from raw lean graph user", () => {
+    const out = sanitizeUserForClient({
+      _id: "u2",
+      fullName: "Graph User",
+      email: "graph@example.com",
+      passwordHash: "secret-hash",
+      emailVerifyToken: "verify-token",
+      deletedBy: "admin1",
+      refRestaurants: [{ _id: "r1", name: "R1" }],
+      role: { _id: "rid", slug: "manager", name: "Manager", permissions: ["read"], internalFlag: true },
+    });
+    expect(out.passwordHash).toBeUndefined();
+    expect(out.emailVerifyToken).toBeUndefined();
+    expect(out.deletedBy).toBeUndefined();
+    expect(out.refRestaurants).toEqual([{ _id: "r1", name: "R1" }]);
+    expect(out.roleName).toBe("manager");
+  });
+
 });
