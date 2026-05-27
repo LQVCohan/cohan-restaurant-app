@@ -9,6 +9,7 @@ let handoffMutationSpy;
 let guestRepliesSpy;
 let guestMessageMutationSpy;
 let publicSettingsQuerySpy;
+let submitFeedbackMutationSpy;
 let socketOn;
 let socketOff;
 let socketEmit;
@@ -45,6 +46,7 @@ vi.mock("@apollo/client/react", async () => {
       if (body.includes("AskAiChatbot")) return [askMutationSpy, { loading: false }];
       if (body.includes("RequestAiChatbotHandoff")) return [handoffMutationSpy, { loading: false }];
       if (body.includes("SendAiChatbotGuestMessage")) return [guestMessageMutationSpy, { loading: guestSendLoadingState }];
+      if (body.includes("SubmitAiChatbotAnswerFeedback")) return [submitFeedbackMutationSpy, { loading: false }];
       return [vi.fn(), { loading: false }];
     }),
     useLazyQuery: vi.fn(() => [guestRepliesSpy, { loading: false, data: null, error: null }]),
@@ -85,6 +87,7 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
         },
       },
     });
+    submitFeedbackMutationSpy = vi.fn().mockResolvedValue({ data: { submitAiChatbotAnswerFeedback: { id: "f1", rating: "helpful" } } });
     guestRepliesSpy = vi.fn().mockResolvedValue({
       data: {
         aiChatbotGuestReplies: {
@@ -221,6 +224,35 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
     expect(screen.getByPlaceholderText(/Hỏi về món ăn/i)).toBeDisabled();
   });
+
+  it("renders feedback buttons under assistant answer and helpful sends answerMessageId", async () => {
+    askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "A1", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", answerMessageId: "msg-a1" } } });
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Q1" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hữu ích" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Hữu ích" }));
+    await waitFor(() => expect(submitFeedbackMutationSpy).toHaveBeenCalled());
+    const input = submitFeedbackMutationSpy.mock.calls[0][0].variables.input;
+    expect(input.messageId).toBe("msg-a1");
+    expect(screen.getByText(/Cảm ơn bạn đã phản hồi/i)).toBeInTheDocument();
+  });
+
+  it("not helpful sends reason and blocks duplicate feedback", async () => {
+    window.prompt = vi.fn(() => "Sai nội dung");
+    askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "A2", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", answerMessageId: "msg-a2" } } });
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Q2" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Không hữu ích" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Không hữu ích" }));
+    await waitFor(() => expect(submitFeedbackMutationSpy).toHaveBeenCalledTimes(1));
+    expect(submitFeedbackMutationSpy.mock.calls[0][0].variables.input.reason).toBe("Sai nội dung");
+    expect(screen.queryByRole("button", { name: "Không hữu ích" })).not.toBeInTheDocument();
+  });
+
 
   it("keeps non-handoff lastActions visible while hiding handoff action when handoffEnabled=false", async () => {
     publicSettingsQuerySpy = vi.fn(() => ({

@@ -19,6 +19,13 @@ import {
   dismissRestaurantAiChatbotKnowledgeSuggestion,
   deleteRestaurantAiChatbotKnowledgeSuggestion,
 } from "../../../src/services/ai/restaurantChatbotKnowledgeSuggestion.service.js";
+import {
+  submitAiChatbotAnswerFeedback,
+  listRestaurantAiChatbotAnswerFeedback,
+  markAiChatbotAnswerFeedbackReviewed,
+  ignoreAiChatbotAnswerFeedback,
+  convertAiChatbotFeedbackToSuggestion,
+} from "../../../src/services/ai/restaurantChatbotFeedback.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -50,6 +57,7 @@ const Query = {
   restaurantAiChatbotKnowledge: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledge({ restaurantId, filter, ctx }),
   restaurantAiChatbotKnowledgeItem: async (_, { id }, ctx) => getRestaurantAiChatbotKnowledgeItem({ id, ctx }),
   restaurantAiChatbotKnowledgeSuggestions: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledgeSuggestions({ restaurantId, filter, ctx }),
+  restaurantAiChatbotAnswerFeedback: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotAnswerFeedback({ restaurantId, filter, ctx }),
 };
 
 const Mutation = {
@@ -102,6 +110,10 @@ const Mutation = {
   approveRestaurantAiChatbotKnowledgeSuggestion: async (_, { id, input }, ctx) => approveRestaurantAiChatbotKnowledgeSuggestion({ id, input, ctx }),
   dismissRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => dismissRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
   deleteRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => deleteRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
+  submitAiChatbotAnswerFeedback: async (_, { input }, ctx) => submitAiChatbotAnswerFeedback({ input, ctx }),
+  markAiChatbotAnswerFeedbackReviewed: async (_, { id }, ctx) => markAiChatbotAnswerFeedbackReviewed({ id, ctx }),
+  ignoreAiChatbotAnswerFeedback: async (_, { id }, ctx) => ignoreAiChatbotAnswerFeedback({ id, ctx }),
+  convertAiChatbotFeedbackToSuggestion: async (_, { id }, ctx) => convertAiChatbotFeedbackToSuggestion({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });

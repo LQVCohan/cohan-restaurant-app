@@ -529,3 +529,9 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
 - Added suggestion capture when chatbot fallback/low confidence/no knowledge/handoff.
 - New manager APIs for reviewing, approving (to knowledge item), dismissing, deleting suggestions.
 - Permission model: REPORT_READ for listing, RESTAURANT_WRITE for mutating suggestion status.
+
+## Phase 14 - AI Chatbot Answer Feedback Loop
+- Added guest answer feedback capture (`submitAiChatbotAnswerFeedback`) with helpful/not_helpful rating.
+- Added manager review APIs (`restaurantAiChatbotAnswerFeedback`, mark reviewed, ignore, convert to suggestion).
+- Permissions: submit is public; list requires `report.read`; review actions require `restaurant.write`.
+- Negative feedback can be converted to Knowledge Gap Suggestion by manager action only.
