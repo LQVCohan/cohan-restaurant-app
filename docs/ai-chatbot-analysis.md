@@ -587,3 +587,9 @@ Nhưng vẫn giữ:
 - Hardened chatbot runtime for evaluation-mode no-side-effect behavior (`persist=false`, `recordSuggestions=false` when evaluation mode).
 - Enforced GraphQL-safe response shaping in chatbot runtime (non-null arrays normalized, IDs stringified/nullable).
 - Expanded AI chatbot analytics summary with knowledge/suggestion/feedback/safety/evaluation counters and lightweight risky signal flags.
+
+## Phase 18 AI Chatbot Completion (2026-05-27)
+- Added AI chatbot analytics monitoring extensions: summary metrics expansion, risky signal panel data, and recent quality queue payload in analytics response.
+- Added manager bulk operations GraphQL/API support for knowledge items, knowledge suggestions, feedback, and safety rules.
+- Added Knowledge Base import/export support (JSON/CSV) with validation and duplicate avoidance.
+- Reinforced runtime guardrails by keeping safety/evaluation boundaries and fallback pathways unchanged while extending manager tooling.

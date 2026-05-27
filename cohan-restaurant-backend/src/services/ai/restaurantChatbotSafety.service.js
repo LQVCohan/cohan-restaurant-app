@@ -102,3 +102,21 @@ export async function evaluateRestaurantAiChatbotSafety({ restaurantId, message 
     matchedRules: matched.map(toRuleDto),
   };
 }
+
+
+export async function bulkUpdateRestaurantAiChatbotSafetyRuleEnabled({ ids = [], enabled, ctx }) {
+  for (const id of ids) {
+    if (!mongoose.isValidObjectId(id)) continue;
+    const found = await AiChatbotSafetyRule.findById(id);
+    if (!found) continue;
+    await ensurePermission(ctx, found.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
+    found.enabled = Boolean(enabled);
+    found.updatedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    await found.save();
+  }
+  return true;
+}
+export async function bulkDeleteRestaurantAiChatbotSafetyRules({ ids = [], ctx }) {
+  for (const id of ids) { if (mongoose.isValidObjectId(id)) await deleteRestaurantAiChatbotSafetyRule({ id, ctx }); }
+  return true;
+}

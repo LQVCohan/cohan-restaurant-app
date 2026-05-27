@@ -114,3 +114,14 @@ export async function deleteRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }) 
   await AiChatbotKnowledgeSuggestion.deleteOne({ _id: found._id });
   return true;
 }
+
+
+export async function bulkDismissRestaurantAiChatbotKnowledgeSuggestions({ ids = [], ctx }) {
+  for (const id of ids) { if (mongoose.isValidObjectId(id)) await dismissRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }); }
+  return true;
+}
+
+export async function bulkDeleteRestaurantAiChatbotKnowledgeSuggestions({ ids = [], ctx }) {
+  for (const id of ids) { if (mongoose.isValidObjectId(id)) await deleteRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }); }
+  return true;
+}

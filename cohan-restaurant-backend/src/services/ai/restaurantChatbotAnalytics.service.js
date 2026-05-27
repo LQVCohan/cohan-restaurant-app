@@ -28,6 +28,10 @@ const normalizeRestaurantId = (restaurantId) => {
 };
 
 const safeDiv = (a, b) => (b > 0 ? a / b : 0);
+const safeRecent = async (model, query, sort, limit = 5) => {
+  if (!model?.find) return [];
+  return model.find(query).sort(sort).limit(limit).lean();
+};
 
 const toRateLimitStatus = () =>
   Object.values(AI_CHATBOT_RATE_LIMIT_POLICIES).map((policy) => ({
@@ -95,6 +99,9 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     notHelpfulFeedback,
     activeSafetyRules,
     evaluationCaseCount,
+    recentFeedbackRows,
+    recentSuggestionRows,
+    recentFallbackRows,
   ] = await Promise.all([
     AiChatConversation.countDocuments(convoFilter),
     AiChatMessage.countDocuments(msgFilter),
@@ -137,6 +144,9 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     AiChatbotAnswerFeedback.countDocuments({ ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), rating: "not_helpful" }),
     AiChatbotSafetyRule.countDocuments({ ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), enabled: true }),
     AiChatbotEvaluationCase.countDocuments(restaurantObjectId ? { restaurantId: restaurantObjectId, enabled: { $in: [true, false] } } : { enabled: { $in: [true, false] } }),
+    safeRecent(AiChatbotAnswerFeedback, { ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), rating: "not_helpful" }, { createdAt: -1 }, 5),
+    safeRecent(AiChatbotKnowledgeSuggestion, { ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), status: "pending" }, { updatedAt: -1, lastAskedAt: -1 }, 5),
+    safeRecent(AiChatMessage, { ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), isFallback: true }, { createdAt: -1 }, 5),
   ]);
 
   const resolutionMinutes = resolutionPairs
@@ -154,10 +164,13 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
       : null;
 
 
+  const safetyBlockSpike = await AiChatMessage.countDocuments({ ...msgFilter, intent: "safety" });
+
   const riskySignals = [
     { code: "FALLBACK_SPIKE", level: fallbackResponses >= 20 ? "high" : fallbackResponses >= 10 ? "medium" : "low", count: fallbackResponses },
     { code: "NOT_HELPFUL_SPIKE", level: notHelpfulFeedback >= 10 ? "high" : notHelpfulFeedback >= 5 ? "medium" : "low", count: notHelpfulFeedback },
     { code: "PENDING_SUGGESTION_BACKLOG", level: pendingSuggestions >= 20 ? "high" : pendingSuggestions >= 10 ? "medium" : "low", count: pendingSuggestions },
+    { code: "SAFETY_BLOCK_SPIKE", level: safetyBlockSpike >= 10 ? "high" : safetyBlockSpike >= 5 ? "medium" : "low", count: safetyBlockSpike },
   ];
 
   return {
@@ -180,5 +193,10 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     messagesByRole: messagesByRoleAgg.map((item) => ({ role: String(item._id || "unknown"), count: Number(item.count || 0) })),
     rateLimitStatus: toRateLimitStatus(),
     riskySignals,
+    recentQualityQueue: [
+      ...recentFeedbackRows.map((r) => ({ id: String(r._id), type: "not_helpful_feedback", label: String(r.question || "Not helpful feedback"), detail: String(r.reason || ""), createdAt: r.createdAt })),
+      ...recentSuggestionRows.map((r) => ({ id: String(r._id), type: "pending_suggestion", label: String(r.question || "Pending suggestion"), detail: String(r.triggerType || ""), createdAt: r.updatedAt || r.lastAskedAt || r.createdAt })),
+      ...recentFallbackRows.map((r) => ({ id: String(r._id), type: "fallback_response", label: String(r.content || "Fallback response").slice(0, 120), detail: String(r.intent || ""), createdAt: r.createdAt })),
+    ].sort((a,b)=> new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,10),
   };
 }

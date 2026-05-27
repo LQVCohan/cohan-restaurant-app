@@ -114,3 +114,8 @@ export async function convertAiChatbotFeedbackToSuggestion({ id, ctx }) {
   await row.save();
   return true;
 }
+
+
+export async function bulkMarkAiChatbotAnswerFeedbackReviewed({ ids = [], ctx }) { for (const id of ids) { if (mongoose.isValidObjectId(id)) await markAiChatbotAnswerFeedbackReviewed({ id, ctx }); } return true; }
+export async function bulkIgnoreAiChatbotAnswerFeedback({ ids = [], ctx }) { for (const id of ids) { if (mongoose.isValidObjectId(id)) await ignoreAiChatbotAnswerFeedback({ id, ctx }); } return true; }
+export async function bulkConvertAiChatbotFeedbackToSuggestion({ ids = [], ctx }) { for (const id of ids) { if (mongoose.isValidObjectId(id)) await convertAiChatbotFeedbackToSuggestion({ id, ctx }); } return true; }

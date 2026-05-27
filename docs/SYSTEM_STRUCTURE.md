@@ -393,3 +393,8 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - DTO/GraphQL safety convention: non-null list fields always return arrays; GraphQL IDs are string-safe at service boundaries.
 - Added simple AI risk signal summary for managers (fallback spikes, not-helpful spikes, pending suggestion backlog).
 - Known limitation: risk signals are threshold-based counters (no trend charting yet).
+
+### AI Chatbot Phase 18 Completion
+- Monitoring dashboard now includes production summary cards, risky signals, and recent quality queue data paths.
+- Manager tools include bulk moderation actions and knowledge import/export.
+- Runtime guardrails retained for safety-first response behavior and side-effect-free evaluation flows.
