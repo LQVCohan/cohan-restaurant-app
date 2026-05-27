@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import BusinessOperationsOverview from "./BusinessOperationsOverview";
 
@@ -28,8 +28,9 @@ describe("BusinessOperationsOverview", () => {
 
   it("renders request type labels and sorts newest first", () => {
     render(<BusinessOperationsOverview {...baseProps} serviceRequests={[...baseProps.serviceRequests].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))} />);
-    const items = screen.getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("Yêu cầu thanh toán");
+    const requestList = screen.getByTestId("customer-request-list");
+    const requestItems = within(requestList).getAllByRole("listitem");
+    expect(requestItems[0]).toHaveTextContent("Yêu cầu thanh toán");
     expect(screen.getByText("Gọi nhân viên")).toBeInTheDocument();
   });
 

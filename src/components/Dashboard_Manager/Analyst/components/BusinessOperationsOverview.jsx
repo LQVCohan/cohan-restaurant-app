@@ -47,7 +47,7 @@ export default function BusinessOperationsOverview({
         {!requestLoading && requestError ? <p className="ops-warning">Không thể tải hàng đợi yêu cầu khách.</p> : null}
         {!requestLoading && !requestError && serviceRequests.length === 0 ? <p className="ops-empty">Chưa có yêu cầu cần xử lý.</p> : null}
         {!requestLoading && !requestError && serviceRequests.length > 0 ? (
-          <ul className="ops-list">
+          <ul className="ops-list" data-testid="customer-request-list">
             {serviceRequests.slice(0, 5).map((request, idx) => (
               <li key={`${request.requestId || request.orderCode || idx}-${request.status || "unknown"}`}>
                 <div className="ops-request-head">
@@ -73,7 +73,7 @@ export default function BusinessOperationsOverview({
           <ul className="ops-list">
             {recentOrders.slice(0, 4).map((order) => (
               <li key={order.id}>
-                <b>#{order.orderCode || order.id}</b>
+                <b>{order.orderCode ? `#${order.orderCode}` : "Đơn chưa có mã"}</b>
                 <span>{order.customerName || "Khách lẻ"} • {order.status}</span>
               </li>
             ))}
