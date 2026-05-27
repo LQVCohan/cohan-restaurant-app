@@ -25,7 +25,6 @@ vi.mock("react-router-dom", () => ({
   useLocation: () => ({ pathname: "/restaurant/resto-1" }),
   useNavigate: () => mocks.navigateSpy,
 }));
-vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: vi.fn() }) }));
 vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn((mutation) => {
     const body = mutation?.loc?.source?.body || "";

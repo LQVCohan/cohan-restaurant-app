@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useCart } from "@/context/CartProvider";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
@@ -161,15 +160,6 @@ export const extractRestaurantId = ({ params, pathname }) => {
 };
 export const getInputPlaceholder = (restaurantId) => (restaurantId ? "Hỏi AI gợi ý món, combo, giá, món chay..." : "Hỏi về món ăn, đặt bàn, đơn hàng...");
 
-export const canAiAddMenuItemDirectly = (source) => {
-  if (!source?.id) return false;
-  if (source?.isAvailable === false || source?.status === "unavailable") return false;
-  if (source?.hasOptions || source?.hasVariants) return false;
-  const price = Number(source?.currentPrice || source?.basePrice || 0);
-  if (!Number.isFinite(price) || price <= 0) return false;
-  return true;
-};
-
 export const buildMenuSourceCards = (response) => {
   if (response?.intent !== "menu") return [];
   const seen = new Set();
@@ -200,8 +190,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [lastIntent, setLastIntent] = useState("");
   const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [lastContextSummary, setLastContextSummary] = useState(null);
-  const [addedMenuItemIds, setAddedMenuItemIds] = useState(() => new Set());
-  const [cartNotice, setCartNotice] = useState("");
+  const [selectedMenuItemSource, setSelectedMenuItemSource] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
   const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
@@ -224,12 +213,9 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const sendInFlightRef = useRef(false);
   const pollInFlightRef = useRef(false);
   const hasJoinedSocketRef = useRef(false);
-  const addedMenuItemTimersRef = useRef(new Map());
-  const cartNoticeTimerRef = useRef(null);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const cartApi = useCart();
 
   const [eventRestaurantId, setEventRestaurantId] = useState("");
   const routeRestaurantId = useMemo(
@@ -517,8 +503,10 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         basePrice: source?.basePrice || source?.currentPrice,
         restaurantId: targetRestaurantId,
         categoryId: source?.categoryId,
+        menuId: source?.menuId,
         status: source?.status,
-        servingVariants: source?.variants || [],
+        inventoryStatus: source?.inventoryStatus,
+        servingVariants: source?.servingVariants || source?.variants || [],
         thumbImage: source?.image || source?.thumbImage,
       },
       {
@@ -530,12 +518,6 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
 
     return { href, state };
   };
-
-  useEffect(() => () => {
-    for (const timer of addedMenuItemTimersRef.current.values()) window.clearTimeout(timer);
-    addedMenuItemTimersRef.current.clear();
-    if (cartNoticeTimerRef.current) window.clearTimeout(cartNoticeTimerRef.current);
-  }, []);
 
   const handleAction = (action) => {
     if (!action?.href) return;
@@ -586,7 +568,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   return (
     <div className="ai-chatbot-widget" aria-live="polite">
       {open ? (
-        <section className="ai-chatbot-panel" aria-label="ChatBot A.I hỗ trợ nhà hàng">
+        <section className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""}`} aria-label="ChatBot A.I hỗ trợ nhà hàng">
           <header className="ai-chatbot-header">
             <div className="ai-chatbot-title">
               <span className="ai-chatbot-avatar"><Bot size={20} /></span>
@@ -600,6 +582,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             </button>
           </header>
 
+          <div className="ai-chatbot-body">
           <div className="ai-chatbot-messages">
             {messages.map((item, index) => (
               <div key={`${item.role}-${index}`} className={`ai-chatbot-message ${item.role}`}>
@@ -642,9 +625,20 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               </span>
             </div>
           ) : null}
-          {cartNotice ? <div className="ai-chatbot-cart-notice">{cartNotice}</div> : null}
+                    {selectedMenuItemSource ? <div className="ai-chatbot-menu-detail">
+            <h4>{selectedMenuItemSource.label}</h4>
+            {selectedMenuItemSource.formattedPrice ? <p className="ai-chatbot-menu-card__price">{selectedMenuItemSource.formattedPrice}</p> : null}
+            {(selectedMenuItemSource.hasOptions || selectedMenuItemSource.hasVariants) ? <p>Món này cần chọn tùy chọn, vui lòng xem chi tiết món.</p> : <p>Đang tải chi tiết món...</p>}
+            <div className="ai-chatbot-menu-card__actions">
+              <button type="button" onClick={() => {
+                const target = buildAiFoodDetailTarget(selectedMenuItemSource);
+                navigate(target.href, { state: target.state });
+                setOpen(false);
+              }}>Xem chi tiết món</button>
+              <button type="button" onClick={() => setSelectedMenuItemSource(null)}>Quay lại gợi ý</button>
+            </div>
+          </div> : null}
           {menuSourceCards.length ? <div className="ai-chatbot-menu-cards">{menuSourceCards.map((s) => {
-            const canAdd = canAiAddMenuItemDirectly(s) && Boolean(s?.restaurantId);
             return <div key={s.id} className="ai-chatbot-menu-card">
               <strong>{s.label}</strong>
               {s.formattedPrice ? <span className="ai-chatbot-menu-card__price">{s.formattedPrice}</span> : null}
@@ -655,62 +649,13 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   navigate(target.href, { state: target.state });
                   setOpen(false);
                 }}>Xem món</button>
-                {canAdd ? <button type="button" className={addedMenuItemIds.has(String(s.id)) ? "is-added" : ""} onClick={() => {
-                  if (!canAiAddMenuItemDirectly(s)) {
-                    const target = buildAiFoodDetailTarget(s);
-                    navigate(target.href, { state: target.state });
-                    setOpen(false);
-                    return;
-                  }
-                  if (!cartApi?.addToCart) {
-                    const target = buildAiFoodDetailTarget(s);
-                    navigate(target.href, { state: target.state });
-                    setOpen(false);
-                    return;
-                  }
-                  const price = Number(s.currentPrice || s.basePrice || 0);
-                  if (!Number.isFinite(price) || price <= 0) {
-                    const target = buildAiFoodDetailTarget(s);
-                    navigate(target.href, { state: target.state });
-                    setOpen(false);
-                    return;
-                  }
-                  cartApi.addToCart({
-                    id: s.id,
-                    restaurantId: s.restaurantId,
-                    name: s.label,
-                    price,
-                    quantity: 1,
-                  });
-                  const itemId = String(s.id);
-                  setAddedMenuItemIds((prev) => {
-                    const next = new Set(prev);
-                    next.add(itemId);
-                    return next;
-                  });
-                  if (addedMenuItemTimersRef.current.has(itemId)) {
-                    window.clearTimeout(addedMenuItemTimersRef.current.get(itemId));
-                  }
-                  const addedTimer = window.setTimeout(() => {
-                    setAddedMenuItemIds((prev) => {
-                      const next = new Set(prev);
-                      next.delete(itemId);
-                      return next;
-                    });
-                    addedMenuItemTimersRef.current.delete(itemId);
-                  }, 2500);
-                  addedMenuItemTimersRef.current.set(itemId, addedTimer);
-
-                  setCartNotice(`Đã thêm ${s.label} vào giỏ hàng.`);
-                  if (cartNoticeTimerRef.current) window.clearTimeout(cartNoticeTimerRef.current);
-                  cartNoticeTimerRef.current = window.setTimeout(() => setCartNotice(""), 3000);
-
-                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?` }]);
-                  setLastQuickReplies(["Gợi ý nước uống", "Gợi ý món kèm", "Xem giỏ hàng"]);
-                }}>{addedMenuItemIds.has(String(s.id)) ? "Đã thêm ✓" : "Thêm vào giỏ"}</button> : null}
+                <button type="button" onClick={() => setSelectedMenuItemSource(s)}>Chọn món</button>
+                
               </div>
             </div>;
           })}</div> : null}
+
+          </div>
 
           {visibleActions.length ? (
             <div className="ai-chatbot-actions">

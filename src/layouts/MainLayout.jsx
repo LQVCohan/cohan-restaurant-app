@@ -2,9 +2,21 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import Header from "../components/Customer/Homepage_Client/components/Header";
 import Footer from "../components/Customer/Homepage_Client/components/Footer";
+import Cart from "../components/Customer/Homepage_Client/components/Cart";
+import { useCart } from "../context/CartProvider";
+import { useCustomerCartActions } from "../hooks/useCustomerCartActions";
 
 export default function MainLayout({ children }) {
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
   const location = useLocation();
+  const { cart, updateQuantity, removeFromCart, clearCart, removeRestaurantItems, getTotalItems, getTotalPrice } = useCart();
+  const cartActions = useCustomerCartActions({
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+  });
   const searchParams = new URLSearchParams(location.search);
   const isRestaurantDetailPreview = searchParams.get("preview") === "1";
 
@@ -28,8 +40,22 @@ export default function MainLayout({ children }) {
 
   return (
     <>
-      <Header />
+      <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
       <main style={{ minHeight: "80vh", width: "100vw" }}>{children}</main>
+      <Cart
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        onUpdateQuantity={cartActions.updateCartItemQuantity}
+        totalPrice={getTotalPrice}
+        onClearCart={cartActions.clearCustomerCart}
+        onRemoveRestaurantItems={cartActions.removeRestaurantScopedItems}
+        onRemoveItem={cartActions.removeCartLineItem}
+        isBusy={cartActions.isBusy}
+        busyItemIds={cartActions.busyItemIds}
+        busyRestaurantIds={cartActions.busyRestaurantIds}
+        isClearing={cartActions.isClearing}
+      />
       <Footer />
     </>
   );
