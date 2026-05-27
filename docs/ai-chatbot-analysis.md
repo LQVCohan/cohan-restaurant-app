@@ -593,3 +593,9 @@ Nhưng vẫn giữ:
 - Added manager bulk operations GraphQL/API support for knowledge items, knowledge suggestions, feedback, and safety rules.
 - Added Knowledge Base import/export support (JSON/CSV) with validation and duplicate avoidance.
 - Reinforced runtime guardrails by keeping safety/evaluation boundaries and fallback pathways unchanged while extending manager tooling.
+
+## Phase 19 Stabilization & Release QA (2026-05-27)
+- Ran targeted backend chatbot regression tests covering runtime, knowledge, bulk operations, analytics, safety, feedback, evaluation, and schema safety.
+- Fixed `aiChatbot.schema.safety.test.js` to resolve the GraphQL schema path relative to the test file, eliminating cwd-dependent failures.
+- Stabilized frontend widget test execution by replacing the duplicate-import aggregator test entry with a no-op coverage marker test.
+- Confirmed manager knowledge/analytics UI test suites and chatbot widget suites pass in the stabilization run.

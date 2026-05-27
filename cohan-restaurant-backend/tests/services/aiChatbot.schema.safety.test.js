@@ -4,7 +4,7 @@ import path from "path";
 
 describe("aiChatbot graphql schema safety mutations", () => {
   it("declares safety query and CRUD mutations", () => {
-    const schemaPath = path.resolve("graphql/schema/aiChatbot.graphql");
+    const schemaPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../graphql/schema/aiChatbot.graphql");
     const sdl = fs.readFileSync(schemaPath, "utf8");
     expect(sdl).toContain("restaurantAiChatbotSafetyRules(restaurantId: ID!, filter: AiChatbotSafetyRuleFilterInput): [AiChatbotSafetyRule!]!");
     expect(sdl).toContain("createRestaurantAiChatbotSafetyRule(input: CreateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!");
