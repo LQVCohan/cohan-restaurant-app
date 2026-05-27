@@ -1541,7 +1541,6 @@ const MenuManagement = () => {
       <MenuGroupModal
         restaurantId={currentRestaurant}
         timeSlot={selectedTimeSlot || "breakfast"}
-        initialFocusSection={modalFocusSection}
         isOpen={modals.menuGroup.isOpen}
         onClose={() => toggleModal("menuGroup", false)}
         onSave={() => toggleModal("menuGroup", false)}

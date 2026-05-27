@@ -91,19 +91,6 @@ $radius: 16px;
       backdrop-filter: blur(8px);
       border: 1px solid transparent;
 
-  &:disabled {
-    opacity: 1;
-    cursor: default;
-  }
-
-  &--actionable {
-    cursor: pointer;
-
-    &:hover {
-      border-color: #f59e0b;
-      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
-    }
-  }
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 
       &.available {
