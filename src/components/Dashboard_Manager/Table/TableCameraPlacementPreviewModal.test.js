@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
-import { buildPreviewModelItemFromVisualConfig } from "./TableCameraPlacementPreviewModal";
+import {
+  buildPreviewModelItemFromVisualConfig,
+  formatVisualConfigSavedAt,
+} from "./TableCameraPlacementPreviewModal";
 
 describe("buildPreviewModelItemFromVisualConfig", () => {
   it("maps complete visualConfig to modelItem", () => {
@@ -41,7 +44,28 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
     expect(result.capacity).toBe(4);
   });
 
+  it("handles visualConfig dimensions missing without crash", () => {
+    const result = buildPreviewModelItemFromVisualConfig({
+      modelLabel: "Bàn test",
+      dimensions: {},
+      capacity: 2,
+    });
+
+    expect(result.customModelSpec).toMatchObject({
+      widthCm: 0,
+      depthCm: 0,
+      heightCm: 0,
+      capacity: 2,
+    });
+  });
+
   it("normalizes missing placement with default placement", () => {
     expect(normalizeCameraPlacement(undefined)).toEqual(DEFAULT_CAMERA_PLACEMENT);
+  });
+});
+
+describe("formatVisualConfigSavedAt", () => {
+  it("falls back when savedAt is invalid", () => {
+    expect(formatVisualConfigSavedAt("invalid-date-value")).toBe("Không rõ thời gian lưu");
   });
 });

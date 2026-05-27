@@ -26,6 +26,7 @@ import {
 } from "@/utils/tableManagementOptions";
 import TableCameraPlacementPreviewModal, {
   buildPreviewModelItemFromVisualConfig,
+  formatVisualConfigSavedAt,
 } from "@/components/Dashboard_Manager/Table/TableCameraPlacementPreviewModal";
 import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
 
@@ -383,10 +384,7 @@ export default function TableActionsLiteModal({
     [table?.visualConfig]
   );
   const visualSavedAtLabel = useMemo(
-    () =>
-      table?.visualConfig?.savedAt
-        ? new Date(table.visualConfig.savedAt).toLocaleString("vi-VN")
-        : null,
+    () => formatVisualConfigSavedAt(table?.visualConfig?.savedAt),
     [table?.visualConfig?.savedAt]
   );
 
@@ -1498,6 +1496,8 @@ export default function TableActionsLiteModal({
                     className="btn"
                     disabled={busy.clearVisual}
                     onClick={async () => {
+                      const confirmed = window.confirm("Bạn muốn xóa cấu hình xem thử bằng camera của bàn này?");
+                      if (!confirmed) return;
                       setBusyKey("clearVisual", true);
                       try {
                         await actions.updateTable({ id: table.id, visualConfig: null });
@@ -1533,10 +1533,11 @@ export default function TableActionsLiteModal({
         {/* Footer */}
         <div className="talite-footer">
           <div className="actions">
-            <button className="btn" onClick={() => handleRequestClose("cancel")} disabled={isVrSaving}>
+            <button type="button" className="btn" onClick={() => handleRequestClose("cancel")} disabled={isVrSaving}>
               Đóng
             </button>
             <button
+              type="button"
               className="btn primary"
               onClick={handleSaveBasics}
               disabled={isVrSaving}
@@ -1632,8 +1633,11 @@ export default function TableActionsLiteModal({
         modelItem={visualModelItem}
         initialPlacement={table?.visualConfig?.placement}
         confirmLabel="Lưu cấu hình xem thử"
+        isConfirming={!!busy.cameraUpdate}
+        backendConfigNote={hasVisualConfig ? "Nút Lưu cấu hình xem thử sẽ cập nhật cấu hình của bàn này trên hệ thống." : ""}
         placementScope={`table:${table?.id || "unknown"}`}
         onConfirmPlacement={async (payload) => {
+          if (busy.cameraUpdate) return;
           setBusyKey("cameraUpdate", true);
           try {
             await actions.updateTable({
