@@ -13,7 +13,7 @@ describe('env config normalization', () => {
   it('maps DATABASE_URL to MONGO_URI before validation', async () => {
     delete process.env.MONGO_URI;
     process.env.DATABASE_URL = 'mongodb://127.0.0.1:27017';
-    process.env.JWT_SECRET = 'secret';
+    process.env.JWT_SECRET = 'this-is-a-strong-jwt-secret-with-32-characters-min';
     process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
@@ -28,7 +28,7 @@ describe('env config normalization', () => {
     delete process.env.MONGO_URI;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
-    process.env.JWT_SECRET = 'secret';
+    process.env.JWT_SECRET = 'this-is-a-strong-jwt-secret-with-32-characters-min';
     process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
@@ -41,7 +41,7 @@ describe('env config normalization', () => {
     process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';
     delete process.env.MONGO_DB;
     process.env.DB_NAME = 'RestaurantDB';
-    process.env.JWT_SECRET = 'secret';
+    process.env.JWT_SECRET = 'this-is-a-strong-jwt-secret-with-32-characters-min';
     process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
@@ -93,11 +93,13 @@ describe('production access token expiry validation', () => {
     expect(() => validateEnv()).not.toThrow();
     process.env.ACCESS_TOKEN_EXPIRES_IN = '30m';
     expect(() => validateEnv()).not.toThrow();
+    process.env.ACCESS_TOKEN_EXPIRES_IN = '1h';
+    expect(() => validateEnv()).not.toThrow();
   });
 
   it('rejects >=1d and invalid values', async () => {
     const { validateEnv } = await import('../../src/config/env.js');
-    for (const value of ['48h', '1440m', '2d', 'invalid']) {
+    for (const value of ['48h', '1440m', '86401s', '2d', 'invalid']) {
       process.env.ACCESS_TOKEN_EXPIRES_IN = value;
       expect(() => validateEnv()).toThrow(/ACCESS_TOKEN_EXPIRES_IN/);
     }
