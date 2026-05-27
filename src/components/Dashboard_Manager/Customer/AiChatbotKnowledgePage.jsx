@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -7,6 +7,9 @@ const Q_SUGGESTIONS = gql`query ManagerAiKnowledgeSuggestions($restaurantId: ID!
 const Q_FEEDBACK = gql`query ManagerAiFeedback($restaurantId: ID!, $filter: AiChatbotAnswerFeedbackFilterInput) { restaurantAiChatbotAnswerFeedback(restaurantId: $restaurantId, filter: $filter) { id question status } }`;
 const Q_SAFETY = gql`query ManagerAiSafety($restaurantId: ID!, $filter: AiChatbotSafetyRuleFilterInput) { restaurantAiChatbotSafetyRules(restaurantId: $restaurantId, filter: $filter) { id ruleType pattern enabled priority responseMessage restaurantId } }`;
 const Q_EXPORT = gql`query ExportAiKnowledge($restaurantId: ID!, $format: String) { exportRestaurantAiChatbotKnowledge(restaurantId: $restaurantId, format: $format) }`;
+const Q_EVAL = gql`query EvalPrompt($input: EvaluateAiChatbotPromptInput!) { evaluateRestaurantAiChatbotPrompt(input: $input) { answer intent confidence isFallback handoffSuggested handoffReason handoffMessage knowledgeMatches { id title category sourceType score } safetyResult { blocked outOfScope disclaimers handoffSuggested matchedRuleIds } } }`;
+const Q_EVAL_CASES = gql`query EvalCases($restaurantId: ID!) { restaurantAiChatbotEvaluationCases(restaurantId: $restaurantId) { id question expectedBehavior enabled } }`;
+const Q_RUN_SET = gql`query RunEvalSet($input: RunAiChatbotEvaluationSetInput!) { runRestaurantAiChatbotEvaluationSet(input: $input) { caseId question answer confidence isFallback handoffSuggested safetyResult { blocked } } }`;
 
 const C = gql`mutation CreateAiKnowledge($input: CreateAiChatbotKnowledgeItemInput!) { createRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
 const U = gql`mutation UpdateAiKnowledge($input: UpdateAiChatbotKnowledgeItemInput!) { updateRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
@@ -33,6 +36,7 @@ const U_SAFETY = gql`mutation UpdateAiSafety($input: UpdateAiChatbotSafetyRuleIn
 const D_SAFETY = gql`mutation DeleteAiSafety($id: ID!) { deleteRestaurantAiChatbotSafetyRule(id: $id) }`;
 const BULK_SAFE_ENABLED = gql`mutation BulkSafetyEnabled($input: BulkAiChatbotIdsInput!, $enabled: Boolean!) { bulkUpdateRestaurantAiChatbotSafetyRuleEnabled(input: $input, enabled: $enabled) }`;
 const BULK_SAFE_DELETE = gql`mutation BulkSafetyDelete($input: BulkAiChatbotIdsInput!) { bulkDeleteRestaurantAiChatbotSafetyRules(input: $input) }`;
+const M_CREATE_CASE = gql`mutation CreateEvalCase($input: CreateAiChatbotEvaluationCaseInput!) { createRestaurantAiChatbotEvaluationCase(input: $input) { id } }`;
 
 const blank = { id: "", title: "", content: "", category: "", tags: "", enabled: true, priority: 0, sourceType: "manual" };
 const safetyBlank = { id: "", ruleType: "blocked_topic", pattern: "", responseMessage: "", enabled: true, priority: 0 };
@@ -54,12 +58,16 @@ export default function AiChatbotKnowledgePage() {
   const [suggestionSel, setSuggestionSel] = useState([]);
   const [feedbackSel, setFeedbackSel] = useState([]);
   const [safetySel, setSafetySel] = useState([]);
+  const [evalMessage, setEvalMessage] = useState("");
+  const [evalResult, setEvalResult] = useState(null);
+  const [evalSetResults, setEvalSetResults] = useState([]);
 
   const rid = restaurantId || restaurants?.[0]?.id || "";
   const { data, refetch } = useQuery(Q, { skip: !rid, variables: { restaurantId: rid, filter: {} } });
   const { data: suggestionData, refetch: refetchSuggestion } = useQuery(Q_SUGGESTIONS, { skip: !rid, variables: { restaurantId: rid, filter: { status: "pending" } } });
   const { data: feedbackData, refetch: refetchFeedback } = useQuery(Q_FEEDBACK, { skip: !rid, variables: { restaurantId: rid, filter: {} } });
   const { data: safetyData, refetch: refetchSafety } = useQuery(Q_SAFETY, { skip: !rid, variables: { restaurantId: rid, filter: {} } });
+  const { data: evalCasesData, refetch: refetchEvalCases } = useQuery(Q_EVAL_CASES, { skip: !rid, variables: { restaurantId: rid } });
 
   const rows = data?.restaurantAiChatbotKnowledge || [];
   const suggestionRows = suggestionData?.restaurantAiChatbotKnowledgeSuggestions || [];
@@ -69,6 +77,9 @@ export default function AiChatbotKnowledgePage() {
   const [createItem] = useMutation(C); const [updateItem] = useMutation(U); const [deleteItem] = useMutation(D);
   const [bulkKnowledgeEnabled] = useMutation(BULK_K_ENABLED); const [bulkKnowledgeDelete] = useMutation(BULK_K_DELETE);
   const [importKnowledge] = useMutation(IMPORT_K); const [exportKnowledge] = useLazyQuery(Q_EXPORT, { fetchPolicy: "no-cache" });
+  const [runEvalPrompt] = useLazyQuery(Q_EVAL, { fetchPolicy: "no-cache" });
+  const [runEvalSet] = useLazyQuery(Q_RUN_SET, { fetchPolicy: "no-cache" });
+  const [createEvalCase] = useMutation(M_CREATE_CASE);
 
   const [approveSuggestion] = useMutation(APPROVE); const [dismissSuggestion] = useMutation(DISMISS); const [deleteSuggestion] = useMutation(DELETE_S);
   const [bulkDismissSuggestion] = useMutation(BULK_DISMISS); const [bulkDeleteSuggestion] = useMutation(BULK_DELETE_S);
@@ -86,7 +97,7 @@ export default function AiChatbotKnowledgePage() {
   return <section style={{ padding: 16 }}>
     <h2>AI Chatbot Knowledge Base</h2>
     <label>Nhà hàng <select value={rid} onChange={(e) => setRestaurantId(e.target.value)}>{restaurants.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
-    <div style={{ margin: "8px 0" }}>{["knowledge", "suggestions", "feedback", "safety"].map((t) => <button key={t} onClick={() => setActiveTab(t)} disabled={t === activeTab}>{t}</button>)}</div>
+    <div style={{ margin: "8px 0" }}>{["knowledge", "suggestions", "feedback", "safety", "evaluation"].map((t) => <button key={t} onClick={() => setActiveTab(t)} disabled={t === activeTab}>{t}</button>)}</div>
     {notice ? <p>{notice}</p> : null}
 
     {activeTab === "knowledge" && <div>
@@ -149,6 +160,17 @@ export default function AiChatbotKnowledgePage() {
         <input placeholder="Pattern" required value={safetyForm.pattern} onChange={(e) => setSafetyForm((f) => ({ ...f, pattern: e.target.value }))} />
         <button type="submit">Lưu safety</button>
       </form>
+    </div>}
+    {activeTab === "evaluation" && <div>
+      <h3>Evaluation Playground</h3>
+      <textarea aria-label="Evaluation message" value={evalMessage} onChange={(e) => setEvalMessage(e.target.value)} rows={5} style={{ width: "100%" }} />
+      <button onClick={async () => { try { const out = await runEvalPrompt({ variables: { input: { restaurantId: rid, message: evalMessage.trim(), includeDebug: true } } }); setEvalResult(out?.data?.evaluateRestaurantAiChatbotPrompt || null); setNotice("Run evaluation thành công."); } catch (e) { onFail(e, "Run evaluation"); } }}>Run test</button>
+      <button onClick={async () => { try { await createEvalCase({ variables: { input: { restaurantId: rid, question: evalMessage.trim(), enabled: true } } }); await refetchEvalCases?.(); setNotice("Đã lưu evaluation case."); } catch (e) { onFail(e, "Save case"); } }}>Save case</button>
+      <button onClick={async () => { try { const out = await runEvalSet({ variables: { input: { restaurantId: rid, includeDebug: false } } }); setEvalSetResults(out?.data?.runRestaurantAiChatbotEvaluationSet || []); setNotice("Đã chạy evaluation set."); } catch (e) { onFail(e, "Run evaluation set"); } }}>Run enabled set</button>
+      {evalResult ? <pre>{JSON.stringify(evalResult, null, 2)}</pre> : null}
+      <p>Evaluation cases: {(evalCasesData?.restaurantAiChatbotEvaluationCases || []).length}</p>
+      <ul>{(evalCasesData?.restaurantAiChatbotEvaluationCases || []).slice(0, 10).map((c) => <li key={c.id}>{c.question}</li>)}</ul>
+      {evalSetResults?.length ? <p>Run set results: {evalSetResults.length}</p> : null}
     </div>}
   </section>;
 }

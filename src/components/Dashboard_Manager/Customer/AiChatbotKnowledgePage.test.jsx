@@ -12,8 +12,11 @@ const m = {
   bulkDismissSuggestion: vi.fn(async () => ({})), bulkDeleteSuggestion: vi.fn(async () => ({})),
   bulkFeedbackReviewed: vi.fn(async () => ({})), bulkFeedbackIgnore: vi.fn(async () => ({})), bulkFeedbackConvert: vi.fn(async () => ({})),
   bulkSafetyEnabled: vi.fn(async () => ({})), bulkSafetyDelete: vi.fn(async () => ({})),
+  createEvalCase: vi.fn(async () => ({})),
 };
 const exportFn = vi.fn(async () => ({ data: { exportRestaurantAiChatbotKnowledge: "[]" } }));
+const evalFn = vi.fn(async () => ({ data: { evaluateRestaurantAiChatbotPrompt: { answer: "ok", intent: "menu", confidence: 0.9, isFallback: false, handoffSuggested: false, knowledgeMatches: [], safetyResult: { blocked: false, outOfScope: false, disclaimers: [], handoffSuggested: false, matchedRuleIds: [] } } } }));
+const runSetFn = vi.fn(async () => ({ data: { runRestaurantAiChatbotEvaluationSet: [{ caseId: "c1", question: "q1", answer: "a1", confidence: 0.7, isFallback: false, handoffSuggested: false, safetyResult: { blocked: false } }] } }));
 
 vi.mock("@apollo/client", () => ({
   gql: (s) => s,
@@ -32,10 +35,17 @@ beforeEach(() => {
     if (t.includes("restaurantAiChatbotKnowledgeSuggestions")) return { data: { restaurantAiChatbotKnowledgeSuggestions: [{ id: "s1", question: "sq" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     if (t.includes("restaurantAiChatbotAnswerFeedback")) return { data: { restaurantAiChatbotAnswerFeedback: [{ id: "f1", question: "fq" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     if (t.includes("restaurantAiChatbotSafetyRules")) return { data: { restaurantAiChatbotSafetyRules: [{ id: "sa1", ruleType: "blocked_topic", pattern: "x" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
+    if (t.includes("restaurantAiChatbotEvaluationCases")) return { data: { restaurantAiChatbotEvaluationCases: [{ id: "ec1", question: "test case", enabled: true }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     return { data: { restaurantAiChatbotKnowledge: [{ id: "k1", title: "kt", content: "kc", enabled: true, tags: [] }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
   });
 
-  useLazyQueryMock.mockReturnValue([exportFn, { loading: false }]);
+  useLazyQueryMock.mockImplementation((q) => {
+    const t = String(q);
+    if (t.includes("exportRestaurantAiChatbotKnowledge")) return [exportFn, { loading: false }];
+    if (t.includes("evaluateRestaurantAiChatbotPrompt")) return [evalFn, { loading: false }];
+    if (t.includes("runRestaurantAiChatbotEvaluationSet")) return [runSetFn, { loading: false }];
+    return [vi.fn(async () => ({})), { loading: false }];
+  });
 
   useMutationMock.mockImplementation((q) => {
     const t = String(q);
@@ -49,6 +59,7 @@ beforeEach(() => {
     if (t.includes("bulkConvertAiChatbotFeedbackToSuggestion")) return [m.bulkFeedbackConvert, {}];
     if (t.includes("bulkUpdateRestaurantAiChatbotSafetyRuleEnabled")) return [m.bulkSafetyEnabled, {}];
     if (t.includes("bulkDeleteRestaurantAiChatbotSafetyRules")) return [m.bulkSafetyDelete, {}];
+    if (t.includes("createRestaurantAiChatbotEvaluationCase")) return [m.createEvalCase, {}];
     return [vi.fn(async () => ({})), {}];
   });
 });
@@ -106,5 +117,18 @@ describe("AiChatbotKnowledgePage phase 18 UI", () => {
     fireEvent.click(screen.getByText("Delete selected"));
     expect(m.bulkSafetyEnabled).toHaveBeenCalledTimes(2);
     expect(m.bulkSafetyDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("evaluation tab renders and run/save/set actions call GraphQL operations", () => {
+    render(<AiChatbotKnowledgePage />);
+    fireEvent.click(screen.getByText("evaluation"));
+    expect(screen.getByText("Evaluation Playground")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Evaluation message"), { target: { value: "How is menu?" } });
+    fireEvent.click(screen.getByText("Run test"));
+    fireEvent.click(screen.getByText("Save case"));
+    fireEvent.click(screen.getByText("Run enabled set"));
+    expect(evalFn).toHaveBeenCalled();
+    expect(m.createEvalCase).toHaveBeenCalled();
+    expect(runSetFn).toHaveBeenCalled();
   });
 });
