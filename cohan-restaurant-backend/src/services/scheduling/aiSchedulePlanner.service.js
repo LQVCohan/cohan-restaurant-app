@@ -25,6 +25,10 @@ function clamp01(v) {
   return Math.max(0, Math.min(1, Number(v || 0)));
 }
 
+function hasNonEmptyObject(value) {
+  return Boolean(value && typeof value === "object" && Object.keys(value).length > 0);
+}
+
 const SHIFT_TEMPLATE_TIMES = {
   morning: { startTime: "06:00", endTime: "12:00" },
   afternoon: { startTime: "12:00", endTime: "18:00" },
@@ -152,8 +156,10 @@ export async function buildAiSchedulePlannerPreview(input, ctx = {}) {
     restaurantId: String(restaurantId),
     periodStart: input?.periodStart,
     periodEnd: input?.periodEnd,
-    requiredRoles: input?.requiredRoles && Object.keys(input.requiredRoles || {}).length ? input.requiredRoles : recommendedRoles,
-    mandatoryShiftRoles: input?.mandatoryShiftRoles,
+    requiredRoles: hasNonEmptyObject(input?.requiredRoles) ? input.requiredRoles : recommendedRoles,
+    mandatoryShiftRoles: hasNonEmptyObject(input?.mandatoryShiftRoles)
+      ? input.mandatoryShiftRoles
+      : undefined,
     weeklyHoursCap: input?.weeklyHoursCap,
     respectAvailability: input?.respectAvailability,
     avoidOvertime: input?.avoidOvertime,

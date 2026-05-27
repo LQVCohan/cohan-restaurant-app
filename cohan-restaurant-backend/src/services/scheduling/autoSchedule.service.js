@@ -12,6 +12,17 @@ const NO_SELECTED_ASSIGNMENTS_ERROR =
   "Không có ca hợp lệ nào được chọn để áp dụng auto schedule.";
 const MIN_OVERRIDE_REASON_LENGTH = 5;
 
+const ROLE_BY_DEPARTMENT = {
+  management: "host",
+  kitchen: "cook",
+  service: "server",
+  cashier: "cashier",
+  cleaning: "cleaner",
+  delivery: "shipper",
+  inventory: "storekeeper",
+  bar: "bartender",
+};
+
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new mongoose.Types.ObjectId(value);
@@ -51,8 +62,12 @@ function normalizeShiftType(value) {
 }
 
 function getStaffRoleTokens(staff = {}) {
+  const normalizedDepartment = normalizeRole(staff.department);
+  const mappedDepartmentRole = ROLE_BY_DEPARTMENT[normalizedDepartment] || "";
+
   return new Set([
     staff.department,
+    mappedDepartmentRole,
     staff.positionTitle,
     staff.roleName,
     staff.role?.slug,
