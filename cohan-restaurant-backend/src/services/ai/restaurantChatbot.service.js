@@ -12,6 +12,7 @@ import {
 } from "../../../models/index.js";
 import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 import { findRelevantKnowledgeForChatbot } from "./restaurantChatbotKnowledge.service.js";
+import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSuggestion.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
@@ -135,18 +136,147 @@ const serializeRestaurant = (restaurant) => {
   };
 };
 
+const maybeCategoryName = (item = {}) => {
+  if (typeof item?.categoryName === "string" && item.categoryName.trim()) return item.categoryName.trim();
+  if (typeof item?.category === "string" && item.category.trim()) return item.category.trim();
+  if (item?.category && typeof item.category === "object" && typeof item.category.name === "string" && item.category.name.trim()) {
+    return item.category.name.trim();
+  }
+  return null;
+};
+
 const serializeMenuItem = (item, currency = "VND") => ({
   id: String(item._id || item.id),
   name: item.name,
   description: item.description,
-  labels: item.labels || [],
-  basePrice: item.basePrice,
-  formattedPrice: formatCurrency(item.basePrice, currency),
-  status: item.status,
+  labels: Array.isArray(item.labels) ? item.labels : [],
+  tags: Array.isArray(item.tags) ? item.tags : [],
+  category: maybeCategoryName(item),
+  categoryName: maybeCategoryName(item),
+  image: item.image || (Array.isArray(item.images) ? item.images[0] : null) || null,
+  images: Array.isArray(item.images) ? item.images.slice(0, 3) : [],
+  basePrice: Number(item.basePrice || 0),
+  currentPrice: Number(item.currentPrice || item.basePrice || 0),
+  discount: item.discount || null,
+  formattedPrice: formatCurrency(item.currentPrice || item.basePrice, currency),
+  status: item.status || (item.isAvailable ? "available" : "unavailable"),
+  isAvailable: item.isAvailable ?? item.status === "available",
   rate: item.rate,
   orderCounter: item.orderCounter,
-  avgPrepTimeMin: item.avgPrepTimeMin,
+  avgPrepTimeMin: item.avgPrepTimeMin || item.preparationTime || null,
+  preparationTime: item.preparationTime || item.avgPrepTimeMin || null,
+  variants: Array.isArray(item.variants) ? item.variants.slice(0, 4) : [],
+  options: Array.isArray(item.options) ? item.options.slice(0, 4) : [],
+  spicyLevel: item.spicyLevel ?? null,
+  isVegetarian: Boolean(item.isVegetarian),
+  isVegan: Boolean(item.isVegan),
+  allergens: Array.isArray(item.allergens) ? item.allergens : [],
+  calories: item.calories ?? null,
 });
+
+const parseBudgetMax = (message = "") => {
+  const raw = asLower(message);
+  if (!/(dưới|duoi|tầm|tam|khoảng|khoang|under|below)/.test(raw)) return null;
+  const budgetMatch = raw.match(/(?:dưới|duoi|tầm|tam|khoảng|khoang|under|below)\s*(\d[\d.,]*)\s*(k|nghìn|nghin|vnd|đ|d)?/i);
+  if (!budgetMatch) return null;
+  const numericRaw = String(budgetMatch[1] || "");
+  const unit = String(budgetMatch[2] || "").toLowerCase();
+  const normalized = numericRaw.replace(/[^\d.,]/g, "");
+  let amount = 0;
+  if (normalized.includes(".") && normalized.includes(",")) {
+    amount = Number(normalized.replace(/[.,]/g, ""));
+  } else if (normalized.includes(".")) {
+    const parts = normalized.split(".");
+    amount = parts[parts.length - 1].length === 3 ? Number(parts.join("")) : Number(normalized);
+  } else if (normalized.includes(",")) {
+    const parts = normalized.split(",");
+    amount = parts[parts.length - 1].length === 3 ? Number(parts.join("")) : Number(normalized.replace(",", "."));
+  } else {
+    amount = Number(normalized);
+  }
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (/k|nghìn|nghin/.test(unit)) amount *= 1000;
+  return Math.round(amount);
+};
+
+const extractMenuPreferences = (message = "") => {
+  const raw = asLower(message);
+  const preferences = { taste: [], dietary: [], mealType: [], intentSubtype: [] };
+  const budgetMax = parseBudgetMax(message);
+  if (budgetMax) preferences.budgetMax = budgetMax;
+  const partyMatch = raw.match(/(?:nhóm|nhom|cho)?\s*(\d{1,2})\s*(?:người|nguoi)/i);
+  if (partyMatch) preferences.partySize = Number(partyMatch[1]);
+  if (/(không cay|khong cay)/.test(raw)) preferences.taste.push("nonSpicy");
+  if (/\bcay\b/.test(raw)) preferences.taste.push("spicy");
+  if (/(ít dầu|it dau)/.test(raw)) preferences.taste.push("lowOil");
+  if (/(thanh đạm|thanh dam)/.test(raw)) preferences.taste.push("light");
+  if (/(ngọt|ngot)/.test(raw)) preferences.taste.push("sweet");
+  if (/(mặn|man)/.test(raw)) preferences.taste.push("salty");
+  if (/(chay|vegetarian)/.test(raw)) preferences.dietary.push("vegetarian");
+  if (/\bvegan\b/.test(raw)) preferences.dietary.push("vegan");
+  if (/(không hải sản|khong hai san|no seafood)/.test(raw)) preferences.dietary.push("noSeafood");
+  if (/(không bò|khong bo|no beef)/.test(raw)) preferences.dietary.push("noBeef");
+  if (/(không gà|khong ga|no chicken)/.test(raw)) preferences.dietary.push("noChicken");
+  if (/(ăn nhẹ|an nhe|snack)/.test(raw)) preferences.mealType.push("snack");
+  if (/(ăn no|an no|main)/.test(raw)) preferences.mealType.push("main");
+  if (/(tráng miệng|trang mieng|dessert)/.test(raw)) preferences.mealType.push("dessert");
+  if (/(nước uống|do uong|drink|beverage)/.test(raw)) preferences.mealType.push("drink");
+  if (/\bcombo\b/.test(raw)) preferences.mealType.push("combo");
+  if (/(so sánh|compare)/.test(raw)) preferences.intentSubtype.push("compare");
+  if (preferences.budgetMax) preferences.intentSubtype.push("budget");
+  if (preferences.dietary.includes("vegetarian") || preferences.dietary.includes("vegan")) preferences.intentSubtype.push("vegetarian");
+  if (/(bán chạy|ban chay|best seller|best-seller)/.test(raw)) preferences.intentSubtype.push("bestSeller");
+  if (/(nhanh|gấp|gap|quick)/.test(raw)) preferences.intentSubtype.push("quickPrep");
+  if (/\bcombo\b/.test(raw)) preferences.intentSubtype.push("combo");
+  if (/(kèm|them|upsell)/.test(raw)) preferences.intentSubtype.push("upsell");
+  if (!preferences.intentSubtype.length) preferences.intentSubtype.push("recommend");
+  return preferences;
+};
+
+const isMenuAssistantRequest = (message = "", intent = "general", preferences = {}) => {
+  if (intent === "menu") return true;
+  const raw = asLower(message);
+  const menuKeyword = /(món|menu|ăn|combo|giá|chay|bán chạy|do uong|nước|tráng miệng|dessert|drink)/.test(raw);
+  if (menuKeyword) return true;
+  const hasStrongSubtype = (preferences.intentSubtype || []).some((x) => ["bestSeller", "quickPrep", "combo", "vegetarian", "budget"].includes(x));
+  if (hasStrongSubtype) return true;
+  if (preferences.dietary?.length || preferences.mealType?.length || preferences.budgetMax) return true;
+  if (preferences.partySize && menuKeyword) return true;
+  return false;
+};
+
+const scoreMenuItemForPreferences = (item, preferences = {}) => {
+  const haystack = asLower(`${item.name || ""} ${item.description || ""} ${(item.labels || []).join(" ")} ${(item.tags || []).join(" ")}`);
+  let score = 0;
+  if (!item.isAvailable && item.status !== "available") score -= 100;
+  if (preferences.intentSubtype?.includes("bestSeller")) score += Number(item.orderCounter || 0) / 10 + Number(item.rate || 0) * 2;
+  if (preferences.budgetMax) score += Number(item.currentPrice || item.basePrice || 0) <= preferences.budgetMax ? 25 : -10;
+  if (preferences.intentSubtype?.includes("quickPrep")) score += Math.max(0, 20 - Number(item.avgPrepTimeMin || 30));
+  if (preferences.taste?.includes("spicy") && /(cay|spicy)/.test(haystack)) score += 8;
+  if (preferences.taste?.includes("nonSpicy") && /(không cay|khong cay|non spicy)/.test(haystack)) score += 8;
+  if (preferences.dietary?.includes("vegetarian")) score += (item.isVegetarian || /\bchay\b|vegetarian/.test(haystack)) ? 20 : -15;
+  if (preferences.dietary?.includes("vegan")) score += (item.isVegan || /\bvegan\b/.test(haystack)) ? 20 : -15;
+  if (preferences.dietary?.includes("noSeafood") && /(hải sản|hai san|seafood|shrimp|fish|crab)/.test(haystack)) score -= 20;
+  if (preferences.mealType?.includes("drink") && /(drink|nước|trà|tea|coffee)/.test(`${haystack} ${asLower(item.categoryName)}`)) score += 10;
+  if (preferences.mealType?.includes("dessert") && /(dessert|tráng miệng|cake|kem)/.test(`${haystack} ${asLower(item.categoryName)}`)) score += 10;
+  return score;
+};
+
+const rankMenuRecommendations = (menuItems = [], preferences = {}, limit = 6) =>
+  menuItems
+    .map((item) => {
+      const score = scoreMenuItemForPreferences(item, preferences);
+      const reason = preferences.budgetMax && Number(item.currentPrice || item.basePrice || 0) <= preferences.budgetMax
+        ? "Phù hợp ngân sách của bạn"
+        : preferences.intentSubtype?.includes("bestSeller")
+          ? "Ưu tiên theo dữ liệu bán chạy/đánh giá"
+          : preferences.intentSubtype?.includes("quickPrep")
+            ? "Thời gian chuẩn bị nhanh"
+            : "Phù hợp theo tiêu chí bạn yêu cầu";
+      return { ...item, score, recommendationReason: reason };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 
 const serializeCoupon = (coupon, currency = "VND") => ({
   id: String(coupon._id || coupon.id),
@@ -294,7 +424,7 @@ const fetchRestaurants = async ({ restaurantId, message }) => {
     .lean();
 };
 
-const fetchMenuItems = async ({ restaurantId, message }) => {
+const fetchMenuItems = async ({ restaurantId, message, limit = 8 }) => {
   const rid = toObjectId(restaurantId);
   const regex = buildSearchRegex(message);
   const filter = { status: "available" };
@@ -310,13 +440,13 @@ const fetchMenuItems = async ({ restaurantId, message }) => {
 
   let items = await MenuItem.find(filter)
     .sort({ orderCounter: -1, rate: -1, sortOrder: 1 })
-    .limit(8)
+    .limit(limit)
     .lean();
 
   if (!items.length && rid) {
     items = await MenuItem.find({ restaurantId: rid, status: "available" })
       .sort({ orderCounter: -1, rate: -1, sortOrder: 1 })
-      .limit(8)
+      .limit(limit)
       .lean();
   }
 
@@ -392,17 +522,21 @@ const buildKnowledgePrompt = (knowledgeItems = []) => {
 
 const buildContext = async ({ message, restaurantId, user }) => {
   const intent = classifyIntent(message);
+  const menuPreferences = extractMenuPreferences(message);
+  const isMenuAssistant = isMenuAssistantRequest(message, intent, menuPreferences);
   const restaurants = await fetchRestaurants({ restaurantId, message });
   const primaryRestaurant = restaurants[0] || null;
   const currency = primaryRestaurant?.defaultCurrency || "VND";
 
   const [menuItems, coupons, orders, reservations] = await Promise.all([
-    fetchMenuItems({ restaurantId: restaurantId || primaryRestaurant?._id, message }),
+    fetchMenuItems({ restaurantId: restaurantId || primaryRestaurant?._id, message, limit: isMenuAssistant && (restaurantId || primaryRestaurant?._id) ? 30 : 8 }),
     fetchCoupons({ restaurantId: restaurantId || primaryRestaurant?._id }),
     fetchOrders({ restaurantId: restaurantId || primaryRestaurant?._id, message, user }),
     fetchReservations({ restaurantId: restaurantId || primaryRestaurant?._id, message, user }),
   ]);
 
+  const serializedMenuItems = menuItems.map((item) => serializeMenuItem(item, currency));
+  const recommendedMenuItems = rankMenuRecommendations(serializedMenuItems, menuPreferences, 10);
   return {
     intent,
     user: user
@@ -413,8 +547,10 @@ const buildContext = async ({ message, restaurantId, user }) => {
         }
       : { role: "guest" },
     restaurants: restaurants.map(serializeRestaurant),
-    menuItems: menuItems.map((item) => serializeMenuItem(item, currency)),
-    coupons: coupons.map((coupon) => serializeCoupon(coupon, currency)),
+    menuItems: (isMenuAssistant ? recommendedMenuItems : serializedMenuItems).slice(0, 10),
+    recommendedMenuItems: recommendedMenuItems.slice(0, 10),
+    menuPreferences,
+    coupons: coupons.map((coupon) => serializeCoupon(coupon, currency)).slice(0, 3),
     orders: orders.map((order) => serializeOrder(order, currency)),
     reservations: reservations.map((reservation) => serializeReservation(reservation, currency)),
   };
@@ -434,33 +570,60 @@ const safeJsonParse = (raw) => {
   }
 };
 
-const normalizeAiResult = (parsed, context) => ({
-  answer: String(parsed?.answer || "").trim() || fallbackAnswer(context).answer,
-  intent: parsed?.intent || context.intent || "general",
-  confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? 0.7))),
-  quickReplies: Array.isArray(parsed?.quickReplies)
-    ? parsed.quickReplies.map(String).slice(0, 4)
-    : fallbackQuickReplies(context.intent),
-  actions: Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 4) : fallbackActions(context),
-  sources: Array.isArray(parsed?.sources) ? parsed.sources.slice(0, 8) : fallbackSources(context),
-  isFallback: false,
-});
+const normalizeAiResult = (parsed, context) => {
+  const allowedItemIds = new Set((context.recommendedMenuItems || context.menuItems || []).map((x) => String(x.id)));
+  const actions = Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 4).filter((action) => {
+    const href = String(action?.href || "");
+    if (!href) return false;
+    if (href.startsWith("/food/")) return allowedItemIds.has(href.replace("/food/", ""));
+    return true;
+  }) : fallbackActions(context);
+  const sources = Array.isArray(parsed?.sources) ? parsed.sources.slice(0, 8).filter((source) => {
+    if (source?.type !== "menuItem") return true;
+    return allowedItemIds.has(String(source?.id || ""));
+  }) : fallbackSources(context);
+  const answer = String(parsed?.answer || "").trim() || fallbackAnswer(context).answer;
+  const hasUnknownPrice = context.intent === "menu" && /đ|vnd|k\b/i.test(answer) && !sources.some((s) => s.type === "menuItem");
+  return {
+    answer: hasUnknownPrice ? menuFallback(context) : answer,
+    intent: parsed?.intent || context.intent || "general",
+    confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? 0.7))),
+    quickReplies: Array.isArray(parsed?.quickReplies)
+      ? parsed.quickReplies.map(String).slice(0, 4)
+      : fallbackQuickReplies(context.intent),
+    actions,
+    sources,
+    isFallback: false,
+  };
+};
 
 const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-  const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
-  const prompt = [
-    "Bạn là ChatBot A.I chuyên nghiệp cho Cohan Restaurant App.",
-    "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
-    "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
-    "Không tự bịa giá, trạng thái đơn, số điện thoại, chính sách hoặc thông tin cá nhân.",
-    "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
-    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
-    `CONTEXT: ${JSON.stringify(context)}`,
-    knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
-  ].join("\n");
+   const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
+    const prompt = [
+      "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+      "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
+      "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+      "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
+      "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
+      "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+      "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
+      "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
+      "Không tự đặt món/thanh toán.",
+      "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+      "Không dùng markdown code fence.",
+      `CONTEXT: ${JSON.stringify({
+        restaurants: context.restaurants?.slice(0, 1),
+        menuPreferences: context.menuPreferences,
+        recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
+        menuItems: context.menuItems?.slice(0, 8),
+        coupons: context.coupons?.slice(0, 3),
+        intent: context.intent,
+      })}`,
+      knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
+    ].join("\n");
 
   try {
     const res = await fetch(OPENAI_ENDPOINT, {
@@ -492,7 +655,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
 
 const fallbackQuickReplies = (intent) => {
   const byIntent = {
-    menu: ["Gợi ý món bán chạy", "Có món nào đang giảm giá?", "Tôi muốn đặt món"],
+    menu: ["Gợi ý combo cho 2 người", "Món dưới 100k", "Món bán chạy", "Món chay"],
     reservation: ["Tôi muốn đặt bàn", "Chính sách đặt cọc", "Xem sơ đồ bàn"],
     order: ["Kiểm tra đơn hàng", "Tôi muốn thanh toán", "Gọi nhân viên"],
     promotion: ["Mã giảm giá hiện có", "Điều kiện áp dụng", "Gợi ý combo"],
@@ -504,12 +667,14 @@ const fallbackQuickReplies = (intent) => {
 
 const fallbackActions = (context) => {
   const restaurantId = context.restaurants?.[0]?.id;
+  const topItemId = context.recommendedMenuItems?.[0]?.id || context.menuItems?.[0]?.id;
   const actions = [];
   if (context.intent === "reservation" && restaurantId) {
     actions.push({ type: "link", label: "Mở trang đặt bàn", href: `/restaurant/${restaurantId}/layout` });
   }
   if (context.intent === "menu" && restaurantId) {
-    actions.push({ type: "link", label: "Xem nhà hàng", href: `/restaurant/${restaurantId}` });
+    actions.push({ type: "link", label: "Xem menu", href: `/restaurant/${restaurantId}` });
+    if (topItemId) actions.push({ type: "link", label: "Xem món gợi ý", href: `/food/${topItemId}` });
   }
   if (context.intent === "promotion" && restaurantId) {
     actions.push({ type: "link", label: "Xem coupon", href: `/coupons/${restaurantId}` });
@@ -523,20 +688,20 @@ const fallbackActions = (context) => {
 
 const fallbackSources = (context) => [
   ...(context.restaurants || []).slice(0, 2).map((item) => ({ type: "restaurant", id: item.id, label: item.name })),
-  ...(context.menuItems || []).slice(0, 3).map((item) => ({ type: "menuItem", id: item.id, label: item.name })),
+  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name })),
   ...(context.coupons || []).slice(0, 2).map((item) => ({ type: "coupon", id: item.id, label: item.code })),
 ];
 
 const menuFallback = (context) => {
-  const items = context.menuItems || [];
+  const items = context.recommendedMenuItems?.length ? context.recommendedMenuItems : (context.menuItems || []);
   if (!items.length) {
     return "Hiện mình chưa tìm thấy món phù hợp trong dữ liệu menu. Bạn có thể thử hỏi theo tên món, loại món hoặc mở trang nhà hàng để xem đầy đủ menu.";
   }
-  const lines = items.slice(0, 4).map((item, index) => {
+  const lines = items.slice(0, 5).map((item, index) => {
     const rating = Number(item.rate || 0) > 0 ? `, đánh giá ${item.rate}/5` : "";
-    return `${index + 1}. ${item.name} - ${item.formattedPrice}${rating}`;
+    return `${index + 1}. ${item.name} - ${item.formattedPrice}${rating} (${item.recommendationReason || "dựa trên dữ liệu hiện có"})`;
   });
-  return `Mình gợi ý một vài món phù hợp:\n${lines.join("\n")}\nBạn muốn mình gợi ý theo khẩu vị, ngân sách hay món bán chạy không?`;
+  return `Mình chỉ thấy các món sau trong dữ liệu hiện có:\n${lines.join("\n")}\nBạn muốn lọc theo ngân sách, món chay hay món ra nhanh không?`;
 };
 
 const reservationFallback = (context) => {
@@ -731,6 +896,34 @@ export const handleRestaurantChatbotMessage = async ({
     ? "Nếu bạn cần hỗ trợ thêm, bạn có thể bấm 'Gặp nhân viên' để được hỗ trợ bởi người thật."
     : null;
 
+  const shouldRecordKnowledgeGap = Boolean(
+    aiSettings.enabled && restaurantId && cleanMessage && (
+      finalResponse.isFallback ||
+      (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) ||
+      !knowledgeItems.length ||
+      finalResponse.handoffSuggested
+    )
+  );
+
+  if (shouldRecordKnowledgeGap) {
+    try {
+      let triggerType = "fallback";
+      if (!knowledgeItems.length) triggerType = "no_knowledge_match";
+      else if (finalResponse.handoffSuggested) triggerType = "handoff";
+      else if (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) triggerType = "low_confidence";
+
+      await recordKnowledgeGapSuggestion({
+        restaurantId,
+        question: cleanMessage,
+        triggerType,
+        confidence: finalResponse.confidence,
+        conversationId: persistedConversation ? String(persistedConversation._id) : null,
+      });
+    } catch (err) {
+      console.warn("[ai-chatbot] record knowledge suggestion failed", err?.message || err);
+    }
+  }
+
   if (persistedConversation) {
     try {
       await AiChatMessage.create({
@@ -773,5 +966,16 @@ export const __testables = {
   extractLookupCode,
   buildSearchRegex,
   fallbackAnswer,
+  extractMenuPreferences,
+  parseBudgetMax,
+  isMenuAssistantRequest,
+  maybeCategoryName,
+  serializeMenuItem,
+  scoreMenuItemForPreferences,
+  rankMenuRecommendations,
+  menuFallback,
+  fallbackQuickReplies,
+  fallbackActions,
+  fallbackSources,
   normalizeGuestId,
 };

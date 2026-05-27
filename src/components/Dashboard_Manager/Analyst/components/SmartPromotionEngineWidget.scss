@@ -11,7 +11,7 @@
   .state-message { padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; color: #475569; font-size: 0.85rem; margin-bottom: 10px; }
   .state-message.warning { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
   .summary-row, .coupon-context { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; font-size: 0.82rem; color: #334155; }
-  .campaign-list { display: grid; gap: 10px; }
+  .campaign-list { display: grid; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
   .campaign-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
   .item-head { display: flex; justify-content: space-between; }
   .priority { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; }

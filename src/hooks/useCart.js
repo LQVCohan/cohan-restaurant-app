@@ -3,9 +3,9 @@ import { useState, useCallback, useEffect } from "react";
 
 const CART_STORAGE_KEY = "cohan.customerCart.v1";
 
-const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).map((m) => ({ groupId: m?.groupId || m?.groupName || "", optionId: m?.optionId || m?.optionName || "" })).sort((a,b)=>(`${a.groupId}:${a.optionId}`).localeCompare(`${b.groupId}:${b.optionId}`)));
+export const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).map((m) => ({ groupId: m?.groupId || m?.groupName || "", optionId: m?.optionId || m?.optionName || "" })).sort((a,b)=>(`${a.groupId}:${a.optionId}`).localeCompare(`${b.groupId}:${b.optionId}`)));
 
-const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
+export const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
 
 const getLineKey = (item = {}) => item.cartLineKey || buildCartLineIdentity(item);
 
