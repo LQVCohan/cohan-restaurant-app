@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "../../../../styles/Homepage/Cart.scss";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { isHoldExpired } from "@/hooks/useCart";
 
-// --- GRAPHQL ---
 const RESTAURANT_BY_ID = gql`
   query RestaurantById($id: ID!) {
     restaurant(id: $id) {
@@ -22,7 +22,6 @@ function useRestaurantName(restaurantId) {
   return data?.restaurant?.name;
 }
 
-// --- ICONS (SVG Inline) ---
 const IconClose = () => (
   <svg
     width="24"
@@ -90,7 +89,27 @@ const IconEmpty = () => (
   </svg>
 );
 
-// --- COMPONENT CHÍNH ---
+export const formatHoldCountdown = (ms = 0) => {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:${String(totalSeconds % 60).padStart(2, "0")}`;
+};
+
+export const getHoldStatus = (item, now = Date.now()) => {
+  if (!item?.holdExpiresAt) return { state: "none", remainingMs: 0 };
+  if (item.holdStatus && item.holdStatus !== "ACTIVE")
+    return { state: "expired", remainingMs: 0 };
+  const expiresAt = new Date(item.holdExpiresAt).getTime();
+  if (!Number.isFinite(expiresAt)) return { state: "none", remainingMs: 0 };
+  const remainingMs = expiresAt - now;
+  if (remainingMs <= 0 || isHoldExpired(item, now))
+    return { state: "expired", remainingMs: 0 };
+  if (remainingMs < 60_000) return { state: "warning", remainingMs };
+  return { state: "active", remainingMs };
+};
+
+export const hasExpiredHoldItems = (cart = [], now = Date.now()) =>
+  (cart || []).some((item) => getHoldStatus(item, now).state === "expired");
+
 const Cart = ({
   isOpen,
   onClose,
@@ -107,20 +126,19 @@ const Cart = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [tickMs, setTickMs] = useState(() => Date.now());
 
   const formatVND = useCallback(
     (v) => (v || 0).toLocaleString("vi-VN") + "đ",
     [],
   );
 
-  // Nhóm theo nhà hàng
   const groups = useMemo(() => {
     const map = new Map();
     for (const i of cart || []) {
       const rid = i.restaurantId || "unknown";
-      if (!map.has(rid)) {
+      if (!map.has(rid))
         map.set(rid, { restaurantId: rid, items: [], subtotal: 0 });
-      }
       const g = map.get(rid);
       const line = (i.price || 0) * (i.quantity || 1);
       g.items.push(i);
@@ -129,10 +147,20 @@ const Cart = ({
     return Array.from(map.values());
   }, [cart]);
 
+  useEffect(() => {
+    if (!isOpen || !cart?.length) return undefined;
+    const intervalId = window.setInterval(() => setTickMs(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [cart?.length, isOpen]);
+
   const total =
     typeof totalPrice === "function" ? totalPrice() : totalPrice || 0;
   const itemCount =
     cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
+  const expiredHoldExists = useMemo(
+    () => hasExpiredHoldItems(cart, tickMs),
+    [cart, tickMs],
+  );
   const hasScopedBusyState =
     busyItemIds !== undefined ||
     busyRestaurantIds !== undefined ||
@@ -158,7 +186,6 @@ const Cart = ({
         className={`cart-backdrop ${isOpen ? "open" : ""}`}
         onClick={onClose}
       />
-
       <div className={`cart-panel ${isOpen ? "open" : ""}`}>
         <div className="cart-header">
           <div className="cart-header__top">
@@ -179,7 +206,6 @@ const Cart = ({
             </button>
           )}
         </div>
-
         <div className="cart-body">
           {!cart?.length && (
             <div className="cart-empty">
@@ -192,7 +218,6 @@ const Cart = ({
               </button>
             </div>
           )}
-
           {groups.map((group) => (
             <RestaurantGroup
               key={group.restaurantId}
@@ -206,10 +231,10 @@ const Cart = ({
               clearingBusy={clearingBusy}
               busyItemIds={busyItemIds}
               busyRestaurantIds={busyRestaurantIds}
+              now={tickMs}
             />
           ))}
         </div>
-
         {!!cart?.length && (
           <div className="cart-footer">
             <div className="cart-footer__row">
@@ -219,18 +244,41 @@ const Cart = ({
             <button
               className="cart-checkout-btn"
               onClick={() => {
-                if (clearingBusy || globalBusy || !cart?.length) return;
-                const from = `${location.pathname}${location.search || ""}` || "cart";
+                if (
+                  clearingBusy ||
+                  globalBusy ||
+                  !cart?.length ||
+                  expiredHoldExists
+                )
+                  return;
+                const from =
+                  `${location.pathname}${location.search || ""}` || "cart";
                 navigate("/checkout", { state: { from } });
               }}
-              disabled={clearingBusy || globalBusy || !cart?.length}
+              disabled={
+                clearingBusy || globalBusy || !cart?.length || expiredHoldExists
+              }
+              title={
+                expiredHoldExists
+                  ? "Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món."
+                  : "Tiến hành đặt đơn"
+              }
+              aria-label={
+                expiredHoldExists
+                  ? "Không thể đặt đơn vì có món đã hết thời gian giữ"
+                  : "Đặt đơn ngay"
+              }
             >
               Đặt đơn ngay
             </button>
+            {expiredHoldExists && (
+              <p className="cart-footer__warning" role="alert">
+                Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món.
+              </p>
+            )}
           </div>
         )}
       </div>
-
     </>
   );
 };
@@ -246,6 +294,7 @@ function RestaurantGroup({
   clearingBusy,
   busyItemIds,
   busyRestaurantIds,
+  now,
 }) {
   const name =
     useRestaurantName(group.restaurantId) || `Nhà hàng ${group.restaurantId}`;
@@ -270,25 +319,72 @@ function RestaurantGroup({
           <IconTrash />
         </button>
       </div>
-
       <div className="cart-group__list">
         {group.items.map((item) => {
           const line = (item.price || 0) * (item.quantity || 1);
+          const hold = getHoldStatus(item, now);
+          const modifiers = item.modifiers || item.selectedModifiers || [];
+          const variantLabel =
+            item.servingVariantName ||
+            item.method ||
+            item.servingMethod ||
+            item.servingVariantLabel;
           const itemBusy =
             clearingBusy ||
             globalBusy ||
             !!busyItemIds?.[item.cartLineKey || item.id];
           return (
-            <div key={item.cartLineKey || item.id} className="cart-item">
+            <div
+              key={item.cartLineKey || item.id}
+              className={`cart-item ${hold.state === "expired" ? "is-expired" : ""}`}
+            >
               <div className="cart-item__main">
                 <div className="cart-item__info">
                   <h6 className="cart-item__name">{item.name}</h6>
                   <div className="cart-item__price-unit">
                     {formatVND(item.price)}
                   </div>
+                  {!!variantLabel && (
+                    <p className="cart-item__meta">Phần: {variantLabel}</p>
+                  )}
+                  {!!item.note && (
+                    <p className="cart-item__meta">Ghi chú: {item.note}</p>
+                  )}
+                  {modifiers.length > 0 && (
+                    <p className="cart-item__meta">
+                      Topping:{" "}
+                      {modifiers
+                        .map(
+                          (m) =>
+                            `${m.optionName || m.name}${m.price ? ` +${formatVND(m.price)}` : ""}`,
+                        )
+                        .join(", ")}
+                    </p>
+                  )}
+                  {hold.state === "active" && (
+                    <p className="cart-item__hold" role="status">
+                      Giữ món còn {formatHoldCountdown(hold.remainingMs)}
+                    </p>
+                  )}
+                  {hold.state === "warning" && (
+                    <p
+                      className="cart-item__hold cart-item__hold--warning"
+                      role="alert"
+                    >
+                      Sắp hết thời gian giữ món:{" "}
+                      {formatHoldCountdown(hold.remainingMs)}
+                    </p>
+                  )}
+                  {hold.state === "expired" && (
+                    <p
+                      className="cart-item__hold cart-item__hold--expired"
+                      role="alert"
+                    >
+                      Giữ món đã hết hạn
+                    </p>
+                  )}
                 </div>
               </div>
-
               <div className="cart-item__actions">
                 <div className="cart-qty">
                   <button
@@ -327,7 +423,6 @@ function RestaurantGroup({
           );
         })}
       </div>
-
       <div className="cart-group__subtotal">
         <span>Tạm tính ({name}):</span>
         <strong>{formatVND(group.subtotal)}</strong>
