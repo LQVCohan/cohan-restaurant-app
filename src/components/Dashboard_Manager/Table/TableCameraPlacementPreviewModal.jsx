@@ -106,6 +106,7 @@ const TableCameraPlacementPreviewModal = ({
   }, [open, modelKey, placementScope]);
 
   const handlePointerDown = (event) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
     dragRef.current = {
@@ -130,6 +131,7 @@ const TableCameraPlacementPreviewModal = ({
   };
 
   const handlePointerUp = (event) => {
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
     dragRef.current = null;
   };
