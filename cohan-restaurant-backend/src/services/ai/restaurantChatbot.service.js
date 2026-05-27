@@ -924,9 +924,10 @@ export const handleRestaurantChatbotMessage = async ({
     }
   }
 
+  let answerMessageId = null;
   if (persistedConversation) {
     try {
-      await AiChatMessage.create({
+      const assistantMessage = await AiChatMessage.create({
         conversationId: persistedConversation._id,
         restaurantId: restaurantObjectId,
         userId: userObjectId,
@@ -942,6 +943,7 @@ export const handleRestaurantChatbotMessage = async ({
         contextSummary: finalResponse.contextSummary,
       });
 
+      answerMessageId = String(assistantMessage?._id || "");
       await AiChatConversation.updateOne(
         { _id: persistedConversation._id },
         {
@@ -958,7 +960,7 @@ export const handleRestaurantChatbotMessage = async ({
     }
   }
 
-  return finalResponse;
+  return { ...finalResponse, answerMessageId: answerMessageId || null };
 };
 
 export const __testables = {
