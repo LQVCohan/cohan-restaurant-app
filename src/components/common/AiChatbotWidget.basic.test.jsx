@@ -109,7 +109,17 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.queryByRole("button", { name: "Gặp nhân viên" })).not.toBeInTheDocument();
   });
 
-  it("menu card renders and safe add-to-cart", async () => {
+  it("Xem món uses food detail path with restaurantId", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", formattedPrice: "90.000đ", isAvailable: true, restaurantId: "resto-1", currentPrice: 90000 }] } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("gợi ý món");
+    await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument(), { timeout: 1500 });
+    fireEvent.click(screen.getByRole("button", { name: "Xem món" }));
+    expect(mocks.navigateSpy).toHaveBeenCalledWith("/food/food-1?restaurantId=resto-1", expect.objectContaining({ state: expect.objectContaining({ restaurantId: "resto-1", dish: expect.objectContaining({ id: "food-1", name: "Phở bò" }) }) }));
+  });
+
+  it("menu card renders and safe add-to-cart with visible success feedback", async () => {
     mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", formattedPrice: "90.000đ", isAvailable: true, restaurantId: "resto-1", currentPrice: 90000 }] } } });
     render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
     open();
@@ -117,6 +127,9 @@ describe("AiChatbotWidget basic", () => {
     await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument(), { timeout: 1500 });
     fireEvent.click(screen.getByRole("button", { name: "Thêm vào giỏ" }));
     expect(mocks.addToCartSpy).toHaveBeenCalledWith(expect.objectContaining({ id: "food-1", quantity: 1, price: 90000 }));
+    expect(screen.getByText("Đã thêm Phở bò vào giỏ hàng.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đã thêm ✓" })).toBeInTheDocument();
+    expect(screen.getAllByText("Đã thêm Phở bò vào giỏ hàng.")).toHaveLength(1);
   });
 
   it("unavailable/optioned items do not show add button", async () => {

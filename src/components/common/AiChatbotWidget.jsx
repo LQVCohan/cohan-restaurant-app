@@ -6,6 +6,7 @@ import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
+import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import "./AiChatbotWidget.scss";
 
 const ASK_AI_CHATBOT = gql`
@@ -199,6 +200,8 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [lastIntent, setLastIntent] = useState("");
   const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [lastContextSummary, setLastContextSummary] = useState(null);
+  const [addedMenuItemIds, setAddedMenuItemIds] = useState(() => new Set());
+  const [cartNotice, setCartNotice] = useState("");
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
   const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
@@ -221,6 +224,8 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const sendInFlightRef = useRef(false);
   const pollInFlightRef = useRef(false);
   const hasJoinedSocketRef = useRef(false);
+  const addedMenuItemTimersRef = useRef(new Map());
+  const cartNoticeTimerRef = useRef(null);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -495,6 +500,43 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     return () => window.removeEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
   }, [loading, guestSendLoading, handoffLoading, sendMessage]);
 
+
+
+  const buildAiFoodDetailTarget = (source) => {
+    const targetRestaurantId = source?.restaurantId || restaurantId;
+    const href = buildFoodDetailPath(source?.id, {
+      restaurantId: targetRestaurantId,
+      timeSlot: source?.timeSlot,
+      categoryId: source?.categoryId,
+    });
+
+    const state = buildFoodDetailState(
+      {
+        id: source?.id,
+        name: source?.label,
+        basePrice: source?.basePrice || source?.currentPrice,
+        restaurantId: targetRestaurantId,
+        categoryId: source?.categoryId,
+        status: source?.status,
+        servingVariants: source?.variants || [],
+        thumbImage: source?.image || source?.thumbImage,
+      },
+      {
+        restaurantId: targetRestaurantId,
+        timeSlot: source?.timeSlot,
+        categoryId: source?.categoryId,
+      }
+    );
+
+    return { href, state };
+  };
+
+  useEffect(() => () => {
+    for (const timer of addedMenuItemTimersRef.current.values()) window.clearTimeout(timer);
+    addedMenuItemTimersRef.current.clear();
+    if (cartNoticeTimerRef.current) window.clearTimeout(cartNoticeTimerRef.current);
+  }, []);
+
   const handleAction = (action) => {
     if (!action?.href) return;
     if (action.href.startsWith("http")) {
@@ -600,6 +642,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               </span>
             </div>
           ) : null}
+          {cartNotice ? <div className="ai-chatbot-cart-notice">{cartNotice}</div> : null}
           {menuSourceCards.length ? <div className="ai-chatbot-menu-cards">{menuSourceCards.map((s) => {
             const canAdd = canAiAddMenuItemDirectly(s) && Boolean(s?.restaurantId);
             return <div key={s.id} className="ai-chatbot-menu-card">
@@ -607,21 +650,28 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               {s.formattedPrice ? <span className="ai-chatbot-menu-card__price">{s.formattedPrice}</span> : null}
               {(s.isAvailable === false || s.status === "unavailable") ? <span className="ai-chatbot-menu-card__status">Tạm hết món</span> : null}
               <div className="ai-chatbot-menu-card__actions">
-                <button type="button" onClick={() => handleAction({ href: `/food/${s.id}` })}>Xem món</button>
-                {canAdd ? <button type="button" onClick={() => {
+                <button type="button" onClick={() => {
+                  const target = buildAiFoodDetailTarget(s);
+                  navigate(target.href, { state: target.state });
+                  setOpen(false);
+                }}>Xem món</button>
+                {canAdd ? <button type="button" className={addedMenuItemIds.has(String(s.id)) ? "is-added" : ""} onClick={() => {
                   if (!canAiAddMenuItemDirectly(s)) {
-                    navigate(`/food/${s.id}`);
+                    const target = buildAiFoodDetailTarget(s);
+                    navigate(target.href, { state: target.state });
                     setOpen(false);
                     return;
                   }
                   if (!cartApi?.addToCart) {
-                    navigate(`/food/${s.id}`);
+                    const target = buildAiFoodDetailTarget(s);
+                    navigate(target.href, { state: target.state });
                     setOpen(false);
                     return;
                   }
                   const price = Number(s.currentPrice || s.basePrice || 0);
                   if (!Number.isFinite(price) || price <= 0) {
-                    navigate(`/food/${s.id}`);
+                    const target = buildAiFoodDetailTarget(s);
+                    navigate(target.href, { state: target.state });
                     setOpen(false);
                     return;
                   }
@@ -632,9 +682,32 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     price,
                     quantity: 1,
                   });
-                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn có thể kiểm tra giỏ hàng trước khi đặt. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?` }]);
+                  const itemId = String(s.id);
+                  setAddedMenuItemIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(itemId);
+                    return next;
+                  });
+                  if (addedMenuItemTimersRef.current.has(itemId)) {
+                    window.clearTimeout(addedMenuItemTimersRef.current.get(itemId));
+                  }
+                  const addedTimer = window.setTimeout(() => {
+                    setAddedMenuItemIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(itemId);
+                      return next;
+                    });
+                    addedMenuItemTimersRef.current.delete(itemId);
+                  }, 2500);
+                  addedMenuItemTimersRef.current.set(itemId, addedTimer);
+
+                  setCartNotice(`Đã thêm ${s.label} vào giỏ hàng.`);
+                  if (cartNoticeTimerRef.current) window.clearTimeout(cartNoticeTimerRef.current);
+                  cartNoticeTimerRef.current = window.setTimeout(() => setCartNotice(""), 3000);
+
+                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?` }]);
                   setLastQuickReplies(["Gợi ý nước uống", "Gợi ý món kèm", "Xem giỏ hàng"]);
-                }}>Thêm vào giỏ</button> : null}
+                }}>{addedMenuItemIds.has(String(s.id)) ? "Đã thêm ✓" : "Thêm vào giỏ"}</button> : null}
               </div>
             </div>;
           })}</div> : null}
