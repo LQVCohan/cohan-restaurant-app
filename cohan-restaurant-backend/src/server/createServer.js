@@ -64,6 +64,16 @@ const parseAllowedOrigins = () => {
   return filtered.length > 0 ? filtered : ["http://localhost:5173"];
 };
 
+
+
+export function shouldAllowAuthCookieRequestOrigin({ origin, allowedOrigins, nodeEnv, allowNoOriginValue }) {
+  const normalizedAllowedOrigins = Array.isArray(allowedOrigins) ? allowedOrigins : [];
+  if (origin) return normalizedAllowedOrigins.includes(origin);
+  const env = String(nodeEnv || "development").toLowerCase();
+  const allowNoOrigin = String(allowNoOriginValue || "").toLowerCase() === "true";
+  if (env === "production") return allowNoOrigin;
+  return String(allowNoOriginValue || "").toLowerCase() !== "false";
+}
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
@@ -139,7 +149,23 @@ export async function createServer() {
 
   await app.register(uploadRoutes, { prefix: "/api" });
 
-  app.post("/api/auth/refresh", async (req, reply) => {
+  app.post("/api/auth/refresh", {
+    config: {
+      rateLimit: {
+        max: Number(process.env.RL_AUTH_REFRESH_MAX || 30),
+        timeWindow: process.env.RL_AUTH_REFRESH_WINDOW || "1 minute",
+      },
+    },
+  }, async (req, reply) => {
+    const origin = req.headers.origin;
+    const allowOrigin = shouldAllowAuthCookieRequestOrigin({
+      origin,
+      allowedOrigins,
+      nodeEnv: process.env.NODE_ENV,
+      allowNoOriginValue: process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN,
+    });
+    if (!allowOrigin) return reply.code(403).send({ ok: false, message: "Forbidden" });
+
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     const currentToken = req.cookies?.[cookieName];
     if (!currentToken) {
@@ -147,6 +173,7 @@ export async function createServer() {
       return reply.code(401).send({ ok: false, message: "Authentication failed" });
     }
     const result = await rotateRefreshToken({
+      logger: req.log,
       currentRawToken: currentToken,
       reply,
       userAgent: req.headers["user-agent"],
@@ -159,7 +186,23 @@ export async function createServer() {
     return reply.send({ ok: true, token: result.token, user: result.user });
   });
 
-  app.post("/api/auth/logout", async (req, reply) => {
+  app.post("/api/auth/logout", {
+    config: {
+      rateLimit: {
+        max: Number(process.env.RL_AUTH_LOGOUT_MAX || 60),
+        timeWindow: process.env.RL_AUTH_LOGOUT_WINDOW || "1 minute",
+      },
+    },
+  }, async (req, reply) => {
+    const origin = req.headers.origin;
+    const allowOrigin = shouldAllowAuthCookieRequestOrigin({
+      origin,
+      allowedOrigins,
+      nodeEnv: process.env.NODE_ENV,
+      allowNoOriginValue: process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN,
+    });
+    if (!allowOrigin) return reply.code(403).send({ ok: false, message: "Forbidden" });
+
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     await revokeRefreshToken(req.cookies?.[cookieName]);
     clearRefreshCookie(reply);
