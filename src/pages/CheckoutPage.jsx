@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import OrderSummaryModal from "@/components/Customer/BookingDishesModal/OrderSummaryModal";
 import { useCart } from "@/context/CartProvider";
+import { isHoldExpired } from "@/hooks/useCart";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -12,11 +13,10 @@ const CheckoutPage = () => {
 
   const fallbackPath = location.state?.from || "/";
 
-  const expiredHoldItems = React.useMemo(() => (checkoutItems || []).filter((item) => {
-    if (!item?.holdExpiresAt) return false;
-    const time = new Date(item.holdExpiresAt).getTime();
-    return Number.isFinite(time) && time <= Date.now();
-  }), [checkoutItems]);
+  const expiredHoldItems = React.useMemo(
+    () => (checkoutItems || []).filter((item) => isHoldExpired(item)),
+    [checkoutItems],
+  );
 
   React.useEffect(() => {
     if (
