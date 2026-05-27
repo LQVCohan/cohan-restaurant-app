@@ -332,13 +332,12 @@ const aiQuickPrompts = [
             >
               AI gợi ý món
             </button>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+            <div className="quick-prompts">
               {aiQuickPrompts.map((item) => (
                 <button
                   key={item.label}
                   type="button"
-                  className="btn-icon"
-                  style={{ width: "auto", padding: "6px 10px", borderRadius: 999 }}
+                  className="prompt-chip"
                   onClick={() => openAiMenuAssistant({ message: item.message, autoSend: true, restaurantId: resolvedRestaurant.id })}
                 >
                   {item.label}
@@ -359,7 +358,7 @@ const aiQuickPrompts = [
               onClick={handleBookTable}
               disabled={isPreviewMode || !canReserve}
             >
-              Tiếp tục đặt bàn
+              {primaryCtaText}
             </button>
           </div>
 
