@@ -14,7 +14,10 @@ import {
 import "./TableCameraPlacementPreviewModal.scss";
 
 const CAMERA_ERROR_MESSAGE =
-  "Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera hoặc dùng HTTPS.";
+  "Vui lòng cấp quyền camera hoặc dùng HTTPS.";
+
+const CAMERA_UNSUPPORTED_MESSAGE =
+  "Thiết bị/trình duyệt của bạn chưa hỗ trợ mở camera (getUserMedia).";
 
 const shapeLabelMap = CUSTOM_TABLE_SHAPES.reduce((acc, item) => {
   acc[item.value] = item.label;
@@ -71,7 +74,7 @@ const TableCameraPlacementPreviewModal = ({
     setCameraError("");
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setCameraError(CAMERA_ERROR_MESSAGE);
+      setCameraError(CAMERA_UNSUPPORTED_MESSAGE);
       return;
     }
 
@@ -103,6 +106,7 @@ const TableCameraPlacementPreviewModal = ({
   }, [open, modelKey, placementScope]);
 
   const handlePointerDown = (event) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
     dragRef.current = {
@@ -127,6 +131,7 @@ const TableCameraPlacementPreviewModal = ({
   };
 
   const handlePointerUp = (event) => {
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
     dragRef.current = null;
   };
@@ -137,8 +142,7 @@ const TableCameraPlacementPreviewModal = ({
         <div className="camera-placement-modal__header">
           <h3>📷 Xem thử bằng camera</h3>
           <p>
-            Đây là preview overlay thủ công. Kéo, xoay và phóng to/thu nhỏ mẫu bàn để ước lượng độ phù hợp
-            trong không gian thực tế.
+            Đây là bản xem thử overlay thủ công, chưa phải AR nhận diện mặt phẳng.
           </p>
         </div>
 
@@ -165,6 +169,7 @@ const TableCameraPlacementPreviewModal = ({
             {modelSummary.shape === "booth" && <em className="sofa-badge">Sofa</em>}
           </div>
           {cameraError && <div className="camera-placement-modal__error">{cameraError}</div>}
+          <div className="camera-placement-modal__hint">Kéo mẫu bàn để đặt vị trí. Dùng nút để xoay/phóng to.</div>
         </div>
 
         <div className="camera-placement-modal__controls">
@@ -176,7 +181,7 @@ const TableCameraPlacementPreviewModal = ({
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x + 2, 5, 95) }))}>→</Button>
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y - 2, 5, 95) }))}>↑</Button>
           <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y + 2, 5, 95) }))}>↓</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement(DEFAULT_CAMERA_PLACEMENT)}>Reset vị trí</Button>
+          <Button size="sm" variant="secondary" onClick={() => setPlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset vị trí</Button>
           <Button
             size="sm"
             variant="secondary"
@@ -203,6 +208,10 @@ const TableCameraPlacementPreviewModal = ({
           </Button>
         </div>
 
+        <p className="camera-placement-modal__stats">
+          x: {placement.x.toFixed(1)}% • y: {placement.y.toFixed(1)}% • scale: {placement.scale.toFixed(2)} • rotation: {placement.rotation.toFixed(0)}°
+        </p>
+
         <p className="camera-placement-modal__note">
           Bản xem trước này chưa lưu vào sơ đồ, chỉ dùng để ước lượng vị trí thực tế.
           Vị trí lưu chỉ áp dụng trên trình duyệt hiện tại và dùng cho lần xem thử tiếp theo.
@@ -213,7 +222,22 @@ const TableCameraPlacementPreviewModal = ({
           <Button variant="secondary" onClick={onClose}>Đóng</Button>
           <Button
             variant="primary"
-            onClick={() => onConfirmPlacement?.({ modelItem, placement })}
+            onClick={() =>
+              onConfirmPlacement?.({
+                modelKey: modelItem?.key || "preview",
+                modelLabel: modelSummary.name,
+                placement,
+                dimensions: modelItem?.customModelSpec
+                  ? {
+                      widthCm: modelItem.customModelSpec.widthCm,
+                      depthCm: modelItem.customModelSpec.depthCm,
+                      heightCm: modelItem.customModelSpec.heightCm,
+                    }
+                  : null,
+                tableType: modelItem?.tableType || null,
+                capacity: modelSummary.seats,
+              })
+            }
           >
             Xác nhận vị trí
           </Button>

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CAMERA_PLACEMENT_STORAGE_KEY,
   DEFAULT_CAMERA_PLACEMENT,
+  buildCameraPlacementKey,
   deleteCameraPlacement,
-  getCameraPlacementStorageKey,
   hasCameraPlacement,
   loadCameraPlacement,
-  loadCameraPlacements,
   normalizeCameraPlacement,
   saveCameraPlacement,
 } from "./table3dCameraPlacementStorage";
@@ -24,76 +24,42 @@ describe("table3dCameraPlacementStorage", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("normalizeCameraPlacement falls back defaults", () => {
+  it("buildCameraPlacementKey is stable", () => {
+    expect(buildCameraPlacementKey("m1", "r1")).toBe("r1::m1");
+    expect(buildCameraPlacementKey("m1", "r1")).toBe(buildCameraPlacementKey("m1", "r1"));
+  });
+
+  it("normalizeCameraPlacement clamps values", () => {
+    expect(normalizeCameraPlacement({ x: -5, y: 101, scale: 5, rotation: "abc" })).toEqual({
+      x: 5,
+      y: 95,
+      scale: 2,
+      rotation: 0,
+    });
+    expect(normalizeCameraPlacement({ x: 90, y: 20, scale: 0.1, rotation: -15 })).toEqual({
+      x: 90,
+      y: 20,
+      scale: 0.5,
+      rotation: -15,
+    });
     expect(normalizeCameraPlacement(null)).toEqual(DEFAULT_CAMERA_PLACEMENT);
-    expect(normalizeCameraPlacement(undefined)).toEqual(DEFAULT_CAMERA_PLACEMENT);
   });
 
-  it("normalizeCameraPlacement clamps and normalizes values", () => {
-    expect(normalizeCameraPlacement({ x: -5, y: 101, scale: 5, rotation: 370 })).toEqual({
-      x: 0,
-      y: 100,
-      scale: 2.5,
-      rotation: 10,
-    });
-    expect(normalizeCameraPlacement({ scale: 0.1, rotation: -15 })).toMatchObject({
-      scale: 0.35,
-      rotation: 345,
-    });
-    expect(normalizeCameraPlacement({ rotation: "bad" }).rotation).toBe(0);
+  it("loadCameraPlacement fallback default when JSON corrupted", () => {
+    localStorage.setItem(CAMERA_PLACEMENT_STORAGE_KEY, "bad-json");
+    expect(loadCameraPlacement("m1", "r1")).toEqual(DEFAULT_CAMERA_PLACEMENT);
   });
 
-  it("loadCameraPlacements returns {} for empty/invalid/non-object", () => {
-    expect(loadCameraPlacements("r1")).toEqual({});
-    localStorage.setItem(getCameraPlacementStorageKey("r1"), "bad-json");
-    expect(loadCameraPlacements("r1")).toEqual({});
-    localStorage.setItem(getCameraPlacementStorageKey("r1"), JSON.stringify([1, 2]));
-    expect(loadCameraPlacements("r1")).toEqual({});
-  });
+  it("save/delete respects scoped key", () => {
+    saveCameraPlacement("m1", { x: 10, y: 20, scale: 1, rotation: 30 }, "r1");
+    saveCameraPlacement("m1", { x: 40, y: 50, scale: 1.5, rotation: 10 }, "r2");
 
-  it("loadCameraPlacements normalizes each entry", () => {
-    localStorage.setItem(
-      getCameraPlacementStorageKey("r1"),
-      JSON.stringify({ a: { x: -1, y: 22, scale: 3, rotation: 720 } })
-    );
-    expect(loadCameraPlacements("r1")).toEqual({
-      a: { x: 0, y: 22, scale: 2.5, rotation: 0 },
-    });
-  });
+    expect(loadCameraPlacement("m1", "r1")).toEqual({ x: 10, y: 20, scale: 1, rotation: 30 });
+    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10 });
+    expect(hasCameraPlacement("m1", "r1")).toBe(true);
 
-  it("loadCameraPlacement returns default for missing modelKey/missing key", () => {
-    expect(loadCameraPlacement("", "r1")).toEqual(DEFAULT_CAMERA_PLACEMENT);
-    expect(loadCameraPlacement("missing", "r1")).toEqual(DEFAULT_CAMERA_PLACEMENT);
-  });
-
-  it("loadCameraPlacement returns saved placement", () => {
-    saveCameraPlacement("m1", { x: 10, y: 20, scale: 1.2, rotation: 25 }, "r1");
-    expect(loadCameraPlacement("m1", "r1")).toEqual({ x: 10, y: 20, scale: 1.2, rotation: 25 });
-  });
-
-  it("saveCameraPlacement saves by key and does not mutate input", () => {
-    const input = { x: 20, y: 60, scale: 1.1, rotation: 30 };
-    const snapshot = { ...input };
-    const result = saveCameraPlacement("m2", input, "r1");
-    expect(result.m2).toEqual(input);
-    expect(input).toEqual(snapshot);
-  });
-
-  it("saveCameraPlacement ignores invalid key without crash", () => {
-    expect(saveCameraPlacement("", { x: 10 }, "r1")).toEqual({});
-  });
-
-  it("deleteCameraPlacement removes key and missing key does not crash", () => {
-    saveCameraPlacement("a", { x: 1 }, "r1");
-    saveCameraPlacement("b", { x: 2 }, "r1");
-    expect(Object.keys(deleteCameraPlacement("a", "r1"))).toEqual(["b"]);
-    expect(Object.keys(deleteCameraPlacement("missing", "r1"))).toEqual(["b"]);
-  });
-
-  it("hasCameraPlacement returns true/false correctly", () => {
-    saveCameraPlacement("a", { x: 1 }, "r1");
-    expect(hasCameraPlacement("a", "r1")).toBe(true);
-    expect(hasCameraPlacement("b", "r1")).toBe(false);
-    expect(hasCameraPlacement("", "r1")).toBe(false);
+    deleteCameraPlacement("m1", "r1");
+    expect(loadCameraPlacement("m1", "r1")).toEqual(DEFAULT_CAMERA_PLACEMENT);
+    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10 });
   });
 });

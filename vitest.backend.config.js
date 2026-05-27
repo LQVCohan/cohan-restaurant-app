@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  root: 'cohan-restaurant-backend',
   test: {
     environment: 'node',
-    include: ['cohan-restaurant-backend/tests/**/*.{test,spec}.{js,ts}'],
+    include: ['tests/**/*.{test,spec}.{js,ts}'],
   },
 });
