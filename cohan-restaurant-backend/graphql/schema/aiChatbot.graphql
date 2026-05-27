@@ -376,4 +376,7 @@ extend type Mutation {
   approveRestaurantAiChatbotKnowledgeSuggestion(id: ID!, input: ApproveAiChatbotKnowledgeSuggestionInput!): AiChatbotKnowledgeItem!
   dismissRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
   deleteRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
+  createRestaurantAiChatbotSafetyRule(input: CreateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!
+  updateRestaurantAiChatbotSafetyRule(input: UpdateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!
+  deleteRestaurantAiChatbotSafetyRule(id: ID!): Boolean!
 }

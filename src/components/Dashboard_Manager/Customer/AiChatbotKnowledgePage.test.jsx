@@ -9,6 +9,10 @@ const reviewMutation = vi.fn();
 const ignoreMutation = vi.fn();
 const convertMutation = vi.fn();
 
+const createSafetyMutation = vi.fn();
+const updateSafetyMutation = vi.fn();
+const deleteSafetyMutation = vi.fn();
+
 vi.mock("@apollo/client", () => ({
   gql: (s) => s,
   useQuery: (q) => ({
@@ -28,6 +32,9 @@ vi.mock("@apollo/client", () => ({
     if (text.includes("markAiChatbotAnswerFeedbackReviewed")) return [reviewMutation, { loading: false }];
     if (text.includes("ignoreAiChatbotAnswerFeedback")) return [ignoreMutation, { loading: false }];
     if (text.includes("convertAiChatbotFeedbackToSuggestion")) return [convertMutation, { loading: false }];
+    if (text.includes("createRestaurantAiChatbotSafetyRule")) return [createSafetyMutation, { loading: false }];
+    if (text.includes("updateRestaurantAiChatbotSafetyRule")) return [updateSafetyMutation, { loading: false }];
+    if (text.includes("deleteRestaurantAiChatbotSafetyRule")) return [deleteSafetyMutation, { loading: false }];
     return [vi.fn(), { loading: false }];
   },
 }));
@@ -35,7 +42,7 @@ vi.mock("@apollo/client", () => ({
 vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ restaurants: [{ id: "r1", name: "R1" }] }) }));
 
 beforeEach(() => {
-  approveMutation.mockReset(); dismissMutation.mockReset(); reviewMutation.mockReset(); ignoreMutation.mockReset(); convertMutation.mockReset();
+  approveMutation.mockReset(); dismissMutation.mockReset(); reviewMutation.mockReset(); ignoreMutation.mockReset(); convertMutation.mockReset(); createSafetyMutation.mockReset(); updateSafetyMutation.mockReset(); deleteSafetyMutation.mockReset();
   window.confirm = vi.fn(() => true);
   window.alert = vi.fn();
 });
@@ -65,5 +72,18 @@ describe("AiChatbotKnowledgePage", () => {
     expect(reviewMutation).toHaveBeenCalled();
     expect(ignoreMutation).toHaveBeenCalled();
     expect(convertMutation).toHaveBeenCalled();
+  });
+  it("safety create/update/delete call correct mutations", async () => {
+    render(<AiChatbotKnowledgePage />);
+    fireEvent.change(screen.getByPlaceholderText("Pattern"), { target: { value: "medical" } });
+    fireEvent.click(screen.getByText("Lưu safety"));
+    expect(createSafetyMutation).toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByText("Sửa")[0]);
+    fireEvent.click(screen.getByText("Lưu safety"));
+    expect(updateSafetyMutation).toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByText("Xóa")[0]);
+    expect(deleteSafetyMutation).toHaveBeenCalled();
   });
 });
