@@ -1181,37 +1181,53 @@ const MenuManagement = () => {
     setBulkForYouModal({ isOpen: true, mode });
   };
   const closeBulkForYouModal = () => setBulkForYouModal({ isOpen: false, mode: "missing" });
-  const bulkForYouTargetItems = bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems;
+  const bulkForYouTargetItems = (bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems)
+    .filter((item) => item?.id);
   const handleSubmitBulkForYouMetadata = async ({ form, enabledFields }) => {
     setBulkSubmitting(true); setBulkProgress({ done: 0, total: bulkForYouTargetItems.length }); setBulkErrors([]);
     const errors = [];
-    for (const item of bulkForYouTargetItems) {
-      try {
-        const patch = buildBulkForYouPatch(item, form, enabledFields);
-        if (!Object.keys(patch).length) continue;
-        await updateMenuItem({ id: item.id, ...patch });
-      } catch (error) {
-        errors.push({ id: item.id, name: item.name, message: error?.message || "Lỗi cập nhật" });
-      } finally {
-        setBulkProgress((prev) => ({ ...prev, done: (prev?.done || 0) + 1 }));
+    let successCount = 0;
+    try {
+      for (const item of bulkForYouTargetItems) {
+        try {
+          const patch = buildBulkForYouPatch(item, form, enabledFields);
+          if (!Object.keys(patch).length) continue;
+          await updateMenuItem({ id: item.id, ...patch });
+          successCount += 1;
+        } catch (error) {
+          errors.push({ id: item.id, name: item.name, message: error?.message || "Lỗi cập nhật" });
+        } finally {
+          setBulkProgress((prev) => ({ ...prev, done: (prev?.done || 0) + 1 }));
+        }
       }
-    }
-    await refetchItems?.();
-    if (errors.length === 0) {
-      closeBulkForYouModal();
-      if (bulkForYouModal.mode === "selected") {
-        setSelectedItemIds((prev) => {
-          const next = new Set(prev);
-          bulkForYouTargetItems.forEach((item) => next.delete(String(item.id)));
-          return next;
+
+      try {
+        await refetchItems?.();
+      } catch (error) {
+        errors.push({
+          id: "refetch",
+          name: "Làm mới danh sách",
+          message: error?.message || "Không thể làm mới danh sách món",
         });
       }
-      pushMenuToast(`Đã cập nhật khẩu vị cho ${bulkForYouTargetItems.length} món.`, "success");
-    } else {
-      setBulkErrors(errors);
-      pushMenuToast("Cập nhật xong một phần. Vui lòng kiểm tra các món lỗi bên dưới.", "warning");
+
+      if (errors.length === 0) {
+        closeBulkForYouModal();
+        if (bulkForYouModal.mode === "selected") {
+          setSelectedItemIds((prev) => {
+            const next = new Set(prev);
+            bulkForYouTargetItems.forEach((item) => next.delete(String(item.id)));
+            return next;
+          });
+        }
+        pushMenuToast(`Đã cập nhật khẩu vị cho ${successCount || bulkForYouTargetItems.length} món.`, "success");
+      } else {
+        setBulkErrors(errors);
+        pushMenuToast("Cập nhật xong một phần. Vui lòng kiểm tra các món lỗi bên dưới.", "warning");
+      }
+    } finally {
+      setBulkSubmitting(false);
     }
-    setBulkSubmitting(false);
   };
 
   const handleShowMissingForYouItems = () => {

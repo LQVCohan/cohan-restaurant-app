@@ -1559,7 +1559,7 @@ const OrderItem = ({ item, onAddModifier, foodPreferenceMeta }) => {
           <div className="order-item-for-you-badges">
             {foodPreferenceMeta.hasAllergyWarning ? (
               <span className="order-item-for-you-badge order-item-for-you-badge--warning">
-                ⚠ Có thể chứa thành phần bạn dị ứng
+                ⚠ Cần kiểm tra dị ứng
               </span>
             ) : foodPreferenceMeta.isRecommended ? (
               <span className="order-item-for-you-badge order-item-for-you-badge--match">
@@ -1567,7 +1567,7 @@ const OrderItem = ({ item, onAddModifier, foodPreferenceMeta }) => {
               </span>
             ) : (
               <span className="order-item-for-you-badge order-item-for-you-badge--note">
-                Lưu ý theo khẩu vị
+                Món phổ biến để tham khảo
               </span>
             )}
           </div>
@@ -1802,8 +1802,8 @@ const CheckoutForYouReview = ({ foodPreferenceReviewItems = [] }) => {
   const hasAllergyWarning = sorted.some((entry) => entry?.meta?.hasAllergyWarning);
   const title = hasAllergyWarning ? "⚠ Cần kiểm tra dị ứng" : "✨ Món phù hợp với bạn";
   const description = hasAllergyWarning
-    ? "Một số món có thể chứa thành phần bạn đã đánh dấu dị ứng. Vui lòng kiểm tra lại với nhà hàng nếu cần."
-    : "Một số món trong đơn phù hợp với khẩu vị bạn đã cài đặt.";
+    ? "Một số món cần kiểm tra dị ứng. Hãy kiểm tra thành phần trước khi đặt."
+    : "Gợi ý dựa trên khẩu vị của bạn.";
 
   return (
     <div

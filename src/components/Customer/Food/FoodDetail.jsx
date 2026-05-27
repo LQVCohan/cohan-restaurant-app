@@ -945,7 +945,7 @@ const FoodDetail = () => {
                         : "fd-for-you-chip--match"
                     }`}
                   >
-                    {foodPreferenceMeta.hasAllergyWarning ? "⚠ Có thể chứa thành phần bạn dị ứng" : "✨ Món phù hợp với bạn"}
+                    {foodPreferenceMeta.hasAllergyWarning ? "⚠ Cần kiểm tra dị ứng" : "✨ Món phù hợp với bạn"}
                   </span>
                 </div>
                 <div className="fd-for-you-panel__title">
@@ -973,7 +973,7 @@ const FoodDetail = () => {
                   </ul>
                 ) : null}
                 {foodPreferenceMeta.hasAllergyWarning ? (
-                  <small>Vui lòng kiểm tra lại với nhà hàng trước khi đặt.</small>
+                  <small>Hãy kiểm tra thành phần trước khi đặt.</small>
                 ) : null}
               </div>
             ) : null}
