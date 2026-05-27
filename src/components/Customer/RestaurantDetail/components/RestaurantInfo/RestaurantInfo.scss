@@ -58,6 +58,21 @@
     }
   }
 
+
+  .direction-link {
+    display: inline-flex;
+    width: fit-content;
+    font-size: 0.82rem;
+    color: #ea580c;
+    text-decoration: none;
+    font-weight: 600;
+    margin-top: 2px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
   .amenities-list {
     margin: 0;
     padding-left: 18px;

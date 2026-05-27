@@ -8,6 +8,14 @@ const formatAddress = (address) => {
   return [address.line1, address.district, address.city].filter(Boolean).join(", ");
 };
 
+const getDirectionsUrl = (address, addressText) => {
+  if (!address || !addressText) return "";
+  if (address?.lat && address?.lng) {
+    return `https://maps.google.com/?q=${address.lat},${address.lng}`;
+  }
+  return `https://maps.google.com/?q=${encodeURIComponent(addressText)}`;
+};
+
 const RestaurantInfo = ({ restaurant }) => {
   const description = restaurant?.description?.trim();
   const amenities = Array.isArray(restaurant?.amenities) ? restaurant.amenities.filter(Boolean) : [];
@@ -16,6 +24,7 @@ const RestaurantInfo = ({ restaurant }) => {
   const addressText = formatAddress(restaurant?.address);
 
   const hasRightColumn = Boolean(phone || addressText);
+  const directionsUrl = getDirectionsUrl(restaurant?.address, addressText);
 
   return (
     <div className={`restaurant-info-premium ${hasRightColumn ? "has-sidebar" : "single-column"}`}>
@@ -49,6 +58,11 @@ const RestaurantInfo = ({ restaurant }) => {
           <h4>Liên hệ</h4>
           {phone && <p><Phone size={14} /> {phone}</p>}
           {addressText && <p><MapPin size={14} /> {addressText}</p>}
+          {addressText && directionsUrl && (
+            <a className="direction-link" href={directionsUrl} target="_blank" rel="noreferrer">
+              Chỉ đường
+            </a>
+          )}
         </aside>
       )}
     </div>
