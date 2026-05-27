@@ -8,6 +8,12 @@ const GET_ANALYST_DASHBOARD = gql`
       revenue
       orders
       customers
+      statusCounts {
+        pending
+        preparing
+        completed
+        cancelled
+      }
       feedbackSummary {
         avgRating
         total
@@ -51,6 +57,51 @@ const GET_ANALYST_DASHBOARD = gql`
         ordersHandled
         efficiency
       }
+      recentOrders {
+        id
+        orderCode
+        customerName
+        orderType
+        tableCode
+        status
+        total
+        createdAt
+        itemNames
+      }
+      lowStockItems {
+        id
+        name
+        onHand
+        reserved
+      }
+    }
+    pendingServiceRequests: customerServiceRequests(
+      restaurantId: $restaurantId
+      status: "PENDING"
+      limit: 20
+    ) {
+      orderId
+      orderCode
+      tableCode
+      requestId
+      type
+      status
+      message
+      createdAt
+    }
+    acknowledgedServiceRequests: customerServiceRequests(
+      restaurantId: $restaurantId
+      status: "ACKNOWLEDGED"
+      limit: 20
+    ) {
+      orderId
+      orderCode
+      tableCode
+      requestId
+      type
+      status
+      message
+      createdAt
     }
 
     staffSchedulingAssistant(restaurantId: $restaurantId, horizonDays: 2) {
@@ -295,6 +346,10 @@ export const useAnalyst = () => {
   const staffSchedulingAssistant = data?.staffSchedulingAssistant;
   const menuEngineeringAssistant = data?.menuEngineeringAssistant;
   const smartPromotionEngine = data?.smartPromotionEngine;
+  const serviceRequests = [
+    ...(data?.pendingServiceRequests || []),
+    ...(data?.acknowledgedServiceRequests || []),
+  ];
 
   const selectedRestaurant = useMemo(
     () => restaurantOptions.find((restaurant) => getRestaurantId(restaurant) === restaurantId) || null,
@@ -366,6 +421,10 @@ export const useAnalyst = () => {
     feedbackItems: analyst?.feedbackItems || [],
     occupancyHeatmap: analyst?.occupancyHeatmap || [],
     staffPerformance: analyst?.staffPerformance || [],
+    statusCounts: analyst?.statusCounts || { pending: 0, preparing: 0, completed: 0, cancelled: 0 },
+    recentOrders: analyst?.recentOrders || [],
+    lowStockItems: analyst?.lowStockItems || [],
+    serviceRequests,
     demandForecast: demandForecast || { summary: { busiestPeriods: [], topRisingDishes: [], totalRecommendedPrep: 0, notes: [] }, hourlyForecast: [], dailyForecast: [], risingDishes: [], prepPlan: [], meta: { method: "time_series_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, granularity: "hourly", timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 0 } },
     staffSchedulingAssistant: staffSchedulingAssistant || { summary: { totalShiftGroups: 0, underStaffedShifts: 0, overStaffedShifts: 0, highestRiskShift: null, notes: [] }, shifts: [], meta: { method: "staff_scheduling_v1", basedOnForecast: false, fallbackUsed: true, generatedAt: null, timezone: "Asia/Ho_Chi_Minh" } },
     menuEngineeringAssistant: menuEngineeringAssistant || { summary: { totalDishes: 0, starCount: 0, plowhorseCount: 0, puzzleCount: 0, dogCount: 0, avgMarginPct: 0, notes: [] }, dishes: [], recommendations: [], meta: { method: "menu_engineering_v1", fallbackUsed: true, fallbackMarginRate: 0.65, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
