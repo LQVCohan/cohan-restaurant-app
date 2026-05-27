@@ -86,6 +86,8 @@ const AutoScheduleModal = ({
   generateError = "",
   assistantMeta = null,
   assistantSummary = null,
+  aiPlannerPayload = null,
+  autoScheduleSource = "ai",
   preview = null,
   selectedShiftKeys = {},
   onToggleShift,
@@ -133,7 +135,7 @@ const AutoScheduleModal = ({
       onClose={!generating && !applying ? onClose : undefined}
       size="xl"
     >
-      <Modal.Header>Chia ca tự động</Modal.Header>
+      <Modal.Header>AI xếp lịch nhân viên</Modal.Header>
 
       <Modal.Body className="auto-schedule-body">
         <div className="auto-banner">
@@ -141,10 +143,9 @@ const AutoScheduleModal = ({
             <Sparkles size={20} />
           </div>
           <div className="banner-copy">
-            <strong>Trợ lý chia ca tự động</strong>
+            <strong>AI xếp lịch nhân viên</strong>
             <p>
-              Hệ thống phân tích nhu cầu vận hành, nhân sự, lịch hiện có và
-              chính sách để tạo preview trước khi áp dụng.
+              AI phân tích nhu cầu, availability, performance và guardrail trước khi tạo preview.
             </p>
             <p>
               Chỉ các phân công hợp lệ mới được lưu. Ca còn thiếu người sẽ được
@@ -241,7 +242,7 @@ const AutoScheduleModal = ({
             <div className="config-card role-required-card">
               <div className="config-head">
                 <Users size={16} />
-                <span>Role bắt buộc áp dụng cho lần chia ca này</span>
+                <span>Vai trò ưu tiên (tùy chọn)</span>
               </div>
 
               <div className="required-role-grid">
@@ -259,14 +260,12 @@ const AutoScheduleModal = ({
               </div>
 
               {!selectedRequiredRoles.length ? (
-                <p className="required-role-warning">
-                  Cần có ít nhất một role bắt buộc. Hãy chọn role hoặc cập nhật
-                  cài đặt chung.
+                <p className="config-hint">
+                  AI sẽ tự đề xuất vai trò cần xếp dựa trên forecast và lịch hiện có.
                 </p>
               ) : (
                 <p className="config-hint">
-                  Mặc định lấy từ cài đặt chung của nhà hàng. Bạn có thể điều
-                  chỉnh tạm cho lần preview này.
+                  Các vai trò này dùng để manager rà soát preview; AI vẫn tự đề xuất nhu cầu chính từ forecast và lịch hiện có.
                 </p>
               )}
             </div>
@@ -306,10 +305,10 @@ const AutoScheduleModal = ({
             type="button"
             className="btn-primary"
             onClick={onGenerate}
-            disabled={generating || applying || !selectedRequiredRoles.length}
+            disabled={generating || applying}
           >
             <Sparkles size={16} />
-            {generating ? "Đang phân tích..." : "Phân tích & tạo preview"}
+            {generating ? "AI đang phân tích..." : "AI phân tích & tạo preview"}
           </button>
           {assistantMeta ? (
             <div className="assistant-meta">
@@ -336,8 +335,34 @@ const AutoScheduleModal = ({
           <div className="auto-state loading">
             <Sparkles size={18} />
             <span>
-              Đang gọi trợ lý chia ca và kiểm tra xung đột lịch thật...
+              AI đang phân tích nhu cầu, lịch rảnh và guardrail...
             </span>
+          </div>
+        ) : null}
+
+        {!generating && aiPlannerPayload ? (
+          <div className="ai-planner-summary-wrap">
+            <div className="ai-planner-summary">
+              <div>
+                <strong>Nhận định AI</strong>
+                <p>{aiPlannerPayload.aiSummary}</p>
+                {!!(aiPlannerPayload.generatedFrom || []).length && (
+                  <small>Nguồn: {(aiPlannerPayload.generatedFrom || []).join(", ")}</small>
+                )}
+              </div>
+              <span className="confidence-pill">
+                Tin cậy {Math.round(Number(aiPlannerPayload.confidence || 0) * 100)}%
+              </span>
+            </div>
+            {!!(aiPlannerPayload.riskWarnings || []).length && (
+              <ul className="risk-warning-list">
+                {(aiPlannerPayload.riskWarnings || []).slice(0, 3).map((warning, idx) => (
+                  <li key={`risk-${idx}`}>
+                    <strong>{warning.severity || "warning"}:</strong> {warning.message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : null}
 
@@ -402,7 +427,7 @@ const AutoScheduleModal = ({
 
             {previewItems.map((item) => (
               <div
-                key={item.shiftKey}
+                key={item.uiKey || item.shiftKey}
                 className={`preview-item ${item.canApply ? "" : "blocked"}`}
               >
                 <label className="preview-toggle">
@@ -568,6 +593,22 @@ const AutoScheduleModal = ({
                                       </span>
                                     ) : null}
                                   </div>
+
+                                  {assignment.aiExplanation ? (
+                                    <div className="ai-explanation-box">
+                                      <p>{assignment.aiExplanation.reason}</p>
+                                      {!!(assignment.aiExplanation.factors || []).length && (
+                                        <div className="ai-factor-list">
+                                          {assignment.aiExplanation.factors.map((factor, factorIdx) => (
+                                            <span key={`${item.shiftKey}-${assignment.staffId}-factor-${factorIdx}`} className="ai-factor-chip">
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <small>Độ tin cậy: {compactNumber(Number(assignment.aiExplanation.confidence || 0) * 100)}%</small>
+                                    </div>
+                                  ) : null}
 
                                   {(assignment.warnings || []).length ? (
                                     <div className="assignment-alert-block warning">

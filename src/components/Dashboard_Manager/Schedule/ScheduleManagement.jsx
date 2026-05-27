@@ -701,71 +701,68 @@ const CREATE_STAFF_SHIFTS = gql`
     }
   }
 `;
-const PREVIEW_AUTO_SCHEDULE = gql`
-  mutation PreviewAutoSchedule($input: AutoSchedulePreviewInput!) {
-    previewAutoSchedule(input: $input) {
-      unresolvedCount
-      canApply
-      summary {
-        totalDemand
-        recommendedAssignments
-        warningAssignments
-        blockedAssignments
-        existingShiftCount
+const AI_SCHEDULE_PLANNER_PREVIEW = gql`
+  query AiSchedulePlannerPreview($input: AiSchedulePlannerPreviewInput!) {
+    aiSchedulePlannerPreview(input: $input) {
+      aiSummary
+      confidence
+      fallbackUsed
+      generatedFrom
+      recommendedShiftTemplates
+      recommendedRoles
+      riskWarnings {
+        code
+        severity
+        message
+        suggestedAction
       }
-      items {
+      explanations {
         shiftKey
-        shiftType
-        startTime
-        endTime
-        requiredRole
-        status
         employeeId
         employeeName
-        score
-        validationIssues {
-          code
-          severity
-          message
-          suggestedAction
-        }
-        warnings {
-          code
-          severity
-          message
-          suggestedAction
-        }
-      }
-      blockedCandidates {
-        shiftKey
-        employeeId
-        requiredRole
-        issues {
-          code
-          severity
-          message
-          suggestedAction
-        }
-      }
-      unfilledRoles {
-        shiftKey
-        shiftType
-        startTime
-        endTime
-        requiredRole
         reason
+        factors
+        confidence
       }
-      validationIssues {
-        code
-        severity
-        message
-        suggestedAction
-      }
-      warnings {
-        code
-        severity
-        message
-        suggestedAction
+      preview {
+        unresolvedCount
+        canApply
+        summary {
+          totalDemand
+          recommendedAssignments
+          warningAssignments
+          blockedAssignments
+          existingShiftCount
+        }
+        items {
+          shiftKey
+          shiftType
+          startTime
+          endTime
+          requiredRole
+          status
+          employeeId
+          employeeName
+          score
+          validationIssues { code severity message suggestedAction }
+          warnings { code severity message suggestedAction }
+        }
+        blockedCandidates {
+          shiftKey
+          employeeId
+          requiredRole
+          issues { code severity message suggestedAction }
+        }
+        unfilledRoles {
+          shiftKey
+          shiftType
+          startTime
+          endTime
+          requiredRole
+          reason
+        }
+        validationIssues { code severity message suggestedAction }
+        warnings { code severity message suggestedAction }
       }
     }
   }
@@ -1152,6 +1149,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     requiredRoles: DEFAULT_AUTO_REQUIRED_ROLES,
   });
   const [assistantPayload, setAssistantPayload] = useState(null);
+  const [aiPlannerPayload, setAiPlannerPayload] = useState(null);
+  const [autoScheduleSource, setAutoScheduleSource] = useState("ai");
   const [assistantLeaveRows, setAssistantLeaveRows] = useState([]);
   const [assistantShiftRows, setAssistantShiftRows] = useState([]);
   const [assistantAvailabilityWindows, setAssistantAvailabilityWindows] =
@@ -1513,7 +1512,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [createShifts] = useMutation(CREATE_STAFF_SHIFTS);
-  const [previewAutoScheduleBackend] = useMutation(PREVIEW_AUTO_SCHEDULE);
+  const [loadAiSchedulePlannerPreview, aiSchedulePlannerState] = useLazyQuery(
+    AI_SCHEDULE_PLANNER_PREVIEW,
+    { fetchPolicy: "network-only" },
+  );
   const [applyAutoScheduleBackend] = useMutation(APPLY_AUTO_SCHEDULE);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
@@ -2666,6 +2668,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     validatedAutoSchedulePreview || rawAutoSchedulePreview;
 
   const isGeneratingAutoSchedule =
+    aiSchedulePlannerState.loading ||
     schedulingAssistantState.loading ||
     leaveRequestsState.loading ||
     availabilityWindowsState.loading ||
@@ -2706,6 +2709,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
     setSelectedShift(null);
     setAddModalContext({ date: "", shiftType: "" });
     setIsAddModalOpen(false);
@@ -2736,6 +2741,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleOverrideError("");
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
 
     if (nextRestaurantId) {
       showNotification(
@@ -3996,46 +4003,61 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
   };
 
-  const mapBackendAutoSchedulePreview = (payload) => {
-    const items = (payload?.items || []).map((item) => ({
-      ...item,
-      canApply: Boolean(item.employeeId && item.status !== "blocked"),
-      unresolvedCount: item.employeeId ? 0 : 1,
-      plannedAssignments: item.employeeId
-        ? [
-            {
-              staffId: item.employeeId,
-              fullName: item.employeeName,
-              role: item.requiredRole || item.shiftType,
-              validationScore: item.score,
-              warnings: item.warnings || [],
-              requiresOverride: (item.warnings || []).length > 0,
-            },
-          ]
-        : [],
-      unfilledRoles: item.employeeId
-        ? []
-        : [
-            {
-              role: item.requiredRole || item.shiftType,
-              reason: "NO_ELIGIBLE_CANDIDATE",
-            },
-          ],
-      blockedCandidates: (payload?.blockedCandidates || []).filter(
-        (row) => row.shiftKey === item.shiftKey,
-      ),
-    }));
+  const mapAiPlannerPreview = (payload) => {
+    const preview = payload?.preview || {};
+    const explanations = payload?.explanations || [];
+    const explanationByKey = new Map(
+      explanations.map((item) => [`${item.shiftKey || ""}|${item.employeeId || ""}`, item]),
+    );
+
+    const items = (preview.items || []).map((item, index) => {
+      const start = item.startTime ? new Date(item.startTime) : null;
+      const date = start && !Number.isNaN(start.getTime()) ? format(start, "yyyy-MM-dd") : "";
+      const explanation = explanationByKey.get(`${item.shiftKey || ""}|${item.employeeId || ""}`);
+      const warnings = item.warnings || [];
+      const validationIssues = item.validationIssues || [];
+      return {
+        ...item,
+        uiKey: `${item.shiftKey || "shift"}::${index}`,
+        date,
+        confidence: Number(explanation?.confidence ?? payload?.confidence ?? 0.6),
+        severity: validationIssues.length ? "high" : warnings.length ? "medium" : "low",
+        status: item.status === "blocked" ? "understaffed" : "balanced",
+        missingHeadcount: item.employeeId ? 0 : 1,
+        currentAssignedStaff: 0,
+        recommendedTotalStaff: 1,
+        canApply: Boolean(item.employeeId && item.status !== "blocked"),
+        unresolvedCount: item.employeeId ? 0 : 1,
+        plannedAssignments: item.employeeId ? [{
+          staffId: item.employeeId,
+          fullName: item.employeeName,
+          role: item.requiredRole || item.shiftType,
+          score: item.score,
+          validationScore: item.score,
+          warnings,
+          validationIssues,
+          requiresOverride: warnings.length > 0,
+          aiExplanation: explanation || null,
+        }] : [],
+        unfilledRoles: item.employeeId ? [] : [{
+          role: item.requiredRole || item.shiftType, required: 1, assigned: 0, planned: 0, unresolved: 1,
+          reason: "Không tìm được nhân sự hợp lệ cho vai trò này.",
+          suggestedAction: "Kiểm tra availability, role nhân viên hoặc nới điều kiện nếu phù hợp.",
+        }],
+        blockedCandidates: (preview.blockedCandidates || []).filter((row) => row.shiftKey === item.shiftKey).map((row) => ({
+          ...row, staffId: row.employeeId, role: row.requiredRole,
+          reason: (row.issues || []).map((issue) => issue.message).filter(Boolean).join("; ") || "Không đạt điều kiện xếp ca",
+        })),
+      };
+    });
 
     return {
-      ...payload,
+      ...preview,
       items,
-      summary: {
-        ...(payload?.summary || {}),
-        totalShiftGroups: Number(payload?.summary?.totalDemand || items.length),
-        unresolvedShifts: Number(payload?.unresolvedCount || 0),
-      },
+      summary: { ...(preview.summary || {}), totalShiftGroups: Number(preview.summary?.totalDemand || items.length), unresolvedShifts: Number(preview.unresolvedCount || 0) },
     };
   };
+
   const handleGenerateAutoSchedule = async () => {
     if (readOnly) return;
 
@@ -4052,6 +4074,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
+    setAiPlannerPayload(null);
+    setAutoScheduleSource("ai");
     setSelectedAutoShiftKeys({});
     setAssistantAvailabilityWindows([]);
     setAssistantAvailabilitySubmissions([]);
@@ -4065,25 +4089,31 @@ const ScheduleManagement = ({ readOnly = false }) => {
     );
 
     try {
-      const backendResult = await previewAutoScheduleBackend({
-        variables: {
-          input: {
-            restaurantId: effectiveRestaurantId,
-            periodStart: today.toISOString(),
-            periodEnd: analysisEnd.toISOString(),
-            requiredRoles: autoScheduleConfig.requiredRoles,
-            weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
-            respectAvailability: Boolean(
-              autoScheduleConfig.respectAvailability,
-            ),
-            avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
-            shiftConfig: configuredShiftTypes,
-          },
-        },
-      });
-      const nextValidatedPreview = mapBackendAutoSchedulePreview(
-        backendResult?.data?.previewAutoSchedule,
-      );
+      const aiInput = {
+        restaurantId: effectiveRestaurantId,
+        periodStart: today.toISOString(),
+        periodEnd: analysisEnd.toISOString(),
+        weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
+        respectAvailability: Boolean(autoScheduleConfig.respectAvailability),
+        avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
+        horizonDays: Number(autoScheduleConfig.horizonDays || 7),
+        timezone: SCHEDULING_TIMEZONE,
+        shiftConfig: configuredShiftTypes,
+      };
+      if (
+        autoScheduleConfig.requiredRoles &&
+        typeof autoScheduleConfig.requiredRoles === "object" &&
+        !Array.isArray(autoScheduleConfig.requiredRoles) &&
+        Object.keys(autoScheduleConfig.requiredRoles).length > 0
+      ) {
+        aiInput.requiredRoles = autoScheduleConfig.requiredRoles;
+      }
+
+      const backendResult = await loadAiSchedulePlannerPreview({ variables: { input: aiInput } });
+      const payload = backendResult?.data?.aiSchedulePlannerPreview || null;
+      setAiPlannerPayload(payload);
+      setAutoScheduleSource("ai");
+      const nextValidatedPreview = mapAiPlannerPreview(payload);
       setValidatedAutoSchedulePreview(nextValidatedPreview);
       const readyCount = Number(
         nextValidatedPreview?.summary?.recommendedAssignments || 0,
@@ -4096,8 +4126,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
       showNotification(
         readyCount <= 0
-          ? "Đã tạo preview nhưng chưa có phân công nào đủ điều kiện áp dụng."
-          : `Đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
+          ? "AI đã tạo preview nhưng chưa có phân công đủ điều kiện."
+          : `AI đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
         readyCount <= 0 || warningCount > 0 ? "warning" : "success",
       );
       return;
@@ -4364,13 +4394,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
             periodEnd:
               autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]
                 ?.endTime,
-            requiredRoles: autoScheduleConfig.requiredRoles,
+            requiredRoles:
+              autoScheduleSource === "ai" && aiPlannerPayload?.recommendedRoles
+                ? aiPlannerPayload.recommendedRoles
+                : autoScheduleConfig.requiredRoles,
             weeklyHoursCap: Number(autoScheduleConfig.weeklyHoursCap || 40),
             respectAvailability: Boolean(
               autoScheduleConfig.respectAvailability,
             ),
             avoidOvertime: Boolean(autoScheduleConfig.avoidOvertime),
             shiftConfig: configuredShiftTypes,
+            shiftTemplates:
+              autoScheduleSource === "ai"
+                ? aiPlannerPayload?.recommendedShiftTemplates
+                : undefined,
             allowOverride: needsOverride,
             overrideReason: needsOverride ? trimmedOverrideReason : undefined,
             allowPartialApply: true,
@@ -4965,7 +5002,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               onClick={() => setIsAutoScheduleOpen(true)}
             >
               <Sparkles size={16} />
-              Chia ca tự động
+              AI xếp lịch nhân viên
             </button>
           )}
 
@@ -5651,6 +5688,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           generateError={autoScheduleError}
           assistantMeta={assistantPayload?.meta || null}
           assistantSummary={assistantPayload?.summary || null}
+          aiPlannerPayload={aiPlannerPayload}
+          autoScheduleSource={autoScheduleSource}
           preview={autoSchedulePreview}
           selectedShiftKeys={selectedAutoShiftKeys}
           onToggleShift={handleToggleAutoShift}

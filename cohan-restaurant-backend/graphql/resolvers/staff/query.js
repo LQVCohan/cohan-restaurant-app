@@ -44,6 +44,7 @@ import { getManagerPerformanceDashboard } from "../../../src/services/performanc
 import { listPerformanceIncidentAppeals } from "../../../src/services/performance/performanceAppeal.service.js";
 import { listOffScheduleAttendances as listOffScheduleAttendancesService } from "../../../src/services/attendance/offScheduleAttendance.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
+import { buildAiSchedulePlannerPreview } from "../../../src/services/scheduling/aiSchedulePlanner.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
   buildPayrollItemsForRange,
@@ -73,6 +74,7 @@ import {
   ATTENDANCE_SELF_ROLES,
   SHIFT_ACK_READ_ROLES,
   SCHEDULE_READ_ROLES,
+  SCHEDULE_WRITE_ROLES,
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
@@ -1209,6 +1211,14 @@ export default {
       timezone,
       actor: ctx?.user || null,
     });
+  },
+  aiSchedulePlannerPreview: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+    const restaurantId = toObjectId(input?.restaurantId);
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
+    return buildAiSchedulePlannerPreview(input, ctx);
   },
   schedulePublication: async (
     _,

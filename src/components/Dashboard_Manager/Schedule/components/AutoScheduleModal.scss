@@ -877,3 +877,89 @@
     }
   }
 }
+
+.auto-schedule-body {
+  .ai-planner-summary-wrap {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .ai-planner-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+
+    p {
+      margin: 0.35rem 0;
+      color: #334155;
+      font-size: 0.84rem;
+    }
+
+    small {
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+  }
+
+  .confidence-pill {
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-weight: 700;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .risk-warning-list {
+    margin: 0.65rem 0 0;
+    padding-left: 1rem;
+    color: #9a3412;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ai-explanation-box {
+    margin-top: 0.55rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.7rem;
+    padding: 0.55rem 0.65rem;
+    background: #f8fafc;
+
+    p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #0f172a;
+    }
+
+    small {
+      display: block;
+      margin-top: 0.35rem;
+      color: #475569;
+      font-size: 0.74rem;
+    }
+  }
+
+  .ai-factor-list {
+    margin-top: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .ai-factor-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    padding: 0.18rem 0.5rem;
+    font-size: 0.72rem;
+    color: #334155;
+    background: #fff;
+  }
+}
