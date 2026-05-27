@@ -1,8 +1,17 @@
-# AI Chatbot Staging Verification (Phase 20B)
+# AI Chatbot Staging Verification Preparation Report (Phase 20B)
 
 Date: 2026-05-27 (UTC)
 Repository: `LQVCohan/cohan-restaurant-app`
-Scope: AI chatbot verification only (no unrelated auth/token or non-chatbot feature work)
+Scope: AI chatbot staging-verification preparation only (prerequisites + blockers), no unrelated auth/token or non-chatbot feature work
+
+
+## 0) PR scope clarification
+
+This PR is a **staging verification preparation report**, not a completed staging runtime verification.
+
+- It captures deployment/env prerequisites and explicit blockers.
+- It records local AI-chatbot test/build readiness evidence.
+- It does **not** claim runtime checklist completion because no staging URL/credentials/access were provided in this execution environment.
 
 ## 1) Deployment/staging target inspected
 
@@ -65,7 +74,7 @@ Executed targeted chatbot checks to reduce staging risk before runtime smoke.
    - `npm run build --prefix cohan-restaurant-backend`
    - Result: **PASS** (`Backend build step: no transpilation required.`).
 
-## 4) Staging smoke verification checklist
+## 4) Staging runtime smoke verification checklist (blocked)
 
 ### Execution status
 
@@ -127,7 +136,7 @@ If chatbot staging/production smoke later uncovers severe issue:
 
 ## 7) Final production readiness recommendation
 
-**Recommendation: NOT READY for production sign-off yet.**
+**Recommendation: NOT READY for production sign-off yet (staging runtime smoke not executed).**
 
 Reason:
 - Code-level targeted chatbot tests and builds are healthy,
