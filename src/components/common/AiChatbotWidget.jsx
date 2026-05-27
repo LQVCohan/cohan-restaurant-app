@@ -163,7 +163,7 @@ const normalizeHistory = (messages) =>
     .slice(-8)
     .map((item) => ({ role: item.role, content: item.content }));
 
-function AiChatbotWidget() {
+function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
@@ -313,7 +313,9 @@ function AiChatbotWidget() {
   useEffect(() => {
     if (!open || !handoffRequested || !conversationId || !guestId) return undefined;
 
-    const socket = io(SOCKET_URL, {
+    if (testOverrides?.disableSocket) return undefined;
+
+    const socket = (testOverrides?.socketFactory || io)(SOCKET_URL, {
       transports: ["websocket"],
       reconnection: true,
       reconnectionDelay: 2000,
@@ -352,14 +354,16 @@ function AiChatbotWidget() {
       socket.emit("leaveAiChatbotConversation", { conversationId, guestId });
       socket.disconnect();
     };
-  }, [open, handoffRequested, conversationId, guestId]);
+  }, [open, handoffRequested, conversationId, guestId, testOverrides]);
 
   useEffect(() => {
     if (!open || !handoffRequested || !conversationId || !guestId) return undefined;
+    if (testOverrides?.disablePolling) return undefined;
+    const intervalMs = testOverrides?.pollIntervalMs || 6000;
     fetchGuestReplies();
-    const timer = window.setInterval(fetchGuestReplies, 6000);
+    const timer = window.setInterval(fetchGuestReplies, intervalMs);
     return () => window.clearInterval(timer);
-  }, [open, handoffRequested, conversationId, guestId, latestStaffReplyAt]);
+  }, [open, handoffRequested, conversationId, guestId, latestStaffReplyAt, testOverrides]);
 
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
