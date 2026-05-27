@@ -167,6 +167,7 @@ export default function useForYouRecommendations({
     warningItems,
     fallbackItems,
     accessibleRestaurants,
+    preferences: effectivePreferences,
     refetch: fetchRecommendations,
   };
 }
