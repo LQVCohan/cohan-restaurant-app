@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
-import { useLazyQuery, useMutation } from "@apollo/client/react";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -100,6 +100,19 @@ const STARTER_MESSAGES = [
 
 const GUEST_ID_STORAGE_KEY = "cohan_ai_guest_id";
 
+const Q_PUBLIC_AI_CHATBOT_SETTINGS = gql`
+  query PublicAiChatbotSettings($restaurantId: ID) {
+    publicAiChatbotSettings(restaurantId: $restaurantId) {
+      enabled
+      welcomeMessage
+      starterQuickReplies
+      handoffEnabled
+      handoffUnavailableMessage
+    }
+  }
+`;
+
+
 const getConversationStorageKey = (restaurantId) => `cohan_ai_conversation_id:${restaurantId || "global"}`;
 const getHandoffStorageKey = (conversationId) => `cohan_ai_handoff_requested:${conversationId}`;
 
@@ -108,11 +121,13 @@ const generateGuestId = () => {
   return `guest_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const DEFAULT_WELCOME_MESSAGE = "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.";
+
 const INITIAL_MESSAGES = [
   {
     role: "assistant",
     content:
-      "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.",
+      DEFAULT_WELCOME_MESSAGE,
   },
 ];
 
@@ -165,6 +180,18 @@ function AiChatbotWidget() {
   );
 
   const restaurantStorageKey = useMemo(() => getConversationStorageKey(restaurantId), [restaurantId]);
+  const { data: publicSettingsData } = useQuery(Q_PUBLIC_AI_CHATBOT_SETTINGS, {
+    variables: { restaurantId: restaurantId || null },
+    fetchPolicy: "cache-first",
+  });
+  const publicSettings = publicSettingsData?.publicAiChatbotSettings;
+  const chatbotEnabled = publicSettings?.enabled ?? true;
+  const handoffEnabled = publicSettings?.handoffEnabled ?? true;
+  const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
+  const visibleActions = useMemo(
+    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")),
+    [handoffEnabled, lastActions],
+  );
 
   useEffect(() => {
     if (!guestId || typeof window === "undefined") return;
@@ -183,6 +210,18 @@ function AiChatbotWidget() {
     setHandoffRequested(window.localStorage.getItem(getHandoffStorageKey(conversationId)) === "1");
     setHandoffClosed(false);
   }, [conversationId]);
+
+  useEffect(() => {
+    if (publicSettings?.welcomeMessage) {
+      setMessages((current) => {
+        if (!current.length) return [{ role: "assistant", content: publicSettings.welcomeMessage }];
+        const next = [...current];
+        if (next[0]?.role === "assistant") next[0] = { ...next[0], content: publicSettings.welcomeMessage };
+        return next;
+      });
+    }
+    if (publicSettings?.starterQuickReplies?.length) setLastQuickReplies(publicSettings.starterQuickReplies);
+  }, [publicSettings?.welcomeMessage, publicSettings?.starterQuickReplies]);
 
   useEffect(() => {
     const latest = [...messages]
@@ -303,6 +342,7 @@ function AiChatbotWidget() {
   const sendMessage = async (rawMessage) => {
     const content = String(rawMessage || input).trim();
     if (!content || loading || guestSendLoading || handoffLoading || sendInFlightRef.current) return;
+    if (!chatbotEnabled) { setMessages((c) => [...c, { role: "assistant", content: handoffUnavailableMessage }]); return; }
     sendInFlightRef.current = true;
     setIsSendInFlight(true);
 
@@ -353,7 +393,7 @@ function AiChatbotWidget() {
 
       setMessages((current) => [...current, { role: "assistant", content: answer, meta: response }]);
       setLastActions(response?.actions || []);
-      setLastQuickReplies(response?.quickReplies?.length ? response.quickReplies : STARTER_MESSAGES);
+      setLastQuickReplies(response?.quickReplies?.length ? response.quickReplies : (publicSettings?.starterQuickReplies?.length ? publicSettings.starterQuickReplies : STARTER_MESSAGES));
       setLastContextSummary(response?.contextSummary || null);
     } catch (err) {
       const code = err?.graphQLErrors?.[0]?.extensions?.code;
@@ -378,6 +418,7 @@ function AiChatbotWidget() {
     setOpen(false);
   };
   const handleRequestHandoff = async () => {
+    if (!handoffEnabled) { setMessages((c) => [...c, { role: "assistant", content: handoffUnavailableMessage }]); return; }
     if (!conversationId || handoffRequested || handoffLoading) return;
     try {
       const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
@@ -454,9 +495,9 @@ function AiChatbotWidget() {
             </div>
           ) : null}
 
-          {lastActions.length ? (
+          {visibleActions.length ? (
             <div className="ai-chatbot-actions">
-              {lastActions.map((action, index) => (
+              {visibleActions.map((action, index) => (
                 <button key={`${action.label}-${index}`} type="button" onClick={() => handleAction(action)}>
                   {action.label}
                 </button>
@@ -467,14 +508,14 @@ function AiChatbotWidget() {
           {lastQuickReplies.length ? (
             <div className="ai-chatbot-quick-replies">
               {lastQuickReplies.map((reply) => (
-                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={loading || guestSendLoading || handoffLoading || isSendInFlight}>
+                <button key={reply} type="button" onClick={() => sendMessage(reply)} disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight}>
                   {reply}
                 </button>
               ))}
             </div>
           ) : null}
 
-          <div className="ai-chatbot-actions">
+          {handoffEnabled ? <div className="ai-chatbot-actions">
             <button
               type="button"
               onClick={handleRequestHandoff}
@@ -482,7 +523,7 @@ function AiChatbotWidget() {
             >
               {handoffRequested ? "Đã yêu cầu nhân viên" : "Gặp nhân viên"}
             </button>
-          </div>
+          </div> : null}
 
           {handoffRequested ? (
             <div className="ai-chatbot-context">
@@ -507,11 +548,11 @@ function AiChatbotWidget() {
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Hỏi về món ăn, đặt bàn, đơn hàng..."
+              placeholder={chatbotEnabled ? "Hỏi về món ăn, đặt bàn, đơn hàng..." : "Chatbot đang tạm tắt cho nhà hàng này"}
               maxLength={500}
-              disabled={loading || guestSendLoading || handoffLoading || isSendInFlight}
+              disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight}
             />
-            <button type="submit" disabled={loading || guestSendLoading || handoffLoading || isSendInFlight || !input.trim()} aria-label="Gửi tin nhắn">
+            <button type="submit" disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight || !input.trim()} aria-label="Gửi tin nhắn">
               <Send size={18} />
             </button>
           </form>

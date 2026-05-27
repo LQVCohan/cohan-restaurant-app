@@ -137,6 +137,26 @@ const FOR_YOU_DEFAULTS = {
   allergenTags: [],
   tasteProfile: { containsOnion: false, containsCilantro: false, sugar: 100, spice: "Vừa" },
 };
+const FOR_YOU_DIET_OPTIONS = [
+  { value: "vegan", label: "Món chay / thuần chay", helper: "Phù hợp khách chọn ăn chay." },
+  { value: "keto", label: "Keto / ít tinh bột", helper: "Phù hợp khách hạn chế tinh bột, đường." },
+  { value: "halal", label: "Halal", helper: "Phù hợp khách cần món Halal." },
+];
+const FOR_YOU_ALLERGEN_OPTIONS = [
+  { value: "seafood", label: "Hải sản", helper: "Tôm, cua, mực, sò, ốc..." },
+  { value: "peanut", label: "Đậu phộng / lạc", helper: "Đậu phộng, bơ đậu phộng, lạc rang..." },
+  { value: "milk", label: "Sữa / phô mai", helper: "Sữa, phô mai, kem, bơ sữa..." },
+  { value: "egg", label: "Trứng / mayonnaise", helper: "Trứng, mayo, sốt có trứng..." },
+  { value: "gluten", label: "Gluten / bột mì", helper: "Bánh mì, mì, pasta, bột mì..." },
+];
+const FOR_YOU_SUGAR_OPTIONS = [
+  { value: 0, label: "Không đường" },
+  { value: 30, label: "Ít ngọt - 30%" },
+  { value: 50, label: "Vừa ngọt - 50%" },
+  { value: 70, label: "Ngọt - 70%" },
+  { value: 100, label: "Ngọt chuẩn - 100%" },
+];
+const FOR_YOU_SPICE_OPTIONS = ["Không", "Vừa", "Nồng", "Rất cay"];
 
 const normalizeMenuItemStatus = (status) =>
   MENU_ITEM_STATUS_SET.has(status) ? status : "available";
@@ -648,6 +668,33 @@ const MenuItemModal = ({
     if (hasVariants) return "missing_ingredients";
     return "not_tracked";
   }, [formData.preparationMethods]);
+  const dietLabelMap = useMemo(
+    () => new Map(FOR_YOU_DIET_OPTIONS.map((option) => [option.value, option.label])),
+    []
+  );
+  const allergenLabelMap = useMemo(
+    () => new Map(FOR_YOU_ALLERGEN_OPTIONS.map((option) => [option.value, option.label])),
+    []
+  );
+  const selectedDietLabels = (formData.dietTags || []).map((tag) => dietLabelMap.get(tag) || tag);
+  const selectedAllergenLabels = (formData.allergenTags || []).map((tag) => allergenLabelMap.get(tag) || tag);
+  const currentSugarValue = Number(formData.tasteProfile?.sugar ?? 100);
+  const sugarPreviewLabel =
+    FOR_YOU_SUGAR_OPTIONS.find((option) => option.value === currentSugarValue)?.label || `${currentSugarValue}%`;
+  const spicePreviewLabel = formData.tasteProfile?.spice ?? "Vừa";
+  const tasteNotes = [
+    formData.tasteProfile?.containsOnion ? "Có hành" : null,
+    formData.tasteProfile?.containsCilantro ? "Có ngò/rau mùi" : null,
+    `Độ ngọt ${sugarPreviewLabel}`,
+    `Độ cay ${spicePreviewLabel}`,
+  ].filter(Boolean);
+  const hasForYouMetadata =
+    selectedDietLabels.length > 0 ||
+    selectedAllergenLabels.length > 0 ||
+    !!formData.tasteProfile?.containsOnion ||
+    !!formData.tasteProfile?.containsCilantro ||
+    currentSugarValue !== FOR_YOU_DEFAULTS.tasteProfile.sugar ||
+    spicePreviewLabel !== FOR_YOU_DEFAULTS.tasteProfile.spice;
 
   return (
     <Modal
@@ -762,28 +809,69 @@ const MenuItemModal = ({
               />
             </div>
             <div className="for-you-meta-section">
-              <h5>FOR YOU - Khẩu vị & Dị ứng</h5>
+              <div className="for-you-meta-section__header">
+                <h5 className="for-you-meta-section__title">FOR YOU - Dữ liệu khẩu vị & dị ứng</h5>
+                <p className="for-you-meta-section__description">
+                  Dữ liệu này giúp khách được gợi ý món phù hợp và được cảnh báo dị ứng trước khi đặt.
+                </p>
+              </div>
+              <div className="for-you-option-group">
+                <div className="for-you-option-group__title">Phù hợp chế độ ăn</div>
+                <div className="for-you-option-grid">
+                  {FOR_YOU_DIET_OPTIONS.map((option) => {
+                    const isSelected = (formData.dietTags || []).includes(option.value);
+                    return (
+                      <label key={option.value} className={`for-you-option-card ${isSelected ? "for-you-option-card--selected" : ""}`}>
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleArrayValue("dietTags", option.value)} disabled={isSaving} />
+                        <span className="for-you-option-card__label">{option.label}</span>
+                        <span className="for-you-option-card__helper">{option.helper}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="for-you-option-group">
+                <div className="for-you-option-group__title">Có thể chứa dị ứng</div>
+                <div className="for-you-option-grid">
+                  {FOR_YOU_ALLERGEN_OPTIONS.map((option) => {
+                    const isSelected = (formData.allergenTags || []).includes(option.value);
+                    return (
+                      <label key={option.value} className={`for-you-option-card ${isSelected ? "for-you-option-card--selected" : ""}`}>
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleArrayValue("allergenTags", option.value)} disabled={isSaving} />
+                        <span className="for-you-option-card__label">{option.label}</span>
+                        <span className="for-you-option-card__helper">{option.helper}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="for-you-meta-grid">
-                <div className="for-you-meta-check"><strong>Phù hợp chế độ ăn</strong>
-                  {["vegan", "keto", "halal"].map((tag) => <label key={tag}><input type="checkbox" checked={(formData.dietTags || []).includes(tag)} onChange={() => toggleArrayValue("dietTags", tag)} /> {tag}</label>)}
-                </div>
-                <div className="for-you-meta-check"><strong>Có thể chứa dị ứng</strong>
-                  {["seafood", "peanut", "milk", "egg", "gluten"].map((tag) => <label key={tag}><input type="checkbox" checked={(formData.allergenTags || []).includes(tag)} onChange={() => toggleArrayValue("allergenTags", tag)} /> {tag}</label>)}
-                </div>
-                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsOnion} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsOnion: e.target.checked } }))} /> Có hành</label>
-                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsCilantro} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsCilantro: e.target.checked } }))} /> Có ngò</label>
-                <label>Mức đường
-                  <select className="modern-select small" value={formData.tasteProfile?.sugar ?? 100} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, sugar: Number(e.target.value) } }))}>
-                    {[0,30,50,70,100].map((v)=><option key={v} value={v}>{v}%</option>)}
+                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsOnion} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsOnion: e.target.checked } }))} disabled={isSaving} /> Có hành trong món</label>
+                <label><input type="checkbox" checked={!!formData.tasteProfile?.containsCilantro} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, containsCilantro: e.target.checked } }))} disabled={isSaving} /> Có ngò/rau mùi trong món</label>
+                <label>Độ ngọt mặc định
+                  <select className="modern-select small" value={formData.tasteProfile?.sugar ?? 100} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, sugar: Number(e.target.value) } }))} disabled={isSaving}>
+                    {FOR_YOU_SUGAR_OPTIONS.map((option)=><option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
-                <label>Mức cay
-                  <select className="modern-select small" value={formData.tasteProfile?.spice ?? "Vừa"} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, spice: e.target.value } }))}>
-                    {["Không","Vừa","Nồng","Rất cay"].map((v)=><option key={v} value={v}>{v}</option>)}
+                <label>Độ cay mặc định
+                  <select className="modern-select small" value={formData.tasteProfile?.spice ?? "Vừa"} onChange={(e) => setFormData((p) => ({ ...p, tasteProfile: { ...p.tasteProfile, spice: e.target.value } }))} disabled={isSaving}>
+                    {FOR_YOU_SPICE_OPTIONS.map((v)=><option key={v} value={v}>{v}</option>)}
                   </select>
                 </label>
               </div>
-              <div className="for-you-meta-help">Metadata chuẩn giúp FOR YOU ưu tiên hiển thị/cảnh báo chính xác hơn.</div>
+              <div className="for-you-meta-preview">
+                <div className="for-you-meta-preview__title">FOR YOU sẽ hiểu món này là:</div>
+                {hasForYouMetadata ? (
+                  <ul>
+                    <li>Gợi ý cho: {selectedDietLabels.length ? selectedDietLabels.join(" / ") : "Chưa khai báo"}</li>
+                    <li>Cảnh báo dị ứng: {selectedAllergenLabels.length ? selectedAllergenLabels.join(" / ") : "Chưa khai báo"}</li>
+                    <li>Lưu ý khẩu vị: {tasteNotes.join(", ")}</li>
+                  </ul>
+                ) : (
+                  <p>Chưa có metadata FOR YOU. Khách vẫn có thể được gợi ý/cảnh báo bằng từ khóa trong tên và mô tả, nhưng độ chính xác sẽ thấp hơn.</p>
+                )}
+              </div>
+              <div className="for-you-meta-help">Mẹo: Nếu món có tôm/cua/mực, hãy chọn “Hải sản”. Nếu có sữa/phô mai, chọn “Sữa / phô mai”. Nếu là món chay, chọn “Món chay / thuần chay”.</div>
             </div>
           </div>
 

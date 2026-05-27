@@ -1,6 +1,7 @@
 // src/models/User.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
 const addressSchema = new mongoose.Schema(
@@ -38,28 +39,32 @@ const walletSchema = new mongoose.Schema(
  * - Chữ số
  * - Ký tự đặc biệt
  */
-const generateRandomPassword = (length = 12) => {
+export const generateRandomPassword = (length = 12) => {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const lower = "abcdefghijklmnopqrstuvwxyz";
   const digits = "0123456789";
   const special = "!@#$%^&*()-_=+[]{};:,.<>/?";
 
   const all = upper + lower + digits + special;
+  const size = Math.max(4, Number(length) || 12);
 
-  let password = "";
-  password += upper[Math.floor(Math.random() * upper.length)];
-  password += lower[Math.floor(Math.random() * lower.length)];
-  password += digits[Math.floor(Math.random() * digits.length)];
-  password += special[Math.floor(Math.random() * special.length)];
+  const chars = [
+    upper[randomInt(upper.length)],
+    lower[randomInt(lower.length)],
+    digits[randomInt(digits.length)],
+    special[randomInt(special.length)],
+  ];
 
-  for (let i = password.length; i < length; i++) {
-    password += all[Math.floor(Math.random() * all.length)];
+  for (let i = chars.length; i < size; i += 1) {
+    chars.push(all[randomInt(all.length)]);
   }
 
-  return password
-    .split("")
-    .sort(() => Math.random() - 0.5)
-    .join("");
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join("");
 };
 
 const userSchema = BaseSchemaModel(

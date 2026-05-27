@@ -9,6 +9,7 @@ import fastifyStatic from "@fastify/static";
 import process from "node:process";
 import sharp from "sharp";
 import { URL } from "node:url";
+import { resolveAuthenticatedUserFromRequest } from "../authUserResolver.js";
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
@@ -81,6 +82,41 @@ const sha256Hex = (value) =>
 
 const hmac = (key, value, encoding) =>
   crypto.createHmac("sha256", key).update(value).digest(encoding);
+
+
+const UPLOAD_RATE_LIMIT_MAX = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || "30", 10);
+const UPLOAD_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
+// In-memory limiter is acceptable for single-instance/dev only.
+// In multi-instance production, use a shared store (e.g. Redis) or shared @fastify/rate-limit backend.
+const uploadRateStore = new Map();
+
+const ensureUploadAuth = async (req, reply) => {
+  const authUser = await resolveAuthenticatedUserFromRequest(req);
+  if (!authUser?.id) {
+    reply.code(401).send({ ok: false, message: "Unauthorized" });
+    return null;
+  }
+  return authUser;
+};
+
+const consumeUploadRateLimit = (req, userId) => {
+  const now = Date.now();
+  const key = `${userId}:${req.ip}`;
+  const bucket = uploadRateStore.get(key) || { count: 0, resetAt: now + UPLOAD_RATE_LIMIT_WINDOW_MS };
+  if (now > bucket.resetAt) {
+    bucket.count = 0;
+    bucket.resetAt = now + UPLOAD_RATE_LIMIT_WINDOW_MS;
+  }
+  bucket.count += 1;
+  uploadRateStore.set(key, bucket);
+  return bucket.count <= UPLOAD_RATE_LIMIT_MAX;
+};
+
+const normalizeObjectKey = (value = "") => String(value).trim().replace(/^\/+/, "");
+
+const hasUnsafePathSegments = (key = "") => key.split("/").some((part) => !part || part === "." || part === "..");
+
+const buildUserScopedUploadPrefix = (basePrefix, userId) => `${normalizePrefix(basePrefix)}/${String(userId || "").trim()}/`;
 
 const createS3Context = () => {
   const bucket = process.env.S3_BUCKET;
@@ -204,6 +240,11 @@ export default fp(
       });
 
       app.post("/upload", async function (req, reply) {
+        const authUser = await ensureUploadAuth(req, reply);
+        if (!authUser) return;
+        if (!consumeUploadRateLimit(req, authUser.id)) {
+          return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+        }
         try {
           const data = await req.file();
           if (!data) {
@@ -240,6 +281,11 @@ export default fp(
     const s3 = createS3Context();
 
     app.post("/upload/sign", async function (req, reply) {
+      const authUser = await ensureUploadAuth(req, reply);
+      if (!authUser) return;
+      if (!consumeUploadRateLimit(req, authUser.id)) {
+        return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+      }
       const body = req.body || {};
       const mimeType = String(body.mimeType || "").trim();
       const fileSize = Number.parseInt(String(body.fileSize || "0"), 10);
@@ -255,7 +301,8 @@ export default fp(
 
       const requestedExt = String(body.extension || "").trim().toLowerCase();
       const ext = requestedExt || mimeType.split("/")[1] || "bin";
-      const key = `${s3.keyPrefix}/${randomName(ext)}`;
+      const userPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
+      const key = `${userPrefix}${randomName(ext)}`;
 
       return reply.send({
         ok: true,
@@ -271,12 +318,32 @@ export default fp(
     });
 
     app.post("/upload/complete", async function (req, reply) {
+      const authUser = await ensureUploadAuth(req, reply);
+      if (!authUser) return;
+      if (!consumeUploadRateLimit(req, authUser.id)) {
+        return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+      }
       const { key } = req.body || {};
       if (!key) {
         return reply.code(400).send({ ok: false, message: "Missing key" });
       }
 
-      return reply.send({ ok: true, key, url: `${s3.publicBase}/${key}`, storage: "s3" });
+      const normalizedKey = normalizeObjectKey(key);
+      if (!normalizedKey || hasUnsafePathSegments(normalizedKey)) {
+        return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+      }
+
+      const allowedBasePrefix = `${normalizePrefix(s3.keyPrefix)}/`;
+      if (!normalizedKey.startsWith(allowedBasePrefix)) {
+        return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+      }
+
+      const userScopedPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
+      if (!normalizedKey.startsWith(userScopedPrefix)) {
+        return reply.code(403).send({ ok: false, message: "Forbidden upload key" });
+      }
+
+      return reply.send({ ok: true, key: normalizedKey, url: `${s3.publicBase}/${normalizedKey}`, storage: "s3" });
     });
 
     app.get("/_probe", async () => ({ ok: true, route: "upload", storage: "s3" }));

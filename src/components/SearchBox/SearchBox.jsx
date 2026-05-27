@@ -62,8 +62,8 @@ const SearchBox = ({
         searchResults.push({
           ...item,
           score,
-          highlightedTitle: highlightText(item.title, searchQuery),
-          highlightedDescription: highlightText(item.description, searchQuery),
+          highlightedTitle: renderHighlightedText(item.title, searchQuery),
+          highlightedDescription: renderHighlightedText(item.description, searchQuery),
         });
       }
     });
@@ -72,15 +72,19 @@ const SearchBox = ({
   };
 
   // Highlight matching text
-  const highlightText = (text, searchQuery) => {
+  const renderHighlightedText = (text, searchQuery) => {
     const safeText = String(text || "");
     if (!searchQuery) return safeText;
 
-    const regex = new RegExp(
-      `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "gi"
+    const escapedQuery = String(searchQuery).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escapedQuery})`, "gi");
+    return safeText.split(regex).map((part, index) =>
+      part.toLowerCase() === String(searchQuery).toLowerCase() ? (
+        <span key={`${part}-${index}`} className="search-highlight">{part}</span>
+      ) : (
+        <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+      )
     );
-    return safeText.replace(regex, '<span class="search-highlight">$1</span>');
   };
 
   // Handle search input
@@ -201,18 +205,8 @@ const SearchBox = ({
                       >
                         <div className="search-result-icon">{result.icon}</div>
                         <div className="search-result-content">
-                          <div
-                            className="search-result-title"
-                            dangerouslySetInnerHTML={{
-                              __html: result.highlightedTitle,
-                            }}
-                          />
-                          <div
-                            className="search-result-description"
-                            dangerouslySetInnerHTML={{
-                              __html: result.highlightedDescription,
-                            }}
-                          />
+                          <div className="search-result-title">{result.highlightedTitle}</div>
+                          <div className="search-result-description">{result.highlightedDescription}</div>
                         </div>
                       </div>
                     );

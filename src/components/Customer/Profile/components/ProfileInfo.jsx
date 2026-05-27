@@ -39,20 +39,6 @@ const CREATE_WALLET = gql`
   }
 `;
 
-const TOPUP_WALLET = gql`
-  mutation TopUpMyWallet($input: WalletTopupInput!) {
-    topUpMyWallet(input: $input) {
-      id
-      type
-      amount
-      balanceBefore
-      balanceAfter
-      currency
-      createdAt
-      status
-    }
-  }
-`;
 
 const MY_WALLET_TRANSACTIONS = gql`
   query MyWalletTransactions($limit: Int, $offset: Int) {
@@ -74,7 +60,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
   const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
   const [createWallet, { loading: creatingWallet }] =
     useMutation(CREATE_WALLET);
-  const [topUpMyWallet, { loading: toppingUp }] = useMutation(TOPUP_WALLET);
   const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
     variables: { limit: 10, offset: 0 },
     skip: !user?.wallet,
@@ -91,6 +76,7 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     ward: "",
   });
   const [topupAmount, setTopupAmount] = useState("100000");
+  const toppingUp = false;
 
   // Address Hook
   const {
@@ -200,26 +186,7 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
   };
 
   const handleTopupWallet = async () => {
-    const amount = Number(String(topupAmount || "").replace(/[^\d]/g, ""));
-    if (!amount || amount <= 0) {
-      alert("Vui lòng nhập số tiền nạp hợp lệ.");
-      return;
-    }
-    try {
-      await topUpMyWallet({
-        variables: {
-          input: {
-            amount,
-            note: "Top-up từ hồ sơ khách hàng",
-            idempotencyKey: `wallet-topup-${Date.now()}`,
-          },
-        },
-      });
-      await Promise.all([refetchUser?.(), refetchTx?.()]);
-      alert("Nạp ví thành công.");
-    } catch (err) {
-      alert(`Nạp ví thất bại: ${err.message}`);
-    }
+    alert("Nạp ví tự động đang tạm tắt cho đến khi hoàn tất xác minh thanh toán.");
   };
 
   const handleCreateWallet = async () => {

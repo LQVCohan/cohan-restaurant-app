@@ -43,6 +43,40 @@ const reservationSettingsSchema = new mongoose.Schema({
   serviceFee: { type: Number, default: 0, min: 0 },
 }, { _id: false });
 
+const AI_CHATBOT_DEFAULT_WELCOME = "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.";
+const AI_CHATBOT_DEFAULT_QUICK_REPLIES = [
+  "Gợi ý món bán chạy cho tôi",
+  "Tôi muốn đặt bàn",
+  "Có mã giảm giá nào không?",
+];
+
+const aiChatbotSettingsSchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: true },
+  welcomeMessage: { type: String, default: AI_CHATBOT_DEFAULT_WELCOME, trim: true, maxlength: 500 },
+  starterQuickReplies: {
+    type: [String],
+    default: () => [...AI_CHATBOT_DEFAULT_QUICK_REPLIES],
+    validate: {
+      validator: (items) => Array.isArray(items) && items.length <= 6,
+      message: "starterQuickReplies must have at most 6 items",
+    },
+  },
+  handoffEnabled: { type: Boolean, default: true },
+  handoffUnavailableMessage: { type: String, default: "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.", trim: true, maxlength: 500 },
+  lowConfidenceHandoffThreshold: { type: Number, default: 0.6, min: 0, max: 1 },
+  fallbackMessage: { type: String, default: "", trim: true, maxlength: 800 },
+  updatedAt: { type: Date, default: null },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+}, { _id: false });
+
+aiChatbotSettingsSchema.path("starterQuickReplies").set((items) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => String(item || "").trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 6);
+});
+
 const restaurantSchema = BaseSchemaModel({
   name: { type: String, required: true },
   avatar: String,
@@ -81,6 +115,7 @@ const restaurantSchema = BaseSchemaModel({
   orderPolicy: { type: mongoose.Schema.Types.Mixed, default: () => ({ allowWhenClosed: false, minAdvanceMinutes: 0 }) },
   reviewCount: { type: Number, default: 0, min: 0 },
   reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
+  aiChatbotSettings: { type: aiChatbotSettingsSchema, default: () => ({}) },
   paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
   manualUsdToVndRate: { type: Number, default: 26000, min: 1 },

@@ -95,6 +95,12 @@
 - Luồng dữ liệu: Apollo query/mutation trực tiếp trong component.
 - Lưu ý khi sửa: không phá context Auth/Apollo hiện tại.
 
+### 4.8 Wallet top-up security posture (updated)
+- `createMyWallet` vẫn cho phép khách tạo ví nội bộ, nhưng provider/currency bị giới hạn whitelist.
+- `topUpMyWallet` đã bị chặn cho khách hàng (temporary disable) cho tới khi có payment verification callback tin cậy.
+- Quy tắc vận hành: số dư ví chỉ được tăng thông qua luồng đã xác minh thanh toán hoặc thao tác nội bộ có kiểm soát quyền.
+- Avatar `fileUrl` chỉ chấp nhận đường dẫn an toàn dạng `/uploads/...` hoặc URL nằm trong `S3_PUBLIC_BASE_URL` với cùng origin + cùng phạm vi path prefix.
+
 ### 4.7 Manager UI
 - Vai trò: quản lý lịch, availability, decline queue, attendance issue.
 - File chính: `ScheduleManagement.jsx` + sub-components trong `Schedule/components/`.
@@ -308,3 +314,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 | `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js` | Runtime payroll tổng quan (đã đọc mức ngắn). |
 | `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx` | Mock/query structure và behavior UI manager schedule. |
 | `src/components/Staff/components/StaffSchedulePage.test.jsx` | Query/mutation map cho staff page tests. |
+
+
+## 13. Security hardening (2026-05 update)
+- Public `createUser` chỉ tạo tài khoản `CUSTOMER`, ép `provider=local`, và status phụ thuộc `ENABLE_EMAIL_VERIFICATION` (pending/active); input role/status/provider đặc quyền từ client public không còn được áp dụng.
+- Upload API (`/api/upload`, `/api/upload/sign`, `/api/upload/complete`) yêu cầu Bearer JWT; có giới hạn tần suất upload theo user+IP; S3 complete chỉ chấp nhận key trong prefix cấu hình.
+- Socket.IO handshake cố gắng resolve JWT từ `Authorization` hoặc `auth.token`, sau đó room join cho restaurant/user/thread/order được kiểm tra quyền/ownership trước khi join.
+- Production bật Helmet CSP với whitelist origin frontend + static/image/font cần thiết; dev giữ chế độ nới lỏng.
+
+- CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.

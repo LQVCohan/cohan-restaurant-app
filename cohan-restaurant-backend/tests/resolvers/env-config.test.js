@@ -14,6 +14,7 @@ describe('env config normalization', () => {
     delete process.env.MONGO_URI;
     process.env.DATABASE_URL = 'mongodb://127.0.0.1:27017';
     process.env.JWT_SECRET = 'secret';
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
     validateEnv();
@@ -28,6 +29,7 @@ describe('env config normalization', () => {
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
     process.env.JWT_SECRET = 'secret';
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
 
@@ -40,10 +42,39 @@ describe('env config normalization', () => {
     delete process.env.MONGO_DB;
     process.env.DB_NAME = 'RestaurantDB';
     process.env.JWT_SECRET = 'secret';
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'table-secret-123456789';
 
     const { validateEnv } = await import('../../src/config/env.js');
     validateEnv();
 
     expect(process.env.MONGO_DB).toBe('RestaurantDB');
+  });
+});
+
+
+describe('table access token production validation', () => {
+  const originalEnv = process.env;
+  beforeEach(() => {
+    vi.resetModules();
+    process.env = { ...originalEnv, NODE_ENV: 'production', MONGO_URI: 'mongodb://127.0.0.1:27017', JWT_SECRET: 'jwt-secret-123456789' };
+  });
+  afterAll(() => { process.env = originalEnv; });
+
+  it('fails when TABLE_ACCESS_TOKEN_SECRET is missing in production', async () => {
+    delete process.env.TABLE_ACCESS_TOKEN_SECRET;
+    const { validateEnv } = await import('../../src/config/env.js');
+    expect(() => validateEnv()).toThrow(/TABLE_ACCESS_TOKEN_SECRET/);
+  });
+
+  it('fails when TABLE_ACCESS_TOKEN_SECRET equals JWT_SECRET in production', async () => {
+    process.env.TABLE_ACCESS_TOKEN_SECRET = process.env.JWT_SECRET;
+    const { validateEnv } = await import('../../src/config/env.js');
+    expect(() => validateEnv()).toThrow(/must differ/);
+  });
+
+  it('fails when TABLE_ACCESS_TOKEN_SECRET uses the development fallback in production', async () => {
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'dev_table_access_secret_change_me';
+    const { validateEnv } = await import('../../src/config/env.js');
+    expect(() => validateEnv()).toThrow(/weak value/);
   });
 });

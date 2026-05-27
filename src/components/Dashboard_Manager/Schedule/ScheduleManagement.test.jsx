@@ -198,6 +198,11 @@ describe("ScheduleManagement", () => {
     mockAttendanceCorrectionsData = {
       attendanceCorrectionRequests: [],
     };
+    window.print = vi.fn();
+    window.onafterprint = null;
+    window.requestAnimationFrame = vi.fn((cb) => setTimeout(cb, 0));
+    window.cancelAnimationFrame = vi.fn((id) => clearTimeout(id));
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
   afterEach(() => {
@@ -429,13 +434,34 @@ describe("ScheduleManagement", () => {
     );
   });
 
-  it("clicking reject reason triggers invalid review mutation", async () => {
+  it("clicking reject reason opens modal, validates note, then triggers invalid review mutation", async () => {
     render(<ScheduleManagement />);
     fireEvent.click(screen.getByRole("button", { name: "Không duyệt lý do" }));
+
+    expect(await screen.findByText("Không duyệt lý do từ chối ca")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Nhập ghi chú quản lý...")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận không duyệt" }));
+    expect(
+      await screen.findByText("Vui lòng nhập ghi chú quản lý trước khi không duyệt lý do."),
+    ).toBeInTheDocument();
+    expect(mutationSpy).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText("Nhập ghi chú quản lý..."), {
+      target: { value: "Lý do không đủ căn cứ." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận không duyệt" }));
+
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     expect(mutationSpy.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        variables: { input: { acknowledgementId: "ack-1", classification: "invalid" } },
+        variables: {
+          input: {
+            acknowledgementId: "ack-1",
+            classification: "invalid",
+            reviewNote: "Lý do không đủ căn cứ.",
+          },
+        },
       }),
     );
   });

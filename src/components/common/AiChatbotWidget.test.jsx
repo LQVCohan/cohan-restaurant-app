@@ -8,6 +8,7 @@ let askMutationSpy;
 let handoffMutationSpy;
 let guestRepliesSpy;
 let guestMessageMutationSpy;
+let publicSettingsQuerySpy;
 let socketOn;
 let socketOff;
 let socketEmit;
@@ -47,6 +48,7 @@ vi.mock("@apollo/client/react", async () => {
       return [vi.fn(), { loading: false }];
     }),
     useLazyQuery: vi.fn(() => [guestRepliesSpy, { loading: false, data: null, error: null }]),
+    useQuery: vi.fn(() => publicSettingsQuerySpy?.() || { data: null, loading: false, error: null }),
   };
 });
 
@@ -94,6 +96,19 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
         },
       },
     });
+    publicSettingsQuerySpy = vi.fn(() => ({
+      data: {
+        publicAiChatbotSettings: {
+          enabled: true,
+          welcomeMessage: "Xin chào",
+          starterQuickReplies: ["Gợi ý món bán chạy cho tôi"],
+          handoffEnabled: true,
+          handoffUnavailableMessage: "Không hỗ trợ",
+        },
+      },
+      loading: false,
+      error: null,
+    }));
   });
 
   afterEach(() => {
@@ -204,6 +219,43 @@ describe("AiChatbotWidget phase 5 stabilization", () => {
     render(<AiChatbotWidget />);
     fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
     expect(screen.getByPlaceholderText(/Hỏi về món ăn/i)).toBeDisabled();
+  });
+
+  it("keeps non-handoff lastActions visible while hiding handoff action when handoffEnabled=false", async () => {
+    publicSettingsQuerySpy = vi.fn(() => ({
+      data: {
+        publicAiChatbotSettings: {
+          enabled: true,
+          welcomeMessage: "Xin chào",
+          starterQuickReplies: ["Gợi ý món bán chạy cho tôi"],
+          handoffEnabled: false,
+          handoffUnavailableMessage: "Không hỗ trợ handoff",
+        },
+      },
+      loading: false,
+      error: null,
+    }));
+    askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "ok",
+          quickReplies: [],
+          actions: [
+            { type: "navigate", label: "Mở menu", href: "/menu" },
+            { type: "handoff", label: "Gặp nhân viên", href: "/support" },
+          ],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+    render(<AiChatbotWidget />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Hỏi về món ăn/i), { target: { value: "Xin chào" } });
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(askMutationSpy).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Mở menu" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gặp nhân viên" })).not.toBeInTheDocument();
   });
   it("closes widget and leaves room", async () => {
     render(<AiChatbotWidget />);

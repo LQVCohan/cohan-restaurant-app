@@ -76,6 +76,24 @@ describe("tableGuardState", () => {
     expect(reason).toBe("");
   });
 
+  it("does not disable reserved -> occupied status change in UI", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "reserved" },
+      "set_status",
+      "occupied"
+    );
+    expect(reason).toBe("");
+  });
+
+  it("does not disable cleaning -> available status change in UI", () => {
+    const reason = getTableActionDisabledReason(
+      { status: "cleaning" },
+      "set_status",
+      "available"
+    );
+    expect(reason).toBe("");
+  });
+
   it("disables delete when guard exists", () => {
     const reason = getTableActionDisabledReason({ status: "occupied" }, "delete");
     expect(reason).not.toBe("");
