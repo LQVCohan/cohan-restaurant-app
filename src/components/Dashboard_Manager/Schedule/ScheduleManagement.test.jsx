@@ -244,6 +244,12 @@ describe("ScheduleManagement", () => {
 
   it("creates a real shift payload from the add-shift modal", async () => {
     mockShiftsData = { staffShifts: [] };
+    mockStaffData = {
+      staffList: mockStaffData.staffList.map((staff) => ({
+        ...staff,
+        name: staff.fullName,
+      })),
+    };
 
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
@@ -254,12 +260,16 @@ describe("ScheduleManagement", () => {
       expect(node).toBeTruthy();
       return node;
     });
-    const selectableStaff = within(modal).getByText("Lan Manager").closest(".staff-item");
+
+    const staffList = within(modal).getByText(/Phân công nhân viên/i).closest(".form-group");
+    expect(staffList).toBeTruthy();
+    const selectableStaff = staffList.querySelector(".staff-list .staff-item");
     expect(selectableStaff).toBeTruthy();
     fireEvent.click(selectableStaff);
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch|Lưu|Tạo lịch|Tạo ca/i }));
 
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch/i }));
+
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalledTimes(1));
     const createCall = mutationSpy.mock.calls.find(
       ([arg]) => arg?.variables?.input?.shiftType === "MORNING",
     )?.[0];
@@ -279,14 +289,26 @@ describe("ScheduleManagement", () => {
 
     const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
-    mutationSpy.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca|Xóa nhóm ca/i }));
 
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    expect(confirmSpy).toHaveBeenCalled();
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+
+    mutationSpy.mockClear();
+    fireEvent.click(within(modal).getByRole("button", { name: /Xóa ca/i }));
+    fireEvent.click(within(modal).getByRole("button", { name: /Xác nhận xóa ca/i }));
+
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).not.toHaveBeenCalled();
     const deleteCall = mutationSpy.mock.calls.find(([arg]) => arg?.variables?.shiftId === "shift-row-1")?.[0];
     expect(deleteCall).toEqual({
-      variables: { shiftId: "shift-row-1" },
+      variables: {
+        shiftId: "shift-row-1",
+        reason: "Xóa ca ở lịch chưa công bố",
+        notifyEmployee: false,
+      },
     });
   });
 
