@@ -52,7 +52,7 @@ export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) 
   }
 
   return jwt.sign(payload, getTableAccessTokenSecret(), {
-    expiresIn: process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "30d",
+    expiresIn: process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "8h",
     issuer: getTableAccessTokenIssuer(),
   });
 }

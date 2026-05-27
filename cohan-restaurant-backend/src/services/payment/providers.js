@@ -97,7 +97,24 @@ export function verifyMomoCallback(payload = {}) {
     `&resultCode=${payload.resultCode}&transId=${payload.transId}`;
 
   const expected = hmacSHA256(rawSignature, secretKey);
-  return expected === payload.signature;
+  return safeCompareString(expected, payload.signature);
+}
+
+
+function safeCompareString(a, b) {
+  const left = String(a || "").trim();
+  const right = String(b || "").trim();
+  if (!left || !right) return false;
+
+  const leftBuf = Buffer.from(left, "utf8");
+  const rightBuf = Buffer.from(right, "utf8");
+  if (leftBuf.length !== rightBuf.length) return false;
+
+  try {
+    return crypto.timingSafeEqual(leftBuf, rightBuf);
+  } catch {
+    return false;
+  }
 }
 
 function buildVnpHashData(payload) {
@@ -163,5 +180,5 @@ export function verifyVnpayCallback(payload = {}) {
 
   const signData = buildVnpHashData(working);
   const expected = hmacSHA256(signData, hashSecret);
-  return expected === secureHash;
+  return safeCompareString(expected, secureHash);
 }
