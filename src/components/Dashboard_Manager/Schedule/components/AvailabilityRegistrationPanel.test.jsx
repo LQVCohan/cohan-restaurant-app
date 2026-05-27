@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AvailabilityRegistrationPanel from "./AvailabilityRegistrationPanel";
 
@@ -120,8 +120,8 @@ describe("AvailabilityRegistrationPanel", () => {
     expect(screen.getByRole("button", { name: "Đóng đăng ký" })).toBeDisabled();
   });
 
-  it("renders pending late-change section and triggers approve/reject callbacks", () => {
-    const onReviewSubmission = vi.fn();
+  it("renders pending late-change section and confirms approve flow in modal", async () => {
+    const onReviewSubmission = vi.fn().mockResolvedValue(undefined);
     render(
       <AvailabilityRegistrationPanel
         {...baseProps}
@@ -140,10 +140,58 @@ describe("AvailabilityRegistrationPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Xem đăng ký/i }));
     expect(screen.getByText("Yêu cầu thay đổi muộn")).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
+    const modalHeading = screen.getByRole("heading", { name: /Duyệt thay đổi muộn/i });
+    const modal = modalHeading.closest(".availability-review-modal");
+    expect(modal).toBeInTheDocument();
+    expect(within(modal).getByText("Availability chính thức hiện tại")).toBeInTheDocument();
+    expect(within(modal).getByText("Yêu cầu thay đổi muộn")).toBeInTheDocument();
+
+    fireEvent.click(within(modal).getByRole("button", { name: "Xác nhận" }));
+
+    await waitFor(() => {
+      expect(onReviewSubmission).toHaveBeenCalledWith("sub-1", true, "");
+    });
+  });
+
+  it("renders pending late-change section and validates reject flow in modal", async () => {
+    const onReviewSubmission = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AvailabilityRegistrationPanel
+        {...baseProps}
+        submissions={[{
+          id: "sub-1",
+          employeeId: "e1",
+          employmentType: "part_time",
+          status: "late_change_requested",
+          submittedAt: "2026-05-01T00:00:00.000Z",
+          slots: [],
+          pendingSlots: [{ date: "2026-05-12T00:00:00.000Z", shiftType: "morning", status: "available", note: "" }],
+        }]}
+        onReviewSubmission={onReviewSubmission}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Xem đăng ký/i }));
     fireEvent.click(screen.getByRole("button", { name: "Từ chối" }));
-    expect(onReviewSubmission).toHaveBeenNthCalledWith(1, "sub-1", true);
-    expect(onReviewSubmission).toHaveBeenNthCalledWith(2, "sub-1", false);
+
+    const modalHeading = screen.getByRole("heading", { name: /Từ chối thay đổi muộn/i });
+    const modal = modalHeading.closest(".availability-review-modal");
+    expect(modal).toBeInTheDocument();
+    expect(within(modal).getByText("Lý do từ chối *")).toBeInTheDocument();
+
+    fireEvent.click(within(modal).getByRole("button", { name: "Xác nhận" }));
+
+    expect(within(modal).getByText("Vui lòng nhập lý do từ chối.")).toBeInTheDocument();
+    expect(onReviewSubmission).not.toHaveBeenCalled();
+
+    fireEvent.change(within(modal).getByRole("textbox"), { target: { value: "Không phù hợp nhu cầu ca." } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Xác nhận" }));
+
+    await waitFor(() => {
+      expect(onReviewSubmission).toHaveBeenCalledWith("sub-1", false, "Không phù hợp nhu cầu ca.");
+    });
   });
 
   it("shows only one primary CTA when no window and reminder is active", () => {

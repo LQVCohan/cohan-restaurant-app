@@ -140,6 +140,7 @@ const MenuItemCard = ({
     rawOrderCounter !== undefined &&
     Number.isFinite(Number(rawOrderCounter));
   const soldCount = hasSoldCount ? Number(rawOrderCounter) : null;
+  const forYouMetadata = item?.forYouMetadata;
   const variants = Array.isArray(item.servingVariants)
     ? item.servingVariants
     : [];
@@ -246,6 +247,18 @@ const MenuItemCard = ({
               {item.name}
             </h3>
           </div>
+
+
+          {forYouMetadata?.status && (
+            <div
+              className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
+              title={forYouMetadata.status === "missing" && canUpdateItem
+                ? "Mở chỉnh sửa món để bổ sung thông tin khẩu vị và dị ứng."
+                : forYouMetadata.label}
+            >
+              {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
+            </div>
+          )}
 
           {primaryWarning && (
             <div className="availability-warning" title={primaryWarning}>

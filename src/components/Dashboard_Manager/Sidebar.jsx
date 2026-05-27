@@ -78,6 +78,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
         { id: "ai-handoff", permissions: ["dashboard.read", "order.read"], icon: "🤖", label: "Handoff AI", page: "Handoff AI" },
         { id: "ai-chatbot-analytics", permissions: ["report.read"], icon: "📡", label: "AI Chatbot Analytics", page: "AI Chatbot Analytics" },
         { id: "ai-chatbot-settings", permissions: ["report.read"], icon: "⚙️", label: "AI Chatbot Settings", page: "AI Chatbot Settings" },
+        { id: "ai-chatbot-knowledge", permissions: ["report.read"], icon: "📚", label: "AI Chatbot Knowledge", page: "AI Chatbot Knowledge" },
         { id: "reviews", permissions: ["review.read", "report.read"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
       ],
     },

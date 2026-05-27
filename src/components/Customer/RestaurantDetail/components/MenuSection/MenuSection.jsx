@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
-import "./MenuSection.scss";
+import { ChevronDown, ShoppingCart } from "lucide-react";
 
-// Components
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Cart from "../../../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../../../context/CartProvider";
 import { useCustomerCartActions } from "../../../../../hooks/useCustomerCartActions";
-
-// Icons
-import { ShoppingCart, ChevronDown } from "lucide-react";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { buildFoodDetailPath, buildFoodDetailState } from "../../../../../utils/customerFoodNavigation";
+import {
+  buildFoodDetailPath,
+  buildFoodDetailState,
+} from "../../../../../utils/customerFoodNavigation";
+import {
+  canCustomerOrderMenuItem,
+  getMenuItemAvailability,
+} from "../../../../../utils/menuItemAvailability";
 import { getCannotOrderReason } from "../../../../../utils/restaurantStatus";
 
-// Utils
-const formatPrice = (value) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    value
-  );
+import "./MenuSection.scss";
 
-/* ──────────────── GraphQL (Giữ nguyên) ──────────────── */
+const formatPrice = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(value || 0);
+
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
     customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
@@ -37,6 +41,8 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
     $restaurantId: ID!
     $timeSlot: TimeSlot!
     $categoryId: ID!
+    $search: String
+    $sort: MenuItemSort
     $limit: Int = 20
     $cursor: ID
   ) {
@@ -47,6 +53,8 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
         restaurantId: $restaurantId
         timeSlot: $timeSlot
         categoryId: $categoryId
+        search: $search
+        sort: $sort
       }
     ) {
       edges {
@@ -61,6 +69,9 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
           byWeight
           thumbImage
           status
+          inventoryStatus
+          stockWarnings
+          maxAvailable
           avgPrepTimeMin
           servingVariants {
             key
@@ -98,24 +109,39 @@ const GET_FOOD_REVIEWS = gql`
   }
 `;
 
+const MENU_SORT_OPTIONS = [
+  { value: "default", label: "Mặc định" },
+  { value: "name_asc", label: "Tên A-Z" },
+  { value: "price_asc", label: "Giá thấp-cao" },
+  { value: "price_desc", label: "Giá cao-thấp" },
+];
+
+const TIME_SLOTS = [
+  { id: "breakfast", label: "🍳 Sáng" },
+  { id: "lunch", label: "🍱 Trưa" },
+  { id: "dinner", label: "🍷 Tối" },
+  { id: "late_night", label: "🌙 Khuya" },
+];
+
 const MenuSection = ({
   restaurantId,
   restaurant,
   canOrder: canOrderProp,
   openingStatus: openingStatusProp,
-  openingStatusReason,
 }) => {
   const navigate = useNavigate();
+
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-
-  // State lưu biến thể đang chọn của từng món: { [itemId]: variantKey }
   const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortBy, setSortBy] = useState("default");
 
   const {
     cart,
@@ -144,44 +170,57 @@ const MenuSection = ({
     removeRestaurantItems,
   });
 
-  // --- QUERY CATEGORIES ---
-  const { data: categoriesData, loading: catLoading } = useQuery(
-    GET_CATEGORIES,
-    {
-      variables: { restaurantId, timeSlot: selectedTimeSlot },
-      skip: !restaurantId,
-      fetchPolicy: "network-only",
-    }
-  );
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
-    const nextCategories = (categoriesData?.customerMenuCategories || []).filter(
+    setMenuItems([]);
+    setCursor(null);
+    setHasNextPage(false);
+  }, [debouncedSearch, sortBy, activeCategory, selectedTimeSlot]);
+
+  const { data: categoriesData, loading: catLoading } = useQuery(GET_CATEGORIES, {
+    variables: { restaurantId, timeSlot: selectedTimeSlot },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
+
+  useEffect(() => {
+    const next = (categoriesData?.customerMenuCategories || []).filter(
       (cat) => cat?.id && cat.isActive !== false,
     );
-    setCategories(nextCategories);
+
+    setCategories(next);
     setActiveCategory((prev) => {
-      if (prev && nextCategories.some((cat) => String(cat.id) === String(prev))) {
-        return prev;
-      }
-      return nextCategories[0]?.id || null;
+      if (prev && next.some((cat) => String(cat.id) === String(prev))) return prev;
+      return next[0]?.id || null;
     });
   }, [categoriesData]);
 
-  // --- QUERY MENU ITEMS ---
+  const queryVars = activeCategory
+    ? {
+        restaurantId,
+        timeSlot: selectedTimeSlot,
+        categoryId: activeCategory,
+        search: debouncedSearch || null,
+        sort: sortBy,
+        cursor: null,
+        limit: 20,
+      }
+    : undefined;
+
   const {
     data: menuData,
     loading: menuLoading,
+    error: menuError,
     fetchMore,
   } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
-    variables: activeCategory
-      ? {
-          restaurantId,
-          timeSlot: selectedTimeSlot,
-          categoryId: activeCategory,
-          cursor: null,
-          limit: 20,
-        }
-      : undefined,
+    variables: queryVars,
     skip: !activeCategory,
     fetchPolicy: "network-only",
   });
@@ -192,33 +231,28 @@ const MenuSection = ({
     fetchPolicy: "cache-first",
   });
 
-  const foodReviewMap = React.useMemo(() => {
+  const foodReviewMap = useMemo(() => {
     const map = new Map();
-    const items = foodReviewsData?.reviews?.items || [];
-
-    items.forEach((review) => {
+    for (const review of foodReviewsData?.reviews?.items || []) {
       const key = String(review.targetId);
       const current = map.get(key) || { total: 0, sum: 0 };
       current.total += 1;
       current.sum += Number(review.rating || 0);
       map.set(key, current);
-    });
-
+    }
     return map;
   }, [foodReviewsData]);
 
   useEffect(() => {
     if (!menuData?.menuItemsConnection) return;
-    const newNodes = menuData.menuItemsConnection.edges.map((e) => e.node);
 
-    setMenuItems(newNodes);
+    const nodes = menuData.menuItemsConnection.edges.map((edge) => edge.node);
+    setMenuItems(nodes);
 
-    // Tự động chọn variant đầu tiên cho mỗi món khi load
     setSelectedVariants((prev) => {
       const next = { ...prev };
-      for (const it of newNodes) {
-        // Chỉ set nếu chưa có trong state và món đó có variants
-        if (!next[it.id] && it.servingVariants?.length > 0) {
+      for (const it of nodes) {
+        if (!next[it.id] && it.servingVariants?.length) {
           next[it.id] = it.servingVariants[0].key;
         }
       }
@@ -229,92 +263,65 @@ const MenuSection = ({
     setHasNextPage(!!menuData.menuItemsConnection.pageInfo?.hasNextPage);
   }, [menuData]);
 
-  // --- HANDLERS ---
-  const handleTimeSlotChange = (slot) => {
-    if (slot === selectedTimeSlot) return;
-    setSelectedTimeSlot(slot);
-    setActiveCategory(null);
-    setMenuItems([]);
-  };
+  const resolvedCanOrder =
+    typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
 
-  const handleCategoryChange = (catId) => {
-    if (catId === activeCategory) return;
-    setActiveCategory(catId);
-    setMenuItems([]);
-  };
+  const cannotOrderReason = getCannotOrderReason(
+    openingStatusProp || restaurant?.openingStatus,
+  );
 
-  const handleVariantChange = (itemId, variantKey) => {
-    setSelectedVariants((prev) => ({ ...prev, [itemId]: variantKey }));
-  };
+  const isDishOrderable = (item) =>
+    resolvedCanOrder && canCustomerOrderMenuItem(item);
 
   const loadMoreItems = () => {
-    if (!hasNextPage || !cursor) return;
+    if (!hasNextPage || !cursor || !queryVars) return;
+
     fetchMore({
-      variables: {
-        cursor,
-        restaurantId,
-        timeSlot: selectedTimeSlot,
-        categoryId: activeCategory,
-        limit: 20,
-      },
+      variables: { ...queryVars, cursor, limit: 20 },
       updateQuery: (prev, { fetchMoreResult }) => {
-        if (!fetchMoreResult) return prev;
+        if (!fetchMoreResult?.menuItemsConnection) return prev;
+
         return {
           menuItemsConnection: {
+            ...fetchMoreResult.menuItemsConnection,
             edges: [
-              ...prev.menuItemsConnection.edges,
+              ...(prev?.menuItemsConnection?.edges || []),
               ...fetchMoreResult.menuItemsConnection.edges,
             ],
-            pageInfo: fetchMoreResult.menuItemsConnection.pageInfo,
-            __typename: prev.menuItemsConnection.__typename,
           },
         };
       },
     });
   };
 
-
-  const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
-  const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
-  const cannotOrderReason = getCannotOrderReason(resolvedOpeningStatus);
-
   const openFoodDetail = (item) => {
-    if (!resolvedCanOrder) return;
-    if (!item?.id) return;
-
-    const categoryId = item?.categoryId || activeCategory || null;
-    const selectedVariantKey =
-      selectedVariants[item.id] || item.servingVariants?.[0]?.key || null;
+    if (!isDishOrderable(item) || !item?.id) return;
 
     const state = buildFoodDetailState(item, {
       restaurantId,
       timeSlot: selectedTimeSlot,
-      categoryId,
-      selectedVariantKey,
+      categoryId: item?.categoryId || activeCategory || null,
+      selectedVariantKey:
+        selectedVariants[item.id] || item.servingVariants?.[0]?.key || null,
     });
 
     navigate(buildFoodDetailPath(item.id, state), { state });
   };
 
-  const timeSlots = [
-    { id: "breakfast", label: "🍳 Sáng" },
-    { id: "lunch", label: "🍱 Trưa" },
-    { id: "dinner", label: "🍷 Tối" },
-    { id: "late_night", label: "🌙 Khuya" },
-  ];
-
   return (
     <div className="menu-section">
-      {/* 1. TIME SLOT TABS */}
       <div className="time-slot-tabs">
-        {timeSlots.map((slot) => (
+        {TIME_SLOTS.map((slot) => (
           <button
             key={slot.id}
             type="button"
-            className={`slot-btn ${
-              selectedTimeSlot === slot.id ? "active" : ""
-            }`}
-            onClick={() => handleTimeSlotChange(slot.id)}
+            className={`slot-btn ${selectedTimeSlot === slot.id ? "active" : ""}`}
+            onClick={() => {
+              if (slot.id !== selectedTimeSlot) {
+                setSelectedTimeSlot(slot.id);
+                setActiveCategory(null);
+              }
+            }}
           >
             {slot.label}
           </button>
@@ -322,7 +329,6 @@ const MenuSection = ({
       </div>
 
       <div className="menu-layout">
-        {/* 2. CATEGORY SIDEBAR */}
         <aside className="category-sidebar">
           <h3 className="sidebar-header">Thực đơn</h3>
           <div className="category-list">
@@ -333,10 +339,10 @@ const MenuSection = ({
                 <button
                   key={cat.id}
                   type="button"
-                  className={`category-item ${
-                    activeCategory === cat.id ? "active" : ""
-                  }`}
-                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`category-item ${activeCategory === cat.id ? "active" : ""}`}
+                  onClick={() => {
+                    if (cat.id !== activeCategory) setActiveCategory(cat.id);
+                  }}
                 >
                   {cat.name}
                 </button>
@@ -345,54 +351,68 @@ const MenuSection = ({
           </div>
         </aside>
 
-        {/* 3. MENU ITEMS LIST */}
         <main className="menu-content">
+          <div className="menu-toolbar">
+            <input
+              aria-label="Tìm món"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm món..."
+            />
+            <select
+              aria-label="Sắp xếp món"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              {MENU_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {menuLoading && menuItems.length === 0 ? (
             <div className="loading-state">
               <LoadingSpinner size="large" />
             </div>
+          ) : menuError ? (
+            <div className="empty-state" role="alert">
+              <p>Không tải được danh sách món. Vui lòng thử lại.</p>
+            </div>
           ) : menuItems.length > 0 ? (
             <div className="dish-list">
               {menuItems.map((item) => {
-                const img = item.thumbImage || "/default-dishes.jpg";
                 const variants = item.servingVariants || [];
-                const reviewSummary =
-                  foodReviewMap.get(String(item.id)) ||
-                  foodReviewMap.get(item.id) ||
-                  null;
-                const dishAvgRating = reviewSummary
-                  ? (reviewSummary.sum / reviewSummary.total).toFixed(1)
-                  : null;
-                const dishReviewCount = reviewSummary?.total || 0;
-
-                // Logic hiển thị giá và variant đang chọn
-                const selectedKey =
-                  selectedVariants[item.id] || variants[0]?.key;
+                const selectedKey = selectedVariants[item.id] || variants[0]?.key;
                 const currentVariant =
-                  variants.find((v) => v.key === selectedKey) || variants[0];
-                const displayPrice = currentVariant?.price ?? item.basePrice;
+                  variants.find((variant) => variant.key === selectedKey) || variants[0];
+                const availability = getMenuItemAvailability(item);
+                const orderable = isDishOrderable(item);
+                const review = foodReviewMap.get(String(item.id));
 
                 return (
                   <div
                     key={item.id}
-                    className="dish-card-horizontal"
-                    onClick={() => {
-                      if (!resolvedCanOrder) return;
-                      openFoodDetail(item);
-                    }}
-                    role={resolvedCanOrder ? "button" : undefined}
-                    tabIndex={resolvedCanOrder ? 0 : -1}
-                    aria-disabled={!resolvedCanOrder || undefined}
-                    onKeyDown={(event) => {
-                      if (!resolvedCanOrder) return;
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
+                    className={`dish-card-horizontal ${orderable ? "" : "is-disabled"}`}
+                    onClick={() => openFoodDetail(item)}
+                    role={orderable ? "button" : undefined}
+                    tabIndex={orderable ? 0 : -1}
+                    aria-disabled={!orderable || undefined}
+                    onKeyDown={(e) => {
+                      if (!orderable) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
                         openFoodDetail(item);
                       }
                     }}
                   >
                     <div className="dish-img-wrapper">
-                      <img src={img} alt={item.name} loading="lazy" />
+                      <img
+                        src={item.thumbImage || "/default-dishes.jpg"}
+                        alt={item.name}
+                        loading="lazy"
+                      />
                     </div>
 
                     <div className="dish-info">
@@ -400,25 +420,28 @@ const MenuSection = ({
                         <div className="header-row">
                           <div className="dish-head-main">
                             <h4 className="dish-name">{item.name}</h4>
-                            {dishAvgRating && (
+                            {review && (
                               <div className="dish-rating">
-                                ⭐ {dishAvgRating} ({dishReviewCount})
+                                ⭐ {(review.sum / review.total).toFixed(1)} ({review.total})
                               </div>
                             )}
                           </div>
                           <span className="price">
-                            {formatPrice(displayPrice)}
+                            {formatPrice(currentVariant?.price ?? item.basePrice)}
                           </span>
                         </div>
                         <p className="dish-desc">{item.description}</p>
+                        <span
+                          className={`availability-badge ${availability.badgeClassName}`}
+                        >
+                          {availability.label}
+                        </span>
                       </div>
 
                       <div className="info-bottom">
-                        {/* KHU VỰC CHỌN CÁCH CHẾ BIẾN / BIẾN THỂ */}
                         <div
                           className="variant-control"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {variants.length > 1 ? (
                             <div className="custom-select-wrapper">
@@ -426,35 +449,29 @@ const MenuSection = ({
                                 className="variant-select"
                                 value={selectedKey}
                                 onChange={(e) =>
-                                  handleVariantChange(item.id, e.target.value)
+                                  setSelectedVariants((prev) => ({
+                                    ...prev,
+                                    [item.id]: e.target.value,
+                                  }))
                                 }
                               >
-                                {variants.map((v) => (
-                                  <option key={v.key} value={v.key}>
-                                    {v.name}
+                                {variants.map((variant) => (
+                                  <option key={variant.key} value={variant.key}>
+                                    {variant.name}
                                   </option>
                                 ))}
                               </select>
                               <ChevronDown size={14} className="arrow-icon" />
                             </div>
-                          ) : (
-                            // Nếu chỉ có 1 variant và có tên cụ thể (vd: "Phần Lớn") thì hiện badge
-                            variants.length === 1 &&
-                            variants[0].name &&
-                            variants[0].name !== "Standard" && (
-                              <span className="single-variant-badge">
-                                {variants[0].name}
-                              </span>
-                            )
-                          )}
+                          ) : null}
                         </div>
 
                         <button
                           type="button"
                           className="btn-add"
-                          disabled={!resolvedCanOrder}
-                          onClick={(event) => {
-                            event.stopPropagation();
+                          disabled={!orderable}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             openFoodDetail(item);
                           }}
                         >
@@ -480,7 +497,7 @@ const MenuSection = ({
           ) : (
             <div className="empty-state">
               <span className="icon">🍽️</span>
-              <p>Chưa có món ăn trong danh mục này.</p>
+              <p>Chưa có món ăn phù hợp.</p>
             </div>
           )}
         </main>
@@ -492,13 +509,20 @@ const MenuSection = ({
         </div>
       )}
 
-      {/* Floating Cart */}
-      <button type="button" className="cart-fab" onClick={() => setIsCartOpen(true)}>
+      <button type="button" className="cart-fab cart-fab--desktop" onClick={() => setIsCartOpen(true)}>
         <ShoppingCart size={24} />
-        {getTotalItems() > 0 && (
-          <span className="count">{getTotalItems()}</span>
-        )}
+        {getTotalItems() > 0 && <span className="count">{getTotalItems()}</span>}
       </button>
+
+      {getTotalItems() > 0 && (
+        <button
+          type="button"
+          className="mobile-cart-bar"
+          onClick={() => setIsCartOpen(true)}
+        >
+          <span>Xem giỏ hàng • {getTotalItems()} món • {formatPrice(getTotalPrice())}</span>
+        </button>
+      )}
 
       <Cart
         isOpen={isCartOpen}

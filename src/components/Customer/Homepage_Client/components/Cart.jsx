@@ -144,7 +144,7 @@ const Cart = ({
     const itemBusy =
       clearingBusy ||
       globalBusy ||
-      !!busyItemIds?.[item.id];
+      !!busyItemIds?.[item.cartLineKey || item.id];
     if (itemBusy) return;
     const raw = e.target.value;
     const next = Math.max(1, parseInt(raw || "1", 10));
@@ -277,9 +277,9 @@ function RestaurantGroup({
           const itemBusy =
             clearingBusy ||
             globalBusy ||
-            !!busyItemIds?.[item.id];
+            !!busyItemIds?.[item.cartLineKey || item.id];
           return (
-            <div key={item.id} className="cart-item">
+            <div key={item.cartLineKey || item.id} className="cart-item">
               <div className="cart-item__main">
                 <div className="cart-item__info">
                   <h6 className="cart-item__name">{item.name}</h6>

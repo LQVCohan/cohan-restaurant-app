@@ -97,7 +97,7 @@ const ForYou = () => {
 
       <div className="content-scroll">
         <section className="foryou-hero">
-          <h2>FOR YOU</h2>
+          <h2>Món hợp khẩu vị của bạn</h2>
           <p>Gợi ý món dựa trên khẩu vị, dị ứng và thói quen ăn uống của bạn.</p>
         </section>
 
@@ -136,7 +136,7 @@ const ForYou = () => {
                         <p className="recommendation-price">{formatPrice(item.basePrice)}đ</p>
                         <div className="recommendation-badges">
                           {item.foodPreferenceMeta?.isRecommended && (
-                            <span className="recommendation-badge recommendation-badge--match">✨ Phù hợp khẩu vị</span>
+                            <span className="recommendation-badge recommendation-badge--match">✨ Món bạn có thể thích</span>
                           )}
                           {item.foodPreferenceMeta?.hasAllergyWarning && (
                             <span className="recommendation-badge recommendation-badge--warning">⚠ Có thể chứa dị ứng</span>
@@ -151,7 +151,7 @@ const ForYou = () => {
                   ))}
                 </div>
               ) : (
-                <div className="recommendation-empty">Chưa có món phù hợp rõ ràng. Hãy thử cập nhật khẩu vị hoặc khám phá thêm nhà hàng.</div>
+                <div className="recommendation-empty">Chưa có gợi ý nổi bật lúc này. Hãy cập nhật khẩu vị hoặc khám phá thêm nhà hàng.</div>
               )}
             </>
           )}
@@ -160,7 +160,7 @@ const ForYou = () => {
         {!recommendationLoading && warningItems.length > 0 && (
           <section className="section recommendation-section">
             <h2 className="section-title">Món cần kiểm tra trước khi đặt</h2>
-            <p className="section-desc">Các món này có thể chứa thành phần bạn đã đánh dấu dị ứng. Vui lòng kiểm tra lại với nhà hàng.</p>
+            <p className="section-desc">Các món này có thể chứa thành phần bạn dị ứng. Nên kiểm tra lại với nhà hàng trước khi đặt.</p>
             <div className="recommendation-grid">
               {warningItems.map((item) => (
                 <article className="recommendation-card" key={`warning-${item.id}`}>
