@@ -77,6 +77,7 @@ const ManagerAnalyst = () => {
     operationsRequestsLoading,
     operationsRequestsError,
     operationsSummary,
+    refetchOperationsRequests,
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
@@ -331,6 +332,17 @@ const ManagerAnalyst = () => {
                 acknowledgedRequestsCount={operationsSummary?.acknowledgedRequestsCount}
                 recentOrders={recentOrders}
                 lowStockItems={lowStockItems}
+                onRefreshRequests={() => refetchOperationsRequests?.()}
+                onOpenPOS={() => {
+                  window.dispatchEvent(new CustomEvent("manager:navigate", {
+                    detail: { page: "orders", source: "business-operations-overview", query: { view: "pos" } },
+                  }));
+                }}
+                onOpenOrders={() => {
+                  window.dispatchEvent(new CustomEvent("manager:navigate", {
+                    detail: { page: "orders", source: "business-operations-overview" },
+                  }));
+                }}
               />
             </div>
           </section>
