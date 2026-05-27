@@ -5,14 +5,11 @@ import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
 import {
-  clearStorageKeys,
   readStorageValue,
-  readStorageValueFrom,
-  removeStorageValue,
-  writeStorageValue,
 } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
+import { getLogoutUrl, getRefreshUrl } from "@/lib/apiBaseUrl";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -22,7 +19,6 @@ const TOKEN_KEYS = {
   rememberedIdentifier: "remembered_login_identifier",
 };
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_ERROR_CODES = new Set([
   "UNAUTHENTICATED",
   "FORBIDDEN",
@@ -101,91 +97,6 @@ const ME_QUERY = gql`
     }
   }
 `;
-
-function readStoredAuth() {
-  const rememberUntil = Number(readStorageValueFrom("local", TOKEN_KEYS.rememberUntil) || 0);
-  if (rememberUntil && Date.now() > rememberUntil) {
-    clearStorageKeys([
-      TOKEN_KEYS.token,
-      TOKEN_KEYS.legacy,
-      TOKEN_KEYS.user,
-      TOKEN_KEYS.rememberUntil,
-    ]);
-  }
-
-  const token =
-    readStorageValue(TOKEN_KEYS.token) ||
-    readStorageValue(TOKEN_KEYS.legacy) ||
-    null;
-
-  const userStr = readStorageValue(TOKEN_KEYS.user) || null;
-
-  let user = null;
-  try {
-    user = userStr ? JSON.parse(userStr) : null;
-  } catch {
-    user = null;
-  }
-
-  return { token, user };
-}
-
-function prefersPersistentAuth() {
-  return Boolean(
-    readStorageValueFrom("local", TOKEN_KEYS.token) ||
-      readStorageValueFrom("local", TOKEN_KEYS.legacy) ||
-      readStorageValueFrom("local", TOKEN_KEYS.rememberUntil),
-  );
-}
-
-function writeStoredAuth(token, user, options = {}) {
-  const {
-    persistSession = true,
-    rememberIdentifier = false,
-    identifier = "",
-  } = options || {};
-
-  clearStorageKeys([
-    TOKEN_KEYS.token,
-    TOKEN_KEYS.legacy,
-    TOKEN_KEYS.user,
-    TOKEN_KEYS.rememberUntil,
-  ]);
-
-  const persistent = Boolean(persistSession);
-  writeStorageValue(TOKEN_KEYS.token, token, { persistent });
-  writeStorageValue(TOKEN_KEYS.legacy, token, { persistent });
-  writeStorageValue(TOKEN_KEYS.user, JSON.stringify(user || {}), { persistent });
-
-  if (persistent) {
-    writeStorageValue(
-      TOKEN_KEYS.rememberUntil,
-      String(Date.now() + THIRTY_DAYS_MS),
-      { persistent: true },
-    );
-  } else {
-    removeStorageValue(TOKEN_KEYS.rememberUntil);
-  }
-
-  if (rememberIdentifier && identifier) {
-    writeStorageValue(
-      TOKEN_KEYS.rememberedIdentifier,
-      String(identifier).trim(),
-      { persistent: true },
-    );
-  } else {
-    removeStorageValue(TOKEN_KEYS.rememberedIdentifier);
-  }
-}
-
-function clearStoredAuth() {
-  clearStorageKeys([
-    TOKEN_KEYS.token,
-    TOKEN_KEYS.legacy,
-    TOKEN_KEYS.user,
-    TOKEN_KEYS.rememberUntil,
-  ]);
-}
 
 function getNetworkStatusCode(error) {
   return (
@@ -291,7 +202,7 @@ export const AuthProvider = ({ children }) => {
   const [refRestaurant, setRefRestaurant] = useState([]);
   useEffect(() => {
     clearLegacyAuthStorage();
-    fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    fetch(getRefreshUrl(), { method: "POST", credentials: "include" })
       .then(async (res) => (res.ok ? res.json() : null))
       .then((payload) => {
         if (payload?.token) {
@@ -325,16 +236,12 @@ export const AuthProvider = ({ children }) => {
       setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
-        const persistent = prefersPersistentAuth();
-        writeStorageValue(TOKEN_KEYS.user, JSON.stringify(merged), {
-          persistent,
-        });
         return merged;
       });
     },
     onError: (error) => {
       if (isAuthFailure(error)) {
-        clearStoredAuth();
+        clearLegacyAuthStorage();
         clearPersistedCart();
         setToken(null);
         setUser(null);
@@ -434,7 +341,7 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Logout
   const logout = useCallback(() => {
-    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(() => {});
     setToken(null);
     setUser(null);
     setRestaurants([]);
