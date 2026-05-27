@@ -1,5 +1,4 @@
 // src/graphql/resolvers/user/mutation.js
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import process from "process";
@@ -30,18 +29,8 @@ import {
   resetLoginAttempts,
   logAuthAuditEvent,
 } from "../../../src/security/loginSecurity.js";
+import { issueRefreshToken, signAccessToken } from "../../../src/security/authTokens.js";
 
-const signToken = (user) => {
-  const payload = {
-    id: String(user._id),
-    email: user.email,
-    role: (user.role?.slug || user.role?.name || "").toLowerCase(),
-  };
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-    issuer: process.env.JWT_ISSUER || "foodhub-system",
-  });
-};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -244,7 +233,7 @@ const buildAuthPayloadForUser = async (userId) => {
   const userObj = await User.findById(userId)
     .populate("role")
     .lean({ virtuals: true });
-  const token = signToken({ ...userObj, role: userObj.role });
+  const token = signAccessToken({ ...userObj, roleName: (userObj.role?.slug || userObj.role?.name || "").toLowerCase() });
   const roleName = (userObj.role?.slug || userObj.role?.name || "").toLowerCase();
 
   return { token, user: { ...userObj, roleName } };
@@ -768,7 +757,7 @@ export const UserMutation = {
     const userObj = await User.findById(user._id)
       .populate("role")
       .lean({ virtuals: true });
-    const token = signToken({ ...userObj, role: userObj.role });
+    const token = signAccessToken({ ...userObj, roleName: (userObj.role?.slug || userObj.role?.name || "").toLowerCase() });
     const roleName = (
       userObj.role?.slug ||
       userObj.role?.name ||
@@ -782,6 +771,14 @@ export const UserMutation = {
       roleName,
     });
 
+    if (ctx?.reply) {
+      await issueRefreshToken({
+        userId: userObj._id,
+        reply: ctx.reply,
+        userAgent: ctx?.request?.headers?.["user-agent"],
+        ip: ctx?.request?.ip,
+      });
+    }
     return { token, user: { ...userObj, roleName } };
   },
 
