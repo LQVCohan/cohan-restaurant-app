@@ -6,6 +6,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import useFoodPreferences from "@/hooks/useFoodPreferences";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
+import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import {
   DIETS,
   ALLERGIES,
@@ -16,33 +17,6 @@ import {
 import "./ForYou.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
-
-const getFoodPreferenceCompletion = (preferences) => {
-  const diet = preferences?.diet || "omni";
-  const allergies = Array.isArray(preferences?.allergies) ? preferences.allergies : [];
-  const habits = preferences?.habits || {};
-
-  const hasDietPreference = diet && diet !== "omni";
-  const hasAllergyInfo = allergies.length > 0;
-  const hasTasteInfo =
-    !!habits.noOnion ||
-    !!habits.noCilantro ||
-    Number(habits.sugar ?? 100) !== 100 ||
-    String(habits.spice || "Vừa") !== "Vừa" ||
-    habits.ice === false;
-
-  const completed = [hasDietPreference, hasAllergyInfo, hasTasteInfo].filter(Boolean).length;
-
-  return {
-    completed,
-    total: 3,
-    percent: Math.round((completed / 3) * 100),
-    hasDietPreference,
-    hasAllergyInfo,
-    hasTasteInfo,
-    isLowInformation: completed === 0,
-  };
-};
 
 const ForYou = () => {
   const navigate = useNavigate();
@@ -69,7 +43,7 @@ const ForYou = () => {
     isAuthenticated &&
       String(user?.roleName || "").toLowerCase() === "customer" &&
       !loading &&
-      (completion.percent < 100 || completion.isLowInformation),
+      completion.shouldNudge,
   );
 
   const handleAllergyToggle = (id) => {
@@ -148,19 +122,19 @@ const ForYou = () => {
           <section className="food-preference-nudge" aria-live="polite">
             <div className="food-preference-nudge__content">
               <span className="food-preference-nudge__eyebrow">Gợi ý chính xác hơn</span>
-              <h3>Hoàn thiện khẩu vị để gợi ý đúng hơn</h3>
+              <h3>Thêm vài thông tin khẩu vị để gợi ý sát hơn</h3>
               <p>
-                Bạn có thể thêm chế độ ăn, dị ứng và thói quen như mức cay/ngọt,
-                hành/ngò. Càng rõ khẩu vị, món gợi ý càng sát với bạn.
+                Bạn có thể chọn chế độ ăn hoặc thói quen như mức cay/ngọt,
+                hành/ngò. Nếu có dị ứng, hãy thêm để chúng tôi nhắc bạn kiểm tra món trước khi đặt.
               </p>
               <div className="food-preference-nudge__chips">
-                {!completion.hasDietPreference && (
+                {completion.missingChips.diet && (
                   <span className="food-preference-nudge__chip">Chế độ ăn</span>
                 )}
-                {!completion.hasAllergyInfo && (
+                {completion.missingChips.allergy && (
                   <span className="food-preference-nudge__chip">Dị ứng nếu có</span>
                 )}
-                {!completion.hasTasteInfo && (
+                {completion.missingChips.taste && (
                   <span className="food-preference-nudge__chip">Mức cay/ngọt, hành/ngò</span>
                 )}
               </div>

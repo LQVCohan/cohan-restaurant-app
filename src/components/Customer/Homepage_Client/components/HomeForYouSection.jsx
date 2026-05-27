@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
+import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import "@/styles/Homepage/HomeForYouSection.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
@@ -19,7 +20,13 @@ export default function HomeForYouSection({ timeSlot = null }) {
     recommendedItems,
     fallbackItems,
     accessibleRestaurants,
+    preferences,
   } = useForYouRecommendations({ limitPerRestaurant: 8, maxRestaurants: 5, enabled, timeSlot });
+
+  const completion = useMemo(
+    () => getFoodPreferenceCompletion(preferences),
+    [preferences],
+  );
 
   const displayItems = useMemo(() => {
     const source = recommendedItems.length > 0 ? recommendedItems : fallbackItems;
@@ -42,7 +49,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
           </div>
           <div className="home-for-you__actions">
             <button type="button" className="home-for-you__cta" onClick={() => navigate("/for-you")}>Xem thêm món gợi ý</button>
-            {usingFallback && (
+            {usingFallback && completion.shouldNudge && (
               <button
                 type="button"
                 className="home-for-you__profile-cta"
