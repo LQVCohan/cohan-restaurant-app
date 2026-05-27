@@ -60,6 +60,7 @@ const TableSchema = BaseSchemaModel({
   photos: { type: [String], default: [] }, // ảnh thực tế
   vrUrl: { type: String }, // link 360/VR
   notes: { type: String },
+  visualConfig: { type: mongoose.Schema.Types.Mixed, default: null },
 
   status: {
     type: String,

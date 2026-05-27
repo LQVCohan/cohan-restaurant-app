@@ -238,8 +238,16 @@ const Table3DSimulatorModal = ({
             <span>{selectedModel?.label || "Mẫu 3D"}</span>
             {loading && <span>Đang tải catalog...</span>}
             {confirmedCameraPlacement && (
-              <span>Đã xác nhận vị trí xem thử cho {confirmedCameraPlacement.modelLabel}</span>
+              <span>Đã xác nhận vị trí xem thử cho mẫu này</span>
             )}
+            {confirmedCameraPlacement &&
+              selectedModel &&
+              confirmedCameraPlacement.modelKey !== selectedModel.key && (
+                <span>
+                  Vị trí xem thử đã xác nhận thuộc mẫu khác. Hãy xem thử bằng camera lại nếu
+                  muốn lưu cho mẫu này.
+                </span>
+              )}
           </div>
 
           {selectedModel?.modelUrl && !modelError ? (
@@ -321,7 +329,16 @@ const Table3DSimulatorModal = ({
             </Button>
             <Button
               variant="primary"
-              onClick={() => selectedModel && onApply(selectedModel)}
+              onClick={() =>
+                selectedModel &&
+                onApply(selectedModel, {
+                  visualConfig:
+                    confirmedCameraPlacement &&
+                    confirmedCameraPlacement.modelKey === selectedModel.key
+                      ? confirmedCameraPlacement
+                      : null,
+                })
+              }
               disabled={!selectedModel}
             >
               Áp dụng vào form thêm bàn
