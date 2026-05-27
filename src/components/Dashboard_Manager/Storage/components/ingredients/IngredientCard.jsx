@@ -212,7 +212,7 @@ const IngredientCard = ({
                 onShowUsage?.(ingredient.id);
               }}
               disabled={!canShowUsage}
-              title={canShowUsage ? "Xem món ăn sử dụng" : "Tính năng đang phát triển"}
+              title={canShowUsage ? "Xem món ăn sử dụng" : "Chưa có dữ liệu món ăn sử dụng nguyên liệu này"}
             >
               <Eye size={16} />
             </button>
