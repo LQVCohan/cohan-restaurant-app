@@ -16,7 +16,7 @@ vi.mock("@apollo/client", () => ({
       ? { restaurantAiChatbotKnowledgeSuggestions: [{ id: "s1", question: "Q1", triggerType: "fallback", confidence: 0.2, occurrenceCount: 2, lastAskedAt: null, suggestedTitle: "T1", suggestedContent: "", category: "", tags: [], status: "pending" }] }
       : String(q).includes("restaurantAiChatbotAnswerFeedback")
         ? { restaurantAiChatbotAnswerFeedback: [{ id: "f1", question: "Bad answer?", answer: "A", reason: "No", confidence: 0.2, rating: "not_helpful", status: "new", createdAt: null }] }
-        : { restaurantAiChatbotKnowledge: [] },
+        : String(q).includes("restaurantAiChatbotSafetyRules") ? { restaurantAiChatbotSafetyRules: [{ id: "sr1", restaurantId: "r1", ruleType: "blocked_topic", pattern: "abc", responseMessage: "blocked", enabled: true, priority: 1 }] } : { restaurantAiChatbotKnowledge: [] },
     loading: false,
     error: null,
     refetch: vi.fn(),
@@ -46,6 +46,7 @@ describe("AiChatbotKnowledgePage", () => {
     expect(screen.getByText("AI Chatbot Knowledge Base")).toBeInTheDocument();
     expect(screen.getByText("Knowledge Gap Suggestions")).toBeInTheDocument();
     expect(screen.getByText("Answer Feedback Review")).toBeInTheDocument();
+    expect(screen.getByText("Safety Rules")).toBeInTheDocument();
   });
 
   it("approve requires content and does not submit empty content", async () => {

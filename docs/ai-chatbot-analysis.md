@@ -535,3 +535,16 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
 - Added manager review APIs (`restaurantAiChatbotAnswerFeedback`, mark reviewed, ignore, convert to suggestion).
 - Permissions: submit is public; list requires `report.read`; review actions require `restaurant.write`.
 - Negative feedback can be converted to Knowledge Gap Suggestion by manager action only.
+
+
+## 16. Phase 15 - Safety Rules, Admin Controls, and Moderation
+- New moderation layer allows manager/admin to define answer boundaries by restaurant.
+- Rule types:
+  - blocked_topic: block answer and return safe message.
+  - handoff_topic: suggest staff handoff with custom response.
+  - required_disclaimer: append required disclaimer text.
+  - allowed_scope: define in-scope patterns; unmatched requests are treated as out-of-scope.
+- Runtime behavior: evaluate enabled rules before AI call; blocked/out-of-scope can bypass AI generation.
+- Limitations: lightweight pattern matching only; escaped regex and string includes, not semantic moderation.
+- GraphQL additions: query `restaurantAiChatbotSafetyRules`; mutations create/update/delete safety rule.
+- Manager UI: Safety Rules section in AI Chatbot Knowledge page with CRUD, filters, enable/disable, delete confirmation.

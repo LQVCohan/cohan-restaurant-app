@@ -140,6 +140,43 @@ input AiChatbotAnswerFeedbackFilterInput {
   to: DateTime
 }
 
+
+type AiChatbotSafetyRule {
+  id: ID!
+  restaurantId: ID!
+  ruleType: String!
+  pattern: String!
+  responseMessage: String
+  enabled: Boolean!
+  priority: Int!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AiChatbotSafetyRuleFilterInput {
+  ruleType: String
+  enabled: Boolean
+  search: String
+}
+
+input CreateAiChatbotSafetyRuleInput {
+  restaurantId: ID!
+  ruleType: String!
+  pattern: String!
+  responseMessage: String
+  enabled: Boolean
+  priority: Int
+}
+
+input UpdateAiChatbotSafetyRuleInput {
+  id: ID!
+  ruleType: String
+  pattern: String
+  responseMessage: String
+  enabled: Boolean
+  priority: Int
+}
+
 type AiChatbotResponse {
   answer: String!
   intent: String
@@ -320,6 +357,7 @@ extend type Query {
   restaurantAiChatbotKnowledgeItem(id: ID!): AiChatbotKnowledgeItem
   restaurantAiChatbotKnowledgeSuggestions(restaurantId: ID!, filter: AiChatbotKnowledgeSuggestionFilterInput): [AiChatbotKnowledgeSuggestion!]!
   restaurantAiChatbotAnswerFeedback(restaurantId: ID!, filter: AiChatbotAnswerFeedbackFilterInput): [AiChatbotAnswerFeedback!]!
+  restaurantAiChatbotSafetyRules(restaurantId: ID!, filter: AiChatbotSafetyRuleFilterInput): [AiChatbotSafetyRule!]!
 }
 
 extend type Mutation {

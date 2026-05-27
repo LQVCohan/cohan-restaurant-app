@@ -26,6 +26,12 @@ import {
   ignoreAiChatbotAnswerFeedback,
   convertAiChatbotFeedbackToSuggestion,
 } from "../../../src/services/ai/restaurantChatbotFeedback.service.js";
+import {
+  listRestaurantAiChatbotSafetyRules,
+  createRestaurantAiChatbotSafetyRule,
+  updateRestaurantAiChatbotSafetyRule,
+  deleteRestaurantAiChatbotSafetyRule,
+} from "../../../src/services/ai/restaurantChatbotSafety.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -58,6 +64,7 @@ const Query = {
   restaurantAiChatbotKnowledgeItem: async (_, { id }, ctx) => getRestaurantAiChatbotKnowledgeItem({ id, ctx }),
   restaurantAiChatbotKnowledgeSuggestions: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledgeSuggestions({ restaurantId, filter, ctx }),
   restaurantAiChatbotAnswerFeedback: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotAnswerFeedback({ restaurantId, filter, ctx }),
+  restaurantAiChatbotSafetyRules: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotSafetyRules({ restaurantId, filter, ctx }),
 };
 
 const Mutation = {
@@ -114,6 +121,9 @@ const Mutation = {
   markAiChatbotAnswerFeedbackReviewed: async (_, { id }, ctx) => markAiChatbotAnswerFeedbackReviewed({ id, ctx }),
   ignoreAiChatbotAnswerFeedback: async (_, { id }, ctx) => ignoreAiChatbotAnswerFeedback({ id, ctx }),
   convertAiChatbotFeedbackToSuggestion: async (_, { id }, ctx) => convertAiChatbotFeedbackToSuggestion({ id, ctx }),
+  createRestaurantAiChatbotSafetyRule: async (_, { input }, ctx) => createRestaurantAiChatbotSafetyRule({ input, ctx }),
+  updateRestaurantAiChatbotSafetyRule: async (_, { input }, ctx) => updateRestaurantAiChatbotSafetyRule({ input, ctx }),
+  deleteRestaurantAiChatbotSafetyRule: async (_, { id }, ctx) => deleteRestaurantAiChatbotSafetyRule({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });

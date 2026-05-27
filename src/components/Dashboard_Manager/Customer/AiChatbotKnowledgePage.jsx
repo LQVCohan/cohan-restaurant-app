@@ -15,8 +15,14 @@ const FEEDBACK_REVIEW = gql`mutation MarkAiFeedbackReviewed($id: ID!) { markAiCh
 const FEEDBACK_IGNORE = gql`mutation IgnoreAiFeedback($id: ID!) { ignoreAiChatbotAnswerFeedback(id: $id) }`;
 const FEEDBACK_CONVERT = gql`mutation ConvertAiFeedback($id: ID!) { convertAiChatbotFeedbackToSuggestion(id: $id) }`;
 
+const Q_SAFETY = gql`query ManagerAiSafety($restaurantId: ID!, $filter: AiChatbotSafetyRuleFilterInput) { restaurantAiChatbotSafetyRules(restaurantId: $restaurantId, filter: $filter) { id restaurantId ruleType pattern responseMessage enabled priority } }`;
+const C_SAFETY = gql`mutation CreateAiSafety($input: CreateAiChatbotSafetyRuleInput!) { createRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
+const U_SAFETY = gql`mutation UpdateAiSafety($input: UpdateAiChatbotSafetyRuleInput!) { updateRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
+const D_SAFETY = gql`mutation DeleteAiSafety($id: ID!) { deleteRestaurantAiChatbotSafetyRule(id: $id) }`;
+
 
 const blank = { id: "", title: "", content: "", category: "", tags: "", enabled: true, priority: 0, sourceType: "manual" };
+const safetyBlank = { id: "", ruleType: "blocked_topic", pattern: "", responseMessage: "", enabled: true, priority: 0 };
 
 export default function AiChatbotKnowledgePage() {
   const { restaurants = [] } = useContext(AuthContext) || {};
@@ -30,12 +36,17 @@ export default function AiChatbotKnowledgePage() {
   const [suggestionSearch, setSuggestionSearch] = useState("");
   const [feedbackRating, setFeedbackRating] = useState("not_helpful");
   const [feedbackStatus, setFeedbackStatus] = useState("new");
+  const [safetyForm, setSafetyForm] = useState(safetyBlank);
+  const [safetySearch, setSafetySearch] = useState("");
+  const [safetyType, setSafetyType] = useState("all");
+  const [safetyEnabled, setSafetyEnabled] = useState("all");
   const rid = restaurantId || restaurants?.[0]?.id || "";
   const filter = useMemo(() => ({ search: search || undefined, enabled: enabled === "all" ? undefined : enabled === "on" }), [search, enabled]);
   const suggestionFilter = useMemo(() => ({ status: suggestionStatus === "all" ? undefined : suggestionStatus, triggerType: suggestionTrigger === "all" ? undefined : suggestionTrigger, search: suggestionSearch || undefined }), [suggestionStatus, suggestionTrigger, suggestionSearch]);
   const { data, loading, error, refetch } = useQuery(Q, { skip: !rid, variables: { restaurantId: rid, filter } });
   const { data: suggestionData, loading: suggestionLoading, error: suggestionError, refetch: refetchSuggestion } = useQuery(Q_SUGGESTIONS, { skip: !rid, variables: { restaurantId: rid, filter: suggestionFilter } });
   const { data: feedbackData, loading: feedbackLoading, refetch: refetchFeedback } = useQuery(Q_FEEDBACK, { skip: !rid, variables: { restaurantId: rid, filter: { rating: feedbackRating === "all" ? undefined : feedbackRating, status: feedbackStatus === "all" ? undefined : feedbackStatus } } });
+  const { data: safetyData, loading: safetyLoading, error: safetyError, refetch: refetchSafety } = useQuery(Q_SAFETY, { skip: !rid, variables: { restaurantId: rid, filter: { search: safetySearch || undefined, ruleType: safetyType === "all" ? undefined : safetyType, enabled: safetyEnabled === "all" ? undefined : safetyEnabled === "on" } } });
   const [createItem, { loading: creating }] = useMutation(C);
   const [updateItem, { loading: updating }] = useMutation(U);
   const [deleteItem] = useMutation(D);
@@ -45,6 +56,9 @@ export default function AiChatbotKnowledgePage() {
   const [markFeedbackReviewed] = useMutation(FEEDBACK_REVIEW);
   const [ignoreFeedback] = useMutation(FEEDBACK_IGNORE);
   const [convertFeedback] = useMutation(FEEDBACK_CONVERT);
+  const [createSafety] = useMutation(C_SAFETY);
+  const [updateSafety] = useMutation(U_SAFETY);
+  const [deleteSafety] = useMutation(D_SAFETY);
 
   const onApproveSuggestion = async (s) => {
     const title = window.prompt("Title", s.suggestedTitle || s.question) || s.question;
@@ -71,6 +85,7 @@ export default function AiChatbotKnowledgePage() {
   const rows = data?.restaurantAiChatbotKnowledge || [];
   const suggestionRows = suggestionData?.restaurantAiChatbotKnowledgeSuggestions || [];
   const feedbackRows = feedbackData?.restaurantAiChatbotAnswerFeedback || [];
+  const safetyRows = safetyData?.restaurantAiChatbotSafetyRules || [];
 
   return <section style={{ padding: 16 }}>
     <h2>AI Chatbot Knowledge Base</h2>
@@ -112,6 +127,27 @@ export default function AiChatbotKnowledgePage() {
       </> : null}
       <button onClick={async () => { if (!window.confirm("Xóa suggestion này?")) return; await deleteSuggestion({ variables: { id: s.id } }); refetchSuggestion?.(); }}>Delete</button>
     </li>)}</ul>
+
+
+    <h3 style={{ marginTop: 20 }}>Safety Rules</h3>
+    <div style={{ display: "flex", gap: 8, margin: "8px 0" }}>
+      <input placeholder="Tìm pattern" value={safetySearch} onChange={(e) => setSafetySearch(e.target.value)} />
+      <select value={safetyType} onChange={(e) => setSafetyType(e.target.value)}><option value="all">all type</option><option value="blocked_topic">blocked_topic</option><option value="required_disclaimer">required_disclaimer</option><option value="handoff_topic">handoff_topic</option><option value="allowed_scope">allowed_scope</option></select>
+      <select value={safetyEnabled} onChange={(e) => setSafetyEnabled(e.target.value)}><option value="all">Tất cả</option><option value="on">Đang bật</option><option value="off">Đã tắt</option></select>
+      <button onClick={() => refetchSafety?.()}>Lọc safety</button>
+    </div>
+    {safetyLoading ? <p>Đang tải safety rules...</p> : null}
+    {safetyError ? <p>{safetyError.message}</p> : null}
+    <ul>{safetyRows.map((r) => <li key={r.id}><strong>{r.ruleType}</strong> [{r.enabled ? "on" : "off"}] prio:{r.priority}<div>pattern: {r.pattern}</div><div>response: {r.responseMessage || "-"}</div><button onClick={() => setSafetyForm({ ...r })}>Sửa</button><button onClick={async () => { await updateSafety({ variables: { input: { id: r.id, enabled: !r.enabled } } }); refetchSafety?.(); }}>{r.enabled ? "Tắt" : "Bật"}</button><button onClick={async () => { if (!window.confirm("Xóa safety rule này?")) return; await deleteSafety({ variables: { id: r.id } }); refetchSafety?.(); }}>Xóa</button></li>)}</ul>
+    <form onSubmit={async (e) => { e.preventDefault(); const payload = { ...safetyForm, restaurantId: rid, priority: Number(safetyForm.priority || 0) }; if (safetyForm.id) await updateSafety({ variables: { input: { ...payload, id: safetyForm.id } } }); else await createSafety({ variables: { input: payload } }); setSafetyForm(safetyBlank); refetchSafety?.(); }} style={{ marginTop: 12 }}>
+      <h3>{safetyForm.id ? "Cập nhật" : "Tạo mới"} Safety rule</h3>
+      <div><select value={safetyForm.ruleType} onChange={(e) => setSafetyForm((f) => ({ ...f, ruleType: e.target.value }))}><option value="blocked_topic">blocked_topic</option><option value="required_disclaimer">required_disclaimer</option><option value="handoff_topic">handoff_topic</option><option value="allowed_scope">allowed_scope</option></select></div>
+      <div><input required placeholder="Pattern" maxLength={300} value={safetyForm.pattern} onChange={(e) => setSafetyForm((f) => ({ ...f, pattern: e.target.value }))} /></div>
+      <div><textarea placeholder="Response message" maxLength={1000} value={safetyForm.responseMessage} onChange={(e) => setSafetyForm((f) => ({ ...f, responseMessage: e.target.value }))} /></div>
+      <div><input type="number" min="0" max="100" value={safetyForm.priority} onChange={(e) => setSafetyForm((f) => ({ ...f, priority: Number(e.target.value) }))} /></div>
+      <div><label><input type="checkbox" checked={!!safetyForm.enabled} onChange={(e) => setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))} /> enabled</label></div>
+      <button type="submit">Lưu safety</button><button type="button" onClick={() => setSafetyForm(safetyBlank)}>Hủy</button>
+    </form>
 
     <h3 style={{ marginTop: 20 }}>Answer Feedback Review</h3>
     <div style={{ display: "flex", gap: 8, margin: "8px 0" }}>
