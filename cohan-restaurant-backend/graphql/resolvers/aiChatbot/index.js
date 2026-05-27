@@ -6,6 +6,13 @@ import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } f
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
 import { getRestaurantChatbotAnalytics } from "../../../src/services/ai/restaurantChatbotAnalytics.service.js";
 import { getPublicAiChatbotSettings, getRestaurantAiChatbotSettings, updateRestaurantAiChatbotSettings } from "../../../src/services/ai/restaurantChatbotSettings.service.js";
+import {
+  listRestaurantAiChatbotKnowledge,
+  getRestaurantAiChatbotKnowledgeItem,
+  createRestaurantAiChatbotKnowledgeItem,
+  updateRestaurantAiChatbotKnowledgeItem,
+  deleteRestaurantAiChatbotKnowledgeItem,
+} from "../../../src/services/ai/restaurantChatbotKnowledge.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -34,6 +41,8 @@ const Query = {
   },
   restaurantAiChatbotSettings: async (_, { restaurantId }, ctx) => getRestaurantAiChatbotSettings({ restaurantId, ctx }),
   publicAiChatbotSettings: async (_, { restaurantId }) => getPublicAiChatbotSettings({ restaurantId }),
+  restaurantAiChatbotKnowledge: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledge({ restaurantId, filter, ctx }),
+  restaurantAiChatbotKnowledgeItem: async (_, { id }, ctx) => getRestaurantAiChatbotKnowledgeItem({ id, ctx }),
 };
 
 const Mutation = {
@@ -80,6 +89,9 @@ const Mutation = {
     }
   },
   updateRestaurantAiChatbotSettings: async (_, { input }, ctx) => updateRestaurantAiChatbotSettings({ input, ctx }),
+  createRestaurantAiChatbotKnowledgeItem: async (_, { input }, ctx) => createRestaurantAiChatbotKnowledgeItem({ input, ctx }),
+  updateRestaurantAiChatbotKnowledgeItem: async (_, { input }, ctx) => updateRestaurantAiChatbotKnowledgeItem({ input, ctx }),
+  deleteRestaurantAiChatbotKnowledgeItem: async (_, { id }, ctx) => deleteRestaurantAiChatbotKnowledgeItem({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });

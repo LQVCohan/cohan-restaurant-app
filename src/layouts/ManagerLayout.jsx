@@ -13,6 +13,7 @@ import CustomerManagement from "../components/Dashboard_Manager/Customer/Custome
 import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import AiChatbotAnalyticsPage from "../components/Dashboard_Manager/Customer/AiChatbotAnalyticsPage";
 import AiChatbotSettingsPage from "../components/Dashboard_Manager/Customer/AiChatbotSettingsPage";
+import AiChatbotKnowledgePage from "../components/Dashboard_Manager/Customer/AiChatbotKnowledgePage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -58,6 +59,7 @@ const VALID_MANAGER_PAGES = new Set([
   "ai-handoff",
   "ai-chatbot-analytics",
   "ai-chatbot-settings",
+  "ai-chatbot-knowledge",
 ]);
 
 const resolveInitialManagerPage = () => {
@@ -109,6 +111,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   "ai-handoff": ["dashboard.read", "order.read"],
   "ai-chatbot-analytics": ["report.read"],
   "ai-chatbot-settings": ["report.read"],
+  "ai-chatbot-knowledge": ["report.read"],
 };
 
 const PAGE_CONFIG = {
@@ -133,6 +136,7 @@ const PAGE_CONFIG = {
   rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
   "ai-handoff": { title: "Handoff AI", description: "Xử lý yêu cầu hỗ trợ từ chatbot", icon: "🤖", keywords: ["handoff", "chatbot", "support"] },
   "ai-chatbot-analytics": { title: "AI Chatbot Analytics", description: "Theo dõi số liệu tổng hợp chatbot và handoff", icon: "📡", keywords: ["ai", "chatbot", "analytics", "handoff"] },
+  "ai-chatbot-knowledge": { title: "AI Chatbot Knowledge", description: "Quản lý tri thức/FAQ cho chatbot theo từng nhà hàng", icon: "📚", keywords: ["ai", "chatbot", "knowledge", "faq"] },
   settings: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
   rates: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
   setting: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
@@ -287,6 +291,7 @@ const ManagerLayout = () => {
       case "ai-handoff": return <AiHandoffInbox />;
       case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
       case "ai-chatbot-settings": return <AiChatbotSettingsPage />;
+      case "ai-chatbot-knowledge": return <AiChatbotKnowledgePage />;
       default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
     }
   };
