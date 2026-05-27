@@ -6,6 +6,8 @@ import {
   mapModelToTableForm,
   mapTable3DTypeToArea,
   normalizeCatalogItem,
+  canOpenModelViewerAr,
+  getArUnavailableReason,
 } from "./table3dCatalog";
 
 describe("table3dCatalog", () => {
@@ -136,6 +138,24 @@ describe("table3dCatalog", () => {
 
       expect(normalized.tableType).toBe(TABLE_3D_TYPES.RECT_4);
       expect(normalized.capacity).toBe(4);
+    });
+  });
+
+  describe("AR helpers", () => {
+    it("detects whether model-viewer AR can be opened from a public modelUrl", () => {
+      expect(canOpenModelViewerAr({ modelUrl: "https://example.com/table.glb" })).toBe(true);
+      expect(canOpenModelViewerAr({ modelUrl: "   " })).toBe(false);
+      expect(canOpenModelViewerAr({ modelUrl: "" })).toBe(false);
+      expect(canOpenModelViewerAr({})).toBe(false);
+      expect(canOpenModelViewerAr(null)).toBe(false);
+    });
+
+    it("returns human-readable unavailable reason when AR cannot be opened", () => {
+      expect(getArUnavailableReason(null)).toBe("Chọn mẫu để kiểm tra hỗ trợ AR.");
+      expect(getArUnavailableReason({ modelUrl: "" })).toBe(
+        "Mẫu này chưa có model 3D công khai để mở AR."
+      );
+      expect(getArUnavailableReason({ modelUrl: "https://example.com/table.glb" })).toBe("");
     });
   });
 });
