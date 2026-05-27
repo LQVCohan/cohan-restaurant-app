@@ -9,7 +9,8 @@ import {
 } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
-import { getLogoutUrl, getRefreshUrl } from "@/lib/apiBaseUrl";
+import { getLogoutUrl } from "@/lib/apiBaseUrl";
+import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -200,22 +201,33 @@ export const AuthProvider = ({ children }) => {
   const [sessionWarning, setSessionWarning] = useState("");
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
-  useEffect(() => {
-    clearLegacyAuthStorage();
-    fetch(getRefreshUrl(), { method: "POST", credentials: "include" })
-      .then(async (res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (payload?.token) {
-          setAuth({ token: payload.token });
-          setToken(payload.token);
-          setUser(normalizeUserModel(payload.user));
-          setSessionState("authenticated");
-        } else {
-          setSessionState("anonymous");
-        }
-      })
-      .finally(() => setLoading(false));
+  const refreshRecoveryAttemptedRef = React.useRef(false);
+  const refreshTimerRef = React.useRef(null);
+  const applyRefreshedSession = useCallback((payload) => {
+    if (!payload?.token) return false;
+    setAuth({ token: payload.token });
+    setToken(payload.token);
+    if (payload.user) setUser((prev) => normalizeUserModel(payload.user, prev));
+    setSessionState("authenticated");
+    setSessionWarning("");
+    return true;
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    clearLegacyAuthStorage();
+    refreshAccessTokenOnce()
+      .then((payload) => {
+        if (!alive) return;
+        if (!applyRefreshedSession(payload)) setSessionState("anonymous");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [applyRefreshedSession]);
 
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
@@ -241,14 +253,35 @@ export const AuthProvider = ({ children }) => {
     },
     onError: (error) => {
       if (isAuthFailure(error)) {
-        clearLegacyAuthStorage();
-        clearPersistedCart();
-        setToken(null);
-        setUser(null);
-        setRestaurants([]);
-        setRefRestaurant([]);
-        setSessionState("anonymous");
-        setSessionWarning("");
+        if (!token || refreshRecoveryAttemptedRef.current) {
+          clearLegacyAuthStorage();
+          clearPersistedCart();
+          setToken(null);
+          setUser(null);
+          setRestaurants([]);
+          setRefRestaurant([]);
+          setSessionState("anonymous");
+          setSessionWarning("");
+          return;
+        }
+
+        refreshRecoveryAttemptedRef.current = true;
+        refreshAccessTokenOnce().then((payload) => {
+          if (!applyRefreshedSession(payload)) {
+            clearLegacyAuthStorage();
+            clearPersistedCart();
+            setToken(null);
+            setUser(null);
+            setRestaurants([]);
+            setRefRestaurant([]);
+            setSessionState("anonymous");
+            setSessionWarning("");
+            return;
+          }
+          refetchMe().finally(() => {
+            refreshRecoveryAttemptedRef.current = false;
+          });
+        });
         return;
       }
       setSessionState("network_unstable");
@@ -320,6 +353,40 @@ export const AuthProvider = ({ children }) => {
     }
   }, [urrData]);
   // ✅ Lấy token từ storage khi khởi động
+
+  useEffect(() => {
+    if (refreshTimerRef.current) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!token) return undefined;
+
+    const scheduleMs = (() => {
+      try {
+        const parts = token.split(".");
+        if (parts.length < 2) return 10 * 60 * 1000;
+        const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64));
+        const expMs = Number(payload?.exp) * 1000;
+        if (!expMs) return 10 * 60 * 1000;
+        return Math.max(5000, expMs - Date.now() - 60000);
+      } catch {
+        return 10 * 60 * 1000;
+      }
+    })();
+
+    refreshTimerRef.current = window.setTimeout(async () => {
+      const payload = await refreshAccessTokenOnce();
+      if (payload?.token) applyRefreshedSession(payload);
+    }, scheduleMs);
+
+    return () => {
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [token, applyRefreshedSession]);
 
   // ✅ Hàm login được gọi từ LoginPage
   const login = useCallback(

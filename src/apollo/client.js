@@ -8,7 +8,8 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
-import { getGraphqlUrl, getRefreshUrl } from "@/lib/apiBaseUrl";
+import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -108,21 +109,6 @@ function dispatchOutOfStockPrompt({ operation, graphQLError }) {
   );
 }
 
-let refreshPromise = null;
-async function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = fetch(getRefreshUrl(), { method: "POST", credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((payload) => {
-        if (payload?.token) setAuth({ token: payload.token });
-        else clearAuth();
-        return payload?.token || null;
-      })
-      .finally(() => { refreshPromise = null; });
-  }
-  return refreshPromise;
-}
-
 const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) => {
   const outOfStockError = (graphQLErrors || []).find((error) => {
     const code = error?.extensions?.code;
@@ -143,8 +129,12 @@ const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) 
   if (unauthenticated && !operation.getContext()._retry) {
     operation.setContext({ _retry: true });
     return new ApolloLink((obs) => {
-      refreshAccessToken().then((token) => {
-        if (!token) return obs.error(networkError || new Error("Unauthenticated"));
+      refreshAccessTokenOnce().then((payload) => {
+        if (!payload?.token) {
+          clearAuth();
+          return obs.error(networkError || new Error("Unauthenticated"));
+        }
+        setAuth({ token: payload.token });
         forward(operation).subscribe(obs);
       }).catch((err) => obs.error(err));
     }).request(operation);

@@ -36,11 +36,24 @@ export function sanitizeUserForClient(user) {
       userType: source.userType,
       role: sanitizeRole(source.role),
       roleName,
+      emailVerified:
+        typeof source.emailVerified === "boolean"
+          ? source.emailVerified
+          : undefined,
+      employmentType: source.employmentType,
+      department: source.department,
+      positionTitle: source.positionTitle,
       refRestaurants: source.refRestaurants,
       restaurantForStaff: source.restaurantForStaff,
       loyaltyRank: source.loyaltyRank,
       wallet: source.wallet
-        ? { provider: source.wallet.provider, currency: source.wallet.currency, balance: source.wallet.balance }
+        ? {
+            provider: source.wallet.provider,
+            status: source.wallet.status,
+            balance: source.wallet.balance,
+            currency: source.wallet.currency,
+            updatedAt: source.wallet.updatedAt,
+          }
         : undefined,
       customer: source.customer,
       isGuest: source.isGuest,
