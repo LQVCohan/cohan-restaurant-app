@@ -316,10 +316,9 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section">
             <div className="analytics-section__header">
-              <h3 className="analytics-section__title">Ưu tiên hôm nay</h3>
+              <h3 className="analytics-section__title">Vận hành hôm nay</h3>
               <p className="analytics-section__subtitle">
-                Việc cần xử lý trước dựa trên doanh thu, nhu cầu, nhân sự và
-                khuyến mãi.
+                Theo dõi đơn hàng, yêu cầu từ khách và cảnh báo tồn kho cần xử lý.
               </p>
             </div>
             <div className="analytics-section__body">
@@ -333,6 +332,16 @@ const ManagerAnalyst = () => {
                 recentOrders={recentOrders}
                 lowStockItems={lowStockItems}
               />
+            </div>
+          </section>
+
+          <section className="analytics-section">
+            <div className="analytics-section__header">
+              <h3 className="analytics-section__title">Ưu tiên hôm nay</h3>
+              <p className="analytics-section__subtitle">
+                Việc cần xử lý trước dựa trên doanh thu, nhu cầu, nhân sự và
+                khuyến mãi.
+              </p>
             </div>
             <div className="analytics-section__body strategy-grid">
               <div className="grid-item ai-assistant">
