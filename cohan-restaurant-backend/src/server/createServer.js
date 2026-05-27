@@ -64,6 +64,35 @@ const parseAllowedOrigins = () => {
   return filtered.length > 0 ? filtered : ["http://localhost:5173"];
 };
 
+
+
+
+export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {
+  if (!inProduction) return false;
+  const styleSrc = ["'self'", "https://fonts.googleapis.com"];
+  if (allowUnsafeInlineStyle) styleSrc.splice(1, 0, "'unsafe-inline'");
+  return {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc,
+      imgSrc: ["'self'", "data:", "blob:", s3PublicBase || ""].filter(Boolean),
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      connectSrc: ["'self'", ...(allowedOrigins || []), ...(s3PublicBase ? [s3PublicBase] : [])],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+    },
+  };
+}
+
+export function shouldAllowAuthCookieRequestOrigin({ origin, allowedOrigins, nodeEnv, allowNoOriginValue }) {
+  const normalizedAllowedOrigins = Array.isArray(allowedOrigins) ? allowedOrigins : [];
+  if (origin) return normalizedAllowedOrigins.includes(origin);
+  const env = String(nodeEnv || "development").toLowerCase();
+  const allowNoOrigin = String(allowNoOriginValue || "").toLowerCase() === "true";
+  if (env === "production") return allowNoOrigin;
+  return String(allowNoOriginValue || "").toLowerCase() !== "false";
+}
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
@@ -83,24 +112,10 @@ export async function createServer() {
   await app.register(cookie);
 
   const inProduction = process.env.NODE_ENV === "production";
-  const cspConnect = ["'self'", ...allowedOrigins];
   const s3PublicBase = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
-  if (s3PublicBase) cspConnect.push(s3PublicBase);
+  const allowUnsafeInlineStyle = String(process.env.CSP_ALLOW_UNSAFE_INLINE_STYLE || "false").toLowerCase() === "true";
   await app.register(helmet, {
-    contentSecurityPolicy: inProduction
-      ? {
-          directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:", "blob:", s3PublicBase || ""].filter(Boolean),
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-            connectSrc: cspConnect,
-            objectSrc: ["'none'"],
-            frameAncestors: ["'self'"],
-          },
-        }
-      : false,
+    contentSecurityPolicy: buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }),
   });
 
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
@@ -139,7 +154,23 @@ export async function createServer() {
 
   await app.register(uploadRoutes, { prefix: "/api" });
 
-  app.post("/api/auth/refresh", async (req, reply) => {
+  app.post("/api/auth/refresh", {
+    config: {
+      rateLimit: {
+        max: Number(process.env.RL_AUTH_REFRESH_MAX || 30),
+        timeWindow: process.env.RL_AUTH_REFRESH_WINDOW || "1 minute",
+      },
+    },
+  }, async (req, reply) => {
+    const origin = req.headers.origin;
+    const allowOrigin = shouldAllowAuthCookieRequestOrigin({
+      origin,
+      allowedOrigins,
+      nodeEnv: process.env.NODE_ENV,
+      allowNoOriginValue: process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN,
+    });
+    if (!allowOrigin) return reply.code(403).send({ ok: false, message: "Forbidden" });
+
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     const currentToken = req.cookies?.[cookieName];
     if (!currentToken) {
@@ -147,6 +178,7 @@ export async function createServer() {
       return reply.code(401).send({ ok: false, message: "Authentication failed" });
     }
     const result = await rotateRefreshToken({
+      logger: req.log,
       currentRawToken: currentToken,
       reply,
       userAgent: req.headers["user-agent"],
@@ -159,7 +191,23 @@ export async function createServer() {
     return reply.send({ ok: true, token: result.token, user: result.user });
   });
 
-  app.post("/api/auth/logout", async (req, reply) => {
+  app.post("/api/auth/logout", {
+    config: {
+      rateLimit: {
+        max: Number(process.env.RL_AUTH_LOGOUT_MAX || 60),
+        timeWindow: process.env.RL_AUTH_LOGOUT_WINDOW || "1 minute",
+      },
+    },
+  }, async (req, reply) => {
+    const origin = req.headers.origin;
+    const allowOrigin = shouldAllowAuthCookieRequestOrigin({
+      origin,
+      allowedOrigins,
+      nodeEnv: process.env.NODE_ENV,
+      allowNoOriginValue: process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN,
+    });
+    if (!allowOrigin) return reply.code(403).send({ ok: false, message: "Forbidden" });
+
     const cookieName = process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token";
     await revokeRefreshToken(req.cookies?.[cookieName]);
     clearRefreshCookie(reply);

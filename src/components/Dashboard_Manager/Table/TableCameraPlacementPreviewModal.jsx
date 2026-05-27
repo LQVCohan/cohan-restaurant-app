@@ -13,6 +13,7 @@ import {
   saveCameraPlacement,
 } from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
+import { buildPreviewModelItemFromVisualConfig } from "./tableVisualConfigHelpers";
 
 const CAMERA_ERROR_MESSAGE =
   "Vui lòng cấp quyền camera hoặc dùng HTTPS.";
@@ -34,31 +35,6 @@ const getShapeFromModel = (modelItem) => {
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-export const buildPreviewModelItemFromVisualConfig = (visualConfig) => {
-  const config = visualConfig && typeof visualConfig === "object" ? visualConfig : {};
-  const modelKey = config.modelKey || "saved-model";
-  const modelLabel = config.modelLabel || config.label || "Mẫu bàn đã lưu";
-
-  return {
-    key: modelKey,
-    label: modelLabel,
-    tableType: config.tableType || null,
-    capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
-    customModelSpec: config.dimensions
-      ? {
-          name: modelLabel,
-          capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
-          widthCm: Number(config.dimensions.widthCm) || 0,
-          depthCm: Number(config.dimensions.depthCm) || 0,
-          heightCm: Number(config.dimensions.heightCm) || 0,
-          area: config.tableArea || mapTable3DTypeToArea(config.tableType),
-          shape: config.shape || "rect",
-        }
-      : null,
-  };
-};
-
 const TableCameraPlacementPreviewModal = ({
   open,
   onClose,
@@ -68,6 +44,8 @@ const TableCameraPlacementPreviewModal = ({
   confirmLabel = "Xác nhận vị trí",
   onConfirmPlacement,
   placementScope = "default",
+  isConfirming = false,
+  backendConfigNote = "",
 }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -215,16 +193,17 @@ const TableCameraPlacementPreviewModal = ({
         </div>
 
         <div className="camera-placement-modal__controls">
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, scale: clamp(p.scale - 0.1, 0.5, 2) }))}>Thu nhỏ</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, scale: clamp(p.scale + 0.1, 0.5, 2) }))}>Phóng to</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, rotation: p.rotation - 15 }))}>Xoay -15°</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, rotation: p.rotation + 15 }))}>Xoay +15°</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x - 2, 5, 95) }))}>←</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x + 2, 5, 95) }))}>→</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y - 2, 5, 95) }))}>↑</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y + 2, 5, 95) }))}>↓</Button>
-          <Button size="sm" variant="secondary" onClick={() => setPlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset vị trí</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, scale: clamp(p.scale - 0.1, 0.5, 2) }))}>Thu nhỏ</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, scale: clamp(p.scale + 0.1, 0.5, 2) }))}>Phóng to</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, rotation: p.rotation - 15 }))}>Xoay -15°</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, rotation: p.rotation + 15 }))}>Xoay +15°</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x - 2, 5, 95) }))}>←</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, x: clamp(p.x + 2, 5, 95) }))}>→</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y - 2, 5, 95) }))}>↑</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement((p) => ({ ...p, y: clamp(p.y + 2, 5, 95) }))}>↓</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setPlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset vị trí</Button>
           <Button
+            type="button"
             size="sm"
             variant="secondary"
             onClick={() => {
@@ -236,9 +215,10 @@ const TableCameraPlacementPreviewModal = ({
             Lưu vị trí xem thử
           </Button>
           <Button
+            type="button"
             size="sm"
             variant="secondary"
-            disabled={!savedPlacement}
+            disabled={!savedPlacement || isConfirming}
             onClick={() => {
               deleteCameraPlacement(modelKey, placementScope);
               setSavedPlacement(false);
@@ -259,12 +239,14 @@ const TableCameraPlacementPreviewModal = ({
           Vị trí lưu chỉ áp dụng trên trình duyệt hiện tại và dùng cho lần xem thử tiếp theo.
         </p>
         {placementMessage && <p className="camera-placement-modal__note">{placementMessage}</p>}
+        {backendConfigNote && <p className="camera-placement-modal__note">{backendConfigNote}</p>}
 
         <div className="camera-placement-modal__actions">
-          <Button type="button" variant="secondary" onClick={onClose}>Đóng</Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isConfirming}>Đóng</Button>
           <Button
             type="button"
             variant="primary"
+            disabled={isConfirming}
             onClick={() =>
               onConfirmPlacement?.({
                 modelKey: modelItem?.key || "preview",
@@ -282,7 +264,7 @@ const TableCameraPlacementPreviewModal = ({
               })
             }
           >
-            {confirmLabel}
+            {isConfirming ? "Đang lưu..." : confirmLabel}
           </Button>
         </div>
       </div>

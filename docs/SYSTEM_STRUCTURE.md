@@ -341,6 +341,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Logout gọi server-side revoke refresh token và clear cookie.
 - Cookie refresh dùng path `/api/auth` để có mặt ở cả refresh và logout.
 - Legacy localStorage/sessionStorage token flow đã bị loại bỏ/deprecated; chỉ còn cleanup legacy keys khi startup/logout.
+- Refresh rotation có reuse detection: nếu token đã revoke bị dùng lại, backend coi là dấu hiệu theft và revoke toàn bộ token descendant chain qua `replacedByTokenHash` (iterative + visited set).
+- Log bảo mật cho reuse chỉ chứa metadata an toàn (userId/hash prefix), không bao giờ log raw refresh token.
+- RefreshToken có TTL index MongoDB `expiresAt` (`expireAfterSeconds: 0`) để tự dọn token hết hạn.
+- `/api/auth/refresh` và `/api/auth/logout` có Origin guard: origin phải thuộc `CORS_ORIGINS`; response từ chối là `403 Forbidden` với message chung `Forbidden`.
+- Request auth-cookie thiếu Origin: production reject mặc định, chỉ cho phép khi `ALLOW_AUTH_COOKIE_NO_ORIGIN=true`; development/test cho phép mặc định trừ khi ép `ALLOW_AUTH_COOKIE_NO_ORIGIN=false`.
+- Có route-level rate limit riêng cho auth-cookie endpoints: refresh (`RL_AUTH_REFRESH_MAX`, `RL_AUTH_REFRESH_WINDOW`) và logout (`RL_AUTH_LOGOUT_MAX`, `RL_AUTH_LOGOUT_WINDOW`).
 ## Phase 12 - AI Chatbot Knowledge Base
 - Added per-restaurant knowledge model: `AiChatbotKnowledgeItem` with manager CRUD and runtime retrieval.
 - GraphQL aiChatbot schema now supports knowledge list/item queries and create/update/delete mutations.
@@ -398,3 +404,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Monitoring dashboard now includes production summary cards, risky signals, and recent quality queue data paths.
 - Manager tools include bulk moderation actions and knowledge import/export.
 - Runtime guardrails retained for safety-first response behavior and side-effect-free evaluation flows.
+## 10. Auth security hardening (final cleanup)
+- All auth/user mutation responses now pass through `sanitizeUserForClient` before being returned to clients.
+- Sensitive fields (`passwordHash`, email verification tokens, deleted/internal lifecycle fields) are never included in login/refresh payloads.
+- Refresh endpoint (`/api/auth/refresh`) only returns sanitized user objects.
+- `seed-admin` now stores `role` as a single ObjectId value (not array) and builds payload via helper.
+- `.env.example` documents split access/refresh token settings, refresh/logout rate limits, and auth cookie origin guard settings.
+- Production env validation blocks disabling reCAPTCHA unless `ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION=true`; production also rejects missing/placeholder `RECAPTCHA_SECRET` when enabled.
+- Production CSP blocks `unsafe-inline` styles by default; enable only with `CSP_ALLOW_UNSAFE_INLINE_STYLE=true`.
+
