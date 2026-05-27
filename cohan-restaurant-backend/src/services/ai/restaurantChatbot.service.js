@@ -573,6 +573,33 @@ const safeJsonParse = (raw) => {
   }
 };
 
+
+const buildMenuItemLookup = (context = {}) => {
+  const map = new Map();
+  for (const item of [...(context.recommendedMenuItems || []), ...(context.menuItems || [])]) {
+    if (item?.id) map.set(String(item.id), item);
+  }
+  return map;
+};
+
+const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuItemLookup(context)) => {
+  if (source?.type !== "menuItem") return source;
+  const item = menuItemLookup.get(String(source?.id || ""));
+  if (!item) return null;
+  return {
+    ...source,
+    label: source?.label || item.name,
+    formattedPrice: item.formattedPrice,
+    status: item.status,
+    isAvailable: item.isAvailable,
+    hasOptions: Boolean(item.options?.length || item.hasOptions),
+    hasVariants: Boolean(item.variants?.length || item.hasVariants),
+    restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null,
+    basePrice: item.basePrice,
+    currentPrice: item.currentPrice,
+  };
+};
+
 const normalizeAiResult = (parsed, context) => {
   const allowedItemIds = new Set((context.recommendedMenuItems || context.menuItems || []).map((x) => String(x.id)));
   const actions = Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 4).filter((action) => {
@@ -581,10 +608,13 @@ const normalizeAiResult = (parsed, context) => {
     if (href.startsWith("/food/")) return allowedItemIds.has(href.replace("/food/", ""));
     return true;
   }) : fallbackActions(context);
-  const sources = Array.isArray(parsed?.sources) ? parsed.sources.slice(0, 8).filter((source) => {
-    if (source?.type !== "menuItem") return true;
-    return allowedItemIds.has(String(source?.id || ""));
-  }) : fallbackSources(context);
+  const menuItemLookup = buildMenuItemLookup(context);
+  const sources = Array.isArray(parsed?.sources)
+    ? parsed.sources
+      .slice(0, 8)
+      .map((source) => enrichMenuItemSource(source, context, menuItemLookup))
+      .filter(Boolean)
+    : fallbackSources(context);
   const answer = String(parsed?.answer || "").trim() || fallbackAnswer(context).answer;
   const hasUnknownPrice = context.intent === "menu" && /đ|vnd|k\b/i.test(answer) && !sources.some((s) => s.type === "menuItem");
   return {
@@ -985,4 +1015,6 @@ export const __testables = {
   fallbackActions,
   fallbackSources,
   normalizeGuestId,
+  normalizeAiResult,
+  enrichMenuItemSource,
 };

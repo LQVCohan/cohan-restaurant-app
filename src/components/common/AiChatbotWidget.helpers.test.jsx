@@ -41,6 +41,8 @@ describe("AiChatbotWidget helpers", () => {
     expect(canAiAddMenuItemDirectly({ id: "1", isAvailable: false, currentPrice: 10000 })).toBe(false);
     expect(canAiAddMenuItemDirectly({ id: "1", hasOptions: true, currentPrice: 10000 })).toBe(false);
     expect(canAiAddMenuItemDirectly({ id: "1", hasVariants: true, currentPrice: 10000 })).toBe(false);
+    expect(canAiAddMenuItemDirectly({ id: "1" })).toBe(false);
     expect(canAiAddMenuItemDirectly({ id: "1", currentPrice: 0 })).toBe(false);
+    expect(canAiAddMenuItemDirectly({ id: "1", basePrice: -1 })).toBe(false);
   });
 });

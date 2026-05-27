@@ -13,6 +13,7 @@ const {
   fallbackActions,
   fallbackAnswer,
   fallbackSources,
+  normalizeAiResult,
 } = __testables;
 
 describe("restaurantChatbot menu assistant", () => {
@@ -111,6 +112,20 @@ describe("restaurantChatbot menu assistant", () => {
     const actions = fallbackActions(context);
     expect(actions.some((a) => /checkout|payment|thanh toán/i.test(`${a.type} ${a.label} ${a.href}`))).toBe(false);
     expect(actions.some((a) => a.type === "add_to_cart_candidate")).toBe(false);
+  });
+
+
+  it("normalizeAiResult enriches menuItem source metadata from context", () => {
+    const context = {
+      intent: "menu",
+      restaurants: [{ id: "r1" }],
+      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 }],
+      menuItems: [],
+      coupons: [], orders: [], reservations: [],
+    };
+    const parsed = { answer: "ok", sources: [{ type: "menuItem", id: "f1", label: "Phở" }], actions: [] };
+    const out = normalizeAiResult(parsed, context);
+    expect(out.sources[0]).toMatchObject({ id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 });
   });
 
 });
