@@ -156,7 +156,26 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .table-3d-modal__guide {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #334155;
+    background: #ffffff;
+    font-size: 0.85rem;
+
+    p {
+      margin: 0;
+    }
+
+    p + p {
+      margin-top: 4px;
+    }
   }
 
   .table-3d-modal__ar-hint {
@@ -166,5 +185,23 @@
     color: #475569;
     text-align: left;
     margin-right: auto;
+  }
+
+  @media (max-width: 768px) {
+    .table-3d-modal__layout {
+      grid-template-columns: 1fr;
+    }
+
+    .table-3d-modal__footer {
+      justify-content: stretch;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .table-3d-modal__ar-hint {
+      margin-right: 0;
+      width: 100%;
+    }
   }
 }
