@@ -248,7 +248,8 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Tạo ca Sáng/i })[0]);
+    const morningCreateButtons = screen.getAllByRole("button", { name: /Tạo ca Sáng ngày/i });
+    fireEvent.click(morningCreateButtons[0]);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
       expect(node).toBeTruthy();
@@ -274,16 +275,15 @@ describe("ScheduleManagement", () => {
   });
 
   it("deletes a shift group through the detail modal", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<ScheduleManagement />);
 
     const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
     mutationSpy.mockClear();
     fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca|Xóa nhóm ca/i }));
-
+    fireEvent.change(screen.getByLabelText("Lý do xóa ca"), { target: { value: "Điều chỉnh kế hoạch" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận xóa ca" }));
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    expect(confirmSpy).toHaveBeenCalled();
     const deleteCall = mutationSpy.mock.calls.find(([arg]) => arg?.variables?.shiftId === "shift-row-1")?.[0];
     expect(deleteCall).toEqual({
       variables: { shiftId: "shift-row-1" },
@@ -302,8 +302,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu|Bắt đầu/i), { target: { value: "07:30" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc|Kết thúc/i), { target: { value: "15:30" } });
+    fireEvent.change(screen.getByLabelText("Giờ bắt đầu mới"), { target: { value: "07:30" } });
+    fireEvent.change(screen.getByLabelText("Giờ kết thúc mới"), { target: { value: "15:30" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -337,8 +337,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu|Bắt đầu/i), { target: { value: "09:00" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc|Kết thúc/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText("Giờ bắt đầu mới"), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText("Giờ kết thúc mới"), { target: { value: "09:00" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -350,7 +350,7 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
 
     const publishTrigger = screen
-      .getAllByRole("button", { name: /Công bố lịch|Công bố lại/i })
+      .getAllByRole("button", { name: /Công bố lịch tuần này|Công bố lại lịch/i })
       .find((button) => !button.hasAttribute("disabled"));
     expect(publishTrigger).toBeTruthy();
     fireEvent.click(publishTrigger);
@@ -392,7 +392,7 @@ describe("ScheduleManagement", () => {
 
   it("does not show raw IDs as primary display when enriched fields are available", () => {
     render(<ScheduleManagement />);
-    expect(screen.getByText(/Ca bị từ chối \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Ca bị từ chối cần duyệt \(1\)/)).toBeInTheDocument();
     expect(screen.getByText(/Nhân viên:/)).toBeInTheDocument();
     expect(screen.getByText(/Lan Manager - MN001/)).toBeInTheDocument();
     expect(screen.getByText("Lý do: Bị ốm")).toBeInTheDocument();
@@ -412,7 +412,7 @@ describe("ScheduleManagement", () => {
     render(<ScheduleManagement />);
     expect(screen.queryByRole("button", { name: "Chấp nhận lý do" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Không duyệt lý do" })).not.toBeInTheDocument();
-    expect(screen.getByText("Nhân viên vẫn được kỳ vọng đi làm ca này.")).toBeInTheDocument();
+    expect(screen.getByText(/Nhân viên vẫn được kỳ vọng đi làm ca/i)).toBeInTheDocument();
   });
 
   it("late decline hides review buttons", () => {
@@ -502,11 +502,7 @@ describe("ScheduleManagement", () => {
     };
     render(<ScheduleManagement />);
     fireEvent.click(screen.getByRole("button", { name: /Lịch rảnh đã chốt/i }));
-    const modal = await waitFor(() => {
-      const node = document.body.querySelector(".modal-container");
-      expect(node).toBeTruthy();
-      return node;
-    });
+    const modal = await screen.findByRole("dialog");
     expect(modal.textContent).toMatch(/Đăng ký lịch nhân viên|Tuần áp dụng|Lịch rảnh đã chốt/i);
   });
 
@@ -677,12 +673,12 @@ describe("ScheduleManagement", () => {
     mockManagerShiftAttendancesData = { managerShiftAttendances: [{ id: "attendance-unreviewed", employeeId: "staff-1", status: "checked_in", checkInAt: "2026-04-20T06:10:00.000Z", checkOutAt: null, employeeName: "Lan Manager", employeeCode: "MN001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: null }, { id: "attendance-reviewed", employeeId: "staff-2", status: "checked_in", checkInAt: "2026-04-20T06:15:00.000Z", checkOutAt: null, employeeName: "Minh Server", employeeCode: "SV001", shiftStartTime: "2026-04-20T06:00:00.000Z", shiftEndTime: "2026-04-20T07:00:00.000Z", shiftType: "morning", isLate: true, reviewNote: "Đã nhắc nhở trước đó." }] };
     render(<ScheduleManagement />);
     fireEvent.click(await screen.findByRole("button", { name: /Tất cả \(2\)/i }));
-    expect(await screen.findByText(/MN001/i)).toBeInTheDocument();
-    expect(screen.getByText(/SV001/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Lan Manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/Minh Server/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Đã xử lý \(1\)/i }));
-    expect(await screen.findByText(/SV001/i)).toBeInTheDocument();
-    expect(screen.queryByText(/MN001/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Minh Server/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Lan Manager/i)).not.toBeInTheDocument();
   });
 
   it("renders link CTA to attendance details with employeeId and date query", async () => {
@@ -743,7 +739,8 @@ describe("ScheduleManagement", () => {
       attendanceCorrectionRequests: [{ id: "cor-1", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "pending" }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText(/Chỉnh công:\s*Có yêu cầu chỉnh công chờ duyệt/i)).toBeInTheDocument();
+    const row = await screen.findByText(/Nhân viên A/i);
+    expect(within(row.closest(".schedule-quality-panel__issue-item")).getByText(/Có yêu cầu chỉnh công chờ duyệt/i)).toBeInTheDocument();
   });
 
   it("shows applied correction status for matching issue row", async () => {
@@ -765,7 +762,8 @@ describe("ScheduleManagement", () => {
       attendanceCorrectionRequests: [{ id: "cor-2", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "applied" }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText(/Chỉnh công:\s*Đã áp dụng chỉnh công/i)).toBeInTheDocument();
+    const row = await screen.findByText(/Nhân viên A/i);
+    expect(within(row.closest(".schedule-quality-panel__issue-item")).getByText(/Đã áp dụng chỉnh công/i)).toBeInTheDocument();
   });
 
   it("shows no correction request status when none matched", async () => {
@@ -824,8 +822,10 @@ describe("ScheduleManagement", () => {
     ] };
     render(<ScheduleManagement />);
 
-    expect(await screen.findByText(/Trạng thái:\s*Đang xử lý/i)).toBeInTheDocument();
-    expect(screen.getByText(/chờ duyệt/i)).toBeInTheDocument();
+    const pendingRow = await screen.findByText(/NV Pending/i);
+    const pendingCard = pendingRow.closest(".schedule-quality-panel__issue-item");
+    expect(within(pendingCard).getByText(/Trạng thái:\s*Đang xử lý/i)).toBeInTheDocument();
+    expect(within(pendingCard).getByText(/chờ duyệt/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Tất cả \(5\)/i }));
     expect(screen.getByText(/Trạng thái:\s*Đã xử lý/i)).toBeInTheDocument();
