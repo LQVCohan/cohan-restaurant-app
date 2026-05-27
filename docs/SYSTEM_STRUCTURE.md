@@ -332,3 +332,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Refresh endpoint xoay vòng refresh token mỗi lần gọi; token cũ bị revoke.
 - Logout gọi `POST /api/auth/logout`, revoke refresh token hiện tại, clear cookie, và frontend xóa token memory + legacy keys (`auth_token`, `auth_user`, `auth_remember`, `token`).
 - Luồng localStorage token cũ đã bị deprecate/removed để giảm rủi ro XSS lấy JWT.
+
+## 10. Authentication token architecture (post-PR #822 fixes)
+- Access token có TTL ngắn và chỉ lưu trong memory (không lưu localStorage/sessionStorage).
+- Refresh token chỉ được gửi/nhận bằng HttpOnly cookie, không expose cho JavaScript.
+- Refresh token lưu trong DB dưới dạng hash (không lưu raw token).
+- Refresh token rotate ở endpoint refresh; token cũ bị revoke.
+- Logout gọi server-side revoke refresh token và clear cookie.
+- Cookie refresh dùng path `/api/auth` để có mặt ở cả refresh và logout.
+- Legacy localStorage/sessionStorage token flow đã bị loại bỏ/deprecated; chỉ còn cleanup legacy keys khi startup/logout.
