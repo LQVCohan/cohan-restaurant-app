@@ -265,7 +265,7 @@ const AutoScheduleModal = ({
                 </p>
               ) : (
                 <p className="config-hint">
-                  AI sẽ ưu tiên các vai trò này khi tạo preview.
+                  Các vai trò này dùng để manager rà soát preview; AI vẫn tự đề xuất nhu cầu chính từ forecast và lịch hiện có.
                 </p>
               )}
             </div>
