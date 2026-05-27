@@ -8,6 +8,7 @@ import { useCart } from "../../../context/CartProvider";
 import { formatCurrency } from "../../../utils/formatters";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
+import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 
 // Components Con
 import RestaurantCard from "./components/RestaurantCard";
@@ -198,6 +199,24 @@ const RestaurantMenu = () => {
           <p>Lựa chọn nhà hàng yêu thích và tận hưởng hương vị tuyệt vời.</p>
         </div>
       )}
+
+      {selectedRes ? (
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 12px" }}>
+          <button
+            type="button"
+            style={{ border: "1px solid #d1d5db", background: "#fff", color: "#111827", borderRadius: 999, padding: "8px 14px", fontWeight: 600, cursor: "pointer" }}
+            onClick={() =>
+              openAiMenuAssistant(
+                selectedRes?.id
+                  ? { message: "Gợi ý món phù hợp cho tôi", autoSend: true, restaurantId: selectedRes.id }
+                  : { message: "Tìm món phù hợp cho tôi", autoSend: false }
+              )
+            }
+          >
+            Không biết chọn gì? Hỏi AI gợi ý món
+          </button>
+        </div>
+      ) : null}
 
       {selectedRes ? (
         <MenuDetailView
