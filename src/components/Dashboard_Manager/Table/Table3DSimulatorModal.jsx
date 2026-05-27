@@ -142,6 +142,24 @@ const Table3DSimulatorModal = ({
     }
   };
 
+  const handleOpenAr = async () => {
+    const viewer = viewerRef.current;
+    if (!viewer || typeof viewer.activateAR !== "function") {
+      setModelError(
+        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+      );
+      return;
+    }
+
+    try {
+      await viewer.activateAR();
+    } catch {
+      setModelError(
+        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+      );
+    }
+  };
+
   useEffect(() => {
     const node = viewerRef.current;
     if (!node || !selectedModel?.modelUrl) return undefined;
@@ -338,7 +356,9 @@ const Table3DSimulatorModal = ({
             </Button>
             {canOpenAr ? (
               <div className="table-3d-modal__ar-hint">
-                <span>Mở AR trên thiết bị hỗ trợ</span>
+                <Button type="button" size="sm" variant="secondary" onClick={handleOpenAr}>
+                  Mở AR trên thiết bị hỗ trợ
+                </Button>
                 <span>
                   AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng Xem thử bằng camera.
                 </span>
