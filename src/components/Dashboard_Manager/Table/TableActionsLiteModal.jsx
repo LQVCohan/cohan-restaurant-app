@@ -24,6 +24,10 @@ import {
   getTableStatusConfig,
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
+import TableCameraPlacementPreviewModal, {
+  buildPreviewModelItemFromVisualConfig,
+} from "@/components/Dashboard_Manager/Table/TableCameraPlacementPreviewModal";
+import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
   const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -183,6 +187,7 @@ export default function TableActionsLiteModal({
   const [mergeCodes, setMergeCodes] = useState("");
 
   const [busy, setBusy] = useState({});
+  const [cameraPreviewOpen, setCameraPreviewOpen] = useState(false);
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
   const { allPromotions } = usePromotions();
   const { showNotification } = useNotification();
@@ -368,6 +373,21 @@ export default function TableActionsLiteModal({
     () =>
       (floors || []).slice().sort((a, b) => Number(a.level) - Number(b.level)),
     [floors]
+  );
+  const visualConfigPlacement = useMemo(
+    () => normalizeCameraPlacement(table?.visualConfig?.placement || DEFAULT_CAMERA_PLACEMENT),
+    [table?.visualConfig?.placement]
+  );
+  const visualModelItem = useMemo(
+    () => buildPreviewModelItemFromVisualConfig(table?.visualConfig),
+    [table?.visualConfig]
+  );
+  const visualSavedAtLabel = useMemo(
+    () =>
+      table?.visualConfig?.savedAt
+        ? new Date(table.visualConfig.savedAt).toLocaleString("vi-VN")
+        : null,
+    [table?.visualConfig?.savedAt]
   );
 
   if (!isOpen) return null;
@@ -841,10 +861,28 @@ export default function TableActionsLiteModal({
               </div>
             )}
             {hasVisualConfig && (
-              <div className="kv">
-                <span className="k">Xem thử camera:</span>
-                <span className="v">Đã có cấu hình mô phỏng/camera placement</span>
-              </div>
+              <>
+                <div className="kv">
+                  <span className="k">Xem thử camera:</span>
+                  <span className="v">Đã có cấu hình mô phỏng/camera placement</span>
+                </div>
+                <div className="kv">
+                  <span className="k">Model:</span>
+                  <span className="v">{table?.visualConfig?.modelLabel || table?.visualConfig?.modelKey || "Mẫu bàn đã lưu"}</span>
+                </div>
+                <div className="kv">
+                  <span className="k">Placement:</span>
+                  <span className="v">
+                    x:{visualConfigPlacement.x.toFixed(1)} · y:{visualConfigPlacement.y.toFixed(1)} · s:{visualConfigPlacement.scale.toFixed(2)} · r:{visualConfigPlacement.rotation.toFixed(0)}°
+                  </span>
+                </div>
+                {visualSavedAtLabel && (
+                  <div className="kv">
+                    <span className="k">Lưu lúc:</span>
+                    <span className="v">{visualSavedAtLabel}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -1449,29 +1487,38 @@ export default function TableActionsLiteModal({
           {/* Delete */}
           <div className="actions-end">
             {hasVisualConfig && (
-              <button
-                className="btn"
-                disabled={busy.clearVisual}
-                onClick={async () => {
-                  setBusyKey("clearVisual", true);
-                  try {
-                    await actions.updateTable({ id: table.id, visualConfig: null });
-                    await onUpdated?.();
-                    showNotification("Đã xóa cấu hình xem thử bằng camera.", "success");
-                  } catch (error) {
-                    showNotification(
-                      resolveTableActionError(error, "Không thể xóa cấu hình xem thử."),
-                      "error"
-                    );
-                  } finally {
-                    setBusyKey("clearVisual", false);
-                  }
-                }}
-              >
-                {busy.clearVisual ? "Đang xóa..." : "Xóa cấu hình mô phỏng"}
-              </button>
+              <div className="talite-group" style={{ width: "100%" }}>
+                <div className="talite-label">Cấu hình mô phỏng</div>
+                <div className="actions" style={{ justifyContent: "flex-start", gap: 8 }}>
+                  <button type="button" className="btn" onClick={() => setCameraPreviewOpen(true)}>
+                    Xem lại bằng camera
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={busy.clearVisual}
+                    onClick={async () => {
+                      setBusyKey("clearVisual", true);
+                      try {
+                        await actions.updateTable({ id: table.id, visualConfig: null });
+                        await onUpdated?.();
+                        showNotification("Đã xóa cấu hình xem thử bằng camera.", "success");
+                      } catch (error) {
+                        showNotification(
+                          resolveTableActionError(error, "Không thể xóa cấu hình xem thử."),
+                          "error"
+                        );
+                      } finally {
+                        setBusyKey("clearVisual", false);
+                      }
+                    }}
+                  >
+                    {busy.clearVisual ? "Đang xóa..." : "Xóa cấu hình mô phỏng"}
+                  </button>
+                </div>
+              </div>
             )}
-            <button
+            <button type="button"
               className="btn danger"
               disabled={busy.delete || !!deleteDisabledReason}
               title={deleteDisabledReason || ""}
@@ -1579,6 +1626,37 @@ export default function TableActionsLiteModal({
         @media (max-width:680px){.grid2{grid-template-columns:1fr}.talite-promo-list{grid-template-columns:1fr}.talite-quick{flex-direction:column;align-items:stretch}}
         `}
       </style>
+      <TableCameraPlacementPreviewModal
+        open={cameraPreviewOpen}
+        onClose={() => setCameraPreviewOpen(false)}
+        modelItem={visualModelItem}
+        initialPlacement={table?.visualConfig?.placement}
+        confirmLabel="Lưu cấu hình xem thử"
+        placementScope={`table:${table?.id || "unknown"}`}
+        onConfirmPlacement={async (payload) => {
+          setBusyKey("cameraUpdate", true);
+          try {
+            await actions.updateTable({
+              id: table.id,
+              visualConfig: {
+                ...(table?.visualConfig || {}),
+                ...payload,
+                savedAt: table?.visualConfig?.savedAt,
+              },
+            });
+            setCameraPreviewOpen(false);
+            await onUpdated?.();
+            showNotification("Đã cập nhật cấu hình xem thử bằng camera.", "success");
+          } catch (error) {
+            showNotification(
+              resolveTableActionError(error, "Không thể cập nhật cấu hình xem thử."),
+              "error"
+            );
+          } finally {
+            setBusyKey("cameraUpdate", false);
+          }
+        }}
+      />
     </div>,
     document.body
   );

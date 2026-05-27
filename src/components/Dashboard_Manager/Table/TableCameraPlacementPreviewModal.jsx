@@ -9,6 +9,7 @@ import {
   deleteCameraPlacement,
   hasCameraPlacement,
   loadCameraPlacement,
+  normalizeCameraPlacement,
   saveCameraPlacement,
 } from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
@@ -34,10 +35,37 @@ const getShapeFromModel = (modelItem) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+export const buildPreviewModelItemFromVisualConfig = (visualConfig) => {
+  const config = visualConfig && typeof visualConfig === "object" ? visualConfig : {};
+  const modelKey = config.modelKey || "saved-model";
+  const modelLabel = config.modelLabel || config.label || "Mẫu bàn đã lưu";
+
+  return {
+    key: modelKey,
+    label: modelLabel,
+    tableType: config.tableType || null,
+    capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
+    customModelSpec: config.dimensions
+      ? {
+          name: modelLabel,
+          capacity: Number.isFinite(Number(config.capacity)) ? Number(config.capacity) : 4,
+          widthCm: Number(config.dimensions.widthCm) || 0,
+          depthCm: Number(config.dimensions.depthCm) || 0,
+          heightCm: Number(config.dimensions.heightCm) || 0,
+          area: config.tableArea || mapTable3DTypeToArea(config.tableType),
+          shape: config.shape || "rect",
+        }
+      : null,
+  };
+};
+
 const TableCameraPlacementPreviewModal = ({
   open,
   onClose,
   modelItem,
+  initialPlacement = null,
+  overrideModelSummary = null,
+  confirmLabel = "Xác nhận vị trí",
   onConfirmPlacement,
   placementScope = "default",
 }) => {
@@ -52,6 +80,16 @@ const TableCameraPlacementPreviewModal = ({
   const modelKey = modelItem?.key || "preview";
 
   const modelSummary = useMemo(() => {
+    if (overrideModelSummary) {
+      return {
+        name: overrideModelSummary.name || "Mẫu bàn",
+        seats: overrideModelSummary.seats || 4,
+        areaLabel: overrideModelSummary.areaLabel || getTableAreaLabel("standard"),
+        shape: overrideModelSummary.shape || "rect",
+        shapeLabel: overrideModelSummary.shapeLabel || "Bàn chữ nhật",
+        dimensions: overrideModelSummary.dimensions || "",
+      };
+    }
     const shape = getShapeFromModel(modelItem);
     const area = modelItem?.customModelSpec?.area || mapTable3DTypeToArea(modelItem?.tableType);
     return {
@@ -64,11 +102,15 @@ const TableCameraPlacementPreviewModal = ({
         ? `${modelItem.customModelSpec.widthCm} x ${modelItem.customModelSpec.depthCm} x ${modelItem.customModelSpec.heightCm} cm`
         : "",
     };
-  }, [modelItem]);
+  }, [modelItem, overrideModelSummary]);
 
   useEffect(() => {
     if (!open) return;
-    setPlacement(loadCameraPlacement(modelKey, placementScope));
+    setPlacement(
+      initialPlacement
+        ? normalizeCameraPlacement(initialPlacement)
+        : loadCameraPlacement(modelKey, placementScope)
+    );
     setSavedPlacement(hasCameraPlacement(modelKey, placementScope));
     setPlacementMessage("");
     setCameraError("");
@@ -103,7 +145,7 @@ const TableCameraPlacementPreviewModal = ({
       streamRef.current = null;
       if (videoNode) videoNode.srcObject = null;
     };
-  }, [open, modelKey, placementScope]);
+  }, [open, modelKey, placementScope, initialPlacement]);
 
   const handlePointerDown = (event) => {
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -219,8 +261,9 @@ const TableCameraPlacementPreviewModal = ({
         {placementMessage && <p className="camera-placement-modal__note">{placementMessage}</p>}
 
         <div className="camera-placement-modal__actions">
-          <Button variant="secondary" onClick={onClose}>Đóng</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Đóng</Button>
           <Button
+            type="button"
             variant="primary"
             onClick={() =>
               onConfirmPlacement?.({
@@ -239,7 +282,7 @@ const TableCameraPlacementPreviewModal = ({
               })
             }
           >
-            Xác nhận vị trí
+            {confirmLabel}
           </Button>
         </div>
       </div>
