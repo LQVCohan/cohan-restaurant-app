@@ -253,10 +253,10 @@ const MenuItemCard = ({
             <div
               className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
               title={forYouMetadata.status === "missing" && canUpdateItem
-                ? "Mở chỉnh sửa món để bổ sung metadata khẩu vị & dị ứng."
+                ? "Mở chỉnh sửa món để bổ sung thông tin khẩu vị và dị ứng."
                 : forYouMetadata.label}
             >
-              {forYouMetadata.status === "ready" ? "✨ Đã có FOR YOU" : "⚠ Thiếu FOR YOU"}
+              {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
             </div>
           )}
 

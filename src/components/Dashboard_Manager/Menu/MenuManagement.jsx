@@ -152,7 +152,7 @@ const getForYouMetadataStatus = (item) => {
     hasTasteProfile,
     hasAnyMetadata,
     status: hasAnyMetadata ? "ready" : "missing",
-    label: hasAnyMetadata ? "Đã có FOR YOU" : "Thiếu FOR YOU",
+    label: hasAnyMetadata ? "Đã khai báo khẩu vị" : "Chưa khai báo khẩu vị",
   };
 };
 
@@ -225,12 +225,12 @@ const getMenuEmptyState = ({
 
     const forYouEmptyStateMap = {
       missing: {
-        title: "Không có món thiếu metadata FOR YOU",
-        description: "Tất cả món hiện tại đã có ít nhất một nhóm metadata FOR YOU.",
+        title: "Không có món thiếu thông tin khẩu vị",
+        description: "Tất cả món hiện tại đã có thông tin khẩu vị hoặc dị ứng.",
       },
       ready: {
-        title: "Không có món đã khai báo metadata FOR YOU",
-        description: "Chưa có món nào có diet tags, allergen tags hoặc taste profile đã tùy chỉnh.",
+        title: "Không có món đã khai báo thông tin khẩu vị",
+        description: "Chưa có món nào được bổ sung thông tin chế độ ăn, dị ứng hoặc khẩu vị.",
       },
     };
 
