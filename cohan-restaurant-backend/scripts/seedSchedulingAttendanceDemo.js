@@ -9,7 +9,9 @@ import {
 import { applyPerformanceIncidentScore, markPerformanceIncidentEligible, waivePerformanceIncident } from '../src/services/performance/performanceIncident.service.js';
 import { createPerformanceIncidentAppeal, reviewPerformanceIncidentAppeal, reverseScoreForAcceptedAppeal } from '../src/services/performance/performanceAppeal.service.js';
 
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo@123456';
+import { assertDemoScriptAllowed, getDemoPassword, safeDbInfo } from './lib/scriptSafety.js';
+
+const DEMO_PASSWORD = getDemoPassword();
 const RESET = process.argv.includes('--reset');
 const DEMO_TAG = '[demo-scheduling-pr21]';
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || '';
@@ -100,8 +102,10 @@ async function resolveDemoRestaurant() {
   return restaurant;
 }
 async function main(){
+  assertDemoScriptAllowed('seedSchedulingAttendanceDemo.js');
   const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
   const DB_NAME = process.env.MONGO_DB || 'foodhub';
+  console.log('Connecting with DB settings:', safeDbInfo());
   await mongoose.connect(MONGO_URI,{dbName:DB_NAME});
   console.log('Connected Mongo for demo seed (local/dev only).');
 
@@ -187,7 +191,6 @@ async function main(){
   await reverseScoreForAcceptedAppeal({appealId:appeal._id,actor:ctx.user,reversalDelta:5,note:'reverse demo'});
 
   console.log('Seeded/Reused demo scheduling-attendance-performance data successfully.');
-  console.log('Demo accounts password:', DEMO_PASSWORD);
   await mongoose.disconnect();
 }
 

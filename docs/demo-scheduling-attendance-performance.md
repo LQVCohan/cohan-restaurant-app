@@ -97,3 +97,12 @@ npm run verify:demo:performance
 ## Ghi chú
 - PR21 không thay payroll runtime, scoring rule, lifecycle core.
 - Nếu thiếu biến môi trường DB (`MONGO_URI`/`MONGO_DB`) thì script không thể seed dữ liệu thật; vẫn có thể check syntax/import bằng lệnh node.
+
+
+## Demo script safety
+
+- Demo scripts are intended for local/development use only.
+- Production-like environments are blocked by default.
+- To intentionally run in production-like environments, set both `ALLOW_DEMO_SEED_IN_PRODUCTION=true` and `DEMO_PASSWORD=<strong temporary password>`.
+- Do not use `Demo@123456` outside local/dev.
+- Script logging masks MongoDB URI credentials to prevent secret leakage.

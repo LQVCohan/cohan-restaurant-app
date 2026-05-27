@@ -12,6 +12,7 @@ import {
   User,
 } from "../models/index.js";
 import { recalculateStaffPerformanceSnapshots } from "../src/services/staffPerformance/staffPerformance.service.js";
+import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 const DEMO_TAG = "[demo-scheduling-pr21]";
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
@@ -83,8 +84,10 @@ async function resolvePeriodBounds({ restaurantId, staffIds, snapshots }) {
 }
 
 async function run() {
+  assertDemoScriptAllowed('verifyStaffPerformanceDemoRegression.js');
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
   const DB_NAME = process.env.MONGO_DB || "foodhub";
+  console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   pass(`Connected MongoDB db=${DB_NAME}`);
 

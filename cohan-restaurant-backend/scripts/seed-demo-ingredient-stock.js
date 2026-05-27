@@ -1,6 +1,7 @@
 import "dotenv/config.js";
 import mongoose from "mongoose";
 import process from "process";
+import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 import {
   Ingredient,
@@ -126,6 +127,7 @@ async function resolveWarehouse({ restaurantId, warehouseId }) {
 }
 
 async function main() {
+  assertDemoScriptAllowed('seed-demo-ingredient-stock.js');
   const args = parseArgs(process.argv.slice(2));
 
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
@@ -144,6 +146,7 @@ async function main() {
     throw new Error("--multiplier phải là số > 0");
   }
 
+  console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(mongoUri, { dbName });
 
   console.log("✅ Connected Mongo");

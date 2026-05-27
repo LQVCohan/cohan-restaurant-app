@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { loadEnv, validateEnv } from "../src/config/env.js";
 import { connectDB } from "../config/db.js";
 import { User } from "../models/index.js";
+import { safeDbInfo } from "./lib/scriptSafety.js";
 
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -58,9 +59,10 @@ async function main() {
   }
 
   console.log("ℹ️ Loaded env files:", loadedFrom);
+  const dbInfo = safeDbInfo();
   console.log("ℹ️ Target DB:", {
-    mongoUri: process.env.MONGO_URI,
-    mongoDb: process.env.MONGO_DB || "(not set, db from URI)",
+    mongoUri: dbInfo.mongoUri,
+    mongoDb: dbInfo.mongoDb,
     normalizedEmail,
   });
 
