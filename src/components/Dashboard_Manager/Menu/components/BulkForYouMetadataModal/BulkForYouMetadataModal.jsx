@@ -102,6 +102,7 @@ export default function BulkForYouMetadataModal({
     [enabledFields],
   );
 
+  const safeSubmitErrors = Array.isArray(submitErrors) ? submitErrors : [];
   const isSaveDisabled = !hasEnabled || isSubmitting || items.length === 0;
 
   const toggleEnabled = (field) => {
@@ -145,6 +146,9 @@ export default function BulkForYouMetadataModal({
           Áp dụng thông tin khẩu vị, dị ứng và hương vị cho các món đã chọn.
         </p>
         <p className="bulk-foryou-modal__target">Áp dụng cho {items.length} món</p>
+        {items.length === 0 && (
+          <p className="bulk-foryou-modal__empty">Không có món nào để cập nhật.</p>
+        )}
 
         <section className="bulk-foryou-modal__group">
           <label className="bulk-foryou-modal__apply">
@@ -302,9 +306,9 @@ export default function BulkForYouMetadataModal({
           </p>
         )}
 
-        {submitErrors.length > 0 && (
+        {safeSubmitErrors.length > 0 && (
           <ul className="bulk-foryou-modal__errors">
-            {submitErrors.map((error) => (
+            {safeSubmitErrors.map((error) => (
               <li key={error.id}>
                 {error.name}: {error.message}
               </li>

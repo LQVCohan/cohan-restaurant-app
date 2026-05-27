@@ -65,7 +65,7 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   .recommendation-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 14px;
   }
 
   .recommendation-card {
@@ -74,6 +74,11 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     box-shadow: $shadow;
     border: 1px solid #f2f2f2;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .recommendation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
   }
 
   .recommendation-card__image {
@@ -111,6 +116,7 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
   .recommendation-badge--match { background: #ecfdf3; color: #067647; }
   .recommendation-badge--warning { background: #fff4e5; color: #b54708; }
+  .recommendation-fallback-note { font-size: 12px; color: #4b5563; margin: 0 0 8px; }
 
   .recommendation-reason {
     font-size: 12px;
@@ -137,6 +143,12 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     padding: 12px;
     color: $text-gray;
     font-size: 14px;
+  }
+  .recommendation-empty--rich {
+    text-align: center;
+    .recommendation-empty__icon { font-size: 24px; margin-bottom: 8px; }
+    p { margin: 0 0 10px; }
+    .btn-view-dish { max-width: 280px; margin: 0 auto; }
   }
 
   .recommendation-error {
@@ -244,6 +256,11 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 @media (min-width: 768px) {
   .foryou-container {
     .recommendation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}
+@media (min-width: 1200px) {
+  .foryou-container {
+    .recommendation-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 }
 

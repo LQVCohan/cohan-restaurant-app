@@ -1181,15 +1181,18 @@ const MenuManagement = () => {
     setBulkForYouModal({ isOpen: true, mode });
   };
   const closeBulkForYouModal = () => setBulkForYouModal({ isOpen: false, mode: "missing" });
-  const bulkForYouTargetItems = bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems;
+  const bulkForYouTargetItems = (bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems)
+    .filter((item) => item?.id);
   const handleSubmitBulkForYouMetadata = async ({ form, enabledFields }) => {
     setBulkSubmitting(true); setBulkProgress({ done: 0, total: bulkForYouTargetItems.length }); setBulkErrors([]);
     const errors = [];
+    let successCount = 0;
     for (const item of bulkForYouTargetItems) {
       try {
         const patch = buildBulkForYouPatch(item, form, enabledFields);
         if (!Object.keys(patch).length) continue;
         await updateMenuItem({ id: item.id, ...patch });
+        successCount += 1;
       } catch (error) {
         errors.push({ id: item.id, name: item.name, message: error?.message || "Lỗi cập nhật" });
       } finally {
@@ -1206,7 +1209,7 @@ const MenuManagement = () => {
           return next;
         });
       }
-      pushMenuToast(`Đã cập nhật khẩu vị cho ${bulkForYouTargetItems.length} món.`, "success");
+      pushMenuToast(`Đã cập nhật khẩu vị cho ${successCount || bulkForYouTargetItems.length} món.`, "success");
     } else {
       setBulkErrors(errors);
       pushMenuToast("Cập nhật xong một phần. Vui lòng kiểm tra các món lỗi bên dưới.", "warning");
