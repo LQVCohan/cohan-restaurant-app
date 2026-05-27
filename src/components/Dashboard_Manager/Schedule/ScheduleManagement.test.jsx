@@ -25,6 +25,7 @@ const getFirstShiftCard = async () => {
   return shiftCards[0];
 };
 
+
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
   const safeResult = { data: null, loading: false, error: null, refetch: vi.fn() };
@@ -261,15 +262,24 @@ describe("ScheduleManagement", () => {
       return node;
     });
 
-    const staffList = within(modal).getByText(/Phân công nhân viên/i).closest(".form-group");
-    expect(staffList).toBeTruthy();
-    const selectableStaff = staffList.querySelector(".staff-list .staff-item");
-    expect(selectableStaff).toBeTruthy();
-    fireEvent.click(selectableStaff);
+    const staffSection = within(modal).getByText(/Phân công nhân viên/i).closest(".form-group");
+    expect(staffSection).toBeTruthy();
+
+    const lanRow = within(staffSection).getByText("Lan Manager").closest(".staff-item");
+    const minhRow = within(staffSection).getByText("Minh Server").closest(".staff-item");
+    expect(lanRow).toBeTruthy();
+    expect(minhRow).toBeTruthy();
+    fireEvent.click(lanRow);
+    fireEvent.click(minhRow);
+
+    await waitFor(() => {
+      expect(within(staffSection).getByText(/Phân công nhân viên \(2\)/i)).toBeInTheDocument();
+    });
 
     fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch/i }));
 
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(within(modal).queryByText(/Cần chọn ít nhất một nhân viên/i)).not.toBeInTheDocument());
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const createCall = mutationSpy.mock.calls.find(
       ([arg]) => arg?.variables?.input?.shiftType === "MORNING",
     )?.[0];
