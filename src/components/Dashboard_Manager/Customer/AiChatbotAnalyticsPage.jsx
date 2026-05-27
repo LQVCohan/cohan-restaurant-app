@@ -19,6 +19,12 @@ const GET_AI_CHATBOT_ANALYTICS = gql`
       topIntents { intent count }
       messagesByRole { role count }
       rateLimitStatus { action max windowMs }
+      pendingSuggestions
+      notHelpfulFeedback
+      activeSafetyRules
+      evaluationCaseCount
+      riskySignals { code level count }
+      recentQualityQueue { id type label detail createdAt }
     }
   }
 `;
@@ -92,6 +98,10 @@ export default function AiChatbotAnalyticsPage() {
             <article className="customer-overview-card"><h4>Handoff đã xử lý</h4><p>{formatNum(m.resolvedHandoffs)}</p></article>
             <article className="customer-overview-card"><h4>Fallback / low confidence</h4><p>{formatNum(m.fallbackResponses)} / {formatNum(m.lowConfidenceResponses)}</p></article>
             <article className="customer-overview-card"><h4>Tỷ lệ chuyển handoff</h4><p>{formatPct(m.handoffConversionRate)}</p></article>
+            <article className="customer-overview-card"><h4>Pending suggestions</h4><p>{formatNum(m.pendingSuggestions)}</p></article>
+            <article className="customer-overview-card"><h4>Not helpful feedback</h4><p>{formatNum(m.notHelpfulFeedback)}</p></article>
+            <article className="customer-overview-card"><h4>Active safety rules</h4><p>{formatNum(m.activeSafetyRules)}</p></article>
+            <article className="customer-overview-card"><h4>Evaluation cases</h4><p>{formatNum(m.evaluationCaseCount)}</p></article>
             <article className="customer-overview-card"><h4>Thời gian xử lý handoff TB</h4><p>{m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}</p></article>
           </div>
 
@@ -107,6 +117,14 @@ export default function AiChatbotAnalyticsPage() {
             <article className="customer-analytics-panel">
               <h3>Rate-limit policy/config</h3>
               {m.rateLimitStatus?.length ? m.rateLimitStatus.map((it) => <div key={it.action}>{it.action}: {it.max}/{it.windowMs}ms</div>) : <p>Không có dữ liệu</p>}
+            </article>
+            <article className="customer-analytics-panel">
+              <h3>Risky signals</h3>
+              {m.riskySignals?.length ? m.riskySignals.map((it) => <div key={it.code}>{it.code}: {it.level} ({formatNum(it.count)})</div>) : <p>Không có dữ liệu</p>}
+            </article>
+            <article className="customer-analytics-panel">
+              <h3>Recent quality queue</h3>
+              {m.recentQualityQueue?.length ? m.recentQualityQueue.map((it) => <div key={it.id}>{it.type}: {it.label}</div>) : <p>Không có dữ liệu</p>}
             </article>
           </section>
         </>

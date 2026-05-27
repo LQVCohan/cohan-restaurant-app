@@ -161,3 +161,105 @@ export async function findRelevantKnowledgeForChatbot({ restaurantId, message, l
     .slice(0, safeLimit)
     .map((row) => row.item);
 }
+
+
+const parseCsvLine = (line = "") => {
+  const out = [];
+  let cur = "";
+  let q = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (q && line[i + 1] === '"') { cur += '"'; i += 1; }
+      else q = !q;
+      continue;
+    }
+    if (ch === ',' && !q) { out.push(cur); cur = ""; continue; }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map((v) => String(v || "").trim());
+};
+
+const toImportTags = (raw) => Array.isArray(raw) ? normalizeTags(raw) : normalizeTags(String(raw || "").split(/[|,]/g));
+
+export async function bulkUpdateRestaurantAiChatbotKnowledgeEnabled({ ids = [], enabled, ctx }) {
+  const oid = ids.filter((id) => mongoose.isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id));
+  if (!oid.length) return false;
+  const rows = await AiChatbotKnowledgeItem.find({ _id: { $in: oid } }).lean();
+  const byRestaurant = new Map();
+  for (const row of rows) {
+    const rid = String(row.restaurantId || "");
+    if (!byRestaurant.has(rid)) byRestaurant.set(rid, []);
+    byRestaurant.get(rid).push(row._id);
+  }
+  for (const rid of byRestaurant.keys()) await ensureRestaurantPermission(ctx, rid, PERMISSIONS.RESTAURANT_WRITE);
+  await AiChatbotKnowledgeItem.updateMany({ _id: { $in: oid } }, { $set: { enabled: Boolean(enabled), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) } });
+  return true;
+}
+
+export async function bulkDeleteRestaurantAiChatbotKnowledge({ ids = [], ctx }) {
+  const oid = ids.filter((id) => mongoose.isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id));
+  if (!oid.length) return false;
+  const rows = await AiChatbotKnowledgeItem.find({ _id: { $in: oid } }).lean();
+  for (const rid of [...new Set(rows.map((r) => String(r.restaurantId || "")) )]) await ensureRestaurantPermission(ctx, rid, PERMISSIONS.RESTAURANT_WRITE);
+  await AiChatbotKnowledgeItem.deleteMany({ _id: { $in: oid } });
+  return true;
+}
+
+export async function exportRestaurantAiChatbotKnowledge({ restaurantId, format = "json", ctx }) {
+  await ensureRestaurantPermission(ctx, restaurantId, PERMISSIONS.REPORT_READ);
+  const rows = await AiChatbotKnowledgeItem.find({ restaurantId: toObjectId(restaurantId) }).sort({ priority: -1, updatedAt: -1 }).lean();
+  const items = rows.map((r) => ({ title: r.title, content: r.content, category: r.category || "", tags: Array.isArray(r.tags) ? r.tags : [], enabled: r.enabled !== false, priority: Number(r.priority || 0), sourceType: r.sourceType || "manual" }));
+  if (String(format).toLowerCase() === "csv") {
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["title","content","category","tags","enabled","priority","sourceType"].join(",");
+    const lines = items.map((it) => [esc(it.title), esc(it.content), esc(it.category), esc(it.tags.join("|")), esc(it.enabled), esc(it.priority), esc(it.sourceType)].join(","));
+    return [header, ...lines].join("\n");
+  }
+  return JSON.stringify(items, null, 2);
+}
+
+export async function importRestaurantAiChatbotKnowledge({ input, ctx }) {
+  await ensureRestaurantPermission(ctx, input?.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
+  const format = clean(input?.format || "json", 10).toLowerCase();
+  const payload = String(input?.payload || "");
+  const errors = [];
+  let imported = 0;
+  let skipped = 0;
+  let rows = [];
+  try {
+    if (format === "csv") {
+      const lines = payload.split(/\r?\n/).filter(Boolean);
+      const head = parseCsvLine(lines.shift() || "").map((h) => h.toLowerCase());
+      rows = lines.map((line) => {
+        const cols = parseCsvLine(line);
+        const obj = {};
+        head.forEach((h, i) => { obj[h] = cols[i]; });
+        return obj;
+      });
+    } else {
+      const parsed = JSON.parse(payload || "[]");
+      rows = Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    throw Object.assign(new Error("Import payload không hợp lệ"), { code: "BAD_USER_INPUT" });
+  }
+  const rid = toObjectId(input.restaurantId);
+  for (const row of rows) {
+    const title = clean(row?.title, MAX_TITLE);
+    const content = clean(row?.content, MAX_CONTENT);
+    if (!title || !content) { skipped += 1; errors.push("title/content required"); continue; }
+    const category = clean(row?.category, MAX_CATEGORY);
+    const tags = toImportTags(row?.tags);
+    const enabled = row?.enabled == null ? true : String(row.enabled).toLowerCase() !== "false";
+    const priority = clampPriority(row?.priority);
+    const sourceTypeRaw = clean(row?.sourceType || "", 20).toLowerCase();
+    const sourceType = SOURCE_TYPES.has(sourceTypeRaw) ? sourceTypeRaw : "manual";
+    const dup = await AiChatbotKnowledgeItem.findOne({ restaurantId: rid, title, content }).lean();
+    if (dup) { skipped += 1; continue; }
+    await AiChatbotKnowledgeItem.create({ restaurantId: rid, title, content, category, tags, enabled, priority, sourceType, createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
+    imported += 1;
+  }
+  return { imported, skipped, errors };
+}
