@@ -32,6 +32,8 @@ const ASK_AI_CHATBOT = gql`
         hasOptions
         hasVariants
         restaurantId
+        basePrice
+        currentPrice
       }
       contextSummary {
         restaurantCount
@@ -161,6 +163,8 @@ export const canAiAddMenuItemDirectly = (source) => {
   if (!source?.id) return false;
   if (source?.isAvailable === false || source?.status === "unavailable") return false;
   if (source?.hasOptions || source?.hasVariants) return false;
+  const price = Number(source?.currentPrice || source?.basePrice || 0);
+  if (!Number.isFinite(price) || price <= 0) return false;
   return true;
 };
 
@@ -236,7 +240,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const handoffEnabled = publicSettings?.handoffEnabled ?? true;
   const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
   const visibleActions = useMemo(
-    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")),
+    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")).filter((action) => action?.type !== "add_to_cart_candidate"),
     [handoffEnabled, lastActions],
   );
 
@@ -585,14 +589,20 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     setOpen(false);
                     return;
                   }
+                  const price = Number(s.currentPrice || s.basePrice || 0);
+                  if (!Number.isFinite(price) || price <= 0) {
+                    navigate(`/food/${s.id}`);
+                    setOpen(false);
+                    return;
+                  }
                   cartApi.addToCart({
                     id: s.id,
                     restaurantId: s.restaurantId,
                     name: s.label,
-                    price: Number(s.currentPrice || s.basePrice || 0),
+                    price,
                     quantity: 1,
                   });
-                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn có thể kiểm tra giỏ hàng trước khi đặt.` }, { role: "assistant", content: "Đã thêm món vào giỏ. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?" }]);
+                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn có thể kiểm tra giỏ hàng trước khi đặt. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?` }]);
                   setLastQuickReplies(["Gợi ý nước uống", "Gợi ý món kèm", "Xem giỏ hàng"]);
                 }}>Thêm vào giỏ</button> : null}
               </div>

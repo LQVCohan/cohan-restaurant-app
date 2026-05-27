@@ -679,7 +679,6 @@ const fallbackActions = (context) => {
     actions.push({ type: "link", label: "Xem menu", href: `/restaurant/${restaurantId}` });
     if (topItemId) {
       actions.push({ type: "link", label: "Xem món gợi ý", href: `/food/${topItemId}` });
-      actions.push({ type: "add_to_cart_candidate", label: "Thêm món gợi ý vào giỏ", href: `/food/${topItemId}` });
     }
   }
   if (context.intent === "promotion" && restaurantId) {
