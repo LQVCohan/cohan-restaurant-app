@@ -150,3 +150,24 @@ export const getArUnavailableReason = (model) => {
   }
   return "";
 };
+
+export const getModelAssetBadges = (model) => {
+  if (!model) return [];
+  const badges = [];
+
+  if (model?.customModelSpec) badges.push("Tùy chỉnh");
+  if (canOpenModelViewerAr(model)) {
+    badges.push("3D", "AR");
+  } else {
+    badges.push("Placeholder");
+  }
+
+  return badges;
+};
+
+export const getModelAssetSummary = (model) => ({
+  has3DModel: canOpenModelViewerAr(model),
+  arReady: canOpenModelViewerAr(model),
+  source: model?.source || "-",
+  modelKey: model?.key || "-",
+});

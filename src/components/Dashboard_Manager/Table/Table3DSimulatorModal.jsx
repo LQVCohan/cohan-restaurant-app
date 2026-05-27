@@ -6,6 +6,8 @@ import {
   TABLE_3D_TYPE_OPTIONS,
   canOpenModelViewerAr,
   getArUnavailableReason,
+  getModelAssetBadges,
+  getModelAssetSummary,
 } from "@/config/table3dCatalog";
 import {
   deleteCustomTableModel,
@@ -45,6 +47,7 @@ const Table3DSimulatorModal = ({
   const [cameraModel, setCameraModel] = useState(null);
   const [customModels, setCustomModels] = useState([]);
   const [confirmedCameraPlacement, setConfirmedCameraPlacement] = useState(null);
+  const [isOpeningAr, setIsOpeningAr] = useState(false);
   const customModelScope = restaurantName || restaurantId || "default";
 
   useEffect(() => {
@@ -101,6 +104,7 @@ const Table3DSimulatorModal = ({
   const cameraTarget = `${offset.x}m 0m ${offset.z}m`;
   const canOpenAr = canOpenModelViewerAr(selectedModel);
   const arUnavailableReason = getArUnavailableReason(selectedModel);
+  const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
 
   const shiftModel = (x, z) => {
     setOffset((prev) => ({ x: Number((prev.x + x).toFixed(2)), z: Number((prev.z + z).toFixed(2)) }));
@@ -146,17 +150,20 @@ const Table3DSimulatorModal = ({
     const viewer = viewerRef.current;
     if (!viewer || typeof viewer.activateAR !== "function") {
       setModelError(
-        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera."
       );
       return;
     }
 
     try {
+      setIsOpeningAr(true);
       await viewer.activateAR();
     } catch {
       setModelError(
-        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera."
       );
+    } finally {
+      setIsOpeningAr(false);
     }
   };
 
@@ -209,7 +216,13 @@ const Table3DSimulatorModal = ({
                 <div>
                   <strong>{model.label}</strong>
                   <span>{model.capacity} ghế</span>
-                  {isCustomTableModel(model) && <span>Tùy chỉnh</span>}
+                  <div className="model-item__badges">
+                    {getModelAssetBadges(model).map((badge) => (
+                      <span key={`${model.key}-${badge}`} className="model-badge">
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                   {model?.customModelSpec && (
                     <span>
                       {model.customModelSpec.widthCm} x {model.customModelSpec.depthCm} x {model.customModelSpec.heightCm} cm
@@ -239,13 +252,16 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__meta">
             <p>
-              <b>Nguồn:</b> {selectedModel?.source || "-"}
+              <b>Model 3D:</b> {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}
             </p>
             <p>
-              <b>Ghế gợi ý:</b> {selectedModel?.capacity || "-"}
+              <b>AR native:</b> {selectedModelAssetSummary.arReady ? "Có thể thử" : "Chưa khả dụng"}
             </p>
             <p>
-              <b>Model key:</b> {selectedModel?.key || "-"}
+              <b>Nguồn model:</b> {selectedModelAssetSummary.source}
+            </p>
+            <p>
+              <b>Model key:</b> {selectedModelAssetSummary.modelKey}
             </p>
           </div>
           {error && <div className="table-3d-modal__warning">{error}</div>}
@@ -294,7 +310,7 @@ const Table3DSimulatorModal = ({
           ) : (
             <div className="viewer-placeholder">
               {selectedModel
-                ? "Đang dùng placeholder bàn (không có model 3D công khai khả dụng)."
+                ? "Mẫu này chỉ có thông số mô phỏng. Hãy dùng Xem thử bằng camera hoặc chọn mẫu có model 3D để mở AR."
                 : "Chọn mẫu để bắt đầu mô phỏng."}
             </div>
           )}
@@ -345,6 +361,12 @@ const Table3DSimulatorModal = ({
             </label>
           </div>
 
+          <div className="table-3d-modal__guide">
+            <p>• Xem 3D: xoay/zoom mẫu bàn trong màn hình.</p>
+            <p>• Xem thử bằng camera: overlay thủ công để ước lượng vị trí thực tế.</p>
+            <p>• Mở AR: dùng AR native trên thiết bị/trình duyệt hỗ trợ.</p>
+          </div>
+
           <div className="table-3d-modal__footer">
             <Button
               variant="secondary"
@@ -356,8 +378,16 @@ const Table3DSimulatorModal = ({
             </Button>
             {canOpenAr ? (
               <div className="table-3d-modal__ar-hint">
-                <Button type="button" size="sm" variant="secondary" onClick={handleOpenAr}>
-                  Mở AR trên thiết bị hỗ trợ
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleOpenAr}
+                  disabled={isOpeningAr}
+                  aria-label="Mở AR native trên thiết bị hỗ trợ"
+                  title="Mở AR native bằng trình xem hệ thống trên thiết bị hỗ trợ"
+                >
+                  {isOpeningAr ? "Đang mở AR..." : "Mở AR trên thiết bị hỗ trợ"}
                 </Button>
                 <span>
                   AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng Xem thử bằng camera.

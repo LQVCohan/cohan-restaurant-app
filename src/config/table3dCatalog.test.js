@@ -8,6 +8,8 @@ import {
   normalizeCatalogItem,
   canOpenModelViewerAr,
   getArUnavailableReason,
+  getModelAssetBadges,
+  getModelAssetSummary,
 } from "./table3dCatalog";
 
 describe("table3dCatalog", () => {
@@ -156,6 +158,61 @@ describe("table3dCatalog", () => {
         "Mẫu này chưa có model 3D công khai để mở AR."
       );
       expect(getArUnavailableReason({ modelUrl: "https://example.com/table.glb" })).toBe("");
+    });
+  });
+
+  describe("model asset helpers", () => {
+    it("returns 3D and AR badges when modelUrl is available", () => {
+      expect(
+        getModelAssetBadges({
+          key: "round-oak-4",
+          modelUrl: "https://example.com/table.glb",
+        })
+      ).toEqual(["3D", "AR"]);
+    });
+
+    it("returns Placeholder badge when modelUrl is missing", () => {
+      expect(getModelAssetBadges({ key: "rect-2-walnut", modelUrl: "" })).toEqual([
+        "Placeholder",
+      ]);
+    });
+
+    it("returns Tùy chỉnh and Placeholder badges for custom model without modelUrl", () => {
+      expect(
+        getModelAssetBadges({
+          key: "custom-vip-1",
+          modelUrl: "",
+          customModelSpec: { name: "custom-vip-1" },
+        })
+      ).toEqual(["Tùy chỉnh", "Placeholder"]);
+    });
+
+    it("returns correct model asset summary status", () => {
+      expect(
+        getModelAssetSummary({
+          key: "round-oak-4",
+          source: "public-fallback",
+          modelUrl: "https://example.com/table.glb",
+        })
+      ).toEqual({
+        has3DModel: true,
+        arReady: true,
+        source: "public-fallback",
+        modelKey: "round-oak-4",
+      });
+
+      expect(
+        getModelAssetSummary({
+          key: "rect-2-walnut",
+          source: "public-fallback",
+          modelUrl: "",
+        })
+      ).toEqual({
+        has3DModel: false,
+        arReady: false,
+        source: "public-fallback",
+        modelKey: "rect-2-walnut",
+      });
     });
   });
 });
