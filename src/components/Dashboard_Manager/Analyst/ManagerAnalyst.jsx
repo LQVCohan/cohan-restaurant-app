@@ -15,7 +15,8 @@ import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistan
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
 import "./ManagerAnalyst.scss";
 
-const formatVnd = (value) => `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
+const formatVnd = (value) =>
+  `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
 const clamp = (value) => Math.max(0, Math.min(100, Number(value || 0)));
 
 const calculateTrendProgress = (trend = []) => {
@@ -159,7 +160,8 @@ const ManagerAnalyst = () => {
   const availableRestaurants =
     restaurantOptions.length > 0 ? restaurantOptions : restaurants;
   const hasRestaurants = availableRestaurants.length > 0;
-  const getRestaurantId = (restaurant) => restaurant?.id || restaurant?._id || "";
+  const getRestaurantId = (restaurant) =>
+    restaurant?.id || restaurant?._id || "";
   const getRestaurantLabel = (restaurant) =>
     restaurant?.name || restaurant?.restaurantName || "Nhà hàng chưa đặt tên";
 
@@ -324,7 +326,10 @@ const ManagerAnalyst = () => {
                 />
               </div>
               <div className="grid-item revenue-chart">
-                <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
+                <RevenueAnalyticsChart
+                  data={revenueTrend}
+                  loading={loading}
+                />
               </div>
             </div>
           </section>
@@ -338,7 +343,10 @@ const ManagerAnalyst = () => {
             </div>
             <div className="analytics-section__body operations-intel-grid">
               <div className="grid-item demand-forecast">
-                <DemandForecastWidget forecast={demandForecast} loading={loading} />
+                <DemandForecastWidget
+                  forecast={demandForecast}
+                  loading={loading}
+                />
               </div>
               <div className="grid-item scheduling-assistant">
                 <StaffSchedulingAssistantWidget
@@ -358,7 +366,10 @@ const ManagerAnalyst = () => {
             </div>
             <div className="analytics-section__body growth-grid">
               <div className="grid-item smart-promotion-engine">
-                <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
+                <SmartPromotionEngineWidget
+                  engine={smartPromotionEngine}
+                  loading={loading}
+                />
               </div>
               <div className="grid-item menu-engineering-assistant">
                 <MenuEngineeringAssistantWidget
@@ -390,10 +401,16 @@ const ManagerAnalyst = () => {
             </div>
             <div className="analytics-section__body operations-grid">
               <div className="grid-item heatmap">
-                <SmartOccupancyHeatmap points={occupancyHeatmap} loading={loading} />
+                <SmartOccupancyHeatmap
+                  points={occupancyHeatmap}
+                  loading={loading}
+                />
               </div>
               <div className="grid-item staffing">
-                <StaffPerformance staffList={staffPerformance} loading={loading} />
+                <StaffPerformance
+                  staffList={staffPerformance}
+                  loading={loading}
+                />
               </div>
             </div>
           </section>
