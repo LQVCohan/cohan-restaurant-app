@@ -32,6 +32,14 @@ import {
   updateRestaurantAiChatbotSafetyRule,
   deleteRestaurantAiChatbotSafetyRule,
 } from "../../../src/services/ai/restaurantChatbotSafety.service.js";
+import {
+  evaluateRestaurantAiChatbotPrompt,
+  runRestaurantAiChatbotEvaluationSet,
+  listRestaurantAiChatbotEvaluationCases,
+  createRestaurantAiChatbotEvaluationCase,
+  updateRestaurantAiChatbotEvaluationCase,
+  deleteRestaurantAiChatbotEvaluationCase,
+} from "../../../src/services/ai/restaurantChatbotEvaluation.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -65,6 +73,9 @@ const Query = {
   restaurantAiChatbotKnowledgeSuggestions: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledgeSuggestions({ restaurantId, filter, ctx }),
   restaurantAiChatbotAnswerFeedback: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotAnswerFeedback({ restaurantId, filter, ctx }),
   restaurantAiChatbotSafetyRules: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotSafetyRules({ restaurantId, filter, ctx }),
+  evaluateRestaurantAiChatbotPrompt: async (_, { input }, ctx) => evaluateRestaurantAiChatbotPrompt({ input, ctx }),
+  runRestaurantAiChatbotEvaluationSet: async (_, { input }, ctx) => runRestaurantAiChatbotEvaluationSet({ input, ctx }),
+  restaurantAiChatbotEvaluationCases: async (_, { restaurantId }, ctx) => listRestaurantAiChatbotEvaluationCases({ restaurantId, ctx }),
 };
 
 const Mutation = {
@@ -124,6 +135,9 @@ const Mutation = {
   createRestaurantAiChatbotSafetyRule: async (_, { input }, ctx) => createRestaurantAiChatbotSafetyRule({ input, ctx }),
   updateRestaurantAiChatbotSafetyRule: async (_, { input }, ctx) => updateRestaurantAiChatbotSafetyRule({ input, ctx }),
   deleteRestaurantAiChatbotSafetyRule: async (_, { id }, ctx) => deleteRestaurantAiChatbotSafetyRule({ id, ctx }),
+  createRestaurantAiChatbotEvaluationCase: async (_, { input }, ctx) => createRestaurantAiChatbotEvaluationCase({ input, ctx }),
+  updateRestaurantAiChatbotEvaluationCase: async (_, { input }, ctx) => updateRestaurantAiChatbotEvaluationCase({ input, ctx }),
+  deleteRestaurantAiChatbotEvaluationCase: async (_, { id }, ctx) => deleteRestaurantAiChatbotEvaluationCase({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });

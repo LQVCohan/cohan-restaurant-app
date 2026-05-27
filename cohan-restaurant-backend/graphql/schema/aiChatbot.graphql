@@ -380,3 +380,59 @@ extend type Mutation {
   updateRestaurantAiChatbotSafetyRule(input: UpdateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!
   deleteRestaurantAiChatbotSafetyRule(id: ID!): Boolean!
 }
+
+type AiChatbotEvaluationSafetyResult { blocked: Boolean! outOfScope: Boolean! disclaimers: [String!]! handoffSuggested: Boolean! matchedRuleIds: [ID!]! }
+type AiChatbotKnowledgeMatch { id: ID title: String category: String sourceType: String score: Float }
+type AiChatbotEvaluationDebugInfo { evaluationMode: Boolean historyUsed: [String!] }
+type AiChatbotEvaluationResult {
+  caseId: ID
+  question: String
+  expectedBehavior: String
+  category: String
+  tags: [String!]
+  answer: String!
+  intent: String
+  confidence: Float
+  isFallback: Boolean
+  handoffSuggested: Boolean
+  handoffReason: String
+  handoffMessage: String
+  quickReplies: [String!]!
+  actions: [AiChatbotAction!]!
+  contextSummary: AiChatbotContextSummary
+  knowledgeMatches: [AiChatbotKnowledgeMatch!]!
+  safetyResult: AiChatbotEvaluationSafetyResult
+  sources: [AiChatbotSource!]!
+  debug: AiChatbotEvaluationDebugInfo
+}
+
+type AiChatbotEvaluationCase {
+  id: ID!
+  restaurantId: ID!
+  question: String!
+  expectedBehavior: String
+  category: String
+  tags: [String!]!
+  enabled: Boolean!
+  createdBy: ID
+  updatedBy: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input EvaluateAiChatbotPromptInput { restaurantId: ID! message: String! history: [AiChatbotHistoryInput!] includeDebug: Boolean }
+input RunAiChatbotEvaluationSetInput { restaurantId: ID! caseIds: [ID!] includeDebug: Boolean }
+input CreateAiChatbotEvaluationCaseInput { restaurantId: ID! question: String! expectedBehavior: String category: String tags: [String!] enabled: Boolean }
+input UpdateAiChatbotEvaluationCaseInput { id: ID! question: String expectedBehavior: String category: String tags: [String!] enabled: Boolean }
+
+extend type Query {
+  evaluateRestaurantAiChatbotPrompt(input: EvaluateAiChatbotPromptInput!): AiChatbotEvaluationResult!
+  runRestaurantAiChatbotEvaluationSet(input: RunAiChatbotEvaluationSetInput!): [AiChatbotEvaluationResult!]!
+  restaurantAiChatbotEvaluationCases(restaurantId: ID!): [AiChatbotEvaluationCase!]!
+}
+
+extend type Mutation {
+  createRestaurantAiChatbotEvaluationCase(input: CreateAiChatbotEvaluationCaseInput!): AiChatbotEvaluationCase!
+  updateRestaurantAiChatbotEvaluationCase(input: UpdateAiChatbotEvaluationCaseInput!): AiChatbotEvaluationCase!
+  deleteRestaurantAiChatbotEvaluationCase(id: ID!): Boolean!
+}

@@ -367,3 +367,22 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - `required_disclaimer` appends managed disclaimers to response.
 - Matching uses safe case-insensitive includes / escaped regex only (no raw user regex execution).
 - Permissions: list uses `REPORT_READ`; create/update/delete use `RESTAURANT_WRITE`; runtime evaluation is internal.
+
+## 10. AI Chatbot Evaluation Playground (Phase 16)
+
+- Backend service mới: `cohan-restaurant-backend/src/services/ai/restaurantChatbotEvaluation.service.js`.
+- Runtime chatbot (`restaurantChatbot.service.js`) hỗ trợ mode đánh giá với cờ:
+  - `persist` (default true)
+  - `recordSuggestions` (default true)
+  - `evaluationMode` (default false)
+- GraphQL mở rộng trong `graphql/schema/aiChatbot.graphql`:
+  - Query evaluate prompt + run evaluation set
+  - CRUD evaluation case
+- Model mới: `AiChatbotEvaluationCase` (`cohan-restaurant-backend/models/ai-chatbot-evaluation-case.model.js`).
+- Manager UI: bổ sung section Evaluation Playground trong `AiChatbotKnowledgePage.jsx`.
+
+### Bảo toàn hành vi hiện hữu
+
+- Guest widget (`askAiChatbot`) không đổi flow mặc định.
+- Các side-effect production (persist chat/suggestion/handoff) chỉ chạy ở mode normal.
+- Mode evaluation chỉ phục vụ internal manager QA.
