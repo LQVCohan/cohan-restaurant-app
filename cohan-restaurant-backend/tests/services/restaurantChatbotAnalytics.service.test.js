@@ -10,6 +10,11 @@ const mocks = vi.hoisted(() => ({
     countDocuments: vi.fn(),
     aggregate: vi.fn(),
   },
+  AiChatbotKnowledgeItem: { countDocuments: vi.fn() },
+  AiChatbotKnowledgeSuggestion: { countDocuments: vi.fn() },
+  AiChatbotAnswerFeedback: { countDocuments: vi.fn() },
+  AiChatbotSafetyRule: { countDocuments: vi.fn() },
+  AiChatbotEvaluationCase: { countDocuments: vi.fn() },
   requireRestaurantPermission: vi.fn(),
   requirePermission: vi.fn(),
 }));
@@ -17,6 +22,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../models/index.js", () => ({
   AiChatConversation: mocks.AiChatConversation,
   AiChatMessage: mocks.AiChatMessage,
+  AiChatbotKnowledgeItem: mocks.AiChatbotKnowledgeItem,
+  AiChatbotKnowledgeSuggestion: mocks.AiChatbotKnowledgeSuggestion,
+  AiChatbotAnswerFeedback: mocks.AiChatbotAnswerFeedback,
+  AiChatbotSafetyRule: mocks.AiChatbotSafetyRule,
+  AiChatbotEvaluationCase: mocks.AiChatbotEvaluationCase,
 }));
 
 vi.mock("../../src/services/auth/authorization.service.js", () => ({
@@ -34,6 +44,11 @@ describe("restaurantChatbotAnalytics service", () => {
     mocks.AiChatConversation.aggregate.mockResolvedValue([{ _id: "menu", count: 6 }]);
     mocks.AiChatMessage.aggregate.mockResolvedValue([{ _id: "assistant", count: 30 }]);
     mocks.AiChatConversation.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([{ metadata: { handoffRequestedAt: new Date(Date.now()-600000).toISOString(), handoffResolvedAt: new Date().toISOString() } }]) });
+    mocks.AiChatbotKnowledgeItem.countDocuments.mockResolvedValue(12);
+    mocks.AiChatbotKnowledgeSuggestion.countDocuments.mockResolvedValue(4);
+    mocks.AiChatbotAnswerFeedback.countDocuments.mockResolvedValue(3);
+    mocks.AiChatbotSafetyRule.countDocuments.mockResolvedValue(5);
+    mocks.AiChatbotEvaluationCase.countDocuments.mockResolvedValue(7);
   });
 
   it("returns aggregated metrics and policy config", async () => {
@@ -45,6 +60,12 @@ describe("restaurantChatbotAnalytics service", () => {
     expect(res.messagesByRole[0]).toEqual({ role: "assistant", count: 30 });
     expect(Array.isArray(res.rateLimitStatus)).toBe(true);
     expect(res.rateLimitStatus[0]).toHaveProperty("action");
+    expect(res.totalKnowledgeItems).toBe(12);
+    expect(res.pendingSuggestions).toBe(4);
+    expect(res.notHelpfulFeedback).toBe(3);
+    expect(res.activeSafetyRules).toBe(5);
+    expect(res.evaluationCaseCount).toBe(7);
+    expect(Array.isArray(res.riskySignals)).toBe(true);
   });
 
   it("blocks guest role", async () => {

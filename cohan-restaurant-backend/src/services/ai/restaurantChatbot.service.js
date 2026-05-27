@@ -806,6 +806,8 @@ export const handleRestaurantChatbotMessage = async ({
   evaluationMode = false,
 } = {}) => {
   const cleanMessage = normalizeMessage(message);
+  const shouldPersist = Boolean(persist && !evaluationMode);
+  const shouldRecordSuggestions = Boolean(recordSuggestions && !evaluationMode);
   if (!cleanMessage) {
     const err = new Error("Tin nhắn không được để trống");
     err.statusCode = 400;
@@ -856,7 +858,7 @@ export const handleRestaurantChatbotMessage = async ({
   let persistedConversation = null;
   let persistedHistory = [];
 
-  if (persist) try {
+  if (shouldPersist) try {
     if (normalizedConversationId) {
       const found = await AiChatConversation.findById(normalizedConversationId);
       if (found && isConversationOwned(found, { userId: userObjectId, guestId: normalizedGuestId })) {
@@ -990,7 +992,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
     : null;
 
   const shouldRecordKnowledgeGap = Boolean(
-    recordSuggestions && aiSettings.enabled && restaurantId && cleanMessage && (
+    shouldRecordSuggestions && aiSettings.enabled && restaurantId && cleanMessage && (
       finalResponse.isFallback ||
       (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) ||
       !knowledgeItems.length ||
@@ -1018,7 +1020,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
   }
 
   let answerMessageId = null;
-  if (persist && persistedConversation) {
+  if (shouldPersist && persistedConversation) {
     try {
       const assistantMessage = await AiChatMessage.create({
         conversationId: persistedConversation._id,
@@ -1053,7 +1055,15 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
     }
   }
 
-  return { ...finalResponse, answerMessageId: answerMessageId || null };
+  return {
+    ...finalResponse,
+    quickReplies: Array.isArray(finalResponse.quickReplies) ? finalResponse.quickReplies : [],
+    actions: Array.isArray(finalResponse.actions) ? finalResponse.actions : [],
+    sources: Array.isArray(finalResponse.sources) ? finalResponse.sources : [],
+    knowledgeMatches: Array.isArray(finalResponse.knowledgeMatches) ? finalResponse.knowledgeMatches : [],
+    answerMessageId: answerMessageId || null,
+    conversationId: finalResponse.conversationId ? String(finalResponse.conversationId) : null,
+  };
 };
 
 export const __testables = {

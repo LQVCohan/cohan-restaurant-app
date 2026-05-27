@@ -580,3 +580,10 @@ Nhưng vẫn giữ:
 - chạy safety rules/moderation,
 - chạy knowledge retrieval,
 - trả metadata debug để manager so sánh chất lượng answer.
+
+## Phase 17 – AI Chatbot Production Readiness
+- Consolidated manager AI tools into section tabs: Knowledge Base, Suggestions, Feedback, Safety, Evaluation.
+- Added section-level loading/error/empty handling and action success/failure notices for manager workflows.
+- Hardened chatbot runtime for evaluation-mode no-side-effect behavior (`persist=false`, `recordSuggestions=false` when evaluation mode).
+- Enforced GraphQL-safe response shaping in chatbot runtime (non-null arrays normalized, IDs stringified/nullable).
+- Expanded AI chatbot analytics summary with knowledge/suggestion/feedback/safety/evaluation counters and lightweight risky signal flags.
