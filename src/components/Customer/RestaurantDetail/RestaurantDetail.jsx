@@ -319,7 +319,7 @@ const RestaurantDetail = () => {
             <button
               type="button"
               className="btn-book-full"
-              onClick={() => openAiMenuAssistant({ message: "Gợi ý món cho 2 người dưới 100k", autoSend: false })}
+              onClick={() => openAiMenuAssistant({ message: "Gợi ý món cho 2 người dưới 100k", autoSend: false, restaurantId: resolvedRestaurant.id })}
             >
               AI gợi ý món
             </button>
@@ -330,7 +330,7 @@ const RestaurantDetail = () => {
                   type="button"
                   className="btn-icon"
                   style={{ width: "auto", padding: "6px 10px", borderRadius: 999 }}
-                  onClick={() => openAiMenuAssistant({ message: item.message, autoSend: true })}
+                  onClick={() => openAiMenuAssistant({ message: item.message, autoSend: true, restaurantId: resolvedRestaurant.id })}
                 >
                   {item.label}
                 </button>

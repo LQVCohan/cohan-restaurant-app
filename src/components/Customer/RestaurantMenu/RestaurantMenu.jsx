@@ -205,7 +205,13 @@ const RestaurantMenu = () => {
           <button
             type="button"
             style={{ border: "1px solid #d1d5db", background: "#fff", color: "#111827", borderRadius: 999, padding: "8px 14px", fontWeight: 600, cursor: "pointer" }}
-            onClick={() => openAiMenuAssistant({ message: "Gợi ý món phù hợp cho tôi", autoSend: true })}
+            onClick={() =>
+              openAiMenuAssistant(
+                selectedRes?.id
+                  ? { message: "Gợi ý món phù hợp cho tôi", autoSend: true, restaurantId: selectedRes.id }
+                  : { message: "Tìm món phù hợp cho tôi", autoSend: false }
+              )
+            }
           >
             Không biết chọn gì? Hỏi AI gợi ý món
           </button>

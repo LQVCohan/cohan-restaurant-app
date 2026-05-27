@@ -136,22 +136,25 @@ describe("AiChatbotWidget basic", () => {
     await waitFor(() => expect(screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng")).toBeInTheDocument(), { timeout: 1500 });
   });
 
-  it("open event with autoSend true calls ask once", async () => {
+  it("open event with restaurantId autoSend passes restaurantId to ask mutation", async () => {
     render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
     act(() => {
-      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Món dưới 100k", autoSend: true } }));
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Món dưới 100k", autoSend: true, restaurantId: "resto-2" } }));
     });
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
-    expect(mocks.askMutationSpy).toHaveBeenCalledWith(expect.objectContaining({ variables: expect.objectContaining({ input: expect.objectContaining({ message: "Món dưới 100k" }) }) }));
+    expect(mocks.askMutationSpy).toHaveBeenCalledWith(expect.objectContaining({ variables: expect.objectContaining({ input: expect.objectContaining({ message: "Món dưới 100k", restaurantId: "resto-2" }) }) }));
   });
 
-  it("open event with autoSend false prefills input", async () => {
+  it("open event with restaurantId autoSend false stores context for later send", async () => {
     render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
     act(() => {
-      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Gợi ý món cho 2 người", autoSend: false } }));
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Món chay", autoSend: false, restaurantId: "resto-2" } }));
     });
-    await waitFor(() => expect(screen.getByDisplayValue("Gợi ý món cho 2 người")).toBeInTheDocument(), { timeout: 1500 });
+    await waitFor(() => expect(screen.getByDisplayValue("Món chay")).toBeInTheDocument(), { timeout: 1500 });
     expect(mocks.askMutationSpy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i }));
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    expect(mocks.askMutationSpy).toHaveBeenCalledWith(expect.objectContaining({ variables: expect.objectContaining({ input: expect.objectContaining({ restaurantId: "resto-2" }) }) }));
   });
 
   it("while in-flight, event does not double-send", async () => {
