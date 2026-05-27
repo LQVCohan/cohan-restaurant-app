@@ -547,3 +547,18 @@ $tb-radius: 16px;
   .inventory-chip{max-width:100%}
   .active-chips-area{align-items:flex-start}
 }
+
+.toolbar-for-you-filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.toolbar-for-you-filter__label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  margin-right: 2px;
+}

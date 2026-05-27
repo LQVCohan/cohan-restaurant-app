@@ -3,6 +3,12 @@ import { useState, useCallback, useEffect } from "react";
 
 const CART_STORAGE_KEY = "cohan.customerCart.v1";
 
+const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).map((m) => ({ groupId: m?.groupId || m?.groupName || "", optionId: m?.optionId || m?.optionName || "" })).sort((a,b)=>(`${a.groupId}:${a.optionId}`).localeCompare(`${b.groupId}:${b.optionId}`)));
+
+const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
+
+const getLineKey = (item = {}) => item.cartLineKey || buildCartLineIdentity(item);
+
 const getStorage = () => {
   if (typeof window === "undefined") return null;
   try {
@@ -66,14 +72,14 @@ export const useCart = () => {
   // dish cần có: id (dishId), restaurantId, name, price, image?, method?, quantity?
   const addToCart = useCallback((dish) => {
     const incoming = { ...dish, quantity: dish.quantity || 1 };
+    incoming.cartLineKey = getLineKey(incoming);
     setCart((prev) => {
       // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
-      const found = prev.find(
-        (i) => i.id === incoming.id && i.restaurantId === incoming.restaurantId,
-      );
+      const incomingLineKey = getLineKey(incoming);
+      const found = prev.find((i) => getLineKey(i) === incomingLineKey);
       if (found) {
         return prev.map((i) =>
-          i.id === incoming.id && i.restaurantId === incoming.restaurantId
+getLineKey(i) === incomingLineKey
             ? {
                 ...i,
                 ...incoming,
@@ -92,11 +98,12 @@ export const useCart = () => {
   }, []);
 
   // Thay đổi số lượng theo itemId (delta có thể âm/dương)
-  const updateQuantity = useCallback((itemId, change) => {
+  const updateQuantity = useCallback((itemOrKey, change) => {
+    const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey);
     setCart((prev) =>
       prev
         .map((i) => {
-          if (i.id === itemId) {
+          if (getLineKey(i) === targetKey) {
             const next = (i.quantity || 1) + Number(change || 0);
             return next > 0 ? { ...i, quantity: next } : null;
           }
@@ -107,7 +114,7 @@ export const useCart = () => {
   }, []);
 
   const removeFromCart = useCallback(
-    (itemId) => setCart((prev) => prev.filter((i) => i.id !== itemId)),
+    (itemOrKey) => { const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey); setCart((prev) => prev.filter((i) => getLineKey(i) !== targetKey)); },
     [],
   );
 

@@ -4,7 +4,7 @@
   .modifier-modal__header {
     padding: 20px 24px;
     border-bottom: 1px solid #e5e7eb;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #ff6600 0%, #e65c00 100%);
     color: white;
 
     .modifier-modal__title {
@@ -122,7 +122,7 @@
     background: white;
 
     &:hover {
-      border-color: #3b82f6;
+      border-color: #ff6600;
       background: #f8fafc;
     }
 
@@ -209,3 +209,5 @@
     }
   }
 }
+
+.modifier-validation-error{margin:12px 24px;padding:10px 12px;border:1px solid #fed7aa;background:#fff5eb;color:#9a3412;border-radius:10px;font-weight:600;}

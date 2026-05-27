@@ -97,11 +97,11 @@ export function analyzeMenuItemForFoodPreferences(item, preferences) {
     const userHabits = safePreferences?.habits || {};
     if (userHabits.noOnion && taste.containsOnion) {
       preferenceScore -= 1;
-      reasons.push("Có hành - có thể không hợp khẩu vị của bạn");
+      reasons.push("Có hành - có thể chưa phù hợp với khẩu vị của bạn");
     }
     if (userHabits.noCilantro && taste.containsCilantro) {
       preferenceScore -= 1;
-      reasons.push("Có ngò - có thể không hợp khẩu vị của bạn");
+      reasons.push("Có ngò - có thể chưa phù hợp với khẩu vị của bạn");
     }
     const userSpiceIdx = Math.max(0, SPICE_LEVELS.indexOf(String(userHabits?.spice || "Vừa")));
     const itemSpiceIdx = Math.max(0, SPICE_LEVELS.indexOf(String(taste.spice || "Vừa")));
