@@ -153,6 +153,8 @@ export async function buildAiSchedulePlannerPreview(input, ctx = {}) {
     restaurantId,
     timezone: input?.timezone || "Asia/Ho_Chi_Minh",
     horizonDays: Number(input?.horizonDays || 2),
+    periodStart: input?.periodStart,
+    periodEnd: input?.periodEnd,
     actor: ctx?.user || null,
   });
 
