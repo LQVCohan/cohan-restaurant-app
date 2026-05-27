@@ -413,3 +413,9 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Production env validation blocks disabling reCAPTCHA unless `ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION=true`; production also rejects missing/placeholder `RECAPTCHA_SECRET` when enabled.
 - Production CSP blocks `unsafe-inline` styles by default; enable only with `CSP_ALLOW_UNSAFE_INLINE_STYLE=true`.
 
+
+### AI Chatbot Phase 19 Stabilization (2026-05-27)
+- Post-merge regression QA executed for backend chatbot services (runtime, knowledge, bulk-ops, analytics, safety, feedback, evaluation, evaluation safety).
+- Fixed AI chatbot schema safety test path resolution so CI resolves `aiChatbot.graphql` correctly from backend test cwd.
+- Frontend chatbot suite stabilized by removing duplicate aggregator execution path that re-imported and re-ran widget suites.
+- Verified production build still succeeds after stabilization pass.
