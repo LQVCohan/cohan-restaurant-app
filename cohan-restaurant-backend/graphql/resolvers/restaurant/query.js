@@ -200,7 +200,11 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
       {
         $or: [
           { businessStatus: "active", publicationStatus: "published" },
-          { status: "active" },
+          {
+            businessStatus: { $exists: false },
+            publicationStatus: { $exists: false },
+            status: "active",
+          },
         ],
       },
       { "address.lat": { $type: "number" } },

@@ -5,6 +5,9 @@ import { useQuery } from "@apollo/client/react";
 import "../../../../styles/Homepage/RestaurantGrid.scss";
 import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../utils/categoryIconMap";
 
+const DEFAULT_NEARBY_RADIUS_KM = 20;
+const DEFAULT_RESTAURANT_LIMIT = 6;
+
 // --- GRAPHQL QUERY ---
 const GET_TOP_RESTAURANTS = gql`
   query GetTopRestaurants($limit: Int, $restaurantFilter: RestaurantFilter) {
@@ -31,7 +34,6 @@ const GET_TOP_RESTAURANTS = gql`
     }
   }
 `;
-
 
 const GET_RESTAURANTS_NEARBY = gql`
   query GetRestaurantsNearby(
@@ -103,14 +105,7 @@ const GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT = gql`
 
 const formatAddress = (addr) => {
   if (!addr) return "";
-  const parts = [
-    addr.line1,
-    addr.line2,
-    addr.ward,
-    addr.district,
-    addr.city,
-    addr.country,
-  ]
+  const parts = [addr.line1, addr.line2, addr.ward, addr.district, addr.city, addr.country]
     .map((part) => String(part || "").trim())
     .filter(Boolean);
 
@@ -125,12 +120,9 @@ const formatHours = (opening, closing) => {
 
 const formatDistance = (distanceKm) => {
   if (typeof distanceKm !== "number" || !Number.isFinite(distanceKm) || distanceKm < 0) return null;
-  if (distanceKm < 1) {
-    return `${Math.round(distanceKm * 1000)} m`;
-  }
+  if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`;
   return `${distanceKm.toFixed(1)} km`;
 };
-
 
 const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
@@ -143,37 +135,52 @@ const RESTAURANT_FALLBACK_IMAGES = [
 
 const isPlaceholderRestaurantImage = (url = "") => {
   if (!url) return true;
-
   const normalizedUrl = url.toLowerCase();
-  return (
-    normalizedUrl.includes("picsum.photos") ||
-    normalizedUrl.includes("source.unsplash") ||
-    normalizedUrl.includes("/random")
-  );
+  return normalizedUrl.includes("picsum.photos") || normalizedUrl.includes("source.unsplash") || normalizedUrl.includes("/random");
 };
 
-const RestaurantGrid = ({
-  addressFilter = undefined,
-  restaurantFilter = undefined,
-  title = "Nhà Hàng Nổi Bật",
-  showViewAll = true,
-}) => {
+const normalizeRestaurant = (node, index) => {
+  const candidateImage = node.coverImage || node.avatar || "";
+  const fallbackImage = RESTAURANT_FALLBACK_IMAGES[index % RESTAURANT_FALLBACK_IMAGES.length];
+  const lat = Number(node?.address?.lat);
+  const lng = Number(node?.address?.lng);
+  const distanceKm = Number(node?.distanceKm);
+
+  return {
+    id: node.id,
+    name: node.name ?? "Nhà hàng",
+    description: node.description ?? "Mô tả đang cập nhật...",
+    image: isPlaceholderRestaurantImage(candidateImage) ? fallbackImage : candidateImage,
+    priceRange: node.priceRange ?? "",
+    hours: formatHours(node.openingHours, node.closingHours),
+    addressText: formatAddress(node.address),
+    avgRating: typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
+    lat: Number.isFinite(lat) ? lat : null,
+    lng: Number.isFinite(lng) ? lng : null,
+    distanceKm: Number.isFinite(distanceKm) ? distanceKm : null,
+  };
+};
+
+const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefined, title = "Nhà Hàng Nổi Bật", showViewAll = true }) => {
   const navigate = useNavigate();
 
   const effectiveFilter = restaurantFilter || addressFilter || {};
   const nearbyCenter = effectiveFilter?.nearbyCenter;
+  const nearbyLat = Number(nearbyCenter?.lat);
+  const nearbyLng = Number(nearbyCenter?.lng);
+  const nearbyMode = Number.isFinite(nearbyLat) && Number.isFinite(nearbyLng);
+
   const gqlFilter = { ...effectiveFilter };
   delete gqlFilter.nearbyCenter;
   delete gqlFilter.categoryId;
   delete gqlFilter.categoryName;
   delete gqlFilter.timeSlot;
 
-  const nearbyMode =
-    typeof nearbyCenter?.lat === "number" && typeof nearbyCenter?.lng === "number";
-  const selectedCategoryName =
-    typeof effectiveFilter?.categoryName === "string"
-      ? effectiveFilter.categoryName.trim()
-      : "";
+  const nearbyGqlFilter = { ...gqlFilter };
+  // In nearby mode, `search` is the delivery address/current-location label, not a restaurant keyword.
+  delete nearbyGqlFilter.search;
+
+  const selectedCategoryName = typeof effectiveFilter?.categoryName === "string" ? effectiveFilter.categoryName.trim() : "";
   const hasCategoryFilter = selectedCategoryName.length > 0;
   const displayCategoryName = hasCategoryFilter
     ? hasIconInCategoryName(selectedCategoryName)
@@ -181,45 +188,28 @@ const RestaurantGrid = ({
       : `${resolveCategoryIcon(selectedCategoryName)} ${selectedCategoryName}`
     : "";
 
-  const selectedCategoryId =
-    typeof effectiveFilter?.categoryId === "string"
-      ? effectiveFilter.categoryId.trim()
-      : "";
+  const selectedCategoryId = typeof effectiveFilter?.categoryId === "string" ? effectiveFilter.categoryId.trim() : "";
 
-  const { data: restaurantsByCategoryData } = useQuery(
-    GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT,
-    {
-      skip: !hasCategoryFilter || !selectedCategoryId || !effectiveFilter?.timeSlot,
-      variables: {
-        categoryId: selectedCategoryId,
-        timeSlot: effectiveFilter?.timeSlot,
-        limit: 100,
-      },
-      fetchPolicy: "network-only",
-    }
-  );
+  const { data: restaurantsByCategoryData } = useQuery(GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT, {
+    skip: nearbyMode || !hasCategoryFilter || !selectedCategoryId || !effectiveFilter?.timeSlot,
+    variables: { categoryId: selectedCategoryId, timeSlot: effectiveFilter?.timeSlot, limit: 100 },
+    fetchPolicy: "network-only",
+  });
 
   const { data: topData, loading: loadingTop, error: errorTop } = useQuery(GET_TOP_RESTAURANTS, {
     skip: nearbyMode,
-    variables: {
-      limit: 6,
-      restaurantFilter: {
-        ...gqlFilter,
-      },
-    },
+    variables: { limit: DEFAULT_RESTAURANT_LIMIT, restaurantFilter: { ...gqlFilter } },
     fetchPolicy: "cache-and-network",
   });
 
   const { data: nearbyData, loading: loadingNearby, error: errorNearby } = useQuery(GET_RESTAURANTS_NEARBY, {
     skip: !nearbyMode,
     variables: {
-      lat: nearbyCenter?.lat,
-      lng: nearbyCenter?.lng,
-      radiusKm: 20,
-      limit: 6,
-      restaurantFilter: {
-        ...gqlFilter,
-      },
+      lat: nearbyLat,
+      lng: nearbyLng,
+      radiusKm: DEFAULT_NEARBY_RADIUS_KM,
+      limit: DEFAULT_RESTAURANT_LIMIT,
+      restaurantFilter: { ...nearbyGqlFilter },
     },
     fetchPolicy: "cache-and-network",
   });
@@ -228,196 +218,75 @@ const RestaurantGrid = ({
   const error = nearbyMode ? errorNearby : errorTop;
 
   const restaurants = useMemo(() => {
-    const list = nearbyMode
-      ? nearbyData?.restaurantsNearby ?? []
-      : topData?.restaurantsTop ?? [];
-    return list.map((node, index) => {
-      const candidateImage = node.coverImage || node.avatar || "";
-      const fallbackImage =
-        RESTAURANT_FALLBACK_IMAGES[
-          index % RESTAURANT_FALLBACK_IMAGES.length
-        ];
-
-      const lat = Number(node?.address?.lat);
-      const lng = Number(node?.address?.lng);
-
-      return {
-        id: node.id,
-        name: node.name ?? "Nhà hàng",
-        description: node.description ?? "Mô tả đang cập nhật...",
-        image: isPlaceholderRestaurantImage(candidateImage)
-          ? fallbackImage
-          : candidateImage,
-        priceRange: node.priceRange ?? "",
-        hours: formatHours(node.openingHours, node.closingHours),
-        addressText: formatAddress(node.address),
-        avgRating:
-          typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
-        lat: Number.isFinite(lat) ? lat : null,
-        lng: Number.isFinite(lng) ? lng : null,
-      };
-    });
+    const list = nearbyMode ? nearbyData?.restaurantsNearby ?? [] : topData?.restaurantsTop ?? [];
+    return list.map((node, index) => normalizeRestaurant(node, index));
   }, [nearbyMode, nearbyData, topData]);
-
 
   const restaurantsBySelectedCategory = useMemo(() => {
     if (!hasCategoryFilter) return restaurants;
-
     const direct = restaurantsByCategoryData?.restaurantsByCategoryTimeSlot || [];
-    if (direct.length) {
-      return direct.map((node, index) => {
-        const candidateImage = node.coverImage || node.avatar || "";
-        const fallbackImage =
-          RESTAURANT_FALLBACK_IMAGES[index % RESTAURANT_FALLBACK_IMAGES.length];
-
-        const lat = Number(node?.address?.lat);
-        const lng = Number(node?.address?.lng);
-
-        return {
-          id: node.id,
-          name: node.name ?? "Nhà hàng",
-          description: node.description ?? "Mô tả đang cập nhật...",
-          image: isPlaceholderRestaurantImage(candidateImage)
-            ? fallbackImage
-            : candidateImage,
-          priceRange: node.priceRange ?? "",
-          hours: formatHours(node.openingHours, node.closingHours),
-          addressText: formatAddress(node.address),
-          avgRating:
-            typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
-          lat: Number.isFinite(lat) ? lat : null,
-          lng: Number.isFinite(lng) ? lng : null,
-        };
-      });
-    }
-
-    return [];
+    return direct.map((node, index) => normalizeRestaurant(node, index));
   }, [hasCategoryFilter, restaurantsByCategoryData, restaurants]);
 
-  const displayRestaurants = nearbyMode
-    ? restaurants
-    : restaurantsBySelectedCategory;
-
+  const displayRestaurants = nearbyMode ? restaurants : restaurantsBySelectedCategory;
   const goDetail = (id) => navigate(`/restaurant/${id}`);
-
-  const goLayout = (e, id) => {
-    e.stopPropagation();
-    navigate(`/restaurant/${id}/layout`);
-  };
-
-  const goOrder = (e, id) => {
-    e.stopPropagation();
-    navigate(`/restaurant/${id}`);
-  };
-
+  const goLayout = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}/layout`); };
+  const goOrder = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}`); };
   const viewAll = () => navigate("/restaurants");
 
   return (
     <section id="restaurants" className="restaurant-grid">
       <div className="restaurant-grid__container">
-        {/* Header Section */}
         <div className="restaurant-grid__header">
           <div>
             <span className="restaurant-grid__badge">Top Rated</span>
             <h3 className="restaurant-grid__title">{title}</h3>
-            <p className="restaurant-grid__subtitle">
-              Khám phá các địa điểm ăn uống được đánh giá cao nhất.
-            </p>
+            <p className="restaurant-grid__subtitle">Khám phá các địa điểm ăn uống được đánh giá cao nhất.</p>
           </div>
-          {showViewAll && (
-            <button className="restaurant-grid__view-all" onClick={viewAll}>
-              Xem tất cả <span className="arrow">→</span>
-            </button>
-          )}
+          {showViewAll && <button className="restaurant-grid__view-all" onClick={viewAll}>Xem tất cả <span className="arrow">→</span></button>}
         </div>
 
-        {nearbyMode && !loading && (
-          <div className="restaurant-grid__nearby-note">
-            📍 Đang hiển thị các nhà hàng gần vị trí hiện tại của bạn.
-          </div>
+        {nearbyMode && !loading && <div className="restaurant-grid__nearby-note">📍 Đang hiển thị các nhà hàng gần vị trí hiện tại của bạn trong bán kính 20 km.</div>}
+
+        {!nearbyMode && hasCategoryFilter && !loading && (
+          <div className="restaurant-grid__nearby-note">✅ Đây là những nhà hàng có danh mục bạn đã chọn ({displayCategoryName}) trong khung giờ hiện tại.</div>
         )}
 
-        {hasCategoryFilter && !loading && (
-          <div className="restaurant-grid__nearby-note">
-            ✅ Đây là những nhà hàng có danh mục bạn đã chọn ({displayCategoryName}) trong khung giờ hiện tại.
-          </div>
-        )}
+        {error && <div className="restaurant-grid__error">⚠️ Không tải được danh sách nhà hàng.</div>}
 
-        {/* Error State */}
-        {error && (
-          <div className="restaurant-grid__error">
-            ⚠️ Không tải được danh sách nhà hàng.
-          </div>
-        )}
-
-        {/* Content Grid */}
         <div className="restaurant-grid__list">
           {loading
-            ? Array.from({ length: 6 }).map((_, idx) => (
-                <SkeletonCard key={idx} />
-              ))
-            : displayRestaurants.map((r) => (
-                <div
-                  key={r.id}
-                  className="res-card"
-                  onClick={() => goDetail(r.id)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  {/* Image & Overlay Info */}
-                  <div className="res-card__image-wrapper">
-                    <img
-                      src={r.image}
-                      alt={r.name}
-                      className="res-card__img"
-                      loading="lazy"
-                    />
-                    <div className="res-card__overlay">
-                      <div className="res-card__rating">
-                        ⭐ {r.avgRating.toFixed(1)}
+            ? Array.from({ length: DEFAULT_RESTAURANT_LIMIT }).map((_, idx) => <SkeletonCard key={idx} />)
+            : displayRestaurants.map((r) => {
+                const distanceText = formatDistance(r.distanceKm);
+                return (
+                  <div key={r.id} className="res-card" onClick={() => goDetail(r.id)} role="button" tabIndex={0}>
+                    <div className="res-card__image-wrapper">
+                      <img src={r.image} alt={r.name} className="res-card__img" loading="lazy" />
+                      <div className="res-card__overlay">
+                        <div className="res-card__rating">⭐ {r.avgRating.toFixed(1)}</div>
+                        {r.hours && <div className="res-card__status">🕒 {r.hours}</div>}
                       </div>
-                      {r.hours && (
-                        <div className="res-card__status">🕒 {r.hours}</div>
-                      )}
+                    </div>
+
+                    <div className="res-card__body">
+                      <div className="res-card__main-info">
+                        <h4 className="res-card__name" title={r.name}>{r.name}</h4>
+                        <p className="res-card__address" title={r.addressText}>📍 {r.addressText || "Chưa cập nhật địa chỉ"}</p>
+                        {distanceText && <p className="res-card__address">🧭 Cách bạn {distanceText}</p>}
+                      </div>
+
+                      <p className="res-card__desc">{r.description}</p>
+                      <div className="res-card__divider"></div>
+
+                      <div className="res-card__actions">
+                        <button className="res-card__btn res-card__btn--outline" onClick={(e) => goLayout(e, r.id)}>Đặt bàn</button>
+                        <button className="res-card__btn res-card__btn--primary" onClick={(e) => goOrder(e, r.id)}>Đặt món</button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Body */}
-                  <div className="res-card__body">
-                    <div className="res-card__main-info">
-                      <h4 className="res-card__name" title={r.name}>
-                        {r.name}
-                      </h4>
-                      <p className="res-card__address" title={r.addressText}>
-                        📍 {r.addressText || "Chưa cập nhật địa chỉ"}
-                      </p>
-                      {formatDistance(r.distanceKm) && (
-                        <p className="res-card__address">🧭 Cách bạn {formatDistance(r.distanceKm)}</p>
-                      )}
-                    </div>
-
-                    <p className="res-card__desc">{r.description}</p>
-
-                    <div className="res-card__divider"></div>
-
-                    {/* Actions */}
-                    <div className="res-card__actions">
-                      <button
-                        className="res-card__btn res-card__btn--outline"
-                        onClick={(e) => goLayout(e, r.id)}
-                      >
-                        Đặt bàn
-                      </button>
-                      <button
-                        className="res-card__btn res-card__btn--primary"
-                        onClick={(e) => goOrder(e, r.id)}
-                      >
-                        Đặt món
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
           {!loading && displayRestaurants.length === 0 && (
             <div className="restaurant-grid__empty">
@@ -434,7 +303,6 @@ const RestaurantGrid = ({
   );
 };
 
-// Skeleton Loader Component
 const SkeletonCard = () => (
   <div className="res-card res-card--skeleton">
     <div className="skeleton-img" />
