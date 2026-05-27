@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { ChevronLeft, Info, Check, Leaf, AlertTriangle, Flame, Droplet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "@/context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import useFoodPreferences from "@/hooks/useFoodPreferences";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
@@ -16,8 +17,36 @@ import "./ForYou.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
 
+const getFoodPreferenceCompletion = (preferences) => {
+  const diet = preferences?.diet || "omni";
+  const allergies = Array.isArray(preferences?.allergies) ? preferences.allergies : [];
+  const habits = preferences?.habits || {};
+
+  const hasDietPreference = diet && diet !== "omni";
+  const hasAllergyInfo = allergies.length > 0;
+  const hasTasteInfo =
+    !!habits.noOnion ||
+    !!habits.noCilantro ||
+    Number(habits.sugar ?? 100) !== 100 ||
+    String(habits.spice || "Vừa") !== "Vừa" ||
+    habits.ice === false;
+
+  const completed = [hasDietPreference, hasAllergyInfo, hasTasteInfo].filter(Boolean).length;
+
+  return {
+    completed,
+    total: 3,
+    percent: Math.round((completed / 3) * 100),
+    hasDietPreference,
+    hasAllergyInfo,
+    hasTasteInfo,
+    isLowInformation: completed === 0,
+  };
+};
+
 const ForYou = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useContext(AuthContext) || {};
   const { preferences, setPreferences, loading, error, saving, savePreferences } = useFoodPreferences();
   const [saveMessage, setSaveMessage] = useState("");
   const {
@@ -35,6 +64,13 @@ const ForYou = () => {
   const recommendedItems = useMemo(() => allRecommendedItems.slice(0, 8), [allRecommendedItems]);
   const warningItems = useMemo(() => allWarningItems.slice(0, 6), [allWarningItems]);
   const fallbackItems = useMemo(() => allFallbackItems.slice(0, 8), [allFallbackItems]);
+  const completion = useMemo(() => getFoodPreferenceCompletion(preferences), [preferences]);
+  const shouldShowPreferenceNudge = Boolean(
+    isAuthenticated &&
+      String(user?.roleName || "").toLowerCase() === "customer" &&
+      !loading &&
+      (completion.percent < 100 || completion.isLowInformation),
+  );
 
   const handleAllergyToggle = (id) => {
     setPreferences((prev) => ({
@@ -62,6 +98,13 @@ const ForYou = () => {
         }),
       },
     );
+  };
+
+  const handleScrollToPreferenceProfile = () => {
+    document.getElementById("food-preference-profile")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const handleSave = async () => {
@@ -102,7 +145,7 @@ const ForYou = () => {
         </section>
 
         <section className="section recommendation-section">
-          <h2 className="section-title">Món dành cho bạn</h2>
+          <h2 className="section-title">Món bạn có thể thích</h2>
 
           {recommendationLoading && <div className="recommendation-empty">Đang tìm món phù hợp...</div>}
 
@@ -139,7 +182,7 @@ const ForYou = () => {
                             <span className="recommendation-badge recommendation-badge--match">✨ Món bạn có thể thích</span>
                           )}
                           {item.foodPreferenceMeta?.hasAllergyWarning && (
-                            <span className="recommendation-badge recommendation-badge--warning">⚠ Có thể chứa dị ứng</span>
+                            <span className="recommendation-badge recommendation-badge--warning">⚠ Cần kiểm tra dị ứng</span>
                           )}
                         </div>
                         {item.foodPreferenceMeta?.reasons?.[0] && (
@@ -159,7 +202,7 @@ const ForYou = () => {
 
         {!recommendationLoading && warningItems.length > 0 && (
           <section className="section recommendation-section">
-            <h2 className="section-title">Món cần kiểm tra trước khi đặt</h2>
+            <h2 className="section-title">Món cần kiểm tra dị ứng trước khi đặt</h2>
             <p className="section-desc">Các món này có thể chứa thành phần bạn dị ứng. Nên kiểm tra lại với nhà hàng trước khi đặt.</p>
             <div className="recommendation-grid">
               {warningItems.map((item) => (
@@ -174,7 +217,7 @@ const ForYou = () => {
                     <h3>{item.name}</h3>
                     <p className="recommendation-restaurant">{item.restaurantName}</p>
                     <p className="recommendation-price">{formatPrice(item.basePrice)}đ</p>
-                    <span className="recommendation-badge recommendation-badge--warning">⚠ Có thể chứa dị ứng</span>
+                    <span className="recommendation-badge recommendation-badge--warning">⚠ Cần kiểm tra dị ứng</span>
                     <p className="recommendation-reason">{item.foodPreferenceMeta?.warningReason || "Vui lòng xác nhận thành phần với nhà hàng."}</p>
                     <button className="btn-view-dish" onClick={() => handleViewDish(item)}>Xem món</button>
                   </div>
@@ -185,7 +228,38 @@ const ForYou = () => {
         )}
 
         {error && <div className="profile-error">Lỗi tải khẩu vị: {error.message}</div>}
-        <section className="section">
+        {shouldShowPreferenceNudge && (
+          <section className="food-preference-nudge" aria-live="polite">
+            <div className="food-preference-nudge__content">
+              <span className="food-preference-nudge__eyebrow">Gợi ý chính xác hơn</span>
+              <h3>Hoàn thiện khẩu vị để gợi ý đúng hơn</h3>
+              <p>
+                Bạn có thể thêm chế độ ăn, dị ứng và thói quen như mức cay/ngọt,
+                hành/ngò. Càng rõ khẩu vị, món gợi ý càng sát với bạn.
+              </p>
+              <div className="food-preference-nudge__chips">
+                {!completion.hasDietPreference && (
+                  <span className="food-preference-nudge__chip">Chế độ ăn</span>
+                )}
+                {!completion.hasAllergyInfo && (
+                  <span className="food-preference-nudge__chip">Dị ứng nếu có</span>
+                )}
+                {!completion.hasTasteInfo && (
+                  <span className="food-preference-nudge__chip">Mức cay/ngọt, hành/ngò</span>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="food-preference-nudge__action"
+              onClick={handleScrollToPreferenceProfile}
+            >
+              Cập nhật khẩu vị
+            </button>
+          </section>
+        )}
+
+        <section className="section" id="food-preference-profile">
           <h2 className="profile-section-heading"><Leaf size={18} /> Hồ sơ khẩu vị</h2>
           <h3 className="section-title"><Leaf size={18} /> Chế độ ăn uống</h3>
           <p className="section-desc">Chúng tôi sẽ ưu tiên gợi ý món phù hợp.</p>

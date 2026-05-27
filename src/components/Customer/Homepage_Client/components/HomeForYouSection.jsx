@@ -57,7 +57,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
                 <p className="home-for-you-card__price">{formatPrice(item.basePrice)}đ</p>
                 <div className="home-for-you-card__badges">
                   {item.foodPreferenceMeta?.isRecommended && <span className="home-for-you-badge home-for-you-badge--match">✨ Phù hợp khẩu vị</span>}
-                  {item.foodPreferenceMeta?.hasAllergyWarning && <span className="home-for-you-badge home-for-you-badge--warning">⚠ Có thể chứa dị ứng</span>}
+                  {item.foodPreferenceMeta?.hasAllergyWarning && <span className="home-for-you-badge home-for-you-badge--warning">⚠ Cần kiểm tra dị ứng</span>}
                 </div>
               </div>
             </article>

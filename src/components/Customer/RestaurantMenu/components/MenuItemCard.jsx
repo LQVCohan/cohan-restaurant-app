@@ -42,7 +42,7 @@ const MenuItemCard = ({ item, onClick }) => {
             className="food-preference-badge food-preference-badge--warning"
             title={foodPreferenceMeta.warningReason || `Có thể chứa: ${(foodPreferenceMeta.matchedAllergies || []).join(", ")}`}
           >
-            ⚠ Có thể chứa dị ứng
+            ⚠ Cần kiểm tra dị ứng
           </div>
         ) : foodPreferenceMeta?.isRecommended ? (
           <div
