@@ -137,6 +137,26 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
           border-radius: 4px;
           font-size: 0.8rem;
         }
+        .status.paused,
+        .status.maintenance,
+        .status.holiday {
+          color: #9a3412;
+          background: #ffedd5;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+        }
+        .status.inactive,
+        .status.hidden,
+        .status.suspended,
+        .status.archived,
+        .status.unknown {
+          color: #475569;
+          background: #e2e8f0;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+        }
         .dot {
           color: #cbd5e1;
         }
@@ -256,14 +276,14 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   border-radius: $radius;
   padding: 24px;
   border: 1px solid $border;
-  min-height: 240px;
+  min-height: auto;
 }
 
 /* SIDEBAR */
 .sidebar-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
   position: sticky;
   top: 80px;
   height: fit-content;
@@ -271,7 +291,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   .booking-widget {
     background: $white;
     border-radius: $radius;
-    padding: 24px;
+    padding: 20px;
     border: 1px solid $border;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
@@ -289,7 +309,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 12px;
+      padding: 10px;
       background: #f8fafc;
       border: 1px solid $border;
       border-radius: 8px;
@@ -316,7 +336,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   .similar-widget {
     background: $white;
     border-radius: $radius;
-    padding: 24px;
+    padding: 20px;
     border: 1px solid $border;
     h3 {
       font-size: 1rem;

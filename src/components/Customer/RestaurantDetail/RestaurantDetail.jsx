@@ -4,7 +4,7 @@ import { gql, useQuery } from "@apollo/client";
 import { ArrowLeft, Clock, Heart, MapPin, Share2, Star } from "lucide-react";
 
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { getOpeningStatusLabel } from "@/utils/restaurantStatus";
+import { getOpeningStatusLabel, getRestaurantPrimaryCTA } from "@/utils/restaurantStatus";
 import MenuSection from "./components/MenuSection/MenuSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import PromotionsSection from "./components/PromotionsSection/PromotionsSection";
@@ -142,6 +142,10 @@ const RestaurantDetail = () => {
   };
 
   const canReserve = !!resolvedRestaurant.canReserve;
+  const primaryCtaText = getRestaurantPrimaryCTA({
+    canReserve: resolvedRestaurant.canReserve,
+    openingStatus: resolvedRestaurant.openingStatus,
+  });
   const galleryPhotos = resolvedRestaurant.photos || resolvedRestaurant.spaceImages || [];
 
   const reviewStats = reviewStatsData?.reviewStats;
@@ -277,7 +281,7 @@ const aiQuickPrompts = [
                 onClick={handleBookTable}
                 disabled={isPreviewMode || !canReserve}
               >
-                {canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
+                {primaryCtaText}
               </button>
             </div>
           </div>
@@ -378,7 +382,7 @@ const aiQuickPrompts = [
           onClick={handleBookTable}
           disabled={isPreviewMode || !canReserve}
         >
-          {canReserve ? "Đặt bàn ngay" : "Hiện không nhận đặt bàn"}
+          {primaryCtaText}
         </button>
       </div>
     </div>

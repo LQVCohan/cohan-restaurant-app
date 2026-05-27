@@ -19,7 +19,7 @@ export const getOpeningStatusDescription = (r) => r?.openingStatusReason || getO
 export const getRestaurantPrimaryCTA = (r) => {
   if (!r?.canReserve) return "Hiện không nhận đặt bàn";
   if (r?.openingStatus === "closed" && r?.canReserve) return "Đặt bàn trước";
-  return "Đặt bàn";
+  return "Đặt bàn ngay";
 };
 
 export const getCannotOrderReason = (openingStatus) => {
