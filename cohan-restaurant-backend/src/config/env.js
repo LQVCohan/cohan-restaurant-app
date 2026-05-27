@@ -103,6 +103,21 @@ function applyDevelopmentDefaults() {
   }
 
   if (
+    !process.env.ACCESS_TOKEN_EXPIRES_IN ||
+    !String(process.env.ACCESS_TOKEN_EXPIRES_IN).trim()
+  ) {
+    process.env.ACCESS_TOKEN_EXPIRES_IN = "15m";
+  }
+  if (
+    !process.env.REFRESH_TOKEN_EXPIRES_IN ||
+    !String(process.env.REFRESH_TOKEN_EXPIRES_IN).trim()
+  ) {
+    process.env.REFRESH_TOKEN_EXPIRES_IN = "7d";
+  }
+  if (!process.env.REFRESH_TOKEN_COOKIE_NAME) process.env.REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
+  if (!process.env.REFRESH_TOKEN_COOKIE_SAMESITE) process.env.REFRESH_TOKEN_COOKIE_SAMESITE = "lax";
+
+  if (
     !process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN ||
     !String(process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN).trim()
   ) {
@@ -134,6 +149,21 @@ function validateProductionTableAccessSecret() {
   return issues;
 }
 
+function validateProductionAuthTokenSettings() {
+  if ((process.env.NODE_ENV || "development") !== "production") return [];
+  const issues = [];
+  const jwtSecret = String(process.env.JWT_SECRET || "");
+  if (jwtSecret.trim().length < 32 || WEAK_SECRET_VALUES.has(jwtSecret.trim().toLowerCase())) {
+    issues.push("JWT_SECRET (must be strong and >= 32 chars in production)");
+  }
+  const accessExp = String(process.env.ACCESS_TOKEN_EXPIRES_IN || "15m").toLowerCase();
+  if (accessExp.endsWith("d")) {
+    const d = Number(accessExp.replace("d", ""));
+    if (Number.isFinite(d) && d > 1) issues.push("ACCESS_TOKEN_EXPIRES_IN (must not exceed 1d in production)");
+  }
+  return issues;
+}
+
 export function validateEnv() {
   applyDevelopmentDefaults();
 
@@ -155,6 +185,7 @@ export function validateEnv() {
   }
 
   missing.push(...validateProductionTableAccessSecret());
+  missing.push(...validateProductionAuthTokenSettings());
 
   if (missing.length) {
     const error =
