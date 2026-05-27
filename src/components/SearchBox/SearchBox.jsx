@@ -76,11 +76,7 @@ const SearchBox = ({
     const safeText = String(text || "");
     if (!searchQuery) return safeText;
 
-<<<<<<< codex/fix-post-merge-stabilization-after-pr-#805-nii0wa
-    const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-=======
     const escapedQuery = String(searchQuery).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
->>>>>>> main
     const regex = new RegExp(`(${escapedQuery})`, "gi");
     return safeText.split(regex).map((part, index) =>
       part.toLowerCase() === String(searchQuery).toLowerCase() ? (
