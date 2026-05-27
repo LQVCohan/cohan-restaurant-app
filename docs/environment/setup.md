@@ -22,7 +22,8 @@ Lệnh này tạo:
 Các biến chính:
 - `VITE_API_URL=http://localhost:4000/graphql`
 - `VITE_API_WS=ws://localhost:4000/graphql`
-- `VITE_RECAPTCHA_SITE_KEY=...`
+- `VITE_ENABLE_RECAPTCHA=false` (khuyến nghị local)
+- `VITE_RECAPTCHA_SITE_KEY=...` (bắt buộc nếu bật captcha)
 - `VITE_MAPBOX_TOKEN=...`
 
 ## 3) Backend env (`/cohan-restaurant-backend/.env`)
@@ -86,3 +87,17 @@ Không. Backend/frontend trong dự án này chỉ tự load file tên **`.env`*
 - `.env.production` trong repo chỉ là placeholder an toàn để tham chiếu key.
 - Giá trị production thật phải được cấu hình trực tiếp trên hosting/CI secret manager (Vercel, Netlify, Docker secrets, Kubernetes secrets...).
 - Local development tiếp tục dùng `.env.development` hoặc `npm run env:local`.
+
+## 9) Đồng bộ cấu hình reCAPTCHA frontend/backend
+
+- **Production**:
+  - Frontend: `VITE_ENABLE_RECAPTCHA=true`
+  - Frontend: `VITE_RECAPTCHA_SITE_KEY=<valid_site_key>`
+  - Backend: `ENABLE_RECAPTCHA=true`
+  - Backend: `RECAPTCHA_SECRET=<valid_secret>`
+- **Local dev (Option A - tắt captcha)**:
+  - Frontend: `VITE_ENABLE_RECAPTCHA=false`
+  - Backend: `ENABLE_RECAPTCHA=false`
+- **Local dev (Option B - bật captcha đầy đủ)**:
+  - Frontend: `VITE_ENABLE_RECAPTCHA=true` + site key hợp lệ
+  - Backend: `ENABLE_RECAPTCHA=true` + secret hợp lệ
