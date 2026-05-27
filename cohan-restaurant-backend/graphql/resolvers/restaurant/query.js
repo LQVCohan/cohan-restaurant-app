@@ -94,6 +94,23 @@ function buildFilter(restaurantFilter) {
 
 
 
+
+function toRad(deg) {
+  return (deg * Math.PI) / 180;
+}
+
+function haversineDistanceKm(lat1, lng1, lat2, lng2) {
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
 function applyPublicAvailabilityFilters(docs, filter) {
   const f = filter || {};
   return docs.filter((doc) => {
@@ -158,6 +175,55 @@ async function restaurantsTop(_, { limit = 6, restaurantFilter }) {
     .lean();
 
   return docs;
+}
+
+
+async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restaurantFilter }) {
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+
+  if (!Number.isFinite(latNum) || latNum < -90 || latNum > 90) {
+    throw badInput("lat must be a number in range [-90, 90]");
+  }
+  if (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180) {
+    throw badInput("lng must be a number in range [-180, 180]");
+  }
+
+  const normalizedRadiusKm = Number(radiusKm) > 0 ? Number(radiusKm) : 20;
+  const lim = clampLimit(limit, 1, 100);
+
+  const baseFilter = buildFilter(restaurantFilter);
+  const filter = {
+    ...baseFilter,
+    $and: [
+      ...(Array.isArray(baseFilter.$and) ? baseFilter.$and : []),
+      {
+        $or: [
+          { businessStatus: "active", publicationStatus: "published" },
+          { status: "active" },
+        ],
+      },
+      { "address.lat": { $type: "number" } },
+      { "address.lng": { $type: "number" } },
+    ],
+  };
+
+  const docs = await Restaurant.find(filter).lean();
+
+  return docs
+    .map((doc) => {
+      const rLat = Number(doc?.address?.lat);
+      const rLng = Number(doc?.address?.lng);
+      if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return null;
+
+      const distanceKm = haversineDistanceKm(latNum, lngNum, rLat, rLng);
+      if (!Number.isFinite(distanceKm) || distanceKm > normalizedRadiusKm) return null;
+
+      return { ...doc, distanceKm };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, lim);
 }
 
 /** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
@@ -348,6 +414,7 @@ export const RestaurantQuery = {
   restaurants,
   restaurant,
   restaurantsTop,
+  restaurantsNearby,
   restaurantsByManager,
   refRestaurants,
   restaurantsByCategoryTimeSlot,

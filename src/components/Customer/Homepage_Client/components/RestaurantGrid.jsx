@@ -32,6 +32,46 @@ const GET_TOP_RESTAURANTS = gql`
   }
 `;
 
+
+const GET_RESTAURANTS_NEARBY = gql`
+  query GetRestaurantsNearby(
+    $lat: Float!
+    $lng: Float!
+    $radiusKm: Float
+    $limit: Int
+    $restaurantFilter: RestaurantFilter
+  ) {
+    restaurantsNearby(
+      lat: $lat
+      lng: $lng
+      radiusKm: $radiusKm
+      limit: $limit
+      restaurantFilter: $restaurantFilter
+    ) {
+      id
+      name
+      coverImage
+      avatar
+      description
+      priceRange
+      openingHours
+      closingHours
+      avgRating
+      distanceKm
+      address {
+        line1
+        line2
+        ward
+        district
+        city
+        country
+        lat
+        lng
+      }
+    }
+  }
+`;
+
 const GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT = gql`
   query GetRestaurantsByCategoryTimeSlot($categoryId: ID!, $timeSlot: TimeSlot!, $limit: Int = 50) {
     restaurantsByCategoryTimeSlot(categoryId: $categoryId, timeSlot: $timeSlot, limit: $limit) {
@@ -83,21 +123,14 @@ const formatHours = (opening, closing) => {
   return opening || closing;
 };
 
-const toRad = (deg) => (deg * Math.PI) / 180;
-
-const distanceInKm = (lat1, lng1, lat2, lng2) => {
-  const earthRadiusKm = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
+const formatDistance = (distanceKm) => {
+  if (typeof distanceKm !== "number" || !Number.isFinite(distanceKm) || distanceKm < 0) return null;
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)} m`;
+  }
+  return `${distanceKm.toFixed(1)} km`;
 };
+
 
 const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
@@ -166,21 +199,38 @@ const RestaurantGrid = ({
     }
   );
 
-  const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
+  const { data: topData, loading: loadingTop, error: errorTop } = useQuery(GET_TOP_RESTAURANTS, {
+    skip: nearbyMode,
     variables: {
-      limit: nearbyMode ? 50 : 6,
-      restaurantFilter:
-        nearbyMode
-          ? undefined
-          : {
-              ...gqlFilter,
-            },
+      limit: 6,
+      restaurantFilter: {
+        ...gqlFilter,
+      },
     },
     fetchPolicy: "cache-and-network",
   });
 
+  const { data: nearbyData, loading: loadingNearby, error: errorNearby } = useQuery(GET_RESTAURANTS_NEARBY, {
+    skip: !nearbyMode,
+    variables: {
+      lat: nearbyCenter?.lat,
+      lng: nearbyCenter?.lng,
+      radiusKm: 20,
+      limit: 6,
+      restaurantFilter: {
+        ...gqlFilter,
+      },
+    },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const loading = nearbyMode ? loadingNearby : loadingTop;
+  const error = nearbyMode ? errorNearby : errorTop;
+
   const restaurants = useMemo(() => {
-    const list = data?.restaurantsTop ?? [];
+    const list = nearbyMode
+      ? nearbyData?.restaurantsNearby ?? []
+      : topData?.restaurantsTop ?? [];
     return list.map((node, index) => {
       const candidateImage = node.coverImage || node.avatar || "";
       const fallbackImage =
@@ -207,49 +257,7 @@ const RestaurantGrid = ({
         lng: Number.isFinite(lng) ? lng : null,
       };
     });
-  }, [data]);
-
-  const restaurantsWithDistance = useMemo(() => {
-    if (!nearbyMode) return restaurants;
-
-    return restaurants
-      .map((restaurant) => {
-        if (
-          typeof restaurant.lat !== "number" ||
-          typeof restaurant.lng !== "number"
-        ) {
-          return { ...restaurant, distanceKm: null };
-        }
-
-        const distanceKm = distanceInKm(
-          nearbyCenter.lat,
-          nearbyCenter.lng,
-          restaurant.lat,
-          restaurant.lng
-        );
-
-        return { ...restaurant, distanceKm };
-      })
-      .sort((a, b) => {
-        if (typeof a.distanceKm !== "number") return 1;
-        if (typeof b.distanceKm !== "number") return -1;
-        return a.distanceKm - b.distanceKm;
-      });
-  }, [nearbyMode, nearbyCenter, restaurants]);
-
-  const nearestTopRestaurants = useMemo(() => {
-    if (!nearbyMode) return restaurantsWithDistance;
-
-    const nearestWithDistance = restaurantsWithDistance
-      .filter((restaurant) => typeof restaurant.distanceKm === "number")
-      .slice(0, 6);
-
-    if (nearestWithDistance.length > 0) {
-      return nearestWithDistance;
-    }
-
-    return restaurantsWithDistance.slice(0, 6);
-  }, [nearbyMode, restaurantsWithDistance]);
+  }, [nearbyMode, nearbyData, topData]);
 
 
   const restaurantsBySelectedCategory = useMemo(() => {
@@ -287,7 +295,7 @@ const RestaurantGrid = ({
   }, [hasCategoryFilter, restaurantsByCategoryData, restaurants]);
 
   const displayRestaurants = nearbyMode
-    ? nearestTopRestaurants
+    ? restaurants
     : restaurantsBySelectedCategory;
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
@@ -325,7 +333,7 @@ const RestaurantGrid = ({
 
         {nearbyMode && !loading && (
           <div className="restaurant-grid__nearby-note">
-            📍 Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants và khoảng cách tới vị trí hiện tại của bạn.
+            📍 Đang hiển thị các nhà hàng gần vị trí hiện tại của bạn.
           </div>
         )}
 
@@ -383,8 +391,8 @@ const RestaurantGrid = ({
                       <p className="res-card__address" title={r.addressText}>
                         📍 {r.addressText || "Chưa cập nhật địa chỉ"}
                       </p>
-                      {typeof r.distanceKm === "number" && (
-                        <p className="res-card__address">🧭 Cách bạn {r.distanceKm.toFixed(1)} km</p>
+                      {formatDistance(r.distanceKm) && (
+                        <p className="res-card__address">🧭 Cách bạn {formatDistance(r.distanceKm)}</p>
                       )}
                     </div>
 
@@ -413,9 +421,11 @@ const RestaurantGrid = ({
 
           {!loading && displayRestaurants.length === 0 && (
             <div className="restaurant-grid__empty">
-              {hasCategoryFilter
-                ? "Không tìm thấy nhà hàng nào có danh mục bạn đã chọn trong khung giờ này."
-                : "Chưa có nhà hàng nào nổi bật."}
+              {nearbyMode
+                ? "Không tìm thấy nhà hàng gần vị trí của bạn."
+                : hasCategoryFilter
+                  ? "Không tìm thấy nhà hàng nào có danh mục bạn đã chọn trong khung giờ này."
+                  : "Chưa có nhà hàng nào nổi bật."}
             </div>
           )}
         </div>

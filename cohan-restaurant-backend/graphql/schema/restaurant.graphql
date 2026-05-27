@@ -99,6 +99,7 @@ type Restaurant {
   tables: [Table]
   categories: [Category]
   avgRating: Float
+  distanceKm: Float
   reviewCount: Int
   orderCount: Int
   reservationCount: Int
@@ -167,6 +168,14 @@ extend type Query {
   restaurant(id: ID!): Restaurant
 
   restaurantsTop(
+    limit: Int = 6
+    restaurantFilter: RestaurantFilter
+  ): [Restaurant!]!
+
+  restaurantsNearby(
+    lat: Float!
+    lng: Float!
+    radiusKm: Float = 20
     limit: Int = 6
     restaurantFilter: RestaurantFilter
   ): [Restaurant!]!
