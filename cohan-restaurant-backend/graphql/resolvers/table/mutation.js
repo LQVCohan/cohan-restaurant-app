@@ -74,6 +74,46 @@ const TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS = new Set([
   "maintenance",
 ]);
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const isPlainObject = (value) =>
+  value != null && typeof value === "object" && !Array.isArray(value);
+
+export const sanitizeVisualConfig = (value) => {
+  if (value == null) return null;
+  if (!isPlainObject(value)) {
+    throw new GraphQLError("visualConfig must be an object or null", {
+      extensions: { code: "BAD_USER_INPUT", field: "visualConfig" },
+    });
+  }
+
+  const placementInput = isPlainObject(value.placement) ? value.placement : {};
+  const placement = {
+    x: clamp(Number(placementInput.x ?? 50) || 50, 5, 95),
+    y: clamp(Number(placementInput.y ?? 50) || 50, 5, 95),
+    scale: clamp(Number(placementInput.scale ?? 1) || 1, 0.5, 2),
+    rotation: Number(placementInput.rotation ?? 0) || 0,
+  };
+
+  const dimensions = isPlainObject(value.dimensions)
+    ? {
+        widthCm: Number(value.dimensions.widthCm) || null,
+        depthCm: Number(value.dimensions.depthCm) || null,
+        heightCm: Number(value.dimensions.heightCm) || null,
+      }
+    : null;
+
+  return {
+    modelKey: value.modelKey != null ? String(value.modelKey) : null,
+    modelLabel: value.modelLabel != null ? String(value.modelLabel) : null,
+    tableType: value.tableType != null ? String(value.tableType) : null,
+    capacity: Number.isFinite(Number(value.capacity)) ? Number(value.capacity) : null,
+    dimensions,
+    placement,
+    source: "camera-preview",
+    savedAt: new Date().toISOString(),
+  };
+};
+
 export default {
   createTable: async (_p, { input }, ctx) => {
     const { restaurantId, floorId } = input;
@@ -92,11 +132,13 @@ export default {
     });
 
     const level = await ensureFloorLevel(floorId);
+    const visualConfig = sanitizeVisualConfig(input.visualConfig);
     try {
       const created = await Table.create({
         ...input,
         code: normalizedCode,
         floorLevel: level,
+        visualConfig,
       });
       return created.toObject({ virtuals: true });
     } catch (error) {
@@ -244,6 +286,9 @@ export default {
     });
 
     if (patch.code != null) patch.code = nextCode;
+    if (Object.prototype.hasOwnProperty.call(patch, "visualConfig")) {
+      patch.visualConfig = sanitizeVisualConfig(patch.visualConfig);
+    }
 
     // Nếu đổi floorId thì cập nhật floorLevel
     if (patch.floorId) {

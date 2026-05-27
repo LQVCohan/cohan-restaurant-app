@@ -149,6 +149,7 @@ const TableManagement = () => {
     floorId: "",
     area: "standard",
     visualTemplate: "",
+    visualConfig: null,
   });
   const [floorForm, setFloorForm] = useState({ name: "" });
   const [vrSaving, setVrSaving] = useState(false);
@@ -162,7 +163,8 @@ const TableManagement = () => {
     Number(tableForm.seats || 0) !== 4 ||
     !!tableForm.floorId ||
     tableForm.area !== "standard" ||
-    !!tableForm.visualTemplate;
+    !!tableForm.visualTemplate ||
+    !!tableForm.visualConfig;
   const floorDirty = !!floorForm.name.trim();
   const normalizeVrTourUrl = (value) => {
     const normalized = String(value || "").trim();
@@ -192,6 +194,7 @@ const TableManagement = () => {
       floorId: v?.floorId || "",
       area: v?.area || "standard",
       visualTemplate: v?.visualTemplate || "",
+      visualConfig: v?.visualConfig ?? null,
     }),
     onRestore: (draft) => setTableForm((prev) => ({ ...prev, ...draft })),
     notify: showNotification,
@@ -449,7 +452,7 @@ const TableManagement = () => {
 
   const handleSaveTable = async () => {
     if (tableSaving) return;
-    const { number, seats, floorId, area } = tableForm;
+    const { number, seats, floorId, area, visualConfig } = tableForm;
     const nextErrors = {};
     if (!number?.trim()) nextErrors.number = "Vui lòng nhập số bàn.";
     if (!floorId) nextErrors.floorId = "Vui lòng chọn tầng cho bàn.";
@@ -477,6 +480,7 @@ const TableManagement = () => {
         type: area,
         status: "available",
         position: { x: position.x, y: position.y },
+        visualConfig: visualConfig || null,
       });
       await refetchTables();
       addTableDraft.clearDraft();
@@ -505,7 +509,7 @@ const TableManagement = () => {
   };
 
 
-  const handleApply3DTemplate = (selectedModel) => {
+  const handleApply3DTemplate = (selectedModel, extras = {}) => {
     const mapped = mapModelToTableForm(selectedModel);
     // Chỉ prefill form để user xác nhận lại theo luồng thêm bàn hiện tại.
     setTableForm((prev) => ({
@@ -517,6 +521,7 @@ const TableManagement = () => {
         (isAllFloorsSelected ? "" : currentFloor) ||
         "",
       visualTemplate: mapped.visualTemplate,
+      visualConfig: extras.visualConfig || null,
     }));
     setShowTable3DModal(false);
     setShowAddTableModal(true);
@@ -924,6 +929,13 @@ const TableManagement = () => {
               <div className="tm-template-preview__hint">
                 Số ghế, khu vực hoặc tầng có thể đã được gợi ý sẵn từ mẫu này.
               </div>
+            </div>
+          )}
+          {tableForm.visualConfig && (
+            <div className="tm-template-preview">
+              <div className="tm-template-preview__title">Cấu hình xem thử bằng camera</div>
+              <div className="tm-template-preview__value">Mô phỏng/overlay thủ công</div>
+              <div className="tm-template-preview__hint">Đã lưu cấu hình xem thử cho bàn này.</div>
             </div>
           )}
         </Modal.Body>

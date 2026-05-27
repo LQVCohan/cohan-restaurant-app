@@ -103,6 +103,7 @@ type Table {
   photos: [String!]!
   vrUrl: String
   notes: String
+  visualConfig: JSON
   status: TableStatus!
   floorLevel: Int
   deposit: Int
@@ -128,6 +129,7 @@ input CreateTableInput {
   photos: [String!]
   vrUrl: String
   notes: String
+  visualConfig: JSON
   status: TableStatus
   tags: [String!]
   isJoinable: Boolean
@@ -144,6 +146,7 @@ input UpdateTableInput {
   deposit: Int
   vrUrl: String
   notes: String
+  visualConfig: JSON
   status: TableStatus
   tags: [String!]
   isJoinable: Boolean

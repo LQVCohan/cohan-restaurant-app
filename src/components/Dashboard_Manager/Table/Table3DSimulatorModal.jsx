@@ -237,9 +237,7 @@ const Table3DSimulatorModal = ({
           <div className="viewer-overlay">
             <span>{selectedModel?.label || "Mẫu 3D"}</span>
             {loading && <span>Đang tải catalog...</span>}
-            {confirmedCameraPlacement && (
-              <span>Đã xác nhận vị trí xem thử cho {confirmedCameraPlacement.modelLabel}</span>
-            )}
+            {confirmedCameraPlacement && <span>Đã lưu cấu hình xem thử cho bàn này</span>}
           </div>
 
           {selectedModel?.modelUrl && !modelError ? (
@@ -321,7 +319,16 @@ const Table3DSimulatorModal = ({
             </Button>
             <Button
               variant="primary"
-              onClick={() => selectedModel && onApply(selectedModel)}
+              onClick={() =>
+                selectedModel &&
+                onApply(selectedModel, {
+                  visualConfig:
+                    confirmedCameraPlacement &&
+                    confirmedCameraPlacement.modelKey === selectedModel.key
+                      ? confirmedCameraPlacement
+                      : null,
+                })
+              }
               disabled={!selectedModel}
             >
               Áp dụng vào form thêm bàn

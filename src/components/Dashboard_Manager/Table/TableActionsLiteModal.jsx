@@ -375,6 +375,7 @@ export default function TableActionsLiteModal({
   const hasStoredImage = !!loadTableVrImage(table?.id);
   const isVrSaving = !!busy.save || vrUploading;
   const hasVrConfigured = Boolean(vrUrl?.trim() || hasStoredImage);
+  const hasVisualConfig = !!table?.visualConfig;
   const vrContextLabel = joinUniqueLabels(
     [
       `Bàn ${code || getTableDisplayCode(table) || "--"}`,
@@ -837,6 +838,12 @@ export default function TableActionsLiteModal({
                 <span className="v">
                   X{posX} · Y{posY}
                 </span>
+              </div>
+            )}
+            {hasVisualConfig && (
+              <div className="kv">
+                <span className="k">Xem thử camera:</span>
+                <span className="v">Đã có cấu hình mô phỏng/camera placement</span>
               </div>
             )}
           </div>
@@ -1441,6 +1448,29 @@ export default function TableActionsLiteModal({
 
           {/* Delete */}
           <div className="actions-end">
+            {hasVisualConfig && (
+              <button
+                className="btn"
+                disabled={busy.clearVisual}
+                onClick={async () => {
+                  setBusyKey("clearVisual", true);
+                  try {
+                    await actions.updateTable({ id: table.id, visualConfig: null });
+                    await onUpdated?.();
+                    showNotification("Đã xóa cấu hình xem thử bằng camera.", "success");
+                  } catch (error) {
+                    showNotification(
+                      resolveTableActionError(error, "Không thể xóa cấu hình xem thử."),
+                      "error"
+                    );
+                  } finally {
+                    setBusyKey("clearVisual", false);
+                  }
+                }}
+              >
+                {busy.clearVisual ? "Đang xóa..." : "Xóa cấu hình mô phỏng"}
+              </button>
+            )}
             <button
               className="btn danger"
               disabled={busy.delete || !!deleteDisabledReason}

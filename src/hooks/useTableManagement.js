@@ -16,6 +16,7 @@ const F_TABLE_MIN = gql`
     joinGroupId
     tags
     vrUrl
+    visualConfig
     restaurantId
     position {
       x
