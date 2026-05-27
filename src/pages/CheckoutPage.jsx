@@ -12,6 +12,12 @@ const CheckoutPage = () => {
 
   const fallbackPath = location.state?.from || "/";
 
+  const expiredHoldItems = React.useMemo(() => (checkoutItems || []).filter((item) => {
+    if (!item?.holdExpiresAt) return false;
+    const time = new Date(item.holdExpiresAt).getTime();
+    return Number.isFinite(time) && time <= Date.now();
+  }), [checkoutItems]);
+
   React.useEffect(() => {
     if (
       !checkoutCompleted &&
@@ -32,6 +38,10 @@ const CheckoutPage = () => {
     clearCart();
   };
 
+
+  if (!checkoutCompleted && expiredHoldItems.length > 0) {
+    return <div className="checkout-empty-state"><h2>Giữ món đã hết hạn</h2><p>Vui lòng quay lại menu để thêm lại món trước khi thanh toán.</p><button type="button" className="btn btn--primary" onClick={handleClose}>Quay lại thực đơn</button></div>;
+  }
 
   if (!checkoutCompleted && (!checkoutItems || checkoutItems.length === 0)) {
     return (

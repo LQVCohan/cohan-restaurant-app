@@ -218,6 +218,8 @@ const formatPrice = (price) =>
     currency: "VND",
   }).format(price || 0);
 
+const normalizeCartNote = (value) => String(value || "").trim();
+
 const formatCountdown = (seconds) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
   const minutes = Math.floor(safeSeconds / 60);
@@ -244,6 +246,12 @@ const resolveFoodDetailSocketUrl = () => {
 
   return "http://localhost:4000";
 };
+
+const getCartMutationErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.message ||
+  fallback;
 
 const getAddToCartButtonText = ({
   addingToBackendCart,
@@ -437,6 +445,7 @@ const FoodDetail = () => {
   const [mainImage, setMainImage] = useState("/default-dishes.jpg");
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [customerNote, setCustomerNote] = useState("");
   const [activeTab, setActiveTab] = useState("detail");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAnimatingCart, setIsAnimatingCart] = useState(false);
@@ -621,6 +630,7 @@ const FoodDetail = () => {
       backendCartItemId: null,
       holdExpiresAt: null,
       holdStatus: null,
+      note: customerNote.trim() || null,
     };
   };
 
@@ -670,18 +680,22 @@ const FoodDetail = () => {
             price: payload.price,
             quantity,
             thumbImage: payload.image,
-            note: null,
+            note: customerNote.trim() || null,
             servingVariantKey: selectedServingKey || "portion",
           },
         },
       });
 
-      const returnedItem = data?.addCartItem?.items?.find(
-        (item) =>
-          String(item?.menuItemId) === String(resolvedDish?.id) &&
+      const targetNote = normalizeCartNote(payload?.note);
+      const returnedItem = data?.addCartItem?.items?.find((item) => {
+        const sameMenuItem =
+          String(item?.menuItemId) === String(resolvedDish?.id);
+        const sameServing =
           String(item?.servingVariantKey) ===
-            String(selectedServingKey || "portion"),
-      );
+          String(selectedServingKey || "portion");
+        const sameNote = normalizeCartNote(item?.note) === targetNote;
+        return sameMenuItem && sameServing && sameNote;
+      });
 
       const backendCartId = data?.addCartItem?.id || null;
       const backendCartItemId = returnedItem?.id || null;
@@ -705,6 +719,7 @@ const FoodDetail = () => {
         holdStatus: returnedItem?.holdStatus || payload.holdStatus,
         servingVariantKey:
           returnedItem?.servingVariantKey || payload.servingVariantKey,
+        note: returnedItem?.note ?? payload.note ?? null,
       });
 
       try {
@@ -721,6 +736,7 @@ const FoodDetail = () => {
         holdStatus: returnedItem?.holdStatus || null,
         servingVariantKey:
           returnedItem?.servingVariantKey || payload.servingVariantKey,
+        note: returnedItem?.note ?? payload.note ?? null,
       };
     } catch (error) {
       alert(
@@ -793,6 +809,19 @@ const FoodDetail = () => {
           <ChevronRight size={14} />
           <span className="current">{resolvedDish.name}</span>
         </div>
+
+
+
+          <div className="fd-note-box">
+            <label htmlFor="dish-note">Ghi chú cho món</label>
+            <textarea
+              id="dish-note"
+              value={customerNote}
+              onChange={(e) => setCustomerNote(e.target.value)}
+              maxLength={180}
+              placeholder="Ví dụ: ít cay, không hành..."
+            />
+          </div>
 
         <div className="fd-main-grid">
           <div className="fd-gallery">
