@@ -110,7 +110,10 @@ export const sanitizeVisualConfig = (value) => {
     dimensions,
     placement,
     source: "camera-preview",
-    savedAt: new Date().toISOString(),
+    savedAt:
+      value.savedAt != null && String(value.savedAt).trim()
+        ? String(value.savedAt)
+        : new Date().toISOString(),
   };
 };
 

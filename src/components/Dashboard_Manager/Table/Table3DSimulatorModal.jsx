@@ -237,7 +237,17 @@ const Table3DSimulatorModal = ({
           <div className="viewer-overlay">
             <span>{selectedModel?.label || "Mẫu 3D"}</span>
             {loading && <span>Đang tải catalog...</span>}
-            {confirmedCameraPlacement && <span>Đã lưu cấu hình xem thử cho bàn này</span>}
+            {confirmedCameraPlacement && (
+              <span>Đã xác nhận vị trí xem thử cho mẫu này</span>
+            )}
+            {confirmedCameraPlacement &&
+              selectedModel &&
+              confirmedCameraPlacement.modelKey !== selectedModel.key && (
+                <span>
+                  Vị trí xem thử đã xác nhận thuộc mẫu khác. Hãy xem thử bằng camera lại nếu
+                  muốn lưu cho mẫu này.
+                </span>
+              )}
           </div>
 
           {selectedModel?.modelUrl && !modelError ? (
