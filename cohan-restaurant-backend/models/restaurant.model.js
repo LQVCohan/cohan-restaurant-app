@@ -15,6 +15,47 @@ const addressSchema = new mongoose.Schema({
 });
 
 
+
+const locationSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number],
+      validate: {
+        validator(value) {
+          return (
+            Array.isArray(value) &&
+            value.length === 2 &&
+            Number.isFinite(value[0]) &&
+            Number.isFinite(value[1]) &&
+            value[0] >= -180 &&
+            value[0] <= 180 &&
+            value[1] >= -90 &&
+            value[1] <= 90
+          );
+        },
+        message: "location.coordinates must be [lng, lat]",
+      },
+    },
+  },
+  { _id: false }
+);
+
+function isValidLatLng(lat, lng) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
 const paymentProviderConfigSchema = new mongoose.Schema({
   provider: { type: String, enum: ["momo", "vnpay"], required: true },
   label: { type: String, default: "" },
@@ -84,6 +125,7 @@ const restaurantSchema = BaseSchemaModel({
   spaceImages: [String],
   vrTourUrl: String,
   address: addressSchema,
+  location: locationSchema,
   phone: String,
   email: String,
   featuredMenu: [String],
@@ -135,6 +177,19 @@ restaurantSchema.index({ "address.city": 1, "address.district": 1 });
 restaurantSchema.index({ "address.ward": 1, "address.postalCode": 1 });
 restaurantSchema.index({ cuisineType: 1 });
 restaurantSchema.index({ "address.lat": 1, "address.lng": 1 });
+restaurantSchema.index({ location: "2dsphere" });
+
+
+restaurantSchema.pre("validate", function syncLocationFromAddress(next) {
+  const lat = Number(this?.address?.lat);
+  const lng = Number(this?.address?.lng);
+  if (isValidLatLng(lat, lng)) {
+    this.location = { type: "Point", coordinates: [lng, lat] };
+  } else {
+    this.location = undefined;
+  }
+  next();
+});
 
 /** 🔍 TEXT INDEX cho search nhà hàng + location */
 restaurantSchema.index({
