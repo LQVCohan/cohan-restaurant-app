@@ -13,6 +13,7 @@ import {
 import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 import { findRelevantKnowledgeForChatbot } from "./restaurantChatbotKnowledge.service.js";
 import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSuggestion.service.js";
+import { evaluateRestaurantAiChatbotSafety } from "./restaurantChatbotSafety.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
@@ -862,6 +863,25 @@ export const handleRestaurantChatbotMessage = async ({
     persistedHistory = [];
   }
 
+  const safetyEval = await evaluateRestaurantAiChatbotSafety({ restaurantId, message: cleanMessage });
+  if (safetyEval.blocked) {
+    const blockedAnswer = String(safetyEval.blockedMessage || aiSettings.fallbackMessage || "Xin lỗi, mình chưa thể hỗ trợ nội dung này. Vui lòng liên hệ nhân viên để được hỗ trợ thêm.");
+    return {
+      answer: blockedAnswer,
+      intent: "safety",
+      confidence: 1,
+      quickReplies: aiSettings.starterQuickReplies || [],
+      actions: [],
+      sources: [],
+      contextSummary: { restaurantCount: 0, menuItemCount: 0, couponCount: 0, orderCount: 0, reservationCount: 0 },
+      conversationId: persistedConversation ? String(persistedConversation._id) : null,
+      isFallback: true,
+      handoffSuggested: Boolean(aiSettings.handoffEnabled && safetyEval.handoffSuggested),
+      handoffReason: safetyEval.outOfScope ? "out_of_scope" : "blocked_topic",
+      handoffMessage: aiSettings.handoffEnabled && safetyEval.handoffSuggested ? (safetyEval.handoffMessage || "Nội dung này cần nhân viên hỗ trợ. Bạn có thể bấm 'Gặp nhân viên'.") : null,
+    };
+  }
+
   const context = await buildContext({ message: cleanMessage, restaurantId, user });
   const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId, message: cleanMessage, limit: 4 });
   const aiResult = await callOpenAI({
@@ -872,6 +892,16 @@ export const handleRestaurantChatbotMessage = async ({
   });
   const responseData = aiResult || fallbackAnswer(context);
   if (responseData?.isFallback && aiSettings.fallbackMessage) responseData.answer = aiSettings.fallbackMessage;
+  if (Array.isArray(safetyEval?.disclaimers) && safetyEval.disclaimers.length) {
+    responseData.answer = `${String(responseData.answer || "").trim()}
+
+${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
+  }
+  if (safetyEval?.handoffSuggested && aiSettings.handoffEnabled) {
+    responseData.handoffSuggested = true;
+    responseData.handoffReason = responseData.handoffReason || "handoff_topic";
+    responseData.handoffMessage = responseData.handoffMessage || safetyEval.handoffMessage || "Chủ đề này phù hợp để nhân viên hỗ trợ trực tiếp.";
+  }
   const finalResponse = {
     ...responseData,
     contextSummary: {

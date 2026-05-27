@@ -357,3 +357,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - New AI feedback service + GraphQL query/mutations for submit/review/convert workflow.
 - Widget now allows guest per-answer feedback and prevents duplicate feedback in-session.
 - Manager knowledge page now includes feedback review section.
+
+
+## Phase 15 - AI Chatbot Safety Rules & Moderation
+- Added per-restaurant safety rules model `AiChatbotSafetyRule` with rule types: `blocked_topic`, `required_disclaimer`, `handoff_topic`, `allowed_scope`.
+- Added GraphQL CRUD APIs for manager/admin to manage safety rules.
+- Runtime `askAiChatbot` now evaluates enabled safety rules before AI generation.
+- `blocked_topic` and out-of-scope (`allowed_scope`) can short-circuit AI and return safe fallback/handoff guidance.
+- `required_disclaimer` appends managed disclaimers to response.
+- Matching uses safe case-insensitive includes / escaped regex only (no raw user regex execution).
+- Permissions: list uses `REPORT_READ`; create/update/delete use `RESTAURANT_WRITE`; runtime evaluation is internal.

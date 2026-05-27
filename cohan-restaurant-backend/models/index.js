@@ -110,3 +110,5 @@ export { default as AiChatbotKnowledgeItem } from "./ai-chatbot-knowledge-item.m
 export { default as AiChatbotKnowledgeSuggestion } from "./ai-chatbot-knowledge-suggestion.model.js";
 
 export { default as AiChatbotAnswerFeedback } from "./ai-chatbot-answer-feedback.model.js";
+
+export { default as AiChatbotSafetyRule } from "./ai-chatbot-safety-rule.model.js";
