@@ -193,6 +193,8 @@ const formatPrice = (price) =>
     currency: "VND",
   }).format(price || 0);
 
+const normalizeCartNote = (value) => String(value || "").trim();
+
 const formatCountdown = (seconds) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
   const minutes = Math.floor(safeSeconds / 60);
@@ -627,12 +629,16 @@ const FoodDetail = () => {
         },
       });
 
-      const returnedItem = data?.addCartItem?.items?.find(
-        (item) =>
-          String(item?.menuItemId) === String(resolvedDish?.id) &&
+      const targetNote = normalizeCartNote(payload?.note);
+      const returnedItem = data?.addCartItem?.items?.find((item) => {
+        const sameMenuItem =
+          String(item?.menuItemId) === String(resolvedDish?.id);
+        const sameServing =
           String(item?.servingVariantKey) ===
-            String(selectedServingKey || "portion"),
-      );
+          String(selectedServingKey || "portion");
+        const sameNote = normalizeCartNote(item?.note) === targetNote;
+        return sameMenuItem && sameServing && sameNote;
+      });
 
       const backendCartId = data?.addCartItem?.id || null;
       const backendCartItemId = returnedItem?.id || null;
