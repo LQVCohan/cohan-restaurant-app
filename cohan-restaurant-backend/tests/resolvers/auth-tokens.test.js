@@ -74,6 +74,7 @@ describe("auth tokens", () => {
     expect(result?.token).toBeTruthy();
     expect(old.revokedAt).toBeTruthy();
     expect(old.replacedByTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.user.passwordHash).toBeUndefined();
   });
 
   it("reusing old revoked refresh token returns null and revokes descendant chain", async () => {
