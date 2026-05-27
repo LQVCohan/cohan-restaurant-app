@@ -524,3 +524,8 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
   - Read/list: `PERMISSIONS.REPORT_READ`
   - Create/update/delete: `PERMISSIONS.RESTAURANT_WRITE`
 - Runtime: chatbot lấy knowledge enabled theo restaurant, text-search/keyword scoring, giới hạn top 3-5 và giới hạn ký tự trước khi chèn vào prompt.
+
+## Phase 13 - Knowledge Gap Suggestions
+- Added suggestion capture when chatbot fallback/low confidence/no knowledge/handoff.
+- New manager APIs for reviewing, approving (to knowledge item), dismissing, deleting suggestions.
+- Permission model: REPORT_READ for listing, RESTAURANT_WRITE for mutating suggestion status.

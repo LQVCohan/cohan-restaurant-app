@@ -19,6 +19,42 @@ type AiChatbotContextSummary {
 }
 
 
+
+type AiChatbotKnowledgeSuggestion {
+  id: ID!
+  restaurantId: ID!
+  question: String!
+  normalizedQuestion: String
+  suggestedTitle: String
+  suggestedContent: String
+  category: String
+  tags: [String!]!
+  triggerType: String!
+  confidence: Float
+  status: String!
+  occurrenceCount: Int!
+  lastAskedAt: DateTime
+  approvedKnowledgeItemId: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AiChatbotKnowledgeSuggestionFilterInput {
+  status: String
+  search: String
+  triggerType: String
+}
+
+input ApproveAiChatbotKnowledgeSuggestionInput {
+  title: String
+  content: String
+  category: String
+  tags: [String!]
+  enabled: Boolean
+  priority: Int
+  sourceType: String
+}
+
 type AiChatbotKnowledgeItem {
   id: ID!
   restaurantId: ID!
@@ -238,6 +274,7 @@ extend type Query {
   publicAiChatbotSettings(restaurantId: ID): PublicAiChatbotSettings!
   restaurantAiChatbotKnowledge(restaurantId: ID!, filter: AiChatbotKnowledgeFilterInput): [AiChatbotKnowledgeItem!]!
   restaurantAiChatbotKnowledgeItem(id: ID!): AiChatbotKnowledgeItem
+  restaurantAiChatbotKnowledgeSuggestions(restaurantId: ID!, filter: AiChatbotKnowledgeSuggestionFilterInput): [AiChatbotKnowledgeSuggestion!]!
 }
 
 extend type Mutation {
@@ -249,4 +286,7 @@ extend type Mutation {
   createRestaurantAiChatbotKnowledgeItem(input: CreateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
   updateRestaurantAiChatbotKnowledgeItem(input: UpdateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
   deleteRestaurantAiChatbotKnowledgeItem(id: ID!): Boolean!
+  approveRestaurantAiChatbotKnowledgeSuggestion(id: ID!, input: ApproveAiChatbotKnowledgeSuggestionInput!): AiChatbotKnowledgeItem!
+  dismissRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
+  deleteRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
 }

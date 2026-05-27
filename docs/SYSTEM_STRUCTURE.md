@@ -324,11 +324,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 
 - CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.
 
-## 10. Authentication flow (access + refresh)
-- Access token hiện là JWT thời hạn ngắn (`ACCESS_TOKEN_EXPIRES_IN`, mặc định 15 phút) và chỉ giữ trong memory ở frontend (không lưu `localStorage/sessionStorage`).
-- Refresh token là opaque token ngẫu nhiên, chỉ gửi qua cookie `HttpOnly` (`REFRESH_TOKEN_COOKIE_NAME`, `SameSite`, `Secure` ở production) và không bao giờ trả qua GraphQL.
-- Login GraphQL vẫn trả `token` + `user`; backend đồng thời set refresh cookie.
-- Frontend startup gọi `POST /api/auth/refresh` (`credentials: include`) để khôi phục session; nếu thành công sẽ nhận access token mới.
-- Refresh endpoint xoay vòng refresh token mỗi lần gọi; token cũ bị revoke.
-- Logout gọi `POST /api/auth/logout`, revoke refresh token hiện tại, clear cookie, và frontend xóa token memory + legacy keys (`auth_token`, `auth_user`, `auth_remember`, `token`).
-- Luồng localStorage token cũ đã bị deprecate/removed để giảm rủi ro XSS lấy JWT.
+## Phase 12 - AI Chatbot Knowledge Base
+- Added per-restaurant knowledge model: `AiChatbotKnowledgeItem` with manager CRUD and runtime retrieval.
+- GraphQL aiChatbot schema now supports knowledge list/item queries and create/update/delete mutations.
+- Manager page route/hash: `#ai-chatbot-knowledge` with sidebar entry `AI Chatbot Knowledge`.
+- Permissions: read/list via `report.read`; write ops via `restaurant.write` through `requireRestaurantPermission`.
+- Runtime chatbot now injects top relevant enabled knowledge snippets (capped chars) into prompt context before model generation.
+
+### AI Chatbot Phase 13
+- Added backend model/service/graphql and manager UI section for Knowledge Gap Suggestions.
+- Runtime now records deduplicated pending suggestions by restaurant + normalized question.
