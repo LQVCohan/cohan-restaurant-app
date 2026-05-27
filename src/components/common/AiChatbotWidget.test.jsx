@@ -2,7 +2,27 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import AiChatbotWidget from "./AiChatbotWidget";
+import AiChatbotWidget, { buildMenuSourceCards, buildStarterMessages, extractRestaurantId, getInputPlaceholder } from "./AiChatbotWidget";
+
+describe("AiChatbotWidget helpers", () => {
+  it("extractRestaurantId from /restaurant/:id", () => {
+    expect(extractRestaurantId({ params: { id: "abc" }, pathname: "/restaurant/abc" })).toBe("abc");
+  });
+  it("restaurant context starter includes Gợi ý món cho 2 người", () => {
+    expect(buildStarterMessages({ restaurantId: "r1", publicSettings: null })).toContain("Gợi ý món cho 2 người");
+  });
+  it("global starter remains general", () => {
+    expect(buildStarterMessages({ restaurantId: null, publicSettings: null }).length).toBeGreaterThan(0);
+  });
+  it("menu source cards only include menuItem sources", () => {
+    const cards = buildMenuSourceCards({ intent: "menu", sources: [{ type: "menuItem", id: "1", label: "A" }, { type: "coupon", id: "2", label: "B" }] });
+    expect(cards).toHaveLength(1);
+  });
+  it("placeholder changes when restaurantId exists", () => {
+    expect(getInputPlaceholder("r1")).toMatch(/combo/);
+    expect(getInputPlaceholder(null)).toMatch(/đặt bàn/);
+  });
+});
 
 let askMutationSpy;
 let handoffMutationSpy;

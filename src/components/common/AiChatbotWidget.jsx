@@ -96,6 +96,11 @@ const STARTER_MESSAGES = [
   "Tôi muốn đặt bàn",
   "Có mã giảm giá nào không?",
 ];
+export const buildStarterMessages = ({ restaurantId, publicSettings }) => {
+  if (publicSettings?.starterQuickReplies?.length) return publicSettings.starterQuickReplies;
+  if (restaurantId) return ["Gợi ý món cho 2 người", "Món bán chạy", "Món dưới 100k", "Có món chay không?"];
+  return STARTER_MESSAGES;
+};
 
 
 const GUEST_ID_STORAGE_KEY = "cohan_ai_guest_id";
@@ -131,11 +136,13 @@ const INITIAL_MESSAGES = [
   },
 ];
 
-const extractRestaurantId = ({ params, pathname }) => {
+export const extractRestaurantId = ({ params, pathname }) => {
   if (params?.id && pathname.includes("/restaurant/")) return params.id;
   if (params?.restaurantId) return params.restaurantId;
   return null;
 };
+export const getInputPlaceholder = (restaurantId) => (restaurantId ? "Hỏi AI gợi ý món, combo, giá, món chay..." : "Hỏi về món ăn, đặt bàn, đơn hàng...");
+export const buildMenuSourceCards = (response) => (response?.intent === "menu" ? (response?.sources || []).filter((source) => source?.type === "menuItem") : []);
 
 const normalizeHistory = (messages) =>
   messages
@@ -149,6 +156,8 @@ function AiChatbotWidget() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [lastActions, setLastActions] = useState([]);
   const [lastQuickReplies, setLastQuickReplies] = useState(STARTER_MESSAGES);
+  const [lastIntent, setLastIntent] = useState("");
+  const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
@@ -220,8 +229,8 @@ function AiChatbotWidget() {
         return next;
       });
     }
-    if (publicSettings?.starterQuickReplies?.length) setLastQuickReplies(publicSettings.starterQuickReplies);
-  }, [publicSettings?.welcomeMessage, publicSettings?.starterQuickReplies]);
+    setLastQuickReplies(buildStarterMessages({ restaurantId, publicSettings }));
+  }, [publicSettings?.welcomeMessage, publicSettings?.starterQuickReplies, restaurantId]);
 
   useEffect(() => {
     const latest = [...messages]
@@ -393,8 +402,10 @@ function AiChatbotWidget() {
 
       setMessages((current) => [...current, { role: "assistant", content: answer, meta: response }]);
       setLastActions(response?.actions || []);
-      setLastQuickReplies(response?.quickReplies?.length ? response.quickReplies : (publicSettings?.starterQuickReplies?.length ? publicSettings.starterQuickReplies : STARTER_MESSAGES));
+      setLastQuickReplies(response?.quickReplies?.length ? response.quickReplies : buildStarterMessages({ restaurantId, publicSettings }));
       setLastContextSummary(response?.contextSummary || null);
+      setLastIntent(response?.intent || "");
+      setMenuSourceCards(buildMenuSourceCards(response));
     } catch (err) {
       const code = err?.graphQLErrors?.[0]?.extensions?.code;
       const msg = err?.graphQLErrors?.[0]?.message || err?.message || "";
@@ -490,10 +501,13 @@ function AiChatbotWidget() {
             <div className="ai-chatbot-context">
               <Sparkles size={14} />
               <span>
-                Đã tham chiếu {lastContextSummary.menuItemCount || 0} món, {lastContextSummary.couponCount || 0} coupon, {lastContextSummary.orderCount || 0} đơn.
+                {lastIntent === "menu"
+                  ? `Đã tham chiếu ${lastContextSummary.menuItemCount || 0} món trong menu nhà hàng này.`
+                  : `Đã tham chiếu ${lastContextSummary.menuItemCount || 0} món, ${lastContextSummary.couponCount || 0} coupon, ${lastContextSummary.orderCount || 0} đơn.`}
               </span>
             </div>
           ) : null}
+          {menuSourceCards.length ? <div className="ai-chatbot-menu-cards">{menuSourceCards.map((s) => <div key={s.id} className="ai-chatbot-menu-card"><strong>{s.label}</strong><button type="button" onClick={() => handleAction({ href: `/food/${s.id}` })}>Xem món</button></div>)}</div> : null}
 
           {visibleActions.length ? (
             <div className="ai-chatbot-actions">
@@ -548,7 +562,7 @@ function AiChatbotWidget() {
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={chatbotEnabled ? "Hỏi về món ăn, đặt bàn, đơn hàng..." : "Chatbot đang tạm tắt cho nhà hàng này"}
+              placeholder={chatbotEnabled ? getInputPlaceholder(restaurantId) : "Chatbot đang tạm tắt cho nhà hàng này"}
               maxLength={500}
               disabled={!chatbotEnabled || loading || guestSendLoading || handoffLoading || isSendInFlight}
             />
