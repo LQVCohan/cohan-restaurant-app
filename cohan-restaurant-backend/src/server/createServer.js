@@ -64,6 +64,17 @@ const parseAllowedOrigins = () => {
   return filtered.length > 0 ? filtered : ["http://localhost:5173"];
 };
 
+export function shouldAllowAuthCookieRequestOrigin({ origin, allowedOrigins, nodeEnv, allowNoOriginValue }) {
+  const runtimeNodeEnv = String(nodeEnv || "development").trim().toLowerCase();
+  const allowNoOriginRaw = String(allowNoOriginValue || "").trim().toLowerCase();
+  const noOriginExplicitAllow = allowNoOriginRaw === "true";
+  const allowNoOriginAuthCookieRequests = runtimeNodeEnv === "production"
+    ? noOriginExplicitAllow
+    : allowNoOriginRaw !== "false";
+  if (!origin) return allowNoOriginAuthCookieRequests;
+  return allowedOrigins.includes(String(origin || ""));
+}
+
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
@@ -143,16 +154,15 @@ export async function createServer() {
   const RL_AUTH_REFRESH_WINDOW = process.env.RL_AUTH_REFRESH_WINDOW || "1 minute";
   const RL_AUTH_LOGOUT_MAX = Number(process.env.RL_AUTH_LOGOUT_MAX || 60);
   const RL_AUTH_LOGOUT_WINDOW = process.env.RL_AUTH_LOGOUT_WINDOW || "1 minute";
-  const allowNoOriginRaw = String(process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN || "").trim().toLowerCase();
-  const noOriginExplicitAllow = allowNoOriginRaw === "true";
-  const allowNoOriginAuthCookieRequests = process.env.NODE_ENV === "production"
-    ? noOriginExplicitAllow
-    : allowNoOriginRaw !== "false";
-  const isAllowedOrigin = (origin) => allowedOrigins.includes(String(origin || ""));
   const enforceAuthCookieOrigin = (req, reply) => {
     const origin = req.headers.origin;
-    if (!origin) return allowNoOriginAuthCookieRequests;
-    if (isAllowedOrigin(origin)) return true;
+    const allowed = shouldAllowAuthCookieRequestOrigin({
+      origin,
+      allowedOrigins,
+      nodeEnv: process.env.NODE_ENV,
+      allowNoOriginValue: process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN,
+    });
+    if (allowed) return true;
     reply.code(403).send({ ok: false, message: "Forbidden" });
     return false;
   };

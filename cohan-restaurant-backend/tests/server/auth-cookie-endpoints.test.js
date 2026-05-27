@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/security/authTokens.js', async () => {
   const actual = await vi.importActual('../../src/security/authTokens.js');
@@ -10,11 +10,13 @@ vi.mock('../../src/security/authTokens.js', async () => {
   };
 });
 
-import { createServer } from '../../src/server/createServer.js';
+import { createServer, shouldAllowAuthCookieRequestOrigin } from '../../src/server/createServer.js';
 import * as authTokens from '../../src/security/authTokens.js';
 import RefreshToken from '../../models/refresh-token.model.js';
 
 describe('auth cookie endpoints', () => {
+  const originalEnv = { ...process.env };
+
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'x';
@@ -22,6 +24,10 @@ describe('auth cookie endpoints', () => {
     process.env.CORS_ORIGINS = 'http://localhost:5173';
     process.env.NODE_ENV = 'test';
     process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN = 'true';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
   });
 
   it('refresh missing cookie returns 401 and clears cookie', async () => {
@@ -78,7 +84,7 @@ describe('auth cookie endpoints', () => {
 
   it('rejects no Origin in production by default', async () => {
     process.env.NODE_ENV = 'production';
-    delete process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN;
+    process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN = '';
     const app = await createServer();
     const res = await app.inject({ method: 'POST', url: '/api/auth/logout' });
     expect(res.statusCode).toBe(403);
@@ -99,5 +105,20 @@ describe('auth cookie endpoints', () => {
     expect(indexes).toEqual(expect.arrayContaining([
       [{ expiresAt: 1 }, expect.objectContaining({ expireAfterSeconds: 0 })],
     ]));
+  });
+
+  it('origin helper enforces production no-origin default deny', () => {
+    expect(shouldAllowAuthCookieRequestOrigin({
+      origin: undefined,
+      allowedOrigins: ['http://localhost:5173'],
+      nodeEnv: 'production',
+      allowNoOriginValue: undefined,
+    })).toBe(false);
+    expect(shouldAllowAuthCookieRequestOrigin({
+      origin: undefined,
+      allowedOrigins: ['http://localhost:5173'],
+      nodeEnv: 'production',
+      allowNoOriginValue: 'true',
+    })).toBe(true);
   });
 });
