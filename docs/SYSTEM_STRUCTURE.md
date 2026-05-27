@@ -399,3 +399,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - DTO/GraphQL safety convention: non-null list fields always return arrays; GraphQL IDs are string-safe at service boundaries.
 - Added simple AI risk signal summary for managers (fallback spikes, not-helpful spikes, pending suggestion backlog).
 - Known limitation: risk signals are threshold-based counters (no trend charting yet).
+
+## 10. Auth security hardening (final cleanup)
+- All auth/user mutation responses now pass through `sanitizeUserForClient` before being returned to clients.
+- Sensitive fields (`passwordHash`, email verification tokens, deleted/internal lifecycle fields) are never included in login/refresh payloads.
+- Refresh endpoint (`/api/auth/refresh`) only returns sanitized user objects.
+- `seed-admin` now stores `role` as a single ObjectId value (not array) and builds payload via helper.
+- `.env.example` documents split access/refresh token settings, refresh/logout rate limits, and auth cookie origin guard settings.
+- Production env validation blocks disabling reCAPTCHA unless `ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION=true`; production also rejects missing/placeholder `RECAPTCHA_SECRET` when enabled.
+- Production CSP blocks `unsafe-inline` styles by default; enable only with `CSP_ALLOW_UNSAFE_INLINE_STYLE=true`.
+

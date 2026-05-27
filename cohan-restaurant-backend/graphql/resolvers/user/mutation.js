@@ -30,6 +30,7 @@ import {
   logAuthAuditEvent,
 } from "../../../src/security/loginSecurity.js";
 import { issueRefreshToken, signAccessToken } from "../../../src/security/authTokens.js";
+import { sanitizeUserForClient } from "../../../src/security/sanitizeUserForClient.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -223,11 +224,17 @@ const DUPLICATE_REGISTRATION_ERROR = "Email/Phone/Username already in use";
 const MULTIPLE_GUEST_MATCH_ERROR =
   "Contact information matches multiple guest profiles. Please contact support.";
 
-const loadUserForGraph = async (userId) =>
-  User.findById(userId)
+const loadUserForGraph = async (userId) => {
+  const userObj = await User.findById(userId)
     .populate("role")
     .populate("refRestaurants")
     .lean({ virtuals: true });
+
+  if (!userObj) return null;
+
+  const roleName = (userObj.role?.slug || userObj.role?.name || "").toLowerCase();
+  return sanitizeUserForClient({ ...userObj, roleName });
+};
 
 const buildAuthPayloadForUser = async (userId) => {
   const userObj = await User.findById(userId)
@@ -236,7 +243,7 @@ const buildAuthPayloadForUser = async (userId) => {
   const token = signAccessToken({ ...userObj, roleName: (userObj.role?.slug || userObj.role?.name || "").toLowerCase() });
   const roleName = (userObj.role?.slug || userObj.role?.name || "").toLowerCase();
 
-  return { token, user: { ...userObj, roleName } };
+  return { token, user: sanitizeUserForClient({ ...userObj, roleName }) };
 };
 
 const findGuestMatchForRegistration = async ({ email, phone }) => {
@@ -295,7 +302,7 @@ export const UserMutation = {
     if (!u) throw new GraphQLError("User not found");
     u.role = roleId;
     await u.save();
-    return u.toObject();
+    return sanitizeUserForClient(u);
   },
 
   // ========== Change password (simple args) ==========
@@ -391,7 +398,7 @@ export const UserMutation = {
       .populate("role")
       .lean({ virtuals: true });
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
-    return { ...saved, roleName };
+    return sanitizeUserForClient({ ...saved, roleName });
   },
 
   // ========== Wallet ==========
@@ -411,7 +418,7 @@ export const UserMutation = {
     }
 
     if (user.wallet?.status === "active") {
-      return user.toObject();
+      return sanitizeUserForClient(user);
     }
 
     const provider = input?.provider?.trim() || "internal";
@@ -435,7 +442,7 @@ export const UserMutation = {
       .populate("role")
       .lean({ virtuals: true });
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
-    return { ...saved, roleName };
+    return sanitizeUserForClient({ ...saved, roleName });
   },
 
   async topUpMyWallet(_, { input }, ctx) {
@@ -779,7 +786,7 @@ export const UserMutation = {
         ip: ctx?.request?.ip,
       });
     }
-    return { token, user: { ...userObj, roleName } };
+    return { token, user: sanitizeUserForClient({ ...userObj, roleName }) };
   },
 
   async updateMyFoodPreferences(_, { input }, ctx) {
@@ -809,7 +816,7 @@ export const UserMutation = {
       .lean({ virtuals: true });
 
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
-    return { ...saved, roleName };
+    return sanitizeUserForClient({ ...saved, roleName });
   },
 
   // ========== Update current user ==========
@@ -917,7 +924,7 @@ export const UserMutation = {
       .lean({ virtuals: true });
 
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
-    return { ...saved, roleName };
+    return sanitizeUserForClient({ ...saved, roleName });
   },
 
   // ========== Guest nhanh ==========
@@ -940,7 +947,7 @@ export const UserMutation = {
     const saved = await User.findById(doc._id)
       .populate("role")
       .lean({ virtuals: true });
-    return saved;
+    return sanitizeUserForClient(saved);
   },
 
   // === Admin update user ===
@@ -1123,7 +1130,7 @@ export const UserMutation = {
       .populate("role")
       .lean({ virtuals: true });
 
-    return saved;
+    return sanitizeUserForClient(saved);
   },
 
   async updateCustomerNote(_, { customerId, restaurantId, noteInternal }, ctx) {
@@ -1264,7 +1271,7 @@ export const UserMutation = {
     const saved = await Customer.findByIdAndUpdate(id, { loyaltyPoints: lp, customerType: ct }, { new: true })
       .populate("role")
       .lean({ virtuals: true });
-    return saved;
+    return sanitizeUserForClient(saved);
   },
 
   async upsertCustomerRankSettings(
@@ -1311,7 +1318,7 @@ export const UserMutation = {
       { new: true, upsert: true, setDefaultsOnInsert: true },
     ).lean();
 
-    return saved;
+    return sanitizeUserForClient(saved);
   },
 
   // ========== verify email mutations ==========

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import process from "process";
 import { RefreshToken, User } from "../../models/index.js";
+import { sanitizeUserForClient } from "./sanitizeUserForClient.js";
 
 export const REFRESH_TOKEN_INVALID_MESSAGE = "Authentication failed";
 
@@ -118,7 +119,8 @@ export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip
   existing.replacedByTokenHash = issued.tokenHash;
   await existing.save();
   const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
-  return { token: signAccessToken({ ...user, roleName }), user: { ...user, roleName } };
+  const safeUser = sanitizeUserForClient({ ...user, roleName });
+  return { token: signAccessToken({ ...user, roleName }), user: safeUser };
 }
 
 export async function revokeRefreshToken(rawToken) {

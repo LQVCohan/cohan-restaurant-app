@@ -168,6 +168,23 @@ function validateProductionAuthTokenSettings() {
   return issues;
 }
 
+
+function validateProductionRecaptchaPolicy() {
+  if ((process.env.NODE_ENV || "development") !== "production") return [];
+  const issues = [];
+  const enabled = String(process.env.ENABLE_RECAPTCHA ?? "true").toLowerCase() === "true";
+  const allowDisable = String(process.env.ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION || "false").toLowerCase() === "true";
+  const secret = String(process.env.RECAPTCHA_SECRET || "").trim();
+  if (!enabled && !allowDisable) issues.push("ENABLE_RECAPTCHA (cannot be false in production unless ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION=true)");
+  if (enabled) {
+    if (!secret) issues.push("RECAPTCHA_SECRET (required when ENABLE_RECAPTCHA=true in production)");
+    if (["replace-with-recaptcha-secret","your_recaptcha_secret","changeme","replace-me"].includes(secret.toLowerCase())) {
+      issues.push("RECAPTCHA_SECRET (placeholder/weak value is not allowed in production)");
+    }
+  }
+  return issues;
+}
+
 export function validateEnv() {
   applyDevelopmentDefaults();
 
@@ -190,6 +207,7 @@ export function validateEnv() {
 
   missing.push(...validateProductionTableAccessSecret());
   missing.push(...validateProductionAuthTokenSettings());
+  missing.push(...validateProductionRecaptchaPolicy());
 
   if (missing.length) {
     const error =

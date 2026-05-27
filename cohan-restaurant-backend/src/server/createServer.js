@@ -66,6 +66,25 @@ const parseAllowedOrigins = () => {
 
 
 
+
+export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {
+  if (!inProduction) return false;
+  const styleSrc = ["'self'", "https://fonts.googleapis.com"];
+  if (allowUnsafeInlineStyle) styleSrc.splice(1, 0, "'unsafe-inline'");
+  return {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc,
+      imgSrc: ["'self'", "data:", "blob:", s3PublicBase || ""].filter(Boolean),
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      connectSrc: ["'self'", ...(allowedOrigins || []), ...(s3PublicBase ? [s3PublicBase] : [])],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+    },
+  };
+}
+
 export function shouldAllowAuthCookieRequestOrigin({ origin, allowedOrigins, nodeEnv, allowNoOriginValue }) {
   const normalizedAllowedOrigins = Array.isArray(allowedOrigins) ? allowedOrigins : [];
   if (origin) return normalizedAllowedOrigins.includes(origin);
@@ -93,24 +112,10 @@ export async function createServer() {
   await app.register(cookie);
 
   const inProduction = process.env.NODE_ENV === "production";
-  const cspConnect = ["'self'", ...allowedOrigins];
   const s3PublicBase = String(process.env.S3_PUBLIC_BASE_URL || "").trim();
-  if (s3PublicBase) cspConnect.push(s3PublicBase);
+  const allowUnsafeInlineStyle = String(process.env.CSP_ALLOW_UNSAFE_INLINE_STYLE || "false").toLowerCase() === "true";
   await app.register(helmet, {
-    contentSecurityPolicy: inProduction
-      ? {
-          directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:", "blob:", s3PublicBase || ""].filter(Boolean),
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-            connectSrc: cspConnect,
-            objectSrc: ["'none'"],
-            frameAncestors: ["'self'"],
-          },
-        }
-      : false,
+    contentSecurityPolicy: buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }),
   });
 
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
