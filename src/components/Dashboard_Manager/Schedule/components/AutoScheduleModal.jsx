@@ -135,7 +135,7 @@ const AutoScheduleModal = ({
       onClose={!generating && !applying ? onClose : undefined}
       size="xl"
     >
-      <Modal.Header>AI xếp lịch nhân viên</Modal.Header>
+      <Modal.Header>Chia ca tự động</Modal.Header>
 
       <Modal.Body className="auto-schedule-body">
         <div className="auto-banner">
@@ -143,13 +143,12 @@ const AutoScheduleModal = ({
             <Sparkles size={20} />
           </div>
           <div className="banner-copy">
-            <strong>AI xếp lịch nhân viên</strong>
+            <strong>Chia ca tự động có hỗ trợ AI</strong>
             <p>
-              AI phân tích nhu cầu, availability, performance và guardrail trước khi tạo preview.
+              Hệ thống phân tích nhu cầu, lịch rảnh, hiệu suất nhân sự và các ràng buộc vận hành để tạo preview chia ca.
             </p>
             <p>
-              Chỉ các phân công hợp lệ mới được lưu. Ca còn thiếu người sẽ được
-              đánh dấu để quản lý bổ sung thủ công.
+              Manager kiểm tra preview trước khi áp dụng. Hệ thống không tự lưu lịch nếu chưa được xác nhận.
             </p>
           </div>
         </div>
@@ -261,11 +260,11 @@ const AutoScheduleModal = ({
 
               {!selectedRequiredRoles.length ? (
                 <p className="config-hint">
-                  AI sẽ tự đề xuất vai trò cần xếp dựa trên forecast và lịch hiện có.
+                  Hệ thống sẽ tự đề xuất vai trò cần xếp dựa trên dự báo và lịch hiện có.
                 </p>
               ) : (
                 <p className="config-hint">
-                  Các vai trò này dùng để manager rà soát preview; AI vẫn tự đề xuất nhu cầu chính từ forecast và lịch hiện có.
+                  Các vai trò này dùng để manager rà soát preview; hệ thống vẫn tự đề xuất nhu cầu chính từ dự báo và lịch hiện có.
                 </p>
               )}
             </div>
@@ -308,7 +307,7 @@ const AutoScheduleModal = ({
             disabled={generating || applying}
           >
             <Sparkles size={16} />
-            {generating ? "AI đang phân tích..." : "AI phân tích & tạo preview"}
+            {generating ? "Đang phân tích lịch..." : "Tạo preview chia ca"}
           </button>
           {assistantMeta ? (
             <div className="assistant-meta">
@@ -335,7 +334,7 @@ const AutoScheduleModal = ({
           <div className="auto-state loading">
             <Sparkles size={18} />
             <span>
-              AI đang phân tích nhu cầu, lịch rảnh và guardrail...
+              Đang phân tích nhu cầu, lịch rảnh và ràng buộc vận hành...
             </span>
           </div>
         ) : null}
@@ -344,7 +343,7 @@ const AutoScheduleModal = ({
           <div className="ai-planner-summary-wrap">
             <div className="ai-planner-summary">
               <div>
-                <strong>Nhận định AI</strong>
+                <strong>Nhận định hệ thống</strong>
                 <p>{aiPlannerPayload.aiSummary}</p>
                 {!!(aiPlannerPayload.generatedFrom || []).length && (
                   <small>Nguồn: {(aiPlannerPayload.generatedFrom || []).join(", ")}</small>

@@ -4126,8 +4126,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
       showNotification(
         readyCount <= 0
-          ? "AI đã tạo preview nhưng chưa có phân công đủ điều kiện."
-          : `AI đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
+          ? "Đã tạo preview chia ca nhưng chưa có phân công đủ điều kiện."
+          : `Đã tạo preview chia ca: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
         readyCount <= 0 || warningCount > 0 ? "warning" : "success",
       );
       return;
@@ -5002,7 +5002,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               onClick={() => setIsAutoScheduleOpen(true)}
             >
               <Sparkles size={16} />
-              AI xếp lịch nhân viên
+              Chia ca tự động
             </button>
           )}
 
