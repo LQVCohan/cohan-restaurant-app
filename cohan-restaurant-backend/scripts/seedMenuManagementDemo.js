@@ -1,7 +1,7 @@
 import 'dotenv/config.js';
 import mongoose from 'mongoose';
-import {
 import { assertDemoScriptAllowed, safeDbInfo } from './lib/scriptSafety.js';
+import {
   Category,
   CategoryMenu,
   Ingredient,

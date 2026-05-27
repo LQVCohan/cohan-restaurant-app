@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "process";
 import crypto from "node:crypto";
 import mongoose from "mongoose";
+import { safeDbInfo } from "./lib/scriptSafety.js";
 import {
   Category,
   CategoryMenu,
