@@ -130,12 +130,39 @@ const normalizeServingVariantsForSave = (methods = []) => {
 };
 
 
+const getForYouMetadataStatus = (item) => {
+  const dietTags = Array.isArray(item?.dietTags) ? item.dietTags : [];
+  const allergenTags = Array.isArray(item?.allergenTags) ? item.allergenTags : [];
+  const tasteProfile = item?.tasteProfile || {};
+
+  const hasDietTags = dietTags.length > 0;
+  const hasAllergenTags = allergenTags.length > 0;
+
+  const hasTasteProfile =
+    !!tasteProfile.containsOnion ||
+    !!tasteProfile.containsCilantro ||
+    Number(tasteProfile.sugar ?? 100) !== 100 ||
+    String(tasteProfile.spice || "Vừa") !== "Vừa";
+
+  const hasAnyMetadata = hasDietTags || hasAllergenTags || hasTasteProfile;
+
+  return {
+    hasDietTags,
+    hasAllergenTags,
+    hasTasteProfile,
+    hasAnyMetadata,
+    status: hasAnyMetadata ? "ready" : "missing",
+    label: hasAnyMetadata ? "Đã có FOR YOU" : "Thiếu FOR YOU",
+  };
+};
+
 const getMenuEmptyState = ({
   restaurantId,
   selectedTimeSlot,
   items,
   displayItems,
   inventoryFilter,
+  forYouMetadataFilter,
   hasActiveMenuFilters,
   canCreateMenuItem,
   canCreateMenu,
@@ -195,6 +222,26 @@ const getMenuEmptyState = ({
         description: "Không có món nào đang bị ẩn theo bộ lọc hiện tại.",
       },
     };
+
+    const forYouEmptyStateMap = {
+      missing: {
+        title: "Không có món thiếu metadata FOR YOU",
+        description: "Tất cả món hiện tại đã có ít nhất một nhóm metadata FOR YOU.",
+      },
+      ready: {
+        title: "Không có món đã khai báo metadata FOR YOU",
+        description: "Chưa có món nào có diet tags, allergen tags hoặc taste profile đã tùy chỉnh.",
+      },
+    };
+
+    const forYouState = forYouEmptyStateMap[forYouMetadataFilter];
+    if (forYouState) {
+      return {
+        icon: "✨",
+        ...forYouState,
+        action: "clear_filters",
+      };
+    }
 
     const inventoryState = inventoryFilterMap[inventoryFilter];
     if (inventoryState) {
@@ -307,6 +354,7 @@ const MenuManagement = () => {
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
   const [sortOption, setSortOption] = useState("default");
   const [inventoryFilter, setInventoryFilter] = useState("all");
+  const [forYouMetadataFilter, setForYouMetadataFilter] = useState("all");
   const [inventorySyncPreview, setInventorySyncPreview] = useState(null);
   const [isSyncingInventory, setIsSyncingInventory] = useState(false);
   const [pendingSyncPayload, setPendingSyncPayload] = useState(null);
@@ -998,14 +1046,29 @@ const MenuManagement = () => {
 
   const displayItems = useMemo(
     () => {
-      const mapped = (items || []).map((item) => ({
-        ...item,
-        categoryName:
-          categories.find((c) => c.id === item.categoryId)?.name ||
-          item.categoryName,
-      }));
-      if (inventoryFilter === "all") return mapped;
-      return mapped.filter((item) => {
+      const mapped = (items || []).map((item) => {
+        const forYouMetadata = getForYouMetadataStatus(item);
+        return {
+          ...item,
+          categoryName:
+            categories.find((c) => c.id === item.categoryId)?.name ||
+            item.categoryName,
+          forYouMetadata,
+        };
+      });
+
+      let filtered = mapped;
+
+      if (forYouMetadataFilter === "missing") {
+        filtered = filtered.filter((item) => item.forYouMetadata?.status === "missing");
+      }
+
+      if (forYouMetadataFilter === "ready") {
+        filtered = filtered.filter((item) => item.forYouMetadata?.status === "ready");
+      }
+
+      if (inventoryFilter === "all") return filtered;
+      return filtered.filter((item) => {
         const warnings = Array.isArray(item.stockWarnings) ? item.stockWarnings : [];
 
         if (inventoryFilter === "low_stock") {
@@ -1023,7 +1086,7 @@ const MenuManagement = () => {
         return true;
       });
     },
-    [items, categories, inventoryFilter],
+    [items, categories, inventoryFilter, forYouMetadataFilter],
   );
 
   const isSparseGrid =
@@ -1044,6 +1107,7 @@ const MenuManagement = () => {
       categoryId ||
       statusFilter ||
       inventoryFilter !== "all" ||
+      forYouMetadataFilter !== "all" ||
       priceRange?.minPrice ||
       priceRange?.maxPrice,
   );
@@ -1053,6 +1117,7 @@ const MenuManagement = () => {
     setCategoryId(null);
     setStatusFilter(null);
     setInventoryFilter("all");
+    setForYouMetadataFilter("all");
     setPriceRange({ minPrice: null, maxPrice: null });
   }, [setCategoryId, setPriceRange, setSearch, setStatusFilter]);
 
@@ -1069,6 +1134,7 @@ const MenuManagement = () => {
         items,
         displayItems,
         inventoryFilter,
+        forYouMetadataFilter,
         hasActiveMenuFilters,
         canCreateMenuItem,
         canCreateMenu,
@@ -1084,6 +1150,7 @@ const MenuManagement = () => {
       hasAnyMenu,
       hasMenuForSelectedSlot,
       inventoryFilter,
+      forYouMetadataFilter,
       items,
       selectedTimeSlot,
     ],
@@ -1104,6 +1171,20 @@ const MenuManagement = () => {
       return next.size === prev.size ? prev : next;
     });
   }, [isBulkUpdatingStatus, visibleItemIds]);
+
+  const forYouMetadataCounts = useMemo(() => {
+    const sourceItems = Array.isArray(items) ? items : [];
+    return sourceItems.reduce(
+      (acc, item) => {
+        const status = getForYouMetadataStatus(item);
+        acc.all += 1;
+        if (status.status === "missing") acc.missing += 1;
+        if (status.status === "ready") acc.ready += 1;
+        return acc;
+      },
+      { all: 0, missing: 0, ready: 0 },
+    );
+  }, [items]);
 
   const inventoryFilterCounts = useMemo(() => {
     const sourceItems = Array.isArray(items) ? items : [];
@@ -1284,6 +1365,9 @@ const MenuManagement = () => {
           inventoryFilter={inventoryFilter}
           onInventoryFilterChange={setInventoryFilter}
           inventoryFilterCounts={inventoryFilterCounts}
+          forYouMetadataFilter={forYouMetadataFilter}
+          onForYouMetadataFilterChange={setForYouMetadataFilter}
+          forYouMetadataCounts={forYouMetadataCounts}
         />
 
         <div className="mm-body__content">
