@@ -78,4 +78,10 @@ describe("restaurantChatbotAnalytics service", () => {
   it("blocks guest role", async () => {
     await expect(getRestaurantChatbotAnalytics({ input: {}, ctx: { user: { id: "u1", roleName: "customer" } } })).rejects.toThrow("FORBIDDEN");
   });
+
+  it("requires REPORT_READ permission for restaurant-scoped analytics", async () => {
+    await getRestaurantChatbotAnalytics({ input: { restaurantId: "507f1f77bcf86cd799439011" }, ctx: { user: { id: "u1", roleName: "manager" } } });
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(expect.any(Object), "507f1f77bcf86cd799439011", "report.read");
+  });
+
 });

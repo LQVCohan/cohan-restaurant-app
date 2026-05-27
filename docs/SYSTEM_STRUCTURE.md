@@ -427,3 +427,35 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - To intentionally run in production-like environments, set both `ALLOW_DEMO_SEED_IN_PRODUCTION=true` and `DEMO_PASSWORD=<strong temporary password>`.
 - Do not use `Demo@123456` outside local/dev.
 - Script logging masks MongoDB URI credentials to prevent secret leakage.
+
+## 20. AI Chatbot rollout readiness map (Phase 20A)
+
+### 20.1 Thành phần production
+
+- GraphQL schema: `cohan-restaurant-backend/graphql/schema/aiChatbot.graphql`
+- Resolver entry: `cohan-restaurant-backend/graphql/resolvers/aiChatbot/index.js`
+- Core services:
+  - `src/services/ai/restaurantChatbot.service.js`
+  - `src/services/ai/restaurantChatbotSettings.service.js`
+  - `src/services/ai/restaurantChatbotKnowledge*.service.js`
+  - `src/services/ai/restaurantChatbotFeedback.service.js`
+  - `src/services/ai/restaurantChatbotSafety.service.js`
+  - `src/services/ai/restaurantChatbotEvaluation.service.js`
+  - `src/services/ai/restaurantChatbotAnalytics.service.js`
+
+### 20.2 Boundary công khai vs manager
+
+- Public/guest: `askAiChatbot`, `publicAiChatbotSettings`, guest handoff follow-up flows, feedback submit.
+- Manager/reporting:
+  - knowledge/suggestion/feedback moderation,
+  - safety rules,
+  - evaluation playground,
+  - analytics.
+- Bulk write/import/export phải giữ `RESTAURANT_WRITE` boundary.
+- Analytics phải giữ report permission boundary.
+
+### 20.3 Vận hành và rollback
+
+- Env vận hành chatbot nằm ở backend (`OPENAI_API_KEY`, `AI_CHATBOT_MODEL`, `AI_MODEL`).
+- Nếu provider unavailable: chatbot chạy fallback theo service hiện tại.
+- Checklist rollout/rollback chi tiết tại `docs/ai-chatbot-release-checklist.md`.

@@ -16,7 +16,7 @@ vi.mock("../../src/services/ai/restaurantChatbotSafety.service.js", () => ({
 import { handleRestaurantChatbotMessage } from "../../src/services/ai/restaurantChatbot.service.js";
 
 describe("restaurant chatbot safety-blocked shape", () => {
-  beforeEach(() => { delete process.env.OPENAI_API_KEY; });
+  beforeEach(() => { delete process.env.OPENAI_API_KEY; vi.restoreAllMocks(); });
 
   it("returns required arrays and safetyResult in blocked flow", async () => {
     const out = await handleRestaurantChatbotMessage({ message: "blocked", evaluationMode: true, persist: false, recordSuggestions: false });
@@ -26,4 +26,13 @@ describe("restaurant chatbot safety-blocked shape", () => {
     expect(Array.isArray(out.sources)).toBe(true);
     expect(out.safetyResult?.blocked).toBe(true);
   });
+
+  it("does not call AI provider when safety blocks", async () => {
+    process.env.OPENAI_API_KEY = "test_key";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: "{}" } }] }) });
+    const out = await handleRestaurantChatbotMessage({ message: "blocked", evaluationMode: true, persist: false, recordSuggestions: false });
+    expect(out.safetyResult?.blocked).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
 });
