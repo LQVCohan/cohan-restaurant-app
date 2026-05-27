@@ -48,10 +48,6 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
     return data.modifierGroups.filter((g) => setIds.has(String(g.id)));
   }, [data, item]);
 
-  
-  const hasMissingRequired = useMemo(() =>
-    groupsForItem.some((g) => g.required && !(selected[g.id] || []).length),
-  [groupsForItem, selected]);
 /** Khởi tạo chọn mặc định mỗi khi mở modal / đổi item / dữ liệu groups sẵn sàng */
   useEffect(() => {
     if (!isOpen || !item || groupsForItem.length === 0) return;
@@ -89,6 +85,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
 
   /** Chọn / bỏ chọn 1 option trong group */
   const toggleOption = useCallback((group, optionId) => {
+    setValidationError("");
     setSelected((prev) => {
       const next = { ...prev };
       const arr = Array.isArray(next[group.id]) ? [...next[group.id]] : [];
@@ -251,7 +248,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
           <button
             className="btn btn--success"
             onClick={handleApply}
-            disabled={loading || !!error || hasMissingRequired}
+            disabled={loading || !!error}
           >
             Áp dụng
           </button>
