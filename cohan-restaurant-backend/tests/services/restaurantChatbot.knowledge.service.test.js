@@ -99,4 +99,15 @@ describe("restaurantChatbotKnowledge Phase 18", () => {
     await bulkDeleteRestaurantAiChatbotKnowledge({ ids: [created.id], ctx: { user: { _id: "u" } } });
     expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
   });
+
+  it("import/export enforce expected permissions", async () => {
+    const payload = JSON.stringify([{ title: "P", content: "Q" }]);
+    await importRestaurantAiChatbotKnowledge({ input: { restaurantId: rid, format: "json", payload }, ctx: { user: { _id: "u" } } });
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+
+    permissionSpy.mockClear();
+    await exportRestaurantAiChatbotKnowledge({ restaurantId: rid, format: "json", ctx: { user: { _id: "u" } } });
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.REPORT_READ);
+  });
+
 });

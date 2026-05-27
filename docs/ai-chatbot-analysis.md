@@ -599,3 +599,36 @@ Nhưng vẫn giữ:
 - Fixed `aiChatbot.schema.safety.test.js` to resolve the GraphQL schema path relative to the test file, eliminating cwd-dependent failures.
 - Stabilized frontend widget test execution by replacing the duplicate-import aggregator test entry with a no-op coverage marker test.
 - Confirmed manager knowledge/analytics UI test suites and chatbot widget suites pass in the stabilization run.
+
+## Phase 20A - Production rollout readiness
+
+### Trạng thái production-ready hiện tại
+
+- Chatbot có public entrypoint `askAiChatbot` và public settings query `publicAiChatbotSettings`.
+- Luồng manager đã có các API quản trị: settings, knowledge, suggestions, feedback, safety, evaluation và analytics.
+- Guard quyền đã áp dụng ở service layer cho các thao tác ghi theo nhà hàng (đặc biệt nhóm bulk/import/export).
+- Safety layer có thể chặn response và trả về dữ liệu an toàn.
+- Khi thiếu `OPENAI_API_KEY`, chatbot chuyển về fallback thay vì dừng toàn bộ tính năng.
+
+### Cấu hình môi trường production
+
+- `OPENAI_API_KEY` (required nếu muốn provider-backed answer).
+- `AI_CHATBOT_MODEL` (optional, ưu tiên cho chatbot).
+- `AI_MODEL` (optional fallback model key).
+- Không đưa bất kỳ secret AI nào vào biến `VITE_*` phía frontend.
+
+### Smoke test/guardrail trọng yếu
+
+- Schema smoke phải bao phủ cả public APIs và manager APIs (không chỉ safety CRUD).
+- Regression test cho:
+  - analytics permission boundary,
+  - import/export + bulk write permission,
+  - evaluation mode không sinh side effect persist,
+  - safety-block path không gọi provider.
+- `askAiChatbot` response shape luôn giữ `quickReplies/actions/sources` là mảng GraphQL-safe.
+
+### Rollback guidance
+
+- Ưu tiên rollback mềm bằng cách tắt chatbot theo restaurant settings (`enabled=false`).
+- Nếu lỗi hệ thống rộng, rollback artifact backend/frontend về bản ổn định gần nhất.
+- Sau rollback phải chạy lại smoke checklist trong `docs/ai-chatbot-release-checklist.md`.
