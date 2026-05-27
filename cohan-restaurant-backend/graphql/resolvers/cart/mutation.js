@@ -254,7 +254,7 @@ export const CartMutation = {
       name,
       price,
       quantity = 1,
-      thumbImage: serverSnapshotThumb,
+      thumbImage: clientThumbImage,
       note,
       servingVariantKey,
     } = input;
@@ -355,7 +355,7 @@ export const CartMutation = {
             price: serverSnapshotPrice,
             quantity: qty,
             restaurantId,
-            thumbImage: serverSnapshotThumb,
+            thumbImage: clientThumbImage,
             note,
             servingKey,
             holdExpiresAt,

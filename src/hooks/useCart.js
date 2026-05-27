@@ -7,6 +7,8 @@ const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).m
 
 const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
 
+const getLineKey = (item = {}) => item.cartLineKey || buildCartLineIdentity(item);
+
 const getStorage = () => {
   if (typeof window === "undefined") return null;
   try {
@@ -70,13 +72,14 @@ export const useCart = () => {
   // dish cần có: id (dishId), restaurantId, name, price, image?, method?, quantity?
   const addToCart = useCallback((dish) => {
     const incoming = { ...dish, quantity: dish.quantity || 1 };
+    incoming.cartLineKey = getLineKey(incoming);
     setCart((prev) => {
       // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
-      const incomingLineKey = buildCartLineIdentity(incoming);
-      const found = prev.find((i) => buildCartLineIdentity(i) === incomingLineKey);
+      const incomingLineKey = getLineKey(incoming);
+      const found = prev.find((i) => getLineKey(i) === incomingLineKey);
       if (found) {
         return prev.map((i) =>
-buildCartLineIdentity(i) === incomingLineKey
+getLineKey(i) === incomingLineKey
             ? {
                 ...i,
                 ...incoming,
@@ -95,11 +98,12 @@ buildCartLineIdentity(i) === incomingLineKey
   }, []);
 
   // Thay đổi số lượng theo itemId (delta có thể âm/dương)
-  const updateQuantity = useCallback((itemId, change) => {
+  const updateQuantity = useCallback((itemOrKey, change) => {
+    const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey);
     setCart((prev) =>
       prev
         .map((i) => {
-          if (i.id === itemId) {
+          if (getLineKey(i) === targetKey) {
             const next = (i.quantity || 1) + Number(change || 0);
             return next > 0 ? { ...i, quantity: next } : null;
           }
@@ -110,7 +114,7 @@ buildCartLineIdentity(i) === incomingLineKey
   }, []);
 
   const removeFromCart = useCallback(
-    (itemId) => setCart((prev) => prev.filter((i) => i.id !== itemId)),
+    (itemOrKey) => { const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey); setCart((prev) => prev.filter((i) => getLineKey(i) !== targetKey)); },
     [],
   );
 

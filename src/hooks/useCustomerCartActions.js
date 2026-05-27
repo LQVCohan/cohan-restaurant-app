@@ -50,6 +50,8 @@ export const useCustomerCartActions = ({
   const [removeCartItemMutation] = useMutation(REMOVE_CART_ITEM);
   const [clearCartMutation] = useMutation(CLEAR_CART);
 
+  const getItemBusyKey = (item) => item?.cartLineKey || item?.id;
+
   const setBusyItem = (itemId, value) => {
     setBusyItemIds((prev) => ({ ...prev, [itemId]: value }));
   };
@@ -66,7 +68,7 @@ export const useCustomerCartActions = ({
       if (nextQuantity === Number(item.quantity || 1)) return;
 
       if (!item.backendCartItemId) {
-        safeUpdateQuantity(item.id, delta);
+        safeUpdateQuantity(item, delta);
         return;
       }
 
@@ -75,7 +77,7 @@ export const useCustomerCartActions = ({
         return;
       }
 
-      setBusyItem(item.id, true);
+      setBusyItem(getItemBusyKey(item), true);
       try {
         await updateCartItemMutation({
           variables: {
@@ -86,12 +88,12 @@ export const useCustomerCartActions = ({
             },
           },
         });
-        safeUpdateQuantity(item.id, delta);
+        safeUpdateQuantity(item, delta);
         onAfterBackendCartChange?.();
       } catch (error) {
         alert(getMutationErrorMessage(error, "Không thể cập nhật số lượng món. Vui lòng thử lại."));
       } finally {
-        setBusyItem(item.id, false);
+        setBusyItem(getItemBusyKey(item), false);
       }
     },
     [cart, onAfterBackendCartChange, safeUpdateQuantity, updateCartItemMutation],
@@ -101,7 +103,7 @@ export const useCustomerCartActions = ({
     async (item) => {
       if (!item) return;
       if (!item.backendCartItemId) {
-        safeRemoveFromCart(item.id);
+        safeRemoveFromCart(item);
         return;
       }
       if (!item.backendCartId) {
@@ -109,17 +111,17 @@ export const useCustomerCartActions = ({
         return;
       }
 
-      setBusyItem(item.id, true);
+      setBusyItem(getItemBusyKey(item), true);
       try {
         await removeCartItemMutation({
           variables: { input: { cartId: item.backendCartId, itemId: item.backendCartItemId } },
         });
-        safeRemoveFromCart(item.id);
+        safeRemoveFromCart(item);
         onAfterBackendCartChange?.();
       } catch (error) {
         alert(getMutationErrorMessage(error, "Không thể xóa món. Vui lòng thử lại."));
       } finally {
-        setBusyItem(item.id, false);
+        setBusyItem(getItemBusyKey(item), false);
       }
     },
     [onAfterBackendCartChange, removeCartItemMutation, safeRemoveFromCart],
@@ -144,7 +146,7 @@ export const useCustomerCartActions = ({
           await removeCartItemMutation({
             variables: { input: { cartId: item.backendCartId, itemId: item.backendCartItemId } },
           });
-          safeRemoveFromCart(item.id);
+          safeRemoveFromCart(item);
         }
         if (localOnlyItems.length) safeRemoveRestaurantItems(restaurantId);
         onAfterBackendCartChange?.();

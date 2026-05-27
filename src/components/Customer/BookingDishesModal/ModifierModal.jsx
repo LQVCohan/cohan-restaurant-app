@@ -124,9 +124,11 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
         const op = g.options?.find((x) => String(x.id) === String(opId));
         if (!op) return;
         newModifiers.push({
+          groupId: g.id,
+          optionId: op.id,
           groupName: g.name,
           optionName: op.name,
-          price: Number(op.priceDelta || 0), // đồng bộ format bạn đang dùng
+          price: Number(op.priceDelta || 0),
         });
         newModifiersPrice += Number(op.priceDelta || 0);
       });

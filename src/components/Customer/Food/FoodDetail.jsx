@@ -571,6 +571,7 @@ const FoodDetail = () => {
       backendCartItemId: null,
       holdExpiresAt: null,
       holdStatus: null,
+      note: customerNote.trim() || null,
     };
   };
 
@@ -655,6 +656,7 @@ const FoodDetail = () => {
         holdStatus: returnedItem?.holdStatus || payload.holdStatus,
         servingVariantKey:
           returnedItem?.servingVariantKey || payload.servingVariantKey,
+        note: returnedItem?.note ?? payload.note ?? null,
       });
 
       try {
@@ -671,6 +673,7 @@ const FoodDetail = () => {
         holdStatus: returnedItem?.holdStatus || null,
         servingVariantKey:
           returnedItem?.servingVariantKey || payload.servingVariantKey,
+        note: returnedItem?.note ?? payload.note ?? null,
       };
     } catch (error) {
       alert(

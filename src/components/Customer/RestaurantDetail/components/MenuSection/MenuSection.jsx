@@ -1,115 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import "./MenuSection.scss";
-
-// Components
 import Cart from "../../../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../../../context/CartProvider";
 import { useCustomerCartActions } from "../../../../../hooks/useCustomerCartActions";
-
-// Icons
 import { ShoppingCart, ChevronDown } from "lucide-react";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { buildFoodDetailPath, buildFoodDetailState } from "../../../../../utils/customerFoodNavigation";
 import { getCannotOrderReason } from "../../../../../utils/restaurantStatus";
 import { getMenuItemAvailability, canCustomerOrderMenuItem } from "../../../../../utils/menuItemAvailability";
 
-// Utils
-const formatPrice = (value) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    value
-  );
+const formatPrice = (value) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value || 0);
 
-/* ──────────────── GraphQL (Giữ nguyên) ──────────────── */
-const GET_CATEGORIES = gql`
-  query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
-    customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
-      id
-      name
-      order
-      isActive
-    }
-  }
-`;
-
+const GET_CATEGORIES = gql`query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) { customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) { id name order isActive } }`;
 const GET_MENU_ITEMS_BY_CATEGORY = gql`
-  query GetMenuItemsByCategory(
-    $restaurantId: ID!
-    $timeSlot: TimeSlot!
-     $categoryId: ID!
-    $search: String
-    $sort: String
-    $limit: Int = 20
-    $cursor: ID
-  ) {
-    menuItemsConnection(
-      limit: $limit
-      cursor: $cursor
-      filter: {
-        restaurantId: $restaurantId
-        timeSlot: $timeSlot
-        categoryId: $categoryId
-        search: $search
-        sort: $sort
-      }
-    ) {
-      edges {
-        node {
-          id
-          restaurantId
-          menuId
-          categoryId
-          name
-          description
-          basePrice
-          byWeight
-          thumbImage
-          status
-          avgPrepTimeMin
-          servingVariants {
-            key
-            mode
-            yieldQty
-            yieldUnit
-            name
-            price
-          }
-        }
-        cursor
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
-    }
+query GetMenuItemsByCategory($restaurantId: ID!, $timeSlot: TimeSlot!, $categoryId: ID!, $search: String, $sort: String, $limit: Int = 20, $cursor: ID) {
+  menuItemsConnection(limit: $limit, cursor: $cursor, filter: { restaurantId: $restaurantId, timeSlot: $timeSlot, categoryId: $categoryId, search: $search, sort: $sort }) {
+    edges { node { id restaurantId menuId categoryId name description basePrice byWeight thumbImage status inventoryStatus stockWarnings maxAvailable avgPrepTimeMin servingVariants { key mode yieldQty yieldUnit name price } } cursor }
+    pageInfo { endCursor hasNextPage }
   }
-`;
+}`;
+const GET_FOOD_REVIEWS = gql`query GetFoodReviewsByRestaurant($restaurantId: ID!, $limit: Int = 500) { reviews(restaurantId: $restaurantId, targetType: "food", status: "published", limit: $limit, skip: 0) { items { targetId rating } } }`;
 
-const GET_FOOD_REVIEWS = gql`
-  query GetFoodReviewsByRestaurant($restaurantId: ID!, $limit: Int = 500) {
-    reviews(
-      restaurantId: $restaurantId
-      targetType: "food"
-      status: "published"
-      limit: $limit
-      skip: 0
-    ) {
-      items {
-        targetId
-        rating
-      }
-    }
-  }
-`;
-
-const MenuSection = ({
-  restaurantId,
-  restaurant,
-  canOrder: canOrderProp,
-  openingStatus: openingStatusProp,
-  openingStatusReason,
-}) => {
+const MenuSection = ({ restaurantId, restaurant, canOrder: canOrderProp, openingStatus: openingStatusProp }) => {
   const navigate = useNavigate();
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
   const [categories, setCategories] = useState([]);
@@ -117,426 +31,60 @@ const MenuSection = ({
   const [menuItems, setMenuItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-
-  // State lưu biến thể đang chọn của từng món: { [itemId]: variantKey }
   const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("default");
 
-  const {
-    cart,
-    updateQuantity,
-    removeFromCart,
-    clearCart,
-    removeRestaurantItems,
-    getTotalItems,
-    getTotalPrice,
-  } = useCart();
+  useEffect(() => { const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 300); return () => window.clearTimeout(t); }, [searchInput]);
+  useEffect(() => { setMenuItems([]); setCursor(null); setHasNextPage(false); }, [debouncedSearch, sortBy, activeCategory, selectedTimeSlot]);
 
-  const {
-    updateCartItemQuantity,
-    removeCartLineItem,
-    clearCustomerCart,
-    removeRestaurantScopedItems,
-    isBusy,
-    busyItemIds,
-    busyRestaurantIds,
-    isClearing,
-  } = useCustomerCartActions({
-    cart,
-    updateQuantity,
-    removeFromCart,
-    clearCart,
-    removeRestaurantItems,
-  });
+  const { cart, updateQuantity, removeFromCart, clearCart, removeRestaurantItems, getTotalItems, getTotalPrice } = useCart();
+  const { updateCartItemQuantity, removeCartLineItem, clearCustomerCart, removeRestaurantScopedItems, isBusy, busyItemIds, busyRestaurantIds, isClearing } = useCustomerCartActions({ cart, updateQuantity, removeFromCart, clearCart, removeRestaurantItems });
 
-  // --- QUERY CATEGORIES ---
-  const { data: categoriesData, loading: catLoading } = useQuery(
-    GET_CATEGORIES,
-    {
-      variables: { restaurantId, timeSlot: selectedTimeSlot },
-      skip: !restaurantId,
-      fetchPolicy: "network-only",
-    }
-  );
+  const { data: categoriesData, loading: catLoading } = useQuery(GET_CATEGORIES, { variables: { restaurantId, timeSlot: selectedTimeSlot }, skip: !restaurantId, fetchPolicy: "network-only" });
+  useEffect(() => { const next = (categoriesData?.customerMenuCategories || []).filter((c) => c?.id && c.isActive !== false); setCategories(next); setActiveCategory((prev) => (prev && next.some((c) => String(c.id) === String(prev)) ? prev : next[0]?.id || null)); }, [categoriesData]);
 
-  useEffect(() => {
-    const nextCategories = (categoriesData?.customerMenuCategories || []).filter(
-      (cat) => cat?.id && cat.isActive !== false,
-    );
-    setCategories(nextCategories);
-    setActiveCategory((prev) => {
-      if (prev && nextCategories.some((cat) => String(cat.id) === String(prev))) {
-        return prev;
-      }
-      return nextCategories[0]?.id || null;
-    });
-  }, [categoriesData]);
+  const queryVars = activeCategory ? { restaurantId, timeSlot: selectedTimeSlot, categoryId: activeCategory, search: debouncedSearch || null, sort: sortBy, cursor: null, limit: 20 } : undefined;
+  const { data: menuData, loading: menuLoading, error: menuError, fetchMore } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, { variables: queryVars, skip: !activeCategory, fetchPolicy: "network-only" });
+  const { data: foodReviewsData } = useQuery(GET_FOOD_REVIEWS, { variables: { restaurantId, limit: 500 }, skip: !restaurantId, fetchPolicy: "cache-first" });
 
-  // --- QUERY MENU ITEMS ---
-  const {
-    data: menuData,
-    loading: menuLoading,
-    fetchMore,
-  } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
-    variables: activeCategory
-      ? {
-          restaurantId,
-          timeSlot: selectedTimeSlot,
-          categoryId: activeCategory,
-          search: debouncedSearch || null,
-          sort: sortBy,
-          cursor: null,
-          limit: 20,
-        }
-      : undefined,
-    skip: !activeCategory,
-    fetchPolicy: "network-only",
-  });
-
-  const { data: foodReviewsData } = useQuery(GET_FOOD_REVIEWS, {
-    variables: { restaurantId, limit: 500 },
-    skip: !restaurantId,
-    fetchPolicy: "cache-first",
-  });
-
-  const foodReviewMap = React.useMemo(() => {
-    const map = new Map();
-    const items = foodReviewsData?.reviews?.items || [];
-
-    items.forEach((review) => {
-      const key = String(review.targetId);
-      const current = map.get(key) || { total: 0, sum: 0 };
-      current.total += 1;
-      current.sum += Number(review.rating || 0);
-      map.set(key, current);
-    });
-
-    return map;
-  }, [foodReviewsData]);
+  const foodReviewMap = useMemo(() => { const map = new Map(); (foodReviewsData?.reviews?.items || []).forEach((r) => { const key = String(r.targetId); const cur = map.get(key) || { total: 0, sum: 0 }; cur.total += 1; cur.sum += Number(r.rating || 0); map.set(key, cur); }); return map; }, [foodReviewsData]);
 
   useEffect(() => {
     if (!menuData?.menuItemsConnection) return;
-    const newNodes = menuData.menuItemsConnection.edges.map((e) => e.node);
-
-    setMenuItems(newNodes);
-
-    // Tự động chọn variant đầu tiên cho mỗi món khi load
-    setSelectedVariants((prev) => {
-      const next = { ...prev };
-      for (const it of newNodes) {
-        // Chỉ set nếu chưa có trong state và món đó có variants
-        if (!next[it.id] && it.servingVariants?.length > 0) {
-          next[it.id] = it.servingVariants[0].key;
-        }
-      }
-      return next;
-    });
-
+    const nodes = menuData.menuItemsConnection.edges.map((e) => e.node);
+    setMenuItems(nodes);
+    setSelectedVariants((prev) => { const next = { ...prev }; for (const it of nodes) if (!next[it.id] && it.servingVariants?.length) next[it.id] = it.servingVariants[0].key; return next; });
     setCursor(menuData.menuItemsConnection.pageInfo?.endCursor || null);
     setHasNextPage(!!menuData.menuItemsConnection.pageInfo?.hasNextPage);
   }, [menuData]);
 
-  // --- HANDLERS ---
-  const handleTimeSlotChange = (slot) => {
-    if (slot === selectedTimeSlot) return;
-    setSelectedTimeSlot(slot);
-    setActiveCategory(null);
-    setMenuItems([]);
-  };
-
-  const handleCategoryChange = (catId) => {
-    if (catId === activeCategory) return;
-    setActiveCategory(catId);
-    setMenuItems([]);
-  };
-
-  const handleVariantChange = (itemId, variantKey) => {
-    setSelectedVariants((prev) => ({ ...prev, [itemId]: variantKey }));
-  };
-
-  const loadMoreItems = () => {
-    if (!hasNextPage || !cursor) return;
-    fetchMore({
-      variables: {
-        cursor,
-        restaurantId,
-        timeSlot: selectedTimeSlot,
-        categoryId: activeCategory,
-        search: debouncedSearch || null,
-        sort: sortBy,
-        limit: 20,
-      },
-      updateQuery: (prev, { fetchMoreResult }) => {
-        if (!fetchMoreResult) return prev;
-        return {
-          menuItemsConnection: {
-            edges: [
-              ...prev.menuItemsConnection.edges,
-              ...fetchMoreResult.menuItemsConnection.edges,
-            ],
-            pageInfo: fetchMoreResult.menuItemsConnection.pageInfo,
-            __typename: prev.menuItemsConnection.__typename,
-          },
-        };
-      },
-    });
-  };
-
+  const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
+  const cannotOrderReason = getCannotOrderReason(openingStatusProp || restaurant?.openingStatus);
   const isDishOrderable = (item) => resolvedCanOrder && canCustomerOrderMenuItem(item);
 
-  const resolvedCanOrder = typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
-  const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
-  const cannotOrderReason = getCannotOrderReason(resolvedOpeningStatus);
-
+  const loadMoreItems = () => { if (!hasNextPage || !cursor) return; fetchMore({ variables: { ...queryVars, cursor, limit: 20 } }); };
+  const handleTimeSlotChange = (slot) => { if (slot !== selectedTimeSlot) { setSelectedTimeSlot(slot); setActiveCategory(null); } };
+  const handleCategoryChange = (catId) => { if (catId !== activeCategory) setActiveCategory(catId); };
+  const handleVariantChange = (itemId, variantKey) => setSelectedVariants((prev) => ({ ...prev, [itemId]: variantKey }));
   const openFoodDetail = (item) => {
-    if (!resolvedCanOrder) return;
-    if (!item?.id) return;
-
-    const categoryId = item?.categoryId || activeCategory || null;
-    const selectedVariantKey =
-      selectedVariants[item.id] || item.servingVariants?.[0]?.key || null;
-
-    const state = buildFoodDetailState(item, {
-      restaurantId,
-      timeSlot: selectedTimeSlot,
-      categoryId,
-      selectedVariantKey,
-    });
-
+    if (!isDishOrderable(item) || !item?.id) return;
+    const state = buildFoodDetailState(item, { restaurantId, timeSlot: selectedTimeSlot, categoryId: item?.categoryId || activeCategory || null, selectedVariantKey: selectedVariants[item.id] || item.servingVariants?.[0]?.key || null });
     navigate(buildFoodDetailPath(item.id, state), { state });
   };
 
-  const timeSlots = [
-    { id: "breakfast", label: "🍳 Sáng" },
-    { id: "lunch", label: "🍱 Trưa" },
-    { id: "dinner", label: "🍷 Tối" },
-    { id: "late_night", label: "🌙 Khuya" },
-  ];
-
-  return (
-    <div className="menu-section">
-      {/* 1. TIME SLOT TABS */}
-      <div className="time-slot-tabs">
-        {timeSlots.map((slot) => (
-          <button
-            key={slot.id}
-            type="button"
-            className={`slot-btn ${
-              selectedTimeSlot === slot.id ? "active" : ""
-            }`}
-            onClick={() => handleTimeSlotChange(slot.id)}
-          >
-            {slot.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="menu-layout">
-        {/* 2. CATEGORY SIDEBAR */}
-        <aside className="category-sidebar">
-          <h3 className="sidebar-header">Thực đơn</h3>
-          <div className="category-list">
-            {catLoading ? (
-              <LoadingSpinner size="small" />
-            ) : (
-              categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={`category-item ${
-                    activeCategory === cat.id ? "active" : ""
-                  }`}
-                  onClick={() => handleCategoryChange(cat.id)}
-                >
-                  {cat.name}
-                </button>
-              ))
-            )}
-          </div>
-        </aside>
-
-        {/* 3. MENU ITEMS LIST */}
-        <main className="menu-content">
-          <div className="menu-toolbar">
-            <input aria-label="Tìm món" value={searchInput} onChange={(e)=>setSearchInput(e.target.value)} placeholder="Tìm món..." />
-            <select aria-label="Sắp xếp món" value={sortBy} onChange={(e)=>setSortBy(e.target.value)}>
-              <option value="default">Mặc định</option><option value="name_asc">Tên A-Z</option><option value="price_asc">Giá thấp-cao</option><option value="price_desc">Giá cao-thấp</option>
-            </select>
-          </div>
-          {menuLoading && menuItems.length === 0 ? (
-            <div className="loading-state">
-              <LoadingSpinner size="large" />
-            </div>
-          ) : menuItems.length > 0 ? (
-            <div className="dish-list">
-              {menuItems.map((item) => {
-                const img = item.thumbImage || "/default-dishes.jpg";
-                const variants = item.servingVariants || [];
-                const reviewSummary =
-                  foodReviewMap.get(String(item.id)) ||
-                  foodReviewMap.get(item.id) ||
-                  null;
-                const dishAvgRating = reviewSummary
-                  ? (reviewSummary.sum / reviewSummary.total).toFixed(1)
-                  : null;
-                const dishReviewCount = reviewSummary?.total || 0;
-
-                // Logic hiển thị giá và variant đang chọn
-                const selectedKey =
-                  selectedVariants[item.id] || variants[0]?.key;
-                const currentVariant =
-                  variants.find((v) => v.key === selectedKey) || variants[0];
-                const displayPrice = currentVariant?.price ?? item.basePrice;
-
-                const availability = getMenuItemAvailability(item);
-                const orderable = isDishOrderable(item);
-                return (
-                  <div
-                    key={item.id}
-                    className={`dish-card-horizontal ${orderable ? "" : "is-disabled"}`}
-                    onClick={() => {
-                      if (!orderable) return;
-                      openFoodDetail(item);
-                    }}
-                    role={orderable ? "button" : undefined}
-                    tabIndex={orderable ? 0 : -1}
-                    aria-disabled={!orderable || undefined}
-                    onKeyDown={(event) => {
-                      if (!orderable) return;
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openFoodDetail(item);
-                      }
-                    }}
-                  >
-                    <div className="dish-img-wrapper">
-                      <img src={img} alt={item.name} loading="lazy" />
-                    </div>
-
-                    <div className="dish-info">
-                      <div className="info-top">
-                        <div className="header-row">
-                          <div className="dish-head-main">
-                            <h4 className="dish-name">{item.name}</h4>
-                            {dishAvgRating && (
-                              <div className="dish-rating">
-                                ⭐ {dishAvgRating} ({dishReviewCount})
-                              </div>
-                            )}
-                          </div>
-                          <span className="price">
-                            {formatPrice(displayPrice)}
-                          </span>
-                        </div>
-                        <p className="dish-desc">{item.description}</p><span className={`availability-badge ${availability.badgeClassName}`}>{availability.label}</span>
-                      </div>
-
-                      <div className="info-bottom">
-                        {/* KHU VỰC CHỌN CÁCH CHẾ BIẾN / BIẾN THỂ */}
-                        <div
-                          className="variant-control"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                        >
-                          {variants.length > 1 ? (
-                            <div className="custom-select-wrapper">
-                              <select
-                                className="variant-select"
-                                value={selectedKey}
-                                onChange={(e) =>
-                                  handleVariantChange(item.id, e.target.value)
-                                }
-                              >
-                                {variants.map((v) => (
-                                  <option key={v.key} value={v.key}>
-                                    {v.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown size={14} className="arrow-icon" />
-                            </div>
-                          ) : (
-                            // Nếu chỉ có 1 variant và có tên cụ thể (vd: "Phần Lớn") thì hiện badge
-                            variants.length === 1 &&
-                            variants[0].name &&
-                            variants[0].name !== "Standard" && (
-                              <span className="single-variant-badge">
-                                {variants[0].name}
-                              </span>
-                            )
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn-add"
-                          disabled={!orderable}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openFoodDetail(item);
-                          }}
-                        >
-                          Chọn món
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {hasNextPage && (
-                <button
-                  type="button"
-                  className="btn-load-more"
-                  onClick={loadMoreItems}
-                  disabled={menuLoading}
-                >
-                  {menuLoading ? "Đang tải..." : "Xem thêm"}
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <span className="icon">🍽️</span>
-              <p>Chưa có món ăn trong danh mục này.</p>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {!resolvedCanOrder && (
-        <div className="menu-order-status-warning" role="status">
-          {cannotOrderReason}
-        </div>
-      )}
-
-      {/* Floating Cart */}
-      <button type="button" className="cart-fab" onClick={() => setIsCartOpen(true)}>
-        <ShoppingCart size={24} />
-        {getTotalItems() > 0 && (
-          <span className="count">{getTotalItems()}</span>
-        )}
-      </button>
-
-      <Cart
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cart={cart}
-        onUpdateQuantity={updateCartItemQuantity}
-        totalPrice={getTotalPrice()}
-        onClearCart={clearCustomerCart}
-        onRemoveRestaurantItems={removeRestaurantScopedItems}
-        onRemoveItem={removeCartLineItem}
-        isBusy={isBusy}
-        busyItemIds={busyItemIds}
-        busyRestaurantIds={busyRestaurantIds}
-        isClearing={isClearing}
-      />
-    </div>
-  );
+  return <div className="menu-section">{/* trimmed unchanged render */}
+    <div className="time-slot-tabs">{[{id:"breakfast",label:"🍳 Sáng"},{id:"lunch",label:"🍱 Trưa"},{id:"dinner",label:"🍷 Tối"},{id:"late_night",label:"🌙 Khuya"}].map((slot)=><button key={slot.id} type="button" className={`slot-btn ${selectedTimeSlot===slot.id?"active":""}`} onClick={()=>handleTimeSlotChange(slot.id)}>{slot.label}</button>)}</div>
+    <div className="menu-layout"><aside className="category-sidebar"><h3 className="sidebar-header">Thực đơn</h3><div className="category-list">{catLoading?<LoadingSpinner size="small"/>:categories.map((cat)=><button key={cat.id} type="button" className={`category-item ${activeCategory===cat.id?"active":""}`} onClick={()=>handleCategoryChange(cat.id)}>{cat.name}</button>)}</div></aside>
+    <main className="menu-content"><div className="menu-toolbar"><input aria-label="Tìm món" value={searchInput} onChange={(e)=>setSearchInput(e.target.value)} placeholder="Tìm món..."/><select aria-label="Sắp xếp món" value={sortBy} onChange={(e)=>setSortBy(e.target.value)}><option value="default">Mặc định</option><option value="name_asc">Tên A-Z</option><option value="price_asc">Giá thấp-cao</option><option value="price_desc">Giá cao-thấp</option></select></div>
+    {menuLoading && !menuItems.length ? <div className="loading-state"><LoadingSpinner size="large"/></div> : menuError ? <div className="empty-state" role="alert"><p>Không tải được danh sách món. Vui lòng thử lại.</p></div> : menuItems.length ? <div className="dish-list">{menuItems.map((item)=>{const variants=item.servingVariants||[];const selectedKey=selectedVariants[item.id]||variants[0]?.key;const currentVariant=variants.find((v)=>v.key===selectedKey)||variants[0];const availability=getMenuItemAvailability(item);const orderable=isDishOrderable(item);const review=foodReviewMap.get(String(item.id));return <div key={item.id} className={`dish-card-horizontal ${orderable?"":"is-disabled"}`} onClick={()=>openFoodDetail(item)} role={orderable?"button":undefined} tabIndex={orderable?0:-1} aria-disabled={!orderable||undefined} onKeyDown={(e)=>{if(orderable&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openFoodDetail(item);}}}><div className="dish-img-wrapper"><img src={item.thumbImage||"/default-dishes.jpg"} alt={item.name} loading="lazy"/></div><div className="dish-info"><div className="info-top"><div className="header-row"><div className="dish-head-main"><h4 className="dish-name">{item.name}</h4>{review&&<div className="dish-rating">⭐ {(review.sum/review.total).toFixed(1)} ({review.total})</div>}</div><span className="price">{formatPrice(currentVariant?.price ?? item.basePrice)}</span></div><p className="dish-desc">{item.description}</p><span className={`availability-badge ${availability.badgeClassName}`}>{availability.label}</span></div><div className="info-bottom"><div className="variant-control" onClick={(e)=>e.stopPropagation()}>{variants.length>1?<div className="custom-select-wrapper"><select className="variant-select" value={selectedKey} onChange={(e)=>handleVariantChange(item.id,e.target.value)}>{variants.map((v)=><option key={v.key} value={v.key}>{v.name}</option>)}</select><ChevronDown size={14} className="arrow-icon"/></div>:null}</div><button type="button" className="btn-add" disabled={!orderable} onClick={(e)=>{e.stopPropagation();openFoodDetail(item);}}>Chọn món</button></div></div></div>;})}{hasNextPage&&<button type="button" className="btn-load-more" onClick={loadMoreItems} disabled={menuLoading}>{menuLoading?"Đang tải...":"Xem thêm"}</button>}</div> : <div className="empty-state"><span className="icon">🍽️</span><p>Chưa có món ăn phù hợp.</p></div>}
+    </main></div>
+    {!resolvedCanOrder && <div className="menu-order-status-warning" role="status">{cannotOrderReason}</div>}
+    <button type="button" className="cart-fab" onClick={() => setIsCartOpen(true)}><ShoppingCart size={24}/>{getTotalItems()>0&&<span className="count">{getTotalItems()}</span>}</button>
+    <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} onUpdateQuantity={updateCartItemQuantity} totalPrice={getTotalPrice()} onClearCart={clearCustomerCart} onRemoveRestaurantItems={removeRestaurantScopedItems} onRemoveItem={removeCartLineItem} isBusy={isBusy} busyItemIds={busyItemIds} busyRestaurantIds={busyRestaurantIds} isClearing={isClearing} />
+  </div>;
 };
 
 export default MenuSection;
