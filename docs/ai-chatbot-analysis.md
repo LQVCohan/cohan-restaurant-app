@@ -514,3 +514,13 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
 - Runtime uses configurable low-confidence threshold and restaurant fallback message.
 - Handoff creation is blocked when restaurant handoff is disabled.
 - MVP intentionally excludes advanced support-hours scheduler/timezone logic.
+
+## 20. Phase 12 - Per-restaurant Knowledge Base / FAQ
+- Thêm collection tri thức chatbot theo nhà hàng để manager tự quản lý FAQ/policy/manual.
+- API GraphQL mới:
+  - Query: `restaurantAiChatbotKnowledge`, `restaurantAiChatbotKnowledgeItem`
+  - Mutation: `createRestaurantAiChatbotKnowledgeItem`, `updateRestaurantAiChatbotKnowledgeItem`, `deleteRestaurantAiChatbotKnowledgeItem`
+- Permission:
+  - Read/list: `PERMISSIONS.REPORT_READ`
+  - Create/update/delete: `PERMISSIONS.RESTAURANT_WRITE`
+- Runtime: chatbot lấy knowledge enabled theo restaurant, text-search/keyword scoring, giới hạn top 3-5 và giới hạn ký tự trước khi chèn vào prompt.

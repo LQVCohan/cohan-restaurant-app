@@ -323,3 +323,10 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Production bật Helmet CSP với whitelist origin frontend + static/image/font cần thiết; dev giữ chế độ nới lỏng.
 
 - CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.
+
+## Phase 12 - AI Chatbot Knowledge Base
+- Added per-restaurant knowledge model: `AiChatbotKnowledgeItem` with manager CRUD and runtime retrieval.
+- GraphQL aiChatbot schema now supports knowledge list/item queries and create/update/delete mutations.
+- Manager page route/hash: `#ai-chatbot-knowledge` with sidebar entry `AI Chatbot Knowledge`.
+- Permissions: read/list via `report.read`; write ops via `restaurant.write` through `requireRestaurantPermission`.
+- Runtime chatbot now injects top relevant enabled knowledge snippets (capped chars) into prompt context before model generation.
