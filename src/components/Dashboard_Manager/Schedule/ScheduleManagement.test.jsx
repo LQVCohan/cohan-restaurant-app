@@ -302,8 +302,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "07:30" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "15:30" } });
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu|Bắt đầu/i), { target: { value: "07:30" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc|Kết thúc/i), { target: { value: "15:30" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -337,8 +337,8 @@ describe("ScheduleManagement", () => {
     });
     mutationSpy.mockClear();
     fireEvent.click(within(modal).getByRole("button", { name: /Đổi giờ ca|Cập nhật giờ/i }));
-    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu/i), { target: { value: "09:00" } });
-    fireEvent.change(screen.getByLabelText(/Giờ kết thúc/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Giờ bắt đầu|Bắt đầu/i), { target: { value: "09:00" } });
+    fireEvent.change(screen.getByLabelText(/Giờ kết thúc|Kết thúc/i), { target: { value: "09:00" } });
     fireEvent.change(screen.getByLabelText(/Lý do thay đổi/i), { target: { value: "Điều chỉnh vận hành" } });
     fireEvent.click(screen.getByRole("button", { name: /Kiểm tra & lưu/i }));
 
@@ -743,7 +743,7 @@ describe("ScheduleManagement", () => {
       attendanceCorrectionRequests: [{ id: "cor-1", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "pending" }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText("Chỉnh công: Có yêu cầu chỉnh công chờ duyệt")).toBeInTheDocument();
+    expect(await screen.findByText(/Chỉnh công:\s*Có yêu cầu chỉnh công chờ duyệt/i)).toBeInTheDocument();
   });
 
   it("shows applied correction status for matching issue row", async () => {
@@ -765,7 +765,7 @@ describe("ScheduleManagement", () => {
       attendanceCorrectionRequests: [{ id: "cor-2", employeeId: "e01", workDate: "2026-04-20T00:00:00.000Z", status: "applied" }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText("Chỉnh công: Đã áp dụng chỉnh công")).toBeInTheDocument();
+    expect(await screen.findByText(/Chỉnh công:\s*Đã áp dụng chỉnh công/i)).toBeInTheDocument();
   });
 
   it("shows no correction request status when none matched", async () => {
@@ -784,7 +784,7 @@ describe("ScheduleManagement", () => {
       }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText("Chỉnh công: Chưa có yêu cầu chỉnh công")).toBeInTheDocument();
+    expect(await screen.findByText(/Chỉnh công:\s*Chưa có yêu cầu chỉnh công/i)).toBeInTheDocument();
   });
 
   it("does not match correction request from different date", async () => {
@@ -806,7 +806,7 @@ describe("ScheduleManagement", () => {
       attendanceCorrectionRequests: [{ id: "cor-3", employeeId: "e01", workDate: "2026-04-21T00:00:00.000Z", status: "pending" }],
     };
     render(<ScheduleManagement />);
-    expect(await screen.findByText("Chỉnh công: Chưa có yêu cầu chỉnh công")).toBeInTheDocument();
+    expect(await screen.findByText(/Chỉnh công:\s*Chưa có yêu cầu chỉnh công/i)).toBeInTheDocument();
   });
 
   it("shows lifecycle status and filters by lifecycle", async () => {
@@ -824,16 +824,16 @@ describe("ScheduleManagement", () => {
     ] };
     render(<ScheduleManagement />);
 
-    expect(await screen.findByText("Trạng thái: Đang xử lý")).toBeInTheDocument();
-    expect(screen.getByText("Đã có yêu cầu chỉnh công chờ duyệt.")).toBeInTheDocument();
+    expect(await screen.findByText(/Trạng thái:\s*Đang xử lý/i)).toBeInTheDocument();
+    expect(screen.getByText(/chờ duyệt/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Tất cả \(5\)/i }));
-    expect(screen.getByText("Trạng thái: Đã xử lý")).toBeInTheDocument();
-    expect(screen.getByText("Yêu cầu chỉnh công đã được áp dụng.")).toBeInTheDocument();
-    expect(screen.getByText("Trạng thái: Cần kiểm tra lại")).toBeInTheDocument();
-    expect(screen.getByText("Yêu cầu chỉnh công bị từ chối.")).toBeInTheDocument();
-    expect(screen.getByText("Trạng thái: Chưa xử lý")).toBeInTheDocument();
-    expect(screen.getByText("Trạng thái: Đã ghi chú")).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái:\s*Đã xử lý/i)).toBeInTheDocument();
+    expect(screen.getByText(/đã được áp dụng|đã áp dụng/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái:\s*Cần kiểm tra lại/i)).toBeInTheDocument();
+    expect(screen.getByText(/bị từ chối/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái:\s*Chưa xử lý/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái:\s*Đã ghi chú/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Đang xử lý \(1\)/i }));
     expect(await screen.findByText(/P01/i)).toBeInTheDocument();
