@@ -43,6 +43,20 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.ai-chatbot-panel.is-expanded {
+  width: min(760px, calc(100vw - 32px));
+  height: min(760px, calc(100vh - 40px));
+}
+
+.ai-chatbot-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
 }
 
 .ai-chatbot-header {
@@ -96,9 +110,9 @@
 }
 
 .ai-chatbot-messages {
-  flex: 1;
+  flex: unset;
   padding: 16px;
-  overflow-y: auto;
+  overflow: visible;
   background: linear-gradient(180deg, #fff, #fff7ed 120%);
 }
 

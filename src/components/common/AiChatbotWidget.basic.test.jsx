@@ -6,7 +6,6 @@ import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
 
 const mocks = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
-  addToCartSpy: vi.fn(),
   askMutationSpy: vi.fn(),
   handoffMutationSpy: vi.fn(),
   guestRepliesSpy: vi.fn(),
@@ -21,7 +20,6 @@ vi.mock("react-router-dom", () => ({
   useLocation: () => ({ pathname: "/restaurant/resto-1" }),
   useNavigate: () => mocks.navigateSpy,
 }));
-vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: mocks.addToCartSpy }) }));
 vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn((mutation) => {
     const body = mutation?.loc?.source?.body || "";
@@ -43,7 +41,6 @@ const send = (t) => {
 
 beforeEach(() => {
   mocks.navigateSpy.mockReset();
-  mocks.addToCartSpy.mockReset();
   window.localStorage.setItem("cohan_ai_guest_id", "guest-1");
   mocks.guestSendLoadingState = false;
   mocks.askMutationSpy.mockResolvedValue({ data: { askAiChatbot: { answer: "Trợ lý đã tiếp nhận.", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1" } } });
@@ -119,17 +116,16 @@ describe("AiChatbotWidget basic", () => {
     expect(mocks.navigateSpy).toHaveBeenCalledWith("/food/food-1?restaurantId=resto-1", expect.objectContaining({ state: expect.objectContaining({ restaurantId: "resto-1", dish: expect.objectContaining({ id: "food-1", name: "Phở bò" }) }) }));
   });
 
-  it("menu card renders and safe add-to-cart with visible success feedback", async () => {
+  it("menu card shows Chọn món and does not add directly", async () => {
     mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", formattedPrice: "90.000đ", isAvailable: true, restaurantId: "resto-1", currentPrice: 90000 }] } } });
     render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
     open();
     send("gợi ý món");
     await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument(), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm vào giỏ" }));
-    expect(mocks.addToCartSpy).toHaveBeenCalledWith(expect.objectContaining({ id: "food-1", quantity: 1, price: 90000 }));
-    expect(screen.getByText("Đã thêm Phở bò vào giỏ hàng.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Đã thêm ✓" })).toBeInTheDocument();
-    expect(screen.getAllByText("Đã thêm Phở bò vào giỏ hàng.")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Thêm vào giỏ" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Chọn món" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
+    expect(screen.getByRole("button", { name: "Xem chi tiết món" })).toBeInTheDocument();
   });
 
   it("unavailable/optioned items do not show add button", async () => {
@@ -139,6 +135,7 @@ describe("AiChatbotWidget basic", () => {
     send("gợi ý món");
     await waitFor(() => expect(screen.getByText("A")).toBeInTheDocument(), { timeout: 1500 });
     expect(screen.queryByRole("button", { name: "Thêm vào giỏ" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Chọn món" }).length).toBeGreaterThan(0);
   });
 
   it("open event opens chatbot", async () => {

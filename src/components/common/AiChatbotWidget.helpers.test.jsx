@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildMenuSourceCards,
   buildStarterMessages,
-  canAiAddMenuItemDirectly,
   extractRestaurantId,
   getInputPlaceholder,
 } from "./AiChatbotWidget";
@@ -33,16 +32,5 @@ describe("AiChatbotWidget helpers", () => {
   it("placeholder changes", () => {
     expect(getInputPlaceholder("r1")).toMatch(/combo/);
     expect(getInputPlaceholder(null)).toMatch(/đặt bàn/);
-  });
-
-  it("canAiAddMenuItemDirectly rules", () => {
-    expect(canAiAddMenuItemDirectly({ id: "1", isAvailable: true, hasOptions: false, hasVariants: false, currentPrice: 10000 })).toBe(true);
-    expect(canAiAddMenuItemDirectly({})).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1", isAvailable: false, currentPrice: 10000 })).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1", hasOptions: true, currentPrice: 10000 })).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1", hasVariants: true, currentPrice: 10000 })).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1" })).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1", currentPrice: 0 })).toBe(false);
-    expect(canAiAddMenuItemDirectly({ id: "1", basePrice: -1 })).toBe(false);
   });
 });

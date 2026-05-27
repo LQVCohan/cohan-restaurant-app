@@ -5,7 +5,8 @@ import React, {
   useRef,
   useContext,
 } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { io } from "socket.io-client";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
