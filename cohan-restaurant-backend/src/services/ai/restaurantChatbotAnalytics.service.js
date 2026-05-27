@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { AiChatConversation, AiChatMessage } from "../../../models/index.js";
+import { AiChatConversation, AiChatMessage, AiChatbotKnowledgeItem, AiChatbotKnowledgeSuggestion, AiChatbotAnswerFeedback, AiChatbotSafetyRule, AiChatbotEvaluationCase } from "../../../models/index.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES } from "./restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { requireRestaurantPermission, requirePermission } from "../auth/authorization.service.js";
@@ -87,9 +87,19 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     resolvedHandoffs,
     fallbackResponses,
     lowConfidenceResponses,
+    totalKnowledgeItems,
+    pendingSuggestions,
+    notHelpfulFeedback,
+    activeSafetyRules,
+    evaluationCaseCount,
     topIntentsAgg,
     messagesByRoleAgg,
     resolutionPairs,
+    totalKnowledgeItems,
+    pendingSuggestions,
+    notHelpfulFeedback,
+    activeSafetyRules,
+    evaluationCaseCount,
   ] = await Promise.all([
     AiChatConversation.countDocuments(convoFilter),
     AiChatMessage.countDocuments(msgFilter),
@@ -127,6 +137,11 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
       },
       { metadata: 1 }
     ).lean(),
+    AiChatbotKnowledgeItem.countDocuments(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}),
+    AiChatbotKnowledgeSuggestion.countDocuments({ ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), status: "pending" }),
+    AiChatbotAnswerFeedback.countDocuments({ ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), rating: "not_helpful" }),
+    AiChatbotSafetyRule.countDocuments({ ...(restaurantObjectId ? { restaurantId: restaurantObjectId } : {}), enabled: true }),
+    AiChatbotEvaluationCase.countDocuments(restaurantObjectId ? { restaurantId: restaurantObjectId, enabled: { $in: [true, false] } } : { enabled: { $in: [true, false] } }),
   ]);
 
   const resolutionMinutes = resolutionPairs
@@ -143,6 +158,13 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
       ? resolutionMinutes.reduce((s, n) => s + n, 0) / resolutionMinutes.length
       : null;
 
+
+  const riskySignals = [
+    { code: "FALLBACK_SPIKE", level: fallbackResponses >= 20 ? "high" : fallbackResponses >= 10 ? "medium" : "low", count: fallbackResponses },
+    { code: "NOT_HELPFUL_SPIKE", level: notHelpfulFeedback >= 10 ? "high" : notHelpfulFeedback >= 5 ? "medium" : "low", count: notHelpfulFeedback },
+    { code: "PENDING_SUGGESTION_BACKLOG", level: pendingSuggestions >= 20 ? "high" : pendingSuggestions >= 10 ? "medium" : "low", count: pendingSuggestions },
+  ];
+
   return {
     totalConversations,
     totalMessages,
@@ -151,11 +173,17 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     resolvedHandoffs,
     fallbackResponses,
     lowConfidenceResponses,
+    totalKnowledgeItems,
+    pendingSuggestions,
+    notHelpfulFeedback,
+    activeSafetyRules,
+    evaluationCaseCount,
     handoffConversionRate: safeDiv(handoffRequested, totalConversations),
     averageMessagesPerConversation: safeDiv(totalMessages, totalConversations),
     averageHandoffResolutionMinutes: avgResolution,
     topIntents: topIntentsAgg.map((item) => ({ intent: String(item._id || "unknown"), count: Number(item.count || 0) })),
     messagesByRole: messagesByRoleAgg.map((item) => ({ role: String(item._id || "unknown"), count: Number(item.count || 0) })),
     rateLimitStatus: toRateLimitStatus(),
+    riskySignals,
   };
 }

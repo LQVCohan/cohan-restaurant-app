@@ -283,6 +283,12 @@ type AiChatbotRateLimitPolicy {
   windowMs: Int!
 }
 
+type AiChatbotRiskSignal {
+  code: String!
+  level: String!
+  count: Int!
+}
+
 type AiChatbotAnalyticsResponse {
   totalConversations: Int!
   totalMessages: Int!
@@ -291,12 +297,18 @@ type AiChatbotAnalyticsResponse {
   resolvedHandoffs: Int!
   fallbackResponses: Int!
   lowConfidenceResponses: Int!
+  totalKnowledgeItems: Int!
+  pendingSuggestions: Int!
+  notHelpfulFeedback: Int!
+  activeSafetyRules: Int!
+  evaluationCaseCount: Int!
   handoffConversionRate: Float!
   averageMessagesPerConversation: Float!
   averageHandoffResolutionMinutes: Float
   topIntents: [AiChatbotIntentMetric!]!
   messagesByRole: [AiChatbotRoleMetric!]!
   rateLimitStatus: [AiChatbotRateLimitPolicy!]!
+  riskySignals: [AiChatbotRiskSignal!]!
 }
 
 input AiChatbotAnalyticsInput {

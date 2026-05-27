@@ -386,3 +386,10 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Guest widget (`askAiChatbot`) không đổi flow mặc định.
 - Các side-effect production (persist chat/suggestion/handoff) chỉ chạy ở mode normal.
 - Mode evaluation chỉ phục vụ internal manager QA.
+
+### AI Chatbot Production Hardening (Phase 17)
+- Manager UX now groups chatbot operations into maintainable functional tabs.
+- Runtime side-effect boundary: evaluation mode never persists chat messages/conversations and never writes knowledge-gap suggestions.
+- DTO/GraphQL safety convention: non-null list fields always return arrays; GraphQL IDs are string-safe at service boundaries.
+- Added simple AI risk signal summary for managers (fallback spikes, not-helpful spikes, pending suggestion backlog).
+- Known limitation: risk signals are threshold-based counters (no trend charting yet).
