@@ -1535,16 +1535,6 @@ const MenuManagement = () => {
         </div>
       </main>
 
-      <BulkForYouMetadataModal
-        isOpen={bulkForYouModal.isOpen}
-        items={bulkForYouTargetItems}
-        isSubmitting={bulkSubmitting}
-        submitProgress={bulkProgress}
-        submitErrors={bulkErrors}
-        onClose={closeBulkForYouModal}
-        onSubmit={handleSubmitBulkForYouMetadata}
-      />
-
       <MenuModal
         isOpen={modals.menu.isOpen}
         initialData={modals.menu.editingMenu}
@@ -1601,6 +1591,16 @@ const MenuManagement = () => {
         onClose={() => toggleModal("priceEdit", false)}
         onSave={handleSavePriceChanges}
         menuItems={items}
+      />
+
+      <BulkForYouMetadataModal
+        isOpen={bulkForYouModal.isOpen}
+        items={bulkForYouTargetItems}
+        isSubmitting={bulkSubmitting}
+        submitProgress={bulkProgress}
+        submitErrors={bulkErrors}
+        onClose={closeBulkForYouModal}
+        onSubmit={handleSubmitBulkForYouMetadata}
       />
 
       <Modal
