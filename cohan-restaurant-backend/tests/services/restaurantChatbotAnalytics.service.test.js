@@ -9,10 +9,11 @@ const mocks = vi.hoisted(() => ({
   AiChatMessage: {
     countDocuments: vi.fn(),
     aggregate: vi.fn(),
+    find: vi.fn(),
   },
   AiChatbotKnowledgeItem: { countDocuments: vi.fn() },
   AiChatbotKnowledgeSuggestion: { countDocuments: vi.fn() },
-  AiChatbotAnswerFeedback: { countDocuments: vi.fn() },
+  AiChatbotAnswerFeedback: { countDocuments: vi.fn(), find: vi.fn() },
   AiChatbotSafetyRule: { countDocuments: vi.fn() },
   AiChatbotEvaluationCase: { countDocuments: vi.fn() },
   requireRestaurantPermission: vi.fn(),
@@ -41,12 +42,16 @@ describe("restaurantChatbotAnalytics service", () => {
     vi.clearAllMocks();
     mocks.AiChatConversation.countDocuments.mockResolvedValueOnce(10).mockResolvedValueOnce(4).mockResolvedValueOnce(2).mockResolvedValueOnce(3);
     mocks.AiChatMessage.countDocuments.mockResolvedValueOnce(40).mockResolvedValueOnce(5).mockResolvedValueOnce(7);
+    mocks.AiChatMessage.countDocuments.mockResolvedValueOnce(2);
     mocks.AiChatConversation.aggregate.mockResolvedValue([{ _id: "menu", count: 6 }]);
     mocks.AiChatMessage.aggregate.mockResolvedValue([{ _id: "assistant", count: 30 }]);
     mocks.AiChatConversation.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([{ metadata: { handoffRequestedAt: new Date(Date.now()-600000).toISOString(), handoffResolvedAt: new Date().toISOString() } }]) });
+    mocks.AiChatMessage.find.mockReturnValue({ sort: () => ({ limit: () => ({ lean: async () => [{ _id: "m1", content: "fallback", createdAt: new Date().toISOString(), intent: "general" }] }) }) });
     mocks.AiChatbotKnowledgeItem.countDocuments.mockResolvedValue(12);
     mocks.AiChatbotKnowledgeSuggestion.countDocuments.mockResolvedValue(4);
+    mocks.AiChatbotKnowledgeSuggestion.find = vi.fn(() => ({ sort: () => ({ limit: () => ({ lean: async () => [{ _id: "s1", question: "Q", triggerType: "fallback", updatedAt: new Date().toISOString() }] }) }) }));
     mocks.AiChatbotAnswerFeedback.countDocuments.mockResolvedValue(3);
+    mocks.AiChatbotAnswerFeedback.find.mockReturnValue({ sort: () => ({ limit: () => ({ lean: async () => [{ _id: "f1", question: "Q", reason: "R", createdAt: new Date().toISOString() }] }) }) });
     mocks.AiChatbotSafetyRule.countDocuments.mockResolvedValue(5);
     mocks.AiChatbotEvaluationCase.countDocuments.mockResolvedValue(7);
   });
@@ -66,6 +71,8 @@ describe("restaurantChatbotAnalytics service", () => {
     expect(res.activeSafetyRules).toBe(5);
     expect(res.evaluationCaseCount).toBe(7);
     expect(Array.isArray(res.riskySignals)).toBe(true);
+    expect(res.riskySignals.some((s) => s.code === "SAFETY_BLOCK_SPIKE")).toBe(true);
+    expect(Array.isArray(res.recentQualityQueue)).toBe(true);
   });
 
   it("blocks guest role", async () => {

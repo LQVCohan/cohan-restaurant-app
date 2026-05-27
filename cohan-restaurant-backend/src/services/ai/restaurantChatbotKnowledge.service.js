@@ -254,7 +254,8 @@ export async function importRestaurantAiChatbotKnowledge({ input, ctx }) {
     const tags = toImportTags(row?.tags);
     const enabled = row?.enabled == null ? true : String(row.enabled).toLowerCase() !== "false";
     const priority = clampPriority(row?.priority);
-    const sourceType = clean(row?.sourceType || "import", 20).toLowerCase();
+    const sourceTypeRaw = clean(row?.sourceType || "", 20).toLowerCase();
+    const sourceType = SOURCE_TYPES.has(sourceTypeRaw) ? sourceTypeRaw : "manual";
     const dup = await AiChatbotKnowledgeItem.findOne({ restaurantId: rid, title, content }).lean();
     if (dup) { skipped += 1; continue; }
     await AiChatbotKnowledgeItem.create({ restaurantId: rid, title, content, category, tags, enabled, priority, sourceType, createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
