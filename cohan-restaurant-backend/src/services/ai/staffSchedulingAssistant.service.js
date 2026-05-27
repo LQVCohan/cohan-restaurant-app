@@ -109,7 +109,7 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-function buildFallbackDemandByShift(orders, timezone, horizonDays) {
+function buildFallbackDemandByShift(orders, timezone, horizonDays, startDate) {
   const now = new Date();
   const start = new Date(now);
   start.setDate(start.getDate() - 28);
@@ -166,8 +166,9 @@ function buildFallbackDemandByShift(orders, timezone, horizonDays) {
   }
 
   const fallbackShiftDemand = [];
+  const anchorDate = toDate(startDate) || now;
   for (let i = 0; i < horizonDays; i += 1) {
-    const date = new Date(now);
+    const date = new Date(anchorDate);
     date.setDate(date.getDate() + i);
     const dateKey = toIsoDay(date, timezone);
     for (const shiftType of ["morning", "afternoon", "evening"]) {
@@ -236,14 +237,35 @@ export async function buildStaffSchedulingAssistant({
   restaurantId,
   timezone = "Asia/Ho_Chi_Minh",
   horizonDays = 2,
+  periodStart = null,
+  periodEnd = null,
   actor = null,
 }) {
   const safeHorizonDays = clamp(Number(horizonDays || 2), 1, 7);
+  const requestedStart = toDate(periodStart);
+  const requestedEnd = toDate(periodEnd);
+
+  let startDate;
+  let endDate;
+
+  if (requestedStart && requestedEnd && requestedEnd >= requestedStart) {
+    startDate = new Date(requestedStart);
+    startDate.setHours(0, 0, 0, 0);
+
+    endDate = new Date(requestedEnd);
+    endDate.setHours(23, 59, 59, 999);
+  } else {
+    const now = new Date();
+    startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + safeHorizonDays - 1);
+    endDate.setHours(23, 59, 59, 999);
+  }
+
+  const requestedSpanDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+  const effectiveHorizonDays = clamp(requestedSpanDays, 1, 7);
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + safeHorizonDays);
 
   const rid = mongoose.isValidObjectId(restaurantId)
     ? new mongoose.Types.ObjectId(restaurantId)
@@ -323,17 +345,21 @@ export async function buildStaffSchedulingAssistant({
     const forecast = await buildDemandForecast({
       restaurantId: rid,
       timezone,
-      horizonDays: safeHorizonDays,
+      horizonDays: effectiveHorizonDays,
     });
     shiftDemand = convertHourlyForecastToShiftDemand(
       forecast?.hourlyForecast || [],
-    );
+    ).filter((row) => {
+      const d = toDate(row?.date ? `${row.date}T00:00:00` : null);
+      return d && d >= startDate && d <= endDate;
+    });
     if (!shiftDemand.length) {
       basedOnForecast = false;
       shiftDemand = buildFallbackDemandByShift(
         recentOrders,
         timezone,
-        safeHorizonDays,
+        effectiveHorizonDays,
+        startDate,
       );
     }
   } catch {
@@ -341,7 +367,8 @@ export async function buildStaffSchedulingAssistant({
     shiftDemand = buildFallbackDemandByShift(
       recentOrders,
       timezone,
-      safeHorizonDays,
+      effectiveHorizonDays,
+      startDate,
     );
   }
 
@@ -612,6 +639,9 @@ export async function buildStaffSchedulingAssistant({
       fallbackUsed: !basedOnForecast,
       generatedAt: new Date().toISOString(),
       timezone,
+      periodStart: startDate.toISOString(),
+      periodEnd: endDate.toISOString(),
+      effectiveHorizonDays,
     },
   };
 }

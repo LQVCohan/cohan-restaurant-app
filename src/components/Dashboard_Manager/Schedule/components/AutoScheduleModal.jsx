@@ -7,8 +7,7 @@ import {
   Clock3,
   Info,
   Settings2,
-  Sparkles,
-  Users,
+  Sparkles
 } from "lucide-react";
 
 import "./AutoScheduleModal.scss";
@@ -115,20 +114,6 @@ const AutoScheduleModal = ({
   const canApplyWithOverride =
     !requiresOverride ||
     (String(overrideReason || "").trim().length >= 5 && overrideConfirmed);
-  const selectedRequiredRoles = Array.isArray(config.requiredRoles)
-    ? config.requiredRoles
-    : [];
-
-  const toggleRequiredRole = (role) => {
-    const nextRoles = selectedRequiredRoles.includes(role)
-      ? selectedRequiredRoles.filter((item) => item !== role)
-      : [...selectedRequiredRoles, role];
-
-    onConfigChange({
-      ...config,
-      requiredRoles: nextRoles,
-    });
-  };
   return (
     <Modal
       isOpen={isOpen}
@@ -161,7 +146,7 @@ const AutoScheduleModal = ({
                 <span>Phạm vi trợ lý</span>
               </div>
               <label>
-                <span>Số ngày tới</span>
+                <span>Số ngày phân tích nhu cầu</span>
                 <select
                   value={config.horizonDays}
                   onChange={(event) =>
@@ -180,8 +165,7 @@ const AutoScheduleModal = ({
                 </select>
               </label>
               <p className="config-hint">
-                Trợ lý hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
-                ngày tiếp theo.
+                Preview tạo theo ngày/tuần đang xem; số ngày này chỉ dùng để mở rộng dữ liệu dự báo nhu cầu.
               </p>
             </div>
 
@@ -237,36 +221,6 @@ const AutoScheduleModal = ({
             <div className="config-head">
               <Settings2 size={16} />
               <span>Ràng buộc áp dụng</span>
-            </div>
-            <div className="config-card role-required-card">
-              <div className="config-head">
-                <Users size={16} />
-                <span>Vai trò ưu tiên (tùy chọn)</span>
-              </div>
-
-              <div className="required-role-grid">
-                {requiredRoleOptions.map((option) => (
-                  <label key={option.role} className="role-check-row">
-                    <input
-                      type="checkbox"
-                      checked={selectedRequiredRoles.includes(option.role)}
-                      onChange={() => toggleRequiredRole(option.role)}
-                      disabled={generating || applying}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-
-              {!selectedRequiredRoles.length ? (
-                <p className="config-hint">
-                  Hệ thống sẽ tự đề xuất vai trò cần xếp dựa trên dự báo và lịch hiện có.
-                </p>
-              ) : (
-                <p className="config-hint">
-                  Các vai trò này dùng để manager rà soát preview; hệ thống vẫn tự đề xuất nhu cầu chính từ dự báo và lịch hiện có.
-                </p>
-              )}
             </div>
             <label className="toggle-row">
               <span>Tôn trọng nghỉ phép / ngày nghỉ</span>
