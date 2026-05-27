@@ -7,7 +7,8 @@ import {
   Clock3,
   Info,
   Settings2,
-  Sparkles
+  Sparkles,
+  Users,
 } from "lucide-react";
 
 import "./AutoScheduleModal.scss";
