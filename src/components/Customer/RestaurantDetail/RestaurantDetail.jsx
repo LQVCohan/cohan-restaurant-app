@@ -11,6 +11,7 @@ import PromotionsSection from "./components/PromotionsSection/PromotionsSection"
 import RestaurantInfo from "./components/RestaurantInfo/RestaurantInfo";
 import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
+import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 
 import "./RestaurantDetail.scss";
 
@@ -202,7 +203,12 @@ const RestaurantDetail = () => {
   const imgThumbUrl = hasCoverImage
     ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
     : null;
-
+const aiQuickPrompts = [
+    { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
+    { label: "Món dưới 100k", message: "Gợi ý món dưới 100k" },
+    { label: "Món chay", message: "Gợi ý món chay" },
+    { label: "Combo cho 2 người", message: "Gợi ý combo cho 2 người" },
+  ];
   return (
     <div className="restaurant-detail-page">
       <section className="rd-hero">
@@ -312,6 +318,31 @@ const RestaurantDetail = () => {
         </div>
 
         <aside className="sidebar-content">
+          <div className="booking-widget">
+            <h3>AI gợi ý món</h3>
+            <p>Cho mình biết ngân sách, số người hoặc khẩu vị</p>
+            <button
+              type="button"
+              className="btn-book-full"
+              onClick={() => openAiMenuAssistant({ message: "Gợi ý món cho 2 người dưới 100k", autoSend: false, restaurantId: resolvedRestaurant.id })}
+            >
+              AI gợi ý món
+            </button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {aiQuickPrompts.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="btn-icon"
+                  style={{ width: "auto", padding: "6px 10px", borderRadius: 999 }}
+                  onClick={() => openAiMenuAssistant({ message: item.message, autoSend: true, restaurantId: resolvedRestaurant.id })}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="booking-widget">
             <h3>Đặt bàn giữ chỗ</h3>
             <p>Giữ chỗ miễn phí - Xác nhận tức thì</p>

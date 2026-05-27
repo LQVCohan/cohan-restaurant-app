@@ -40,6 +40,8 @@ describe('env config normalization and production guards', () => {
     process.env.DB_NAME = 'RestaurantDB';
     process.env.JWT_SECRET = 'a'.repeat(40);
     process.env.TABLE_ACCESS_TOKEN_SECRET = 'b'.repeat(40);
+    process.env.ENABLE_RECAPTCHA = 'true';
+    process.env.RECAPTCHA_SECRET = 'real-secret';
 
     validateEnv();
     expect(process.env.MONGO_DB).toBe('RestaurantDB');
@@ -88,6 +90,8 @@ describe('env config normalization and production guards', () => {
     process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';
     process.env.JWT_SECRET = 'a'.repeat(40);
     process.env.TABLE_ACCESS_TOKEN_SECRET = 'b'.repeat(40);
+    process.env.ENABLE_RECAPTCHA = 'true';
+    process.env.RECAPTCHA_SECRET = 'real-secret';
 
     for (const value of ['15m', '30m', '1h', '1440m']) {
       process.env.ACCESS_TOKEN_EXPIRES_IN = value;
@@ -99,4 +103,39 @@ describe('env config normalization and production guards', () => {
       expect(() => validateEnv()).toThrow(/ACCESS_TOKEN_EXPIRES_IN/);
     }
   });
+
+  it('production blocks disabling recaptcha unless explicitly allowed', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';
+    process.env.JWT_SECRET = 'a'.repeat(40);
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'b'.repeat(40);
+    process.env.ENABLE_RECAPTCHA = 'false';
+    delete process.env.ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION;
+    expect(() => validateEnv()).toThrow(/ENABLE_RECAPTCHA/);
+    process.env.ALLOW_DISABLE_RECAPTCHA_IN_PRODUCTION = 'true';
+    expect(() => validateEnv()).not.toThrow();
+  });
+
+  it('production requires strong recaptcha secret when enabled', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';
+    process.env.JWT_SECRET = 'a'.repeat(40);
+    process.env.TABLE_ACCESS_TOKEN_SECRET = 'b'.repeat(40);
+    process.env.ENABLE_RECAPTCHA = 'true';
+    delete process.env.RECAPTCHA_SECRET;
+    expect(() => validateEnv()).toThrow(/RECAPTCHA_SECRET/);
+    process.env.RECAPTCHA_SECRET = 'replace-with-recaptcha-secret';
+    expect(() => validateEnv()).toThrow(/RECAPTCHA_SECRET/);
+    process.env.RECAPTCHA_SECRET = 'real-secret-value';
+    expect(() => validateEnv()).not.toThrow();
+  });
+
+  it('development can disable recaptcha', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';
+    process.env.JWT_SECRET = 'secret';
+    process.env.ENABLE_RECAPTCHA = 'false';
+    expect(() => validateEnv()).not.toThrow();
+  });
+
 });

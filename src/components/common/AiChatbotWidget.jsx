@@ -5,6 +5,7 @@ import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
+import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
 import "./AiChatbotWidget.scss";
 
 const ASK_AI_CHATBOT = gql`
@@ -225,11 +226,17 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const navigate = useNavigate();
   const cartApi = useCart();
 
-  const restaurantId = useMemo(
+  const [eventRestaurantId, setEventRestaurantId] = useState("");
+  const routeRestaurantId = useMemo(
     () => extractRestaurantId({ params, pathname: location.pathname }),
     [params, location.pathname],
   );
+  const restaurantId = eventRestaurantId || routeRestaurantId;
 
+
+  useEffect(() => {
+    setEventRestaurantId("");
+  }, [location.pathname]);
   const restaurantStorageKey = useMemo(() => getConversationStorageKey(restaurantId), [restaurantId]);
   const { data: publicSettingsData } = useQuery(Q_PUBLIC_AI_CHATBOT_SETTINGS, {
     variables: { restaurantId: restaurantId || null },
@@ -394,7 +401,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     return () => window.clearInterval(timer);
   }, [open, handoffRequested, conversationId, guestId, latestStaffReplyAt, testOverrides]);
 
-  const sendMessage = async (rawMessage) => {
+  const sendMessage = async (rawMessage, { restaurantIdOverride } = {}) => {
     const content = String(rawMessage || input).trim();
     if (!content || loading || guestSendLoading || handoffLoading || sendInFlightRef.current) return;
     if (!chatbotEnabled) { setMessages((c) => [...c, { role: "assistant", content: handoffUnavailableMessage }]); return; }
@@ -430,7 +437,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         variables: {
           input: {
             message: content,
-            restaurantId,
+            restaurantId: restaurantIdOverride || restaurantId,
             history: normalizeHistory(messages),
             guestId: safeGuestId || undefined,
             conversationId: conversationId || undefined,
@@ -464,6 +471,29 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setIsSendInFlight(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const onOpenChatbot = (event) => {
+      const detail = event?.detail || {};
+      const nextMessage = String(detail?.message || "").trim();
+      const shouldAutoSend = Boolean(detail?.autoSend);
+      const nextRestaurantId = String(detail?.restaurantId || "").trim();
+
+      setOpen(true);
+      if (!nextMessage) return;
+
+      if (nextRestaurantId) setEventRestaurantId(nextRestaurantId);
+      setInput(nextMessage);
+      if (shouldAutoSend && !loading && !guestSendLoading && !handoffLoading && !sendInFlightRef.current) {
+        sendMessage(nextMessage, { restaurantIdOverride: nextRestaurantId || restaurantId });
+      }
+    };
+
+    window.addEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
+    return () => window.removeEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
+  }, [loading, guestSendLoading, handoffLoading, sendMessage]);
 
   const handleAction = (action) => {
     if (!action?.href) return;

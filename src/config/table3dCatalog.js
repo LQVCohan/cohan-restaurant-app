@@ -139,3 +139,14 @@ export const normalizeCatalogItem = (item) => {
     fallbackKind: item?.fallbackKind || (modelUrl ? "model" : "placeholder"),
   };
 };
+
+export const canOpenModelViewerAr = (model) =>
+  Boolean(model?.modelUrl && String(model.modelUrl).trim());
+
+export const getArUnavailableReason = (model) => {
+  if (!model) return "Chọn mẫu để kiểm tra hỗ trợ AR.";
+  if (!canOpenModelViewerAr(model)) {
+    return "Mẫu này chưa có model 3D công khai để mở AR.";
+  }
+  return "";
+};

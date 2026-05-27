@@ -154,6 +154,17 @@
   .table-3d-modal__footer {
     margin-top: 14px;
     display: flex;
+    align-items: center;
+    gap: 10px;
     justify-content: flex-end;
+  }
+
+  .table-3d-modal__ar-hint {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    color: #475569;
+    text-align: left;
+    margin-right: auto;
   }
 }
