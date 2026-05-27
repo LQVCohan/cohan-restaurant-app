@@ -766,6 +766,9 @@ export const handleRestaurantChatbotMessage = async ({
   guestId,
   conversationId,
   clientIp,
+  persist = true,
+  recordSuggestions = true,
+  evaluationMode = false,
 } = {}) => {
   const cleanMessage = normalizeMessage(message);
   if (!cleanMessage) {
@@ -818,7 +821,7 @@ export const handleRestaurantChatbotMessage = async ({
   let persistedConversation = null;
   let persistedHistory = [];
 
-  try {
+  if (persist) try {
     if (normalizedConversationId) {
       const found = await AiChatConversation.findById(normalizedConversationId);
       if (found && isConversationOwned(found, { userId: userObjectId, guestId: normalizedGuestId })) {
@@ -873,8 +876,18 @@ export const handleRestaurantChatbotMessage = async ({
       quickReplies: aiSettings.starterQuickReplies || [],
       actions: [],
       sources: [],
+      knowledgeMatches: [],
+      safetyResult: {
+        blocked: true,
+        outOfScope: Boolean(safetyEval?.outOfScope),
+        disclaimers: Array.isArray(safetyEval?.disclaimers) ? safetyEval.disclaimers : [],
+        handoffSuggested: Boolean(safetyEval?.handoffSuggested),
+        matchedRuleIds: Array.isArray(safetyEval?.matchedRules) ? safetyEval.matchedRules.map((r) => String(r?._id || r?.id || "")).filter(Boolean) : [],
+      },
+      evaluationMode: Boolean(evaluationMode),
       contextSummary: { restaurantCount: 0, menuItemCount: 0, couponCount: 0, orderCount: 0, reservationCount: 0 },
       conversationId: persistedConversation ? String(persistedConversation._id) : null,
+      answerMessageId: null,
       isFallback: true,
       handoffSuggested: Boolean(aiSettings.handoffEnabled && safetyEval.handoffSuggested),
       handoffReason: safetyEval.outOfScope ? "out_of_scope" : "blocked_topic",
@@ -904,6 +917,21 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
   }
   const finalResponse = {
     ...responseData,
+    knowledgeMatches: knowledgeItems.map((item) => ({
+      id: String(item?._id || item?.id || ""),
+      title: String(item?.title || ""),
+      category: String(item?.category || ""),
+      sourceType: String(item?.sourceType || ""),
+      score: Number.isFinite(Number(item?._score)) ? Number(item._score) : null,
+    })),
+    safetyResult: {
+      blocked: Boolean(safetyEval?.blocked),
+      outOfScope: Boolean(safetyEval?.outOfScope),
+      disclaimers: Array.isArray(safetyEval?.disclaimers) ? safetyEval.disclaimers : [],
+      handoffSuggested: Boolean(safetyEval?.handoffSuggested),
+      matchedRuleIds: Array.isArray(safetyEval?.matchedRules) ? safetyEval.matchedRules.map((r) => String(r?._id || r?.id || "")).filter(Boolean) : [],
+    },
+    evaluationMode: Boolean(evaluationMode),
     contextSummary: {
       restaurantCount: context.restaurants.length,
       menuItemCount: context.menuItems.length,
@@ -927,7 +955,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
     : null;
 
   const shouldRecordKnowledgeGap = Boolean(
-    aiSettings.enabled && restaurantId && cleanMessage && (
+    recordSuggestions && aiSettings.enabled && restaurantId && cleanMessage && (
       finalResponse.isFallback ||
       (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) ||
       !knowledgeItems.length ||
@@ -955,7 +983,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
   }
 
   let answerMessageId = null;
-  if (persistedConversation) {
+  if (persist && persistedConversation) {
     try {
       const assistantMessage = await AiChatMessage.create({
         conversationId: persistedConversation._id,

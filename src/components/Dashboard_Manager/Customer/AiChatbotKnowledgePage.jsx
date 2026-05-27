@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 
 const Q = gql`query ManagerAiKnowledge($restaurantId: ID!, $filter: AiChatbotKnowledgeFilterInput) { restaurantAiChatbotKnowledge(restaurantId: $restaurantId, filter: $filter) { id restaurantId title content category tags enabled priority sourceType updatedAt } }`;
@@ -19,6 +19,11 @@ const Q_SAFETY = gql`query ManagerAiSafety($restaurantId: ID!, $filter: AiChatbo
 const C_SAFETY = gql`mutation CreateAiSafety($input: CreateAiChatbotSafetyRuleInput!) { createRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
 const U_SAFETY = gql`mutation UpdateAiSafety($input: UpdateAiChatbotSafetyRuleInput!) { updateRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
 const D_SAFETY = gql`mutation DeleteAiSafety($id: ID!) { deleteRestaurantAiChatbotSafetyRule(id: $id) }`;
+
+const Q_EVAL = gql`query EvalPrompt($input: EvaluateAiChatbotPromptInput!) { evaluateRestaurantAiChatbotPrompt(input: $input) { answer intent confidence isFallback handoffSuggested handoffReason handoffMessage quickReplies actions { type label href } sources { type id label } contextSummary { restaurantCount menuItemCount couponCount orderCount reservationCount } knowledgeMatches { id title category sourceType score } safetyResult { blocked outOfScope disclaimers handoffSuggested matchedRuleIds } } }`;
+const Q_EVAL_CASES = gql`query EvalCases($restaurantId: ID!) { restaurantAiChatbotEvaluationCases(restaurantId: $restaurantId) { id question expectedBehavior category tags enabled } }`;
+const M_CREATE_CASE = gql`mutation CreateEvalCase($input: CreateAiChatbotEvaluationCaseInput!) { createRestaurantAiChatbotEvaluationCase(input: $input) { id } }`;
+const Q_RUN_SET = gql`query RunEvalSet($input: RunAiChatbotEvaluationSetInput!) { runRestaurantAiChatbotEvaluationSet(input: $input) { caseId question answer confidence isFallback handoffSuggested safetyResult { blocked } } }`;
 
 
 const blank = { id: "", title: "", content: "", category: "", tags: "", enabled: true, priority: 0, sourceType: "manual" };
@@ -40,6 +45,9 @@ export default function AiChatbotKnowledgePage() {
   const [safetySearch, setSafetySearch] = useState("");
   const [safetyType, setSafetyType] = useState("all");
   const [safetyEnabled, setSafetyEnabled] = useState("all");
+  const [evalMessage, setEvalMessage] = useState("");
+  const [evalResult, setEvalResult] = useState(null);
+  const [evalSetResults, setEvalSetResults] = useState([]);
   const rid = restaurantId || restaurants?.[0]?.id || "";
   const filter = useMemo(() => ({ search: search || undefined, enabled: enabled === "all" ? undefined : enabled === "on" }), [search, enabled]);
   const suggestionFilter = useMemo(() => ({ status: suggestionStatus === "all" ? undefined : suggestionStatus, triggerType: suggestionTrigger === "all" ? undefined : suggestionTrigger, search: suggestionSearch || undefined }), [suggestionStatus, suggestionTrigger, suggestionSearch]);
@@ -59,6 +67,10 @@ export default function AiChatbotKnowledgePage() {
   const [createSafety] = useMutation(C_SAFETY);
   const [updateSafety] = useMutation(U_SAFETY);
   const [deleteSafety] = useMutation(D_SAFETY);
+  const [runEvalPrompt, { loading: evaluating }] = useLazyQuery(Q_EVAL, { fetchPolicy: "no-cache" });
+  const { data: evalCasesData, refetch: refetchEvalCases } = useQuery(Q_EVAL_CASES, { skip: !rid, variables: { restaurantId: rid } });
+  const [createEvalCase] = useMutation(M_CREATE_CASE);
+  const [runEvalSet, { loading: runningSet }] = useLazyQuery(Q_RUN_SET, { fetchPolicy: "no-cache" });
 
   const onApproveSuggestion = async (s) => {
     const title = window.prompt("Title", s.suggestedTitle || s.question) || s.question;
@@ -148,6 +160,24 @@ export default function AiChatbotKnowledgePage() {
       <div><label><input type="checkbox" checked={!!safetyForm.enabled} onChange={(e) => setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))} /> enabled</label></div>
       <button type="submit">Lưu safety</button><button type="button" onClick={() => setSafetyForm(safetyBlank)}>Hủy</button>
     </form>
+
+    <h3 style={{ marginTop: 20 }}>Evaluation Playground</h3>
+    <textarea placeholder="Nhập câu hỏi test chatbot" value={evalMessage} onChange={(e) => setEvalMessage(e.target.value)} rows={3} style={{ width: "100%", maxWidth: 720 }} />
+    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <button disabled={!rid || !evalMessage.trim() || evaluating} onClick={async () => { const out = await runEvalPrompt({ variables: { input: { restaurantId: rid, message: evalMessage.trim(), includeDebug: true } } }); setEvalResult(out?.data?.evaluateRestaurantAiChatbotPrompt || null); }}>Run test</button>
+      <button disabled={!rid || !evalMessage.trim()} onClick={async () => { await createEvalCase({ variables: { input: { restaurantId: rid, question: evalMessage.trim(), enabled: true } } }); refetchEvalCases?.(); }}>Save case</button>
+      <button disabled={!rid || runningSet} onClick={async () => { const out = await runEvalSet({ variables: { input: { restaurantId: rid, includeDebug: false } } }); setEvalSetResults(out?.data?.runRestaurantAiChatbotEvaluationSet || []); }}>Run enabled set</button>
+    </div>
+    {evalResult ? <div style={{ marginTop: 8, border: "1px solid #ddd", padding: 8 }}>
+      <div><strong>Answer:</strong> {evalResult.answer}</div>
+      <div>intent={evalResult.intent || "-"}, confidence={evalResult.confidence ?? "-"}, fallback={String(!!evalResult.isFallback)}, handoff={String(!!evalResult.handoffSuggested)}</div>
+      <div>safety blocked={String(!!evalResult?.safetyResult?.blocked)} outOfScope={String(!!evalResult?.safetyResult?.outOfScope)}</div>
+      <div>knowledge matches: {(evalResult.knowledgeMatches || []).map((k) => k.title).join(", ") || "-"}</div>
+      <div>quick replies: {(evalResult.quickReplies || []).join(" | ") || "-"}</div>
+    </div> : null}
+    <ul>{(evalCasesData?.restaurantAiChatbotEvaluationCases || []).slice(0, 10).map((c) => <li key={c.id}>{c.question} [{c.enabled ? "on" : "off"}]</li>)}</ul>
+    {evalSetResults?.length ? <p>Run set results: {evalSetResults.length}</p> : null}
+
 
     <h3 style={{ marginTop: 20 }}>Answer Feedback Review</h3>
     <div style={{ display: "flex", gap: 8, margin: "8px 0" }}>

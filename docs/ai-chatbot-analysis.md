@@ -548,3 +548,35 @@ Phase 10 bổ sung trang dashboard read-only cho manager/admin/staff có quyền
 - Limitations: lightweight pattern matching only; escaped regex and string includes, not semantic moderation.
 - GraphQL additions: query `restaurantAiChatbotSafetyRules`; mutations create/update/delete safety rule.
 - Manager UI: Safety Rules section in AI Chatbot Knowledge page with CRUD, filters, enable/disable, delete confirmation.
+
+## 16. Phase 16 - Manager Evaluation Playground
+
+Phase 16 thêm luồng đánh giá chatbot chỉ dành cho manager/staff có quyền báo cáo, giúp thử prompt trước khi đưa ra khách.
+
+### API đánh giá
+
+- `evaluateRestaurantAiChatbotPrompt(input)` chạy 1 prompt test và trả về answer + metadata (intent/confidence/fallback/handoff/safety/knowledge/sources).
+- `runRestaurantAiChatbotEvaluationSet(input)` chạy batch các case đã lưu (enabled).
+- CRUD case đánh giá: list/create/update/delete `AiChatbotEvaluationCase`.
+
+### Quyền
+
+- Evaluate/list/run yêu cầu `REPORT_READ` (fallback chấp nhận `RESTAURANT_WRITE`).
+- Create/update/delete case yêu cầu `RESTAURANT_WRITE`.
+- Guest/public không truy cập được các API này.
+
+### No-side-effect guarantee
+
+Evaluation chạy qua chatbot runtime với option `persist=false`, `recordSuggestions=false`, `evaluationMode=true`:
+
+- Không tạo `AiChatConversation`/`AiChatMessage`.
+- Không tạo `Knowledge Gap Suggestion`.
+- Không ghi feedback.
+- Không trigger handoff side effects.
+
+Nhưng vẫn giữ:
+
+- áp dụng settings chatbot theo nhà hàng,
+- chạy safety rules/moderation,
+- chạy knowledge retrieval,
+- trả metadata debug để manager so sánh chất lượng answer.
