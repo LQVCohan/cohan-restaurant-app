@@ -5,6 +5,7 @@ import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
+import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
 import "./AiChatbotWidget.scss";
 
 const ASK_AI_CHATBOT = gql`
@@ -464,6 +465,27 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setIsSendInFlight(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const onOpenChatbot = (event) => {
+      const detail = event?.detail || {};
+      const nextMessage = String(detail?.message || "").trim();
+      const shouldAutoSend = Boolean(detail?.autoSend);
+
+      setOpen(true);
+      if (!nextMessage) return;
+
+      setInput(nextMessage);
+      if (shouldAutoSend && !loading && !guestSendLoading && !handoffLoading && !sendInFlightRef.current) {
+        sendMessage(nextMessage);
+      }
+    };
+
+    window.addEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
+    return () => window.removeEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
+  }, [loading, guestSendLoading, handoffLoading, sendMessage]);
 
   const handleAction = (action) => {
     if (!action?.href) return;

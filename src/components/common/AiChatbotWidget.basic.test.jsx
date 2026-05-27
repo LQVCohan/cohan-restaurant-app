@@ -2,6 +2,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AiChatbotWidget from "./AiChatbotWidget";
+import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
 
 const mocks = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
@@ -125,5 +126,50 @@ describe("AiChatbotWidget basic", () => {
     send("gợi ý món");
     await waitFor(() => expect(screen.getByText("A")).toBeInTheDocument(), { timeout: 1500 });
     expect(screen.queryByRole("button", { name: "Thêm vào giỏ" })).not.toBeInTheDocument();
+  });
+
+  it("open event opens chatbot", async () => {
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT));
+    });
+    await waitFor(() => expect(screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng")).toBeInTheDocument(), { timeout: 1500 });
+  });
+
+  it("open event with autoSend true calls ask once", async () => {
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Món dưới 100k", autoSend: true } }));
+    });
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    expect(mocks.askMutationSpy).toHaveBeenCalledWith(expect.objectContaining({ variables: expect.objectContaining({ input: expect.objectContaining({ message: "Món dưới 100k" }) }) }));
+  });
+
+  it("open event with autoSend false prefills input", async () => {
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Gợi ý món cho 2 người", autoSend: false } }));
+    });
+    await waitFor(() => expect(screen.getByDisplayValue("Gợi ý món cho 2 người")).toBeInTheDocument(), { timeout: 1500 });
+    expect(mocks.askMutationSpy).not.toHaveBeenCalled();
+  });
+
+  it("while in-flight, event does not double-send", async () => {
+    let release;
+    mocks.askMutationSpy.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        })
+    );
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("Xin chào");
+    expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(OPEN_AI_CHATBOT_EVENT, { detail: { message: "Món bán chạy", autoSend: true } }));
+    });
+    expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1);
+    await act(async () => release({ data: { askAiChatbot: { answer: "ok", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1" } } }));
   });
 });
