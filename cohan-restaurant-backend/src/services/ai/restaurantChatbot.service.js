@@ -169,6 +169,9 @@ const serializeMenuItem = (item, currency = "VND") => ({
   variants: Array.isArray(item.variants) ? item.variants.slice(0, 4) : [],
   options: Array.isArray(item.options) ? item.options.slice(0, 4) : [],
   spicyLevel: item.spicyLevel ?? null,
+  restaurantId: item.restaurantId ? String(item.restaurantId) : null,
+  hasVariants: Array.isArray(item.variants) && item.variants.length > 0,
+  hasOptions: Array.isArray(item.options) && item.options.length > 0,
   isVegetarian: Boolean(item.isVegetarian),
   isVegan: Boolean(item.isVegan),
   allergens: Array.isArray(item.allergens) ? item.allergens : [],
@@ -571,6 +574,33 @@ const safeJsonParse = (raw) => {
   }
 };
 
+
+const buildMenuItemLookup = (context = {}) => {
+  const map = new Map();
+  for (const item of [...(context.recommendedMenuItems || []), ...(context.menuItems || [])]) {
+    if (item?.id) map.set(String(item.id), item);
+  }
+  return map;
+};
+
+const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuItemLookup(context)) => {
+  if (source?.type !== "menuItem") return source;
+  const item = menuItemLookup.get(String(source?.id || ""));
+  if (!item) return null;
+  return {
+    ...source,
+    label: source?.label || item.name,
+    formattedPrice: item.formattedPrice,
+    status: item.status,
+    isAvailable: item.isAvailable,
+    hasOptions: Boolean(item.options?.length || item.hasOptions),
+    hasVariants: Boolean(item.variants?.length || item.hasVariants),
+    restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null,
+    basePrice: item.basePrice,
+    currentPrice: item.currentPrice,
+  };
+};
+
 const normalizeAiResult = (parsed, context) => {
   const allowedItemIds = new Set((context.recommendedMenuItems || context.menuItems || []).map((x) => String(x.id)));
   const actions = Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 4).filter((action) => {
@@ -579,10 +609,13 @@ const normalizeAiResult = (parsed, context) => {
     if (href.startsWith("/food/")) return allowedItemIds.has(href.replace("/food/", ""));
     return true;
   }) : fallbackActions(context);
-  const sources = Array.isArray(parsed?.sources) ? parsed.sources.slice(0, 8).filter((source) => {
-    if (source?.type !== "menuItem") return true;
-    return allowedItemIds.has(String(source?.id || ""));
-  }) : fallbackSources(context);
+  const menuItemLookup = buildMenuItemLookup(context);
+  const sources = Array.isArray(parsed?.sources)
+    ? parsed.sources
+      .slice(0, 8)
+      .map((source) => enrichMenuItemSource(source, context, menuItemLookup))
+      .filter(Boolean)
+    : fallbackSources(context);
   const answer = String(parsed?.answer || "").trim() || fallbackAnswer(context).answer;
   const hasUnknownPrice = context.intent === "menu" && /đ|vnd|k\b/i.test(answer) && !sources.some((s) => s.type === "menuItem");
   return {
@@ -675,7 +708,9 @@ const fallbackActions = (context) => {
   }
   if (context.intent === "menu" && restaurantId) {
     actions.push({ type: "link", label: "Xem menu", href: `/restaurant/${restaurantId}` });
-    if (topItemId) actions.push({ type: "link", label: "Xem món gợi ý", href: `/food/${topItemId}` });
+    if (topItemId) {
+      actions.push({ type: "link", label: "Xem món gợi ý", href: `/food/${topItemId}` });
+    }
   }
   if (context.intent === "promotion" && restaurantId) {
     actions.push({ type: "link", label: "Xem coupon", href: `/coupons/${restaurantId}` });
@@ -689,7 +724,7 @@ const fallbackActions = (context) => {
 
 const fallbackSources = (context) => [
   ...(context.restaurants || []).slice(0, 2).map((item) => ({ type: "restaurant", id: item.id, label: item.name })),
-  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name })),
+  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name, formattedPrice: item.formattedPrice, status: item.status, isAvailable: item.isAvailable, hasOptions: Boolean(item.options?.length), hasVariants: Boolean(item.variants?.length), restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null, basePrice: item.basePrice, currentPrice: item.currentPrice })),
   ...(context.coupons || []).slice(0, 2).map((item) => ({ type: "coupon", id: item.id, label: item.code })),
 ];
 
@@ -1038,4 +1073,6 @@ export const __testables = {
   fallbackActions,
   fallbackSources,
   normalizeGuestId,
+  normalizeAiResult,
+  enrichMenuItemSource,
 };

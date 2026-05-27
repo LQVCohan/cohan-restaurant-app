@@ -26,10 +26,10 @@ function App() {
                 <AppRouter />
                 <FoodDetailAvailabilityGlobalMount />
                 <GlobalMenuAvailabilityPrompt />
+                <AiChatbotWidget />
               </CartProvider>
             </CustomerNotificationProvider>
             <NotificationContainer />
-            <AiChatbotWidget />
           </NotificationProvider>
         </AuthProvider>
       </Router>

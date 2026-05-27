@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useCart } from "@/context/CartProvider";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
@@ -25,6 +26,14 @@ const ASK_AI_CHATBOT = gql`
         type
         id
         label
+        formattedPrice
+        status
+        isAvailable
+        hasOptions
+        hasVariants
+        restaurantId
+        basePrice
+        currentPrice
       }
       contextSummary {
         restaurantCount
@@ -149,6 +158,16 @@ export const extractRestaurantId = ({ params, pathname }) => {
   return null;
 };
 export const getInputPlaceholder = (restaurantId) => (restaurantId ? "Hỏi AI gợi ý món, combo, giá, món chay..." : "Hỏi về món ăn, đặt bàn, đơn hàng...");
+
+export const canAiAddMenuItemDirectly = (source) => {
+  if (!source?.id) return false;
+  if (source?.isAvailable === false || source?.status === "unavailable") return false;
+  if (source?.hasOptions || source?.hasVariants) return false;
+  const price = Number(source?.currentPrice || source?.basePrice || 0);
+  if (!Number.isFinite(price) || price <= 0) return false;
+  return true;
+};
+
 export const buildMenuSourceCards = (response) => {
   if (response?.intent !== "menu") return [];
   const seen = new Set();
@@ -204,6 +223,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const cartApi = useCart();
 
   const restaurantId = useMemo(
     () => extractRestaurantId({ params, pathname: location.pathname }),
@@ -220,7 +240,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const handoffEnabled = publicSettings?.handoffEnabled ?? true;
   const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
   const visibleActions = useMemo(
-    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")),
+    () => (handoffEnabled ? lastActions : lastActions.filter((action) => action?.type !== "handoff")).filter((action) => action?.type !== "add_to_cart_candidate"),
     [handoffEnabled, lastActions],
   );
 
@@ -550,7 +570,44 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               </span>
             </div>
           ) : null}
-          {menuSourceCards.length ? <div className="ai-chatbot-menu-cards">{menuSourceCards.map((s) => <div key={s.id} className="ai-chatbot-menu-card"><strong>{s.label}</strong><button type="button" onClick={() => handleAction({ href: `/food/${s.id}` })}>Xem món</button></div>)}</div> : null}
+          {menuSourceCards.length ? <div className="ai-chatbot-menu-cards">{menuSourceCards.map((s) => {
+            const canAdd = canAiAddMenuItemDirectly(s) && Boolean(s?.restaurantId);
+            return <div key={s.id} className="ai-chatbot-menu-card">
+              <strong>{s.label}</strong>
+              {s.formattedPrice ? <span className="ai-chatbot-menu-card__price">{s.formattedPrice}</span> : null}
+              {(s.isAvailable === false || s.status === "unavailable") ? <span className="ai-chatbot-menu-card__status">Tạm hết món</span> : null}
+              <div className="ai-chatbot-menu-card__actions">
+                <button type="button" onClick={() => handleAction({ href: `/food/${s.id}` })}>Xem món</button>
+                {canAdd ? <button type="button" onClick={() => {
+                  if (!canAiAddMenuItemDirectly(s)) {
+                    navigate(`/food/${s.id}`);
+                    setOpen(false);
+                    return;
+                  }
+                  if (!cartApi?.addToCart) {
+                    navigate(`/food/${s.id}`);
+                    setOpen(false);
+                    return;
+                  }
+                  const price = Number(s.currentPrice || s.basePrice || 0);
+                  if (!Number.isFinite(price) || price <= 0) {
+                    navigate(`/food/${s.id}`);
+                    setOpen(false);
+                    return;
+                  }
+                  cartApi.addToCart({
+                    id: s.id,
+                    restaurantId: s.restaurantId,
+                    name: s.label,
+                    price,
+                    quantity: 1,
+                  });
+                  setMessages((current) => [...current, { role: "assistant", content: `Đã thêm ${s.label} vào giỏ. Bạn có thể kiểm tra giỏ hàng trước khi đặt. Bạn muốn mình gợi ý thêm nước uống hoặc món kèm không?` }]);
+                  setLastQuickReplies(["Gợi ý nước uống", "Gợi ý món kèm", "Xem giỏ hàng"]);
+                }}>Thêm vào giỏ</button> : null}
+              </div>
+            </div>;
+          })}</div> : null}
 
           {visibleActions.length ? (
             <div className="ai-chatbot-actions">

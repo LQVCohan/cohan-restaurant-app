@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { __testables } from "../../src/services/ai/restaurantChatbot.service.js";
 
@@ -11,9 +12,19 @@ const {
   menuFallback,
   fallbackActions,
   fallbackAnswer,
+  fallbackSources,
+  normalizeAiResult,
 } = __testables;
 
 describe("restaurantChatbot menu assistant", () => {
+
+  it("AiChatbotSource schema supports metadata fields", () => {
+    const schema = readFileSync(new URL("../../graphql/schema/aiChatbot.graphql", import.meta.url), "utf8");
+    expect(schema).toMatch(/type AiChatbotSource[\s\S]*formattedPrice: String/);
+    expect(schema).toMatch(/basePrice: Float/);
+    expect(schema).toMatch(/currentPrice: Float/);
+  });
+
   it("isMenuAssistantRequest false for reservation/order", () => {
     expect(isMenuAssistantRequest("tôi muốn đặt bàn", "reservation", extractMenuPreferences("tôi muốn đặt bàn"))).toBe(false);
     expect(isMenuAssistantRequest("kiểm tra đơn hàng ABCD", "order", extractMenuPreferences("kiểm tra đơn hàng ABCD"))).toBe(false);
@@ -85,4 +96,36 @@ describe("restaurantChatbot menu assistant", () => {
     expect(fallbackActions(context).some((a) => a.href === "/food/f1")).toBe(true);
     expect(() => menuFallback(context)).not.toThrow();
   });
+
+  it("fallbackSources include menu metadata and no checkout/payment actions", () => {
+    const context = {
+      intent: "menu",
+      restaurants: [{ id: "r1" }],
+      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, options: [], variants: [], basePrice: 80000, currentPrice: 90000 }],
+      menuItems: [],
+      coupons: [],
+      orders: [],
+      reservations: [],
+    };
+    const sources = fallbackSources(context);
+    expect(sources[1]).toMatchObject({ type: "menuItem", id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 });
+    const actions = fallbackActions(context);
+    expect(actions.some((a) => /checkout|payment|thanh toán/i.test(`${a.type} ${a.label} ${a.href}`))).toBe(false);
+    expect(actions.some((a) => a.type === "add_to_cart_candidate")).toBe(false);
+  });
+
+
+  it("normalizeAiResult enriches menuItem source metadata from context", () => {
+    const context = {
+      intent: "menu",
+      restaurants: [{ id: "r1" }],
+      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 }],
+      menuItems: [],
+      coupons: [], orders: [], reservations: [],
+    };
+    const parsed = { answer: "ok", sources: [{ type: "menuItem", id: "f1", label: "Phở" }], actions: [] };
+    const out = normalizeAiResult(parsed, context);
+    expect(out.sources[0]).toMatchObject({ id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 });
+  });
+
 });

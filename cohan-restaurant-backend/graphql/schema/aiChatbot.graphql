@@ -8,6 +8,14 @@ type AiChatbotSource {
   type: String
   id: ID
   label: String
+  formattedPrice: String
+  status: String
+  isAvailable: Boolean
+  hasOptions: Boolean
+  hasVariants: Boolean
+  restaurantId: ID
+  basePrice: Float
+  currentPrice: Float
 }
 
 type AiChatbotContextSummary {
