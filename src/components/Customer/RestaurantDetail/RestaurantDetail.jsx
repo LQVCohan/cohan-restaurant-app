@@ -198,12 +198,18 @@ const RestaurantDetail = () => {
   ];
 
   const imgAvaUrl = resolvedRestaurant.avatar || resolvedRestaurant.imgAvaUrl || "/default-avatar.png";
-  const imgThumbUrl = resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl || "/default-cover.jpg";
+  const hasCoverImage = Boolean(resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl);
+  const imgThumbUrl = hasCoverImage
+    ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
+    : null;
 
   return (
     <div className="restaurant-detail-page">
       <section className="rd-hero">
-        <div className="hero-cover" style={{ backgroundImage: `url(${imgThumbUrl})` }}>
+        <div
+          className={`hero-cover ${hasCoverImage ? "has-cover" : "no-cover"}`}
+          style={imgThumbUrl ? { backgroundImage: `url(${imgThumbUrl})` } : undefined}
+        >
           <div className="overlay" />
           <button
             type="button"
@@ -325,6 +331,7 @@ const RestaurantDetail = () => {
           <div className="similar-widget">
             <h3>Có thể bạn thích</h3>
             <SimilarRestaurants
+              variant="compact"
               currentRestaurantId={resolvedRestaurant.id}
               cuisine={resolvedRestaurant.cuisine}
               district={resolvedRestaurant.district}

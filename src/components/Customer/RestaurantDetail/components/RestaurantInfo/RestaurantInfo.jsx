@@ -1,50 +1,55 @@
 import React from "react";
-import { MapPin, Phone, Globe, Clock } from "lucide-react";
+import { Clock, MapPin, Phone } from "lucide-react";
 import "./RestaurantInfo.scss";
 
 const formatAddress = (address) => {
-  if (!address) return "Thông tin đang được cập nhật";
+  if (!address) return "";
   if (typeof address === "string") return address;
-  return [address.line1, address.district, address.city].filter(Boolean).join(", ") || "Thông tin đang được cập nhật";
+  return [address.line1, address.district, address.city].filter(Boolean).join(", ");
 };
 
-const getDirectionsUrl = (address) => {
-  if (address?.lat && address?.lng) {
-    return `https://maps.google.com/?q=${address.lat},${address.lng}`;
-  }
-  const q = encodeURIComponent(formatAddress(address));
-  return `https://maps.google.com/?q=${q}`;
-};
+const RestaurantInfo = ({ restaurant }) => {
+  const description = restaurant?.description?.trim();
+  const amenities = Array.isArray(restaurant?.amenities) ? restaurant.amenities.filter(Boolean) : [];
+  const openingText = restaurant?.openingStatusReason || restaurant?.openingHours || "";
+  const phone = restaurant?.phone?.trim();
+  const addressText = formatAddress(restaurant?.address);
 
-const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
-  const openingText = restaurant?.openingStatusReason || restaurant?.openingHours || "Thông tin đang được cập nhật";
+  const hasRightColumn = Boolean(phone || addressText);
 
   return (
-    <div className="restaurant-info-premium">
-      <section className="section-block">
-        <h3>Thông tin nhà hàng</h3>
-        <p>{restaurant?.description || "Thông tin đang được cập nhật"}</p>
-      </section>
-
-      <section className="section-block">
-        <h4>Liên hệ</h4>
-        <p><MapPin size={14} /> {formatAddress(restaurant?.address)}</p>
-        {restaurant?.phone && <p><Phone size={14} /> {restaurant.phone}</p>}
-        {restaurant?.website && (
-          <p>
-            <Globe size={14} />
-            <a href={restaurant.website} target="_blank" rel="noreferrer">Website</a>
-          </p>
-        )}
-        <p><Clock size={14} /> {openingText}</p>
-      </section>
-
-      {!isPreviewMode && (
+    <div className={`restaurant-info-premium ${hasRightColumn ? "has-sidebar" : "single-column"}`}>
+      <div className="info-main">
         <section className="section-block">
-          <a href={getDirectionsUrl(restaurant?.address)} target="_blank" rel="noreferrer">
-            Chỉ đường
-          </a>
+          <h3>Thông tin nhà hàng</h3>
+          <p>{description || "Thông tin đang được cập nhật"}</p>
         </section>
+
+        {amenities.length > 0 && (
+          <section className="section-block">
+            <h4>Tiện ích</h4>
+            <ul className="amenities-list">
+              {amenities.map((amenity) => (
+                <li key={amenity}>{amenity}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {openingText && (
+          <section className="section-block">
+            <h4>Giờ hoạt động</h4>
+            <p><Clock size={14} /> {openingText}</p>
+          </section>
+        )}
+      </div>
+
+      {hasRightColumn && (
+        <aside className="info-side section-block">
+          <h4>Liên hệ</h4>
+          {phone && <p><Phone size={14} /> {phone}</p>}
+          {addressText && <p><MapPin size={14} /> {addressText}</p>}
+        </aside>
       )}
     </div>
   );
