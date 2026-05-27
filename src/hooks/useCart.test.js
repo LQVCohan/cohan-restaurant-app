@@ -32,9 +32,17 @@ describe("cart hold helpers", () => {
   it("hasExpiredHoldItems phát hiện hold hết hạn", () => {
     const now = new Date("2026-05-27T10:00:00.000Z").getTime();
     const cart = [
-      { holdExpiresAt: "2026-05-27T10:00:40.000Z", holdStatus: "ACTIVE" },
-      { holdExpiresAt: "2026-05-27T09:58:00.000Z", holdStatus: "ACTIVE" },
+      { holdExpiresAt: "2026-05-27T10:00:40.000Z", holdStatus: "active" },
+      { holdExpiresAt: "2026-05-27T09:58:00.000Z", holdStatus: "active" },
     ];
     expect(hasExpiredHoldItems(cart, now)).toBe(true);
+  });
+
+  it("không expired khi holdStatus active và còn thời gian", () => {
+    const now = new Date("2026-05-27T10:00:00.000Z").getTime();
+    const cart = [
+      { holdExpiresAt: "2026-05-27T10:03:00.000Z", holdStatus: "active" },
+    ];
+    expect(hasExpiredHoldItems(cart, now)).toBe(false);
   });
 });

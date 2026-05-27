@@ -96,7 +96,8 @@ export const formatHoldCountdown = (ms = 0) => {
 
 export const getHoldStatus = (item, now = Date.now()) => {
   if (!item?.holdExpiresAt) return { state: "none", remainingMs: 0 };
-  if (item.holdStatus && item.holdStatus !== "ACTIVE")
+  const normalizedHoldStatus = String(item.holdStatus || "active").toLowerCase();
+  if (normalizedHoldStatus !== "active")
     return { state: "expired", remainingMs: 0 };
   const expiresAt = new Date(item.holdExpiresAt).getTime();
   if (!Number.isFinite(expiresAt)) return { state: "none", remainingMs: 0 };
@@ -326,9 +327,12 @@ function RestaurantGroup({
           const modifiers = item.modifiers || item.selectedModifiers || [];
           const variantLabel =
             item.servingVariantName ||
+            item.servingName ||
             item.method ||
             item.servingMethod ||
-            item.servingVariantLabel;
+            item.servingVariantLabel ||
+            item.servingVariantKey ||
+            item.servingKey;
           const itemBusy =
             clearingBusy ||
             globalBusy ||
