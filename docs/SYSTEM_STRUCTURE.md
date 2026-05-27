@@ -341,6 +341,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Logout gọi server-side revoke refresh token và clear cookie.
 - Cookie refresh dùng path `/api/auth` để có mặt ở cả refresh và logout.
 - Legacy localStorage/sessionStorage token flow đã bị loại bỏ/deprecated; chỉ còn cleanup legacy keys khi startup/logout.
+- Refresh rotation có reuse detection: nếu token đã revoke bị dùng lại, backend coi là dấu hiệu theft và revoke toàn bộ token descendant chain qua `replacedByTokenHash` (iterative + visited set).
+- Log bảo mật cho reuse chỉ chứa metadata an toàn (userId/hash prefix), không bao giờ log raw refresh token.
+- RefreshToken có TTL index MongoDB `expiresAt` (`expireAfterSeconds: 0`) để tự dọn token hết hạn.
+- `/api/auth/refresh` và `/api/auth/logout` có Origin guard: origin phải thuộc `CORS_ORIGINS`; response từ chối là `403 Forbidden` với message chung `Forbidden`.
+- Request auth-cookie thiếu Origin: production reject mặc định, chỉ cho phép khi `ALLOW_AUTH_COOKIE_NO_ORIGIN=true`; development/test cho phép mặc định trừ khi ép `ALLOW_AUTH_COOKIE_NO_ORIGIN=false`.
+- Có route-level rate limit riêng cho auth-cookie endpoints: refresh (`RL_AUTH_REFRESH_MAX`, `RL_AUTH_REFRESH_WINDOW`) và logout (`RL_AUTH_LOGOUT_MAX`, `RL_AUTH_LOGOUT_WINDOW`).
 ## Phase 12 - AI Chatbot Knowledge Base
 - Added per-restaurant knowledge model: `AiChatbotKnowledgeItem` with manager CRUD and runtime retrieval.
 - GraphQL aiChatbot schema now supports knowledge list/item queries and create/update/delete mutations.

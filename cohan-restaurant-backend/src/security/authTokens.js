@@ -29,6 +29,10 @@ export function getRefreshCookieMaxAgeSeconds() {
   return Math.floor(getRefreshTokenTtlMs() / 1000);
 }
 
+export function hashRefreshToken(rawToken) {
+  return crypto.createHash("sha256").update(String(rawToken || "")).digest("hex");
+}
+
 export function signAccessToken(user) {
   return jwt.sign(
     { id: String(user._id), email: user.email, role: String(user.roleName || "").toLowerCase() },
@@ -60,19 +64,55 @@ export function clearRefreshCookie(reply) {
 
 export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
   const raw = crypto.randomBytes(48).toString("base64url");
-  const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
+  const tokenHash = hashRefreshToken(raw);
   const expiresAt = new Date(Date.now() + getRefreshTokenTtlMs());
   await RefreshToken.create({ userId, tokenHash, expiresAt, userAgent: userAgent || null, ip: ip || null });
   reply.setCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", raw, refreshCookieOptions());
   return { raw, tokenHash };
 }
 
-export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip }) {
-  const currentHash = crypto.createHash("sha256").update(String(currentRawToken || "")).digest("hex");
+export async function revokeRefreshTokenFamilyFromHash(tokenHash) {
+  let currentHash = tokenHash;
+  const visited = new Set();
+  while (currentHash && !visited.has(currentHash)) {
+    visited.add(currentHash);
+    const token = await RefreshToken.findOne({ tokenHash: currentHash });
+    if (!token) break;
+    if (!token.revokedAt) {
+      token.revokedAt = new Date();
+      await token.save();
+    }
+    currentHash = token.replacedByTokenHash || null;
+  }
+}
+
+export async function handleRefreshTokenReuse(existing, logger) {
+  const tokenHashPrefix = String(existing?.tokenHash || "").slice(0, 12);
+  const replacedByTokenHashPrefix = String(existing?.replacedByTokenHash || "").slice(0, 12);
+  logger?.warn?.(
+    {
+      userId: existing?.userId ? String(existing.userId) : null,
+      tokenHashPrefix,
+      replacedByTokenHashPrefix,
+    },
+    "refresh token reuse detected; revoking token family",
+  );
+  await revokeRefreshTokenFamilyFromHash(existing?.replacedByTokenHash || null);
+}
+
+export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip, logger }) {
+  const currentHash = hashRefreshToken(currentRawToken);
   const existing = await RefreshToken.findOne({ tokenHash: currentHash });
-  if (!existing || existing.revokedAt || existing.expiresAt.getTime() <= Date.now()) return null;
+  if (!existing) return null;
+  if (existing.revokedAt) {
+    await handleRefreshTokenReuse(existing, logger);
+    return null;
+  }
+  if (existing.expiresAt.getTime() <= Date.now()) return null;
+
   const user = await User.findById(existing.userId).populate("role").lean({ virtuals: true });
   if (!user || user.status !== "active") return null;
+
   const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip });
   existing.revokedAt = new Date();
   existing.replacedByTokenHash = issued.tokenHash;
@@ -83,7 +123,7 @@ export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip
 
 export async function revokeRefreshToken(rawToken) {
   if (!rawToken) return;
-  const tokenHash = crypto.createHash("sha256").update(String(rawToken)).digest("hex");
+  const tokenHash = hashRefreshToken(rawToken);
   await RefreshToken.updateOne(
     { tokenHash, revokedAt: null },
     { $set: { revokedAt: new Date() } },
