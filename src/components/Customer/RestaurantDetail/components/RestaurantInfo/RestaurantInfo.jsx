@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, MapPin, Phone } from "lucide-react";
+import { Clock, Info, MapPin, Phone, ShieldCheck, Sparkles } from "lucide-react";
 import { getOpeningStatusLabel } from "@/utils/restaurantStatus";
 import "./RestaurantInfo.scss";
 
@@ -29,25 +29,29 @@ const RestaurantInfo = ({ restaurant }) => {
   return (
     <div className="restaurant-info-premium">
       <section className="info-card info-card--intro">
-        <h3>Thông tin nhà hàng</h3>
-        <p className={description ? "" : "placeholder-text"}>
-          {description || "Nhà hàng đang cập nhật phần giới thiệu."}
-        </p>
+        <div className="title-row">
+          <span className="title-icon"><Sparkles size={15} /></span>
+          <h3>Thông tin nhà hàng</h3>
+        </div>
+        <p className={description ? "" : "placeholder-box"}>{description || "Nhà hàng đang cập nhật phần giới thiệu."}</p>
       </section>
 
       <section className="info-card">
-        <h4>Giờ hoạt động</h4>
+        <div className="title-row">
+          <span className="title-icon"><Clock size={15} /></span>
+          <h4>Giờ hoạt động</h4>
+        </div>
         {openingStatus && <span className={`status-chip ${openingStatus}`}>{getOpeningStatusLabel(openingStatus)}</span>}
         <div className="info-row">
-          <Clock size={14} />
-          <p className={openingText ? "" : "placeholder-text"}>
-            {openingText || "Lịch hoạt động đang được cập nhật."}
-          </p>
+          <p className={openingText ? "" : "placeholder-box"}>{openingText || "Lịch hoạt động đang được cập nhật."}</p>
         </div>
       </section>
 
       <section className="info-card">
-        <h4>Tiện ích</h4>
+        <div className="title-row">
+          <span className="title-icon"><Info size={15} /></span>
+          <h4>Tiện ích</h4>
+        </div>
         {amenities.length > 0 ? (
           <ul className="amenities-list">
             {amenities.map((amenity) => (
@@ -55,19 +59,22 @@ const RestaurantInfo = ({ restaurant }) => {
             ))}
           </ul>
         ) : (
-          <p className="placeholder-text">Thông tin tiện ích đang được cập nhật.</p>
+          <p className="placeholder-box">Thông tin tiện ích đang được cập nhật.</p>
         )}
       </section>
 
       <section className="info-card info-card--contact">
-        <h4>Liên hệ</h4>
-        <div className="info-row">
-          <Phone size={14} />
-          <p className={phone ? "" : "placeholder-text"}>{phone || "Số điện thoại đang cập nhật."}</p>
+        <div className="title-row">
+          <span className="title-icon"><Phone size={15} /></span>
+          <h4>Liên hệ</h4>
         </div>
-        <div className="info-row">
-          <MapPin size={14} />
-          <p className={addressText ? "" : "placeholder-text"}>{addressText || "Địa chỉ đang cập nhật."}</p>
+        <div className="contact-row">
+          <span className="contact-icon"><Phone size={14} /></span>
+          <p className={phone ? "" : "placeholder-box"}>{phone || "Số điện thoại đang cập nhật."}</p>
+        </div>
+        <div className="contact-row">
+          <span className="contact-icon"><MapPin size={14} /></span>
+          <p className={addressText ? "" : "placeholder-box"}>{addressText || "Địa chỉ đang cập nhật."}</p>
         </div>
         {directionsUrl && (
           <a className="direction-link" href={directionsUrl} target="_blank" rel="noreferrer">
@@ -77,7 +84,10 @@ const RestaurantInfo = ({ restaurant }) => {
       </section>
 
       <section className="info-card info-card--policy">
-        <h4>Chính sách</h4>
+        <div className="title-row">
+          <span className="title-icon"><ShieldCheck size={15} /></span>
+          <h4>Chính sách</h4>
+        </div>
         <div className="policy-list">
           <div className="policy-item">
             <span>Đặt bàn</span>
