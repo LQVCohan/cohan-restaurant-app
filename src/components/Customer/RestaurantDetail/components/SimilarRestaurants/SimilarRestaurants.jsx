@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
 import "./SimilarRestaurants.scss";
@@ -19,29 +19,62 @@ const GET_SIMILAR = gql`
   }
 `;
 
-const SimilarRestaurants = ({ currentRestaurantId }) => {
+const SimilarRestaurants = ({ currentRestaurantId, variant = "default" }) => {
   const { data, loading } = useQuery(GET_SIMILAR, {
     variables: { restaurantId: currentRestaurantId, limit: 6 },
     skip: !currentRestaurantId,
   });
+  const [erroredImages, setErroredImages] = useState({});
 
   const items = data?.similarRestaurants || [];
 
-  if (loading) return <div className="similar-restaurants">Đang tải nhà hàng tương tự...</div>;
-  if (!items.length) return <div className="similar-restaurants">Không có nhà hàng tương tự.</div>;
+  if (loading) {
+    return <div className={`similar-restaurants ${variant}`}>Đang tải nhà hàng tương tự...</div>;
+  }
+
+  if (!items.length) {
+    return (
+      <div className={`similar-restaurants ${variant}`}>
+        <div className="similar-empty">Không có nhà hàng tương tự.</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="similar-restaurants">
-      {items.map((restaurant) => (
-        <Link key={restaurant.id} to={`/restaurant/${restaurant.id}`} className="restaurant-card">
-          <img src={restaurant.coverImage || restaurant.avatar || "/default-restaurant.jpg"} alt={restaurant.name} />
-          <div>
-            <h4>{restaurant.name}</h4>
-            <p>{restaurant.cuisineType || "Nhà hàng"}</p>
-            <p>{restaurant.reviewCount > 0 ? `${Number(restaurant.avgRating || 0).toFixed(1)} (${restaurant.reviewCount})` : "Chưa có đánh giá"}</p>
-          </div>
-        </Link>
-      ))}
+    <div className={`similar-restaurants ${variant}`}>
+      <div className="restaurants-grid">
+        {items.map((restaurant) => {
+          const imageSrc = restaurant.coverImage || restaurant.avatar || "/default-restaurant.jpg";
+          const hasImageError = !!erroredImages[restaurant.id];
+
+          return (
+            <Link key={restaurant.id} to={`/restaurant/${restaurant.id}`} className="restaurant-card">
+              {hasImageError ? (
+                <div className="restaurant-image placeholder" aria-hidden="true" />
+              ) : (
+                <img
+                  className="restaurant-image"
+                  src={imageSrc}
+                  alt=""
+                  onError={() => {
+                    setErroredImages((prev) => ({ ...prev, [restaurant.id]: true }));
+                  }}
+                />
+              )}
+
+              <div className="restaurant-content">
+                <h4>{restaurant.name}</h4>
+                <p className="meta">{restaurant.cuisineType || "Nhà hàng"}</p>
+                <p className="meta">
+                  {restaurant.reviewCount > 0
+                    ? `${Number(restaurant.avgRating || 0).toFixed(1)} (${restaurant.reviewCount})`
+                    : "Chưa có đánh giá"}
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 };

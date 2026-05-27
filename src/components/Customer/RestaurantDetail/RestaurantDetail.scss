@@ -14,7 +14,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   min-height: 100vh;
   font-family: "Inter", sans-serif;
   color: $text-main;
-  padding-bottom: 80px; // Cho mobile button
+  padding-bottom: 88px; // mobile action bar space
 }
 
 .restaurant-detail-page .container {
@@ -30,19 +30,20 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   padding-bottom: 24px;
 
   .hero-cover {
-    height: 350px;
+    height: 260px;
     background-size: cover;
     background-position: center;
+    background-color: #fff7ed;
+
+    &.no-cover {
+      background-image: linear-gradient(135deg, #fff7ed 0%, #fed7aa 45%, #fdba74 100%);
+    }
     position: relative;
 
     .overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(0, 0, 0, 0.2),
-        rgba(0, 0, 0, 0.6)
-      );
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.32));
     }
 
     .btn-back {
@@ -69,20 +70,24 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 
   .res-info-card {
     position: relative;
-    margin-top: -80px;
+    margin-top: -52px;
     z-index: 2;
     background: $white;
     border-radius: $radius;
     padding: 24px;
     box-shadow: $shadow-card;
     display: flex;
-    gap: 24px;
+    gap: 20px;
+    align-items: center;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
 
     .avatar-wrapper {
       flex-shrink: 0;
       img {
-        width: 140px;
-        height: 140px;
+        width: 116px;
+        height: 116px;
         border-radius: 12px;
         object-fit: cover;
         border: 4px solid $white;
@@ -236,9 +241,9 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 /* 3. LAYOUT CONTENT */
 .rd-container {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 32px;
-  padding-top: 32px;
+  padding-top: 24px;
   padding-bottom: 60px;
 
   @media (max-width: 992px) {
@@ -251,7 +256,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   border-radius: $radius;
   padding: 24px;
   border: 1px solid $border;
-  min-height: 500px;
+  min-height: 240px;
 }
 
 /* SIDEBAR */
@@ -360,6 +365,49 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 
+.btn-book:disabled,
+.btn-book-full:disabled,
+.btn-book-mobile:disabled {
+  background: #cbd5e1 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* UTILS */
+.detail-loading,
+.detail-error {
+  padding: 100px;
+  text-align: center;
+  color: $text-sub;
+}
+.detail-loading .loading-spinner {
+  margin: 0 auto;
+}
+
+/* Responsive Header */
+@media (max-width: 768px) {
+  .rd-hero {
+    .hero-cover {
+      height: 200px;
+    }
+    .res-info-card {
+      flex-direction: column;
+      margin-top: -36px;
+      gap: 16px;
+      .avatar-wrapper img {
+        width: 100px;
+        height: 100px;
+      }
+      .action-group {
+        flex-direction: row;
+        margin-top: 10px;
+      }
+    }
+  }
+}
+
 @media (max-width: 576px) {
   .restaurant-detail-page {
     .container {
@@ -368,11 +416,11 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 
     .rd-hero {
       .hero-cover {
-        height: 220px;
+        height: 160px;
       }
 
       .res-info-card {
-        margin-top: -28px;
+        margin-top: -24px;
         padding: 16px;
 
         .info-text {
@@ -403,39 +451,6 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
     .main-content {
       padding: 16px;
       min-height: auto;
-    }
-  }
-}
-
-/* UTILS */
-.detail-loading,
-.detail-error {
-  padding: 100px;
-  text-align: center;
-  color: $text-sub;
-}
-.detail-loading .loading-spinner {
-  margin: 0 auto;
-}
-
-/* Responsive Header */
-@media (max-width: 768px) {
-  .rd-hero {
-    .hero-cover {
-      height: 250px;
-    }
-    .res-info-card {
-      flex-direction: column;
-      margin-top: -40px;
-      gap: 16px;
-      .avatar-wrapper img {
-        width: 100px;
-        height: 100px;
-      }
-      .action-group {
-        flex-direction: row;
-        margin-top: 10px;
-      }
     }
   }
 }
