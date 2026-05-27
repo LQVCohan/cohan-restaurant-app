@@ -22,6 +22,7 @@ import ManagementPageHeader from "../shared/ManagementPageHeader";
 import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
 import Toolbar from "./components/Toolbar/Toolbar";
 import MenuItemCard from "./components/MenuItemCard/MenuItemCard";
+import ForYouReadinessPanel from "./components/ForYouReadinessPanel/ForYouReadinessPanel";
 // Modals
 import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
 import DishCategoryModal from "./components/DishCategoryModal/DishCategoryModal";
@@ -43,6 +44,10 @@ import {
   canAccessMenuManagementAction,
 } from "../../../utils/frontendRoleAccess";
 import { MENU_ITEM_INVENTORY_STATUS } from "../../../utils/menuItemAvailability";
+import {
+  getForYouMetadataStatus,
+  getForYouMetadataSummary,
+} from "../../../utils/forYouMenuMetadata";
 /* ========== QUERY ========== */
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
@@ -129,32 +134,6 @@ const normalizeServingVariantsForSave = (methods = []) => {
   }));
 };
 
-
-const getForYouMetadataStatus = (item) => {
-  const dietTags = Array.isArray(item?.dietTags) ? item.dietTags : [];
-  const allergenTags = Array.isArray(item?.allergenTags) ? item.allergenTags : [];
-  const tasteProfile = item?.tasteProfile || {};
-
-  const hasDietTags = dietTags.length > 0;
-  const hasAllergenTags = allergenTags.length > 0;
-
-  const hasTasteProfile =
-    !!tasteProfile.containsOnion ||
-    !!tasteProfile.containsCilantro ||
-    Number(tasteProfile.sugar ?? 100) !== 100 ||
-    String(tasteProfile.spice || "Vừa") !== "Vừa";
-
-  const hasAnyMetadata = hasDietTags || hasAllergenTags || hasTasteProfile;
-
-  return {
-    hasDietTags,
-    hasAllergenTags,
-    hasTasteProfile,
-    hasAnyMetadata,
-    status: hasAnyMetadata ? "ready" : "missing",
-    label: hasAnyMetadata ? "Đã khai báo khẩu vị" : "Chưa khai báo khẩu vị",
-  };
-};
 
 const getMenuEmptyState = ({
   restaurantId,
@@ -1048,20 +1027,21 @@ const MenuManagement = () => {
     setSelectedItemIds(new Set());
   }, [currentRestaurant, isBulkUpdatingStatus, selectedTimeSlot]);
 
+  const enrichedItems = useMemo(
+    () =>
+      (items || []).map((item) => ({
+        ...item,
+        categoryName:
+          categories.find((c) => c.id === item.categoryId)?.name ||
+          item.categoryName,
+        forYouMetadata: getForYouMetadataStatus(item),
+      })),
+    [items, categories],
+  );
+
   const displayItems = useMemo(
     () => {
-      const mapped = (items || []).map((item) => {
-        const forYouMetadata = getForYouMetadataStatus(item);
-        return {
-          ...item,
-          categoryName:
-            categories.find((c) => c.id === item.categoryId)?.name ||
-            item.categoryName,
-          forYouMetadata,
-        };
-      });
-
-      let filtered = mapped;
+      let filtered = enrichedItems;
 
       if (forYouMetadataFilter === "missing") {
         filtered = filtered.filter((item) => item.forYouMetadata?.status === "missing");
@@ -1090,7 +1070,7 @@ const MenuManagement = () => {
         return true;
       });
     },
-    [items, categories, inventoryFilter, forYouMetadataFilter],
+    [enrichedItems, inventoryFilter, forYouMetadataFilter],
   );
 
   const isSparseGrid =
@@ -1176,19 +1156,34 @@ const MenuManagement = () => {
     });
   }, [isBulkUpdatingStatus, visibleItemIds]);
 
-  const forYouMetadataCounts = useMemo(() => {
-    const sourceItems = Array.isArray(items) ? items : [];
-    return sourceItems.reduce(
-      (acc, item) => {
-        const status = getForYouMetadataStatus(item);
-        acc.all += 1;
-        if (status.status === "missing") acc.missing += 1;
-        if (status.status === "ready") acc.ready += 1;
-        return acc;
-      },
-      { all: 0, missing: 0, ready: 0 },
-    );
-  }, [items]);
+
+
+  const forYouReadinessSummary = useMemo(
+    () => getForYouMetadataSummary(enrichedItems),
+    [enrichedItems],
+  );
+
+  const firstMissingForYouItem = useMemo(
+    () => enrichedItems.find((item) => item.forYouMetadata?.status === "missing"),
+    [enrichedItems],
+  );
+
+  const handleShowMissingForYouItems = () => {
+    setForYouMetadataFilter("missing");
+  };
+
+  const handleEditFirstMissingForYouItem = (item) => {
+    if (!item?.id) return;
+    setModalFocusSection("for-you");
+    toggleModal("menuItem", true, item.id);
+  };
+
+  const forYouMetadataCounts = useMemo(() => ({
+    all: forYouReadinessSummary.total,
+    missing: forYouReadinessSummary.missing,
+    ready: forYouReadinessSummary.ready,
+  }), [forYouReadinessSummary]);
+
 
   const inventoryFilterCounts = useMemo(() => {
     const sourceItems = Array.isArray(items) ? items : [];
@@ -1373,6 +1368,16 @@ const MenuManagement = () => {
           onForYouMetadataFilterChange={setForYouMetadataFilter}
           forYouMetadataCounts={forYouMetadataCounts}
         />
+
+        {!itemsLoading && enrichedItems.length > 0 && (
+          <ForYouReadinessPanel
+            summary={forYouReadinessSummary}
+            canUpdateItem={canUpdateMenuItem}
+            firstMissingItem={firstMissingForYouItem}
+            onShowMissing={handleShowMissingForYouItems}
+            onEditFirstMissing={handleEditFirstMissingForYouItem}
+          />
+        )}
 
         <div className="mm-body__content">
           {deleteListRefreshError && (
