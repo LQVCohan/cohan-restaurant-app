@@ -106,3 +106,4 @@ export { default as AiChatConversation } from "./ai-chat-conversation.model.js";
 export { default as AiChatMessage } from "./ai-chat-message.model.js";
 
 export { default as AiChatbotKnowledgeItem } from "./ai-chatbot-knowledge-item.model.js";
+export { default as AiChatbotKnowledgeSuggestion } from "./ai-chatbot-knowledge-suggestion.model.js";

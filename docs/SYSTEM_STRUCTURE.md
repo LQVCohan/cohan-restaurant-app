@@ -330,3 +330,7 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Manager page route/hash: `#ai-chatbot-knowledge` with sidebar entry `AI Chatbot Knowledge`.
 - Permissions: read/list via `report.read`; write ops via `restaurant.write` through `requireRestaurantPermission`.
 - Runtime chatbot now injects top relevant enabled knowledge snippets (capped chars) into prompt context before model generation.
+
+### AI Chatbot Phase 13
+- Added backend model/service/graphql and manager UI section for Knowledge Gap Suggestions.
+- Runtime now records deduplicated pending suggestions by restaurant + normalized question.
