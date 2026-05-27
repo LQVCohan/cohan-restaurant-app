@@ -15,7 +15,7 @@ $danger: #ef4444;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 180px;
+  min-height: 172px;
 
   // Hiệu ứng hover nổi khối
   &:hover {
@@ -78,10 +78,10 @@ $danger: #ef4444;
   .card-body {
     position: relative;
     z-index: 1;
-    margin: 16px 0;
+    margin: 12px 0 10px;
 
     .kpi-value {
-      font-size: 1.75rem;
+      font-size: 1.95rem;
       font-weight: 800;
       color: $charcoal;
       margin: 0;
@@ -89,7 +89,7 @@ $danger: #ef4444;
     }
 
     .kpi-label {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: $slate;
       margin: 4px 0 0 0;
       font-weight: 500;
@@ -138,10 +138,10 @@ $danger: #ef4444;
     }
 
     .comparison-text {
-      font-size: 0.75rem;
-      color: #94a3b8; // Màu xám nhạt hơn
+      font-size: 0.78rem;
+      color: #64748b;
       margin: 0;
-      font-style: italic;
+      line-height: 1.35;
     }
   }
 }

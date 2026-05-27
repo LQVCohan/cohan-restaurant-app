@@ -1,72 +1,288 @@
-$bg-page: #f8fafc;
-$text-dark: #0f172a;
-$gold: #c5a47e;
-$white: #ffffff;
-$gap: 20px;
+$bg-page: #f3f6fb;
+$card-bg: #ffffff;
+$card-border: #e2e8f0;
+$text-primary: #0f172a;
+$text-secondary: #64748b;
+$accent-blue: #2563eb;
+$accent-gold: #c5a47e;
+$danger: #dc2626;
+$warning: #d97706;
+$success: #059669;
+$radius-lg: 16px;
+$gap: 24px;
 
 .manager-analyst-page {
   padding: 24px;
-  background-color: $bg-page;
+  background: $bg-page;
   min-height: 100vh;
-  color: $text-dark;
+  color: $text-primary;
 
   .analyst-header {
     display: flex;
     justify-content: space-between;
-    gap: 16px;
     align-items: flex-end;
-    margin-bottom: 24px;
-    background: $white;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 16px;
-    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+    gap: 16px;
+    margin-bottom: $gap;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    background: $card-bg;
+    border: 1px solid $card-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 
-    .header-titles h1 { margin: 0 0 6px; font-size: 1.8rem; }
-    .header-titles p { margin: 0; color: #64748b; }
-
-    .header-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-
-    .picker-wrap {
-      display: flex; align-items: center; gap: 8px; background: $white; border: 1px solid #e2e8f0;
-      padding: 10px 12px; border-radius: 8px;
-      select { border: none; background: transparent; font-weight: 600; color: #1e293b; }
+    &::after {
+      content: "";
+      position: absolute;
+      right: -70px;
+      top: -60px;
+      width: 220px;
+      height: 170px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
     }
 
-    .btn-icon, .btn-primary { border-radius: 8px; border: 1px solid #e2e8f0; background: $white; }
-    .btn-icon { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
-    .btn-primary { display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 600; background: #0f172a; color: $gold; }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .header-titles {
+      position: relative;
+      z-index: 1;
 
-    select:focus-visible, .btn-icon:focus-visible, .btn-primary:focus-visible {
-      outline: 2px solid #1d4ed8;
+      h1 {
+        margin: 0 0 6px;
+        font-size: 1.75rem;
+      }
+
+      p {
+        margin: 0;
+        max-width: 660px;
+        color: $text-secondary;
+      }
+    }
+
+    .header-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .picker-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 12px;
+      background: #fff;
+      border: 1px solid $card-border;
+      border-radius: 10px;
+
+      select {
+        height: 100%;
+        min-width: 140px;
+        border: none;
+        background: transparent;
+        font-weight: 600;
+        color: #1e293b;
+      }
+    }
+
+    .btn-icon,
+    .btn-primary {
+      height: 42px;
+      border: 1px solid $card-border;
+      border-radius: 10px;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-icon {
+      width: 42px;
+      color: #334155;
+
+      &:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: $accent-blue;
+      }
+    }
+
+    .btn-primary {
+      gap: 8px;
+      padding: 0 14px;
+      font-weight: 700;
+      color: #475569;
+      background: #f8fafc;
+
+      &:disabled {
+        opacity: 1;
+        color: #94a3b8;
+        background: #f8fafc;
+        border-style: dashed;
+        cursor: not-allowed;
+      }
+    }
+
+    select:focus-visible,
+    .btn-icon:focus-visible,
+    .btn-primary:focus-visible {
+      outline: 2px solid $accent-blue;
       outline-offset: 2px;
     }
   }
 
-  .analyst-error, .analyst-empty-data, .analyst-empty-page {
-    margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; border: 1px solid;
+  .analytics-section {
+    margin-bottom: $gap;
+
+    &__header {
+      margin-bottom: 14px;
+      padding: 2px 2px 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    &__title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    &__subtitle {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      color: $text-secondary;
+    }
   }
-  .analyst-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
-  .analyst-empty-data, .analyst-empty-page { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 
-  .grid-item { background: $white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; height: 100%; }
-  .section-heading { margin: 8px 0 12px; font-size: 1rem; color: #334155; }
+  .analyst-error,
+  .analyst-empty-data,
+  .analyst-empty-page {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid;
+    border-radius: 10px;
+  }
 
-  .kpi-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: $gap; margin-bottom: $gap; }
-  .strategy-grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: $gap; margin-bottom: $gap; }
-  .operations-intel-grid, .growth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: $gap; margin-bottom: $gap; }
-  .product-customer-grid { display: grid; grid-template-columns: 7fr 5fr; gap: $gap; margin-bottom: $gap; }
-  .operations-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: $gap; margin-bottom: 20px; }
+  .analyst-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+
+  .analyst-error__retry {
+    margin-left: 10px;
+  }
+
+  .analyst-empty-data,
+  .analyst-empty-page {
+    background: #f8fafc;
+    color: #475569;
+    border-color: #cbd5e1;
+  }
+
+  .grid-item {
+    height: 100%;
+    overflow: hidden;
+    background: $card-bg;
+    border: 1px solid $card-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  }
+
+  .kpi-section {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: $gap;
+  }
+
+  .strategy-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1.35fr;
+    gap: $gap;
+
+    .ai-assistant {
+      border-color: rgba(197, 164, 126, 0.45);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+  }
+
+  .operations-intel-grid,
+  .growth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $gap;
+  }
+
+  .product-customer-grid {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: $gap;
+    margin-bottom: $gap;
+  }
+
+  .operations-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: $gap;
+  }
 
   @media (max-width: 1024px) {
-    .kpi-section { grid-template-columns: repeat(2, 1fr); }
-    .strategy-grid, .operations-intel-grid, .growth-grid, .product-customer-grid, .operations-grid { grid-template-columns: 1fr; }
+    .kpi-section {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .strategy-grid,
+    .operations-intel-grid,
+    .growth-grid,
+    .product-customer-grid,
+    .operations-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .analyst-header {
+      align-items: stretch;
+
+      .header-actions .picker-wrap select {
+        min-width: 120px;
+      }
+    }
   }
 
   @media (max-width: 700px) {
     padding: 14px;
-    .analyst-header { align-items: stretch; flex-direction: column; }
-    .kpi-section { grid-template-columns: 1fr; }
+
+    .analyst-header {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 14px;
+
+      .header-actions {
+        width: 100%;
+
+        > * {
+          width: 100%;
+        }
+
+        .picker-wrap,
+        .btn-primary,
+        .btn-icon {
+          width: 100%;
+        }
+
+        .picker-wrap select {
+          min-width: 0;
+          width: 100%;
+        }
+      }
+    }
+
+    .kpi-section {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .analytics-section {
+      margin-bottom: 20px;
+    }
   }
 }
