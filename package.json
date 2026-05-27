@@ -13,7 +13,8 @@
     "env:local": "node scripts/setup-local-env.mjs",
     "test:frontend": "vitest run",
     "test:backend": "vitest run --config vitest.backend.config.js",
-    "test:performance": "vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.test.jsx && vitest run --config vitest.backend.config.js cohan-restaurant-backend/tests/services/staff-performance-core-formula.service.test.js cohan-restaurant-backend/tests/services/performance-incident.service.test.js cohan-restaurant-backend/tests/services/performance-appeal.service.test.js && node --check cohan-restaurant-backend/scripts/verifyStaffPerformanceDemoRegression.js"
+    "test:performance": "vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.test.jsx && vitest run --config vitest.backend.config.js cohan-restaurant-backend/tests/services/staff-performance-core-formula.service.test.js cohan-restaurant-backend/tests/services/performance-incident.service.test.js cohan-restaurant-backend/tests/services/performance-appeal.service.test.js && node --check cohan-restaurant-backend/scripts/verifyStaffPerformanceDemoRegression.js",
+    "check:conflicts": "node scripts/check-conflict-markers.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

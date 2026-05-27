@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
+import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import "@/styles/Homepage/HomeForYouSection.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
@@ -19,7 +20,13 @@ export default function HomeForYouSection({ timeSlot = null }) {
     recommendedItems,
     fallbackItems,
     accessibleRestaurants,
+    preferences,
   } = useForYouRecommendations({ limitPerRestaurant: 8, maxRestaurants: 5, enabled, timeSlot });
+
+  const completion = useMemo(
+    () => getFoodPreferenceCompletion(preferences),
+    [preferences],
+  );
 
   const displayItems = useMemo(() => {
     const source = recommendedItems.length > 0 ? recommendedItems : fallbackItems;
@@ -27,7 +34,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
   }, [fallbackItems, recommendedItems]);
 
   if (!enabled || accessibleRestaurants.length === 0) return null;
-  if (loading) return <section className="home-for-you"><div className="home-for-you__container"><div className="home-for-you__skeleton">Đang tải gợi ý dành cho bạn...</div></div></section>;
+  if (loading) return <section className="home-for-you"><div className="home-for-you__container"><div className="home-for-you__skeleton">Đang tìm món hợp khẩu vị của bạn...</div></div></section>;
   if (error || displayItems.length === 0) return null;
 
   const usingFallback = recommendedItems.length === 0;
@@ -37,10 +44,21 @@ export default function HomeForYouSection({ timeSlot = null }) {
       <div className="home-for-you__container">
         <div className="home-for-you__header">
           <div>
-            <h3 className="home-for-you__title">Dành riêng cho bạn</h3>
-            <p className="home-for-you__subtitle">{usingFallback ? "Món phổ biến có thể bạn thích" : "Gợi ý cá nhân hóa theo hồ sơ khẩu vị."}</p>
+            <h3 className="home-for-you__title">Món bạn có thể thích</h3>
+            <p className="home-for-you__subtitle">{usingFallback ? "Món phổ biến, trong lúc chúng tôi học thêm khẩu vị của bạn." : "Gợi ý dựa trên khẩu vị và thói quen ăn uống của bạn."}</p>
           </div>
-          <button className="home-for-you__cta" onClick={() => navigate("/for-you")}>Xem thêm FOR YOU</button>
+          <div className="home-for-you__actions">
+            <button type="button" className="home-for-you__cta" onClick={() => navigate("/for-you")}>Xem thêm món gợi ý</button>
+            {usingFallback && completion.shouldNudge && (
+              <button
+                type="button"
+                className="home-for-you__profile-cta"
+                onClick={() => navigate("/for-you")}
+              >
+                Cập nhật khẩu vị để gợi ý sát hơn
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="home-for-you__grid">
@@ -56,8 +74,8 @@ export default function HomeForYouSection({ timeSlot = null }) {
                 <p className="home-for-you-card__restaurant">{item.restaurantName}</p>
                 <p className="home-for-you-card__price">{formatPrice(item.basePrice)}đ</p>
                 <div className="home-for-you-card__badges">
-                  {item.foodPreferenceMeta?.isRecommended && <span className="home-for-you-badge home-for-you-badge--match">✨ Phù hợp khẩu vị</span>}
-                  {item.foodPreferenceMeta?.hasAllergyWarning && <span className="home-for-you-badge home-for-you-badge--warning">⚠ Có thể chứa dị ứng</span>}
+                  {item.foodPreferenceMeta?.isRecommended && <span className="home-for-you-badge home-for-you-badge--match">✨ Món bạn có thể thích</span>}
+                  {item.foodPreferenceMeta?.hasAllergyWarning && <span className="home-for-you-badge home-for-you-badge--warning">⚠ Cần kiểm tra dị ứng</span>}
                 </div>
               </div>
             </article>

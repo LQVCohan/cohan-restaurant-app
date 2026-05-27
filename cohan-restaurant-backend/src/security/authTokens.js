@@ -1,10 +1,33 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import ms from "ms";
 import process from "process";
 import { RefreshToken, User } from "../../models/index.js";
 
 export const REFRESH_TOKEN_INVALID_MESSAGE = "Authentication failed";
+
+const DURATION_PATTERN = /^(\d+)(ms|s|m|h|d)$/i;
+const DURATION_FACTORS_MS = { ms: 1, s: 1000, m: 60000, h: 3600000, d: 86400000 };
+
+export function parseDurationMs(value, fallback = null) {
+  const raw = String(value ?? fallback ?? "").trim();
+  const match = raw.match(DURATION_PATTERN);
+  if (!match) throw new Error(`Invalid duration: ${raw || "<empty>"}`);
+  const amount = Number(match[1]);
+  const unit = String(match[2]).toLowerCase();
+  const ttlMs = amount * DURATION_FACTORS_MS[unit];
+  if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
+    throw new Error(`Invalid duration: ${raw || "<empty>"}`);
+  }
+  return ttlMs;
+}
+
+export function getRefreshTokenTtlMs() {
+  return parseDurationMs(process.env.REFRESH_TOKEN_EXPIRES_IN, "7d");
+}
+
+export function getRefreshCookieMaxAgeSeconds() {
+  return Math.floor(getRefreshTokenTtlMs() / 1000);
+}
 
 export function signAccessToken(user) {
   return jwt.sign(
@@ -20,11 +43,11 @@ export function signAccessToken(user) {
 export function refreshCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
   return {
-    path: "/api/auth/refresh",
+    path: "/api/auth",
     httpOnly: true,
     secure: isProduction,
     sameSite: String(process.env.REFRESH_TOKEN_COOKIE_SAMESITE || "lax").toLowerCase(),
-    maxAge: ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d"),
+    maxAge: getRefreshCookieMaxAgeSeconds(),
   };
 }
 
@@ -38,7 +61,7 @@ export function clearRefreshCookie(reply) {
 export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
   const raw = crypto.randomBytes(48).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
-  const expiresAt = new Date(Date.now() + ms(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d"));
+  const expiresAt = new Date(Date.now() + getRefreshTokenTtlMs());
   await RefreshToken.create({ userId, tokenHash, expiresAt, userAgent: userAgent || null, ip: ip || null });
   reply.setCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", raw, refreshCookieOptions());
   return { raw, tokenHash };

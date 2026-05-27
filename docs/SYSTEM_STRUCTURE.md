@@ -332,3 +332,28 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Refresh endpoint xoay vòng refresh token mỗi lần gọi; token cũ bị revoke.
 - Logout gọi `POST /api/auth/logout`, revoke refresh token hiện tại, clear cookie, và frontend xóa token memory + legacy keys (`auth_token`, `auth_user`, `auth_remember`, `token`).
 - Luồng localStorage token cũ đã bị deprecate/removed để giảm rủi ro XSS lấy JWT.
+
+## 10. Authentication token architecture (post-PR #822 fixes)
+- Access token có TTL ngắn và chỉ lưu trong memory (không lưu localStorage/sessionStorage).
+- Refresh token chỉ được gửi/nhận bằng HttpOnly cookie, không expose cho JavaScript.
+- Refresh token lưu trong DB dưới dạng hash (không lưu raw token).
+- Refresh token rotate ở endpoint refresh; token cũ bị revoke.
+- Logout gọi server-side revoke refresh token và clear cookie.
+- Cookie refresh dùng path `/api/auth` để có mặt ở cả refresh và logout.
+- Legacy localStorage/sessionStorage token flow đã bị loại bỏ/deprecated; chỉ còn cleanup legacy keys khi startup/logout.
+## Phase 12 - AI Chatbot Knowledge Base
+- Added per-restaurant knowledge model: `AiChatbotKnowledgeItem` with manager CRUD and runtime retrieval.
+- GraphQL aiChatbot schema now supports knowledge list/item queries and create/update/delete mutations.
+- Manager page route/hash: `#ai-chatbot-knowledge` with sidebar entry `AI Chatbot Knowledge`.
+- Permissions: read/list via `report.read`; write ops via `restaurant.write` through `requireRestaurantPermission`.
+- Runtime chatbot now injects top relevant enabled knowledge snippets (capped chars) into prompt context before model generation.
+
+### AI Chatbot Phase 13
+- Added backend model/service/graphql and manager UI section for Knowledge Gap Suggestions.
+- Runtime now records deduplicated pending suggestions by restaurant + normalized question.
+
+### AI Chatbot Phase 14
+- New collection: `AiChatbotAnswerFeedback` for answer quality loop.
+- New AI feedback service + GraphQL query/mutations for submit/review/convert workflow.
+- Widget now allows guest per-answer feedback and prevents duplicate feedback in-session.
+- Manager knowledge page now includes feedback review section.

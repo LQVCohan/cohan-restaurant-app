@@ -3,11 +3,31 @@ import { useState, useCallback, useEffect } from "react";
 
 const CART_STORAGE_KEY = "cohan.customerCart.v1";
 
-export const buildModifiersKey = (modifiers = []) => JSON.stringify((modifiers || []).map((m) => ({ groupId: m?.groupId || m?.groupName || "", optionId: m?.optionId || m?.optionName || "" })).sort((a,b)=>(`${a.groupId}:${a.optionId}`).localeCompare(`${b.groupId}:${b.optionId}`)));
+export const buildModifiersKey = (modifiers = []) =>
+  JSON.stringify(
+    (modifiers || [])
+      .map((m) => ({
+        groupId: m?.groupId || m?.groupName || "",
+        optionId: m?.optionId || m?.optionName || "",
+      }))
+      .sort((a, b) =>
+        `${a.groupId}:${a.optionId}`.localeCompare(
+          `${b.groupId}:${b.optionId}`,
+        ),
+      ),
+  );
 
-export const buildCartLineIdentity = (item = {}) => [item.id, item.restaurantId, item.servingVariantKey || item.servingKey || "portion", String(item.note || "").trim(), buildModifiersKey(item.modifiers || item.selectedModifiers || [])].join("::");
+export const buildCartLineIdentity = (item = {}) =>
+  [
+    item.id,
+    item.restaurantId,
+    item.servingVariantKey || item.servingKey || "portion",
+    String(item.note || "").trim(),
+    buildModifiersKey(item.modifiers || item.selectedModifiers || []),
+  ].join("::");
 
-const getLineKey = (item = {}) => item.cartLineKey || buildCartLineIdentity(item);
+const getLineKey = (item = {}) =>
+  item.cartLineKey || buildCartLineIdentity(item);
 
 const getStorage = () => {
   if (typeof window === "undefined") return null;
@@ -29,10 +49,11 @@ export const clearPersistedCart = () => {
   }
 };
 
-const isHoldExpired = (item) => {
+export const isHoldExpired = (item, now = Date.now()) => {
   if (!item?.holdExpiresAt) return false;
   const expiresAt = new Date(item.holdExpiresAt);
-  return !Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date();
+  const expiresAtMs = expiresAt.getTime();
+  return Number.isFinite(expiresAtMs) && expiresAtMs <= now;
 };
 
 const getInitialCart = () => {
@@ -79,7 +100,7 @@ export const useCart = () => {
       const found = prev.find((i) => getLineKey(i) === incomingLineKey);
       if (found) {
         return prev.map((i) =>
-getLineKey(i) === incomingLineKey
+          getLineKey(i) === incomingLineKey
             ? {
                 ...i,
                 ...incoming,
@@ -99,7 +120,8 @@ getLineKey(i) === incomingLineKey
 
   // Thay đổi số lượng theo itemId (delta có thể âm/dương)
   const updateQuantity = useCallback((itemOrKey, change) => {
-    const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey);
+    const targetKey =
+      typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey);
     setCart((prev) =>
       prev
         .map((i) => {
@@ -113,10 +135,11 @@ getLineKey(i) === incomingLineKey
     );
   }, []);
 
-  const removeFromCart = useCallback(
-    (itemOrKey) => { const targetKey = typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey); setCart((prev) => prev.filter((i) => getLineKey(i) !== targetKey)); },
-    [],
-  );
+  const removeFromCart = useCallback((itemOrKey) => {
+    const targetKey =
+      typeof itemOrKey === "object" ? getLineKey(itemOrKey) : String(itemOrKey);
+    setCart((prev) => prev.filter((i) => getLineKey(i) !== targetKey));
+  }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
 

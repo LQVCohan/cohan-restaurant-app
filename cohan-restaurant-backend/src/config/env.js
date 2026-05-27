@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "process";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import { parseDurationMs } from "../security/authTokens.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -156,10 +157,13 @@ function validateProductionAuthTokenSettings() {
   if (jwtSecret.trim().length < 32 || WEAK_SECRET_VALUES.has(jwtSecret.trim().toLowerCase())) {
     issues.push("JWT_SECRET (must be strong and >= 32 chars in production)");
   }
-  const accessExp = String(process.env.ACCESS_TOKEN_EXPIRES_IN || "15m").toLowerCase();
-  if (accessExp.endsWith("d")) {
-    const d = Number(accessExp.replace("d", ""));
-    if (Number.isFinite(d) && d > 1) issues.push("ACCESS_TOKEN_EXPIRES_IN (must not exceed 1d in production)");
+  try {
+    const ttlMs = parseDurationMs(process.env.ACCESS_TOKEN_EXPIRES_IN, "15m");
+    if (ttlMs > 24 * 60 * 60 * 1000) {
+      issues.push("ACCESS_TOKEN_EXPIRES_IN (must not exceed 1d in production)");
+    }
+  } catch {
+    issues.push("ACCESS_TOKEN_EXPIRES_IN (invalid duration in production)");
   }
   return issues;
 }

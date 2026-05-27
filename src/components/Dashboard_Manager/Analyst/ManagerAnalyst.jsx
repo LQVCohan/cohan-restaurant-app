@@ -13,6 +13,7 @@ import DemandForecastWidget from "./components/DemandForecastWidget";
 import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistantWidget";
 import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
+import BusinessOperationsOverview from "./components/BusinessOperationsOverview";
 import "./ManagerAnalyst.scss";
 
 const formatVnd = (value) =>
@@ -69,6 +70,13 @@ const ManagerAnalyst = () => {
     staffSchedulingAssistant,
     menuEngineeringAssistant,
     smartPromotionEngine,
+    statusCounts,
+    recentOrders,
+    lowStockItems,
+    serviceRequests,
+    operationsRequestsLoading,
+    operationsRequestsError,
+    operationsSummary,
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
@@ -303,6 +311,27 @@ const ManagerAnalyst = () => {
                   icon={icons[idx]}
                 />
               ))}
+            </div>
+          </section>
+
+          <section className="analytics-section">
+            <div className="analytics-section__header">
+              <h3 className="analytics-section__title">Vận hành hôm nay</h3>
+              <p className="analytics-section__subtitle">
+                Theo dõi đơn hàng, yêu cầu từ khách và cảnh báo tồn kho cần xử lý.
+              </p>
+            </div>
+            <div className="analytics-section__body">
+              <BusinessOperationsOverview
+                requestLoading={operationsRequestsLoading}
+                requestError={operationsRequestsError}
+                statusCounts={statusCounts}
+                serviceRequests={serviceRequests}
+                pendingRequestsCount={operationsSummary?.pendingRequestsCount}
+                acknowledgedRequestsCount={operationsSummary?.acknowledgedRequestsCount}
+                recentOrders={recentOrders}
+                lowStockItems={lowStockItems}
+              />
             </div>
           </section>
 

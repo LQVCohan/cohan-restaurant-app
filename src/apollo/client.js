@@ -8,12 +8,11 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
+import { getGraphqlUrl, getRefreshUrl } from "@/lib/apiBaseUrl";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
-  uri: import.meta.env.VITE_API_URL
-    ? `${import.meta.env.VITE_API_URL}`
-    : "http://localhost:4000/graphql",
+  uri: getGraphqlUrl(),
   credentials: "include",
 });
 
@@ -112,7 +111,7 @@ function dispatchOutOfStockPrompt({ operation, graphQLError }) {
 let refreshPromise = null;
 async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    refreshPromise = fetch(getRefreshUrl(), { method: "POST", credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((payload) => {
         if (payload?.token) setAuth({ token: payload.token });

@@ -19,6 +19,42 @@ type AiChatbotContextSummary {
 }
 
 
+
+type AiChatbotKnowledgeSuggestion {
+  id: ID!
+  restaurantId: ID!
+  question: String!
+  normalizedQuestion: String
+  suggestedTitle: String
+  suggestedContent: String
+  category: String
+  tags: [String!]!
+  triggerType: String!
+  confidence: Float
+  status: String!
+  occurrenceCount: Int!
+  lastAskedAt: DateTime
+  approvedKnowledgeItemId: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AiChatbotKnowledgeSuggestionFilterInput {
+  status: String
+  search: String
+  triggerType: String
+}
+
+input ApproveAiChatbotKnowledgeSuggestionInput {
+  title: String
+  content: String
+  category: String
+  tags: [String!]
+  enabled: Boolean
+  priority: Int
+  sourceType: String
+}
+
 type AiChatbotKnowledgeItem {
   id: ID!
   restaurantId: ID!
@@ -61,6 +97,49 @@ input UpdateAiChatbotKnowledgeItemInput {
   sourceType: String
 }
 
+
+type AiChatbotAnswerFeedback {
+  id: ID!
+  restaurantId: ID!
+  conversationId: ID
+  messageId: ID
+  guestId: String
+  userId: ID
+  question: String
+  answer: String
+  rating: String!
+  reason: String
+  tags: [String!]!
+  sourceTypes: [String!]!
+  confidence: Float
+  status: String!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SubmitAiChatbotAnswerFeedbackInput {
+  restaurantId: ID!
+  conversationId: ID
+  messageId: ID
+  guestId: String
+  question: String
+  answer: String
+  rating: String!
+  reason: String
+  tags: [String!]
+  confidence: Float
+}
+
+input AiChatbotAnswerFeedbackFilterInput {
+  rating: String
+  status: String
+  search: String
+  from: DateTime
+  to: DateTime
+}
+
 type AiChatbotResponse {
   answer: String!
   intent: String
@@ -71,6 +150,7 @@ type AiChatbotResponse {
   contextSummary: AiChatbotContextSummary
   isFallback: Boolean
   conversationId: ID
+  answerMessageId: ID
   handoffSuggested: Boolean
   handoffReason: String
   handoffMessage: String
@@ -238,6 +318,8 @@ extend type Query {
   publicAiChatbotSettings(restaurantId: ID): PublicAiChatbotSettings!
   restaurantAiChatbotKnowledge(restaurantId: ID!, filter: AiChatbotKnowledgeFilterInput): [AiChatbotKnowledgeItem!]!
   restaurantAiChatbotKnowledgeItem(id: ID!): AiChatbotKnowledgeItem
+  restaurantAiChatbotKnowledgeSuggestions(restaurantId: ID!, filter: AiChatbotKnowledgeSuggestionFilterInput): [AiChatbotKnowledgeSuggestion!]!
+  restaurantAiChatbotAnswerFeedback(restaurantId: ID!, filter: AiChatbotAnswerFeedbackFilterInput): [AiChatbotAnswerFeedback!]!
 }
 
 extend type Mutation {
@@ -245,8 +327,15 @@ extend type Mutation {
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
   sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
   resolveAiChatbotHandoff(input: ResolveAiChatbotHandoffInput!): ResolveAiChatbotHandoffResponse!
+  submitAiChatbotAnswerFeedback(input: SubmitAiChatbotAnswerFeedbackInput!): AiChatbotAnswerFeedback!
+  markAiChatbotAnswerFeedbackReviewed(id: ID!): Boolean!
+  ignoreAiChatbotAnswerFeedback(id: ID!): Boolean!
+  convertAiChatbotFeedbackToSuggestion(id: ID!): Boolean!
   updateRestaurantAiChatbotSettings(input: UpdateAiChatbotSettingsInput!): AiChatbotSettings!
   createRestaurantAiChatbotKnowledgeItem(input: CreateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
   updateRestaurantAiChatbotKnowledgeItem(input: UpdateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
   deleteRestaurantAiChatbotKnowledgeItem(id: ID!): Boolean!
+  approveRestaurantAiChatbotKnowledgeSuggestion(id: ID!, input: ApproveAiChatbotKnowledgeSuggestionInput!): AiChatbotKnowledgeItem!
+  dismissRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
+  deleteRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
 }
