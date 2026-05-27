@@ -1174,7 +1174,6 @@ const MenuManagement = () => {
     [enrichedItems],
   );
   const selectedItems = useMemo(() => enrichedItems.filter((item) => selectedItemIds.has(String(item.id))), [enrichedItems, selectedItemIds]);
-  const selectedMissingForYouItems = useMemo(() => selectedItems.filter((item) => item.forYouMetadata?.status === "missing"), [selectedItems]);
   const missingForYouItems = useMemo(() => enrichedItems.filter((item) => item.forYouMetadata?.status === "missing"), [enrichedItems]);
   const openBulkForYouModal = (mode = "missing") => setBulkForYouModal({ isOpen: true, mode });
   const closeBulkForYouModal = () => setBulkForYouModal({ isOpen: false, mode: "missing" });
@@ -1407,7 +1406,7 @@ const MenuManagement = () => {
             firstMissingItem={firstMissingForYouItem}
             onShowMissing={handleShowMissingForYouItems}
             onEditFirstMissing={handleEditFirstMissingForYouItem}
-            selectedCount={selectedMissingForYouItems.length}
+            selectedCount={selectedItems.length}
             bulkTargetCount={(selectedItems.length > 0 ? selectedItems : missingForYouItems).length}
             canBulkEdit={canUpdateMenuItem}
             onOpenBulkEdit={() => openBulkForYouModal(selectedItems.length > 0 ? "selected" : "missing")}
