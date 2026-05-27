@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMenuSourceCards, buildStarterMessages, extractRestaurantId, getInputPlaceholder } from "./AiChatbotWidget";
+import { buildMenuSourceCards, buildStarterMessages, canAiAddMenuItemDirectly, extractRestaurantId, getInputPlaceholder } from "./AiChatbotWidget";
 
 describe("AiChatbotWidget helpers", () => {
   it("extractRestaurantId from /restaurant/:id", () => {
@@ -33,4 +33,18 @@ describe("AiChatbotWidget helpers", () => {
     expect(getInputPlaceholder("r1")).toMatch(/combo/);
     expect(getInputPlaceholder(null)).toMatch(/đặt bàn/);
   });
+});
+
+
+it("buildMenuSourceCards keeps metadata fields", () => {
+  const [card] = buildMenuSourceCards({ intent: "menu", sources: [{ type: "menuItem", id: "food-1", label: "Phở", formattedPrice: "90.000đ", status: "available" }] });
+  expect(card.formattedPrice).toBe("90.000đ");
+  expect(card.status).toBe("available");
+});
+
+it("canAiAddMenuItemDirectly rules", () => {
+  expect(canAiAddMenuItemDirectly({ id: "1", isAvailable: true, hasOptions: false, hasVariants: false })).toBe(true);
+  expect(canAiAddMenuItemDirectly({ id: "1", isAvailable: false })).toBe(false);
+  expect(canAiAddMenuItemDirectly({ id: "1", hasOptions: true })).toBe(false);
+  expect(canAiAddMenuItemDirectly({})).toBe(false);
 });

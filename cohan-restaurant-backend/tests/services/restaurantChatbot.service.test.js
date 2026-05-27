@@ -11,6 +11,7 @@ const {
   menuFallback,
   fallbackActions,
   fallbackAnswer,
+  fallbackSources,
 } = __testables;
 
 describe("restaurantChatbot menu assistant", () => {
@@ -85,4 +86,21 @@ describe("restaurantChatbot menu assistant", () => {
     expect(fallbackActions(context).some((a) => a.href === "/food/f1")).toBe(true);
     expect(() => menuFallback(context)).not.toThrow();
   });
+
+  it("fallbackSources include menu metadata and no checkout/payment actions", () => {
+    const context = {
+      intent: "menu",
+      restaurants: [{ id: "r1" }],
+      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, options: [], variants: [] }],
+      menuItems: [],
+      coupons: [],
+      orders: [],
+      reservations: [],
+    };
+    const sources = fallbackSources(context);
+    expect(sources[0]).toMatchObject({ type: "menuItem", id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1" });
+    const actions = fallbackActions(context);
+    expect(actions.some((a) => /checkout|payment|thanh toán/i.test(`${a.type} ${a.label} ${a.href}`))).toBe(false);
+  });
+
 });
