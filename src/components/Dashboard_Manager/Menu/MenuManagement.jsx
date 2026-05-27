@@ -363,6 +363,7 @@ const MenuManagement = () => {
     setMenuToasts((prev) => [...prev, { id: `${Date.now()}_${Math.random()}`, message, type }]);
   }, []);
 
+  const [modalFocusSection, setModalFocusSection] = useState(null);
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
     menu: { isOpen: false, editingMenu: null },
@@ -538,6 +539,9 @@ const MenuManagement = () => {
   );
 
   const toggleModal = (name, isOpen = true, data = null) => {
+    if (name === "menuItem" && !isOpen) {
+      setModalFocusSection(null);
+    }
     if (name === "menu") {
       setMenuSubmitError("");
     }
@@ -1406,7 +1410,7 @@ const MenuManagement = () => {
                   </button>
                 )}
                 {emptyState.action === "add_item" && canCreateMenuItem && (
-                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menuItem", true)}>
+                  <button className="mm-btn mm-btn--primary" onClick={() => { setModalFocusSection(null); toggleModal("menuItem", true); }}>
                     Thêm món mới
                   </button>
                 )}
@@ -1438,7 +1442,10 @@ const MenuManagement = () => {
                     item={item}
                     onEdit={
                       canUpdateMenuItem
-                        ? () => toggleModal("menuItem", true, item.id)
+                        ? () => {
+                            setModalFocusSection(null);
+                            toggleModal("menuItem", true, item.id);
+                          }
                         : undefined
                     }
                     onDelete={
@@ -1460,6 +1467,15 @@ const MenuManagement = () => {
                     onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
                     onOpenRecipeIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
                     onOpenInventoryIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
+                    onEditForYou={
+                      canUpdateMenuItem
+                        ? (menuItem) => {
+                            setModalFocusSection("for-you");
+                            toggleModal("menuItem", true, menuItem?.id);
+                          }
+                        : undefined
+                    }
+                    canUpdateItem={canUpdateMenuItem}
                   />
                 ))}
               </div>
@@ -1496,7 +1512,10 @@ const MenuManagement = () => {
       <MenuItemModal
         isOpen={modals.menuItem.isOpen}
         editId={modals.menuItem.editId}
-        onClose={() => toggleModal("menuItem", false)}
+        onClose={() => {
+          setModalFocusSection(null);
+          toggleModal("menuItem", false);
+        }}
         onSave={async () => {
           await refetchItems?.();
           toggleModal("menuItem", false);
@@ -1505,6 +1524,7 @@ const MenuManagement = () => {
         categories={categories}
         restaurantId={currentRestaurant}
         timeSlot={selectedTimeSlot || "breakfast"}
+        initialFocusSection={modalFocusSection}
       />
 
       <DishCategoryModal

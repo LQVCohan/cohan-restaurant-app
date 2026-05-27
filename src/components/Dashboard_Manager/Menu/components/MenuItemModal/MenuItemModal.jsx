@@ -83,6 +83,7 @@ const findMatchingExistingVariant = (method, existingVariants = []) => {
   const normalizedName = normalizeVariantNameForCompare(method?.name);
   if (!normalizedName) return null;
 
+
   return (
     existingVariants.find(
       (variant) =>
@@ -204,6 +205,7 @@ const hasVerifiedRecipeData = (recipeItem) =>
 const MenuItemModal = ({
   isOpen,
   editId,
+  initialFocusSection,
   categories,
   menuItems,
   restaurantId,
@@ -227,6 +229,23 @@ const MenuItemModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
   const savedMenuItemIdRef = useRef(null);
+  const forYouSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen || !editId || initialFocusSection !== "for-you") return undefined;
+
+    const timer = window.setTimeout(() => {
+      forYouSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      forYouSectionRef.current
+        ?.querySelector("button, input, select, textarea")
+        ?.focus?.();
+    }, 140);
+
+    return () => window.clearTimeout(timer);
+  }, [initialFocusSection, isOpen, editId]);
 
   const pushToast = (text, type = "success") => {
     const id = Date.now();
@@ -808,7 +827,10 @@ const MenuItemModal = ({
                 disabled={isSaving}
               />
             </div>
-            <div className="for-you-meta-section">
+            <div
+              ref={forYouSectionRef}
+              className={`for-you-meta-section ${initialFocusSection === "for-you" && editId ? "is-focus-target" : ""}`}
+            >
               <div className="for-you-meta-section__header">
                 <h5 className="for-you-meta-section__title">Thông tin khẩu vị & dị ứng</h5>
                 <p className="for-you-meta-section__description">

@@ -93,6 +93,8 @@ const MenuItemCard = ({
   onStatusChange,
   onOpenRecipeIssue,
   onOpenInventoryIssue,
+  onEditForYou,
+  canUpdateItem: canUpdateItemProp,
   updatingStatus = false,
   selected = false,
   onSelectToggle,
@@ -180,10 +182,13 @@ const MenuItemCard = ({
     );
   };
 
-  const canUpdateItem = canAccessMenuManagementAction(
-    auth?.user,
-    MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
-  );
+  const canUpdateItem =
+    typeof canUpdateItemProp === "boolean"
+      ? canUpdateItemProp
+      : canAccessMenuManagementAction(
+          auth?.user,
+          MENU_MANAGEMENT_ACTIONS.UPDATE_ITEM,
+        );
 
   const canQuickChangeStatus =
     canUpdateItem && typeof onStatusChange === "function";
@@ -250,14 +255,21 @@ const MenuItemCard = ({
 
 
           {forYouMetadata?.status && (
-            <div
-              className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
+            <button
+              type="button"
+              className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} ${forYouMetadata.status === "missing" && canUpdateItem ? "menu-item-card__for-you-badge--actionable" : ""}`}
               title={forYouMetadata.status === "missing" && canUpdateItem
-                ? "Mở chỉnh sửa món để bổ sung thông tin khẩu vị và dị ứng."
+                ? "Bấm để bổ sung nhanh thông tin khẩu vị và dị ứng."
                 : forYouMetadata.label}
+              disabled={!(forYouMetadata.status === "missing" && canUpdateItem)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (forYouMetadata.status !== "missing" || !canUpdateItem) return;
+                onEditForYou?.(item);
+              }}
             >
               {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
-            </div>
+            </button>
           )}
 
           {primaryWarning && (
