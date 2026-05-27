@@ -144,6 +144,37 @@ const ForYou = () => {
           <p>Gợi ý món dựa trên khẩu vị, dị ứng và thói quen ăn uống của bạn.</p>
         </section>
 
+        {shouldShowPreferenceNudge && (
+          <section className="food-preference-nudge" aria-live="polite">
+            <div className="food-preference-nudge__content">
+              <span className="food-preference-nudge__eyebrow">Gợi ý chính xác hơn</span>
+              <h3>Hoàn thiện khẩu vị để gợi ý đúng hơn</h3>
+              <p>
+                Bạn có thể thêm chế độ ăn, dị ứng và thói quen như mức cay/ngọt,
+                hành/ngò. Càng rõ khẩu vị, món gợi ý càng sát với bạn.
+              </p>
+              <div className="food-preference-nudge__chips">
+                {!completion.hasDietPreference && (
+                  <span className="food-preference-nudge__chip">Chế độ ăn</span>
+                )}
+                {!completion.hasAllergyInfo && (
+                  <span className="food-preference-nudge__chip">Dị ứng nếu có</span>
+                )}
+                {!completion.hasTasteInfo && (
+                  <span className="food-preference-nudge__chip">Mức cay/ngọt, hành/ngò</span>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="food-preference-nudge__action"
+              onClick={handleScrollToPreferenceProfile}
+            >
+              Cập nhật khẩu vị
+            </button>
+          </section>
+        )}
+
         <section className="section recommendation-section">
           <h2 className="section-title">Món bạn có thể thích</h2>
 
@@ -228,36 +259,6 @@ const ForYou = () => {
         )}
 
         {error && <div className="profile-error">Lỗi tải khẩu vị: {error.message}</div>}
-        {shouldShowPreferenceNudge && (
-          <section className="food-preference-nudge" aria-live="polite">
-            <div className="food-preference-nudge__content">
-              <span className="food-preference-nudge__eyebrow">Gợi ý chính xác hơn</span>
-              <h3>Hoàn thiện khẩu vị để gợi ý đúng hơn</h3>
-              <p>
-                Bạn có thể thêm chế độ ăn, dị ứng và thói quen như mức cay/ngọt,
-                hành/ngò. Càng rõ khẩu vị, món gợi ý càng sát với bạn.
-              </p>
-              <div className="food-preference-nudge__chips">
-                {!completion.hasDietPreference && (
-                  <span className="food-preference-nudge__chip">Chế độ ăn</span>
-                )}
-                {!completion.hasAllergyInfo && (
-                  <span className="food-preference-nudge__chip">Dị ứng nếu có</span>
-                )}
-                {!completion.hasTasteInfo && (
-                  <span className="food-preference-nudge__chip">Mức cay/ngọt, hành/ngò</span>
-                )}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="food-preference-nudge__action"
-              onClick={handleScrollToPreferenceProfile}
-            >
-              Cập nhật khẩu vị
-            </button>
-          </section>
-        )}
 
         <section className="section" id="food-preference-profile">
           <h2 className="profile-section-heading"><Leaf size={18} /> Hồ sơ khẩu vị</h2>
