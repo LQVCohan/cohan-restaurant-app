@@ -97,6 +97,49 @@ input UpdateAiChatbotKnowledgeItemInput {
   sourceType: String
 }
 
+
+type AiChatbotAnswerFeedback {
+  id: ID!
+  restaurantId: ID!
+  conversationId: ID
+  messageId: ID
+  guestId: String
+  userId: ID
+  question: String
+  answer: String
+  rating: String!
+  reason: String
+  tags: [String!]!
+  sourceTypes: [String!]!
+  confidence: Float
+  status: String!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SubmitAiChatbotAnswerFeedbackInput {
+  restaurantId: ID!
+  conversationId: ID
+  messageId: ID
+  guestId: String
+  question: String
+  answer: String
+  rating: String!
+  reason: String
+  tags: [String!]
+  confidence: Float
+}
+
+input AiChatbotAnswerFeedbackFilterInput {
+  rating: String
+  status: String
+  search: String
+  from: DateTime
+  to: DateTime
+}
+
 type AiChatbotResponse {
   answer: String!
   intent: String
@@ -275,6 +318,7 @@ extend type Query {
   restaurantAiChatbotKnowledge(restaurantId: ID!, filter: AiChatbotKnowledgeFilterInput): [AiChatbotKnowledgeItem!]!
   restaurantAiChatbotKnowledgeItem(id: ID!): AiChatbotKnowledgeItem
   restaurantAiChatbotKnowledgeSuggestions(restaurantId: ID!, filter: AiChatbotKnowledgeSuggestionFilterInput): [AiChatbotKnowledgeSuggestion!]!
+  restaurantAiChatbotAnswerFeedback(restaurantId: ID!, filter: AiChatbotAnswerFeedbackFilterInput): [AiChatbotAnswerFeedback!]!
 }
 
 extend type Mutation {
@@ -282,6 +326,10 @@ extend type Mutation {
   requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
   sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
   resolveAiChatbotHandoff(input: ResolveAiChatbotHandoffInput!): ResolveAiChatbotHandoffResponse!
+  submitAiChatbotAnswerFeedback(input: SubmitAiChatbotAnswerFeedbackInput!): AiChatbotAnswerFeedback!
+  markAiChatbotAnswerFeedbackReviewed(id: ID!): Boolean!
+  ignoreAiChatbotAnswerFeedback(id: ID!): Boolean!
+  convertAiChatbotFeedbackToSuggestion(id: ID!): Boolean!
   updateRestaurantAiChatbotSettings(input: UpdateAiChatbotSettingsInput!): AiChatbotSettings!
   createRestaurantAiChatbotKnowledgeItem(input: CreateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
   updateRestaurantAiChatbotKnowledgeItem(input: UpdateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!

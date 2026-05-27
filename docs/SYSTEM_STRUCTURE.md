@@ -334,3 +334,9 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 ### AI Chatbot Phase 13
 - Added backend model/service/graphql and manager UI section for Knowledge Gap Suggestions.
 - Runtime now records deduplicated pending suggestions by restaurant + normalized question.
+
+### AI Chatbot Phase 14
+- New collection: `AiChatbotAnswerFeedback` for answer quality loop.
+- New AI feedback service + GraphQL query/mutations for submit/review/convert workflow.
+- Widget now allows guest per-answer feedback and prevents duplicate feedback in-session.
+- Manager knowledge page now includes feedback review section.

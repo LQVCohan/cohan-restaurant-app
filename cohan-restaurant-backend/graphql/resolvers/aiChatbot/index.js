@@ -19,6 +19,13 @@ import {
   dismissRestaurantAiChatbotKnowledgeSuggestion,
   deleteRestaurantAiChatbotKnowledgeSuggestion,
 } from "../../../src/services/ai/restaurantChatbotKnowledgeSuggestion.service.js";
+import {
+  submitAiChatbotAnswerFeedback,
+  listRestaurantAiChatbotAnswerFeedback,
+  markAiChatbotAnswerFeedbackReviewed,
+  ignoreAiChatbotAnswerFeedback,
+  convertAiChatbotFeedbackToSuggestion,
+} from "../../../src/services/ai/restaurantChatbotFeedback.service.js";
 
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
@@ -50,6 +57,7 @@ const Query = {
   restaurantAiChatbotKnowledge: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledge({ restaurantId, filter, ctx }),
   restaurantAiChatbotKnowledgeItem: async (_, { id }, ctx) => getRestaurantAiChatbotKnowledgeItem({ id, ctx }),
   restaurantAiChatbotKnowledgeSuggestions: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotKnowledgeSuggestions({ restaurantId, filter, ctx }),
+  restaurantAiChatbotAnswerFeedback: async (_, { restaurantId, filter }, ctx) => listRestaurantAiChatbotAnswerFeedback({ restaurantId, filter, ctx }),
 };
 
 const Mutation = {
@@ -61,6 +69,7 @@ const Mutation = {
         history: input?.history || [],
         guestId: input?.guestId,
         conversationId: input?.conversationId,
+        answerMessageId: input?.answerMessageId,
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
