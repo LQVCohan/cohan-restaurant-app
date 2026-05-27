@@ -142,6 +142,20 @@ function assertNotBlocked(cart) {
   }
 }
 
+
+function normalizeCartItemNote(value) {
+  return String(value || "").trim();
+}
+
+function isSameCartIdentity(item, { restaurantId, menuItemId, servingKey, note }) {
+  return (
+    String(item?.menuItemId) === String(menuItemId) &&
+    getCartServingKey(item?.servingKey || item?.servingVariantKey) === servingKey &&
+    String(item?.restaurantId) === String(restaurantId) &&
+    normalizeCartItemNote(item?.note) === normalizeCartItemNote(note)
+  );
+}
+
 function getCartServingKey(value) {
   const key = String(value || "").trim();
   return key || "portion";
@@ -254,7 +268,6 @@ export const CartMutation = {
       name,
       price,
       quantity = 1,
-      thumbImage: clientThumbImage,
       note,
       servingVariantKey,
     } = input;
@@ -304,11 +317,8 @@ export const CartMutation = {
 
         const before = cart.toObject({ virtuals: true });
 
-        const existing = cart.items.find(
-          (it) =>
-            String(it.menuItemId) === String(menuItemId) &&
-            getCartServingKey(it.servingKey || it.servingVariantKey) === servingKey &&
-            String(it.restaurantId) === String(restaurantId)
+        const existing = cart.items.find((it) =>
+          isSameCartIdentity(it, { restaurantId, menuItemId, servingKey, note })
         );
         const reservedItemId =
           existing?._id != null ? stringifyCartHoldIdSegment(existing._id) : createCartItemId();
@@ -355,7 +365,7 @@ export const CartMutation = {
             price: serverSnapshotPrice,
             quantity: qty,
             restaurantId,
-            thumbImage: clientThumbImage,
+            thumbImage: serverSnapshotThumb,
             note,
             servingKey,
             holdExpiresAt,

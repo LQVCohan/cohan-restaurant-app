@@ -279,7 +279,7 @@ function RestaurantGroup({
             globalBusy ||
             !!busyItemIds?.[item.cartLineKey || item.id];
           return (
-            <div key={item.id} className="cart-item">
+            <div key={item.cartLineKey || item.id} className="cart-item">
               <div className="cart-item__main">
                 <div className="cart-item__info">
                   <h6 className="cart-item__name">{item.name}</h6>
