@@ -44,8 +44,8 @@ export default function HomeForYouSection({ timeSlot = null }) {
       <div className="home-for-you__container">
         <div className="home-for-you__header">
           <div>
-            <h3 className="home-for-you__title">Món bạn có thể thích</h3>
-            <p className="home-for-you__subtitle">{usingFallback ? "Món phổ biến, trong lúc chúng tôi học thêm khẩu vị của bạn." : "Gợi ý dựa trên khẩu vị và thói quen ăn uống của bạn."}</p>
+            <h3 className="home-for-you__title">Món phù hợp với bạn</h3>
+            <p className="home-for-you__subtitle">{usingFallback ? "Món phổ biến để tham khảo." : "Gợi ý dựa trên khẩu vị của bạn."}</p>
           </div>
           <div className="home-for-you__actions">
             <button type="button" className="home-for-you__cta" onClick={() => navigate("/for-you")}>Xem thêm món gợi ý</button>
@@ -74,7 +74,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
                 <p className="home-for-you-card__restaurant">{item.restaurantName}</p>
                 <p className="home-for-you-card__price">{formatPrice(item.basePrice)}đ</p>
                 <div className="home-for-you-card__badges">
-                  {item.foodPreferenceMeta?.isRecommended && <span className="home-for-you-badge home-for-you-badge--match">✨ Món bạn có thể thích</span>}
+                  {item.foodPreferenceMeta?.isRecommended && <span className="home-for-you-badge home-for-you-badge--match">✨ Món phù hợp với bạn</span>}
                   {item.foodPreferenceMeta?.hasAllergyWarning && <span className="home-for-you-badge home-for-you-badge--warning">⚠ Cần kiểm tra dị ứng</span>}
                 </div>
               </div>

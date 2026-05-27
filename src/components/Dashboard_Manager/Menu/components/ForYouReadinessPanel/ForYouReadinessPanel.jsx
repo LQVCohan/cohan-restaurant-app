@@ -7,6 +7,10 @@ const ForYouReadinessPanel = ({
   firstMissingItem,
   onShowMissing,
   onEditFirstMissing,
+  selectedCount = 0,
+  bulkTargetCount = 0,
+  canBulkEdit = false,
+  onOpenBulkEdit,
 }) => {
   const safeSummary = summary || {
     total: 0,
@@ -49,6 +53,12 @@ const ForYouReadinessPanel = ({
         )}
         {safeSummary.missing > 0 && canUpdateItem && firstMissingItem && (
           <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu tiên</button>
+        )}
+        {canBulkEdit && bulkTargetCount > 0 && (
+          <button type="button" className="mm-btn mm-btn--secondary" onClick={onOpenBulkEdit}>
+            Khai báo hàng loạt
+            <small className="for-you-readiness-panel__bulk-helper">{selectedCount > 0 ? `Áp dụng cho ${selectedCount} món đã chọn` : "Áp dụng cho các món chưa khai báo trong danh sách hiện tại"}</small>
+          </button>
         )}
         {safeSummary.missing === 0 && safeSummary.total > 0 && (
           <p className="for-you-readiness-panel__success">Tất cả món trong danh sách hiện tại đã có thông tin khẩu vị hoặc dị ứng.</p>

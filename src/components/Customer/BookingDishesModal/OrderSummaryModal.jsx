@@ -1254,7 +1254,7 @@ const ShippingForm = ({
             {hasMeaningfulFoodPreferenceNote && (
               <div className="food-preference-note-suggestion">
                 <div className="food-preference-note-suggestion__text">
-                  Gợi ý từ khẩu vị của bạn: {foodPreferenceNote}
+                  Gợi ý dựa trên khẩu vị của bạn: {foodPreferenceNote}
                 </div>
                 <div className="food-preference-note-suggestion__actions">
                   {isFoodPreferenceNoteApplied ? (
@@ -1563,7 +1563,7 @@ const OrderItem = ({ item, onAddModifier, foodPreferenceMeta }) => {
               </span>
             ) : foodPreferenceMeta.isRecommended ? (
               <span className="order-item-for-you-badge order-item-for-you-badge--match">
-                ✨ Món bạn có thể thích
+                ✨ Món phù hợp với bạn
               </span>
             ) : (
               <span className="order-item-for-you-badge order-item-for-you-badge--note">
@@ -1800,7 +1800,7 @@ const CheckoutForYouReview = ({ foodPreferenceReviewItems = [] }) => {
   const topItems = sorted.slice(0, 5);
   const moreCount = sorted.length - topItems.length;
   const hasAllergyWarning = sorted.some((entry) => entry?.meta?.hasAllergyWarning);
-  const title = hasAllergyWarning ? "⚠ Nên kiểm tra dị ứng trước khi đặt" : "✨ Món bạn có thể thích";
+  const title = hasAllergyWarning ? "⚠ Cần kiểm tra dị ứng" : "✨ Món phù hợp với bạn";
   const description = hasAllergyWarning
     ? "Một số món có thể chứa thành phần bạn đã đánh dấu dị ứng. Vui lòng kiểm tra lại với nhà hàng nếu cần."
     : "Một số món trong đơn phù hợp với khẩu vị bạn đã cài đặt.";
