@@ -1,5 +1,6 @@
 import 'dotenv/config.js';
 import mongoose from 'mongoose';
+import { assertDemoScriptAllowed, safeDbInfo } from './lib/scriptSafety.js';
 import {
   Category,
   CategoryMenu,
@@ -63,8 +64,10 @@ function buildOrderItem(menuItem, recipe) {
 }
 
 async function main() {
+  assertDemoScriptAllowed('seedMenuManagementDemo.js');
   const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
   const DB_NAME = process.env.MONGO_DB || 'foodhub';
+  console.log('Connecting with DB settings:', safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
 
   const restaurant = await resolveRestaurant();

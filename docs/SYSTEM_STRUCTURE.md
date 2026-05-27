@@ -419,3 +419,11 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Fixed AI chatbot schema safety test path resolution so CI resolves `aiChatbot.graphql` correctly from backend test cwd.
 - Frontend chatbot suite stabilized by removing duplicate aggregator execution path that re-imported and re-ran widget suites.
 - Verified production build still succeeds after stabilization pass.
+
+## Demo script safety
+
+- Demo scripts are intended for local/development use only.
+- Production-like environments are blocked by default.
+- To intentionally run in production-like environments, set both `ALLOW_DEMO_SEED_IN_PRODUCTION=true` and `DEMO_PASSWORD=<strong temporary password>`.
+- Do not use `Demo@123456` outside local/dev.
+- Script logging masks MongoDB URI credentials to prevent secret leakage.

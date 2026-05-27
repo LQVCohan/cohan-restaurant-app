@@ -7,6 +7,7 @@ import useFoodPreferences from "@/hooks/useFoodPreferences";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
+import { getFoodPreferenceDisplayReasons } from "@/utils/foodPreferenceDisplay";
 import {
   DIETS,
   ALLERGIES,
@@ -17,6 +18,24 @@ import {
 import "./ForYou.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
+const RecommendationCard = ({ item, variant, onView }) => {
+  const reasons = getFoodPreferenceDisplayReasons(item?.foodPreferenceMeta);
+  return (
+    <article className="recommendation-card">
+      <img className="recommendation-card__image" src={item.thumbImage || "https://placehold.co/320x220?text=Mon+an"} alt={item.name} loading="lazy" />
+      <div className="recommendation-card__content">
+        <h3>{item.name}</h3>
+        <p className="recommendation-restaurant">{item.restaurantName}</p>
+        <p className="recommendation-price">{formatPrice(item.basePrice)}đ</p>
+        {variant === "match" && <span className="recommendation-badge recommendation-badge--match">✨ Món phù hợp với bạn</span>}
+        {variant === "warning" && <span className="recommendation-badge recommendation-badge--warning">⚠ Cần kiểm tra dị ứng</span>}
+        {reasons.map((reason) => (<p className="recommendation-reason" key={`${item.id}-${reason}`}>{reason}</p>))}
+        {variant === "warning" && <p className="recommendation-warning-note">Hãy kiểm tra thành phần trước khi đặt.</p>}
+        <button className="btn-view-dish" onClick={() => onView(item)}>Xem món</button>
+      </div>
+    </article>
+  );
+};
 
 const ForYou = () => {
   const navigate = useNavigate();
@@ -38,6 +57,17 @@ const ForYou = () => {
   const recommendedItems = useMemo(() => allRecommendedItems.slice(0, 8), [allRecommendedItems]);
   const warningItems = useMemo(() => allWarningItems.slice(0, 6), [allWarningItems]);
   const fallbackItems = useMemo(() => allFallbackItems.slice(0, 8), [allFallbackItems]);
+  const visibleWarningItems = useMemo(() => {
+    const recommendedIds = new Set(recommendedItems.map((item) => String(item.id)));
+    return warningItems.filter((item) => !recommendedIds.has(String(item.id)));
+  }, [recommendedItems, warningItems]);
+  const visibleFallbackItems = useMemo(() => {
+    const usedIds = new Set([
+      ...recommendedItems.map((item) => String(item.id)),
+      ...visibleWarningItems.map((item) => String(item.id)),
+    ]);
+    return fallbackItems.filter((item) => !usedIds.has(String(item.id)));
+  }, [recommendedItems, visibleWarningItems, fallbackItems]);
   const completion = useMemo(() => getFoodPreferenceCompletion(preferences), [preferences]);
   const shouldShowPreferenceNudge = Boolean(
     isAuthenticated &&
@@ -95,7 +125,7 @@ const ForYou = () => {
     return <div className="foryou-container"><LoadingSpinner size="large" /></div>;
   }
 
-  const displayItems = recommendedItems.length > 0 ? recommendedItems : fallbackItems;
+  
 
   return (
     <div className="foryou-container">
@@ -114,8 +144,8 @@ const ForYou = () => {
 
       <div className="content-scroll">
         <section className="foryou-hero">
-          <h2>Món hợp khẩu vị của bạn</h2>
-          <p>Gợi ý món dựa trên khẩu vị, dị ứng và thói quen ăn uống của bạn.</p>
+          <h2>Món phù hợp với bạn</h2>
+          <p>Gợi ý dựa trên khẩu vị của bạn.</p>
         </section>
 
         {shouldShowPreferenceNudge && (
@@ -150,7 +180,7 @@ const ForYou = () => {
         )}
 
         <section className="section recommendation-section">
-          <h2 className="section-title">Món bạn có thể thích</h2>
+          <h2 className="section-title">Món phù hợp với bạn</h2>
 
           {recommendationLoading && <div className="recommendation-empty">Đang tìm món phù hợp...</div>}
 
@@ -164,73 +194,34 @@ const ForYou = () => {
 
           {!recommendationLoading && !recommendationError && accessibleRestaurants.length > 0 && (
             <>
-              {recommendedItems.length === 0 && displayItems.length > 0 && (
-                <p className="section-desc">Món phổ biến có thể bạn thích</p>
+              {recommendedItems.length > 0 && (
+                <div className="recommendation-group">
+                  <p className="section-desc">Gợi ý dựa trên khẩu vị của bạn</p>
+                  <div className="recommendation-grid">{recommendedItems.map((item) => (<RecommendationCard key={`match-${item.id}`} item={item} variant="match" onView={handleViewDish} />))}</div>
+                </div>
               )}
 
-              {displayItems.length > 0 ? (
-                <div className="recommendation-grid">
-                  {displayItems.map((item) => (
-                    <article className="recommendation-card" key={item.id}>
-                      <img
-                        className="recommendation-card__image"
-                        src={item.thumbImage || "https://placehold.co/320x220?text=Mon+an"}
-                        alt={item.name}
-                        loading="lazy"
-                      />
-                      <div className="recommendation-card__content">
-                        <h3>{item.name}</h3>
-                        <p className="recommendation-restaurant">{item.restaurantName}</p>
-                        <p className="recommendation-price">{formatPrice(item.basePrice)}đ</p>
-                        <div className="recommendation-badges">
-                          {item.foodPreferenceMeta?.isRecommended && (
-                            <span className="recommendation-badge recommendation-badge--match">✨ Món bạn có thể thích</span>
-                          )}
-                          {item.foodPreferenceMeta?.hasAllergyWarning && (
-                            <span className="recommendation-badge recommendation-badge--warning">⚠ Cần kiểm tra dị ứng</span>
-                          )}
-                        </div>
-                        {item.foodPreferenceMeta?.reasons?.[0] && (
-                          <p className="recommendation-reason">{item.foodPreferenceMeta.reasons[0]}</p>
-                        )}
-                        <button className="btn-view-dish" onClick={() => handleViewDish(item)}>Xem món</button>
-                      </div>
-                    </article>
-                  ))}
+              {visibleWarningItems.length > 0 && (
+                <div className="recommendation-group">
+                  <h2 className="section-title">Món cần kiểm tra dị ứng</h2>
+                  <p className="section-desc">Các món này có thể chứa thành phần bạn dị ứng. Nên kiểm tra lại với nhà hàng trước khi đặt.</p>
+                  <div className="recommendation-grid">{visibleWarningItems.map((item) => (<RecommendationCard key={`warning-${item.id}`} item={item} variant="warning" onView={handleViewDish} />))}</div>
                 </div>
-              ) : (
+              )}
+
+              {visibleFallbackItems.length > 0 && (
+                <div className="recommendation-group">
+                  <h2 className="section-title">Món phổ biến để tham khảo</h2>
+                  <div className="recommendation-grid">{visibleFallbackItems.map((item) => (<RecommendationCard key={`fallback-${item.id}`} item={item} variant="fallback" onView={handleViewDish} />))}</div>
+                </div>
+              )}
+
+              {recommendedItems.length === 0 && visibleWarningItems.length === 0 && visibleFallbackItems.length === 0 && (
                 <div className="recommendation-empty">Chưa có gợi ý nổi bật lúc này. Hãy cập nhật khẩu vị hoặc khám phá thêm nhà hàng.</div>
               )}
             </>
           )}
         </section>
-
-        {!recommendationLoading && warningItems.length > 0 && (
-          <section className="section recommendation-section">
-            <h2 className="section-title">Món cần kiểm tra dị ứng trước khi đặt</h2>
-            <p className="section-desc">Các món này có thể chứa thành phần bạn dị ứng. Nên kiểm tra lại với nhà hàng trước khi đặt.</p>
-            <div className="recommendation-grid">
-              {warningItems.map((item) => (
-                <article className="recommendation-card" key={`warning-${item.id}`}>
-                  <img
-                    className="recommendation-card__image"
-                    src={item.thumbImage || "https://placehold.co/320x220?text=Mon+an"}
-                    alt={item.name}
-                    loading="lazy"
-                  />
-                  <div className="recommendation-card__content">
-                    <h3>{item.name}</h3>
-                    <p className="recommendation-restaurant">{item.restaurantName}</p>
-                    <p className="recommendation-price">{formatPrice(item.basePrice)}đ</p>
-                    <span className="recommendation-badge recommendation-badge--warning">⚠ Cần kiểm tra dị ứng</span>
-                    <p className="recommendation-reason">{item.foodPreferenceMeta?.warningReason || "Vui lòng xác nhận thành phần với nhà hàng."}</p>
-                    <button className="btn-view-dish" onClick={() => handleViewDish(item)}>Xem món</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
 
         {error && <div className="profile-error">Lỗi tải khẩu vị: {error.message}</div>}
 
