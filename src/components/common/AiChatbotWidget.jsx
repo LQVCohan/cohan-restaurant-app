@@ -15,6 +15,7 @@ const ASK_AI_CHATBOT = gql`
       quickReplies
       isFallback
       conversationId
+      answerMessageId
       actions {
         type
         label

@@ -6,6 +6,7 @@ import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSugges
 
 const clean = (v, max) => String(v || "").trim().slice(0, max);
 const toObjectId = (id) => (id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toTags = (arr) => (Array.isArray(arr) ? arr : []).map((x) => clean(x, 40)).filter(Boolean).slice(0, 10);
 const ensureRating = (r) => ["helpful", "not_helpful"].includes(String(r || ""));
 const toDto = (row) => ({ ...row, id: String(row?._id || row?.id || ""), restaurantId: row?.restaurantId ? String(row.restaurantId) : "", conversationId: row?.conversationId ? String(row.conversationId) : null, messageId: row?.messageId ? String(row.messageId) : null, userId: row?.userId ? String(row.userId) : null, reviewedBy: row?.reviewedBy ? String(row.reviewedBy) : null });
@@ -14,16 +15,37 @@ async function ensureSubmitOwnership({ restaurantId, conversationId, messageId, 
   if (!conversationId && !messageId) return true;
   const rid = toObjectId(restaurantId);
   if (!rid) return false;
+
+  let conversation = null;
   if (conversationId) {
-    const query = { _id: toObjectId(conversationId), restaurantId: rid };
-    if (userId) query.userId = toObjectId(userId); else query.guestId = clean(guestId, 128);
-    const c = await AiChatConversation.findOne(query).lean();
-    if (!c) return false;
+    const cid = toObjectId(conversationId);
+    if (!cid) return false;
+    const q = { _id: cid, restaurantId: rid };
+    if (userId) q.userId = toObjectId(userId);
+    else q.guestId = clean(guestId, 128);
+    conversation = await AiChatConversation.findOne(q).lean();
+    if (!conversation) return false;
   }
+
   if (messageId) {
-    const m = await AiChatMessage.findById(messageId).lean();
-    if (!m || String(m.role) !== "assistant") return false;
+    const mid = toObjectId(messageId);
+    if (!mid) return false;
+    const message = await AiChatMessage.findById(mid).lean();
+    if (!message) return false;
+    if (String(message.role || "") !== "assistant") return false;
+    if (String(message.restaurantId || "") !== String(rid)) return false;
+
+    if (conversationId) {
+      if (String(message.conversationId || "") !== String(conversation._id)) return false;
+    } else if (message.conversationId) {
+      const msgConversation = await AiChatConversation.findById(message.conversationId).lean();
+      if (!msgConversation) return false;
+      if (String(msgConversation.restaurantId || "") !== String(rid)) return false;
+      if (userId && String(msgConversation.userId || "") !== String(toObjectId(userId))) return false;
+      if (!userId && String(msgConversation.guestId || "") !== clean(guestId, 128)) return false;
+    }
   }
+
   return true;
 }
 
@@ -47,7 +69,6 @@ export async function submitAiChatbotAnswerFeedback({ input, ctx }) {
     rating: String(input?.rating),
     reason: clean(input?.reason, 500),
     tags: toTags(input?.tags),
-    sourceTypes: toTags(input?.sourceTypes),
     confidence: Number.isFinite(Number(input?.confidence)) ? Number(input.confidence) : null,
   });
   return toDto(doc.toObject());
@@ -59,7 +80,10 @@ export async function listRestaurantAiChatbotAnswerFeedback({ restaurantId, filt
   const q = { restaurantId: rid };
   if (ensureRating(filter?.rating)) q.rating = filter.rating;
   if (["new", "reviewed", "converted_to_suggestion", "ignored"].includes(String(filter?.status))) q.status = filter.status;
-  if (filter?.search) q.$or = [{ question: new RegExp(clean(filter.search, 120), "i") }, { answer: new RegExp(clean(filter.search, 120), "i") }, { reason: new RegExp(clean(filter.search, 120), "i") }];
+  if (filter?.search) {
+    const text = escapeRegex(clean(filter.search, 120));
+    q.$or = [{ question: new RegExp(text, "i") }, { answer: new RegExp(text, "i") }, { reason: new RegExp(text, "i") }];
+  }
   if (filter?.from || filter?.to) q.createdAt = { ...(filter?.from ? { $gte: new Date(filter.from) } : {}), ...(filter?.to ? { $lte: new Date(filter.to) } : {}) };
   const rows = await AiChatbotAnswerFeedback.find(q).sort({ createdAt: -1 }).limit(300).lean();
   return rows.map(toDto);
@@ -69,7 +93,9 @@ async function updateStatus({ id, ctx, status }) {
   const row = await AiChatbotAnswerFeedback.findById(id);
   if (!row) return false;
   await requireRestaurantPermission(ctx, row.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
-  row.status = status; row.reviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id); row.reviewedAt = new Date();
+  row.status = status;
+  row.reviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
+  row.reviewedAt = new Date();
   await row.save();
   return true;
 }
@@ -82,7 +108,9 @@ export async function convertAiChatbotFeedbackToSuggestion({ id, ctx }) {
   if (!row) return false;
   await requireRestaurantPermission(ctx, row.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
   await recordKnowledgeGapSuggestion({ restaurantId: String(row.restaurantId), question: row.question || row.reason || "Chatbot answer not helpful", triggerType: "low_confidence", confidence: row.confidence, conversationId: row.conversationId, messageId: row.messageId });
-  row.status = "converted_to_suggestion"; row.reviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id); row.reviewedAt = new Date();
+  row.status = "converted_to_suggestion";
+  row.reviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
+  row.reviewedAt = new Date();
   await row.save();
   return true;
 }

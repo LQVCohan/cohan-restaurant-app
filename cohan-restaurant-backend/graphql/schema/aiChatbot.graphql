@@ -150,6 +150,7 @@ type AiChatbotResponse {
   contextSummary: AiChatbotContextSummary
   isFallback: Boolean
   conversationId: ID
+  answerMessageId: ID
   handoffSuggested: Boolean
   handoffReason: String
   handoffMessage: String

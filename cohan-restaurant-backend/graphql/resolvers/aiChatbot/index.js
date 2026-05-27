@@ -69,7 +69,6 @@ const Mutation = {
         history: input?.history || [],
         guestId: input?.guestId,
         conversationId: input?.conversationId,
-        answerMessageId: input?.answerMessageId,
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
@@ -111,6 +110,10 @@ const Mutation = {
   approveRestaurantAiChatbotKnowledgeSuggestion: async (_, { id, input }, ctx) => approveRestaurantAiChatbotKnowledgeSuggestion({ id, input, ctx }),
   dismissRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => dismissRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
   deleteRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => deleteRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
+  submitAiChatbotAnswerFeedback: async (_, { input }, ctx) => submitAiChatbotAnswerFeedback({ input, ctx }),
+  markAiChatbotAnswerFeedbackReviewed: async (_, { id }, ctx) => markAiChatbotAnswerFeedbackReviewed({ id, ctx }),
+  ignoreAiChatbotAnswerFeedback: async (_, { id }, ctx) => ignoreAiChatbotAnswerFeedback({ id, ctx }),
+  convertAiChatbotFeedbackToSuggestion: async (_, { id }, ctx) => convertAiChatbotFeedbackToSuggestion({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
       return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });
