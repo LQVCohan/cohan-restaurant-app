@@ -10,7 +10,7 @@ import {
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
 import { getLogoutUrl } from "@/lib/apiBaseUrl";
-import { clearRefreshPromise, refreshAccessTokenOnce } from "@/lib/authRefresh";
+import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -385,7 +385,6 @@ export const AuthProvider = ({ children }) => {
         window.clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      clearRefreshPromise();
     };
   }, [token, applyRefreshedSession]);
 
