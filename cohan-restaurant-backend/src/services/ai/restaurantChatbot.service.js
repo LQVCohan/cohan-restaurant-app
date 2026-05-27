@@ -133,14 +133,23 @@ const serializeRestaurant = (restaurant) => {
   };
 };
 
+const maybeCategoryName = (item = {}) => {
+  if (typeof item?.categoryName === "string" && item.categoryName.trim()) return item.categoryName.trim();
+  if (typeof item?.category === "string" && item.category.trim()) return item.category.trim();
+  if (item?.category && typeof item.category === "object" && typeof item.category.name === "string" && item.category.name.trim()) {
+    return item.category.name.trim();
+  }
+  return null;
+};
+
 const serializeMenuItem = (item, currency = "VND") => ({
   id: String(item._id || item.id),
   name: item.name,
   description: item.description,
   labels: Array.isArray(item.labels) ? item.labels : [],
   tags: Array.isArray(item.tags) ? item.tags : [],
-  category: item.category || item.categoryName || item?.category?.name || null,
-  categoryName: item.categoryName || item.category || item?.category?.name || null,
+  category: maybeCategoryName(item),
+  categoryName: maybeCategoryName(item),
   image: item.image || (Array.isArray(item.images) ? item.images[0] : null) || null,
   images: Array.isArray(item.images) ? item.images.slice(0, 3) : [],
   basePrice: Number(item.basePrice || 0),
@@ -162,14 +171,36 @@ const serializeMenuItem = (item, currency = "VND") => ({
   calories: item.calories ?? null,
 });
 
+const parseBudgetMax = (message = "") => {
+  const raw = asLower(message);
+  if (!/(dưới|duoi|tầm|tam|khoảng|khoang|under|below)/.test(raw)) return null;
+  const budgetMatch = raw.match(/(?:dưới|duoi|tầm|tam|khoảng|khoang|under|below)\s*(\d[\d.,]*)\s*(k|nghìn|nghin|vnd|đ|d)?/i);
+  if (!budgetMatch) return null;
+  const numericRaw = String(budgetMatch[1] || "");
+  const unit = String(budgetMatch[2] || "").toLowerCase();
+  const normalized = numericRaw.replace(/[^\d.,]/g, "");
+  let amount = 0;
+  if (normalized.includes(".") && normalized.includes(",")) {
+    amount = Number(normalized.replace(/[.,]/g, ""));
+  } else if (normalized.includes(".")) {
+    const parts = normalized.split(".");
+    amount = parts[parts.length - 1].length === 3 ? Number(parts.join("")) : Number(normalized);
+  } else if (normalized.includes(",")) {
+    const parts = normalized.split(",");
+    amount = parts[parts.length - 1].length === 3 ? Number(parts.join("")) : Number(normalized.replace(",", "."));
+  } else {
+    amount = Number(normalized);
+  }
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (/k|nghìn|nghin/.test(unit)) amount *= 1000;
+  return Math.round(amount);
+};
+
 const extractMenuPreferences = (message = "") => {
   const raw = asLower(message);
   const preferences = { taste: [], dietary: [], mealType: [], intentSubtype: [] };
-  const budgetMatch = raw.match(/(?:dưới|duoi|tầm|tam|khoảng|khoang|under|below)\s*(\d+(?:[.,]\d+)?)\s*(k|nghìn|nghin|000|vnd|đ|d)?/i);
-  if (budgetMatch) {
-    const amount = Number(String(budgetMatch[1]).replace(",", "."));
-    preferences.budgetMax = Number.isFinite(amount) ? Math.round((budgetMatch[2] && /k|nghìn|nghin/i.test(budgetMatch[2])) ? amount * 1000 : amount) : undefined;
-  }
+  const budgetMax = parseBudgetMax(message);
+  if (budgetMax) preferences.budgetMax = budgetMax;
   const partyMatch = raw.match(/(?:nhóm|nhom|cho)?\s*(\d{1,2})\s*(?:người|nguoi)/i);
   if (partyMatch) preferences.partySize = Number(partyMatch[1]);
   if (/(không cay|khong cay)/.test(raw)) preferences.taste.push("nonSpicy");
@@ -197,6 +228,18 @@ const extractMenuPreferences = (message = "") => {
   if (/(kèm|them|upsell)/.test(raw)) preferences.intentSubtype.push("upsell");
   if (!preferences.intentSubtype.length) preferences.intentSubtype.push("recommend");
   return preferences;
+};
+
+const isMenuAssistantRequest = (message = "", intent = "general", preferences = {}) => {
+  if (intent === "menu") return true;
+  const raw = asLower(message);
+  const menuKeyword = /(món|menu|ăn|combo|giá|chay|bán chạy|do uong|nước|tráng miệng|dessert|drink)/.test(raw);
+  if (menuKeyword) return true;
+  const hasStrongSubtype = (preferences.intentSubtype || []).some((x) => ["bestSeller", "quickPrep", "combo", "vegetarian", "budget"].includes(x));
+  if (hasStrongSubtype) return true;
+  if (preferences.dietary?.length || preferences.mealType?.length || preferences.budgetMax) return true;
+  if (preferences.partySize && menuKeyword) return true;
+  return false;
 };
 
 const scoreMenuItemForPreferences = (item, preferences = {}) => {
@@ -464,7 +507,7 @@ const fetchReservations = async ({ restaurantId, message, user }) => {
 const buildContext = async ({ message, restaurantId, user }) => {
   const intent = classifyIntent(message);
   const menuPreferences = extractMenuPreferences(message);
-  const isMenuAssistant = intent === "menu" || menuPreferences.intentSubtype?.length;
+  const isMenuAssistant = isMenuAssistantRequest(message, intent, menuPreferences);
   const restaurants = await fetchRestaurants({ restaurantId, message });
   const primaryRestaurant = restaurants[0] || null;
   const currency = primaryRestaurant?.defaultCurrency || "VND";
@@ -526,16 +569,17 @@ const normalizeAiResult = (parsed, context) => {
   const answer = String(parsed?.answer || "").trim() || fallbackAnswer(context).answer;
   const hasUnknownPrice = context.intent === "menu" && /đ|vnd|k\b/i.test(answer) && !sources.some((s) => s.type === "menuItem");
   return {
-  answer: hasUnknownPrice ? menuFallback(context) : answer,
-  intent: parsed?.intent || context.intent || "general",
-  confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? 0.7))),
-  quickReplies: Array.isArray(parsed?.quickReplies)
-    ? parsed.quickReplies.map(String).slice(0, 4)
-    : fallbackQuickReplies(context.intent),
-  actions,
-  sources,
-  isFallback: false,
-};};
+    answer: hasUnknownPrice ? menuFallback(context) : answer,
+    intent: parsed?.intent || context.intent || "general",
+    confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? 0.7))),
+    quickReplies: Array.isArray(parsed?.quickReplies)
+      ? parsed.quickReplies.map(String).slice(0, 4)
+      : fallbackQuickReplies(context.intent),
+    actions,
+    sources,
+    isFallback: false,
+  };
+};
 
 const callOpenAI = async ({ message, context, history }) => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -865,6 +909,10 @@ export const __testables = {
   buildSearchRegex,
   fallbackAnswer,
   extractMenuPreferences,
+  parseBudgetMax,
+  isMenuAssistantRequest,
+  maybeCategoryName,
+  serializeMenuItem,
   scoreMenuItemForPreferences,
   rankMenuRecommendations,
   menuFallback,

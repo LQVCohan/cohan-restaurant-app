@@ -142,7 +142,20 @@ export const extractRestaurantId = ({ params, pathname }) => {
   return null;
 };
 export const getInputPlaceholder = (restaurantId) => (restaurantId ? "Hỏi AI gợi ý món, combo, giá, món chay..." : "Hỏi về món ăn, đặt bàn, đơn hàng...");
-export const buildMenuSourceCards = (response) => (response?.intent === "menu" ? (response?.sources || []).filter((source) => source?.type === "menuItem") : []);
+export const buildMenuSourceCards = (response) => {
+  if (response?.intent !== "menu") return [];
+  const seen = new Set();
+  const cards = [];
+  for (const source of response?.sources || []) {
+    if (source?.type !== "menuItem" || !source?.id) continue;
+    const id = String(source.id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    cards.push(source);
+    if (cards.length >= 4) break;
+  }
+  return cards;
+};
 
 const normalizeHistory = (messages) =>
   messages
