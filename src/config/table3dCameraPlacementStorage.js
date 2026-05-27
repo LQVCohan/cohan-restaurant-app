@@ -7,8 +7,10 @@ export const DEFAULT_CAMERA_PLACEMENT = {
   rotation: 0,
 };
 
-export const getCameraPlacementStorageKey = (scope = "default") =>
-  `${CAMERA_PLACEMENT_STORAGE_KEY}:${scope || "default"}`;
+export const buildCameraPlacementKey = (modelKey, scope = "default") =>
+  `${scope || "default"}::${modelKey || "preview"}`;
+
+const getCameraPlacementStorageKey = () => CAMERA_PLACEMENT_STORAGE_KEY;
 
 const canUseStorage = () => typeof window !== "undefined" && !!window.localStorage;
 
@@ -19,29 +21,29 @@ const asNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-export const normalizeCameraPlacement = (input) => {
-  const source = input || {};
-  const x = clamp(asNumber(source.x, DEFAULT_CAMERA_PLACEMENT.x), 0, 100);
-  const y = clamp(asNumber(source.y, DEFAULT_CAMERA_PLACEMENT.y), 0, 100);
-  const scale = clamp(asNumber(source.scale, DEFAULT_CAMERA_PLACEMENT.scale), 0.35, 2.5);
-  const rawRotation = asNumber(source.rotation, DEFAULT_CAMERA_PLACEMENT.rotation);
-  const rotation = ((rawRotation % 360) + 360) % 360;
+export const normalizeCameraPlacement = (value) => {
+  const source = value && typeof value === "object" ? value : {};
 
-  return { x, y, scale, rotation };
+  return {
+    x: clamp(asNumber(source.x, DEFAULT_CAMERA_PLACEMENT.x), 5, 95),
+    y: clamp(asNumber(source.y, DEFAULT_CAMERA_PLACEMENT.y), 5, 95),
+    scale: clamp(asNumber(source.scale, DEFAULT_CAMERA_PLACEMENT.scale), 0.5, 2),
+    rotation: asNumber(source.rotation, DEFAULT_CAMERA_PLACEMENT.rotation),
+  };
 };
 
-export const loadCameraPlacements = (scope = "default") => {
+const loadAllCameraPlacements = () => {
   if (!canUseStorage()) return {};
 
   try {
-    const raw = window.localStorage.getItem(getCameraPlacementStorageKey(scope));
+    const raw = window.localStorage.getItem(getCameraPlacementStorageKey());
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
 
-    return Object.entries(parsed).reduce((acc, [key, placement]) => {
-      if (!key) return acc;
-      acc[key] = normalizeCameraPlacement(placement);
+    return Object.entries(parsed).reduce((acc, [placementKey, placementValue]) => {
+      if (!placementKey) return acc;
+      acc[placementKey] = normalizeCameraPlacement(placementValue);
       return acc;
     }, {});
   } catch {
@@ -49,50 +51,51 @@ export const loadCameraPlacements = (scope = "default") => {
   }
 };
 
+const persistAllCameraPlacements = (nextMap) => {
+  if (!canUseStorage()) return;
+
+  try {
+    window.localStorage.setItem(getCameraPlacementStorageKey(), JSON.stringify(nextMap));
+  } catch {
+    // ignore storage write errors
+  }
+};
+
 export const loadCameraPlacement = (modelKey, scope = "default") => {
   if (!modelKey) return { ...DEFAULT_CAMERA_PLACEMENT };
-  const map = loadCameraPlacements(scope);
-  return map[modelKey] || { ...DEFAULT_CAMERA_PLACEMENT };
+  const all = loadAllCameraPlacements();
+  const placementKey = buildCameraPlacementKey(modelKey, scope);
+  return all[placementKey] || { ...DEFAULT_CAMERA_PLACEMENT };
 };
 
 export const saveCameraPlacement = (modelKey, placement, scope = "default") => {
-  const map = loadCameraPlacements(scope);
-  if (!modelKey) return map;
+  if (!modelKey) return loadAllCameraPlacements();
 
+  const all = loadAllCameraPlacements();
+  const placementKey = buildCameraPlacementKey(modelKey, scope);
   const next = {
-    ...map,
-    [modelKey]: normalizeCameraPlacement(placement),
+    ...all,
+    [placementKey]: normalizeCameraPlacement(placement),
   };
-
-  if (!canUseStorage()) return next;
-
-  try {
-    window.localStorage.setItem(getCameraPlacementStorageKey(scope), JSON.stringify(next));
-    return next;
-  } catch {
-    return next;
-  }
+  persistAllCameraPlacements(next);
+  return next;
 };
 
 export const deleteCameraPlacement = (modelKey, scope = "default") => {
-  const map = loadCameraPlacements(scope);
-  if (!modelKey) return map;
+  if (!modelKey) return loadAllCameraPlacements();
 
-  const next = { ...map };
-  delete next[modelKey];
-
-  if (!canUseStorage()) return next;
-
-  try {
-    window.localStorage.setItem(getCameraPlacementStorageKey(scope), JSON.stringify(next));
-    return next;
-  } catch {
-    return next;
-  }
+  const all = loadAllCameraPlacements();
+  const placementKey = buildCameraPlacementKey(modelKey, scope);
+  const next = { ...all };
+  delete next[placementKey];
+  persistAllCameraPlacements(next);
+  return next;
 };
 
 export const hasCameraPlacement = (modelKey, scope = "default") => {
   if (!modelKey) return false;
-  const map = loadCameraPlacements(scope);
-  return !!map[modelKey];
+  const all = loadAllCameraPlacements();
+  return !!all[buildCameraPlacementKey(modelKey, scope)];
 };
+
+export { getCameraPlacementStorageKey };

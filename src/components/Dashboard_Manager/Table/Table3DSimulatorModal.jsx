@@ -40,6 +40,7 @@ const Table3DSimulatorModal = ({
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
   const [customModels, setCustomModels] = useState([]);
+  const [confirmedCameraPlacement, setConfirmedCameraPlacement] = useState(null);
   const customModelScope = restaurantName || restaurantId || "default";
 
   useEffect(() => {
@@ -236,6 +237,9 @@ const Table3DSimulatorModal = ({
           <div className="viewer-overlay">
             <span>{selectedModel?.label || "Mẫu 3D"}</span>
             {loading && <span>Đang tải catalog...</span>}
+            {confirmedCameraPlacement && (
+              <span>Đã xác nhận vị trí xem thử cho {confirmedCameraPlacement.modelLabel}</span>
+            )}
           </div>
 
           {selectedModel?.modelUrl && !modelError ? (
@@ -340,7 +344,8 @@ const Table3DSimulatorModal = ({
         open={!!cameraModel}
         modelItem={cameraModel}
         onClose={() => setCameraModel(null)}
-        onConfirmPlacement={() => {
+        onConfirmPlacement={(payload) => {
+          setConfirmedCameraPlacement(payload);
           setCameraModel(null);
         }}
         placementScope={customModelScope}
