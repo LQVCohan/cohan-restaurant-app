@@ -15,6 +15,7 @@ const ASK_AI_CHATBOT = gql`
       quickReplies
       isFallback
       conversationId
+      answerMessageId
       actions {
         type
         label
@@ -38,6 +39,12 @@ const ASK_AI_CHATBOT = gql`
     }
   }
 `;
+const SUBMIT_AI_CHATBOT_FEEDBACK = gql`
+  mutation SubmitAiChatbotAnswerFeedback($input: SubmitAiChatbotAnswerFeedbackInput!) {
+    submitAiChatbotAnswerFeedback(input: $input) { id rating }
+  }
+`;
+
 const REQUEST_AI_CHATBOT_HANDOFF = gql`
   mutation RequestAiChatbotHandoff($input: RequestAiChatbotHandoffInput!) {
     requestAiChatbotHandoff(input: $input) {
@@ -174,6 +181,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
+  const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
   const [sendGuestMessage, { loading: guestSendLoading }] = useMutation(SEND_AI_CHATBOT_GUEST_MESSAGE);
   const [loadGuestReplies] = useLazyQuery(Q_AI_CHATBOT_GUEST_REPLIES, { fetchPolicy: "network-only" });
   const [guestId, setGuestId] = useState(() => {
@@ -189,6 +197,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const [isSendInFlight, setIsSendInFlight] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState({});
   const sendInFlightRef = useRef(false);
   const pollInFlightRef = useRef(false);
   const hasJoinedSocketRef = useRef(false);
@@ -505,6 +514,23 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                 {item.role === "staff" ? <small>{item?.meta?.senderLabel || "Nhân viên"}</small> : null}
                 <p>{item.content}</p>
                 {item.meta?.isFallback ? <span className="ai-chatbot-note">Fallback dữ liệu hệ thống</span> : null}
+                {item.role === "assistant" && item.meta?.conversationId ? <div className="ai-chatbot-actions" style={{ marginTop: 6 }}>
+                  {feedbackSent[item.meta?.answerMessageId || index] ? <small>Cảm ơn bạn đã phản hồi!</small> : <>
+                    <button type="button" onClick={async () => {
+                      const key = item.meta?.answerMessageId || index;
+                      if (feedbackSent[key]) return;
+                      await submitFeedback({ variables: { input: { restaurantId, conversationId: item.meta?.conversationId, messageId: item.meta?.answerMessageId, guestId: guestId || undefined, question: messages[index-1]?.role === "user" ? messages[index-1]?.content : "", answer: item.content, rating: "helpful" } } });
+                      setFeedbackSent((x) => ({ ...x, [key]: true }));
+                    }}>Hữu ích</button>
+                    <button type="button" onClick={async () => {
+                      const key = item.meta?.answerMessageId || index;
+                      if (feedbackSent[key]) return;
+                      const reason = window.prompt("Lý do không hữu ích (không bắt buộc):", "") || "";
+                      await submitFeedback({ variables: { input: { restaurantId, conversationId: item.meta?.conversationId, messageId: item.meta?.answerMessageId, guestId: guestId || undefined, question: messages[index-1]?.role === "user" ? messages[index-1]?.content : "", answer: item.content, rating: "not_helpful", reason } } });
+                      setFeedbackSent((x) => ({ ...x, [key]: true }));
+                    }}>Không hữu ích</button>
+                  </>}
+                </div> : null}
               </div>
             ))}
             {loading ? (

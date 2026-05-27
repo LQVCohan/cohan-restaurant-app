@@ -3,9 +3,18 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 
 const Q = gql`query ManagerAiKnowledge($restaurantId: ID!, $filter: AiChatbotKnowledgeFilterInput) { restaurantAiChatbotKnowledge(restaurantId: $restaurantId, filter: $filter) { id restaurantId title content category tags enabled priority sourceType updatedAt } }`;
+const Q_SUGGESTIONS = gql`query ManagerAiKnowledgeSuggestions($restaurantId: ID!, $filter: AiChatbotKnowledgeSuggestionFilterInput) { restaurantAiChatbotKnowledgeSuggestions(restaurantId: $restaurantId, filter: $filter) { id restaurantId question triggerType confidence occurrenceCount lastAskedAt suggestedTitle suggestedContent category tags status approvedKnowledgeItemId } }`;
 const C = gql`mutation CreateAiKnowledge($input: CreateAiChatbotKnowledgeItemInput!) { createRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
 const U = gql`mutation UpdateAiKnowledge($input: UpdateAiChatbotKnowledgeItemInput!) { updateRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
 const D = gql`mutation DeleteAiKnowledge($id: ID!) { deleteRestaurantAiChatbotKnowledgeItem(id: $id) }`;
+const APPROVE = gql`mutation ApproveAiSuggestion($id: ID!, $input: ApproveAiChatbotKnowledgeSuggestionInput!) { approveRestaurantAiChatbotKnowledgeSuggestion(id: $id, input: $input) { id } }`;
+const DISMISS = gql`mutation DismissAiSuggestion($id: ID!) { dismissRestaurantAiChatbotKnowledgeSuggestion(id: $id) }`;
+const DELETE_S = gql`mutation DeleteAiSuggestion($id: ID!) { deleteRestaurantAiChatbotKnowledgeSuggestion(id: $id) }`;
+const Q_FEEDBACK = gql`query ManagerAiFeedback($restaurantId: ID!, $filter: AiChatbotAnswerFeedbackFilterInput) { restaurantAiChatbotAnswerFeedback(restaurantId: $restaurantId, filter: $filter) { id question answer reason confidence rating status createdAt } }`;
+const FEEDBACK_REVIEW = gql`mutation MarkAiFeedbackReviewed($id: ID!) { markAiChatbotAnswerFeedbackReviewed(id: $id) }`;
+const FEEDBACK_IGNORE = gql`mutation IgnoreAiFeedback($id: ID!) { ignoreAiChatbotAnswerFeedback(id: $id) }`;
+const FEEDBACK_CONVERT = gql`mutation ConvertAiFeedback($id: ID!) { convertAiChatbotFeedbackToSuggestion(id: $id) }`;
+
 
 const blank = { id: "", title: "", content: "", category: "", tags: "", enabled: true, priority: 0, sourceType: "manual" };
 
@@ -16,12 +25,39 @@ export default function AiChatbotKnowledgePage() {
   const [enabled, setEnabled] = useState("all");
   const [form, setForm] = useState(blank);
   const [msg, setMsg] = useState("");
+  const [suggestionStatus, setSuggestionStatus] = useState("pending");
+  const [suggestionTrigger, setSuggestionTrigger] = useState("all");
+  const [suggestionSearch, setSuggestionSearch] = useState("");
+  const [feedbackRating, setFeedbackRating] = useState("not_helpful");
+  const [feedbackStatus, setFeedbackStatus] = useState("new");
   const rid = restaurantId || restaurants?.[0]?.id || "";
   const filter = useMemo(() => ({ search: search || undefined, enabled: enabled === "all" ? undefined : enabled === "on" }), [search, enabled]);
+  const suggestionFilter = useMemo(() => ({ status: suggestionStatus === "all" ? undefined : suggestionStatus, triggerType: suggestionTrigger === "all" ? undefined : suggestionTrigger, search: suggestionSearch || undefined }), [suggestionStatus, suggestionTrigger, suggestionSearch]);
   const { data, loading, error, refetch } = useQuery(Q, { skip: !rid, variables: { restaurantId: rid, filter } });
+  const { data: suggestionData, loading: suggestionLoading, error: suggestionError, refetch: refetchSuggestion } = useQuery(Q_SUGGESTIONS, { skip: !rid, variables: { restaurantId: rid, filter: suggestionFilter } });
+  const { data: feedbackData, loading: feedbackLoading, refetch: refetchFeedback } = useQuery(Q_FEEDBACK, { skip: !rid, variables: { restaurantId: rid, filter: { rating: feedbackRating === "all" ? undefined : feedbackRating, status: feedbackStatus === "all" ? undefined : feedbackStatus } } });
   const [createItem, { loading: creating }] = useMutation(C);
   const [updateItem, { loading: updating }] = useMutation(U);
   const [deleteItem] = useMutation(D);
+  const [approveSuggestion] = useMutation(APPROVE);
+  const [dismissSuggestion] = useMutation(DISMISS);
+  const [deleteSuggestion] = useMutation(DELETE_S);
+  const [markFeedbackReviewed] = useMutation(FEEDBACK_REVIEW);
+  const [ignoreFeedback] = useMutation(FEEDBACK_IGNORE);
+  const [convertFeedback] = useMutation(FEEDBACK_CONVERT);
+
+  const onApproveSuggestion = async (s) => {
+    const title = window.prompt("Title", s.suggestedTitle || s.question) || s.question;
+    const contentRaw = window.prompt("Content", s.suggestedContent || "") || "";
+    const content = String(contentRaw).trim();
+    if (!content) {
+      window.alert("Vui lòng nhập nội dung trả lời trước khi duyệt suggestion.");
+      return;
+    }
+    await approveSuggestion({ variables: { id: s.id, input: { title, content, category: s.category || "", tags: s.tags || [], sourceType: "faq", enabled: true, priority: 50 } } });
+    refetchSuggestion?.();
+    refetch?.();
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +69,8 @@ export default function AiChatbotKnowledgePage() {
   };
 
   const rows = data?.restaurantAiChatbotKnowledge || [];
+  const suggestionRows = suggestionData?.restaurantAiChatbotKnowledgeSuggestions || [];
+  const feedbackRows = feedbackData?.restaurantAiChatbotAnswerFeedback || [];
 
   return <section style={{ padding: 16 }}>
     <h2>AI Chatbot Knowledge Base</h2>
@@ -52,6 +90,37 @@ export default function AiChatbotKnowledgePage() {
       <button onClick={async () => { await updateItem({ variables: { input: { id: item.id, enabled: !item.enabled } } }); refetch?.(); }}>{item.enabled ? "Tắt" : "Bật"}</button>
       <button onClick={async () => { if (!window.confirm("Xóa mục này?")) return; await deleteItem({ variables: { id: item.id } }); refetch?.(); }}>Xóa</button>
     </li>)}</ul>
+
+    <h3 style={{ marginTop: 20 }}>Knowledge Gap Suggestions</h3>
+    <div style={{ display: "flex", gap: 8, margin: "8px 0" }}>
+      <input placeholder="Tìm câu hỏi" value={suggestionSearch} onChange={(e) => setSuggestionSearch(e.target.value)} />
+      <select value={suggestionStatus} onChange={(e) => setSuggestionStatus(e.target.value)}><option value="pending">pending</option><option value="approved">approved</option><option value="dismissed">dismissed</option><option value="all">all</option></select>
+      <select value={suggestionTrigger} onChange={(e) => setSuggestionTrigger(e.target.value)}><option value="all">all trigger</option><option value="fallback">fallback</option><option value="low_confidence">low_confidence</option><option value="handoff">handoff</option><option value="no_knowledge_match">no_knowledge_match</option></select>
+      <button onClick={() => refetchSuggestion?.()}>Lọc gợi ý</button>
+    </div>
+    {suggestionLoading ? <p>Đang tải gợi ý...</p> : null}
+    {suggestionError ? <p>{suggestionError.message}</p> : null}
+    <ul>{suggestionRows.map((s) => <li key={s.id}>
+      <strong>{s.question}</strong> [{s.status}] ({s.triggerType})
+      <div>confidence: {s.confidence ?? "-"} | occurrences: {s.occurrenceCount} | lastAskedAt: {s.lastAskedAt || "-"}</div>
+      <div>Gợi ý tiêu đề: {s.suggestedTitle || "-"}</div>
+      <div>Gợi ý nội dung: {s.suggestedContent || "-"}</div>
+      <div>{s.category || "-"} | {(s.tags || []).join(", ")}</div>
+      {s.status === "pending" ? <>
+        <button onClick={() => onApproveSuggestion(s)}>Approve</button>
+        <button onClick={async () => { await dismissSuggestion({ variables: { id: s.id } }); refetchSuggestion?.(); }}>Dismiss</button>
+      </> : null}
+      <button onClick={async () => { if (!window.confirm("Xóa suggestion này?")) return; await deleteSuggestion({ variables: { id: s.id } }); refetchSuggestion?.(); }}>Delete</button>
+    </li>)}</ul>
+
+    <h3 style={{ marginTop: 20 }}>Answer Feedback Review</h3>
+    <div style={{ display: "flex", gap: 8, margin: "8px 0" }}>
+      <select value={feedbackRating} onChange={(e) => setFeedbackRating(e.target.value)}><option value="not_helpful">not_helpful</option><option value="helpful">helpful</option><option value="all">all</option></select>
+      <select value={feedbackStatus} onChange={(e) => setFeedbackStatus(e.target.value)}><option value="new">new</option><option value="reviewed">reviewed</option><option value="converted_to_suggestion">converted_to_suggestion</option><option value="ignored">ignored</option><option value="all">all</option></select>
+      <button onClick={() => refetchFeedback?.()}>Lọc feedback</button>
+    </div>
+    {feedbackLoading ? <p>Đang tải feedback...</p> : null}
+    <ul>{feedbackRows.map((f) => <li key={f.id}><strong>[{f.rating}]</strong> {f.question}<div>{f.answer}</div><div>Lý do: {f.reason || "-"} | confidence: {f.confidence ?? "-"} | status: {f.status}</div><button onClick={async () => { await markFeedbackReviewed({ variables: { id: f.id } }); refetchFeedback?.(); }}>Mark reviewed</button><button onClick={async () => { await ignoreFeedback({ variables: { id: f.id } }); refetchFeedback?.(); }}>Ignore</button><button onClick={async () => { await convertFeedback({ variables: { id: f.id } }); refetchFeedback?.(); refetchSuggestion?.(); }}>Convert to suggestion</button></li>)}</ul>
 
     <form onSubmit={onSubmit} style={{ marginTop: 12 }}>
       <h3>{form.id ? "Cập nhật" : "Tạo mới"} Knowledge item</h3>

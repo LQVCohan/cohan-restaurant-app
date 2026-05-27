@@ -9,6 +9,7 @@ let handoffMutationSpy;
 let guestRepliesSpy;
 let guestMessageMutationSpy;
 let publicSettingsQuerySpy;
+let submitFeedbackMutationSpy;
 let socketOn;
 let socketOff;
 let socketEmit;
@@ -40,6 +41,7 @@ vi.mock("@apollo/client/react", async () => {
       if (body.includes("AskAiChatbot")) return [askMutationSpy, { loading: false }];
       if (body.includes("RequestAiChatbotHandoff")) return [handoffMutationSpy, { loading: false }];
       if (body.includes("SendAiChatbotGuestMessage")) return [guestMessageMutationSpy, { loading: guestSendLoadingState }];
+      if (body.includes("SubmitAiChatbotAnswerFeedback")) return [submitFeedbackMutationSpy, { loading: false }];
       return [vi.fn(), { loading: false }];
     }),
     useLazyQuery: vi.fn(() => [guestRepliesSpy, { loading: false, data: null, error: null }]),
@@ -80,6 +82,7 @@ describe("AiChatbotWidget stabilization", () => {
     guestMessageMutationSpy = vi.fn().mockResolvedValue({
       data: { sendAiChatbotGuestMessage: { ok: true, conversationId: "conv-1", message: { id: "g1", content: "ok" } } },
     });
+    submitFeedbackMutationSpy = vi.fn().mockResolvedValue({ data: { submitAiChatbotAnswerFeedback: { id: "f1", rating: "helpful" } } });
     guestRepliesSpy = vi.fn().mockResolvedValue({
       data: { aiChatbotGuestReplies: { handoffClosed: false, conversationStatus: "handoff_requested", replies: [{ id: "2026-05-25T10:00:00.000Z_0", content: "Mình là nhân viên hỗ trợ đây.", senderLabel: "Nhân viên", createdAt: "2026-05-25T10:00:00.000Z" }] } },
     });
