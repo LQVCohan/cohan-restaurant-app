@@ -374,6 +374,21 @@ export default function TableActionsLiteModal({
       (floors || []).slice().sort((a, b) => Number(a.level) - Number(b.level)),
     [floors]
   );
+  const visualConfigPlacement = useMemo(
+    () => normalizeCameraPlacement(table?.visualConfig?.placement || DEFAULT_CAMERA_PLACEMENT),
+    [table?.visualConfig?.placement]
+  );
+  const visualModelItem = useMemo(
+    () => buildPreviewModelItemFromVisualConfig(table?.visualConfig),
+    [table?.visualConfig]
+  );
+  const visualSavedAtLabel = useMemo(
+    () =>
+      table?.visualConfig?.savedAt
+        ? new Date(table.visualConfig.savedAt).toLocaleString("vi-VN")
+        : null,
+    [table?.visualConfig?.savedAt]
+  );
 
   if (!isOpen) return null;
 
@@ -381,17 +396,6 @@ export default function TableActionsLiteModal({
   const isVrSaving = !!busy.save || vrUploading;
   const hasVrConfigured = Boolean(vrUrl?.trim() || hasStoredImage);
   const hasVisualConfig = !!table?.visualConfig;
-  const visualConfigPlacement = useMemo(
-    () => normalizeCameraPlacement(table?.visualConfig?.placement || DEFAULT_CAMERA_PLACEMENT),
-    [table]
-  );
-  const visualModelItem = useMemo(
-    () => buildPreviewModelItemFromVisualConfig(table?.visualConfig),
-    [table]
-  );
-  const visualSavedAtLabel = table?.visualConfig?.savedAt
-    ? new Date(table.visualConfig.savedAt).toLocaleString("vi-VN")
-    : null;
   const vrContextLabel = joinUniqueLabels(
     [
       `Bàn ${code || getTableDisplayCode(table) || "--"}`,
