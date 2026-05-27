@@ -193,36 +193,62 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
   const lim = clampLimit(limit, 1, 100);
 
   const baseFilter = buildFilter(restaurantFilter);
-  const filter = {
+  const publicFilter = {
+    $or: [
+      { businessStatus: "active", publicationStatus: "published" },
+      {
+        businessStatus: { $exists: false },
+        publicationStatus: { $exists: false },
+        status: "active",
+      },
+    ],
+  };
+  const filterWithoutLocationType = {
     ...baseFilter,
     $and: [
       ...(Array.isArray(baseFilter.$and) ? baseFilter.$and : []),
+      publicFilter,
+    ],
+  };
+
+  try {
+    const geoDocs = await Restaurant.aggregate([
       {
-        $or: [
-          { businessStatus: "active", publicationStatus: "published" },
-          {
-            businessStatus: { $exists: false },
-            publicationStatus: { $exists: false },
-            status: "active",
-          },
-        ],
+        $geoNear: {
+          near: { type: "Point", coordinates: [lngNum, latNum] },
+          distanceField: "distanceMeters",
+          maxDistance: normalizedRadiusKm * 1000,
+          spherical: true,
+          query: filterWithoutLocationType,
+        },
       },
+      { $limit: lim },
+      { $addFields: { distanceKm: { $divide: ["$distanceMeters", 1000] } } },
+      { $project: { distanceMeters: 0 } },
+    ]);
+
+    if (Array.isArray(geoDocs) && geoDocs.length > 0) return geoDocs;
+  } catch (_error) {
+    // Fallback to legacy address.lat/lng Haversine path when geospatial index/data is not ready.
+  }
+
+  const fallbackFilter = {
+    ...filterWithoutLocationType,
+    $and: [
+      ...(Array.isArray(filterWithoutLocationType.$and) ? filterWithoutLocationType.$and : []),
       { "address.lat": { $type: "number" } },
       { "address.lng": { $type: "number" } },
     ],
   };
 
-  const docs = await Restaurant.find(filter).lean();
-
+  const docs = await Restaurant.find(fallbackFilter).lean();
   return docs
     .map((doc) => {
       const rLat = Number(doc?.address?.lat);
       const rLng = Number(doc?.address?.lng);
       if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return null;
-
       const distanceKm = haversineDistanceKm(latNum, lngNum, rLat, rLng);
       if (!Number.isFinite(distanceKm) || distanceKm > normalizedRadiusKm) return null;
-
       return { ...doc, distanceKm };
     })
     .filter(Boolean)
