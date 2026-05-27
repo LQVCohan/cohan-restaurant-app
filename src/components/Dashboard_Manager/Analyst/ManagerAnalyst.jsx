@@ -13,6 +13,7 @@ import DemandForecastWidget from "./components/DemandForecastWidget";
 import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistantWidget";
 import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
+import BusinessOperationsOverview from "./components/BusinessOperationsOverview";
 import "./ManagerAnalyst.scss";
 
 const formatVnd = (value) =>
@@ -69,6 +70,13 @@ const ManagerAnalyst = () => {
     staffSchedulingAssistant,
     menuEngineeringAssistant,
     smartPromotionEngine,
+    statusCounts,
+    recentOrders,
+    lowStockItems,
+    serviceRequests,
+    operationsRequestsLoading,
+    operationsRequestsError,
+    operationsSummary,
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
@@ -282,12 +290,52 @@ const ManagerAnalyst = () => {
             </div>
           ) : null}
 
+<<<<<<< codex/update-business-analytics-page
+          <section className="kpi-section">
+            {displayKpis.map((kpi, idx) => (
+              <KPIInsightCard
+                key={kpi.label}
+                label={kpi.label}
+                value={kpi.value}
+                trendValue={kpi.trendValue}
+                showTrend={kpi.showTrend}
+                period={kpi.period}
+                progress={kpi.progress}
+                progressLabel={kpi.progressLabel}
+                icon={icons[idx]}
+              />
+            ))}
+          </section>
+
+          <h3 className="section-heading">Ưu tiên vận hành</h3>
+          <BusinessOperationsOverview
+            requestLoading={operationsRequestsLoading}
+            requestError={operationsRequestsError}
+            statusCounts={statusCounts}
+            serviceRequests={serviceRequests}
+            pendingRequestsCount={operationsSummary?.pendingRequestsCount}
+            acknowledgedRequestsCount={operationsSummary?.acknowledgedRequestsCount}
+            recentOrders={recentOrders}
+            lowStockItems={lowStockItems}
+          />
+          <section className="strategy-grid">
+            <div className="grid-item ai-assistant">
+              <StrategyAIRecommendation
+                topDish={topDishes[0]}
+                feedbackSummary={feedbackSummary}
+                demandForecast={demandForecast}
+                staffSchedulingAssistant={staffSchedulingAssistant}
+                menuEngineeringAssistant={menuEngineeringAssistant}
+                smartPromotionEngine={smartPromotionEngine}
+              />
+=======
           <section className="analytics-section">
             <div className="analytics-section__header">
               <h3 className="analytics-section__title">Tổng quan kinh doanh</h3>
               <p className="analytics-section__subtitle">
                 Các chỉ số chính theo nhà hàng và khoảng thời gian đã chọn.
               </p>
+>>>>>>> main
             </div>
             <div className="analytics-section__body kpi-section">
               {displayKpis.map((kpi, idx) => (
@@ -305,6 +353,11 @@ const ManagerAnalyst = () => {
               ))}
             </div>
           </section>
+<<<<<<< codex/update-business-analytics-page
+          <section className="operations-intel-grid">
+            <div className="grid-item demand-forecast">
+              <DemandForecastWidget forecast={demandForecast} loading={loading} />
+=======
 
           <section className="analytics-section">
             <div className="analytics-section__header">
@@ -313,6 +366,7 @@ const ManagerAnalyst = () => {
                 Việc cần xử lý trước dựa trên doanh thu, nhu cầu, nhân sự và
                 khuyến mãi.
               </p>
+>>>>>>> main
             </div>
             <div className="analytics-section__body strategy-grid">
               <div className="grid-item ai-assistant">
