@@ -143,7 +143,11 @@ export async function createServer() {
   const RL_AUTH_REFRESH_WINDOW = process.env.RL_AUTH_REFRESH_WINDOW || "1 minute";
   const RL_AUTH_LOGOUT_MAX = Number(process.env.RL_AUTH_LOGOUT_MAX || 60);
   const RL_AUTH_LOGOUT_WINDOW = process.env.RL_AUTH_LOGOUT_WINDOW || "1 minute";
-  const allowNoOriginAuthCookieRequests = String(process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN || "true").toLowerCase() !== "false";
+  const allowNoOriginRaw = String(process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN || "").trim().toLowerCase();
+  const noOriginExplicitAllow = allowNoOriginRaw === "true";
+  const allowNoOriginAuthCookieRequests = process.env.NODE_ENV === "production"
+    ? noOriginExplicitAllow
+    : allowNoOriginRaw !== "false";
   const isAllowedOrigin = (origin) => allowedOrigins.includes(String(origin || ""));
   const enforceAuthCookieOrigin = (req, reply) => {
     const origin = req.headers.origin;

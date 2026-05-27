@@ -363,8 +363,8 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Refresh flow quay vòng token (`rotateRefreshToken`): token cũ bị `revokedAt`, token mới lưu qua `replacedByTokenHash`.
 - Reuse detection: nếu refresh token cũ đã revoked bị dùng lại, backend coi là dấu hiệu token theft và revoke toàn bộ chuỗi hậu duệ (token family) qua `replacedByTokenHash`.
 - API trả lỗi generic `Authentication failed`; server chỉ log metadata an toàn (không log raw refresh token).
-- Endpoint `/api/auth/refresh` và `/api/auth/logout` có Origin guard: nếu có `Origin` phải nằm trong `CORS_ORIGINS`; no-Origin được điều khiển bởi `ALLOW_AUTH_COOKIE_NO_ORIGIN` (mặc định cho phép để không phá local/non-browser).
-- Refresh token có TTL index MongoDB tại `expiresAt` (`expireAfterSeconds: 0`) để dọn bản ghi hết hạn.
+- Endpoint `/api/auth/refresh` và `/api/auth/logout` có Origin guard: nếu có `Origin` phải nằm trong `CORS_ORIGINS`; no-Origin ở production mặc định bị chặn và chỉ được mở khi `ALLOW_AUTH_COOKIE_NO_ORIGIN=true` (development/test vẫn cho phép mặc định để không phá local/non-browser).
+- Refresh token dùng TTL index MongoDB tại `expiresAt` (`expireAfterSeconds: 0`) để dọn bản ghi hết hạn; không dùng thêm field-level duplicate index cho `expiresAt`.
 - Rate limit theo route:
   - `POST /api/auth/refresh`: `RL_AUTH_REFRESH_MAX` (default 30) / `RL_AUTH_REFRESH_WINDOW` (default `1 minute`).
   - `POST /api/auth/logout`: `RL_AUTH_LOGOUT_MAX` (default 60) / `RL_AUTH_LOGOUT_WINDOW` (default `1 minute`).

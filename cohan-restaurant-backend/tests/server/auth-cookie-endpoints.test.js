@@ -20,6 +20,7 @@ describe('auth cookie endpoints', () => {
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'x';
     process.env.MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/test';
     process.env.CORS_ORIGINS = 'http://localhost:5173';
+    process.env.NODE_ENV = 'test';
     process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN = 'true';
   });
 
@@ -71,6 +72,24 @@ describe('auth cookie endpoints', () => {
     authTokens.rotateRefreshToken.mockResolvedValue({ token: 'access', user: { id: 'u1' } });
     const app = await createServer();
     const res = await app.inject({ method: 'POST', url: '/api/auth/refresh', headers: { cookie: 'refresh_token=ok' } });
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('rejects no Origin in production by default', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN;
+    const app = await createServer();
+    const res = await app.inject({ method: 'POST', url: '/api/auth/logout' });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('allows no Origin in production when explicitly enabled', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_AUTH_COOKIE_NO_ORIGIN = 'true';
+    const app = await createServer();
+    const res = await app.inject({ method: 'POST', url: '/api/auth/logout' });
     expect(res.statusCode).toBe(200);
     await app.close();
   });
