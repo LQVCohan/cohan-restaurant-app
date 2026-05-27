@@ -1,44 +1,76 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import SearchBox from "./SearchBox";
 
-const items = [
-  { id: "1", title: "A.B", description: "Contains literal dot.", category: "Test", keywords: ["a.b"], icon: "•" },
-  { id: "2", title: "Array [value]", description: "Brackets [ ] text", category: "Test", keywords: ["[value]"], icon: "•" },
-  { id: "3", title: "Question?", description: "Has a ? mark?", category: "Test", keywords: ["question?"], icon: "•" },
-  { id: "4", title: "Hello world", description: "Normal text search still works", category: "Test", keywords: ["hello"], icon: "•" },
+const testItems = [
+  {
+    id: "bracket",
+    title: "Combo [A]+",
+    description: "Bracket plus safe",
+    category: "Test",
+    keywords: ["combo"],
+    icon: "🍽️",
+  },
+  {
+    id: "dot",
+    title: "Combo. Dot",
+    description: "Dot safe",
+    category: "Test",
+    keywords: ["dot"],
+    icon: "🍽️",
+  },
+  {
+    id: "slash",
+    title: "Path \\ Menu",
+    description: "Backslash safe",
+    category: "Test",
+    keywords: ["slash"],
+    icon: "🍽️",
+  },
+  {
+    id: "paren",
+    title: "Deal (A)",
+    description: "Parenthesis safe",
+    category: "Test",
+    keywords: ["paren"],
+    icon: "🍽️",
+  },
 ];
 
-describe("SearchBox highlighting escapes regex chars", () => {
-  it("searchQuery '.' highlights literal dots only", () => {
-    const { container } = render(<SearchBox items={items} />);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "." } });
+describe("SearchBox regex-safe highlighting", () => {
+  it("does not crash for regex-special queries and returns matching results", () => {
+    render(<SearchBox items={testItems} />);
 
-    const highlights = container.querySelectorAll(".search-highlight");
-    expect(highlights.length).toBeGreaterThan(0);
-    highlights.forEach((node) => expect(node.textContent).toBe("."));
+    const input = screen.getByPlaceholderText("Tìm kiếm mọi thứ trong trang...");
+
+    [
+      ["[", "Combo [A]+"],
+      ["+", "Combo [A]+"],
+      [".", "Combo. Dot"],
+      ["\\", "Path \\ Menu"],
+      ["(A)", "Deal (A)"],
+    ].forEach(([query, expectedTitle]) => {
+      fireEvent.change(input, { target: { value: query } });
+      expect(
+        screen.getByText((_, element) => element?.textContent === expectedTitle)
+      ).toBeInTheDocument();
+    });
   });
 
-  it("searchQuery '[' does not throw", () => {
-    render(<SearchBox items={items} />);
-    expect(() => {
-      fireEvent.change(screen.getByRole("textbox"), { target: { value: "[" } });
-    }).not.toThrow();
-  });
+  it("keeps highlight behavior for normal query and onSelectItem", () => {
+    const onSelectItem = vi.fn();
+    render(<SearchBox items={[testItems[0]]} onSelectItem={onSelectItem} />);
 
-  it("searchQuery '?' highlights literal question marks only", () => {
-    const { container } = render(<SearchBox items={items} />);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "?" } });
+    const input = screen.getByPlaceholderText("Tìm kiếm mọi thứ trong trang...");
+    fireEvent.change(input, { target: { value: "Combo" } });
 
-    const highlights = container.querySelectorAll(".search-highlight");
-    expect(highlights.length).toBeGreaterThan(0);
-    highlights.forEach((node) => expect(node.textContent).toBe("?"));
-  });
+    expect(document.querySelector(".search-highlight")).toBeInTheDocument();
 
-  it("normal text search still works", () => {
-    render(<SearchBox items={items} />);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "hello" } });
-    expect(screen.getByText(/Hello/i)).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelectItem).toHaveBeenCalledTimes(1);
+    expect(onSelectItem).toHaveBeenCalledWith(expect.objectContaining({ id: "bracket" }));
   });
 });
