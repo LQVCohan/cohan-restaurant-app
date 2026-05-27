@@ -25,6 +25,7 @@ const getFirstShiftCard = async () => {
   return shiftCards[0];
 };
 
+
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
   const safeResult = { data: null, loading: false, error: null, refetch: vi.fn() };
@@ -244,21 +245,82 @@ describe("ScheduleManagement", () => {
 
   it("creates a real shift payload from the add-shift modal", async () => {
     mockShiftsData = { staffShifts: [] };
+    mockStaffData = {
+      staffList: mockStaffData.staffList.map((staff) => ({
+        ...staff,
+        name: staff.fullName,
+      })),
+    };
+
+    lazyQuerySpy = vi.fn().mockResolvedValue({
+      data: {
+        validateShiftAssignment: {
+          ok: true,
+          employeeId: "staff-1",
+          restaurantId: "restaurant-1",
+          score: 100,
+          blockingErrors: [],
+          warnings: [],
+          metrics: {},
+        },
+      },
+    });
 
     render(<ScheduleManagement />);
     mutationSpy.mockClear();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Tạo ca Sáng/i })[0]);
+    const morningCreateButtons = screen.getAllByRole("button", {
+      name: /Tạo ca Sáng ngày/i,
+    });
+
+    const labels = morningCreateButtons.map((button) =>
+      button.getAttribute("aria-label") || button.textContent || "",
+    );
+
+    expect(labels.length).toBeGreaterThan(0);
+
+    const futureWorkingDayButton = morningCreateButtons.find((button) => {
+      const label = button.getAttribute("aria-label") || button.textContent || "";
+      const match = label.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if (!match) return false;
+
+      const [, day, month, year] = match;
+      const candidate = new Date(Number(year), Number(month) - 1, Number(day));
+      const weekday = candidate.getDay();
+
+      return candidate.getTime() > new Date(2026, 3, 20).getTime() && weekday !== 0;
+    });
+
+    if (!futureWorkingDayButton) {
+      throw new Error(`Morning add buttons: ${labels.join(" | ")}`);
+    }
+
+    fireEvent.click(futureWorkingDayButton);
     const modal = await waitFor(() => {
       const node = document.body.querySelector(".modal-container");
       expect(node).toBeTruthy();
       return node;
     });
-    const selectableStaff = within(modal).getByText("Lan Manager").closest(".staff-item");
-    expect(selectableStaff).toBeTruthy();
-    fireEvent.click(selectableStaff);
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch|Lưu|Tạo lịch|Tạo ca/i }));
 
+    expect(
+      within(modal).queryByText(/Không có nhân viên phù hợp với ngày làm việc đã chọn/i),
+    ).not.toBeInTheDocument();
+    expect(within(modal).getByText("Lan Manager")).toBeInTheDocument();
+
+    const staffSection = within(modal).getByText(/Phân công nhân viên/i).closest(".form-group");
+    expect(staffSection).toBeTruthy();
+
+    const lanRow = within(staffSection).getByText("Lan Manager").closest(".staff-item");
+    expect(lanRow).toBeTruthy();
+    fireEvent.click(lanRow);
+
+    await waitFor(() => {
+      expect(within(staffSection).getByText(/Phân công nhân viên \(1\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch/i }));
+
+    await waitFor(() => expect(within(modal).queryByText(/Cần chọn ít nhất một nhân viên/i)).not.toBeInTheDocument());
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
     const createCall = mutationSpy.mock.calls.find(
       ([arg]) => arg?.variables?.input?.shiftType === "MORNING",
@@ -279,14 +341,26 @@ describe("ScheduleManagement", () => {
 
     const shiftCard = await getFirstShiftCard();
     fireEvent.click(shiftCard);
-    mutationSpy.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca|Xóa ca|Xóa nhóm ca/i }));
 
-    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
-    expect(confirmSpy).toHaveBeenCalled();
+    const modal = await waitFor(() => {
+      const node = document.body.querySelector(".modal-container");
+      expect(node).toBeTruthy();
+      return node;
+    });
+
+    mutationSpy.mockClear();
+    fireEvent.click(within(modal).getByRole("button", { name: /Xóa ca/i }));
+    fireEvent.click(within(modal).getByRole("button", { name: /Xác nhận xóa ca/i }));
+
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).not.toHaveBeenCalled();
     const deleteCall = mutationSpy.mock.calls.find(([arg]) => arg?.variables?.shiftId === "shift-row-1")?.[0];
     expect(deleteCall).toEqual({
-      variables: { shiftId: "shift-row-1" },
+      variables: {
+        shiftId: "shift-row-1",
+        reason: "Xóa ca ở lịch chưa công bố",
+        notifyEmployee: false,
+      },
     });
   });
 
