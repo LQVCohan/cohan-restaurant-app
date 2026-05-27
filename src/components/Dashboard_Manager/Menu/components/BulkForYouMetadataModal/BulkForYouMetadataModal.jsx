@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/common/Modal";
 import "./BulkForYouMetadataModal.scss";
 
@@ -19,7 +19,7 @@ const ALLERGEN_OPTIONS = [
 const SUGAR_OPTIONS = [0, 30, 50, 70, 100];
 const SPICE_OPTIONS = ["Không", "Vừa", "Nồng", "Rất cay"];
 
-const DEFAULT_FORM = {
+const createDefaultForm = () => ({
   dietTags: [],
   allergenTags: [],
   tasteProfile: {
@@ -28,16 +28,16 @@ const DEFAULT_FORM = {
     sugar: 100,
     spice: "Vừa",
   },
-};
+});
 
-const DEFAULT_ENABLED = {
+const createDefaultEnabled = () => ({
   dietTags: false,
   allergenTags: false,
   containsOnion: false,
   containsCilantro: false,
   sugar: false,
   spice: false,
-};
+});
 
 export const buildBulkForYouPatch = (item, form, enabledFields) => {
   const patch = {};
@@ -87,8 +87,15 @@ export default function BulkForYouMetadataModal({
   onClose,
   onSubmit,
 }) {
-  const [form, setForm] = useState(DEFAULT_FORM);
-  const [enabledFields, setEnabledFields] = useState(DEFAULT_ENABLED);
+  const [form, setForm] = useState(createDefaultForm);
+  const [enabledFields, setEnabledFields] = useState(createDefaultEnabled);
+
+  useEffect(() => {
+    if (!isOpen && !isSubmitting) {
+      setForm(createDefaultForm());
+      setEnabledFields(createDefaultEnabled());
+    }
+  }, [isOpen, isSubmitting]);
 
   const hasEnabled = useMemo(
     () => Object.values(enabledFields).some(Boolean),

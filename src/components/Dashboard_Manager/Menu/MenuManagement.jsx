@@ -1175,7 +1175,11 @@ const MenuManagement = () => {
   );
   const selectedItems = useMemo(() => enrichedItems.filter((item) => selectedItemIds.has(String(item.id))), [enrichedItems, selectedItemIds]);
   const missingForYouItems = useMemo(() => enrichedItems.filter((item) => item.forYouMetadata?.status === "missing"), [enrichedItems]);
-  const openBulkForYouModal = (mode = "missing") => setBulkForYouModal({ isOpen: true, mode });
+  const openBulkForYouModal = (mode = "missing") => {
+    setBulkProgress(null);
+    setBulkErrors([]);
+    setBulkForYouModal({ isOpen: true, mode });
+  };
   const closeBulkForYouModal = () => setBulkForYouModal({ isOpen: false, mode: "missing" });
   const bulkForYouTargetItems = bulkForYouModal.mode === "selected" && selectedItems.length > 0 ? selectedItems : missingForYouItems;
   const handleSubmitBulkForYouMetadata = async ({ form, enabledFields }) => {
@@ -1193,8 +1197,20 @@ const MenuManagement = () => {
       }
     }
     await refetchItems?.();
-    if (errors.length === 0) { closeBulkForYouModal(); pushMenuToast("Đã cập nhật khẩu vị hàng loạt.", "success"); }
-    else { setBulkErrors(errors); }
+    if (errors.length === 0) {
+      closeBulkForYouModal();
+      if (bulkForYouModal.mode === "selected") {
+        setSelectedItemIds((prev) => {
+          const next = new Set(prev);
+          bulkForYouTargetItems.forEach((item) => next.delete(String(item.id)));
+          return next;
+        });
+      }
+      pushMenuToast(`Đã cập nhật khẩu vị cho ${bulkForYouTargetItems.length} món.`, "success");
+    } else {
+      setBulkErrors(errors);
+      pushMenuToast("Cập nhật xong một phần. Vui lòng kiểm tra các món lỗi bên dưới.", "warning");
+    }
     setBulkSubmitting(false);
   };
 
