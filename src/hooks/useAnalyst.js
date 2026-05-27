@@ -75,35 +75,6 @@ const GET_ANALYST_DASHBOARD = gql`
         reserved
       }
     }
-    pendingServiceRequests: customerServiceRequests(
-      restaurantId: $restaurantId
-      status: "PENDING"
-      limit: 20
-    ) {
-      orderId
-      orderCode
-      tableCode
-      requestId
-      type
-      status
-      message
-      createdAt
-    }
-    acknowledgedServiceRequests: customerServiceRequests(
-      restaurantId: $restaurantId
-      status: "ACKNOWLEDGED"
-      limit: 20
-    ) {
-      orderId
-      orderCode
-      tableCode
-      requestId
-      type
-      status
-      message
-      createdAt
-    }
-
     staffSchedulingAssistant(restaurantId: $restaurantId, horizonDays: 2) {
       summary {
         totalShiftGroups
@@ -314,6 +285,36 @@ const GET_ANALYST_DASHBOARD = gql`
     }
   }
 `;
+const GET_ANALYST_OPERATIONS_REQUESTS = gql`
+  query GetAnalystOperationsRequests($restaurantId: ID!) {
+    pendingServiceRequests: customerServiceRequests(restaurantId: $restaurantId, status: "PENDING", limit: 20) {
+      orderId
+      orderCode
+      trackingCode
+      tableCode
+      requestId
+      type
+      status
+      message
+      createdAt
+      acknowledgedAt
+      resolvedAt
+    }
+    acknowledgedServiceRequests: customerServiceRequests(restaurantId: $restaurantId, status: "ACKNOWLEDGED", limit: 20) {
+      orderId
+      orderCode
+      trackingCode
+      tableCode
+      requestId
+      type
+      status
+      message
+      createdAt
+      acknowledgedAt
+      resolvedAt
+    }
+  }
+`;
 
 export const useAnalyst = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
@@ -340,16 +341,35 @@ export const useAnalyst = () => {
     variables: { restaurantId, range },
     fetchPolicy: "network-only",
   });
+  const {
+    data: operationsRequestsData,
+    loading: operationsRequestsLoading,
+    error: operationsRequestsError,
+    refetch: refetchOperationsRequests,
+  } = useQuery(GET_ANALYST_OPERATIONS_REQUESTS, {
+    skip: !restaurantId,
+    variables: { restaurantId },
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+  });
 
   const analyst = data?.managerDashboard;
   const demandForecast = data?.demandForecast;
   const staffSchedulingAssistant = data?.staffSchedulingAssistant;
   const menuEngineeringAssistant = data?.menuEngineeringAssistant;
   const smartPromotionEngine = data?.smartPromotionEngine;
-  const serviceRequests = [
-    ...(data?.pendingServiceRequests || []),
-    ...(data?.acknowledgedServiceRequests || []),
-  ];
+  const pendingServiceRequests = operationsRequestsData?.pendingServiceRequests || [];
+  const acknowledgedServiceRequests = operationsRequestsData?.acknowledgedServiceRequests || [];
+  const serviceRequests = [...pendingServiceRequests, ...acknowledgedServiceRequests]
+    .filter(Boolean)
+    .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
+  const operationsSummary = {
+    processingOrders: Number(analyst?.statusCounts?.pending || 0) + Number(analyst?.statusCounts?.preparing || 0),
+    pendingRequestsCount: pendingServiceRequests.length,
+    acknowledgedRequestsCount: acknowledgedServiceRequests.length,
+    openRequestsCount: serviceRequests.length,
+    lowStockCount: (analyst?.lowStockItems || []).length,
+  };
 
   const selectedRestaurant = useMemo(
     () => restaurantOptions.find((restaurant) => getRestaurantId(restaurant) === restaurantId) || null,
@@ -408,7 +428,10 @@ export const useAnalyst = () => {
     setRange,
     loading,
     error,
+    operationsRequestsLoading,
+    operationsRequestsError,
     refetch,
+    refetchOperationsRequests,
     selectedRestaurant,
     hasBusinessData,
     hasOperationalRisk,
@@ -424,7 +447,10 @@ export const useAnalyst = () => {
     statusCounts: analyst?.statusCounts || { pending: 0, preparing: 0, completed: 0, cancelled: 0 },
     recentOrders: analyst?.recentOrders || [],
     lowStockItems: analyst?.lowStockItems || [],
+    pendingServiceRequests,
+    acknowledgedServiceRequests,
     serviceRequests,
+    operationsSummary,
     demandForecast: demandForecast || { summary: { busiestPeriods: [], topRisingDishes: [], totalRecommendedPrep: 0, notes: [] }, hourlyForecast: [], dailyForecast: [], risingDishes: [], prepPlan: [], meta: { method: "time_series_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, granularity: "hourly", timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 0 } },
     staffSchedulingAssistant: staffSchedulingAssistant || { summary: { totalShiftGroups: 0, underStaffedShifts: 0, overStaffedShifts: 0, highestRiskShift: null, notes: [] }, shifts: [], meta: { method: "staff_scheduling_v1", basedOnForecast: false, fallbackUsed: true, generatedAt: null, timezone: "Asia/Ho_Chi_Minh" } },
     menuEngineeringAssistant: menuEngineeringAssistant || { summary: { totalDishes: 0, starCount: 0, plowhorseCount: 0, puzzleCount: 0, dogCount: 0, avgMarginPct: 0, notes: [] }, dishes: [], recommendations: [], meta: { method: "menu_engineering_v1", fallbackUsed: true, fallbackMarginRate: 0.65, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },

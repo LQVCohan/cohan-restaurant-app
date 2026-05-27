@@ -13,6 +13,7 @@ import DemandForecastWidget from "./components/DemandForecastWidget";
 import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistantWidget";
 import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
+import BusinessOperationsOverview from "./components/BusinessOperationsOverview";
 import "./ManagerAnalyst.scss";
 
 const formatVnd = (value) => `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
@@ -70,8 +71,10 @@ const ManagerAnalyst = () => {
     recentOrders,
     lowStockItems,
     serviceRequests,
+    operationsRequestsLoading,
+    operationsRequestsError,
+    operationsSummary,
   } = useAnalyst();
-  const openRequests = Number(statusCounts?.pending || 0) + Number(statusCounts?.preparing || 0);
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
   const revenueProgress = calculateTrendProgress(revenueTrend);
@@ -236,6 +239,17 @@ const ManagerAnalyst = () => {
             ))}
           </section>
 
+          <h3 className="section-heading">Ưu tiên vận hành</h3>
+          <BusinessOperationsOverview
+            requestLoading={operationsRequestsLoading}
+            requestError={operationsRequestsError}
+            statusCounts={statusCounts}
+            serviceRequests={serviceRequests}
+            pendingRequestsCount={operationsSummary?.pendingRequestsCount}
+            acknowledgedRequestsCount={operationsSummary?.acknowledgedRequestsCount}
+            recentOrders={recentOrders}
+            lowStockItems={lowStockItems}
+          />
           <section className="strategy-grid">
             <div className="grid-item ai-assistant">
               <StrategyAIRecommendation
@@ -249,64 +263,6 @@ const ManagerAnalyst = () => {
             </div>
             <div className="grid-item revenue-chart">
               <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
-            </div>
-          </section>
-
-          <h3 className="section-heading">Ưu tiên vận hành</h3>
-          <section className="operations-today-grid">
-            <div className="grid-item operations-today-card">
-              <h4>Vận hành hôm nay</h4>
-              <div className="ops-kpis">
-                <div><span>Đơn chờ xử lý</span><strong>{openRequests}</strong></div>
-                <div><span>Đơn hoàn tất</span><strong>{Number(statusCounts?.completed || 0)}</strong></div>
-                <div><span>Đơn đã hủy</span><strong>{Number(statusCounts?.cancelled || 0)}</strong></div>
-                <div><span>Yêu cầu khách đang chờ</span><strong>{serviceRequests.length}</strong></div>
-              </div>
-            </div>
-            <div className="grid-item operations-today-card">
-              <h4>Hàng đợi yêu cầu khách</h4>
-              {serviceRequests.length === 0 ? (
-                <p className="ops-empty">Chưa có yêu cầu cần xử lý.</p>
-              ) : (
-                <ul className="ops-list">
-                  {serviceRequests.slice(0, 5).map((request) => (
-                    <li key={`${request.requestId}-${request.status}`}>
-                      <b>{request.type === "PAYMENT_REQUEST" ? "Yêu cầu thanh toán" : "Gọi nhân viên"}</b>
-                      <span>Bàn {request.tableCode || "-"} • #{request.orderCode || "-"}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="grid-item operations-today-card">
-              <h4>Đơn mới gần đây</h4>
-              {recentOrders.length === 0 ? (
-                <p className="ops-empty">Chưa có đơn hàng mới.</p>
-              ) : (
-                <ul className="ops-list">
-                  {recentOrders.slice(0, 4).map((order) => (
-                    <li key={order.id}>
-                      <b>#{order.orderCode || order.id}</b>
-                      <span>{order.customerName || "Khách lẻ"} • {order.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="grid-item operations-today-card">
-              <h4>Cảnh báo tồn kho thấp</h4>
-              {lowStockItems.length === 0 ? (
-                <p className="ops-empty">Không có nguyên liệu cần bổ sung gấp.</p>
-              ) : (
-                <ul className="ops-list">
-                  {lowStockItems.slice(0, 4).map((item) => (
-                    <li key={item.id}>
-                      <b>{item.name}</b>
-                      <span>Tồn: {item.onHand} • Giữ chỗ: {item.reserved}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           </section>
           <section className="operations-intel-grid">
