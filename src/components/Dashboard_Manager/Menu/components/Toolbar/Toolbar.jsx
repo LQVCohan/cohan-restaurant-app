@@ -58,6 +58,9 @@ const Toolbar = ({
   inventoryFilter = "all",
   onInventoryFilterChange,
   inventoryFilterCounts = {},
+  forYouMetadataFilter = "all",
+  onForYouMetadataFilterChange,
+  forYouMetadataCounts = {},
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({
@@ -77,13 +80,14 @@ const Toolbar = ({
     onCategoryChange("");
     onStatusFilterChange("");
     onInventoryFilterChange?.("all");
+    onForYouMetadataFilterChange?.("all");
     if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
   };
 
   const hasActiveFilters =
-    searchTerm || currentCategory || statusFilter || minPrice || maxPrice || inventoryFilter !== "all";
+    searchTerm || currentCategory || statusFilter || minPrice || maxPrice || inventoryFilter !== "all" || forYouMetadataFilter !== "all";
 
   const formatCurrency = (val) =>
     val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
@@ -289,6 +293,25 @@ const Toolbar = ({
           </button>
         </div>
 
+
+        <div className="toolbar-for-you-filter">
+          <span className="toolbar-for-you-filter__label">Khẩu vị</span>
+          {[
+            ["all", "Tất cả"],
+            ["missing", `Chưa khai báo (${forYouMetadataCounts.missing || 0})`],
+            ["ready", `Đã khai báo (${forYouMetadataCounts.ready || 0})`],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`inventory-chip ${forYouMetadataFilter === key ? "active" : ""}`}
+              onClick={() => onForYouMetadataFilterChange?.(key)}
+            >
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="inventory-filter-row">
           {[
             ["all", "Tất cả"],
@@ -346,6 +369,9 @@ const Toolbar = ({
           )}
           {statusFilter && (
             <span className="chip">{STATUS_LABELS[statusFilter] || statusFilter}<button type="button" className="chip-x" aria-label="Xóa lọc trạng thái" title="Xóa lọc trạng thái" onClick={() => onStatusFilterChange("")}><FiX /></button></span>
+          )}
+          {forYouMetadataFilter !== "all" && (
+            <span className="chip">{forYouMetadataFilter === "missing" ? "Chưa khai báo khẩu vị" : "Đã khai báo khẩu vị"}<button type="button" className="chip-x" aria-label="Xóa lọc khẩu vị" title="Xóa lọc khẩu vị" onClick={() => onForYouMetadataFilterChange?.("all")}><FiX /></button></span>
           )}
           {inventoryFilter !== "all" && (
             <span className="chip">{{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" aria-label="Xóa lọc tồn kho" title="Xóa lọc tồn kho" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>

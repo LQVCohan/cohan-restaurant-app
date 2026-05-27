@@ -1559,15 +1559,15 @@ const OrderItem = ({ item, onAddModifier, foodPreferenceMeta }) => {
           <div className="order-item-for-you-badges">
             {foodPreferenceMeta.hasAllergyWarning ? (
               <span className="order-item-for-you-badge order-item-for-you-badge--warning">
-                ⚠ Có thể chứa dị ứng
+                ⚠ Có thể chứa thành phần bạn dị ứng
               </span>
             ) : foodPreferenceMeta.isRecommended ? (
               <span className="order-item-for-you-badge order-item-for-you-badge--match">
-                ✨ Phù hợp khẩu vị
+                ✨ Món bạn có thể thích
               </span>
             ) : (
               <span className="order-item-for-you-badge order-item-for-you-badge--note">
-                Lưu ý khẩu vị
+                Lưu ý theo khẩu vị
               </span>
             )}
           </div>
@@ -1800,7 +1800,7 @@ const CheckoutForYouReview = ({ foodPreferenceReviewItems = [] }) => {
   const topItems = sorted.slice(0, 5);
   const moreCount = sorted.length - topItems.length;
   const hasAllergyWarning = sorted.some((entry) => entry?.meta?.hasAllergyWarning);
-  const title = hasAllergyWarning ? "⚠ Kiểm tra dị ứng trước khi đặt" : "✨ Gợi ý FOR YOU";
+  const title = hasAllergyWarning ? "⚠ Nên kiểm tra dị ứng trước khi đặt" : "✨ Món bạn có thể thích";
   const description = hasAllergyWarning
     ? "Một số món có thể chứa thành phần bạn đã đánh dấu dị ứng. Vui lòng kiểm tra lại với nhà hàng nếu cần."
     : "Một số món trong đơn phù hợp với khẩu vị bạn đã cài đặt.";
@@ -1816,7 +1816,7 @@ const CheckoutForYouReview = ({ foodPreferenceReviewItems = [] }) => {
           <li className="checkout-for-you-review__item" key={entry.item?.id}>
             <span className="checkout-for-you-review__item-name">{entry.dish?.name || entry.item?.name}</span>
             <span className="checkout-for-you-review__reason">
-              {entry.meta?.warningReason || entry.meta?.reasons?.[0] || "Món có thể liên quan đến khẩu vị của bạn."}
+              {entry.meta?.warningReason || entry.meta?.reasons?.[0] || "Món này có thể chưa phù hợp hoàn toàn với khẩu vị của bạn."}
             </span>
           </li>
         ))}
