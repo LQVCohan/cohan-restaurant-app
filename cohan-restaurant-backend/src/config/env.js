@@ -9,6 +9,20 @@ const __dirname = path.dirname(__filename);
 
 const REQUIRED_ENV_VARS = ["MONGO_URI", "JWT_SECRET"];
 
+const WEAK_SECRET_VALUES = new Set([
+  "changeme",
+  "change-me",
+  "replace-me",
+  "your-secret",
+  "your-table-access-token-secret",
+  "table-access-token-secret",
+  "dev_table_access_secret_change_me",
+  "default",
+  "secret",
+  "test",
+  "password",
+]);
+
 function normalizeMongoEnvVars() {
   const mongoUriCandidates = [
     process.env.MONGO_URI,
@@ -85,15 +99,39 @@ function applyDevelopmentDefaults() {
     !process.env.TABLE_ACCESS_TOKEN_SECRET ||
     !String(process.env.TABLE_ACCESS_TOKEN_SECRET).trim()
   ) {
-    process.env.TABLE_ACCESS_TOKEN_SECRET = process.env.JWT_SECRET;
+    process.env.TABLE_ACCESS_TOKEN_SECRET = "dev_table_access_secret_change_me";
   }
 
   if (
     !process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN ||
     !String(process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN).trim()
   ) {
-    process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN = "30d";
+    process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN = "8h";
   }
+}
+
+function validateProductionTableAccessSecret() {
+  if ((process.env.NODE_ENV || "development") !== "production") return [];
+
+  const issues = [];
+  const jwtSecret = String(process.env.JWT_SECRET || "").trim();
+  const tableSecret = String(process.env.TABLE_ACCESS_TOKEN_SECRET || "").trim();
+
+  if (!tableSecret) {
+    issues.push("TABLE_ACCESS_TOKEN_SECRET (required in production)");
+    return issues;
+  }
+
+  if (jwtSecret && tableSecret === jwtSecret) {
+    issues.push("TABLE_ACCESS_TOKEN_SECRET (must differ from JWT_SECRET in production)");
+  }
+
+  const normalized = tableSecret.toLowerCase();
+  if (tableSecret.length < 16 || WEAK_SECRET_VALUES.has(normalized)) {
+    issues.push("TABLE_ACCESS_TOKEN_SECRET (weak value is not allowed in production)");
+  }
+
+  return issues;
 }
 
 export function validateEnv() {
@@ -115,6 +153,8 @@ export function validateEnv() {
       }
     }
   }
+
+  missing.push(...validateProductionTableAccessSecret());
 
   if (missing.length) {
     const error =

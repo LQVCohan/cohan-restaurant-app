@@ -272,14 +272,19 @@ export async function createServer() {
     }
   });
 
-  app.get("/api/reverse-geocode", async (req, reply) => {
-    const { lat, lng } = req.query || {};
-
-    if (!lat || !lng) {
-      return reply.code(400).send({
-        ok: false,
-        message: "Thiếu tham số lat / lng",
-      });
+  app.get("/api/reverse-geocode", {
+    config: {
+      rateLimit: {
+        max: Number(process.env.RL_REVERSE_GEOCODE_MAX || 30),
+        timeWindow: process.env.RL_REVERSE_GEOCODE_WINDOW || "1 minute",
+      },
+    },
+  }, async (req, reply) => {
+    const lat = Number(req.query?.lat);
+    const lng = Number(req.query?.lng);
+    const invalidCoordinate = !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180;
+    if (invalidCoordinate) {
+      return reply.code(400).send({ ok: false, message: "lat,lng không hợp lệ" });
     }
 
     const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -297,49 +302,21 @@ export async function createServer() {
       });
 
       if (!res.ok) {
-        req.log.error(
-          { status: res.status },
-          "Nominatim HTTP error khi reverse geocode"
-        );
-        return reply.code(502).send({
-          ok: false,
-          message: "Không truy cập được dịch vụ địa chỉ (Nominatim).",
-        });
+        req.log.error({ status: res.status }, "Nominatim HTTP error khi reverse geocode");
+        return reply.code(502).send({ ok: false, message: "Không truy cập được dịch vụ địa chỉ (Nominatim)." });
       }
 
       const data = await res.json();
       const addr = data.address || {};
+      const cityName = addr.city || addr.town || addr.village || addr.state || "";
+      const districtName = addr.county || addr.district || addr.city_district || addr.suburb || "";
+      const wardName = addr.suburb || addr.city_district || addr.quarter || addr.hamlet || "";
+      const street = addr.road || addr.residential || addr.neighbourhood || addr.house_number || "";
 
-      const cityName =
-        addr.city || addr.town || addr.village || addr.state || "";
-      const districtName =
-        addr.county || addr.district || addr.city_district || addr.suburb || "";
-      const wardName =
-        addr.suburb || addr.city_district || addr.quarter || addr.hamlet || "";
-      const street =
-        addr.road ||
-        addr.residential ||
-        addr.neighbourhood ||
-        addr.house_number ||
-        "";
-
-      return reply.send({
-        ok: true,
-        address: {
-          full: data.display_name || "",
-          street,
-          cityName,
-          districtName,
-          wardName,
-        },
-      });
+      return reply.send({ ok: true, address: { full: data.display_name || "", street, cityName, districtName, wardName } });
     } catch (err) {
       req.log.error({ err }, "Reverse geocode error");
-      return reply.code(500).send({
-        ok: false,
-        message: "Không truy cập được dịch vụ địa chỉ (Nominatim).",
-        error: err.message,
-      });
+      return reply.code(500).send({ ok: false, message: "Không truy cập được dịch vụ địa chỉ (Nominatim).", error: "Internal server error" });
     }
   });
 
