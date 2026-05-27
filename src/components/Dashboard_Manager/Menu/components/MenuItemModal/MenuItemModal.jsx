@@ -831,7 +831,7 @@ const MenuItemModal = ({
                 </div>
               </div>
               <div className="for-you-option-group">
-                <div className="for-you-option-group__title">Có thể chứa dị ứng</div>
+                <div className="for-you-option-group__title">Thành phần dị ứng cần lưu ý</div>
                 <div className="for-you-option-grid">
                   {FOR_YOU_ALLERGEN_OPTIONS.map((option) => {
                     const isSelected = (formData.allergenTags || []).includes(option.value);
