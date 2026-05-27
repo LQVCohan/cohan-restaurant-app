@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
-import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
+import {
+  TABLE_3D_TYPE_OPTIONS,
+  canOpenModelViewerAr,
+  getArUnavailableReason,
+} from "@/config/table3dCatalog";
 import {
   deleteCustomTableModel,
   isCustomTableModel,
@@ -95,6 +99,8 @@ const Table3DSimulatorModal = ({
   const modelScale = `${scale} ${scale} ${scale}`;
   const cameraOrbit = `${orbit.theta}deg ${orbit.phi}deg ${orbit.radius}m`;
   const cameraTarget = `${offset.x}m 0m ${offset.z}m`;
+  const canOpenAr = canOpenModelViewerAr(selectedModel);
+  const arUnavailableReason = getArUnavailableReason(selectedModel);
 
   const shiftModel = (x, z) => {
     setOffset((prev) => ({ x: Number((prev.x + x).toFixed(2)), z: Number((prev.z + z).toFixed(2)) }));
@@ -133,6 +139,24 @@ const Table3DSimulatorModal = ({
         saved.filter((item) => doesCustomModelMatchTableType(item, tableType))
       );
       setSelectedModelKey(nextVisible[0]?.key || "");
+    }
+  };
+
+  const handleOpenAr = async () => {
+    const viewer = viewerRef.current;
+    if (!viewer || typeof viewer.activateAR !== "function") {
+      setModelError(
+        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+      );
+      return;
+    }
+
+    try {
+      await viewer.activateAR();
+    } catch {
+      setModelError(
+        "Không thể mở AR trên thiết bị/trình duyệt hiện tại. Hãy dùng Xem thử bằng camera."
+      );
     }
   };
 
@@ -255,6 +279,9 @@ const Table3DSimulatorModal = ({
               ref={viewerRef}
               src={selectedModel.modelUrl}
               camera-controls
+              ar
+              ar-modes="webxr scene-viewer quick-look"
+              ar-scale="fixed"
               touch-action="pan-y"
               camera-orbit={cameraOrbit}
               camera-target={cameraTarget}
@@ -327,6 +354,18 @@ const Table3DSimulatorModal = ({
             >
               📷 Xem thử bằng camera
             </Button>
+            {canOpenAr ? (
+              <div className="table-3d-modal__ar-hint">
+                <Button type="button" size="sm" variant="secondary" onClick={handleOpenAr}>
+                  Mở AR trên thiết bị hỗ trợ
+                </Button>
+                <span>
+                  AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng Xem thử bằng camera.
+                </span>
+              </div>
+            ) : (
+              selectedModel && <div className="table-3d-modal__ar-hint">{arUnavailableReason}</div>
+            )}
             <Button
               variant="primary"
               onClick={() =>
