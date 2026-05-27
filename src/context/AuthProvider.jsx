@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }) => {
       setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
-                return merged;
+        return merged;
       });
     },
     onError: (error) => {

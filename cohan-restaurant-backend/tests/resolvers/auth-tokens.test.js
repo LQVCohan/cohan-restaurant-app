@@ -13,6 +13,8 @@ vi.mock('../../models/index.js', () => ({
 import { RefreshToken } from '../../models/index.js';
 import { getRefreshCookieMaxAgeSeconds, getRefreshTokenTtlMs, issueRefreshToken, parseDurationMs, refreshCookieOptions, revokeRefreshToken } from '../../src/security/authTokens.js';
 
+
+// TODO: Add Fastify route-level integration test for /api/auth/logout cookie delivery + revoke once lightweight createServer test harness is available without full app bootstrap side effects.
 describe('auth tokens', () => {
   beforeEach(() => { vi.clearAllMocks(); process.env.REFRESH_TOKEN_EXPIRES_IN = '7d'; process.env.NODE_ENV='development'; });
 
