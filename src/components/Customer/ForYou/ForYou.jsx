@@ -31,16 +31,16 @@ const getFoodPreferenceCompletion = (preferences) => {
     String(habits.spice || "Vừa") !== "Vừa" ||
     habits.ice === false;
 
-  const completed = [hasDietPreference, hasAllergyInfo, hasTasteInfo].filter(Boolean).length;
+  const hasPersonalizationSignal = hasDietPreference || hasTasteInfo;
+  const isLowInformation = !hasDietPreference && !hasAllergyInfo && !hasTasteInfo;
 
   return {
-    completed,
-    total: 3,
-    percent: Math.round((completed / 3) * 100),
     hasDietPreference,
     hasAllergyInfo,
     hasTasteInfo,
-    isLowInformation: completed === 0,
+    hasPersonalizationSignal,
+    isLowInformation,
+    shouldNudge: isLowInformation || !hasPersonalizationSignal,
   };
 };
 
@@ -69,7 +69,7 @@ const ForYou = () => {
     isAuthenticated &&
       String(user?.roleName || "").toLowerCase() === "customer" &&
       !loading &&
-      (completion.percent < 100 || completion.isLowInformation),
+      completion.shouldNudge,
   );
 
   const handleAllergyToggle = (id) => {
@@ -148,16 +148,16 @@ const ForYou = () => {
           <section className="food-preference-nudge" aria-live="polite">
             <div className="food-preference-nudge__content">
               <span className="food-preference-nudge__eyebrow">Gợi ý chính xác hơn</span>
-              <h3>Hoàn thiện khẩu vị để gợi ý đúng hơn</h3>
+              <h3>Thêm vài thông tin khẩu vị để gợi ý sát hơn</h3>
               <p>
-                Bạn có thể thêm chế độ ăn, dị ứng và thói quen như mức cay/ngọt,
-                hành/ngò. Càng rõ khẩu vị, món gợi ý càng sát với bạn.
+                Bạn có thể chọn chế độ ăn hoặc thói quen như mức cay/ngọt,
+                hành/ngò. Nếu có dị ứng, hãy thêm để chúng tôi nhắc bạn kiểm tra món trước khi đặt.
               </p>
               <div className="food-preference-nudge__chips">
                 {!completion.hasDietPreference && (
                   <span className="food-preference-nudge__chip">Chế độ ăn</span>
                 )}
-                {!completion.hasAllergyInfo && (
+                {completion.isLowInformation && !completion.hasAllergyInfo && (
                   <span className="food-preference-nudge__chip">Dị ứng nếu có</span>
                 )}
                 {!completion.hasTasteInfo && (
