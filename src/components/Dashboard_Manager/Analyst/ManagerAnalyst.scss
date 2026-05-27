@@ -242,6 +242,37 @@ $gap: 24px;
       span { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
       strong { font-size: 1.2rem; color: #0f172a; }
     }
+
+    .ops-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      h4 { margin: 0; }
+    }
+    .ops-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ops-button {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .ops-button.secondary {
+      border-color: #cbd5e1;
+      background: #fff;
+      color: #334155;
+    }
+    .ops-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .ops-meta { display: block; color: #64748b; }
+    .ops-request-message { display: block; color: #334155; }
     .ops-list {
       list-style: none;
       margin: 0;

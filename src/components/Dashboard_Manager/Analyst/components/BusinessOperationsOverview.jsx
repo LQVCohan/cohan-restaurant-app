@@ -10,11 +10,21 @@ const REQUEST_TYPE_LABELS = {
   STAFF_CALL: "Gọi nhân viên",
 };
 
-const toDateTime = (value) => {
+const formatDateTime = (value) => {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("vi-VN");
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const formatVnd = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+  return `${new Intl.NumberFormat("vi-VN").format(Number(value))}đ`;
 };
 
 export default function BusinessOperationsOverview({
@@ -26,6 +36,9 @@ export default function BusinessOperationsOverview({
   acknowledgedRequestsCount = 0,
   recentOrders = [],
   lowStockItems = [],
+  onRefreshRequests,
+  onOpenPOS,
+  onOpenOrders,
 }) {
   const processingOrders = Number(statusCounts?.pending || 0) + Number(statusCounts?.preparing || 0);
 
@@ -42,9 +55,24 @@ export default function BusinessOperationsOverview({
       </div>
 
       <div className="grid-item operations-today-card">
-        <h4>Hàng đợi yêu cầu khách</h4>
+        <div className="ops-card-header">
+          <h4>Hàng đợi yêu cầu khách</h4>
+          <div className="ops-actions">
+            <button type="button" className="ops-button secondary" onClick={onRefreshRequests} disabled={requestLoading}>
+              Làm mới
+            </button>
+            {onOpenPOS ? (
+              <button type="button" className="ops-button" onClick={onOpenPOS}>Mở POS</button>
+            ) : null}
+          </div>
+        </div>
         {requestLoading ? <p className="ops-empty">Đang tải yêu cầu khách...</p> : null}
-        {!requestLoading && requestError ? <p className="ops-warning">Không thể tải hàng đợi yêu cầu khách.</p> : null}
+        {!requestLoading && requestError ? (
+          <div>
+            <p className="ops-warning">Không thể tải hàng đợi yêu cầu khách.</p>
+            <button type="button" className="ops-button secondary" onClick={onRefreshRequests}>Thử lại</button>
+          </div>
+        ) : null}
         {!requestLoading && !requestError && serviceRequests.length === 0 ? <p className="ops-empty">Chưa có yêu cầu cần xử lý.</p> : null}
         {!requestLoading && !requestError && serviceRequests.length > 0 ? (
           <ul className="ops-list" data-testid="customer-request-list">
@@ -56,25 +84,36 @@ export default function BusinessOperationsOverview({
                     {REQUEST_STATUS_LABELS[request.status] || request.status || "-"}
                   </span>
                 </div>
-                <span>Bàn {request.tableCode || "-"} • #{request.orderCode || "-"}</span>
-                {request.message ? <span>{request.message}</span> : null}
-                {request.createdAt ? <span>{toDateTime(request.createdAt)}</span> : null}
+                <span className="ops-meta">
+                  Bàn {request.tableCode || "Chưa rõ bàn"} • #{request.orderCode || "Chưa có mã đơn"}
+                </span>
+                {request.message ? <span className="ops-request-message">{request.message}</span> : null}
+                {request.createdAt ? <span>{formatDateTime(request.createdAt)}</span> : null}
               </li>
             ))}
           </ul>
         ) : null}
+        {!requestLoading && !requestError && serviceRequests.length > 0 && onOpenPOS ? (
+          <button type="button" className="ops-button" onClick={onOpenPOS}>Xử lý trong POS</button>
+        ) : null}
       </div>
 
       <div className="grid-item operations-today-card">
-        <h4>Đơn mới gần đây</h4>
+        <div className="ops-card-header">
+          <h4>Đơn mới gần đây</h4>
+          {onOpenOrders ? (
+            <button type="button" className="ops-button secondary" onClick={onOpenOrders}>Xem đơn hàng</button>
+          ) : null}
+        </div>
         {recentOrders.length === 0 ? (
           <p className="ops-empty">Chưa có đơn hàng mới.</p>
         ) : (
           <ul className="ops-list">
-            {recentOrders.slice(0, 4).map((order) => (
-              <li key={order.id}>
+            {recentOrders.slice(0, 4).map((order, idx) => (
+              <li key={order.id || `${order.orderCode || "order"}-${idx}`}>
                 <b>{order.orderCode ? `#${order.orderCode}` : "Đơn chưa có mã"}</b>
                 <span>{order.customerName || "Khách lẻ"} • {order.status}</span>
+                <span>{[formatVnd(order.total), formatDateTime(order.createdAt)].filter(Boolean).join(" • ")}</span>
               </li>
             ))}
           </ul>
