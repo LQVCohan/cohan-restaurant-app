@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __testables } from "../../src/services/ai/restaurantChatbot.service.js";
 
 const {
@@ -14,15 +14,60 @@ const {
   fallbackAnswer,
   fallbackSources,
   normalizeAiResult,
+  callAiProvider,
 } = __testables;
 
-describe("restaurantChatbot menu assistant", () => {
+const originalEnv = { ...process.env };
 
+beforeEach(() => {
+  process.env = { ...originalEnv };
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+afterEach(() => {
+  process.env = { ...originalEnv };
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+const geminiContext = () => ({
+  intent: "menu",
+  restaurants: [{ id: "r1", name: "R1" }],
+  recommendedMenuItems: [{
+    id: "f1",
+    name: "Phở",
+    formattedPrice: "90.000đ",
+    status: "available",
+    isAvailable: true,
+    hasOptions: true,
+    hasVariants: true,
+    servingVariants: [{ key: "regular", label: "Tô thường" }],
+    restaurantId: "r1",
+    basePrice: 80000,
+    currentPrice: 90000,
+  }],
+  menuItems: [{ id: "f2", name: "Bún", formattedPrice: "80.000đ", status: "available", isAvailable: true }],
+  coupons: [],
+  orders: [],
+  reservations: [],
+});
+
+const mockGeminiFetch = (payload) => vi.fn(async () => ({
+  ok: true,
+  json: async () => ({
+    candidates: [{ content: { parts: [{ text: typeof payload === "string" ? payload : JSON.stringify(payload) }] } }],
+  }),
+}));
+
+describe("restaurantChatbot menu assistant", () => {
   it("AiChatbotSource schema supports metadata fields", () => {
     const schema = readFileSync(new URL("../../graphql/schema/aiChatbot.graphql", import.meta.url), "utf8");
     expect(schema).toMatch(/type AiChatbotSource[\s\S]*formattedPrice: String/);
     expect(schema).toMatch(/basePrice: Float/);
     expect(schema).toMatch(/currentPrice: Float/);
+    expect(schema).toMatch(/price: Float/);
+    expect(schema).toMatch(/servingVariants: \[JSON!\]/);
   });
 
   it("isMenuAssistantRequest false for reservation/order", () => {
@@ -108,12 +153,11 @@ describe("restaurantChatbot menu assistant", () => {
       reservations: [],
     };
     const sources = fallbackSources(context);
-    expect(sources[1]).toMatchObject({ type: "menuItem", id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 });
+    expect(sources[1]).toMatchObject({ type: "menuItem", id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000, price: 90000 });
     const actions = fallbackActions(context);
     expect(actions.some((a) => /checkout|payment|thanh toán/i.test(`${a.type} ${a.label} ${a.href}`))).toBe(false);
     expect(actions.some((a) => a.type === "add_to_cart_candidate")).toBe(false);
   });
-
 
   it("normalizeAiResult enriches menuItem source metadata from context", () => {
     const context = {
@@ -125,7 +169,108 @@ describe("restaurantChatbot menu assistant", () => {
     };
     const parsed = { answer: "ok", sources: [{ type: "menuItem", id: "f1", label: "Phở" }], actions: [] };
     const out = normalizeAiResult(parsed, context);
-    expect(out.sources[0]).toMatchObject({ id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000 });
+    expect(out.sources[0]).toMatchObject({ id: "f1", formattedPrice: "90.000đ", status: "available", isAvailable: true, hasOptions: false, hasVariants: false, restaurantId: "r1", basePrice: 80000, currentPrice: 90000, price: 90000 });
   });
 
+  it("Gemini valid JSON menuItem source is normalized and enriched with metadata", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "gemini-key";
+    delete process.env.OPENAI_API_KEY;
+    vi.stubGlobal("fetch", mockGeminiFetch({
+      answer: "Mình gợi ý Phở trong menu hiện có.",
+      intent: "menu",
+      confidence: 0.91,
+      quickReplies: ["Món dưới 100k", "Món bán chạy"],
+      actions: [{ type: "link", label: "Xem món", href: "/food/f1" }],
+      sources: [{ type: "menuItem", id: "f1", label: "Phở" }],
+    }));
+
+    const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
+
+    expect(out.isFallback).toBe(false);
+    expect(out.sources[0]).toMatchObject({
+      type: "menuItem",
+      id: "f1",
+      formattedPrice: "90.000đ",
+      status: "available",
+      isAvailable: true,
+      hasOptions: true,
+      hasVariants: true,
+      servingVariants: [{ key: "regular", label: "Tô thường" }],
+      restaurantId: "r1",
+      basePrice: 80000,
+      currentPrice: 90000,
+      price: 90000,
+    });
+  });
+
+  it("Gemini source outside context is removed", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "gemini-key";
+    vi.stubGlobal("fetch", mockGeminiFetch({
+      answer: "Mình chỉ thấy dữ liệu hiện có.",
+      intent: "menu",
+      confidence: 0.8,
+      quickReplies: ["Món dưới 100k"],
+      actions: [{ type: "link", label: "Món lạ", href: "/food/not-in-context" }],
+      sources: [{ type: "menuItem", id: "not-in-context", label: "Món bịa" }],
+    }));
+
+    const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
+
+    expect(out.sources.some((source) => source.type === "menuItem" && source.id === "not-in-context")).toBe(false);
+    expect(out.actions.some((action) => action.href === "/food/not-in-context")).toBe(false);
+  });
+
+  it("Gemini invalid JSON falls back without crashing", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "gemini-key";
+    delete process.env.OPENAI_API_KEY;
+    vi.stubGlobal("fetch", mockGeminiFetch("not json"));
+
+    const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
+
+    expect(out.isFallback).toBe(true);
+    expect(out.intent).toBe("menu");
+    expect(out.answer).toContain("Phở");
+  });
+
+  it("Gemini cannot return checkout/payment/add-to-cart actions", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "gemini-key";
+    vi.stubGlobal("fetch", mockGeminiFetch({
+      answer: "Mình có thể gợi ý món, nhưng không tự checkout hay thanh toán.",
+      intent: "menu",
+      confidence: 0.88,
+      quickReplies: ["Món dưới 100k"],
+      actions: [
+        { type: "checkout", label: "Checkout", href: "/checkout" },
+        { type: "payment", label: "Thanh toán", href: "/payment" },
+        { type: "add_to_cart_candidate", label: "Thêm vào giỏ", href: "/food/f1" },
+        { type: "link", label: "Xem món", href: "/food/f1" },
+      ],
+      sources: [{ type: "menuItem", id: "f1", label: "Phở" }],
+    }));
+
+    const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
+
+    expect(out.actions).toEqual([{ type: "link", label: "Xem món", href: "/food/f1" }]);
+  });
+
+  it("Gemini menu intent keeps suitable quickReplies when provider omits them", async () => {
+    process.env.AI_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "gemini-key";
+    vi.stubGlobal("fetch", mockGeminiFetch({
+      answer: "Mình gợi ý Phở.",
+      intent: "menu",
+      confidence: 0.84,
+      quickReplies: [],
+      actions: [],
+      sources: [{ type: "menuItem", id: "f1", label: "Phở" }],
+    }));
+
+    const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
+
+    expect(out.quickReplies).toEqual(expect.arrayContaining(["Gợi ý combo cho 2 người", "Món dưới 100k"]));
+  });
 });

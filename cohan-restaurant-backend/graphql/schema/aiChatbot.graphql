@@ -16,6 +16,8 @@ type AiChatbotSource {
   restaurantId: ID
   basePrice: Float
   currentPrice: Float
+  price: Float
+  servingVariants: [JSON!]
 }
 
 type AiChatbotContextSummary {
