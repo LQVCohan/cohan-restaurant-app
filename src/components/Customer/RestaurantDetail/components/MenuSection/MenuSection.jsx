@@ -66,7 +66,7 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
           name
           description
           basePrice
-          byWeight
+          hasByWeightVariant
           thumbImage
           status
           inventoryStatus
@@ -76,8 +76,8 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
           servingVariants {
             key
             mode
-            yieldQty
-            yieldUnit
+            sellQty
+            sellUnit
             name
             price
           }

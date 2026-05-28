@@ -8,7 +8,7 @@ import "./SecuritySettings.scss";
 
 const CHANGE_PASSWORD = gql`
   mutation ChangePassword($oldPassword: String!, $newPassword: String!) {
-    changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+    changeMyPassword(currentPassword: $oldPassword, newPassword: $newPassword)
   }
 `;
 

@@ -472,3 +472,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Env vận hành chatbot nằm ở backend (`OPENAI_API_KEY`, `AI_CHATBOT_MODEL`, `AI_MODEL`).
 - Nếu provider unavailable: chatbot chạy fallback theo service hiện tại.
 - Checklist rollout/rollback chi tiết tại `docs/ai-chatbot-release-checklist.md`.
+
+## 10. Frontend GraphQL schema validation
+- Frontend GraphQL documents in `src/**/*.js`, `src/**/*.jsx`, `src/**/*.ts`, and `src/**/*.tsx` are validated by `src/__tests__/graphql-schema-validation.test.js` against the merged backend schema files in `cohan-restaurant-backend/graphql/schema/*.graphql`.
+- The validation test extracts `gql` template literals from frontend source files, builds an executable schema from the backend SDL, and runs GraphQL `validate()` without starting the backend server or making network calls.
+- When backend schema return types or fields change, update any affected frontend `gql` queries/fragments at the same time and run `npx vitest run src/__tests__/graphql-schema-validation.test.js` before merging.
+- This check is intended to catch schema drift such as querying removed fields (for example `noteInternal` on `User`) or spreading fragments on incompatible return types (for example a `StaffPrivateProfile` fragment on a field that returns `User`).
+
+**File đã xác minh cho section này**
+- `src/__tests__/graphql-schema-validation.test.js`
+- `cohan-restaurant-backend/graphql/schema/*.graphql`
