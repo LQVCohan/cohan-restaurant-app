@@ -6,6 +6,7 @@ import {
   getInputPlaceholder,
 } from "./AiChatbotWidget";
 import { buildMenuItemServingOptions } from "@/utils/customerCartPayload";
+import { AI_CHATBOT_FEATURE_MAP, getAiChatbotFeatureMatches } from "@/utils/aiChatbotFeatureMap";
 
 describe("AiChatbotWidget helpers", () => {
   it("extractRestaurantId from /restaurant/:id", () => {
@@ -83,4 +84,27 @@ describe("AiChatbotWidget helpers", () => {
     expect(getInputPlaceholder("r1")).toMatch(/combo/);
     expect(getInputPlaceholder(null)).toMatch(/đặt bàn/);
   });
+  it("feature map uses real routes, cart event action, and role filtering", () => {
+    const customerManagerMatches = getAiChatbotFeatureMatches({ pathname: "/manager", userRole: "customer" });
+    expect(customerManagerMatches.some((entry) => entry.managerOnly)).toBe(false);
+
+    const managerMatches = getAiChatbotFeatureMatches({ pathname: "/manager", userRole: "manager" });
+    expect(managerMatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "manager-dashboard", path: "/manager", managerOnly: true }),
+        expect.objectContaining({ key: "storage-inventory", path: "/manager#inventory", managerOnly: true }),
+        expect.objectContaining({ key: "ai-chatbot-manager", path: "/manager#ai-chatbot-knowledge", managerOnly: true }),
+      ]),
+    );
+
+    const staffMatches = getAiChatbotFeatureMatches({ pathname: "/staff/schedule", userRole: { roleName: "server" } });
+    expect(staffMatches).toEqual(expect.arrayContaining([expect.objectContaining({ key: "staff-schedule", path: "/staff/schedule" })]));
+
+    const foodMatches = getAiChatbotFeatureMatches({ pathname: "/food/food-1", restaurantId: "resto-1", selectedMenuItem: { id: "food-1" }, userRole: "customer" });
+    expect(foodMatches).toEqual(expect.arrayContaining([expect.objectContaining({ key: "food-detail", path: "/food/food-1" })]));
+
+    const cartEntry = AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === "cart");
+    expect(cartEntry).toMatchObject({ actionType: "openCart", path: "" });
+  });
+
 });

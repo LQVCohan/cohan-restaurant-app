@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AiChatbotWidget from "./AiChatbotWidget";
 import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
+import { OPEN_CUSTOMER_CART_EVENT } from "@/utils/cartEvents";
 
 const mocks = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
@@ -212,6 +213,65 @@ afterEach(() => {
 });
 
 describe("AiChatbotWidget basic", () => {
+
+
+  it("sends current route/page context with chatbot request", async () => {
+    mocks.authUser = { id: "user-1", roleName: "customer" };
+    render(
+      <AiChatbotWidget
+        testOverrides={{ disableSocket: true, disablePolling: true }}
+      />,
+    );
+    open();
+    send("đơn hàng ở đâu");
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), {
+      timeout: 1500,
+    });
+    const input = mocks.askMutationSpy.mock.calls[0][0].variables.input;
+    expect(input.pageContext).toMatchObject({
+      pathname: "/restaurant/resto-1",
+      restaurantId: "resto-1",
+      userRole: "customer",
+    });
+    expect(input.pageContext.featureMatches.some((entry) => entry.key === "restaurant-detail")).toBe(true);
+  });
+
+  it("feature navigation answer/actions render safely and open cart action still works", async () => {
+    const openCartSpy = vi.fn();
+    window.addEventListener(OPEN_CUSTOMER_CART_EVENT, openCartSpy);
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Bạn có thể mở giỏ hàng.",
+          intent: "cart",
+          quickReplies: [],
+          actions: [
+            { type: "openCart", label: "Mở giỏ hàng", href: "/cart" },
+            { type: "link", label: "Mở đơn hàng", href: "/orders" },
+            { type: "link", label: "javascript:alert(1)", href: "javascript:alert(1)" },
+          ],
+          sources: [],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+    render(
+      <AiChatbotWidget
+        testOverrides={{ disableSocket: true, disablePolling: true }}
+      />,
+    );
+    open();
+    send("mở giỏ hàng");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mở giỏ hàng" })).toBeInTheDocument(), { timeout: 1500 });
+    expect(screen.getByRole("button", { name: "Mở đơn hàng" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mở giỏ hàng" }));
+    expect(openCartSpy).toHaveBeenCalledTimes(1);
+    expect(mocks.navigateSpy).not.toHaveBeenCalledWith("javascript:alert(1)");
+    window.removeEventListener(OPEN_CUSTOMER_CART_EVENT, openCartSpy);
+  });
+
   it("normal AI flow before handoff", async () => {
     render(
       <AiChatbotWidget
