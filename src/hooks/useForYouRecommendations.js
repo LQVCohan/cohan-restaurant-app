@@ -6,6 +6,12 @@ import {
   analyzeMenuItemForFoodPreferences,
   sortMenuItemsByFoodPreference,
 } from "@/utils/foodPreferenceMatcher";
+import {
+  getForYouBehaviorReasons,
+  getForYouBehaviorScore,
+  hasForYouBehaviorSignals,
+  readForYouBehaviorSignals,
+} from "@/utils/forYouBehaviorSignals";
 
 const TOP_MENU_ITEMS_FOR_YOU = gql`
   query TopMenuItemsForYou($restaurantId: ID!, $limit: Int = 12, $timeSlot: TimeSlot) {
@@ -52,15 +58,17 @@ export default function useForYouRecommendations({
   preferencesOverride = null,
 } = {}) {
   const client = useApolloClient();
-  const { restaurants, refRestaurant, isAuthenticated } = useContext(AuthContext) || {};
+  const { restaurants, refRestaurant, isAuthenticated, user } = useContext(AuthContext) || {};
+  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
   const shouldLoadPreferences = !preferencesOverride;
   const { preferences: loadedPreferences, loading: prefLoading, error: prefError } = useFoodPreferences({
-    skip: !enabled || !isAuthenticated || !shouldLoadPreferences,
+    skip: !enabled || !isAuthenticated || !isCustomer || !shouldLoadPreferences,
   });
   const effectivePreferences = preferencesOverride || loadedPreferences;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
+  const [behaviorSignals, setBehaviorSignals] = useState(() => readForYouBehaviorSignals(user?.id));
 
   const accessibleRestaurants = useMemo(() => {
     const merged = [...(Array.isArray(refRestaurant) ? refRestaurant : []), ...(Array.isArray(restaurants) ? restaurants : [])];
@@ -76,7 +84,7 @@ export default function useForYouRecommendations({
   }, [maxRestaurants, refRestaurant, restaurants]);
 
   const fetchRecommendations = useCallback(async () => {
-    if (!enabled || !isAuthenticated || accessibleRestaurants.length === 0) {
+    if (!enabled || !isAuthenticated || !isCustomer || accessibleRestaurants.length === 0) {
       setItems([]);
       setError("");
       setLoading(false);
@@ -117,41 +125,87 @@ export default function useForYouRecommendations({
         });
       });
       setItems(Array.from(deduped.values()));
-    } catch (_err) {
+    } catch {
       setError("Chưa thể tải gợi ý món. Bạn vẫn có thể chỉnh hồ sơ khẩu vị.");
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [accessibleRestaurants, client, enabled, isAuthenticated, limitPerRestaurant, timeSlot]);
+  }, [accessibleRestaurants, client, enabled, isAuthenticated, isCustomer, limitPerRestaurant, timeSlot]);
 
   useEffect(() => {
     fetchRecommendations();
   }, [fetchRecommendations]);
 
-  const scoredItems = useMemo(() => sortMenuItemsByFoodPreference(
-    items.map((item) => ({
-      ...item,
-      foodPreferenceMeta: analyzeMenuItemForFoodPreferences(item, effectivePreferences),
-    })),
-    effectivePreferences,
-  ), [effectivePreferences, items]);
+  useEffect(() => {
+    if (!enabled || !isAuthenticated || !isCustomer) {
+      setBehaviorSignals(readForYouBehaviorSignals(null));
+      return;
+    }
+    setBehaviorSignals(readForYouBehaviorSignals(user?.id));
+  }, [enabled, isAuthenticated, isCustomer, user?.id]);
+
+  const hasBehaviorSignals = useMemo(() => hasForYouBehaviorSignals(behaviorSignals), [behaviorSignals]);
+
+  const sortByForYouQuality = useCallback((a, b) => {
+    const preferenceDelta = Number(b?.foodPreferenceMeta?.score || 0) - Number(a?.foodPreferenceMeta?.score || 0);
+    if (preferenceDelta) return preferenceDelta;
+    const behaviorDelta = Number(b?.behaviorScore || 0) - Number(a?.behaviorScore || 0);
+    if (behaviorDelta) return behaviorDelta;
+    if (Number(b?.rate || 0) !== Number(a?.rate || 0)) return Number(b?.rate || 0) - Number(a?.rate || 0);
+    if (Number(b?.orderCounter || 0) !== Number(a?.orderCounter || 0)) return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
+    return String(a?.name || "").localeCompare(String(b?.name || ""), "vi");
+  }, []);
+
+  const scoredItems = useMemo(() => {
+    const preferenceSortedItems = sortMenuItemsByFoodPreference(
+      items.map((item) => {
+        const foodPreferenceMeta = analyzeMenuItemForFoodPreferences(item, effectivePreferences);
+        return {
+          ...item,
+          foodPreferenceMeta,
+        };
+      }),
+      effectivePreferences,
+    );
+
+    return preferenceSortedItems.map((item) => {
+      const behaviorScore = getForYouBehaviorScore(item, behaviorSignals);
+      const behaviorReasons = getForYouBehaviorReasons(item, behaviorSignals);
+      return {
+        ...item,
+        behaviorScore,
+        foodPreferenceMeta: {
+          ...item.foodPreferenceMeta,
+          behaviorScore,
+          behaviorReasons,
+        },
+      };
+    });
+  }, [behaviorSignals, effectivePreferences, items]);
 
   const recommendedItems = useMemo(
-    () => scoredItems.filter((item) => item.foodPreferenceMeta?.isRecommended),
-    [scoredItems],
+    () => scoredItems
+      .filter((item) => item.foodPreferenceMeta?.isRecommended)
+      .sort(sortByForYouQuality),
+    [scoredItems, sortByForYouQuality],
   );
   const warningItems = useMemo(
-    () => scoredItems.filter((item) => item.foodPreferenceMeta?.hasAllergyWarning),
-    [scoredItems],
+    () => scoredItems
+      .filter((item) => item.foodPreferenceMeta?.hasAllergyWarning)
+      .sort(sortByForYouQuality),
+    [scoredItems, sortByForYouQuality],
   );
   const fallbackItems = useMemo(() => {
     if (recommendedItems.length > 0) return [];
     return [...scoredItems]
       .filter((item) => !item.foodPreferenceMeta?.hasAllergyWarning)
       .sort((a, b) => {
+        const behaviorDelta = Number(b?.behaviorScore || 0) - Number(a?.behaviorScore || 0);
+        if (behaviorDelta) return behaviorDelta;
         if (Number(b?.rate || 0) !== Number(a?.rate || 0)) return Number(b?.rate || 0) - Number(a?.rate || 0);
-        return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
+        if (Number(b?.orderCounter || 0) !== Number(a?.orderCounter || 0)) return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
+        return String(a?.name || "").localeCompare(String(b?.name || ""), "vi");
       });
   }, [recommendedItems.length, scoredItems]);
 
@@ -167,6 +221,8 @@ export default function useForYouRecommendations({
     warningItems,
     fallbackItems,
     accessibleRestaurants,
+    behaviorSignals,
+    hasBehaviorSignals,
     preferences: effectivePreferences,
     refetch: fetchRecommendations,
   };

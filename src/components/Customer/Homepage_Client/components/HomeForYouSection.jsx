@@ -4,6 +4,7 @@ import { AuthContext } from "@/context/AuthContext";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
+import { recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
 import "@/styles/Homepage/HomeForYouSection.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
@@ -21,6 +22,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
     fallbackItems,
     accessibleRestaurants,
     preferences,
+    hasBehaviorSignals,
   } = useForYouRecommendations({ limitPerRestaurant: 8, maxRestaurants: 5, enabled, timeSlot });
 
   const completion = useMemo(
@@ -38,6 +40,20 @@ export default function HomeForYouSection({ timeSlot = null }) {
   if (error || displayItems.length === 0) return null;
 
   const usingFallback = recommendedItems.length === 0;
+  const subtitle = usingFallback
+    ? "Món phổ biến để tham khảo."
+    : hasBehaviorSignals
+      ? "Dựa trên khẩu vị và món bạn quan tâm gần đây."
+      : "Gợi ý dựa trên khẩu vị của bạn.";
+
+  const handleViewItem = (item) => {
+    if (!item?.id) return;
+    recordForYouItemInteraction(user?.id, item, "click");
+    navigate(
+      buildFoodDetailPath(item.id, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }),
+      { state: buildFoodDetailState(item, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }) },
+    );
+  };
 
   return (
     <section className="home-for-you">
@@ -45,7 +61,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
         <div className="home-for-you__header">
           <div>
             <h3 className="home-for-you__title">Món phù hợp với bạn</h3>
-            <p className="home-for-you__subtitle">{usingFallback ? "Món phổ biến để tham khảo." : "Gợi ý dựa trên khẩu vị của bạn."}</p>
+            <p className="home-for-you__subtitle">{subtitle}</p>
           </div>
           <div className="home-for-you__actions">
             <button type="button" className="home-for-you__cta" onClick={() => navigate("/for-you")}>Xem thêm món gợi ý</button>
@@ -66,7 +82,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
             <article
               key={item.id}
               className="home-for-you-card"
-              onClick={() => navigate(buildFoodDetailPath(item.id, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }), { state: buildFoodDetailState(item, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }) })}
+              onClick={() => handleViewItem(item)}
             >
               <img className="home-for-you-card__image" src={item.thumbImage || "https://placehold.co/320x220?text=Mon+an"} alt={item.name} loading="lazy" />
               <div className="home-for-you-card__body">
