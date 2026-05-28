@@ -109,3 +109,17 @@
 - Temporary OpenAI provider degradation may reduce answer quality while fallback remains functional.
 - Analytics may lag immediately after deploy if low traffic volume exists.
 - Empty knowledge base at rollout is acceptable if fallback and safety baselines are verified.
+
+## Phase 22 universal assistant checklist
+
+- [ ] Verify `OPENAI_API_KEY` / `GEMINI_API_KEY` are configured only on backend runtime and are not exposed via `VITE_*` frontend variables.
+- [ ] Verify guest identity questions answer that the user is currently a guest.
+- [ ] Verify authenticated identity questions expose only display name, email already visible in auth context, and role/user type.
+- [ ] Verify own recent order/reservation summaries are scoped to the current authenticated user.
+- [ ] Verify requests for another user's data, credentials, API keys, secrets, or non-authorized manager data are refused.
+- [ ] Verify current page context is sent by the widget: `pathname`, `restaurantId`, selected menu item when available, user role, and feature-map matches.
+- [ ] Verify deterministic fallback answers for identity, ordering, reservation, cart/orders/profile navigation, and menu recommendations when the AI provider is unavailable.
+- [ ] Run targeted backend chatbot tests.
+- [ ] Run targeted frontend chatbot tests.
+- [ ] Run frontend build.
+- [ ] Run backend build/typecheck script if available.

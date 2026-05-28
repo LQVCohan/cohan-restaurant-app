@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 import { useCart } from "@/context/CartProvider";
 import { AuthContext } from "@/context/AuthContext";
 import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
+import { getAiChatbotFeatureMatches } from "@/utils/aiChatbotFeatureMap";
 import { openCustomerCart } from "@/utils/cartEvents";
 import {
   buildCustomerCartPayload,
@@ -407,6 +408,27 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     [params, location.pathname],
   );
   const restaurantId = eventRestaurantId || routeRestaurantId;
+  const selectedRouteMenuItem = useMemo(() => {
+    const query = new URLSearchParams(location.search || "");
+    const id = params?.foodId || query.get("menuItemId") || "";
+    return id ? { id, restaurantId: restaurantId || query.get("restaurantId") || null } : null;
+  }, [params?.foodId, location.search, restaurantId]);
+  const aiPageContext = useMemo(() => {
+    const userRole = user?.roleName || user?.role?.slug || user?.role || user?.userType || "";
+    const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
+    return {
+      pathname: location.pathname,
+      restaurantId: restaurantId || selectedMenuItem?.restaurantId || null,
+      selectedMenuItem: selectedMenuItem || null,
+      userRole,
+      featureMatches: getAiChatbotFeatureMatches({
+        pathname: location.pathname,
+        restaurantId: restaurantId || selectedMenuItem?.restaurantId || "",
+        selectedMenuItem,
+        userRole,
+      }),
+    };
+  }, [location.pathname, restaurantId, selectedMenuItemSource, selectedRouteMenuItem, user]);
 
   useEffect(() => {
     setEventRestaurantId("");
@@ -507,7 +529,9 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       (handoffEnabled
         ? lastActions
         : lastActions.filter((action) => action?.type !== "handoff")
-      ).filter((action) => action?.type !== "add_to_cart_candidate"),
+      )
+        .filter((action) => action?.type !== "add_to_cart_candidate")
+        .filter((action) => action?.type === "openCart" || String(action?.href || "").startsWith("/") || String(action?.href || "").startsWith("http")),
     [handoffEnabled, lastActions],
   );
 
@@ -788,6 +812,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             history: normalizeHistory(messages),
             guestId: safeGuestId || undefined,
             conversationId: conversationId || undefined,
+            pageContext: aiPageContext,
           },
         },
       });
@@ -904,12 +929,19 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   };
 
   const handleAction = (action) => {
-    if (!action?.href) return;
-    if (action.href.startsWith("http")) {
-      window.open(action.href, "_blank", "noopener,noreferrer");
+    if (action?.type === "openCart") {
+      openCustomerCart();
+      setOpen(false);
       return;
     }
-    navigate(action.href);
+    if (!action?.href) return;
+    const safeHref = String(action.href || "");
+    if (!safeHref.startsWith("/") && !safeHref.startsWith("http")) return;
+    if (safeHref.startsWith("http")) {
+      window.open(safeHref, "_blank", "noopener,noreferrer");
+      return;
+    }
+    navigate(safeHref);
     setOpen(false);
   };
   const handleRequestHandoff = async () => {

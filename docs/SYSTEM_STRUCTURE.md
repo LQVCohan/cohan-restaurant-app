@@ -472,3 +472,11 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Env vận hành chatbot nằm ở backend (`OPENAI_API_KEY`, `AI_CHATBOT_MODEL`, `AI_MODEL`).
 - Nếu provider unavailable: chatbot chạy fallback theo service hiện tại.
 - Checklist rollout/rollback chi tiết tại `docs/ai-chatbot-release-checklist.md`.
+
+### 4.x AI Chatbot universal assistant
+- Backend service: `cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js` builds sanitized chatbot context, classifies intents, enforces refusal logic, calls Gemini/OpenAI from the backend only, and falls back deterministically on provider failure.
+- GraphQL API: `cohan-restaurant-backend/graphql/schema/aiChatbot.graphql` exposes `AskAiChatbotInput.pageContext` as JSON so the frontend can pass route/page state without exposing secrets.
+- Frontend widget: `src/components/common/AiChatbotWidget.jsx` sends current route context and renders safe action buttons while preserving the customer cart open event.
+- Feature map: `src/utils/aiChatbotFeatureMap.js` maps Home, restaurant detail, menu, food detail, cart, checkout, orders, reservations/table booking, profile/account, manager dashboard, staff/schedule, storage/inventory, and AI chatbot manager tools.
+- Scope: menu assistant, ordering assistant, reservation assistant, account/profile assistant, feature navigation assistant, and support handoff assistant.
+- Safety: user context is limited to guest/authenticated status, display name, visible email, and role/user type; passwords, tokens, API keys, secrets, unrelated internal IDs, other users' data, and unauthorized manager data are not exposed.
