@@ -4,7 +4,15 @@ import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
+import { useCart } from "@/context/CartProvider";
+import { AuthContext } from "@/context/AuthContext";
 import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
+import { openCustomerCart } from "@/utils/cartEvents";
+import {
+  buildCustomerCartPayload,
+  buildMenuItemServingOptions,
+  normalizeCartNote,
+} from "@/utils/customerCartPayload";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import "./AiChatbotWidget.scss";
 
@@ -133,6 +141,10 @@ const Q_PUBLIC_AI_CHATBOT_SETTINGS = gql`
     }
   }
 `;
+const CUSTOMER_MENU_ITEM_FOR_AI = gql`query CustomerMenuItemForAiChatbot($id: ID!, $restaurantId: ID) { customerMenuItem(id: $id, restaurantId: $restaurantId) { id name description basePrice thumbImage point labels dietTags allergenTags tasteProfile { containsOnion containsCilantro sugar spice } rate orderCounter avgPrepTimeMin restaurantId menuId categoryId status inventoryStatus stockWarnings servingVariants { key mode sellQty sellUnit name price } } }`;
+const PUBLIC_RESTAURANT_BY_ID_FOR_AI = gql`query PublicRestaurantByIdForAiChatbot($id: ID!) { publicRestaurant(id: $id) { id name canOrder openingStatus openingStatusReason address { line1 district city } } }`;
+const MENU_ITEM_LIVE_STATE_FOR_AI = gql`query AiMenuItemLiveState($input: MenuItemLiveStateInput!) { menuItemLiveState(input: $input) { viewerCount maxAvailableQty outOfStock blocked blockedUntil abuseWarning policyMessage holdTtlSeconds myCartQty myHoldExpiresAt reservedCartQty } }`;
+const ADD_CART_ITEM_FOR_AI = gql`mutation AddCartItemFromAiChatbot($input: AddCartItemInput!) { addCartItem(input: $input) { id totalQuantity totalAmount items { id restaurantId menuItemId name price quantity thumbImage note servingVariantKey holdExpiresAt holdStatus } } }`;
 
 
 const getConversationStorageKey = (restaurantId) => `cohan_ai_conversation_id:${restaurantId || "global"}`;
@@ -182,6 +194,8 @@ const normalizeHistory = (messages) =>
     .map((item) => ({ role: item.role, content: item.content }));
 
 function AiChatbotWidget({ testOverrides = {} } = {}) {
+  const { user } = React.useContext(AuthContext);
+  const { addToCart } = useCart();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
@@ -191,11 +205,18 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [lastContextSummary, setLastContextSummary] = useState(null);
   const [selectedMenuItemSource, setSelectedMenuItemSource] = useState(null);
+  const [selectedVariantKey, setSelectedVariantKey] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [selectedNote, setSelectedNote] = useState("");
+  const [isAiCartAdding, setIsAiCartAdding] = useState(false);
+  const [aiCartError, setAiCartError] = useState("");
+  const [aiCartSuccess, setAiCartSuccess] = useState("");
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(REQUEST_AI_CHATBOT_HANDOFF);
   const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
   const [sendGuestMessage, { loading: guestSendLoading }] = useMutation(SEND_AI_CHATBOT_GUEST_MESSAGE);
   const [loadGuestReplies] = useLazyQuery(Q_AI_CHATBOT_GUEST_REPLIES, { fetchPolicy: "network-only" });
+  const [addCartItemForAi] = useMutation(ADD_CART_ITEM_FOR_AI);
   const [guestId, setGuestId] = useState(() => {
     if (typeof window === "undefined") return "";
     const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
@@ -234,6 +255,44 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     fetchPolicy: "cache-first",
   });
   const publicSettings = publicSettingsData?.publicAiChatbotSettings;
+  const { data: aiMenuItemData, loading: aiMenuItemLoading, error: aiMenuItemError } = useQuery(CUSTOMER_MENU_ITEM_FOR_AI, {
+    variables: { id: selectedMenuItemSource?.id, restaurantId: selectedMenuItemSource?.restaurantId || restaurantId || null },
+    skip: !selectedMenuItemSource?.id,
+  });
+  const selectedAiMenuItem = aiMenuItemData?.customerMenuItem || null;
+  const { data: aiRestaurantData } = useQuery(PUBLIC_RESTAURANT_BY_ID_FOR_AI, {
+    variables: { id: selectedMenuItemSource?.restaurantId || selectedAiMenuItem?.restaurantId },
+    skip: !selectedMenuItemSource?.restaurantId && !selectedAiMenuItem?.restaurantId,
+  });
+  const aiRestaurant = aiRestaurantData?.publicRestaurant || null;
+  const aiServingOptions = useMemo(() => buildMenuItemServingOptions(selectedAiMenuItem), [selectedAiMenuItem]);
+  useEffect(() => {
+    if (!selectedMenuItemSource) return;
+    if (!selectedVariantKey && aiServingOptions.length) setSelectedVariantKey(aiServingOptions[0].key);
+  }, [selectedMenuItemSource, selectedVariantKey, aiServingOptions]);
+  const selectedVariant = useMemo(() => aiServingOptions.find((v) => v.key === selectedVariantKey) || null, [aiServingOptions, selectedVariantKey]);
+  const { data: aiLiveStateData } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AI, {
+    variables: { input: { restaurantId: selectedAiMenuItem?.restaurantId, menuItemId: selectedAiMenuItem?.id, servingVariantKey: selectedVariantKey, userId: user?.id } },
+    skip: !selectedAiMenuItem?.id || !selectedAiMenuItem?.restaurantId || !selectedVariantKey,
+    fetchPolicy: "network-only",
+  });
+  const aiLiveState = aiLiveStateData?.menuItemLiveState;
+  const aiLiveStateReady = Boolean(aiLiveState);
+  const aiMaxAvailableQty = Number(aiLiveState?.maxAvailableQty || 0);
+  const aiQuantityExceedsAvailable =
+    aiLiveStateReady && aiMaxAvailableQty > 0 && selectedQuantity > aiMaxAvailableQty;
+  const aiOutOfStock =
+    aiLiveStateReady && (!!aiLiveState?.outOfStock || aiMaxAvailableQty < 1);
+  const aiAddDisabled =
+    !selectedAiMenuItem ||
+    !selectedVariantKey ||
+    isAiCartAdding ||
+    !user?.id ||
+    !aiRestaurant?.canOrder ||
+    !aiLiveStateReady ||
+    !!aiLiveState?.blocked ||
+    aiOutOfStock ||
+    aiQuantityExceedsAvailable;
   const chatbotEnabled = publicSettings?.enabled ?? true;
   const handoffEnabled = publicSettings?.handoffEnabled ?? true;
   const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
@@ -564,6 +623,36 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       ]);
     }
   };
+  const onSelectMenuItem = (source) => {
+    setSelectedMenuItemSource(source);
+    setSelectedVariantKey("");
+    setSelectedQuantity(1);
+    setSelectedNote("");
+    setAiCartError("");
+    setAiCartSuccess("");
+  };
+  const handleAddAiCart = async () => {
+    if (isAiCartAdding) return;
+    if (!user?.id) return setAiCartError("Vui lòng đăng nhập để thêm món vào giỏ.");
+    if (!aiLiveStateReady) return setAiCartError("Đang kiểm tra tồn món...");
+    if (!selectedAiMenuItem?.id || !selectedAiMenuItem?.restaurantId || !selectedVariantKey || selectedQuantity < 1) return;
+    if (!aiRestaurant?.canOrder) return setAiCartError("Nhà hàng chưa nhận đơn.");
+    if (aiLiveState?.blocked) return setAiCartError("Món này hiện chưa thể thêm vào giỏ.");
+    if (aiOutOfStock) return setAiCartError("Món đã hết hàng.");
+    if (aiQuantityExceedsAvailable) return setAiCartError("Số lượng vượt quá số suất còn có thể đặt.");
+    setIsAiCartAdding(true); setAiCartError(""); setAiCartSuccess("");
+    try {
+      const selectedPrice = Number(selectedVariant?.price || selectedAiMenuItem?.basePrice || 0);
+      const note = selectedNote.trim() || null;
+      const { data } = await addCartItemForAi({ variables: { input: { userId: user.id, restaurantId: selectedAiMenuItem.restaurantId, menuItemId: selectedAiMenuItem.id, name: selectedAiMenuItem.name, price: selectedPrice, quantity: selectedQuantity, thumbImage: selectedAiMenuItem.thumbImage, note, servingVariantKey: selectedVariantKey || "portion" } } });
+      const returnedItem = data?.addCartItem?.items?.find((item) => String(item?.menuItemId) === String(selectedAiMenuItem.id) && String(item?.servingVariantKey) === String(selectedVariantKey || "portion") && normalizeCartNote(item?.note) === normalizeCartNote(note));
+      if (!data?.addCartItem?.id || !returnedItem?.id) throw new Error("Không thể đồng bộ giỏ hàng.");
+      addToCart(buildCustomerCartPayload({ item: selectedAiMenuItem, restaurant: aiRestaurant, selectedVariant: selectedVariant || aiServingOptions[0], quantity: selectedQuantity, note: returnedItem?.note ?? note, backendCartId: data.addCartItem.id, backendCartItemId: returnedItem.id, holdExpiresAt: returnedItem?.holdExpiresAt || null, holdStatus: returnedItem?.holdStatus || null }));
+      setAiCartSuccess(`Đã thêm ${selectedAiMenuItem.name} vào giỏ hàng.`);
+    } catch (error) {
+      setAiCartError(error?.message || "Không thể thêm món vào giỏ.");
+    } finally { setIsAiCartAdding(false); }
+  };
 
   return (
     <div className="ai-chatbot-widget" aria-live="polite">
@@ -626,15 +715,32 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             </div>
           ) : null}
                     {selectedMenuItemSource ? <div className="ai-chatbot-menu-detail">
-            <h4>{selectedMenuItemSource.label}</h4>
-            {selectedMenuItemSource.formattedPrice ? <p className="ai-chatbot-menu-card__price">{selectedMenuItemSource.formattedPrice}</p> : null}
-            {(selectedMenuItemSource.hasOptions || selectedMenuItemSource.hasVariants) ? <p>Món này cần chọn tùy chọn, vui lòng xem chi tiết món.</p> : <p>Đang tải chi tiết món...</p>}
-            <div className="ai-chatbot-menu-card__actions">
+            {aiMenuItemLoading ? <p>Đang tải chi tiết món...</p> : null}
+            {aiMenuItemError ? <p>Không thể tải chi tiết món. Bạn có thể bấm Xem chi tiết món.</p> : null}
+            {selectedAiMenuItem ? <>
+            <h4>{selectedAiMenuItem.name}</h4>
+            <p className="ai-chatbot-menu-card__price">{new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND"}).format(Number(selectedVariant?.price || selectedAiMenuItem.basePrice || 0))}</p>
+            <div className="ai-chatbot-menu-detail__variants">{aiServingOptions.map((variant) => <button key={variant.key} type="button" className={`ai-chatbot-menu-detail__variant ${selectedVariantKey === variant.key ? "is-selected" : ""}`} onClick={() => setSelectedVariantKey(variant.key)}>{variant.name}</button>)}</div>
+            <div className="ai-chatbot-menu-detail__quantity"><button type="button" onClick={() => setSelectedQuantity((q) => Math.max(1, q - 1))}>-</button><span>{selectedQuantity}</span><button type="button" onClick={() => setSelectedQuantity((q) => {
+              const max = Number(aiLiveState?.maxAvailableQty || 0); if (max > 0) return Math.min(max, q + 1); return q + 1;
+            })}>+</button></div>
+            <textarea className="ai-chatbot-menu-detail__note" placeholder="Ví dụ: ít cay, không hành..." maxLength={180} value={selectedNote} onChange={(e) => setSelectedNote(e.target.value)} />
+            {!user?.id ? <p className="ai-chatbot-menu-detail__error">Vui lòng đăng nhập để thêm món vào giỏ.</p> : null}
+            {user?.id && !aiLiveStateReady ? <p className="ai-chatbot-menu-detail__error">Đang kiểm tra tồn món...</p> : null}
+            {user?.id && aiLiveStateReady && aiOutOfStock ? <p className="ai-chatbot-menu-detail__error">Món đã hết hàng.</p> : null}
+            {user?.id && aiLiveStateReady && aiQuantityExceedsAvailable ? <p className="ai-chatbot-menu-detail__error">Số lượng vượt quá số suất còn có thể đặt.</p> : null}
+            {user?.id && aiRestaurant && !aiRestaurant?.canOrder ? <p className="ai-chatbot-menu-detail__error">Nhà hàng chưa nhận đơn.</p> : null}
+            {aiCartError ? <p className="ai-chatbot-menu-detail__error">{aiCartError}</p> : null}
+            {aiCartSuccess ? <p className="ai-chatbot-menu-detail__success">{aiCartSuccess}</p> : null}
+            </> : null}
+            <div className="ai-chatbot-menu-card__actions ai-chatbot-menu-detail__actions">
+              <button type="button" disabled={aiAddDisabled} onClick={handleAddAiCart}>Thêm vào giỏ</button>
               <button type="button" onClick={() => {
                 const target = buildAiFoodDetailTarget(selectedMenuItemSource);
                 navigate(target.href, { state: target.state });
                 setOpen(false);
               }}>Xem chi tiết món</button>
+              {aiCartSuccess ? <button type="button" onClick={() => openCustomerCart()}>Xem giỏ hàng</button> : null}
               <button type="button" onClick={() => setSelectedMenuItemSource(null)}>Quay lại gợi ý</button>
             </div>
           </div> : null}
@@ -649,7 +755,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   navigate(target.href, { state: target.state });
                   setOpen(false);
                 }}>Xem món</button>
-                <button type="button" onClick={() => setSelectedMenuItemSource(s)}>Chọn món</button>
+                <button type="button" onClick={() => onSelectMenuItem(s)}>Chọn món</button>
                 
               </div>
             </div>;
