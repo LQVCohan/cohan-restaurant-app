@@ -518,3 +518,155 @@ $max-width: 1440px; // Đồng bộ với Header
     font-size: 0.9rem;
   }
 }
+
+.location-picker {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 22px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  padding: 14px;
+  text-align: left;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__eyebrow {
+    color: #f97316;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin: 0 0 3px;
+    text-transform: uppercase;
+  }
+
+  &__title {
+    color: #1a202c;
+    font-size: 1rem;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  &__close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &:hover {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
+  }
+
+  &__map {
+    width: 100%;
+    height: 300px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+
+  &__summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 14px;
+  }
+
+  &__pin {
+    line-height: 1.4;
+    flex-shrink: 0;
+  }
+
+  &__address {
+    color: #334155;
+    display: -webkit-box;
+    font-size: 0.94rem;
+    line-height: 1.45;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  &__confirm,
+  &__cancel {
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 700;
+    padding: 12px 18px;
+    transition: all 0.2s ease;
+  }
+
+  &__confirm {
+    background: #ff6600;
+    box-shadow: 0 8px 18px rgba(255, 102, 0, 0.28);
+    color: #fff;
+    flex: 1;
+
+    &:hover {
+      background: #e65c00;
+      transform: translateY(-1px);
+    }
+  }
+
+  &__cancel {
+    background: #f1f5f9;
+    color: #334155;
+
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+
+  .leaflet-container {
+    font-family: inherit;
+  }
+
+  @media (max-width: 640px) {
+    border-radius: 18px;
+    padding: 12px;
+
+    &__map {
+      height: 280px;
+    }
+
+    &__actions {
+      flex-direction: column;
+    }
+
+    &__confirm,
+    &__cancel {
+      width: 100%;
+    }
+  }
+}
