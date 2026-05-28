@@ -123,12 +123,26 @@ const TIME_SLOTS = [
   { id: "late_night", label: "🌙 Khuya" },
 ];
 
+const getCannotOrderTitle = (status) => {
+  switch (status) {
+    case "closed":
+      return "Nhà hàng đang đóng cửa";
+    case "paused":
+      return "Nhà hàng đang tạm ngưng nhận đơn";
+    case "maintenance":
+      return "Nhà hàng đang bảo trì";
+    case "holiday":
+      return "Nhà hàng nghỉ hôm nay";
+    default:
+      return "Nhà hàng hiện chưa nhận đặt món";
+  }
+};
+
 const MenuSection = ({
   restaurantId,
   restaurant,
   canOrder: canOrderProp,
   openingStatus: openingStatusProp,
-  openingStatusReason,
 }) => {
   const navigate = useNavigate();
 
@@ -267,9 +281,8 @@ const MenuSection = ({
   const resolvedCanOrder =
     typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
 
-  const cannotOrderReason = openingStatusReason || getCannotOrderReason(
-    openingStatusProp || restaurant?.openingStatus,
-  );
+  const resolvedOpeningStatus = openingStatusProp || restaurant?.openingStatus;
+  const cannotOrderReason = getCannotOrderReason(resolvedOpeningStatus);
 
   const isDishOrderable = (item) =>
     resolvedCanOrder && canCustomerOrderMenuItem(item);
@@ -341,7 +354,7 @@ const MenuSection = ({
         <div className="menu-order-status-warning" role="status">
           <span className="warning-icon" aria-hidden="true">⏰</span>
           <span>
-            <strong>Nhà hàng đang đóng cửa</strong>
+            <strong>{getCannotOrderTitle(resolvedOpeningStatus)}</strong>
             <small>{cannotOrderReason}</small>
           </span>
         </div>
