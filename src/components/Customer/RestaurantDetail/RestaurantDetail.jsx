@@ -207,7 +207,13 @@ const RestaurantDetail = () => {
   const imgThumbUrl = hasCoverImage
     ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
     : null;
-const aiQuickPrompts = [
+  const profileSummaryItems = [
+    resolvedRestaurant.cuisine || "Ẩm thực đang cập nhật",
+    resolvedRestaurant.district || resolvedRestaurant.address?.city || "Khu vực đang cập nhật",
+    headerReviewCount > 0 ? `${headerReviewCount} đánh giá` : "Chưa có đánh giá",
+  ];
+
+  const aiQuickPrompts = [
     { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
     { label: "Món dưới 100k", message: "Gợi ý món dưới 100k" },
     { label: "Món chay", message: "Gợi ý món chay" },
@@ -261,9 +267,18 @@ const aiQuickPrompts = [
               <div className="res-address">
                 <MapPin size={16} /> {resolvedRestaurant.addressText || "Địa chỉ đang cập nhật"}
               </div>
+
+              <div className="profile-summary">
+                {profileSummaryItems.map((item, idx) => (
+                  <span key={`${item}-${idx}`} className="summary-chip">
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="action-group">
+              <div className="icon-actions">
               <button
                 type="button"
                 className={`btn-icon ${favoriteActive ? "active" : ""}`}
@@ -275,6 +290,7 @@ const aiQuickPrompts = [
               <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
                 <Share2 size={20} />
               </button>
+              </div>
               <button
                 type="button"
                 className="btn-book desktop-only"
