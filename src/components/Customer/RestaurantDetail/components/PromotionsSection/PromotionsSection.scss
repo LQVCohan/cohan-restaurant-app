@@ -1,38 +1,76 @@
 .promo-section {
-  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.promo-loading,
-.promo-error,
-.promo-empty {
-  padding: 20px;
+.promo-section-header {
+  h2 {
+    margin: 0 0 6px;
+    color: #1a202c;
+    font-size: 1.45rem;
+    font-weight: 800;
+  }
+
+  p:not(.section-eyebrow) {
+    margin: 0;
+    color: #64748b;
+    line-height: 1.5;
+  }
+}
+
+.promo-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 150px;
+  color: #9a3412;
   background: #fff7ed;
-  border-radius: 12px;
-  color: #7c2d12;
+}
+
+.promo-loading-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #ffedd5;
 }
 
 .promo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
 }
 
 .promo-card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 18px;
   background: #ffffff;
-  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: #fed7aa;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  }
 
   h4 {
-    margin: 10px 0 8px;
-    font-size: 1rem;
+    margin: 12px 0 8px;
+    color: #1a202c;
+    font-size: 1.05rem;
+    font-weight: 800;
   }
 
   p {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     color: #64748b;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
   }
 }
 
@@ -40,25 +78,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  gap: 10px;
+  font-size: 0.78rem;
 }
 
 .promo-scope {
-  background: #f1f5f9;
-  padding: 4px 8px;
+  background: #ecfdf5;
+  padding: 5px 9px;
   border-radius: 999px;
-  color: #475569;
-  font-weight: 600;
+  color: #047857;
+  font-weight: 800;
 }
 
 .promo-discount {
   color: #f97316;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .promo-footer {
-  font-size: 0.8rem;
-  color: #94a3b8;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+@media (max-width: 576px) {
+  .promo-grid {
+    grid-template-columns: 1fr;
+  }
 }
