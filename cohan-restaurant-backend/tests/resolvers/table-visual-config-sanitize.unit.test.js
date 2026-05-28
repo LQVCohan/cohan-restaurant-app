@@ -24,7 +24,7 @@ describe("sanitizeVisualConfig", () => {
       modelLabel: "Table X",
       tableType: "standard",
       capacity: 4,
-      placement: { x: 1000, y: -10, scale: 20, rotation: "15" },
+      placement: { x: 1000, y: -10, scale: 20, rotation: "15", opacity: 2 },
       defaultScale: 1.1,
       modelUrl: "https://cdn.example.com/table.glb",
       thumbnailUrl: "javascript:alert(1)",
@@ -51,7 +51,7 @@ describe("sanitizeVisualConfig", () => {
       diameterCm: null,
     });
     expect(result.tags).toEqual(["round", "vip"]);
-    expect(result.placement).toEqual({ x: 95, y: 5, scale: 2, rotation: 15 });
+    expect(result.placement).toEqual({ x: 95, y: 5, scale: 2, rotation: 15, opacity: 1 });
     expect(result.savedAt).toBeTruthy();
   });
 
@@ -59,11 +59,12 @@ describe("sanitizeVisualConfig", () => {
     const existingSavedAt = "2026-05-20T10:30:00.000Z";
     const result = sanitizeVisualConfig({
       modelKey: "table-y",
-      placement: { x: 45, y: 55, scale: 1.2, rotation: 0 },
+      placement: { x: 45, y: 55, scale: 1.2, rotation: 0, opacity: 0.1 },
       savedAt: existingSavedAt,
     });
 
     expect(result.savedAt).toBe(existingSavedAt);
+    expect(result.placement.opacity).toBe(0.35);
   });
 
   it("drops unsafe visualConfig URLs and limits tags", () => {

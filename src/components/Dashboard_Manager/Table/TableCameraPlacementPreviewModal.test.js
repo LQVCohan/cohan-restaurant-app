@@ -1,10 +1,38 @@
-import { describe, expect, it } from "vitest";
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
+import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
 import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
   getVisualConfigSummary,
 } from "./tableVisualConfigHelpers";
+
+const renderCameraModal = (props = {}) =>
+  render(
+    React.createElement(TableCameraPlacementPreviewModal, {
+      open: true,
+      onClose: vi.fn(),
+      modelItem: {
+        key: "table.thumb",
+        label: "Bàn thumbnail",
+        tableType: "round-table",
+        capacity: 4,
+        thumbnailUrl: "https://cdn.example.com/thumb.png",
+        modelUrl: "https://cdn.example.com/table.glb",
+        dimensionsCm: { diameterCm: 110, heightCm: 76 },
+      },
+      ...props,
+    })
+  );
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  delete navigator.mediaDevices;
+  window.localStorage.clear();
+});
 
 describe("buildPreviewModelItemFromVisualConfig", () => {
   it("maps complete visualConfig to modelItem", () => {
@@ -100,8 +128,49 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
     expect(result.capacity).toBe(2);
   });
 
-  it("normalizes missing placement with default placement", () => {
+  it("normalizes missing placement with default opacity and clamps opacity", () => {
     expect(normalizeCameraPlacement(undefined)).toEqual(DEFAULT_CAMERA_PLACEMENT);
+    expect(normalizeCameraPlacement({ opacity: 2 })).toMatchObject({ opacity: 1 });
+    expect(normalizeCameraPlacement({ opacity: 0.1 })).toMatchObject({ opacity: 0.35 });
+  });
+});
+
+describe("TableCameraPlacementPreviewModal", () => {
+  it("shows unsupported camera guidance without crashing", async () => {
+    renderCameraModal();
+
+    expect(await screen.findByText("Thiết bị/trình duyệt chưa hỗ trợ camera preview.")).toBeInTheDocument();
+    expect(screen.getByText("Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.")).toBeInTheDocument();
+    expect(screen.getByText("Bạn có thể đóng modal này và dùng preview 3D thường để kiểm tra mẫu bàn.")).toBeInTheDocument();
+  });
+
+  it("renders thumbnail overlay and falls back when thumbnail fails", async () => {
+    renderCameraModal();
+
+    const thumbnail = await screen.findByAltText("Thumbnail Bàn thumbnail");
+    expect(thumbnail).toHaveAttribute("src", "https://cdn.example.com/thumb.png");
+
+    fireEvent.error(thumbnail);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText("Thumbnail Bàn thumbnail")).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Overlay mô hình bàn để ước lượng vị trí")).toBeInTheDocument();
+  });
+
+  it("sends confirmed placement with opacity", async () => {
+    const onConfirmPlacement = vi.fn();
+    renderCameraModal({
+      initialPlacement: { x: 40, y: 60, scale: 1.1, rotation: 30, opacity: 0.5 },
+      onConfirmPlacement,
+    });
+
+    fireEvent.change(await screen.findByRole("slider"), { target: { value: "0.42" } });
+    fireEvent.click(screen.getByText("Xác nhận vị trí"));
+
+    expect(onConfirmPlacement).toHaveBeenCalledWith(expect.objectContaining({
+      placement: expect.objectContaining({ opacity: 0.42 }),
+    }));
   });
 });
 

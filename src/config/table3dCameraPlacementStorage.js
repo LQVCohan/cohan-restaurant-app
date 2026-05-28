@@ -5,6 +5,7 @@ export const DEFAULT_CAMERA_PLACEMENT = {
   y: 55,
   scale: 1,
   rotation: 0,
+  opacity: 0.78,
 };
 
 export const buildCameraPlacementKey = (modelKey, scope = "default") =>
@@ -29,6 +30,7 @@ export const normalizeCameraPlacement = (value) => {
     y: clamp(asNumber(source.y, DEFAULT_CAMERA_PLACEMENT.y), 5, 95),
     scale: clamp(asNumber(source.scale, DEFAULT_CAMERA_PLACEMENT.scale), 0.5, 2),
     rotation: asNumber(source.rotation, DEFAULT_CAMERA_PLACEMENT.rotation),
+    opacity: clamp(asNumber(source.opacity, DEFAULT_CAMERA_PLACEMENT.opacity), 0.35, 1),
   };
 };
 
