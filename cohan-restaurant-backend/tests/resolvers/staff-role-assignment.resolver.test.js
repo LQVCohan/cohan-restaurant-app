@@ -56,7 +56,7 @@ describe("staff role assignment mutation resolver", () => {
   });
 
   it("delegates assignStaffRole input to the RBAC service with the context actor", async () => {
-    const assignedStaff = { id: "staff-1", role: { id: "role-server", slug: "server" } };
+    const assignedStaff = { _id: "staff-1", fullName: "Server One", restaurantForStaff: "restaurant-1", role: { id: "role-server", slug: "server" }, baseSalary: 100, passwordHash: "hidden" };
     serviceMocks.assignStaffRoleWithinRestaurant.mockResolvedValue(assignedStaff);
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
 
@@ -66,13 +66,15 @@ describe("staff role assignment mutation resolver", () => {
       { user: { id: "manager-1", roleName: "manager" } },
     );
 
-    expect(result).toBe(assignedStaff);
+    expect(result).toMatchObject({ id: "staff-1", fullName: "Server One", baseSalary: 100, role: { id: "role-server", slug: "server" } });
+    expect(result.passwordHash).toBeUndefined();
     expect(guards.requireAuth).toHaveBeenCalledWith({ user: { id: "manager-1", roleName: "manager" } });
     expect(serviceMocks.assignStaffRoleWithinRestaurant).toHaveBeenCalledWith({
       actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
+      ctx: { user: { id: "manager-1", roleName: "manager" } },
     });
   });
 
@@ -93,6 +95,7 @@ describe("staff role assignment mutation resolver", () => {
       staffUserId: "staff-2",
       roleId: "role-admin",
       restaurantId: "restaurant-2",
+      ctx: { user: { id: "staff-user", roleName: "staff" } },
     });
   });
 });

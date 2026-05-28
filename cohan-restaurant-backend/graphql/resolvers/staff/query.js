@@ -47,6 +47,10 @@ import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSch
 import { buildAiSchedulePlannerPreview } from "../../../src/services/scheduling/aiSchedulePlanner.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
+  sanitizeAdminUserListItem,
+  sanitizeStaffPrivateProfile,
+} from "../../../src/security/userDtos.js";
+import {
   buildPayrollItemsForRange,
   getPayrollSettings,
   getPeriodDetail,
@@ -340,7 +344,10 @@ export default {
     const user = await Staff.findById(id)
       .populate("role")
       .populate("refRestaurants");
-    return user;
+    if (String(ctx?.user?.id || ctx?.user?._id || "") === String(id)) {
+      return sanitizeAdminUserListItem(user);
+    }
+    return sanitizeStaffPrivateProfile(user, ctx, { restaurantId: minimal?.restaurantForStaff });
   },
 
   // =========================
@@ -408,11 +415,12 @@ export default {
       }
     }
 
-    return Staff.find(filter)
+    const staff = await Staff.find(filter)
       .populate("role")
       .populate("refRestaurants")
-
       .sort({ fullName: 1 });
+
+    return Promise.all(staff.map((item) => sanitizeStaffPrivateProfile(item, ctx, { restaurantId: item?.restaurantForStaff || restaurantId })));
   },
   shiftAcknowledgements: async (
     _,

@@ -442,6 +442,53 @@ type User {
   guestExpiresAt: DateTime
 
   userType: UserType
+  department: DepartmentType
+
+  employeeCode: String
+  positionTitle: String
+  employmentType: EmploymentType
+  employmentStatus: EmploymentStatus
+  shiftType: ShiftType
+  workingDays: [StaffWorkingDay!]
+  dateJoined: DateTime
+  dateLeft: DateTime
+  lastLoginAt: DateTime
+
+  emergencyContact: EmergencyContact
+  wallet: Wallet
+  isOnline: Boolean
+  loyaltyDurationScore: Int
+}
+
+type StaffPrivateProfile {
+  id: ID!
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: Address
+  role: Role
+  status: String
+  provider: String
+  avatarUrl: String
+  refRestaurants: [Restaurant]
+  restaurantForStaff: ID
+  point: Int
+  loyaltyPoints: Int
+  roleName: String
+  loyaltyRank: String
+  foodPreferences: FoodPreferences
+
+  customerType: CustomerType
+  totalOrders: Int
+  totalSpending: Float
+  emailVerified: Boolean
+  createdAt: String
+  updatedAt: String
+  isGuest: Boolean
+  guestExpiresAt: DateTime
+
+  userType: UserType
   taxCode: String
   department: DepartmentType
 
@@ -495,7 +542,6 @@ type User {
   dateLeft: DateTime
 
   lastLoginAt: DateTime
-  lastLoginIp: String
   forcePasswordChange: Boolean
 
   noteInternal: String
@@ -2875,14 +2921,15 @@ type Query {
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
 
-  staff(id: ID!): User
+  staff(id: ID!): StaffPrivateProfile
+  staffPrivateProfile(userId: ID!, restaurantId: ID): StaffPrivateProfile
   publicRestaurantStaff(restaurantId: ID!): [PublicStaffOption!]!
   staffList(
     restaurantId: ID
     roleId: ID
     search: String
     employmentStatus: EmploymentStatus
-  ): [User!]!
+  ): [StaffPrivateProfile!]!
   staffAccountOverview(staffId: ID): StaffAccountOverview
   staffSalarySummary(staffId: ID): StaffSalarySummary
   staffShiftHistory(staffId: ID, limit: Int = 20): [StaffShiftHistoryItem!]!
@@ -3087,19 +3134,19 @@ type Mutation {
     ranks: [RankThresholdInput!]!
   ): CustomerRankSettings!
 
-  createStaff(input: CreateUserInput!): User!
-  updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
-  assignStaffRole(input: AssignStaffRoleInput!): User!
+  createStaff(input: CreateUserInput!): StaffPrivateProfile!
+  updateStaff(userId: ID!, input: AdminUpdateUserInput!): StaffPrivateProfile!
+  assignStaffRole(input: AssignStaffRoleInput!): StaffPrivateProfile!
   assignStaffRoleWithinRestaurant(
     staffUserId: ID!
     roleId: ID!
     restaurantId: ID!
-  ): User!
+  ): StaffPrivateProfile!
   deleteStaff(userId: ID!): Boolean!
   setStaffEmploymentStatus(
     userId: ID!
     employmentStatus: EmploymentStatus!
-  ): User!
+  ): StaffPrivateProfile!
 
   createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
   createStaffShifts(

@@ -52,7 +52,7 @@ const ROLE_FIELDS = gql`
 `;
 
 const STAFF_ROLE_FIELDS = gql`
-  fragment RbacStaffRoleFields on User {
+  fragment RbacStaffRoleFields on StaffPrivateProfile {
     id
     fullName
     email

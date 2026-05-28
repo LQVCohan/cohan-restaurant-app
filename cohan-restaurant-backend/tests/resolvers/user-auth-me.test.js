@@ -28,15 +28,31 @@ describe('User resolvers integration', () => {
     await expect(UserQuery.me(null, {}, { user: null })).rejects.toThrow(GraphQLError);
   });
 
-  it('me returns populated user when authenticated', async () => {
-    const userDoc = { _id: 'u1', email: 'a@a.com', role: { slug: 'customer' } };
+  it('me returns sanitized populated user when authenticated', async () => {
+    const userDoc = {
+      _id: 'u1',
+      email: 'a@a.com',
+      role: { slug: 'customer' },
+      passwordHash: 'hash',
+      nationalId: 'secret-id',
+      bankAccountNumber: 'secret-bank',
+      noteInternal: 'hidden',
+      lastLoginIp: '127.0.0.1',
+      forcePasswordChange: true,
+    };
     modelMocks.User.findById.mockReturnValue({
       populate: () => ({ lean: async () => userDoc }),
     });
 
     const { UserQuery } = await import('../../graphql/resolvers/user/query.js');
     const result = await UserQuery.me(null, {}, { user: { id: '67a1f8f6a2df3b17f0c12345' } });
-    expect(result).toEqual(userDoc);
+    expect(result).toMatchObject({ id: 'u1', email: 'a@a.com', roleName: 'customer' });
+    expect(result.passwordHash).toBeUndefined();
+    expect(result.nationalId).toBeUndefined();
+    expect(result.bankAccountNumber).toBeUndefined();
+    expect(result.noteInternal).toBeUndefined();
+    expect(result.lastLoginIp).toBeUndefined();
+    expect(result.forcePasswordChange).toBeUndefined();
   });
 
   it('login normalizes username to lowercase before querying', async () => {
@@ -112,6 +128,38 @@ describe('User resolvers integration', () => {
     expect(typeof result.token).toBe('string');
   });
 
+
+  it('users returns sanitized admin list items', async () => {
+    const rawUsers = [{
+      _id: '67a1f8f6a2df3b17f0c12345',
+      email: 'admin-list@example.com',
+      role: { slug: 'staff' },
+      passwordHash: 'hash',
+      emailVerifyToken: 'token',
+      nationalId: 'identity',
+      bankAccountNumber: 'bank',
+      noteInternal: 'private',
+      lastLoginIp: '10.0.0.1',
+    }];
+    modelMocks.User.find = vi.fn(() => ({
+      populate: () => ({
+        sort: () => ({ lean: async () => rawUsers }),
+      }),
+    }));
+
+    const { UserQuery } = await import('../../graphql/resolvers/user/query.js');
+    const result = await UserQuery.users(null, {}, { user: { id: 'admin', roleName: 'admin' } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: '67a1f8f6a2df3b17f0c12345', email: 'admin-list@example.com' });
+    expect(result[0].passwordHash).toBeUndefined();
+    expect(result[0].emailVerifyToken).toBeUndefined();
+    expect(result[0].nationalId).toBeUndefined();
+    expect(result[0].bankAccountNumber).toBeUndefined();
+    expect(result[0].noteInternal).toBeUndefined();
+    expect(result[0].lastLoginIp).toBeUndefined();
+  });
+
   it('setUserStatus reloads the updated user with populated staff relations', async () => {
     const updatedUser = {
       _id: '67a1f8f6a2df3b17f0c12345',
@@ -146,6 +194,14 @@ describe('User resolvers integration', () => {
       { new: true },
     );
     expect(modelMocks.User.findById).toHaveBeenCalledWith(updatedUser._id);
-    expect(result).toEqual(hydratedUser);
+    expect(result).toMatchObject({
+      _id: updatedUser._id,
+      id: updatedUser._id,
+      status: "blocked",
+      role: { slug: "staff" },
+      roleName: "staff",
+      refRestaurants: [{ id: "r1", name: "Main branch" }],
+    });
+    expect(result.primaryRestaurant).toBeUndefined();
   });
 });

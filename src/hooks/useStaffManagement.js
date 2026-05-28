@@ -7,7 +7,7 @@ import { gql, useQuery, useLazyQuery, useMutation } from "@apollo/client";
  * ==========================================================================*/
 
 const STAFF_FIELDS = gql`
-  fragment StaffFields on User {
+  fragment StaffFields on StaffPrivateProfile {
     id
     fullName
     username
@@ -56,7 +56,6 @@ const STAFF_FIELDS = gql`
     isOnline
 
     lastLoginAt
-    lastLoginIp
     forcePasswordChange
 
     noteInternal
@@ -162,10 +161,12 @@ const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
 const MUTATION_SET_USER_STATUS = gql`
   mutation SetUserStatus($userId: ID!, $status: String!) {
     setUserStatus(userId: $userId, status: $status) {
-      ...StaffFields
+      id
+      status
+      roleName
+      updatedAt
     }
   }
-  ${STAFF_FIELDS}
 `;
 
 /* ============================================================================
