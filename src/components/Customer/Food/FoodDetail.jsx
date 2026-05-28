@@ -38,6 +38,7 @@ import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
 import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
+import { recordForYouItemInteraction } from "../../../utils/forYouBehaviorSignals";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -313,6 +314,7 @@ const FoodDetail = () => {
     updateQuantity,
     removeFromCart,
     clearCart,
+    removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
@@ -361,12 +363,12 @@ const FoodDetail = () => {
     fetchPolicy: "network-only",
   });
   const serverDish = foundDish || directDishData?.customerMenuItem || null;
-  const resolvedDish = preloadedDish || serverDish
+  const resolvedDish = useMemo(() => (preloadedDish || serverDish
     ? {
         ...(preloadedDish || {}),
         ...(serverDish || {}),
       }
-    : null;
+    : null), [preloadedDish, serverDish]);
   const { getPromotionForMenuItem, getPromotionLabel } = useActiveMenuPromotions(
     resolvedDish?.restaurantId,
     { skip: !resolvedDish?.restaurantId },
@@ -451,12 +453,27 @@ const FoodDetail = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAnimatingCart, setIsAnimatingCart] = useState(false);
   const [nowTick, setNowTick] = useState(Date.now());
+  const recordedForYouViewRef = useRef(null);
 
   useEffect(() => {
     if (resolvedDish?.thumbImage) {
       setMainImage(resolvedDish.thumbImage);
     }
   }, [resolvedDish]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isCustomer || !resolvedDish?.id) return;
+    const dishId = String(resolvedDish.id);
+    if (recordedForYouViewRef.current === dishId) return;
+    recordedForYouViewRef.current = dishId;
+    recordForYouItemInteraction(user?.id, {
+      id: resolvedDish.id,
+      name: resolvedDish.name,
+      restaurantId: resolvedDish.restaurantId || restaurantIdFromState,
+      restaurantName: resolvedDish.restaurantName,
+      categoryId: resolvedDish.categoryId || categoryIdFromState,
+    }, "view");
+  }, [categoryIdFromState, isAuthenticated, isCustomer, resolvedDish, restaurantIdFromState, user?.id]);
 
   useEffect(() => {
     if (!sizes.length) return;
@@ -711,6 +728,14 @@ const FoodDetail = () => {
         alert("Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thử lại.");
         return null;
       }
+
+      recordForYouItemInteraction(user?.id, {
+        id: resolvedDish.id,
+        name: resolvedDish.name,
+        restaurantId: resolvedDish.restaurantId || restaurant?.id,
+        restaurantName: restaurant?.name || resolvedDish.restaurantName,
+        categoryId: resolvedDish.categoryId,
+      }, "order_intent");
 
       addToCart({
         ...payload,

@@ -8,6 +8,7 @@ import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import { getFoodPreferenceDisplayReasons } from "@/utils/foodPreferenceDisplay";
+import { recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
 import {
   DIETS,
   ALLERGIES,
@@ -51,6 +52,7 @@ const ForYou = () => {
     warningItems: allWarningItems,
     fallbackItems: allFallbackItems,
     accessibleRestaurants,
+    hasBehaviorSignals,
   } = useForYouRecommendations({
     enabled: true,
     preferencesOverride: preferences,
@@ -94,8 +96,15 @@ const ForYou = () => {
     setPreferences((prev) => ({ ...prev, habits: { ...prev.habits, [field]: value } }));
   };
 
+  const personalizationSubtitle = hasBehaviorSignals
+    ? "Kết hợp khẩu vị của bạn và món bạn quan tâm gần đây."
+    : "Gợi ý dựa trên khẩu vị của bạn.";
+
   const handleViewDish = (item) => {
     if (!item?.id) return;
+    if (String(user?.roleName || "").toLowerCase() === "customer") {
+      recordForYouItemInteraction(user?.id, item, "click");
+    }
     navigate(
       buildFoodDetailPath(item.id, {
         restaurantId: item.restaurantId,
@@ -151,7 +160,7 @@ const ForYou = () => {
       <div className="content-scroll">
         <section className="foryou-hero">
           <h2>Món phù hợp với bạn</h2>
-          <p>Gợi ý dựa trên khẩu vị của bạn.</p>
+          <p>{personalizationSubtitle}</p>
         </section>
 
         {shouldShowPreferenceNudge && (
@@ -206,7 +215,7 @@ const ForYou = () => {
             <>
               {visibleRecommendedItems.length > 0 && (
                 <div className="recommendation-group">
-                  <p className="section-desc">Gợi ý dựa trên khẩu vị của bạn</p>
+                  <p className="section-desc">{personalizationSubtitle}</p>
                   <div className="recommendation-grid">{visibleRecommendedItems.map((item, index) => (<RecommendationCard key={`match-${item?.id || index}`} item={item} variant="match" onView={handleViewDish} />))}</div>
                 </div>
               )}
