@@ -650,3 +650,14 @@ Safety boundaries:
 - Provider prompt context is limited to sanitized `userSafeProfile`, `currentPage`, restaurants, menu preferences, recommended/menu items, coupons, current-user-owned order/reservation summaries, cart summary, and feature-map entries.
 - The bot refuses requests for other users' data, passwords, tokens, secrets, API keys, credentials, and manager-only data from non-manager/admin users.
 - If Gemini/OpenAI fails or returns invalid JSON, the endpoint returns deterministic fallback answers instead of crashing.
+
+## Phase 23: Query-aware feature search and guided customer workflows
+
+Phase 23 makes the chatbot search app features from the user's message, not only from the current route.
+
+- **Query-aware feature matching:** the frontend feature map now scores the current `pathname` plus natural-language query text against labels, descriptions, intents, and Vietnamese aliases. This lets questions such as “đặt bàn ở đâu”, “giỏ hàng đâu”, “xem đơn hàng ở đâu”, “tìm món ăn”, and “quản lý chatbot ở đâu” resolve to the right safe feature buttons.
+- **Role-aware feature safety:** manager-only entries remain hidden from customers in the frontend and are filtered again in the backend using the sanitized role before prompt context is built.
+- **Guided ordering workflow:** deterministic fallback responses explain the order flow from choosing a restaurant/menu through selecting a dish, choosing variants, adding to cart, reviewing the cart, and confirming checkout.
+- **Guided reservation workflow:** deterministic fallback responses explain selecting a restaurant, opening the table layout/booking area, choosing date/time, party size, table/room, confirming, and tracking status.
+- **Safe current-user Q&A:** identity, cart, order, reservation, coupon, restaurant, and menu answers use only sanitized context. Guests are told when login is required for cart/order/reservation data, and authenticated users only receive summaries scoped to their own account.
+- **Safe action model:** provider and fallback actions are constrained to `link`, `search`, `handoff`, and `openCart`; arbitrary JavaScript actions are not supported.

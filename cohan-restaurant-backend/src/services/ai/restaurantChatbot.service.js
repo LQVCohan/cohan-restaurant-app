@@ -25,8 +25,8 @@ const INTENTS = {
   identity: ["tôi là ai", "toi la ai", "biết tôi", "biet toi", "who am i", "tài khoản của tôi", "tai khoan cua toi"],
   navigation: ["ở đâu", "o dau", "mở trang", "mo trang", "đi tới", "di toi", "tìm ở đâu", "tim o dau", "chỗ nào", "cho nao"],
   cart: ["giỏ", "gio", "cart", "giỏ hàng", "gio hang"],
-  checkout: ["checkout", "thanh toán", "thanh toan", "trả tiền", "tra tien"],
-  reservationHelp: ["đặt bàn", "booking", "bàn", "giữ chỗ", "đặt chỗ", "reservation", "reserve"],
+  checkout: ["checkout", "thanh toán", "thanh toan", "trả tiền", "tra tien", "làm sao đặt món", "lam sao dat mon", "hướng dẫn đặt món", "huong dan dat mon", "tôi muốn gọi món", "toi muon goi mon", "cách thêm món", "cach them mon"],
+  reservationHelp: ["đặt bàn", "dat ban", "booking", "bàn", "ban", "giữ chỗ", "giu cho", "đặt chỗ", "dat cho", "bàn trống", "ban trong", "reservation", "reserve"],
   orderHelp: ["đơn", "order", "mã đơn", "trạng thái", "giao", "ship", "đơn hàng", "don hang"],
   profileHelp: ["hồ sơ", "ho so", "profile", "tài khoản", "tai khoan", "account"],
   managerFeatureHelp: ["doanh thu", "tồn kho", "nhân viên", "hiệu suất", "ca làm", "quản lý", "kpi", "manager", "dashboard"],
@@ -374,19 +374,39 @@ const normalizePageContext = (pageContext = {}, fallbackRestaurantId = null, use
   };
 };
 
+const SAFE_FEATURE_ACTION_TYPES = new Set(["link", "search", "handoff", "openCart"]);
+
+const isSafeInternalPath = (path = "") => {
+  const value = String(path || "").trim();
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return false;
+  if (/[\u0000-\u001F\u007F]/.test(value)) return false;
+  try {
+    const parsed = new URL(value, "https://cohan.local");
+    return parsed.origin === "https://cohan.local" && parsed.pathname.startsWith("/");
+  } catch {
+    return false;
+  }
+};
+
 const sanitizeFeatureMatches = (featureMatches = [], role = "guest") => (Array.isArray(featureMatches) ? featureMatches : [])
-  .slice(0, 6)
-  .map((item) => ({
-    key: String(item?.key || "").slice(0, 80),
-    label: String(item?.label || "").slice(0, 120),
-    intent: String(item?.intent || "navigation").slice(0, 80),
-    path: String(item?.path || item?.href || "").slice(0, 240),
-    actionType: String(item?.actionType || "link").slice(0, 40),
-    description: String(item?.description || "").slice(0, 240),
-    managerOnly: Boolean(item?.managerOnly),
-  }))
-  .filter((item) => item.key && item.label && (item.actionType === "openCart" || item.path.startsWith("/")))
-  .filter((item) => !item.managerOnly || ROLE_MANAGER_LIKE.has(String(role || "").toLowerCase()));
+  .slice(0, 12)
+  .map((item) => {
+    const actionType = String(item?.actionType || "link").slice(0, 40);
+    const path = String(item?.path || item?.href || "").trim().slice(0, 240);
+    return {
+      key: String(item?.key || "").slice(0, 80),
+      label: String(item?.label || "").slice(0, 120),
+      intent: String(item?.intent || "navigation").slice(0, 80),
+      path,
+      actionType,
+      description: String(item?.description || "").slice(0, 240),
+      managerOnly: Boolean(item?.managerOnly),
+    };
+  })
+  .filter((item) => item.key && item.label && SAFE_FEATURE_ACTION_TYPES.has(item.actionType))
+  .filter((item) => item.actionType === "openCart" || isSafeInternalPath(item.path))
+  .filter((item) => !item.managerOnly || ROLE_MANAGER_LIKE.has(String(role || "").toLowerCase()))
+  .slice(0, 6);
 
 const serializeCart = (cart, currency = "VND") => {
   const items = Array.isArray(cart?.items) ? cart.items : [];
@@ -677,7 +697,7 @@ const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuIt
 
 const isForbiddenAction = (action = {}) => {
   const text = `${action?.type || ""} ${action?.label || ""} ${action?.href || ""}`.toLowerCase();
-  return /checkout|payment|add_to_cart_candidate|add-to-cart|addtocart|thanh toán|thanh\s*toan/.test(text);
+  return /payment|add_to_cart_candidate|add-to-cart|addtocart/.test(text);
 };
 
 const normalizeAiAction = (action, allowedItemIds) => {
@@ -686,6 +706,7 @@ const normalizeAiAction = (action, allowedItemIds) => {
   if (!["link", "handoff", "search", "openCart"].includes(type)) return null;
   const href = String(action.href || "").trim();
   if (type !== "openCart" && !href) return null;
+  if (href && href.startsWith("/") && !isSafeInternalPath(href)) return null;
   if (href && !href.startsWith("/") && !/^https?:\/\//i.test(href)) return null;
   if (href.startsWith("/food/")) {
     const itemId = href.replace("/food/", "").split(/[/?#]/)[0];
@@ -753,7 +774,7 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
 
   const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
   const systemInstruction = [
-    "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+    "Bạn là AI App Assistant for Cohan Restaurant App, hỗ trợ nhà hàng, menu, đặt món, đặt bàn, hồ sơ, đơn hàng và điều hướng trong ứng dụng.",
     "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
     "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
     "Chỉ sử dụng userSafeProfile đã được làm sạch: displayName, email hiển thị, role/userType; không yêu cầu hoặc tiết lộ mật khẩu, token, secret, API key, internal id.",
@@ -765,7 +786,7 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
-    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
@@ -835,7 +856,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
   const model = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
   const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
   const prompt = [
-    "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+    "Bạn là AI App Assistant for Cohan Restaurant App, hỗ trợ nhà hàng, menu, đặt món, đặt bàn, hồ sơ, đơn hàng và điều hướng trong ứng dụng.",
     "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
     "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
     "Chỉ sử dụng userSafeProfile đã được làm sạch: displayName, email hiển thị, role/userType; không yêu cầu hoặc tiết lộ mật khẩu, token, secret, API key, internal id.",
@@ -847,7 +868,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
-    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
@@ -899,7 +920,7 @@ const fallbackQuickReplies = (intent) => {
 
 const fallbackActions = (context) => {
   const restaurantId = context.restaurants?.[0]?.id;
-  const topItemId = context.recommendedMenuItems?.[0]?.id || context.menuItems?.[0]?.id;
+  const topItemId = context.currentPage?.selectedMenuItem?.id || context.recommendedMenuItems?.[0]?.id || context.menuItems?.[0]?.id;
   const actions = [];
   for (const entry of context.matchedFeatureMapEntries || []) {
     if (entry.managerOnly && !ROLE_MANAGER_LIKE.has(String(context.userSafeProfile?.role || context.user?.role || "").toLowerCase())) continue;
@@ -947,16 +968,34 @@ const menuFallback = (context) => {
   return `Mình chỉ thấy các món sau trong dữ liệu hiện có:\n${lines.join("\n")}\nBạn muốn lọc theo ngân sách, món chay hay món ra nhanh không?`;
 };
 
+const orderingWorkflowFallback = () => [
+  "Bạn có thể đặt món theo các bước:",
+  "1. Chọn nhà hàng hoặc mở menu của nhà hàng.",
+  "2. Chọn món muốn đặt.",
+  "3. Chọn khẩu phần/tùy chọn nếu món có biến thể.",
+  "4. Bấm thêm vào giỏ hàng.",
+  "5. Mở giỏ hàng.",
+  "6. Kiểm tra số lượng, ghi chú và giá tạm tính.",
+  "7. Thanh toán/xác nhận đơn khi thông tin đã đúng.",
+].join("\n");
+
 const reservationFallback = (context) => {
   const restaurant = context.restaurants?.[0];
-  if (!restaurant) return "Bạn có thể chọn nhà hàng rồi vào mục đặt bàn để xem sơ đồ bàn, thời gian trống và chính sách đặt cọc.";
-  const hours = [restaurant.openingHours, restaurant.closingHours].filter(Boolean).join(" - ");
-  return `${restaurant.name} ${hours ? `thường hoạt động ${hours}. ` : ""}Bạn có thể đặt bàn bằng nút mở trang đặt bàn; hệ thống sẽ kiểm tra bàn trống, số khách và đặt cọc nếu có.`;
+  const prefix = restaurant ? `${restaurant.name}: ` : "Bạn hãy chọn nhà hàng trước. ";
+  return `${prefix}Bạn có thể đặt bàn theo các bước:
+1. Chọn nhà hàng.
+2. Vào khu vực đặt bàn/sơ đồ bàn.
+3. Chọn ngày giờ.
+4. Chọn số người.
+5. Chọn bàn/phòng nếu có.
+6. Xác nhận đặt bàn.
+7. Theo dõi trạng thái trong mục đặt bàn/đơn đặt chỗ.`;
 };
 
 const orderFallback = (context) => {
+  if (!context.userSafeProfile?.authenticated) return "Bạn hiện là khách. Vui lòng đăng nhập bằng tài khoản đã đặt đơn để mình kiểm tra đơn hàng thuộc về bạn.";
   const order = context.orders?.[0];
-  if (!order) return "Mình chưa tìm thấy đơn hàng phù hợp. Bạn hãy gửi mã đơn/mã theo dõi hoặc đăng nhập tài khoản đã đặt đơn để mình kiểm tra chính xác hơn.";
+  if (!order) return "Mình chưa tìm thấy đơn hàng phù hợp trong dữ liệu của bạn. Bạn hãy gửi mã đơn/mã theo dõi hoặc kiểm tra lại tài khoản đã đặt đơn.";
   const eta = order.estimatedDeliveryAt || order.estimatedReadyAt;
   return `Đơn ${order.orderCode} hiện ở trạng thái ${order.publicStatus || order.currentStatus || "đang xử lý"}. Thanh toán: ${order.paymentStatus || "chưa rõ"}. Tổng tiền: ${order.formattedTotal}.${eta ? ` Dự kiến: ${new Date(eta).toLocaleString("vi-VN")}.` : ""}`;
 };
@@ -982,13 +1021,18 @@ const identityFallback = (context) => {
 };
 
 const navigationFallback = (context) => {
+  if (context.intent === "checkout") return orderingWorkflowFallback(context);
+  if (context.intent === "cart") {
+    if (!context.userSafeProfile?.authenticated) return "Bạn hiện là khách. Hãy đăng nhập nếu muốn mình kiểm tra giỏ hàng đã lưu; bạn vẫn có thể mở giỏ hàng trên giao diện để xem các món trong phiên hiện tại.";
+    const cart = context.cartSummary;
+    if (cart?.totalQuantity) return `Giỏ hàng của bạn có ${cart.totalQuantity} món, tạm tính ${cart.formattedTotal}. Bạn có thể mở giỏ để kiểm tra số lượng, ghi chú rồi thanh toán/xác nhận đơn.`;
+    return "Giỏ hàng hiện chưa có món nào trong dữ liệu mình thấy. Bạn có thể mở menu, chọn món rồi thêm vào giỏ.";
+  }
   const entries = context.matchedFeatureMapEntries || [];
   if (entries.length) {
-    const lines = entries.slice(0, 3).map((entry) => `- ${entry.label}: ${entry.path}`).join("\n");
+    const lines = entries.slice(0, 3).map((entry) => `- ${entry.label}: ${entry.path || "mở bằng nút trong giao diện"}`).join("\n");
     return `Bạn có thể mở các mục sau trong ứng dụng:\n${lines}`;
   }
-  if (context.intent === "cart") return "Bạn có thể mở Giỏ hàng bằng nút giỏ hàng trên giao diện hoặc vào /cart để xem món đã chọn trước khi thanh toán.";
-  if (context.intent === "checkout") return "Để đặt món, hãy chọn món trong menu, thêm vào giỏ, mở Giỏ hàng rồi bấm thanh toán/checkout để xác nhận đơn.";
   if (context.intent === "profileHelp") return "Bạn có thể vào Hồ sơ/Tài khoản để xem thông tin cá nhân an toàn; đơn hàng ở /orders và đặt bàn ở khu vực Reservations/đặt bàn.";
   return "Mình có thể chỉ đường trong app: Trang chủ, nhà hàng, menu, món ăn, giỏ hàng, thanh toán, đơn hàng, đặt bàn, hồ sơ và hỗ trợ.";
 };
@@ -1361,6 +1405,8 @@ export const __testables = {
   callGemini,
   buildUserSafeProfile,
   normalizePageContext,
+  sanitizeFeatureMatches,
+  isSafeInternalPath,
   buildProviderPromptContext,
   shouldRefuseRequest,
 };
