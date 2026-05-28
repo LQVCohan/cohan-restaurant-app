@@ -33,12 +33,11 @@ const isStaffAccessRole = (roleName) => isStaffOperationalRole(roleName);
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
   query GetRestaurants($userId: ID!) {
-    restaurantsByUser(userId: $userId) {
+    refRestaurants(userId: $userId) {
       id
       name
-      location
       description
-      image
+      avatar
     }
   }
 `;
@@ -339,7 +338,7 @@ export const AuthProvider = ({ children }) => {
     variables: { userId: user?.id },
     skip: user?.roleName !== "customer",
     onCompleted: (urrData) => {
-      setRefRestaurant(urrData.restaurantsByUser || []);
+      setRefRestaurant(urrData.refRestaurants || []);
     },
   });
   useEffect(() => {
@@ -348,8 +347,8 @@ export const AuthProvider = ({ children }) => {
     }
   }, [urrError]);
   useEffect(() => {
-    if (urrData && urrData.restaurantsByUser) {
-      setRestaurants(urrData.restaurantsByUser);
+    if (urrData && urrData.refRestaurants) {
+      setRestaurants(urrData.refRestaurants);
     }
   }, [urrData]);
   // ✅ Lấy token từ storage khi khởi động

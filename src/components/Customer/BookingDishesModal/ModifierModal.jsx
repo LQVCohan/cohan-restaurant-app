@@ -12,17 +12,19 @@ import "./ModifierModal.scss";
  */
 const GET_MODIFIER_GROUPS = gql`
   query ModifierGroups($restaurantId: ID!, $search: String) {
-    modifierGroups(restaurantId: $restaurantId, search: $search) {
+    modifierGroups(filter: { restaurantId: $restaurantId, search: $search }) {
       id
       name
       selectionType # "single" | "multiple"
       required
-      appliesTo
       isActive
       options {
         id
         name
-        priceDelta
+        priceRule {
+          rule
+          amount
+        }
         isDefault
       }
     }
@@ -76,7 +78,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
       const chosen = selected[g.id] || [];
       chosen.forEach((opId) => {
         const op = g.options?.find((x) => String(x.id) === String(opId));
-        if (op) sum += Number(op.priceDelta || 0);
+        if (op) sum += Number(op.priceRule?.amount || 0);
       });
     });
 
@@ -129,9 +131,9 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
           optionId: op.id,
           groupName: g.name,
           optionName: op.name,
-          price: Number(op.priceDelta || 0),
+          price: Number(op.priceRule?.amount || 0),
         });
-        newModifiersPrice += Number(op.priceDelta || 0);
+        newModifiersPrice += Number(op.priceRule?.amount || 0);
       });
     });
 
@@ -216,13 +218,13 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
                         </div>
                         <div
                           className={`modifier-option__price ${
-                            Number(op.priceDelta) === 0 ? "free" : ""
+                            Number(op.priceRule?.amount) === 0 ? "free" : ""
                           }`}
                         >
-                          {Number(op.priceDelta) === 0
+                          {Number(op.priceRule?.amount) === 0
                             ? "Miễn phí"
-                            : (op.priceDelta > 0 ? "+" : "") +
-                              formatCurrency(Number(op.priceDelta))}
+                            : (op.priceRule?.amount > 0 ? "+" : "") +
+                              formatCurrency(Number(op.priceRule?.amount))}
                         </div>
                       </div>
                     );

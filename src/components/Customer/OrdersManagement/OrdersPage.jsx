@@ -109,11 +109,14 @@ const MY_RESERVATIONS = gql`
 `;
 
 const CANCEL_ORDER = gql`
-  mutation CancelOrder($id: ID!, $reason: String) {
-    cancelOrder(id: $id, reason: $reason) {
-      id
-      currentStatus
-      updatedAt
+  mutation CancelOrder($restaurantId: ID!, $orderId: ID!, $reason: String) {
+    cancelOrder(restaurantId: $restaurantId, orderId: $orderId, reason: $reason) {
+      success
+      order {
+        id
+        currentStatus
+        updatedAt
+      }
     }
   }
 `;
@@ -652,7 +655,7 @@ export default function OrdersPage() {
         actions.push({
           label: "Hủy đơn",
           variant: "danger",
-          onClick: () => setCancelTarget({ id: o.id, kind: "order" }),
+          onClick: () => setCancelTarget({ id: o.id, restaurantId: o.restaurantId, kind: "order" }),
         });
       }
       if (
@@ -954,7 +957,7 @@ export default function OrdersPage() {
           if (cancelTarget.kind === "reservation")
             await cancelReservationMutation({ variables: { id: cancelTarget.id } });
           else
-            await cancelOrderMutation({ variables: { id: cancelTarget.id, reason } });
+            await cancelOrderMutation({ variables: { orderId: cancelTarget.id, restaurantId: cancelTarget.restaurantId, reason } });
           setCancelTarget(null);
         }}
       />
