@@ -112,6 +112,19 @@ export const readForYouBehaviorSignals = (userId) => {
   }
 };
 
+export const clearForYouBehaviorSignals = (userId) => {
+  const storage = getSafeStorage();
+  if (!storage) return { ...DEFAULT_SIGNALS };
+
+  try {
+    storage.removeItem(getForYouBehaviorStorageKey(userId));
+  } catch {
+    // keep FOR YOU resilient
+  }
+
+  return { ...DEFAULT_SIGNALS };
+};
+
 export const recordForYouItemInteraction = (userId, item, type = "view") => {
   const interactionType = INTERACTION_TYPES.has(type) ? type : "view";
   const signalItem = buildSignalItem(item, interactionType);

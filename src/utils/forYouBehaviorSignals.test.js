@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_SIGNAL_ITEMS,
+  clearForYouBehaviorSignals,
   getForYouBehaviorScore,
   getForYouBehaviorStorageKey,
   hasForYouBehaviorSignals,
@@ -77,6 +78,58 @@ describe("forYouBehaviorSignals", () => {
     expect(getForYouBehaviorScore(makeItem(), signals)).toBe(3);
     expect(getForYouBehaviorScore(makeItem({ id: "dish-2" }), signals)).toBe(2);
     expect(getForYouBehaviorScore(makeItem({ id: "dish-3", restaurantId: "restaurant-2", categoryId: "category-2" }), signals)).toBe(0);
+  });
+
+  it("clears behavior signals for the selected user", () => {
+    recordForYouItemInteraction("user-1", makeItem(), "click");
+
+    const clearedSignals = clearForYouBehaviorSignals("user-1");
+
+    expect(clearedSignals).toEqual({
+      viewedItems: [],
+      clickedItems: [],
+      restaurantCounts: {},
+      categoryCounts: {},
+      itemCounts: {},
+      updatedAt: null,
+    });
+    expect(readForYouBehaviorSignals("user-1")).toEqual(clearedSignals);
+  });
+
+  it("only clears the user-scoped behavior key", () => {
+    recordForYouItemInteraction("user-1", makeItem({ id: "dish-user-1" }), "click");
+    recordForYouItemInteraction("user-2", makeItem({ id: "dish-user-2" }), "click");
+
+    clearForYouBehaviorSignals("user-1");
+
+    expect(window.localStorage.getItem(getForYouBehaviorStorageKey("user-1"))).toBeNull();
+    expect(window.localStorage.getItem(getForYouBehaviorStorageKey("user-2"))).toBeTruthy();
+    expect(hasForYouBehaviorSignals(readForYouBehaviorSignals("user-2"))).toBe(true);
+  });
+
+  it("does not crash when clearing while storage is unavailable", () => {
+    const storageSpy = vi.spyOn(window.localStorage.__proto__, "setItem").mockImplementation(() => {
+      throw new Error("storage disabled");
+    });
+
+    expect(() => clearForYouBehaviorSignals("user-1")).not.toThrow();
+    expect(clearForYouBehaviorSignals("user-1")).toEqual({
+      viewedItems: [],
+      clickedItems: [],
+      restaurantCounts: {},
+      categoryCounts: {},
+      itemCounts: {},
+      updatedAt: null,
+    });
+
+    storageSpy.mockRestore();
+  });
+
+  it("reports no behavior signals after clearing", () => {
+    recordForYouItemInteraction("user-1", makeItem(), "view");
+    clearForYouBehaviorSignals("user-1");
+
+    expect(hasForYouBehaviorSignals(readForYouBehaviorSignals("user-1"))).toBe(false);
   });
 
   it("does not crash when localStorage is unavailable", () => {

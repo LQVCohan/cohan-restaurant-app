@@ -8,7 +8,7 @@ import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import { getFoodPreferenceDisplayReasons } from "@/utils/foodPreferenceDisplay";
-import { recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
+import { clearForYouBehaviorSignals, recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
 import {
   DIETS,
   ALLERGIES,
@@ -45,6 +45,8 @@ const ForYou = () => {
   const { isAuthenticated, user } = useContext(AuthContext) || {};
   const { preferences, setPreferences, loading, error, saving, savePreferences } = useFoodPreferences();
   const [saveMessage, setSaveMessage] = useState("");
+  const [clearMessage, setClearMessage] = useState("");
+  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
   const {
     loading: recommendationLoading,
     error: recommendationError,
@@ -53,6 +55,7 @@ const ForYou = () => {
     fallbackItems: allFallbackItems,
     accessibleRestaurants,
     hasBehaviorSignals,
+    refreshBehaviorSignals,
   } = useForYouRecommendations({
     enabled: true,
     preferencesOverride: preferences,
@@ -78,7 +81,7 @@ const ForYou = () => {
   const completion = useMemo(() => getFoodPreferenceCompletion(preferences), [preferences]);
   const shouldShowPreferenceNudge = Boolean(
     isAuthenticated &&
-      String(user?.roleName || "").toLowerCase() === "customer" &&
+      isCustomer &&
       !loading &&
       completion.shouldNudge,
   );
@@ -102,7 +105,7 @@ const ForYou = () => {
 
   const handleViewDish = (item) => {
     if (!item?.id) return;
-    if (String(user?.roleName || "").toLowerCase() === "customer") {
+    if (isCustomer) {
       recordForYouItemInteraction(user?.id, item, "click");
     }
     navigate(
@@ -134,6 +137,12 @@ const ForYou = () => {
     } catch (err) {
       setSaveMessage(`Lưu thất bại: ${err.message}`);
     }
+  };
+
+  const handleClearRecentSuggestionData = () => {
+    clearForYouBehaviorSignals(user?.id);
+    refreshBehaviorSignals?.();
+    setClearMessage("Đã xóa dữ liệu gợi ý gần đây trên thiết bị này.");
   };
 
   if (loading) {
@@ -280,6 +289,20 @@ const ForYou = () => {
         </section>
 
         <section className="section preview-section"><h3>Xem trước ghi chú đơn hàng</h3><div className="preview-box"><span className="label">Note:</span><span className="text">{buildFoodPreferenceNote(preferences)}</span></div><p className="section-desc">Hồ sơ này sẽ được dùng để ưu tiên gợi ý món phù hợp.</p></section>
+        {isAuthenticated && isCustomer && (
+          <section className="section recent-suggestion-data" aria-labelledby="recent-suggestion-data-title">
+            <div>
+              <h2 className="section-title" id="recent-suggestion-data-title">Dữ liệu gợi ý gần đây</h2>
+              <p className="section-desc">
+                Chúng tôi dùng các món bạn đã xem hoặc quan tâm gần đây trên thiết bị này để sắp xếp gợi ý phù hợp hơn.
+              </p>
+              {clearMessage && <p className="recent-suggestion-data__message" aria-live="polite">{clearMessage}</p>}
+            </div>
+            <button type="button" className="recent-suggestion-data__clear" onClick={handleClearRecentSuggestionData}>
+              Xóa dữ liệu gợi ý gần đây
+            </button>
+          </section>
+        )}
       </div>
 
       <footer className="footer-action">

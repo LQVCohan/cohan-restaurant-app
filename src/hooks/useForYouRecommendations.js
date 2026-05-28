@@ -137,13 +137,17 @@ export default function useForYouRecommendations({
     fetchRecommendations();
   }, [fetchRecommendations]);
 
-  useEffect(() => {
-    if (!enabled || !isAuthenticated || !isCustomer) {
-      setBehaviorSignals(readForYouBehaviorSignals(null));
-      return;
-    }
-    setBehaviorSignals(readForYouBehaviorSignals(user?.id));
+  const refreshBehaviorSignals = useCallback(() => {
+    const nextSignals = enabled && isAuthenticated && isCustomer
+      ? readForYouBehaviorSignals(user?.id)
+      : readForYouBehaviorSignals(null);
+    setBehaviorSignals(nextSignals);
+    return nextSignals;
   }, [enabled, isAuthenticated, isCustomer, user?.id]);
+
+  useEffect(() => {
+    refreshBehaviorSignals();
+  }, [refreshBehaviorSignals]);
 
   const hasBehaviorSignals = useMemo(() => hasForYouBehaviorSignals(behaviorSignals), [behaviorSignals]);
 
@@ -225,5 +229,6 @@ export default function useForYouRecommendations({
     hasBehaviorSignals,
     preferences: effectivePreferences,
     refetch: fetchRecommendations,
+    refreshBehaviorSignals,
   };
 }
