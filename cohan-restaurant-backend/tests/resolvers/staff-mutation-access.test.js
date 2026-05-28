@@ -117,6 +117,36 @@ describe("staff mutation access hardening", () => {
     ).rejects.toThrow("primaryRestaurantId has been removed; use restaurantForStaff");
   });
 
+  it("setStaffEmploymentStatus returns a sanitized StaffPrivateProfile", async () => {
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const doc = makeStaffDoc({
+      _id: "staff-1",
+      fullName: "Staff One",
+      restaurantForStaff: "r1",
+      baseSalary: 500,
+      passwordHash: "hidden",
+    });
+    modelMocks.Staff.findById = vi
+      .fn()
+      .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
+      .mockResolvedValueOnce(doc);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    const result = await mutation.setStaffEmploymentStatus(
+      null,
+      { userId: "staff-1", employmentStatus: "ON_LEAVE" },
+      { user: { id: "u1" } },
+    );
+
+    expect(result).toMatchObject({
+      id: "staff-1",
+      fullName: "Staff One",
+      baseSalary: 500,
+    });
+    expect(result.passwordHash).toBeUndefined();
+    expect(doc.save).toHaveBeenCalled();
+  });
+
   it("deleteStaff denied before save when scope forbidden", async () => {
     const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
     const doc = makeStaffDoc({ _id: "staff-1" });

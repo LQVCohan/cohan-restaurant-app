@@ -137,8 +137,39 @@ export function sanitizeAdminUserListItem(user) {
   });
 }
 
+function notFound(message = "Staff not found") {
+  return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
+}
+
+function idEquals(left, right) {
+  const a = stringId(left);
+  const b = stringId(right);
+  return Boolean(a && b && a === b);
+}
+
+export function staffBelongsToRestaurant(user, restaurantId) {
+  if (!restaurantId) return true;
+  const source = toPlainObject(user);
+  if (!source) return false;
+  if (idEquals(source.restaurantForStaff, restaurantId)) return true;
+  if (Array.isArray(source.refRestaurants)) {
+    return source.refRestaurants.some((restaurant) => idEquals(restaurant, restaurantId));
+  }
+  return false;
+}
+
+export function resolveStaffPrivateProfileScope(user, restaurantId) {
+  const source = toPlainObject(user);
+  if (!source) return null;
+  if (restaurantId) {
+    if (!staffBelongsToRestaurant(source, restaurantId)) throw notFound();
+    return restaurantId;
+  }
+  return source.restaurantForStaff || null;
+}
+
 export async function authorizeStaffPrivateProfile(ctx, user, restaurantId) {
-  const targetRestaurantId = restaurantId || user?.restaurantForStaff;
+  const targetRestaurantId = resolveStaffPrivateProfileScope(user, restaurantId);
   const hasRestaurantScope = Boolean(targetRestaurantId);
 
   if (hasRestaurantScope) {
@@ -154,8 +185,10 @@ export async function sanitizeStaffPrivateProfile(user, ctx, { restaurantId, ski
   const source = toPlainObject(user);
   if (!source) return null;
 
+  const targetRestaurantId = resolveStaffPrivateProfileScope(source, restaurantId);
+
   if (!skipAuthorization) {
-    await authorizeStaffPrivateProfile(ctx, source, restaurantId);
+    await authorizeStaffPrivateProfile(ctx, source, targetRestaurantId);
   }
 
   return pickDefined({

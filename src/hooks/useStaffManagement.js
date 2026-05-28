@@ -161,10 +161,12 @@ const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
 const MUTATION_SET_USER_STATUS = gql`
   mutation SetUserStatus($userId: ID!, $status: String!) {
     setUserStatus(userId: $userId, status: $status) {
-      ...StaffFields
+      id
+      status
+      roleName
+      updatedAt
     }
   }
-  ${STAFF_FIELDS}
 `;
 
 /* ============================================================================

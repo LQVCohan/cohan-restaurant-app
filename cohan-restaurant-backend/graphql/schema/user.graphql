@@ -3136,17 +3136,17 @@ type Mutation {
 
   createStaff(input: CreateUserInput!): StaffPrivateProfile!
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): StaffPrivateProfile!
-  assignStaffRole(input: AssignStaffRoleInput!): User!
+  assignStaffRole(input: AssignStaffRoleInput!): StaffPrivateProfile!
   assignStaffRoleWithinRestaurant(
     staffUserId: ID!
     roleId: ID!
     restaurantId: ID!
-  ): User!
+  ): StaffPrivateProfile!
   deleteStaff(userId: ID!): Boolean!
   setStaffEmploymentStatus(
     userId: ID!
     employmentStatus: EmploymentStatus!
-  ): User!
+  ): StaffPrivateProfile!
 
   createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
   createStaffShifts(

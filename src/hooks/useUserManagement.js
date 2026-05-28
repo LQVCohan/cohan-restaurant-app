@@ -207,7 +207,6 @@ export const GET_CUSTOMERS_FOR_TABLE_INFO = gql`
       name: fullName
       phone
       email
-      note: noteInternal
     }
   }
 `;

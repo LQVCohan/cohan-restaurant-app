@@ -17,6 +17,7 @@ import {
   sanitizeAdminUserListItem,
   sanitizeAuthUser,
   sanitizeCustomerListUser,
+  resolveStaffPrivateProfileScope,
   sanitizeStaffPrivateProfile,
 } from "../../../src/security/userDtos.js";
 
@@ -397,7 +398,8 @@ export const UserQuery = {
       throw new GraphQLError("Staff not found", { extensions: { code: "NOT_FOUND" } });
     }
 
-    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId });
+    const targetRestaurantId = resolveStaffPrivateProfileScope(staff, restaurantId);
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: targetRestaurantId });
   },
   async customerExportRows(
     _,

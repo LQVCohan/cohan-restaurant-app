@@ -1177,22 +1177,26 @@ function getBatchErrorMessage(error) {
 const mutationResolvers = {
   assignStaffRole: async (_, { input }, ctx) => {
     requireAuth(ctx);
-    return assignStaffRoleWithinRestaurant({
+    const staff = await assignStaffRoleWithinRestaurant({
       actor: ctx.user,
       staffUserId: input.staffUserId,
       roleId: input.roleId,
       restaurantId: input.restaurantId,
+      ctx,
     });
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: input.restaurantId, skipAuthorization: true });
   },
 
   assignStaffRoleWithinRestaurant: async (_, args, ctx) => {
     requireAuth(ctx);
-    return assignStaffRoleWithinRestaurant({
+    const staff = await assignStaffRoleWithinRestaurant({
       actor: ctx.user,
       staffUserId: args.staffUserId,
       roleId: args.roleId,
       restaurantId: args.restaurantId,
+      ctx,
     });
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: args.restaurantId, skipAuthorization: true });
   },
 
   // =========================
@@ -1562,7 +1566,7 @@ const mutationResolvers = {
       },
     });
 
-    return staff;
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
   },
 
   publishSchedule: async (_, { input }, ctx) => {
