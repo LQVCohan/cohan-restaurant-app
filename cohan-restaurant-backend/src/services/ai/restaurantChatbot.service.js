@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import process from "process";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit, AI_CHATBOT_RATE_LIMIT_CODE, AI_CHATBOT_RATE_LIMIT_MESSAGE } from "./restaurantChatbotRateLimit.service.js";
 import {
+  Cart,
   Coupon,
   MenuItem,
   Order,
@@ -21,12 +22,17 @@ const MAX_HISTORY_MESSAGES = 8;
 const MAX_KNOWLEDGE_CHARS = 1800;
 
 const INTENTS = {
-  menu: ["món", "menu", "ăn", "đồ ăn", "giá", "recommend", "gợi ý", "ngon", "bán chạy"],
-  reservation: ["đặt bàn", "booking", "bàn", "giữ chỗ", "đặt chỗ", "reservation"],
-  order: ["đơn", "order", "mã đơn", "trạng thái", "giao", "ship", "thanh toán"],
-  promotion: ["coupon", "voucher", "mã giảm", "khuyến mãi", "ưu đãi", "giảm giá"],
-  manager: ["doanh thu", "tồn kho", "nhân viên", "hiệu suất", "ca làm", "quản lý", "kpi"],
+  identity: ["tôi là ai", "toi la ai", "biết tôi", "biet toi", "who am i", "tài khoản của tôi", "tai khoan cua toi"],
+  navigation: ["ở đâu", "o dau", "mở trang", "mo trang", "đi tới", "di toi", "tìm ở đâu", "tim o dau", "chỗ nào", "cho nao"],
+  cart: ["giỏ", "gio", "cart", "giỏ hàng", "gio hang"],
+  checkout: ["checkout", "thanh toán", "thanh toan", "trả tiền", "tra tien"],
+  reservationHelp: ["đặt bàn", "booking", "bàn", "giữ chỗ", "đặt chỗ", "reservation", "reserve"],
+  orderHelp: ["đơn", "order", "mã đơn", "trạng thái", "giao", "ship", "đơn hàng", "don hang"],
+  profileHelp: ["hồ sơ", "ho so", "profile", "tài khoản", "tai khoan", "account"],
+  managerFeatureHelp: ["doanh thu", "tồn kho", "nhân viên", "hiệu suất", "ca làm", "quản lý", "kpi", "manager", "dashboard"],
   support: ["hỗ trợ", "liên hệ", "khiếu nại", "phàn nàn", "gặp nhân viên", "support"],
+  menu: ["món", "menu", "ăn", "đồ ăn", "giá", "recommend", "gợi ý", "ngon", "bán chạy"],
+  promotion: ["coupon", "voucher", "mã giảm", "khuyến mãi", "ưu đãi", "giảm giá"],
 };
 const HANDOFF_KEYWORDS = [
   "gặp nhân viên",
@@ -68,6 +74,7 @@ const STOP_WORDS = new Set([
 ]);
 
 const ROLE_MANAGER_LIKE = new Set(["admin", "manager", "hr", "accountant"]);
+const INTENT_ALIASES = { reservation: "reservationHelp", order: "orderHelp", manager: "managerFeatureHelp" };
 
 const toObjectId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -333,6 +340,66 @@ const serializeReservation = (reservation, currency = "VND") => ({
   changeRequestStatus: reservation.changeRequestStatus,
 });
 
+
+
+const publicRole = (user) => user ? (roleSlug(user) || user?.roleName || user?.userType || "customer") : "guest";
+
+const buildUserSafeProfile = (user) => {
+  if (!user) return { authenticated: false, displayName: "Khách", role: "guest", summary: "Người dùng hiện là khách chưa đăng nhập." };
+  const displayName = String(user.fullName || user.name || user.displayName || user.email || "Người dùng").slice(0, 120);
+  const email = user.email ? String(user.email).slice(0, 160) : null;
+  const role = publicRole(user);
+  return {
+    authenticated: true,
+    displayName,
+    email,
+    role,
+    userType: String(user.userType || role || "customer"),
+    summary: `${displayName}${email ? ` (${email})` : ""}, vai trò ${role || "customer"}.`,
+  };
+};
+
+const normalizePageContext = (pageContext = {}, fallbackRestaurantId = null, user = null) => {
+  const safe = pageContext && typeof pageContext === "object" ? pageContext : {};
+  const selected = safe.selectedMenuItem && typeof safe.selectedMenuItem === "object" ? safe.selectedMenuItem : null;
+  return {
+    pathname: String(safe.pathname || "").slice(0, 240),
+    restaurantId: String(safe.restaurantId || fallbackRestaurantId || "").slice(0, 80) || null,
+    selectedMenuItem: selected ? {
+      id: String(selected.id || selected.menuItemId || "").slice(0, 80),
+      name: String(selected.name || selected.label || "").slice(0, 160),
+      restaurantId: String(selected.restaurantId || safe.restaurantId || fallbackRestaurantId || "").slice(0, 80) || null,
+    } : null,
+    userRole: String(safe.userRole || publicRole(user) || "guest").slice(0, 80),
+  };
+};
+
+const sanitizeFeatureMatches = (featureMatches = [], role = "guest") => (Array.isArray(featureMatches) ? featureMatches : [])
+  .slice(0, 6)
+  .map((item) => ({
+    key: String(item?.key || "").slice(0, 80),
+    label: String(item?.label || "").slice(0, 120),
+    intent: String(item?.intent || "navigation").slice(0, 80),
+    path: String(item?.path || item?.href || "").slice(0, 240),
+    actionType: String(item?.actionType || "link").slice(0, 40),
+    description: String(item?.description || "").slice(0, 240),
+    managerOnly: Boolean(item?.managerOnly),
+  }))
+  .filter((item) => item.key && item.label && (item.actionType === "openCart" || item.path.startsWith("/")))
+  .filter((item) => !item.managerOnly || ROLE_MANAGER_LIKE.has(String(role || "").toLowerCase()));
+
+const serializeCart = (cart, currency = "VND") => {
+  const items = Array.isArray(cart?.items) ? cart.items : [];
+  const totalQuantity = items.reduce((sum, item) => sum + (Number(item?.quantity) || 0), 0);
+  const total = items.reduce((sum, item) => sum + (Number(item?.price) || 0) * (Number(item?.quantity) || 0), 0);
+  return {
+    status: cart?.status || "active",
+    totalQuantity,
+    formattedTotal: formatCurrency(total, currency),
+    items: items.slice(0, 5).map((item) => ({ name: item.name, quantity: item.quantity, price: item.price, formattedPrice: formatCurrency(item.price, currency), restaurantId: item.restaurantId ? String(item.restaurantId) : null })),
+  };
+};
+
 const classifyIntent = (message) => {
   const raw = asLower(message);
   let best = { intent: "general", score: 0 };
@@ -340,7 +407,7 @@ const classifyIntent = (message) => {
     const score = keywords.reduce((sum, keyword) => sum + (raw.includes(keyword) ? 1 : 0), 0);
     if (score > best.score) best = { intent, score };
   });
-  return best.intent;
+  return INTENT_ALIASES[best.intent] || best.intent;
 };
 const shouldSuggestHandoff = ({ message, intent, confidence, isFallback, threshold = 0.6 }) => {
   const raw = asLower(message);
@@ -480,20 +547,21 @@ const fetchOrders = async ({ restaurantId, message, user }) => {
   const code = extractLookupCode(message);
   const rid = toObjectId(restaurantId);
   const uid = toObjectId(user?.id || user?._id);
-  const filter = {};
+  if (!uid) return [];
+  const filter = { userId: uid };
   if (rid) filter.restaurantId = rid;
-  if (code) {
-    filter.$or = [{ orderCode: code }, { trackingCode: code }, { trackingToken: code }];
-  } else if (uid && !isManagerLike(user)) {
-    filter.userId = uid;
-  } else if (!isManagerLike(user)) {
-    return [];
-  }
+  if (code) filter.$or = [{ orderCode: code }, { trackingCode: code }];
 
   return Order.find(filter)
     .sort({ createdAt: -1 })
     .limit(code ? 3 : 5)
     .lean();
+};
+
+const fetchCart = async ({ user }) => {
+  const uid = toObjectId(user?.id || user?._id);
+  if (!uid) return null;
+  return Cart.findOne({ userId: uid, status: "active" }).sort({ updatedAt: -1 }).lean();
 };
 
 const fetchReservations = async ({ restaurantId, message, user }) => {
@@ -502,9 +570,9 @@ const fetchReservations = async ({ restaurantId, message, user }) => {
   const uid = toObjectId(user?.id || user?._id);
   const filter = {};
   if (rid) filter.restaurantId = rid;
+  if (!uid) return [];
+  filter.userId = uid;
   if (code) filter.orderCode = code;
-  else if (uid) filter.userId = uid;
-  else return [];
 
   return Reservation.find(filter)
     .sort({ timeTo: -1, createdAt: -1 })
@@ -525,32 +593,35 @@ const buildKnowledgePrompt = (knowledgeItems = []) => {
   return lines;
 };
 
-const buildContext = async ({ message, restaurantId, user }) => {
+const buildContext = async ({ message, restaurantId, user, pageContext = {} }) => {
   const intent = classifyIntent(message);
   const menuPreferences = extractMenuPreferences(message);
   const isMenuAssistant = isMenuAssistantRequest(message, intent, menuPreferences);
-  const restaurants = await fetchRestaurants({ restaurantId, message });
+  const currentPage = normalizePageContext(pageContext, restaurantId, user);
+  const effectiveRestaurantId = restaurantId || currentPage.restaurantId;
+  const restaurants = await fetchRestaurants({ restaurantId: effectiveRestaurantId, message });
   const primaryRestaurant = restaurants[0] || null;
   const currency = primaryRestaurant?.defaultCurrency || "VND";
 
-  const [menuItems, coupons, orders, reservations] = await Promise.all([
-    fetchMenuItems({ restaurantId: restaurantId || primaryRestaurant?._id, message, limit: isMenuAssistant && (restaurantId || primaryRestaurant?._id) ? 30 : 8 }),
-    fetchCoupons({ restaurantId: restaurantId || primaryRestaurant?._id }),
-    fetchOrders({ restaurantId: restaurantId || primaryRestaurant?._id, message, user }),
-    fetchReservations({ restaurantId: restaurantId || primaryRestaurant?._id, message, user }),
+  const [menuItems, coupons, orders, reservations, cart] = await Promise.all([
+    fetchMenuItems({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, limit: isMenuAssistant && (effectiveRestaurantId || primaryRestaurant?._id) ? 30 : 8 }),
+    fetchCoupons({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id }),
+    fetchOrders({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, user }),
+    fetchReservations({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, user }),
+    fetchCart({ user }),
   ]);
 
   const serializedMenuItems = menuItems.map((item) => serializeMenuItem(item, currency));
   const recommendedMenuItems = rankMenuRecommendations(serializedMenuItems, menuPreferences, 10);
+  const userSafeProfile = buildUserSafeProfile(user);
+  const matchedFeatureMapEntries = sanitizeFeatureMatches(pageContext?.featureMatches || [], currentPage.userRole || userSafeProfile.role);
   return {
     intent,
-    user: user
-      ? {
-          id: String(user.id || user._id || ""),
-          name: user.fullName || user.email || "Người dùng",
-          role: roleSlug(user) || "guest",
-        }
-      : { role: "guest" },
+    user: userSafeProfile,
+    userSafeProfile,
+    currentPage,
+    matchedFeatureMapEntries,
+    cartSummary: cart ? serializeCart(cart, currency) : null,
     restaurants: restaurants.map(serializeRestaurant),
     menuItems: (isMenuAssistant ? recommendedMenuItems : serializedMenuItems).slice(0, 10),
     recommendedMenuItems: recommendedMenuItems.slice(0, 10),
@@ -611,17 +682,18 @@ const isForbiddenAction = (action = {}) => {
 
 const normalizeAiAction = (action, allowedItemIds) => {
   if (!action || isForbiddenAction(action)) return null;
+  const type = String(action.type || "link").trim();
+  if (!["link", "handoff", "search", "openCart"].includes(type)) return null;
   const href = String(action.href || "").trim();
-  if (!href) return null;
+  if (type !== "openCart" && !href) return null;
+  if (href && !href.startsWith("/") && !/^https?:\/\//i.test(href)) return null;
   if (href.startsWith("/food/")) {
     const itemId = href.replace("/food/", "").split(/[/?#]/)[0];
     if (!allowedItemIds.has(itemId)) return null;
   }
-  const type = String(action.type || "link").trim();
-  if (!["link", "handoff", "search"].includes(type)) return null;
   return {
     type,
-    label: String(action.label || "").trim() || "Mở liên kết",
+    label: String(action.label || "").trim() || (type === "openCart" ? "Mở giỏ hàng" : "Mở liên kết"),
     href,
   };
 };
@@ -656,6 +728,22 @@ const normalizeAiResult = (parsed, context) => {
   };
 };
 
+
+const buildProviderPromptContext = (context = {}) => ({
+  userSafeProfile: context.userSafeProfile || context.user || { authenticated: false, role: "guest" },
+  currentPage: context.currentPage || {},
+  restaurants: context.restaurants?.slice(0, 2) || [],
+  menuPreferences: context.menuPreferences || {},
+  recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8) || [],
+  menuItems: context.menuItems?.slice(0, 8) || [],
+  coupons: context.coupons?.slice(0, 3) || [],
+  cartSummary: context.cartSummary || null,
+  orders: context.orders?.slice(0, 5) || [],
+  reservations: context.reservations?.slice(0, 5) || [],
+  matchedFeatureMapEntries: context.matchedFeatureMapEntries?.slice(0, 6) || [],
+  intent: context.intent,
+});
+
 const callGemini = async ({ message, context, history, knowledgeItems = [] }) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -668,6 +756,9 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
     "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
     "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+    "Chỉ sử dụng userSafeProfile đã được làm sạch: displayName, email hiển thị, role/userType; không yêu cầu hoặc tiết lộ mật khẩu, token, secret, API key, internal id.",
+    "Chỉ trả lời đơn hàng/đặt bàn trong CONTEXT.orders và CONTEXT.reservations vì đó là dữ liệu thuộc người dùng hiện tại.",
+    "Từ chối dữ liệu người dùng khác và dữ liệu quản lý nếu userSafeProfile.role không phải manager/admin.",
     "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
     "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
@@ -676,14 +767,7 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
     "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
-    `CONTEXT: ${JSON.stringify({
-      restaurants: context.restaurants?.slice(0, 1),
-      menuPreferences: context.menuPreferences,
-      recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
-      menuItems: context.menuItems?.slice(0, 8),
-      coupons: context.coupons?.slice(0, 3),
-      intent: context.intent,
-    })}`,
+    `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
   ].join("\n");
 
@@ -754,6 +838,9 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
     "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
     "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+    "Chỉ sử dụng userSafeProfile đã được làm sạch: displayName, email hiển thị, role/userType; không yêu cầu hoặc tiết lộ mật khẩu, token, secret, API key, internal id.",
+    "Chỉ trả lời đơn hàng/đặt bàn trong CONTEXT.orders và CONTEXT.reservations vì đó là dữ liệu thuộc người dùng hiện tại.",
+    "Từ chối dữ liệu người dùng khác và dữ liệu quản lý nếu userSafeProfile.role không phải manager/admin.",
     "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
     "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
@@ -762,14 +849,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
     "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
-    `CONTEXT: ${JSON.stringify({
-      restaurants: context.restaurants?.slice(0, 1),
-      menuPreferences: context.menuPreferences,
-      recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
-      menuItems: context.menuItems?.slice(0, 8),
-      coupons: context.coupons?.slice(0, 3),
-      intent: context.intent,
-    })}`,
+    `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
   ].join("\n");
 
@@ -804,10 +884,14 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
 const fallbackQuickReplies = (intent) => {
   const byIntent = {
     menu: ["Gợi ý combo cho 2 người", "Món dưới 100k", "Món bán chạy", "Món chay"],
-    reservation: ["Tôi muốn đặt bàn", "Chính sách đặt cọc", "Xem sơ đồ bàn"],
-    order: ["Kiểm tra đơn hàng", "Tôi muốn thanh toán", "Gọi nhân viên"],
+    reservationHelp: ["Tôi muốn đặt bàn", "Chính sách đặt cọc", "Xem sơ đồ bàn"],
+    cart: ["Mở giỏ hàng", "Cách thanh toán", "Gợi ý món thêm"],
+    checkout: ["Cách thanh toán", "Mở giỏ hàng", "Kiểm tra đơn"],
+    orderHelp: ["Kiểm tra đơn hàng", "Đơn hàng của tôi", "Gọi nhân viên"],
+    profileHelp: ["Mở hồ sơ", "Đơn hàng của tôi", "Đặt bàn của tôi"],
+    navigation: ["Mở giỏ hàng", "Đơn hàng ở đâu", "Hồ sơ ở đâu"],
     promotion: ["Mã giảm giá hiện có", "Điều kiện áp dụng", "Gợi ý combo"],
-    manager: ["Tóm tắt vận hành", "Cảnh báo tồn kho", "Hiệu suất nhân viên"],
+    managerFeatureHelp: ["Tóm tắt vận hành", "Cảnh báo tồn kho", "Hiệu suất nhân viên"],
     support: ["Gặp nhân viên hỗ trợ", "Tôi có khiếu nại", "Hướng dẫn sử dụng"],
   };
   return byIntent[intent] || ["Gợi ý món ngon", "Cách đặt bàn", "Kiểm tra đơn hàng"];
@@ -817,7 +901,16 @@ const fallbackActions = (context) => {
   const restaurantId = context.restaurants?.[0]?.id;
   const topItemId = context.recommendedMenuItems?.[0]?.id || context.menuItems?.[0]?.id;
   const actions = [];
-  if (context.intent === "reservation" && restaurantId) {
+  for (const entry of context.matchedFeatureMapEntries || []) {
+    if (entry.managerOnly && !ROLE_MANAGER_LIKE.has(String(context.userSafeProfile?.role || context.user?.role || "").toLowerCase())) continue;
+    actions.push({ type: entry.actionType === "openCart" || entry.key === "cart" ? "openCart" : "link", label: entry.label, href: entry.path || "" });
+    if (actions.length >= 3) return actions;
+  }
+  if (context.intent === "cart") actions.push({ type: "openCart", label: "Mở giỏ hàng", href: "" });
+  if (context.intent === "checkout") actions.push({ type: "openCart", label: "Kiểm tra giỏ hàng", href: "" });
+  if (context.intent === "profileHelp") actions.push({ type: "link", label: "Hồ sơ của tôi", href: "/profile" });
+  if (context.intent === "navigation") actions.push({ type: "link", label: "Trang chủ", href: "/" });
+  if (context.intent === "reservationHelp" && restaurantId) {
     actions.push({ type: "link", label: "Mở trang đặt bàn", href: `/restaurant/${restaurantId}/layout` });
   }
   if (context.intent === "menu" && restaurantId) {
@@ -829,7 +922,7 @@ const fallbackActions = (context) => {
   if (context.intent === "promotion" && restaurantId) {
     actions.push({ type: "link", label: "Xem coupon", href: `/coupons/${restaurantId}` });
   }
-  if (context.intent === "order") {
+  if (context.intent === "orderHelp") {
     actions.push({ type: "link", label: "Đơn hàng của tôi", href: "/orders" });
   }
   if (!actions.length) actions.push({ type: "link", label: "Trung tâm hỗ trợ", href: "/contact" });
@@ -878,6 +971,44 @@ const promotionFallback = (context) => {
   return `Các ưu đãi có thể dùng:\n${lines.join("\n")}`;
 };
 
+
+const identityFallback = (context) => {
+  const profile = context.userSafeProfile || context.user;
+  if (!profile?.authenticated) return "Bạn hiện đang dùng chatbot với tư cách khách (guest). Nếu đăng nhập, mình có thể hỗ trợ thông tin tài khoản, đơn hàng và đặt bàn của chính bạn.";
+  const bits = [`Bạn là ${profile.displayName || "người dùng đã đăng nhập"}`];
+  if (profile.email) bits.push(`email ${profile.email}`);
+  if (profile.role) bits.push(`vai trò ${profile.role}`);
+  return `${bits.join(", ")}. Mình chỉ dùng các thông tin hiển thị an toàn này, không truy cập hay tiết lộ mật khẩu, token hoặc bí mật nội bộ.`;
+};
+
+const navigationFallback = (context) => {
+  const entries = context.matchedFeatureMapEntries || [];
+  if (entries.length) {
+    const lines = entries.slice(0, 3).map((entry) => `- ${entry.label}: ${entry.path}`).join("\n");
+    return `Bạn có thể mở các mục sau trong ứng dụng:\n${lines}`;
+  }
+  if (context.intent === "cart") return "Bạn có thể mở Giỏ hàng bằng nút giỏ hàng trên giao diện hoặc vào /cart để xem món đã chọn trước khi thanh toán.";
+  if (context.intent === "checkout") return "Để đặt món, hãy chọn món trong menu, thêm vào giỏ, mở Giỏ hàng rồi bấm thanh toán/checkout để xác nhận đơn.";
+  if (context.intent === "profileHelp") return "Bạn có thể vào Hồ sơ/Tài khoản để xem thông tin cá nhân an toàn; đơn hàng ở /orders và đặt bàn ở khu vực Reservations/đặt bàn.";
+  return "Mình có thể chỉ đường trong app: Trang chủ, nhà hàng, menu, món ăn, giỏ hàng, thanh toán, đơn hàng, đặt bàn, hồ sơ và hỗ trợ.";
+};
+
+const shouldRefuseRequest = ({ message, context }) => {
+  const raw = asLower(message);
+  if (/(password|mật khẩu|mat khau|token|secret|api key|apikey|credential|credentials|refresh token|access token|jwt|khóa bí mật|khoa bi mat)/.test(raw)) {
+    return { refused: true, reason: "credential_request", answer: "Mình không thể cung cấp hoặc truy xuất mật khẩu, token, API key, secret hay thông tin đăng nhập. Nếu bạn cần hỗ trợ tài khoản, hãy dùng chức năng đặt lại mật khẩu hoặc liên hệ hỗ trợ." };
+  }
+  if (/(người dùng khác|nguoi dung khac|tài khoản khác|tai khoan khac|email của khách|email cua khach|số điện thoại khách|so dien thoai khach|another user|other user)/.test(raw)) {
+    return { refused: true, reason: "other_user_data", answer: "Mình chỉ có thể hỗ trợ dữ liệu thuộc về chính bạn trong ngữ cảnh hiện tại. Mình không thể tiết lộ thông tin của người dùng khác." };
+  }
+  const asksManagerData = /(doanh thu|revenue|nhân viên|nhan vien|lương|luong|payroll|tồn kho|ton kho|inventory|kpi|báo cáo quản lý|bao cao quan ly)/.test(raw);
+  const role = context?.userSafeProfile?.role || context?.user?.role;
+  if (asksManagerData && !ROLE_MANAGER_LIKE.has(String(role || "").toLowerCase())) {
+    return { refused: true, reason: "manager_only", answer: "Nội dung quản lý như doanh thu, tồn kho, nhân viên hoặc KPI chỉ dành cho tài khoản manager/admin. Với vai trò hiện tại, mình có thể hỗ trợ menu, đặt món, đặt bàn, đơn hàng của bạn và hỗ trợ chung." };
+  }
+  return { refused: false };
+};
+
 const managerFallback = (context) => {
   if (!context.user || !ROLE_MANAGER_LIKE.has(context.user.role)) {
     return "Một số báo cáo quản lý chỉ hiển thị cho tài khoản quản lý/admin. Với vai trò hiện tại, mình có thể hỗ trợ đặt bàn, menu, đơn hàng và coupon.";
@@ -888,11 +1019,16 @@ const managerFallback = (context) => {
 const fallbackAnswer = (context) => {
   const intent = context.intent || "general";
   const answerByIntent = {
+    identity: identityFallback,
     menu: menuFallback,
-    reservation: reservationFallback,
-    order: orderFallback,
+    reservationHelp: reservationFallback,
+    cart: navigationFallback,
+    checkout: navigationFallback,
+    navigation: navigationFallback,
+    orderHelp: orderFallback,
+    profileHelp: navigationFallback,
     promotion: promotionFallback,
-    manager: managerFallback,
+    managerFeatureHelp: managerFallback,
     support: () => "Mình có thể hỗ trợ nhanh về menu, đặt bàn, đơn hàng, coupon. Nếu cần người thật xử lý, bạn có thể mở trung tâm hỗ trợ hoặc gửi yêu cầu cho nhân viên nhà hàng.",
     general: () => "Chào bạn, mình là trợ lý A.I của Cohan Restaurant App. Bạn có thể hỏi mình về món ăn, đặt bàn, đơn hàng, coupon hoặc cách sử dụng hệ thống.",
   };
@@ -918,6 +1054,7 @@ export const handleRestaurantChatbotMessage = async ({
   persist = true,
   recordSuggestions = true,
   evaluationMode = false,
+  pageContext = {},
 } = {}) => {
   const cleanMessage = normalizeMessage(message);
   const shouldPersist = Boolean(persist && !evaluationMode);
@@ -1046,7 +1183,28 @@ export const handleRestaurantChatbotMessage = async ({
     };
   }
 
-  const context = await buildContext({ message: cleanMessage, restaurantId, user });
+  const context = await buildContext({ message: cleanMessage, restaurantId, user, pageContext });
+  const refusal = shouldRefuseRequest({ message: cleanMessage, context });
+  if (refusal.refused) {
+    return {
+      answer: refusal.answer,
+      intent: context.intent || "support",
+      confidence: 1,
+      quickReplies: fallbackQuickReplies(context.intent),
+      actions: [],
+      sources: [],
+      knowledgeMatches: [],
+      safetyResult: { blocked: true, outOfScope: false, disclaimers: [], handoffSuggested: false, matchedRuleIds: [] },
+      evaluationMode: Boolean(evaluationMode),
+      contextSummary: { restaurantCount: context.restaurants.length, menuItemCount: context.menuItems.length, couponCount: context.coupons.length, orderCount: context.orders.length, reservationCount: context.reservations.length },
+      conversationId: persistedConversation ? String(persistedConversation._id) : null,
+      answerMessageId: null,
+      isFallback: true,
+      handoffSuggested: false,
+      handoffReason: refusal.reason,
+      handoffMessage: null,
+    };
+  }
   const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId, message: cleanMessage, limit: 4 });
   const aiResult = await callAiProvider({
     message: cleanMessage,
@@ -1201,4 +1359,8 @@ export const __testables = {
   enrichMenuItemSource,
   callAiProvider,
   callGemini,
+  buildUserSafeProfile,
+  normalizePageContext,
+  buildProviderPromptContext,
+  shouldRefuseRequest,
 };

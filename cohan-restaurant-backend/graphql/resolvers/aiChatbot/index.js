@@ -99,6 +99,7 @@ const Mutation = {
         history: input?.history || [],
         guestId: input?.guestId,
         conversationId: input?.conversationId,
+        pageContext: input?.pageContext || {},
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });

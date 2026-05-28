@@ -632,3 +632,21 @@ Nhưng vẫn giữ:
 - Ưu tiên rollback mềm bằng cách tắt chatbot theo restaurant settings (`enabled=false`).
 - Nếu lỗi hệ thống rộng, rollback artifact backend/frontend về bản ổn định gần nhất.
 - Sau rollback phải chạy lại smoke checklist trong `docs/ai-chatbot-release-checklist.md`.
+
+## Phase 22: Universal App Assistant expansion
+
+The chatbot scope now covers a broader, safe app assistant role:
+
+- **Menu assistant:** recommends only menu items present in sanitized restaurant/menu context.
+- **Ordering assistant:** explains how to add items to cart, open cart, checkout, and review the current user's own recent order summaries.
+- **Reservation assistant:** guides table booking, reservation page navigation, and summarizes only the current user's own recent reservations.
+- **Account/profile assistant:** can identify whether the requester is a guest or an authenticated user using only display name, already-visible email, and role/user type.
+- **Feature navigation assistant:** receives current page context (`pathname`, `restaurantId`, selected menu item, role) plus sanitized feature-map matches so it can point users to Home, restaurant detail, menu, food detail, cart, checkout, orders, reservations, profile, and manager tools.
+- **Support handoff assistant:** continues to offer human handoff for low confidence, support intent, or explicit support requests.
+
+Safety boundaries:
+
+- The frontend never receives or uses provider API keys; provider calls remain backend-only.
+- Provider prompt context is limited to sanitized `userSafeProfile`, `currentPage`, restaurants, menu preferences, recommended/menu items, coupons, current-user-owned order/reservation summaries, cart summary, and feature-map entries.
+- The bot refuses requests for other users' data, passwords, tokens, secrets, API keys, credentials, and manager-only data from non-manager/admin users.
+- If Gemini/OpenAI fails or returns invalid JSON, the endpoint returns deterministic fallback answers instead of crashing.
