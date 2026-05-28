@@ -11,6 +11,9 @@ const {
   rankMenuRecommendations,
   menuFallback,
   fallbackActions,
+  buildDeterministicActions,
+  normalizeAiAction,
+  mergeAiActions,
   fallbackAnswer,
   fallbackSources,
   normalizeAiResult,
@@ -260,7 +263,9 @@ describe("restaurantChatbot menu assistant", () => {
 
     const out = await callAiProvider({ message: "gợi ý món", context: geminiContext(), history: [] });
 
-    expect(out.actions).toEqual([{ type: "link", label: "Xem món", href: "/food/f1" }]);
+    expect(out.actions.some((action) => action.type === "add_to_cart_candidate")).toBe(false);
+    expect(out.actions.some((action) => /payment|thanh toán/i.test(`${action.type} ${action.label}`))).toBe(false);
+    expect(out.actions).toEqual(expect.arrayContaining([expect.objectContaining({ type: "link", href: "/food/f1" })]));
   });
 
   it("Gemini menu intent keeps suitable quickReplies when provider omits them", async () => {
@@ -344,6 +349,62 @@ describe("restaurantChatbot universal assistant safety", () => {
     expect(fallbackAnswer({ intent: "orderHelp", userSafeProfile: buildUserSafeProfile(null), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("đăng nhập");
   });
 
+
+  it("Phase 24 deterministic actions cover customer workflows safely", () => {
+    const loggedIn = buildUserSafeProfile({ id: "u1", fullName: "An", roleName: "customer" });
+    expect(buildDeterministicActions({ intent: "cart", userSafeProfile: loggedIn, restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ type: "openCart" })]));
+
+    const checkoutWithCart = buildDeterministicActions({ intent: "checkout", userSafeProfile: loggedIn, cartSummary: { totalQuantity: 2 }, restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] });
+    expect(checkoutWithCart).toEqual(expect.arrayContaining([expect.objectContaining({ type: "openCart" }), expect.objectContaining({ href: "/checkout" })]));
+    const checkoutGuest = buildDeterministicActions({ intent: "checkout", userSafeProfile: buildUserSafeProfile(null), cartSummary: { totalQuantity: 2 }, restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] });
+    expect(checkoutGuest.some((action) => action.href === "/checkout")).toBe(false);
+
+    expect(buildDeterministicActions({ intent: "reservationHelp", restaurants: [{ id: "r1" }], menuItems: [], recommendedMenuItems: [] }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ label: "Mở trang đặt bàn", href: "/restaurant/r1/layout" })]));
+    const noRestaurant = buildDeterministicActions({ intent: "reservationHelp", restaurants: [], menuItems: [], recommendedMenuItems: [] });
+    expect(noRestaurant.some((action) => /undefined|null|fake/i.test(action.href || ""))).toBe(false);
+    expect(noRestaurant).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Chọn nhà hàng", href: "/restaurants" })]));
+
+    expect(buildDeterministicActions({ intent: "orderHelp", userSafeProfile: loggedIn, restaurants: [], menuItems: [], recommendedMenuItems: [] }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ href: "/orders" })]));
+    expect(buildDeterministicActions({ intent: "profileHelp", userSafeProfile: loggedIn, restaurants: [], menuItems: [], recommendedMenuItems: [] }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ href: "/profile" })]));
+    expect(buildDeterministicActions({ intent: "identity", userSafeProfile: loggedIn, restaurants: [], menuItems: [], recommendedMenuItems: [] }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ href: "/profile" })]));
+  });
+
+  it("Phase 24 menu, manager, provider, and limit safety", () => {
+    const menuActions = buildDeterministicActions({ intent: "menu", restaurants: [{ id: "r1" }], recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ" }, { id: "f2", name: "Bún" }], menuItems: [] });
+    expect(menuActions).toEqual(expect.arrayContaining([expect.objectContaining({ href: "/cus-menu" }), expect.objectContaining({ href: "/food/f1" })]));
+
+    const customerManagerActions = buildDeterministicActions({ intent: "managerFeatureHelp", userSafeProfile: { authenticated: true, role: "customer" }, restaurants: [], menuItems: [], recommendedMenuItems: [] });
+    expect(customerManagerActions.some((action) => String(action.href || "").startsWith("/manager"))).toBe(false);
+    const managerActions = buildDeterministicActions({ intent: "managerFeatureHelp", userSafeProfile: { authenticated: true, role: "manager" }, restaurants: [], menuItems: [], recommendedMenuItems: [] });
+    expect(managerActions).toEqual(expect.arrayContaining([expect.objectContaining({ href: "/manager" })]));
+
+    const context = { intent: "menu", restaurants: [], recommendedMenuItems: [{ id: "f1", name: "Phở" }], menuItems: [{ id: "f2", name: "Bún" }] };
+    const merged = mergeAiActions(
+      [{ type: "link", label: "Xem menu", href: "/cus-menu" }, { type: "link", label: "Xem menu duplicate", href: "/cus-menu" }],
+      [
+        { type: "link", label: "JS", href: "javascript:alert(1)" },
+        { type: "link", label: "Data", href: "data:text/html,bad" },
+        { type: "link", label: "Mail", href: "mailto:a@b.test" },
+        { type: "link", label: "Tel", href: "tel:123" },
+        { type: "link", label: "Protocol relative", href: "//evil.test" },
+        { type: "add_to_cart_candidate", label: "Thêm", href: "/food/f1" },
+        { type: "link", label: "Món", href: "/food/f1" },
+        { type: "search", label: "Tìm phở", href: "phở bò" },
+      ],
+      context,
+      4,
+    );
+    expect(merged).toHaveLength(3);
+    expect(merged).toEqual(expect.arrayContaining([expect.objectContaining({ href: "/cus-menu" }), expect.objectContaining({ href: "/food/f1" }), expect.objectContaining({ type: "search", href: "phở bò" })]));
+    expect(merged.filter((action) => action.href === "/cus-menu")).toHaveLength(1);
+    expect(normalizeAiAction({ type: "link", label: "bad", href: "javascript:alert(1)" }, new Set())).toBeNull();
+  });
+
   it("provider receives safe user/page/navigation context", async () => {
     process.env.AI_PROVIDER = "openai";
     process.env.OPENAI_API_KEY = "openai-key";
@@ -385,6 +446,20 @@ describe("restaurantChatbot universal assistant safety", () => {
     const out = await callAiProvider({ message: "Bạn biết tôi là ai không?", context: { intent: "identity", userSafeProfile: buildUserSafeProfile(null), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }, history: [] });
     expect(out.isFallback).toBe(true);
     expect(out.answer).toContain("khách");
+  });
+
+
+  it("provider failure still returns deterministic cart actions", async () => {
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "openai-key";
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("down"); }));
+    const out = await callAiProvider({
+      message: "mở giỏ hàng",
+      context: { intent: "cart", userSafeProfile: buildUserSafeProfile({ id: "u1", roleName: "customer" }), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] },
+      history: [],
+    });
+    expect(out.isFallback).toBe(true);
+    expect(out.actions).toEqual(expect.arrayContaining([expect.objectContaining({ type: "openCart" })]));
   });
 
   it("new intents have quick replies", () => {

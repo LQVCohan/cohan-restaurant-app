@@ -2,6 +2,9 @@ type AiChatbotAction {
   type: String
   label: String
   href: String
+  description: String
+  icon: String
+  priority: Int
 }
 
 type AiChatbotSource {

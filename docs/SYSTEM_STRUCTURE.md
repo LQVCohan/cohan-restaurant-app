@@ -498,3 +498,24 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Backend sanitization in `cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js` accepts only safe action types (`link`, `search`, `handoff`, `openCart`), only internal feature links beginning with `/`, and `openCart` without a path.
 - Guided customer workflows are deterministic fallbacks for ordering and table reservations, with current-user-only Q&A for identity, cart, orders, reservations, coupons, restaurant, and menu context.
 - Provider prompts describe the role as an AI App Assistant for Cohan Restaurant App and continue to forbid hallucinated data, credentials/secrets, other-user data, and unauthorized manager data.
+
+### Phase 24 AI chatbot safe action cards
+
+The AI chatbot service now includes a deterministic action-card layer in `cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js`. It builds safe in-app actions from intent, page context, sanitized feature-map matches, safe user profile, cart/order/reservation summaries, restaurants, and in-context menu items before considering provider output.
+
+Action shape:
+
+```json
+{
+  "type": "link | openCart | handoff | search",
+  "label": "string",
+  "href": "optional string",
+  "description": "optional string",
+  "icon": "optional string",
+  "priority": 1
+}
+```
+
+Allowed workflows are navigation and guidance only: open the cart drawer, view menu/food detail, open checkout through the existing checkout route when appropriate, view current-user orders/profile, open a reservation layout for a known restaurant, choose a restaurant when no id exists, or request staff handoff. The model must not auto-create orders, payments, reservations, cart lines, profile changes, or destructive operations.
+
+Both backend and frontend reject unsafe action payloads including script/data/mail/telephone schemes, protocol-relative external URLs, unknown action types, provider-suggested add-to-cart candidates, destructive operations, and automatic payment/checkout/reservation actions. The frontend renders safe actions as cards in `src/components/common/AiChatbotWidget.jsx` and styles them in `src/components/common/AiChatbotWidget.scss`.

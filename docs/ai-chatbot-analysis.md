@@ -661,3 +661,27 @@ Phase 23 makes the chatbot search app features from the user's message, not only
 - **Guided reservation workflow:** deterministic fallback responses explain selecting a restaurant, opening the table layout/booking area, choosing date/time, party size, table/room, confirming, and tracking status.
 - **Safe current-user Q&A:** identity, cart, order, reservation, coupon, restaurant, and menu answers use only sanitized context. Guests are told when login is required for cart/order/reservation data, and authenticated users only receive summaries scoped to their own account.
 - **Safe action model:** provider and fallback actions are constrained to `link`, `search`, `handoff`, and `openCart`; arbitrary JavaScript actions are not supported.
+
+## Phase 24 - Safe in-app action cards and guided UI actions
+
+Phase 24 makes the customer chatbot actionable without giving the model permission to perform side effects. The backend now builds deterministic safe actions before merging any provider actions, so common workflows show visible buttons such as `openCart`, menu links, food-detail links, checkout navigation, orders/profile links, reservation layout links, restaurant selection, and handoff.
+
+Supported normalized action types:
+
+- `link`: internal app navigation such as `/cus-menu`, `/food/:id`, `/restaurant/:id/layout`, `/orders`, `/profile`, `/checkout`, `/restaurants`, or manager dashboard links when the current role is allowed.
+- `openCart`: opens the existing customer cart drawer/event and does not require a URL.
+- `handoff`: starts the existing chatbot handoff flow to staff when handoff is enabled.
+- `search`: sends a safe search phrase back to the chatbot as a new user message.
+
+Forbidden action behavior remains strict: no `javascript:`, `data:`, `mailto:`, `tel:`, protocol-relative external URLs, arbitrary function names, `add_to_cart_candidate`, destructive actions, payment auto-submit, order auto-submit, table auto-reservation, or profile mutation. Provider actions are sanitized and appended only after deterministic actions, deduplicated, and capped to a small set.
+
+The chatbot may guide users through ordering and reservation steps, but it must not automatically add items, place orders, take payment, reserve tables, or modify profile data. Users must confirm through the existing app flows such as menu detail, cart, checkout, and table booking screens.
+
+Manual customer workflow checks:
+
+1. Ask “tôi muốn đặt bàn” from a restaurant page and verify the answer includes steps plus “Mở trang đặt bàn” to `/restaurant/:restaurantId/layout`.
+2. Ask “đặt bàn ở đâu” without restaurant context and verify the action is “Chọn nhà hàng” instead of a fake restaurant id.
+3. Ask “làm sao đặt món” or “thanh toán thế nào” and verify “Xem menu” and “Mở giỏ hàng” appear; “Đi tới thanh toán” appears only when a logged-in user has cart contents.
+4. Ask “đơn hàng của tôi”, “hồ sơ của tôi”, or “tôi là ai” while logged in and verify quick action cards point to `/orders`, `/profile`, and/or the cart drawer.
+5. Ask for manager-only features as a customer and verify manager links are hidden; repeat as manager/admin and verify dashboard links appear.
+6. Ask “gặp nhân viên” and verify the handoff card starts the existing handoff flow rather than opening arbitrary code.
