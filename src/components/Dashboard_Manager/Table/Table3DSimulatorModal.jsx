@@ -9,6 +9,7 @@ import {
   formatDimensionsCm,
   getModelAssetBadges,
   getModelAssetSummary,
+  TABLE_3D_PLACEHOLDER_THUMB,
 } from "@/config/table3dCatalog";
 import {
   deleteCustomTableModel,
@@ -93,6 +94,9 @@ const Table3DSimulatorModal = ({
       const searchableText = [
         model.label,
         model.tableType,
+        model.source,
+        model.sourceLabel,
+        model.licenseLabel,
         ...(model.tags || []),
       ]
         .filter(Boolean)
@@ -142,6 +146,15 @@ const Table3DSimulatorModal = ({
   const canOpenAr = canOpenModelViewerAr(selectedModel);
   const arUnavailableReason = getArUnavailableReason(selectedModel);
   const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
+  const isSelectedModelHiddenByFilters = Boolean(
+    selectedModel &&
+      !filteredModels.some((model) => model.key === selectedModel.key),
+  );
+
+  const handleThumbnailError = (event) => {
+    if (event.currentTarget.src === TABLE_3D_PLACEHOLDER_THUMB) return;
+    event.currentTarget.src = TABLE_3D_PLACEHOLDER_THUMB;
+  };
 
   const shiftModel = (x, z) => {
     setOffset((prev) => ({
@@ -285,65 +298,68 @@ const Table3DSimulatorModal = ({
           </div>
 
           <div className="table-3d-modal__models">
-            {filteredModels.map((model) => (
-              <div
-                key={model.key}
-                className={`model-item ${selectedModel?.key === model.key ? "active" : ""}`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={selectedModel?.key === model.key}
-                onClick={() => setSelectedModelKey(model.key)}
-                onKeyDown={(event) => handleModelItemKeyDown(event, model)}
-              >
-                <img
-                  src={model.thumbnailUrl}
-                  alt={model.label}
-                  loading="lazy"
-                />
-                <div>
-                  <strong>{model.label}</strong>
-                  <span>{model.capacity} ghế</span>
-                  <div className="model-item__badges">
-                    {getModelAssetBadges(model).map((badge) => (
-                      <span
-                        key={`${model.key}-${badge}`}
-                        className="model-badge"
-                      >
-                        {badge}
+            {filteredModels.map((model) => {
+              const dimensionsLabel = formatDimensionsCm(model.dimensionsCm);
+
+              return (
+                <div
+                  key={model.key}
+                  className={`model-item ${selectedModel?.key === model.key ? "active" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedModel?.key === model.key}
+                  onClick={() => setSelectedModelKey(model.key)}
+                  onKeyDown={(event) => handleModelItemKeyDown(event, model)}
+                >
+                  <img
+                    src={model.thumbnailUrl || TABLE_3D_PLACEHOLDER_THUMB}
+                    alt={model.label}
+                    loading="lazy"
+                    onError={handleThumbnailError}
+                  />
+                  <div>
+                    <strong>{model.label}</strong>
+                    <span>{model.capacity} ghế</span>
+                    <div className="model-item__badges">
+                      {getModelAssetBadges(model).map((badge) => (
+                        <span
+                          key={`${model.key}-${badge}`}
+                          className="model-badge"
+                        >
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
+                    {dimensionsLabel && <span>{dimensionsLabel}</span>}
+                    {model?.customModelSpec && (
+                      <span>
+                        {model.customModelSpec.widthCm} x{" "}
+                        {model.customModelSpec.depthCm} x{" "}
+                        {model.customModelSpec.heightCm} cm
                       </span>
-                    ))}
+                    )}
+                    {(model.sourceLabel || model.licenseLabel) && (
+                      <span>
+                        {model.sourceLabel || model.source}{" "}
+                        {model.licenseLabel ? `• ${model.licenseLabel}` : ""}
+                      </span>
+                    )}
                   </div>
-                  {formatDimensionsCm(model.dimensionsCm) && (
-                    <span>{formatDimensionsCm(model.dimensionsCm)}</span>
-                  )}
-                  {model?.customModelSpec && (
-                    <span>
-                      {model.customModelSpec.widthCm} x{" "}
-                      {model.customModelSpec.depthCm} x{" "}
-                      {model.customModelSpec.heightCm} cm
-                    </span>
-                  )}
-                  {(model.sourceLabel || model.licenseLabel) && (
-                    <span>
-                      {model.sourceLabel || model.source}{" "}
-                      {model.licenseLabel ? `• ${model.licenseLabel}` : ""}
-                    </span>
+                  {isCustomTableModel(model) && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      type="button"
+                      onClick={(event) => handleDeleteCustomModel(event, model)}
+                      aria-label={`Xóa mẫu tùy chỉnh ${model.label}`}
+                      title={`Xóa mẫu tùy chỉnh ${model.label}`}
+                    >
+                      Xóa
+                    </Button>
                   )}
                 </div>
-                {isCustomTableModel(model) && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    type="button"
-                    onClick={(event) => handleDeleteCustomModel(event, model)}
-                    aria-label={`Xóa mẫu tùy chỉnh ${model.label}`}
-                    title={`Xóa mẫu tùy chỉnh ${model.label}`}
-                  >
-                    Xóa
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {!filteredModels.length && (
               <div className="model-empty">
                 Không có mẫu phù hợp với loại bàn/bộ lọc hiện tại. Hãy đổi từ
@@ -353,6 +369,11 @@ const Table3DSimulatorModal = ({
           </div>
 
           <div className="table-3d-modal__meta">
+            {isSelectedModelHiddenByFilters && (
+              <p className="table-3d-modal__filter-note">
+                Mẫu đang xem không khớp bộ lọc hiện tại.
+              </p>
+            )}
             <p>
               <b>Model 3D:</b>{" "}
               {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}

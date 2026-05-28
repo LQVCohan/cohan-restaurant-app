@@ -7,7 +7,7 @@ const canUseStorage = () =>
   typeof window !== "undefined" && !!window.localStorage;
 
 export const normalizeStoredCustomModel = (item) => {
-  if (!item?.key || !item?.customModelSpec) return null;
+  if (!item?.key || !isCustomTableModel(item)) return null;
 
   const nowIso = new Date().toISOString();
   return {
@@ -19,7 +19,12 @@ export const normalizeStoredCustomModel = (item) => {
     modelUrl: item.modelUrl || "",
     thumbnailUrl: item.thumbnailUrl || "",
     source: item.source || "user-generated",
+    sourceLabel: item.sourceLabel || item.source || "user-generated",
+    licenseLabel: item.licenseLabel || "",
+    dimensionsCm: item.dimensionsCm || null,
+    tags: Array.isArray(item.tags) ? item.tags.map(String).filter(Boolean) : [],
     fallbackKind: item.fallbackKind || "parametric",
+    customModelKind: item.customModelKind || (item.modelUrl ? "url" : "parametric"),
     customModelSpec: item.customModelSpec,
     createdAt: item.createdAt || nowIso,
     updatedAt: item.updatedAt || nowIso,
@@ -117,6 +122,10 @@ export const mergeCatalogWithCustomModels = (
 };
 
 export const getCustomModelCatalogTableType = (model) => {
+  if (model?.tableType && model.tableType !== "custom-parametric") {
+    return model.tableType;
+  }
+
   const shape = model?.customModelSpec?.shape;
   if (shape === "round") return "round-table";
   if (shape === "booth") return "booth-sofa";
@@ -130,4 +139,7 @@ export const doesCustomModelMatchTableType = (model, tableType) => {
   return getCustomModelCatalogTableType(model) === tableType;
 };
 export const isCustomTableModel = (item) =>
-  item?.source === "user-generated" || !!item?.customModelSpec;
+  item?.source === "user-generated" ||
+  item?.source === "user-generated-url" ||
+  !!item?.customModelSpec ||
+  !!item?.customModelKind;
