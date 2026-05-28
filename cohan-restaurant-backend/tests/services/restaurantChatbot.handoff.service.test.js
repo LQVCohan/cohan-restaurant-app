@@ -7,6 +7,7 @@ const messages = [];
 const threads = [];
 const notifications = [];
 const users = [];
+const restaurants = [];
 
 const mkId = () => new mongoose.Types.ObjectId().toString();
 
@@ -38,14 +39,20 @@ vi.mock("../../models/index.js", () => {
   const User = {
     find() { return { select: () => ({ lean: async () => users }) }; },
   };
-  return { AiChatConversation, AiChatMessage, ChatThread, Notification, User };
+  const Restaurant = {
+    findById(id) {
+      const row = restaurants.find((r) => String(r._id) === String(id)) || null;
+      return { select: () => ({ lean: async () => row }) };
+    },
+  };
+  return { AiChatConversation, AiChatMessage, ChatThread, Notification, User, Restaurant };
 });
 
 import { requestRestaurantChatbotHandoff } from "../../src/services/ai/restaurantChatbotHandoff.service.js";
 
 describe("restaurantChatbot handoff service", () => {
   beforeEach(() => {
-    conversations.length = 0; messages.length = 0; threads.length = 0; notifications.length = 0; users.length = 0;
+    conversations.length = 0; messages.length = 0; threads.length = 0; notifications.length = 0; users.length = 0; restaurants.length = 0;
     __resetAiChatbotRateLimitStoreForTests();
   });
 
@@ -54,6 +61,7 @@ describe("restaurantChatbot handoff service", () => {
     const restaurantId = mkId();
     const staffId = mkId();
     conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
+    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
     messages.push({ conversationId: convId, role: "user", content: "help" });
     users.push({ _id: staffId, userType: "STAFF" });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
@@ -106,6 +114,7 @@ describe("restaurantChatbot handoff service", () => {
       chatThreadId: threadId,
       metadata: null,
     });
+    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
     users.push({ _id: existingRecipient, userType: "STAFF" }, { _id: newRecipient, userType: "MANAGER" });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
     expect(out.ok).toBe(true);
@@ -120,6 +129,7 @@ describe("restaurantChatbot handoff service", () => {
     const convId = mkId();
     const restaurantId = mkId();
     conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
+    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
     messages.push({ conversationId: convId, role: "user", content: "need help" });
 
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });

@@ -168,9 +168,10 @@ const serializeMenuItem = (item, currency = "VND") => ({
   preparationTime: item.preparationTime || item.avgPrepTimeMin || null,
   variants: Array.isArray(item.variants) ? item.variants.slice(0, 4) : [],
   options: Array.isArray(item.options) ? item.options.slice(0, 4) : [],
+  servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants.slice(0, 4) : [],
   spicyLevel: item.spicyLevel ?? null,
   restaurantId: item.restaurantId ? String(item.restaurantId) : null,
-  hasVariants: Array.isArray(item.variants) && item.variants.length > 0,
+  hasVariants: (Array.isArray(item.variants) && item.variants.length > 0) || (Array.isArray(item.servingVariants) && item.servingVariants.length > 0),
   hasOptions: Array.isArray(item.options) && item.options.length > 0,
   isVegetarian: Boolean(item.isVegetarian),
   isVegan: Boolean(item.isVegan),
@@ -594,21 +595,45 @@ const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuIt
     status: item.status,
     isAvailable: item.isAvailable,
     hasOptions: Boolean(item.options?.length || item.hasOptions),
-    hasVariants: Boolean(item.variants?.length || item.hasVariants),
+    hasVariants: Boolean(item.variants?.length || item.servingVariants?.length || item.hasVariants),
+    servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants : [],
     restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null,
     basePrice: item.basePrice,
     currentPrice: item.currentPrice,
+    price: item.currentPrice ?? item.basePrice,
+  };
+};
+
+const isForbiddenAction = (action = {}) => {
+  const text = `${action?.type || ""} ${action?.label || ""} ${action?.href || ""}`.toLowerCase();
+  return /checkout|payment|add_to_cart_candidate|add-to-cart|addtocart|thanh toán|thanh\s*toan/.test(text);
+};
+
+const normalizeAiAction = (action, allowedItemIds) => {
+  if (!action || isForbiddenAction(action)) return null;
+  const href = String(action.href || "").trim();
+  if (!href) return null;
+  if (href.startsWith("/food/")) {
+    const itemId = href.replace("/food/", "").split(/[/?#]/)[0];
+    if (!allowedItemIds.has(itemId)) return null;
+  }
+  const type = String(action.type || "link").trim();
+  if (!["link", "handoff", "search"].includes(type)) return null;
+  return {
+    type,
+    label: String(action.label || "").trim() || "Mở liên kết",
+    href,
   };
 };
 
 const normalizeAiResult = (parsed, context) => {
-  const allowedItemIds = new Set((context.recommendedMenuItems || context.menuItems || []).map((x) => String(x.id)));
-  const actions = Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 4).filter((action) => {
-    const href = String(action?.href || "");
-    if (!href) return false;
-    if (href.startsWith("/food/")) return allowedItemIds.has(href.replace("/food/", ""));
-    return true;
-  }) : fallbackActions(context);
+  const allowedItemIds = new Set([...(context.recommendedMenuItems || []), ...(context.menuItems || [])].map((x) => String(x.id)));
+  const actions = Array.isArray(parsed?.actions)
+    ? parsed.actions
+      .map((action) => normalizeAiAction(action, allowedItemIds))
+      .filter(Boolean)
+      .slice(0, 4)
+    : fallbackActions(context);
   const menuItemLookup = buildMenuItemLookup(context);
   const sources = Array.isArray(parsed?.sources)
     ? parsed.sources
@@ -622,9 +647,9 @@ const normalizeAiResult = (parsed, context) => {
     answer: hasUnknownPrice ? menuFallback(context) : answer,
     intent: parsed?.intent || context.intent || "general",
     confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? 0.7))),
-    quickReplies: Array.isArray(parsed?.quickReplies)
+    quickReplies: Array.isArray(parsed?.quickReplies) && parsed.quickReplies.length
       ? parsed.quickReplies.map(String).slice(0, 4)
-      : fallbackQuickReplies(context.intent),
+      : fallbackQuickReplies(parsed?.intent || context.intent),
     actions,
     sources,
     isFallback: false,
@@ -648,9 +673,9 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
-    "Không tự đặt món/thanh toán.",
-    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
-    "Không dùng markdown code fence.",
+    "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify({
       restaurants: context.restaurants?.slice(0, 1),
       menuPreferences: context.menuPreferences,
@@ -708,12 +733,15 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
 };
 
 const callAiProvider = async (args) => {
-  const provider = process.env.AI_PROVIDER || "openai";
+  const provider = String(args?.provider || process.env.AI_PROVIDER || "openai").toLowerCase();
   if (provider === "gemini") {
-    const res = await callGemini(args);
-    if (res) return res;
+    const geminiResult = await callGemini(args);
+    if (geminiResult) return geminiResult;
+    const openAiFallback = await callOpenAI(args);
+    return openAiFallback || fallbackAnswer(args.context || {});
   }
-  return callOpenAI(args);
+  const openAiResult = await callOpenAI(args);
+  return openAiResult || fallbackAnswer(args.context || {});
 };
 
 const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) => {
@@ -731,9 +759,9 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
-    "Không tự đặt món/thanh toán.",
-    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
-    "Không dùng markdown code fence.",
+    "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify({
       restaurants: context.restaurants?.slice(0, 1),
       menuPreferences: context.menuPreferences,
@@ -810,7 +838,7 @@ const fallbackActions = (context) => {
 
 const fallbackSources = (context) => [
   ...(context.restaurants || []).slice(0, 2).map((item) => ({ type: "restaurant", id: item.id, label: item.name })),
-  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name, formattedPrice: item.formattedPrice, status: item.status, isAvailable: item.isAvailable, hasOptions: Boolean(item.options?.length), hasVariants: Boolean(item.variants?.length), restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null, basePrice: item.basePrice, currentPrice: item.currentPrice })),
+  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name, formattedPrice: item.formattedPrice, status: item.status, isAvailable: item.isAvailable, hasOptions: Boolean(item.options?.length), hasVariants: Boolean(item.variants?.length || item.servingVariants?.length || item.hasVariants), servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants : [], restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null, basePrice: item.basePrice, currentPrice: item.currentPrice, price: item.currentPrice ?? item.basePrice })),
   ...(context.coupons || []).slice(0, 2).map((item) => ({ type: "coupon", id: item.id, label: item.code })),
 ];
 
@@ -1171,4 +1199,6 @@ export const __testables = {
   normalizeGuestId,
   normalizeAiResult,
   enrichMenuItemSource,
+  callAiProvider,
+  callGemini,
 };
