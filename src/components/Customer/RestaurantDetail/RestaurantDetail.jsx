@@ -207,11 +207,14 @@ const RestaurantDetail = () => {
   const imgThumbUrl = hasCoverImage
     ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
     : null;
-  const profileSummaryItems = [
-    resolvedRestaurant.cuisine || "Ẩm thực đang cập nhật",
-    resolvedRestaurant.district || resolvedRestaurant.address?.city || "Khu vực đang cập nhật",
-    headerReviewCount > 0 ? `${headerReviewCount} đánh giá` : "Chưa có đánh giá",
-  ];
+  const cuisineText = resolvedRestaurant.cuisine || "Ẩm thực đang cập nhật";
+  const areaText =
+    resolvedRestaurant.district ||
+    resolvedRestaurant.address?.district ||
+    resolvedRestaurant.address?.city ||
+    "Khu vực đang cập nhật";
+  const reviewSummaryText = headerReviewCount > 0 ? `${headerReviewCount} đánh giá` : "Chưa có đánh giá";
+  const profileSummaryItems = [cuisineText, areaText, reviewSummaryText];
 
   const aiQuickPrompts = [
     { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
@@ -257,7 +260,7 @@ const RestaurantDetail = () => {
                   {headerReviewCount > 0 && <span> ({headerReviewCount} đánh giá)</span>}
                 </span>
                 <span className="dot">•</span>
-                <span className="cuisine">{resolvedRestaurant.cuisine}</span>
+                <span className="cuisine">{cuisineText}</span>
                 <span className="dot">•</span>
                 <span className={`status ${resolvedRestaurant.openingStatus || "closed"}`}>
                   {getOpeningStatusLabel(resolvedRestaurant.openingStatus)}
@@ -279,17 +282,17 @@ const RestaurantDetail = () => {
 
             <div className="action-group">
               <div className="icon-actions">
-              <button
-                type="button"
-                className={`btn-icon ${favoriteActive ? "active" : ""}`}
-                disabled={isPreviewMode}
-                onClick={handleFavorite}
-              >
-                <Heart size={20} />
-              </button>
-              <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
-                <Share2 size={20} />
-              </button>
+                <button
+                  type="button"
+                  className={`btn-icon ${favoriteActive ? "active" : ""}`}
+                  disabled={isPreviewMode}
+                  onClick={handleFavorite}
+                >
+                  <Heart size={20} />
+                </button>
+                <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
+                  <Share2 size={20} />
+                </button>
               </div>
               <button
                 type="button"
