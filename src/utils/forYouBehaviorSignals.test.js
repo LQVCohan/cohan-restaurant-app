@@ -124,6 +124,63 @@ describe("forYouBehaviorSignals", () => {
     expect(signals.categoryCounts).toEqual({});
     expect(signals.itemCounts).toEqual({});
     expect(hasForYouBehaviorSignals(signals)).toBe(false);
+    expect(window.localStorage.getItem(getForYouBehaviorStorageKey("user-1"))).toBeNull();
+  });
+
+  it("keeps newest recent interactions first before capping", () => {
+    const baseAt = Date.now() - DAY_MS;
+    const shuffledItems = Array.from({ length: MAX_SIGNAL_ITEMS + 3 }, (_, index) => (
+      makeStoredItem({
+        id: `view-${index}`,
+        restaurantId: `restaurant-${index}`,
+        categoryId: `category-${index}`,
+        at: baseAt + index,
+      })
+    )).reverse();
+    writeStoredSignals("user-1", {
+      viewedItems: [shuffledItems[10], shuffledItems[0], ...shuffledItems.slice(1, 10), ...shuffledItems.slice(11)],
+      clickedItems: [
+        makeStoredItem({ id: "click-older", type: "click", at: baseAt + 10 }),
+        makeStoredItem({ id: "click-newer", type: "click", at: baseAt + 20 }),
+      ],
+      restaurantCounts: {},
+      categoryCounts: {},
+      itemCounts: {},
+      updatedAt: new Date().toISOString(),
+    });
+
+    const signals = readForYouBehaviorSignals("user-1");
+
+    expect(signals.viewedItems).toHaveLength(MAX_SIGNAL_ITEMS);
+    expect(signals.viewedItems[0].id).toBe(`view-${MAX_SIGNAL_ITEMS + 2}`);
+    expect(signals.viewedItems[signals.viewedItems.length - 1].id).toBe("view-3");
+    expect(signals.viewedItems.some((item) => item.id === "view-0")).toBe(false);
+    expect(signals.viewedItems.some((item) => item.id === "view-1")).toBe(false);
+    expect(signals.viewedItems.some((item) => item.id === "view-2")).toBe(false);
+    expect(signals.clickedItems.map((item) => item.id)).toEqual(["click-newer", "click-older"]);
+  });
+
+  it("keeps storage key when at least one recent signal remains", () => {
+    const oldAt = Date.now() - (FOR_YOU_SIGNAL_TTL_DAYS + 1) * DAY_MS;
+    const recentAt = Date.now() - DAY_MS;
+    writeStoredSignals("user-1", {
+      viewedItems: [
+        makeStoredItem({ id: "old-view", restaurantId: "old-restaurant", categoryId: "old-category", at: oldAt }),
+        makeStoredItem({ id: "recent-view", restaurantId: "recent-restaurant", categoryId: "recent-category", at: recentAt }),
+      ],
+      clickedItems: [],
+      restaurantCounts: { "old-restaurant": 1, "recent-restaurant": 1 },
+      categoryCounts: { "old-category": 1, "recent-category": 1 },
+      itemCounts: { "old-view": 1, "recent-view": 1 },
+      updatedAt: new Date().toISOString(),
+    });
+
+    const signals = readForYouBehaviorSignals("user-1");
+    const storedSignals = JSON.parse(window.localStorage.getItem(getForYouBehaviorStorageKey("user-1")));
+
+    expect(signals.viewedItems.map((item) => item.id)).toEqual(["recent-view"]);
+    expect(storedSignals.viewedItems.map((item) => item.id)).toEqual(["recent-view"]);
+    expect(storedSignals.restaurantCounts).toEqual({ "recent-restaurant": 1 });
   });
 
   it("rebuilds count maps from recent interactions after pruning old ones", () => {

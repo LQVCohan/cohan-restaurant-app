@@ -76,6 +76,7 @@ const rebuildCountMaps = ({ viewedItems = [], clickedItems = [] }) => {
 const normalizeSignalItems = (items, now = Date.now()) => (Array.isArray(items) ? items : [])
   .map(normalizeStoredItem)
   .filter((item) => item && isRecentSignalItem(item, now))
+  .sort((a, b) => Number(b.at || 0) - Number(a.at || 0))
   .slice(0, MAX_SIGNAL_ITEMS);
 
 const normalizeSignals = (signals, now = Date.now()) => {
@@ -91,6 +92,14 @@ const normalizeSignals = (signals, now = Date.now()) => {
     updatedAt: signals.updatedAt || null,
   };
 };
+
+const hasAnyBehaviorSignal = (signals) => Boolean(
+  signals?.viewedItems?.length ||
+    signals?.clickedItems?.length ||
+    Object.keys(signals?.restaurantCounts || {}).length ||
+    Object.keys(signals?.categoryCounts || {}).length ||
+    Object.keys(signals?.itemCounts || {}).length,
+);
 
 const capRecentItems = (items) => items.slice(0, MAX_SIGNAL_ITEMS);
 
@@ -121,13 +130,15 @@ export const readForYouBehaviorSignals = (userId) => {
     const raw = storage.getItem(storageKey);
     if (!raw) return { ...DEFAULT_SIGNALS };
     const nextSignals = normalizeSignals(JSON.parse(raw));
-    const nextRaw = JSON.stringify(nextSignals);
-    if (nextRaw !== raw) {
-      try {
-        storage.setItem(storageKey, nextRaw);
-      } catch {
-        // Keep FOR YOU resilient when storage quota or privacy settings block writes.
+    try {
+      if (!hasAnyBehaviorSignal(nextSignals)) {
+        storage.removeItem(storageKey);
+      } else {
+        const nextRaw = JSON.stringify(nextSignals);
+        if (nextRaw !== raw) storage.setItem(storageKey, nextRaw);
       }
+    } catch {
+      // Keep FOR YOU resilient when storage quota or privacy settings block writes.
     }
     return nextSignals;
   } catch {
@@ -185,16 +196,7 @@ export const recordForYouItemInteraction = (userId, item, type = "view") => {
   return nextSignals;
 };
 
-export const hasForYouBehaviorSignals = (signals) => {
-  const safeSignals = normalizeSignals(signals);
-  return Boolean(
-    safeSignals.viewedItems.length ||
-      safeSignals.clickedItems.length ||
-      Object.keys(safeSignals.restaurantCounts).length ||
-      Object.keys(safeSignals.categoryCounts).length ||
-      Object.keys(safeSignals.itemCounts).length,
-  );
-};
+export const hasForYouBehaviorSignals = (signals) => hasAnyBehaviorSignal(normalizeSignals(signals));
 
 export const getForYouBehaviorScore = (item, signals) => {
   const safeSignals = normalizeSignals(signals);
