@@ -21,7 +21,11 @@ import {
 import "./Login.scss";
 
 // Lấy Site Key từ biến môi trường
-const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const CAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "";
+const CAPTCHA_ENABLED =
+  String(import.meta.env.VITE_ENABLE_RECAPTCHA ?? "true").toLowerCase() !== "false";
+const shouldRenderCaptcha = CAPTCHA_ENABLED && Boolean(CAPTCHA_SITE_KEY);
+const captchaConfigMissing = CAPTCHA_ENABLED && !CAPTCHA_SITE_KEY;
 
 // ==========================================
 // 1. GRAPHQL QUERIES & MUTATIONS
@@ -295,14 +299,21 @@ const LoginPage = () => {
     if (!loginForm.identifier || !loginForm.password) {
       return showNotification("Vui lòng nhập tài khoản và mật khẩu", "warning");
     }
-    if (!captchaToken) {
+    if (captchaConfigMissing) {
+      return showNotification(
+        "Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.",
+        "error",
+      );
+    }
+    if (shouldRenderCaptcha && !captchaToken) {
+      // Captcha is enabled and rendered, so submission is intentionally blocked until solved.
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
     const variables = {
       ...splitIdentifier(loginForm.identifier),
       password: loginForm.password,
-      captchaToken,
+      captchaToken: shouldRenderCaptcha ? captchaToken : undefined,
     };
 
     loginMutation({ variables });
@@ -328,7 +339,14 @@ const LoginPage = () => {
         "warning",
       );
     }
-    if (!captchaToken) {
+    if (captchaConfigMissing) {
+      return showNotification(
+        "Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.",
+        "error",
+      );
+    }
+    if (shouldRenderCaptcha && !captchaToken) {
+      // Captcha is enabled and rendered, so submission is intentionally blocked until solved.
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
@@ -356,7 +374,7 @@ const LoginPage = () => {
       i: {
         ...registerForm,
         roleId,
-        captchaToken,
+        captchaToken: shouldRenderCaptcha ? captchaToken : undefined,
         status: "active",
         customerType: "NEW",
       },
@@ -518,15 +536,27 @@ const LoginPage = () => {
 
             {/* CAPTCHA REGISTER */}
             <div className="captcha-container">
-              <ReCAPTCHA
-                ref={recaptchaRegisterRef}
-                sitekey={SITE_KEY}
-                size="normal"
-                onChange={setCaptchaToken}
-              />
+              {shouldRenderCaptcha ? (
+                <ReCAPTCHA
+                  ref={recaptchaRegisterRef}
+                  sitekey={CAPTCHA_SITE_KEY}
+                  size="normal"
+                  onChange={setCaptchaToken}
+                />
+              ) : captchaConfigMissing ? (
+                <p style={{ color: "#c0392b", fontSize: 12 }}>
+                  Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.
+                </p>
+              ) : (
+                import.meta.env.DEV && (
+                  <p style={{ color: "#636e72", fontSize: 12 }}>
+                    Captcha đang tắt ở môi trường dev.
+                  </p>
+                )
+              )}
             </div>
 
-            <button className="btn-primary" disabled={registerLoading}>
+            <button className="btn-primary" disabled={registerLoading || captchaConfigMissing}>
               {registerLoading ? "Đang tạo..." : "Đăng ký ngay"}
             </button>
           </form>
@@ -610,12 +640,24 @@ const LoginPage = () => {
 
             {/* CAPTCHA LOGIN */}
             <div className="captcha-container">
-              <ReCAPTCHA
-                ref={recaptchaLoginRef}
-                sitekey={SITE_KEY}
-                size="normal"
-                onChange={setCaptchaToken}
-              />
+              {shouldRenderCaptcha ? (
+                <ReCAPTCHA
+                  ref={recaptchaLoginRef}
+                  sitekey={CAPTCHA_SITE_KEY}
+                  size="normal"
+                  onChange={setCaptchaToken}
+                />
+              ) : captchaConfigMissing ? (
+                <p style={{ color: "#c0392b", fontSize: 12 }}>
+                  Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.
+                </p>
+              ) : (
+                import.meta.env.DEV && (
+                  <p style={{ color: "#636e72", fontSize: 12 }}>
+                    Captcha đang tắt ở môi trường dev.
+                  </p>
+                )
+              )}
             </div>
 
             <div style={{ width: "100%", margin: "8px 0", fontSize: 13, color: "#444" }}>
@@ -641,7 +683,7 @@ const LoginPage = () => {
               </label>
             </div>
 
-            <button className="btn-primary" disabled={loginLoading}>
+            <button className="btn-primary" disabled={loginLoading || captchaConfigMissing}>
               {loginLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
           </form>

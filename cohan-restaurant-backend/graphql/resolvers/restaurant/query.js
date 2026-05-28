@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
+import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
 
 /* ============================ Helpers ============================ */
 
@@ -212,6 +213,7 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
   };
 
   try {
+    const candidateLimit = Math.min(Math.max(lim * 4, 20), 50);
     const geoDocs = await Restaurant.aggregate([
       {
         $geoNear: {
@@ -222,12 +224,56 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
           query: filterWithoutLocationType,
         },
       },
-      { $limit: lim },
-      { $addFields: { distanceKm: { $divide: ["$distanceMeters", 1000] } } },
+      { $limit: candidateLimit },
+      { $addFields: { straightLineDistanceKm: { $divide: ["$distanceMeters", 1000] } } },
       { $project: { distanceMeters: 0 } },
     ]);
 
-    if (Array.isArray(geoDocs) && geoDocs.length > 0) return geoDocs;
+    if (Array.isArray(geoDocs) && geoDocs.length > 0) {
+      const roadResults = await resolveRoadDistances({
+        origin: { lat: latNum, lng: lngNum },
+        destinations: geoDocs
+          .map((doc) => {
+            const coordinates = doc?.location?.coordinates;
+            const geoLng = Number(Array.isArray(coordinates) ? coordinates[0] : NaN);
+            const geoLat = Number(Array.isArray(coordinates) ? coordinates[1] : NaN);
+            const fallbackLat = Number(doc?.address?.lat);
+            const fallbackLng = Number(doc?.address?.lng);
+            const resolvedLat = Number.isFinite(geoLat) ? geoLat : fallbackLat;
+            const resolvedLng = Number.isFinite(geoLng) ? geoLng : fallbackLng;
+            if (!Number.isFinite(resolvedLat) || !Number.isFinite(resolvedLng)) return null;
+            return { id: String(doc._id), lat: resolvedLat, lng: resolvedLng };
+          })
+          .filter(Boolean),
+      });
+
+      const roadMap = new Map(roadResults.map((item) => [String(item.id), item]));
+      return geoDocs
+        .map((doc) => {
+          const straightLineDistanceKm = Number(doc?.straightLineDistanceKm);
+          const road = roadMap.get(String(doc._id));
+          const roadDistanceKm = Number(road?.roadDistanceKm);
+          const hasRoadDistance = Number.isFinite(roadDistanceKm) && roadDistanceKm >= 0;
+          const estimatedTravelMinutes = Number(road?.estimatedTravelMinutes);
+          const distanceKm = hasRoadDistance ? roadDistanceKm : straightLineDistanceKm;
+
+          return {
+            ...doc,
+            straightLineDistanceKm: Number.isFinite(straightLineDistanceKm) ? straightLineDistanceKm : null,
+            roadDistanceKm: hasRoadDistance ? roadDistanceKm : null,
+            estimatedTravelMinutes: Number.isFinite(estimatedTravelMinutes) ? estimatedTravelMinutes : null,
+            distanceKm: Number.isFinite(distanceKm) ? distanceKm : null,
+            distanceSource: hasRoadDistance ? "road" : "straight_line_fallback",
+          };
+        })
+        .sort((a, b) => {
+          const aHasRoad = Number.isFinite(a?.roadDistanceKm) ? 1 : 0;
+          const bHasRoad = Number.isFinite(b?.roadDistanceKm) ? 1 : 0;
+          if (aHasRoad !== bHasRoad) return bHasRoad - aHasRoad;
+          return (a?.distanceKm ?? Number.POSITIVE_INFINITY) - (b?.distanceKm ?? Number.POSITIVE_INFINITY);
+        })
+        .slice(0, lim);
+    }
   } catch (_error) {
     // Fallback to legacy address.lat/lng Haversine path when geospatial index/data is not ready.
   }
@@ -247,9 +293,16 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
       const rLat = Number(doc?.address?.lat);
       const rLng = Number(doc?.address?.lng);
       if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) return null;
-      const distanceKm = haversineDistanceKm(latNum, lngNum, rLat, rLng);
-      if (!Number.isFinite(distanceKm) || distanceKm > normalizedRadiusKm) return null;
-      return { ...doc, distanceKm };
+      const straightLineDistanceKm = haversineDistanceKm(latNum, lngNum, rLat, rLng);
+      if (!Number.isFinite(straightLineDistanceKm) || straightLineDistanceKm > normalizedRadiusKm) return null;
+      return {
+        ...doc,
+        straightLineDistanceKm,
+        roadDistanceKm: null,
+        estimatedTravelMinutes: null,
+        distanceKm: straightLineDistanceKm,
+        distanceSource: "straight_line_fallback",
+      };
     })
     .filter(Boolean)
     .sort((a, b) => a.distanceKm - b.distanceKm)

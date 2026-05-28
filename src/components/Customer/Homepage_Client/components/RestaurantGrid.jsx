@@ -60,6 +60,10 @@ const GET_RESTAURANTS_NEARBY = gql`
       closingHours
       avgRating
       distanceKm
+      straightLineDistanceKm
+      roadDistanceKm
+      estimatedTravelMinutes
+      distanceSource
       address {
         line1
         line2
@@ -124,6 +128,25 @@ const formatDistance = (distanceKm) => {
   return `${distanceKm.toFixed(1)} km`;
 };
 
+
+
+const formatDistanceMeta = ({ distanceSource, distanceKm, estimatedTravelMinutes }) => {
+  const distanceText = formatDistance(distanceKm);
+  if (!distanceText) return null;
+
+  const minutes = Number(estimatedTravelMinutes);
+  const hasDuration = Number.isFinite(minutes) && minutes >= 0;
+  const durationText = hasDuration ? `khoảng ${Math.max(1, Math.round(minutes))} phút` : null;
+
+  if (distanceSource === "road") {
+    return durationText
+      ? `🚗 ${distanceText} • ${durationText}`
+      : `🚗 Cách bạn ${distanceText} đường đi`;
+  }
+
+  return `🧭 Cách bạn khoảng ${distanceText}`;
+};
+
 const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1200&q=80",
@@ -145,6 +168,9 @@ const normalizeRestaurant = (node, index) => {
   const lat = Number(node?.address?.lat);
   const lng = Number(node?.address?.lng);
   const distanceKm = Number(node?.distanceKm);
+  const roadDistanceKm = Number(node?.roadDistanceKm);
+  const straightLineDistanceKm = Number(node?.straightLineDistanceKm);
+  const estimatedTravelMinutes = Number(node?.estimatedTravelMinutes);
 
   return {
     id: node.id,
@@ -158,6 +184,10 @@ const normalizeRestaurant = (node, index) => {
     lat: Number.isFinite(lat) ? lat : null,
     lng: Number.isFinite(lng) ? lng : null,
     distanceKm: Number.isFinite(distanceKm) ? distanceKm : null,
+    roadDistanceKm: Number.isFinite(roadDistanceKm) ? roadDistanceKm : null,
+    straightLineDistanceKm: Number.isFinite(straightLineDistanceKm) ? straightLineDistanceKm : null,
+    estimatedTravelMinutes: Number.isFinite(estimatedTravelMinutes) ? estimatedTravelMinutes : null,
+    distanceSource: typeof node?.distanceSource === "string" ? node.distanceSource : null,
   };
 };
 
@@ -258,7 +288,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
           {loading
             ? Array.from({ length: DEFAULT_RESTAURANT_LIMIT }).map((_, idx) => <SkeletonCard key={idx} />)
             : displayRestaurants.map((r) => {
-                const distanceText = formatDistance(r.distanceKm);
+                const distanceMetaText = formatDistanceMeta({ distanceSource: r.distanceSource, distanceKm: r.distanceKm, estimatedTravelMinutes: r.estimatedTravelMinutes });
                 return (
                   <div key={r.id} className="res-card" onClick={() => goDetail(r.id)} role="button" tabIndex={0}>
                     <div className="res-card__image-wrapper">
@@ -273,7 +303,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
                       <div className="res-card__main-info">
                         <h4 className="res-card__name" title={r.name}>{r.name}</h4>
                         <p className="res-card__address" title={r.addressText}>📍 {r.addressText || "Chưa cập nhật địa chỉ"}</p>
-                        {distanceText && <p className="res-card__address">🧭 Cách bạn {distanceText}</p>}
+                        {distanceMetaText && <p className="res-card__address">{distanceMetaText}</p>}
                       </div>
 
                       <p className="res-card__desc">{r.description}</p>

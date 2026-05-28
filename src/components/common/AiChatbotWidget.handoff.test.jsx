@@ -37,6 +37,8 @@ vi.mock("@apollo/client/react", () => ({
   useLazyQuery: vi.fn(() => [mocks.guestRepliesSpy, { loading: false, data: null, error: null }]),
   useQuery: vi.fn(() => mocks.publicSettingsQuerySpy()),
 }));
+vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: vi.fn() }) }));
+vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ user: { id: "user-1" } }) }));
 
 const open = () => fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
 const send = (t) => { fireEvent.change(screen.getByPlaceholderText(/Hỏi AI gợi ý món|Hỏi về món ăn/i), { target: { value: t } }); fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i })); };

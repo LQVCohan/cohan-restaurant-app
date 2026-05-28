@@ -12,7 +12,13 @@ const mocks = vi.hoisted(() => ({
   guestMessageMutationSpy: vi.fn(),
   submitFeedbackMutationSpy: vi.fn(),
   publicSettingsQuerySpy: vi.fn(),
+  customerMenuItemQuerySpy: vi.fn(),
+  publicRestaurantQuerySpy: vi.fn(),
+  menuItemLiveStateQuerySpy: vi.fn(),
+  addCartMutationSpy: vi.fn(),
+  addToCartSpy: vi.fn(),
   guestSendLoadingState: false,
+  authUser: { id: "user-1" },
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -27,11 +33,21 @@ vi.mock("@apollo/client/react", () => ({
     if (body.includes("RequestAiChatbotHandoff")) return [mocks.handoffMutationSpy, { loading: false }];
     if (body.includes("SendAiChatbotGuestMessage")) return [mocks.guestMessageMutationSpy, { loading: mocks.guestSendLoadingState }];
     if (body.includes("SubmitAiChatbotAnswerFeedback")) return [mocks.submitFeedbackMutationSpy, { loading: false }];
+    if (body.includes("AddCartItemFromAiChatbot")) return [mocks.addCartMutationSpy, { loading: false }];
     return [vi.fn(), { loading: false }];
   }),
   useLazyQuery: vi.fn(() => [mocks.guestRepliesSpy, { loading: false, data: null, error: null }]),
-  useQuery: vi.fn(() => mocks.publicSettingsQuerySpy()),
+  useQuery: vi.fn((query, options) => {
+    const body = query?.loc?.source?.body || "";
+    if (body.includes("PublicAiChatbotSettings")) return mocks.publicSettingsQuerySpy(options);
+    if (body.includes("CustomerMenuItemForAiChatbot")) return mocks.customerMenuItemQuerySpy(options);
+    if (body.includes("PublicRestaurantByIdForAiChatbot")) return mocks.publicRestaurantQuerySpy(options);
+    if (body.includes("AiMenuItemLiveState")) return mocks.menuItemLiveStateQuerySpy(options);
+    return { data: null, loading: false, error: null };
+  }),
 }));
+vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: mocks.addToCartSpy }) }));
+vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ get user() { return mocks.authUser; } }) }));
 
 const open = () => fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
 const send = (t) => {
@@ -49,6 +65,21 @@ beforeEach(() => {
   mocks.submitFeedbackMutationSpy.mockResolvedValue({ data: { submitAiChatbotAnswerFeedback: { id: "f1", rating: "helpful" } } });
   mocks.guestRepliesSpy.mockResolvedValue({ data: { aiChatbotGuestReplies: { replies: [] } } });
   mocks.publicSettingsQuerySpy.mockReturnValue({ data: { publicAiChatbotSettings: { enabled: true, welcomeMessage: "Xin chào", starterQuickReplies: ["Gợi ý món bán chạy cho tôi"], handoffEnabled: true, handoffUnavailableMessage: "Không hỗ trợ" } } });
+  mocks.addCartMutationSpy.mockResolvedValue({ data: { addCartItem: { id: "cart-1", items: [{ id: "line-1", menuItemId: "food-1", servingVariantKey: "small", note: "it cay", holdExpiresAt: null, holdStatus: null }] } } });
+  mocks.customerMenuItemQuerySpy.mockReturnValue({
+    loading: false,
+    data: { customerMenuItem: { id: "food-1", name: "Phở bò", basePrice: 90000, thumbImage: "/pho.jpg", restaurantId: "resto-1", menuId: "menu-1", categoryId: "cat-1", status: "available", inventoryStatus: "in_stock", servingVariants: [{ key: "small", name: "Nhỏ", price: 90000 }, { key: "large", name: "Lớn", price: 110000 }] } },
+  });
+  mocks.publicRestaurantQuerySpy.mockReturnValue({
+    loading: false,
+    data: { publicRestaurant: { id: "resto-1", name: "Euro Bistro House", canOrder: true, openingStatus: "open" } },
+  });
+  mocks.menuItemLiveStateQuerySpy.mockReturnValue({
+    loading: false,
+    data: { menuItemLiveState: { maxAvailableQty: 5, outOfStock: false, blocked: false, reservedCartQty: 0 } },
+  });
+  mocks.addToCartSpy.mockReset();
+  mocks.authUser = { id: "user-1" };
 });
 
 afterEach(() => {
@@ -126,6 +157,7 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.getAllByRole("button", { name: "Chọn món" }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
     expect(screen.getByRole("button", { name: "Xem chi tiết món" })).toBeInTheDocument();
+    expect(screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng").className).toContain("is-expanded");
   });
 
   it("unavailable/optioned items do not show add button", async () => {
@@ -184,5 +216,59 @@ describe("AiChatbotWidget basic", () => {
     });
     expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1);
     await act(async () => release({ data: { askAiChatbot: { answer: "ok", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1" } } }));
+  });
+
+  it("expanded detail add-to-cart calls backend and updates cart", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", restaurantId: "resto-1" }] } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open(); send("gợi ý món");
+    await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
+    expect(screen.getByRole("button", { name: "Nhỏ" })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Ví dụ: ít cay, không hành..."), { target: { value: "it cay" } });
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào giỏ" }));
+    await waitFor(() => expect(mocks.addCartMutationSpy).toHaveBeenCalled());
+    expect(mocks.addCartMutationSpy).toHaveBeenCalledWith(expect.objectContaining({ variables: { input: expect.objectContaining({ userId: "user-1", restaurantId: "resto-1", menuItemId: "food-1", servingVariantKey: "small", quantity: 1, note: "it cay" }) } }));
+    expect(mocks.addToCartSpy).toHaveBeenCalledWith(expect.objectContaining({ dishId: "food-1", restaurantId: "resto-1", backendCartId: "cart-1", backendCartItemId: "line-1", servingVariantKey: "small", note: "it cay" }));
+    expect(screen.getByText("Đã thêm Phở bò vào giỏ hàng.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xem giỏ hàng" })).toBeInTheDocument();
+  });
+
+  it("does not add while live state is loading", async () => {
+    mocks.menuItemLiveStateQuerySpy.mockImplementation(() => ({ loading: true, data: null }));
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", restaurantId: "resto-1" }] } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open(); send("gợi ý món");
+    await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
+    const addBtn = screen.getByRole("button", { name: "Thêm vào giỏ" });
+    expect(addBtn).toBeDisabled();
+    fireEvent.click(addBtn);
+    expect(mocks.addCartMutationSpy).not.toHaveBeenCalled();
+    mocks.menuItemLiveStateQuerySpy.mockReset();
+  });
+
+  it("does not add when quantity exceeds available", async () => {
+    mocks.menuItemLiveStateQuerySpy.mockReturnValue({ loading: false, data: { menuItemLiveState: { maxAvailableQty: 1, outOfStock: false, blocked: false, reservedCartQty: 0 } } });
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", restaurantId: "resto-1" }] } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open(); send("gợi ý món");
+    await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
+    const plusBtn = screen.getAllByRole("button", { name: "+" })[0];
+    fireEvent.click(plusBtn);
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thêm vào giỏ" })).not.toBeDisabled();
+  });
+
+  it("does not add if missing login", async () => {
+    mocks.authUser = null;
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Gợi ý", intent: "menu", quickReplies: [], actions: [], contextSummary: null, conversationId: "conv-1", sources: [{ type: "menuItem", id: "food-1", label: "Phở bò", restaurantId: "resto-1" }] } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open(); send("gợi ý món");
+    await waitFor(() => expect(screen.getByText("Phở bò")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
+    expect(screen.getByText("Vui lòng đăng nhập để thêm món vào giỏ.")).toBeInTheDocument();
+    expect(mocks.addCartMutationSpy).not.toHaveBeenCalled();
   });
 });

@@ -100,6 +100,10 @@ type Restaurant {
   categories: [Category]
   avgRating: Float
   distanceKm: Float
+  straightLineDistanceKm: Float
+  roadDistanceKm: Float
+  estimatedTravelMinutes: Float
+  distanceSource: String
   reviewCount: Int
   orderCount: Int
   reservationCount: Int

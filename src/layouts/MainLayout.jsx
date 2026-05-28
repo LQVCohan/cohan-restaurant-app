@@ -5,6 +5,7 @@ import Footer from "../components/Customer/Homepage_Client/components/Footer";
 import Cart from "../components/Customer/Homepage_Client/components/Cart";
 import { useCart } from "../context/CartProvider";
 import { useCustomerCartActions } from "../hooks/useCustomerCartActions";
+import { OPEN_CUSTOMER_CART_EVENT } from "../utils/cartEvents";
 
 export default function MainLayout({ children }) {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
@@ -19,6 +20,11 @@ export default function MainLayout({ children }) {
   });
   const searchParams = new URLSearchParams(location.search);
   const isRestaurantDetailPreview = searchParams.get("preview") === "1";
+  React.useEffect(() => {
+    const handler = () => setIsCartOpen(true);
+    window.addEventListener(OPEN_CUSTOMER_CART_EVENT, handler);
+    return () => window.removeEventListener(OPEN_CUSTOMER_CART_EVENT, handler);
+  }, []);
 
   // Các đường dẫn KHÔNG hiển thị header/footer
   const hiddenRoutes = [
