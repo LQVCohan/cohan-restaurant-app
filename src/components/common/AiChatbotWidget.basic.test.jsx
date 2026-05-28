@@ -251,6 +251,9 @@ describe("AiChatbotWidget basic", () => {
             { type: "link", label: "Mở đơn hàng", href: "/orders" },
             { type: "link", label: "javascript:alert(1)", href: "javascript:alert(1)" },
             { type: "link", label: "data bad", href: "data:text/html,bad" },
+            { type: "link", label: "mailto bad", href: "mailto:test@example.com" },
+            { type: "link", label: "tel bad", href: "tel:123" },
+            { type: "link", label: "protocol bad", href: "//evil.test" },
           ],
           sources: [],
           contextSummary: null,
@@ -269,10 +272,72 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.getByRole("button", { name: "Mở đơn hàng" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "data bad" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "mailto bad" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "tel bad" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "protocol bad" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mở giỏ hàng" }));
     expect(openCartSpy).toHaveBeenCalledTimes(1);
     expect(mocks.navigateSpy).not.toHaveBeenCalledWith("javascript:alert(1)");
     window.removeEventListener(OPEN_CUSTOMER_CART_EVENT, openCartSpy);
+  });
+
+
+  it("renders Phase 24 action cards, navigates internal links, and sends search actions safely", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Bạn có thể đặt món theo các bước.",
+          quickReplies: [],
+          actions: [
+            { type: "link", label: "Xem menu", href: "/cus-menu", description: "Mở trang menu", icon: "menu" },
+            { type: "search", label: "Tìm phở bò", href: "phở bò", description: "Tìm trong chatbot" },
+          ],
+          sources: [],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Kết quả tìm kiếm",
+          quickReplies: [],
+          actions: [],
+          sources: [],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("làm sao đặt món");
+    await waitFor(() => expect(screen.getByText("Mở trang menu")).toBeInTheDocument(), { timeout: 1500 });
+    fireEvent.click(screen.getByRole("button", { name: /Xem menu/i }));
+    expect(mocks.navigateSpy).toHaveBeenCalledWith("/cus-menu");
+
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Tìm phở bò/i }));
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(2), { timeout: 1500 });
+    expect(mocks.askMutationSpy.mock.calls[1][0].variables.input.message).toBe("phở bò");
+  });
+
+  it("renders guided reservation and ordering actions from backend", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Chọn ngày giờ và số người.", quickReplies: [], actions: [{ type: "link", label: "Mở trang đặt bàn", href: "/restaurant/resto-1/layout" }], sources: [], contextSummary: null, conversationId: "conv-1" } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("tôi muốn đặt bàn");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mở trang đặt bàn" })).toBeInTheDocument(), { timeout: 1500 });
+    cleanup();
+
+    mocks.askMutationSpy.mockResolvedValueOnce({ data: { askAiChatbot: { answer: "Mở menu rồi kiểm tra giỏ.", quickReplies: [], actions: [{ type: "link", label: "Xem menu", href: "/cus-menu" }, { type: "openCart", label: "Mở giỏ hàng", href: "" }], sources: [], contextSummary: null, conversationId: "conv-1" } } });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("thanh toán thế nào");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Xem menu" })).toBeInTheDocument(), { timeout: 1500 });
+    expect(screen.getByRole("button", { name: "Mở giỏ hàng" })).toBeInTheDocument();
   });
 
   it("normal AI flow before handoff", async () => {
@@ -382,7 +447,7 @@ describe("AiChatbotWidget basic", () => {
           answer: "ok",
           quickReplies: [],
           actions: [
-            { type: "navigate", label: "Mở menu", href: "/menu" },
+            { type: "link", label: "Mở menu", href: "/cus-menu" },
             { type: "handoff", label: "Gặp nhân viên", href: "/support" },
           ],
           contextSummary: null,
@@ -559,7 +624,7 @@ describe("AiChatbotWidget basic", () => {
           answer: "Gợi ý",
           intent: "menu",
           quickReplies: ["Món khác"],
-          actions: [{ type: "navigate", label: "Mở menu", href: "/menu" }],
+          actions: [{ type: "link", label: "Mở menu", href: "/cus-menu" }],
           contextSummary: null,
           conversationId: "conv-1",
           sources: [

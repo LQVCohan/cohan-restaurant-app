@@ -696,37 +696,125 @@ const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuIt
 };
 
 const isForbiddenAction = (action = {}) => {
-  const text = `${action?.type || ""} ${action?.label || ""} ${action?.href || ""}`.toLowerCase();
-  return /payment|add_to_cart_candidate|add-to-cart|addtocart/.test(text);
+  const text = `${action?.type || ""} ${action?.label || ""} ${action?.href || ""} ${action?.description || ""}`.toLowerCase();
+  return /payment|auto[-_ ]?submit|place[-_ ]?order|reserve[-_ ]?table|delete|destroy|destructive|add_to_cart_candidate|add-to-cart|addtocart/.test(text);
 };
 
-const normalizeAiAction = (action, allowedItemIds) => {
+const normalizeActionPriority = (priority) => {
+  const value = Number(priority);
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 50;
+};
+
+const normalizeAiAction = (action, allowedItemIds = new Set()) => {
   if (!action || isForbiddenAction(action)) return null;
   const type = String(action.type || "link").trim();
   if (!["link", "handoff", "search", "openCart"].includes(type)) return null;
   const href = String(action.href || "").trim();
-  if (type !== "openCart" && !href) return null;
-  if (href && href.startsWith("/") && !isSafeInternalPath(href)) return null;
-  if (href && !href.startsWith("/") && !/^https?:\/\//i.test(href)) return null;
+  if ((type === "link" || type === "search") && !href) return null;
+  if (type === "openCart" && href && href !== "/cart") return null;
+  if (type === "handoff" && href && href !== "/contact") return null;
+  if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return null;
+  if (type !== "search" && href && href.startsWith("/") && !isSafeInternalPath(href)) return null;
+  if (type !== "search" && href && !href.startsWith("/") && !/^https?:\/\//i.test(href)) return null;
   if (href.startsWith("/food/")) {
     const itemId = href.replace("/food/", "").split(/[/?#]/)[0];
-    if (!allowedItemIds.has(itemId)) return null;
+    if (allowedItemIds.size && !allowedItemIds.has(itemId)) return null;
   }
+  const label = String(action.label || "").trim().slice(0, 80) || (type === "openCart" ? "Mở giỏ hàng" : type === "handoff" ? "Gặp nhân viên" : "Mở liên kết");
   return {
     type,
-    label: String(action.label || "").trim() || (type === "openCart" ? "Mở giỏ hàng" : "Mở liên kết"),
-    href,
+    label,
+    href: type === "openCart" ? "" : href,
+    description: String(action.description || "").trim().slice(0, 180) || null,
+    icon: String(action.icon || "").trim().slice(0, 40) || null,
+    priority: normalizeActionPriority(action.priority),
   };
 };
 
-const normalizeAiResult = (parsed, context) => {
+const actionKey = (action) => (action?.type === "openCart" || action?.href ? `${action?.type || ""}:${action?.href || ""}` : `${action?.type || ""}:${String(action?.label || "").toLowerCase()}`);
+
+const mergeAiActions = (deterministic = [], provider = [], context = {}, limit = 6) => {
   const allowedItemIds = new Set([...(context.recommendedMenuItems || []), ...(context.menuItems || [])].map((x) => String(x.id)));
-  const actions = Array.isArray(parsed?.actions)
-    ? parsed.actions
-      .map((action) => normalizeAiAction(action, allowedItemIds))
-      .filter(Boolean)
-      .slice(0, 4)
-    : fallbackActions(context);
+  const seen = new Set();
+  const output = [];
+  for (const action of [...deterministic, ...provider]) {
+    const normalized = normalizeAiAction(action, allowedItemIds);
+    if (!normalized) continue;
+    const key = actionKey(normalized);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(normalized);
+    if (output.length >= limit) break;
+  }
+  return output;
+};
+
+const pushAction = (actions, action) => {
+  if (action) actions.push(action);
+};
+
+const buildDeterministicActions = (context = {}) => {
+  const actions = [];
+  const role = String(context.userSafeProfile?.role || context.user?.role || "guest").toLowerCase();
+  const isLoggedIn = Boolean(context.userSafeProfile?.authenticated || context.user?.authenticated);
+  const restaurantId = context.restaurants?.[0]?.id || context.currentPage?.restaurantId || context.currentPage?.selectedMenuItem?.restaurantId;
+  const items = (context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || [];
+
+  for (const entry of context.matchedFeatureMapEntries || []) {
+    if (entry.managerOnly && !ROLE_MANAGER_LIKE.has(role)) continue;
+    pushAction(actions, {
+      type: entry.actionType === "openCart" || entry.key === "cart" ? "openCart" : entry.actionType,
+      label: entry.label,
+      href: entry.actionType === "openCart" ? "" : entry.path,
+      description: entry.description,
+      icon: entry.key,
+      priority: 5,
+    });
+  }
+
+  if (["cart", "checkout"].includes(context.intent)) {
+    pushAction(actions, { type: "openCart", label: context.intent === "checkout" ? "Mở giỏ hàng" : "Giỏ hàng của tôi", href: "", description: "Kiểm tra món, số lượng và ghi chú trước khi xác nhận.", icon: "cart", priority: 1 });
+    pushAction(actions, { type: "link", label: "Xem menu", href: "/cus-menu", description: "Chọn món qua trang menu hiện có.", icon: "menu", priority: 2 });
+    if (!isLoggedIn) pushAction(actions, { type: "link", label: "Đăng nhập", href: "/login", description: "Đăng nhập để xem giỏ/đơn hàng đã lưu của tài khoản.", icon: "login", priority: 3 });
+    if (context.intent === "checkout" && isLoggedIn && Number(context.cartSummary?.totalQuantity || 0) > 0) {
+      pushAction(actions, { type: "link", label: "Đi tới thanh toán", href: "/checkout", description: "Mở luồng checkout hiện có; bạn vẫn cần tự xác nhận.", icon: "checkout", priority: 3 });
+    }
+  }
+
+  if (context.intent === "reservationHelp") {
+    if (restaurantId) pushAction(actions, { type: "link", label: "Mở trang đặt bàn", href: `/restaurant/${restaurantId}/layout`, description: "Chọn ngày giờ, số người và bàn trong luồng đặt bàn hiện có.", icon: "table", priority: 1 });
+    else pushAction(actions, { type: "link", label: "Chọn nhà hàng", href: "/restaurants", description: "Chọn nhà hàng trước khi xem sơ đồ bàn.", icon: "restaurant", priority: 1 });
+    pushAction(actions, { type: "link", label: "Xem menu", href: "/cus-menu", description: "Tham khảo món trước khi đặt bàn.", icon: "menu", priority: 4 });
+  }
+
+  if (context.intent === "orderHelp" && isLoggedIn) pushAction(actions, { type: "link", label: "Đơn hàng của tôi", href: "/orders", description: "Xem đơn hàng của chính tài khoản hiện tại.", icon: "orders", priority: 1 });
+  if (["profileHelp", "identity"].includes(context.intent) && isLoggedIn) pushAction(actions, { type: "link", label: "Hồ sơ của tôi", href: "/profile", description: "Mở hồ sơ tài khoản trong app.", icon: "profile", priority: 1 });
+
+  if (context.intent === "menu") {
+    pushAction(actions, { type: "link", label: "Xem menu", href: "/cus-menu", description: "Mở trang menu khách hàng.", icon: "menu", priority: 1 });
+    for (const item of items.slice(0, 3)) {
+      pushAction(actions, { type: "link", label: `Xem ${item.name || "món gợi ý"}`.slice(0, 80), href: `/food/${item.id}`, description: item.formattedPrice ? `Món trong dữ liệu hiện có: ${item.formattedPrice}` : "Mở chi tiết món trong app.", icon: "food", priority: 2 });
+    }
+  }
+
+  if (context.intent === "managerFeatureHelp" && ROLE_MANAGER_LIKE.has(role)) {
+    pushAction(actions, { type: "link", label: "Mở dashboard quản lý", href: "/manager", description: "Truy cập khu vực quản lý theo quyền hiện có.", icon: "manager", priority: 1 });
+    pushAction(actions, { type: "link", label: "Đơn hàng quản lý", href: "/manager#orders", description: "Mở khu vực đơn hàng trong dashboard.", icon: "orders", priority: 2 });
+  }
+
+  if (context.intent === "support") pushAction(actions, { type: "handoff", label: "Gặp nhân viên", href: "/contact", description: "Gửi yêu cầu để nhân viên hỗ trợ trong luồng handoff hiện có.", icon: "support", priority: 1 });
+
+  if (isLoggedIn && ["identity", "profileHelp", "navigation"].includes(context.intent)) {
+    pushAction(actions, { type: "openCart", label: "Giỏ hàng của tôi", href: "", description: "Mở giỏ hàng hiện tại.", icon: "cart", priority: 4 });
+    pushAction(actions, { type: "link", label: "Đơn hàng của tôi", href: "/orders", description: "Xem đơn hàng của tài khoản hiện tại.", icon: "orders", priority: 5 });
+  }
+
+  return mergeAiActions(actions.sort((a, b) => normalizeActionPriority(a.priority) - normalizeActionPriority(b.priority)), [], context, 6);
+};
+
+const normalizeAiResult = (parsed, context) => {
+  const providerActions = Array.isArray(parsed?.actions) ? parsed.actions : [];
+  const actions = mergeAiActions(buildDeterministicActions(context), providerActions, context, 6);
   const menuItemLookup = buildMenuItemLookup(context);
   const sources = Array.isArray(parsed?.sources)
     ? parsed.sources
@@ -786,7 +874,7 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
-    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string, \"description\": string, \"icon\": string, \"priority\": number}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
@@ -868,7 +956,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
-    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string, \"description\": string, \"icon\": string, \"priority\": number}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
     "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
     `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
     knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
@@ -1081,7 +1169,7 @@ const fallbackAnswer = (context) => {
     intent,
     confidence: intent === "general" ? 0.55 : 0.72,
     quickReplies: fallbackQuickReplies(intent),
-    actions: fallbackActions(context),
+    actions: buildDeterministicActions(context),
     sources: fallbackSources(context),
     isFallback: true,
   };
@@ -1397,6 +1485,9 @@ export const __testables = {
   menuFallback,
   fallbackQuickReplies,
   fallbackActions,
+  buildDeterministicActions,
+  normalizeAiAction,
+  mergeAiActions,
   fallbackSources,
   normalizeGuestId,
   normalizeAiResult,

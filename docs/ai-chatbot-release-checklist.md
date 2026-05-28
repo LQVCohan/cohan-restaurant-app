@@ -143,3 +143,15 @@
 - [ ] Verify reservation fallback lists all booking steps and links to `/restaurant/:restaurantId/layout` when a restaurant is in context.
 - [ ] Verify guest cart/order/reservation questions ask the user to log in instead of exposing private data.
 - [ ] Verify provider prompts identify the bot as an AI App Assistant for Cohan Restaurant App and still require JSON-only, context-only, secret-safe answers.
+
+## Phase 24 safe action cards checklist
+
+- [ ] Backend deterministic actions render before provider actions and remain capped/deduplicated.
+- [ ] Supported action types are only `link`, `openCart`, `handoff`, and `search`.
+- [ ] Sanitization rejects `javascript:`, `data:`, `mailto:`, `tel:`, `//external`, unknown types, arbitrary JS functions, `add_to_cart_candidate`, destructive actions, payment auto-submit, checkout auto-submit, and reservation auto-create actions.
+- [ ] Ordering questions show guided steps plus “Xem menu” and “Mở giỏ hàng”; `/checkout` is shown only after an authenticated cart exists.
+- [ ] Reservation questions show “Mở trang đặt bàn” with `/restaurant/:id/layout` when restaurant context exists, otherwise “Chọn nhà hàng”.
+- [ ] Logged-in users can see “Đơn hàng của tôi”, “Hồ sơ của tôi”, and “Giỏ hàng của tôi”; guests are not shown user-specific data claims.
+- [ ] Manager actions are hidden from customer roles and shown only for allowed manager/admin/hr/accountant roles.
+- [ ] Frontend action cards use `navigate()` for internal links, the existing cart event for `openCart`, the existing handoff mutation for `handoff`, and safe chatbot resubmission for `search`.
+- [ ] Manual safety rule: the chatbot never auto-orders, auto-pays, auto-reserves, mutates profiles, or performs destructive actions.

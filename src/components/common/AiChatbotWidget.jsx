@@ -34,6 +34,9 @@ const ASK_AI_CHATBOT = gql`
         type
         label
         href
+        description
+        icon
+        priority
       }
       sources {
         type
@@ -528,17 +531,29 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     publicSettings?.handoffUnavailableMessage ||
     "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
   const visibleActions = useMemo(
-    () =>
-      (handoffEnabled
+    () => {
+      const allowedTypes = new Set(["link", "openCart", "handoff", "search"]);
+      const seen = new Set();
+      return (handoffEnabled
         ? lastActions
         : lastActions.filter((action) => action?.type !== "handoff")
       )
+        .filter((action) => allowedTypes.has(action?.type))
         .filter((action) => action?.type !== "add_to_cart_candidate")
         .filter((action) => {
+          const href = String(action?.href || "").trim();
+          if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return false;
           if (["openCart", "handoff", "search"].includes(action?.type)) return true;
-          const href = String(action?.href || "");
-          return href.startsWith("/") || /^https?:\/\//i.test(href);
-        }),
+          return (href.startsWith("/") && !href.startsWith("//")) || /^https?:\/\//i.test(href);
+        })
+        .filter((action) => {
+          const key = action?.type === "openCart" || action?.href ? `${action?.type}:${action?.href || ""}` : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 6);
+    },
     [handoffEnabled, lastActions],
   );
 
@@ -951,8 +966,9 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       return;
     }
     if (!action?.href) return;
-    const safeHref = String(action.href || "");
-    if (!safeHref.startsWith("/") && !/^https?:\/\//i.test(safeHref)) return;
+    const safeHref = String(action.href || "").trim();
+    if (/^(?:javascript|data|mailto|tel):/i.test(safeHref) || safeHref.startsWith("//")) return;
+    if (!(safeHref.startsWith("/") && !safeHref.startsWith("//")) && !/^https?:\/\//i.test(safeHref)) return;
     if (/^https?:\/\//i.test(safeHref)) {
       window.open(safeHref, "_blank", "noopener,noreferrer");
       return;
@@ -1425,14 +1441,19 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           </div>
 
           {!selectedMenuItemSource && visibleActions.length ? (
-            <div className="ai-chatbot-actions">
+            <div className="ai-chatbot-actions ai-chatbot-action-cards" aria-label="Hành động gợi ý">
               {visibleActions.map((action, index) => (
                 <button
-                  key={`${action.label}-${index}`}
+                  key={`${action.type}-${action.href || action.label}-${index}`}
                   type="button"
+                  className={`ai-chatbot-action-card ${index === 0 ? "primary" : "secondary"}`}
                   onClick={() => handleAction(action)}
                 >
-                  {action.label}
+                  {action.icon ? <span className="ai-chatbot-action-card__icon" aria-hidden="true">{action.icon}</span> : null}
+                  <span className="ai-chatbot-action-card__text">
+                    <strong>{action.label}</strong>
+                    {action.description ? <small>{action.description}</small> : null}
+                  </span>
                 </button>
               ))}
             </div>
