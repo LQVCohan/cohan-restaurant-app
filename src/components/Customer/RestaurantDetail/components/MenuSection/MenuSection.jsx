@@ -128,6 +128,7 @@ const MenuSection = ({
   restaurant,
   canOrder: canOrderProp,
   openingStatus: openingStatusProp,
+  openingStatusReason,
 }) => {
   const navigate = useNavigate();
 
@@ -266,7 +267,7 @@ const MenuSection = ({
   const resolvedCanOrder =
     typeof canOrderProp === "boolean" ? canOrderProp : !!restaurant?.canOrder;
 
-  const cannotOrderReason = getCannotOrderReason(
+  const cannotOrderReason = openingStatusReason || getCannotOrderReason(
     openingStatusProp || restaurant?.openingStatus,
   );
 
@@ -309,8 +310,16 @@ const MenuSection = ({
   };
 
   return (
-    <div className="menu-section">
-      <div className="time-slot-tabs">
+    <div className="menu-section tab-panel-shell">
+      <div className="menu-section-header">
+        <div>
+          <p className="section-eyebrow">Thực đơn</p>
+          <h2>Khám phá món ăn</h2>
+          <p>Chọn khung giờ, danh mục và tìm món phù hợp với khẩu vị của bạn.</p>
+        </div>
+      </div>
+
+      <div className="time-slot-tabs" aria-label="Chọn khung giờ phục vụ">
         {TIME_SLOTS.map((slot) => (
           <button
             key={slot.id}
@@ -328,12 +337,26 @@ const MenuSection = ({
         ))}
       </div>
 
+      {!resolvedCanOrder && (
+        <div className="menu-order-status-warning" role="status">
+          <span className="warning-icon" aria-hidden="true">⏰</span>
+          <span>
+            <strong>Nhà hàng đang đóng cửa</strong>
+            <small>{cannotOrderReason}</small>
+          </span>
+        </div>
+      )}
+
       <div className="menu-layout">
         <aside className="category-sidebar">
           <h3 className="sidebar-header">Thực đơn</h3>
           <div className="category-list">
             {catLoading ? (
-              <LoadingSpinner size="small" />
+              <div className="category-loading">
+                <LoadingSpinner size="small" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="category-empty">Chưa có danh mục</div>
             ) : (
               categories.map((cat) => (
                 <button
@@ -351,13 +374,13 @@ const MenuSection = ({
           </div>
         </aside>
 
-        <main className="menu-content">
+        <main className="menu-content section-card">
           <div className="menu-toolbar">
             <input
               aria-label="Tìm món"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm món..."
+              placeholder="Tìm món theo tên hoặc mô tả..."
             />
             <select
               aria-label="Sắp xếp món"
@@ -373,12 +396,23 @@ const MenuSection = ({
           </div>
 
           {menuLoading && menuItems.length === 0 ? (
-            <div className="loading-state">
-              <LoadingSpinner size="large" />
+            <div className="menu-skeleton-list" aria-label="Đang tải món ăn">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="menu-skeleton-card">
+                  <div className="skeleton-thumb" />
+                  <div className="skeleton-content">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : menuError ? (
-            <div className="empty-state" role="alert">
-              <p>Không tải được danh sách món. Vui lòng thử lại.</p>
+            <div className="empty-state-card" role="alert">
+              <span className="empty-state-icon" aria-hidden="true">⚠️</span>
+              <h3 className="empty-state-title">Không tải được thực đơn</h3>
+              <p className="empty-state-description">Vui lòng thử lại sau.</p>
             </div>
           ) : menuItems.length > 0 ? (
             <div className="dish-list">
@@ -495,19 +529,15 @@ const MenuSection = ({
               )}
             </div>
           ) : (
-            <div className="empty-state">
-              <span className="icon">🍽️</span>
-              <p>Chưa có món ăn phù hợp.</p>
+            <div className="empty-state-card menu-empty-state">
+              <span className="empty-state-icon" aria-hidden="true">🍽️</span>
+              <h3 className="empty-state-title">Chưa có món trong mục này</h3>
+              <p className="empty-state-description">Thử đổi khung giờ, danh mục hoặc từ khóa tìm kiếm để xem các món khác.</p>
             </div>
           )}
         </main>
       </div>
 
-      {!resolvedCanOrder && (
-        <div className="menu-order-status-warning" role="status">
-          {cannotOrderReason}
-        </div>
-      )}
 
       <button type="button" className="cart-fab cart-fab--desktop" onClick={() => setIsCartOpen(true)}>
         <ShoppingCart size={24} />

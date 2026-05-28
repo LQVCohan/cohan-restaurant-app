@@ -49,20 +49,27 @@ const PhotoGallery = ({ photos }) => {
 
   if (!photos || photos.length === 0) {
     return (
-      <div className="photo-gallery">
-        <div className="gallery-empty">
-          <span className="empty-icon">📸</span>
-          <h3>Chưa có hình ảnh</h3>
-          <p>Nhà hàng chưa cập nhật thư viện ảnh.</p>
+      <div className="photo-gallery tab-panel-shell">
+        <div className="gallery-header">
+          <p className="section-eyebrow">Hình ảnh</p>
+          <h2 className="gallery-title">Thư viện ảnh</h2>
+          <p className="gallery-subtitle">Khám phá không gian nhà hàng qua những hình ảnh được cập nhật.</p>
+        </div>
+
+        <div className="gallery-empty empty-state-card empty-gallery-shell">
+          <span className="empty-state-icon" aria-hidden="true">📸</span>
+          <h3 className="empty-state-title">Chưa có hình ảnh</h3>
+          <p className="empty-state-description">Nhà hàng chưa cập nhật thư viện ảnh.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="photo-gallery">
+    <div className="photo-gallery tab-panel-shell">
       <div className="gallery-header">
-        <h2 className="gallery-title">📸 Thư viện ảnh</h2>
+        <p className="section-eyebrow">Hình ảnh</p>
+        <h2 className="gallery-title">Thư viện ảnh</h2>
         <p className="gallery-subtitle">
           Khám phá không gian và món ăn tại nhà hàng ({photos.length} ảnh)
         </p>
@@ -70,10 +77,11 @@ const PhotoGallery = ({ photos }) => {
 
       <div className="gallery-grid">
         {photos.map((photo, index) => (
-          <div
+          <button
             key={index}
+            type="button"
             className={`gallery-item ${
-              index === 0 ? "gallery-item--featured" : ""
+              index === 0 && photos.length > 3 ? "gallery-item--featured" : ""
             }`}
             onClick={() => openLightbox(photo, index)}
           >
@@ -92,7 +100,7 @@ const PhotoGallery = ({ photos }) => {
                 <span>{photo.caption}</span>
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
 

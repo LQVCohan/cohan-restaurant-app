@@ -167,6 +167,8 @@ const ReviewsSection = ({ restaurantId }) => {
   }, [reviews, sortBy]);
 
   const stats = statsData?.reviewStats;
+  const totalReviews = Number(stats?.total || 0);
+  const hasReviews = totalReviews > 0;
   const averageRating = Number(stats?.avgRating || 0).toFixed(1);
 
   const ratingDistribution = [5, 4, 3, 2, 1].map((rating) => {
@@ -260,7 +262,7 @@ const ReviewsSection = ({ restaurantId }) => {
   }
 
   return (
-    <div className="reviews-section">
+    <div className="reviews-section tab-panel-shell">
       <div className="reviews-header">
         <h2 className="reviews-title">⭐ Đánh giá từ khách hàng</h2>
         <button
@@ -274,11 +276,18 @@ const ReviewsSection = ({ restaurantId }) => {
       <div className="reviews-summary">
         <div className="rating-overview">
           <div className="rating-score">
-            <span className="score-number">{averageRating}</span>
+            <span className={`score-number ${!hasReviews ? "score-number--empty" : ""}`}>
+              {hasReviews ? averageRating : "—"}
+            </span>
             <div className="score-stars">
-              {renderStars(Math.round(Number(averageRating)))}
+              {hasReviews ? renderStars(Math.round(Number(averageRating))) : "☆☆☆☆☆"}
             </div>
-            <span className="score-count">({stats?.total || 0} đánh giá)</span>
+            <span className="score-count">
+              {hasReviews ? `(${totalReviews} đánh giá)` : "Chưa có đánh giá"}
+            </span>
+            {!hasReviews && (
+              <p className="score-helper">Hãy là người đầu tiên chia sẻ trải nghiệm.</p>
+            )}
           </div>
         </div>
 
@@ -323,16 +332,16 @@ const ReviewsSection = ({ restaurantId }) => {
         </div>
 
         <div className="reviews-count">
-          Hiển thị {filteredAndSortedReviews.length} / {stats?.total || 0} đánh giá
+          Hiển thị {filteredAndSortedReviews.length} / {totalReviews} đánh giá
         </div>
       </div>
 
       <div className="reviews-list">
         {filteredAndSortedReviews.length === 0 ? (
-          <div className="reviews-empty">
-            <span className="empty-icon">💬</span>
-            <h3>Chưa có đánh giá nào</h3>
-            <p>Hãy là người đầu tiên đánh giá nhà hàng này!</p>
+          <div className="reviews-empty empty-state-card">
+            <span className="empty-state-icon" aria-hidden="true">💬</span>
+            <h3 className="empty-state-title">Chưa có đánh giá</h3>
+            <p className="empty-state-description">Hãy là người đầu tiên chia sẻ trải nghiệm tại nhà hàng này.</p>
           </div>
         ) : (
           filteredAndSortedReviews.map((review) => (
