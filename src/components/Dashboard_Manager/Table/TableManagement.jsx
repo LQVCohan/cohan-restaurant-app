@@ -33,6 +33,7 @@ import {
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
+import { getVisualConfigSummary } from "./tableVisualConfigHelpers";
 
 const ALL_FLOORS_KEY = "all";
 
@@ -119,6 +120,7 @@ const TableManagement = () => {
         area: t.type || "standard",
         vrUrl: t.vrUrl || "",
         deposit: t.deposit ?? 0,
+        visualConfig: t.visualConfig || null,
       })),
     [tablesRaw]
   );
@@ -521,7 +523,7 @@ const TableManagement = () => {
         (isAllFloorsSelected ? "" : currentFloor) ||
         "",
       visualTemplate: mapped.visualTemplate,
-      visualConfig: extras.visualConfig || null,
+      visualConfig: extras.visualConfig || prev.visualConfig || null,
     }));
     setShowTable3DModal(false);
     setShowAddTableModal(true);
@@ -710,6 +712,7 @@ const TableManagement = () => {
               {filteredTables.map((t) => {
                 const statusCfg = getStatusConfig(t.status);
                 const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
+                const hasVisualConfig = !!t.visualConfig;
                 const guardState = getTableGuardState(t);
                 return (
                   <div
@@ -725,6 +728,14 @@ const TableManagement = () => {
                       <span className="table-no">{t.number}</span>
                       <div className="card-top-right">
                         {hasVr && <span className="vr-badge">360°</span>}
+                        {hasVisualConfig && (
+                          <span
+                            className="tm-3d-badge"
+                            title="Bàn này có cấu hình mô phỏng 3D"
+                          >
+                            3D
+                          </span>
+                        )}
                         {guardState.hasGuard && (
                           <span className="tm-guard-badge" title={guardState.reason}>
                             {guardState.badge}
@@ -933,9 +944,13 @@ const TableManagement = () => {
           )}
           {tableForm.visualConfig && (
             <div className="tm-template-preview">
-              <div className="tm-template-preview__title">Cấu hình xem thử bằng camera</div>
-              <div className="tm-template-preview__value">Mô phỏng/overlay thủ công</div>
-              <div className="tm-template-preview__hint">Đã lưu cấu hình xem thử cho bàn này.</div>
+              <div className="tm-template-preview__title">Cấu hình mô phỏng 3D</div>
+              <div className="tm-template-preview__value">
+                {getVisualConfigSummary(tableForm.visualConfig)?.label || "Mẫu bàn đã lưu"}
+              </div>
+              <div className="tm-template-preview__hint">
+                Đã lưu metadata model, nguồn và camera placement nếu có cho bàn này.
+              </div>
             </div>
           )}
         </Modal.Body>

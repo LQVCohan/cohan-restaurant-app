@@ -23,6 +23,7 @@ import {
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
+import { buildVisualConfigFromModel } from "./tableVisualConfigHelpers";
 
 const MODEL_VIEWER_SRC =
   "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
@@ -593,11 +594,10 @@ const Table3DSimulatorModal = ({
               onClick={() =>
                 selectedModel &&
                 onApply(selectedModel, {
-                  visualConfig:
-                    confirmedCameraPlacement &&
-                    confirmedCameraPlacement.modelKey === selectedModel.key
-                      ? confirmedCameraPlacement
-                      : null,
+                  visualConfig: buildVisualConfigFromModel(
+                    selectedModel,
+                    confirmedCameraPlacement,
+                  ),
                 })
               }
               disabled={!selectedModel}

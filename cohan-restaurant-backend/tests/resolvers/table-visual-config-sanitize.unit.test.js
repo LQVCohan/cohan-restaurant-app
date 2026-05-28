@@ -25,11 +25,32 @@ describe("sanitizeVisualConfig", () => {
       tableType: "standard",
       capacity: 4,
       placement: { x: 1000, y: -10, scale: 20, rotation: "15" },
-      dimensions: { widthCm: 120, depthCm: 80, heightCm: 75 },
+      defaultScale: 1.1,
+      modelUrl: "https://cdn.example.com/table.glb",
+      thumbnailUrl: "javascript:alert(1)",
+      source: "polyhaven",
+      sourceLabel: " Poly Haven ",
+      licenseLabel: "CC0",
+      dimensions: { widthCm: 120, depthCm: 80, heightCm: 75, note: "ignored" },
+      tags: ["round", "round", "vip"],
+      fallbackKind: "model",
+      customModelKind: "url",
+      sourceType: "custom-url",
     });
 
     expect(result.modelKey).toBe("table-x");
-    expect(result.source).toBe("camera-preview");
+    expect(result.source).toBe("polyhaven");
+    expect(result.sourceType).toBe("custom-url");
+    expect(result.modelUrl).toBe("https://cdn.example.com/table.glb");
+    expect(result.thumbnailUrl).toBeNull();
+    expect(result.defaultScale).toBe(1.1);
+    expect(result.dimensions).toEqual({
+      widthCm: 120,
+      depthCm: 80,
+      heightCm: 75,
+      diameterCm: null,
+    });
+    expect(result.tags).toEqual(["round", "vip"]);
     expect(result.placement).toEqual({ x: 95, y: 5, scale: 2, rotation: 15 });
     expect(result.savedAt).toBeTruthy();
   });
@@ -43,5 +64,43 @@ describe("sanitizeVisualConfig", () => {
     });
 
     expect(result.savedAt).toBe(existingSavedAt);
+  });
+
+  it("drops unsafe visualConfig URLs and limits tags", () => {
+    const result = sanitizeVisualConfig({
+      modelKey: "unsafe",
+      modelUrl: "data:model/gltf+json;base64,AAA",
+      thumbnailUrl: "blob:https://example.com/id",
+      tags: Array.from({ length: 30 }, (_, index) => `tag-${index}`),
+    });
+
+    expect(result.modelUrl).toBeNull();
+    expect(result.thumbnailUrl).toBeNull();
+    expect(result.tags).toHaveLength(20);
+    expect(result.fallbackKind).toBe("placeholder");
+  });
+
+  it("keeps diameterCm and normalizes diameter alias in dimensions", () => {
+    const withDiameterCm = sanitizeVisualConfig({
+      modelKey: "round-diameter-cm",
+      dimensions: { diameterCm: 110, heightCm: 76, diameter: 120 },
+    });
+    const withDiameterAlias = sanitizeVisualConfig({
+      modelKey: "round-diameter-alias",
+      dimensions: { diameter: 95, heightCm: 72 },
+    });
+
+    expect(withDiameterCm.dimensions).toEqual({
+      widthCm: null,
+      depthCm: null,
+      heightCm: 76,
+      diameterCm: 110,
+    });
+    expect(withDiameterAlias.dimensions).toEqual({
+      widthCm: null,
+      depthCm: null,
+      heightCm: 72,
+      diameterCm: 95,
+    });
   });
 });

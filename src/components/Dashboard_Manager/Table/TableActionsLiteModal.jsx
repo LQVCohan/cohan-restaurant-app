@@ -13,6 +13,10 @@ import { useNotification } from "@/hooks/useNotification";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
 import {
+  isPosManagedStatusTransition,
+  POS_MANAGED_STATUS_TRANSITION_MESSAGE,
+} from "@/utils/tableStatusTransitionGuard";
+import {
   getTableDisplayCapacity,
   getTableDisplayCode,
   getTableDisplayType,
@@ -28,6 +32,7 @@ import TableCameraPlacementPreviewModal from "@/components/Dashboard_Manager/Tab
 import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
+  getVisualConfigSummary,
 } from "@/components/Dashboard_Manager/Table/tableVisualConfigHelpers";
 import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/table3dCameraPlacementStorage";
 
@@ -382,6 +387,10 @@ export default function TableActionsLiteModal({
   );
   const visualModelItem = useMemo(
     () => buildPreviewModelItemFromVisualConfig(table?.visualConfig),
+    [table?.visualConfig]
+  );
+  const visualSummary = useMemo(
+    () => getVisualConfigSummary(table?.visualConfig),
     [table?.visualConfig]
   );
   const visualSavedAtLabel = useMemo(
@@ -860,28 +869,87 @@ export default function TableActionsLiteModal({
               </div>
             )}
             {hasVisualConfig && (
-              <>
-                <div className="kv">
-                  <span className="k">Xem thử camera:</span>
-                  <span className="v">Đã có cấu hình mô phỏng/camera placement</span>
-                </div>
-                <div className="kv">
-                  <span className="k">Model:</span>
-                  <span className="v">{table?.visualConfig?.modelLabel || table?.visualConfig?.modelKey || "Mẫu bàn đã lưu"}</span>
-                </div>
-                <div className="kv">
-                  <span className="k">Placement:</span>
-                  <span className="v">
-                    x:{visualConfigPlacement.x.toFixed(1)} · y:{visualConfigPlacement.y.toFixed(1)} · s:{visualConfigPlacement.scale.toFixed(2)} · r:{visualConfigPlacement.rotation.toFixed(0)}°
-                  </span>
-                </div>
-                {visualSavedAtLabel && (
-                  <div className="kv">
-                    <span className="k">Lưu lúc:</span>
-                    <span className="v">{visualSavedAtLabel}</span>
+              <div className="talite-visual-card">
+                <div className="talite-visual-card__head">
+                  <span className="talite-visual-card__icon">3D</span>
+                  <div>
+                    <strong>Mô phỏng 3D</strong>
+                    <p>Đã gắn metadata model và camera placement cho bàn này.</p>
                   </div>
-                )}
-              </>
+                </div>
+                <div className="talite-visual-card__grid">
+                  <div className="kv">
+                    <span className="k">Model:</span>
+                    <span className="v">{visualSummary?.label || "Mẫu bàn đã lưu"}</span>
+                  </div>
+                  {visualSummary?.modelKey && (
+                    <div className="kv">
+                      <span className="k">Key:</span>
+                      <span className="v">{visualSummary.modelKey}</span>
+                    </div>
+                  )}
+                  {visualSummary?.tableType && (
+                    <div className="kv">
+                      <span className="k">Loại bàn:</span>
+                      <span className="v">{visualSummary.tableType}</span>
+                    </div>
+                  )}
+                  {visualSummary?.capacity && (
+                    <div className="kv">
+                      <span className="k">Số ghế:</span>
+                      <span className="v">{visualSummary.capacity}</span>
+                    </div>
+                  )}
+                  {visualSummary?.source && (
+                    <div className="kv">
+                      <span className="k">Source:</span>
+                      <span className="v">{visualSummary.source}</span>
+                    </div>
+                  )}
+                  {visualSummary?.license && (
+                    <div className="kv">
+                      <span className="k">License:</span>
+                      <span className="v">{visualSummary.license}</span>
+                    </div>
+                  )}
+                  {visualSummary?.dimensions && (
+                    <div className="kv">
+                      <span className="k">Kích thước:</span>
+                      <span className="v">{visualSummary.dimensions}</span>
+                    </div>
+                  )}
+                  {visualSummary?.modelUrl && (
+                    <div className="kv">
+                      <span className="k">Model URL:</span>
+                      <span className="v">
+                        <a href={visualSummary.modelUrl} target="_blank" rel="noreferrer">
+                          Mở model
+                        </a>
+                      </span>
+                    </div>
+                  )}
+                  {visualSummary?.thumbnailUrl && (
+                    <div className="kv talite-visual-card__thumb-row">
+                      <span className="k">Thumbnail:</span>
+                      <span className="v">
+                        <img src={visualSummary.thumbnailUrl} alt="Thumbnail mô phỏng 3D" />
+                      </span>
+                    </div>
+                  )}
+                  <div className="kv">
+                    <span className="k">Placement:</span>
+                    <span className="v">
+                      x:{visualConfigPlacement.x.toFixed(1)} · y:{visualConfigPlacement.y.toFixed(1)} · s:{visualConfigPlacement.scale.toFixed(2)} · r:{visualConfigPlacement.rotation.toFixed(0)}°
+                    </span>
+                  </div>
+                  {visualSavedAtLabel && (
+                    <div className="kv">
+                      <span className="k">Lưu lúc:</span>
+                      <span className="v">{visualSavedAtLabel}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -1599,6 +1667,12 @@ export default function TableActionsLiteModal({
         .talite-vr-feedback.info{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
         .talite-vr-feedback.error{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
         .talite-vr-feedback.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+        .talite-visual-card{grid-column:1/-1;border:1px solid #ddd6fe;background:#f5f3ff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+        .talite-visual-card__head{display:flex;gap:10px;align-items:flex-start}
+        .talite-visual-card__head p{margin:2px 0 0;color:#6d28d9;font-size:12px}
+        .talite-visual-card__icon{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;border-radius:999px;background:#7c3aed;color:#fff;font-weight:800;font-size:12px}
+        .talite-visual-card__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+        .talite-visual-card__thumb-row img{width:72px;height:54px;object-fit:cover;border-radius:8px;border:1px solid #ddd6fe;background:#fff}
         .talite-vr-inline-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
         .talite-vr-next-step{display:flex;align-items:center;gap:8px;font-size:12px;color:#475569;border-top:1px dashed #e2e8f0;padding-top:8px}
         .btn:disabled{opacity:.6;cursor:not-allowed}
@@ -1645,8 +1719,8 @@ export default function TableActionsLiteModal({
               id: table.id,
               visualConfig: {
                 ...(table?.visualConfig || {}),
-                ...payload,
-                savedAt: table?.visualConfig?.savedAt,
+                placement: payload.placement,
+                savedAt: new Date().toISOString(),
               },
             });
             setCameraPreviewOpen(false);

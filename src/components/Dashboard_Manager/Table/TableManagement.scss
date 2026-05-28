@@ -248,13 +248,20 @@ $st-cleaning-text: #7e22ce;
         align-items: center;
         gap: 6px;
       }
-      .vr-badge {
+      .vr-badge,
+      .tm-3d-badge {
         font-size: 0.65rem;
         padding: 3px 6px;
         border-radius: 999px;
-        background: #1d4ed8;
         color: #fff;
         font-weight: 700;
+        white-space: nowrap;
+      }
+      .vr-badge {
+        background: #1d4ed8;
+      }
+      .tm-3d-badge {
+        background: #7c3aed;
       }
       .status-badge {
         font-size: 0.7rem;

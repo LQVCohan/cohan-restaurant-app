@@ -3,6 +3,7 @@ import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/tab
 import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
+  getVisualConfigSummary,
 } from "./tableVisualConfigHelpers";
 
 describe("buildPreviewModelItemFromVisualConfig", () => {
@@ -12,7 +13,16 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       modelLabel: "Bàn tròn 6",
       tableType: "round",
       capacity: 6,
-      dimensions: { widthCm: 140, depthCm: 140, heightCm: 75 },
+      defaultScale: 1.15,
+      modelUrl: "https://cdn.example.com/round.glb",
+      thumbnailUrl: "https://cdn.example.com/round.png",
+      source: "catalog-test",
+      sourceLabel: "Catalog Test",
+      licenseLabel: "CC0",
+      dimensions: { widthCm: 140, depthCm: 140, heightCm: 75, diameterCm: 140 },
+      tags: ["round", "vip"],
+      fallbackKind: "model",
+      customModelKind: "url",
       tableArea: "vip",
       shape: "round",
     };
@@ -24,16 +34,51 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       label: "Bàn tròn 6",
       tableType: "round",
       capacity: 6,
+      defaultScale: 1.15,
+      modelUrl: "https://cdn.example.com/round.glb",
+      thumbnailUrl: "https://cdn.example.com/round.png",
+      source: "catalog-test",
+      sourceLabel: "Catalog Test",
+      licenseLabel: "CC0",
+      dimensionsCm: { widthCm: 140, depthCm: 140, heightCm: 75, diameterCm: 140 },
+      tags: ["round", "vip"],
+      fallbackKind: "model",
+      customModelKind: "url",
       customModelSpec: {
         name: "Bàn tròn 6",
         capacity: 6,
         widthCm: 140,
         depthCm: 140,
         heightCm: 75,
+        diameterCm: 140,
         area: "vip",
         shape: "round",
       },
     });
+  });
+
+
+  it("keeps diameter dimensions and formats round table summary", () => {
+    const visualConfig = {
+      modelKey: "table.round.diameter",
+      modelLabel: "Bàn tròn diameter",
+      tableType: "round-table",
+      capacity: 4,
+      dimensions: { diameter: 110, heightCm: 76 },
+    };
+
+    const previewItem = buildPreviewModelItemFromVisualConfig(visualConfig);
+    const summary = getVisualConfigSummary(visualConfig);
+
+    expect(previewItem.dimensionsCm).toMatchObject({
+      diameterCm: 110,
+      heightCm: 76,
+    });
+    expect(previewItem.customModelSpec).toMatchObject({
+      diameterCm: 110,
+      heightCm: 76,
+    });
+    expect(summary?.dimensions).toBe("Ø 110 cm x cao 76 cm");
   });
 
   it("uses fallback when modelKey/modelLabel is missing", () => {
@@ -51,12 +96,8 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       capacity: 2,
     });
 
-    expect(result.customModelSpec).toMatchObject({
-      widthCm: 0,
-      depthCm: 0,
-      heightCm: 0,
-      capacity: 2,
-    });
+    expect(result.customModelSpec).toBeNull();
+    expect(result.capacity).toBe(2);
   });
 
   it("normalizes missing placement with default placement", () => {
