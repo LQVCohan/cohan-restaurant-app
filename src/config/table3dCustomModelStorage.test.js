@@ -94,29 +94,54 @@ describe("table3dCustomModelStorage", () => {
 
   it("isCustomTableModel detects correct types", () => {
     expect(isCustomTableModel({ source: "user-generated" })).toBe(true);
+    expect(isCustomTableModel({ source: "user-upload" })).toBe(true);
+    expect(isCustomTableModel({ customModelKind: "upload" })).toBe(true);
     expect(isCustomTableModel({ customModelSpec: { name: "x" } })).toBe(true);
     expect(isCustomTableModel({ source: "public", key: "round-oak-4" })).toBe(false);
   });
 
+  it("preserves uploaded model metadata", () => {
+    const saved = saveCustomTableModels([
+      buildCustom({
+        key: "upload-1",
+        source: "user-upload",
+        customModelKind: "upload",
+        modelUrl: "https://cdn.example.com/table.glb",
+        thumbnailUrl: "https://cdn.example.com/table.webp",
+        uploadedFileName: "table.glb",
+        uploadedSizeBytes: 4096,
+        customModelSpec: null,
+      }),
+    ], "r1");
+
+    expect(saved[0]).toMatchObject({
+      customModelKind: "upload",
+      uploadedFileName: "table.glb",
+      uploadedSizeBytes: 4096,
+      modelUrl: "https://cdn.example.com/table.glb",
+      thumbnailUrl: "https://cdn.example.com/table.webp",
+    });
+  });
+
 
   it("maps custom shapes to catalog table types and matches correctly", () => {
-    const round = buildCustom({ customModelSpec: { shape: "round" } });
-    const booth = buildCustom({ customModelSpec: { shape: "booth" } });
-    const square = buildCustom({ customModelSpec: { shape: "square" } });
-    const rect = buildCustom({ customModelSpec: { shape: "rect" } });
-    const bar = buildCustom({ customModelSpec: { shape: "bar" } });
+    const round = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "round" } });
+    const booth = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "booth" } });
+    const square = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "square" } });
+    const rect = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "rect" } });
+    const bar = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "bar" } });
 
     expect(getCustomModelCatalogTableType(round)).toBe("round-table");
-    expect(getCustomModelCatalogTableType(booth)).toBe("booth-table");
+    expect(getCustomModelCatalogTableType(booth)).toBe("booth-sofa");
     expect(getCustomModelCatalogTableType(square)).toBe("rect-4-seat");
     expect(getCustomModelCatalogTableType(rect)).toBe("rect-4-seat");
-    expect(getCustomModelCatalogTableType(bar)).toBe("rect-4-seat");
+    expect(getCustomModelCatalogTableType(bar)).toBe("bar-table");
 
     expect(doesCustomModelMatchTableType(round, "round-table")).toBe(true);
-    expect(doesCustomModelMatchTableType(booth, "booth-table")).toBe(true);
+    expect(doesCustomModelMatchTableType(booth, "booth-sofa")).toBe(true);
     expect(doesCustomModelMatchTableType(square, "rect-4-seat")).toBe(true);
     expect(doesCustomModelMatchTableType(rect, "rect-4-seat")).toBe(true);
-    expect(doesCustomModelMatchTableType(bar, "rect-4-seat")).toBe(true);
+    expect(doesCustomModelMatchTableType(bar, "bar-table")).toBe(true);
   });
 
   it("doesCustomModelMatchTableType returns false for non-custom catalog model", () => {
@@ -125,7 +150,7 @@ describe("table3dCustomModelStorage", () => {
 
   it("doesCustomModelMatchTableType returns false when type mismatches", () => {
     const custom = buildCustom({ customModelSpec: { shape: "round" } });
-    expect(doesCustomModelMatchTableType(custom, "booth-table")).toBe(false);
+    expect(doesCustomModelMatchTableType(custom, "booth-sofa")).toBe(false);
   });
 
   it("legacy custom model with missing shape falls back safely to rect-4-seat", () => {
