@@ -127,8 +127,9 @@ describe("forYouBehaviorSignals", () => {
 
   it("reports no behavior signals after clearing", () => {
     recordForYouItemInteraction("user-1", makeItem(), "view");
-    clearForYouBehaviorSignals("user-1");
+    const clearedSignals = clearForYouBehaviorSignals("user-1");
 
+    expect(hasForYouBehaviorSignals(clearedSignals)).toBe(false);
     expect(hasForYouBehaviorSignals(readForYouBehaviorSignals("user-1"))).toBe(false);
   });
 

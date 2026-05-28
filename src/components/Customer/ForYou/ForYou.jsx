@@ -102,6 +102,9 @@ const ForYou = () => {
   const personalizationSubtitle = hasBehaviorSignals
     ? "Kết hợp khẩu vị của bạn và món bạn quan tâm gần đây."
     : "Gợi ý dựa trên khẩu vị của bạn.";
+  const recentSuggestionDescription = hasBehaviorSignals
+    ? "Chúng tôi dùng các món bạn đã xem hoặc quan tâm gần đây trên thiết bị này để sắp xếp gợi ý phù hợp hơn."
+    : "Chưa có dữ liệu gợi ý gần đây trên thiết bị này. Khi bạn xem hoặc quan tâm món nào đó, chúng tôi sẽ dùng tín hiệu này để sắp xếp gợi ý phù hợp hơn.";
 
   const handleViewDish = (item) => {
     if (!item?.id) return;
@@ -290,17 +293,20 @@ const ForYou = () => {
 
         <section className="section preview-section"><h3>Xem trước ghi chú đơn hàng</h3><div className="preview-box"><span className="label">Note:</span><span className="text">{buildFoodPreferenceNote(preferences)}</span></div><p className="section-desc">Hồ sơ này sẽ được dùng để ưu tiên gợi ý món phù hợp.</p></section>
         {isAuthenticated && isCustomer && (
-          <section className="section recent-suggestion-data" aria-labelledby="recent-suggestion-data-title">
+          <section
+            className={`section recent-suggestion-data ${hasBehaviorSignals ? "" : "recent-suggestion-data--empty"}`}
+            aria-labelledby="recent-suggestion-data-title"
+          >
             <div>
               <h2 className="section-title" id="recent-suggestion-data-title">Dữ liệu gợi ý gần đây</h2>
-              <p className="section-desc">
-                Chúng tôi dùng các món bạn đã xem hoặc quan tâm gần đây trên thiết bị này để sắp xếp gợi ý phù hợp hơn.
-              </p>
+              <p className="section-desc">{recentSuggestionDescription}</p>
               {clearMessage && <p className="recent-suggestion-data__message" aria-live="polite">{clearMessage}</p>}
             </div>
-            <button type="button" className="recent-suggestion-data__clear" onClick={handleClearRecentSuggestionData}>
-              Xóa dữ liệu gợi ý gần đây
-            </button>
+            {hasBehaviorSignals && (
+              <button type="button" className="recent-suggestion-data__clear" onClick={handleClearRecentSuggestionData}>
+                Xóa dữ liệu gợi ý gần đây
+              </button>
+            )}
           </section>
         )}
       </div>
