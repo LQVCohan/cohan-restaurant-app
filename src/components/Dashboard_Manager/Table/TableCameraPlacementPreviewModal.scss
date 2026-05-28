@@ -3,6 +3,26 @@
   color: #6b7280;
 }
 
+.camera-placement-modal__steps {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding-left: 22px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.camera-placement-modal__warning {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .camera-placement-modal__preview {
   position: relative;
   width: 100%;
@@ -21,18 +41,20 @@
 
 .camera-placement-modal__overlay {
   position: absolute;
-  width: 180px;
-  min-height: 100px;
-  padding: 10px;
-  border: 2px solid #22c55e;
+  width: 174px;
+  min-height: 96px;
+  padding: 8px;
+  border: 2px solid rgba(34, 197, 94, 0.92);
   color: #fff;
-  background: rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.18);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
   cursor: grab;
   touch-action: none;
   user-select: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
 }
 
 .camera-placement-modal__overlay:active {
@@ -42,7 +64,38 @@
 .camera-placement-modal__overlay.shape-round { border-radius: 999px; }
 .camera-placement-modal__overlay.shape-square { aspect-ratio: 1 / 1; }
 .camera-placement-modal__overlay.shape-booth { border-radius: 14px; }
-.camera-placement-modal__overlay.shape-bar { width: 120px; min-height: 160px; }
+.camera-placement-modal__overlay.shape-bar { width: 130px; min-height: 150px; }
+
+.camera-placement-modal__thumbnail,
+.camera-placement-modal__shape-preview {
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(17, 24, 39, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.camera-placement-modal__shape-preview {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.72), transparent 18px),
+    linear-gradient(135deg, rgba(34, 197, 94, 0.78), rgba(21, 128, 61, 0.68));
+}
+
+.camera-placement-modal__overlay-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.camera-placement-modal__overlay-info strong {
+  font-size: 13px;
+}
 
 .sofa-badge {
   align-self: flex-start;
@@ -59,8 +112,14 @@
   bottom: 12px;
   background: rgba(127, 29, 29, 0.92);
   color: #fff;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 8px;
+  font-size: 13px;
+}
+
+.camera-placement-modal__error ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
 }
 
 .camera-placement-modal__hint {
@@ -76,11 +135,49 @@
 }
 
 .camera-placement-modal__controls,
-.camera-placement-modal__actions {
+.camera-placement-modal__actions,
+.camera-placement-modal__control-group {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.camera-placement-modal__controls {
   margin-top: 12px;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.camera-placement-modal__actions {
+  margin-top: 12px;
+}
+
+.camera-placement-modal__control-group {
+  padding: 8px;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.camera-placement-modal__control-group > span {
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.camera-placement-modal__opacity-control {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.camera-placement-modal__opacity-control input {
+  width: 100%;
 }
 
 .camera-placement-modal__stats,
