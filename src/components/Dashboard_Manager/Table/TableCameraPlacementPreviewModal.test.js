@@ -3,6 +3,7 @@ import { DEFAULT_CAMERA_PLACEMENT, normalizeCameraPlacement } from "@/config/tab
 import {
   buildPreviewModelItemFromVisualConfig,
   formatVisualConfigSavedAt,
+  getVisualConfigSummary,
 } from "./tableVisualConfigHelpers";
 
 describe("buildPreviewModelItemFromVisualConfig", () => {
@@ -18,7 +19,7 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       source: "catalog-test",
       sourceLabel: "Catalog Test",
       licenseLabel: "CC0",
-      dimensions: { widthCm: 140, depthCm: 140, heightCm: 75 },
+      dimensions: { widthCm: 140, depthCm: 140, heightCm: 75, diameterCm: 140 },
       tags: ["round", "vip"],
       fallbackKind: "model",
       customModelKind: "url",
@@ -39,7 +40,7 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       source: "catalog-test",
       sourceLabel: "Catalog Test",
       licenseLabel: "CC0",
-      dimensionsCm: { widthCm: 140, depthCm: 140, heightCm: 75 },
+      dimensionsCm: { widthCm: 140, depthCm: 140, heightCm: 75, diameterCm: 140 },
       tags: ["round", "vip"],
       fallbackKind: "model",
       customModelKind: "url",
@@ -49,10 +50,35 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
         widthCm: 140,
         depthCm: 140,
         heightCm: 75,
+        diameterCm: 140,
         area: "vip",
         shape: "round",
       },
     });
+  });
+
+
+  it("keeps diameter dimensions and formats round table summary", () => {
+    const visualConfig = {
+      modelKey: "table.round.diameter",
+      modelLabel: "Bàn tròn diameter",
+      tableType: "round-table",
+      capacity: 4,
+      dimensions: { diameter: 110, heightCm: 76 },
+    };
+
+    const previewItem = buildPreviewModelItemFromVisualConfig(visualConfig);
+    const summary = getVisualConfigSummary(visualConfig);
+
+    expect(previewItem.dimensionsCm).toMatchObject({
+      diameterCm: 110,
+      heightCm: 76,
+    });
+    expect(previewItem.customModelSpec).toMatchObject({
+      diameterCm: 110,
+      heightCm: 76,
+    });
+    expect(summary?.dimensions).toBe("Ø 110 cm x cao 76 cm");
   });
 
   it("uses fallback when modelKey/modelLabel is missing", () => {

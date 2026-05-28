@@ -44,7 +44,12 @@ describe("sanitizeVisualConfig", () => {
     expect(result.modelUrl).toBe("https://cdn.example.com/table.glb");
     expect(result.thumbnailUrl).toBeNull();
     expect(result.defaultScale).toBe(1.1);
-    expect(result.dimensions).toEqual({ widthCm: 120, depthCm: 80, heightCm: 75 });
+    expect(result.dimensions).toEqual({
+      widthCm: 120,
+      depthCm: 80,
+      heightCm: 75,
+      diameterCm: null,
+    });
     expect(result.tags).toEqual(["round", "vip"]);
     expect(result.placement).toEqual({ x: 95, y: 5, scale: 2, rotation: 15 });
     expect(result.savedAt).toBeTruthy();
@@ -73,5 +78,29 @@ describe("sanitizeVisualConfig", () => {
     expect(result.thumbnailUrl).toBeNull();
     expect(result.tags).toHaveLength(20);
     expect(result.fallbackKind).toBe("placeholder");
+  });
+
+  it("keeps diameterCm and normalizes diameter alias in dimensions", () => {
+    const withDiameterCm = sanitizeVisualConfig({
+      modelKey: "round-diameter-cm",
+      dimensions: { diameterCm: 110, heightCm: 76, diameter: 120 },
+    });
+    const withDiameterAlias = sanitizeVisualConfig({
+      modelKey: "round-diameter-alias",
+      dimensions: { diameter: 95, heightCm: 72 },
+    });
+
+    expect(withDiameterCm.dimensions).toEqual({
+      widthCm: null,
+      depthCm: null,
+      heightCm: 76,
+      diameterCm: 110,
+    });
+    expect(withDiameterAlias.dimensions).toEqual({
+      widthCm: null,
+      depthCm: null,
+      heightCm: 72,
+      diameterCm: 95,
+    });
   });
 });

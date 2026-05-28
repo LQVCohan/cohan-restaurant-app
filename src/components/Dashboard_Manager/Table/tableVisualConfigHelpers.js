@@ -41,6 +41,7 @@ const normalizeDimensions = (input) => {
     widthCm: normalizePositiveNumber(source.widthCm),
     depthCm: normalizePositiveNumber(source.depthCm),
     heightCm: normalizePositiveNumber(source.heightCm),
+    diameterCm: normalizePositiveNumber(source.diameterCm ?? source.diameter),
   };
 
   return Object.values(dimensions).some((value) => value != null)
@@ -151,11 +152,23 @@ export const getVisualConfigSummary = (visualConfig) => {
   const config = normalizeVisualConfigForClient(visualConfig);
   if (!config) return null;
 
-  const dimensions = config.dimensions
-    ? [config.dimensions.widthCm, config.dimensions.depthCm, config.dimensions.heightCm]
-        .filter((value) => value != null)
-        .join(" x ")
-    : "";
+  const dimensions = (() => {
+    if (!config.dimensions) return "";
+    if (config.dimensions.diameterCm != null) {
+      const height = config.dimensions.heightCm != null
+        ? ` x cao ${config.dimensions.heightCm} cm`
+        : "";
+      return `Ø ${config.dimensions.diameterCm} cm${height}`;
+    }
+
+    const sizeParts = [
+      config.dimensions.widthCm,
+      config.dimensions.depthCm,
+      config.dimensions.heightCm,
+    ].filter((value) => value != null);
+
+    return sizeParts.length ? `${sizeParts.join(" x ")} cm` : "";
+  })();
 
   return {
     label: getVisualConfigModelLabel(config),
@@ -164,7 +177,7 @@ export const getVisualConfigSummary = (visualConfig) => {
     capacity: config.capacity,
     source: config.sourceLabel || config.source,
     license: config.licenseLabel,
-    dimensions: dimensions ? `${dimensions} cm` : "",
+    dimensions,
     modelUrl: config.modelUrl,
     thumbnailUrl: config.thumbnailUrl,
     tags: config.tags,
@@ -206,6 +219,7 @@ export const buildPreviewModelItemFromVisualConfig = (visualConfig) => {
           widthCm: Number(dimensions.widthCm) || 0,
           depthCm: Number(dimensions.depthCm) || 0,
           heightCm: Number(dimensions.heightCm) || 0,
+          diameterCm: Number(dimensions.diameterCm) || 0,
           area: visualConfig?.tableArea || mapTable3DTypeToArea(config.tableType),
           shape: visualConfig?.shape || "rect",
         }

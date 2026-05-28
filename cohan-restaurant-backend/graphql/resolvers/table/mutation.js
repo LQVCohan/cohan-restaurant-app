@@ -147,6 +147,9 @@ const sanitizeDimensions = (dimensionsInput) => {
     widthCm: sanitizePositiveNumber(dimensionsInput.widthCm),
     depthCm: sanitizePositiveNumber(dimensionsInput.depthCm),
     heightCm: sanitizePositiveNumber(dimensionsInput.heightCm),
+    diameterCm: sanitizePositiveNumber(
+      dimensionsInput.diameterCm ?? dimensionsInput.diameter
+    ),
   };
 
   return Object.values(dimensions).some((value) => value != null)
