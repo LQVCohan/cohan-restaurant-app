@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import LocationPickerMap from "./LocationPickerMap";
 import "../../../../styles/Homepage/HeroSection.scss";
 
 // Danh sách ảnh món ăn demo
@@ -23,13 +24,37 @@ const HERO_IMAGES = [
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
 
-const normalizeSuggestion = (item) => ({
-  id: item.place_id,
-  label: item.display_name,
-  lat: Number(item.lat),
-  lng: Number(item.lon),
-  address: item.address || {},
-});
+const buildShortAddressLabel = (address = {}, fallback = "") => {
+  const parts = [
+    address.road,
+    address.suburb || address.neighbourhood,
+    address.ward || address.quarter,
+    address.district || address.city_district || address.county,
+    address.city || address.town || address.village || address.state,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+
+  const uniqueParts = [...new Set(parts)];
+  return (
+    uniqueParts.slice(0, 4).join(", ") ||
+    fallback ||
+    "Vị trí hiện tại của bạn"
+  );
+};
+
+const normalizeSuggestion = (item) => {
+  const address = item.address || {};
+
+  return {
+    id: item.place_id,
+    label: item.display_name,
+    shortLabel: buildShortAddressLabel(address, item.display_name),
+    lat: Number(item.lat),
+    lng: Number(item.lon),
+    address,
+  };
+};
 
 const HeroSection = ({ onSearch }) => {
   const [address, setAddress] = useState("");
@@ -37,6 +62,8 @@ const HeroSection = ({ onSearch }) => {
   const [suggestionMessage, setSuggestionMessage] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
   // --- SLIDER LOGIC ---
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -46,6 +73,7 @@ const HeroSection = ({ onSearch }) => {
   const cacheRef = useRef(new Map());
   const abortRef = useRef(null);
   const debounceRef = useRef(null);
+  const reverseDebounceRef = useRef(null);
 
   // Tự động chuyển ảnh sau 5s
   useEffect(() => {
@@ -88,6 +116,11 @@ const HeroSection = ({ onSearch }) => {
     const q = address.trim().toLowerCase();
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (isLocationPickerOpen) {
+      setAddressSuggestions([]);
+      return;
+    }
 
     if (q.length < 1) {
       setAddressSuggestions([]);
@@ -174,7 +207,59 @@ const HeroSection = ({ onSearch }) => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [address]);
+  }, [address, isLocationPickerOpen]);
+
+
+  useEffect(() => {
+    return () => {
+      if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    };
+  }, []);
+
+  const reverseGeocodeLocation = async (
+    { lat, lng },
+    fallbackLabel = "Vị trí hiện tại của bạn"
+  ) => {
+    try {
+      setIsReverseGeocoding(true);
+      const url =
+        `${NOMINATIM_REVERSE}?format=jsonv2&addressdetails=1` +
+        `&lat=${lat}&lon=${lng}`;
+      const res = await fetch(url, {
+        headers: { "Accept-Language": "vi" },
+      });
+
+      if (!res.ok) {
+        throw new Error("Không thể lấy địa chỉ từ tọa độ");
+      }
+
+      const data = await res.json();
+      const label = buildShortAddressLabel(
+        data?.address,
+        data?.display_name || fallbackLabel
+      );
+
+      return {
+        id: `map-${Date.now()}`,
+        label,
+        shortLabel: label,
+        lat,
+        lng,
+        address: data?.address || {},
+      };
+    } catch {
+      return {
+        id: `map-${Date.now()}`,
+        label: fallbackLabel,
+        shortLabel: fallbackLabel,
+        lat,
+        lng,
+        address: {},
+      };
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  };
 
   const resolveLocationByQuery = async (query) => {
     const normalized = query.trim().toLowerCase();
@@ -203,21 +288,29 @@ const HeroSection = ({ onSearch }) => {
 
   const handleSearch = async () => {
     const searchText = address.trim();
-    if (!searchText) return;
+    if (!searchText && !selectedLocation) return;
 
     let location = selectedLocation;
-    if (!location || location.label !== address) {
+    if (
+      searchText &&
+      (!location ||
+        (location.label !== address && location.shortLabel !== address))
+    ) {
       location = await resolveLocationByQuery(searchText);
     }
 
+    if (location) {
+      setIsLocationPickerOpen(false);
+    }
+
     onSearch({
-      search: searchText,
+      search: searchText || location?.shortLabel || location?.label || "",
       location:
         location && Number.isFinite(location.lat) && Number.isFinite(location.lng)
           ? {
               lat: location.lat,
               lng: location.lng,
-              label: location.label,
+              label: location.shortLabel || location.label,
             }
           : null,
     });
@@ -234,37 +327,26 @@ const HeroSection = ({ onSearch }) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
 
-        try {
-          const url =
-            `${NOMINATIM_REVERSE}?format=jsonv2&addressdetails=1` +
-            `&lat=${lat}&lon=${lng}`;
-          const res = await fetch(url, {
-            headers: { "Accept-Language": "vi" },
-          });
-          const data = await res.json();
-          const label = data?.display_name || "Vị trí hiện tại";
-          const suggestion = {
-            id: `current-${Date.now()}`,
-            label,
-            lat,
-            lng,
-            address: data?.address || {},
-          };
+        setAddressSuggestions([]);
+        setSuggestionMessage("");
+        setSelectedLocation({
+          id: `current-${Date.now()}`,
+          label: "Vị trí hiện tại của bạn",
+          shortLabel: "Vị trí hiện tại của bạn",
+          lat,
+          lng,
+          address: {},
+        });
+        setAddress("Vị trí hiện tại của bạn");
+        setIsLocationPickerOpen(true);
 
-          setAddress(label);
-          setSelectedLocation(suggestion);
-          onSearch({
-            search: label,
-            location: { lat, lng, label },
-          });
-        } catch {
-          setAddress("Vị trí hiện tại");
-          setSelectedLocation({ id: "current", label: "Vị trí hiện tại", lat, lng });
-          onSearch({
-            search: "Vị trí hiện tại",
-            location: { lat, lng, label: "Vị trí hiện tại" },
-          });
-        }
+        const location = await reverseGeocodeLocation(
+          { lat, lng },
+          "Vị trí hiện tại của bạn"
+        );
+
+        setAddress(location.shortLabel || location.label);
+        setSelectedLocation(location);
       },
       () => {
         setSuggestionMessage("Không thể lấy vị trí hiện tại. Vui lòng bật GPS.");
@@ -278,9 +360,59 @@ const HeroSection = ({ onSearch }) => {
   };
 
   const handlePickSuggestion = (item) => {
-    setAddress(item.label);
-    setSelectedLocation(item);
+    const label = item.shortLabel || item.label;
+    setAddress(label);
+    setSelectedLocation({ ...item, label });
     setAddressSuggestions([]);
+    setSuggestionMessage("");
+    setIsLocationPickerOpen(true);
+  };
+
+  const handleChangePickerLocation = ({ lat, lng }) => {
+    const fallbackLabel =
+      selectedLocation?.shortLabel ||
+      selectedLocation?.label ||
+      "Vị trí hiện tại của bạn";
+    setSelectedLocation((prev) => ({
+      ...(prev || { id: `map-${Date.now()}` }),
+      lat,
+      lng,
+      label: fallbackLabel,
+      shortLabel: fallbackLabel,
+    }));
+
+    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    reverseDebounceRef.current = setTimeout(async () => {
+      const location = await reverseGeocodeLocation({ lat, lng }, fallbackLabel);
+      setSelectedLocation(location);
+      setAddress(location.shortLabel || location.label);
+    }, 550);
+  };
+
+  const handleConfirmPickerLocation = () => {
+    if (!selectedLocation) return;
+
+    const label =
+      selectedLocation.shortLabel ||
+      selectedLocation.label ||
+      "Vị trí hiện tại của bạn";
+    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    setAddress(label);
+    setIsLocationPickerOpen(false);
+    setAddressSuggestions([]);
+    onSearch({
+      search: label,
+      location: {
+        lat: selectedLocation.lat,
+        lng: selectedLocation.lng,
+        label,
+      },
+    });
+  };
+
+  const handleClosePicker = () => {
+    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    setIsLocationPickerOpen(false);
   };
 
   return (
@@ -328,6 +460,7 @@ const HeroSection = ({ onSearch }) => {
                 onChange={(e) => {
                   setAddress(e.target.value);
                   setSelectedLocation(null);
+                  setIsLocationPickerOpen(false);
                 }}
                 onKeyDown={handleKeyDown}
               />
@@ -345,25 +478,47 @@ const HeroSection = ({ onSearch }) => {
             </button>
           </div>
 
-          {(isSuggesting || addressSuggestions.length > 0 || suggestionMessage) && (
-            <div className="hero__suggestions">
-              {addressSuggestions.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="hero__suggestion-item"
-                  onClick={() => handlePickSuggestion(item)}
-                >
-                  {item.label}
-                </button>
-              ))}
-              {isSuggesting && (
-                <div className="hero__suggestion-state">Đang gợi ý địa chỉ...</div>
-              )}
-              {!isSuggesting && suggestionMessage && (
-                <div className="hero__suggestion-state">{suggestionMessage}</div>
-              )}
-            </div>
+          {!isLocationPickerOpen &&
+            (isSuggesting ||
+              addressSuggestions.length > 0 ||
+              suggestionMessage) && (
+              <div className="hero__suggestions">
+                {addressSuggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="hero__suggestion-item"
+                    onClick={() => handlePickSuggestion(item)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                {isSuggesting && (
+                  <div className="hero__suggestion-state">
+                    Đang gợi ý địa chỉ...
+                  </div>
+                )}
+                {!isSuggesting && suggestionMessage && (
+                  <div className="hero__suggestion-state">
+                    {suggestionMessage}
+                  </div>
+                )}
+              </div>
+            )}
+
+          {isLocationPickerOpen && selectedLocation && (
+            <LocationPickerMap
+              lat={selectedLocation.lat}
+              lng={selectedLocation.lng}
+              label={
+                isReverseGeocoding
+                  ? "Đang cập nhật địa chỉ..."
+                  : selectedLocation.shortLabel || selectedLocation.label
+              }
+              onChangeLocation={handleChangePickerLocation}
+              onConfirm={handleConfirmPickerLocation}
+              onClose={handleClosePicker}
+            />
           )}
 
           <div className="hero__stats">
