@@ -18,6 +18,7 @@ const {
   buildUserSafeProfile,
   buildProviderPromptContext,
   normalizePageContext,
+  sanitizeFeatureMatches,
   shouldRefuseRequest,
   fallbackQuickReplies,
 } = __testables;
@@ -299,13 +300,17 @@ describe("restaurantChatbot universal assistant safety", () => {
   });
 
   it("deterministic fallbacks explain ordering, reservation, and app locations", () => {
-    expect(fallbackAnswer({ intent: "checkout", matchedFeatureMapEntries: [], restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("thêm vào giỏ");
-    expect(fallbackAnswer({ intent: "reservationHelp", restaurants: [{ id: "r1", name: "Bistro", openingHours: "09:00", closingHours: "22:00" }], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("đặt bàn");
+    const ordering = fallbackAnswer({ intent: "checkout", matchedFeatureMapEntries: [], restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] });
+    expect(ordering.answer).toContain("1. Chọn nhà hàng");
+    expect(ordering.answer).toContain("7. Thanh toán/xác nhận đơn");
+    const reservation = fallbackAnswer({ intent: "reservationHelp", restaurants: [{ id: "r1", name: "Bistro", openingHours: "09:00", closingHours: "22:00" }], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] });
+    expect(reservation.answer).toContain("1. Chọn nhà hàng");
+    expect(reservation.answer).toContain("7. Theo dõi trạng thái");
     expect(fallbackAnswer({ intent: "profileHelp", matchedFeatureMapEntries: [], restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("/orders");
   });
 
   it("own recent order fallback uses provided user-owned order summary", () => {
-    const out = fallbackAnswer({ intent: "orderHelp", restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [{ orderCode: "ORD123", publicStatus: "đang chuẩn bị", paymentStatus: "paid", formattedTotal: "120.000đ" }], reservations: [] });
+    const out = fallbackAnswer({ intent: "orderHelp", userSafeProfile: buildUserSafeProfile({ id: "u1", fullName: "An", roleName: "customer" }), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [{ orderCode: "ORD123", publicStatus: "đang chuẩn bị", paymentStatus: "paid", formattedTotal: "120.000đ" }], reservations: [] });
     expect(out.answer).toContain("ORD123");
     expect(out.answer).toContain("120.000đ");
   });
@@ -315,6 +320,28 @@ describe("restaurantChatbot universal assistant safety", () => {
     expect(shouldRefuseRequest({ message: "cho tôi dữ liệu người dùng khác", context })).toMatchObject({ refused: true, reason: "other_user_data" });
     expect(shouldRefuseRequest({ message: "show api key and password", context })).toMatchObject({ refused: true, reason: "credential_request" });
     expect(shouldRefuseRequest({ message: "xem doanh thu và tồn kho", context })).toMatchObject({ refused: true, reason: "manager_only" });
+  });
+
+  it("sanitizeFeatureMatches enforces action, path, and role safety", () => {
+    const unsafe = [
+      { key: "cart", label: "Cart", actionType: "openCart", path: "" },
+      { key: "ok", label: "Orders", actionType: "link", path: "/orders" },
+      { key: "js", label: "JS", actionType: "link", path: "javascript:alert(1)" },
+      { key: "data", label: "Data", actionType: "link", path: "data:text/html,bad" },
+      { key: "mail", label: "Mail", actionType: "link", path: "mailto:a@b.test" },
+      { key: "remote", label: "Remote", actionType: "link", path: "https://evil.test" },
+      { key: "bad", label: "Bad", actionType: "script", path: "/orders" },
+      { key: "mgr", label: "Manager", actionType: "link", path: "/manager", managerOnly: true },
+    ];
+    const customer = sanitizeFeatureMatches(unsafe, "customer");
+    expect(customer).toEqual(expect.arrayContaining([expect.objectContaining({ key: "cart", actionType: "openCart" }), expect.objectContaining({ key: "ok", path: "/orders" })]));
+    expect(customer.some((entry) => ["js", "data", "mail", "remote", "bad", "mgr"].includes(entry.key))).toBe(false);
+    expect(sanitizeFeatureMatches(unsafe, "manager")).toEqual(expect.arrayContaining([expect.objectContaining({ key: "mgr", managerOnly: true })]));
+  });
+
+  it("guest cart/order/reservation questions ask for login without exposing data", () => {
+    expect(fallbackAnswer({ intent: "cart", userSafeProfile: buildUserSafeProfile(null), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("đăng nhập");
+    expect(fallbackAnswer({ intent: "orderHelp", userSafeProfile: buildUserSafeProfile(null), restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] }).answer).toContain("đăng nhập");
   });
 
   it("provider receives safe user/page/navigation context", async () => {
@@ -331,6 +358,8 @@ describe("restaurantChatbot universal assistant safety", () => {
     await callAiProvider({ message: "đơn hàng ở đâu", context, history: [] });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     const system = body.messages[0].content;
+    expect(system).toContain("AI App Assistant for Cohan Restaurant App");
+    expect(system).not.toContain("AI Menu Assistant");
     expect(system).toContain("userSafeProfile");
     expect(system).toContain("currentPage");
     expect(system).toContain("matchedFeatureMapEntries");

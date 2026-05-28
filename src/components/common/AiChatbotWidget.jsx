@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
@@ -413,22 +413,25 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     const id = params?.foodId || query.get("menuItemId") || "";
     return id ? { id, restaurantId: restaurantId || query.get("restaurantId") || null } : null;
   }, [params?.foodId, location.search, restaurantId]);
-  const aiPageContext = useMemo(() => {
+  const buildAiPageContext = useCallback((messageText = "") => {
     const userRole = getAiChatbotUserRole(user);
     const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
+    const effectiveRestaurantId = restaurantId || selectedMenuItem?.restaurantId || "";
     return {
       pathname: location.pathname,
-      restaurantId: restaurantId || selectedMenuItem?.restaurantId || null,
+      restaurantId: effectiveRestaurantId || null,
       selectedMenuItem: selectedMenuItem || null,
       userRole,
       featureMatches: getAiChatbotFeatureMatches({
         pathname: location.pathname,
-        restaurantId: restaurantId || selectedMenuItem?.restaurantId || "",
+        restaurantId: effectiveRestaurantId,
         selectedMenuItem,
         userRole,
+        query: messageText,
       }),
     };
   }, [location.pathname, restaurantId, selectedMenuItemSource, selectedRouteMenuItem, user]);
+
 
   useEffect(() => {
     setEventRestaurantId("");
@@ -531,7 +534,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         : lastActions.filter((action) => action?.type !== "handoff")
       )
         .filter((action) => action?.type !== "add_to_cart_candidate")
-        .filter((action) => action?.type === "openCart" || String(action?.href || "").startsWith("/") || /^https?:\/\//i.test(String(action?.href || ""))),
+        .filter((action) => {
+          if (["openCart", "handoff", "search"].includes(action?.type)) return true;
+          const href = String(action?.href || "");
+          return href.startsWith("/") || /^https?:\/\//i.test(href);
+        }),
     [handoffEnabled, lastActions],
   );
 
@@ -812,7 +819,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             history: normalizeHistory(messages),
             guestId: safeGuestId || undefined,
             conversationId: conversationId || undefined,
-            pageContext: aiPageContext,
+            pageContext: buildAiPageContext(content),
           },
         },
       });
@@ -932,6 +939,15 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     if (action?.type === "openCart") {
       openCustomerCart();
       setOpen(false);
+      return;
+    }
+    if (action?.type === "handoff") {
+      handleRequestHandoff();
+      return;
+    }
+    if (action?.type === "search") {
+      const searchText = String(action.href || action.label || "").trim();
+      if (searchText) sendMessage(searchText);
       return;
     }
     if (!action?.href) return;

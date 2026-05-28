@@ -130,3 +130,16 @@
 - Cart is not a standalone route; it is opened through the existing customer cart event/drawer using the safe `openCart` action.
 - Manager/staff routes were verified against `src/routes/AppRouter.jsx` and `src/layouts/ManagerLayout.jsx`: `/manager`, `/manager#inventory`, `/manager#ai-chatbot-knowledge`, and `/staff/schedule`.
 - Manager-only feature-map entries remain marked with `managerOnly=true` and are filtered by actual frontend role helpers before being sent as page context.
+
+## Phase 23 query-aware assistant checklist
+
+- [ ] Ask “đặt bàn ở đâu” from Home and verify Reservations/table booking is suggested.
+- [ ] Ask “giỏ hàng đâu” and verify the safe `openCart` action opens the cart drawer/event.
+- [ ] Ask “xem đơn hàng ở đâu” and verify `/orders` is suggested for customer-safe navigation.
+- [ ] Ask “quản lý chatbot ở đâu” as a customer and verify manager-only links are hidden/refused.
+- [ ] Ask “quản lý chatbot ở đâu” as manager/admin and verify the manager AI chatbot tools entry is available.
+- [ ] Verify backend sanitization removes `javascript:`, `data:`, `mailto:`, malformed, external, and unknown feature actions before provider prompting.
+- [ ] Verify ordering fallback lists all ordering steps and includes safe navigation/actions where available.
+- [ ] Verify reservation fallback lists all booking steps and links to `/restaurant/:restaurantId/layout` when a restaurant is in context.
+- [ ] Verify guest cart/order/reservation questions ask the user to log in instead of exposing private data.
+- [ ] Verify provider prompts identify the bot as an AI App Assistant for Cohan Restaurant App and still require JSON-only, context-only, secret-safe answers.

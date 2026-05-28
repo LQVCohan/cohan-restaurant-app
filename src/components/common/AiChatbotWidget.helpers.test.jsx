@@ -107,4 +107,17 @@ describe("AiChatbotWidget helpers", () => {
     expect(cartEntry).toMatchObject({ actionType: "openCart", path: "" });
   });
 
+  it("feature map matches natural-language query aliases by role", () => {
+    expect(getAiChatbotFeatureMatches({ pathname: "/", restaurantId: "resto-1", userRole: "customer", query: "đặt bàn ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "reservations", path: "/restaurant/resto-1/layout" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "giỏ hàng đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "cart", actionType: "openCart" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "xem đơn hàng ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "orders", path: "/orders" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "quản lý chatbot ở đâu" }).some((entry) => entry.key === "ai-chatbot-manager"))
+      .toBe(false);
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "manager", query: "quản lý chatbot ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "ai-chatbot-manager", managerOnly: true })]));
+  });
+
 });

@@ -7,20 +7,28 @@ import {
 const MANAGER_FEATURE_ROLES = ["admin", "manager", "hr", "accountant"];
 const CUSTOMER_NAV_ROLES = ["customer", "admin", "manager"];
 
+const normalizeText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
 export const AI_CHATBOT_FEATURE_MAP = [
-  { key: "home", label: "Home", path: "/", intent: "navigation", description: "Trang chủ để khám phá nhà hàng, ưu đãi và lối tắt chính." },
-  { key: "restaurant-detail", label: "Restaurant detail", path: "/restaurant/:restaurantId", intent: "navigation", description: "Trang chi tiết nhà hàng, thông tin mở cửa, đánh giá và thực đơn." },
-  { key: "menu", label: "Menu", path: "/cus-menu", intent: "menu", description: "Trang menu để lọc món, xem giá và chọn món." },
-  { key: "food-detail", label: "Food detail", path: "/food/:menuItemId", intent: "menu", description: "Trang chi tiết món ăn, tùy chọn khẩu phần và thêm vào giỏ." },
-  { key: "cart", label: "Cart", path: "", actionType: "openCart", intent: "cart", description: "Giỏ hàng mở bằng drawer/event trong CustomerLayout, không phải route URL riêng.", allowedRoles: CUSTOMER_NAV_ROLES },
-  { key: "checkout", label: "Checkout", path: "/checkout", intent: "checkout", description: "Trang thanh toán/xác nhận đơn sau khi kiểm tra giỏ hàng.", allowedRoles: CUSTOMER_NAV_ROLES },
-  { key: "orders", label: "Orders", path: "/orders", intent: "orderHelp", description: "Trang đơn hàng của người dùng hiện tại.", allowedRoles: CUSTOMER_NAV_ROLES },
-  { key: "reservations", label: "Reservations / table booking", path: "/restaurant/:restaurantId/layout", intent: "reservationHelp", description: "Khu vực đặt bàn, xem sơ đồ bàn và lịch giữ chỗ." },
-  { key: "profile", label: "Profile/account", path: "/profile", intent: "profileHelp", description: "Trang hồ sơ/tài khoản của người dùng hiện tại." },
-  { key: "manager-dashboard", label: "Manager dashboard", path: "/manager", intent: "managerFeatureHelp", description: "Dashboard quản lý vận hành nhà hàng.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES },
-  { key: "staff-schedule", label: "Staff/schedule", path: "/staff/schedule", intent: "managerFeatureHelp", description: "Lịch làm việc/ca làm của nhân sự trên route staff thực tế.", allowedRoles: STAFF_SHARED_ROLES },
-  { key: "storage-inventory", label: "Storage/inventory", path: "/manager#inventory", intent: "managerFeatureHelp", description: "Kho, tồn nguyên liệu và kiểm kê trong ManagerLayout.", managerOnly: true, allowedRoles: ["admin", "manager"] },
-  { key: "ai-chatbot-manager", label: "AI chatbot manager tools", path: "/manager#ai-chatbot-knowledge", intent: "managerFeatureHelp", description: "Cấu hình tri thức, phân tích và an toàn chatbot trong ManagerLayout.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES },
+  { key: "home", label: "Home", path: "/", intent: "navigation", description: "Trang chủ để khám phá nhà hàng, ưu đãi và lối tắt chính.", aliases: ["trang chu", "home", "bat dau"] },
+  { key: "restaurant-detail", label: "Restaurant detail", path: "/restaurant/:restaurantId", intent: "navigation", description: "Trang chi tiết nhà hàng, thông tin mở cửa, đánh giá và thực đơn.", aliases: ["nha hang", "chi tiet nha hang", "mo cua", "dia chi nha hang"] },
+  { key: "menu", label: "Menu", path: "/cus-menu", intent: "menu", description: "Trang menu để lọc món, xem giá và chọn món.", aliases: ["menu", "thuc don", "tim mon an", "xem mon", "mon an", "do an", "gia mon"] },
+  { key: "food-detail", label: "Food detail", path: "/food/:menuItemId", intent: "menu", description: "Trang chi tiết món ăn, tùy chọn khẩu phần và thêm vào giỏ.", aliases: ["chi tiet mon", "xem mon nay", "khau phan", "tuy chon mon", "them vao gio"] },
+  { key: "cart", label: "Cart", path: "", actionType: "openCart", intent: "cart", description: "Giỏ hàng mở bằng drawer/event trong CustomerLayout, không phải route URL riêng.", allowedRoles: CUSTOMER_NAV_ROLES, aliases: ["gio hang", "gio hang dau", "cart", "mo gio", "xem gio hang"] },
+  { key: "checkout", label: "Checkout", path: "/checkout", intent: "checkout", description: "Trang thanh toán/xác nhận đơn sau khi kiểm tra giỏ hàng.", allowedRoles: CUSTOMER_NAV_ROLES, aliases: ["thanh toan", "checkout", "xac nhan don", "tra tien", "dat mon"] },
+  { key: "orders", label: "Orders", path: "/orders", intent: "orderHelp", description: "Trang đơn hàng của người dùng hiện tại.", allowedRoles: CUSTOMER_NAV_ROLES, aliases: ["don hang", "xem don hang", "ma don", "kiem tra don", "lich su don"] },
+  { key: "reservations", label: "Reservations / table booking", path: "/restaurant/:restaurantId/layout", intent: "reservationHelp", description: "Khu vực đặt bàn, xem sơ đồ bàn và lịch giữ chỗ.", aliases: ["dat ban", "lam sao dat ban", "dat ban o dau", "giu cho", "dat cho", "ban trong", "so do ban", "reservation", "booking"] },
+  { key: "profile", label: "Profile/account", path: "/profile", intent: "profileHelp", description: "Trang hồ sơ/tài khoản của người dùng hiện tại.", aliases: ["tai khoan", "ho so", "profile", "toi la ai", "dang nhap", "thong tin cua toi"] },
+  { key: "manager-dashboard", label: "Manager dashboard", path: "/manager", intent: "managerFeatureHelp", description: "Dashboard quản lý vận hành nhà hàng.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES, aliases: ["quan ly", "dashboard", "bao cao", "doanh thu"] },
+  { key: "staff-schedule", label: "Staff/schedule", path: "/staff/schedule", intent: "managerFeatureHelp", description: "Lịch làm việc/ca làm của nhân sự trên route staff thực tế.", allowedRoles: STAFF_SHARED_ROLES, aliases: ["lich nhan vien", "lich lam", "ca lam", "schedule", "nhan su"] },
+  { key: "storage-inventory", label: "Storage/inventory", path: "/manager#inventory", intent: "managerFeatureHelp", description: "Kho, tồn nguyên liệu và kiểm kê trong ManagerLayout.", managerOnly: true, allowedRoles: ["admin", "manager"], aliases: ["kho", "ton kho", "inventory", "nguyen lieu", "kiem ke"] },
+  { key: "ai-chatbot-manager", label: "AI chatbot manager tools", path: "/manager#ai-chatbot-knowledge", intent: "managerFeatureHelp", description: "Cấu hình tri thức, phân tích và an toàn chatbot trong ManagerLayout.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES, aliases: ["quan ly chatbot", "ai chatbot", "chatbot manager", "tri thuc chatbot", "phan tich chatbot"] },
 ];
 
 const normalizeRole = (value) => resolveUserRoleName(value) || String(value || "").trim().toLowerCase();
@@ -39,27 +47,43 @@ const canUseFeature = (entry, role) => {
   return true;
 };
 
-export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", selectedMenuItem = null, userRole = "" } = {}) => {
+const pathMatchesEntry = (entry, path, menuItemId) => {
+  if (entry.key === "home") return path === "/" || path === "";
+  if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
+  if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
+  if (entry.key === "menu") return path.includes("menu") || path.includes("restaurant");
+  if (entry.key === "food-detail") return path.startsWith("/food/") || Boolean(menuItemId);
+  if (entry.key === "cart") return path.includes("cart");
+  if (entry.key === "checkout") return path.includes("checkout");
+  if (entry.key === "orders") return path.includes("order");
+  if (entry.key === "profile") return path.includes("profile") || path.includes("account");
+  if (entry.key === "staff-schedule") return path.startsWith("/staff/schedule") || path.includes("schedule");
+  if (entry.managerOnly) return path.includes("manager") || path.includes("dashboard") || path.includes("storage") || path.includes("inventory") || path.includes("schedule") || path.includes("ai-chatbot");
+  return false;
+};
+
+const queryScoreEntry = (entry, query) => {
+  const q = normalizeText(query);
+  if (!q) return 0;
+  const haystacks = [entry.key, entry.label, entry.intent, entry.description, ...(entry.aliases || [])].map(normalizeText);
+  let score = haystacks.reduce((sum, text) => sum + (text && (q.includes(text) || text.includes(q)) ? 3 : 0), 0);
+  const queryTokens = q.split(/[^a-z0-9]+/).filter((token) => token.length >= 2);
+  for (const token of queryTokens) {
+    if (haystacks.some((text) => text.includes(token))) score += 1;
+  }
+  return score;
+};
+
+export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", selectedMenuItem = null, userRole = "", query = "" } = {}) => {
   const path = String(pathname || "").toLowerCase();
   const role = normalizeRole(userRole);
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
   return AI_CHATBOT_FEATURE_MAP
     .filter((entry) => canUseFeature(entry, role))
-    .filter((entry) => {
-      if (entry.key === "home") return path === "/" || path === "";
-      if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
-      if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
-      if (entry.key === "menu") return path.includes("menu") || path.includes("restaurant");
-      if (entry.key === "food-detail") return path.startsWith("/food/") || Boolean(menuItemId);
-      if (entry.key === "cart") return path.includes("cart");
-      if (entry.key === "checkout") return path.includes("checkout");
-      if (entry.key === "orders") return path.includes("order");
-      if (entry.key === "profile") return path.includes("profile") || path.includes("account");
-      if (entry.key === "staff-schedule") return path.startsWith("/staff/schedule") || path.includes("schedule");
-      if (entry.managerOnly) return path.includes("manager") || path.includes("dashboard") || path.includes("storage") || path.includes("inventory") || path.includes("schedule") || path.includes("ai-chatbot");
-      return false;
-    })
-    .map((entry) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
+    .map((entry) => ({ entry, score: (pathMatchesEntry(entry, path, menuItemId) ? 5 : 0) + queryScoreEntry(entry, query) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(({ entry }) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
     .slice(0, 6);
 };
 
@@ -67,6 +91,9 @@ export const __aiChatbotFeatureMapTestables = {
   canUseFeature,
   fillPath,
   normalizeRole,
+  normalizeText,
+  queryScoreEntry,
+  pathMatchesEntry,
   MANAGER_FEATURE_ROLES,
   STAFF_OPERATIONAL_ROLES,
 };

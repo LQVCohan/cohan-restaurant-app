@@ -491,3 +491,10 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 **File đã xác minh cho section này**
 - `src/__tests__/graphql-schema-validation.test.js`
 - `cohan-restaurant-backend/graphql/schema/*.graphql`
+
+### 4.x+ Phase 23 AI Chatbot query-aware workflows
+- Query-aware matching lives in `src/utils/aiChatbotFeatureMap.js`; it combines route matching with Vietnamese aliases and message text so feature discovery works from any page.
+- `src/components/common/AiChatbotWidget.jsx` builds `pageContext` at send time with the current message, selected menu item, restaurant id, role, and sanitized feature matches only.
+- Backend sanitization in `cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js` accepts only safe action types (`link`, `search`, `handoff`, `openCart`), only internal feature links beginning with `/`, and `openCart` without a path.
+- Guided customer workflows are deterministic fallbacks for ordering and table reservations, with current-user-only Q&A for identity, cart, orders, reservations, coupons, restaurant, and menu context.
+- Provider prompts describe the role as an AI App Assistant for Cohan Restaurant App and continue to forbid hallucinated data, credentials/secrets, other-user data, and unauthorized manager data.

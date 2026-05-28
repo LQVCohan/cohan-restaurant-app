@@ -234,6 +234,7 @@ describe("AiChatbotWidget basic", () => {
       userRole: "customer",
     });
     expect(input.pageContext.featureMatches.some((entry) => entry.key === "restaurant-detail")).toBe(true);
+    expect(input.pageContext.featureMatches.some((entry) => entry.key === "orders")).toBe(true);
   });
 
   it("feature navigation answer/actions render safely and open cart action still works", async () => {
@@ -249,6 +250,7 @@ describe("AiChatbotWidget basic", () => {
             { type: "openCart", label: "Mở giỏ hàng", href: "/cart" },
             { type: "link", label: "Mở đơn hàng", href: "/orders" },
             { type: "link", label: "javascript:alert(1)", href: "javascript:alert(1)" },
+            { type: "link", label: "data bad", href: "data:text/html,bad" },
           ],
           sources: [],
           contextSummary: null,
@@ -266,6 +268,7 @@ describe("AiChatbotWidget basic", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Mở giỏ hàng" })).toBeInTheDocument(), { timeout: 1500 });
     expect(screen.getByRole("button", { name: "Mở đơn hàng" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "data bad" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mở giỏ hàng" }));
     expect(openCartSpy).toHaveBeenCalledTimes(1);
     expect(mocks.navigateSpy).not.toHaveBeenCalledWith("javascript:alert(1)");
