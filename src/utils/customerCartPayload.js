@@ -4,17 +4,36 @@ export const buildMenuItemServingOptions = (item) => {
   if (!item) return [];
   const variants = item.servingVariants || [];
   if (!variants.length) {
-    return [{ key: "portion", name: "Phần tiêu chuẩn", price: Number(item.basePrice) || 0 }];
+    return [
+      {
+        key: "portion",
+        name: "Phần tiêu chuẩn",
+        price: Number(item.basePrice) || 0,
+      },
+    ];
   }
   const base = Number(item.basePrice) || 0;
   return variants.map((variant, idx) => ({
     key: variant.key || `variant-${idx}`,
+    mode: variant.mode || null,
+    sellQty: variant.sellQty,
+    sellUnit: variant.sellUnit || null,
     name: variant.name || `Tùy chọn ${idx + 1}`,
     price: Number(variant.price) || base,
   }));
 };
 
-export const buildCustomerCartPayload = ({ item, restaurant, selectedVariant, quantity, note, backendCartId, backendCartItemId, holdExpiresAt, holdStatus }) => ({
+export const buildCustomerCartPayload = ({
+  item,
+  restaurant,
+  selectedVariant,
+  quantity,
+  note,
+  backendCartId,
+  backendCartItemId,
+  holdExpiresAt,
+  holdStatus,
+}) => ({
   id: `${item.id}_${selectedVariant?.key || "portion"}`,
   dishId: item.id,
   restaurantId: String(item.restaurantId || restaurant?.id || ""),

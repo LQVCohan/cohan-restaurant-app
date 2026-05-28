@@ -20,7 +20,9 @@
   gap: 3px;
   cursor: pointer;
   font-weight: 800;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:hover {
     transform: translateY(-2px) scale(1.02);
@@ -171,8 +173,12 @@
       background: #fb923c;
       animation: ai-chatbot-dot 0.9s infinite ease-in-out;
 
-      &:nth-child(2) { animation-delay: 0.12s; }
-      &:nth-child(3) { animation-delay: 0.24s; }
+      &:nth-child(2) {
+        animation-delay: 0.12s;
+      }
+      &:nth-child(3) {
+        animation-delay: 0.24s;
+      }
     }
   }
 }
@@ -261,8 +267,16 @@
 }
 
 @keyframes ai-chatbot-dot {
-  0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-  40% { transform: translateY(-4px); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -278,11 +292,47 @@
   }
 }
 
-.ai-chatbot-menu-cards{display:flex;flex-direction:column;gap:8px;padding:0 12px 8px}.ai-chatbot-menu-card{display:flex;justify-content:space-between;align-items:center;background:#f4f7ff;border:1px solid #d9e2ff;border-radius:10px;padding:8px 10px}.ai-chatbot-menu-card button{border:none;background:#2f6fed;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+.ai-chatbot-menu-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+.ai-chatbot-menu-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f4f7ff;
+  border: 1px solid #d9e2ff;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.ai-chatbot-menu-card button {
+  border: none;
+  background: #2f6fed;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
 
-.ai-chatbot-menu-card__price { display:block; font-size:12px; color:#16a34a; margin-top:4px; }
-.ai-chatbot-menu-card__status { display:block; font-size:12px; color:#dc2626; margin-top:4px; }
-.ai-chatbot-menu-card__actions { display:flex; gap:8px; margin-top:8px; }
+.ai-chatbot-menu-card__price {
+  display: block;
+  font-size: 12px;
+  color: #16a34a;
+  margin-top: 4px;
+}
+.ai-chatbot-menu-card__status {
+  display: block;
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+.ai-chatbot-menu-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
 
 .ai-chatbot-cart-notice {
   margin: 8px 12px;
@@ -308,11 +358,48 @@
   border-radius: 14px;
   background: #f8fbff;
 }
-.ai-chatbot-menu-detail__variants { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-.ai-chatbot-menu-detail__variant { border: 1px solid #ccd7ff; border-radius: 10px; padding: 6px 10px; background: #fff; }
-.ai-chatbot-menu-detail__variant.is-selected { border-color: #4a6bff; background: #eef2ff; }
-.ai-chatbot-menu-detail__quantity { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-.ai-chatbot-menu-detail__note { width: 100%; min-height: 72px; border-radius: 8px; border: 1px solid #cfd8ea; padding: 8px; }
-.ai-chatbot-menu-detail__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.ai-chatbot-menu-detail__success { color: #0f8a43; }
-.ai-chatbot-menu-detail__error { color: #d62424; }
+.ai-chatbot-menu-detail__variants {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.ai-chatbot-menu-detail__variant {
+  border: 1px solid #ccd7ff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #fff;
+}
+.ai-chatbot-menu-detail__variant.is-selected {
+  border-color: #4a6bff;
+  background: #eef2ff;
+}
+.ai-chatbot-menu-detail__quantity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.ai-chatbot-menu-detail__note {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 8px;
+  border: 1px solid #cfd8ea;
+  padding: 8px;
+}
+.ai-chatbot-menu-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-chatbot-menu-detail__success {
+  color: #0f8a43;
+}
+.ai-chatbot-menu-detail__error {
+  color: #d62424;
+}
+.ai-chatbot-menu-detail__helper {
+  color: #475569;
+  font-size: 12px;
+  margin: 4px 0 10px;
+}
