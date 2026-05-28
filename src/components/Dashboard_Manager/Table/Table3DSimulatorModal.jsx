@@ -6,6 +6,7 @@ import {
   TABLE_3D_TYPE_OPTIONS,
   canOpenModelViewerAr,
   getArUnavailableReason,
+  formatDimensionsCm,
   getModelAssetBadges,
   getModelAssetSummary,
 } from "@/config/table3dCatalog";
@@ -46,8 +47,11 @@ const Table3DSimulatorModal = ({
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
   const [customModels, setCustomModels] = useState([]);
-  const [confirmedCameraPlacement, setConfirmedCameraPlacement] = useState(null);
+  const [confirmedCameraPlacement, setConfirmedCameraPlacement] =
+    useState(null);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [assetFilter, setAssetFilter] = useState("all");
   const customModelScope = restaurantName || restaurantId || "default";
 
   useEffect(() => {
@@ -62,23 +66,56 @@ const Table3DSimulatorModal = ({
   }, []);
 
   const models = useMemo(
-    () => (modelsByType[tableType] || []).filter((model) => model.tableType === tableType),
-    [modelsByType, tableType]
+    () =>
+      (modelsByType[tableType] || []).filter(
+        (model) => model.tableType === tableType,
+      ),
+    [modelsByType, tableType],
   );
 
   const typedCustomModels = useMemo(
-    () => customModels.filter((model) => doesCustomModelMatchTableType(model, tableType)),
-    [customModels, tableType]
+    () =>
+      customModels.filter((model) =>
+        doesCustomModelMatchTableType(model, tableType),
+      ),
+    [customModels, tableType],
   );
 
   const allModels = useMemo(
     () => mergeCatalogWithCustomModels(models, typedCustomModels),
-    [models, typedCustomModels]
+    [models, typedCustomModels],
   );
 
+  const filteredModels = useMemo(() => {
+    const normalizedSearch = catalogSearch.trim().toLowerCase();
+
+    return allModels.filter((model) => {
+      const searchableText = [
+        model.label,
+        model.tableType,
+        ...(model.tags || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const matchesSearch =
+        !normalizedSearch || searchableText.includes(normalizedSearch);
+      const hasModel = canOpenModelViewerAr(model);
+      const matchesAssetFilter =
+        assetFilter === "all" ||
+        (assetFilter === "model" && hasModel) ||
+        (assetFilter === "placeholder" && !hasModel);
+
+      return matchesSearch && matchesAssetFilter;
+    });
+  }, [allModels, assetFilter, catalogSearch]);
+
   const selectedModel = useMemo(
-    () => allModels.find((item) => item.key === selectedModelKey) || allModels[0] || null,
-    [allModels, selectedModelKey]
+    () =>
+      allModels.find((item) => item.key === selectedModelKey) ||
+      allModels[0] ||
+      null,
+    [allModels, selectedModelKey],
   );
 
   useEffect(() => {
@@ -107,7 +144,10 @@ const Table3DSimulatorModal = ({
   const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
 
   const shiftModel = (x, z) => {
-    setOffset((prev) => ({ x: Number((prev.x + x).toFixed(2)), z: Number((prev.z + z).toFixed(2)) }));
+    setOffset((prev) => ({
+      x: Number((prev.x + x).toFixed(2)),
+      z: Number((prev.z + z).toFixed(2)),
+    }));
   };
 
   const rotateModel = (delta) => {
@@ -115,7 +155,13 @@ const Table3DSimulatorModal = ({
   };
 
   const zoomModel = (delta) => {
-    setOrbit((prev) => ({ ...prev, radius: Math.max(1.2, Math.min(5, Number((prev.radius + delta).toFixed(2)))) }));
+    setOrbit((prev) => ({
+      ...prev,
+      radius: Math.max(
+        1.2,
+        Math.min(5, Number((prev.radius + delta).toFixed(2))),
+      ),
+    }));
   };
 
   const resetView = () => {
@@ -133,14 +179,15 @@ const Table3DSimulatorModal = ({
 
   const handleDeleteCustomModel = (event, model) => {
     event.stopPropagation();
-    if (!window.confirm(`Xóa mẫu "${model.label}" khỏi thư viện tùy chỉnh?`)) return;
+    if (!window.confirm(`Xóa mẫu "${model.label}" khỏi thư viện tùy chỉnh?`))
+      return;
 
     const saved = deleteCustomTableModel(model.key, customModelScope);
     setCustomModels(saved);
     if (selectedModel?.key === model.key) {
       const nextVisible = mergeCatalogWithCustomModels(
         models,
-        saved.filter((item) => doesCustomModelMatchTableType(item, tableType))
+        saved.filter((item) => doesCustomModelMatchTableType(item, tableType)),
       );
       setSelectedModelKey(nextVisible[0]?.key || "");
     }
@@ -148,9 +195,14 @@ const Table3DSimulatorModal = ({
 
   const handleOpenAr = async () => {
     const viewer = viewerRef.current;
+    if (!canOpenModelViewerAr(selectedModel)) {
+      setModelError(getArUnavailableReason(selectedModel));
+      return;
+    }
+
     if (!viewer || typeof viewer.activateAR !== "function") {
       setModelError(
-        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera."
+        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera.",
       );
       return;
     }
@@ -160,7 +212,7 @@ const Table3DSimulatorModal = ({
       await viewer.activateAR();
     } catch {
       setModelError(
-        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera."
+        "Thiết bị/trình duyệt hiện tại chưa mở được AR. Bạn vẫn có thể dùng Xem thử bằng camera.",
       );
     } finally {
       setIsOpeningAr(false);
@@ -170,13 +222,19 @@ const Table3DSimulatorModal = ({
   useEffect(() => {
     const node = viewerRef.current;
     if (!node || !selectedModel?.modelUrl) return undefined;
-    const handleError = () => setModelError("Không tải được model, hãy đổi mẫu khác.");
+    const handleError = () =>
+      setModelError("Không tải được model, hãy đổi mẫu khác.");
     node.addEventListener("error", handleError);
     return () => node.removeEventListener("error", handleError);
   }, [selectedModel?.key, selectedModel?.modelUrl]);
 
   return (
-    <Modal isOpen={open} onClose={onClose} size="full" className="table-3d-modal">
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      size="full"
+      className="table-3d-modal"
+    >
       <div className="table-3d-modal__header">
         <div>
           <h3>🪑 Mô phỏng 3D đặt thử bàn</h3>
@@ -193,7 +251,10 @@ const Table3DSimulatorModal = ({
       <div className="table-3d-modal__layout">
         <aside className="table-3d-modal__sidebar">
           <label>Loại bàn</label>
-          <select value={tableType} onChange={(e) => setTableType(e.target.value)}>
+          <select
+            value={tableType}
+            onChange={(e) => setTableType(e.target.value)}
+          >
             {TABLE_3D_TYPE_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -201,8 +262,30 @@ const Table3DSimulatorModal = ({
             ))}
           </select>
 
+          <div
+            className="table-3d-modal__filters"
+            aria-label="Bộ lọc catalog 3D"
+          >
+            <input
+              type="search"
+              value={catalogSearch}
+              onChange={(event) => setCatalogSearch(event.target.value)}
+              placeholder="Tìm theo tên hoặc tag..."
+              aria-label="Tìm mẫu bàn 3D"
+            />
+            <select
+              value={assetFilter}
+              onChange={(event) => setAssetFilter(event.target.value)}
+              aria-label="Lọc theo trạng thái model 3D"
+            >
+              <option value="all">Tất cả mẫu</option>
+              <option value="model">Có model 3D thật</option>
+              <option value="placeholder">Chỉ placeholder</option>
+            </select>
+          </div>
+
           <div className="table-3d-modal__models">
-            {allModels.map((model) => (
+            {filteredModels.map((model) => (
               <div
                 key={model.key}
                 className={`model-item ${selectedModel?.key === model.key ? "active" : ""}`}
@@ -212,20 +295,38 @@ const Table3DSimulatorModal = ({
                 onClick={() => setSelectedModelKey(model.key)}
                 onKeyDown={(event) => handleModelItemKeyDown(event, model)}
               >
-                <img src={model.thumbnailUrl} alt={model.label} loading="lazy" />
+                <img
+                  src={model.thumbnailUrl}
+                  alt={model.label}
+                  loading="lazy"
+                />
                 <div>
                   <strong>{model.label}</strong>
                   <span>{model.capacity} ghế</span>
                   <div className="model-item__badges">
                     {getModelAssetBadges(model).map((badge) => (
-                      <span key={`${model.key}-${badge}`} className="model-badge">
+                      <span
+                        key={`${model.key}-${badge}`}
+                        className="model-badge"
+                      >
                         {badge}
                       </span>
                     ))}
                   </div>
+                  {formatDimensionsCm(model.dimensionsCm) && (
+                    <span>{formatDimensionsCm(model.dimensionsCm)}</span>
+                  )}
                   {model?.customModelSpec && (
                     <span>
-                      {model.customModelSpec.widthCm} x {model.customModelSpec.depthCm} x {model.customModelSpec.heightCm} cm
+                      {model.customModelSpec.widthCm} x{" "}
+                      {model.customModelSpec.depthCm} x{" "}
+                      {model.customModelSpec.heightCm} cm
+                    </span>
+                  )}
+                  {(model.sourceLabel || model.licenseLabel) && (
+                    <span>
+                      {model.sourceLabel || model.source}{" "}
+                      {model.licenseLabel ? `• ${model.licenseLabel}` : ""}
                     </span>
                   )}
                 </div>
@@ -243,23 +344,47 @@ const Table3DSimulatorModal = ({
                 )}
               </div>
             ))}
-            {!allModels.length && (
+            {!filteredModels.length && (
               <div className="model-empty">
-                Không có mẫu phù hợp cho loại bàn này. Hãy thử tab khác hoặc tạo mẫu tùy chỉnh mới.
+                Không có mẫu phù hợp với loại bàn/bộ lọc hiện tại. Hãy đổi từ
+                khóa, chọn bộ lọc khác hoặc tạo mẫu tùy chỉnh mới.
               </div>
             )}
           </div>
 
           <div className="table-3d-modal__meta">
             <p>
-              <b>Model 3D:</b> {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}
+              <b>Model 3D:</b>{" "}
+              {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}
             </p>
             <p>
-              <b>AR native:</b> {selectedModelAssetSummary.arReady ? "Có thể thử" : "Chưa khả dụng"}
+              <b>AR native:</b>{" "}
+              {selectedModelAssetSummary.arReady
+                ? "Có thể thử"
+                : "Chưa khả dụng"}
             </p>
             <p>
-              <b>Nguồn model:</b> {selectedModelAssetSummary.source}
+              <b>Nguồn model:</b>{" "}
+              {selectedModelAssetSummary.sourceUrl?.startsWith("http") ? (
+                <a
+                  href={selectedModelAssetSummary.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {selectedModelAssetSummary.source}
+                </a>
+              ) : (
+                selectedModelAssetSummary.source
+              )}
             </p>
+            <p>
+              <b>License:</b> {selectedModelAssetSummary.license}
+            </p>
+            {selectedModelAssetSummary.dimensions && (
+              <p>
+                <b>Kích thước:</b> {selectedModelAssetSummary.dimensions}
+              </p>
+            )}
             <p>
               <b>Model key:</b> {selectedModelAssetSummary.modelKey}
             </p>
@@ -268,7 +393,11 @@ const Table3DSimulatorModal = ({
           <Button variant="secondary" size="sm" onClick={reload}>
             Tải lại catalog online
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setShowCustomBuilder(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowCustomBuilder(true)}
+          >
             ✨ Tạo mẫu bàn tùy chỉnh
           </Button>
         </aside>
@@ -284,8 +413,8 @@ const Table3DSimulatorModal = ({
               selectedModel &&
               confirmedCameraPlacement.modelKey !== selectedModel.key && (
                 <span>
-                  Vị trí xem thử đã xác nhận thuộc mẫu khác. Hãy xem thử bằng camera lại nếu
-                  muốn lưu cho mẫu này.
+                  Vị trí xem thử đã xác nhận thuộc mẫu khác. Hãy xem thử bằng
+                  camera lại nếu muốn lưu cho mẫu này.
                 </span>
               )}
           </div>
@@ -315,19 +444,37 @@ const Table3DSimulatorModal = ({
             </div>
           )}
 
-          {modelError && <div className="table-3d-modal__warning">{modelError}</div>}
+          {modelError && (
+            <div className="table-3d-modal__warning">{modelError}</div>
+          )}
 
           <div className="table-3d-modal__controls">
-            <Button size="sm" variant="secondary" onClick={() => rotateModel(-15)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => rotateModel(-15)}
+            >
               ↺ Rotate
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => rotateModel(15)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => rotateModel(15)}
+            >
               ↻ Rotate
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => zoomModel(-0.2)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => zoomModel(-0.2)}
+            >
               ＋ Zoom
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => zoomModel(0.2)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => zoomModel(0.2)}
+            >
               － Zoom
             </Button>
             <Button size="sm" variant="secondary" onClick={resetView}>
@@ -336,16 +483,32 @@ const Table3DSimulatorModal = ({
           </div>
 
           <div className="table-3d-modal__controls">
-            <Button size="sm" variant="secondary" onClick={() => shiftModel(-0.1, 0)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => shiftModel(-0.1, 0)}
+            >
               ← Di chuyển
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => shiftModel(0.1, 0)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => shiftModel(0.1, 0)}
+            >
               → Di chuyển
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => shiftModel(0, -0.1)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => shiftModel(0, -0.1)}
+            >
               ↑ Di chuyển
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => shiftModel(0, 0.1)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => shiftModel(0, 0.1)}
+            >
               ↓ Di chuyển
             </Button>
             <label className="scale-range">
@@ -363,7 +526,10 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__guide">
             <p>• Xem 3D: xoay/zoom mẫu bàn trong màn hình.</p>
-            <p>• Xem thử bằng camera: overlay thủ công để ước lượng vị trí thực tế.</p>
+            <p>
+              • Xem thử bằng camera: overlay thủ công để ước lượng vị trí thực
+              tế.
+            </p>
             <p>• Mở AR: dùng AR native trên thiết bị/trình duyệt hỗ trợ.</p>
           </div>
 
@@ -390,11 +556,16 @@ const Table3DSimulatorModal = ({
                   {isOpeningAr ? "Đang mở AR..." : "Mở AR trên thiết bị hỗ trợ"}
                 </Button>
                 <span>
-                  AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng Xem thử bằng camera.
+                  AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng
+                  Xem thử bằng camera.
                 </span>
               </div>
             ) : (
-              selectedModel && <div className="table-3d-modal__ar-hint">{arUnavailableReason}</div>
+              selectedModel && (
+                <div className="table-3d-modal__ar-hint">
+                  {arUnavailableReason}
+                </div>
+              )
             )}
             <Button
               variant="primary"

@@ -41,7 +41,12 @@ export default function useTable3DModels() {
         throw new Error("Catalog is empty");
       }
 
-      setModels(normalized);
+      const mergedCatalog = new Map(
+        LOCAL_TABLE_3D_CATALOG.map((item) => [item.key, item]),
+      );
+      normalized.forEach((item) => mergedCatalog.set(item.key, item));
+
+      setModels(Array.from(mergedCatalog.values()));
     } catch (err) {
       if (err?.name !== "AbortError") {
         setError("Không tải được catalog online, đã dùng catalog dự phòng.");
