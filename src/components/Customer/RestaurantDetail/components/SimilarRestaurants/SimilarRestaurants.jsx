@@ -64,10 +64,15 @@ const SimilarRestaurants = ({ currentRestaurantId, variant = "default" }) => {
 
               <div className="restaurant-content">
                 <h4>{restaurant.name}</h4>
-                <p className="meta">{restaurant.cuisineType || "Nhà hàng"}</p>
+                <p className="meta">
+                  {restaurant.cuisineType || "Nhà hàng"}
+                  {restaurant.address?.district || restaurant.address?.city
+                    ? ` • ${restaurant.address?.district || restaurant.address?.city}`
+                    : ""}
+                </p>
                 <p className="meta">
                   {restaurant.reviewCount > 0
-                    ? `${Number(restaurant.avgRating || 0).toFixed(1)} (${restaurant.reviewCount})`
+                    ? `${Number(restaurant.avgRating || 0).toFixed(1)} ★ • ${restaurant.reviewCount} đánh giá`
                     : "Chưa có đánh giá"}
                 </p>
               </div>

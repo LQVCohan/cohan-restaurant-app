@@ -207,7 +207,16 @@ const RestaurantDetail = () => {
   const imgThumbUrl = hasCoverImage
     ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
     : null;
-const aiQuickPrompts = [
+  const cuisineText = resolvedRestaurant.cuisine || "Ẩm thực đang cập nhật";
+  const areaText =
+    resolvedRestaurant.district ||
+    resolvedRestaurant.address?.district ||
+    resolvedRestaurant.address?.city ||
+    "Khu vực đang cập nhật";
+  const reviewSummaryText = headerReviewCount > 0 ? `${headerReviewCount} đánh giá` : "Chưa có đánh giá";
+  const profileSummaryItems = [cuisineText, areaText, reviewSummaryText];
+
+  const aiQuickPrompts = [
     { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
     { label: "Món dưới 100k", message: "Gợi ý món dưới 100k" },
     { label: "Món chay", message: "Gợi ý món chay" },
@@ -251,7 +260,7 @@ const aiQuickPrompts = [
                   {headerReviewCount > 0 && <span> ({headerReviewCount} đánh giá)</span>}
                 </span>
                 <span className="dot">•</span>
-                <span className="cuisine">{resolvedRestaurant.cuisine}</span>
+                <span className="cuisine">{cuisineText}</span>
                 <span className="dot">•</span>
                 <span className={`status ${resolvedRestaurant.openingStatus || "closed"}`}>
                   {getOpeningStatusLabel(resolvedRestaurant.openingStatus)}
@@ -261,20 +270,30 @@ const aiQuickPrompts = [
               <div className="res-address">
                 <MapPin size={16} /> {resolvedRestaurant.addressText || "Địa chỉ đang cập nhật"}
               </div>
+
+              <div className="profile-summary">
+                {profileSummaryItems.map((item, idx) => (
+                  <span key={`${item}-${idx}`} className="summary-chip">
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="action-group">
-              <button
-                type="button"
-                className={`btn-icon ${favoriteActive ? "active" : ""}`}
-                disabled={isPreviewMode}
-                onClick={handleFavorite}
-              >
-                <Heart size={20} />
-              </button>
-              <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
-                <Share2 size={20} />
-              </button>
+              <div className="icon-actions">
+                <button
+                  type="button"
+                  className={`btn-icon ${favoriteActive ? "active" : ""}`}
+                  disabled={isPreviewMode}
+                  onClick={handleFavorite}
+                >
+                  <Heart size={20} />
+                </button>
+                <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
+                  <Share2 size={20} />
+                </button>
+              </div>
               <button
                 type="button"
                 className="btn-book desktop-only"

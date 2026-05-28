@@ -27,7 +27,7 @@ $radius: 18px;
   padding-bottom: 20px;
 
   .hero-cover {
-    height: 230px;
+    height: 216px;
     background-size: cover;
     background-position: center;
     background-color: #fff7ed;
@@ -37,7 +37,34 @@ $radius: 18px;
       background-image:
         radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.32), transparent 32%),
         radial-gradient(circle at 85% 24%, rgba(255, 255, 255, 0.24), transparent 38%),
-        linear-gradient(135deg, #fff7ed 0%, #fed7aa 45%, #fb923c 100%);
+        linear-gradient(135deg, #fff7ed 0%, #fed7aa 42%, #fdba74 100%);
+      overflow: hidden;
+
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(2px);
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      &::before {
+        width: 330px;
+        height: 330px;
+        right: -86px;
+        top: -142px;
+        background: radial-gradient(circle at center, rgba(251, 146, 60, 0.65) 0%, rgba(251, 146, 60, 0) 68%);
+      }
+
+      &::after {
+        width: 240px;
+        height: 240px;
+        left: -78px;
+        bottom: -118px;
+        background: radial-gradient(circle at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 72%);
+      }
     }
 
     .overlay {
@@ -74,14 +101,15 @@ $radius: 18px;
     margin-top: -50px;
     z-index: 2;
     background: rgba(255, 255, 255, 0.96);
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 24px;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(8px);
     border: 1px solid rgba(226, 232, 240, 0.9);
     display: flex;
     gap: 22px;
     align-items: center;
-    max-width: 1060px;
+    max-width: 1100px;
     margin-inline: auto;
 
     .avatar-wrapper img {
@@ -97,13 +125,13 @@ $radius: 18px;
       flex: 1;
 
       .bread-crumbs {
-        font-size: 0.82rem;
-        color: $text-sub;
-        margin-bottom: 10px;
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
       }
 
       .res-name {
-        font-size: 1.88rem;
+        font-size: 1.96rem;
         font-weight: 800;
         margin: 0 0 14px;
         line-height: 1.2;
@@ -113,7 +141,7 @@ $radius: 18px;
       .res-meta {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         font-size: 0.94rem;
         margin-bottom: 14px;
@@ -140,8 +168,9 @@ $radius: 18px;
         }
 
         .status.closed {
-          color: #b91c1c;
-          background: #fee2e2;
+          color: #9f1239;
+          background: #ffe4e6;
+          border: 1px solid #fecdd3;
         }
 
         .status.paused,
@@ -166,6 +195,7 @@ $radius: 18px;
       }
 
       .res-address {
+        margin-top: 2px;
         display: flex;
         align-items: flex-start;
         gap: 7px;
@@ -173,13 +203,39 @@ $radius: 18px;
         font-size: 0.92rem;
         line-height: 1.35;
       }
+
+      .profile-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+
+        .summary-chip {
+          padding: 5px 11px;
+          border-radius: 999px;
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
+          color: #475569;
+          font-size: 0.82rem;
+          font-weight: 500;
+        }
+      }
     }
 
     .action-group {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       align-items: flex-end;
+
+      .icon-actions {
+        display: flex;
+        gap: 8px;
+        padding: 5px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
 
       .btn-icon {
         width: 40px;
@@ -192,12 +248,13 @@ $radius: 18px;
         justify-content: center;
         cursor: pointer;
         color: $text-sub;
-        transition: 0.2s;
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 
         &:hover {
           color: $primary;
           border-color: #fdba74;
           background: #fff7ed;
+          transform: translateY(-1px);
         }
 
         &.active {
@@ -218,7 +275,7 @@ $radius: 18px;
         font-weight: 700;
         cursor: pointer;
         box-shadow: 0 8px 18px rgba(249, 115, 22, 0.25);
-        transition: 0.2s;
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 
         &:hover {
           background: $primary-hover;
@@ -230,8 +287,9 @@ $radius: 18px;
 }
 
 .rd-tabs {
-  background: $white;
-  border-bottom: 1px solid $border;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -243,7 +301,7 @@ $radius: 18px;
 
   .tab-scroll {
     display: flex;
-    gap: 26px;
+    gap: 22px;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -266,10 +324,12 @@ $radius: 18px;
 
       &:hover {
         color: $primary;
+        background: #fff7ed;
       }
 
       &.active {
         color: $primary;
+        font-weight: 700;
       }
 
       &.active::after {
@@ -278,7 +338,8 @@ $radius: 18px;
         left: 0;
         right: 0;
         bottom: -1px;
-        height: 3px;
+        height: 2px;
+        transition: all 0.2s ease;
         border-radius: 999px;
         background: #f97316;
       }
@@ -289,7 +350,7 @@ $radius: 18px;
 .rd-container {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 26px;
+  gap: 22px;
   padding-top: 22px;
   padding-bottom: 60px;
 
@@ -310,14 +371,16 @@ $radius: 18px;
   flex-direction: column;
   gap: 16px;
   position: sticky;
-  top: 74px;
-  height: fit-content;
+  top: 78px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  scrollbar-width: thin;
 
   .booking-widget,
   .similar-widget {
     background: $white;
     border-radius: 18px;
-    padding: 18px 20px;
+    padding: 16px 18px;
     border: 1px solid $border;
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
   }
@@ -330,8 +393,9 @@ $radius: 18px;
 
     p {
       color: $text-sub;
-      font-size: 0.88rem;
-      margin-bottom: 12px;
+      font-size: 0.84rem;
+      margin-bottom: 10px;
+      line-height: 1.45;
     }
 
     .time-picker-mock {
@@ -457,12 +521,12 @@ $radius: 18px;
 
 @media (max-width: 768px) {
   .rd-hero .hero-cover {
-    height: 195px;
+    height: 190px;
   }
 
   .rd-hero .res-info-card {
     flex-direction: column;
-    margin-top: -34px;
+    margin-top: -28px;
     gap: 16px;
     padding: 20px;
 
@@ -488,11 +552,11 @@ $radius: 18px;
   }
 
   .rd-hero .hero-cover {
-    height: 156px;
+    height: 150px;
   }
 
   .rd-hero .res-info-card {
-    margin-top: -22px;
+    margin-top: -18px;
     padding: 16px;
 
     .info-text .res-name {
