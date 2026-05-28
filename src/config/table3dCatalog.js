@@ -19,7 +19,7 @@ const KAYKIT_RESTAURANT_ASSET_BASE =
   "https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0/main/addons/kaykit_restaurant_bits";
 const KHRONOS_SAMPLE_ASSET_BASE =
   "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models";
-const PLACEHOLDER_THUMB =
+export const TABLE_3D_PLACEHOLDER_THUMB =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
@@ -90,7 +90,7 @@ export const LOCAL_TABLE_3D_CATALOG = [
     capacity: 6,
     defaultScale: 1.15,
     modelUrl: "",
-    thumbnailUrl: PLACEHOLDER_THUMB,
+    thumbnailUrl: TABLE_3D_PLACEHOLDER_THUMB,
     source: "placeholder-local",
     sourceLabel: "Cohan placeholder",
     licenseLabel: "N/A - no external model",
@@ -120,7 +120,7 @@ export const LOCAL_TABLE_3D_CATALOG = [
     capacity: 2,
     defaultScale: 1,
     modelUrl: "",
-    thumbnailUrl: PLACEHOLDER_THUMB,
+    thumbnailUrl: TABLE_3D_PLACEHOLDER_THUMB,
     source: "placeholder-local",
     sourceLabel: "Cohan placeholder",
     licenseLabel: "N/A - no external model",
@@ -225,7 +225,7 @@ export const normalizeCatalogItem = (item) => {
     capacity: Number(item?.capacity || 4),
     defaultScale: Number(item?.defaultScale || 1),
     modelUrl,
-    thumbnailUrl: item?.thumbnailUrl || PLACEHOLDER_THUMB,
+    thumbnailUrl: item?.thumbnailUrl || TABLE_3D_PLACEHOLDER_THUMB,
     source: item?.source || "public",
     sourceLabel: item?.sourceLabel || item?.source || "public",
     licenseLabel: item?.licenseLabel || "Chưa rõ license",
@@ -252,7 +252,13 @@ export const getModelAssetBadges = (model) => {
   if (!model) return [];
   const badges = [];
 
-  if (model?.customModelSpec) badges.push("Custom");
+  if (
+    model?.customModelSpec ||
+    model?.customModelKind ||
+    model?.source === "user-generated-url"
+  ) {
+    badges.push("Custom");
+  }
   if (canOpenModelViewerAr(model)) {
     badges.push("3D", "AR");
   } else {
