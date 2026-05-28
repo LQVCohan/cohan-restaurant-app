@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { parseDurationMs } from "../security/authTokens.js";
 
+const MAX_SAFE_PRODUCTION_GRAPHQL_DEPTH = 25;
+const MAX_SAFE_PRODUCTION_GRAPHQL_FIELD_COUNT = 2000;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -185,6 +188,35 @@ function validateProductionRecaptchaPolicy() {
   return issues;
 }
 
+function validateProductionGraphqlLimits() {
+  if ((process.env.NODE_ENV || "development") !== "production") return [];
+
+  const issues = [];
+  const allowUnsafe = String(process.env.ALLOW_UNSAFE_GRAPHQL_LIMITS || "false").toLowerCase() === "true";
+
+  const rules = [
+    ["GRAPHQL_MAX_DEPTH", MAX_SAFE_PRODUCTION_GRAPHQL_DEPTH],
+    ["GRAPHQL_MAX_FIELD_COUNT", MAX_SAFE_PRODUCTION_GRAPHQL_FIELD_COUNT],
+  ];
+
+  for (const [key, safeMax] of rules) {
+    const rawValue = process.env[key];
+    if (rawValue === undefined || rawValue === null || String(rawValue).trim() === "") continue;
+
+    const parsed = Number(rawValue);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      issues.push(`${key} (must be a positive integer in production)`);
+      continue;
+    }
+
+    if (!allowUnsafe && parsed > safeMax) {
+      issues.push(`${key} (must not exceed ${safeMax} in production unless ALLOW_UNSAFE_GRAPHQL_LIMITS=true)`);
+    }
+  }
+
+  return issues;
+}
+
 export function validateEnv() {
   applyDevelopmentDefaults();
 
@@ -208,6 +240,7 @@ export function validateEnv() {
   missing.push(...validateProductionTableAccessSecret());
   missing.push(...validateProductionAuthTokenSettings());
   missing.push(...validateProductionRecaptchaPolicy());
+  missing.push(...validateProductionGraphqlLimits());
 
   if (missing.length) {
     const error =

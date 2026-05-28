@@ -334,6 +334,7 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Upload API (`/api/upload`, `/api/upload/sign`, `/api/upload/complete`) yêu cầu Bearer JWT; có giới hạn tần suất upload theo user+IP; S3 complete chỉ chấp nhận key trong prefix cấu hình.
 - Socket.IO handshake cố gắng resolve JWT từ `Authorization` hoặc `auth.token`, sau đó room join cho restaurant/user/thread/order được kiểm tra quyền/ownership trước khi join.
 - Production bật Helmet CSP với whitelist origin frontend + static/image/font cần thiết; dev giữ chế độ nới lỏng.
+- Runtime GraphQL requests are validated with deterministic depth and selected-field count limits before resolver execution. Defaults are `GRAPHQL_MAX_DEPTH=12` and `GRAPHQL_MAX_FIELD_COUNT=500`; production rejects values above depth 25 or field count 2000 unless `ALLOW_UNSAFE_GRAPHQL_LIMITS=true`.
 
 - CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.
 
@@ -480,3 +481,13 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Feature map: `src/utils/aiChatbotFeatureMap.js` maps Home, restaurant detail, menu, food detail, cart, checkout, orders, reservations/table booking, profile/account, manager dashboard, staff/schedule, storage/inventory, and AI chatbot manager tools.
 - Scope: menu assistant, ordering assistant, reservation assistant, account/profile assistant, feature navigation assistant, and support handoff assistant.
 - Safety: user context is limited to guest/authenticated status, display name, visible email, and role/user type; passwords, tokens, API keys, secrets, unrelated internal IDs, other users' data, and unauthorized manager data are not exposed.
+## 10. Frontend GraphQL schema validation
+- Frontend GraphQL documents in `src/**/*.js`, `src/**/*.jsx`, `src/**/*.ts`, and `src/**/*.tsx` are validated by `src/__tests__/graphql-schema-validation.test.js` against the merged backend schema files in `cohan-restaurant-backend/graphql/schema/*.graphql`.
+- The validation test extracts `gql` template literals from frontend source files, builds an executable schema from the backend SDL, and runs GraphQL `validate()` without starting the backend server or making network calls.
+- When backend schema return types or fields change, update any affected frontend `gql` queries/fragments at the same time and run `npx vitest run src/__tests__/graphql-schema-validation.test.js` before merging.
+- Runtime backend GraphQL validation also enforces query depth and selected-field count limits using `GRAPHQL_MAX_DEPTH`, `GRAPHQL_MAX_FIELD_COUNT`, and `ALLOW_UNSAFE_GRAPHQL_LIMITS`; keep new frontend operations comfortably within those limits instead of raising limits by default.
+- This check is intended to catch schema drift such as querying removed fields (for example `noteInternal` on `User`) or spreading fragments on incompatible return types (for example a `StaffPrivateProfile` fragment on a field that returns `User`).
+
+**File đã xác minh cho section này**
+- `src/__tests__/graphql-schema-validation.test.js`
+- `cohan-restaurant-backend/graphql/schema/*.graphql`

@@ -2,7 +2,7 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { useMemo } from "react";
 
 export const Q_LEAVE_PAGE = gql`
-  query LeavePageData($filter: LeaveRequestFilterInput) {
+  query LeavePageData($restaurantId: ID!, $filter: LeaveRequestFilterInput) {
     staffList(restaurantId: $restaurantId) {
       id
       fullName
@@ -129,7 +129,7 @@ export const useLeaveManagement = ({
   );
 
   const { data, loading, error, refetch } = useQuery(Q_LEAVE_PAGE, {
-    variables: { filter },
+    variables: { restaurantId, filter },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
   });

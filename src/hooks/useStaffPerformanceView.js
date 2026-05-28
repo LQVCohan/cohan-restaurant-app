@@ -20,15 +20,13 @@ const GET_STAFF_PERFORMANCE_VIEW = gql`
       waivedIncidentCount
       periodStart
       periodEnd
-      latestAdjustmentAt
-      riskLevel
+      latestAppliedAt
     }
     staffPerformanceScoreAdjustments(input: $adjustmentInput) {
       id
       restaurantId
       employeeId
       incidentId
-      eventType
       reason
       scoreDelta
       previousScore
@@ -38,12 +36,11 @@ const GET_STAFF_PERFORMANCE_VIEW = gql`
       appliedAt
     }
     staffPerformanceScoreTimeline(input: $timelineInput) {
-      date
+      at
       score
       scoreDelta
       eventType
       note
-      adjustmentId
       incidentId
     }
     performanceIncidents(filter: $incidentsFilter) {
