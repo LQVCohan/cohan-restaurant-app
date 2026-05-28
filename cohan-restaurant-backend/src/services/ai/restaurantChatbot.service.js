@@ -16,7 +16,7 @@ import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSugges
 import { evaluateRestaurantAiChatbotSafety } from "./restaurantChatbotSafety.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_MODEL = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
+const GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_KNOWLEDGE_CHARS = 1800;
 
@@ -631,33 +631,119 @@ const normalizeAiResult = (parsed, context) => {
   };
 };
 
+const callGemini = async ({ message, context, history, knowledgeItems = [] }) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gemini-1.5-flash";
+  const endpoint = `${GEMINI_ENDPOINT_BASE}/${model}:generateContent?key=${apiKey}`;
+
+  const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
+  const systemInstruction = [
+    "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+    "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
+    "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+    "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
+    "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
+    "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+    "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
+    "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
+    "Không tự đặt món/thanh toán.",
+    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Không dùng markdown code fence.",
+    `CONTEXT: ${JSON.stringify({
+      restaurants: context.restaurants?.slice(0, 1),
+      menuPreferences: context.menuPreferences,
+      recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
+      menuItems: context.menuItems?.slice(0, 8),
+      coupons: context.coupons?.slice(0, 3),
+      intent: context.intent,
+    })}`,
+    knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
+  ].join("\n");
+
+  const contents = recentHistoryForPrompt(history).map((h) => ({
+    role: h.role === "assistant" ? "model" : "user",
+    parts: [{ text: h.content }],
+  }));
+
+  const finalContents = [];
+  for (const item of contents) {
+    if (finalContents.length > 0 && finalContents[finalContents.length - 1].role === item.role) {
+      finalContents[finalContents.length - 1].parts[0].text += `\n${item.parts[0].text}`;
+    } else {
+      finalContents.push(item);
+    }
+  }
+
+  if (finalContents.length > 0 && finalContents[finalContents.length - 1].role === "user") {
+    finalContents[finalContents.length - 1].parts[0].text += `\n${message}`;
+  } else {
+    finalContents.push({ role: "user", parts: [{ text: message }] });
+  }
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: finalContents,
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens: 800,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const parsed = safeJsonParse(content);
+    return parsed ? normalizeAiResult(parsed, context) : null;
+  } catch {
+    return null;
+  }
+};
+
+const callAiProvider = async (args) => {
+  const provider = process.env.AI_PROVIDER || "openai";
+  if (provider === "gemini") {
+    const res = await callGemini(args);
+    if (res) return res;
+  }
+  return callOpenAI(args);
+};
+
 const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-   const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
-    const prompt = [
-      "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
-      "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
-      "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
-      "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
-      "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
-      "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
-      "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
-      "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
-      "Không tự đặt món/thanh toán.",
-      "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
-      "Không dùng markdown code fence.",
-      `CONTEXT: ${JSON.stringify({
-        restaurants: context.restaurants?.slice(0, 1),
-        menuPreferences: context.menuPreferences,
-        recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
-        menuItems: context.menuItems?.slice(0, 8),
-        coupons: context.coupons?.slice(0, 3),
-        intent: context.intent,
-      })}`,
-      knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
-    ].join("\n");
+  const model = process.env.AI_CHATBOT_MODEL || process.env.AI_MODEL || "gpt-5";
+  const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
+  const prompt = [
+    "Bạn là AI Menu Assistant cho nhà hàng trong Cohan Restaurant App.",
+    "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
+    "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+    "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
+    "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
+    "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+    "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
+    "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
+    "Không tự đặt món/thanh toán.",
+    "Trả về JSON hợp lệ theo schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search\",\"label\": string, \"href\": string}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Không dùng markdown code fence.",
+    `CONTEXT: ${JSON.stringify({
+      restaurants: context.restaurants?.slice(0, 1),
+      menuPreferences: context.menuPreferences,
+      recommendedMenuItems: context.recommendedMenuItems?.slice(0, 8),
+      menuItems: context.menuItems?.slice(0, 8),
+      coupons: context.coupons?.slice(0, 3),
+      intent: context.intent,
+    })}`,
+    knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
+  ].join("\n");
 
   try {
     const res = await fetch(OPENAI_ENDPOINT, {
@@ -667,7 +753,7 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model,
         messages: [
           { role: "system", content: prompt },
           ...recentHistoryForPrompt(history),
@@ -934,7 +1020,7 @@ export const handleRestaurantChatbotMessage = async ({
 
   const context = await buildContext({ message: cleanMessage, restaurantId, user });
   const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId, message: cleanMessage, limit: 4 });
-  const aiResult = await callOpenAI({
+  const aiResult = await callAiProvider({
     message: cleanMessage,
     context,
     history: persistedHistory.length ? persistedHistory : history,
