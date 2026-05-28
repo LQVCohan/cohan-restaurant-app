@@ -12,7 +12,16 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       modelLabel: "Bàn tròn 6",
       tableType: "round",
       capacity: 6,
+      defaultScale: 1.15,
+      modelUrl: "https://cdn.example.com/round.glb",
+      thumbnailUrl: "https://cdn.example.com/round.png",
+      source: "catalog-test",
+      sourceLabel: "Catalog Test",
+      licenseLabel: "CC0",
       dimensions: { widthCm: 140, depthCm: 140, heightCm: 75 },
+      tags: ["round", "vip"],
+      fallbackKind: "model",
+      customModelKind: "url",
       tableArea: "vip",
       shape: "round",
     };
@@ -24,6 +33,16 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       label: "Bàn tròn 6",
       tableType: "round",
       capacity: 6,
+      defaultScale: 1.15,
+      modelUrl: "https://cdn.example.com/round.glb",
+      thumbnailUrl: "https://cdn.example.com/round.png",
+      source: "catalog-test",
+      sourceLabel: "Catalog Test",
+      licenseLabel: "CC0",
+      dimensionsCm: { widthCm: 140, depthCm: 140, heightCm: 75 },
+      tags: ["round", "vip"],
+      fallbackKind: "model",
+      customModelKind: "url",
       customModelSpec: {
         name: "Bàn tròn 6",
         capacity: 6,
@@ -51,12 +70,8 @@ describe("buildPreviewModelItemFromVisualConfig", () => {
       capacity: 2,
     });
 
-    expect(result.customModelSpec).toMatchObject({
-      widthCm: 0,
-      depthCm: 0,
-      heightCm: 0,
-      capacity: 2,
-    });
+    expect(result.customModelSpec).toBeNull();
+    expect(result.capacity).toBe(2);
   });
 
   it("normalizes missing placement with default placement", () => {

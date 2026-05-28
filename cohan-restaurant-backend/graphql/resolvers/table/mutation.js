@@ -74,9 +74,97 @@ const TABLE_STATUSES_REQUIRING_NO_ACTIVE_ORDERS = new Set([
   "maintenance",
 ]);
 
+const VISUAL_CONFIG_STRING_LIMITS = {
+  modelKey: 160,
+  modelLabel: 240,
+  tableType: 80,
+  source: 240,
+  sourceLabel: 240,
+  licenseLabel: 240,
+  fallbackKind: 80,
+  customModelKind: 80,
+  sourceType: 80,
+  savedAt: 80,
+};
+const MAX_VISUAL_CONFIG_TAGS = 20;
+const MAX_VISUAL_CONFIG_TAG_LENGTH = 48;
+const SAFE_SOURCE_TYPES = new Set([
+  "catalog",
+  "custom-url",
+  "custom-parametric",
+  "camera-preview",
+]);
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const isPlainObject = (value) =>
   value != null && typeof value === "object" && !Array.isArray(value);
+
+const sanitizeString = (value, maxLength = 240) => {
+  if (value == null) return null;
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+  return normalized.slice(0, maxLength);
+};
+
+const sanitizeHttpUrl = (value) => {
+  const normalized = sanitizeString(value, 2048);
+  if (!normalized) return null;
+
+  try {
+    const url = new URL(normalized);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const sanitizePositiveNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+};
+
+const sanitizeTags = (tags) => {
+  if (!Array.isArray(tags)) return [];
+  const seen = new Set();
+
+  return tags
+    .map((tag) => sanitizeString(tag, MAX_VISUAL_CONFIG_TAG_LENGTH))
+    .filter(Boolean)
+    .filter((tag) => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, MAX_VISUAL_CONFIG_TAGS);
+};
+
+const sanitizeDimensions = (dimensionsInput) => {
+  if (!isPlainObject(dimensionsInput)) return null;
+  const dimensions = {
+    widthCm: sanitizePositiveNumber(dimensionsInput.widthCm),
+    depthCm: sanitizePositiveNumber(dimensionsInput.depthCm),
+    heightCm: sanitizePositiveNumber(dimensionsInput.heightCm),
+  };
+
+  return Object.values(dimensions).some((value) => value != null)
+    ? dimensions
+    : null;
+};
+
+const sanitizePlacement = (placementInputValue) => {
+  const placementInput = isPlainObject(placementInputValue)
+    ? placementInputValue
+    : {};
+  return {
+    x: clamp(Number(placementInput.x ?? 50) || 50, 5, 95),
+    y: clamp(Number(placementInput.y ?? 50) || 50, 5, 95),
+    scale: clamp(Number(placementInput.scale ?? 1) || 1, 0.5, 2),
+    rotation: Number(placementInput.rotation ?? 0) || 0,
+  };
+};
 
 export const sanitizeVisualConfig = (value) => {
   if (value == null) return null;
@@ -86,34 +174,40 @@ export const sanitizeVisualConfig = (value) => {
     });
   }
 
-  const placementInput = isPlainObject(value.placement) ? value.placement : {};
-  const placement = {
-    x: clamp(Number(placementInput.x ?? 50) || 50, 5, 95),
-    y: clamp(Number(placementInput.y ?? 50) || 50, 5, 95),
-    scale: clamp(Number(placementInput.scale ?? 1) || 1, 0.5, 2),
-    rotation: Number(placementInput.rotation ?? 0) || 0,
-  };
-
-  const dimensions = isPlainObject(value.dimensions)
-    ? {
-        widthCm: Number(value.dimensions.widthCm) || null,
-        depthCm: Number(value.dimensions.depthCm) || null,
-        heightCm: Number(value.dimensions.heightCm) || null,
-      }
-    : null;
+  const sourceType = sanitizeString(
+    value.sourceType || value.source,
+    VISUAL_CONFIG_STRING_LIMITS.sourceType
+  );
+  const sanitizedSourceType = SAFE_SOURCE_TYPES.has(sourceType)
+    ? sourceType
+    : "camera-preview";
+  const modelUrl = sanitizeHttpUrl(value.modelUrl);
 
   return {
-    modelKey: value.modelKey != null ? String(value.modelKey) : null,
-    modelLabel: value.modelLabel != null ? String(value.modelLabel) : null,
-    tableType: value.tableType != null ? String(value.tableType) : null,
-    capacity: Number.isFinite(Number(value.capacity)) ? Number(value.capacity) : null,
-    dimensions,
-    placement,
-    source: "camera-preview",
+    modelKey: sanitizeString(value.modelKey, VISUAL_CONFIG_STRING_LIMITS.modelKey),
+    modelLabel: sanitizeString(value.modelLabel, VISUAL_CONFIG_STRING_LIMITS.modelLabel),
+    tableType: sanitizeString(value.tableType, VISUAL_CONFIG_STRING_LIMITS.tableType),
+    capacity: sanitizePositiveNumber(value.capacity),
+    defaultScale: sanitizePositiveNumber(value.defaultScale),
+    modelUrl,
+    thumbnailUrl: sanitizeHttpUrl(value.thumbnailUrl),
+    source: sanitizeString(value.source, VISUAL_CONFIG_STRING_LIMITS.source),
+    sourceLabel: sanitizeString(value.sourceLabel, VISUAL_CONFIG_STRING_LIMITS.sourceLabel),
+    licenseLabel: sanitizeString(value.licenseLabel, VISUAL_CONFIG_STRING_LIMITS.licenseLabel),
+    dimensions: sanitizeDimensions(value.dimensions || value.dimensionsCm),
+    tags: sanitizeTags(value.tags),
+    fallbackKind:
+      sanitizeString(value.fallbackKind, VISUAL_CONFIG_STRING_LIMITS.fallbackKind) ||
+      (modelUrl ? "model" : "placeholder"),
+    customModelKind: sanitizeString(
+      value.customModelKind,
+      VISUAL_CONFIG_STRING_LIMITS.customModelKind
+    ),
+    placement: sanitizePlacement(value.placement),
     savedAt:
-      value.savedAt != null && String(value.savedAt).trim()
-        ? String(value.savedAt)
-        : new Date().toISOString(),
+      sanitizeString(value.savedAt, VISUAL_CONFIG_STRING_LIMITS.savedAt) ||
+      new Date().toISOString(),
+    sourceType: sanitizedSourceType,
   };
 };
 
