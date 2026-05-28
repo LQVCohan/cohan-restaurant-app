@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useLazyQuery, useQuery } from "@apollo/client";
 
 const GET_INDEXES = gql`
   query GetRestaurantCategoryIndexes($timeSlot: TimeSlot) {
@@ -18,7 +18,7 @@ const GET_INDEXES = gql`
 `;
 
 const REFRESH_INDEXES = gql`
-  mutation RefreshRestaurantCategoryIndexes($timeSlot: TimeSlot!) {
+  query RefreshRestaurantCategoryIndexes($timeSlot: TimeSlot!) {
     refreshRestaurantCategoryIndexes(timeSlot: $timeSlot)
   }
 `;
@@ -29,7 +29,9 @@ const UpdateLabel = ({ role = "admin" }) => {
     variables: { timeSlot },
     fetchPolicy: "network-only",
   });
-  const [refreshIndexes, { loading: refreshing }] = useMutation(REFRESH_INDEXES);
+  const [refreshIndexes, { loading: refreshing }] = useLazyQuery(REFRESH_INDEXES, {
+    fetchPolicy: "network-only",
+  });
 
   const rows = useMemo(() => data?.restaurantCategoryIndexes || [], [data]);
 

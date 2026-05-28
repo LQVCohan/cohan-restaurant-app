@@ -480,3 +480,12 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Feature map: `src/utils/aiChatbotFeatureMap.js` maps Home, restaurant detail, menu, food detail, cart, checkout, orders, reservations/table booking, profile/account, manager dashboard, staff/schedule, storage/inventory, and AI chatbot manager tools.
 - Scope: menu assistant, ordering assistant, reservation assistant, account/profile assistant, feature navigation assistant, and support handoff assistant.
 - Safety: user context is limited to guest/authenticated status, display name, visible email, and role/user type; passwords, tokens, API keys, secrets, unrelated internal IDs, other users' data, and unauthorized manager data are not exposed.
+## 10. Frontend GraphQL schema validation
+- Frontend GraphQL documents in `src/**/*.js`, `src/**/*.jsx`, `src/**/*.ts`, and `src/**/*.tsx` are validated by `src/__tests__/graphql-schema-validation.test.js` against the merged backend schema files in `cohan-restaurant-backend/graphql/schema/*.graphql`.
+- The validation test extracts `gql` template literals from frontend source files, builds an executable schema from the backend SDL, and runs GraphQL `validate()` without starting the backend server or making network calls.
+- When backend schema return types or fields change, update any affected frontend `gql` queries/fragments at the same time and run `npx vitest run src/__tests__/graphql-schema-validation.test.js` before merging.
+- This check is intended to catch schema drift such as querying removed fields (for example `noteInternal` on `User`) or spreading fragments on incompatible return types (for example a `StaffPrivateProfile` fragment on a field that returns `User`).
+
+**File đã xác minh cho section này**
+- `src/__tests__/graphql-schema-validation.test.js`
+- `cohan-restaurant-backend/graphql/schema/*.graphql`

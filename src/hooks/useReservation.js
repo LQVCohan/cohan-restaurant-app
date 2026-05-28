@@ -164,17 +164,8 @@ export const SET_TABLE_STATUS = gql`
 export const UPDATE_ORDER_CUSTOMER_BY_CODE = gql`
   mutation UpdateOrderCustomerByCode($input: UpdateOrderCustomerByCodeInput!) {
     updateOrderCustomerByCode(input: $input) {
-      order {
-        id
-        orderCode
-        restaurantId
-        tableCode
-        user {
-          id
-          fullName
-        }
-        updatedAt
-      }
+      success
+      modifiedCount
     }
   }
 `;

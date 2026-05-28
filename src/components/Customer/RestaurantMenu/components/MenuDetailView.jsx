@@ -45,7 +45,7 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
           name
           description
           basePrice
-          byWeight
+          hasByWeightVariant
           thumbImage
           status
           avgPrepTimeMin
@@ -65,8 +65,8 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
           servingVariants {
             key
             mode
-            yieldQty
-            yieldUnit
+            sellQty
+            sellUnit
             name
             price
           }
