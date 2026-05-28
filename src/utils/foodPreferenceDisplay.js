@@ -8,6 +8,12 @@ const REASON_MAP = {
   behavior_category: "Bạn đã quan tâm món tương tự gần đây",
 };
 
+const BEHAVIOR_REASONS = new Set([
+  REASON_MAP.behavior_recent_item,
+  REASON_MAP.behavior_restaurant,
+  REASON_MAP.behavior_category,
+]);
+
 const normalizeReason = (reason = "") => {
   const raw = String(reason || "").trim().toLowerCase();
   if (!raw) return "";
@@ -21,6 +27,10 @@ const normalizeReason = (reason = "") => {
   return "";
 };
 
+const normalizeReasonList = (reasons) => (Array.isArray(reasons) ? reasons : [])
+  .map(normalizeReason)
+  .filter(Boolean);
+
 export const getFoodPreferenceDisplayReasons = (foodPreferenceMeta) => {
   if (!foodPreferenceMeta || typeof foodPreferenceMeta !== "object") return [];
 
@@ -30,23 +40,32 @@ export const getFoodPreferenceDisplayReasons = (foodPreferenceMeta) => {
     reasons.push(text);
   };
 
-  if (foodPreferenceMeta.hasAllergyWarning) pushReason(REASON_MAP.allergy_warning);
+  const metaReasons = normalizeReasonList(foodPreferenceMeta.reasons);
+  const behaviorReasons = [
+    ...normalizeReasonList(foodPreferenceMeta.behaviorReasons),
+    ...metaReasons.filter((reason) => BEHAVIOR_REASONS.has(reason)),
+  ];
+  const preferenceReasons = metaReasons.filter(
+    (reason) => reason !== REASON_MAP.allergy_warning &&
+      reason !== REASON_MAP.fallback_popular &&
+      !BEHAVIOR_REASONS.has(reason),
+  );
+  const hasFallbackPopular = metaReasons.includes(REASON_MAP.fallback_popular) ||
+    (!foodPreferenceMeta.isRecommended && !foodPreferenceMeta.hasAllergyWarning);
 
-  (foodPreferenceMeta.reasons || []).forEach((reason) => {
-    pushReason(normalizeReason(reason));
-  });
+  if (foodPreferenceMeta.hasAllergyWarning || metaReasons.includes(REASON_MAP.allergy_warning)) {
+    pushReason(REASON_MAP.allergy_warning);
+  }
 
-  (foodPreferenceMeta.behaviorReasons || []).forEach((reason) => {
-    pushReason(normalizeReason(reason));
-  });
+  behaviorReasons.forEach(pushReason);
+  preferenceReasons.forEach(pushReason);
 
   if (foodPreferenceMeta.isRecommended) {
     pushReason(REASON_MAP.taste_match);
     pushReason(REASON_MAP.diet_match);
   }
 
-  const isFallbackPopular = !foodPreferenceMeta.isRecommended && !foodPreferenceMeta.hasAllergyWarning;
-  if (isFallbackPopular) pushReason(REASON_MAP.fallback_popular);
+  if (hasFallbackPopular) pushReason(REASON_MAP.fallback_popular);
 
   return reasons.slice(0, 2);
 };
