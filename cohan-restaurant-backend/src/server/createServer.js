@@ -35,6 +35,7 @@ import { PERMISSIONS } from "../constants/permissions.js";
 import { ChatThread, Order, OrderTracking } from "../../models/index.js";
 import mongoose from "mongoose";
 import { clearRefreshCookie, revokeRefreshToken, rotateRefreshToken } from "../security/authTokens.js";
+import { createGraphqlValidationRules } from "../security/graphqlLimits.js";
 
 export async function authorizeChatThreadJoin({ socketUser, threadId, findThreadById, requireRestaurantPermissionFn, permissionCode }) {
   if (!socketUser?.id || !threadId) return { ok: false, code: "FORBIDDEN" };
@@ -141,6 +142,7 @@ export async function createServer() {
     graphiql: process.env.NODE_ENV !== "production",
     ide: process.env.NODE_ENV !== "production",
     subscription: false,
+    validationRules: createGraphqlValidationRules(process.env),
     context: async (request, reply) => {
       const baseContext = await buildContext(request, reply);
       return {
