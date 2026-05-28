@@ -313,6 +313,7 @@ const FoodDetail = () => {
     updateQuantity,
     removeFromCart,
     clearCart,
+    removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
