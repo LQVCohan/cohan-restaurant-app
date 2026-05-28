@@ -13,6 +13,12 @@ import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import {
+  sanitizeAdminUserListItem,
+  sanitizeAuthUser,
+  sanitizeCustomerListUser,
+  sanitizeStaffPrivateProfile,
+} from "../../../src/security/userDtos.js";
 
 function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
@@ -128,7 +134,7 @@ export const UserQuery = {
         });
       }
 
-      return fullUser;
+      return sanitizeAuthUser(fullUser);
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err.message || "Failed to fetch user info", {
@@ -174,7 +180,7 @@ export const UserQuery = {
         .sort({ createdAt: -1 })
         .lean();
 
-      return list;
+      return list.map(sanitizeAdminUserListItem);
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err.message || "Failed to fetch users", {
@@ -245,7 +251,7 @@ export const UserQuery = {
               .lean()
           : [];
 
-        return guestOnly;
+        return guestOnly.map(sanitizeCustomerListUser);
       }
 
       const customerCond = {
@@ -282,7 +288,7 @@ export const UserQuery = {
         return acc;
       }, []);
 
-      return merged;
+      return merged.map(sanitizeCustomerListUser);
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
 
@@ -362,7 +368,7 @@ export const UserQuery = {
     const nextOffset = offset + items.length;
     const hasNextPage = nextOffset < totalCount;
     return {
-      items,
+      items: items.map(sanitizeCustomerListUser),
       totalCount,
       pageInfo: {
         hasNextPage,
@@ -370,6 +376,28 @@ export const UserQuery = {
         limit: normalizedLimit,
       },
     };
+  },
+
+  async staffPrivateProfile(_, { userId, restaurantId }, ctx) {
+    const authUser = ctx?.user;
+    requireRole(authUser, ["admin", "manager", "hr"]);
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new GraphQLError("Invalid userId", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    if (restaurantId && !mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+
+    const staff = await User.findById(toObjectId(userId))
+      .populate({ path: "role", select: "name slug department permissions" })
+      .populate({ path: "refRestaurants", select: "name" })
+      .lean();
+
+    if (!staff || staff.deletedAt || String(staff.userType || "").toUpperCase() !== "STAFF") {
+      throw new GraphQLError("Staff not found", { extensions: { code: "NOT_FOUND" } });
+    }
+
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId });
   },
   async customerExportRows(
     _,

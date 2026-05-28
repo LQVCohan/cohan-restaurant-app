@@ -55,14 +55,12 @@ export const GET_USERS = gql`
       point
       loyaltyPoints
       customerType
-      noteInternal
       totalOrders
       totalSpending
       emailVerified
       isOnline
       loyaltyDurationScore
       lastLoginAt
-      noteInternal
       isGuest
       guestExpiresAt
       createdAt
@@ -126,7 +124,6 @@ export const GET_CUSTOMERS = gql`
       isOnline
       loyaltyDurationScore
       lastLoginAt
-      noteInternal
       isGuest
       guestExpiresAt
       createdAt
@@ -189,8 +186,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
         isOnline
         loyaltyDurationScore
         lastLoginAt
-        noteInternal
-        isGuest
+          isGuest
         createdAt
       }
     }
@@ -435,7 +431,6 @@ export const UPDATE_CUSTOMER_NOTE = gql`
       email
       phone
       isGuest
-      noteInternal
       refRestaurants {
         id
         name

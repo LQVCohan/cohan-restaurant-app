@@ -117,6 +117,19 @@
 - `cohan-restaurant-backend/src/services/availability/availabilityRegistrationWindow.service.js`
 - `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js`
 
+
+### 4.7 GraphQL user privacy DTOs
+- GraphQL user-facing resolvers must not return raw Mongoose `User`/`Customer` documents directly. Auth/session responses call `sanitizeAuthUser`, customer CRM lists call `sanitizeCustomerListUser`, and admin user lists call `sanitizeAdminUserListItem`.
+- The general GraphQL `User` type intentionally contains only non-HR/non-payroll fields needed by auth, CRM, and general user management clients. Bank, identity, insurance, internal notes, login IP, and payroll/private staff fields are not exposed on the general `User` type.
+- HR/payroll/identity fields are isolated in `StaffPrivateProfile` and may only be returned through staff management/private profile resolvers after role, restaurant-scope, and `staff.read` permission checks.
+- New GraphQL user resolvers should choose an explicit DTO sanitizer before returning data; raw `.lean()` documents from `User.find*`/`Customer.find*` must be mapped through the correct sanitizer or replaced by an explicit projection.
+
+**File đã xác minh cho section này**
+- `cohan-restaurant-backend/src/security/userDtos.js`
+- `cohan-restaurant-backend/graphql/schema/user.graphql`
+- `cohan-restaurant-backend/graphql/resolvers/user/query.js`
+- `cohan-restaurant-backend/graphql/resolvers/staff/query.js`
+
 ## 5. Luồng scheduling hiện tại
 1. Manager mở availability window (manual action có trong `AvailabilityRegistrationPanel.jsx` + backend availability window service/model).
 2. Staff submit availability (`submitStaffAvailability` trong `StaffSchedulePage.jsx`, model submission).

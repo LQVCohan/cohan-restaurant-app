@@ -7,7 +7,7 @@ import { gql, useQuery, useLazyQuery, useMutation } from "@apollo/client";
  * ==========================================================================*/
 
 const STAFF_FIELDS = gql`
-  fragment StaffFields on User {
+  fragment StaffFields on StaffPrivateProfile {
     id
     fullName
     username
@@ -56,7 +56,6 @@ const STAFF_FIELDS = gql`
     isOnline
 
     lastLoginAt
-    lastLoginIp
     forcePasswordChange
 
     noteInternal

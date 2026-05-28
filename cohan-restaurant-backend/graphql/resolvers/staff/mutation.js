@@ -22,6 +22,7 @@ import {
   OvertimeRequest,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
+import { sanitizeStaffPrivateProfile } from "../../../src/security/userDtos.js";
 import {
   recalculateStaffPerformanceSnapshots,
   upsertStaffPerformanceReview,
@@ -1340,7 +1341,7 @@ const mutationResolvers = {
       },
     });
 
-    return staff;
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
   },
 
   // =========================
@@ -1492,7 +1493,7 @@ const mutationResolvers = {
       },
     });
 
-    return staff;
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
   },
 
   // =========================

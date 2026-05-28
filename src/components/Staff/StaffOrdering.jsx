@@ -151,7 +151,6 @@ const SEARCH_CUSTOMERS = gql`
       customerType
       totalOrders
       totalSpending
-      noteInternal
     }
   }
 `;
