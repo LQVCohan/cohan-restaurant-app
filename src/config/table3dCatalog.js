@@ -6,13 +6,19 @@ export const TABLE_3D_TYPES = {
   RECT_4: "rect-4-seat",
   VIP: "vip-table",
   BOOTH: "booth-sofa",
+  BAR: "bar-table",
+  OUTDOOR: "outdoor-table",
 };
 
 export const TABLE_3D_PUBLIC_CATALOG_URL =
   "https://raw.githubusercontent.com/Cohan-restaurant/public-assets/main/table-3d-catalog.v1.json";
 
-const SAMPLE_GLB_BASE =
-  "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0";
+const KAYKIT_RESTAURANT_GLTF_BASE =
+  "https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0/main/addons/kaykit_restaurant_bits/Assets/gltf";
+const KAYKIT_RESTAURANT_ASSET_BASE =
+  "https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0/main/addons/kaykit_restaurant_bits";
+const KHRONOS_SAMPLE_ASSET_BASE =
+  "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models";
 const PLACEHOLDER_THUMB =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -23,64 +29,119 @@ const PLACEHOLDER_THUMB =
       <rect x="92" y="156" width="12" height="34" rx="6" fill="#6f4b2f"/>
       <rect x="216" y="156" width="12" height="34" rx="6" fill="#6f4b2f"/>
       <text x="160" y="44" text-anchor="middle" font-size="20" fill="#1f2937" font-family="Arial, sans-serif">Table Preview</text>
-    </svg>`
+    </svg>`,
   );
+
+const KAYKIT_SOURCE =
+  "https://github.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0";
+const KHRONOS_SOURCE = "https://github.com/KhronosGroup/glTF-Sample-Assets";
+const KAYKIT_THUMB = `${KAYKIT_RESTAURANT_ASSET_BASE}/sample.png`;
 
 export const LOCAL_TABLE_3D_CATALOG = [
   {
-    key: "round-oak-4",
-    label: "Bàn tròn gỗ 4 chỗ",
+    key: "round-kaykit-classic-4",
+    label: "Bàn tròn nhà hàng 4 chỗ",
     tableType: TABLE_3D_TYPES.ROUND,
     capacity: 4,
     defaultScale: 1,
-    modelUrl: `${SAMPLE_GLB_BASE}/DiningTable/glTF-Binary/DiningTable.glb`,
-    thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DiningTable/screenshot/screenshot.jpg",
-    source: "public-fallback",
+    modelUrl: `${KAYKIT_RESTAURANT_GLTF_BASE}/table_round_A.gltf`,
+    thumbnailUrl: KAYKIT_THUMB,
+    source: KAYKIT_SOURCE,
+    sourceLabel: "KayKit Restaurant Bits",
+    licenseLabel: "CC0",
+    dimensionsCm: { diameter: 110, height: 76 },
+    tags: ["round", "wood", "classic", "restaurant", "cc0"],
+    fallbackKind: "model",
   },
   {
-    key: "rect-2-walnut",
-    label: "Bàn chữ nhật 2 chỗ",
+    key: "rect-2-kaykit-compact",
+    label: "Bàn chữ nhật 2 chỗ nhỏ gọn",
     tableType: TABLE_3D_TYPES.RECT_2,
     capacity: 2,
     defaultScale: 0.9,
-    modelUrl: "",
-    thumbnailUrl: PLACEHOLDER_THUMB,
-    source: "public-fallback",
-    fallbackKind: "placeholder",
+    modelUrl: `${KAYKIT_RESTAURANT_GLTF_BASE}/kitchentable_A.gltf`,
+    thumbnailUrl: KAYKIT_THUMB,
+    source: KAYKIT_SOURCE,
+    sourceLabel: "KayKit Restaurant Bits",
+    licenseLabel: "CC0",
+    dimensionsCm: { width: 80, depth: 70, height: 76 },
+    tags: ["rectangular", "compact", "wood", "2-seat", "cc0"],
+    fallbackKind: "model",
   },
   {
-    key: "rect-4-modern",
-    label: "Bàn chữ nhật 4 chỗ",
+    key: "rect-4-kaykit-family",
+    label: "Bàn chữ nhật 4 chỗ tiêu chuẩn",
     tableType: TABLE_3D_TYPES.RECT_4,
     capacity: 4,
     defaultScale: 1,
-    modelUrl: `${SAMPLE_GLB_BASE}/DiningTable/glTF-Binary/DiningTable.glb`,
-    thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DiningTable/screenshot/screenshot.jpg",
-    source: "public-fallback",
+    modelUrl: `${KAYKIT_RESTAURANT_GLTF_BASE}/kitchentable_B_large.gltf`,
+    thumbnailUrl: KAYKIT_THUMB,
+    source: KAYKIT_SOURCE,
+    sourceLabel: "KayKit Restaurant Bits",
+    licenseLabel: "CC0",
+    dimensionsCm: { width: 140, depth: 80, height: 76 },
+    tags: ["rectangular", "family", "wood", "4-seat", "cc0"],
+    fallbackKind: "model",
   },
   {
-    key: "vip-sofa-6",
-    label: "Bàn VIP 6 chỗ",
+    key: "vip-lounge-placeholder-6",
+    label: "Bàn VIP lounge 6 chỗ",
     tableType: TABLE_3D_TYPES.VIP,
     capacity: 6,
     defaultScale: 1.15,
     modelUrl: "",
     thumbnailUrl: PLACEHOLDER_THUMB,
-    source: "public-fallback",
+    source: "placeholder-local",
+    sourceLabel: "Cohan placeholder",
+    licenseLabel: "N/A - no external model",
+    dimensionsCm: { width: 180, depth: 110, height: 76 },
+    tags: ["vip", "lounge", "premium", "placeholder"],
     fallbackKind: "placeholder",
   },
   {
-    key: "booth-sofa-4",
+    key: "booth-sofa-khronos-4",
     label: "Booth/Sofa 4 chỗ",
     tableType: TABLE_3D_TYPES.BOOTH,
     capacity: 4,
     defaultScale: 1.05,
+    modelUrl: `${KHRONOS_SAMPLE_ASSET_BASE}/GlamVelvetSofa/glTF-Binary/GlamVelvetSofa.glb`,
+    thumbnailUrl: `${KHRONOS_SAMPLE_ASSET_BASE}/GlamVelvetSofa/screenshot/screenshot.jpg`,
+    source: `${KHRONOS_SOURCE}/tree/main/Models/GlamVelvetSofa`,
+    sourceLabel: "Khronos glTF Sample Assets / GlamVelvetSofa",
+    licenseLabel: "CC BY 4.0",
+    dimensionsCm: { width: 210, depth: 90, height: 85 },
+    tags: ["booth", "sofa", "velvet", "lounge", "cc-by"],
+    fallbackKind: "model",
+  },
+  {
+    key: "bar-high-placeholder-2",
+    label: "Bàn bar cao 2 chỗ",
+    tableType: TABLE_3D_TYPES.BAR,
+    capacity: 2,
+    defaultScale: 1,
     modelUrl: "",
     thumbnailUrl: PLACEHOLDER_THUMB,
-    source: "public-fallback",
+    source: "placeholder-local",
+    sourceLabel: "Cohan placeholder",
+    licenseLabel: "N/A - no external model",
+    dimensionsCm: { diameter: 70, height: 105 },
+    tags: ["bar", "high", "modern", "placeholder"],
     fallbackKind: "placeholder",
+  },
+  {
+    key: "outdoor-round-kaykit-4",
+    label: "Bàn outdoor tròn 4 chỗ",
+    tableType: TABLE_3D_TYPES.OUTDOOR,
+    capacity: 4,
+    defaultScale: 1,
+    modelUrl: `${KAYKIT_RESTAURANT_GLTF_BASE}/table_round_B.gltf`,
+    thumbnailUrl: KAYKIT_THUMB,
+    source: KAYKIT_SOURCE,
+    sourceLabel: "KayKit Restaurant Bits",
+    licenseLabel: "CC0",
+    dimensionsCm: { diameter: 100, height: 74 },
+    tags: ["outdoor", "round", "wood", "patio", "cc0"],
+    fallbackKind: "model",
   },
 ];
 
@@ -90,6 +151,8 @@ export const TABLE_3D_TYPE_OPTIONS = [
   { value: TABLE_3D_TYPES.RECT_4, label: "Rectangular 4-seat" },
   { value: TABLE_3D_TYPES.VIP, label: "VIP table" },
   { value: TABLE_3D_TYPES.BOOTH, label: "Booth/Sofa table" },
+  { value: TABLE_3D_TYPES.BAR, label: "Bar table" },
+  { value: TABLE_3D_TYPES.OUTDOOR, label: "Outdoor table" },
 ];
 
 export const TABLE_3D_TYPE_TO_AREA = {
@@ -98,6 +161,8 @@ export const TABLE_3D_TYPE_TO_AREA = {
   [TABLE_3D_TYPES.RECT_4]: "standard",
   [TABLE_3D_TYPES.VIP]: "vip",
   [TABLE_3D_TYPES.BOOTH]: "booth",
+  [TABLE_3D_TYPES.BAR]: "bar",
+  [TABLE_3D_TYPES.OUTDOOR]: "outdoor",
 };
 
 export const mapTable3DTypeToArea = (tableType) =>
@@ -121,11 +186,37 @@ export const mapModelToTableForm = (model) => {
   };
 };
 
+const normalizeDimensionsCm = (dimensionsCm) => {
+  if (!dimensionsCm || typeof dimensionsCm !== "object") return null;
+
+  return Object.entries(dimensionsCm).reduce((acc, [key, value]) => {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) acc[key] = parsed;
+    return acc;
+  }, {});
+};
+
+export const formatDimensionsCm = (dimensionsCm) => {
+  const normalized = normalizeDimensionsCm(dimensionsCm);
+  if (!normalized || !Object.keys(normalized).length) return "";
+
+  if (normalized.diameter) {
+    return `Ø ${normalized.diameter}cm${normalized.height ? ` × cao ${normalized.height}cm` : ""}`;
+  }
+
+  const parts = [normalized.width, normalized.depth, normalized.height].filter(
+    Boolean,
+  );
+  return parts.length ? `${parts.join(" × ")}cm` : "";
+};
+
 export const normalizeCatalogItem = (item) => {
   const normalizedType = Object.values(TABLE_3D_TYPES).includes(item?.tableType)
     ? item.tableType
     : TABLE_3D_TYPES.RECT_4;
   const modelUrl = item?.modelUrl || "";
+  const fallbackKind =
+    item?.fallbackKind === "placeholder" || !modelUrl ? "placeholder" : "model";
 
   return {
     key: item?.key || "",
@@ -136,7 +227,13 @@ export const normalizeCatalogItem = (item) => {
     modelUrl,
     thumbnailUrl: item?.thumbnailUrl || PLACEHOLDER_THUMB,
     source: item?.source || "public",
-    fallbackKind: item?.fallbackKind || (modelUrl ? "model" : "placeholder"),
+    sourceLabel: item?.sourceLabel || item?.source || "public",
+    licenseLabel: item?.licenseLabel || "Chưa rõ license",
+    dimensionsCm: normalizeDimensionsCm(item?.dimensionsCm),
+    tags: Array.isArray(item?.tags)
+      ? item.tags.map(String).filter(Boolean)
+      : [],
+    fallbackKind,
   };
 };
 
@@ -146,7 +243,7 @@ export const canOpenModelViewerAr = (model) =>
 export const getArUnavailableReason = (model) => {
   if (!model) return "Chọn mẫu để kiểm tra hỗ trợ AR.";
   if (!canOpenModelViewerAr(model)) {
-    return "Mẫu này chưa có model 3D công khai để mở AR.";
+    return "Mẫu này chưa có model 3D công khai nên chưa thể mở AR. Vui lòng chọn mẫu có badge 3D/AR hoặc dùng Xem thử bằng camera.";
   }
   return "";
 };
@@ -155,11 +252,17 @@ export const getModelAssetBadges = (model) => {
   if (!model) return [];
   const badges = [];
 
-  if (model?.customModelSpec) badges.push("Tùy chỉnh");
+  if (model?.customModelSpec) badges.push("Custom");
   if (canOpenModelViewerAr(model)) {
     badges.push("3D", "AR");
   } else {
     badges.push("Placeholder");
+  }
+  if (
+    String(model?.source || "").startsWith("http") ||
+    String(model?.modelUrl || "").startsWith("http")
+  ) {
+    badges.push("Online");
   }
 
   return badges;
@@ -168,6 +271,9 @@ export const getModelAssetBadges = (model) => {
 export const getModelAssetSummary = (model) => ({
   has3DModel: canOpenModelViewerAr(model),
   arReady: canOpenModelViewerAr(model),
-  source: model?.source || "-",
+  source: model?.sourceLabel || model?.source || "-",
+  sourceUrl: model?.source || "",
+  license: model?.licenseLabel || "-",
+  dimensions: formatDimensionsCm(model?.dimensionsCm),
   modelKey: model?.key || "-",
 });
