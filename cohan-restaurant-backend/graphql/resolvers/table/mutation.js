@@ -166,6 +166,7 @@ const sanitizePlacement = (placementInputValue) => {
     y: clamp(Number(placementInput.y ?? 50) || 50, 5, 95),
     scale: clamp(Number(placementInput.scale ?? 1) || 1, 0.5, 2),
     rotation: Number(placementInput.rotation ?? 0) || 0,
+    opacity: clamp(Number(placementInput.opacity ?? 0.78) || 0.78, 0.35, 1),
   };
 };
 
