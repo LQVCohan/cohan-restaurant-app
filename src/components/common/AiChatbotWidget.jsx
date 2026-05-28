@@ -277,6 +277,22 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     fetchPolicy: "network-only",
   });
   const aiLiveState = aiLiveStateData?.menuItemLiveState;
+  const aiLiveStateReady = Boolean(aiLiveState);
+  const aiMaxAvailableQty = Number(aiLiveState?.maxAvailableQty || 0);
+  const aiQuantityExceedsAvailable =
+    aiLiveStateReady && aiMaxAvailableQty > 0 && selectedQuantity > aiMaxAvailableQty;
+  const aiOutOfStock =
+    aiLiveStateReady && (!!aiLiveState?.outOfStock || aiMaxAvailableQty < 1);
+  const aiAddDisabled =
+    !selectedAiMenuItem ||
+    !selectedVariantKey ||
+    isAiCartAdding ||
+    !user?.id ||
+    !aiRestaurant?.canOrder ||
+    !aiLiveStateReady ||
+    !!aiLiveState?.blocked ||
+    aiOutOfStock ||
+    aiQuantityExceedsAvailable;
   const chatbotEnabled = publicSettings?.enabled ?? true;
   const handoffEnabled = publicSettings?.handoffEnabled ?? true;
   const handoffUnavailableMessage = publicSettings?.handoffUnavailableMessage || "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
@@ -618,9 +634,12 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const handleAddAiCart = async () => {
     if (isAiCartAdding) return;
     if (!user?.id) return setAiCartError("Vui lòng đăng nhập để thêm món vào giỏ.");
+    if (!aiLiveStateReady) return setAiCartError("Đang kiểm tra tồn món...");
     if (!selectedAiMenuItem?.id || !selectedAiMenuItem?.restaurantId || !selectedVariantKey || selectedQuantity < 1) return;
     if (!aiRestaurant?.canOrder) return setAiCartError("Nhà hàng chưa nhận đơn.");
-    if (aiLiveState?.outOfStock || aiLiveState?.blocked) return setAiCartError("Món này hiện chưa thể thêm vào giỏ.");
+    if (aiLiveState?.blocked) return setAiCartError("Món này hiện chưa thể thêm vào giỏ.");
+    if (aiOutOfStock) return setAiCartError("Món đã hết hàng.");
+    if (aiQuantityExceedsAvailable) return setAiCartError("Số lượng vượt quá số suất còn có thể đặt.");
     setIsAiCartAdding(true); setAiCartError(""); setAiCartSuccess("");
     try {
       const selectedPrice = Number(selectedVariant?.price || selectedAiMenuItem?.basePrice || 0);
@@ -706,11 +725,16 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               const max = Number(aiLiveState?.maxAvailableQty || 0); if (max > 0) return Math.min(max, q + 1); return q + 1;
             })}>+</button></div>
             <textarea className="ai-chatbot-menu-detail__note" placeholder="Ví dụ: ít cay, không hành..." maxLength={180} value={selectedNote} onChange={(e) => setSelectedNote(e.target.value)} />
+            {!user?.id ? <p className="ai-chatbot-menu-detail__error">Vui lòng đăng nhập để thêm món vào giỏ.</p> : null}
+            {user?.id && !aiLiveStateReady ? <p className="ai-chatbot-menu-detail__error">Đang kiểm tra tồn món...</p> : null}
+            {user?.id && aiLiveStateReady && aiOutOfStock ? <p className="ai-chatbot-menu-detail__error">Món đã hết hàng.</p> : null}
+            {user?.id && aiLiveStateReady && aiQuantityExceedsAvailable ? <p className="ai-chatbot-menu-detail__error">Số lượng vượt quá số suất còn có thể đặt.</p> : null}
+            {user?.id && aiRestaurant && !aiRestaurant?.canOrder ? <p className="ai-chatbot-menu-detail__error">Nhà hàng chưa nhận đơn.</p> : null}
             {aiCartError ? <p className="ai-chatbot-menu-detail__error">{aiCartError}</p> : null}
             {aiCartSuccess ? <p className="ai-chatbot-menu-detail__success">{aiCartSuccess}</p> : null}
             </> : null}
             <div className="ai-chatbot-menu-card__actions ai-chatbot-menu-detail__actions">
-              <button type="button" disabled={!selectedAiMenuItem || !selectedVariantKey || isAiCartAdding || !user?.id || !aiRestaurant?.canOrder || aiLiveState?.blocked || aiLiveState?.outOfStock} onClick={handleAddAiCart}>Thêm vào giỏ</button>
+              <button type="button" disabled={aiAddDisabled} onClick={handleAddAiCart}>Thêm vào giỏ</button>
               <button type="button" onClick={() => {
                 const target = buildAiFoodDetailTarget(selectedMenuItemSource);
                 navigate(target.href, { state: target.state });
