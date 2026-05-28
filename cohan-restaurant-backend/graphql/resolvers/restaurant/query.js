@@ -25,6 +25,26 @@ function clampLimit(n, min = 1, max = 100) {
   return Math.max(min, Math.min(max, Math.floor(x)));
 }
 
+function isValidRoadDistanceKm(roadDistanceKm, straightLineDistanceKm) {
+  if (!Number.isFinite(roadDistanceKm)) return false;
+  if (roadDistanceKm < 0) return false;
+
+  const straight = Number(straightLineDistanceKm);
+
+  // A zero road distance is only credible when both points are virtually identical.
+  if (roadDistanceKm === 0) {
+    return Number.isFinite(straight) && straight < 0.05;
+  }
+
+  // Road distance should not be dramatically shorter than straight-line distance.
+  // Keep tolerance for route snapping/map data, but reject obviously bad provider output.
+  if (Number.isFinite(straight) && straight >= 0.05) {
+    return roadDistanceKm >= straight * 0.5;
+  }
+
+  return true;
+}
+
 function escapeRegex(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function safeRegexContains(value) {
   const s = String(value || "").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0,80);
@@ -253,7 +273,7 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
           const straightLineDistanceKm = Number(doc?.straightLineDistanceKm);
           const road = roadMap.get(String(doc._id));
           const roadDistanceKm = Number(road?.roadDistanceKm);
-          const hasRoadDistance = Number.isFinite(roadDistanceKm) && roadDistanceKm >= 0;
+          const hasRoadDistance = isValidRoadDistanceKm(roadDistanceKm, straightLineDistanceKm);
           const estimatedTravelMinutes = Number(road?.estimatedTravelMinutes);
           const distanceKm = hasRoadDistance ? roadDistanceKm : straightLineDistanceKm;
 
@@ -261,7 +281,7 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
             ...doc,
             straightLineDistanceKm: Number.isFinite(straightLineDistanceKm) ? straightLineDistanceKm : null,
             roadDistanceKm: hasRoadDistance ? roadDistanceKm : null,
-            estimatedTravelMinutes: Number.isFinite(estimatedTravelMinutes) ? estimatedTravelMinutes : null,
+            estimatedTravelMinutes: hasRoadDistance && Number.isFinite(estimatedTravelMinutes) ? estimatedTravelMinutes : null,
             distanceKm: Number.isFinite(distanceKm) ? distanceKm : null,
             distanceSource: hasRoadDistance ? "road" : "straight_line_fallback",
           };

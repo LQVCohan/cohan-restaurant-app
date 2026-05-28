@@ -128,7 +128,11 @@ const formatDistance = (distanceKm) => {
   return `${distanceKm.toFixed(1)} km`;
 };
 
-
+const nullableNumber = (value) => {
+  if (value == null) return null;
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : null;
+};
 
 const formatDistanceMeta = ({ distanceSource, distanceKm, estimatedTravelMinutes }) => {
   const distanceText = formatDistance(distanceKm);
@@ -165,12 +169,12 @@ const isPlaceholderRestaurantImage = (url = "") => {
 const normalizeRestaurant = (node, index) => {
   const candidateImage = node.coverImage || node.avatar || "";
   const fallbackImage = RESTAURANT_FALLBACK_IMAGES[index % RESTAURANT_FALLBACK_IMAGES.length];
-  const lat = Number(node?.address?.lat);
-  const lng = Number(node?.address?.lng);
-  const distanceKm = Number(node?.distanceKm);
-  const roadDistanceKm = Number(node?.roadDistanceKm);
-  const straightLineDistanceKm = Number(node?.straightLineDistanceKm);
-  const estimatedTravelMinutes = Number(node?.estimatedTravelMinutes);
+  const lat = nullableNumber(node?.address?.lat);
+  const lng = nullableNumber(node?.address?.lng);
+  const distanceKm = nullableNumber(node?.distanceKm);
+  const roadDistanceKm = nullableNumber(node?.roadDistanceKm);
+  const straightLineDistanceKm = nullableNumber(node?.straightLineDistanceKm);
+  const estimatedTravelMinutes = nullableNumber(node?.estimatedTravelMinutes);
 
   return {
     id: node.id,
@@ -181,12 +185,12 @@ const normalizeRestaurant = (node, index) => {
     hours: formatHours(node.openingHours, node.closingHours),
     addressText: formatAddress(node.address),
     avgRating: typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
-    lat: Number.isFinite(lat) ? lat : null,
-    lng: Number.isFinite(lng) ? lng : null,
-    distanceKm: Number.isFinite(distanceKm) ? distanceKm : null,
-    roadDistanceKm: Number.isFinite(roadDistanceKm) ? roadDistanceKm : null,
-    straightLineDistanceKm: Number.isFinite(straightLineDistanceKm) ? straightLineDistanceKm : null,
-    estimatedTravelMinutes: Number.isFinite(estimatedTravelMinutes) ? estimatedTravelMinutes : null,
+    lat,
+    lng,
+    distanceKm,
+    roadDistanceKm,
+    straightLineDistanceKm,
+    estimatedTravelMinutes,
     distanceSource: typeof node?.distanceSource === "string" ? node.distanceSource : null,
   };
 };

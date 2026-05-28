@@ -42,6 +42,21 @@ function mapDestinationResult(id, roadDistanceKm, estimatedTravelMinutes, status
   };
 }
 
+function sanitizeProviderResult({ origin, destination, roadDistanceKm, estimatedTravelMinutes, status = "ok" }) {
+  const normalizedRoadDistanceKm = normalizeNumber(roadDistanceKm);
+  const straightLineKm = haversineDistanceKm(origin.lat, origin.lng, destination.lat, destination.lng);
+
+  if (
+    normalizedRoadDistanceKm === 0 &&
+    Number.isFinite(straightLineKm) &&
+    straightLineKm > 0.05
+  ) {
+    return mapDestinationResult(destination.id, null, null, "error:zero_distance_invalid");
+  }
+
+  return mapDestinationResult(destination.id, normalizedRoadDistanceKm, estimatedTravelMinutes, status);
+}
+
 function resolveMockDistances({ origin, destinations }) {
   return destinations.map((destination) => {
     const straightLineKm = haversineDistanceKm(origin.lat, origin.lng, destination.lat, destination.lng);
@@ -73,7 +88,13 @@ async function resolveOsrmForDestination({ baseUrl, origin, destination, mode })
 
     const roadDistanceKm = normalizeNumber(route.distance) != null ? Number(route.distance) / 1000 : null;
     const estimatedTravelMinutes = normalizeNumber(route.duration) != null ? Number(route.duration) / 60 : null;
-    return mapDestinationResult(destination.id, roadDistanceKm, estimatedTravelMinutes, "ok");
+    return sanitizeProviderResult({
+      origin,
+      destination,
+      roadDistanceKm,
+      estimatedTravelMinutes,
+      status: "ok",
+    });
   } catch (error) {
     return mapDestinationResult(destination.id, null, null, toErrorStatus(error));
   } finally {
