@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  FOR_YOU_SIGNAL_TTL_DAYS,
   MAX_SIGNAL_ITEMS,
   clearForYouBehaviorSignals,
   getForYouBehaviorScore,
@@ -17,6 +18,23 @@ const makeItem = (overrides = {}) => ({
   categoryId: "category-1",
   ...overrides,
 });
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const makeStoredItem = (overrides = {}) => ({
+  id: "dish-stored",
+  name: "Món đã lưu",
+  restaurantId: "restaurant-stored",
+  restaurantName: "Cohan đã lưu",
+  categoryId: "category-stored",
+  type: "view",
+  at: Date.now(),
+  ...overrides,
+});
+
+const writeStoredSignals = (userId, signals) => {
+  window.localStorage.setItem(getForYouBehaviorStorageKey(userId), JSON.stringify(signals));
+};
 
 describe("forYouBehaviorSignals", () => {
   beforeEach(() => {
@@ -69,6 +87,98 @@ describe("forYouBehaviorSignals", () => {
     const signals = readForYouBehaviorSignals("user-1");
     expect(signals.viewedItems).toHaveLength(MAX_SIGNAL_ITEMS);
     expect(signals.viewedItems[0].id).toBe(`dish-${MAX_SIGNAL_ITEMS + 4}`);
+  });
+
+  it("exports a 30-day behavior signal TTL", () => {
+    expect(FOR_YOU_SIGNAL_TTL_DAYS).toBe(30);
+  });
+
+  it("keeps interactions that are still inside the TTL", () => {
+    recordForYouItemInteraction("user-1", makeItem(), "view");
+    vi.setSystemTime(new Date(Date.now() + (FOR_YOU_SIGNAL_TTL_DAYS - 1) * DAY_MS));
+
+    const signals = readForYouBehaviorSignals("user-1");
+
+    expect(signals.viewedItems).toHaveLength(1);
+    expect(signals.viewedItems[0].id).toBe("dish-1");
+    expect(signals.restaurantCounts).toEqual({ "restaurant-1": 1 });
+    expect(hasForYouBehaviorSignals(signals)).toBe(true);
+  });
+
+  it("prunes interactions older than the TTL", () => {
+    const oldAt = Date.now() - (FOR_YOU_SIGNAL_TTL_DAYS + 1) * DAY_MS;
+    writeStoredSignals("user-1", {
+      viewedItems: [makeStoredItem({ id: "old-view", at: oldAt })],
+      clickedItems: [makeStoredItem({ id: "old-click", type: "click", at: oldAt })],
+      restaurantCounts: { "restaurant-stored": 10 },
+      categoryCounts: { "category-stored": 10 },
+      itemCounts: { "old-view": 5, "old-click": 5 },
+      updatedAt: new Date(oldAt).toISOString(),
+    });
+
+    const signals = readForYouBehaviorSignals("user-1");
+
+    expect(signals.viewedItems).toEqual([]);
+    expect(signals.clickedItems).toEqual([]);
+    expect(signals.restaurantCounts).toEqual({});
+    expect(signals.categoryCounts).toEqual({});
+    expect(signals.itemCounts).toEqual({});
+    expect(hasForYouBehaviorSignals(signals)).toBe(false);
+  });
+
+  it("rebuilds count maps from recent interactions after pruning old ones", () => {
+    const oldAt = Date.now() - (FOR_YOU_SIGNAL_TTL_DAYS + 1) * DAY_MS;
+    const recentAt = Date.now() - 5 * DAY_MS;
+    writeStoredSignals("user-1", {
+      viewedItems: [
+        makeStoredItem({ id: "old-view", restaurantId: "old-restaurant", categoryId: "old-category", at: oldAt }),
+        makeStoredItem({ id: "recent-view", restaurantId: "recent-restaurant", categoryId: "recent-category", at: recentAt }),
+      ],
+      clickedItems: [
+        makeStoredItem({ id: "old-click", restaurantId: "old-restaurant", categoryId: "old-category", type: "click", at: oldAt }),
+        makeStoredItem({ id: "recent-order", restaurantId: "recent-restaurant", categoryId: "recent-category", type: "order_intent", at: recentAt }),
+      ],
+      restaurantCounts: { "old-restaurant": 99, "recent-restaurant": 99 },
+      categoryCounts: { "old-category": 99, "recent-category": 99 },
+      itemCounts: { "old-view": 99, "old-click": 99, "recent-view": 99, "recent-order": 99 },
+      updatedAt: new Date().toISOString(),
+    });
+
+    const signals = readForYouBehaviorSignals("user-1");
+
+    expect(signals.viewedItems.map((item) => item.id)).toEqual(["recent-view"]);
+    expect(signals.clickedItems.map((item) => item.id)).toEqual(["recent-order"]);
+    expect(signals.restaurantCounts).toEqual({ "recent-restaurant": 3 });
+    expect(signals.categoryCounts).toEqual({ "recent-category": 3 });
+    expect(signals.itemCounts).toEqual({ "recent-view": 1, "recent-order": 2 });
+    expect(signals.restaurantCounts).not.toHaveProperty("old-restaurant");
+    expect(signals.categoryCounts).not.toHaveProperty("old-category");
+    expect(signals.itemCounts).not.toHaveProperty("old-view");
+    expect(signals.itemCounts).not.toHaveProperty("old-click");
+  });
+
+  it("persists pruned signals after reading old stored data", () => {
+    const oldAt = Date.now() - (FOR_YOU_SIGNAL_TTL_DAYS + 1) * DAY_MS;
+    const recentAt = Date.now() - DAY_MS;
+    writeStoredSignals("user-1", {
+      viewedItems: [
+        makeStoredItem({ id: "old-view", restaurantId: "old-restaurant", categoryId: "old-category", at: oldAt }),
+        makeStoredItem({ id: "recent-view", restaurantId: "recent-restaurant", categoryId: "recent-category", at: recentAt }),
+      ],
+      clickedItems: [],
+      restaurantCounts: { "old-restaurant": 1, "recent-restaurant": 1 },
+      categoryCounts: { "old-category": 1, "recent-category": 1 },
+      itemCounts: { "old-view": 1, "recent-view": 1 },
+      updatedAt: new Date().toISOString(),
+    });
+
+    readForYouBehaviorSignals("user-1");
+
+    const storedSignals = JSON.parse(window.localStorage.getItem(getForYouBehaviorStorageKey("user-1")));
+    expect(storedSignals.viewedItems.map((item) => item.id)).toEqual(["recent-view"]);
+    expect(storedSignals.restaurantCounts).toEqual({ "recent-restaurant": 1 });
+    expect(storedSignals.categoryCounts).toEqual({ "recent-category": 1 });
+    expect(storedSignals.itemCounts).toEqual({ "recent-view": 1 });
   });
 
   it("caps behavior score at 3 with same item, restaurant, and category signals", () => {

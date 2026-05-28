@@ -103,8 +103,8 @@ const ForYou = () => {
     ? "Kết hợp khẩu vị của bạn và món bạn quan tâm gần đây."
     : "Gợi ý dựa trên khẩu vị của bạn.";
   const recentSuggestionDescription = hasBehaviorSignals
-    ? "Chúng tôi dùng các món bạn đã xem hoặc quan tâm gần đây trên thiết bị này để sắp xếp gợi ý phù hợp hơn."
-    : "Chưa có dữ liệu gợi ý gần đây trên thiết bị này. Khi bạn xem hoặc quan tâm món nào đó, chúng tôi sẽ dùng tín hiệu này để sắp xếp gợi ý phù hợp hơn.";
+    ? "Chúng tôi dùng các món bạn đã xem hoặc quan tâm gần đây trên thiết bị này để sắp xếp gợi ý phù hợp hơn. Dữ liệu cũ sẽ tự hết hiệu lực sau 30 ngày."
+    : "Chưa có dữ liệu gợi ý gần đây trên thiết bị này. Khi bạn xem hoặc quan tâm món nào đó, chúng tôi sẽ dùng tín hiệu này để sắp xếp gợi ý phù hợp hơn trong 30 ngày.";
 
   const handleViewDish = (item) => {
     if (!item?.id) return;

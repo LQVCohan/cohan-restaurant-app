@@ -1,4 +1,6 @@
 const MAX_SIGNAL_ITEMS = 60;
+export const FOR_YOU_SIGNAL_TTL_DAYS = 30;
+const SIGNAL_TTL_MS = FOR_YOU_SIGNAL_TTL_DAYS * 24 * 60 * 60 * 1000;
 const BEHAVIOR_SCORE_CAP = 3;
 const INTERACTION_TYPES = new Set(["view", "click", "order_intent"]);
 
@@ -28,16 +30,6 @@ const normalizeId = (value) => {
   return text || null;
 };
 
-const normalizeCountMap = (value) => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.entries(value).reduce((acc, [key, count]) => {
-    const normalizedKey = normalizeId(key);
-    const normalizedCount = Number(count || 0);
-    if (normalizedKey && normalizedCount > 0) acc[normalizedKey] = normalizedCount;
-    return acc;
-  }, {});
-};
-
 const normalizeStoredItem = (item) => {
   const id = normalizeId(item?.id);
   if (!id) return null;
@@ -48,25 +40,7 @@ const normalizeStoredItem = (item) => {
     restaurantName: String(item?.restaurantName || "").trim() || null,
     categoryId: normalizeId(item?.categoryId),
     type: INTERACTION_TYPES.has(item?.type) ? item.type : "view",
-    at: Number(item?.at || 0) || Date.now(),
-  };
-};
-
-const normalizeSignals = (signals) => {
-  if (!signals || typeof signals !== "object") return { ...DEFAULT_SIGNALS };
-  return {
-    viewedItems: (Array.isArray(signals.viewedItems) ? signals.viewedItems : [])
-      .map(normalizeStoredItem)
-      .filter(Boolean)
-      .slice(0, MAX_SIGNAL_ITEMS),
-    clickedItems: (Array.isArray(signals.clickedItems) ? signals.clickedItems : [])
-      .map(normalizeStoredItem)
-      .filter(Boolean)
-      .slice(0, MAX_SIGNAL_ITEMS),
-    restaurantCounts: normalizeCountMap(signals.restaurantCounts),
-    categoryCounts: normalizeCountMap(signals.categoryCounts),
-    itemCounts: normalizeCountMap(signals.itemCounts),
-    updatedAt: signals.updatedAt || null,
+    at: Number(item?.at || 0) || 0,
   };
 };
 
@@ -76,6 +50,45 @@ const increment = (counts, key, amount = 1) => {
   return {
     ...counts,
     [normalizedKey]: Number(counts?.[normalizedKey] || 0) + amount,
+  };
+};
+
+const isRecentSignalItem = (item, now = Date.now()) => {
+  const at = Number(item?.at || 0);
+  if (!at) return false;
+  return now - at <= SIGNAL_TTL_MS;
+};
+
+const rebuildCountMaps = ({ viewedItems = [], clickedItems = [] }) => {
+  const allItems = [...viewedItems, ...clickedItems];
+  return allItems.reduce(
+    (acc, item) => {
+      const weight = item.type === "order_intent" ? 2 : 1;
+      acc.restaurantCounts = increment(acc.restaurantCounts, item.restaurantId, weight);
+      acc.categoryCounts = increment(acc.categoryCounts, item.categoryId, weight);
+      acc.itemCounts = increment(acc.itemCounts, item.id, weight);
+      return acc;
+    },
+    { restaurantCounts: {}, categoryCounts: {}, itemCounts: {} },
+  );
+};
+
+const normalizeSignalItems = (items, now = Date.now()) => (Array.isArray(items) ? items : [])
+  .map(normalizeStoredItem)
+  .filter((item) => item && isRecentSignalItem(item, now))
+  .slice(0, MAX_SIGNAL_ITEMS);
+
+const normalizeSignals = (signals, now = Date.now()) => {
+  if (!signals || typeof signals !== "object") return { ...DEFAULT_SIGNALS };
+  const viewedItems = normalizeSignalItems(signals.viewedItems, now);
+  const clickedItems = normalizeSignalItems(signals.clickedItems, now);
+  const countMaps = rebuildCountMaps({ viewedItems, clickedItems });
+
+  return {
+    viewedItems,
+    clickedItems,
+    ...countMaps,
+    updatedAt: signals.updatedAt || null,
   };
 };
 
@@ -104,9 +117,19 @@ export const readForYouBehaviorSignals = (userId) => {
   if (!storage) return { ...DEFAULT_SIGNALS };
 
   try {
-    const raw = storage.getItem(getForYouBehaviorStorageKey(userId));
+    const storageKey = getForYouBehaviorStorageKey(userId);
+    const raw = storage.getItem(storageKey);
     if (!raw) return { ...DEFAULT_SIGNALS };
-    return normalizeSignals(JSON.parse(raw));
+    const nextSignals = normalizeSignals(JSON.parse(raw));
+    const nextRaw = JSON.stringify(nextSignals);
+    if (nextRaw !== raw) {
+      try {
+        storage.setItem(storageKey, nextRaw);
+      } catch {
+        // Keep FOR YOU resilient when storage quota or privacy settings block writes.
+      }
+    }
+    return nextSignals;
   } catch {
     return { ...DEFAULT_SIGNALS };
   }
