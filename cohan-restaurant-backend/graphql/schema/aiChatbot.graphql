@@ -219,6 +219,7 @@ input AskAiChatbotInput {
   history: [AiChatbotHistoryInput!]
   guestId: String
   conversationId: ID
+  pageContext: JSON
 }
 
 input RequestAiChatbotHandoffInput {
