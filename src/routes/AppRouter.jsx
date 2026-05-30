@@ -6,6 +6,7 @@ import Home from "../components/Customer/Homepage_Client/Home";
 import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
+import VerifyAccountConfirm from "../pages/VerifyAccountConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
 
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
@@ -58,17 +59,18 @@ import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
 import FoodDetail from "@/components/Customer/Food/FoodDetail";
 import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
+import { isAccountVerified } from "@/utils/accountVerification";
 
 const useAuth = () => {
   const { token, user, loading, isAuthenticated, sessionState, sessionWarning } = useContext(AuthContext);
   const role = resolveRoleName(user);
-  const emailVerified = user?.emailVerified ?? false;
-  return { token, role, emailVerified, loading, sessionState, sessionWarning, isAuthenticated };
+  const accountVerified = isAccountVerified(user);
+  return { token, role, accountVerified, loading, sessionState, sessionWarning, isAuthenticated };
 };
 
 export const PrivateRoute = ({ children, allowedRoles, requireVerifiedEmail = false, authState }) => {
   const fallbackAuthState = useAuth();
-  const { token, role, emailVerified, loading, sessionState, sessionWarning, isAuthenticated } = authState || fallbackAuthState;
+  const { token, role, accountVerified, loading, sessionState, sessionWarning, isAuthenticated } = authState || fallbackAuthState;
   const location = useLocation();
   const isRestoringSession = token && sessionState === "restoring";
   const waitingForResolvedUser = Boolean(token) && (role == null || !isAuthenticated);
@@ -93,7 +95,7 @@ export const PrivateRoute = ({ children, allowedRoles, requireVerifiedEmail = fa
     return <Navigate to={getDefaultPathForRole(role)} replace />;
   }
 
-  if (requireVerifiedEmail && !emailVerified) {
+  if (requireVerifiedEmail && !accountVerified) {
     return <Navigate to="/verify-email" replace />;
   }
 
@@ -127,6 +129,8 @@ const AppRouter = () => (
     <Route path="/login" element={<Login />} />
     <Route path="/verify-email" element={<VerifyEmailPending />} />
     <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+    <Route path="/verify-phone/confirm" element={<VerifyAccountConfirm forcedChannel="SMS" />} />
+    <Route path="/verify-account/confirm" element={<VerifyAccountConfirm />} />
     <Route path="/403" element={<ForbiddenPage />} />
     <Route path="/logout" element={<LogoutHandler />} />
     <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />

@@ -152,6 +152,9 @@ const CustomerCard = ({ customer, onClick }) => {
               {customer?.isGuest && (
                 <span className="cc-badge guest">Vãng lai</span>
               )}
+              <span className={`cc-badge ${customer?.verificationStatus === "verified" || customer?.verificationStatus === "email_verified" || customer?.verificationStatus === "phone_verified" ? "regular" : "guest"}`}>
+                {customer?.verificationLabel || (customer?.verificationStatus === "verified" ? "Đã xác minh" : "Chưa xác minh")}
+              </span>
             </div>
           </div>
         </div>

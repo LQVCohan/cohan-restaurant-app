@@ -1,6 +1,7 @@
 // src/hooks/useUserManagement.js
 import { useMemo, useState, useCallback, useRef } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { verificationLabel, verificationStatus as resolveVerificationStatus } from "@/utils/accountVerification";
 
 /* ========================= GraphQL ========================= */
 
@@ -58,6 +59,15 @@ export const GET_USERS = gql`
       totalOrders
       totalSpending
       emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
       isOnline
       loyaltyDurationScore
       lastLoginAt
@@ -121,6 +131,15 @@ export const GET_CUSTOMERS = gql`
       totalOrders
       totalSpending
       emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
       isOnline
       loyaltyDurationScore
       lastLoginAt
@@ -183,6 +202,15 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
         totalOrders
         totalSpending
         emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
         isOnline
         loyaltyDurationScore
         lastLoginAt
@@ -195,7 +223,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
 export const GET_CUSTOMER_EXPORT_ROWS = gql`
   query GetCustomerExportRows($restaurantId: ID!, $search: String, $includeGuests: Boolean, $customerKind: CustomerKindFilter, $customerRank: CustomerRankFilterInput, $sortBy: CustomerSortBy, $sortDirection: SortDirection, $limit: Int) {
     customerExportRows(restaurantId: $restaurantId, search: $search, includeGuests: $includeGuests, customerKind: $customerKind, customerRank: $customerRank, sortBy: $sortBy, sortDirection: $sortDirection, limit: $limit) {
-      id fullName username email phone loyaltyPoints customerType totalOrders totalSpending isOnline lastLoginAt isGuest createdAt
+      id fullName username email phone loyaltyPoints customerType totalOrders totalSpending isOnline lastLoginAt isGuest createdAt emailVerified phoneVerified verifiedAt emailVerifiedAt phoneVerifiedAt verificationLastStatus verificationLastChannel verificationLastRequestedAt emailVerifyLastSentAt phoneVerifyLastSentAt
       refRestaurants { id name }
     }
   }
@@ -249,6 +277,15 @@ export const CREATE_USER = gql`
         totalOrders
         totalSpending
         emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
         isGuest
         guestExpiresAt
         createdAt
@@ -262,6 +299,19 @@ export const CREATE_USER = gql`
           fullName
         }
       }
+    }
+  }
+`;
+
+export const RESEND_USER_VERIFICATION = gql`
+  mutation ResendUserVerification($userId: ID!, $channel: VerificationChannel = AUTO) {
+    resendUserVerification(userId: $userId, channel: $channel) {
+      ok
+      status
+      message
+      errors
+      email { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
+      sms { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
     }
   }
 `;
@@ -324,6 +374,15 @@ export const UPDATE_MY_USER = gql`
       totalOrders
       totalSpending
       emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
       isGuest
       guestExpiresAt
       createdAt
@@ -376,6 +435,15 @@ export const ADMIN_UPDATE_USER = gql`
       totalOrders
       totalSpending
       emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastStatus
+      verificationLastChannel
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
       isGuest
       guestExpiresAt
       createdAt
@@ -619,6 +687,10 @@ const useUserManagement = () => {
   const [updateMetricsMut, { loading: updatingMetrics }] = useMutation(
     UPDATE_CUSTOMER_METRICS,
   );
+  const [resendVerificationMut, { loading: resendingVerification }] = useMutation(
+    RESEND_USER_VERIFICATION,
+    { onCompleted: () => refreshLast() },
+  );
 
   const refreshLast = useCallback(() => {
     const { purpose, variables } = lastFetch.current || {};
@@ -681,7 +753,19 @@ const useUserManagement = () => {
       phone: u.phone || null,
       online: !!u.isOnline,
       lastLoginAt: u.lastLoginAt || null,
-      verificationStatus: u.emailVerified ? "verified" : "unverified",
+      verificationStatus: resolveVerificationStatus(u),
+      verificationLabel: verificationLabel(u),
+      canResendVerification: Boolean((u.email && !u.emailVerified) || (u.phone && !u.phoneVerified)),
+      emailVerified: Boolean(u.emailVerified),
+      phoneVerified: Boolean(u.phoneVerified),
+      verifiedAt: u.verifiedAt || null,
+      emailVerifiedAt: u.emailVerifiedAt || null,
+      phoneVerifiedAt: u.phoneVerifiedAt || null,
+      verificationLastStatus: u.verificationLastStatus || null,
+      verificationLastChannel: u.verificationLastChannel || null,
+      verificationLastRequestedAt: u.verificationLastRequestedAt || null,
+      emailVerifyLastSentAt: u.emailVerifyLastSentAt || null,
+      phoneVerifyLastSentAt: u.phoneVerifyLastSentAt || null,
     };
   }, []);
   const getCustomersPage = useCallback(async ({
@@ -734,7 +818,11 @@ const useUserManagement = () => {
         totalOrders: u.totalOrders || 0,
         email: u.email || null,
         phone: u.phone || null,
-        verificationStatus: u.emailVerified ? "verified" : "unverified",
+        verificationStatus: resolveVerificationStatus(u),
+        verificationLabel: verificationLabel(u),
+        canResendVerification: Boolean((u.email && !u.emailVerified) || (u.phone && !u.phoneVerified)),
+        emailVerified: Boolean(u.emailVerified),
+        phoneVerified: Boolean(u.phoneVerified),
         currentActivity: u.isOnline ? "Online" : "Offline",
         loyaltyPoints: computedPoints,
         loyaltyDurationScore: Number(u.loyaltyDurationScore || 0),
@@ -836,6 +924,11 @@ const useUserManagement = () => {
   };
 
   /* ====== Expose helper để FE tái sử dụng trực tiếp ====== */
+  const resendUserVerification = async (userId, channel = "AUTO") => {
+    const res = await resendVerificationMut({ variables: { userId, channel } });
+    return res.data?.resendUserVerification ?? null;
+  };
+
   const updateCustomerMetrics = async (userId, totalSpending, restaurantId = selectedRestaurant?.id) => {
     if (!restaurantId) {
       throw new Error("Missing restaurantId for customer metrics update");
@@ -875,7 +968,8 @@ const useUserManagement = () => {
       assigningRole ||
       settingStatus ||
       softDeleting ||
-      updatingMetrics,
+      updatingMetrics ||
+      resendingVerification,
     usersLoading,
     customersLoading,
     creating,
@@ -886,6 +980,7 @@ const useUserManagement = () => {
     settingStatus,
     softDeleting,
     updatingMetrics,
+    resendingVerification,
     error: usersError || customersError || customerPageError || null,
 
     // fetch
@@ -909,6 +1004,7 @@ const useUserManagement = () => {
     assignRole,
     setUserStatus,
     softDeleteUser,
+    resendUserVerification,
 
     // loyalty helpers
     updateCustomerMetrics,

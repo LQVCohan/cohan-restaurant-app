@@ -78,7 +78,17 @@ const ME_QUERY = gql`
       username
       avatarUrl
       roleName
+      status
       emailVerified
+      phoneVerified
+      verifiedAt
+      emailVerifiedAt
+      phoneVerifiedAt
+      verificationLastChannel
+      verificationLastStatus
+      verificationLastRequestedAt
+      emailVerifyLastSentAt
+      phoneVerifyLastSentAt
       wallet {
         provider
         status

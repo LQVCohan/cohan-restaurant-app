@@ -2,6 +2,7 @@
 import React, { JSX } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { isAccountVerified } from "../utils/accountVerification";
 
 /** ---- TYPINGS ---- */
 // Nếu bạn đã export sẵn kiểu từ AuthContext, hãy import và dùng thay cho interface này.
@@ -11,6 +12,8 @@ interface UserLike {
   roleName?: string;
   role?: string;
   emailVerified?: boolean;
+  phoneVerified?: boolean;
+  phone?: string;
   restaurantForStaff?: string;
   [k: string]: unknown;
 }
@@ -113,7 +116,7 @@ export default function ProtectedRoute(): JSX.Element {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (user && user.emailVerified === false) {
+  if (user && !isAccountVerified(user)) {
     sessionStorage.setItem("verify_back_to", location.pathname);
     return <Navigate to="/verify-email" replace />;
   }
@@ -150,7 +153,7 @@ export function RequireRole({
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (user && user.emailVerified === false) {
+  if (user && !isAccountVerified(user)) {
     sessionStorage.setItem("verify_back_to", location.pathname);
     return <Navigate to="/verify-email" replace />;
   }

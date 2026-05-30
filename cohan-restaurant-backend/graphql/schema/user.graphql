@@ -101,6 +101,22 @@ enum CustomerType {
   OFTEN
 }
 
+enum VerificationChannel {
+  EMAIL
+  SMS
+  BOTH
+  AUTO
+}
+
+enum VerificationDeliveryStatus {
+  SENT
+  SKIPPED
+  FAILED
+  NOT_CONFIGURED
+  COOLDOWN
+  ALREADY_VERIFIED
+}
+
 # =========================
 # Core Types
 # =========================
@@ -233,6 +249,30 @@ input DeletePublishedShiftGroupInput {
   reason: String!
   notifyEmployees: Boolean = true
 }
+type VerificationDeliveryResult {
+  channel: String!
+  attempted: Boolean!
+  sent: Boolean!
+  skipped: Boolean!
+  status: VerificationDeliveryStatus!
+  provider: String
+  messageId: String
+  error: String
+  lastSentAt: DateTime
+  cooldownUntil: DateTime
+}
+
+type AccountVerificationDispatchResult {
+  ok: Boolean!
+  userId: ID!
+  channels: [String!]!
+  status: VerificationDeliveryStatus!
+  message: String
+  email: VerificationDeliveryResult
+  sms: VerificationDeliveryResult
+  errors: [String!]!
+}
+
 type Restaurant {
   id: ID!
   name: String!
@@ -434,6 +474,15 @@ type User {
   totalOrders: Int
   totalSpending: Float
   emailVerified: Boolean
+  phoneVerified: Boolean
+  verifiedAt: DateTime
+  emailVerifiedAt: DateTime
+  phoneVerifiedAt: DateTime
+  verificationLastChannel: String
+  verificationLastStatus: String
+  verificationLastRequestedAt: DateTime
+  emailVerifyLastSentAt: DateTime
+  phoneVerifyLastSentAt: DateTime
   createdAt: String
   updatedAt: String
   createdBy: User
@@ -483,6 +532,15 @@ type StaffPrivateProfile {
   totalOrders: Int
   totalSpending: Float
   emailVerified: Boolean
+  phoneVerified: Boolean
+  verifiedAt: DateTime
+  emailVerifiedAt: DateTime
+  phoneVerifiedAt: DateTime
+  verificationLastChannel: String
+  verificationLastStatus: String
+  verificationLastRequestedAt: DateTime
+  emailVerifyLastSentAt: DateTime
+  phoneVerifyLastSentAt: DateTime
   createdAt: String
   updatedAt: String
   isGuest: Boolean
@@ -3107,6 +3165,10 @@ type Mutation {
   requestEmailVerification(email: String!): Boolean!
   verifyEmail(token: String!): Boolean!
   resendVerification(email: String!): Boolean!
+  requestMyVerification(channel: VerificationChannel = AUTO): AccountVerificationDispatchResult!
+  resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): AccountVerificationDispatchResult!
+  verifyPhone(token: String!): Boolean!
+  verifyAccountToken(token: String!, channel: VerificationChannel!): Boolean!
 
   assignRoleToUser(input: AssignRoleToUserInput!): User!
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
