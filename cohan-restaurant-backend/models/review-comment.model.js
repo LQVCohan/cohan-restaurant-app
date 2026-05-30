@@ -56,6 +56,10 @@ const ReviewCommentSchema = BaseSchemaModel({
     type: String,
     default: "",
   },
+  authorRole: { type: String, default: "customer" },
+  authorType: { type: String, enum: ["customer", "staff", "manager", "admin", "system"], default: "customer" },
+  officialReply: { type: Boolean, default: false, index: true },
+  replyByRestaurantId: { type: Types.ObjectId, ref: "Restaurant", default: null },
 
   // Nội dung
   content: {

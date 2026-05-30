@@ -126,3 +126,44 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
   err.statusCode = 403;
   throw err;
 }
+
+function normalizePermissionCode(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function collectPermissionCodes(user = {}) {
+  const set = new Set();
+  const add = (permission) => {
+    if (!permission) return;
+    if (typeof permission === "string") set.add(normalizePermissionCode(permission));
+    else set.add(normalizePermissionCode(permission.code || permission.permissionCode || permission.slug || permission.name));
+  };
+  [user.permissions, user.permissionCodes, user.effectivePermissions, user.effectivePermissionCodes, user.role?.permissions, user.role?.directPermissions, user.role?.parentRole?.permissions]
+    .forEach((list) => Array.isArray(list) && list.forEach(add));
+  return Array.from(set).filter(Boolean);
+}
+
+const LEGACY_ROLE_PERMISSION_MAP = {
+  manager: ["review.read", "review.reply", "review.moderate", "review.delete", "review.report.read", "review.report.resolve", "review.export", "review.analytics.read"],
+  admin: ["*"],
+  staff: ["review.read", "review.reply"],
+  supervisor: ["review.read", "review.reply", "review.moderate", "review.report.read"],
+};
+
+export function hasPermission(ctx, permission) {
+  requireAuth(ctx);
+  const code = normalizePermissionCode(permission);
+  const roles = resolveUserRoles(ctx.user);
+  if (roles.includes("ADMIN")) return true;
+  const direct = collectPermissionCodes(ctx.user);
+  if (direct.includes("*") || direct.includes("system.manage") || direct.includes(code)) return true;
+  return roles.some((role) => (LEGACY_ROLE_PERMISSION_MAP[String(role).toLowerCase()] || []).includes(code));
+}
+
+export function requirePermission(ctx, permission) {
+  if (!hasPermission(ctx, permission)) {
+    const err = new Error("FORBIDDEN");
+    err.statusCode = 403;
+    throw err;
+  }
+}

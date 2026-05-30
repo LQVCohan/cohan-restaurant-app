@@ -1,8 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { AuthContext } from "@/context/AuthContext";
 
 import "./ReviewsSection.scss";
+
+const GET_REVIEW_COMMENTS = gql`
+  query GetReviewComments($reviewId: ID!) {
+    reviewComments(reviewId: $reviewId, limit: 10, skip: 0) {
+      items { id authorName content officialReply createdAt }
+    }
+  }
+`;
 
 const GET_RESTAURANT_REVIEWS = gql`
   query GetRestaurantReviews(
@@ -42,6 +51,24 @@ const GET_RESTAURANT_REVIEWS = gql`
 `;
 
 
+
+const REACT_REVIEW = gql`
+  mutation ReactReview($id: ID!, $reaction: String!) {
+    reactReview(id: $id, reaction: $reaction) { id likesCount reactions { like total } }
+  }
+`;
+
+const HELPFUL_REVIEW = gql`
+  mutation HelpfulReview($id: ID!) {
+    incrementReviewHelpful(id: $id) { id helpfulCount }
+  }
+`;
+
+const REPORT_REVIEW = gql`
+  mutation ReportReview($id: ID!, $input: ReviewReportInput!) {
+    reportReview(id: $id, input: $input) { id status reason }
+  }
+`;
 
 const CREATE_REVIEW = gql`
   mutation CreateReview($input: ReviewInput!) {
@@ -83,13 +110,34 @@ const parseJsonArray = (value) => {
   }
 };
 
+const OfficialReplies = ({ reviewId }) => {
+  const { data } = useQuery(GET_REVIEW_COMMENTS, { variables: { reviewId }, skip: !reviewId });
+  const replies = (data?.reviewComments?.items || []).filter((item) => item.officialReply);
+  if (!replies.length) return null;
+  return (
+    <div className="review-official-replies">
+      {replies.map((reply) => (
+        <div key={reply.id} className="review-official-reply">
+          <span className="review-official-badge">Phản hồi từ nhà hàng</span>
+          <strong>{reply.authorName}</strong>
+          <p>{reply.content}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ReviewsSection = ({ restaurantId }) => {
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
   const [sortBy, setSortBy] = useState("newest");
   const [filterRating, setFilterRating] = useState("all");
   const [showWriteReview, setShowWriteReview] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "", staffId: "" });
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
+  const [reportingReview, setReportingReview] = useState(null);
+  const [reportReason, setReportReason] = useState("spam");
+  const [reportDetail, setReportDetail] = useState("");
 
   const minRating = filterRating === "all" ? undefined : Number(filterRating);
 
@@ -115,6 +163,9 @@ const ReviewsSection = ({ restaurantId }) => {
     skip: !restaurantId,
     fetchPolicy: "cache-first",
   });
+  const [reactReview] = useMutation(REACT_REVIEW);
+  const [helpfulReview] = useMutation(HELPFUL_REVIEW);
+  const [reportReview] = useMutation(REPORT_REVIEW);
   const [createReview, { loading: creatingReview }] = useMutation(CREATE_REVIEW, {
     refetchQueries: [
       { query: GET_RESTAURANT_REVIEWS, variables: { restaurantId, minRating: undefined, maxRating: 5, limit: 100, skip: 0 } },
@@ -213,7 +264,10 @@ const ReviewsSection = ({ restaurantId }) => {
       return;
     }
 
-    const selectedStaff = staffOptions.find((staff) => staff.id === newReview.staffId);
+    if (!isAuthenticated && !user?.id) {
+      setSubmitError("Vui lòng đăng nhập để gửi đánh giá.");
+      return;
+    }
 
     try {
       setSubmitError("");
@@ -223,12 +277,10 @@ const ReviewsSection = ({ restaurantId }) => {
             targetType: "restaurant",
             targetId: restaurantId,
             restaurantId,
-            customerName: "Khách hàng",
             rating: Number(newReview.rating),
             title: newReview.title.trim(),
             content: newReview.content.trim(),
-            staffId: selectedStaff?.id || null,
-            staffName: selectedStaff?.fullName || "",
+            staffId: newReview.staffId || null,
           },
         },
       });
@@ -244,7 +296,7 @@ const ReviewsSection = ({ restaurantId }) => {
       }
 
       setNewReview({ rating: 5, title: "", content: "", staffId: "" });
-      setSubmitSuccess("Đánh giá đã được gửi và đang chờ duyệt.");
+      setSubmitSuccess("Đánh giá đã gửi và đang chờ duyệt.");
     } catch (error) {
       setSubmitError(error.message || "Không thể gửi đánh giá.");
     }
@@ -267,7 +319,14 @@ const ReviewsSection = ({ restaurantId }) => {
         <h2 className="reviews-title">⭐ Đánh giá từ khách hàng</h2>
         <button
           className="btn btn--primary"
-          onClick={() => setShowWriteReview(true)}
+          onClick={() => {
+            if (!isAuthenticated && !user?.id) {
+              setSubmitError("Vui lòng đăng nhập để viết đánh giá.");
+              setShowWriteReview(true);
+              return;
+            }
+            setShowWriteReview(true);
+          }}
         >
           ✍️ Viết đánh giá
         </button>
@@ -364,14 +423,17 @@ const ReviewsSection = ({ restaurantId }) => {
                 </div>
 
                 <div className="review-actions">
-                  <button className="review-action" aria-label="Thích">
+                  <button className="review-action" aria-label="Thích" onClick={() => reactReview({ variables: { id: review.id, reaction: "like" } })}>
                     👍 {review.likes || 0}
                   </button>
-                  <button className="review-action" aria-label="Hữu ích">
+                  <button className="review-action" aria-label="Hữu ích" onClick={() => helpfulReview({ variables: { id: review.id } })}>
                     🤝 {review.helpful || 0}
                   </button>
                   <button className="review-action" aria-label="Bình luận">
                     💬 {review.replies || 0}
+                  </button>
+                  <button className="review-action" aria-label="Báo cáo" onClick={() => setReportingReview(review)}>
+                    🚩 Báo cáo
                   </button>
                 </div>
               </div>
@@ -397,11 +459,32 @@ const ReviewsSection = ({ restaurantId }) => {
                     ))}
                   </div>
                 )}
+                <OfficialReplies reviewId={review.id} />
               </div>
             </div>
           ))
         )}
       </div>
+
+      {reportingReview && (
+        <div className="review-modal-overlay" onClick={() => setReportingReview(null)}>
+          <div className="review-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="review-modal-header"><h3>Báo cáo đánh giá</h3><button onClick={() => setReportingReview(null)}>×</button></div>
+            <div className="review-form">
+              <select value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
+                <option value="spam">Spam/quảng cáo</option>
+                <option value="abuse">Lạm dụng/quấy rối</option>
+                <option value="offensive">Nội dung phản cảm</option>
+                <option value="fake">Đánh giá giả mạo</option>
+                <option value="privacy">Thông tin riêng tư</option>
+                <option value="other">Khác</option>
+              </select>
+              <textarea rows={4} value={reportDetail} onChange={(e) => setReportDetail(e.target.value)} placeholder="Mô tả thêm (không bắt buộc)" />
+              <button className="btn btn--primary" onClick={async () => { await reportReview({ variables: { id: reportingReview.id, input: { reason: reportReason, detail: reportDetail } } }); setReportingReview(null); setReportDetail(""); setSubmitSuccess("Đã gửi báo cáo đánh giá."); }}>Gửi báo cáo</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showWriteReview && (
         <div

@@ -1,77 +1,121 @@
 import { GraphQLError } from "graphql";
-import { Review, ReviewComment, EventLog } from "../../../models/index.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { Review, ReviewComment, ReviewCommentReaction, EventLog } from "../../../models/index.js";
+import { requirePermission, requireRestaurantAccess } from "../../guards.js";
+import { REVIEW_REACTION_TYPES, buildReactionIncPayload, clampReactionSummary, deriveCustomerIdentity, forbidden, unauthenticated } from "../../../src/services/reviewHardening.service.js";
 
 function roleSlug(user) { return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase(); }
-function isStaffLike(user) { const role = roleSlug(user); return role.includes("staff") || role.includes("manager") || role.includes("admin"); }
-function isOwner(ctx, doc) { const uid = ctx?.user?.id; return uid && String(doc?.createdBy || doc?.userId) === String(uid); }
-function forbidden(message = "Forbidden") { return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } }); }
+function authorType(user) { const role = roleSlug(user); if (role.includes("admin")) return "admin"; if (role.includes("manager")) return "manager"; if (role.includes("staff")) return "staff"; return "customer"; }
+function isOwner(ctx, doc) { const uid = ctx?.user?.id || ctx?.user?._id; return uid && String(doc?.authorUserId || doc?.createdBy || doc?.userId) === String(uid); }
+async function logComment(payload) { try { await EventLog.log(payload); } catch (err) { console.error("EventLog review comment error:", err.message); } }
 
 export default {
   createReviewComment: async (_, { input }, ctx) => {
-    if (!ctx?.user?.id) throw new Error("Login required");
+    if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated();
     const { reviewId, parentId } = input;
     const review = await Review.findById(reviewId);
     if (!review) throw new Error("Review not found");
-    if (review.status !== "published") {
-      if (!isOwner(ctx, review)) { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, review.restaurantId); }
+    const type = authorType(ctx.user);
+    const wantsOfficial = Boolean(input.officialReply);
+    if (review.status !== "published" && !(type !== "customer")) {
+      throw forbidden();
+    }
+    if (review.status !== "published" && type !== "customer") {
+      requirePermission(ctx, "review.reply");
+      await requireRestaurantAccess(ctx, review.restaurantId);
+    }
+    if (wantsOfficial) {
+      requirePermission(ctx, "review.reply");
+      await requireRestaurantAccess(ctx, review.restaurantId);
     }
     if (parentId) {
       const parent = await ReviewComment.findById(parentId);
-      if (!parent || String(parent.reviewId) !== String(reviewId) || String(parent.restaurantId) !== String(review.restaurantId)) {
-        throw new Error("Parent comment mismatch");
-      }
+      if (!parent || String(parent.reviewId) !== String(reviewId) || String(parent.restaurantId) !== String(review.restaurantId)) throw new Error("Parent comment mismatch");
     }
-    const comment = await ReviewComment.create({ ...input, restaurantId: review.restaurantId, createdBy: ctx.user.id, status: "published", isEdited: false });
+    const content = String(input.content || "").trim();
+    if (!content) throw new GraphQLError("Nội dung phản hồi không được để trống", { extensions: { code: "BAD_USER_INPUT" } });
+    const identity = deriveCustomerIdentity(ctx);
+    const officialReply = wantsOfficial && type !== "customer";
+    const comment = await ReviewComment.create({
+      reviewId,
+      parentId: parentId || null,
+      restaurantId: review.restaurantId,
+      authorUserId: ctx.user.id || ctx.user._id,
+      authorName: officialReply ? (ctx.user.fullName || ctx.user.name || review.restaurantName || "Nhà hàng") : identity.customerName,
+      authorAvatar: identity.customerAvatar,
+      authorRole: roleSlug(ctx.user) || type,
+      authorType: officialReply ? type : "customer",
+      officialReply,
+      replyByRestaurantId: officialReply ? review.restaurantId : null,
+      content,
+      createdBy: ctx.user.id || ctx.user._id,
+      status: "published",
+      isEdited: false,
+    });
     if (parentId) await ReviewComment.updateOne({ _id: parentId }, { $inc: { repliesCount: 1 } });
-    else await Review.updateOne({ _id: reviewId }, { $inc: { commentsCount: 1 } });
-    await EventLog.log({ restaurantId: review.restaurantId, verb: "review.comment.create", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: reviewId }, actorUserId: ctx?.user?.id, meta: input });
+    else await Review.updateOne({ _id: reviewId }, { $inc: { commentsCount: 1 }, ...(officialReply && !review.firstOfficialReplyAt ? { $set: { firstOfficialReplyAt: new Date() } } : {}) });
+    await logComment({ restaurantId: review.restaurantId, verb: "review.comment.create", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: reviewId }, actorUserId: ctx?.user?.id, meta: { officialReply } });
     return comment;
   },
+
   updateReviewComment: async (_, { id, input }, ctx) => {
     const comment = await ReviewComment.findById(id);
     if (!comment) throw new Error("Comment không tồn tại");
-    const patch = { ...input, isEdited: true };
-    delete patch.restaurantId; delete patch.reviewId; delete patch.parentId; delete patch.createdBy; delete patch.reactions;
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(input || {}, "content")) {
+      patch.content = String(input.content || "").trim();
+      if (!patch.content) throw new GraphQLError("Nội dung không được để trống", { extensions: { code: "BAD_USER_INPUT" } });
+      patch.isEdited = true;
+    }
     if (isOwner(ctx, comment)) delete patch.status;
-    else { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, comment.restaurantId); }
+    else { requirePermission(ctx, "review.moderate"); await requireRestaurantAccess(ctx, comment.restaurantId); if (input.status) patch.status = input.status; }
+    patch.updatedBy = ctx?.user?.id || ctx?.user?._id || null;
     await comment.updateOne(patch);
     const updated = await ReviewComment.findById(id);
-    await EventLog.log({ restaurantId: updated.restaurantId, verb: "review.comment.update", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, diff: input });
+    await logComment({ restaurantId: updated.restaurantId, verb: "review.comment.update", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, diff: input });
     return updated;
   },
+
   deleteReviewComment: async (_, { id }, ctx) => {
     const comment = await ReviewComment.findById(id);
     if (!comment) return false;
-    if (!isOwner(ctx, comment)) { if (!isStaffLike(ctx?.user)) throw forbidden(); await requireRestaurantAccess(ctx, comment.restaurantId); }
+    if (!isOwner(ctx, comment)) { requirePermission(ctx, "review.delete"); await requireRestaurantAccess(ctx, comment.restaurantId); }
     const { reviewId, restaurantId, parentId } = comment;
-    await comment.deleteOne();
-    if (parentId) await ReviewComment.updateOne({ _id: parentId }, { $inc: { repliesCount: -1 } });
-    else await Review.updateOne({ _id: reviewId }, { $inc: { commentsCount: -1 } });
-    await EventLog.log({ restaurantId, verb: "review.comment.delete", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id });
+    await comment.updateOne({ status: "deleted", updatedBy: ctx?.user?.id || ctx?.user?._id || null });
+    if (parentId) await ReviewComment.updateOne({ _id: parentId, repliesCount: { $gt: 0 } }, { $inc: { repliesCount: -1 } });
+    else await Review.updateOne({ _id: reviewId, commentsCount: { $gt: 0 } }, { $inc: { commentsCount: -1 } });
+    await logComment({ restaurantId, verb: "review.comment.delete", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id });
     return true;
   },
+
   setReviewCommentStatus: async (_, { id, status }, ctx) => {
     const comment = await ReviewComment.findById(id);
     if (!comment) throw new Error("Comment không tồn tại");
-    if (!isStaffLike(ctx?.user)) throw forbidden();
+    requirePermission(ctx, "review.moderate");
     await requireRestaurantAccess(ctx, comment.restaurantId);
-    await comment.updateOne({ status });
+    await comment.updateOne({ status, updatedBy: ctx?.user?.id || ctx?.user?._id || null });
     const updated = await ReviewComment.findById(id);
-    await EventLog.log({ restaurantId: updated.restaurantId, verb: "review.comment.status", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, meta: { status } });
+    await logComment({ restaurantId: updated.restaurantId, verb: "review.comment.status", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, meta: { status } });
     return updated;
   },
+
   reactReviewComment: async (_, { id, reaction }, ctx) => {
-    if (!ctx?.user?.id) throw new Error("Login required");
-    const valid = ["like", "love", "care", "haha", "wow", "sad", "angry"];
-    const key = (reaction || "").toLowerCase();
-    if (!valid.includes(key)) throw new Error("Reaction không hợp lệ");
+    const userId = ctx?.user?.id || ctx?.user?._id;
+    if (!userId) throw unauthenticated();
+    const key = String(reaction || "").toLowerCase();
+    if (!REVIEW_REACTION_TYPES.includes(key)) throw new GraphQLError("Reaction không hợp lệ", { extensions: { code: "BAD_USER_INPUT" } });
     const comment = await ReviewComment.findById(id);
     if (!comment) throw new Error("Comment không tồn tại");
     if (comment.status !== "published") throw forbidden();
-    await comment.updateOne({ $inc: { [`reactions.${key}`]: 1, likesCount: key === "like" ? 1 : 0 } });
-    const updated = await ReviewComment.findById(id);
-    await EventLog.log({ restaurantId: updated.restaurantId, verb: "review.comment.reaction", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, meta: { reaction: key } });
-    return updated;
+    const existing = await ReviewCommentReaction.findOne({ commentId: id, userId });
+    let inc = {}; let dec = {}; let action = "set";
+    if (!existing) { await ReviewCommentReaction.create({ commentId: id, reviewId: comment.reviewId, restaurantId: comment.restaurantId, userId, type: key, createdBy: userId }); inc[key] = 1; }
+    else if (existing.type === key) { await existing.deleteOne(); dec[key] = 1; action = "unset"; }
+    else { const old = existing.type; existing.type = key; existing.updatedBy = userId; await existing.save(); dec[old] = 1; inc[key] = 1; action = "change"; }
+    const updated = await ReviewComment.findByIdAndUpdate(id, { $inc: buildReactionIncPayload({ inc, dec }), updatedBy: userId }, { new: true });
+    const clamps = clampReactionSummary(updated);
+    if (Object.keys(clamps).length) await ReviewComment.updateOne({ _id: id }, { $set: clamps });
+    const finalDoc = Object.keys(clamps).length ? await ReviewComment.findById(id) : updated;
+    await logComment({ restaurantId: finalDoc.restaurantId, verb: "review.comment.react", object: { kind: "ReviewComment", id }, target: { kind: "Review", id: finalDoc.reviewId }, actorUserId: userId, meta: { reaction: key, action } });
+    return finalDoc;
   },
 };

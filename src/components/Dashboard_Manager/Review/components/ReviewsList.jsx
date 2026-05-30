@@ -54,7 +54,7 @@ const reactionMeta = [
   ["angry", "😡"],
 ];
 
-const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit }) => {
+const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit, permissions = {} }) => {
   if (isLoading) {
     return (
       <div className="reviews-loading">
@@ -113,18 +113,20 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
                 <button type="button" className="reviews-review-card__action-btn" title="Xem chi tiết" onClick={() => onView(review)}>
                   👁️
                 </button>
-                {review.status !== "published" && (
+                {permissions.canModerate && review.status !== "published" && (
                   <button type="button" className="reviews-review-card__action-btn" title="Duyệt" onClick={() => onEdit(review, "published")}>✅</button>
                 )}
-                {review.status !== "hidden" && (
+                {permissions.canModerate && review.status !== "hidden" && (
                   <button type="button" className="reviews-review-card__action-btn" title="Ẩn" onClick={() => onEdit(review, "hidden")}>🙈</button>
                 )}
-                {review.status !== "reported" && (
+                {permissions.canModerate && review.status !== "reported" && (
                   <button type="button" className="reviews-review-card__action-btn" title="Đánh dấu bị báo cáo" onClick={() => onEdit(review, "reported")}>🚩</button>
                 )}
-                <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
-                  🗑️
-                </button>
+                {permissions.canDelete && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
+                    🗑️
+                  </button>
+                )}
               </div>
             </div>
 

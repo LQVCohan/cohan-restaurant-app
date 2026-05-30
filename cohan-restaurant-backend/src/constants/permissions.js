@@ -51,6 +51,16 @@ export const PERMISSIONS = {
   REPORT_READ: "report.read",
   REPORT_EXPORT: "report.export",
 
+  REVIEW_READ: "review.read",
+  REVIEW_WRITE: "review.write",
+  REVIEW_REPLY: "review.reply",
+  REVIEW_MODERATE: "review.moderate",
+  REVIEW_DELETE: "review.delete",
+  REVIEW_REPORT_READ: "review.report.read",
+  REVIEW_REPORT_RESOLVE: "review.report.resolve",
+  REVIEW_EXPORT: "review.export",
+  REVIEW_ANALYTICS_READ: "review.analytics.read",
+
   RESTAURANT_READ: "restaurant.read",
   RESTAURANT_WRITE: "restaurant.write",
 };

@@ -119,12 +119,12 @@ function resolveQualityRoleGroup(staff, kitchenMetrics = {}) {
   return "other";
 }
 function calculateOrderStaffQualityPenalty({ customerRatingScore, staffRateCount }) {
-  if (Number(staffRateCount || 0) <= 0 || Number(customerRatingScore || 0) >= 75) return 0;
-  return Math.min(8, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.25));
+  if (Number(staffRateCount || 0) < 3 || Number(customerRatingScore || 0) >= 75) return 0;
+  return Math.min(4, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.12));
 }
 function calculateCashierQualityPenalty({ customerRatingScore, staffRateCount }) {
-  if (Number(staffRateCount || 0) <= 0 || Number(customerRatingScore || 0) >= 75) return 0;
-  return Math.min(5, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.15));
+  if (Number(staffRateCount || 0) < 3 || Number(customerRatingScore || 0) >= 75) return 0;
+  return Math.min(2.5, roundOneDecimal((75 - Number(customerRatingScore || 0)) * 0.08));
 }
 const CASHIER_REASON_KEYWORDS = [
   "sai hoa don",
@@ -256,7 +256,7 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
       : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.",
     other: "Quality dựa trên điểm kỹ năng/chất lượng chuyên môn do quản lý nhập.",
   };
-  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: true, note: notes[roleGroup] || notes.other };
+  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: Number(staffRateCount || 0) >= 3, note: notes[roleGroup] || notes.other };
 }
 
 function getActorId(ctx) {
@@ -809,6 +809,8 @@ async function calculateSnapshotForEmployee({
             _id: null,
             averageRating: { $avg: "$rating" },
             totalReviews: { $sum: 1 },
+            verifiedReviews: { $sum: { $cond: ["$verifiedPurchase", 1, 0] } },
+            verifiedRatingSum: { $sum: { $cond: ["$verifiedPurchase", "$rating", 0] } },
           },
         },
       ]),
@@ -821,7 +823,12 @@ async function calculateSnapshotForEmployee({
     ? Math.round(staffRateRaw * 100) / 100
     : 0;
   const staffRateCount = Number(customerRatingAgg?.[0]?.totalReviews || 0);
-  const customerRatingScore = clampScore(staffRate * 20, 0);
+  const verifiedStaffRateCount = Number(customerRatingAgg?.[0]?.verifiedReviews || 0);
+  const unverifiedStaffRateCount = Math.max(0, staffRateCount - verifiedStaffRateCount);
+  const verifiedStaffRate = verifiedStaffRateCount > 0
+    ? Math.round((Number(customerRatingAgg?.[0]?.verifiedRatingSum || 0) / verifiedStaffRateCount) * 100) / 100
+    : 0;
+  const customerRatingScore = staffRateCount >= 3 ? clampScore(staffRate * 20, 0) : 0;
 
   const orderCount = benchmark.byEmployeeId.get(String(employeeId)) || 0;
   const shiftsCount = shifts.length;
@@ -993,6 +1000,9 @@ async function calculateSnapshotForEmployee({
           correctionsCount,
           staffRate,
           staffRateCount,
+          verifiedStaffRate,
+          verifiedStaffRateCount,
+          unverifiedStaffRateCount,
           customerRatingScore,
           hasManagerReview: Boolean(review),
           qualityEvidence: {
@@ -1008,8 +1018,8 @@ async function calculateSnapshotForEmployee({
             hasCustomerEvidence: qualityEvidence.hasCustomerEvidence,
             hasCashierOperationalEvidence: qualityEvidence.hasCashierOperationalEvidence,
             evidenceSource: qualityEvidence.evidenceSource,
-            affectsScore: true,
-            note: qualityEvidence.note,
+            affectsScore: staffRateCount >= 3,
+            note: `${qualityEvidence.note} Review khách hàng là dữ liệu tham khảo; dưới 3 review chỉ lưu evidence, không tự động kỷ luật hay phạt mạnh.`,
           },
           scheduledMinutes,
           actualWorkedMinutes,

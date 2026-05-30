@@ -8,6 +8,7 @@ import ReviewsList from "./components/ReviewsList";
 import ReviewModal from "./components/ReviewModal";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ManagerCommandBar from "../shared/ManagerCommandBar";
+import { hasPermission } from "@/utils/frontendPermissionAccess";
 
 const ME_QUERY = gql`
   query Me {
@@ -16,6 +17,12 @@ const ME_QUERY = gql`
       fullName
       avatarUrl
       roleName
+      role {
+        slug
+        permissions { code }
+        directPermissions { code }
+        parentRole { slug permissions { code } }
+      }
     }
   }
 `;
@@ -126,8 +133,8 @@ const DELETE_REVIEW = gql`
 `;
 
 const SET_REVIEW_STATUS = gql`
-  mutation SetReviewStatus($id: ID!, $status: String!) {
-    setReviewStatus(id: $id, status: $status) {
+  mutation SetReviewStatus($id: ID!, $status: String!, $reason: String, $moderationNote: String) {
+    setReviewStatus(id: $id, status: $status, reason: $reason, moderationNote: $moderationNote) {
       id
       status
     }
@@ -227,14 +234,18 @@ const ReviewManagement = () => {
     );
   }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
 
-  const gqlTargetType = currentTab === "all" || currentTab === "pending" || currentTab === "reported"
+  const gqlTargetType = ["all", "pending", "reported", "hidden", "rejected"].includes(currentTab)
     ? undefined
     : currentTab;
   const gqlStatus = currentTab === "pending"
     ? "pending"
     : currentTab === "reported"
       ? "reported"
-      : filters.status || undefined;
+      : currentTab === "hidden"
+        ? "hidden"
+        : currentTab === "rejected"
+          ? "rejected"
+          : filters.status || undefined;
   const gqlMinRating = filters.ratings?.length ? Math.min(...filters.ratings) : undefined;
   const gqlMaxRating = filters.ratings?.length ? Math.max(...filters.ratings) : undefined;
 
@@ -376,7 +387,8 @@ const ReviewManagement = () => {
   const handleModerate = useCallback(
     async (review, status) => {
       try {
-        await setReviewStatus({ variables: { id: review.id, status } });
+        const reason = ["hidden", "rejected"].includes(status) ? window.prompt("Nhập lý do kiểm duyệt (không bắt buộc):", "") || "" : "";
+        await setReviewStatus({ variables: { id: review.id, status, reason, moderationNote: reason } });
         await refetch();
         notify(getModerationSuccessMessage(review, status));
       } catch (err) {
@@ -386,7 +398,10 @@ const ReviewManagement = () => {
     [notify, refetch, setReviewStatus],
   );
 
+  const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
   const handleExport = () => {
+    if (!permissions.canExport) return;
     const header = [
       "ID",
       "Khách hàng",
@@ -394,17 +409,27 @@ const ReviewManagement = () => {
       "Đánh giá",
       "Tiêu đề",
       "Nội dung",
+      "Nhà hàng",
+      "Loại",
+      "Trạng thái",
+      "Xác thực",
+      "Báo cáo",
       "Thời gian",
     ].join(",");
     const rows = filteredReviews.map((r) =>
       [
         r.id,
-        r.customer_name,
-        `"${r.staff_name || "Không gắn nhân viên"}"`,
+        escapeCsv(r.customer_name),
+        escapeCsv(r.staff_name || "Không gắn nhân viên"),
         r.rating,
-        `"${r.title}"`,
-        `"${r.content}"`,
-        new Date(r.created_at).toLocaleString("vi-VN"),
+        escapeCsv(r.title),
+        escapeCsv(r.content),
+        escapeCsv(r.restaurant_name),
+        r.type,
+        r.status,
+        r.verified_purchase ? "yes" : "no",
+        r.reports_count || 0,
+        escapeCsv(new Date(r.created_at).toLocaleString("vi-VN")),
       ].join(","),
     );
     const csv = [header, ...rows].join("\n");
@@ -417,13 +442,22 @@ const ReviewManagement = () => {
     link.click();
   };
 
+  const permissions = {
+    canModerate: hasPermission(me, "review.moderate"),
+    canDelete: hasPermission(me, "review.delete"),
+    canExport: hasPermission(me, "review.export"),
+    canReply: hasPermission(me, "review.reply"),
+  };
+
   const titleMap = {
     all: "Tất cả đánh giá",
     restaurant: "Đánh giá nhà hàng",
     food: "Đánh giá món ăn",
     service: "Đánh giá dịch vụ",
     pending: "Chờ duyệt",
-    reported: "Báo cáo",
+    reported: "Bị báo cáo",
+    hidden: "Đã ẩn",
+    rejected: "Từ chối",
   };
 
   return (
@@ -448,7 +482,7 @@ const ReviewManagement = () => {
             { id: "pending", icon: "⏳", label: "Chờ duyệt", value: stats.pending },
             { id: "bad", icon: "⚠️", label: "Tiêu cực", value: filteredReviews.filter((r) => Number(r.rating || 0) <= 2).length },
           ]}
-          secondaryActions={[{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }]}
+          secondaryActions={permissions.canExport ? [{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }] : []}
         />
 
         <ManagerCommandBar
@@ -458,7 +492,9 @@ const ReviewManagement = () => {
             { id: "food", label: "Món ăn" },
             { id: "service", label: "Dịch vụ" },
             { id: "pending", label: "Chờ duyệt" },
-            { id: "reported", label: "Báo cáo" },
+            { id: "reported", label: "Bị báo cáo" },
+            { id: "hidden", label: "Đã ẩn" },
+            { id: "rejected", label: "Từ chối" },
           ]}
           activeTab={currentTab}
           onTabChange={setCurrentTab}
@@ -493,6 +529,7 @@ const ReviewManagement = () => {
                   onView={handleViewReview}
                   onDelete={handleDeleteReview}
                   onEdit={handleModerate}
+                  permissions={permissions}
                 />
               )}
             </section>
@@ -534,6 +571,7 @@ const ReviewManagement = () => {
         visible={modalVisible}
         review={selectedReview}
         me={me}
+        canReply={permissions.canReply}
         onClose={() => setModalVisible(false)}
       />
     </div>

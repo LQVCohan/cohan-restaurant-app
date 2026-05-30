@@ -29,7 +29,7 @@ type Review {
   restaurantName: String
 
   customerId: ID
-  customerName: String!
+  customerName: String
   customerAvatar: String
   staffId: ID
   staffName: String
@@ -41,6 +41,17 @@ type Review {
 
   location: String
   verifiedPurchase: Boolean
+  verifiedSource: String
+  verifiedSourceId: ID
+  visitedAt: String
+  orderCompletedAt: String
+  sentiment: String
+  topicTags: [String]
+  moderationReason: String
+  moderationNote: String
+  moderatedBy: ID
+  moderatedAt: String
+  firstOfficialReplyAt: String
   tags: [String]
 
   status: String!
@@ -69,7 +80,7 @@ input ReviewInput {
   restaurantName: String
 
   customerId: ID
-  customerName: String!
+  customerName: String
   customerAvatar: String
   staffId: ID
   staffName: String
@@ -81,10 +92,22 @@ input ReviewInput {
 
   location: String
   verifiedPurchase: Boolean
+  verifiedSource: String
+  verifiedSourceId: ID
+  visitedAt: String
+  orderCompletedAt: String
+  sentiment: String
+  topicTags: [String]
+  moderationReason: String
+  moderationNote: String
+  moderatedBy: ID
+  moderatedAt: String
+  firstOfficialReplyAt: String
   tags: [String]
 }
 
 input ReviewUpdateInput {
+  staffId: ID
   rating: Int
   title: String
   content: String
@@ -92,6 +115,8 @@ input ReviewUpdateInput {
   location: String
   tags: [String]
   status: String
+  reason: String
+  moderationNote: String
 }
 
 # ============================================================================
@@ -125,6 +150,10 @@ type ReviewComment {
   authorUserId: ID
   authorName: String!
   authorAvatar: String
+  authorRole: String
+  authorType: String
+  officialReply: Boolean
+  replyByRestaurantId: ID
 
   content: String!
   status: String!
@@ -147,12 +176,15 @@ input ReviewCommentInput {
   authorUserId: ID
   authorName: String!
   authorAvatar: String
+  officialReply: Boolean
   content: String!
 }
 
 input ReviewCommentUpdateInput {
   content: String
   status: String
+  reason: String
+  moderationNote: String
 }
 
 # ============================================================================
@@ -161,6 +193,70 @@ input ReviewCommentUpdateInput {
 type ReviewCommentsConnection {
   total: Int!
   items: [ReviewComment!]!
+}
+
+
+
+type ReviewReport {
+  id: ID!
+  reviewId: ID!
+  restaurantId: ID!
+  reporterUserId: ID!
+  reason: String!
+  detail: String
+  status: String!
+  resolvedBy: ID
+  resolvedAt: String
+  resolutionNote: String
+  createdAt: String
+  updatedAt: String
+}
+
+input ReviewReportInput {
+  reason: String!
+  detail: String
+}
+
+input ReviewReportResolveInput {
+  status: String
+  resolutionNote: String
+}
+
+type ReviewReportsConnection {
+  total: Int!
+  items: [ReviewReport!]!
+}
+
+type ReviewReportStats {
+  total: Int!
+  pending: Int!
+  resolved: Int!
+  rejected: Int!
+  byReason: JSON
+}
+
+type ReviewTrendPoint { date: String!, total: Int!, avgRating: Float! }
+type ReviewNameCount { id: ID, name: String, targetType: String, count: Int!, avgRating: Float }
+type ReviewActionQueueCounts { needsModeration: Int!, needsReply: Int!, highRisk: Int! }
+type ReviewAnalytics {
+  totalReviews: Int!
+  avgRating: Float!
+  pendingCount: Int!
+  publishedCount: Int!
+  hiddenCount: Int!
+  rejectedCount: Int!
+  reportedCount: Int!
+  negativeCount: Int!
+  verifiedRate: Float!
+  replyRate: Float!
+  avgFirstReplyMinutes: Int!
+  ratingTrend: [ReviewTrendPoint!]!
+  ratingBreakdown: JSON
+  topTags: [ReviewNameCount!]!
+  topStaffMentioned: [ReviewNameCount!]!
+  lowRatedTargets: [ReviewNameCount!]!
+  reportBreakdown: [ReviewNameCount!]!
+  actionQueueCounts: ReviewActionQueueCounts!
 }
 
 # ============================================================================
@@ -192,6 +288,9 @@ extend type Query {
 
   # Thống kê review (cho header trang review/admin)
   reviewStats(restaurantId: ID, targetType: String, targetId: ID): ReviewStats!
+  reviewReports(restaurantId: ID, status: String, reason: String, limit: Int = 20, skip: Int = 0): ReviewReportsConnection!
+  reviewReportStats(restaurantId: ID): ReviewReportStats!
+  reviewAnalytics(restaurantId: ID, targetType: String, dateFrom: String, dateTo: String): ReviewAnalytics!
 }
 
 # ============================================================================
@@ -203,11 +302,13 @@ extend type Mutation {
   updateReview(id: ID!, input: ReviewUpdateInput!): Review
   deleteReview(id: ID!): Boolean
 
-  setReviewStatus(id: ID!, status: String!): Review
+  setReviewStatus(id: ID!, status: String!, reason: String, moderationNote: String, notifyCustomer: Boolean): Review
   incrementReviewHelpful(id: ID!): Review
 
   # Reaction vào review
   reactReview(id: ID!, reaction: String!): Review
+  reportReview(id: ID!, input: ReviewReportInput!): ReviewReport
+  resolveReviewReport(id: ID!, input: ReviewReportResolveInput!): ReviewReport
 
   # Comment CRUD
   createReviewComment(input: ReviewCommentInput!): ReviewComment
