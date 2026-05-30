@@ -6,6 +6,7 @@ import {
   buildReactionIncPayload,
   deriveCustomerIdentity,
   normalizeReviewInput,
+  normalizeReviewTargetForPersistence,
   resolveServiceReviewTarget,
   REVIEW_SERVICE_TARGETS,
 } from "../../src/services/reviewHardening.service.js";
@@ -52,6 +53,21 @@ describe("review hardening helpers", () => {
     expect(resolveServiceReviewTarget("serving_speed")?.name).toBe("Tốc độ phục vụ");
     expect(resolveServiceReviewTarget("65f100000000000000000104")?.slug).toBe("payment");
     expect(resolveServiceReviewTarget("unknown-service")).toBeNull();
+  });
+
+  it("normalizes service target id/name before duplicate query and persistence", () => {
+    const serviceTarget = resolveServiceReviewTarget("serving_speed");
+    expect(normalizeReviewTargetForPersistence({
+      targetId: "serving_speed",
+      targetName: "Tên client không tin cậy",
+      serviceTarget,
+    })).toEqual({ targetId: "65f100000000000000000102", targetName: "Tốc độ phục vụ" });
+
+    expect(normalizeReviewTargetForPersistence({
+      targetId: "65f000000000000000000001",
+      targetName: "Nhà hàng A",
+      serviceTarget: null,
+    })).toEqual({ targetId: "65f000000000000000000001", targetName: "Nhà hàng A" });
   });
 
   it("computes deterministic Vietnamese sentiment/topics", () => {

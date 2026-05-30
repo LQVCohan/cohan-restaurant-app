@@ -47,28 +47,33 @@ const review = {
   firstOfficialReply: null,
 };
 
-function mockQueries(me) {
-  useQuery.mockImplementation((query) => {
+const analyticsPayload = {
+  totalReviews: 1,
+  avgRating: 2,
+  verifiedRate: 1,
+  pendingCount: 0,
+  negativeCount: 1,
+  reportedCount: 0,
+  ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
+  topTags: [{ name: "service_speed", count: 1 }],
+  topStaffMentioned: [{ id: "staff1", name: "NV Demo", count: 1 }],
+  lowRatedTargets: [{ id: "65f100000000000000000102", name: "Tốc độ phục vụ", targetType: "service", count: 1, avgRating: 2 }],
+  reportBreakdown: [],
+  actionQueueCounts: { needsModeration: 0, needsReply: 1, highRisk: 1 },
+};
+
+function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }] } = {}) {
+  useQuery.mockImplementation((query, options = {}) => {
     const source = String(query?.loc?.source?.body || query || "");
     if (source.includes("query Me")) return { data: { me } };
-    if (source.includes("ManagerRestaurants")) return { data: { restaurantsByManager: { edges: [{ node: { id: "res1", name: "Cohan Demo" } }] } } };
-    if (source.includes("AllRestaurants")) return { data: { restaurants: { edges: [{ node: { id: "res1", name: "Cohan Demo" } }] } } };
+    if (source.includes("ManagerRestaurants")) return { data: { restaurantsByManager: { edges: restaurants.map((node) => ({ node })) } } };
+    if (source.includes("AllRestaurants")) return { data: { restaurants: { edges: restaurants.map((node) => ({ node })) } } };
     if (source.includes("GetReviews")) return { data: { reviews: { total: 1, items: [review] } }, loading: false, error: null, refetch: vi.fn() };
     if (source.includes("GetReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 2, pending: 0, ratingBreakdown: { 2: 1 } } } };
-    if (source.includes("GetReviewAnalytics")) return { data: { reviewAnalytics: {
-      totalReviews: 1,
-      avgRating: 2,
-      verifiedRate: 1,
-      pendingCount: 0,
-      negativeCount: 1,
-      reportedCount: 0,
-      ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
-      topTags: [{ name: "service_speed", count: 1 }],
-      topStaffMentioned: [{ id: "staff1", name: "NV Demo", count: 1 }],
-      lowRatedTargets: [{ id: "65f100000000000000000102", name: "Tốc độ phục vụ", targetType: "service", count: 1, avgRating: 2 }],
-      reportBreakdown: [],
-      actionQueueCounts: { needsModeration: 0, needsReply: 1, highRisk: 1 },
-    } }, loading: false, error: null, refetch: vi.fn() };
+    if (source.includes("GetReviewAnalytics")) {
+      if (options.skip) return { data: undefined, loading: false, error: null, refetch: vi.fn() };
+      return { data: { reviewAnalytics: analyticsPayload }, loading: false, error: null, refetch: vi.fn() };
+    }
     return { data: {}, loading: false, error: null, refetch: vi.fn() };
   });
 }
@@ -79,7 +84,7 @@ describe("ReviewManagement analytics", () => {
     useMutation.mockReturnValue([vi.fn(), {}]);
   });
 
-  it("renders analytics cards, queues, and review data for manager role", () => {
+  it("renders analytics cards, queues, and review data for manager role after restaurant scope is selected", () => {
     mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole });
     render(<ReviewManagement />);
 
@@ -90,9 +95,37 @@ describe("ReviewManagement analytics", () => {
     expect(screen.getByText("Cần phản hồi", { selector: "article" })).toBeInTheDocument();
   });
 
-  it("keeps ADMIN as admin and supports role.slug fallback", () => {
-    mockQueries({ id: "a1", fullName: "Admin", roleName: "ADMIN", role: { ...managerRole, slug: "admin" } });
+  it("skips analytics for non-admin manager until restaurantId is available", () => {
+    const analyticsCalls = [];
+    mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole }, { restaurants: [] });
+    const baseImplementation = useQuery.getMockImplementation();
+    useQuery.mockImplementation((query, options = {}) => {
+      const source = String(query?.loc?.source?.body || query || "");
+      if (source.includes("GetReviewAnalytics")) analyticsCalls.push(options);
+      return baseImplementation(query, options);
+    });
+
     render(<ReviewManagement />);
+
+    expect(analyticsCalls[0]?.skip).toBe(true);
+    expect(screen.getByText("Đang chuẩn bị dữ liệu phân tích...")).toBeInTheDocument();
+    expect(screen.queryByText("Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.")).not.toBeInTheDocument();
+  });
+
+  it("keeps ADMIN as admin and supports role.slug fallback without restaurantId", () => {
+    const analyticsCalls = [];
+    mockQueries({ id: "a1", fullName: "Admin", roleName: "ADMIN", role: { ...managerRole, slug: "admin" } }, { restaurants: [] });
+    const baseImplementation = useQuery.getMockImplementation();
+    useQuery.mockImplementation((query, options = {}) => {
+      const source = String(query?.loc?.source?.body || query || "");
+      if (source.includes("GetReviewAnalytics")) analyticsCalls.push(options);
+      return baseImplementation(query, options);
+    });
+
+    render(<ReviewManagement />);
+
+    expect(analyticsCalls[0]?.skip).toBe(false);
     expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
+    expect(screen.getByText("Tỷ lệ verified")).toBeInTheDocument();
   });
 });

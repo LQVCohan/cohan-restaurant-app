@@ -244,6 +244,7 @@ const ReviewManagement = () => {
   const roleText = getRoleText(me);
   const isAdminUser = roleText.includes("admin");
   const isManagerOrStaffUser = roleText.includes("manager") || roleText.includes("staff");
+  const canReadAnalytics = hasPermission(me, "review.analytics.read");
 
   const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId: me?.id, limit: 100 },
@@ -304,12 +305,14 @@ const ReviewManagement = () => {
     },
   });
 
+  const shouldSkipAnalytics = !canReadAnalytics || (!isAdminUser && !filters.restaurant);
+
   const { data: analyticsData, loading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery(GET_REVIEW_ANALYTICS, {
     variables: {
       restaurantId: filters.restaurant || undefined,
       targetType: gqlTargetType,
     },
-    skip: !hasPermission(me, "review.analytics.read"),
+    skip: shouldSkipAnalytics,
     fetchPolicy: "cache-and-network",
   });
 
@@ -522,6 +525,7 @@ const ReviewManagement = () => {
     canDelete: hasPermission(me, "review.delete"),
     canExport: hasPermission(me, "review.export"),
     canReply: hasPermission(me, "review.reply"),
+    canReadAnalytics,
   };
 
   const titleMap = {
@@ -595,10 +599,12 @@ const ReviewManagement = () => {
                     <p className="reviews-analytics-panel__eyebrow">Phân tích</p>
                     <h2>Tổng quan đánh giá</h2>
                   </div>
-                  {analyticsError && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => refetchAnalytics()}>Thử lại analytics</button>}
+                  {!shouldSkipAnalytics && analyticsError && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => refetchAnalytics()}>Thử lại analytics</button>}
                 </div>
 
-                {analyticsLoading ? (
+                {shouldSkipAnalytics ? (
+                  <div className="reviews-analytics-loading">Đang chuẩn bị dữ liệu phân tích...</div>
+                ) : analyticsLoading ? (
                   <div className="reviews-analytics-loading">Đang tải dữ liệu phân tích...</div>
                 ) : analyticsError ? (
                   <div className="reviews-error-box">Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.</div>
@@ -616,11 +622,11 @@ const ReviewManagement = () => {
 
                     <div className="reviews-queue-grid">
                       {queueTiles.map((tile) => (
-                        <button key={tile.label} type="button" className={`reviews-queue-tile reviews-queue-tile--${tile.tone}`}>
+                        <div key={tile.label} className={`reviews-queue-tile reviews-queue-tile--${tile.tone}`}>
                           <strong>{tile.value}</strong>
                           <span>{tile.label}</span>
                           <small>{tile.hint}</small>
-                        </button>
+                        </div>
                       ))}
                     </div>
 

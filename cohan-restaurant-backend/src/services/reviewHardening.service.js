@@ -27,6 +27,13 @@ export function resolveServiceReviewTarget(targetId) {
   return REVIEW_SERVICE_TARGETS.find((target) => target.id === key || target.slug === key) || null;
 }
 
+export function normalizeReviewTargetForPersistence({ targetId, targetName, serviceTarget }) {
+  return {
+    targetId: serviceTarget?.id || targetId,
+    targetName: serviceTarget?.name || String(targetName || "").trim(),
+  };
+}
+
 export function badUserInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }

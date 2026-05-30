@@ -13,6 +13,7 @@ import {
   forbidden,
   normalizeReviewInput,
   normalizeReviewStaff,
+  normalizeReviewTargetForPersistence,
   resolveVerifiedReview,
   unauthenticated,
   validateReviewTarget,
@@ -65,13 +66,18 @@ export default {
     const userId = ctx.user.id || ctx.user._id;
     const normalized = normalizeReviewInput(input);
     const serviceTarget = await validateReviewTarget({ targetType: input.targetType, targetId: input.targetId, restaurantId: input.restaurantId });
+    const { targetId: normalizedTargetId, targetName: normalizedTargetName } = normalizeReviewTargetForPersistence({
+      targetId: input.targetId,
+      targetName: input.targetName,
+      serviceTarget,
+    });
 
     const duplicateSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const duplicate = await Review.findOne({
       customerId: userId,
       restaurantId: input.restaurantId,
       targetType: input.targetType,
-      targetId: input.targetId,
+      targetId: normalizedTargetId,
       status: { $in: ["pending", "published", "reported"] },
       createdAt: { $gte: duplicateSince },
     }).lean();
@@ -79,12 +85,12 @@ export default {
 
     const identity = deriveCustomerIdentity(ctx);
     const staff = await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: input.restaurantId });
-    const verified = await resolveVerifiedReview({ userId, restaurantId: input.restaurantId, targetType: input.targetType, targetId: input.targetId });
+    const verified = await resolveVerifiedReview({ userId, restaurantId: input.restaurantId, targetType: input.targetType, targetId: normalizedTargetId });
     const insight = analyzeReviewText(normalized.title, normalized.content);
     const payload = {
       targetType: input.targetType,
-      targetId: serviceTarget?.id || input.targetId,
-      targetName: serviceTarget?.name || String(input.targetName || "").trim(),
+      targetId: normalizedTargetId,
+      targetName: normalizedTargetName,
       restaurantId: input.restaurantId,
       restaurantName: String(input.restaurantName || "").trim(),
       ...identity,
