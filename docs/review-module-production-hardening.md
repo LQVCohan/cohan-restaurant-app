@@ -12,7 +12,7 @@ Module review hiện hỗ trợ đánh giá nhà hàng/món ăn/dịch vụ, ph�
 
 ## GraphQL API chính
 - Query: `reviews`, `review`, `reviewStats`, `reviewComments`, `reviewReports`, `reviewReportStats`, `reviewAnalytics`.
-- Mutation: `createReview`, `updateReview`, `deleteReview` (soft hide), `setReviewStatus`, `incrementReviewHelpful`, `reactReview`, `reportReview`, `resolveReviewReport`, `createReviewComment`, `updateReviewComment`, `deleteReviewComment`, `setReviewCommentStatus`, `reactReviewComment`.
+- Mutation: `createReview`, `updateReview`, `deleteReview` (soft hide), `setReviewStatus`, `incrementReviewHelpful`, `reactReview`, `reportReview`, `resolveReviewReport`, `createReviewComment`, `updateReviewComment`, `deleteReviewComment`, `setReviewCommentStatus`, `reactReviewComment`. `ReviewInput` và `ReviewCommentInput` chỉ nhận field client-owned; identity/official reply/verified/moderation evidence luôn derive ở backend.
 - Backward compatibility: mutation cũ vẫn giữ tên/tham số chính; field/input mới được thêm additive.
 
 ## Permission matrix
@@ -70,6 +70,7 @@ Review chỉ là evidence tham khảo:
 - [ ] Official reply hiển thị badge “Phản hồi từ nhà hàng”.
 - [ ] Reaction/helpful không spam count khi bấm lặp hoặc đổi reaction.
 - [ ] Review gắn staff xuất hiện trong performance factors sau recalc.
+- [ ] Manager thấy đúng “Hiển thị X / total đánh giá” khi danh sách bị giới hạn 100 item mới nhất.
 - [ ] Export CSV không lỗi tiếng Việt, dấu phẩy hoặc dấu nháy kép.
 
 ## Known limitations

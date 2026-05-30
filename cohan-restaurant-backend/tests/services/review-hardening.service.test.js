@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { buildSchema, parse, validate } from "graphql";
 import { describe, expect, it } from "vitest";
 import {
   analyzeReviewText,
@@ -41,5 +43,34 @@ describe("review hardening helpers", () => {
     expect(result.sentiment).toBe("positive");
     expect(result.topicTags).toContain("food_quality");
     expect(result.topicTags).toContain("service_speed");
+  });
+});
+
+
+const reviewSchemaText = readFileSync(new URL("../../graphql/schema/review.graphql", import.meta.url), "utf8");
+const minimalSchema = buildSchema(`
+  scalar JSON
+  scalar DateTime
+  type Query { _empty: String }
+  type Mutation { _empty: String }
+  ${reviewSchemaText}
+`);
+
+describe("review GraphQL input schema hardening", () => {
+  it("allows createReviewComment without authorName for backend-derived identity", () => {
+    const document = parse(`
+      mutation {
+        createReviewComment(input: { reviewId: "65f000000000000000000001", officialReply: true, content: "Xin cảm ơn" }) { id }
+      }
+    `);
+    expect(validate(minimalSchema, document)).toEqual([]);
+  });
+
+  it("does not expose server-owned fields on ReviewInput", () => {
+    const reviewInput = minimalSchema.getType("ReviewInput");
+    expect(reviewInput.getFields().customerName).toBeUndefined();
+    expect(reviewInput.getFields().customerId).toBeUndefined();
+    expect(reviewInput.getFields().verifiedPurchase).toBeUndefined();
+    expect(reviewInput.getFields().moderationReason).toBeUndefined();
   });
 });

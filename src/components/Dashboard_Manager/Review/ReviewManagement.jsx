@@ -71,7 +71,7 @@ const GET_REVIEWS = gql`
       status: $status
       minRating: $minRating
       maxRating: $maxRating
-      limit: 200
+      limit: 100
       skip: 0
     ) {
       total
@@ -234,6 +234,11 @@ const ReviewManagement = () => {
     );
   }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
 
+  useEffect(() => {
+    if (!me || me.roleName === "admin" || filters.restaurant || !restaurantOptions.length) return;
+    setFilters((prev) => (prev.restaurant ? prev : { ...prev, restaurant: restaurantOptions[0].id }));
+  }, [filters.restaurant, me, restaurantOptions]);
+
   const gqlTargetType = ["all", "pending", "reported", "hidden", "rejected"].includes(currentTab)
     ? undefined
     : currentTab;
@@ -274,6 +279,8 @@ const ReviewManagement = () => {
     () => (data?.reviews?.items || []).map(normalizeReview),
     [data],
   );
+  const reviewsTotal = Number(data?.reviews?.total || 0);
+  const isPartialReviewList = reviewsTotal > reviews.length;
 
   const filteredReviews = useMemo(() => {
     let list = [...reviews];
@@ -432,14 +439,16 @@ const ReviewManagement = () => {
         escapeCsv(new Date(r.created_at).toLocaleString("vi-VN")),
       ].join(","),
     );
-    const csv = [header, ...rows].join("\n");
+    const csv = `\uFEFF${[header, ...rows].join("\n")}`;
 
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+    const today = new Date().toISOString().slice(0, 10);
     link.href = url;
-    link.download = "reviews_export.csv";
+    link.download = `reviews_export_${today}.csv`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const permissions = {
@@ -515,6 +524,10 @@ const ReviewManagement = () => {
             <section className="reviews-content-area">
               <div className="reviews-content-header">
                 <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
+                <div className="reviews-content-header__meta">
+                  Hiển thị {reviews.length} / {reviewsTotal} đánh giá
+                  {isPartialReviewList && " · Đang hiển thị 100 đánh giá mới nhất, hãy dùng bộ lọc để thu hẹp kết quả."}
+                </div>
               </div>
 
               {error ? (

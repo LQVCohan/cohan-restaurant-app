@@ -200,8 +200,14 @@ export default {
     report.updatedBy = report.resolvedBy;
     await report.save();
     const reportsCount = await recalcReviewReportCount(report.reviewId);
-    const review = await Review.findByIdAndUpdate(report.reviewId, { reportsCount, ...(reportsCount === 0 ? { status: "published" } : {}), updatedBy: report.resolvedBy }, { new: true });
-    await logReviewEvent({ review, verb: "review.report.resolve", ctx, meta: { reportId: report.id, status, reportsCount } });
+    const currentReview = await Review.findById(report.reviewId);
+    const statusRestored = currentReview?.status === "reported" && reportsCount === 0;
+    const review = await Review.findByIdAndUpdate(
+      report.reviewId,
+      { reportsCount, ...(statusRestored ? { status: "published" } : {}), updatedBy: report.resolvedBy },
+      { new: true },
+    );
+    await logReviewEvent({ review, verb: "review.report.resolve", ctx, meta: { reportId: report.id, status, reportsCount, statusRestored } });
     return report;
   },
 };

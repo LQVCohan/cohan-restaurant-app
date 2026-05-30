@@ -257,6 +257,52 @@ const ReviewsSection = ({ restaurantId }) => {
     [staffData],
   );
 
+  const requireReviewAuth = (actionName) => {
+    if (isAuthenticated || user?.id) return true;
+    setSubmitSuccess("");
+    setSubmitError(`Vui lòng đăng nhập để ${actionName}.`);
+    return false;
+  };
+
+  const handleReactReview = async (reviewId, reaction = "like") => {
+    if (!requireReviewAuth("thích đánh giá")) return;
+    try {
+      setSubmitError("");
+      await reactReview({ variables: { id: reviewId, reaction } });
+    } catch (error) {
+      setSubmitError(error?.message || "Không thể cập nhật tương tác đánh giá.");
+    }
+  };
+
+  const handleHelpfulReview = async (reviewId) => {
+    if (!requireReviewAuth("đánh dấu hữu ích")) return;
+    try {
+      setSubmitError("");
+      await helpfulReview({ variables: { id: reviewId } });
+    } catch (error) {
+      setSubmitError(error?.message || "Không thể đánh dấu hữu ích.");
+    }
+  };
+
+  const handleOpenReport = (review) => {
+    if (!requireReviewAuth("báo cáo đánh giá")) return;
+    setSubmitError("");
+    setReportingReview(review);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportingReview?.id || !requireReviewAuth("báo cáo đánh giá")) return;
+    try {
+      setSubmitError("");
+      await reportReview({ variables: { id: reportingReview.id, input: { reason: reportReason, detail: reportDetail } } });
+      setReportingReview(null);
+      setReportDetail("");
+      setSubmitSuccess("Đã gửi báo cáo đánh giá.");
+    } catch (error) {
+      setSubmitError(error?.message || "Không thể gửi báo cáo đánh giá.");
+    }
+  };
+
   const handleSubmitReview = async () => {
     setSubmitSuccess("");
     if (!newReview.content.trim()) {
@@ -331,6 +377,12 @@ const ReviewsSection = ({ restaurantId }) => {
           ✍️ Viết đánh giá
         </button>
       </div>
+
+      {(submitError || submitSuccess) && (
+        <div className={`reviews-inline-message ${submitError ? "reviews-inline-message--error" : "reviews-inline-message--success"}`} role="status">
+          {submitError || submitSuccess}
+        </div>
+      )}
 
       <div className="reviews-summary">
         <div className="rating-overview">
@@ -423,16 +475,16 @@ const ReviewsSection = ({ restaurantId }) => {
                 </div>
 
                 <div className="review-actions">
-                  <button className="review-action" aria-label="Thích" onClick={() => reactReview({ variables: { id: review.id, reaction: "like" } })}>
+                  <button className="review-action" aria-label="Thích" onClick={() => handleReactReview(review.id, "like")}>
                     👍 {review.likes || 0}
                   </button>
-                  <button className="review-action" aria-label="Hữu ích" onClick={() => helpfulReview({ variables: { id: review.id } })}>
+                  <button className="review-action" aria-label="Hữu ích" onClick={() => handleHelpfulReview(review.id)}>
                     🤝 {review.helpful || 0}
                   </button>
                   <button className="review-action" aria-label="Bình luận">
                     💬 {review.replies || 0}
                   </button>
-                  <button className="review-action" aria-label="Báo cáo" onClick={() => setReportingReview(review)}>
+                  <button className="review-action" aria-label="Báo cáo" onClick={() => handleOpenReport(review)}>
                     🚩 Báo cáo
                   </button>
                 </div>
@@ -480,7 +532,7 @@ const ReviewsSection = ({ restaurantId }) => {
                 <option value="other">Khác</option>
               </select>
               <textarea rows={4} value={reportDetail} onChange={(e) => setReportDetail(e.target.value)} placeholder="Mô tả thêm (không bắt buộc)" />
-              <button className="btn btn--primary" onClick={async () => { await reportReview({ variables: { id: reportingReview.id, input: { reason: reportReason, detail: reportDetail } } }); setReportingReview(null); setReportDetail(""); setSubmitSuccess("Đã gửi báo cáo đánh giá."); }}>Gửi báo cáo</button>
+              <button className="btn btn--primary" onClick={handleSubmitReport}>Gửi báo cáo</button>
             </div>
           </div>
         </div>

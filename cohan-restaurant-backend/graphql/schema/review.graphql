@@ -79,11 +79,7 @@ input ReviewInput {
   restaurantId: ID!
   restaurantName: String
 
-  customerId: ID
-  customerName: String
-  customerAvatar: String
   staffId: ID
-  staffName: String
 
   rating: Int!
   title: String
@@ -91,18 +87,6 @@ input ReviewInput {
   images: [String]
 
   location: String
-  verifiedPurchase: Boolean
-  verifiedSource: String
-  verifiedSourceId: ID
-  visitedAt: String
-  orderCompletedAt: String
-  sentiment: String
-  topicTags: [String]
-  moderationReason: String
-  moderationNote: String
-  moderatedBy: ID
-  moderatedAt: String
-  firstOfficialReplyAt: String
   tags: [String]
 }
 
@@ -171,11 +155,8 @@ type ReviewComment {
 
 input ReviewCommentInput {
   reviewId: ID!
-  restaurantId: ID!
+  restaurantId: ID
   parentId: ID
-  authorUserId: ID
-  authorName: String!
-  authorAvatar: String
   officialReply: Boolean
   content: String!
 }
