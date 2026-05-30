@@ -2,7 +2,7 @@ import React from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const REQUEST_MY_VERIFICATION = gql`
   mutation RequestMyVerification($channel: VerificationChannel = AUTO) {
@@ -34,9 +34,10 @@ function resultText(result, channelLabel) {
 }
 
 export default function VerifyEmailPending() {
-  const { user, logout } = React.useContext(AuthContext) || {};
-  const email = user?.email || "";
-  const phone = user?.phone || "";
+  const { user, logout, isAuthenticated } = React.useContext(AuthContext) || {};
+  const location = useLocation();
+  const email = user?.email || location.state?.email || "";
+  const phone = user?.phone || location.state?.phone || "";
   const navigate = useNavigate();
   const [feedback, setFeedback] = React.useState("");
   const [requestMyVerification, { loading: loadingMy }] = useMutation(REQUEST_MY_VERIFICATION, {
@@ -54,8 +55,12 @@ export default function VerifyEmailPending() {
 
   const sendChannel = (channel) => {
     setFeedback("");
-    if (channel === "EMAIL" && email) {
-      requestMyVerification({ variables: { channel } }).catch(() => resend({ variables: { email } }));
+    if (channel === "EMAIL" && email && !isAuthenticated) {
+      resend({ variables: { email } });
+      return;
+    }
+    if (!isAuthenticated) {
+      setFeedback("Vui lòng đăng nhập sau khi xác minh. Hiện chỉ có thể gửi lại email từ trang này.");
       return;
     }
     requestMyVerification({ variables: { channel } });
@@ -97,7 +102,7 @@ export default function VerifyEmailPending() {
               navigate("/login", { replace: true });
             }}
           >
-            Đăng xuất
+            {isAuthenticated ? "Đăng xuất" : "Đến đăng nhập"}
           </button>
         </div>
 

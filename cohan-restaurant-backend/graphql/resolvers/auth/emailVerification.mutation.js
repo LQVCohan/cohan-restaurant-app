@@ -20,22 +20,57 @@ function normalizeChannel(channel) {
   return String(channel || "AUTO").toUpperCase();
 }
 
-async function assertCanResendForTarget(ctx, target) {
+function idString(value) {
+  if (!value) return "";
+  if (typeof value === "object") return String(value._id || value.id || value.value || "");
+  return String(value);
+}
+
+function targetRestaurantIds(target) {
+  const ids = [
+    target?.restaurantForStaff,
+    ...(Array.isArray(target?.refRestaurants) ? target.refRestaurants : []),
+  ]
+    .map(idString)
+    .filter(Boolean);
+  return [...new Set(ids)];
+}
+
+function forbidden() {
+  return new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+}
+
+async function hasAccessToAnyTargetRestaurant(ctx, restaurantIds) {
+  for (const restaurantId of restaurantIds) {
+    try {
+      await requireRestaurantAccess(ctx, restaurantId);
+      return true;
+    } catch (err) {
+      const code = err?.extensions?.code || err?.code || err?.statusCode;
+      if (!["FORBIDDEN", "FORBIDDEN_SCOPE", 403].includes(code)) throw err;
+    }
+  }
+  return false;
+}
+
+export async function assertCanResendForTarget(ctx, target) {
   requireAuth(ctx);
   if (hasRole(ctx.user, ["admin"])) return true;
+
+  const isTargetAdmin = String(target?.userType || target?.roleName || target?.role?.slug || "").toUpperCase() === "ADMIN";
+  if (isTargetAdmin) throw forbidden();
+
+  const currentUserId = idString(ctx.user.id || ctx.user._id);
+  const targetUserId = idString(target?._id || target?.id);
+  if (currentUserId && currentUserId === targetUserId) return true;
+
   if (hasRole(ctx.user, ["manager", "hr"])) {
-    const restaurantId = target?.restaurantForStaff || target?.refRestaurants?.[0] || null;
-    if (!restaurantId) {
-      throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
-    }
-    await requireRestaurantAccess(ctx, restaurantId);
-    if (String(target?.userType || "").toUpperCase() === "ADMIN") {
-      throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
-    }
-    return true;
+    const restaurantIds = targetRestaurantIds(target);
+    if (!restaurantIds.length) throw forbidden();
+    if (await hasAccessToAnyTargetRestaurant(ctx, restaurantIds)) return true;
   }
-  if (String(ctx.user.id || ctx.user._id) === String(target?._id || target?.id)) return true;
-  throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+
+  throw forbidden();
 }
 
 // Backward-compatible helper để nơi khác (vd: createUser) có thể gọi tái sử dụng.

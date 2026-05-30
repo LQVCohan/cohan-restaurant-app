@@ -115,6 +115,7 @@ enum VerificationDeliveryStatus {
   NOT_CONFIGURED
   COOLDOWN
   ALREADY_VERIFIED
+  VERIFIED
 }
 
 # =========================

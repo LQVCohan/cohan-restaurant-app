@@ -49,6 +49,7 @@ vi.mock("../../lib/mailer.js", () => ({
 vi.mock("../../models/event-log.model.js", () => ({ default: { create: eventLogCreate } }));
 
 const servicePromise = import("../../src/services/auth/accountVerification.service.js");
+const emailVerificationResolverPromise = import("../../graphql/resolvers/auth/emailVerification.mutation.js");
 
 describe("accountVerification.service", () => {
   beforeEach(() => {
@@ -72,6 +73,7 @@ describe("accountVerification.service", () => {
     const result = await service.issueVerificationForUser({ user: { _id: "u1" }, channels: "EMAIL" });
     const saved = store.get("u1");
 
+    expect(result.ok).toBe(true);
     expect(result.status).toBe("SENT");
     expect(saved.emailVerifyTokenHash).toMatch(/^[a-f0-9]{64}$/);
     expect(saved.emailVerifyToken).toBeNull();
@@ -90,12 +92,37 @@ describe("accountVerification.service", () => {
 
     const result = await service.issueVerificationForUser({ user: { _id: "u1" }, channels: "EMAIL" });
 
+    expect(result.ok).toBe(false);
     expect(result.status).toBe("COOLDOWN");
     expect(result.email.cooldownUntil).toBeInstanceOf(Date);
     expect(mailerSendMail).not.toHaveBeenCalled();
   });
 
-  it("verifies a legacy raw email token and activates a pending account", async () => {
+  it("returns NOT_CONFIGURED and ok=false when mailer skips delivery", async () => {
+    const service = await servicePromise;
+    mailerSendMail.mockResolvedValue({ accepted: [], rejected: ["a@test.com"], skipped: true, messageId: null });
+    store.set("u1", { _id: "u1", email: "a@test.com", emailVerified: false });
+
+    const result = await service.issueVerificationForUser({ user: { _id: "u1" }, channels: "EMAIL" });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("NOT_CONFIGURED");
+    expect(result.email.error).toBe("EMAIL_PROVIDER_NOT_CONFIGURED");
+  });
+
+  it("returns SKIPPED and ok=true only for disabled verification", async () => {
+    const service = await servicePromise;
+    process.env.ENABLE_EMAIL_VERIFICATION = "false";
+    store.set("u1", { _id: "u1", email: "a@test.com", emailVerified: false });
+
+    const result = await service.issueVerificationForUser({ user: { _id: "u1" }, channels: "EMAIL" });
+
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe("SKIPPED");
+    expect(result.email.error).toBe("EMAIL_VERIFICATION_DISABLED");
+  });
+
+  it("verifies a legacy raw email token, marks status verified, and activates pending account", async () => {
     const service = await servicePromise;
     store.set("u1", {
       _id: "u1",
@@ -103,6 +130,7 @@ describe("accountVerification.service", () => {
       emailVerified: false,
       emailVerifyToken: "raw-token",
       emailVerifyTokenExp: new Date(Date.now() + 60_000),
+      verificationLastStatus: "sent",
       status: "pending",
     });
 
@@ -110,19 +138,105 @@ describe("accountVerification.service", () => {
     const saved = store.get("u1");
     expect(saved.emailVerified).toBe(true);
     expect(saved.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(saved.verificationLastStatus).toBe("verified");
     expect(saved.status).toBe("active");
     expect(saved.emailVerifyToken).toBeNull();
     expect(saved.emailVerifyTokenExp).toBeNull();
   });
 
-  it("issues and verifies phone tokens with SMS mock provider", async () => {
+  it("does not auto-activate blocked accounts when token verifies", async () => {
+    const service = await servicePromise;
+    store.set("u1", {
+      _id: "u1",
+      email: "a@test.com",
+      emailVerified: false,
+      emailVerifyToken: "raw-token",
+      emailVerifyTokenExp: new Date(Date.now() + 60_000),
+      status: "blocked",
+    });
+
+    await expect(service.verifyEmailToken("raw-token")).resolves.toBe(true);
+
+    expect(store.get("u1").emailVerified).toBe(true);
+    expect(store.get("u1").verificationLastStatus).toBe("verified");
+    expect(store.get("u1").status).toBe("blocked");
+  });
+
+  it("verifies a legacy raw phone token, marks status verified, and activates with any policy", async () => {
+    const service = await servicePromise;
+    process.env.ACCOUNT_ACTIVATION_REQUIRE = "any";
+    store.set("u2", {
+      _id: "u2",
+      phone: "0901234567",
+      phoneVerified: false,
+      phoneVerifyToken: "phone-token",
+      phoneVerifyTokenExp: new Date(Date.now() + 60_000),
+      verificationLastStatus: "sent",
+      status: "pending",
+    });
+
+    await expect(service.verifyPhoneToken("phone-token")).resolves.toBe(true);
+
+    expect(store.get("u2").phoneVerified).toBe(true);
+    expect(store.get("u2").verificationLastStatus).toBe("verified");
+    expect(store.get("u2").status).toBe("active");
+  });
+
+  it("issues phone tokens with SMS mock provider", async () => {
     const service = await servicePromise;
     process.env.ACCOUNT_ACTIVATION_REQUIRE = "any";
     store.set("u2", { _id: "u2", phone: "0901234567", phoneVerified: false, status: "pending" });
 
     const result = await service.issueVerificationForUser({ user: { _id: "u2" }, channels: "SMS" });
+    expect(result.ok).toBe(true);
     expect(result.status).toBe("SENT");
     const savedAfterIssue = store.get("u2");
     expect(savedAfterIssue.phoneVerifyTokenHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("returns NOT_CONFIGURED for twilio placeholder without crashing", async () => {
+    const service = await servicePromise;
+    process.env.SMS_PROVIDER = "twilio";
+    store.set("u2", { _id: "u2", phone: "0901234567", phoneVerified: false });
+
+    const result = await service.issueVerificationForUser({ user: { _id: "u2" }, channels: "SMS" });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("NOT_CONFIGURED");
+    expect(result.sms.error).toBe("SMS_PROVIDER_NOT_CONFIGURED");
+  });
+});
+
+describe("emailVerification resend scope", () => {
+  it("allows manager when any target refRestaurant is in scope", async () => {
+    const { assertCanResendForTarget } = await emailVerificationResolverPromise;
+    await expect(assertCanResendForTarget(
+      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-b"] } },
+      { _id: "customer-1", userType: "CUSTOMER", refRestaurants: ["restaurant-a", { _id: "restaurant-b" }] },
+    )).resolves.toBe(true);
+  });
+
+  it("denies manager when no target restaurant is in scope", async () => {
+    const { assertCanResendForTarget } = await emailVerificationResolverPromise;
+    await expect(assertCanResendForTarget(
+      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-a"] } },
+      { _id: "customer-1", userType: "CUSTOMER", refRestaurants: ["restaurant-b"] },
+    )).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
+  });
+
+  it("denies non-admin manager from resending admin verification", async () => {
+    const { assertCanResendForTarget } = await emailVerificationResolverPromise;
+    await expect(assertCanResendForTarget(
+      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-a"] } },
+      { _id: "admin-1", userType: "ADMIN", refRestaurants: ["restaurant-a"] },
+    )).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
+  });
+
+  it("allows admin for users without restaurant scope", async () => {
+    const { assertCanResendForTarget } = await emailVerificationResolverPromise;
+    await expect(assertCanResendForTarget(
+      { user: { id: "admin-1", roleName: "admin" } },
+      { _id: "customer-1", userType: "CUSTOMER", refRestaurants: [] },
+    )).resolves.toBe(true);
   });
 });

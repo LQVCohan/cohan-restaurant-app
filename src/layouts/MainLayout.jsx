@@ -31,6 +31,8 @@ export default function MainLayout({ children }) {
     "/login",
     "/verify-email",
     "/verify-email/confirm",
+    "/verify-phone/confirm",
+    "/verify-account/confirm",
     "/manager",
     "/admin",
   ];

@@ -15,6 +15,7 @@ const STATUS = {
   NOT_CONFIGURED: "NOT_CONFIGURED",
   COOLDOWN: "COOLDOWN",
   ALREADY_VERIFIED: "ALREADY_VERIFIED",
+  VERIFIED: "VERIFIED",
 };
 
 function boolEnv(name, fallback = false) {
@@ -308,7 +309,7 @@ export async function issueVerificationForUser({ user, channels = "AUTO", reques
     error: Object.values(results).find((r) => r?.error)?.error,
   });
   return {
-    ok: [STATUS.SENT, STATUS.ALREADY_VERIFIED, STATUS.SKIPPED].includes(status),
+    ok: dispatchOk(status, results),
     userId: String(fresh._id),
     channels: resolvedChannels,
     status,
@@ -317,6 +318,13 @@ export async function issueVerificationForUser({ user, channels = "AUTO", reques
     sms: results.sms || null,
     errors: Object.values(results).map((r) => r?.error).filter(Boolean),
   };
+}
+
+function dispatchOk(status, results = {}) {
+  if ([STATUS.SENT, STATUS.ALREADY_VERIFIED].includes(status)) return true;
+  if (status !== STATUS.SKIPPED) return false;
+  const errors = Object.values(results).map((r) => String(r?.error || "")).filter(Boolean);
+  return errors.length > 0 && errors.every((error) => error.endsWith("_DISABLED"));
 }
 
 function statusMessage(status, results = {}) {
@@ -359,10 +367,10 @@ async function verifyToken({ token, channel }) {
     if (user.status === "pending") user.status = "active";
   }
   user.verificationLastChannel = channel;
-  user.verificationLastStatus = "sent";
+  user.verificationLastStatus = "verified";
   user.verificationLastError = null;
   await user.save();
-  await writeVerificationAudit({ ctx: null, user, verb: isEmail ? "account.verification.email_verified" : "account.verification.phone_verified", status: STATUS.SENT, channels: [channel], reason: "verify", result: { sent: true } });
+  await writeVerificationAudit({ ctx: null, user, verb: isEmail ? "account.verification.email_verified" : "account.verification.phone_verified", status: STATUS.VERIFIED, channels: [channel], reason: "verify", result: { sent: true } });
   return true;
 }
 

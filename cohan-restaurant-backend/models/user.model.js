@@ -181,7 +181,7 @@ const userSchema = BaseSchemaModel(
     },
     verificationLastStatus: {
       type: String,
-      enum: ["sent", "skipped", "failed", "not_configured", "cooldown", "already_verified", null],
+      enum: ["sent", "skipped", "failed", "not_configured", "cooldown", "already_verified", "verified", null],
       default: null,
     },
     verificationLastError: { type: String, default: null },

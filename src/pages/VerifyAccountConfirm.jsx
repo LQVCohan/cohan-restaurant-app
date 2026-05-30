@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 
 const VERIFY_ACCOUNT = gql`
   mutation VerifyAccountToken($token: String!, $channel: VerificationChannel!) {
@@ -23,6 +24,7 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     [forcedChannel, location.pathname, searchParams],
   );
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext) || {};
   const [status, setStatus] = useState("loading");
   const isSms = channel === "SMS";
 
@@ -30,7 +32,8 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     onCompleted: (data) => {
       if (data.verifyAccountToken) {
         setStatus("success");
-        setTimeout(() => navigate("/login"), 3000);
+        logout?.();
+        setTimeout(() => navigate("/login", { replace: true }), 3000);
       }
     },
     onError: () => setStatus("error"),

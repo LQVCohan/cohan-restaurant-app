@@ -19,11 +19,9 @@ export function isSmsConfigured() {
   if (provider === "mock") return nodeEnv() !== "production";
   if (provider === "http") return Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY);
   if (provider === "twilio") {
-    return Boolean(
-      process.env.SMS_TWILIO_ACCOUNT_SID &&
-        process.env.SMS_TWILIO_AUTH_TOKEN &&
-        (process.env.SMS_TWILIO_FROM || process.env.SMS_FROM),
-    );
+    // Twilio SDK/REST adapter is intentionally not enabled yet.
+    // Use SMS_PROVIDER=http for production gateways until an adapter is implemented.
+    return false;
   }
   return false;
 }
@@ -59,10 +57,6 @@ async function sendViaHttp({ to, text }) {
   };
 }
 
-async function sendViaTwilioPlaceholder() {
-  throw new Error("SMS_TWILIO_PROVIDER_REQUIRES_HTTP_OR_SDK_ADAPTER");
-}
-
 export async function sendSms({ to, text }) {
   const provider = providerName();
 
@@ -95,11 +89,6 @@ export async function sendSms({ to, text }) {
 
   if (provider === "http") {
     const result = await sendViaHttp({ to, text });
-    return { ...result, sent: true, skipped: false };
-  }
-
-  if (provider === "twilio") {
-    const result = await sendViaTwilioPlaceholder({ to, text });
     return { ...result, sent: true, skipped: false };
   }
 
