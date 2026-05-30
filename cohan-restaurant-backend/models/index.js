@@ -57,6 +57,8 @@ export { default as TableCustomer } from "./tableCustomer.model.js";
 export { default as ReviewComment } from "./review-comment.model.js";
 export { default as ReviewReaction } from "./review-reaction.model.js";
 export { default as ReviewCommentReaction } from "./review-comment-reaction.model.js";
+export { default as ReviewHelpful } from "./review-helpful.model.js";
+export { default as ReviewReport } from "./review-report.model.js";
 export { default as Cart } from "./cart.model.js";
 export { default as CategoryMenu } from "./category-menu.model.js";
 export { default as OrderTracking } from "./order-tracking.model.js";

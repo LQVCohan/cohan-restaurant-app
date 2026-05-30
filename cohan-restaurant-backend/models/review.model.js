@@ -76,13 +76,24 @@ const ReviewSchema = BaseSchemaModel({
   // Thông tin thêm
   location: { type: String, default: "" },
   verifiedPurchase: { type: Boolean, default: false },
+  verifiedSource: { type: String, enum: ["order", "reservation", "payment", "manual", "none"], default: "none" },
+  verifiedSourceId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  visitedAt: { type: Date, default: null },
+  orderCompletedAt: { type: Date, default: null },
+  sentiment: { type: String, enum: ["positive", "neutral", "negative"], default: "neutral", index: true },
+  topicTags: [{ type: String }],
+  moderationReason: { type: String, default: "" },
+  moderationNote: { type: String, default: "" },
+  moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  moderatedAt: { type: Date, default: null },
+  firstOfficialReplyAt: { type: Date, default: null },
   tags: [{ type: String }],
 
   // Trạng thái moderation
   status: {
     type: String,
     enum: ["published", "pending", "hidden", "reported", "rejected"],
-    default: "published",
+    default: "pending",
   },
 
   // Các counter giống FB (không lưu list user, chỉ tổng)
@@ -99,4 +110,7 @@ const ReviewSchema = BaseSchemaModel({
   },
 });
 
-export default mongoose.model("Review", ReviewSchema);
+ReviewSchema.index({ customerId: 1, restaurantId: 1, targetType: 1, targetId: 1, createdAt: -1 });
+ReviewSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
+
+export default mongoose.models.Review || mongoose.model("Review", ReviewSchema);

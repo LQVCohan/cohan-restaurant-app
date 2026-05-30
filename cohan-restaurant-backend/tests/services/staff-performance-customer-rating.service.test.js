@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   customerReviewAggregate: vi.fn(),
   snapshotFindOneAndUpdate: vi.fn(),
   kitchenOrderWorkItemFind: vi.fn(),
+  performanceIncidentFind: vi.fn(),
+  scoreAdjustmentFind: vi.fn(),
+  scoreReversalFind: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", () => ({
@@ -27,6 +30,9 @@ vi.mock("../../models/index.js", () => ({
   Review: { aggregate: mocks.customerReviewAggregate },
   StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
   KitchenOrderWorkItem: { find: mocks.kitchenOrderWorkItemFind },
+  PerformanceIncident: { find: mocks.performanceIncidentFind },
+  StaffPerformanceScoreAdjustment: { find: mocks.scoreAdjustmentFind },
+  StaffPerformanceScoreReversal: { find: mocks.scoreReversalFind },
 }));
 
 import { recalculateStaffPerformanceSnapshots } from "../../src/services/staffPerformance/staffPerformance.service.js";
@@ -74,6 +80,9 @@ describe("staffPerformance customer rating factors", () => {
       session: vi.fn().mockResolvedValue([]),
       lean: vi.fn().mockResolvedValue([]),
     });
+    mocks.performanceIncidentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
+    mocks.scoreAdjustmentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
+    mocks.scoreReversalFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
     mocks.snapshotFindOneAndUpdate.mockReturnValue({
       populate: vi.fn().mockReturnValue(chainLean(snapshotDocWithScore())),
     });
@@ -94,7 +103,7 @@ describe("staffPerformance customer rating factors", () => {
   });
 
   it("counts reviews in period for exact staffId", async () => {
-    mocks.customerReviewAggregate.mockResolvedValue([{ averageRating: 4.2, totalReviews: 5 }]);
+    mocks.customerReviewAggregate.mockResolvedValue([{ averageRating: 4.2, totalReviews: 5, verifiedReviews: 3, verifiedRatingSum: 13 }]);
 
     await recalculateStaffPerformanceSnapshots({
       input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-15" },
@@ -105,6 +114,8 @@ describe("staffPerformance customer rating factors", () => {
     expect(update.factors.staffRate).toBe(4.2);
     expect(update.factors.staffRateCount).toBe(5);
     expect(update.factors.customerRatingScore).toBe(84);
+    expect(update.factors.verifiedStaffRateCount).toBe(3);
+    expect(update.factors.unverifiedStaffRateCount).toBe(2);
   });
 
   it("filters only published (visible) reviews in aggregate pipeline", async () => {
@@ -130,7 +141,21 @@ describe("staffPerformance customer rating factors", () => {
     const update = mocks.snapshotFindOneAndUpdate.mock.calls[0][1].$set;
     expect(update.factors.staffRateCount).toBe(1);
     expect(update.factors.staffRate).toBe(5);
-    expect(update.factors.customerRatingScore).toBe(100);
+    expect(update.factors.customerRatingScore).toBe(0);
+  });
+
+  it("does not apply customer rating score before threshold", async () => {
+    mocks.customerReviewAggregate.mockResolvedValue([{ averageRating: 1, totalReviews: 2, verifiedReviews: 1, verifiedRatingSum: 1 }]);
+
+    await recalculateStaffPerformanceSnapshots({
+      input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-15" },
+      ctx: { user: { id: "m1", roleName: "manager", fullName: "Manager" } },
+    });
+
+    const update = mocks.snapshotFindOneAndUpdate.mock.calls[0][1].$set;
+    expect(update.factors.staffRateCount).toBe(2);
+    expect(update.factors.customerRatingScore).toBe(0);
+    expect(update.factors.qualityEvidence.customerPenalty).toBe(0);
   });
 
   it("does not change finalPerformanceScore when only customer review data changes", async () => {

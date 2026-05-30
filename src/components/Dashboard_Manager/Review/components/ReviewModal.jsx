@@ -40,6 +40,8 @@ const GET_REVIEW_COMMENTS = gql`
         authorUserId
         authorName
         authorAvatar
+        officialReply
+        authorType
         content
         status
         repliesCount
@@ -76,7 +78,7 @@ function formatDate(dateString) {
   return date.toLocaleString("vi-VN");
 }
 
-const ReviewModal = ({ visible, review, me, onClose }) => {
+const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
   const [replyText, setReplyText] = useState("");
 
   const reviewId = review?.id;
@@ -112,9 +114,7 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
         input: {
           reviewId: detail.id,
           restaurantId: detail.restaurantId,
-          authorUserId: me?.id || null,
-          authorName: me?.fullName || "Nhà hàng",
-          authorAvatar: me?.avatarUrl || "",
+          officialReply: true,
           content: replyText.trim(),
         },
       },
@@ -189,6 +189,7 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
                         </div>
                         <div className="reviews-comment-item__content">
                           <strong>{comment.authorName}</strong>
+                          {comment.officialReply && <span className="reviews-official-badge">Phản hồi từ nhà hàng</span>}
                           <div>{comment.content}</div>
                           <small>{formatDate(comment.createdAt)}</small>
                         </div>
@@ -198,7 +199,8 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
                 )}
               </div>
 
-              <div style={{ marginTop: 14 }}>
+              {canReply && (
+                <div style={{ marginTop: 14 }}>
                 <textarea
                   rows={3}
                   placeholder="Nhập phản hồi từ nhà hàng..."
@@ -206,6 +208,7 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
                   onChange={(e) => setReplyText(e.target.value)}
                 />
               </div>
+              )}
             </>
           )}
         </div>
@@ -217,10 +220,10 @@ const ReviewModal = ({ visible, review, me, onClose }) => {
           <button
             type="button"
             className="reviews-btn reviews-btn-primary"
-            disabled={creatingReply || !replyText.trim()}
+            disabled={!canReply || creatingReply || !replyText.trim()}
             onClick={handleCreateReply}
           >
-            {creatingReply ? "Đang gửi..." : "Gửi phản hồi"}
+            {!canReply ? "Không có quyền phản hồi" : creatingReply ? "Đang gửi..." : "Gửi phản hồi"}
           </button>
         </div>
       </div>
