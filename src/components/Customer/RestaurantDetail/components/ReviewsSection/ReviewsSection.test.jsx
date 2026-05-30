@@ -24,6 +24,12 @@ const sampleReview = {
   helpfulCount: 0,
   commentsCount: 0,
   verifiedPurchase: true,
+  firstOfficialReply: {
+    id: "c-official-1",
+    authorName: "Nhà hàng Cohan",
+    content: "Cảm ơn bạn đã góp ý, nhà hàng đã ghi nhận.",
+    createdAt: "2026-05-29T01:00:00.000Z",
+  },
 };
 
 const renderWithAuth = (ui, value = { isAuthenticated: true, user: { id: "u1", fullName: "Khách A" } }) => render(
@@ -72,7 +78,7 @@ describe("ReviewsSection staff tagging", () => {
       if (source.includes("GetRestaurantReviews")) return { data: { reviews: { items: [sampleReview], total: 1 } }, loading: false };
       if (source.includes("GetRestaurantReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 5, ratingBreakdown: { 5: 1 } } }, loading: false };
       if (source.includes("GetPublicRestaurantStaff")) return { data: { publicRestaurantStaff: [{ id: "s1", fullName: "NV A" }] }, loading: false };
-      if (source.includes("GetReviewComments")) return { data: { reviewComments: { items: [] } }, loading: false };
+      expect(source).not.toContain("GetReviewComments");
       return { data: {}, loading: false };
     });
 
@@ -89,6 +95,26 @@ describe("ReviewsSection staff tagging", () => {
     fireEvent.click(screen.getByRole("button", { name: /báo cáo/i }));
     expect(reportReviewMock).not.toHaveBeenCalled();
     expect((await screen.findAllByText("Vui lòng đăng nhập để báo cáo đánh giá."))[0]).toBeInTheDocument();
+  });
+
+
+
+  it("renders firstOfficialReply from restaurant reviews query without N+1 comment query", async () => {
+    const queryNames = [];
+    useQuery.mockImplementation((query) => {
+      const source = String(query?.loc?.source?.body || query || "");
+      queryNames.push(source);
+      if (source.includes("GetRestaurantReviews")) return { data: { reviews: { items: [sampleReview], total: 1 } }, loading: false };
+      if (source.includes("GetRestaurantReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 5, ratingBreakdown: { 5: 1 } } }, loading: false };
+      if (source.includes("GetPublicRestaurantStaff")) return { data: { publicRestaurantStaff: [] }, loading: false };
+      return { data: {}, loading: false };
+    });
+
+    renderWithAuth(<ReviewsSection restaurantId="r1" />);
+
+    expect(await screen.findByText("Phản hồi từ nhà hàng")).toBeInTheDocument();
+    expect(screen.getByText("Cảm ơn bạn đã góp ý, nhà hàng đã ghi nhận.")).toBeInTheDocument();
+    expect(queryNames.some((source) => source.includes("GetReviewComments"))).toBe(false);
   });
 
   it("sends staffId only when staff is selected because backend derives staffName", async () => {

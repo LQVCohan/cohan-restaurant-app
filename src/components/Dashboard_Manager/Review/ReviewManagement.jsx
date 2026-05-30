@@ -111,7 +111,28 @@ const GET_REVIEWS = gql`
           total
         }
         createdAt
+        firstOfficialReply { id authorName content createdAt }
       }
+    }
+  }
+`;
+
+
+const GET_REVIEW_ANALYTICS = gql`
+  query GetReviewAnalytics($restaurantId: ID, $targetType: String) {
+    reviewAnalytics(restaurantId: $restaurantId, targetType: $targetType) {
+      totalReviews
+      avgRating
+      verifiedRate
+      pendingCount
+      negativeCount
+      reportedCount
+      ratingTrend { date total avgRating }
+      topTags { name count }
+      topStaffMentioned { id name count }
+      lowRatedTargets { id name targetType count avgRating }
+      reportBreakdown { name count }
+      actionQueueCounts { needsModeration needsReply highRisk }
     }
   }
 `;
@@ -168,6 +189,7 @@ const normalizeReview = (review) => ({
   helpful_count: review.helpfulCount || 0,
   reactions: review.reactions || {},
   created_at: review.createdAt,
+  first_official_reply: review.firstOfficialReply || null,
 });
 
 function getRoleText(user) {
@@ -220,8 +242,8 @@ const ReviewManagement = () => {
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
   const roleText = getRoleText(me);
-  const isAdminUser = roleText === "admin";
-  const isManagerOrStaffUser = roleText === "manager" || roleText === "staff";
+  const isAdminUser = roleText.includes("admin");
+  const isManagerOrStaffUser = roleText.includes("manager") || roleText.includes("staff");
 
   const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId: me?.id, limit: 100 },
@@ -280,6 +302,15 @@ const ReviewManagement = () => {
       restaurantId: filters.restaurant || undefined,
       targetType: gqlTargetType,
     },
+  });
+
+  const { data: analyticsData, loading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery(GET_REVIEW_ANALYTICS, {
+    variables: {
+      restaurantId: filters.restaurant || undefined,
+      targetType: gqlTargetType,
+    },
+    skip: !hasPermission(me, "review.analytics.read"),
+    fetchPolicy: "cache-and-network",
   });
 
   const [deleteReview] = useMutation(DELETE_REVIEW);
@@ -371,6 +402,31 @@ const ReviewManagement = () => {
     const pending = reviews.filter((r) => r.status === "pending").length;
     return { total, avg, pending };
   }, [reviews, statsData]);
+
+
+  const analytics = analyticsData?.reviewAnalytics;
+  const queueCounts = analytics?.actionQueueCounts || {};
+  const needsReplyCount = queueCounts.needsReply ?? reviews.filter((r) => r.status === "published" && Number(r.rating || 0) <= 2 && !r.first_official_reply).length;
+  const highRiskCount = queueCounts.highRisk ?? reviews.filter((r) => Number(r.reports_count || 0) >= 3 || (Number(r.rating || 0) <= 2 && Number(r.reports_count || 0) > 0)).length;
+  const doneCount = reviews.filter((r) => (r.status === "published" && r.first_official_reply) || (r.status === "reported" && Number(r.reports_count || 0) === 0)).length;
+
+  const analyticsCards = [
+    { label: "Tổng review", value: analytics?.totalReviews ?? reviews.length, icon: "🧾" },
+    { label: "Điểm TB", value: Number(analytics?.avgRating || stats.avg || 0).toFixed(1), icon: "⭐" },
+    { label: "Tỷ lệ verified", value: `${Math.round(Number(analytics?.verifiedRate || 0) * 100)}%`, icon: "✅" },
+    { label: "Review tiêu cực", value: analytics?.negativeCount ?? reviews.filter((r) => Number(r.rating || 0) <= 2).length, icon: "⚠️" },
+    { label: "Chờ duyệt", value: analytics?.pendingCount ?? stats.pending, icon: "⏳" },
+    { label: "Chưa phản hồi", value: needsReplyCount, icon: "💬" },
+    { label: "Report pending", value: analytics?.reportedCount ?? reviews.filter((r) => r.status === "reported").length, icon: "🚩" },
+    { label: "High risk", value: highRiskCount, icon: "🔥" },
+  ];
+
+  const queueTiles = [
+    { label: "Cần kiểm duyệt", value: queueCounts.needsModeration ?? reviews.filter((r) => ["pending", "reported"].includes(r.status)).length, hint: "pending/reported", tone: "warning" },
+    { label: "Cần phản hồi", value: needsReplyCount, hint: "1–2 sao chưa có reply", tone: "danger" },
+    { label: "Rủi ro cao", value: highRiskCount, hint: "report >= 3 hoặc negative + report", tone: "critical" },
+    { label: "Đã xử lý", value: doneCount, hint: "đã reply hoặc report đã xử lý", tone: "success" },
+  ];
 
   const handleViewReview = useCallback((review) => {
     setSelectedReview(review);
@@ -532,6 +588,72 @@ const ReviewManagement = () => {
             />
 
             <section className="reviews-content-area">
+
+              <section className="reviews-analytics-panel" aria-label="Tổng quan đánh giá">
+                <div className="reviews-analytics-panel__header">
+                  <div>
+                    <p className="reviews-analytics-panel__eyebrow">Phân tích</p>
+                    <h2>Tổng quan đánh giá</h2>
+                  </div>
+                  {analyticsError && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => refetchAnalytics()}>Thử lại analytics</button>}
+                </div>
+
+                {analyticsLoading ? (
+                  <div className="reviews-analytics-loading">Đang tải dữ liệu phân tích...</div>
+                ) : analyticsError ? (
+                  <div className="reviews-error-box">Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.</div>
+                ) : (
+                  <>
+                    <div className="reviews-analytics-cards">
+                      {analyticsCards.map((card) => (
+                        <div className="reviews-analytics-card" key={card.label}>
+                          <span>{card.icon}</span>
+                          <strong>{card.value}</strong>
+                          <small>{card.label}</small>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="reviews-queue-grid">
+                      {queueTiles.map((tile) => (
+                        <button key={tile.label} type="button" className={`reviews-queue-tile reviews-queue-tile--${tile.tone}`}>
+                          <strong>{tile.value}</strong>
+                          <span>{tile.label}</span>
+                          <small>{tile.hint}</small>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="reviews-analytics-tables">
+                      <div className="reviews-mini-table">
+                        <h3>Top vấn đề khách phàn nàn</h3>
+                        {(analytics?.topTags || []).length ? (analytics.topTags || []).slice(0, 7).map((item) => (
+                          <div key={item.name} className="reviews-mini-table__row"><span>{item.name}</span><strong>{item.count}</strong></div>
+                        )) : <p className="reviews-mini-table__empty">Chưa có tag/vấn đề nổi bật.</p>}
+                      </div>
+                      <div className="reviews-mini-table">
+                        <h3>Nhân viên được nhắc nhiều</h3>
+                        {(analytics?.topStaffMentioned || []).length ? (analytics.topStaffMentioned || []).map((item) => (
+                          <div key={item.id || item.name} className="reviews-mini-table__row"><span>{item.name || "Chưa đặt tên"}</span><strong>{item.count}</strong></div>
+                        )) : <p className="reviews-mini-table__empty">Chưa có review gắn nhân viên.</p>}
+                      </div>
+                      <div className="reviews-mini-table">
+                        <h3>Target điểm thấp</h3>
+                        {(analytics?.lowRatedTargets || []).length ? (analytics.lowRatedTargets || []).map((item) => (
+                          <div key={`${item.targetType}-${item.id}`} className="reviews-mini-table__row"><span>{item.name || item.id}</span><strong>{item.count}</strong></div>
+                        )) : <p className="reviews-mini-table__empty">Chưa có món/dịch vụ điểm thấp.</p>}
+                      </div>
+                      <div className="reviews-mini-table">
+                        <h3>Rating trend</h3>
+                        {(analytics?.ratingTrend || []).length ? (analytics.ratingTrend || []).slice(-6).map((item) => (
+                          <div key={item.date} className="reviews-mini-table__row"><span>{item.date}</span><strong>{item.avgRating}/5 · {item.total}</strong></div>
+                        )) : <p className="reviews-mini-table__empty">Chưa có dữ liệu xu hướng.</p>}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+
               <div className="reviews-content-header">
                 <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
                 <div className="reviews-content-header__meta">

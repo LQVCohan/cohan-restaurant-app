@@ -54,6 +54,17 @@ const reactionMeta = [
   ["angry", "😡"],
 ];
 
+const serviceTargetLabels = {
+  service_quality: "Chất lượng phục vụ",
+  serving_speed: "Tốc độ phục vụ",
+  cleanliness: "Vệ sinh không gian",
+  payment: "Thanh toán",
+  booking: "Đặt bàn",
+  delivery: "Giao hàng",
+};
+
+const getTargetLabel = (review) => serviceTargetLabels[review.target_name] || serviceTargetLabels[review.target_id] || review.target_name || review.target_id;
+
 const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit, permissions = {} }) => {
   if (isLoading) {
     return (
@@ -89,10 +100,15 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
             ? "reviews-review-card__status--hidden"
             : review.status === "reported"
             ? "reviews-review-card__status--reported"
+            : review.status === "rejected"
+            ? "reviews-review-card__status--rejected"
             : "";
 
+        const needsReply = review.status === "published" && Number(review.rating || 0) <= 2 && !review.first_official_reply;
+        const isHighRisk = Number(review.reports_count || 0) >= 3 || (Number(review.rating || 0) <= 2 && Number(review.reports_count || 0) > 0);
+
         return (
-          <article key={review.id} className="reviews-review-card">
+          <article key={review.id} className={`reviews-review-card ${Number(review.rating || 0) <= 2 ? "reviews-review-card--negative" : ""} ${isHighRisk ? "reviews-review-card--high-risk" : ""}`}>
             <div className="reviews-review-card__header">
               <div className="reviews-review-card__reviewer">
                 <div className="reviews-review-card__avatar">
@@ -135,8 +151,10 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 <span className="star">{getStarRating(review.rating)}</span>
               </div>
               <span className="reviews-review-card__rating-number">{review.rating}/5</span>
-              <span className="reviews-review-card__target">{review.target_name}</span>
+              <span className="reviews-review-card__target">{getTargetLabel(review)}</span>
               {review.restaurant_name && <span className="reviews-review-card__restaurant">🏪 {review.restaurant_name}</span>}
+              {needsReply && <span className="reviews-review-card__needs-reply">Chưa phản hồi</span>}
+              {isHighRisk && <span className="reviews-review-card__high-risk">Rủi ro cao</span>}
             </div>
 
             <div className="reviews-review-card__content">
@@ -198,6 +216,8 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                   ? "🚫 Đã ẩn"
                   : review.status === "reported"
                   ? "🚩 Bị báo cáo"
+                  : review.status === "rejected"
+                  ? "⛔ Từ chối"
                   : review.status}
               </div>
             </footer>

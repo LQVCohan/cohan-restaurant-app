@@ -1,5 +1,4 @@
-import { GraphQLError } from "graphql";
-import { Review, ReviewHelpful, ReviewReaction, ReviewReport } from "../../../models/index.js";
+import { Notification, Restaurant, Review, ReviewHelpful, ReviewReaction, ReviewReport } from "../../../models/index.js";
 import { requirePermission, requireRestaurantAccess } from "../../guards.js";
 import { logReviewEvent } from "../../../utils/logReview.js";
 import {
@@ -29,12 +28,43 @@ async function recalcReviewReportCount(reviewId) {
   return reportsCount;
 }
 
+async function createReviewNotification({ review, type, message, toUserId = null, toRole = null, ctx, payload = {} }) {
+  try {
+    await Notification.create({
+      toUserId: toUserId || undefined,
+      toRole: toRole || undefined,
+      restaurantId: review.restaurantId,
+      type,
+      payload: {
+        reviewId: review.id || String(review._id),
+        rating: review.rating,
+        status: review.status,
+        targetType: review.targetType,
+        targetName: review.targetName,
+        message,
+        ...payload,
+      },
+    });
+  } catch (err) {
+    await logReviewEvent({ review, verb: "review.notification.failed", ctx, meta: { type, message, error: err.message } });
+  }
+}
+
+async function notifyRestaurantManagers({ review, type, message, ctx, payload = {} }) {
+  const restaurant = await Restaurant.findById(review.restaurantId).select("managerId").lean();
+  if (restaurant?.managerId) {
+    await createReviewNotification({ review, type, message, toUserId: restaurant.managerId, ctx, payload });
+    return;
+  }
+  await createReviewNotification({ review, type, message, toRole: "manager", ctx, payload });
+}
+
 export default {
   createReview: async (_, { input }, ctx) => {
     if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated();
     const userId = ctx.user.id || ctx.user._id;
     const normalized = normalizeReviewInput(input);
-    await validateReviewTarget({ targetType: input.targetType, targetId: input.targetId, restaurantId: input.restaurantId });
+    const serviceTarget = await validateReviewTarget({ targetType: input.targetType, targetId: input.targetId, restaurantId: input.restaurantId });
 
     const duplicateSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const duplicate = await Review.findOne({
@@ -53,8 +83,8 @@ export default {
     const insight = analyzeReviewText(normalized.title, normalized.content);
     const payload = {
       targetType: input.targetType,
-      targetId: input.targetId,
-      targetName: String(input.targetName || "").trim(),
+      targetId: serviceTarget?.id || input.targetId,
+      targetName: serviceTarget?.name || String(input.targetName || "").trim(),
       restaurantId: input.restaurantId,
       restaurantName: String(input.restaurantName || "").trim(),
       ...identity,
@@ -72,6 +102,16 @@ export default {
     };
     const created = await Review.create(payload);
     await logReviewEvent({ review: created, verb: "review.create", ctx, meta: { rating: created.rating, verifiedSource: created.verifiedSource } });
+    if (Number(created.rating) <= 2) {
+      await notifyRestaurantManagers({
+        review: created,
+        type: "review.negative.created",
+        message: "Có đánh giá tiêu cực cần xử lý",
+        ctx,
+        payload: { customerName: created.customerName },
+      });
+      await logReviewEvent({ review: created, verb: "review.notification.negative", ctx, meta: { channel: "in-app" } });
+    }
     return created;
   },
 
@@ -124,6 +164,11 @@ export default {
     await requireRestaurantAccess(ctx, before.restaurantId);
     const updated = await Review.findByIdAndUpdate(id, { status, moderationReason: reason, moderationNote, moderatedBy: ctx?.user?.id || ctx?.user?._id || null, moderatedAt: new Date(), updatedBy: ctx?.user?.id || ctx?.user?._id || null }, { new: true });
     await logReviewEvent({ review: updated, verb: "review.status", ctx, diff: { from: before.status, to: status }, meta: { reason, moderationNote, notifyCustomer } });
+    if (["published", "rejected"].includes(status) && updated.customerId) {
+      const message = status === "published" ? "Đánh giá của bạn đã được duyệt" : "Đánh giá của bạn đã bị từ chối";
+      await createReviewNotification({ review: updated, type: `review.${status}`, message, toUserId: updated.customerId, ctx, payload: { moderationReason: reason, moderationNote } });
+      await logReviewEvent({ review: updated, verb: "review.notification.customer", ctx, meta: { channel: "in-app", status } });
+    }
     return updated;
   },
 
@@ -184,6 +229,8 @@ export default {
     const nextStatus = reportsCount >= 3 || ["abuse", "offensive", "privacy"].includes(reason) ? "reported" : review.status;
     const updated = await Review.findByIdAndUpdate(id, { reportsCount, status: nextStatus, updatedBy: userId }, { new: true });
     await logReviewEvent({ review: updated, verb: "review.report.create", ctx, meta: { reportId: report.id, reason, reportsCount } });
+    await notifyRestaurantManagers({ review: updated, type: "review.reported", message: "Có báo cáo đánh giá mới cần xử lý", ctx, payload: { reportId: report.id, reason, reportsCount } });
+    await logReviewEvent({ review: updated, verb: "review.notification.report", ctx, meta: { channel: "in-app", reason, reportsCount } });
     return report;
   },
 

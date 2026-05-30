@@ -23,6 +23,24 @@ function dateFilter(dateFrom, dateTo) {
   return Object.keys(createdAt).length ? { createdAt } : {};
 }
 
+async function attachFirstOfficialReplies(items = []) {
+  const ids = items.map((item) => item?._id || item?.id).filter(Boolean);
+  if (!ids.length) return items;
+  const replies = await ReviewComment.find({
+    reviewId: { $in: ids },
+    officialReply: true,
+    status: "published",
+  })
+    .sort({ createdAt: 1 })
+    .lean({ virtuals: true });
+  const firstByReview = new Map();
+  replies.forEach((reply) => {
+    const key = String(reply.reviewId);
+    if (!firstByReview.has(key)) firstByReview.set(key, reply);
+  });
+  return items.map((item) => ({ ...item, firstOfficialReply: firstByReview.get(String(item._id || item.id)) || null }));
+}
+
 export default {
   reviews: async (_, { restaurantId, targetType, targetId, status, minRating, maxRating, limit = 20, skip = 0 }, ctx) => {
     const filter = {};
@@ -43,15 +61,16 @@ export default {
     const safeLimit = Math.min(Number(limit) || 20, 100);
     const total = await Review.countDocuments(filter);
     const items = await Review.find(filter).sort({ createdAt: -1 }).skip(skip).limit(safeLimit).lean({ virtuals: true });
-    return { total, items };
+    return { total, items: await attachFirstOfficialReplies(items) };
   },
 
   review: async (_, { id }, ctx) => {
     const doc = await Review.findById(id).lean({ virtuals: true });
     if (!doc) return null;
-    if (["published", "reported"].includes(doc.status) || isOwner(ctx, doc)) return doc;
+    const withReply = (await attachFirstOfficialReplies([doc]))[0];
+    if (["published", "reported"].includes(doc.status) || isOwner(ctx, doc)) return withReply;
     await requireReviewModerationAccess(ctx, doc);
-    return doc;
+    return withReply;
   },
 
   reviewStats: async (_, { restaurantId, targetType, targetId }, ctx) => {

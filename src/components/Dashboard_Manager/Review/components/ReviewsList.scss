@@ -314,3 +314,37 @@
     gap: 8px;
   }
 }
+
+.reviews-review-card--negative {
+  border-color: #fecaca;
+  box-shadow: 0 10px 22px rgba(248, 113, 113, 0.12);
+}
+
+.reviews-review-card--high-risk {
+  border-left: 4px solid #ef4444;
+}
+
+.reviews-review-card__needs-reply,
+.reviews-review-card__high-risk {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.reviews-review-card__needs-reply {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.reviews-review-card__high-risk {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.reviews-review-card__status--rejected {
+  background: #f3f4f6;
+  color: #374151;
+}

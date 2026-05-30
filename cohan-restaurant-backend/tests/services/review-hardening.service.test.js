@@ -6,6 +6,8 @@ import {
   buildReactionIncPayload,
   deriveCustomerIdentity,
   normalizeReviewInput,
+  resolveServiceReviewTarget,
+  REVIEW_SERVICE_TARGETS,
 } from "../../src/services/reviewHardening.service.js";
 
 describe("review hardening helpers", () => {
@@ -36,6 +38,20 @@ describe("review hardening helpers", () => {
     expect(buildReactionIncPayload({ inc: { like: 1 }, dec: {} })).toEqual({ "reactions.like": 1, likesCount: 1 });
     expect(buildReactionIncPayload({ inc: {}, dec: { like: 1 } })).toEqual({ "reactions.like": -1, likesCount: -1 });
     expect(buildReactionIncPayload({ inc: { love: 1 }, dec: { like: 1 } })).toEqual({ "reactions.love": 1, "reactions.like": -1, likesCount: -1 });
+  });
+
+  it("resolves graduation demo service review targets by id or slug", () => {
+    expect(REVIEW_SERVICE_TARGETS.map((target) => target.slug)).toEqual([
+      "service_quality",
+      "serving_speed",
+      "cleanliness",
+      "payment",
+      "booking",
+      "delivery",
+    ]);
+    expect(resolveServiceReviewTarget("serving_speed")?.name).toBe("Tốc độ phục vụ");
+    expect(resolveServiceReviewTarget("65f100000000000000000104")?.slug).toBe("payment");
+    expect(resolveServiceReviewTarget("unknown-service")).toBeNull();
   });
 
   it("computes deterministic Vietnamese sentiment/topics", () => {
@@ -72,5 +88,10 @@ describe("review GraphQL input schema hardening", () => {
     expect(reviewInput.getFields().customerId).toBeUndefined();
     expect(reviewInput.getFields().verifiedPurchase).toBeUndefined();
     expect(reviewInput.getFields().moderationReason).toBeUndefined();
+  });
+
+  it("exposes firstOfficialReply on Review to avoid customer-side N+1 comment queries", () => {
+    const reviewType = minimalSchema.getType("Review");
+    expect(reviewType.getFields().firstOfficialReply.type.toString()).toBe("ReviewComment");
   });
 });

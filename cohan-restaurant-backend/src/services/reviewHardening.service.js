@@ -13,6 +13,20 @@ const MIN_CONTENT_LENGTH = 10;
 const MAX_CONTENT_LENGTH = 2000;
 const MAX_TITLE_LENGTH = 120;
 
+export const REVIEW_SERVICE_TARGETS = Object.freeze([
+  { id: "65f100000000000000000101", slug: "service_quality", name: "Chất lượng phục vụ" },
+  { id: "65f100000000000000000102", slug: "serving_speed", name: "Tốc độ phục vụ" },
+  { id: "65f100000000000000000103", slug: "cleanliness", name: "Vệ sinh không gian" },
+  { id: "65f100000000000000000104", slug: "payment", name: "Thanh toán" },
+  { id: "65f100000000000000000105", slug: "booking", name: "Đặt bàn" },
+  { id: "65f100000000000000000106", slug: "delivery", name: "Giao hàng" },
+]);
+
+export function resolveServiceReviewTarget(targetId) {
+  const key = String(targetId || "").trim().toLowerCase();
+  return REVIEW_SERVICE_TARGETS.find((target) => target.id === key || target.slug === key) || null;
+}
+
 export function badUserInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
@@ -79,7 +93,15 @@ export async function normalizeReviewStaff({ staffId, restaurantId }) {
 
 export async function validateReviewTarget({ targetType, targetId, restaurantId }) {
   if (!["restaurant", "food", "service"].includes(targetType)) throw badUserInput("Loại đối tượng đánh giá không hợp lệ.");
-  if (!mongoose.isValidObjectId(targetId) || !mongoose.isValidObjectId(restaurantId)) throw badUserInput("ID đánh giá không hợp lệ.");
+  if (!mongoose.isValidObjectId(restaurantId)) throw badUserInput("ID nhà hàng không hợp lệ.");
+  if (targetType === "service") {
+    const serviceTarget = resolveServiceReviewTarget(targetId);
+    if (!serviceTarget) throw badUserInput("Dịch vụ đánh giá không hợp lệ.");
+    const restaurantExists = await Restaurant.exists({ _id: restaurantId });
+    if (!restaurantExists) throw badUserInput("Nhà hàng không tồn tại.");
+    return serviceTarget;
+  }
+  if (!mongoose.isValidObjectId(targetId)) throw badUserInput("ID đánh giá không hợp lệ.");
 
   if (targetType === "restaurant") {
     if (String(targetId) !== String(restaurantId)) throw badUserInput("targetId nhà hàng phải trùng restaurantId.");
@@ -94,9 +116,7 @@ export async function validateReviewTarget({ targetType, targetId, restaurantId 
     return;
   }
 
-  // There is no dedicated service model in this repo yet; keep validation safe and non-crashing.
-  const restaurantExists = await Restaurant.exists({ _id: restaurantId });
-  if (!restaurantExists) throw badUserInput("Nhà hàng không tồn tại.");
+  return null;
 }
 
 export async function resolveVerifiedReview({ userId, restaurantId, targetType, targetId }) {
