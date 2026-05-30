@@ -1,6 +1,6 @@
 // src/components/CustomerManagement/CustomerModal.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import {
   Mail,
   Phone,
@@ -91,6 +91,7 @@ const CustomerModal = ({
 }) => {
   const { user, restaurants = [] } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
+  const apolloClient = useApolloClient();
   const [notes, setNotes] = useState(customer?.noteInternal || customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.noteInternal || customer?.notes || "");
@@ -206,6 +207,13 @@ const CustomerModal = ({
       else if (result?.status === "COOLDOWN") showNotification("Vui lòng chờ trước khi gửi lại xác nhận.", "warning");
       else if (result?.status === "NOT_CONFIGURED") showNotification("Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.", "warning");
       else showNotification(result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.", "warning");
+      try {
+        await apolloClient.refetchQueries({
+          include: ["GetCustomerListPage", "GetCustomers", "GetUsers"],
+        });
+      } catch (refetchErr) {
+        console.warn("Refetch customer verification state failed:", refetchErr);
+      }
     } catch (err) {
       showNotification(err?.message || "Không thể gửi xác nhận.", "error");
     }
@@ -407,14 +415,12 @@ const CustomerModal = ({
                 </div>
                 <div className="c-item" title="Xác minh">
                   <UserCheck size={14} className="icon" />{" "}
-                  {customer?.verificationStatus === "verified"
-                    ? "Đã xác minh"
-                    : "Chưa xác minh"}
+                  {customer?.verificationLabel || "Chưa xác minh"}
                 </div>
                 <div className="c-item" title="Email">
                   <Mail size={14} className="icon" /> {customer?.email || "—"}
                 </div>
-                {customer?.verificationStatus !== "verified" && customer?.verificationStatus !== "email_verified" && customer?.verificationStatus !== "phone_verified" && (
+                {customer?.verificationStatus !== "verified" && (
                   <div className="c-item" title="Nhắc gửi xác nhận">
                     <button
                       type="button"

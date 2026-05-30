@@ -137,7 +137,12 @@ async function writeVerificationAudit({ ctx, user, verb, status, channels, reaso
     verb,
     object: { kind: "User", id: user?._id || user?.id },
     source: "account-verification",
-    status: status === STATUS.SENT || status === STATUS.ALREADY_VERIFIED ? "success" : "warning",
+    status:
+      status === STATUS.SENT ||
+      status === STATUS.ALREADY_VERIFIED ||
+      status === STATUS.VERIFIED
+        ? "success"
+        : "warning",
     meta: {
       targetUserId: String(user?._id || user?.id || ""),
       actorUserId: String(actorId(null, ctx) || ""),

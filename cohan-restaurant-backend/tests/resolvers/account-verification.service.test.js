@@ -140,6 +140,10 @@ describe("accountVerification.service", () => {
     expect(saved.emailVerifiedAt).toBeInstanceOf(Date);
     expect(saved.verificationLastStatus).toBe("verified");
     expect(saved.status).toBe("active");
+    expect(eventLogCreate).toHaveBeenCalledWith(expect.objectContaining({
+      verb: "account.verification.email_verified",
+      status: "success",
+    }));
     expect(saved.emailVerifyToken).toBeNull();
     expect(saved.emailVerifyTokenExp).toBeNull();
   });
@@ -180,6 +184,10 @@ describe("accountVerification.service", () => {
     expect(store.get("u2").phoneVerified).toBe(true);
     expect(store.get("u2").verificationLastStatus).toBe("verified");
     expect(store.get("u2").status).toBe("active");
+    expect(eventLogCreate).toHaveBeenCalledWith(expect.objectContaining({
+      verb: "account.verification.phone_verified",
+      status: "success",
+    }));
   });
 
   it("issues phone tokens with SMS mock provider", async () => {

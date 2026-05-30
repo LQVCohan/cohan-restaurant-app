@@ -32,11 +32,8 @@ export function verificationLabel(user) {
 }
 
 export function verificationStatus(user) {
-  if (isAccountVerified(user)) {
-    if (user?.emailVerified && !user?.phoneVerified) return "email_verified";
-    if (user?.phoneVerified && !user?.emailVerified) return "phone_verified";
-    return "verified";
-  }
+  if (isAccountVerified(user)) return "verified";
+  if (!user?.email && !user?.phone) return "missing_contact";
   if (user?.status === "pending") return "pending";
   return "unverified";
 }
