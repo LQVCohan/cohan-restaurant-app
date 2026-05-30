@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import process from "process";
 
 import { ORDER_KIND } from "./orderLifecycle.js";
+import { parseDurationMs } from "../src/utils/duration.js";
 
 export const TABLE_ACCESS_TOKEN_ERROR = "Invalid table access token";
 export const TABLE_ACCESS_TOKEN_PURPOSE = "customer_table";
@@ -32,6 +33,12 @@ function getTableAccessTokenIssuer() {
   return process.env.JWT_ISSUER || "foodhub-system";
 }
 
+function getTableAccessTokenExpiresIn() {
+  const expiresIn = process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "8h";
+  parseDurationMs(expiresIn, "8h");
+  return expiresIn;
+}
+
 export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) {
   const normalizedRestaurantId = toIdString(restaurantId);
   const normalizedTableId = toIdString(tableId);
@@ -52,7 +59,7 @@ export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) 
   }
 
   return jwt.sign(payload, getTableAccessTokenSecret(), {
-    expiresIn: process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "8h",
+    expiresIn: getTableAccessTokenExpiresIn(),
     issuer: getTableAccessTokenIssuer(),
   });
 }

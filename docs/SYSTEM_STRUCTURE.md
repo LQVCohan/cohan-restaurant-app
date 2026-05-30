@@ -36,6 +36,7 @@
 | Backend GraphQL schema | `cohan-restaurant-backend/graphql/schema/user.graphql` | Định nghĩa type/query/mutation | Bao gồm `ShiftAttendance`, availability, schedule lifecycle, attendance ops. |
 | Backend staff resolvers | `cohan-restaurant-backend/graphql/resolvers/staff/` | Query/mutation cho scheduling/attendance/availability/payroll liên quan staff-manager | Guard role/restaurant được gọi từ service permission. |
 | Models | `cohan-restaurant-backend/models/` | Mongoose model | Bao gồm `user`, `shift`, `timesheet`, `schedule-publication`, availability models. |
+| Backend utils | `cohan-restaurant-backend/src/utils/` | Shared helpers không phụ thuộc runtime domain | `duration.js` parse TTL/duration cho config và auth. |
 | Services availability | `cohan-restaurant-backend/src/services/availability/` | Logic window/submission/schedule availability | Có `availabilityRegistrationWindow.service.js`, `availabilityRegistrationSchedule.service.js`. |
 | Services scheduling | `cohan-restaurant-backend/src/services/scheduling/` | Lifecycle lịch, permission, validate assignment, auto schedule | Là nền cho publish/edit/permission. |
 | Services attendance | `cohan-restaurant-backend/src/services/attendance/` | Correction workflow, overtime state, exception detection, off-schedule | Dùng bởi resolver mutation/query attendance. |
@@ -51,6 +52,7 @@
 - `cohan-restaurant-backend/graphql/resolvers/staff/query.js`
 - `cohan-restaurant-backend/graphql/resolvers/staff/mutation.js`
 - `cohan-restaurant-backend/models/user.model.js`
+- `cohan-restaurant-backend/src/utils/duration.js`
 - `cohan-restaurant-backend/models/timesheet.model.js`
 - `cohan-restaurant-backend/models/shift.model.js`
 - `cohan-restaurant-backend/models/schedule-publication.model.js`
@@ -107,6 +109,11 @@
 - Luồng dữ liệu: nhiều query/mutation GraphQL, có mock test lớn trong `ScheduleManagement.test.jsx`.
 - Lưu ý khi sửa: cập nhật test mock khi thêm query field mới.
 
+### 4.9 Auth/config duration utility
+- Duration parsing lives in `cohan-restaurant-backend/src/utils/duration.js` so shared TTL parsing stays independent of auth runtime modules.
+- `cohan-restaurant-backend/src/config/env.js` must not import `cohan-restaurant-backend/src/security/authTokens.js` or other auth runtime modules; config/env validation should depend only on small shared utilities.
+- Auth token TTL (`ACCESS_TOKEN_EXPIRES_IN` / `REFRESH_TOKEN_EXPIRES_IN`) and table token TTL (`TABLE_ACCESS_TOKEN_EXPIRES_IN`) use the shared duration util to keep parsing behavior consistent.
+
 **File đã xác minh cho section này**
 - `src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx`
 - `src/components/Dashboard_Manager/Schedule/components/AvailabilityRegistrationPanel.jsx`
@@ -116,6 +123,9 @@
 - `cohan-restaurant-backend/src/services/scheduling/scheduleLifecycle.service.js`
 - `cohan-restaurant-backend/src/services/availability/availabilityRegistrationWindow.service.js`
 - `cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js`
+- `cohan-restaurant-backend/src/config/env.js`
+- `cohan-restaurant-backend/src/security/authTokens.js`
+- `cohan-restaurant-backend/src/utils/duration.js`
 
 
 ### 4.7 GraphQL user privacy DTOs

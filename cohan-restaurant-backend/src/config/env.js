@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "process";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { parseDurationMs } from "../security/authTokens.js";
+import { parseDurationMs } from "../utils/duration.js";
 
 const MAX_SAFE_PRODUCTION_GRAPHQL_DEPTH = 25;
 const MAX_SAFE_PRODUCTION_GRAPHQL_FIELD_COUNT = 2000;
