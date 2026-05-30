@@ -1,5 +1,6 @@
 // src/graphql/staff/mutation.js
 import mongoose from "mongoose";
+import process from "process";
 import {
   Staff,
   Role,
@@ -22,6 +23,7 @@ import {
   OvertimeRequest,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
+import { issueVerificationForUser } from "../../../src/services/auth/accountVerification.service.js";
 import { sanitizeStaffPrivateProfile } from "../../../src/security/userDtos.js";
 import {
   recalculateStaffPerformanceSnapshots,
@@ -1331,6 +1333,32 @@ const mutationResolvers = {
       throw lastCreateError || new Error("Failed to create staff");
     }
 
+    const staffRequiresVerification =
+      String(process.env.STAFF_ACCOUNT_REQUIRES_VERIFICATION ?? "false").toLowerCase() === "true";
+    if (staffRequiresVerification && staff.status === "active") {
+      staff.status = "pending";
+      await staff.save();
+    }
+
+    let verificationDispatch = null;
+    if (staff.email || staff.phone) {
+      try {
+        verificationDispatch = await issueVerificationForUser({
+          user: staff,
+          channels: "AUTO",
+          requestedBy: ctx.user,
+          reason: "staff_create",
+          ctx,
+        });
+      } catch (err) {
+        verificationDispatch = {
+          ok: false,
+          status: "FAILED",
+          errors: [err?.extensions?.code || err?.message || "VERIFICATION_DISPATCH_FAILED"],
+        };
+      }
+    }
+
     await staff.populate(["role", "refRestaurants"]);
 
     await logStaffEvent({
@@ -1342,6 +1370,7 @@ const mutationResolvers = {
         roleSlug: roleDoc.slug,
         userType: staff.userType,
         department: staff.department || null,
+        verificationDispatch,
       },
     });
 

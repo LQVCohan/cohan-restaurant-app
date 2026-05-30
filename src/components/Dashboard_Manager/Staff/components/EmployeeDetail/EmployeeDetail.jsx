@@ -36,6 +36,7 @@ const EmployeeDetail = ({
   onSetWorking,
   onLockAccount,
   onUnlockAccount,
+  onResendVerification,
 }) => {
   if (!employee) {
     return (
@@ -110,6 +111,7 @@ const EmployeeDetail = ({
             <InfoRow icon={User} label="Mã NV" value={employee.code} />
             <InfoRow icon={Phone} label="Điện thoại" value={employee.phone} />
             <InfoRow icon={Mail} label="Email" value={employee.email} isLink />
+            <InfoRow icon={User} label="Xác minh" value={employee.verificationLabel || "Chưa xác minh"} />
             <InfoRow icon={MapPin} label="Địa chỉ" value={employee.address} />
           </div>
         </div>
@@ -181,6 +183,14 @@ const EmployeeDetail = ({
             title="Tính lương"
           >
             <Calculator size={18} />
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onResendVerification?.(employee, "AUTO")}
+            disabled={!employee.canResendVerification}
+            title={employee.canResendVerification ? "Nhắc gửi xác nhận" : "Thiếu email/SĐT hoặc đã xác minh"}
+          >
+            <Mail size={18} />
           </button>
         </div>
 

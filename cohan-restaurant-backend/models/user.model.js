@@ -160,9 +160,37 @@ const userSchema = BaseSchemaModel(
     wallet: walletSchema,
 
     emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date, default: null },
     emailVerifyToken: { type: String, default: null },
+    emailVerifyTokenHash: { type: String, default: null },
     emailVerifyTokenExp: { type: Date, default: null },
     emailVerifyLastSentAt: { type: Date, default: null },
+
+    phoneVerified: { type: Boolean, default: false },
+    phoneVerifiedAt: { type: Date, default: null },
+    phoneVerifyToken: { type: String, default: null },
+    phoneVerifyTokenHash: { type: String, default: null },
+    phoneVerifyTokenExp: { type: Date, default: null },
+    phoneVerifyLastSentAt: { type: Date, default: null },
+
+    verifiedAt: { type: Date, default: null },
+    verificationLastChannel: {
+      type: String,
+      enum: ["email", "sms", "both", "none", null],
+      default: "none",
+    },
+    verificationLastStatus: {
+      type: String,
+      enum: ["sent", "skipped", "failed", "not_configured", "cooldown", "already_verified", "verified", null],
+      default: null,
+    },
+    verificationLastError: { type: String, default: null },
+    verificationLastRequestedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    verificationLastRequestedAt: { type: Date, default: null },
 
     lastLoginAt: { type: Date },
     lastLoginIp: { type: String },
@@ -251,6 +279,14 @@ userSchema.index({
 });
 
 userSchema.index({ phone: 1 });
+userSchema.index({ emailVerifyToken: 1 });
+userSchema.index({ emailVerifyTokenHash: 1 });
+userSchema.index({ phoneVerifyToken: 1 });
+userSchema.index({ phoneVerifyTokenHash: 1 });
+userSchema.index({ emailVerifyTokenExp: 1 });
+userSchema.index({ phoneVerifyTokenExp: 1 });
+userSchema.index({ emailVerified: 1 });
+userSchema.index({ phoneVerified: 1 });
 userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
   unique: true,
   partialFilterExpression: {

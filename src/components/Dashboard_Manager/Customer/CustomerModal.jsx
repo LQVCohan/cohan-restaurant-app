@@ -1,6 +1,6 @@
 // src/components/CustomerManagement/CustomerModal.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import {
   Mail,
   Phone,
@@ -23,7 +23,7 @@ import ChatThreadPanel from "../../../components/common/ChatThreadPanel";
 import useCommunication from "../../../hooks/useCommunication";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
-import { UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
+import { RESEND_USER_VERIFICATION, UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
@@ -91,10 +91,12 @@ const CustomerModal = ({
 }) => {
   const { user, restaurants = [] } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
+  const apolloClient = useApolloClient();
   const [notes, setNotes] = useState(customer?.noteInternal || customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.noteInternal || customer?.notes || "");
   const [saveNotesMut, { loading: savingNotes }] = useMutation(UPDATE_CUSTOMER_NOTE);
+  const [resendVerificationMut, { loading: resendingVerification }] = useMutation(RESEND_USER_VERIFICATION);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatThreadId, setChatThreadId] = useState(null);
   const [chatError, setChatError] = useState("");
@@ -194,6 +196,28 @@ const CustomerModal = ({
     setTempNotes(incomingNotes);
     setIsEditingNotes(false);
   }, [customer?.id, customer?.noteInternal, customer?.notes]);
+
+  const handleResendVerification = async (channel = "AUTO") => {
+    if (!customer?.id) return;
+    try {
+      const { data } = await resendVerificationMut({ variables: { userId: customer.id, channel } });
+      const result = data?.resendUserVerification;
+      if (result?.status === "SENT") showNotification("Đã gửi xác nhận.", "success");
+      else if (result?.status === "ALREADY_VERIFIED") showNotification("Tài khoản đã được xác minh, không cần gửi lại.", "success");
+      else if (result?.status === "COOLDOWN") showNotification("Vui lòng chờ trước khi gửi lại xác nhận.", "warning");
+      else if (result?.status === "NOT_CONFIGURED") showNotification("Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.", "warning");
+      else showNotification(result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.", "warning");
+      try {
+        await apolloClient.refetchQueries({
+          include: ["GetCustomerListPage", "GetCustomers", "GetUsers"],
+        });
+      } catch (refetchErr) {
+        console.warn("Refetch customer verification state failed:", refetchErr);
+      }
+    } catch (err) {
+      showNotification(err?.message || "Không thể gửi xác nhận.", "error");
+    }
+  };
 
   const handleSaveNotes = async () => {
     if (!customer?.id) return;
@@ -391,13 +415,23 @@ const CustomerModal = ({
                 </div>
                 <div className="c-item" title="Xác minh">
                   <UserCheck size={14} className="icon" />{" "}
-                  {customer?.verificationStatus === "verified"
-                    ? "Đã xác minh"
-                    : "Chưa xác minh"}
+                  {customer?.verificationLabel || "Chưa xác minh"}
                 </div>
                 <div className="c-item" title="Email">
                   <Mail size={14} className="icon" /> {customer?.email || "—"}
                 </div>
+                {customer?.verificationStatus !== "verified" && (
+                  <div className="c-item" title="Nhắc gửi xác nhận">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => handleResendVerification("AUTO")}
+                      disabled={resendingVerification || (!customer?.email && !customer?.phone)}
+                    >
+                      Nhắc gửi xác nhận
+                    </button>
+                  </div>
+                )}
                 <div className="c-item" title="Điện thoại">
                   <Phone size={14} className="icon" /> {customer?.phone || "—"}
                 </div>

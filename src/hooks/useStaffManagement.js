@@ -18,6 +18,16 @@ const STAFF_FIELDS = gql`
     userType
     status
     roleName
+    emailVerified
+    phoneVerified
+    verifiedAt
+    emailVerifiedAt
+    phoneVerifiedAt
+    verificationLastStatus
+    verificationLastChannel
+    verificationLastRequestedAt
+    emailVerifyLastSentAt
+    phoneVerifyLastSentAt
 
     role {
       id
@@ -156,6 +166,19 @@ const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
     }
   }
   ${STAFF_FIELDS}
+`;
+
+const MUTATION_RESEND_USER_VERIFICATION = gql`
+  mutation ResendStaffVerification($userId: ID!, $channel: VerificationChannel = AUTO) {
+    resendUserVerification(userId: $userId, channel: $channel) {
+      ok
+      status
+      message
+      errors
+      email { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
+      sms { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
+    }
+  }
 `;
 
 const MUTATION_SET_USER_STATUS = gql`
@@ -424,6 +447,23 @@ const useStaffManagement = (initialFilters = {}) => {
 
   /** SET ACCOUNT STATUS (active, inactive, blocked, pending) */
   const [
+    resendVerificationMutation,
+    { loading: resendingVerification, error: resendVerificationError },
+  ] = useMutation(MUTATION_RESEND_USER_VERIFICATION, {
+    onCompleted: () => {
+      if (filters.restaurantId) refetchStaffList();
+    },
+  });
+
+  const resendStaffVerification = useCallback(
+    async (userId, channel = "AUTO") => {
+      const res = await resendVerificationMutation({ variables: { userId, channel } });
+      return res.data?.resendUserVerification ?? null;
+    },
+    [resendVerificationMutation],
+  );
+
+  const [
     setUserStatusMutation,
     { loading: changingUserStatus, error: setUserStatusError },
   ] = useMutation(MUTATION_SET_USER_STATUS, {
@@ -455,7 +495,8 @@ const useStaffManagement = (initialFilters = {}) => {
     deletingStaff ||
     softDeletingStaff ||
     changingEmploymentStatus ||
-    changingUserStatus;
+    changingUserStatus ||
+    resendingVerification;
 
   const errors = {
     list: staffListError,
@@ -466,6 +507,7 @@ const useStaffManagement = (initialFilters = {}) => {
     softDelete: softDeleteStaffError,
     setEmploymentStatus: setEmploymentStatusError,
     setUserStatus: setUserStatusError,
+    resendVerification: resendVerificationError,
   };
 
   /* -----------------------------------------
@@ -501,6 +543,7 @@ const useStaffManagement = (initialFilters = {}) => {
     softDeleteStaff,
     setStaffEmploymentStatus,
     setStaffAccountStatus,
+    resendStaffVerification,
 
     // loading
     staffListLoading,
@@ -511,6 +554,7 @@ const useStaffManagement = (initialFilters = {}) => {
     softDeletingStaff,
     changingEmploymentStatus,
     changingUserStatus,
+    resendingVerification,
     anyLoading,
 
     // errors

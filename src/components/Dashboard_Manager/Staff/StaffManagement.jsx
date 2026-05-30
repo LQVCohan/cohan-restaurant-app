@@ -26,6 +26,7 @@ import useStaffManagement from "../../../hooks/useStaffManagement";
 import { useTime } from "../../../hooks/useTime";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 import { AuthContext } from "@/context/AuthContext";
+import { useNotification } from "@/hooks/useNotification";
 import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
 import {
   getStaffListStatus,
@@ -118,6 +119,7 @@ const StaffManagement = () => {
 
   // --- HOOKS & CONTEXT ---
   const { user } = useContext(AuthContext);
+  const { showNotification } = useNotification();
   const managerId = user?.id || user?._id || null;
   const { currentTime, currentDate } = useTime();
 
@@ -171,6 +173,7 @@ const StaffManagement = () => {
     softDeleteStaff,
     setStaffEmploymentStatus,
     setStaffAccountStatus,
+    resendStaffVerification,
     setFilters,
     staffListLoading,
   } = useStaffManagement({
@@ -270,6 +273,17 @@ const StaffManagement = () => {
           baseSalary: staff.baseSalary ?? null,
           salary: staff.baseSalary ?? null,
           restaurantForStaff: staff.restaurantForStaff,
+          emailVerified: Boolean(staff.emailVerified),
+          phoneVerified: Boolean(staff.phoneVerified),
+          verificationStatus: staff.emailVerified || staff.phoneVerified ? "verified" : staff.status === "pending" ? "pending" : "unverified",
+          verificationLabel: staff.emailVerified
+            ? "Đã xác minh email"
+            : staff.phoneVerified
+              ? "Đã xác minh SĐT"
+              : staff.status === "pending"
+                ? "Chờ xác minh"
+                : "Chưa xác minh",
+          canResendVerification: Boolean((staff.email && !staff.emailVerified) || (staff.phone && !staff.phoneVerified)),
           raw: staff,
         };
       }),
@@ -362,6 +376,24 @@ const StaffManagement = () => {
     (id) => setStaffAccountStatus(id, "active"),
     [setStaffAccountStatus],
   );
+  const handleResendStaffVerification = useCallback(
+    async (employee, channel = "AUTO") => {
+      const userId = employee?.id || employee;
+      if (!userId) return;
+      try {
+        const result = await resendStaffVerification(userId, channel);
+        if (result?.status === "SENT") showNotification("Đã gửi xác nhận.", "success");
+        else if (result?.status === "ALREADY_VERIFIED") showNotification("Tài khoản đã được xác minh, không cần gửi lại.", "success");
+        else if (result?.status === "COOLDOWN") showNotification("Vui lòng chờ trước khi gửi lại xác nhận.", "warning");
+        else if (result?.status === "NOT_CONFIGURED") showNotification("Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.", "warning");
+        else showNotification(result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.", "warning");
+      } catch (err) {
+        showNotification(err?.message || "Không thể gửi xác nhận.", "error");
+      }
+    },
+    [resendStaffVerification, showNotification],
+  );
+
   const handleCalculateSalary = useCallback(
     (employee) => {
       if (!employee?.id) return;
@@ -454,6 +486,7 @@ const StaffManagement = () => {
           onLockAccount={handleLockAccount}
           onUnlockAccount={handleUnlockAccount}
           onCalculateSalary={handleCalculateSalary}
+          onResendVerification={handleResendStaffVerification}
           loading={isLoading}
         />
       );
@@ -491,6 +524,7 @@ const StaffManagement = () => {
     handleLockAccount,
     handleOpenEditEmployee,
     handleOpenWorkHistory,
+    handleResendStaffVerification,
     handleSetOnLeave,
     handleSetWorking,
     handleUnlockAccount,

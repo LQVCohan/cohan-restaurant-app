@@ -16,6 +16,7 @@ const EmployeeDashboard = ({
   onSetWorking,
   onLockAccount,
   onUnlockAccount,
+  onResendVerification,
   loading = false,
 }) => {
   return (
@@ -43,6 +44,7 @@ const EmployeeDashboard = ({
           onLockAccount={onLockAccount}
           onUnlockAccount={onUnlockAccount}
           onCalculateSalary={onCalculateSalary}
+          onResendVerification={onResendVerification}
         />
       </div>
     </div>

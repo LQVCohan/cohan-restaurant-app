@@ -5,6 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification"; // Hook thông báo (tuỳ project bạn)
 import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
+import { isAccountVerified } from "@/utils/accountVerification";
 import {
   UserOutlined,
   LockOutlined,
@@ -59,7 +60,9 @@ const LOGIN_MUTATION = gql`
           slug
           name
         }
+        status
         emailVerified
+        phoneVerified
         avatarUrl
         wallet {
           provider
@@ -79,8 +82,13 @@ const CREATE_USER_MUTATION = gql`
       user {
         id
         roleName
+        status
+        email
+        phone
         emailVerified
+        phoneVerified
         fullName
+        username
       }
     }
   }
@@ -263,9 +271,23 @@ const LoginPage = () => {
         showNotification("Đăng ký thất bại", "error");
         resetCaptcha();
       },
-      onCompleted: () => {
-        showNotification("Đăng ký thành công! Hãy đăng nhập ngay.", "success");
-        togglePanel(false); // Chuyển về tab Login
+      onCompleted: (data) => {
+        const createdUser = data?.createUser?.user;
+        const needsVerification = createdUser?.status === "pending" || (createdUser && !isAccountVerified(createdUser));
+        if (needsVerification) {
+          showNotification("Đăng ký thành công. Vui lòng xác minh tài khoản trước khi đăng nhập.", "success");
+          navigate("/verify-email", {
+            replace: true,
+            state: {
+              email: createdUser?.email || registerForm.email,
+              phone: createdUser?.phone,
+              fromRegistration: true,
+            },
+          });
+        } else {
+          showNotification("Đăng ký thành công! Hãy đăng nhập ngay.", "success");
+          togglePanel(false); // Chuyển về tab Login
+        }
         // Reset form đăng ký
         setRegisterForm({
           fullName: "",

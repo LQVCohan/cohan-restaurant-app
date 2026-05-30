@@ -507,7 +507,15 @@ export const UserMutation = {
     const emailVerificationEnabled =
       String(process.env.ENABLE_EMAIL_VERIFICATION ?? "true").toLowerCase() ===
       "true";
-    const enforcedStatus = emailVerificationEnabled ? "pending" : "active";
+    const phoneVerificationEnabled =
+      String(process.env.ENABLE_PHONE_VERIFICATION ?? "false").toLowerCase() ===
+        "true" &&
+      String(process.env.ENABLE_SMS_VERIFICATION ?? "false").toLowerCase() ===
+        "true";
+    const shouldRequireVerification =
+      (emailVerificationEnabled && Boolean(email)) ||
+      (phoneVerificationEnabled && Boolean(phone));
+    const enforcedStatus = shouldRequireVerification ? "pending" : "active";
 
     const defaultCustomerRole = await Role.findOne({
       $or: [{ slug: "customer" }, { name: /^customer$/i }],
@@ -553,6 +561,7 @@ export const UserMutation = {
       }
       if (normalizedPhone) {
         doc.phone = normalizedPhone;
+        doc.phoneVerified = false;
       }
       doc.address = address || doc.address;
       doc.provider = "local";
@@ -586,11 +595,15 @@ export const UserMutation = {
       await doc.save();
     }
 
-    if (emailVerificationEnabled) {
+    if (shouldRequireVerification) {
       try {
-        await issueAndSendVerificationForUser(doc);
+        await issueAndSendVerificationForUser(doc, {
+          channels: "AUTO",
+          reason: "customer_register",
+          ctx,
+        });
       } catch (err) {
-        console.error("Email verification send failed:", err);
+        console.error("Account verification dispatch failed:", err);
       }
     }
 
@@ -874,11 +887,19 @@ export const UserMutation = {
         }
         if (u.email && u.email !== nextEmail) {
           updates.emailVerified = false;
+          updates.emailVerifiedAt = null;
+          updates.emailVerifyToken = null;
+          updates.emailVerifyTokenHash = null;
+          updates.emailVerifyTokenExp = null;
         }
         updates.email = nextEmail;
       } else {
         updates.email = null;
         updates.emailVerified = false;
+        updates.emailVerifiedAt = null;
+        updates.emailVerifyToken = null;
+        updates.emailVerifyTokenHash = null;
+        updates.emailVerifyTokenExp = null;
       }
     }
 
@@ -894,9 +915,21 @@ export const UserMutation = {
             extensions: { code: "BAD_USER_INPUT" },
           });
         }
+        if (u.phone && u.phone !== nextPhone) {
+          updates.phoneVerified = false;
+          updates.phoneVerifiedAt = null;
+          updates.phoneVerifyToken = null;
+          updates.phoneVerifyTokenHash = null;
+          updates.phoneVerifyTokenExp = null;
+        }
         updates.phone = nextPhone;
       } else {
         updates.phone = null;
+        updates.phoneVerified = false;
+        updates.phoneVerifiedAt = null;
+        updates.phoneVerifyToken = null;
+        updates.phoneVerifyTokenHash = null;
+        updates.phoneVerifyTokenExp = null;
       }
     }
 

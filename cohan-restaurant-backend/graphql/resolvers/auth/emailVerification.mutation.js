@@ -1,107 +1,132 @@
 // src/graphql/resolvers/auth/emailVerification.mutation.js
-import { randomBytes } from "node:crypto";
 import { GraphQLError } from "graphql";
 import process from "process";
 import { User } from "../../../models/index.js";
-import { mailer, buildVerifyMail } from "../../../lib/mailer.js";
+import { requireAuth, requireRestaurantAccess } from "../../guards.js";
+import { hasRole } from "../../../utils/authz.js";
+import {
+  issueVerificationForUser,
+  resendAccountVerification,
+  verifyEmailToken,
+  verifyPhoneToken,
+  verifyAnyToken,
+} from "../../../src/services/auth/accountVerification.service.js";
 
-const VERIFY_TTL_MS = 24 * 3600 * 1000; // 24h
-const RESEND_COOLDOWN_MS = 60 * 1000;
-
-function appPublicUrl() {
-  return process.env.APP_PUBLIC_URL || "http://localhost:5173";
+function enabled(name, fallback = true) {
+  return String(process.env[name] ?? String(fallback)).toLowerCase() === "true";
 }
-function buildVerifyLink(token) {
-  return `${appPublicUrl()}/verify-email/confirm?token=${encodeURIComponent(
-    token
-  )}`;
+
+function normalizeChannel(channel) {
+  return String(channel || "AUTO").toUpperCase();
 }
 
-// 👉 helper để nơi khác (vd: createUser) có thể gọi tái sử dụng
-export async function issueAndSendVerificationForUser(user) {
-  const now = Date.now();
-  const lastSentAt = user?.emailVerifyLastSentAt
-    ? new Date(user.emailVerifyLastSentAt).getTime()
-    : 0;
-  if (lastSentAt && now - lastSentAt < RESEND_COOLDOWN_MS) {
-    throw new GraphQLError("Please wait before requesting another verification email.", {
-      extensions: { code: "TOO_MANY_REQUESTS" },
-    });
+function idString(value) {
+  if (!value) return "";
+  if (typeof value === "object") return String(value._id || value.id || value.value || "");
+  return String(value);
+}
+
+function targetRestaurantIds(target) {
+  const ids = [
+    target?.restaurantForStaff,
+    ...(Array.isArray(target?.refRestaurants) ? target.refRestaurants : []),
+  ]
+    .map(idString)
+    .filter(Boolean);
+  return [...new Set(ids)];
+}
+
+function forbidden() {
+  return new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+}
+
+async function hasAccessToAnyTargetRestaurant(ctx, restaurantIds) {
+  for (const restaurantId of restaurantIds) {
+    try {
+      await requireRestaurantAccess(ctx, restaurantId);
+      return true;
+    } catch (err) {
+      const code = err?.extensions?.code || err?.code || err?.statusCode;
+      if (!["FORBIDDEN", "FORBIDDEN_SCOPE", 403].includes(code)) throw err;
+    }
+  }
+  return false;
+}
+
+export async function assertCanResendForTarget(ctx, target) {
+  requireAuth(ctx);
+  if (hasRole(ctx.user, ["admin"])) return true;
+
+  const isTargetAdmin = String(target?.userType || target?.roleName || target?.role?.slug || "").toUpperCase() === "ADMIN";
+  if (isTargetAdmin) throw forbidden();
+
+  const currentUserId = idString(ctx.user.id || ctx.user._id);
+  const targetUserId = idString(target?._id || target?.id);
+  if (currentUserId && currentUserId === targetUserId) return true;
+
+  if (hasRole(ctx.user, ["manager", "hr"])) {
+    const restaurantIds = targetRestaurantIds(target);
+    if (!restaurantIds.length) throw forbidden();
+    if (await hasAccessToAnyTargetRestaurant(ctx, restaurantIds)) return true;
   }
 
-  const token = randomBytes(32).toString("hex");
-  const exp = new Date(Date.now() + VERIFY_TTL_MS);
+  throw forbidden();
+}
 
-  await User.updateOne(
-    { _id: user._id },
-    {
-      $set: {
-        emailVerifyToken: token,
-        emailVerifyTokenExp: exp,
-        emailVerifyLastSentAt: new Date(),
-      },
-    }
-  );
-
-  const link = buildVerifyLink(token);
-  await mailer.sendMail(buildVerifyMail({ to: user.email, link }));
+// Backward-compatible helper để nơi khác (vd: createUser) có thể gọi tái sử dụng.
+export async function issueAndSendVerificationForUser(user, options = {}) {
+  return issueVerificationForUser({
+    user,
+    channels: options.channel || options.channels || "AUTO",
+    requestedBy: options.requestedBy || null,
+    reason: options.reason || "issue",
+    ctx: options.ctx || null,
+    force: Boolean(options.force),
+  });
 }
 
 export default {
   // Mutation: requestEmailVerification(email: String!): Boolean!
-  requestEmailVerification: async (_root, { email }) => {
-    const enabled =
-      String(process.env.ENABLE_EMAIL_VERIFICATION || "true").toLowerCase() ===
-      "true";
-    if (!enabled) return true;
-
-    const user = await User.findOne({ email }).lean();
-    if (!user) return true; // không tiết lộ info
-    if (user.emailVerified) return true; // đã xác minh rồi
-
-    await issueAndSendVerificationForUser(user);
+  requestEmailVerification: async (_root, { email }, ctx) => {
+    if (!enabled("ENABLE_EMAIL_VERIFICATION", true)) return true;
+    const user = await User.findOne({ email: String(email || "").toLowerCase().trim() });
+    if (!user) return true; // Không tiết lộ user existence.
+    if (user.emailVerified) return true;
+    await issueVerificationForUser({ user, channels: "EMAIL", reason: "request", ctx });
     return true;
   },
 
   // Mutation: verifyEmail(token: String!): Boolean!
   verifyEmail: async (_root, { token }) => {
-    const enabled =
-      String(process.env.ENABLE_EMAIL_VERIFICATION || "true").toLowerCase() ===
-      "true";
-    if (!enabled) return true;
-
-    const user = await User.findOne({
-      emailVerifyToken: token,
-      emailVerifyTokenExp: { $gt: new Date() },
-    });
-    if (!user) {
-      throw new GraphQLError("Invalid or expired verification link.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $set: { emailVerified: true },
-        $unset: { emailVerifyToken: 1, emailVerifyTokenExp: 1 },
-      }
-    );
-    return true;
+    if (!enabled("ENABLE_EMAIL_VERIFICATION", true)) return true;
+    return verifyEmailToken(token);
   },
 
   // Mutation: resendVerification(email: String!): Boolean!
-  resendVerification: async (_root, { email }) => {
-    const enabled =
-      String(process.env.ENABLE_EMAIL_VERIFICATION || "true").toLowerCase() ===
-      "true";
-    if (!enabled) return true;
-
-    const user = await User.findOne({ email }).lean();
-    if (!user) return true;
+  resendVerification: async (_root, { email }, ctx) => {
+    if (!enabled("ENABLE_EMAIL_VERIFICATION", true)) return true;
+    const user = await User.findOne({ email: String(email || "").toLowerCase().trim() });
+    if (!user) return true; // Không tiết lộ user existence.
     if (user.emailVerified) return true;
-
-    await issueAndSendVerificationForUser(user);
+    await issueVerificationForUser({ user, channels: "EMAIL", reason: "resend", ctx });
     return true;
   },
+
+  requestMyVerification: async (_root, { channel = "AUTO" }, ctx) => {
+    requireAuth(ctx);
+    const user = await User.findById(ctx.user.id || ctx.user._id);
+    if (!user) throw new GraphQLError("USER_NOT_FOUND", { extensions: { code: "NOT_FOUND" } });
+    return issueVerificationForUser({ user, channels: normalizeChannel(channel), requestedBy: user, reason: "request_my", ctx });
+  },
+
+  resendUserVerification: async (_root, { userId, channel = "AUTO" }, ctx) => {
+    const target = await User.findById(userId);
+    if (!target) throw new GraphQLError("USER_NOT_FOUND", { extensions: { code: "NOT_FOUND" } });
+    await assertCanResendForTarget(ctx, target);
+    return resendAccountVerification({ userId, channel: normalizeChannel(channel), requestedBy: ctx.user, ctx });
+  },
+
+  verifyPhone: async (_root, { token }) => verifyPhoneToken(token),
+
+  verifyAccountToken: async (_root, { token, channel }) => verifyAnyToken({ token, channel }),
 };
