@@ -6,6 +6,9 @@ import {
   buildReactionIncPayload,
   deriveCustomerIdentity,
   normalizeReviewInput,
+  normalizeReviewTargetForPersistence,
+  resolveServiceReviewTarget,
+  REVIEW_SERVICE_TARGETS,
 } from "../../src/services/reviewHardening.service.js";
 
 describe("review hardening helpers", () => {
@@ -36,6 +39,35 @@ describe("review hardening helpers", () => {
     expect(buildReactionIncPayload({ inc: { like: 1 }, dec: {} })).toEqual({ "reactions.like": 1, likesCount: 1 });
     expect(buildReactionIncPayload({ inc: {}, dec: { like: 1 } })).toEqual({ "reactions.like": -1, likesCount: -1 });
     expect(buildReactionIncPayload({ inc: { love: 1 }, dec: { like: 1 } })).toEqual({ "reactions.love": 1, "reactions.like": -1, likesCount: -1 });
+  });
+
+  it("resolves graduation demo service review targets by id or slug", () => {
+    expect(REVIEW_SERVICE_TARGETS.map((target) => target.slug)).toEqual([
+      "service_quality",
+      "serving_speed",
+      "cleanliness",
+      "payment",
+      "booking",
+      "delivery",
+    ]);
+    expect(resolveServiceReviewTarget("serving_speed")?.name).toBe("Tốc độ phục vụ");
+    expect(resolveServiceReviewTarget("65f100000000000000000104")?.slug).toBe("payment");
+    expect(resolveServiceReviewTarget("unknown-service")).toBeNull();
+  });
+
+  it("normalizes service target id/name before duplicate query and persistence", () => {
+    const serviceTarget = resolveServiceReviewTarget("serving_speed");
+    expect(normalizeReviewTargetForPersistence({
+      targetId: "serving_speed",
+      targetName: "Tên client không tin cậy",
+      serviceTarget,
+    })).toEqual({ targetId: "65f100000000000000000102", targetName: "Tốc độ phục vụ" });
+
+    expect(normalizeReviewTargetForPersistence({
+      targetId: "65f000000000000000000001",
+      targetName: "Nhà hàng A",
+      serviceTarget: null,
+    })).toEqual({ targetId: "65f000000000000000000001", targetName: "Nhà hàng A" });
   });
 
   it("computes deterministic Vietnamese sentiment/topics", () => {
@@ -72,5 +104,10 @@ describe("review GraphQL input schema hardening", () => {
     expect(reviewInput.getFields().customerId).toBeUndefined();
     expect(reviewInput.getFields().verifiedPurchase).toBeUndefined();
     expect(reviewInput.getFields().moderationReason).toBeUndefined();
+  });
+
+  it("exposes firstOfficialReply on Review to avoid customer-side N+1 comment queries", () => {
+    const reviewType = minimalSchema.getType("Review");
+    expect(reviewType.getFields().firstOfficialReply.type.toString()).toBe("ReviewComment");
   });
 });

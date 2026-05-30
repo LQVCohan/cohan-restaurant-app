@@ -5,14 +5,6 @@ import { AuthContext } from "@/context/AuthContext";
 
 import "./ReviewsSection.scss";
 
-const GET_REVIEW_COMMENTS = gql`
-  query GetReviewComments($reviewId: ID!) {
-    reviewComments(reviewId: $reviewId, limit: 10, skip: 0) {
-      items { id authorName content officialReply createdAt }
-    }
-  }
-`;
-
 const GET_RESTAURANT_REVIEWS = gql`
   query GetRestaurantReviews(
     $restaurantId: ID!
@@ -45,6 +37,12 @@ const GET_RESTAURANT_REVIEWS = gql`
         helpfulCount
         commentsCount
         verifiedPurchase
+        firstOfficialReply {
+          id
+          authorName
+          content
+          createdAt
+        }
       }
     }
   }
@@ -110,19 +108,15 @@ const parseJsonArray = (value) => {
   }
 };
 
-const OfficialReplies = ({ reviewId }) => {
-  const { data } = useQuery(GET_REVIEW_COMMENTS, { variables: { reviewId }, skip: !reviewId });
-  const replies = (data?.reviewComments?.items || []).filter((item) => item.officialReply);
-  if (!replies.length) return null;
+const OfficialReply = ({ reply }) => {
+  if (!reply) return null;
   return (
     <div className="review-official-replies">
-      {replies.map((reply) => (
-        <div key={reply.id} className="review-official-reply">
-          <span className="review-official-badge">Phản hồi từ nhà hàng</span>
-          <strong>{reply.authorName}</strong>
-          <p>{reply.content}</p>
-        </div>
-      ))}
+      <div className="review-official-reply">
+        <span className="review-official-badge">Phản hồi từ nhà hàng</span>
+        <strong>{reply.authorName || "Nhà hàng"}</strong>
+        <p>{reply.content}</p>
+      </div>
     </div>
   );
 };
@@ -185,6 +179,7 @@ const ReviewsSection = ({ restaurantId }) => {
       helpful: review.helpfulCount || 0,
       replies: review.commentsCount || 0,
       verifiedPurchase: Boolean(review.verifiedPurchase),
+      firstOfficialReply: review.firstOfficialReply || null,
       photos: parseJsonArray(review.images),
       tags: parseJsonArray(review.tags),
       user: {
@@ -511,7 +506,7 @@ const ReviewsSection = ({ restaurantId }) => {
                     ))}
                   </div>
                 )}
-                <OfficialReplies reviewId={review.id} />
+                <OfficialReply reply={review.firstOfficialReply} />
               </div>
             </div>
           ))
@@ -532,7 +527,7 @@ const ReviewsSection = ({ restaurantId }) => {
                 <option value="other">Khác</option>
               </select>
               <textarea rows={4} value={reportDetail} onChange={(e) => setReportDetail(e.target.value)} placeholder="Mô tả thêm (không bắt buộc)" />
-              <button className="btn btn--primary" onClick={handleSubmitReport}>Gửi báo cáo</button>
+              <div className="review-modal-actions"><button className="btn btn--secondary" type="button" onClick={() => setReportingReview(null)}>Hủy</button><button className="btn btn--primary" onClick={handleSubmitReport}>Gửi báo cáo</button></div>
             </div>
           </div>
         </div>

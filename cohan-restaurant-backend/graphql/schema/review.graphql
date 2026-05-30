@@ -52,6 +52,7 @@ type Review {
   moderatedBy: ID
   moderatedAt: String
   firstOfficialReplyAt: String
+  firstOfficialReply: ReviewComment
   tags: [String]
 
   status: String!

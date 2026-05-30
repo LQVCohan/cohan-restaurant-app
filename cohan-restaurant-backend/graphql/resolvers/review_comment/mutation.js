@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { Review, ReviewComment, ReviewCommentReaction, EventLog } from "../../../models/index.js";
+import { Notification, Review, ReviewComment, ReviewCommentReaction, EventLog } from "../../../models/index.js";
 import { requirePermission, requireRestaurantAccess } from "../../guards.js";
 import { REVIEW_REACTION_TYPES, buildReactionIncPayload, clampReactionSummary, deriveCustomerIdentity, forbidden, unauthenticated } from "../../../src/services/reviewHardening.service.js";
 
@@ -7,6 +7,24 @@ function roleSlug(user) { return String(user?.roleName || user?.role?.slug || us
 function authorType(user) { const role = roleSlug(user); if (role.includes("admin")) return "admin"; if (role.includes("manager")) return "manager"; if (role.includes("staff")) return "staff"; return "customer"; }
 function isOwner(ctx, doc) { const uid = ctx?.user?.id || ctx?.user?._id; return uid && String(doc?.authorUserId || doc?.createdBy || doc?.userId) === String(uid); }
 async function logComment(payload) { try { await EventLog.log(payload); } catch (err) { console.error("EventLog review comment error:", err.message); } }
+async function notifyOfficialReply({ review, comment, ctx }) {
+  if (!review?.customerId) return;
+  try {
+    await Notification.create({
+      toUserId: review.customerId,
+      restaurantId: review.restaurantId,
+      type: "review.official_reply.created",
+      payload: {
+        reviewId: review.id || String(review._id),
+        commentId: comment.id || String(comment._id),
+        message: "Nhà hàng đã phản hồi đánh giá của bạn",
+      },
+    });
+    await logComment({ restaurantId: review.restaurantId, verb: "review.notification.officialReply", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: review.id || review._id }, actorUserId: ctx?.user?.id, meta: { channel: "in-app" } });
+  } catch (err) {
+    await logComment({ restaurantId: review.restaurantId, verb: "review.notification.failed", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: review.id || review._id }, actorUserId: ctx?.user?.id, meta: { error: err.message } });
+  }
+}
 
 export default {
   createReviewComment: async (_, { input }, ctx) => {
@@ -54,6 +72,7 @@ export default {
     if (parentId) await ReviewComment.updateOne({ _id: parentId }, { $inc: { repliesCount: 1 } });
     else await Review.updateOne({ _id: reviewId }, { $inc: { commentsCount: 1 }, ...(officialReply && !review.firstOfficialReplyAt ? { $set: { firstOfficialReplyAt: new Date() } } : {}) });
     await logComment({ restaurantId: review.restaurantId, verb: "review.comment.create", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: reviewId }, actorUserId: ctx?.user?.id, meta: { officialReply } });
+    if (officialReply) await notifyOfficialReply({ review, comment, ctx });
     return comment;
   },
 
