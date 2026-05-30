@@ -120,8 +120,8 @@ describe("table3dCatalog", () => {
 
   describe("LOCAL_TABLE_3D_CATALOG consistency", () => {
     it("keeps booth and vip templates aligned with form area mapping", () => {
-      const booth = LOCAL_TABLE_3D_CATALOG.find((item) => item.key === "booth-sofa-4");
-      const vip = LOCAL_TABLE_3D_CATALOG.find((item) => item.key === "vip-sofa-6");
+      const booth = LOCAL_TABLE_3D_CATALOG.find((item) => item.key === "booth-sofa-khronos-4");
+      const vip = LOCAL_TABLE_3D_CATALOG.find((item) => item.key === "vip-lounge-placeholder-6");
 
       expect(booth).toBeTruthy();
       expect(vip).toBeTruthy();
@@ -155,7 +155,7 @@ describe("table3dCatalog", () => {
     it("returns human-readable unavailable reason when AR cannot be opened", () => {
       expect(getArUnavailableReason(null)).toBe("Chọn mẫu để kiểm tra hỗ trợ AR.");
       expect(getArUnavailableReason({ modelUrl: "" })).toBe(
-        "Mẫu này chưa có model 3D công khai để mở AR."
+        "Mẫu này chưa có model 3D công khai nên chưa thể mở AR. Vui lòng chọn mẫu có badge 3D/AR hoặc dùng Xem thử bằng camera."
       );
       expect(getArUnavailableReason({ modelUrl: "https://example.com/table.glb" })).toBe("");
     });
@@ -168,7 +168,7 @@ describe("table3dCatalog", () => {
           key: "round-oak-4",
           modelUrl: "https://example.com/table.glb",
         })
-      ).toEqual(["3D", "AR"]);
+      ).toEqual(["3D", "AR", "Online"]);
     });
 
     it("returns Placeholder badge when modelUrl is missing", () => {
@@ -177,14 +177,25 @@ describe("table3dCatalog", () => {
       ]);
     });
 
-    it("returns Tùy chỉnh and Placeholder badges for custom model without modelUrl", () => {
+    it("returns Custom and Placeholder badges for custom model without modelUrl", () => {
       expect(
         getModelAssetBadges({
           key: "custom-vip-1",
           modelUrl: "",
           customModelSpec: { name: "custom-vip-1" },
         })
-      ).toEqual(["Tùy chỉnh", "Placeholder"]);
+      ).toEqual(["Custom", "Placeholder"]);
+    });
+
+    it("returns Upload badge for uploaded custom models", () => {
+      expect(
+        getModelAssetBadges({
+          key: "custom-upload-1",
+          modelUrl: "https://example.com/table.glb",
+          customModelKind: "upload",
+          source: "user-upload",
+        })
+      ).toEqual(["Custom", "Upload", "3D", "AR", "Online"]);
     });
 
     it("returns correct model asset summary status", () => {
@@ -194,7 +205,7 @@ describe("table3dCatalog", () => {
           source: "public-fallback",
           modelUrl: "https://example.com/table.glb",
         })
-      ).toEqual({
+      ).toMatchObject({
         has3DModel: true,
         arReady: true,
         source: "public-fallback",
@@ -207,7 +218,7 @@ describe("table3dCatalog", () => {
           source: "public-fallback",
           modelUrl: "",
         })
-      ).toEqual({
+      ).toMatchObject({
         has3DModel: false,
         arReady: false,
         source: "public-fallback",

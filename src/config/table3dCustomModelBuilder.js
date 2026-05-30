@@ -49,6 +49,14 @@ export const DEFAULT_CUSTOM_URL_TABLE_SPEC = {
   tags: "",
 };
 
+export const DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC = {
+  ...DEFAULT_CUSTOM_URL_TABLE_SPEC,
+  modelFile: null,
+  thumbnailFile: null,
+  uploadedFileName: "",
+  uploadedSizeBytes: 0,
+};
+
 const AREA_VALUES = new Set(TABLE_AREA_OPTIONS.map((item) => item.value));
 const SHAPE_VALUES = new Set(CUSTOM_TABLE_SHAPES.map((item) => item.value));
 
@@ -154,6 +162,34 @@ export const buildCustomUrlTableCatalogItem = (spec = {}, options = {}) => {
     tags: normalizeTags(merged.tags),
     fallbackKind: "model",
     customModelKind: "url",
+  };
+};
+
+export const buildUploadedTableCatalogItem = (spec = {}, options = {}) => {
+  const merged = { ...DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC, ...spec };
+  const slug = slugify(merged.name) || "uploaded-table";
+  const timestamp = options.timestamp ?? Date.now();
+  const sourceInput = String(merged.source || "").trim();
+
+  return {
+    key: `custom-upload-${slug}-${timestamp}`,
+    label: String(merged.name || "").trim() || "Mẫu bàn 3D upload tùy chỉnh",
+    tableType: Object.values(CUSTOM_URL_TABLE_TYPES).includes(merged.tableType)
+      ? merged.tableType
+      : DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.tableType,
+    capacity: asPositiveNumber(merged.capacity, DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.capacity),
+    defaultScale: Number(merged.defaultScale || DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.defaultScale),
+    modelUrl: String(merged.modelUrl || "").trim(),
+    thumbnailUrl: String(merged.thumbnailUrl || "").trim(),
+    source: "user-upload",
+    sourceLabel: sourceInput || "User uploaded GLB model",
+    licenseLabel: String(merged.licenseLabel || "").trim() || "Người dùng tự xác nhận quyền sử dụng",
+    dimensionsCm: normalizeDimensionsCm(merged),
+    tags: normalizeTags(merged.tags),
+    fallbackKind: "model",
+    customModelKind: "upload",
+    uploadedFileName: String(merged.uploadedFileName || merged.fileName || "").trim(),
+    uploadedSizeBytes: Number(merged.uploadedSizeBytes || merged.sizeBytes || 0) || 0,
   };
 };
 

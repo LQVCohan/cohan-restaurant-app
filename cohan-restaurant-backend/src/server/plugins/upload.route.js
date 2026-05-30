@@ -15,6 +15,29 @@ const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
   10
 );
+const TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES = Number.parseInt(
+  process.env.TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES || `${15 * 1024 * 1024}`,
+  10
+);
+const TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES = Number.parseInt(
+  process.env.TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES || `${3 * 1024 * 1024}`,
+  10
+);
+const TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES = Math.max(
+  MAX_FILE_SIZE_BYTES,
+  TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES,
+  TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES
+);
+const TABLE_3D_MODEL_EXTENSIONS = new Set([".glb"]);
+const TABLE_3D_MODEL_MIME_TYPES = new Set([
+  "model/gltf-binary",
+  "application/octet-stream",
+]);
+const TABLE_3D_THUMBNAIL_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
 const ALLOWED_MIME_TYPES = new Set(
   (process.env.UPLOAD_ALLOWED_MIME_TYPES ||
     "image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif")
@@ -49,6 +72,68 @@ const assertMimeAndSize = (file, fileSize) => {
 
 const randomName = (ext = "webp") =>
   `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+
+const sanitizeFileBaseName = (filename = "asset") => {
+  const parsed = path.parse(String(filename || "asset"));
+  const safeBase = parsed.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return safeBase || "asset";
+};
+
+const buildSafeAssetName = (filename, ext) =>
+  `${Date.now()}-${crypto.randomBytes(8).toString("hex")}-${sanitizeFileBaseName(filename)}${ext}`;
+
+const getCleanExtension = (filename = "") =>
+  path.extname(String(filename || "").split(/[?#]/)[0]).toLowerCase();
+
+const assertNoUnsafeUploadName = (filename = "") => {
+  const raw = String(filename || "");
+  if (!raw || raw.includes("/") || raw.includes("\\") || raw.split(/[\\/]/).some((part) => part === "..")) {
+    throw new Error("Invalid file name");
+  }
+};
+
+const validateTable3DModelFile = (file, buffer) => {
+  assertNoUnsafeUploadName(file.filename);
+  const ext = getCleanExtension(file.filename);
+  if (!TABLE_3D_MODEL_EXTENSIONS.has(ext)) {
+    throw new Error("Only .glb table 3D model files are supported in this phase");
+  }
+  if (!TABLE_3D_MODEL_MIME_TYPES.has(String(file.mimetype || "").toLowerCase())) {
+    throw new Error("Unsupported table 3D model MIME type");
+  }
+  if (!buffer.length || buffer.length > TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES) {
+    throw new Error(`Model file exceeds max size of ${TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES} bytes`);
+  }
+  return ext;
+};
+
+const validateTable3DThumbnailFile = (file, buffer) => {
+  assertNoUnsafeUploadName(file.filename);
+  const ext = getCleanExtension(file.filename);
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  const extByMime = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+  };
+  if (!TABLE_3D_THUMBNAIL_MIME_TYPES.has(mimeType)) {
+    throw new Error("Thumbnail must be PNG, JPEG, or WebP");
+  }
+  if (!buffer.length || buffer.length > TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES) {
+    throw new Error(`Thumbnail exceeds max size of ${TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES} bytes`);
+  }
+  if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
+    throw new Error("Thumbnail file extension must be .png, .jpg, .jpeg, or .webp");
+  }
+  return extByMime[mimeType] || ext;
+};
+
 
 const normalizePrefix = (prefix = "") =>
   prefix
@@ -210,7 +295,7 @@ export default fp(
   async function uploadRoutes(app) {
     if (!app.hasContentTypeParser("multipart")) {
       await app.register(multipart, {
-        limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
+        limits: { fileSize: TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES, files: 2 },
         attachFieldsToBody: false,
       });
     }
@@ -237,6 +322,87 @@ export default fp(
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
         },
+      });
+
+
+      app.post("/table-3d-assets/upload", async function (req, reply) {
+        const authUser = await ensureUploadAuth(req, reply);
+        if (!authUser) return;
+        if (!consumeUploadRateLimit(req, authUser.id)) {
+          return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+        }
+
+        const savedPaths = [];
+        try {
+          const modelDir = path.join(uploadRoot, "table-3d", "models");
+          const thumbnailDir = path.join(uploadRoot, "table-3d", "thumbnails");
+          await ensureDir(modelDir);
+          await ensureDir(thumbnailDir);
+
+          let modelPayload = null;
+          let thumbnailPayload = null;
+
+          for await (const part of req.parts()) {
+            if (part.type !== "file") continue;
+            if (part.fieldname !== "model" && part.fieldname !== "thumbnail") {
+              await part.toBuffer();
+              return reply.code(400).send({ ok: false, message: "Unsupported upload field" });
+            }
+
+            const buffer = await part.toBuffer();
+            if (part.fieldname === "model") {
+              if (modelPayload) {
+                return reply.code(400).send({ ok: false, message: "Only one model file is allowed" });
+              }
+              const ext = validateTable3DModelFile(part, buffer);
+              modelPayload = { file: part, buffer, ext };
+              continue;
+            }
+
+            if (thumbnailPayload) {
+              return reply.code(400).send({ ok: false, message: "Only one thumbnail file is allowed" });
+            }
+            const ext = validateTable3DThumbnailFile(part, buffer);
+            thumbnailPayload = { file: part, buffer, ext };
+          }
+
+          if (!modelPayload) {
+            return reply.code(400).send({ ok: false, message: "Model .glb file is required" });
+          }
+
+          const modelFileName = buildSafeAssetName(modelPayload.file.filename, modelPayload.ext);
+          const modelPath = path.join(modelDir, modelFileName);
+          await fs.writeFile(modelPath, modelPayload.buffer, { flag: "wx" });
+          savedPaths.push(modelPath);
+
+          let thumbnailUrl = "";
+          if (thumbnailPayload) {
+            const thumbnailFileName = buildSafeAssetName(thumbnailPayload.file.filename, thumbnailPayload.ext);
+            const thumbnailPath = path.join(thumbnailDir, thumbnailFileName);
+            await fs.writeFile(thumbnailPath, thumbnailPayload.buffer, { flag: "wx" });
+            savedPaths.push(thumbnailPath);
+            thumbnailUrl = `${buildPublicBase(req)}/uploads/table-3d/thumbnails/${thumbnailFileName}`;
+          }
+
+          return reply.send({
+            ok: true,
+            modelUrl: `${buildPublicBase(req)}/uploads/table-3d/models/${modelFileName}`,
+            thumbnailUrl,
+            fileName: modelFileName,
+            originalFileName: modelPayload.file.filename,
+            sizeBytes: modelPayload.buffer.length,
+            maxModelSizeBytes: TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES,
+            maxThumbnailSizeBytes: TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES,
+            storage: "local",
+          });
+        } catch (err) {
+          await Promise.all(savedPaths.map((filePath) => fs.unlink(filePath).catch(() => {})));
+          req.log.error({ err }, "table 3d asset upload failed");
+          return reply.code(400).send({
+            ok: false,
+            message: err?.message || "Invalid table 3D asset upload",
+          });
+        }
       });
 
       app.post("/upload", async function (req, reply) {

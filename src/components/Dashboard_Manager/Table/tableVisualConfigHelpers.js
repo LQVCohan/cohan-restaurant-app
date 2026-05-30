@@ -72,6 +72,9 @@ const normalizeTags = (tags) => {
 
 const inferSourceType = (model, placement) => {
   if (placement) return "camera-preview";
+  if (model?.customModelKind === "upload" || model?.source === "user-upload") {
+    return "custom-upload";
+  }
   if (model?.customModelKind === "url" || model?.source === "user-generated-url") {
     return "custom-url";
   }
@@ -106,6 +109,8 @@ export const normalizeVisualConfigForClient = (visualConfig) => {
     tags: normalizeTags(visualConfig.tags),
     fallbackKind: trimString(visualConfig.fallbackKind, 80),
     customModelKind: trimString(visualConfig.customModelKind, 80),
+    uploadedFileName: trimString(visualConfig.uploadedFileName, 240),
+    uploadedSizeBytes: normalizePositiveNumber(visualConfig.uploadedSizeBytes),
     placement,
     savedAt: trimString(visualConfig.savedAt, 80),
     sourceType: trimString(visualConfig.sourceType, 80),
@@ -137,6 +142,8 @@ export const buildVisualConfigFromModel = (model, confirmedCameraPlacement = nul
     tags: model.tags,
     fallbackKind,
     customModelKind: model.customModelKind,
+    uploadedFileName: model.uploadedFileName,
+    uploadedSizeBytes: model.uploadedSizeBytes,
     placement: matchingPlacement,
     savedAt: new Date().toISOString(),
     sourceType: inferSourceType(model, matchingPlacement),
@@ -183,6 +190,8 @@ export const getVisualConfigSummary = (visualConfig) => {
     tags: config.tags,
     fallbackKind: config.fallbackKind,
     customModelKind: config.customModelKind,
+    uploadedFileName: config.uploadedFileName,
+    uploadedSizeBytes: config.uploadedSizeBytes,
     placement: config.placement,
     savedAt: config.savedAt,
     sourceType: config.sourceType,
@@ -212,6 +221,8 @@ export const buildPreviewModelItemFromVisualConfig = (visualConfig) => {
     tags: config.tags || [],
     fallbackKind: config.fallbackKind || "placeholder",
     customModelKind: config.customModelKind || null,
+    uploadedFileName: config.uploadedFileName || "",
+    uploadedSizeBytes: config.uploadedSizeBytes || 0,
     customModelSpec: dimensions
       ? {
           name: modelLabel,

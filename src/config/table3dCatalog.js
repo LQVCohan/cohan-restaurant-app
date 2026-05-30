@@ -255,9 +255,13 @@ export const getModelAssetBadges = (model) => {
   if (
     model?.customModelSpec ||
     model?.customModelKind ||
-    model?.source === "user-generated-url"
+    model?.source === "user-generated-url" ||
+    model?.source === "user-upload"
   ) {
     badges.push("Custom");
+    if (model?.customModelKind === "upload" || model?.source === "user-upload") {
+      badges.push("Upload");
+    }
   }
   if (canOpenModelViewerAr(model)) {
     badges.push("3D", "AR");

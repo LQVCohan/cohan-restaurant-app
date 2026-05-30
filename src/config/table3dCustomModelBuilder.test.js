@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCustomTableCatalogItem,
+  buildUploadedTableCatalogItem,
   DEFAULT_CUSTOM_TABLE_SPEC,
   mapCustomTableSpecToTableForm,
   normalizeCustomTableSpec,
@@ -75,6 +76,34 @@ describe("table3dCustomModelBuilder", () => {
     it("falls back to table slug when name is empty", () => {
       const item = buildCustomTableCatalogItem({ name: "" }, { timestamp: 123 });
       expect(item.key).toBe("custom-table-123");
+    });
+  });
+
+  describe("buildUploadedTableCatalogItem", () => {
+    it("builds uploaded user catalog item with upload metadata", () => {
+      const item = buildUploadedTableCatalogItem(
+        {
+          name: "Uploaded GLB",
+          tableType: "booth-sofa",
+          capacity: 6,
+          modelUrl: "https://cdn.example.com/table.glb",
+          thumbnailUrl: "https://cdn.example.com/table.webp",
+          source: "Vendor source note",
+          uploadedFileName: "table.glb",
+          uploadedSizeBytes: 2048,
+          tags: "upload, glb",
+        },
+        { timestamp: 999 }
+      );
+
+      expect(item.key).toBe("custom-upload-uploaded-glb-999");
+      expect(item.source).toBe("user-upload");
+      expect(item.sourceLabel).toBe("Vendor source note");
+      expect(item.customModelKind).toBe("upload");
+      expect(item.fallbackKind).toBe("model");
+      expect(item.uploadedFileName).toBe("table.glb");
+      expect(item.uploadedSizeBytes).toBe(2048);
+      expect(item.tags).toEqual(["upload", "glb"]);
     });
   });
 

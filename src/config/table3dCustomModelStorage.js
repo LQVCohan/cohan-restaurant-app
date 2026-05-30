@@ -25,6 +25,8 @@ export const normalizeStoredCustomModel = (item) => {
     tags: Array.isArray(item.tags) ? item.tags.map(String).filter(Boolean) : [],
     fallbackKind: item.fallbackKind || "parametric",
     customModelKind: item.customModelKind || (item.modelUrl ? "url" : "parametric"),
+    uploadedFileName: item.uploadedFileName || "",
+    uploadedSizeBytes: Number(item.uploadedSizeBytes || 0) || 0,
     customModelSpec: item.customModelSpec,
     createdAt: item.createdAt || nowIso,
     updatedAt: item.updatedAt || nowIso,
@@ -141,5 +143,7 @@ export const doesCustomModelMatchTableType = (model, tableType) => {
 export const isCustomTableModel = (item) =>
   item?.source === "user-generated" ||
   item?.source === "user-generated-url" ||
+  item?.source === "user-upload" ||
+  item?.customModelKind === "upload" ||
   !!item?.customModelSpec ||
   !!item?.customModelKind;
