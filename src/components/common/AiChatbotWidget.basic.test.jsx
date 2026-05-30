@@ -340,6 +340,84 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.getByRole("button", { name: "Mở giỏ hàng" })).toBeInTheDocument();
   });
 
+
+  it("Phase 25 renders realistic backend action cards safely", async () => {
+    const openCartSpy = vi.fn();
+    window.addEventListener(OPEN_CUSTOMER_CART_EVENT, openCartSpy);
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Bạn có thể đặt món, đặt bàn hoặc gặp nhân viên.",
+          intent: "checkout",
+          quickReplies: [],
+          actions: [
+            { type: "link", label: "Xem menu", href: "/cus-menu", description: "Bắt đầu đặt món", icon: "menu", priority: 1 },
+            { type: "link", label: "Xem menu trùng", href: "/cus-menu", description: "Không render trùng", icon: "menu", priority: 2 },
+            { type: "openCart", label: "Mở giỏ hàng", href: "", description: "Kiểm tra giỏ", icon: "cart", priority: 2 },
+            { type: "link", label: "Mở trang đặt bàn", href: "/restaurant/resto-1/layout", description: "Đặt bàn", icon: "table", priority: 3 },
+            { type: "link", label: "Đơn hàng của tôi", href: "/orders", description: "Theo dõi đơn", icon: "orders", priority: 4 },
+            { type: "handoff", label: "Gặp nhân viên", href: "/contact", description: "Nhờ người thật hỗ trợ", icon: "support", priority: 5 },
+            { type: "search", label: "Tìm món chay", href: "món chay không cay", description: "Tìm bằng chatbot", icon: "search", priority: 6 },
+            { type: "link", label: "Hồ sơ của tôi", href: "/profile", description: "Thông tin tài khoản", icon: "profile", priority: 7 },
+            { type: "link", label: "javascript bad", href: "javascript:alert(1)" },
+            { type: "link", label: "data bad", href: "data:text/html,bad" },
+            { type: "link", label: "mailto bad", href: "mailto:test@example.com" },
+            { type: "link", label: "tel bad", href: "tel:123" },
+            { type: "link", label: "protocol bad", href: "//evil.test" },
+            { type: "delete", label: "Xóa đơn", href: "/orders/1" },
+          ],
+          sources: [],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Kết quả tìm món chay.",
+          quickReplies: [],
+          actions: [],
+          sources: [],
+          contextSummary: null,
+          conversationId: "conv-1",
+        },
+      },
+    });
+
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("Làm sao đặt món và đặt bàn?");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Xem menu/i })).toBeInTheDocument(), { timeout: 1500 });
+    const actionRegion = screen.getByLabelText("Hành động gợi ý");
+    expect(actionRegion.querySelectorAll("button")).toHaveLength(6);
+    expect(actionRegion.querySelector("button strong")?.textContent).toBe("Xem menu");
+    expect(screen.queryByRole("button", { name: /Xem menu trùng/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /javascript bad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /data bad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mailto bad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /tel bad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /protocol bad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Xóa đơn/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Mở giỏ hàng/i }));
+    expect(openCartSpy).toHaveBeenCalledTimes(1);
+
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Đơn hàng của tôi/i }));
+    expect(mocks.navigateSpy).toHaveBeenCalledWith("/orders");
+
+    open();
+    expect(screen.getAllByRole("button", { name: /Gặp nhân viên/i })[0]).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Tìm món chay/i }));
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(2), { timeout: 1500 });
+    expect(mocks.askMutationSpy.mock.calls[1][0].variables.input.message).toBe("món chay không cay");
+
+    window.removeEventListener(OPEN_CUSTOMER_CART_EVENT, openCartSpy);
+  });
+
+
   it("normal AI flow before handoff", async () => {
     render(
       <AiChatbotWidget
