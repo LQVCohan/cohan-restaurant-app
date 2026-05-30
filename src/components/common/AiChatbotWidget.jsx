@@ -300,6 +300,30 @@ export const buildMenuSourceCards = (response) => {
   return cards;
 };
 
+export const getSafeVisibleAiActions = ({ actions = [], handoffEnabled = true, limit = 6 } = {}) => {
+  const allowedTypes = new Set(["link", "openCart", "handoff", "search"]);
+  const seen = new Set();
+  return (handoffEnabled
+    ? actions
+    : actions.filter((action) => action?.type !== "handoff")
+  )
+    .filter((action) => allowedTypes.has(action?.type))
+    .filter((action) => action?.type !== "add_to_cart_candidate")
+    .filter((action) => {
+      const href = String(action?.href || "").trim();
+      if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return false;
+      if (["openCart", "handoff", "search"].includes(action?.type)) return true;
+      return (href.startsWith("/") && !href.startsWith("//")) || /^https?:\/\//i.test(href);
+    })
+    .filter((action) => {
+      const key = action?.type === "openCart" || action?.href ? `${action?.type}:${action?.href || ""}` : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+};
+
 const normalizeHistory = (messages) =>
   messages
     .filter((item) => ["user", "assistant"].includes(item.role))
@@ -531,29 +555,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     publicSettings?.handoffUnavailableMessage ||
     "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
   const visibleActions = useMemo(
-    () => {
-      const allowedTypes = new Set(["link", "openCart", "handoff", "search"]);
-      const seen = new Set();
-      return (handoffEnabled
-        ? lastActions
-        : lastActions.filter((action) => action?.type !== "handoff")
-      )
-        .filter((action) => allowedTypes.has(action?.type))
-        .filter((action) => action?.type !== "add_to_cart_candidate")
-        .filter((action) => {
-          const href = String(action?.href || "").trim();
-          if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return false;
-          if (["openCart", "handoff", "search"].includes(action?.type)) return true;
-          return (href.startsWith("/") && !href.startsWith("//")) || /^https?:\/\//i.test(href);
-        })
-        .filter((action) => {
-          const key = action?.type === "openCart" || action?.href ? `${action?.type}:${action?.href || ""}` : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .slice(0, 6);
-    },
+    () => getSafeVisibleAiActions({ actions: lastActions, handoffEnabled, limit: 6 }),
     [handoffEnabled, lastActions],
   );
 

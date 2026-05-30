@@ -155,3 +155,15 @@
 - [ ] Manager actions are hidden from customer roles and shown only for allowed manager/admin/hr/accountant roles.
 - [ ] Frontend action cards use `navigate()` for internal links, the existing cart event for `openCart`, the existing handoff mutation for `handoff`, and safe chatbot resubmission for `search`.
 - [ ] Manual safety rule: the chatbot never auto-orders, auto-pays, auto-reserves, mutates profiles, or performs destructive actions.
+
+## Phase 25 — Real-user scenario QA and regression hardening
+
+- [ ] Backend real-user scenario tests pass.
+- [ ] Frontend action rendering regression tests pass.
+- [ ] Manual QA completed using `docs/ai-chatbot-manual-qa.md`.
+- [ ] No unsafe action types are returned or rendered.
+- [ ] No private customer, guest, order, reservation, credential, token, or API key data leaks.
+- [ ] No fake route or fabricated manager/customer route is suggested.
+- [ ] No auto-side-effect actions exist for payment, order placement, reservation creation, profile editing, cancellation, deletion, or refund.
+- [ ] Provider failure fallback tested and still returns useful deterministic guidance.
+- [ ] Gemini local testing completed if `GEMINI_API_KEY` / `AI_PROVIDER=gemini` is configured.

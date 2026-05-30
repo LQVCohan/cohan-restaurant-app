@@ -4,6 +4,7 @@ import {
   buildStarterMessages,
   extractRestaurantId,
   getInputPlaceholder,
+  getSafeVisibleAiActions,
 } from "./AiChatbotWidget";
 import { buildMenuItemServingOptions } from "@/utils/customerCartPayload";
 import { AI_CHATBOT_FEATURE_MAP, getAiChatbotFeatureMatches } from "@/utils/aiChatbotFeatureMap";
@@ -118,6 +119,44 @@ describe("AiChatbotWidget helpers", () => {
       .toBe(false);
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "manager", query: "quản lý chatbot ở đâu" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "ai-chatbot-manager", managerOnly: true })]));
+  });
+
+
+  it("Phase 25 action helper caps, deduplicates, preserves primary action, and drops unsafe provider payloads", () => {
+    const actions = [
+      { type: "link", label: "Xem menu", href: "/cus-menu", priority: 1 },
+      { type: "link", label: "Trùng menu", href: "/cus-menu", priority: 2 },
+      { type: "openCart", label: "Mở giỏ hàng", href: "" },
+      { type: "handoff", label: "Gặp nhân viên", href: "/contact" },
+      { type: "search", label: "Tìm món chay", href: "món chay không cay" },
+      { type: "link", label: "Đơn hàng", href: "/orders" },
+      { type: "link", label: "Hồ sơ", href: "/profile" },
+      { type: "link", label: "Quá giới hạn", href: "/restaurants" },
+      { type: "link", label: "javascript", href: "javascript:alert(1)" },
+      { type: "link", label: "data", href: "data:text/html,bad" },
+      { type: "link", label: "mailto", href: "mailto:test@example.com" },
+      { type: "link", label: "tel", href: "tel:123" },
+      { type: "link", label: "protocol", href: "//evil.test" },
+      { type: "add_to_cart_candidate", label: "Thêm thẳng", href: "/food/food-1" },
+      { type: "delete", label: "Xóa", href: "/orders/1" },
+    ];
+
+    const visible = getSafeVisibleAiActions({ actions, handoffEnabled: true });
+
+    expect(visible).toHaveLength(6);
+    expect(visible[0]).toMatchObject({ label: "Xem menu", href: "/cus-menu" });
+    expect(visible.filter((action) => action.href === "/cus-menu")).toHaveLength(1);
+    expect(visible.map((action) => action.label)).toEqual([
+      "Xem menu",
+      "Mở giỏ hàng",
+      "Gặp nhân viên",
+      "Tìm món chay",
+      "Đơn hàng",
+      "Hồ sơ",
+    ]);
+    expect(JSON.stringify(visible)).not.toMatch(/javascript:|data:|mailto:|tel:|evil|add_to_cart_candidate|delete/);
+
+    expect(getSafeVisibleAiActions({ actions, handoffEnabled: false }).some((action) => action.type === "handoff")).toBe(false);
   });
 
 });

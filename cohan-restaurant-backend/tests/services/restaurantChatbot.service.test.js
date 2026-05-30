@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __testables } from "../../src/services/ai/restaurantChatbot.service.js";
+import { aiChatbotScenarios } from "../fixtures/aiChatbotScenarios.js";
+import { assertSafeAiChatbotResponse } from "../helpers/assertSafeAiChatbotResponse.js";
 
 const {
+  classifyIntent,
   extractMenuPreferences,
   isMenuAssistantRequest,
   parseBudgetMax,
@@ -68,6 +71,61 @@ const mockGeminiFetch = (payload) => vi.fn(async () => ({
     candidates: [{ content: { parts: [{ text: typeof payload === "string" ? payload : JSON.stringify(payload) }] } }],
   }),
 }));
+
+describe("restaurantChatbot Phase 25 real-user scenario QA", () => {
+  it.each(aiChatbotScenarios)("$label", async (scenario) => {
+    const context = { ...scenario.context };
+    let response;
+
+    const refusal = shouldRefuseRequest({ message: scenario.message, context });
+    if (scenario.expectRefusal) {
+      expect(refusal).toMatchObject({ refused: true, reason: scenario.expectRefusal });
+      response = {
+        answer: refusal.answer,
+        intent: context.intent || classifyIntent(scenario.message),
+        confidence: 1,
+        quickReplies: fallbackQuickReplies(context.intent || classifyIntent(scenario.message)),
+        actions: [],
+        sources: [],
+        isFallback: true,
+      };
+    } else if (scenario.providerFailure) {
+      process.env.AI_PROVIDER = "openai";
+      process.env.OPENAI_API_KEY = "openai-key";
+      vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("provider down"); }));
+      response = await callAiProvider({ message: scenario.message, context, history: [] });
+      expect(response.isFallback).toBe(true);
+    } else {
+      expect(refusal.refused).toBe(false);
+      response = fallbackAnswer(context);
+    }
+
+    assertSafeAiChatbotResponse(response, expect);
+    expect(scenario.expectedIntents).toContain(response.intent);
+
+    for (const text of scenario.mustContain || []) {
+      expect(response.answer).toContain(text);
+    }
+    for (const text of scenario.mustNotContain || []) {
+      expect(JSON.stringify(response)).not.toContain(text);
+    }
+    for (const text of scenario.ownedData || []) {
+      expect(JSON.stringify(response)).toContain(text);
+    }
+    for (const text of scenario.notOwnedData || []) {
+      expect(JSON.stringify(response)).not.toContain(text);
+    }
+
+    const hasManagerAction = (response.actions || []).some((action) => String(action.href || "").startsWith("/manager"));
+    if (!["manager", "admin"].includes(String(scenario.role || "").toLowerCase())) {
+      expect(hasManagerAction).toBe(false);
+    }
+    if (scenario.role === "guest") {
+      expect(JSON.stringify(response)).not.toMatch(/an@example\.com|ORD-AN-1|RSV-AN-1/);
+    }
+  });
+});
+
 
 describe("restaurantChatbot menu assistant", () => {
   it("AiChatbotSource schema supports metadata fields", () => {

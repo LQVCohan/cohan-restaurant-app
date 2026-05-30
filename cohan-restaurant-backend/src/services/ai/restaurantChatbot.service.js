@@ -30,6 +30,7 @@ const INTENTS = {
   orderHelp: ["đơn", "order", "mã đơn", "trạng thái", "giao", "ship", "đơn hàng", "don hang"],
   profileHelp: ["hồ sơ", "ho so", "profile", "tài khoản", "tai khoan", "account"],
   managerFeatureHelp: ["doanh thu", "tồn kho", "nhân viên", "hiệu suất", "ca làm", "quản lý", "kpi", "manager", "dashboard"],
+  restaurantInfo: ["mở cửa", "mo cua", "giờ mở", "gio mo", "opening hours", "open hours", "mấy giờ", "may gio", "địa chỉ", "dia chi"],
   support: ["hỗ trợ", "liên hệ", "khiếu nại", "phàn nàn", "gặp nhân viên", "support"],
   menu: ["món", "menu", "ăn", "đồ ăn", "giá", "recommend", "gợi ý", "ngon", "bán chạy"],
   promotion: ["coupon", "voucher", "mã giảm", "khuyến mãi", "ưu đãi", "giảm giá"],
@@ -1002,6 +1003,7 @@ const fallbackQuickReplies = (intent) => {
     promotion: ["Mã giảm giá hiện có", "Điều kiện áp dụng", "Gợi ý combo"],
     managerFeatureHelp: ["Tóm tắt vận hành", "Cảnh báo tồn kho", "Hiệu suất nhân viên"],
     support: ["Gặp nhân viên hỗ trợ", "Tôi có khiếu nại", "Hướng dẫn sử dụng"],
+    restaurantInfo: ["Giờ mở cửa", "Địa chỉ nhà hàng", "Gợi ý món"],
   };
   return byIntent[intent] || ["Gợi ý món ngon", "Cách đặt bàn", "Kiểm tra đơn hàng"];
 };
@@ -1019,6 +1021,7 @@ const fallbackActions = (context) => {
   if (context.intent === "checkout") actions.push({ type: "openCart", label: "Kiểm tra giỏ hàng", href: "" });
   if (context.intent === "profileHelp") actions.push({ type: "link", label: "Hồ sơ của tôi", href: "/profile" });
   if (context.intent === "navigation") actions.push({ type: "link", label: "Trang chủ", href: "/" });
+  if (context.intent === "restaurantInfo") actions.push({ type: "link", label: restaurantId ? "Xem nhà hàng" : "Chọn nhà hàng", href: restaurantId ? `/restaurant/${restaurantId}` : "/restaurants" });
   if (context.intent === "reservationHelp" && restaurantId) {
     actions.push({ type: "link", label: "Mở trang đặt bàn", href: `/restaurant/${restaurantId}/layout` });
   }
@@ -1068,6 +1071,10 @@ const orderingWorkflowFallback = () => [
 ].join("\n");
 
 const reservationFallback = (context) => {
+  const reservation = context.reservations?.[0];
+  if (context.userSafeProfile?.authenticated && reservation) {
+    return `Đặt bàn ${reservation.orderCode || "gần nhất"} tại ${reservation.restaurantName || context.restaurants?.[0]?.name || "nhà hàng"} cho ${reservation.partySize || "nhiều"} người hiện ở trạng thái ${reservation.status || "đang xử lý"}.${reservation.timeTo ? ` Thời gian: ${new Date(reservation.timeTo).toLocaleString("vi-VN")}.` : ""} Bạn có thể theo dõi trạng thái trong mục đặt bàn/đơn đặt chỗ.`;
+  }
   const restaurant = context.restaurants?.[0];
   const prefix = restaurant ? `${restaurant.name}: ` : "Bạn hãy chọn nhà hàng trước. ";
   return `${prefix}Bạn có thể đặt bàn theo các bước:
@@ -1098,6 +1105,18 @@ const promotionFallback = (context) => {
   return `Các ưu đãi có thể dùng:\n${lines.join("\n")}`;
 };
 
+
+
+const restaurantInfoFallback = (context) => {
+  const restaurant = context.restaurants?.[0];
+  if (!restaurant) return "Mình chưa thấy nhà hàng cụ thể trong ngữ cảnh. Bạn có thể chọn nhà hàng rồi hỏi lại giờ mở cửa, địa chỉ hoặc trạng thái nhận đơn.";
+  const hours = restaurant.openingHours || restaurant.closingHours
+    ? `Giờ mở cửa: ${restaurant.openingHours || "chưa rõ"} - ${restaurant.closingHours || "chưa rõ"}.`
+    : "Mình chưa thấy giờ mở cửa trong dữ liệu hiện có.";
+  const status = restaurant.operationalStatus ? ` Trạng thái: ${restaurant.operationalStatus}.` : "";
+  const address = restaurant.address ? ` Địa chỉ: ${restaurant.address}.` : "";
+  return `${restaurant.name}: ${hours}${status}${address}`;
+};
 
 const identityFallback = (context) => {
   const profile = context.userSafeProfile || context.user;
@@ -1133,7 +1152,7 @@ const shouldRefuseRequest = ({ message, context }) => {
   if (/(người dùng khác|nguoi dung khac|tài khoản khác|tai khoan khac|email của khách|email cua khach|số điện thoại khách|so dien thoai khach|another user|other user)/.test(raw)) {
     return { refused: true, reason: "other_user_data", answer: "Mình chỉ có thể hỗ trợ dữ liệu thuộc về chính bạn trong ngữ cảnh hiện tại. Mình không thể tiết lộ thông tin của người dùng khác." };
   }
-  const asksManagerData = /(doanh thu|revenue|nhân viên|nhan vien|lương|luong|payroll|tồn kho|ton kho|inventory|kpi|báo cáo quản lý|bao cao quan ly)/.test(raw);
+  const asksManagerData = /(doanh thu|revenue|hiệu suất nhân viên|hieu suat nhan vien|lương|luong|payroll|tồn kho|ton kho|inventory|kpi|báo cáo quản lý|bao cao quan ly)/.test(raw);
   const role = context?.userSafeProfile?.role || context?.user?.role;
   if (asksManagerData && !ROLE_MANAGER_LIKE.has(String(role || "").toLowerCase())) {
     return { refused: true, reason: "manager_only", answer: "Nội dung quản lý như doanh thu, tồn kho, nhân viên hoặc KPI chỉ dành cho tài khoản manager/admin. Với vai trò hiện tại, mình có thể hỗ trợ menu, đặt món, đặt bàn, đơn hàng của bạn và hỗ trợ chung." };
@@ -1161,7 +1180,8 @@ const fallbackAnswer = (context) => {
     profileHelp: navigationFallback,
     promotion: promotionFallback,
     managerFeatureHelp: managerFallback,
-    support: () => "Mình có thể hỗ trợ nhanh về menu, đặt bàn, đơn hàng, coupon. Nếu cần người thật xử lý, bạn có thể mở trung tâm hỗ trợ hoặc gửi yêu cầu cho nhân viên nhà hàng.",
+    support: () => "Mình có thể hỗ trợ nhanh về menu, đặt bàn, đơn hàng, coupon. Nếu cần người thật xử lý, bạn có thể bấm Gặp nhân viên để người thật hỗ trợ trực tiếp.",
+    restaurantInfo: restaurantInfoFallback,
     general: () => "Chào bạn, mình là trợ lý A.I của Cohan Restaurant App. Bạn có thể hỏi mình về món ăn, đặt bàn, đơn hàng, coupon hoặc cách sử dụng hệ thống.",
   };
   return {
