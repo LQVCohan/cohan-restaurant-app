@@ -10,6 +10,10 @@ import process from "node:process";
 import sharp from "sharp";
 import { URL } from "node:url";
 import { resolveAuthenticatedUserFromRequest } from "../authUserResolver.js";
+import {
+  getTableModelGenerationStatus,
+  requestTableModelGeneration,
+} from "../../services/table3d/table3dAiGeneration.service.js";
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
@@ -23,10 +27,17 @@ const TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES || `${3 * 1024 * 1024}`,
   10
 );
+const TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES = Number.parseInt(
+  process.env.TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES || `${5 * 1024 * 1024}`,
+  10
+);
+const TABLE_3D_AI_MIN_IMAGES = 3;
+const TABLE_3D_AI_MAX_IMAGES = 5;
 const TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES = Math.max(
   MAX_FILE_SIZE_BYTES,
   TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES,
-  TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES
+  TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES,
+  TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES
 );
 const TABLE_3D_MODEL_EXTENSIONS = new Set([".glb"]);
 const TABLE_3D_MODEL_MIME_TYPES = new Set([
@@ -38,6 +49,7 @@ const TABLE_3D_THUMBNAIL_MIME_TYPES = new Set([
   "image/jpeg",
   "image/webp",
 ]);
+const TABLE_3D_AI_IMAGE_MIME_TYPES = TABLE_3D_THUMBNAIL_MIME_TYPES;
 const ALLOWED_MIME_TYPES = new Set(
   (process.env.UPLOAD_ALLOWED_MIME_TYPES ||
     "image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif")
@@ -134,6 +146,36 @@ const validateTable3DThumbnailFile = (file, buffer) => {
   return extByMime[mimeType] || ext;
 };
 
+const validateTable3DAiImageFile = (file, buffer) => {
+  assertNoUnsafeUploadName(file.filename);
+  const ext = getCleanExtension(file.filename);
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  const extByMime = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+  };
+  if (!TABLE_3D_AI_IMAGE_MIME_TYPES.has(mimeType)) {
+    throw new Error("AI reference images must be PNG, JPEG, or WebP");
+  }
+  if (!buffer.length || buffer.length > TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES) {
+    throw new Error(`AI reference image exceeds max size of ${TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES} bytes`);
+  }
+  if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
+    throw new Error("AI reference image extension must be .png, .jpg, .jpeg, or .webp");
+  }
+  return extByMime[mimeType] || ext;
+};
+
+const parseJsonField = (value, fallback = {}) => {
+  if (!value) return fallback;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    throw new Error("Invalid metadata JSON");
+  }
+};
 
 const normalizePrefix = (prefix = "") =>
   prefix
@@ -295,10 +337,107 @@ export default fp(
   async function uploadRoutes(app) {
     if (!app.hasContentTypeParser("multipart")) {
       await app.register(multipart, {
-        limits: { fileSize: TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES, files: 2 },
+        limits: { fileSize: TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES, files: 8 },
         attachFieldsToBody: false,
       });
     }
+
+
+    const table3DAiRateStore = new Map();
+    const consumeTable3DAiRateLimit = (req, userId) => {
+      const now = Date.now();
+      const max = Number.parseInt(process.env.TABLE_3D_AI_RATE_LIMIT_MAX || "10", 10);
+      const windowMs = Number.parseInt(process.env.TABLE_3D_AI_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
+      const key = `${userId}:${req.ip}:table3d-ai`;
+      const bucket = table3DAiRateStore.get(key) || { count: 0, resetAt: now + windowMs };
+      if (now > bucket.resetAt) {
+        bucket.count = 0;
+        bucket.resetAt = now + windowMs;
+      }
+      bucket.count += 1;
+      table3DAiRateStore.set(key, bucket);
+      return bucket.count <= max;
+    };
+
+    app.post("/table-3d-ai/generate", async function (req, reply) {
+      const authUser = await ensureUploadAuth(req, reply);
+      if (!authUser) return;
+      if (!consumeTable3DAiRateLimit(req, authUser.id)) {
+        return reply.code(429).send({ ok: false, message: "Too many AI generation requests" });
+      }
+
+      const savedPaths = [];
+      try {
+        const uploadRoot = path.resolve(
+          process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")
+        );
+        const imageDir = path.join(uploadRoot, "table-3d", "ai-inputs");
+        await ensureDir(imageDir);
+
+        let metadata = {};
+        const images = [];
+
+        for await (const part of req.parts()) {
+          if (part.type === "field") {
+            if (part.fieldname === "metadata") {
+              metadata = parseJsonField(part.value, {});
+            }
+            continue;
+          }
+
+          if (part.type !== "file") continue;
+          if (part.fieldname !== "images") {
+            await part.toBuffer();
+            return reply.code(400).send({ ok: false, message: "Unsupported AI image upload field" });
+          }
+
+          const buffer = await part.toBuffer();
+          const ext = validateTable3DAiImageFile(part, buffer);
+          if (images.length >= TABLE_3D_AI_MAX_IMAGES) {
+            return reply.code(400).send({ ok: false, message: "At most 5 AI reference images are allowed" });
+          }
+          const fileName = buildSafeAssetName(part.filename, ext);
+          const filePath = path.join(imageDir, fileName);
+          await fs.writeFile(filePath, buffer, { flag: "wx" });
+          savedPaths.push(filePath);
+          images.push({
+            fileName,
+            originalFileName: part.filename,
+            mimeType: part.mimetype,
+            sizeBytes: buffer.length,
+            url: `${buildPublicBase(req)}/uploads/table-3d/ai-inputs/${fileName}`,
+            path: filePath,
+          });
+        }
+
+        if (images.length < TABLE_3D_AI_MIN_IMAGES) {
+          return reply.code(400).send({ ok: false, status: "validation_error", message: "At least 3 AI reference images are required" });
+        }
+
+        const result = await requestTableModelGeneration(
+          { ...metadata, userId: authUser.id, images },
+          { userId: authUser.id, restaurantId: metadata.restaurantId, requestId: req.id }
+        );
+        return reply.code(result.ok ? 200 : 503).send(result);
+      } catch (err) {
+        req.log.error({ err }, "table 3d ai generation request failed");
+        return reply.code(400).send({
+          ok: false,
+          status: "validation_error",
+          message: err?.message || "Invalid AI 3D generation request",
+        });
+      }
+    });
+
+    app.get("/table-3d-ai/jobs/:jobId", async function (req, reply) {
+      const authUser = await ensureUploadAuth(req, reply);
+      if (!authUser) return;
+      if (!consumeTable3DAiRateLimit(req, authUser.id)) {
+        return reply.code(429).send({ ok: false, message: "Too many AI generation requests" });
+      }
+      const result = await getTableModelGenerationStatus(req.params?.jobId, { userId: authUser.id });
+      return reply.code(result.ok ? 200 : 503).send(result);
+    });
 
     const tempDir = path.resolve(
       process.env.UPLOAD_TEMP_DIR || path.join(os.tmpdir(), "cohan-uploads")

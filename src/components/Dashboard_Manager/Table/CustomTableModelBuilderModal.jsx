@@ -4,10 +4,12 @@ import Button from "@/components/common/Button";
 import { getGraphqlUrl } from "@/lib/apiBaseUrl";
 import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
 import {
+  buildAiGeneratedTableCatalogItem,
   buildCustomTableCatalogItem,
   buildCustomUrlTableCatalogItem,
   buildUploadedTableCatalogItem,
   CUSTOM_TABLE_SHAPES,
+  DEFAULT_AI_TABLE_SPEC,
   DEFAULT_CUSTOM_TABLE_SPEC,
   DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC,
   DEFAULT_CUSTOM_URL_TABLE_SPEC,
@@ -23,10 +25,14 @@ const BUILDER_MODES = {
   PARAMETRIC: "parametric",
   URL: "url",
   UPLOAD: "upload",
+  AI: "ai",
 };
 
 const MODEL_MAX_SIZE_BYTES = 15 * 1024 * 1024;
 const THUMBNAIL_MAX_SIZE_BYTES = 3 * 1024 * 1024;
+const AI_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const AI_MIN_IMAGES = 3;
+const AI_MAX_IMAGES = 5;
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
@@ -113,11 +119,51 @@ const uploadTable3DAsset = ({ form, onProgress }) =>
     xhr.send(form);
   });
 
+
+const requestAiTable3DGeneration = (formData) =>
+  fetch(`${getApiBase()}/api/table-3d-ai/generate`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  }).then(async (response) => {
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok && !payload?.status) {
+      throw new Error(payload?.message || `Yêu cầu AI thất bại (HTTP ${response.status}).`);
+    }
+    return payload;
+  });
+
+const fetchAiTable3DJobStatus = (jobId) =>
+  fetch(`${getApiBase()}/api/table-3d-ai/jobs/${encodeURIComponent(jobId)}`, {
+    credentials: "include",
+  }).then(async (response) => {
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok && !payload?.status) {
+      throw new Error(payload?.message || `Kiểm tra trạng thái AI thất bại (HTTP ${response.status}).`);
+    }
+    return payload;
+  });
+
+const getAiStatusLabel = (status) => ({
+  idle: "Chưa cấu hình AI provider",
+  submitting: "Đang gửi yêu cầu",
+  queued: "Đã tạo job",
+  processing: "Đang xử lý",
+  completed: "Hoàn tất",
+  failed: "Lỗi",
+  not_configured: "Chưa cấu hình AI provider",
+  pending_provider: "Chờ tích hợp provider",
+  demo_only: "Mock/dev demo_only",
+}[status] || status || "Chưa gửi yêu cầu");
+
 const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   const [mode, setMode] = useState(BUILDER_MODES.PARAMETRIC);
   const [form, setForm] = useState(DEFAULT_CUSTOM_TABLE_SPEC);
   const [urlForm, setUrlForm] = useState(DEFAULT_CUSTOM_URL_TABLE_SPEC);
   const [uploadForm, setUploadForm] = useState(DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC);
+  const [aiForm, setAiForm] = useState(DEFAULT_AI_TABLE_SPEC);
+  const [aiJob, setAiJob] = useState(null);
+  const [aiStatus, setAiStatus] = useState("idle");
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
@@ -137,10 +183,15 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     setUploadForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateAiField = (field, value) => {
+    setAiForm((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleModeChange = (nextMode) => {
     setMode(nextMode);
     setError("");
     setUploadStatus("");
+    if (nextMode !== BUILDER_MODES.AI) setAiStatus("idle");
   };
 
   const handleReferenceImage = (event) => {
@@ -190,6 +241,110 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     return [...nextErrors, ...validateSharedCatalogFields(uploadForm)];
   };
 
+
+  const handleAiImagesSelected = (event) => {
+    const selected = Array.from(event.target.files || []);
+    const nextImages = [...(aiForm.referenceImages || []), ...selected].slice(0, AI_MAX_IMAGES);
+    updateAiField("referenceImages", nextImages);
+    event.target.value = "";
+  };
+
+  const removeAiImage = (index) => {
+    updateAiField("referenceImages", (aiForm.referenceImages || []).filter((_, imageIndex) => imageIndex !== index));
+  };
+
+  const validateAiForm = () => {
+    const nextErrors = [];
+    const images = aiForm.referenceImages || [];
+    if (!String(aiForm.name || "").trim()) nextErrors.push("Tên mẫu là bắt buộc.");
+    if (!String(aiForm.tableType || "").trim()) nextErrors.push("Loại bàn là bắt buộc.");
+    if (images.length < AI_MIN_IMAGES) nextErrors.push("Cần ít nhất 3 ảnh tham khảo.");
+    if (images.length > AI_MAX_IMAGES) nextErrors.push("Tối đa 5 ảnh tham khảo.");
+    images.forEach((file) => {
+      if (!IMAGE_MIME_TYPES.has(file.type)) nextErrors.push(`${file.name}: chỉ hỗ trợ PNG, JPEG hoặc WebP.`);
+      if (file.size > AI_IMAGE_MAX_SIZE_BYTES) nextErrors.push(`${file.name}: tối đa ${formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.`);
+    });
+    return [...nextErrors, ...validateSharedCatalogFields(aiForm)];
+  };
+
+  const handleAiSubmit = async () => {
+    const validationErrors = validateAiForm();
+    if (validationErrors.length) {
+      setError(validationErrors.join(" "));
+      return;
+    }
+
+    setError("");
+    setAiStatus("submitting");
+    const formData = new FormData();
+    formData.append("metadata", JSON.stringify({
+      name: aiForm.name,
+      tableType: aiForm.tableType,
+      capacity: Number(aiForm.capacity),
+      defaultScale: Number(aiForm.defaultScale),
+      dimensions: {
+        width: aiForm.widthCm,
+        depth: aiForm.depthCm,
+        height: aiForm.heightCm,
+        diameter: aiForm.diameterCm,
+      },
+      material: aiForm.material,
+      color: aiForm.color,
+      notes: aiForm.notes,
+      tags: parseTags(aiForm.tags),
+      licenseLabel: aiForm.licenseLabel,
+    }));
+    (aiForm.referenceImages || []).forEach((file) => formData.append("images", file, file.name));
+
+    try {
+      const result = await requestAiTable3DGeneration(formData);
+      setAiJob(result);
+      setAiStatus(result.status || (result.ok ? "queued" : "failed"));
+      if (result.status === "not_configured") {
+        setError("Tính năng AI đang chờ cấu hình dịch vụ sinh model 3D.");
+      } else if (result.status === "pending_provider") {
+        setError(result.message || "Provider AI đã khai báo nhưng adapter sinh model 3D chưa được tích hợp.");
+      }
+    } catch (err) {
+      setAiStatus("failed");
+      setError(err?.message || "Không gửi được yêu cầu AI.");
+    }
+  };
+
+  const handleAiCheckStatus = async () => {
+    if (!aiJob?.jobId) return;
+    setError("");
+    try {
+      const result = await fetchAiTable3DJobStatus(aiJob.jobId);
+      setAiJob((prev) => ({ ...(prev || {}), ...result }));
+      setAiStatus(result.status || "processing");
+      if (result.status === "not_configured") {
+        setError("Tính năng AI đang chờ cấu hình dịch vụ sinh model 3D.");
+        return;
+      }
+      if (result.status === "completed" && result.generatedModelUrl) {
+        const item = buildAiGeneratedTableCatalogItem({
+          ...aiForm,
+          capacity: Number(aiForm.capacity),
+          defaultScale: Number(aiForm.defaultScale),
+          tags: parseTags(aiForm.tags),
+          generatedModelUrl: result.generatedModelUrl,
+          generatedThumbnailUrl: result.generatedThumbnailUrl || "",
+          aiJobId: result.jobId || aiJob.jobId,
+          aiProvider: result.aiProvider || result.provider || aiJob.provider || "",
+          generationStatus: result.status,
+        });
+        if (item) {
+          onApply?.(item);
+          onClose?.();
+        }
+      }
+    } catch (err) {
+      setAiStatus("failed");
+      setError(err?.message || "Không kiểm tra được trạng thái job AI.");
+    }
+  };
+
   const handleUploadAndApply = async () => {
     const validationErrors = validateUploadForm();
     if (validationErrors.length) {
@@ -237,6 +392,11 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   const handleApply = () => {
     if (mode === BUILDER_MODES.UPLOAD) {
       handleUploadAndApply();
+      return;
+    }
+
+    if (mode === BUILDER_MODES.AI) {
+      handleAiSubmit();
       return;
     }
 
@@ -362,7 +522,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
       <div className="p-3">
         <h3>✨ Tạo mẫu bàn tùy chỉnh</h3>
         <p className="text-muted">
-          Tạo mẫu bằng thông số, thêm model 3D online bằng URL hoặc upload file .glb thật. Chưa hỗ trợ AI dựng 3D từ ảnh.
+          Tạo mẫu bằng thông số, thêm model 3D online bằng URL, upload file .glb thật hoặc gửi yêu cầu AI dựng model từ ảnh tham khảo khi provider được cấu hình.
         </p>
 
         <div className="btn-group mt-2" role="tablist" aria-label="Chế độ tạo mẫu bàn tùy chỉnh">
@@ -374,6 +534,9 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
           </Button>
           <Button type="button" variant={mode === BUILDER_MODES.UPLOAD ? "primary" : "secondary"} onClick={() => handleModeChange(BUILDER_MODES.UPLOAD)}>
             Upload model 3D
+          </Button>
+          <Button type="button" variant={mode === BUILDER_MODES.AI ? "primary" : "secondary"} onClick={() => handleModeChange(BUILDER_MODES.AI)}>
+            Tạo model 3D bằng AI
           </Button>
         </div>
 
@@ -465,10 +628,57 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
           </div>
         )}
 
+        {mode === BUILDER_MODES.AI && (
+          <div className="row g-3 mt-1">
+            {renderCatalogFields(aiForm, updateAiField, "ai")}
+            <div className="col-md-6"><label>Chất liệu</label><input className="form-control" value={aiForm.material} onChange={(e) => updateAiField("material", e.target.value)} placeholder="gỗ, đá, kim loại..." /></div>
+            <div className="col-md-6"><label>Màu sắc</label><input className="form-control" value={aiForm.color} onChange={(e) => updateAiField("color", e.target.value)} placeholder="nâu gỗ, đen mờ..." /></div>
+            <div className="col-12"><label>Ghi chú mô tả</label><textarea className="form-control" rows="2" value={aiForm.notes} onChange={(e) => updateAiField("notes", e.target.value)} placeholder="Mô tả chi tiết mặt bàn, chân bàn, cạnh bo, phong cách..." /></div>
+            <div className="col-12">
+              <label>Ảnh tham khảo (3–5 ảnh)</label>
+              <input className="form-control" type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={handleAiImagesSelected} />
+              <small className="text-muted">Gợi ý: mặt trước, mặt bên, mặt trên nếu có, ảnh có vật chuẩn kích thước nếu có. Mỗi ảnh tối đa {formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.</small>
+            </div>
+            {(aiForm.referenceImages || []).length > 0 && (
+              <div className="col-12">
+                <div className="list-group">
+                  {(aiForm.referenceImages || []).map((file, index) => (
+                    <div className="list-group-item d-flex justify-content-between align-items-center" key={`${file.name}-${file.size}-${index}`}>
+                      <span>{index + 1}. {file.name} • {formatFileSize(file.size)}</span>
+                      <Button type="button" variant="secondary" onClick={() => removeAiImage(index)}>Remove</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="col-12">
+              <div className="alert alert-info mb-0">
+                <strong>Quy tắc ảnh:</strong> ảnh sáng rõ; thấy toàn bộ bàn; ít vật che khuất; nền càng sạch càng tốt; không có người/khách hàng/thông tin nhạy cảm; nên có vật chuẩn hoặc nhập kích thước thật.
+              </div>
+            </div>
+            <div className="col-12">
+              <div className="alert alert-secondary mb-0">
+                Trạng thái: <strong>{getAiStatusLabel(aiStatus)}</strong>{aiJob?.jobId ? ` • Job: ${aiJob.jobId}` : ""}
+                {aiJob?.message ? <div>{aiJob.message}</div> : null}
+                {aiJob?.warnings?.length ? <div>Cảnh báo: {aiJob.warnings.join(", ")}</div> : null}
+              </div>
+            </div>
+            {aiJob?.jobId && (
+              <div className="col-12">
+                <Button type="button" variant="secondary" onClick={handleAiCheckStatus} disabled={aiStatus === "submitting"}>Kiểm tra trạng thái</Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="d-flex justify-content-end gap-2 mt-3">
-          <Button variant="secondary" onClick={onClose} disabled={isUploading}>Hủy</Button>
-          <Button variant="primary" onClick={handleApply} disabled={isUploading}>
-            {mode === BUILDER_MODES.UPLOAD ? (isUploading ? "Đang upload..." : "Upload & lưu vào thư viện") : "Lưu vào thư viện"}
+          <Button variant="secondary" onClick={onClose} disabled={isUploading || aiStatus === "submitting"}>Hủy</Button>
+          <Button variant="primary" onClick={handleApply} disabled={isUploading || aiStatus === "submitting"}>
+            {mode === BUILDER_MODES.UPLOAD
+              ? (isUploading ? "Đang upload..." : "Upload & lưu vào thư viện")
+              : mode === BUILDER_MODES.AI
+                ? (aiStatus === "submitting" ? "Đang gửi yêu cầu..." : "Gửi yêu cầu AI")
+                : "Lưu vào thư viện"}
           </Button>
         </div>
       </div>

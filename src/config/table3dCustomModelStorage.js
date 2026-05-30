@@ -27,6 +27,9 @@ export const normalizeStoredCustomModel = (item) => {
     customModelKind: item.customModelKind || (item.modelUrl ? "url" : "parametric"),
     uploadedFileName: item.uploadedFileName || "",
     uploadedSizeBytes: Number(item.uploadedSizeBytes || 0) || 0,
+    aiJobId: item.aiJobId || item.jobId || "",
+    aiProvider: item.aiProvider || item.provider || "",
+    generationStatus: item.generationStatus || "",
     customModelSpec: item.customModelSpec,
     createdAt: item.createdAt || nowIso,
     updatedAt: item.updatedAt || nowIso,
@@ -144,6 +147,8 @@ export const isCustomTableModel = (item) =>
   item?.source === "user-generated" ||
   item?.source === "user-generated-url" ||
   item?.source === "user-upload" ||
+  item?.source === "ai-generated" ||
   item?.customModelKind === "upload" ||
+  item?.customModelKind === "ai-generated" ||
   !!item?.customModelSpec ||
   !!item?.customModelKind;

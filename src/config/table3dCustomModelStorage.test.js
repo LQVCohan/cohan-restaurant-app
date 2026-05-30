@@ -96,6 +96,8 @@ describe("table3dCustomModelStorage", () => {
     expect(isCustomTableModel({ source: "user-generated" })).toBe(true);
     expect(isCustomTableModel({ source: "user-upload" })).toBe(true);
     expect(isCustomTableModel({ customModelKind: "upload" })).toBe(true);
+    expect(isCustomTableModel({ source: "ai-generated" })).toBe(true);
+    expect(isCustomTableModel({ customModelKind: "ai-generated" })).toBe(true);
     expect(isCustomTableModel({ customModelSpec: { name: "x" } })).toBe(true);
     expect(isCustomTableModel({ source: "public", key: "round-oak-4" })).toBe(false);
   });
@@ -123,6 +125,31 @@ describe("table3dCustomModelStorage", () => {
     });
   });
 
+
+  it("preserves AI generated model metadata", () => {
+    const saved = saveCustomTableModels([
+      buildCustom({
+        key: "ai-1",
+        source: "ai-generated",
+        sourceType: "ai-generated",
+        customModelKind: "ai-generated",
+        modelUrl: "https://cdn.example.com/ai-table.glb",
+        aiJobId: "job-123",
+        aiProvider: "configured-provider",
+        generationStatus: "completed",
+        customModelSpec: null,
+      }),
+    ], "r1");
+
+    expect(saved[0]).toMatchObject({
+      source: "ai-generated",
+      customModelKind: "ai-generated",
+      aiJobId: "job-123",
+      aiProvider: "configured-provider",
+      generationStatus: "completed",
+      modelUrl: "https://cdn.example.com/ai-table.glb",
+    });
+  });
 
   it("maps custom shapes to catalog table types and matches correctly", () => {
     const round = buildCustom({ tableType: "custom-parametric", customModelSpec: { shape: "round" } });

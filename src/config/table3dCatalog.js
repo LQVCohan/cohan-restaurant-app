@@ -234,6 +234,11 @@ export const normalizeCatalogItem = (item) => {
       ? item.tags.map(String).filter(Boolean)
       : [],
     fallbackKind,
+    customModelKind: item?.customModelKind || "",
+    sourceType: item?.sourceType || "",
+    aiJobId: item?.aiJobId || "",
+    aiProvider: item?.aiProvider || "",
+    generationStatus: item?.generationStatus || "",
   };
 };
 
@@ -261,6 +266,9 @@ export const getModelAssetBadges = (model) => {
     badges.push("Custom");
     if (model?.customModelKind === "upload" || model?.source === "user-upload") {
       badges.push("Upload");
+    }
+    if (model?.customModelKind === "ai-generated" || model?.source === "ai-generated") {
+      badges.push("AI");
     }
   }
   if (canOpenModelViewerAr(model)) {
