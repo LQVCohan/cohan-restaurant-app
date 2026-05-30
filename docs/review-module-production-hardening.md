@@ -74,6 +74,7 @@ Review chỉ là evidence tham khảo:
 - [ ] Export CSV không lỗi tiếng Việt, dấu phẩy hoặc dấu nháy kép.
 
 ## Known limitations
+- Customer review list hiện load official replies bằng query `reviewComments` riêng cho từng review trong component `OfficialReplies`, nên có pattern N+1 khi danh sách review dài. Đây không phải blocker của PR hardening hiện tại; follow-up nên thêm field `officialReplies`/`firstOfficialReply` trực tiếp vào `Review` query hoặc batch query comments theo `reviewIds`.
 - Chưa có notification/email wiring đầy đủ; EventLog đã sẵn để nối notification worker sau.
 - Service review chưa có model target chuyên biệt nên hiện validate restaurant tồn tại và không crash.
 - Analytics chart UI đang ưu tiên cards/table deterministic; AI summarization nên là PR sau với feature flag.

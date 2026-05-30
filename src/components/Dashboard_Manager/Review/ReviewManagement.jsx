@@ -19,6 +19,7 @@ const ME_QUERY = gql`
       roleName
       role {
         slug
+        name
         permissions { code }
         directPermissions { code }
         parentRole { slug permissions { code } }
@@ -169,6 +170,12 @@ const normalizeReview = (review) => ({
   created_at: review.createdAt,
 });
 
+function getRoleText(user) {
+  return String(user?.roleName || user?.role?.slug || user?.role?.name || "")
+    .trim()
+    .toLowerCase();
+}
+
 function getModerationSuccessMessage(review, status) {
   if (status === "published") {
     return review?.staff_id
@@ -212,32 +219,35 @@ const ReviewManagement = () => {
 
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
+  const roleText = getRoleText(me);
+  const isAdminUser = roleText === "admin";
+  const isManagerOrStaffUser = roleText === "manager" || roleText === "staff";
 
   const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId: me?.id, limit: 100 },
-    skip: !me?.id || (me?.roleName !== "manager" && me?.roleName !== "staff"),
+    skip: !me?.id || !isManagerOrStaffUser,
     fetchPolicy: "network-only",
   });
 
   const { data: allRestaurantsData } = useQuery(GET_ALL_RESTAURANTS, {
     variables: { limit: 100 },
-    skip: me?.roleName !== "admin",
+    skip: !isAdminUser,
     fetchPolicy: "network-only",
   });
 
   const restaurantOptions = useMemo(() => {
-    if (me?.roleName === "admin") {
+    if (isAdminUser) {
       return (allRestaurantsData?.restaurants?.edges || []).map((edge) => edge.node);
     }
     return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
       (edge) => edge.node,
     );
-  }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+  }, [allRestaurantsData, isAdminUser, managerRestaurantsData]);
 
   useEffect(() => {
-    if (!me || me.roleName === "admin" || filters.restaurant || !restaurantOptions.length) return;
+    if (!me || isAdminUser || filters.restaurant || !restaurantOptions.length) return;
     setFilters((prev) => (prev.restaurant ? prev : { ...prev, restaurant: restaurantOptions[0].id }));
-  }, [filters.restaurant, me, restaurantOptions]);
+  }, [filters.restaurant, isAdminUser, me, restaurantOptions]);
 
   const gqlTargetType = ["all", "pending", "reported", "hidden", "rejected"].includes(currentTab)
     ? undefined
