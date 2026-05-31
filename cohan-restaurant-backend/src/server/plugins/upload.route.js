@@ -11,8 +11,10 @@ import sharp from "sharp";
 import { URL } from "node:url";
 import { resolveAuthenticatedUserFromRequest } from "../authUserResolver.js";
 import {
+  getTable3DAiGenerationAvailability,
   getTableModelGenerationStatus,
   requestTableModelGeneration,
+  shouldKeepAiInputFilesForResult as shouldKeepAiInputFilesForGenerationResult,
 } from "../../services/table3d/table3dAiGeneration.service.js";
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
@@ -166,6 +168,24 @@ const validateTable3DAiImageFile = (file, buffer) => {
   }
   return extByMime[mimeType] || ext;
 };
+
+
+export const cleanupSavedPaths = async (savedPaths = [], logger) => {
+  const paths = Array.isArray(savedPaths) ? savedPaths.filter(Boolean) : [];
+  if (!paths.length) return;
+  await Promise.all(
+    paths.map(async (filePath) => {
+      try {
+        await fs.unlink(filePath);
+      } catch (err) {
+        logger?.warn?.({ err, filePath }, "failed to cleanup table 3d ai input file");
+      }
+    })
+  );
+};
+
+export const shouldKeepAiInputFilesForResult = (result = {}) =>
+  shouldKeepAiInputFilesForGenerationResult(result);
 
 const parseJsonField = (value, fallback = {}) => {
   if (!value) return fallback;
@@ -368,6 +388,16 @@ export default fp(
 
       const savedPaths = [];
       try {
+        const availability = getTable3DAiGenerationAvailability(process.env);
+        if (!availability.configured || availability.status === "pending_provider") {
+          return reply.code(503).send({
+            ok: false,
+            status: availability.status,
+            message: availability.message,
+            provider: availability.provider,
+          });
+        }
+
         const uploadRoot = path.resolve(
           process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")
         );
@@ -388,12 +418,14 @@ export default fp(
           if (part.type !== "file") continue;
           if (part.fieldname !== "images") {
             await part.toBuffer();
+            await cleanupSavedPaths(savedPaths, req.log);
             return reply.code(400).send({ ok: false, message: "Unsupported AI image upload field" });
           }
 
           const buffer = await part.toBuffer();
           const ext = validateTable3DAiImageFile(part, buffer);
           if (images.length >= TABLE_3D_AI_MAX_IMAGES) {
+            await cleanupSavedPaths(savedPaths, req.log);
             return reply.code(400).send({ ok: false, message: "At most 5 AI reference images are allowed" });
           }
           const fileName = buildSafeAssetName(part.filename, ext);
@@ -411,6 +443,7 @@ export default fp(
         }
 
         if (images.length < TABLE_3D_AI_MIN_IMAGES) {
+          await cleanupSavedPaths(savedPaths, req.log);
           return reply.code(400).send({ ok: false, status: "validation_error", message: "At least 3 AI reference images are required" });
         }
 
@@ -418,8 +451,12 @@ export default fp(
           { ...metadata, userId: authUser.id, images },
           { userId: authUser.id, restaurantId: metadata.restaurantId, requestId: req.id }
         );
+        if (!shouldKeepAiInputFilesForResult(result)) {
+          await cleanupSavedPaths(savedPaths, req.log);
+        }
         return reply.code(result.ok ? 200 : 503).send(result);
       } catch (err) {
+        await cleanupSavedPaths(savedPaths, req.log);
         req.log.error({ err }, "table 3d ai generation request failed");
         return reply.code(400).send({
           ok: false,

@@ -33,6 +33,44 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
   return { provider, enabled, apiKey, endpoint, nodeEnv, isMock, configured };
 };
 
+export const getTable3DAiGenerationAvailability = (env = process.env) => {
+  const config = getTable3DAiProviderConfig(env);
+  if (!config.configured) {
+    return {
+      configured: false,
+      status: "not_configured",
+      message: CONFIG_REQUIRED_MESSAGE,
+      provider: config.provider,
+      isMock: config.isMock,
+    };
+  }
+
+  if (config.isMock) {
+    return {
+      configured: true,
+      status: "demo_only",
+      message: "Demo-only mock provider is enabled. No real AI model will be generated.",
+      provider: MOCK_PROVIDER,
+      isMock: true,
+    };
+  }
+
+  return {
+    configured: true,
+    status: "pending_provider",
+    message: PENDING_PROVIDER_MESSAGE,
+    provider: config.provider,
+    isMock: false,
+  };
+};
+
+export const shouldKeepAiInputFilesForResult = (result = {}) => {
+  if (!result?.ok) return false;
+  if (["not_configured", "pending_provider", "demo_only"].includes(result.status)) return false;
+  if (result.isMock || result.provider === MOCK_PROVIDER || result.aiProvider === MOCK_PROVIDER) return false;
+  return ["queued", "processing"].includes(result.status);
+};
+
 export const normalizeTableModelGenerationInput = (input = {}, context = {}) => ({
   userId: trim(input.userId || context.userId || context.user?.id),
   restaurantId: trim(input.restaurantId || context.restaurantId),
@@ -71,8 +109,8 @@ export const requestTableModelGeneration = async (input = {}, context = {}) => {
       aiProvider: MOCK_PROVIDER,
       generationStatus: "queued",
       message: "Demo-only mock job queued. No real AI model will be generated.",
-      warnings: ["mock_demo_only", "no_generated_model_url"],
-      input: normalized,
+      warnings: ["mock_demo_only", "no_generated_model_url", "input_images_not_retained"],
+      input: { ...normalized, images: [] },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

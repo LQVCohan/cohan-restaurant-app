@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearTable3DAiGenerationJobsForTests,
+  getTable3DAiGenerationAvailability,
   getTable3DAiProviderConfig,
   getTableModelGenerationStatus,
   requestTableModelGeneration,
+  shouldKeepAiInputFilesForResult,
 } from "../../src/services/table3d/table3dAiGeneration.service.js";
 
 describe("table3dAiGeneration.service", () => {
@@ -32,6 +34,40 @@ describe("table3dAiGeneration.service", () => {
       generatedModelUrl: "",
       generatedThumbnailUrl: "",
     });
+  });
+
+
+  it("reports availability for not_configured, mock/demo, and pending provider states", () => {
+    expect(getTable3DAiGenerationAvailability({ NODE_ENV: "development" })).toMatchObject({
+      configured: false,
+      status: "not_configured",
+      message: "AI 3D generation provider is not configured",
+    });
+    expect(getTable3DAiGenerationAvailability({
+      NODE_ENV: "development",
+      TABLE_3D_AI_ENABLED: "true",
+      TABLE_3D_AI_PROVIDER: "mock",
+    })).toMatchObject({ configured: true, status: "demo_only", provider: "mock", isMock: true });
+    expect(getTable3DAiGenerationAvailability({
+      NODE_ENV: "development",
+      TABLE_3D_AI_ENABLED: "true",
+      TABLE_3D_AI_PROVIDER: "future-provider",
+      TABLE_3D_AI_API_KEY: "test-key",
+      TABLE_3D_AI_ENDPOINT: "https://provider.example.com/jobs",
+    })).toMatchObject({ configured: true, status: "pending_provider", provider: "future-provider" });
+  });
+
+  it("keeps AI input files only for real queued or processing provider jobs", () => {
+    expect(shouldKeepAiInputFilesForResult({ ok: false, status: "queued", provider: "real" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: false })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: false, status: "not_configured" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: false, status: "pending_provider" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "not_configured" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "pending_provider" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "demo_only", provider: "mock" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "queued", provider: "mock" })).toBe(false);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "queued", provider: "real-provider" })).toBe(true);
+    expect(shouldKeepAiInputFilesForResult({ ok: true, status: "processing", provider: "real-provider" })).toBe(true);
   });
 
   it("does not enable mock provider in production", async () => {
