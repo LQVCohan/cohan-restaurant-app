@@ -248,6 +248,22 @@ describe("order discount business safety", () => {
       }
     });
 
+
+    it("requires authenticated backend cart holds for checkout-created customer remote orders", () => {
+      const src = read(ORDER_MUTATION_PATH);
+      const checkoutStart = src.indexOf("createCheckoutOrders");
+      expect(checkoutStart).toBeGreaterThanOrEqual(0);
+      const checkoutSrc = src.slice(checkoutStart, checkoutStart + 9000);
+
+      expect(checkoutSrc).toMatch(/Vui lòng đăng nhập để đặt món/);
+      expect(checkoutSrc).toMatch(/userId && String\(userId\) !== String\(authUserId\)/);
+      expect(checkoutSrc).toMatch(/assertCartHoldCheckoutAllowed\(\{/);
+      expect(checkoutSrc).toMatch(/validateAndReleaseCartHoldTx\(\{/);
+      expect(checkoutSrc).toMatch(/removeCheckedOutCartItemsTx\(\{ releasedCartItems, session \}\)/);
+      expect(checkoutSrc).toMatch(/finalUserId = authUserId/);
+      expect(checkoutSrc).not.toMatch(/ensureUserForOrder\(\s*userId,\s*checkoutCustomerContact/);
+    });
+
     it("does not manually rewrite totals grandTotal after discount calculation in checkout flow", () => {
       const src = read(ORDER_MUTATION_PATH);
 

@@ -155,7 +155,10 @@ const OrderSummaryModal = ({
   const { user, isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
   const walletBalance = Number(user?.wallet?.balance || 0);
-  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const normalizedRole = String(
+    user?.roleName || user?.role?.slug || user?.role?.name || "",
+  ).toLowerCase();
+  const canUseRemoteCheckout = ["customer", "manager", "admin"].includes(normalizedRole);
   const apolloClient = useApolloClient();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -189,7 +192,7 @@ const OrderSummaryModal = ({
     preferences: customerFoodPreferences,
     loading: isLoadingFoodPreferences,
   } = useFoodPreferences({
-    skip: !isAuthenticated || !isCustomer,
+    skip: !isAuthenticated || !canUseRemoteCheckout,
   });
   const hasMeaningfulFoodPreferenceNote =
     !!foodPreferenceNote &&
@@ -531,7 +534,9 @@ const OrderSummaryModal = ({
   useEffect(() => {
     let cancelled = false;
     const fetchMenuMetadata = async () => {
-      if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) return;
+      if (!isAuthenticated || !canUseRemoteCheckout || isLoadingFoodPreferences) {
+        return;
+      }
       if (!missingMetadataItems.length) return;
 
       const results = await Promise.all(
@@ -572,14 +577,16 @@ const OrderSummaryModal = ({
   }, [
     apolloClient,
     isAuthenticated,
-    isCustomer,
+    canUseRemoteCheckout,
     isLoadingFoodPreferences,
     missingMetadataItems,
     menuItemMetadataByKey,
   ]);
 
   const foodPreferenceReviewItems = useMemo(() => {
-    if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) return [];
+    if (!isAuthenticated || !canUseRemoteCheckout || isLoadingFoodPreferences) {
+      return [];
+    }
     return (orderData || [])
       .map((item) => {
         const metadata = menuItemMetadataByKey[getCheckoutItemMetadataKey(item)];
@@ -606,7 +613,7 @@ const OrderSummaryModal = ({
   }, [
     customerFoodPreferences,
     isAuthenticated,
-    isCustomer,
+    canUseRemoteCheckout,
     isLoadingFoodPreferences,
     menuItemMetadataByKey,
     orderData,
@@ -617,13 +624,16 @@ const OrderSummaryModal = ({
       return "Một số món đã hết thời gian giữ. Vui lòng kiểm tra lại giỏ hàng.";
     }
 
+    if (!orderData.length) {
+      return "Giỏ hàng đang trống. Vui lòng thêm món trước khi thanh toán.";
+    }
+
     for (const item of orderData || []) {
       const cartId = item.backendCartId || item.cartId;
       const cartItemId = item.backendCartItemId || item.cartItemId;
-      const hasAnyCartRef = Boolean(cartId || cartItemId);
 
-      if (hasAnyCartRef && (!cartId || !cartItemId)) {
-        return "Một số món chưa được đồng bộ đúng với giỏ hàng. Vui lòng thêm lại món.";
+      if (!cartId || !cartItemId) {
+        return "Một số món chưa được giữ trong giỏ hàng. Vui lòng thêm lại món để hệ thống giữ món trước khi thanh toán.";
       }
     }
 
@@ -631,6 +641,10 @@ const OrderSummaryModal = ({
   }, [orderData]);
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
+      if (!isAuthenticated || !canUseRemoteCheckout || !user?.id) {
+        navigate("/login", { state: { from: "/checkout" } });
+        throw new Error("Vui lòng đăng nhập để giữ món và đặt món.");
+      }
       if (canPreviewDiscount && couponCode.trim() && !discountBreakdown) {
         throw new Error("Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng.");
       }
@@ -663,13 +677,6 @@ const OrderSummaryModal = ({
         idempotencyKey: `checkout-${orderInfo.id}`,
       };
 
-      if (!isAuthenticated) {
-        input.customer = {
-          fullName: shipping?.fullName || undefined,
-          phone: shipping?.phone || undefined,
-          email: shipping?.email || undefined,
-        };
-      }
       const res = await createCheckoutOrders({ variables: { input } });
       const checkout = res?.data?.createCheckoutOrders?.checkout || null;
       const created = res?.data?.createCheckoutOrders?.orders || [];
@@ -689,6 +696,9 @@ const OrderSummaryModal = ({
       selectedPromotionIds,
       orderInfo.id,
       isAuthenticated,
+      canUseRemoteCheckout,
+      user?.id,
+      navigate,
       createCheckoutOrders,
     ],
   );

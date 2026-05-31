@@ -36,6 +36,7 @@ import {
 import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
+import { useNotification } from "../../../hooks/useNotification";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
 import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 import { recordForYouItemInteraction } from "../../../utils/forYouBehaviorSignals";
@@ -307,6 +308,7 @@ const FoodDetail = () => {
   const selectedVariantKeyFromState = location.state?.selectedVariantKey || null;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const { showNotification } = useNotification();
 
   const {
     cart,
@@ -621,6 +623,12 @@ const FoodDetail = () => {
     quantityExceedsAvailable,
   });
 
+  const redirectToLoginForOrdering = () => {
+    const returnPath = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    showNotification("Vui lòng đăng nhập để giữ món và đặt món.", "warning");
+    navigate("/login", { state: { from: returnPath } });
+  };
+
   const makeCartPayload = () => {
     if (!resolvedDish) return null;
     const servingVariantKey = selectedServingKey || "portion";
@@ -654,35 +662,47 @@ const FoodDetail = () => {
 
   const addCurrentSelectionToBackendCart = async () => {
     if (!publicRestaurant) {
-      alert("Nhà hàng không khả dụng hoặc chưa công khai.");
+      showNotification(
+        "Nhà hàng không khả dụng hoặc chưa công khai.",
+        "warning",
+      );
       return null;
     }
     if (!restaurantCanOrder) {
-      alert(restaurantOrderBlockReason);
+      showNotification(restaurantOrderBlockReason, "warning");
       return null;
     }
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return null;
     if (!selectedServingKey) {
-      alert("Vui lòng chọn tùy chọn món trước khi thêm vào giỏ.");
+      showNotification(
+        "Vui lòng chọn tùy chọn món trước khi thêm vào giỏ.",
+        "warning",
+      );
       return null;
     }
 
     if (!user?.id) {
-      alert("Vui lòng đăng nhập trước khi thêm món vào giỏ.");
+      redirectToLoginForOrdering();
       return null;
     }
 
     if (isBlocked) {
-      alert(liveState?.abuseWarning || "Bạn đang bị tạm chặn giữ món.");
+      showNotification(
+        liveState?.abuseWarning ||
+          liveState?.policyMessage ||
+          "Bạn đang bị tạm chặn giữ món.",
+        "warning",
+      );
       return null;
     }
 
     if (isOutOfStock || quantityExceedsAvailable) {
-      alert(
+      showNotification(
         isOutOfStock
           ? "Món đã hết hàng."
           : "Số lượng bạn chọn vượt quá số suất còn có thể đặt.",
+        "warning",
       );
       return null;
     }
@@ -725,7 +745,10 @@ const FoodDetail = () => {
           // Giữ lỗi đồng bộ dòng giỏ hàng là lỗi chính cần báo cho người dùng.
         }
 
-        alert("Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thử lại.");
+        showNotification(
+          "Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thêm lại món.",
+          "error",
+        );
         return null;
       }
 
@@ -765,11 +788,12 @@ const FoodDetail = () => {
         note: returnedItem?.note ?? payload.note ?? null,
       };
     } catch (error) {
-      alert(
+      showNotification(
         getCartMutationErrorMessage(
           error,
           "Không thể giữ món trong giỏ. Vui lòng thử lại.",
         ),
+        "error",
       );
       return null;
     }

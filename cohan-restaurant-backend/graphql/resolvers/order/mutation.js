@@ -391,15 +391,15 @@ function buildCartHoldOrderCode(cartId, cartItemId) {
 }
 
 function assertCartHoldCheckoutAllowed({ item, authUserId }) {
-  const { cartId, cartItemId, hasRef } = getCheckoutCartRef(item);
-
-  if (!hasRef) return null;
-
-  if (!cartId || !cartItemId) {
-    throw new Error(CART_HOLD_CHECKOUT_ERROR);
-  }
+  const { cartId, cartItemId } = getCheckoutCartRef(item);
 
   if (!authUserId) {
+    throw new GraphQLError("Vui lòng đăng nhập để đặt món.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+
+  if (!cartId || !cartItemId) {
     throw new Error(CART_HOLD_CHECKOUT_ERROR);
   }
 
@@ -2353,6 +2353,19 @@ export const OrderMutation = {
       ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
         ? String(ctx.user.id)
         : null;
+    if (!authUserId) {
+      throw new GraphQLError("Vui lòng đăng nhập để đặt món.", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+    if (userId && String(userId) !== String(authUserId)) {
+      throw new GraphQLError(
+        "Không thể checkout bằng tài khoản khách hàng khác.",
+        {
+          extensions: { code: "FORBIDDEN" },
+        },
+      );
+    }
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
       throw new Error("orderType must be 'takeaway' or 'delivery'");
     }
@@ -2434,6 +2447,7 @@ export const OrderMutation = {
     );
     let finalUserId = null;
     const createdOrders = [];
+    const releasedCartItems = [];
     const checkoutTotals = {
       subtotal: 0,
       promotionDiscount: 0,
@@ -2453,11 +2467,7 @@ export const OrderMutation = {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        finalUserId = await ensureUserForOrder(
-          userId,
-          checkoutCustomerContact,
-          { session, restaurantId: grouped.values().next().value?.restaurantId || null },
-        );
+        finalUserId = authUserId;
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
           const { restaurant, availability } = await getPublicRestaurantOrThrow(
@@ -2471,6 +2481,21 @@ export const OrderMutation = {
             );
           }
           const normalizedItems = entries.map((entry) => entry.orderItem);
+          const holdWarehouseId = await resolveWarehouseIdOrDefault(
+            restaurantId,
+            warehouseId,
+            session,
+          );
+          for (const entry of entries) {
+            const released = await validateAndReleaseCartHoldTx({
+              entry,
+              restaurantId,
+              warehouseId: holdWarehouseId,
+              authUserId,
+              session,
+            });
+            if (released) releasedCartItems.push(released);
+          }
 
           await hydrateOrderItems({
             restaurantId,
@@ -2589,6 +2614,8 @@ export const OrderMutation = {
           ],
           { session },
         );
+
+        await removeCheckedOutCartItemsTx({ releasedCartItems, session });
 
         if (normalizedPaymentMethod === "wallet") {
           if (!finalUserId || !mongoose.isValidObjectId(finalUserId)) {
