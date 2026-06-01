@@ -1,9 +1,12 @@
 // cohan-restaurant-backend/src/services/eventLog.service.js
-import EventLog from "../../models/event-log.model.js";
-
 /**
  * Lấy ip & userAgent từ ctx (GraphQL context / Express req)
  */
+async function loadEventLogModel() {
+  const mod = await import("../../models/event-log.model.js");
+  return mod.default || mod.EventLog || mod;
+}
+
 function extractRequestMeta(ctx) {
   const req = ctx?.req || ctx?.request;
   const ip =
@@ -55,6 +58,7 @@ export async function logEvent({
       if (!userAgent) userAgent = reqMeta.userAgent;
     }
 
+    const EventLog = await loadEventLogModel();
     await EventLog.create({
       restaurantId,
       floorId,

@@ -23,11 +23,6 @@ const STAFF_FIELDS = gql`
     verifiedAt
     emailVerifiedAt
     phoneVerifiedAt
-    verificationLastStatus
-    verificationLastChannel
-    verificationLastRequestedAt
-    emailVerifyLastSentAt
-    phoneVerifyLastSentAt
 
     role {
       id

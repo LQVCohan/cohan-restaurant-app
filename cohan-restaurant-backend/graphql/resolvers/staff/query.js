@@ -1130,14 +1130,16 @@ export default {
 
     if (isSelf) {
       assertPayrollPermission(ctx, "payroll.payslip.self");
-      if (!["finalized", "locked", "paid"].includes(period.status)) return null;
+      if (!["finalized", "locked", "paid"].includes(period.status)) {
+        throw new Error("PAYROLL_PERIOD_NOT_AVAILABLE");
+      }
     } else {
       assertPayrollPermission(ctx, "payroll.view");
     }
 
     await requireRestaurantAccess(ctx, period.restaurantId);
     const item = await findPayrollItemInPeriodRestaurant(period, employeeId);
-    if (!item) return null;
+    if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
 
     const payslip = await getPayrollPayslip({ periodId, employeeId });
     await logPayrollEvent({
