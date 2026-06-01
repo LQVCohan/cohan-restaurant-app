@@ -182,3 +182,43 @@ body {
 .section-spacing {
   margin-bottom: 4rem; // Khoảng cách giữa các section lớn hơn
 }
+
+// Bridge giữa Thực đơn và Nhà hàng: che mép thẳng của RestaurantGrid.
+.home .restaurant-grid {
+  margin-top: -56px;
+  padding-top: 128px;
+  border-top: 0;
+}
+
+.home .restaurant-grid::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 76px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    #fffaf4 0%,
+    rgba(255, 250, 244, 0.96) 44%,
+    rgba(255, 250, 244, 0) 100%
+  );
+}
+
+.home .restaurant-grid__container {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 760px) {
+  .home .restaurant-grid {
+    margin-top: -40px;
+    padding-top: 104px;
+  }
+
+  .home .restaurant-grid::after {
+    height: 58px;
+  }
+}
