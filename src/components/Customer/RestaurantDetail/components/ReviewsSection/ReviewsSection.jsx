@@ -121,6 +121,8 @@ const OfficialReply = ({ reply }) => {
   );
 };
 
+const REVIEWS_PAGE_SIZE = 20;
+
 const ReviewsSection = ({ restaurantId }) => {
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const [sortBy, setSortBy] = useState("newest");
@@ -132,15 +134,16 @@ const ReviewsSection = ({ restaurantId }) => {
   const [reportingReview, setReportingReview] = useState(null);
   const [reportReason, setReportReason] = useState("spam");
   const [reportDetail, setReportDetail] = useState("");
+  const [reportedReviewIds, setReportedReviewIds] = useState(() => new Set());
 
   const minRating = filterRating === "all" ? undefined : Number(filterRating);
 
-  const { data, loading } = useQuery(GET_RESTAURANT_REVIEWS, {
+  const { data, loading, fetchMore } = useQuery(GET_RESTAURANT_REVIEWS, {
     variables: {
       restaurantId,
       minRating,
       maxRating: 5,
-      limit: 100,
+      limit: REVIEWS_PAGE_SIZE,
       skip: 0,
     },
     skip: !restaurantId,
@@ -162,7 +165,7 @@ const ReviewsSection = ({ restaurantId }) => {
   const [reportReview] = useMutation(REPORT_REVIEW);
   const [createReview, { loading: creatingReview }] = useMutation(CREATE_REVIEW, {
     refetchQueries: [
-      { query: GET_RESTAURANT_REVIEWS, variables: { restaurantId, minRating: undefined, maxRating: 5, limit: 100, skip: 0 } },
+      { query: GET_RESTAURANT_REVIEWS, variables: { restaurantId, minRating: undefined, maxRating: 5, limit: REVIEWS_PAGE_SIZE, skip: 0 } },
       { query: GET_RESTAURANT_REVIEW_STATS, variables: { restaurantId } },
     ],
     awaitRefetchQueries: true,
@@ -214,6 +217,8 @@ const ReviewsSection = ({ restaurantId }) => {
 
   const stats = statsData?.reviewStats;
   const totalReviews = Number(stats?.total || 0);
+  const loadedReviewsTotal = Number(data?.reviews?.total || 0);
+  const canLoadMore = reviews.length < loadedReviewsTotal;
   const hasReviews = totalReviews > 0;
   const averageRating = Number(stats?.avgRating || 0).toFixed(1);
 
@@ -280,6 +285,10 @@ const ReviewsSection = ({ restaurantId }) => {
   };
 
   const handleOpenReport = (review) => {
+    if (reportedReviewIds.has(review.id)) {
+      setSubmitSuccess("Bạn đã gửi báo cáo cho đánh giá này.");
+      return;
+    }
     if (!requireReviewAuth("báo cáo đánh giá")) return;
     setSubmitError("");
     setReportingReview(review);
@@ -290,12 +299,30 @@ const ReviewsSection = ({ restaurantId }) => {
     try {
       setSubmitError("");
       await reportReview({ variables: { id: reportingReview.id, input: { reason: reportReason, detail: reportDetail } } });
+      setReportedReviewIds((prev) => new Set([...prev, reportingReview.id]));
       setReportingReview(null);
       setReportDetail("");
       setSubmitSuccess("Đã gửi báo cáo đánh giá.");
     } catch (error) {
       setSubmitError(error?.message || "Không thể gửi báo cáo đánh giá.");
     }
+  };
+
+  const handleLoadMore = async () => {
+    if (!canLoadMore) return;
+    await fetchMore({
+      variables: { skip: reviews.length, limit: REVIEWS_PAGE_SIZE },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult?.reviews) return prev;
+        return {
+          ...prev,
+          reviews: {
+            ...fetchMoreResult.reviews,
+            items: [...(prev?.reviews?.items || []), ...(fetchMoreResult.reviews.items || [])],
+          },
+        };
+      },
+    });
   };
 
   const handleSubmitReview = async () => {
@@ -438,7 +465,7 @@ const ReviewsSection = ({ restaurantId }) => {
         </div>
 
         <div className="reviews-count">
-          Hiển thị {filteredAndSortedReviews.length} / {totalReviews} đánh giá
+          Hiển thị {filteredAndSortedReviews.length} / {loadedReviewsTotal || totalReviews} đánh giá
         </div>
       </div>
 
@@ -479,8 +506,8 @@ const ReviewsSection = ({ restaurantId }) => {
                   <button className="review-action" aria-label="Bình luận">
                     💬 {review.replies || 0}
                   </button>
-                  <button className="review-action" aria-label="Báo cáo" onClick={() => handleOpenReport(review)}>
-                    🚩 Báo cáo
+                  <button className="review-action" aria-label="Báo cáo" disabled={reportedReviewIds.has(review.id)} onClick={() => handleOpenReport(review)}>
+                    {reportedReviewIds.has(review.id) ? "✅ Đã báo cáo" : "🚩 Báo cáo"}
                   </button>
                 </div>
               </div>
@@ -512,6 +539,12 @@ const ReviewsSection = ({ restaurantId }) => {
           ))
         )}
       </div>
+
+      {canLoadMore && (
+        <div className="reviews-load-more">
+          <button type="button" className="btn btn--secondary" onClick={handleLoadMore}>Xem thêm đánh giá</button>
+        </div>
+      )}
 
       {reportingReview && (
         <div className="review-modal-overlay" onClick={() => setReportingReview(null)}>
@@ -551,9 +584,21 @@ const ReviewsSection = ({ restaurantId }) => {
             <div className="modal-content">
               <div className="form-group">
                 <label>Điểm đánh giá</label>
-                <select aria-label="Điểm đánh giá" value={newReview.rating} onChange={(e) => setNewReview((prev) => ({ ...prev, rating: Number(e.target.value) }))}>
-                  {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} sao</option>)}
-                </select>
+                <div className="review-star-input" role="radiogroup" aria-label="Điểm đánh giá">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      type="button"
+                      key={value}
+                      role="radio"
+                      aria-checked={Number(newReview.rating) === value}
+                      aria-label={`${value} sao`}
+                      className={value <= Number(newReview.rating) ? "active" : ""}
+                      onClick={() => setNewReview((prev) => ({ ...prev, rating: value }))}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="form-group">
                 <label>Tiêu đề</label>
@@ -561,7 +606,8 @@ const ReviewsSection = ({ restaurantId }) => {
               </div>
               <div className="form-group">
                 <label>Nội dung đánh giá</label>
-                <textarea aria-label="Nội dung đánh giá" rows={4} value={newReview.content} onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))} />
+                <textarea aria-label="Nội dung đánh giá" rows={4} maxLength={1000} value={newReview.content} onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))} />
+                <small>{newReview.content.length}/1000 ký tự</small>
               </div>
               <div className="form-group">
                 <label>Nhân viên phục vụ (không bắt buộc)</label>

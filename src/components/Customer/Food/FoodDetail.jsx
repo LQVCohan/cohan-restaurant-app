@@ -36,9 +36,12 @@ import {
 import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import Cart from "../Homepage_Client/components/Cart";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
+import { useNotification } from "../../../hooks/useNotification";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
 import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 import { recordForYouItemInteraction } from "../../../utils/forYouBehaviorSignals";
+import { FOR_YOU_ANALYTICS_EVENTS, recordForYouAnalyticsEvent } from "../../../utils/forYouAnalytics";
+import { getForYouReasonType } from "../../../utils/forYouRanking";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -306,7 +309,11 @@ const FoodDetail = () => {
     null;
   const selectedVariantKeyFromState = location.state?.selectedVariantKey || null;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
-  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const normalizedRole = String(
+    user?.roleName || user?.role?.slug || user?.role?.name || "",
+  ).toLowerCase();
+  const isCustomer = normalizedRole === "customer";
+  const { showNotification } = useNotification();
 
   const {
     cart,
@@ -466,14 +473,28 @@ const FoodDetail = () => {
     const dishId = String(resolvedDish.id);
     if (recordedForYouViewRef.current === dishId) return;
     recordedForYouViewRef.current = dishId;
+    const analyticsDish = {
+      ...resolvedDish,
+      restaurantId: resolvedDish.restaurantId || restaurantIdFromState,
+      categoryId: resolvedDish.categoryId || categoryIdFromState,
+      foodPreferenceMeta,
+    };
     recordForYouItemInteraction(user?.id, {
       id: resolvedDish.id,
       name: resolvedDish.name,
-      restaurantId: resolvedDish.restaurantId || restaurantIdFromState,
+      restaurantId: analyticsDish.restaurantId,
       restaurantName: resolvedDish.restaurantName,
-      categoryId: resolvedDish.categoryId || categoryIdFromState,
+      categoryId: analyticsDish.categoryId,
     }, "view");
-  }, [categoryIdFromState, isAuthenticated, isCustomer, resolvedDish, restaurantIdFromState, user?.id]);
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.FOOD_DETAIL_VIEW, {
+      userId: user?.id,
+      itemId: resolvedDish.id,
+      restaurantId: analyticsDish.restaurantId,
+      categoryId: analyticsDish.categoryId,
+      source: "food_detail",
+      reasonType: getForYouReasonType(analyticsDish),
+    });
+  }, [categoryIdFromState, foodPreferenceMeta, isAuthenticated, isCustomer, resolvedDish, restaurantIdFromState, user?.id]);
 
   useEffect(() => {
     if (!sizes.length) return;
@@ -621,6 +642,12 @@ const FoodDetail = () => {
     quantityExceedsAvailable,
   });
 
+  const redirectToLoginForOrdering = () => {
+    const returnPath = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    showNotification("Vui lòng đăng nhập để giữ món và đặt món.", "warning");
+    navigate("/login", { state: { from: returnPath } });
+  };
+
   const makeCartPayload = () => {
     if (!resolvedDish) return null;
     const servingVariantKey = selectedServingKey || "portion";
@@ -654,35 +681,55 @@ const FoodDetail = () => {
 
   const addCurrentSelectionToBackendCart = async () => {
     if (!publicRestaurant) {
-      alert("Nhà hàng không khả dụng hoặc chưa công khai.");
+      showNotification(
+        "Nhà hàng không khả dụng hoặc chưa công khai.",
+        "warning",
+      );
       return null;
     }
     if (!restaurantCanOrder) {
-      alert(restaurantOrderBlockReason);
+      showNotification(restaurantOrderBlockReason, "warning");
       return null;
     }
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return null;
     if (!selectedServingKey) {
-      alert("Vui lòng chọn tùy chọn món trước khi thêm vào giỏ.");
+      showNotification(
+        "Vui lòng chọn tùy chọn món trước khi thêm vào giỏ.",
+        "warning",
+      );
       return null;
     }
 
-    if (!user?.id) {
-      alert("Vui lòng đăng nhập trước khi thêm món vào giỏ.");
+    if (!isAuthenticated || !user?.id) {
+      redirectToLoginForOrdering();
+      return null;
+    }
+
+    if (!isCustomer) {
+      showNotification(
+        "Chỉ tài khoản khách hàng mới có thể giữ món và đặt món.",
+        "warning",
+      );
       return null;
     }
 
     if (isBlocked) {
-      alert(liveState?.abuseWarning || "Bạn đang bị tạm chặn giữ món.");
+      showNotification(
+        liveState?.abuseWarning ||
+          liveState?.policyMessage ||
+          "Bạn đang bị tạm chặn giữ món.",
+        "warning",
+      );
       return null;
     }
 
     if (isOutOfStock || quantityExceedsAvailable) {
-      alert(
+      showNotification(
         isOutOfStock
           ? "Món đã hết hàng."
           : "Số lượng bạn chọn vượt quá số suất còn có thể đặt.",
+        "warning",
       );
       return null;
     }
@@ -725,17 +772,34 @@ const FoodDetail = () => {
           // Giữ lỗi đồng bộ dòng giỏ hàng là lỗi chính cần báo cho người dùng.
         }
 
-        alert("Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thử lại.");
+        showNotification(
+          "Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thêm lại món.",
+          "error",
+        );
         return null;
       }
 
+      const analyticsDish = {
+        ...resolvedDish,
+        restaurantId: resolvedDish.restaurantId || restaurant?.id,
+        categoryId: resolvedDish.categoryId,
+        foodPreferenceMeta,
+      };
       recordForYouItemInteraction(user?.id, {
         id: resolvedDish.id,
         name: resolvedDish.name,
-        restaurantId: resolvedDish.restaurantId || restaurant?.id,
+        restaurantId: analyticsDish.restaurantId,
         restaurantName: restaurant?.name || resolvedDish.restaurantName,
-        categoryId: resolvedDish.categoryId,
+        categoryId: analyticsDish.categoryId,
       }, "order_intent");
+      recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.ADD_TO_CART_INTENT, {
+        userId: user?.id,
+        itemId: resolvedDish.id,
+        restaurantId: analyticsDish.restaurantId,
+        categoryId: analyticsDish.categoryId,
+        source: "food_detail",
+        reasonType: getForYouReasonType(analyticsDish),
+      });
 
       addToCart({
         ...payload,
@@ -765,11 +829,12 @@ const FoodDetail = () => {
         note: returnedItem?.note ?? payload.note ?? null,
       };
     } catch (error) {
-      alert(
+      showNotification(
         getCartMutationErrorMessage(
           error,
           "Không thể giữ món trong giỏ. Vui lòng thử lại.",
         ),
+        "error",
       );
       return null;
     }

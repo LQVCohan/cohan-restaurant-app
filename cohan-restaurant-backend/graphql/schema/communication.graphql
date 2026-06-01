@@ -59,6 +59,8 @@ extend type Query {
   chatThread(id: ID!): ChatThread
   notifications(restaurantId: ID, unreadOnly: Boolean = false, limit: Int = 50): [AppNotification!]!
   unreadNotificationCount(restaurantId: ID): Int!
+  myNotifications(restaurantId: ID, unreadOnly: Boolean = false, limit: Int = 50, skip: Int = 0): [AppNotification!]!
+  notificationCount(restaurantId: ID, unreadOnly: Boolean = false): Int!
 }
 
 extend type Mutation {

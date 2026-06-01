@@ -116,7 +116,7 @@ export const M_MARK_ALL_NOTIFICATIONS_READ = gql`
   }
 `;
 
-export default function useCommunication({ restaurantId = null, status = "open" } = {}) {
+export default function useCommunication({ restaurantId = null, status = "open", notificationsEnabled = true } = {}) {
   const threadsQuery = useQuery(Q_CHAT_THREADS, {
     variables: { restaurantId, limit: 30, status },
     skip: !restaurantId,
@@ -126,14 +126,14 @@ export default function useCommunication({ restaurantId = null, status = "open" 
 
   const notificationsQuery = useQuery(Q_NOTIFICATIONS, {
     variables: { restaurantId, limit: 50 },
-    skip: !restaurantId,
+    skip: !notificationsEnabled,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });
 
   const unreadCountQuery = useQuery(Q_UNREAD_NOTIFICATION_COUNT, {
     variables: { restaurantId },
-    skip: !restaurantId,
+    skip: !notificationsEnabled,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });

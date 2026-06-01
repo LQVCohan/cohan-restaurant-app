@@ -220,6 +220,8 @@ type ReviewReportStats {
 type ReviewTrendPoint { date: String!, total: Int!, avgRating: Float! }
 type ReviewNameCount { id: ID, name: String, targetType: String, count: Int!, avgRating: Float }
 type ReviewActionQueueCounts { needsModeration: Int!, needsReply: Int!, highRisk: Int! }
+type ReviewInsightSummary { summary: String!, positives: [String!]!, negatives: [String!]!, recommendedActions: [String!]!, topPriorities: [String!]!, confidence: Float!, source: String! }
+type ReviewTimelineEvent { id: ID!, actorUserId: ID, verb: String!, status: String, meta: JSON, diff: JSON, at: String, createdAt: String }
 type ReviewAnalytics {
   totalReviews: Int!
   avgRating: Float!
@@ -239,6 +241,9 @@ type ReviewAnalytics {
   lowRatedTargets: [ReviewNameCount!]!
   reportBreakdown: [ReviewNameCount!]!
   actionQueueCounts: ReviewActionQueueCounts!
+  reviewInsightSummary: ReviewInsightSummary
+  recommendedActions: [String!]
+  insightSource: String
 }
 
 # ============================================================================
@@ -273,6 +278,7 @@ extend type Query {
   reviewReports(restaurantId: ID, status: String, reason: String, limit: Int = 20, skip: Int = 0): ReviewReportsConnection!
   reviewReportStats(restaurantId: ID): ReviewReportStats!
   reviewAnalytics(restaurantId: ID, targetType: String, dateFrom: String, dateTo: String): ReviewAnalytics!
+  reviewTimeline(reviewId: ID!, limit: Int = 50): [ReviewTimelineEvent!]!
 }
 
 # ============================================================================

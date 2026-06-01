@@ -1,6 +1,6 @@
 import "dotenv/config.js";
 import mongoose from "mongoose";
-import { Notification, Restaurant, Review, ReviewComment, ReviewReport, User } from "../models/index.js";
+import { EventLog, Notification, Restaurant, Review, ReviewComment, ReviewReport, User } from "../models/index.js";
 import { REVIEW_SERVICE_TARGETS } from "../src/services/reviewHardening.service.js";
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
@@ -59,6 +59,7 @@ async function main() {
   await ReviewComment.deleteMany({ restaurantId: restaurant._id, content: /demo|ghi nhận|xin lỗi/i });
   await ReviewReport.deleteMany({ restaurantId: restaurant._id, detail: /demo/i });
   await Notification.deleteMany({ restaurantId: restaurant._id, "payload.demoTag": DEMO_TAG });
+  await EventLog.deleteMany({ restaurantId: restaurant._id, "meta.demoTag": DEMO_TAG });
 
   const serviceTarget = REVIEW_SERVICE_TARGETS.find((target) => target.slug === "serving_speed");
   const reviewPayloads = [
@@ -125,25 +126,60 @@ async function main() {
   }
 
   const reportedReview = reviews[3];
-  await ReviewReport.create({
-    reviewId: reportedReview._id,
-    restaurantId: restaurant._id,
-    reporterUserId: customers[0]._id,
-    reason: "other",
-    detail: "demo report cho luồng xử lý báo cáo",
-    status: "pending",
-    createdBy: customers[0]._id,
-  });
-  await Notification.create({
-    toUserId: manager._id,
-    restaurantId: restaurant._id,
-    type: "review.reported",
-    payload: { demoTag: DEMO_TAG, reviewId: reportedReview.id, message: "Có báo cáo đánh giá mới cần xử lý" },
-  });
+  await ReviewReport.insertMany([
+    {
+      reviewId: reportedReview._id,
+      restaurantId: restaurant._id,
+      reporterUserId: customers[0]._id,
+      reason: "other",
+      detail: "demo report cho luồng xử lý báo cáo",
+      status: "pending",
+      createdBy: customers[0]._id,
+    },
+    {
+      reviewId: reviews[2]._id,
+      restaurantId: restaurant._id,
+      reporterUserId: customers[1]._id,
+      reason: "offensive",
+      detail: "demo report đã resolve",
+      status: "resolved",
+      resolutionNote: "Đã kiểm tra và giữ published",
+      resolvedBy: manager._id,
+      resolvedAt: daysAgo(1),
+      createdBy: customers[1]._id,
+    },
+    {
+      reviewId: reviews[5]._id,
+      restaurantId: restaurant._id,
+      reporterUserId: customers[2]._id,
+      reason: "fake",
+      detail: "demo report bị reject",
+      status: "rejected",
+      resolutionNote: "Không đủ bằng chứng",
+      resolvedBy: manager._id,
+      resolvedAt: daysAgo(2),
+      createdBy: customers[2]._id,
+    },
+  ]);
+  await Notification.insertMany([
+    { toUserId: manager._id, restaurantId: restaurant._id, type: "review.reported", payload: { demoTag: DEMO_TAG, reviewId: reportedReview.id, message: "Có báo cáo đánh giá mới cần xử lý" } },
+    { toRole: "manager", restaurantId: restaurant._id, type: "review.negative.created", payload: { demoTag: DEMO_TAG, reviewId: reviews[3].id, message: "Review 1 sao cần phản hồi" } },
+    { toUserId: customers[0]._id, restaurantId: restaurant._id, type: "review.official_reply.created", payload: { demoTag: DEMO_TAG, reviewId: reviews[0].id, message: "Nhà hàng đã phản hồi đánh giá của bạn" } },
+    { toUserId: customers[7]._id, restaurantId: restaurant._id, type: "review.published", payload: { demoTag: DEMO_TAG, reviewId: reviews[7].id, message: "Đánh giá demo của bạn đã được duyệt" }, readAt: daysAgo(1) },
+  ]);
 
-  console.log("🎉 Seeded review graduation demo data");
+  await EventLog.insertMany(reviews.slice(0, 6).flatMap((review) => ([
+    { restaurantId: restaurant._id, actorUserId: review.customerId, verb: "review.created", object: { kind: "Review", id: review._id, code: String(review._id) }, source: "web", status: "success", meta: { demoTag: DEMO_TAG, rating: review.rating }, at: review.createdAt },
+    { restaurantId: restaurant._id, actorUserId: manager._id, verb: "review.status", object: { kind: "Review", id: review._id, code: String(review._id) }, source: "web", status: "success", meta: { demoTag: DEMO_TAG }, diff: { from: "pending", to: review.status }, at: review.updatedAt },
+  ])));
+
+  console.log("🎉 Seeded advanced review demo data");
   console.log(`Restaurant: ${restaurant.name} (${restaurant._id})`);
-  console.log("Accounts: review.manager.demo@cohan.local, review.customer1@cohan.local ... generated random passwords if new.");
+  console.log(`Manager account: ${manager.email}`);
+  console.log(`Customer account: ${customers[0].email}`);
+  console.log(`Staff account: ${staff.email}`);
+  console.log("Demo steps: customer writes pending review → manager approves → official reply → customer reports → manager resolves → analytics/action center/timeline/notification/export.");
+  console.log("Passwords are only valid if your existing auth seed/upsert path explicitly sets them; this script does not print fake passwords.");
   await mongoose.disconnect();
 }
 

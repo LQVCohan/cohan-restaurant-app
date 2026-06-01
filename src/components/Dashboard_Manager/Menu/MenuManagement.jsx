@@ -48,6 +48,7 @@ import { MENU_ITEM_INVENTORY_STATUS } from "../../../utils/menuItemAvailability"
 import {
   getForYouMetadataStatus,
   getForYouMetadataSummary,
+  getForYouMetadataSummaryByRestaurant,
 } from "../../../utils/forYouMenuMetadata";
 /* ========== QUERY ========== */
 const GET_MANAGER_RESTAURANTS = gql`
@@ -1169,6 +1170,11 @@ const MenuManagement = () => {
     [enrichedItems],
   );
 
+  const forYouRestaurantSummaries = useMemo(
+    () => getForYouMetadataSummaryByRestaurant(enrichedItems),
+    [enrichedItems],
+  );
+
   const firstMissingForYouItem = useMemo(
     () => enrichedItems.find((item) => item.forYouMetadata?.status === "missing"),
     [enrichedItems],
@@ -1434,6 +1440,7 @@ const MenuManagement = () => {
         {!itemsLoading && enrichedItems.length > 0 && (
           <ForYouReadinessPanel
             summary={forYouReadinessSummary}
+            restaurantSummaries={forYouRestaurantSummaries}
             canUpdateItem={canUpdateMenuItem}
             firstMissingItem={firstMissingForYouItem}
             onShowMissing={handleShowMissingForYouItems}

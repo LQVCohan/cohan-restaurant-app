@@ -180,3 +180,17 @@
     opacity: 1;
   }
 }
+
+.reviews-modal__timeline {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+
+  h4 { margin: 0 0 10px; color: #111827; }
+  ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+  li { color: #111827; }
+  span, small { display: block; color: #6b7280; margin-top: 2px; }
+  strong { color: #ea580c; }
+}

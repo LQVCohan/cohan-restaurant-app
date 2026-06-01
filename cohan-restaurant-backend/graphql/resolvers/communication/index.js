@@ -15,7 +15,7 @@ const toId = (id) => {
 };
 
 const roleSlug = (user) =>
-  String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
+  String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
 
 const ensureAuth = (ctx) => {
   if (!ctx?.user?.id) {
@@ -99,6 +99,25 @@ async function requireRestaurantScopeIfProvided(ctx, restaurantId) {
   return rid;
 }
 
+
+const buildNotificationCondition = async (ctx, { restaurantId, unreadOnly = false } = {}) => {
+  ensureAuth(ctx);
+  const user = ctx.user;
+  const uid = toId(user.id);
+  const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
+  const userRole = roleSlug(user);
+  const roleCondition = { toRole: userRole };
+  if (rid) roleCondition.restaurantId = rid;
+  else if (!roleSlug(user).includes("admin")) {
+    const scopedIds = getUserRestaurantIds(user).map(toId).filter(Boolean);
+    roleCondition.restaurantId = { $in: scopedIds };
+  }
+  const cond = { $or: [{ toUserId: uid }, roleCondition] };
+  if (rid) cond.restaurantId = rid;
+  if (unreadOnly) cond.readAt = null;
+  return cond;
+};
+
 const normalizeChatThreadStatus = (status) => {
   if (status == null || status === "") return "open";
   const normalized = String(status).trim().toLowerCase();
@@ -139,17 +158,7 @@ const Query = {
   },
 
   notifications: async (_, { restaurantId, unreadOnly = false, limit = 50 }, ctx) => {
-    ensureAuth(ctx);
-    const user = ctx.user;
-    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
-
-    const cond = {
-      $or: [{ toUserId: toId(user.id) }, { toRole: roleSlug(user) }],
-    };
-
-    if (rid) cond.restaurantId = rid;
-    if (unreadOnly) cond.readAt = null;
-
+    const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly });
     const rows = await Notification.find(cond)
       .sort({ createdAt: -1 })
       .limit(Math.min(Number(limit || 50), 200))
@@ -159,13 +168,22 @@ const Query = {
   },
 
   unreadNotificationCount: async (_, { restaurantId }, ctx) => {
-    ensureAuth(ctx);
-    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
-    const cond = {
-      readAt: null,
-      $or: [{ toUserId: toId(ctx.user.id) }, { toRole: roleSlug(ctx.user) }],
-    };
-    if (rid) cond.restaurantId = rid;
+    const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly: true });
+    return Notification.countDocuments(cond);
+  },
+
+  myNotifications: async (_, { restaurantId, unreadOnly = false, limit = 50, skip = 0 }, ctx) => {
+    const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly });
+    const rows = await Notification.find(cond)
+      .sort({ createdAt: -1 })
+      .skip(Math.max(Number(skip) || 0, 0))
+      .limit(Math.min(Number(limit || 50), 200))
+      .lean();
+    return rows.map((n) => ({ id: String(n._id), ...n }));
+  },
+
+  notificationCount: async (_, { restaurantId, unreadOnly = false }, ctx) => {
+    const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly });
     return Notification.countDocuments(cond);
   },
 };
@@ -335,9 +353,8 @@ const Mutation = {
   },
 
   markNotificationRead: async (_, { id }, ctx) => {
-    ensureAuth(ctx);
-    const uid = toId(ctx.user.id);
-    const doc = await Notification.findOne({ _id: id, toUserId: uid });
+    const cond = await buildNotificationCondition(ctx, { unreadOnly: true });
+    const doc = await Notification.findOne({ _id: id, ...cond });
     if (!doc) return false;
     doc.readAt = new Date();
     await doc.save();
@@ -345,11 +362,7 @@ const Mutation = {
   },
 
   markAllNotificationsRead: async (_, { restaurantId }, ctx) => {
-    ensureAuth(ctx);
-    const uid = toId(ctx.user.id);
-    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
-    const cond = { toUserId: uid, readAt: null };
-    if (rid) cond.restaurantId = rid;
+    const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly: true });
     await Notification.updateMany(cond, { $set: { readAt: new Date() } });
     return true;
   },

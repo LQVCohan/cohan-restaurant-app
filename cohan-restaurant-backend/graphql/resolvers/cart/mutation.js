@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Cart, Warehouse, MenuItem, Menu } from "../../../models/index.js";
+import { applyCartDerivedFields } from "../../../models/cartDerivedFields.js";
 import { getPublicRestaurantOrThrow, assertRestaurantCanOrder } from "../shared/restaurantCapabilityGuards.js";
 import { logObjectEvent } from "../../../src/services/eventLog.service.js";
 import {
@@ -375,8 +376,7 @@ export const CartMutation = {
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
-        cart.totalAmount = totals.totalAmount;
-        cart.lastActivityAt = new Date();
+        applyCartDerivedFields(cart, { now });
 
         await cart.save({ session });
         after = cart.toObject({ virtuals: true });
@@ -445,7 +445,8 @@ export const CartMutation = {
         const oldQty = Number(it.quantity || 0);
         const newQty = Math.max(1, parsedQty);
         const delta = newQty - oldQty;
-        const holdExpiresAt = new Date(Date.now() + HOLD_TTL_MS);
+        const now = new Date();
+        const holdExpiresAt = new Date(now.getTime() + HOLD_TTL_MS);
         const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
 
         if (delta > 0) {
@@ -491,8 +492,7 @@ export const CartMutation = {
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
-        cart.totalAmount = totals.totalAmount;
-        cart.lastActivityAt = new Date();
+        applyCartDerivedFields(cart, { now });
 
         await cart.save({ session });
         after = cart.toObject({ virtuals: true });
@@ -554,8 +554,7 @@ export const CartMutation = {
 
     const totals = computeTotals(cart.items);
     cart.totalQuantity = totals.totalQuantity;
-    cart.totalAmount = totals.totalAmount;
-    cart.lastActivityAt = new Date();
+    applyCartDerivedFields(cart);
 
     await cart.save();
 
@@ -594,8 +593,7 @@ export const CartMutation = {
 
         cart.items = [];
         cart.totalQuantity = 0;
-        cart.totalAmount = 0;
-        cart.lastActivityAt = new Date();
+        applyCartDerivedFields(cart);
 
         await cart.save({ session });
 
@@ -648,8 +646,7 @@ export const CartMutation = {
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
-        cart.totalAmount = totals.totalAmount;
-        cart.lastActivityAt = now;
+        applyCartDerivedFields(cart, { now });
 
         await cart.save({ session });
 

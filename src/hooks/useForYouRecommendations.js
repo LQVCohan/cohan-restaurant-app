@@ -2,16 +2,15 @@ import { gql, useApolloClient } from "@apollo/client";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import useFoodPreferences from "@/hooks/useFoodPreferences";
-import {
-  analyzeMenuItemForFoodPreferences,
-  sortMenuItemsByFoodPreference,
-} from "@/utils/foodPreferenceMatcher";
+import { analyzeMenuItemForFoodPreferences } from "@/utils/foodPreferenceMatcher";
 import {
   getForYouBehaviorReasons,
   getForYouBehaviorScore,
   hasForYouBehaviorSignals,
   readForYouBehaviorSignals,
 } from "@/utils/forYouBehaviorSignals";
+import { attachForYouOrderHistoryScores } from "@/utils/forYouOrderHistorySignals";
+import { sortForYouItems } from "@/utils/forYouRanking";
 
 const TOP_MENU_ITEMS_FOR_YOU = gql`
   query TopMenuItemsForYou($restaurantId: ID!, $limit: Int = 12, $timeSlot: TimeSlot) {
@@ -56,6 +55,8 @@ export default function useForYouRecommendations({
   enabled = true,
   timeSlot,
   preferencesOverride = null,
+  orderHistoryRecords = [],
+  rankingVariant = "default",
 } = {}) {
   const client = useApolloClient();
   const { restaurants, refRestaurant, isAuthenticated, user } = useContext(AuthContext) || {};
@@ -151,67 +152,46 @@ export default function useForYouRecommendations({
 
   const hasBehaviorSignals = useMemo(() => hasForYouBehaviorSignals(behaviorSignals), [behaviorSignals]);
 
-  const sortByForYouQuality = useCallback((a, b) => {
-    const preferenceDelta = Number(b?.foodPreferenceMeta?.score || 0) - Number(a?.foodPreferenceMeta?.score || 0);
-    if (preferenceDelta) return preferenceDelta;
-    const behaviorDelta = Number(b?.behaviorScore || 0) - Number(a?.behaviorScore || 0);
-    if (behaviorDelta) return behaviorDelta;
-    if (Number(b?.rate || 0) !== Number(a?.rate || 0)) return Number(b?.rate || 0) - Number(a?.rate || 0);
-    if (Number(b?.orderCounter || 0) !== Number(a?.orderCounter || 0)) return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
-    return String(a?.name || "").localeCompare(String(b?.name || ""), "vi");
-  }, []);
-
   const scoredItems = useMemo(() => {
-    const preferenceSortedItems = sortMenuItemsByFoodPreference(
-      items.map((item) => {
-        const foodPreferenceMeta = analyzeMenuItemForFoodPreferences(item, effectivePreferences);
-        return {
-          ...item,
-          foodPreferenceMeta,
-        };
-      }),
-      effectivePreferences,
-    );
-
-    return preferenceSortedItems.map((item) => {
+    const withPreferenceAndBehavior = items.map((item) => {
+      const foodPreferenceMeta = analyzeMenuItemForFoodPreferences(item, effectivePreferences);
       const behaviorScore = getForYouBehaviorScore(item, behaviorSignals);
       const behaviorReasons = getForYouBehaviorReasons(item, behaviorSignals);
       return {
         ...item,
         behaviorScore,
         foodPreferenceMeta: {
-          ...item.foodPreferenceMeta,
+          ...foodPreferenceMeta,
           behaviorScore,
           behaviorReasons,
         },
       };
     });
-  }, [behaviorSignals, effectivePreferences, items]);
+
+    return attachForYouOrderHistoryScores(withPreferenceAndBehavior, orderHistoryRecords);
+  }, [behaviorSignals, effectivePreferences, items, orderHistoryRecords]);
 
   const recommendedItems = useMemo(
-    () => scoredItems
-      .filter((item) => item.foodPreferenceMeta?.isRecommended)
-      .sort(sortByForYouQuality),
-    [scoredItems, sortByForYouQuality],
+    () => sortForYouItems(
+      scoredItems.filter((item) => item.foodPreferenceMeta?.isRecommended && !item.foodPreferenceMeta?.hasAllergyWarning),
+      { rankingVariant },
+    ),
+    [rankingVariant, scoredItems],
   );
   const warningItems = useMemo(
-    () => scoredItems
-      .filter((item) => item.foodPreferenceMeta?.hasAllergyWarning)
-      .sort(sortByForYouQuality),
-    [scoredItems, sortByForYouQuality],
+    () => sortForYouItems(
+      scoredItems.filter((item) => item.foodPreferenceMeta?.hasAllergyWarning),
+      { rankingVariant },
+    ),
+    [rankingVariant, scoredItems],
   );
   const fallbackItems = useMemo(() => {
     if (recommendedItems.length > 0) return [];
-    return [...scoredItems]
-      .filter((item) => !item.foodPreferenceMeta?.hasAllergyWarning)
-      .sort((a, b) => {
-        const behaviorDelta = Number(b?.behaviorScore || 0) - Number(a?.behaviorScore || 0);
-        if (behaviorDelta) return behaviorDelta;
-        if (Number(b?.rate || 0) !== Number(a?.rate || 0)) return Number(b?.rate || 0) - Number(a?.rate || 0);
-        if (Number(b?.orderCounter || 0) !== Number(a?.orderCounter || 0)) return Number(b?.orderCounter || 0) - Number(a?.orderCounter || 0);
-        return String(a?.name || "").localeCompare(String(b?.name || ""), "vi");
-      });
-  }, [recommendedItems.length, scoredItems]);
+    return sortForYouItems(
+      scoredItems.filter((item) => !item.foodPreferenceMeta?.hasAllergyWarning),
+      { rankingVariant },
+    );
+  }, [rankingVariant, recommendedItems.length, scoredItems]);
 
   const effectivePrefLoading = shouldLoadPreferences ? prefLoading : false;
   const effectivePrefError = shouldLoadPreferences ? prefError : null;
