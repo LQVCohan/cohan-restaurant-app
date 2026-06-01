@@ -133,3 +133,10 @@ After each schedule lifecycle change, test:
 The safest immediate bug fix is finding #1: allow `revision_draft` in the final add-shift mutation guard.
 
 Avoid large JSX rewrites in `AvailabilityRegistrationPanel.jsx` and avoid root layout performance hacks.
+
+## Auto schedule performance priority note
+
+- Auto schedule uses staff performance as a soft priority when ranking suggested candidates; it does not turn low performance into a hard block.
+- Hard guards remain role fit, employment/availability status, leave conflicts, shift overlap, weekly cap, rest-time checks, and consecutive-days limits.
+- When a staff member has no latest performance snapshot, auto schedule falls back to a neutral `75/100` score instead of penalizing the candidate.
+- Candidate validation metrics continue to expose `performanceContribution` and `reliabilityContribution` so managers can see how performance and reliability influenced the score.
