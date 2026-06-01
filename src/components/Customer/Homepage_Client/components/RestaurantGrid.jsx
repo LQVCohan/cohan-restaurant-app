@@ -144,11 +144,11 @@ const formatDistanceMeta = ({ distanceSource, distanceKm, estimatedTravelMinutes
 
   if (distanceSource === "road") {
     return durationText
-      ? `🚗 ${distanceText} • ${durationText}`
-      : `🚗 Cách bạn ${distanceText} đường đi`;
+      ? `Đường đi ${distanceText} • ${durationText}`
+      : `Cách bạn ${distanceText} đường đi`;
   }
 
-  return `🧭 Cách bạn khoảng ${distanceText}`;
+  return `Cách bạn khoảng ${distanceText}`;
 };
 
 const RESTAURANT_FALLBACK_IMAGES = [
@@ -267,68 +267,106 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
   const goLayout = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}/layout`); };
   const goOrder = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}`); };
   const viewAll = () => navigate("/restaurants");
+  const handleCardKeyDown = (event, id) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      goDetail(id);
+    }
+  };
+
+  const headerBadge = nearbyMode ? "Gần bạn" : hasCategoryFilter ? "Đúng nhu cầu" : "Top Rated";
+  const subtitle = nearbyMode
+    ? "Ưu tiên các nhà hàng có khoảng cách rõ ràng để bạn ra quyết định nhanh hơn."
+    : hasCategoryFilter
+      ? `Những lựa chọn phù hợp với ${displayCategoryName} trong khung giờ hiện tại.`
+      : "Các địa điểm ăn uống nổi bật, được sắp xếp để bạn chọn nhanh hơn.";
 
   return (
-    <section id="restaurants" className="restaurant-grid">
+    <section id="restaurants" className="restaurant-grid" aria-labelledby="restaurant-grid-title">
       <div className="restaurant-grid__container">
         <div className="restaurant-grid__header">
-          <div>
-            <span className="restaurant-grid__badge">Top Rated</span>
-            <h3 className="restaurant-grid__title">{title}</h3>
-            <p className="restaurant-grid__subtitle">Khám phá các địa điểm ăn uống được đánh giá cao nhất.</p>
+          <div className="restaurant-grid__heading-copy">
+            <span className="restaurant-grid__badge">{headerBadge}</span>
+            <h3 id="restaurant-grid-title" className="restaurant-grid__title">{title}</h3>
+            <p className="restaurant-grid__subtitle">{subtitle}</p>
           </div>
-          {showViewAll && <button className="restaurant-grid__view-all" onClick={viewAll}>Xem tất cả <span className="arrow">→</span></button>}
+          {showViewAll && <button type="button" className="restaurant-grid__view-all" onClick={viewAll}>Xem tất cả <span className="arrow">→</span></button>}
         </div>
 
-        {nearbyMode && !loading && <div className="restaurant-grid__nearby-note">📍 Đang hiển thị các nhà hàng gần vị trí hiện tại của bạn trong bán kính 20 km.</div>}
-
-        {!nearbyMode && hasCategoryFilter && !loading && (
-          <div className="restaurant-grid__nearby-note">✅ Đây là những nhà hàng có danh mục bạn đã chọn ({displayCategoryName}) trong khung giờ hiện tại.</div>
+        {nearbyMode && !loading && (
+          <div className="restaurant-grid__nearby-note">
+            <span className="restaurant-grid__nearby-icon" aria-hidden="true">⌖</span>
+            <span>Đang hiển thị nhà hàng gần vị trí hiện tại trong bán kính {DEFAULT_NEARBY_RADIUS_KM} km.</span>
+          </div>
         )}
 
-        {error && <div className="restaurant-grid__error">⚠️ Không tải được danh sách nhà hàng.</div>}
+        {!nearbyMode && hasCategoryFilter && !loading && (
+          <div className="restaurant-grid__nearby-note restaurant-grid__nearby-note--success">
+            <span className="restaurant-grid__nearby-icon" aria-hidden="true">✓</span>
+            <span>Đây là những nhà hàng có danh mục {displayCategoryName} trong khung giờ hiện tại.</span>
+          </div>
+        )}
 
-        <div className="restaurant-grid__list">
+        {error && <div className="restaurant-grid__error" role="alert">Không tải được danh sách nhà hàng. Vui lòng thử lại sau.</div>}
+
+        <div className="restaurant-grid__list" aria-busy={loading ? "true" : "false"}>
           {loading
             ? Array.from({ length: DEFAULT_RESTAURANT_LIMIT }).map((_, idx) => <SkeletonCard key={idx} />)
             : displayRestaurants.map((r) => {
                 const distanceMetaText = formatDistanceMeta({ distanceSource: r.distanceSource, distanceKm: r.distanceKm, estimatedTravelMinutes: r.estimatedTravelMinutes });
                 return (
-                  <div key={r.id} className="res-card" onClick={() => goDetail(r.id)} role="button" tabIndex={0}>
+                  <article
+                    key={r.id}
+                    className="res-card"
+                    onClick={() => goDetail(r.id)}
+                    onKeyDown={(event) => handleCardKeyDown(event, r.id)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Xem chi tiết ${r.name}`}
+                  >
                     <div className="res-card__image-wrapper">
-                      <img src={r.image} alt={r.name} className="res-card__img" loading="lazy" />
+                      <img src={r.image} alt={`Không gian của ${r.name}`} className="res-card__img" loading="lazy" />
+                      <div className="res-card__scrim" aria-hidden="true" />
                       <div className="res-card__overlay">
-                        <div className="res-card__rating">⭐ {r.avgRating.toFixed(1)}</div>
-                        {r.hours && <div className="res-card__status">🕒 {r.hours}</div>}
+                        <div className="res-card__rating" aria-label={`Điểm đánh giá ${r.avgRating.toFixed(1)}`}>★ {r.avgRating.toFixed(1)}</div>
+                        {r.hours && <div className="res-card__status">{r.hours}</div>}
                       </div>
                     </div>
 
                     <div className="res-card__body">
                       <div className="res-card__main-info">
-                        <h4 className="res-card__name" title={r.name}>{r.name}</h4>
-                        <p className="res-card__address" title={r.addressText}>📍 {r.addressText || "Chưa cập nhật địa chỉ"}</p>
-                        {distanceMetaText && <p className="res-card__address">{distanceMetaText}</p>}
+                        <div className="res-card__name-row">
+                          <h4 className="res-card__name" title={r.name}>{r.name}</h4>
+                          {r.priceRange && <span className="res-card__price">{r.priceRange}</span>}
+                        </div>
+                        <p className="res-card__address" title={r.addressText}>⌁ {r.addressText || "Chưa cập nhật địa chỉ"}</p>
+                        {distanceMetaText && <p className="res-card__distance">{r.distanceSource === "road" ? "↳" : "⌖"} {distanceMetaText}</p>}
                       </div>
 
                       <p className="res-card__desc">{r.description}</p>
-                      <div className="res-card__divider"></div>
+                      <div className="res-card__divider" />
 
                       <div className="res-card__actions">
-                        <button className="res-card__btn res-card__btn--outline" onClick={(e) => goLayout(e, r.id)}>Đặt bàn</button>
-                        <button className="res-card__btn res-card__btn--primary" onClick={(e) => goOrder(e, r.id)}>Đặt món</button>
+                        <button type="button" className="res-card__btn res-card__btn--outline" onClick={(e) => goLayout(e, r.id)}>Đặt bàn</button>
+                        <button type="button" className="res-card__btn res-card__btn--primary" onClick={(e) => goOrder(e, r.id)}>Đặt món</button>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
 
           {!loading && displayRestaurants.length === 0 && (
             <div className="restaurant-grid__empty">
-              {nearbyMode
-                ? "Không tìm thấy nhà hàng gần vị trí của bạn."
-                : hasCategoryFilter
-                  ? "Không tìm thấy nhà hàng nào có danh mục bạn đã chọn trong khung giờ này."
-                  : "Chưa có nhà hàng nào nổi bật."}
+              <span className="restaurant-grid__empty-kicker">Chưa có kết quả phù hợp</span>
+              <strong>
+                {nearbyMode
+                  ? "Không tìm thấy nhà hàng gần vị trí của bạn."
+                  : hasCategoryFilter
+                    ? "Không tìm thấy nhà hàng có danh mục bạn đã chọn trong khung giờ này."
+                    : "Chưa có nhà hàng nổi bật."}
+              </strong>
+              <p>Hãy thử đổi khu vực, danh mục hoặc xem toàn bộ danh sách nhà hàng.</p>
+              {showViewAll && <button type="button" className="restaurant-grid__empty-action" onClick={viewAll}>Xem tất cả nhà hàng</button>}
             </div>
           )}
         </div>
@@ -338,7 +376,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
 };
 
 const SkeletonCard = () => (
-  <div className="res-card res-card--skeleton">
+  <div className="res-card res-card--skeleton" aria-hidden="true">
     <div className="skeleton-img" />
     <div className="res-card__body">
       <div className="skeleton-text w-3-4" />
