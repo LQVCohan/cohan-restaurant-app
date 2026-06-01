@@ -20,8 +20,8 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
   z-index: 3;
   width: 100%;
   overflow: hidden;
-  margin-top: -2px;
-  padding: 76px 0 96px;
+  margin-top: -38px;
+  padding: 118px 0 96px;
 
   &::before {
     content: "";
@@ -535,7 +535,8 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
   }
 
   @media (max-width: 760px) {
-    padding: 58px 0 76px;
+    margin-top: -28px;
+    padding: 88px 0 76px;
 
     &__list {
       grid-template-columns: 1fr;
