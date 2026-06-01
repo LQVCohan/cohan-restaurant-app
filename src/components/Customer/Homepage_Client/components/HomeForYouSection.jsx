@@ -1,10 +1,12 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useForYouRecommendations from "@/hooks/useForYouRecommendations";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import { recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
+import { FOR_YOU_ANALYTICS_EVENTS, recordForYouAnalyticsEvent } from "@/utils/forYouAnalytics";
+import { getForYouReasonType } from "@/utils/forYouRanking";
 import "@/styles/Homepage/HomeForYouSection.scss";
 
 const formatPrice = (price) => Number(price || 0).toLocaleString("vi-VN");
@@ -35,6 +37,14 @@ export default function HomeForYouSection({ timeSlot = null }) {
     return source.slice(0, 6);
   }, [fallbackItems, recommendedItems]);
 
+  useEffect(() => {
+    if (!enabled || displayItems.length === 0) return;
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.VIEW, {
+      userId: user?.id,
+      source: "home_for_you",
+    });
+  }, [displayItems.length, enabled, user?.id]);
+
   if (!enabled || accessibleRestaurants.length === 0) return null;
   if (loading) return <section className="home-for-you"><div className="home-for-you__container"><div className="home-for-you__skeleton">Đang tìm món hợp khẩu vị của bạn...</div></div></section>;
   if (error || displayItems.length === 0) return null;
@@ -49,6 +59,14 @@ export default function HomeForYouSection({ timeSlot = null }) {
   const handleViewItem = (item) => {
     if (!item?.id) return;
     recordForYouItemInteraction(user?.id, item, "click");
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.CARD_CLICK, {
+      userId: user?.id,
+      itemId: item.id,
+      restaurantId: item.restaurantId,
+      categoryId: item.categoryId,
+      source: "home_for_you",
+      reasonType: getForYouReasonType(item),
+    });
     navigate(
       buildFoodDetailPath(item.id, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }),
       { state: buildFoodDetailState(item, { restaurantId: item.restaurantId, categoryId: item.categoryId, timeSlot }) },

@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Info, Check, Leaf, AlertTriangle, Flame, Droplet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
@@ -9,6 +9,8 @@ import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodN
 import { getFoodPreferenceCompletion } from "@/utils/foodPreferenceCompletion";
 import { getFoodPreferenceDisplayReasons } from "@/utils/foodPreferenceDisplay";
 import { clearForYouBehaviorSignals, recordForYouItemInteraction } from "@/utils/forYouBehaviorSignals";
+import { FOR_YOU_ANALYTICS_EVENTS, recordForYouAnalyticsEvent } from "@/utils/forYouAnalytics";
+import { getForYouReasonType } from "@/utils/forYouRanking";
 import {
   DIETS,
   ALLERGIES,
@@ -86,6 +88,14 @@ const ForYou = () => {
       completion.shouldNudge,
   );
 
+  useEffect(() => {
+    if (!isAuthenticated || !isCustomer) return;
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.VIEW, {
+      userId: user?.id,
+      source: "for_you",
+    });
+  }, [isAuthenticated, isCustomer, user?.id]);
+
   const handleAllergyToggle = (id) => {
     setPreferences((prev) => ({
       ...prev,
@@ -110,6 +120,14 @@ const ForYou = () => {
     if (!item?.id) return;
     if (isCustomer) {
       recordForYouItemInteraction(user?.id, item, "click");
+      recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.CARD_CLICK, {
+        userId: user?.id,
+        itemId: item.id,
+        restaurantId: item.restaurantId,
+        categoryId: item.categoryId,
+        source: "for_you",
+        reasonType: getForYouReasonType(item),
+      });
     }
     navigate(
       buildFoodDetailPath(item.id, {
@@ -144,6 +162,11 @@ const ForYou = () => {
 
   const handleClearRecentSuggestionData = () => {
     clearForYouBehaviorSignals(user?.id);
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.CLEAR_RECENT_SIGNALS, {
+      userId: user?.id,
+      source: "for_you",
+      reasonType: "behavior",
+    });
     refreshBehaviorSignals?.();
     setClearMessage("Đã xóa dữ liệu gợi ý gần đây trên thiết bị này.");
   };

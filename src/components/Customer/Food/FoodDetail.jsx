@@ -39,6 +39,8 @@ import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
 import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
 import { recordForYouItemInteraction } from "../../../utils/forYouBehaviorSignals";
+import { FOR_YOU_ANALYTICS_EVENTS, recordForYouAnalyticsEvent } from "../../../utils/forYouAnalytics";
+import { getForYouReasonType } from "../../../utils/forYouRanking";
 import "./FoodDetail.scss";
 
 const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
@@ -466,14 +468,28 @@ const FoodDetail = () => {
     const dishId = String(resolvedDish.id);
     if (recordedForYouViewRef.current === dishId) return;
     recordedForYouViewRef.current = dishId;
+    const analyticsDish = {
+      ...resolvedDish,
+      restaurantId: resolvedDish.restaurantId || restaurantIdFromState,
+      categoryId: resolvedDish.categoryId || categoryIdFromState,
+      foodPreferenceMeta,
+    };
     recordForYouItemInteraction(user?.id, {
       id: resolvedDish.id,
       name: resolvedDish.name,
-      restaurantId: resolvedDish.restaurantId || restaurantIdFromState,
+      restaurantId: analyticsDish.restaurantId,
       restaurantName: resolvedDish.restaurantName,
-      categoryId: resolvedDish.categoryId || categoryIdFromState,
+      categoryId: analyticsDish.categoryId,
     }, "view");
-  }, [categoryIdFromState, isAuthenticated, isCustomer, resolvedDish, restaurantIdFromState, user?.id]);
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.FOOD_DETAIL_VIEW, {
+      userId: user?.id,
+      itemId: resolvedDish.id,
+      restaurantId: analyticsDish.restaurantId,
+      categoryId: analyticsDish.categoryId,
+      source: "food_detail",
+      reasonType: getForYouReasonType(analyticsDish),
+    });
+  }, [categoryIdFromState, foodPreferenceMeta, isAuthenticated, isCustomer, resolvedDish, restaurantIdFromState, user?.id]);
 
   useEffect(() => {
     if (!sizes.length) return;
@@ -729,13 +745,27 @@ const FoodDetail = () => {
         return null;
       }
 
+      const analyticsDish = {
+        ...resolvedDish,
+        restaurantId: resolvedDish.restaurantId || restaurant?.id,
+        categoryId: resolvedDish.categoryId,
+        foodPreferenceMeta,
+      };
       recordForYouItemInteraction(user?.id, {
         id: resolvedDish.id,
         name: resolvedDish.name,
-        restaurantId: resolvedDish.restaurantId || restaurant?.id,
+        restaurantId: analyticsDish.restaurantId,
         restaurantName: restaurant?.name || resolvedDish.restaurantName,
-        categoryId: resolvedDish.categoryId,
+        categoryId: analyticsDish.categoryId,
       }, "order_intent");
+      recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.ADD_TO_CART_INTENT, {
+        userId: user?.id,
+        itemId: resolvedDish.id,
+        restaurantId: analyticsDish.restaurantId,
+        categoryId: analyticsDish.categoryId,
+        source: "food_detail",
+        reasonType: getForYouReasonType(analyticsDish),
+      });
 
       addToCart({
         ...payload,

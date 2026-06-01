@@ -45,6 +45,7 @@ import {
 } from "../../../hooks/useDiscountPreview";
 import useFoodPreferences from "../../../hooks/useFoodPreferences";
 import { analyzeMenuItemForFoodPreferences } from "../../../utils/foodPreferenceMatcher";
+import { FOR_YOU_ANALYTICS_EVENTS, recordForYouAnalyticsEvent } from "../../../utils/forYouAnalytics";
 const DEFAULT_SHIPPING = (prefill = {}) => ({
   fullName: prefill.fullName || "",
   phone: prefill.phone || "",
@@ -611,6 +612,27 @@ const OrderSummaryModal = ({
     menuItemMetadataByKey,
     orderData,
   ]);
+
+  const checkoutWarningAnalyticsKey = useMemo(() => (foodPreferenceReviewItems || [])
+    .filter((entry) => entry?.meta?.hasAllergyWarning)
+    .map((entry) => `${entry?.dish?.restaurantId || entry?.item?.restaurantId || ""}:${entry?.dish?.id || getCheckoutItemMenuItemId(entry?.item) || ""}`)
+    .sort()
+    .join("|"), [foodPreferenceReviewItems]);
+
+  const recordedCheckoutWarningKeyRef = useRef("");
+  useEffect(() => {
+    if (!checkoutWarningAnalyticsKey || recordedCheckoutWarningKeyRef.current === checkoutWarningAnalyticsKey) return;
+    recordedCheckoutWarningKeyRef.current = checkoutWarningAnalyticsKey;
+    const firstWarning = (foodPreferenceReviewItems || []).find((entry) => entry?.meta?.hasAllergyWarning);
+    recordForYouAnalyticsEvent(FOR_YOU_ANALYTICS_EVENTS.CHECKOUT_WARNING_SEEN, {
+      userId: user?.id,
+      itemId: firstWarning?.dish?.id || getCheckoutItemMenuItemId(firstWarning?.item),
+      restaurantId: firstWarning?.dish?.restaurantId || firstWarning?.item?.restaurantId,
+      categoryId: firstWarning?.dish?.categoryId || firstWarning?.item?.categoryId,
+      source: "checkout",
+      reasonType: "allergy_warning",
+    });
+  }, [checkoutWarningAnalyticsKey, foodPreferenceReviewItems, user?.id]);
   const validateCartHoldBeforeCheckout = useCallback(() => {
     const expiredHoldItems = getExpiredHoldItems(orderData);
     if (expiredHoldItems.length) {
