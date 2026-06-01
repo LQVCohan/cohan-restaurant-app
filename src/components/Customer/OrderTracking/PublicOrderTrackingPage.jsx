@@ -23,6 +23,25 @@ export const CUSTOMER_TRACK_ORDER = gql`
         publicStatus
         publicStatusLabel
       }
+      delivery {
+        orderType
+        deliveryStatus
+        deliveryStatusLabel
+        shippingAddress
+        eta
+        distance
+        duration
+        driverName
+        driverPhone
+        driverVehiclePlate
+        externalTrackingCode
+        timeline {
+          status
+          label
+          at
+          note
+        }
+      }
       payment {
         status
         canRequestPayment
@@ -44,6 +63,7 @@ const TRACKING_FIELDS = `
   trackingCode publicStatus publicStatusLabel customerVisibleNote estimatedReadyAt
   timeline { status displayMessage changedAt }
   items { name quantity publicStatus publicStatusLabel }
+  delivery { orderType deliveryStatus deliveryStatusLabel shippingAddress eta distance duration driverName driverPhone driverVehiclePlate externalTrackingCode timeline { status label at note } }
   payment { status canRequestPayment totalAmount }
   latestRequest { requestId type status message createdAt acknowledgedAt resolvedAt }
 `;
@@ -53,8 +73,26 @@ export const CALL_STAFF_FROM_TRACKING = gql`mutation CallStaffFromTracking($trac
 const paymentStatusLabel = { UNPAID: "Chưa thanh toán", PARTIAL: "Thanh toán một phần", PAYMENT_REQUESTED: "Đang chờ xử lý thanh toán", PAID: "Đã thanh toán" };
 const requestStatusLabel = { PENDING: "Đã gửi yêu cầu", ACKNOWLEDGED: "Nhân viên đã nhận yêu cầu", RESOLVED: "Yêu cầu đã được xử lý", CANCELLED: "Yêu cầu đã huỷ" };
 const requestTypeLabel = { STAFF_CALL: "Yêu cầu hỗ trợ", PAYMENT_REQUEST: "Yêu cầu thanh toán" };
-const finalStatuses = new Set(["PAID", "CANCELLED"]);
+const finalStatuses = new Set(["PAID", "CANCELLED", "DELIVERED", "DELIVERY_CANCELLED", "DELIVERY_FAILED"]);
 const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
+
+
+const formatDistance = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return `${number.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} km`;
+};
+
+const formatDuration = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return `${Math.round(number).toLocaleString("vi-VN")} phút`;
+};
+
+const DeliveryInfoRow = ({ label, value }) => {
+  if (value === null || value === undefined || value === "") return null;
+  return <div className="delivery-info-row"><span>{label}</span><strong>{value}</strong></div>;
+};
 
 const resolveLatestTimelineIndex = (timelineItems = []) => {
   if (!timelineItems.length) return -1;
@@ -169,6 +207,8 @@ export default function PublicOrderTrackingPage() {
 
   const timelineItems = Array.isArray(tracking.timeline) ? tracking.timeline : [];
   const latestTimelineIndex = resolveLatestTimelineIndex(timelineItems);
+  const delivery = tracking.delivery || null;
+  const deliveryTimeline = Array.isArray(delivery?.timeline) ? delivery.timeline : [];
 
   const updateModeLabel = isFinal
     ? "Đơn hàng đã hoàn tất"
@@ -188,6 +228,44 @@ export default function PublicOrderTrackingPage() {
         </section>
 
         <section className="track-card"><h3>Tiến trình đơn hàng</h3>{timelineItems.length === 0 ? <p>Chưa có cập nhật tiến trình.</p> : <ol className="timeline">{timelineItems.map((item, idx) => <li key={`${item.changedAt}-${idx}`} className={idx === latestTimelineIndex ? "current" : ""}><div><strong>{item.displayMessage}</strong><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("vi-VN") : ""}</p></div></li>)}</ol>}</section>
+
+
+        {delivery && (
+          <section className="track-card delivery-card">
+            <div className="delivery-card__head">
+              <h3>Thông tin giao hàng</h3>
+              <span className={`status-badge delivery-status ${String(delivery.deliveryStatus || "").toLowerCase()}`}>{delivery.deliveryStatusLabel || "Đang cập nhật"}</span>
+            </div>
+            <div className="delivery-info-grid">
+              <DeliveryInfoRow label="ETA" value={delivery.eta ? new Date(delivery.eta).toLocaleString("vi-VN") : null} />
+              <DeliveryInfoRow label="Khoảng cách" value={formatDistance(delivery.distance)} />
+              <DeliveryInfoRow label="Thời lượng dự kiến" value={formatDuration(delivery.duration)} />
+              <DeliveryInfoRow label="Địa chỉ giao" value={delivery.shippingAddress} />
+              <DeliveryInfoRow label="Người giao" value={delivery.driverName} />
+              <DeliveryInfoRow label="SĐT người giao" value={delivery.driverPhone} />
+              <DeliveryInfoRow label="Biển số xe" value={delivery.driverVehiclePlate} />
+              <DeliveryInfoRow label="Mã vận đơn ngoài" value={delivery.externalTrackingCode} />
+            </div>
+            <div className="delivery-timeline-wrap">
+              <h4>Tiến trình giao hàng</h4>
+              {deliveryTimeline.length === 0 ? (
+                <p className="helper">Chưa có cập nhật giao hàng.</p>
+              ) : (
+                <ol className="timeline delivery-timeline">
+                  {deliveryTimeline.map((item) => (
+                    <li key={item.status} className={item.status === delivery.deliveryStatus ? "current" : ""}>
+                      <div>
+                        <strong>{item.label}</strong>
+                        {item.at && <p>{new Date(item.at).toLocaleString("vi-VN")}</p>}
+                        {item.note && <p>{item.note}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="track-card"><h3>Món đã gọi</h3>{(tracking.items || []).length === 0 ? <p>Chưa có món trong đơn.</p> : <ul className="item-list">{tracking.items.map((item, idx) => <li key={`${item.name}-${idx}`}><div><strong>{item.name}</strong><p>Số lượng: {item.quantity}</p></div><span className={`status-badge ${String(item.publicStatus || "").toLowerCase()}`}>{item.publicStatusLabel || "Đang xử lý"}</span></li>)}</ul>}</section>
 

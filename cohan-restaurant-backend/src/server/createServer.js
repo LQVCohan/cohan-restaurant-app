@@ -32,10 +32,11 @@ import { requireRestaurantPermission } from "../services/auth/authorization.serv
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../services/ai/restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
-import { ChatThread, Order, OrderTracking } from "../../models/index.js";
+import { ChatThread, Order } from "../../models/index.js";
 import mongoose from "mongoose";
 import { clearRefreshCookie, revokeRefreshToken, rotateRefreshToken } from "../security/authTokens.js";
 import { createGraphqlValidationRules } from "../security/graphqlLimits.js";
+import { validateOrderTrackingToken } from "../services/orderTracking.service.js";
 
 export async function authorizeChatThreadJoin({ socketUser, threadId, findThreadById, requireRestaurantPermissionFn, permissionCode }) {
   if (!socketUser?.id || !threadId) return { ok: false, code: "FORBIDDEN" };
@@ -625,9 +626,10 @@ export async function createServer() {
     });
     socket.on("join-order-tracking", async ({ trackingToken } = {}, ack) => {
       if (!trackingToken || typeof trackingToken !== "string") { if (typeof ack === "function") ack({ ok:false, code:"INVALID"}); return; }
-      const exists = await OrderTracking.findOne({ trackingToken: String(trackingToken) }).select("_id").lean();
-      if (!exists) { if (typeof ack === "function") ack({ ok:false, code:"FORBIDDEN"}); return; }
-      socket.join(`order-tracking:${trackingToken}`);
+      const result = await validateOrderTrackingToken(trackingToken);
+      if (!result.ok) { if (typeof ack === "function") ack({ ok:false, code: result.code}); return; }
+      const token = result.token;
+      socket.join(`order-tracking:${token}`);
       if (typeof ack === "function") ack({ ok:true });
     });
 
