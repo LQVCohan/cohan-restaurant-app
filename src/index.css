@@ -35,3 +35,90 @@ a { text-decoration: none; color: inherit; }
   transition: transform 0.45s ease-out, opacity 0.45s ease-out;
   will-change: transform, opacity;
 }
+
+/* Scoped safety overrides for the table 3D custom builder modal.
+   The modal is rendered through a portal and several base form styles can
+   compete with the local SCSS, so these rules intentionally keep the scope
+   narrow while preventing clipped/truncated input text. */
+.custom-table-builder,
+.custom-table-builder * {
+  box-sizing: border-box;
+}
+
+.custom-table-builder .custom-table-builder__grid,
+.custom-table-builder .custom-table-builder__field,
+.custom-table-builder .custom-table-builder__field > *,
+.custom-table-builder .custom-table-builder__tab,
+.custom-table-builder .custom-table-builder__tab > span {
+  min-width: 0;
+}
+
+.custom-table-builder .custom-table-builder__label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-table-builder input.form-control,
+.custom-table-builder select.form-select,
+.custom-table-builder textarea.form-control {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 46px !important;
+  padding: 0.72rem 0.85rem !important;
+  line-height: 1.35 !important;
+  display: block !important;
+  color: #1f2937 !important;
+  font-size: 0.94rem !important;
+  box-sizing: border-box !important;
+}
+
+.custom-table-builder input.form-control,
+.custom-table-builder select.form-select {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.custom-table-builder select.form-select {
+  padding-right: 2.35rem !important;
+}
+
+.custom-table-builder input[type="number"].form-control {
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-table-builder input[type="color"].form-control,
+.custom-table-builder input.custom-table-builder__color-input {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 4px !important;
+}
+
+.custom-table-builder input[type="file"].form-control {
+  min-height: 46px !important;
+  padding: 0.58rem 0.75rem !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.custom-table-builder textarea.form-control {
+  white-space: normal !important;
+  overflow: auto !important;
+  padding-top: 0.75rem !important;
+  resize: vertical;
+}
+
+.custom-table-builder .custom-table-builder__hint,
+.custom-table-builder .custom-table-builder__status,
+.custom-table-builder .custom-table-builder__active-summary p,
+.custom-table-builder .custom-table-builder__footer p {
+  overflow-wrap: anywhere;
+}
