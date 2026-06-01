@@ -1,5 +1,10 @@
+import { generateGeminiJson } from "./ai/geminiClient.service.js";
+
 const POSITIVE_WORDS = ["ngon", "tốt", "nhanh", "sạch", "thân thiện", "hài lòng", "tuyệt", "đẹp"];
 const NEGATIVE_WORDS = ["chậm", "lạnh", "tệ", "bẩn", "đắt", "ồn", "khó chịu", "thất vọng"];
+const MAX_REVIEWS_FOR_AI = 80;
+const MAX_REVIEW_CONTENT_CHARS = 500;
+const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
 
 const pickTags = (reviews, words) => {
   const counts = new Map();
@@ -11,6 +16,72 @@ const pickTags = (reviews, words) => {
   });
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([word]) => word);
 };
+
+const toArray = (value) => (Array.isArray(value) ? value.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 6) : []);
+const clampConfidence = (value, fallback = 0.82) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(1, n));
+};
+
+const sanitizeReviewsForAi = (reviews = []) => reviews.slice(0, MAX_REVIEWS_FOR_AI).map((r) => ({
+  rating: Number(r.rating || 0),
+  title: String(r.title || "").slice(0, 160),
+  content: String(r.content || "").slice(0, MAX_REVIEW_CONTENT_CHARS),
+  tags: Array.isArray(r.tags) ? r.tags.map(String).slice(0, 8) : [],
+  topicTags: Array.isArray(r.topicTags) ? r.topicTags.map(String).slice(0, 8) : [],
+  sentiment: String(r.sentiment || "").slice(0, 40),
+}));
+
+export function validateReviewInsightShape(value) {
+  if (!value || typeof value !== "object") return null;
+  const summary = String(value.summary || "").trim();
+  if (!summary) return null;
+  return {
+    summary: summary.slice(0, 900),
+    positives: toArray(value.positives),
+    negatives: toArray(value.negatives),
+    recommendedActions: toArray(value.recommendedActions),
+    topPriorities: toArray(value.topPriorities),
+    confidence: clampConfidence(value.confidence),
+  };
+}
+
+export function resolveGeminiReviewInsightModel(env = process.env) {
+  const explicit = String(env.REVIEW_AI_INSIGHT_MODEL || "").trim();
+  if (explicit && !/^gpt-/i.test(explicit)) return explicit;
+  const chatbotModel = String(env.AI_CHATBOT_MODEL || env.AI_MODEL || "").trim();
+  if (chatbotModel && !/^gpt-/i.test(chatbotModel)) return chatbotModel;
+  return DEFAULT_GEMINI_MODEL;
+}
+
+export function createReviewInsightProviderFromEnv(env = process.env, { fetchImpl = globalThis.fetch } = {}) {
+  const enabled = String(env.REVIEW_AI_INSIGHTS_ENABLED || "false").toLowerCase() === "true";
+  const provider = String(env.AI_PROVIDER || "").toLowerCase();
+  const apiKey = env.GEMINI_API_KEY;
+  if (!enabled || provider !== "gemini" || !apiKey) return null;
+  const model = resolveGeminiReviewInsightModel(env);
+  return {
+    source: "gemini",
+    async summarizeReviews({ reviews, analytics }) {
+      const systemInstruction = [
+        "Bạn là trợ lý phân tích review cho module quản lý nhà hàng Cohan.",
+        "Chỉ dùng dữ liệu review đã được làm sạch; không suy đoán danh tính khách hàng.",
+        "Trả về JSON hợp lệ đúng schema: {\"summary\": string, \"positives\": string[], \"negatives\": string[], \"recommendedActions\": string[], \"topPriorities\": string[], \"confidence\": number}.",
+        "Không dùng markdown code fence, không thêm văn bản ngoài JSON.",
+      ].join("\n");
+      const prompt = JSON.stringify({
+        task: "Tóm tắt insight review/rating bằng tiếng Việt cho quản lý nhà hàng, ưu tiên hành động demo được.",
+        analytics,
+        reviews,
+      });
+      const parsed = await generateGeminiJson({ apiKey, model, systemInstruction, prompt, timeoutMs: Number(env.REVIEW_AI_INSIGHT_TIMEOUT_MS || 8000), fetchImpl });
+      const normalized = validateReviewInsightShape(parsed);
+      if (!normalized) throw new Error("Gemini insight shape is invalid");
+      return normalized;
+    },
+  };
+}
 
 export function buildHeuristicReviewInsight(reviews = [], analytics = {}) {
   const published = reviews.filter((r) => ["published", "reported"].includes(r.status));
@@ -40,14 +111,17 @@ export function buildHeuristicReviewInsight(reviews = [], analytics = {}) {
   };
 }
 
-export async function generateReviewInsight(reviews = [], analytics = {}, provider = null) {
+export async function generateReviewInsight(reviews = [], analytics = {}, provider = undefined) {
   const fallback = buildHeuristicReviewInsight(reviews, analytics);
   const enabled = String(process.env.REVIEW_AI_INSIGHTS_ENABLED || "false").toLowerCase() === "true";
-  if (!enabled || !provider?.summarizeReviews) return fallback;
+  const resolvedProvider = provider === undefined ? createReviewInsightProviderFromEnv() : provider;
+  if (!enabled || !resolvedProvider?.summarizeReviews) return fallback;
   try {
-    const safeReviews = reviews.slice(0, 80).map((r) => ({ rating: r.rating, title: r.title, content: String(r.content || "").slice(0, 500), tags: r.tags || [], topicTags: r.topicTags || [] }));
-    const ai = await provider.summarizeReviews({ reviews: safeReviews, analytics });
-    return { ...fallback, ...ai, source: "ai", confidence: Number(ai?.confidence || 0.82) };
+    const safeReviews = sanitizeReviewsForAi(reviews);
+    const ai = await resolvedProvider.summarizeReviews({ reviews: safeReviews, analytics });
+    const normalized = validateReviewInsightShape(ai);
+    if (!normalized) throw new Error("Review insight provider returned invalid shape");
+    return { ...fallback, ...normalized, source: resolvedProvider.source || "ai", confidence: clampConfidence(normalized.confidence) };
   } catch (_) {
     return { ...fallback, source: "heuristic_fallback" };
   }

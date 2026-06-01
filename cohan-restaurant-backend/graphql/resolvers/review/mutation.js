@@ -31,33 +31,49 @@ async function recalcReviewReportCount(reviewId) {
 
 async function createReviewNotification({ review, type, message, toUserId = null, toRole = null, ctx, payload = {} }) {
   try {
-    await Notification.create({
+    const notification = await Notification.create({
       toUserId: toUserId || undefined,
       toRole: toRole || undefined,
       restaurantId: review.restaurantId,
       type,
       payload: {
+        title: payload.title || message,
+        message,
         reviewId: review.id || String(review._id),
+        restaurantId: String(review.restaurantId || ""),
+        restaurantName: payload.restaurantName || review.restaurantName || "",
+        reviewTitle: review.title || "",
         rating: review.rating,
         status: review.status,
         targetType: review.targetType,
         targetName: review.targetName,
-        message,
+        reason: payload.reason || payload.moderationReason || "",
+        moderationReason: payload.moderationReason || payload.reason || "",
         ...payload,
       },
     });
+    if (ctx?.io && toUserId) {
+      ctx.io.to(`user_${toUserId}`).emit("notificationCreated", {
+        id: String(notification._id),
+        type,
+        restaurantId: String(review.restaurantId || ""),
+        reviewId: review.id || String(review._id),
+        message,
+      });
+    }
   } catch (err) {
     await logReviewEvent({ review, verb: "review.notification.failed", ctx, meta: { type, message, error: err.message } });
   }
 }
 
 async function notifyRestaurantManagers({ review, type, message, ctx, payload = {} }) {
-  const restaurant = await Restaurant.findById(review.restaurantId).select("managerId").lean();
+  const restaurant = await Restaurant.findById(review.restaurantId).select("managerId name").lean();
+  const enrichedPayload = { restaurantName: restaurant?.name || review.restaurantName || "", ...payload };
   if (restaurant?.managerId) {
-    await createReviewNotification({ review, type, message, toUserId: restaurant.managerId, ctx, payload });
+    await createReviewNotification({ review, type, message, toUserId: restaurant.managerId, ctx, payload: enrichedPayload });
     return;
   }
-  await createReviewNotification({ review, type, message, toRole: "manager", ctx, payload });
+  await createReviewNotification({ review, type, message, toRole: "manager", ctx, payload: enrichedPayload });
 }
 
 export default {
@@ -114,7 +130,7 @@ export default {
         type: "review.negative.created",
         message: "Có đánh giá tiêu cực cần xử lý",
         ctx,
-        payload: { customerName: created.customerName },
+        payload: { customerName: created.customerName, reviewTitle: created.title, restaurantName: created.restaurantName },
       });
       await logReviewEvent({ review: created, verb: "review.notification.negative", ctx, meta: { channel: "in-app" } });
     }
@@ -172,7 +188,7 @@ export default {
     await logReviewEvent({ review: updated, verb: "review.status", ctx, diff: { from: before.status, to: status }, meta: { reason, moderationNote, notifyCustomer } });
     if (["published", "rejected"].includes(status) && updated.customerId) {
       const message = status === "published" ? "Đánh giá của bạn đã được duyệt" : "Đánh giá của bạn đã bị từ chối";
-      await createReviewNotification({ review: updated, type: `review.${status}`, message, toUserId: updated.customerId, ctx, payload: { moderationReason: reason, moderationNote } });
+      await createReviewNotification({ review: updated, type: `review.${status}`, message, toUserId: updated.customerId, ctx, payload: { reason, moderationReason: reason, moderationNote, reviewTitle: updated.title, restaurantName: updated.restaurantName } });
       await logReviewEvent({ review: updated, verb: "review.notification.customer", ctx, meta: { channel: "in-app", status } });
     }
     return updated;
@@ -235,7 +251,7 @@ export default {
     const nextStatus = reportsCount >= 3 || ["abuse", "offensive", "privacy"].includes(reason) ? "reported" : review.status;
     const updated = await Review.findByIdAndUpdate(id, { reportsCount, status: nextStatus, updatedBy: userId }, { new: true });
     await logReviewEvent({ review: updated, verb: "review.report.create", ctx, meta: { reportId: report.id, reason, reportsCount } });
-    await notifyRestaurantManagers({ review: updated, type: "review.reported", message: "Có báo cáo đánh giá mới cần xử lý", ctx, payload: { reportId: report.id, reason, reportsCount } });
+    await notifyRestaurantManagers({ review: updated, type: "review.reported", message: "Có báo cáo đánh giá mới cần xử lý", ctx, payload: { reportId: report.id, reason, moderationReason: reason, reportsCount, reviewTitle: updated.title, restaurantName: updated.restaurantName } });
     await logReviewEvent({ review: updated, verb: "review.notification.report", ctx, meta: { channel: "in-app", reason, reportsCount } });
     return report;
   },

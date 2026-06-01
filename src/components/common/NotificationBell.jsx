@@ -38,16 +38,25 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
   }, []);
 
   const rows = useMemo(() => {
-    const mapped = (notifications || []).map((n) => ({
-      id: n.id,
-      type: n.type,
-      title: n.payload?.title || n.payload?.message || n.payload?.messagePreview || titleByType[n.type] || n.type,
-      detail: n.payload?.reviewTitle || n.payload?.reason || n.payload?.moderationReason || "",
-      time: toTime(n.createdAt),
-      isRead: Boolean(n.readAt),
-      icon: iconByType[n.type] || <Bell size={16} />,
-      raw: n,
-    }));
+    const mapped = (notifications || []).map((n) => {
+      const payload = n.payload || {};
+      const detailParts = [
+        payload.restaurantName,
+        payload.reviewTitle ? `Review: ${payload.reviewTitle}` : "",
+        payload.rating ? `${payload.rating} sao` : "",
+        payload.reason || payload.moderationReason ? `Lý do: ${payload.reason || payload.moderationReason}` : "",
+      ].filter(Boolean);
+      return {
+        id: n.id,
+        type: n.type,
+        title: payload.title || payload.message || payload.messagePreview || titleByType[n.type] || n.type,
+        detail: detailParts.join(" • "),
+        time: toTime(n.createdAt),
+        isRead: Boolean(n.readAt),
+        icon: iconByType[n.type] || <Bell size={16} />,
+        raw: n,
+      };
+    });
     return (activeTab === "unread" ? mapped.filter((n) => !n.isRead) : mapped).slice(0, 6);
   }, [activeTab, notifications]);
 
@@ -61,6 +70,7 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
     if (!enabled) return;
     await markNotificationRead({ variables: { id: notification.id } });
     await refetchNotifications?.();
+    setIsOpen(false);
     onOpenNotification?.(notification.raw);
   };
 

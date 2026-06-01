@@ -22,8 +22,9 @@ const iconByType = {
 };
 
 export const CustomerNotificationProvider = ({ children }) => {
-  const { user } = useContext(AuthContext) || {};
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
   const restaurantId = user?.refRestaurants?.[0] || null;
+  const notificationsEnabled = Boolean(isAuthenticated || user?.id || user?._id);
 
   const {
     notifications: rawNotifications,
@@ -31,7 +32,7 @@ export const CustomerNotificationProvider = ({ children }) => {
     markNotificationRead,
     markAllNotificationsRead,
     refetchNotifications,
-  } = useCommunication({ restaurantId });
+  } = useCommunication({ restaurantId, notificationsEnabled });
 
   const notifications = useMemo(
     () =>
