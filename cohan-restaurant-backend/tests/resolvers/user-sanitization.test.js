@@ -91,6 +91,15 @@ describe("user DTO sanitizers", () => {
     email: "safe@example.com",
     role: { slug: "staff", name: "Staff", internal: "hidden" },
     emailVerified: false,
+    phoneVerified: true,
+    verifiedAt: "2026-05-01T00:00:00.000Z",
+    emailVerifiedAt: "2026-05-02T00:00:00.000Z",
+    phoneVerifiedAt: "2026-05-03T00:00:00.000Z",
+    verificationLastStatus: "sent",
+    verificationLastChannel: "email",
+    verificationLastRequestedAt: "2026-05-04T00:00:00.000Z",
+    emailVerifyLastSentAt: "2026-05-04T00:00:00.000Z",
+    phoneVerifyLastSentAt: "2026-05-05T00:00:00.000Z",
     wallet: {
       provider: "internal",
       status: "active",
@@ -139,6 +148,15 @@ describe("user DTO sanitizers", () => {
     expect(out.lastLoginIp).toBeUndefined();
     expect(out.forcePasswordChange).toBeUndefined();
     expect(out.baseSalary).toBeUndefined();
+    expect(out.emailVerifyLastSentAt).toBeUndefined();
+    expect(out.phoneVerifyLastSentAt).toBeUndefined();
+    expect(out.verificationLastRequestedAt).toBeUndefined();
+    expect(out.verificationLastChannel).toBeUndefined();
+    expect(out.verificationLastStatus).toBeUndefined();
+    expect(out.emailVerified).toBe(false);
+    expect(out.phoneVerified).toBe(true);
+    expect(out.emailVerifiedAt).toBe("2026-05-02T00:00:00.000Z");
+    expect(out.phoneVerifiedAt).toBe("2026-05-03T00:00:00.000Z");
   });
 
   it("keeps customer CRM fields and drops staff/private fields", () => {
@@ -151,6 +169,11 @@ describe("user DTO sanitizers", () => {
     expect(out.nationalId).toBeUndefined();
     expect(out.bankAccountNumber).toBeUndefined();
     expect(out.noteInternal).toBeUndefined();
+    expect(out.emailVerifyLastSentAt).toBeUndefined();
+    expect(out.phoneVerifyLastSentAt).toBeUndefined();
+    expect(out.verificationLastRequestedAt).toBeUndefined();
+    expect(out.verificationLastChannel).toBeUndefined();
+    expect(out.verificationLastStatus).toBeUndefined();
   });
 
   it("keeps admin list fields explicit and drops bank/identity/internal fields", () => {
@@ -163,6 +186,11 @@ describe("user DTO sanitizers", () => {
     expect(out.healthInsuranceNumber).toBeUndefined();
     expect(out.noteInternal).toBeUndefined();
     expect(out.lastLoginIp).toBeUndefined();
+    expect(out.emailVerifyLastSentAt).toBeUndefined();
+    expect(out.phoneVerifyLastSentAt).toBeUndefined();
+    expect(out.verificationLastRequestedAt).toBeUndefined();
+    expect(out.verificationLastChannel).toBeUndefined();
+    expect(out.verificationLastStatus).toBeUndefined();
   });
 
   it("permission-gated staff private profile can include HR fields", async () => {
@@ -176,6 +204,11 @@ describe("user DTO sanitizers", () => {
     expect(out.noteInternal).toBe("private note");
     expect(out.passwordHash).toBeUndefined();
     expect(out.lastLoginIp).toBeUndefined();
+    expect(out.emailVerifyLastSentAt).toBeUndefined();
+    expect(out.phoneVerifyLastSentAt).toBeUndefined();
+    expect(out.verificationLastRequestedAt).toBeUndefined();
+    expect(out.verificationLastChannel).toBeUndefined();
+    expect(out.verificationLastStatus).toBeUndefined();
   });
 
   it("recognizes direct and refRestaurants staff restaurant membership", () => {
