@@ -37,6 +37,7 @@ import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { hasRole } from "../../../utils/authz.js";
+import { applyCartDerivedFields, computeCartTotalAmount } from "../../../models/cartDerivedFields.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { getPublicRestaurantOrThrow } from "../shared/restaurantCapabilityGuards.js";
 import { GraphQLError } from "graphql";
@@ -406,14 +407,6 @@ function assertCustomerRemoteCheckoutAuth(ctx, inputUserId) {
   return authUserId;
 }
 
-function computeCartTotalAmount(items = []) {
-  return (items || []).reduce(
-    (sum, item) =>
-      sum + Number(item?.quantity || 0) * Number(item?.price || 0),
-    0,
-  );
-}
-
 function getCheckoutCartRef(item = {}) {
   const cartId = item.cartId ? String(item.cartId) : "";
   const cartItemId = item.cartItemId ? String(item.cartItemId) : "";
@@ -474,15 +467,10 @@ async function removeCheckedOutCartItemsTx({ releasedCartItems, session }) {
       (item) => !cartItemIds.has(String(item._id)),
     );
 
-    if (!(cart.items || []).length) {
-      cart.status = "checked_out";
-      cart.totalAmount = 0;
-      cart.restaurantId = undefined;
-    } else {
-      cart.status = "active";
-      cart.totalAmount = computeCartTotalAmount(cart.items);
-    }
-    cart.lastActivityAt = new Date();
+    applyCartDerivedFields(cart, {
+      statusWhenEmpty: "checked_out",
+      statusWhenNotEmpty: "active",
+    });
 
     await cart.save({ session });
   }
