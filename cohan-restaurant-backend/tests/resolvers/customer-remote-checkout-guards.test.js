@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 import { __customerRemoteCheckoutTestables } from "../../graphql/resolvers/order/mutation.js";
 import { Cart } from "../../models/cart.model.js";
+import { CartFieldResolvers } from "../../graphql/resolvers/cart/types.js";
 
 const {
   assertCustomerRemoteCheckoutAuth,
@@ -36,6 +37,40 @@ describe("customer remote checkout guards", () => {
     expect(Cart.schema.path("restaurantId")).toBeTruthy();
     expect(Cart.schema.path("totalAmount")).toBeTruthy();
     expect(Cart.schema.path("lastActivityAt")).toBeTruthy();
+  });
+
+  it("resolves totalAmount from items when older cart documents do not have the persisted field", () => {
+    expect(
+      CartFieldResolvers.totalAmount({
+        items: [
+          { quantity: 2, price: 10000 },
+          { quantity: 3, price: 5000 },
+        ],
+      }),
+    ).toBe(35000);
+  });
+
+  it("resolves a nullable representative restaurantId from cart items", () => {
+    const restaurantId = validId();
+    expect(
+      String(
+        CartFieldResolvers.restaurantId({
+          items: [
+            { restaurantId, quantity: 1, price: 10000 },
+            { restaurantId, quantity: 2, price: 15000 },
+          ],
+        }),
+      ),
+    ).toBe(restaurantId);
+
+    expect(
+      CartFieldResolvers.restaurantId({
+        items: [
+          { restaurantId: validId(), quantity: 1, price: 10000 },
+          { restaurantId: validId(), quantity: 1, price: 12000 },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it("rejects missing ctx.user as UNAUTHENTICATED", () => {

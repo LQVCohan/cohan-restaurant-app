@@ -1,11 +1,17 @@
 // src/graphql/resolvers/cart/types.js
 import { User, Restaurant, MenuItem } from "../../../models/index.js";
-import { computeCartTotalAmount } from "../../../models/cartDerivedFields.js";
+import { computeCartTotalAmount, resolveCartRestaurantId } from "../../../models/cartDerivedFields.js";
 
 export const CartFieldResolvers = {
   user: async (parent) => {
     if (!parent.userId) return null;
     return User.findById(parent.userId).lean({ virtuals: true });
+  },
+
+  restaurantId: (parent) => {
+    if (parent?.restaurantId) return parent.restaurantId;
+    const items = Array.isArray(parent.items) ? parent.items : [];
+    return resolveCartRestaurantId(items);
   },
 
   totalQuantity: (parent) => {
