@@ -423,6 +423,9 @@ function buildAssignmentExplanations({
     reasons.push(
       `Selected candidate because validation passed with score ${scoreResult.score}.`,
     );
+    reasons.push(
+      `Performance contribution: +${scoreResult.performanceContribution}, reliability contribution: +${scoreResult.reliabilityContribution}.`,
+    );
   }
 
   if (availabilityResult?.status) {

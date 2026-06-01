@@ -25,12 +25,19 @@ const SHIFT_WINDOWS = {
 
 const ACTIVE_EMPLOYMENT = new Set(["working", "on_leave"]);
 const SUGGESTIBLE_EMPLOYMENT = new Set(["working"]);
+const DEFAULT_PERFORMANCE_SCORE = 75;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const toDate = (value) => {
   const d = value ? new Date(value) : null;
   return d && Number.isFinite(d.getTime()) ? d : null;
+};
+
+const resolvePerformanceScore = (value, fallback = DEFAULT_PERFORMANCE_SCORE) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(n)));
 };
 
 const toId = (value) => {
@@ -330,7 +337,10 @@ export async function buildStaffSchedulingAssistant({
         actor,
       );
       for (const row of perfRows || []) {
-        performanceByStaff.set(String(row.employeeId), Number(row.finalPerformanceScore || 50));
+        performanceByStaff.set(
+          String(row.employeeId),
+          resolvePerformanceScore(row.finalPerformanceScore),
+        );
       }
     } catch {
       usedPerformanceFallback = true;
@@ -373,21 +383,31 @@ export async function buildStaffSchedulingAssistant({
   }
 
   const staffById = new Map(
-    (staffList || []).map((s) => [
-      String(s._id),
-      {
-        id: String(s._id),
-        fullName: s.fullName || "Nhân viên",
-        department: String(s.department || "service").toLowerCase(),
-        role: roleFromDepartment(s.department),
-        employmentType: String(s.employmentType || "full_time").toLowerCase(),
-        workingDays: Array.isArray(s.workingDays)
-          ? s.workingDays.map((day) => String(day || "").toUpperCase())
-          : [],
-        employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
-        score: Number(performanceByStaff.get(String(s._id)) || 50),
-      },
-    ]),
+    (staffList || []).map((s) => {
+      const staffId = String(s._id);
+      const hasPerformanceScore = performanceByStaff.has(staffId);
+      const performanceScore = hasPerformanceScore
+        ? resolvePerformanceScore(performanceByStaff.get(staffId))
+        : DEFAULT_PERFORMANCE_SCORE;
+      if (!hasPerformanceScore) usedPerformanceFallback = true;
+
+      return [
+        staffId,
+        {
+          id: staffId,
+          fullName: s.fullName || "Nhân viên",
+          department: String(s.department || "service").toLowerCase(),
+          role: roleFromDepartment(s.department),
+          employmentType: String(s.employmentType || "full_time").toLowerCase(),
+          workingDays: Array.isArray(s.workingDays)
+            ? s.workingDays.map((day) => String(day || "").toUpperCase())
+            : [],
+          employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
+          score: performanceScore,
+          performanceSource: hasPerformanceScore ? "snapshot" : "fallback",
+        },
+      ];
+    }),
   );
 
   const shiftMap = new Map();
@@ -556,13 +576,25 @@ export async function buildStaffSchedulingAssistant({
           .slice(0, 1)
           .join("; ");
 
+        const performanceText =
+          candidate.performanceSource === "fallback"
+            ? `Hiệu suất gần đây: ${candidate.score}/100 (điểm trung lập)`
+            : `Hiệu suất gần đây: ${candidate.score}/100`;
+        const baseReason = [
+          "Đúng vai trò",
+          "đang làm việc",
+          "không trùng ca hiện tại",
+          performanceText,
+          availabilityText,
+        ]
+          .filter(Boolean)
+          .join("; ");
+
         suggestedCandidates.push({
           staffId: candidate.id,
           fullName: candidate.fullName,
           role: candidate.role,
-          reason: availabilityText
-            ? `working + matching department + no overlap in current window; ${availabilityText}`
-            : "working + matching department + no overlap in current window",
+          reason: baseReason,
         });
       }
     }
@@ -622,7 +654,11 @@ export async function buildStaffSchedulingAssistant({
     summaryNotes.push("Có ca đang overstaff, cân nhắc điều chuyển nhân sự.");
   if (!summaryNotes.length)
     summaryNotes.push("Phân bổ ca hiện tại tương đối cân bằng với dự báo.");
-  if (usedPerformanceFallback) summaryNotes.push("Thiếu dữ liệu performance xác thực, đang dùng điểm trung tính cho gợi ý nhân sự.");
+  if (usedPerformanceFallback) {
+    summaryNotes.push(
+      "Thiếu dữ liệu performance xác thực, đang dùng điểm trung lập 75/100 cho gợi ý nhân sự.",
+    );
+  }
 
   return {
     summary: {
