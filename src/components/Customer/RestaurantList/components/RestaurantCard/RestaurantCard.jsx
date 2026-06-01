@@ -6,6 +6,33 @@ import {
   getRestaurantPrimaryCTA,
 } from "@/utils/restaurantStatus";
 
+const RESTAURANT_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=900&q=80",
+];
+
+const isPlaceholderImage = (url = "") => {
+  const normalizedUrl = String(url || "").toLowerCase();
+  return !normalizedUrl || normalizedUrl.includes("default-") || normalizedUrl.includes("picsum.photos") || normalizedUrl.includes("source.unsplash") || normalizedUrl.includes("/random");
+};
+
+const resolveFallbackImage = (restaurantId = "") => {
+  const source = String(restaurantId || "restaurant");
+  const hash = source.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return RESTAURANT_FALLBACK_IMAGES[hash % RESTAURANT_FALLBACK_IMAGES.length];
+};
+
+const getStatusTone = (status = "") => {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized.includes("open")) return "open";
+  if (normalized.includes("closed")) return "closed";
+  if (normalized.includes("break") || normalized.includes("pause")) return "break";
+  return "unknown";
+};
+
 const RestaurantCard = ({
   restaurant,
   variant = "grid",
@@ -19,6 +46,9 @@ const RestaurantCard = ({
     .join(", ");
 
   const hasReviews = Number(restaurant.reviewCount || 0) > 0;
+  const rawImage = restaurant.image || restaurant.coverImage || restaurant.avatar;
+  const displayImage = isPlaceholderImage(rawImage) ? resolveFallbackImage(restaurant.id) : rawImage;
+  const statusTone = getStatusTone(restaurant.openingStatus);
 
   return (
     <div
@@ -27,7 +57,7 @@ const RestaurantCard = ({
     >
       <div className="restaurant-card__image-wrapper">
         <img
-          src={restaurant.image || restaurant.coverImage || restaurant.avatar || "/default-restaurant.jpg"}
+          src={displayImage}
           alt={restaurant.name}
           className="restaurant-card__img"
           loading="lazy"
@@ -49,7 +79,7 @@ const RestaurantCard = ({
         <div className="info-section">
           <div className="content-header">
             <h3 className="restaurant-name">{restaurant.name}</h3>
-            <span className="status-pill">{getOpeningStatusLabel(restaurant.openingStatus)}</span>
+            <span className={`status-pill status-pill--${statusTone}`}>{getOpeningStatusLabel(restaurant.openingStatus)}</span>
           </div>
 
           <div className="content-meta">
