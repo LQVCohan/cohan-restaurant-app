@@ -886,7 +886,7 @@ export default {
     if (!isSelf) {
       const targetRestaurantId = staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
-      assertPayrollPermission(ctx, "payroll.read");
+      assertPayrollPermission(ctx, "payroll.view");
     }
 
     const shifts = await Shift.find({ employeeId: staff._id })

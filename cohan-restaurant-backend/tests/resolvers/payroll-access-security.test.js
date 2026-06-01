@@ -82,6 +82,18 @@ const queryChain = (value) => ({
 const findSortLimit = queryChain;
 const populateLean = queryChain;
 
+const resolveStaffDocChain = (value) => ({ populate: vi.fn(async () => value) });
+
+function installStaffSalarySummaryMocks({ staffId = "staff-a", restaurantId = "restaurant-a" } = {}) {
+  modelMocks.Staff.findById.mockReturnValue(resolveStaffDocChain({
+    _id: staffId,
+    userType: "STAFF",
+    restaurantForStaff: restaurantId,
+    baseSalary: 1000,
+  }));
+  modelMocks.Shift.find.mockReturnValue(queryChain([]));
+}
+
 function user(overrides = {}) {
   return { id: "manager-a", userType: "MANAGER", restaurantForStaff: "restaurant-a", ...overrides };
 }
@@ -164,6 +176,43 @@ describe("sensitive payroll and staff report access", () => {
     await expect(query.staffReportsOverview(null, { input: { restaurantId: "restaurant-a", startDate: "2026-01-01", endDate: "2026-01-31" } }, staffCtx)).rejects.toThrow("FORBIDDEN");
     await expect(query.payrollPayslip(null, { periodId: "period-a", employeeId: "other-staff" }, staffCtx)).rejects.toThrow("FORBIDDEN");
     await expect(query.leaveBalance(null, { employeeId: "other-staff", year: 2026 }, staffCtx)).rejects.toThrow("FORBIDDEN");
+  });
+
+
+  it("allows MANAGER to view staffSalarySummary for staff in their own restaurant", async () => {
+    installStaffSalarySummaryMocks({ staffId: "staff-a", restaurantId: "restaurant-a" });
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    const managerCtx = { user: user() };
+
+    await expect(query.staffSalarySummary(null, { staffId: "staff-a" }, managerCtx)).resolves.toMatchObject({ staffId: "staff-a" });
+    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(managerCtx, "restaurant-a");
+    expect(permissionMocks.assertPayrollPermission).toHaveBeenCalledWith(managerCtx, "payroll.view");
+  });
+
+  it("denies MANAGER staffSalarySummary for staff in another restaurant", async () => {
+    installStaffSalarySummaryMocks({ staffId: "staff-b", restaurantId: "restaurant-b" });
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    const managerCtx = { user: user() };
+
+    await expect(query.staffSalarySummary(null, { staffId: "staff-b" }, managerCtx)).rejects.toThrow("FORBIDDEN_SCOPE");
+  });
+
+  it("allows STAFF to view their own staffSalarySummary", async () => {
+    installStaffSalarySummaryMocks({ staffId: "staff-a", restaurantId: "restaurant-a" });
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+
+    await expect(query.staffSalarySummary(null, { staffId: "staff-a" }, staffCtx)).resolves.toMatchObject({ staffId: "staff-a" });
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(permissionMocks.assertPayrollPermission).not.toHaveBeenCalledWith(staffCtx, "payroll.view");
+  });
+
+  it("denies STAFF staffSalarySummary for another staff member", async () => {
+    installStaffSalarySummaryMocks({ staffId: "staff-b", restaurantId: "restaurant-b" });
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+
+    await expect(query.staffSalarySummary(null, { staffId: "staff-b" }, staffCtx)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
   it("allows STAFF self-service only through finalized self payslip and own leave balance", async () => {
