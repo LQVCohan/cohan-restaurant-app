@@ -345,6 +345,7 @@ Nếu thêm lệnh mới: xác minh trong `package.json` trước khi chạy.
 - Socket.IO handshake cố gắng resolve JWT từ `Authorization` hoặc `auth.token`, sau đó room join cho restaurant/user/thread/order được kiểm tra quyền/ownership trước khi join.
 - Production bật Helmet CSP với whitelist origin frontend + static/image/font cần thiết; dev giữ chế độ nới lỏng.
 - Runtime GraphQL requests are validated with deterministic depth and selected-field count limits before resolver execution. Defaults are `GRAPHQL_MAX_DEPTH=12` and `GRAPHQL_MAX_FIELD_COUNT=500`; production rejects values above depth 25 or field count 2000 unless `ALLOW_UNSAFE_GRAPHQL_LIMITS=true`.
+- Operational deployment note: current thesis/demo target is a single backend server, so the existing in-memory rate limits are acceptable for this deployment model. Do not add Redis or a shared rate-limit store as a requirement for the current thesis deployment; add Redis/shared rate-limit storage only if the project later scales to multiple backend instances.
 
 - CSP Helmet ở backend chỉ áp dụng cho response do backend phục vụ trực tiếp; nếu frontend React/Vite deploy tách riêng (Vercel/Netlify/Nginx/CDN) thì CSP tương đương phải cấu hình ở layer host frontend.
 
