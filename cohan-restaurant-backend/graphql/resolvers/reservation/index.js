@@ -1,6 +1,7 @@
 // src/graphql/reservation/index.js
 
 import { ReservationQuery } from "./query.js";
+import { PaymentSession, PaymentTransaction } from "../../../models/index.js";
 import { ReservationMutation } from "./mutation.js";
 import { ReservationChangeReviewMutation } from "./changeReview.js";
 import {
@@ -8,6 +9,47 @@ import {
   withSafeReservationStatusMutation,
 } from "./checkIn.js";
 import { withReservationRealtimeEvents } from "./realtimeEvents.js";
+
+
+async function findLatestDepositSession(reservation) {
+  const reservationId = reservation?._id || reservation?.id;
+  if (!reservationId) return null;
+
+  return PaymentSession.findOne({ reservationId })
+    .sort({ callbackAt: -1, reconciledAt: -1, createdAt: -1 })
+    .lean();
+}
+
+async function findDepositTransaction(reservation) {
+  if (!reservation?.depositTxnId) return null;
+  return PaymentTransaction.findById(reservation.depositTxnId).lean();
+}
+
+const ReservationType = {
+  async depositPaidAt(parent) {
+    const transaction = await findDepositTransaction(parent);
+    if (transaction?.paidAt) return transaction.paidAt;
+
+    const session = await findLatestDepositSession(parent);
+    return session?.callbackAt || session?.reconciledAt || null;
+  },
+  async depositPaymentProvider(parent) {
+    const session = await findLatestDepositSession(parent);
+    return session?.provider || null;
+  },
+  async depositPaymentMethod(parent) {
+    const session = await findLatestDepositSession(parent);
+    return session?.paymentMethod || parent?.paymentMethod || null;
+  },
+  async depositPaymentReference(parent) {
+    const session = await findLatestDepositSession(parent);
+    return session?.reference || parent?.paymentReference || null;
+  },
+  async depositProviderTransactionId(parent) {
+    const session = await findLatestDepositSession(parent);
+    return session?.providerTransactionId || null;
+  },
+};
 
 const ReviewReservationMutation = {
   ...ReservationMutation,
@@ -19,6 +61,7 @@ const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservat
 const RealtimeReservationMutation = withReservationRealtimeEvents(SafeReservationMutation);
 
 export default {
+  Reservation: ReservationType,
   Query: {
     ...ReservationQuery,
   },
