@@ -23,11 +23,11 @@ const titleByType = {
 const toTime = (iso) =>
   iso ? new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "";
 
-export default function NotificationBell({ restaurantId = null, title = "Thông báo", onOpenNotification }) {
+export default function NotificationBell({ restaurantId = null, title = "Thông báo", onOpenNotification, enabled = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const dropdownRef = useRef(null);
-  const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead, refetchNotifications } = useCommunication({ restaurantId });
+  const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead, refetchNotifications } = useCommunication({ restaurantId, notificationsEnabled: enabled });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -52,11 +52,13 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
   }, [activeTab, notifications]);
 
   const markAllAsRead = async () => {
+    if (!enabled) return;
     await markAllNotificationsRead({ variables: { restaurantId } });
     await refetchNotifications?.();
   };
 
   const handleClick = async (notification) => {
+    if (!enabled) return;
     await markNotificationRead({ variables: { id: notification.id } });
     await refetchNotifications?.();
     onOpenNotification?.(notification.raw);
@@ -64,7 +66,7 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
 
   return (
     <div className="app-notification-bell" ref={dropdownRef}>
-      <button type="button" className="app-notification-bell__trigger" aria-label="Mở thông báo" onClick={() => setIsOpen((v) => !v)}>
+      <button type="button" className="app-notification-bell__trigger" aria-label="Mở thông báo" disabled={!enabled} onClick={() => enabled && setIsOpen((v) => !v)}>
         <Bell size={21} />
         {unreadCount > 0 && <span className="app-notification-bell__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>

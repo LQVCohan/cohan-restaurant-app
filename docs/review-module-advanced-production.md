@@ -17,7 +17,7 @@ Module Review gồm GraphQL schema `review.graphql`, resolver review/review_comm
 
 ## Notification flow
 
-UI dùng `NotificationBell` để đọc `notifications`/`unreadNotificationCount`, mark read và mark all read. Backend filter theo `toUserId` hoặc `toRole + restaurantId`, có index cho unread và role scoped access.
+UI dùng `NotificationBell` trong ReviewManagement để manager đọc `notifications`/`unreadNotificationCount`, mark read và mark all read. Backend đã tạo notification trực tiếp cho customer (`toUserId`) và component đã có `enabled` guard để có thể gắn vào CustomerLayout ở follow-up mà không query khi guest; hiện customer notification bell chưa được tích hợp toàn cục để tránh đổi layout rộng trong PR này. Backend filter theo `toUserId` hoặc `toRole + restaurantId`, có index cho unread và role scoped access.
 
 ## Analytics design/performance
 

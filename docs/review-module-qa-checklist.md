@@ -61,7 +61,7 @@
 ## Advanced production upgrade checklist
 
 - [ ] Run API smoke: `node scripts/review-flow-smoke.mjs` with `CUSTOMER_TOKEN`, `MANAGER_TOKEN`, `DEMO_RESTAURANT_ID`.
-- [ ] Verify manager/customer NotificationBell shows review notifications and mark-read updates badge.
+- [ ] Verify manager NotificationBell shows review notifications and mark-read updates badge; customer notification rows are backend-ready and CustomerLayout bell is follow-up unless layout integration is added later.
 - [ ] Verify Review Action Center tiles change filters for moderation, needs reply, report queue and high risk.
 - [ ] Verify ReviewModal audit timeline shows status/reply/report events only for manager/staff with review permissions.
 - [ ] Verify AI insight card renders heuristic summary when `REVIEW_AI_INSIGHTS_ENABLED` is absent/false.

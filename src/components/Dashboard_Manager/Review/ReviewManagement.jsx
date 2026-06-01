@@ -490,7 +490,7 @@ const ReviewManagement = () => {
       actionQueue: tile.id,
       ratings: tile.id === "needsReply" ? [1, 2] : prev.ratings,
     }));
-    if (["needsModeration", "reports"].includes(tile.id)) setCurrentTab("reported");
+    if (tile.id === "reports") setCurrentTab("reported");
     else setCurrentTab("all");
   }, []);
 
@@ -654,6 +654,7 @@ const ReviewManagement = () => {
     canExport: hasPermission(me, "review.export"),
     canReply: hasPermission(me, "review.reply"),
     canReadAnalytics,
+    canResolveReports: hasPermission(me, "review.report.resolve"),
   };
 
   const titleMap = {
@@ -832,10 +833,21 @@ const ReviewManagement = () => {
                               <small>Review #{report.reviewId} · Reporter #{report.reporterUserId} · {new Date(report.createdAt).toLocaleString("vi-VN")}</small>
                               {report.resolutionNote && <small>Ghi chú: {report.resolutionNote}</small>}
                               <div>
-                                <button type="button" onClick={() => handleResolveReport(report, "resolved")}>Resolve</button>
-                                <button type="button" onClick={() => handleResolveReport(report, "rejected")}>Reject report</button>
-                                <button type="button" onClick={() => handleReportReviewAction(report, "hidden")}>Hide review</button>
-                                <button type="button" onClick={() => handleReportReviewAction(report, "rejected")}>Reject review</button>
+                                {permissions.canResolveReports && (
+                                  <>
+                                    <button type="button" onClick={() => handleResolveReport(report, "resolved")}>Resolve</button>
+                                    <button type="button" onClick={() => handleResolveReport(report, "rejected")}>Reject report</button>
+                                  </>
+                                )}
+                                {permissions.canModerate && (
+                                  <>
+                                    <button type="button" onClick={() => handleReportReviewAction(report, "hidden")}>Hide review</button>
+                                    <button type="button" onClick={() => handleReportReviewAction(report, "rejected")}>Reject review</button>
+                                  </>
+                                )}
+                                {!permissions.canResolveReports && !permissions.canModerate && (
+                                  <small>Bạn không có quyền xử lý report.</small>
+                                )}
                               </div>
                             </article>
                           ))}

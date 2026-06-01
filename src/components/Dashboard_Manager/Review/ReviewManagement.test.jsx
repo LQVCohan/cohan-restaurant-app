@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useMutation, useQuery } from "@apollo/client";
 import ReviewManagement from "./ReviewManagement";
@@ -19,8 +19,7 @@ vi.mock("@/components/common/NotificationBell", () => ({ default: () => <button>
 
 const managerRole = { slug: "manager", name: "Manager", permissions: [{ code: "review.analytics.read" }], directPermissions: [], parentRole: null };
 
-const review = {
-  id: "rv1",
+const baseReview = {
   targetType: "service",
   targetId: "65f100000000000000000102",
   targetName: "Tốc độ phục vụ",
@@ -31,36 +30,63 @@ const review = {
   customerAvatar: "",
   staffId: "staff1",
   staffName: "NV Demo",
-  rating: 2,
-  title: "Cần phản hồi",
-  content: "Phục vụ chậm cần phản hồi",
   images: [],
   location: "Hà Nội",
   verifiedPurchase: true,
   tags: ["service_speed"],
-  status: "published",
   likesCount: 1,
   commentsCount: 0,
-  reportsCount: 1,
   helpfulCount: 2,
   reactions: { like: 1, total: 1 },
-  createdAt: "2026-05-29T00:00:00.000Z",
   firstOfficialReply: null,
 };
 
+const reviews = [
+  {
+    ...baseReview,
+    id: "rv-published-negative",
+    rating: 2,
+    title: "Cần phản hồi",
+    content: "Phục vụ chậm cần phản hồi",
+    status: "published",
+    reportsCount: 1,
+    createdAt: "2026-05-29T00:00:00.000Z",
+  },
+  {
+    ...baseReview,
+    id: "rv-pending",
+    rating: 4,
+    title: "Pending review",
+    content: "Review đang chờ duyệt",
+    status: "pending",
+    reportsCount: 0,
+    createdAt: "2026-05-28T00:00:00.000Z",
+  },
+  {
+    ...baseReview,
+    id: "rv-reported",
+    rating: 1,
+    title: "Reported review",
+    content: "Review đã bị báo cáo",
+    status: "reported",
+    reportsCount: 3,
+    createdAt: "2026-05-27T00:00:00.000Z",
+  },
+];
+
 const analyticsPayload = {
-  totalReviews: 1,
-  avgRating: 2,
+  totalReviews: 3,
+  avgRating: 2.33,
   verifiedRate: 1,
-  pendingCount: 0,
-  negativeCount: 1,
-  reportedCount: 0,
+  pendingCount: 1,
+  negativeCount: 2,
+  reportedCount: 1,
   ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
   topTags: [{ name: "service_speed", count: 1 }],
   topStaffMentioned: [{ id: "staff1", name: "NV Demo", count: 1 }],
   lowRatedTargets: [{ id: "65f100000000000000000102", name: "Tốc độ phục vụ", targetType: "service", count: 1, avgRating: 2 }],
   reportBreakdown: [],
-  actionQueueCounts: { needsModeration: 0, needsReply: 1, highRisk: 1 },
+  actionQueueCounts: { needsModeration: 2, needsReply: 1, highRisk: 1 },
   reviewInsightSummary: { summary: "Heuristic summary", positives: ["ngon"], negatives: ["chậm"], recommendedActions: ["Phản hồi review 1–2 sao"], topPriorities: ["Ưu tiên high risk"], confidence: 0.7, source: "heuristic" },
 };
 
@@ -70,9 +96,9 @@ function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }] } 
     if (source.includes("query Me")) return { data: { me } };
     if (source.includes("ManagerRestaurants")) return { data: { restaurantsByManager: { edges: restaurants.map((node) => ({ node })) } } };
     if (source.includes("AllRestaurants")) return { data: { restaurants: { edges: restaurants.map((node) => ({ node })) } } };
-    if (source.includes("GetReviews")) return { data: { reviews: { total: 1, items: [review] } }, loading: false, error: null, refetch: vi.fn() };
+    if (source.includes("GetReviews")) return { data: { reviews: { total: reviews.length, items: reviews } }, loading: false, error: null, refetch: vi.fn() };
     if (source.includes("GetReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 2, pending: 0, ratingBreakdown: { 2: 1 } } } };
-    if (source.includes("GetReviewReports")) return { data: { reviewReports: { total: 0, items: [] }, reviewReportStats: { total: 0, pending: 0, resolved: 0, rejected: 0, byReason: {} } }, refetch: vi.fn() };
+    if (source.includes("GetReviewReports")) return { data: { reviewReports: { total: 1, items: [{ id: "rp1", reviewId: "rv-reported", restaurantId: "res1", reporterUserId: "cus2", reason: "spam", detail: "Report cần xử lý", status: "pending", createdAt: "2026-05-30T00:00:00.000Z" }] }, reviewReportStats: { total: 1, pending: 1, resolved: 0, rejected: 0, byReason: { spam: 1 } } }, refetch: vi.fn() };
     if (source.includes("GetReviewAnalytics")) {
       if (options.skip) return { data: undefined, loading: false, error: null, refetch: vi.fn() };
       return { data: { reviewAnalytics: analyticsPayload }, loading: false, error: null, refetch: vi.fn() };
@@ -96,6 +122,28 @@ describe("ReviewManagement analytics", () => {
     expect(screen.getAllByText("Cần phản hồi").length).toBeGreaterThan(1);
     expect(screen.getByText("service_speed")).toBeInTheDocument();
     expect(screen.getByText("Cần phản hồi", { selector: "article" })).toBeInTheDocument();
+  });
+
+  it("keeps pending and reported reviews visible when clicking needs moderation queue", () => {
+    mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole });
+    render(<ReviewManagement />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Cần kiểm duyệt/i }));
+
+    const list = screen.getByTestId("reviews-list");
+    expect(within(list).getByText("Pending review")).toBeInTheDocument();
+    expect(within(list).getByText("Reported review")).toBeInTheDocument();
+    expect(within(list).queryByText("Cần phản hồi")).not.toBeInTheDocument();
+  });
+
+  it("supports report queue click without hiding the reported review", () => {
+    mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole });
+    render(<ReviewManagement />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Report cần xử lý/i }));
+
+    const list = screen.getByTestId("reviews-list");
+    expect(within(list).getByText("Reported review")).toBeInTheDocument();
   });
 
   it("skips analytics for non-admin manager until restaurantId is available", () => {

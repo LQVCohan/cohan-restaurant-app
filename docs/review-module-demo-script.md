@@ -32,6 +32,6 @@ Seed script in ra `restaurantId`, manager/customer/staff demo và các bước g
 - Report modal + disabled after submit.
 - Report/action center high-risk.
 - Review timeline audit.
-- Notification bell unread/read.
+- Notification bell unread/read trong ReviewManagement; customer notification rows đã seed/backend-ready và có thể gắn vào CustomerLayout ở follow-up.
 - CSV export mở được tiếng Việt UTF-8 BOM.
 - Staff performance evidence khi review gắn staff.
