@@ -100,7 +100,19 @@ const MY_RESERVATIONS = gql`
       durationMinutes
       partySize
       depositAmount
+      depositTxnId
       depositStatus
+      depositPaidAt
+      depositPaymentProvider
+      depositPaymentMethod
+      depositPaymentReference
+      depositProviderTransactionId
+      paymentMethod
+      paymentReference
+      customerName
+      customerPhone
+      customerEmail
+      note
       isUnlimitedTime
       status
       createdAt
@@ -155,7 +167,18 @@ const fmtMoney = (v) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     v
   );
-const toVNDateTime = (iso) => new Date(iso).toLocaleString("vi-VN");
+const EMPTY_VALUE = "--";
+
+const toVNDateTime = (iso) => {
+  if (!iso) return EMPTY_VALUE;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? EMPTY_VALUE : date.toLocaleString("vi-VN");
+};
+
+const displayValue = (value) => {
+  if (value === null || value === undefined || value === "") return EMPTY_VALUE;
+  return value;
+};
 const normalizeOrderType = (raw) => {
   const value = String(raw || "").toLowerCase();
 
@@ -173,8 +196,51 @@ const getOrderTypeLabel = (raw) => {
   if (["takeaway", "pickup", "take_away", "mang_di"].includes(value)) return "Mang đi";
   if (["dinein", "dine_in", "eat_in", "tai_quan"].includes(value)) return "Tại quán";
 
-  return raw ? String(raw) : "--";
+  return raw ? String(raw) : EMPTY_VALUE;
 };
+
+const RESERVATION_STATUS_LABELS = {
+  pending_payment: "Chờ thanh toán cọc",
+  confirmed: "Đã xác nhận",
+  seated: "Đã nhận bàn",
+  pending_change: "Đang chờ duyệt thay đổi",
+  cancelled: "Đã hủy",
+  rejected: "Đã từ chối",
+  expired: "Đã hết hạn",
+  completed: "Hoàn tất",
+  no_show: "Khách không đến",
+};
+
+const DEPOSIT_STATUS_LABELS = {
+  unpaid: "Chưa thanh toán",
+  pending: "Đang chờ thanh toán",
+  paid: "Đã thanh toán",
+  failed: "Thanh toán thất bại",
+  refunded: "Đã hoàn cọc",
+  cancelled: "Đã hủy",
+};
+
+const PAYMENT_METHOD_LABELS = {
+  cash: "Tiền mặt",
+  card: "Thẻ",
+  transfer: "Chuyển khoản",
+  bank_transfer: "Chuyển khoản ngân hàng",
+  e_wallet: "Ví điện tử",
+  momo: "MoMo",
+  vnpay: "VNPay",
+  qr: "Quét mã QR",
+  other: "Khác",
+};
+
+const getMappedLabel = (map, raw) => {
+  if (!raw) return EMPTY_VALUE;
+  const value = String(raw).toLowerCase();
+  return map[value] || String(raw);
+};
+
+const getReservationStatusLabel = (raw) => getMappedLabel(RESERVATION_STATUS_LABELS, raw);
+const getDepositStatusLabel = (raw) => getMappedLabel(DEPOSIT_STATUS_LABELS, raw);
+const getPaymentMethodLabel = (raw) => getMappedLabel(PAYMENT_METHOD_LABELS, raw);
 
 
 
@@ -187,7 +253,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
   const renderField = (label, value) => (
     <div className="detail-row">
       <span className="detail-label">{label}</span>
-      <span className="detail-value">{value || "--"}</span>
+      <span className="detail-value">{displayValue(value)}</span>
     </div>
   );
 
@@ -258,7 +324,7 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
   const renderField = (label, value) => (
     <div className="detail-row">
       <span className="detail-label">{label}</span>
-      <span className="detail-value">{value || "--"}</span>
+      <span className="detail-value">{displayValue(value)}</span>
     </div>
   );
   const getOrderItemUnitPrice = (item) =>
@@ -338,6 +404,94 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
     </Modal>
   );
 }
+function ReservationReceiptModal({ reservation, onClose }) {
+  if (!reservation) return null;
+
+  const reservationCode = reservation?.orderCode || reservation?.id || EMPTY_VALUE;
+  const paymentReference =
+    reservation?.depositPaymentReference ||
+    reservation?.paymentReference ||
+    reservation?.depositProviderTransactionId ||
+    reservation?.depositTxnId ||
+    EMPTY_VALUE;
+  const paymentMethod =
+    reservation?.depositPaymentMethod ||
+    reservation?.paymentMethod ||
+    reservation?.depositPaymentProvider;
+  const paidAt = reservation?.depositPaidAt;
+
+  const renderField = (label, value) => (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      <span className="detail-value">{displayValue(value)}</span>
+    </div>
+  );
+
+  return (
+    <Modal isOpen={!!reservation} onClose={onClose} size="md">
+      <Modal.Header>Hóa đơn đặt bàn</Modal.Header>
+      <Modal.Body className="order-detail-modal reservation-receipt-modal">
+        <div className="receipt-summary-card">
+          <div>
+            <p className="receipt-summary-label">Mã hóa đơn đặt bàn</p>
+            <strong>{reservationCode}</strong>
+          </div>
+          <div className="receipt-summary-amount">
+            <p className="receipt-summary-label">Tiền cọc</p>
+            <strong>{fmtMoney(Number(reservation?.depositAmount || 0))}</strong>
+          </div>
+        </div>
+
+        <div className="detail-items">
+          <p className="detail-section-title">Thông tin đặt bàn</p>
+          {renderField("Mã đặt bàn", reservationCode)}
+          {renderField("Nhà hàng", reservation?.restaurantName || reservation?.restaurantId)}
+          {renderField("Bàn", reservation?.tableId)}
+          {renderField("Thời gian đến", toVNDateTime(reservation?.timeTo))}
+          {renderField(
+            "Thời lượng",
+            reservation?.isUnlimitedTime
+              ? "Không giới hạn"
+              : Number.isFinite(Number(reservation?.durationMinutes))
+                ? `${Number(reservation.durationMinutes)} phút`
+                : EMPTY_VALUE
+          )}
+          {renderField(
+            "Số khách",
+            Number.isFinite(Number(reservation?.partySize))
+              ? `${Number(reservation.partySize)} người`
+              : EMPTY_VALUE
+          )}
+          {renderField("Trạng thái đặt bàn", getReservationStatusLabel(reservation?.status))}
+          {renderField("Thời gian tạo đặt bàn", toVNDateTime(reservation?.createdAt))}
+          {renderField("Ghi chú / yêu cầu đặc biệt", reservation?.note)}
+        </div>
+
+        <div className="detail-items">
+          <p className="detail-section-title">Thông tin cọc</p>
+          {renderField("Tiền cọc", fmtMoney(Number(reservation?.depositAmount || 0)))}
+          {renderField("Trạng thái thanh toán cọc", getDepositStatusLabel(reservation?.depositStatus))}
+          {renderField("Phương thức thanh toán cọc", getPaymentMethodLabel(paymentMethod))}
+          {renderField("Mã giao dịch / tham chiếu", paymentReference)}
+          {renderField("Thời gian thanh toán cọc", paidAt ? toVNDateTime(paidAt) : EMPTY_VALUE)}
+        </div>
+
+        <div className="detail-items">
+          <p className="detail-section-title">Thông tin khách đặt</p>
+          {renderField("Khách hàng", reservation?.customerName)}
+          {renderField("Số điện thoại", reservation?.customerPhone)}
+          {renderField("Email", reservation?.customerEmail)}
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <button className="btn btn--primary" onClick={onClose}>
+          Đóng
+        </button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
+
 export default function OrdersPage() {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id;
@@ -358,6 +512,7 @@ export default function OrdersPage() {
   const [changeTableOpen, setChangeTableOpen] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [receiptTarget, setReceiptTarget] = useState(null);
+  const [reservationReceiptTarget, setReservationReceiptTarget] = useState(null);
 
   // Queries
   const {
@@ -549,12 +704,18 @@ export default function OrdersPage() {
       );
       const isCompleted = ["completed", "seated"].includes((r.status || "").toLowerCase());
 
-      const actions = [];
+      const actions = [
+        {
+          label: "Hóa đơn đặt bàn",
+          variant: "outline",
+          onClick: () => setReservationReceiptTarget(r),
+        },
+      ];
 
       // Action: Thanh toán
       if (r.status === "pending_payment") {
         actions.push({
-          label: "Thanh toán",
+          label: "Thanh toán cọc",
           variant: "success",
           onClick: () =>
             setQrBooking({
@@ -605,13 +766,13 @@ export default function OrdersPage() {
         mainInfo: [
           {
             label: "Ngày đến",
-            value: new Date(r.timeTo).toLocaleString("vi-VN"),
+            value: toVNDateTime(r.timeTo),
             highlight: true,
           },
           { label: "Số khách", value: `${r.partySize} người` },
-          { label: "Tiền cọc", value: fmtMoney(r.depositAmount) },
+          { label: "Tiền cọc", value: fmtMoney(Number(r.depositAmount || 0)) },
           { label: "Thời lượng", value: r.isUnlimitedTime ? "Không giới hạn" : `${r.durationMinutes || 60} phút` },
-          { label: "TT thanh toán", value: r.depositStatus || "--" },
+          { label: "TT thanh toán", value: getDepositStatusLabel(r.depositStatus) },
         ],
         actions: actions,
         raw: r,
@@ -807,25 +968,52 @@ export default function OrdersPage() {
   const shouldShowEmpty = !isLoading && !hasVisibleItems && !shouldShowFullError;
   const hasFilterOrSearch = !isDefaultFilters;
   const hasScopedFilter = hasFilterOrSearch || activeTab !== "all";
+  const summaryStats = useMemo(() => {
+    const completedStatuses = ["completed", "seated"];
+    const cancelledStatuses = ["cancelled", "rejected", "expired"];
+    const activeCount = allItems.filter(
+      (item) => !completedStatuses.includes(item.status) && !cancelledStatuses.includes(item.status)
+    ).length;
+
+    return [
+      { label: "Tổng hồ sơ", value: allItems.length },
+      { label: "Đặt bàn", value: reservationItems.length },
+      { label: "Đang xử lý", value: activeCount },
+      { label: "Đang hiển thị", value: visibleItems.length },
+    ];
+  }, [allItems, reservationItems.length, visibleItems.length]);
 
   return (
-    <div className="orders-page">
+    <main className="orders-page">
       {toasts.map((t) => (
         <Toast key={t.id} {...t} onClose={closeToast} />
       ))}
 
-      <div className="page-header">
-        <h1 className="title">📦 Quản lý Đơn hàng</h1>
+      <section className="page-header orders-hero" aria-labelledby="orders-page-title">
+        <div className="hero-copy">
+          <span className="eyebrow">Trung tâm giao dịch cá nhân</span>
+          <h1 id="orders-page-title" className="title">Quản lý đơn hàng & đặt bàn</h1>
+          <p className="subtitle">Theo dõi đơn món, lịch đặt bàn, hóa đơn và trạng thái thanh toán cọc tại một nơi duy nhất.</p>
+          <div className="summary-strip" aria-label="Tổng quan đơn hàng">
+            {summaryStats.map((stat) => (
+              <div key={stat.label} className="summary-chip">
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
         <button
           className="btn-create"
           aria-label="Tạo đơn mới"
           onClick={() => navigate("/restaurants")}
         >
-          ➕ Tạo đơn mới
+          Tạo đơn mới
         </button>
-      </div>
+      </section>
 
-      <div className="tabs-container">
+      <section className="orders-toolbar" aria-label="Bộ lọc đơn hàng">
+        <div className="tabs-container">
         {[
           { id: "all", label: "Tất cả", icon: "📑" },
           { id: "reservation", label: "Đặt bàn", icon: "📅" },
@@ -842,8 +1030,8 @@ export default function OrdersPage() {
             {tab.icon} {tab.label}
           </button>
         ))}
-      </div>
-      <div className="orders-controls">
+        </div>
+        <div className="orders-controls">
         <input
           className="orders-search"
           type="text"
@@ -879,9 +1067,10 @@ export default function OrdersPage() {
             Xóa lọc
           </button>
         )}
-      </div>
+        </div>
+      </section>
 
-      <div className="orders-grid">
+      <section className="orders-grid" aria-live="polite">
         {isLoading ? (
           <div className="empty-state">
             <p>Đang tải danh sách đơn hàng...</p>
@@ -890,7 +1079,7 @@ export default function OrdersPage() {
         ) : shouldShowFullError ? (
           <div className="empty-state">
             <p>{ordersError?.message || resvError?.message || "Không thể tải danh sách đơn hàng."}</p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
+            <div className="empty-actions">
               <Link to="/orders" className="btn-create">Quay lại đơn hàng của tôi</Link>
               <Link to="/" className="btn-create">Tiếp tục xem món</Link>
             </div>
@@ -898,7 +1087,7 @@ export default function OrdersPage() {
         ) : (
           <>
             {shouldShowPartialWarning && (
-              <div className="empty-state" style={{ marginBottom: 12 }}>
+              <div className="empty-state empty-state--warning">
                 <p>Một phần dữ liệu chưa tải được. Bạn vẫn có thể xem các đơn đã tải.</p>
                 {(ordersError?.message || resvError?.message) && (
                   <p>{ordersError?.message || resvError?.message}</p>
@@ -920,7 +1109,7 @@ export default function OrdersPage() {
             <Link to="/" className="btn-create">Tiếp tục xem món</Link>
           </div>
         )}
-      </div>
+      </section>
 
       {/* --- MODALS --- */}
       <QRPaymentModal
@@ -987,6 +1176,10 @@ export default function OrdersPage() {
           if (ok) setReceiptTarget(null);
         }}
       />
+      <ReservationReceiptModal
+        reservation={reservationReceiptTarget}
+        onClose={() => setReservationReceiptTarget(null)}
+      />
       <ChangeTableModal
         isOpen={!!changeTableOpen}
         onClose={() => setChangeTableOpen(null)}
@@ -1004,6 +1197,6 @@ export default function OrdersPage() {
           setChangeTableOpen(null);
         }}
       />
-    </div>
+    </main>
   );
 }

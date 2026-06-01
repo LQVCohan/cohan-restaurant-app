@@ -1,14 +1,6 @@
 import React from "react";
 import "./OrderItem.scss";
-import StatusChip from "./StatusChip"; // Giả sử bạn đã có component này hoặc dùng span đơn giản
-import {
-  Receipt,
-  Truck,
-  CalendarCheck,
-  MapPin,
-  Clock,
-  ArrowRight,
-} from "lucide-react";
+import { Receipt, Truck, CalendarCheck, ArrowRight } from "lucide-react";
 
 const OrderItem = ({
   kind, // 'reservation' | 'delivery' | 'dinein'
@@ -21,6 +13,24 @@ const OrderItem = ({
   actions = [],
   onClick,
 }) => {
+  const normalizedStatus = String(status || "unknown").toLowerCase();
+  const statusLabels = {
+    pending: "Đang xử lý",
+    pending_payment: "Chờ cọc",
+    pending_change: "Chờ đổi",
+    confirmed: "Đã xác nhận",
+    shipping: "Đang giao",
+    delivering: "Đang giao",
+    completed: "Hoàn tất",
+    seated: "Đã nhận bàn",
+    cancelled: "Đã hủy",
+    rejected: "Từ chối",
+    expired: "Hết hạn",
+    no_show: "Không đến",
+  };
+  const statusLabel = statusLabels[normalizedStatus] || status || "--";
+  const displayRestaurantName = restaurantName || "Nhà hàng";
+
   const handleKeyDown = (event) => {
     if (!onClick) return;
     if (event.target !== event.currentTarget) return;
@@ -30,7 +40,7 @@ const OrderItem = ({
       onClick();
     }
   };
-  // Config icon và màu sắc theo loại đơn
+
   const kindConfig = {
     reservation: {
       icon: <CalendarCheck size={14} />,
@@ -49,13 +59,13 @@ const OrderItem = ({
 
   return (
     <article
-      className="order-card"
+      className={`order-card order-card--${kind || "order"}`}
+      aria-label={`Mở chi tiết ${orderId || "đơn hàng"}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {/* HEADER: Loại đơn + Ngày giờ + Trạng thái */}
       <div className="card-header">
         <div className="header-left">
           <div className={`kind-badge ${currentKind.color}`}>
@@ -65,22 +75,19 @@ const OrderItem = ({
           <span className="order-time">{header?.timeText}</span>
         </div>
         <div className="header-right">
-          {/* Bạn có thể dùng component StatusChip riêng hoặc span này */}
-          <span className={`status-pill status-${status}`}>{status}</span>
+          <span className={`status-pill status-${normalizedStatus}`}>{statusLabel}</span>
         </div>
       </div>
 
-      {/* BODY: Thông tin chính */}
       <div className="card-body">
         <div className="res-info">
-          <div className="res-avatar">{restaurantName.charAt(0)}</div>
+          <div className="res-avatar">{displayRestaurantName.charAt(0)}</div>
           <div>
-            <h3 className="res-name">{restaurantName}</h3>
+            <h3 className="res-name">{displayRestaurantName}</h3>
             <span className="order-id">#{orderId}</span>
           </div>
         </div>
 
-        {/* List món ăn (Chỉ hiện cho Delivery/Dinein) */}
         {itemsPreview.length > 0 && (
           <div className="items-list">
             {itemsPreview.map((item, idx) => (
@@ -89,15 +96,14 @@ const OrderItem = ({
                 <span className="name">{item.name}</span>
               </div>
             ))}
-            {header.moreItemsCount > 0 && (
+            {(header?.moreItemsCount || 0) > 0 && (
               <div className="more-items">
-                +{header.moreItemsCount} món khác
+                +{header?.moreItemsCount} món khác
               </div>
             )}
           </div>
         )}
 
-        {/* Thông tin Grid (Ngày giờ, Số khách, Tổng tiền...) */}
         <div className="info-grid">
           {mainInfo.map((info, idx) => (
             <div key={idx} className="info-cell">
@@ -110,7 +116,6 @@ const OrderItem = ({
         </div>
       </div>
 
-      {/* FOOTER: Nút bấm hành động */}
       <div className="card-footer">
         <div className="detail-link">
           Xem chi tiết <ArrowRight size={14} />
@@ -118,7 +123,8 @@ const OrderItem = ({
         <div className="action-group">
           {actions.map((action, idx) => (
             <button
-              key={idx}
+              type="button"
+              key={`${action.label}-${idx}`}
               className={`btn-action btn-${action.variant || "default"}`}
               onClick={(e) => {
                 e.stopPropagation();

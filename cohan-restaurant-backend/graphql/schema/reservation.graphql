@@ -15,6 +15,11 @@ type Reservation {
   depositAmount: Int!
   depositTxnId: ID
   depositStatus: String!
+  depositPaidAt: DateTime
+  depositPaymentProvider: String
+  depositPaymentMethod: String
+  depositPaymentReference: String
+  depositProviderTransactionId: String
   status: String!
   pendingPaymentExpiresAt: DateTime
   durationMinutes: Int
