@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAiGeneratedTableCatalogItem,
   buildCustomTableCatalogItem,
   buildUploadedTableCatalogItem,
   DEFAULT_CUSTOM_TABLE_SPEC,
@@ -104,6 +105,43 @@ describe("table3dCustomModelBuilder", () => {
       expect(item.uploadedFileName).toBe("table.glb");
       expect(item.uploadedSizeBytes).toBe(2048);
       expect(item.tags).toEqual(["upload", "glb"]);
+    });
+  });
+
+  describe("buildAiGeneratedTableCatalogItem", () => {
+    it("builds an AI generated custom catalog item when generatedModelUrl exists", () => {
+      const item = buildAiGeneratedTableCatalogItem({
+        name: "AI Patio",
+        tableType: "outdoor-table",
+        capacity: 4,
+        defaultScale: 1.1,
+        generatedModelUrl: "https://cdn.example.com/ai-table.glb",
+        generatedThumbnailUrl: "https://cdn.example.com/ai-table.webp",
+        aiJobId: "job-123",
+        aiProvider: "configured-provider",
+        generationStatus: "completed",
+        tags: "ai, patio",
+        widthCm: 120,
+      }, { timestamp: 555 });
+
+      expect(item).toMatchObject({
+        key: "custom-ai-ai-patio-555",
+        source: "ai-generated",
+        sourceType: "ai-generated",
+        customModelKind: "ai-generated",
+        fallbackKind: "model",
+        modelUrl: "https://cdn.example.com/ai-table.glb",
+        thumbnailUrl: "https://cdn.example.com/ai-table.webp",
+        aiJobId: "job-123",
+        aiProvider: "configured-provider",
+        generationStatus: "completed",
+      });
+      expect(item.tags).toEqual(["ai", "patio"]);
+      expect(item.dimensionsCm).toEqual({ width: 120 });
+    });
+
+    it("does not create a catalog item without a real generatedModelUrl", () => {
+      expect(buildAiGeneratedTableCatalogItem({ name: "Pending AI", aiJobId: "job-1" })).toBeNull();
     });
   });
 

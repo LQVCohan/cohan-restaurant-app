@@ -57,6 +57,19 @@ export const DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC = {
   uploadedSizeBytes: 0,
 };
 
+export const DEFAULT_AI_TABLE_SPEC = {
+  ...DEFAULT_CUSTOM_URL_TABLE_SPEC,
+  material: "",
+  color: "",
+  notes: "",
+  referenceImages: [],
+  aiJobId: "",
+  aiProvider: "",
+  generationStatus: "",
+  generatedModelUrl: "",
+  generatedThumbnailUrl: "",
+};
+
 const AREA_VALUES = new Set(TABLE_AREA_OPTIONS.map((item) => item.value));
 const SHAPE_VALUES = new Set(CUSTOM_TABLE_SHAPES.map((item) => item.value));
 
@@ -190,6 +203,41 @@ export const buildUploadedTableCatalogItem = (spec = {}, options = {}) => {
     customModelKind: "upload",
     uploadedFileName: String(merged.uploadedFileName || merged.fileName || "").trim(),
     uploadedSizeBytes: Number(merged.uploadedSizeBytes || merged.sizeBytes || 0) || 0,
+  };
+};
+
+
+export const buildAiGeneratedTableCatalogItem = (spec = {}, options = {}) => {
+  const merged = { ...DEFAULT_AI_TABLE_SPEC, ...spec };
+  const generatedModelUrl = String(merged.generatedModelUrl || merged.modelUrl || "").trim();
+  if (!generatedModelUrl) return null;
+
+  const slug = slugify(merged.name) || "ai-table";
+  const timestamp = options.timestamp ?? Date.now();
+  const aiProvider = String(merged.aiProvider || merged.provider || "ai-provider").trim();
+  const aiJobId = String(merged.aiJobId || merged.jobId || "").trim();
+
+  return {
+    key: `custom-ai-${slug}-${timestamp}`,
+    label: String(merged.name || "").trim() || "Mẫu bàn 3D AI",
+    tableType: Object.values(CUSTOM_URL_TABLE_TYPES).includes(merged.tableType)
+      ? merged.tableType
+      : DEFAULT_AI_TABLE_SPEC.tableType,
+    capacity: asPositiveNumber(merged.capacity, DEFAULT_AI_TABLE_SPEC.capacity),
+    defaultScale: Number(merged.defaultScale || DEFAULT_AI_TABLE_SPEC.defaultScale),
+    modelUrl: generatedModelUrl,
+    thumbnailUrl: String(merged.generatedThumbnailUrl || merged.thumbnailUrl || "").trim(),
+    source: "ai-generated",
+    sourceType: "ai-generated",
+    sourceLabel: aiJobId ? `${aiProvider || "AI provider"} job ${aiJobId}` : aiProvider || "AI generated model",
+    licenseLabel: String(merged.licenseLabel || "").trim() || "Người dùng tự xác nhận quyền sử dụng ảnh tham khảo",
+    dimensionsCm: normalizeDimensionsCm(merged),
+    tags: normalizeTags(merged.tags),
+    fallbackKind: "model",
+    customModelKind: "ai-generated",
+    aiJobId,
+    aiProvider,
+    generationStatus: String(merged.generationStatus || "completed").trim(),
   };
 };
 

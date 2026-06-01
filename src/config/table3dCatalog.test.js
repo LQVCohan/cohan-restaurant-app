@@ -187,6 +187,17 @@ describe("table3dCatalog", () => {
       ).toEqual(["Custom", "Placeholder"]);
     });
 
+    it("returns AI badge for AI generated custom models", () => {
+      expect(
+        getModelAssetBadges({
+          key: "custom-ai-1",
+          modelUrl: "https://example.com/ai-table.glb",
+          customModelKind: "ai-generated",
+          source: "ai-generated",
+        })
+      ).toEqual(["Custom", "AI", "3D", "AR", "Online"]);
+    });
+
     it("returns Upload badge for uploaded custom models", () => {
       expect(
         getModelAssetBadges({
