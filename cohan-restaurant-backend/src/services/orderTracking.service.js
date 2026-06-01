@@ -2,6 +2,17 @@ import crypto from "crypto";
 import QRCode from "qrcode";
 import { Order } from "../../models/index.js";
 
+const DELIVERY_PUBLIC_STATUS = {
+  driver_assigned: "DRIVER_ASSIGNED",
+  driver_arriving: "DRIVER_ARRIVING",
+  picked_up: "PICKED_UP",
+  delivering: "DELIVERING",
+  arrived: "ARRIVED",
+  delivered: "DELIVERED",
+  cancelled: "DELIVERY_CANCELLED",
+  failed: "DELIVERY_FAILED",
+};
+
 const PUBLIC_STATUS_LABELS = {
   ORDER_RECEIVED: "Nhà hàng đã nhận đơn của bạn",
   CONFIRMED: "Đơn hàng đã được xác nhận",
@@ -13,6 +24,39 @@ const PUBLIC_STATUS_LABELS = {
   PAID: "Đơn hàng đã thanh toán",
   CANCELLED: "Đơn hàng đã bị hủy",
   ISSUE_REPORTED: "Đơn hàng đang có vấn đề cần xử lý",
+  DELIVERY_PENDING: "Đang chờ xử lý giao hàng",
+  DRIVER_ASSIGNED: "Đã phân công người giao",
+  DRIVER_ARRIVING: "Người giao đang đến nhà hàng",
+  PICKED_UP: "Đã lấy món",
+  DELIVERING: "Đang giao đến bạn",
+  ARRIVED: "Người giao đã đến nơi",
+  DELIVERED: "Giao hàng thành công",
+  DELIVERY_CANCELLED: "Đã hủy giao hàng",
+  DELIVERY_FAILED: "Giao hàng thất bại",
+};
+
+const DELIVERY_STATUS_LABELS = {
+  pending: "Đang chờ xử lý giao hàng",
+  driver_assigned: "Đã phân công người giao",
+  driver_arriving: "Người giao đang đến nhà hàng",
+  picked_up: "Đã lấy món",
+  delivering: "Đang giao đến bạn",
+  arrived: "Người giao đã đến nơi",
+  delivered: "Giao hàng thành công",
+  cancelled: "Đã hủy giao hàng",
+  failed: "Giao hàng thất bại",
+};
+
+const DELIVERY_TIMELINE_STEPS = {
+  pending: ["pending"],
+  driver_assigned: ["pending", "driver_assigned"],
+  driver_arriving: ["pending", "driver_assigned", "driver_arriving"],
+  picked_up: ["pending", "driver_assigned", "picked_up"],
+  delivering: ["pending", "driver_assigned", "picked_up", "delivering"],
+  arrived: ["pending", "driver_assigned", "picked_up", "delivering", "arrived"],
+  delivered: ["pending", "driver_assigned", "picked_up", "delivering", "arrived", "delivered"],
+  cancelled: ["pending", "cancelled"],
+  failed: ["pending", "failed"],
 };
 
 const ITEM_PUBLIC_STATUS = {
@@ -37,10 +81,18 @@ function mapItemStatus(itemStatus) {
   return ITEM_PUBLIC_STATUS[String(itemStatus || "").toLowerCase()] || { status: "PENDING", label: "Đang chờ bếp nhận" };
 }
 
+function normalizeDeliveryStatus(order = {}) {
+  return String(order?.shipping?.deliveryStatus || "pending").toLowerCase();
+}
+
 export function computePublicOrderStatus(order = {}) {
   const orderStatus = String(order?.currentStatus || "").toLowerCase();
   const paymentStatus = String(order?.orderPaymentStatus || order?.payment?.status || "").toLowerCase();
+  const isDelivery = String(order?.orderType || "").toLowerCase() === "delivery";
+  const deliveryStatus = normalizeDeliveryStatus(order);
+
   if (orderStatus === "cancelled") return "CANCELLED";
+  if (isDelivery && DELIVERY_PUBLIC_STATUS[deliveryStatus]) return DELIVERY_PUBLIC_STATUS[deliveryStatus];
   if (paymentStatus === "paid") return "PAID";
   if (["payment_requested", "partial"].includes(paymentStatus)) return "WAITING_FOR_PAYMENT";
   const statuses = (order?.items || []).map((it) => String(it?.status || "").toLowerCase());
@@ -94,18 +146,56 @@ export function updatePublicStatusHistory(orderDoc, changedByRole = "SYSTEM") {
 }
 
 function isValidLatestRequest(request) {
-  return Boolean(
-    request?.requestId &&
-    request?.type &&
-    request?.status &&
-    request?.createdAt,
-  );
+  return Boolean(request?.requestId && request?.type && request?.status && request?.createdAt);
+}
+
+export function buildDeliveryTimeline(order = {}) {
+  const status = normalizeDeliveryStatus(order);
+  const steps = DELIVERY_TIMELINE_STEPS[status] || DELIVERY_TIMELINE_STEPS.pending;
+  const deliveryPublicStatuses = new Set(Object.values(DELIVERY_PUBLIC_STATUS));
+  const statusHistory = Array.isArray(order?.statusHistory) ? order.statusHistory : [];
+  const historyByDeliveryStatus = new Map();
+
+  for (const entry of statusHistory) {
+    const entryStatus = String(entry?.status || "").toUpperCase();
+    if (!deliveryPublicStatuses.has(entryStatus)) continue;
+    const deliveryKey = Object.entries(DELIVERY_PUBLIC_STATUS).find(([, publicStatus]) => publicStatus === entryStatus)?.[0];
+    if (deliveryKey && !historyByDeliveryStatus.has(deliveryKey)) {
+      historyByDeliveryStatus.set(deliveryKey, entry?.changedAt || null);
+    }
+  }
+
+  return steps.map((step) => ({
+    status: step,
+    label: DELIVERY_STATUS_LABELS[step] || step,
+    at: historyByDeliveryStatus.get(step) || (step === status ? order?.updatedAt || null : null),
+    note: null,
+  }));
+}
+
+function buildCustomerDeliveryTracking(order = {}) {
+  if (String(order?.orderType || "").toLowerCase() !== "delivery") return null;
+  const shipping = order?.shipping || {};
+  const status = normalizeDeliveryStatus(order);
+  return {
+    orderType: order.orderType,
+    deliveryStatus: status,
+    deliveryStatusLabel: DELIVERY_STATUS_LABELS[status] || DELIVERY_STATUS_LABELS.pending,
+    shippingAddress: shipping.address || shipping.location?.address || shipping.customerLocation?.address || null,
+    eta: shipping.eta || null,
+    distance: shipping.distance ?? null,
+    duration: shipping.duration ?? null,
+    driverName: shipping.driverName || null,
+    driverPhone: shipping.driverPhone || null,
+    driverVehiclePlate: shipping.driverVehiclePlate || null,
+    externalTrackingCode: shipping.externalTrackingCode || null,
+    timeline: buildDeliveryTimeline(order),
+  };
 }
 
 export function toCustomerTrackingPayload(order = {}) {
-  const normalizedPaymentStatus = String(
-    order?.orderPaymentStatus || order?.payment?.status || "unpaid",
-  ).toLowerCase();
+  const computedStatus = computePublicOrderStatus(order);
+  const normalizedPaymentStatus = String(order?.orderPaymentStatus || order?.payment?.status || "unpaid").toLowerCase();
   const latestRequest = Array.isArray(order?.customerRequests)
     ? [...order.customerRequests]
         .filter(isValidLatestRequest)
@@ -114,11 +204,12 @@ export function toCustomerTrackingPayload(order = {}) {
 
   return {
     trackingCode: order.trackingCode,
-    publicStatus: order.publicStatus,
-    publicStatusLabel: PUBLIC_STATUS_LABELS[order.publicStatus] || order.publicStatus,
+    publicStatus: computedStatus,
+    publicStatusLabel: PUBLIC_STATUS_LABELS[computedStatus] || computedStatus,
     customerVisibleNote: order.customerVisibleNote || null,
     estimatedReadyAt: order.estimatedReadyAt || null,
     timeline: (order.statusHistory || []).map((x) => ({ status: x.status, displayMessage: x.displayMessage, changedAt: x.changedAt })),
+    delivery: buildCustomerDeliveryTracking(order),
     items: (order.items || []).map((item) => {
       const mapped = mapItemStatus(item.status);
       return { name: item.name, quantity: item.quantity, publicStatus: mapped.status, publicStatusLabel: mapped.label };
@@ -142,9 +233,19 @@ export function toCustomerTrackingPayload(order = {}) {
   };
 }
 
+
+export async function validateOrderTrackingToken(trackingToken) {
+  if (!trackingToken || typeof trackingToken !== "string") return { ok: false, code: "INVALID" };
+  const token = String(trackingToken);
+  const order = await Order.findOne({ trackingToken: token }).select("_id trackingQrRevokedAt").lean();
+  if (!order) return { ok: false, code: "FORBIDDEN" };
+  if (order.trackingQrRevokedAt) return { ok: false, code: "EXPIRED" };
+  return { ok: true, token };
+}
+
 export function emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc, previousPublicStatus = null, force = false }) {
   if (!ctx?.io || !orderDoc?.trackingToken) return;
-  const currentPublicStatus = orderDoc?.publicStatus;
+  const currentPublicStatus = orderDoc?.publicStatus || computePublicOrderStatus(orderDoc);
   if (!force && (!currentPublicStatus || currentPublicStatus === previousPublicStatus)) return;
   const payload = toCustomerTrackingPayload(orderDoc.toObject ? orderDoc.toObject() : orderDoc);
   ctx.io.to(`order-tracking:${orderDoc.trackingToken}`).emit("customer-order-tracking-updated", payload);
@@ -156,4 +257,4 @@ export async function buildOrderTrackingQrDataUrl(orderDoc) {
   return QRCode.toDataURL(payload, { type: "image/svg+xml", margin: 1, width: 220 });
 }
 
-export { PUBLIC_STATUS_LABELS };
+export { DELIVERY_STATUS_LABELS, PUBLIC_STATUS_LABELS };

@@ -5,6 +5,7 @@ import {
   ensureOrderTracking,
   updatePublicStatusHistory,
   emitCustomerTrackingUpdateIfChanged,
+  validateOrderTrackingToken,
 } from "../src/services/orderTracking.service.js";
 import { Order } from "../models/index.js";
 import { vi } from "vitest";
@@ -29,6 +30,62 @@ describe("orderTracking.service", () => {
   it("maps paid and cancelled priority", () => {
     expect(computePublicOrderStatus({ currentStatus: "cancelled", orderPaymentStatus: "paid", items: [] })).toBe("CANCELLED");
     expect(computePublicOrderStatus({ orderPaymentStatus: "paid", items: [] })).toBe("PAID");
+  });
+
+
+  it("maps delivery statuses to public delivery statuses", () => {
+    expect(computePublicOrderStatus({ orderType: "delivery", shipping: { deliveryStatus: "delivering" }, items: [{ status: "ready" }] })).toBe("DELIVERING");
+    expect(computePublicOrderStatus({ orderType: "delivery", shipping: { deliveryStatus: "delivered" }, orderPaymentStatus: "paid" })).toBe("DELIVERED");
+    expect(computePublicOrderStatus({ orderType: "takeaway", shipping: { deliveryStatus: "delivering" }, items: [{ status: "preparing" }] })).toBe("PREPARING");
+  });
+
+  it("returns public delivery payload without driver coordinates", () => {
+    const eta = new Date("2026-05-20T09:00:00.000Z");
+    const payload = toCustomerTrackingPayload({
+      orderType: "delivery",
+      trackingCode: "ORD-DELIVERY",
+      currentStatus: "confirmed",
+      updatedAt: eta,
+      shipping: {
+        deliveryStatus: "delivering",
+        address: "12 Nguyễn Huệ",
+        eta,
+        distance: 3.2,
+        duration: 17,
+        driverName: "Anh Nam",
+        driverPhone: "0909",
+        driverVehiclePlate: "59A1-12345",
+        externalTrackingCode: "EXT-1",
+        driverLocation: { lat: 10.7, lng: 106.7 },
+      },
+      statusHistory: [],
+      items: [],
+      totals: {},
+    });
+    expect(payload.publicStatus).toBe("DELIVERING");
+    expect(payload.publicStatusLabel).toBe("Đang giao đến bạn");
+    expect(payload.delivery).toMatchObject({
+      orderType: "delivery",
+      deliveryStatus: "delivering",
+      deliveryStatusLabel: "Đang giao đến bạn",
+      shippingAddress: "12 Nguyễn Huệ",
+      eta,
+      distance: 3.2,
+      duration: 17,
+      driverName: "Anh Nam",
+      driverPhone: "0909",
+      driverVehiclePlate: "59A1-12345",
+      externalTrackingCode: "EXT-1",
+    });
+    expect(payload.delivery.driverLocation).toBeUndefined();
+    expect(JSON.stringify(payload)).not.toContain("\"lat\"");
+    expect(JSON.stringify(payload)).not.toContain("\"lng\"");
+    expect(payload.delivery.timeline.map((step) => step.status)).toEqual(["pending", "driver_assigned", "picked_up", "delivering"]);
+  });
+
+  it("returns null delivery payload for dine-in orders", () => {
+    const payload = toCustomerTrackingPayload({ orderType: "dine_in", items: [], statusHistory: [], totals: {} });
+    expect(payload.delivery).toBeNull();
   });
 
   it("sanitizes payload without internal ids", () => {
@@ -101,6 +158,25 @@ describe("orderTracking.service", () => {
     expect(withGarbage.staffId).toBeUndefined();
     expect(withGarbage.trackingToken).toBeUndefined();
   });
+
+  it("validates public tracking tokens against Order trackingToken and revocation", async () => {
+    const lean = vi.fn();
+    const select = vi.fn(() => ({ lean }));
+    vi.spyOn(Order, "findOne").mockReturnValue({ select });
+
+    lean.mockResolvedValueOnce({ _id: "o1", trackingQrRevokedAt: null });
+    await expect(validateOrderTrackingToken("token-ok")).resolves.toEqual({ ok: true, token: "token-ok" });
+    expect(Order.findOne).toHaveBeenCalledWith({ trackingToken: "token-ok" });
+    expect(select).toHaveBeenCalledWith("_id trackingQrRevokedAt");
+
+    lean.mockResolvedValueOnce({ _id: "o1", trackingQrRevokedAt: new Date() });
+    await expect(validateOrderTrackingToken("token-expired")).resolves.toEqual({ ok: false, code: "EXPIRED" });
+
+    lean.mockResolvedValueOnce(null);
+    await expect(validateOrderTrackingToken("missing")).resolves.toEqual({ ok: false, code: "FORBIDDEN" });
+    await expect(validateOrderTrackingToken("")).resolves.toEqual({ ok: false, code: "INVALID" });
+  });
+
   it("emits tracking update when forced even if status unchanged", () => {
     const emit = vi.fn();
     const to = vi.fn(() => ({ emit }));

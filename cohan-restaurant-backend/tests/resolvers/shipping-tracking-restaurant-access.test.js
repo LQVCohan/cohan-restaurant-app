@@ -140,6 +140,46 @@ describe("shipping tracking restaurant access guards", () => {
     expect(emit).toHaveBeenCalled();
   });
 
+
+  it("emits public customer tracking update to tracking token room", async () => {
+    const { ShippingTrackingMutation } = await import("../../graphql/resolvers/shippingTracking/mutation.js");
+    const save = vi.fn();
+    const order = {
+      shipping: { deliveryStatus: "pending", driverName: "Anh Nam" },
+      restaurantId: "oid:valid-restaurant-1",
+      orderType: "delivery",
+      orderCode: "O-2",
+      trackingToken: "public-token",
+      trackingCode: "ORD-2",
+      items: [],
+      statusHistory: [],
+      totals: {},
+      save,
+      toJSON: vi.fn(() => ({ id: "order-2" })),
+      toObject: vi.fn(() => ({
+        orderType: order.orderType,
+        trackingCode: order.trackingCode,
+        currentStatus: order.currentStatus,
+        shipping: order.shipping,
+        items: order.items,
+        statusHistory: order.statusHistory,
+        totals: order.totals,
+      })),
+    };
+    modelMocks.Order.findOne.mockResolvedValueOnce(order);
+    const emit = vi.fn();
+    const to = vi.fn(() => ({ emit }));
+    const ctx = { io: { to } };
+
+    await ShippingTrackingMutation.updateDeliveryStatus(null, { input: { ...validInput, status: "delivering" } }, ctx);
+
+    expect(to).toHaveBeenCalledWith("order-tracking:public-token");
+    expect(emit).toHaveBeenCalledWith("customer-order-tracking-updated", expect.objectContaining({
+      publicStatus: "DELIVERING",
+      delivery: expect.objectContaining({ deliveryStatus: "delivering", deliveryStatusLabel: "Đang giao đến bạn" }),
+    }));
+  });
+
   it("allowed assignDriverToOrder calls guard and saves driver fields", async () => {
     const { ShippingTrackingMutation } = await import("../../graphql/resolvers/shippingTracking/mutation.js");
     const save = vi.fn();
