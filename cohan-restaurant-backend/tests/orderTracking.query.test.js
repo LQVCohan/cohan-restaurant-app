@@ -29,6 +29,36 @@ describe("OrderQuery customerTrackOrder", () => {
     await expect(OrderQuery.customerTrackOrder(null, { trackingToken: "x" })).rejects.toThrow("expired");
   });
 
+
+  it("selects delivery fields and returns delivery payload", async () => {
+    const select = vi.fn();
+    const eta = new Date("2026-05-20T09:00:00.000Z");
+    const order = {
+      trackingQrRevokedAt: null,
+      currentStatus: "confirmed",
+      orderType: "delivery",
+      shipping: { deliveryStatus: "delivering", address: "12 Nguyễn Huệ", eta, distance: 2.5, duration: 12, driverName: "Anh Nam" },
+      updatedAt: eta,
+      toObject: () => ({
+        trackingCode: "ORD",
+        publicStatus: "ORDER_RECEIVED",
+        currentStatus: order.currentStatus,
+        orderType: order.orderType,
+        shipping: order.shipping,
+        updatedAt: order.updatedAt,
+        items: [],
+        statusHistory: [],
+        totals: {},
+      }),
+    };
+    select.mockReturnValue(order);
+    mocks.findOneMock.mockReturnValue({ select });
+    const out = await OrderQuery.customerTrackOrder(null, { trackingToken: "x" });
+    expect(select).toHaveBeenCalledWith(expect.objectContaining({ orderType: 1, shipping: 1, createdAt: 1, updatedAt: 1 }));
+    expect(out.delivery).toMatchObject({ deliveryStatus: "delivering", deliveryStatusLabel: "Đang giao đến bạn", driverName: "Anh Nam" });
+    expect(out.delivery.driverLocation).toBeUndefined();
+  });
+
   it("does not save on public read", async () => {
     const order = { trackingQrRevokedAt: null, currentStatus: "pending", kitchenStatus: "pending", sessionStatus: "open", toObject: () => ({ trackingCode: "ORD", publicStatus: "ORDER_RECEIVED", items: [], statusHistory: [], totals: {} }) };
     mocks.findOneMock.mockReturnValue({ select: () => order });

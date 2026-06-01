@@ -3,12 +3,24 @@ import { Order } from "../../../models/index.js";
 import { emitOrderEvent, toId } from "../order/helper/index.js";
 import { createOrderTrackingEvent } from "../order/helper/tracking.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { emitCustomerTrackingUpdateIfChanged, updatePublicStatusHistory } from "../../../src/services/orderTracking.service.js";
 
 
 function requireValidRestaurantId(restaurantId) {
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId");
   return rid;
+}
+
+const DELIVERY_STATUSES = new Set(["pending", "driver_assigned", "driver_arriving", "picked_up", "delivering", "arrived", "delivered", "cancelled", "failed"]);
+
+function assertValidDeliveryStatus(status) {
+  if (!DELIVERY_STATUSES.has(String(status || "").toLowerCase())) throw new Error("Invalid delivery status");
+}
+
+function emitCustomerDeliveryUpdate(ctx, order) {
+  updatePublicStatusHistory(order, "SYSTEM");
+  emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, force: true });
 }
 
 export const ShippingTrackingMutation = {
@@ -90,6 +102,7 @@ export const ShippingTrackingMutation = {
     const { orderId, restaurantId, status, message } = input || {};
 
     const rid = requireValidRestaurantId(restaurantId);
+    assertValidDeliveryStatus(status);
     await requireRestaurantAccess(ctx, rid);
 
     const order = await Order.findOne({
@@ -101,7 +114,8 @@ export const ShippingTrackingMutation = {
 
     order.shipping = order.shipping || {};
     const prev = order.shipping.deliveryStatus || "pending";
-    order.shipping.deliveryStatus = status;
+    order.shipping.deliveryStatus = String(status).toLowerCase();
+    updatePublicStatusHistory(order, "SYSTEM");
 
     await order.save();
 
@@ -136,11 +150,12 @@ export const ShippingTrackingMutation = {
         order: order.toJSON(),
         meta: {
           statusFrom: prev,
-          statusTo: status,
+          statusTo: order.shipping.deliveryStatus,
           message,
         },
       });
     }
+    emitCustomerDeliveryUpdate(ctx, order);
 
     return true;
   },
@@ -206,6 +221,7 @@ export const ShippingTrackingMutation = {
         },
       });
     }
+    emitCustomerDeliveryUpdate(ctx, order);
 
     return true;
   },
@@ -252,6 +268,7 @@ export const ShippingTrackingMutation = {
     order.shipping.driverVehiclePlate =
       driverVehiclePlate || order.shipping.driverVehiclePlate || null;
     order.shipping.deliveryStatus = newStatus;
+    updatePublicStatusHistory(order, "SYSTEM");
 
     await order.save();
 
@@ -302,6 +319,7 @@ export const ShippingTrackingMutation = {
         },
       });
     }
+    emitCustomerDeliveryUpdate(ctx, order);
 
     return true;
   },

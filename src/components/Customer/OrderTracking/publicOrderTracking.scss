@@ -57,3 +57,29 @@
   @media (min-width: 480px) { padding: 20px; .track-card { padding: 16px; } }
   @media (min-width: 768px) { padding: 24px; .hero-card h1 { font-size: 1.7rem; } }
 }
+
+.track-order-page {
+  .delivery-card { display: grid; gap: 14px; }
+  .delivery-card__head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .status-badge.delivery-status { background: #dbeafe; color: #1d4ed8; }
+  .status-badge.delivery-status.delivering,
+  .status-badge.delivery-status.picked_up,
+  .status-badge.delivery-status.driver_assigned,
+  .status-badge.delivery-status.driver_arriving { background: #e0f2fe; color: #0369a1; }
+  .status-badge.delivery-status.arrived,
+  .status-badge.delivery-status.delivered { background: #dcfce7; color: #166534; }
+  .status-badge.delivery-status.cancelled,
+  .status-badge.delivery-status.failed { background: #fee2e2; color: #991b1b; }
+  .delivery-info-grid { display: grid; gap: 8px; }
+  .delivery-info-row { display: grid; grid-template-columns: minmax(110px, 0.42fr) 1fr; gap: 10px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc; }
+  .delivery-info-row span { color: #64748b; font-size: 13px; }
+  .delivery-info-row strong { color: #0f172a; font-size: 14px; overflow-wrap: anywhere; }
+  .delivery-timeline-wrap h4 { margin: 0 0 10px; }
+  .delivery-timeline li::before { background: #7dd3fc; }
+  .delivery-timeline li.current::before { background: #0284c7; box-shadow: 0 0 0 4px rgba(2,132,199,.15); }
+
+  @media (max-width: 480px) {
+    .delivery-card__head { flex-direction: column; }
+    .delivery-info-row { grid-template-columns: 1fr; gap: 3px; }
+  }
+}

@@ -1094,6 +1094,26 @@ type CustomerTrackingRequest {
   acknowledgedAt: DateTime
   resolvedAt: DateTime
 }
+type CustomerDeliveryTimelineEvent {
+  status: String!
+  label: String!
+  at: DateTime
+  note: String
+}
+type CustomerDeliveryTracking {
+  orderType: String
+  deliveryStatus: String
+  deliveryStatusLabel: String
+  shippingAddress: String
+  eta: DateTime
+  distance: Float
+  duration: Float
+  driverName: String
+  driverPhone: String
+  driverVehiclePlate: String
+  externalTrackingCode: String
+  timeline: [CustomerDeliveryTimelineEvent!]
+}
 type CustomerOrderTrackingView {
   trackingCode: String!
   publicStatus: String!
@@ -1104,6 +1124,7 @@ type CustomerOrderTrackingView {
   items: [CustomerTrackingItem!]!
   payment: CustomerTrackingPayment!
   latestRequest: CustomerTrackingRequest
+  delivery: CustomerDeliveryTracking
 }
 type CustomerServiceRequest {
   orderId: ID!
