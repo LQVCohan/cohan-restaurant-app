@@ -218,6 +218,8 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 
     .action-group {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
       gap: 8px;
 
       .btn-action {
@@ -242,6 +244,13 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
           color: $text-main;
           &:hover {
             background: $bg-hover;
+          }
+        }
+        &.btn-success {
+          background: #dcfce7;
+          color: #166534;
+          &:hover {
+            background: #bbf7d0;
           }
         }
         &.btn-danger {
