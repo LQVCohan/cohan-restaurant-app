@@ -29,7 +29,7 @@ describe("customer remote checkout guards", () => {
     );
   });
 
-  it.each(["manager", "admin"])("rejects %s role as FORBIDDEN", (roleName) => {
+  it.each(["manager", "admin", "staff"])("rejects %s role as FORBIDDEN", (roleName) => {
     expect(() =>
       assertCustomerRemoteCheckoutAuth(
         { user: { id: validId(), roleName } },

@@ -36,6 +36,7 @@ import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { hasRole } from "../../../utils/authz.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { getPublicRestaurantOrThrow } from "../shared/restaurantCapabilityGuards.js";
 import { GraphQLError } from "graphql";
@@ -375,19 +376,6 @@ function getRemainingReturnableQuantity(item) {
 const CART_HOLD_CHECKOUT_ERROR =
   "Món trong giỏ đã hết hạn hoặc không còn khớp với đơn hàng. Vui lòng kiểm tra lại giỏ.";
 
-function normalizeCheckoutRoleName(user) {
-  return String(
-    user?.roleName ||
-      user?.roleSlug ||
-      user?.userType ||
-      user?.role?.slug ||
-      user?.role?.name ||
-      "",
-  )
-    .trim()
-    .toLowerCase();
-}
-
 function assertCustomerRemoteCheckoutAuth(ctx, inputUserId) {
   const authUserId =
     ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
@@ -399,7 +387,7 @@ function assertCustomerRemoteCheckoutAuth(ctx, inputUserId) {
     });
   }
 
-  if (normalizeCheckoutRoleName(ctx?.user) !== "customer") {
+  if (!hasRole(ctx?.user, ["customer"])) {
     throw new GraphQLError(
       "Chỉ tài khoản khách hàng mới có thể đặt món từ xa.",
       { extensions: { code: "FORBIDDEN" } },

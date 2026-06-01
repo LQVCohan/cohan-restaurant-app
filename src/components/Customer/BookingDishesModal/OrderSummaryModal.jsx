@@ -159,7 +159,7 @@ const OrderSummaryModal = ({
     user?.roleName || user?.role?.slug || user?.role?.name || "",
   ).toLowerCase();
   const isCustomer = normalizedRole === "customer";
-  const canUseRemoteCheckout = Boolean(isAuthenticated && isCustomer && user?.id);
+  const canUseRemoteCheckout = isAuthenticated && isCustomer && !!user?.id;
   const apolloClient = useApolloClient();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -193,7 +193,7 @@ const OrderSummaryModal = ({
     preferences: customerFoodPreferences,
     loading: isLoadingFoodPreferences,
   } = useFoodPreferences({
-    skip: !isAuthenticated || !isCustomer,
+    skip: !canUseRemoteCheckout,
   });
   const hasMeaningfulFoodPreferenceNote =
     !!foodPreferenceNote &&
@@ -535,7 +535,7 @@ const OrderSummaryModal = ({
   useEffect(() => {
     let cancelled = false;
     const fetchMenuMetadata = async () => {
-      if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) {
+      if (!canUseRemoteCheckout || isLoadingFoodPreferences) {
         return;
       }
       if (!missingMetadataItems.length) return;
@@ -577,15 +577,14 @@ const OrderSummaryModal = ({
     };
   }, [
     apolloClient,
-    isAuthenticated,
-    isCustomer,
+    canUseRemoteCheckout,
     isLoadingFoodPreferences,
     missingMetadataItems,
     menuItemMetadataByKey,
   ]);
 
   const foodPreferenceReviewItems = useMemo(() => {
-    if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) {
+    if (!canUseRemoteCheckout || isLoadingFoodPreferences) {
       return [];
     }
     return (orderData || [])
@@ -613,8 +612,7 @@ const OrderSummaryModal = ({
       );
   }, [
     customerFoodPreferences,
-    isAuthenticated,
-    isCustomer,
+    canUseRemoteCheckout,
     isLoadingFoodPreferences,
     menuItemMetadataByKey,
     orderData,
