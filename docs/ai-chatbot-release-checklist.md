@@ -167,3 +167,15 @@
 - [ ] No auto-side-effect actions exist for payment, order placement, reservation creation, profile editing, cancellation, deletion, or refund.
 - [ ] Provider failure fallback tested and still returns useful deterministic guidance.
 - [ ] Gemini local testing completed if `GEMINI_API_KEY` / `AI_PROVIDER=gemini` is configured.
+
+## Phase 26 - Cache-Augmented Generation layer
+
+- [ ] AI Chatbot Settings cache uses `ai:settings:private:{restaurantId}` with a 60-second TTL and still runs permission checks before returning private settings.
+- [ ] Public AI Chatbot Settings cache uses `ai:settings:public:{restaurantId}` with a 60-second TTL and exposes only public widget fields.
+- [ ] AI Knowledge Base retrieval cache uses `ai:knowledge:relevant:{restaurantId}:{limit}:{normalizedMessageHash}` with a 5-minute TTL for enabled knowledge matches only.
+- [ ] Settings updates invalidate both private and public settings cache keys.
+- [ ] Knowledge create/update/delete/import/bulk-enable/bulk-delete operations invalidate `ai:knowledge:relevant:{restaurantId}:`.
+- [ ] Cart, orders, reservations, user profile, conversation messages/history, guest/user identifiers, API keys, passwords, tokens, and secrets are not cached.
+- [ ] Cache stats remain internal/test-only and cache contents are not exposed to GraphQL or the frontend.
+- [ ] Backend cache service tests pass.
+- [ ] Existing chatbot backend and frontend regression suites pass.

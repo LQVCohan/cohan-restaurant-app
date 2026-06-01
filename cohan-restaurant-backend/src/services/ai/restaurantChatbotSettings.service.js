@@ -2,6 +2,18 @@ import mongoose from "mongoose";
 import { Restaurant } from "../../../models/index.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { requireRestaurantPermission } from "../auth/authorization.service.js";
+import { deleteAiChatbotCache, getOrSetAiChatbotCache } from "./restaurantChatbotCache.service.js";
+
+const SETTINGS_CACHE_TTL_MS = 60 * 1000;
+const PRIVATE_SETTINGS_CACHE_PREFIX = "ai:settings:private:";
+const PUBLIC_SETTINGS_CACHE_PREFIX = "ai:settings:public:";
+
+const privateSettingsCacheKey = (restaurantId) => `${PRIVATE_SETTINGS_CACHE_PREFIX}${restaurantId}`;
+const publicSettingsCacheKey = (restaurantId) => `${PUBLIC_SETTINGS_CACHE_PREFIX}${restaurantId}`;
+
+// Cache only restaurant-level chatbot settings. Audit user identifiers are intentionally
+// omitted from cached values so Phase 26 never stores user/guest identifiers or secrets.
+const sanitizeSettingsForCache = (settings) => ({ ...settings, updatedBy: null });
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -43,8 +55,10 @@ const ensureRestaurantAccess = async ({ restaurantId, ctx, permissionCode }) => 
 
 export async function getRestaurantAiChatbotSettings({ restaurantId, ctx }) {
   await ensureRestaurantAccess({ restaurantId, ctx, permissionCode: PERMISSIONS.REPORT_READ });
-  const restaurant = await Restaurant.findById(restaurantId).select("aiChatbotSettings").lean();
-  return mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {});
+  return getOrSetAiChatbotCache(privateSettingsCacheKey(restaurantId), async () => {
+    const restaurant = await Restaurant.findById(restaurantId).select("aiChatbotSettings").lean();
+    return sanitizeSettingsForCache(mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {}));
+  }, SETTINGS_CACHE_TTL_MS);
 }
 
 export async function getPublicAiChatbotSettings({ restaurantId }) {
@@ -52,9 +66,11 @@ export async function getPublicAiChatbotSettings({ restaurantId }) {
     const d = mergeWithDefaultAiChatbotSettings({});
     return { enabled: d.enabled, welcomeMessage: d.welcomeMessage, starterQuickReplies: d.starterQuickReplies, handoffEnabled: d.handoffEnabled, handoffUnavailableMessage: d.handoffUnavailableMessage };
   }
-  const restaurant = await Restaurant.findById(restaurantId).select("aiChatbotSettings").lean();
-  const d = mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {});
-  return { enabled: d.enabled, welcomeMessage: d.welcomeMessage, starterQuickReplies: d.starterQuickReplies, handoffEnabled: d.handoffEnabled, handoffUnavailableMessage: d.handoffUnavailableMessage };
+  return getOrSetAiChatbotCache(publicSettingsCacheKey(restaurantId), async () => {
+    const restaurant = await Restaurant.findById(restaurantId).select("aiChatbotSettings").lean();
+    const d = mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {});
+    return { enabled: d.enabled, welcomeMessage: d.welcomeMessage, starterQuickReplies: d.starterQuickReplies, handoffEnabled: d.handoffEnabled, handoffUnavailableMessage: d.handoffUnavailableMessage };
+  }, SETTINGS_CACHE_TTL_MS);
 }
 
 export async function updateRestaurantAiChatbotSettings({ input, ctx }) {
@@ -84,5 +100,7 @@ export async function updateRestaurantAiChatbotSettings({ input, ctx }) {
 
   restaurant.aiChatbotSettings = merged;
   await restaurant.save();
+  deleteAiChatbotCache(privateSettingsCacheKey(restaurantId));
+  deleteAiChatbotCache(publicSettingsCacheKey(restaurantId));
   return mergeWithDefaultAiChatbotSettings(restaurant.aiChatbotSettings || merged);
 }

@@ -530,3 +530,24 @@ Action shape:
 Allowed workflows are navigation and guidance only: open the cart drawer, view menu/food detail, open checkout through the existing checkout route when appropriate, view current-user orders/profile, open a reservation layout for a known restaurant, choose a restaurant when no id exists, or request staff handoff. The model must not auto-create orders, payments, reservations, cart lines, profile changes, or destructive operations.
 
 Both backend and frontend reject unsafe action payloads including script/data/mail/telephone schemes, protocol-relative external URLs, unknown action types, provider-suggested add-to-cart candidates, destructive operations, and automatic payment/checkout/reservation actions. The frontend renders safe actions as cards in `src/components/common/AiChatbotWidget.jsx` and styles them in `src/components/common/AiChatbotWidget.scss`.
+
+## Phase 26 - Cache-Augmented Generation layer
+
+The AI chatbot now includes an in-memory TTL cache service at `cohan-restaurant-backend/src/services/ai/restaurantChatbotCache.service.js`. It has no Redis/external dependency and exposes only internal helpers for get/set/get-or-set/delete/delete-by-prefix/clear/stats.
+
+Cached restaurant-level data:
+
+- `ai:settings:private:{restaurantId}` caches merged private AI chatbot settings for 60 seconds, but `getRestaurantAiChatbotSettings` still performs `ensureRestaurantAccess` before reading the cache.
+- `ai:settings:public:{restaurantId}` caches the public widget settings subset for 60 seconds.
+- `ai:knowledge:relevant:{restaurantId}:{limit}:{normalizedMessageHash}` caches enabled knowledge matches for `findRelevantKnowledgeForChatbot` for 5 minutes.
+
+Invalidation:
+
+- `updateRestaurantAiChatbotSettings` deletes both private/public settings cache keys after save.
+- Knowledge create/update/delete/import/bulk-enable/bulk-delete mutations delete the `ai:knowledge:relevant:{restaurantId}:` prefix.
+
+Privacy/safety boundary:
+
+- The Phase 26 cache must never store cart, orders, reservations, user profile context, conversation messages/history, guest/user identifiers, API keys, tokens, passwords, or secrets.
+- User-specific chatbot context remains real-time in `restaurantChatbot.service.js`, including `fetchCart`, `fetchOrders`, `fetchReservations`, `buildUserSafeProfile`, `AiChatConversation`, and `AiChatMessage` history.
+- Cache stats are for tests/internal debugging only; cache contents are not exposed to public GraphQL or frontend APIs.

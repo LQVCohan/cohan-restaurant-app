@@ -8,6 +8,7 @@ vi.mock("../../src/services/auth/authorization.service.js", () => ({
 
 import { Restaurant } from "../../models/index.js";
 import { getPublicAiChatbotSettings, updateRestaurantAiChatbotSettings } from "../../src/services/ai/restaurantChatbotSettings.service.js";
+import { clearAiChatbotCache } from "../../src/services/ai/restaurantChatbotCache.service.js";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 
 const rid = new mongoose.Types.ObjectId().toString();
@@ -16,6 +17,7 @@ const uid = new mongoose.Types.ObjectId().toString();
 describe("restaurantChatbotSettings permission + merge", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearAiChatbotCache();
     permissionSpy.mockReset();
     permissionSpy.mockResolvedValue(true);
   });

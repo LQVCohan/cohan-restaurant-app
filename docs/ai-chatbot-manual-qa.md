@@ -141,3 +141,13 @@ Fallback used? yes/no
 Result: PASS/FAIL
 Notes/screenshots:
 ```
+
+## Phase 26 - Cache-Augmented Generation QA
+
+- [ ] Update chatbot welcome message/settings in manager tools and verify the customer chatbot reflects the new setting after the settings mutation invalidates cache.
+- [ ] Add a knowledge item and ask a matching question; verify the chatbot uses the new knowledge after mutation invalidation.
+- [ ] Edit a knowledge item and ask the same matching question; verify the chatbot uses the updated content instead of stale cached content.
+- [ ] Delete a knowledge item and verify the chatbot no longer cites or uses that knowledge.
+- [ ] Disable a knowledge item and verify the chatbot no longer uses it in RESTAURANT_KNOWLEDGE.
+- [ ] Update coupon/menu/order/cart data and verify cart/order/user-specific answers are not stale because Phase 26 does not cache cart, orders, reservations, user profile, or conversation history.
+- [ ] Ask another user's private/order/profile data and verify the existing refusal/privacy behavior still applies.
