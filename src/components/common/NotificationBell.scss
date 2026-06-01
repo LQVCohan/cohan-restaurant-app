@@ -1,0 +1,22 @@
+.app-notification-bell { position: relative; display: inline-flex; z-index: 40; }
+.app-notification-bell__trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 999px; border: 1px solid rgba(15,23,42,.12); background: #fff; color: #111827; cursor: pointer; box-shadow: 0 8px 22px rgba(15,23,42,.08); }
+.app-notification-bell__trigger:hover { background: #fff7ed; color: #ea580c; }
+.app-notification-bell__badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; border: 2px solid #fff; font-size: 11px; font-weight: 800; line-height: 16px; }
+.app-notification-bell__dropdown { position: absolute; right: 0; top: 50px; width: 360px; max-width: calc(100vw - 32px); background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; box-shadow: 0 24px 70px rgba(15,23,42,.18); overflow: hidden; }
+.app-notification-bell__header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
+.app-notification-bell__header h3 { margin: 0; font-size: 16px; font-weight: 800; color: #111827; }
+.app-notification-bell__header button, .app-notification-bell__tabs button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #ea580c; font-weight: 700; cursor: pointer; }
+.app-notification-bell__tabs { display: flex; gap: 8px; padding: 10px 16px; background: #f9fafb; }
+.app-notification-bell__tabs button { color: #6b7280; padding: 6px 10px; border-radius: 999px; }
+.app-notification-bell__tabs button.active { background: #ffedd5; color: #c2410c; }
+.app-notification-bell__list { max-height: 380px; overflow-y: auto; }
+.app-notification-bell__item { width: 100%; display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border: 0; border-bottom: 1px solid #f3f4f6; background: #fff; text-align: left; cursor: pointer; }
+.app-notification-bell__item:hover, .app-notification-bell__item.unread { background: #fff7ed; }
+.app-notification-bell__icon { flex: 0 0 34px; height: 34px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #eef2ff; color: #4f46e5; }
+.app-notification-bell__icon--review-negative-created, .app-notification-bell__icon--review-reported { background: #fee2e2; color: #dc2626; }
+.app-notification-bell__icon--review-published, .app-notification-bell__icon--review-official_reply-created { background: #dcfce7; color: #16a34a; }
+.app-notification-bell__content { min-width: 0; display: grid; gap: 3px; color: #111827; }
+.app-notification-bell__content strong { font-size: 14px; line-height: 1.25; }
+.app-notification-bell__content small { color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-notification-bell__content em { display: inline-flex; align-items: center; gap: 4px; color: #9ca3af; font-style: normal; font-size: 12px; }
+.app-notification-bell__empty { padding: 28px 16px; text-align: center; color: #6b7280; }

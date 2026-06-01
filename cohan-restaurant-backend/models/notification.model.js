@@ -16,5 +16,7 @@ const NotificationSchema = new Schema(
 );
 
 NotificationSchema.index({ toUserId: 1, createdAt: -1 });
+NotificationSchema.index({ toUserId: 1, readAt: 1, createdAt: -1 });
+NotificationSchema.index({ toRole: 1, restaurantId: 1, readAt: 1, createdAt: -1 });
 
 export default mongoose.model("Notification", NotificationSchema);

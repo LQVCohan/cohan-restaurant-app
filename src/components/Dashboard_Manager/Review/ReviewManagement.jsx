@@ -9,6 +9,7 @@ import ReviewModal from "./components/ReviewModal";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ManagerCommandBar from "../shared/ManagerCommandBar";
 import { hasPermission } from "@/utils/frontendPermissionAccess";
+import NotificationBell from "@/components/common/NotificationBell";
 
 const ME_QUERY = gql`
   query Me {
@@ -100,6 +101,10 @@ const GET_REVIEWS = gql`
         commentsCount
         reportsCount
         helpfulCount
+        verifiedSource
+        sentiment
+        topicTags
+        firstOfficialReplyAt
         reactions {
           like
           love
@@ -133,7 +138,26 @@ const GET_REVIEW_ANALYTICS = gql`
       lowRatedTargets { id name targetType count avgRating }
       reportBreakdown { name count }
       actionQueueCounts { needsModeration needsReply highRisk }
+      reviewInsightSummary { summary positives negatives recommendedActions topPriorities confidence source }
+      recommendedActions
+      insightSource
     }
+  }
+`;
+
+const GET_REVIEW_REPORTS = gql`
+  query GetReviewReports($restaurantId: ID, $status: String, $limit: Int = 10) {
+    reviewReports(restaurantId: $restaurantId, status: $status, limit: $limit) {
+      total
+      items { id reviewId restaurantId reporterUserId reason detail status resolutionNote createdAt resolvedAt }
+    }
+    reviewReportStats(restaurantId: $restaurantId) { total pending resolved rejected byReason }
+  }
+`;
+
+const RESOLVE_REVIEW_REPORT = gql`
+  mutation ResolveReviewReport($id: ID!, $input: ReviewReportResolveInput!) {
+    resolveReviewReport(id: $id, input: $input) { id status resolutionNote resolvedAt }
   }
 `;
 
@@ -187,6 +211,10 @@ const normalizeReview = (review) => ({
   replies: review.commentsCount || 0,
   reports_count: review.reportsCount || 0,
   helpful_count: review.helpfulCount || 0,
+  verified_source: review.verifiedSource || "",
+  sentiment: review.sentiment || "",
+  topic_tags: review.topicTags || [],
+  first_official_reply_at: review.firstOfficialReplyAt || review.firstOfficialReply?.createdAt || "",
   reactions: review.reactions || {},
   created_at: review.createdAt,
   first_official_reply: review.firstOfficialReply || null,
@@ -221,6 +249,7 @@ const ReviewManagement = () => {
     verified: "",
     staffAssigned: "",
     sort: "newest",
+    actionQueue: "",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
@@ -316,8 +345,15 @@ const ReviewManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
+  const { data: reportsData, refetch: refetchReports } = useQuery(GET_REVIEW_REPORTS, {
+    variables: { restaurantId: filters.restaurant || undefined, status: undefined, limit: 12 },
+    skip: shouldSkipAnalytics,
+    fetchPolicy: "cache-and-network",
+  });
+
   const [deleteReview] = useMutation(DELETE_REVIEW);
   const [setReviewStatus] = useMutation(SET_REVIEW_STATUS);
+  const [resolveReviewReport] = useMutation(RESOLVE_REVIEW_REPORT);
 
   const reviews = useMemo(
     () => (data?.reviews?.items || []).map(normalizeReview),
@@ -362,6 +398,22 @@ const ReviewManagement = () => {
     }
     if (filters.staffAssigned === "without-staff") {
       list = list.filter((r) => !r.staff_id);
+    }
+
+    if (filters.actionQueue === "needsModeration") {
+      list = list.filter((r) => ["pending", "reported"].includes(r.status));
+    }
+    if (filters.actionQueue === "needsReply") {
+      list = list.filter((r) => r.status === "published" && Number(r.rating || 0) <= 2 && !r.first_official_reply);
+    }
+    if (filters.actionQueue === "reports") {
+      list = list.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0);
+    }
+    if (filters.actionQueue === "highRisk") {
+      list = list.filter((r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1);
+    }
+    if (filters.actionQueue === "recentlyDone") {
+      list = list.filter((r) => ["published", "hidden", "rejected"].includes(r.status) && (r.first_official_reply || r.reports_count === 0));
     }
 
     if (searchTerm.trim()) {
@@ -425,11 +477,55 @@ const ReviewManagement = () => {
   ];
 
   const queueTiles = [
-    { label: "Cần kiểm duyệt", value: queueCounts.needsModeration ?? reviews.filter((r) => ["pending", "reported"].includes(r.status)).length, hint: "pending/reported", tone: "warning" },
-    { label: "Cần phản hồi", value: needsReplyCount, hint: "1–2 sao chưa có reply", tone: "danger" },
-    { label: "Rủi ro cao", value: highRiskCount, hint: "report >= 3 hoặc negative + report", tone: "critical" },
-    { label: "Đã xử lý", value: doneCount, hint: "đã reply hoặc report đã xử lý", tone: "success" },
+    { id: "needsModeration", label: "Cần kiểm duyệt", value: queueCounts.needsModeration ?? reviews.filter((r) => ["pending", "reported"].includes(r.status)).length, hint: "pending/reported", tone: "warning" },
+    { id: "needsReply", label: "Cần phản hồi", value: needsReplyCount, hint: "1–2 sao chưa có reply", tone: "danger" },
+    { id: "reports", label: "Report cần xử lý", value: reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length, hint: "report queue", tone: "danger" },
+    { id: "highRisk", label: "Rủi ro cao", value: highRiskCount, hint: "report >= 3 hoặc 1 sao", tone: "critical" },
+    { id: "recentlyDone", label: "Đã xử lý gần đây", value: doneCount, hint: "đã reply/đóng report", tone: "success" },
   ];
+
+  const handleQueueClick = useCallback((tile) => {
+    setFilters((prev) => ({
+      ...prev,
+      actionQueue: tile.id,
+      ratings: tile.id === "needsReply" ? [1, 2] : prev.ratings,
+    }));
+    if (tile.id === "reports") setCurrentTab("reported");
+    else setCurrentTab("all");
+  }, []);
+
+  const actionCenterItems = useMemo(() => ({
+    needsModeration: reviews.filter((r) => ["pending", "reported"].includes(r.status)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
+    needsReply: reviews.filter((r) => r.status === "published" && Number(r.rating || 0) <= 2 && !r.first_official_reply).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
+    highRisk: reviews.filter((r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1).sort((a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0)).slice(0, 5),
+  }), [reviews]);
+
+  const reportRows = reportsData?.reviewReports?.items || [];
+  const reportStats = reportsData?.reviewReportStats;
+
+  const handleResolveReport = useCallback(async (report, status = "resolved") => {
+    const resolutionNote = window.prompt(status === "resolved" ? "Ghi chú resolve report:" : "Lý do reject report:", "") || "";
+    try {
+      await resolveReviewReport({ variables: { id: report.id, input: { status, resolutionNote } } });
+      await refetchReports?.();
+      await refetch();
+      notify(status === "resolved" ? "Đã resolve report" : "Đã reject report");
+    } catch (err) {
+      notify(err?.message || "Không thể xử lý report.", "error");
+    }
+  }, [notify, refetch, refetchReports, resolveReviewReport]);
+
+  const handleReportReviewAction = useCallback(async (report, reviewStatus) => {
+    const reason = window.prompt("Ghi chú xử lý review từ report:", "") || "";
+    try {
+      await setReviewStatus({ variables: { id: report.reviewId, status: reviewStatus, reason, moderationNote: reason } });
+      await refetchReports?.();
+      await refetch();
+      notify("Đã cập nhật review từ report center");
+    } catch (err) {
+      notify(err?.message || "Không thể cập nhật review từ report.", "error");
+    }
+  }, [notify, refetch, refetchReports, setReviewStatus]);
 
   const handleViewReview = useCallback((review) => {
     setSelectedReview(review);
@@ -489,7 +585,13 @@ const ReviewManagement = () => {
       "Loại",
       "Trạng thái",
       "Xác thực",
+      "Nguồn xác thực",
+      "Sentiment",
+      "Topic tags",
+      "Official reply",
+      "First official reply at",
       "Báo cáo",
+      "Target",
       "Thời gian",
     ].join(",");
     const rows = filteredReviews.map((r) =>
@@ -504,7 +606,13 @@ const ReviewManagement = () => {
         r.type,
         r.status,
         r.verified_purchase ? "yes" : "no",
+        escapeCsv(r.verified_source),
+        escapeCsv(r.sentiment),
+        escapeCsv((r.topic_tags || []).join("; ")),
+        r.first_official_reply ? "replied" : "unreplied",
+        escapeCsv(r.first_official_reply_at ? new Date(r.first_official_reply_at).toLocaleString("vi-VN") : ""),
         r.reports_count || 0,
+        escapeCsv(r.target_name),
         escapeCsv(new Date(r.created_at).toLocaleString("vi-VN")),
       ].join(","),
     );
@@ -518,6 +626,26 @@ const ReviewManagement = () => {
     link.download = `reviews_export_${today}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+
+    if (analytics) {
+      const summaryBlob = new Blob([JSON.stringify({
+        totalReviews: analytics.totalReviews,
+        avgRating: analytics.avgRating,
+        negativeCount: analytics.negativeCount,
+        verifiedRate: analytics.verifiedRate,
+        replyRate: analytics.replyRate,
+        topTags: analytics.topTags,
+        ratingTrend: analytics.ratingTrend,
+        actionQueueCounts: analytics.actionQueueCounts,
+        reviewInsightSummary: analytics.reviewInsightSummary,
+      }, null, 2)], { type: "application/json;charset=utf-8" });
+      const summaryUrl = URL.createObjectURL(summaryBlob);
+      const summaryLink = document.createElement("a");
+      summaryLink.href = summaryUrl;
+      summaryLink.download = `reviews_analytics_summary_${today}.json`;
+      summaryLink.click();
+      URL.revokeObjectURL(summaryUrl);
+    }
   };
 
   const permissions = {
@@ -526,6 +654,7 @@ const ReviewManagement = () => {
     canExport: hasPermission(me, "review.export"),
     canReply: hasPermission(me, "review.reply"),
     canReadAnalytics,
+    canResolveReports: hasPermission(me, "review.report.resolve"),
   };
 
   const titleMap = {
@@ -563,6 +692,14 @@ const ReviewManagement = () => {
           ]}
           secondaryActions={permissions.canExport ? [{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }] : []}
         />
+
+        <div className="reviews-notification-row">
+          <div>
+            <strong>Thông báo review gần đây</strong>
+            <span>Manager/customer có thể xem notification in-app và đánh dấu đã đọc.</span>
+          </div>
+          <NotificationBell restaurantId={filters.restaurant || null} title="Thông báo review" />
+        </div>
 
         <ManagerCommandBar
           tabs={[
@@ -610,6 +747,21 @@ const ReviewManagement = () => {
                   <div className="reviews-error-box">Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.</div>
                 ) : (
                   <>
+
+                    {analytics?.reviewInsightSummary && (
+                      <div className="reviews-insight-card">
+                        <div>
+                          <p>Tóm tắt insight ({analytics.reviewInsightSummary.source === "ai" ? "AI" : "Heuristic summary"})</p>
+                          <h3>{analytics.reviewInsightSummary.summary}</h3>
+                        </div>
+                        <div className="reviews-insight-card__columns">
+                          <section><strong>Khách khen</strong>{analytics.reviewInsightSummary.positives.map((item) => <span key={item}>{item}</span>)}</section>
+                          <section><strong>Khách chê</strong>{analytics.reviewInsightSummary.negatives.map((item) => <span key={item}>{item}</span>)}</section>
+                          <section><strong>Hành động đề xuất</strong>{analytics.reviewInsightSummary.recommendedActions.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</section>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="reviews-analytics-cards">
                       {analyticsCards.map((card) => (
                         <div className="reviews-analytics-card" key={card.label}>
@@ -622,12 +774,85 @@ const ReviewManagement = () => {
 
                     <div className="reviews-queue-grid">
                       {queueTiles.map((tile) => (
-                        <div key={tile.label} className={`reviews-queue-tile reviews-queue-tile--${tile.tone}`}>
+                        <button type="button" key={tile.label} className={`reviews-queue-tile reviews-queue-tile--${tile.tone} ${filters.actionQueue === tile.id ? "is-active" : ""}`} onClick={() => handleQueueClick(tile)}>
                           <strong>{tile.value}</strong>
                           <span>{tile.label}</span>
                           <small>{tile.hint}</small>
-                        </div>
+                        </button>
                       ))}
+                    </div>
+
+
+                    <div className="reviews-action-center">
+                      <div className="reviews-action-center__header">
+                        <div>
+                          <p>Review Action Center</p>
+                          <h3>Hàng đợi ưu tiên xử lý</h3>
+                        </div>
+                        {filters.actionQueue && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, actionQueue: "" }))}>Xem tất cả</button>}
+                      </div>
+                      <div className="reviews-action-center__grid">
+                        {[
+                          ["needsModeration", "Cần kiểm duyệt"],
+                          ["needsReply", "Cần phản hồi"],
+                          ["highRisk", "High risk"],
+                        ].map(([key, label]) => (
+                          <div className="reviews-action-center__lane" key={key}>
+                            <h4>{label}</h4>
+                            {actionCenterItems[key].length ? actionCenterItems[key].map((item) => (
+                              <button type="button" key={item.id} onClick={() => handleViewReview(item)}>
+                                <strong>{item.rating}/5 · {item.customer_name || "Khách hàng"}</strong>
+                                <span>{item.title}</span>
+                                <small>{item.reports_count || 0} report · {new Date(item.created_at).toLocaleDateString("vi-VN")}</small>
+                              </button>
+                            )) : <p>Không có item cần xử lý.</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+
+                    <div className="reviews-report-center">
+                      <div className="reviews-report-center__header">
+                        <div>
+                          <p>Review Report Center</p>
+                          <h3>Evidence xử lý báo cáo</h3>
+                        </div>
+                        <div className="reviews-report-center__stats">
+                          <span>Pending: {reportStats?.pending || 0}</span>
+                          <span>Resolved: {reportStats?.resolved || 0}</span>
+                          <span>Rejected: {reportStats?.rejected || 0}</span>
+                        </div>
+                      </div>
+                      {reportRows.length ? (
+                        <div className="reviews-report-center__list">
+                          {reportRows.slice(0, 6).map((report) => (
+                            <article key={report.id}>
+                              <header><strong>{report.reason}</strong><span>{report.status}</span></header>
+                              <p>{report.detail || "Không có mô tả thêm"}</p>
+                              <small>Review #{report.reviewId} · Reporter #{report.reporterUserId} · {new Date(report.createdAt).toLocaleString("vi-VN")}</small>
+                              {report.resolutionNote && <small>Ghi chú: {report.resolutionNote}</small>}
+                              <div>
+                                {permissions.canResolveReports && (
+                                  <>
+                                    <button type="button" onClick={() => handleResolveReport(report, "resolved")}>Resolve</button>
+                                    <button type="button" onClick={() => handleResolveReport(report, "rejected")}>Reject report</button>
+                                  </>
+                                )}
+                                {permissions.canModerate && (
+                                  <>
+                                    <button type="button" onClick={() => handleReportReviewAction(report, "hidden")}>Hide review</button>
+                                    <button type="button" onClick={() => handleReportReviewAction(report, "rejected")}>Reject review</button>
+                                  </>
+                                )}
+                                {!permissions.canResolveReports && !permissions.canModerate && (
+                                  <small>Bạn không có quyền xử lý report.</small>
+                                )}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : <p className="reviews-report-center__empty">Chưa có report trong scope hiện tại.</p>}
                     </div>
 
                     <div className="reviews-analytics-tables">

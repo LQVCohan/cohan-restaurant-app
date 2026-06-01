@@ -51,6 +51,21 @@ const GET_REVIEW_COMMENTS = gql`
   }
 `;
 
+const GET_REVIEW_TIMELINE = gql`
+  query GetReviewTimeline($reviewId: ID!) {
+    reviewTimeline(reviewId: $reviewId) {
+      id
+      actorUserId
+      verb
+      status
+      meta
+      diff
+      at
+      createdAt
+    }
+  }
+`;
+
 const CREATE_REVIEW_COMMENT = gql`
   mutation CreateReviewComment($input: ReviewCommentInput!) {
     createReviewComment(input: $input) {
@@ -95,6 +110,11 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
       fetchPolicy: "network-only",
     },
   );
+  const { data: timelineData, loading: timelineLoading } = useQuery(GET_REVIEW_TIMELINE, {
+    variables: { reviewId },
+    skip: !visible || !reviewId,
+    fetchPolicy: "network-only",
+  });
   const [createReviewComment, { loading: creatingReply }] = useMutation(
     CREATE_REVIEW_COMMENT,
   );
@@ -104,6 +124,7 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
     () => (commentData?.reviewComments?.items || []).filter((item) => !item.parentId),
     [commentData],
   );
+  const timeline = timelineData?.reviewTimeline || [];
 
   if (!visible) return null;
 
@@ -196,6 +217,27 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+
+              <div className="reviews-modal__timeline">
+                <h4>Audit timeline</h4>
+                {timelineLoading ? (
+                  <div className="reviews-empty-note">Đang tải timeline...</div>
+                ) : timeline.length ? (
+                  <ol>
+                    {timeline.map((event) => (
+                      <li key={event.id}>
+                        <strong>{event.verb}</strong>
+                        <span>{formatDate(event.at || event.createdAt)}</span>
+                        {event.meta?.reason && <small>Lý do: {event.meta.reason}</small>}
+                        {event.diff && <small>{JSON.stringify(event.diff)}</small>}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="reviews-empty-note">Chưa có event audit cho review này.</div>
                 )}
               </div>
 

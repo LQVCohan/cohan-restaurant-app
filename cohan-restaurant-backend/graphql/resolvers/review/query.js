@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import Review from "../../../models/review.model.js";
-import { ReviewComment, ReviewReport } from "../../../models/index.js";
+import { EventLog, ReviewComment, ReviewReport } from "../../../models/index.js";
+import { generateReviewInsight } from "../../../src/services/reviewInsight.service.js";
 import { requirePermission, requireRestaurantAccess } from "../../guards.js";
 
 function roleSlug(user) { return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase(); }
@@ -122,32 +123,135 @@ export default {
     const match = { ...dateFilter(dateFrom, dateTo) };
     if (restaurantId) match.restaurantId = restaurantId;
     if (targetType) match.targetType = targetType;
-    const rows = await Review.find(match).lean();
-    const published = rows.filter((r) => r.status === "published" || r.status === "reported");
-    const count = (status) => rows.filter((r) => r.status === status).length;
-    const avgRating = published.length ? Number((published.reduce((sum, r) => sum + Number(r.rating || 0), 0) / published.length).toFixed(2)) : 0;
+
+    const [summary] = await Review.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          totals: [
+            {
+              $group: {
+                _id: null,
+                totalReviews: { $sum: 1 },
+                pendingCount: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                publishedCount: { $sum: { $cond: [{ $eq: ["$status", "published"] }, 1, 0] } },
+                hiddenCount: { $sum: { $cond: [{ $eq: ["$status", "hidden"] }, 1, 0] } },
+                rejectedCount: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+                reportedCount: { $sum: { $cond: [{ $eq: ["$status", "reported"] }, 1, 0] } },
+                highRisk: { $sum: { $cond: [{ $or: [{ $gte: ["$reportsCount", 3] }, { $lte: ["$rating", 1] }] }, 1, 0] } },
+              },
+            },
+          ],
+          publishedStats: [
+            { $match: { status: { $in: ["published", "reported"] } } },
+            {
+              $group: {
+                _id: null,
+                publishedVisibleCount: { $sum: 1 },
+                avgRating: { $avg: "$rating" },
+                negativeCount: { $sum: { $cond: [{ $lte: ["$rating", 2] }, 1, 0] } },
+                verifiedCount: { $sum: { $cond: ["$verifiedPurchase", 1, 0] } },
+              },
+            },
+          ],
+          ratingBreakdownRows: [
+            { $match: { status: { $in: ["published", "reported"] } } },
+            { $group: { _id: "$rating", count: { $sum: 1 } } },
+            { $sort: { _id: 1 } },
+          ],
+          ratingTrend: [
+            { $match: { status: { $in: ["published", "reported"] } } },
+            { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, total: { $sum: 1 }, avgRating: { $avg: "$rating" } } },
+            { $sort: { _id: 1 } },
+            { $project: { _id: 0, date: "$_id", total: 1, avgRating: { $round: ["$avgRating", 2] } } },
+          ],
+          topTags: [
+            { $project: { tag: { $setUnion: [{ $ifNull: ["$tags", []] }, { $ifNull: ["$topicTags", []] }] } } },
+            { $unwind: "$tag" },
+            { $group: { _id: "$tag", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            { $project: { _id: 0, name: "$_id", count: 1 } },
+          ],
+          topStaffMentioned: [
+            { $match: { staffId: { $ne: null } } },
+            { $group: { _id: "$staffId", name: { $first: "$staffName" }, count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            { $project: { _id: 0, id: "$_id", name: 1, count: 1 } },
+          ],
+          lowRatedTargets: [
+            { $match: { rating: { $lte: 2 } } },
+            { $group: { _id: "$targetId", name: { $first: "$targetName" }, targetType: { $first: "$targetType" }, count: { $sum: 1 }, avgRating: { $avg: "$rating" } } },
+            { $sort: { count: -1, avgRating: 1 } },
+            { $limit: 10 },
+            { $project: { _id: 0, id: "$_id", name: 1, targetType: 1, count: 1, avgRating: { $round: ["$avgRating", 2] } } },
+          ],
+          reportBreakdown: [
+            { $match: { reportsCount: { $gt: 0 } } },
+            { $group: { _id: "$status", count: { $sum: "$reportsCount" } } },
+            { $project: { _id: 0, name: "$_id", count: 1 } },
+          ],
+          negativeUnrepliedReviews: [
+            { $match: { status: { $in: ["published", "reported"] }, rating: { $lte: 2 }, firstOfficialReplyAt: null } },
+            { $count: "count" },
+          ],
+        },
+      },
+    ]);
+
+    const totals = summary?.totals?.[0] || {};
+    const publishedStats = summary?.publishedStats?.[0] || {};
     const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    published.forEach((r) => { ratingBreakdown[r.rating] = (ratingBreakdown[r.rating] || 0) + 1; });
-    const official = await ReviewComment.aggregate([{ $match: { reviewId: { $in: rows.map((r) => r._id) }, officialReply: true, status: "published" } }, { $group: { _id: "$reviewId", first: { $min: "$createdAt" } } }]);
-    const repliedIds = new Set(official.map((x) => String(x._id)));
-    const replyMinutes = official.map((x) => { const review = rows.find((r) => String(r._id) === String(x._id)); return review ? (new Date(x.first) - new Date(review.createdAt)) / 60000 : null; }).filter((x) => Number.isFinite(x) && x >= 0);
-    const trendMap = new Map();
-    published.forEach((r) => { const day = new Date(r.createdAt).toISOString().slice(0, 10); const cur = trendMap.get(day) || { date: day, total: 0, ratingSum: 0, avgRating: 0 }; cur.total += 1; cur.ratingSum += Number(r.rating || 0); cur.avgRating = Number((cur.ratingSum / cur.total).toFixed(2)); trendMap.set(day, cur); });
-    const tagCounts = new Map(); const staffCounts = new Map(); const targetCounts = new Map(); const reportCounts = new Map();
-    rows.forEach((r) => { (r.tags || []).forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)); (r.topicTags || []).forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)); if (r.staffId) staffCounts.set(String(r.staffId), { id: String(r.staffId), name: r.staffName || "", count: ((staffCounts.get(String(r.staffId)) || {}).count || 0) + 1 }); if (Number(r.rating) <= 2) targetCounts.set(String(r.targetId), { id: String(r.targetId), name: r.targetName || "", targetType: r.targetType, count: ((targetCounts.get(String(r.targetId)) || {}).count || 0) + 1, avgRating: 0 }); if (r.reportsCount) reportCounts.set(r.status, (reportCounts.get(r.status) || 0) + Number(r.reportsCount || 0)); });
-    const negativeUnreplied = published.filter((r) => Number(r.rating) <= 2 && !repliedIds.has(String(r._id))).length;
-    return {
-      totalReviews: rows.length, avgRating, pendingCount: count("pending"), publishedCount: count("published"), hiddenCount: count("hidden"), rejectedCount: count("rejected"), reportedCount: count("reported"), negativeCount: published.filter((r) => Number(r.rating) <= 2).length,
-      verifiedRate: published.length ? published.filter((r) => r.verifiedPurchase).length / published.length : 0,
-      replyRate: published.length ? repliedIds.size / published.length : 0,
-      avgFirstReplyMinutes: replyMinutes.length ? Math.round(replyMinutes.reduce((a,b) => a + b, 0) / replyMinutes.length) : 0,
-      ratingTrend: Array.from(trendMap.values()).sort((a,b) => a.date.localeCompare(b.date)),
+    (summary?.ratingBreakdownRows || []).forEach((row) => { ratingBreakdown[row._id] = row.count; });
+
+    const reviewIds = await Review.find(match).select("_id createdAt status rating title content tags topicTags firstOfficialReplyAt").limit(5000).lean();
+    const official = reviewIds.length ? await ReviewComment.aggregate([
+      { $match: { reviewId: { $in: reviewIds.map((r) => r._id) }, officialReply: true, status: "published" } },
+      { $group: { _id: "$reviewId", first: { $min: "$createdAt" } } },
+    ]) : [];
+    const createdById = new Map(reviewIds.map((r) => [String(r._id), r.createdAt]));
+    const replyMinutes = official.map((x) => {
+      const createdAt = createdById.get(String(x._id));
+      return createdAt ? (new Date(x.first) - new Date(createdAt)) / 60000 : null;
+    }).filter((x) => Number.isFinite(x) && x >= 0);
+    const visibleCount = Number(publishedStats.publishedVisibleCount || 0);
+    const analytics = {
+      totalReviews: Number(totals.totalReviews || 0),
+      avgRating: publishedStats.avgRating ? Number(publishedStats.avgRating.toFixed(2)) : 0,
+      pendingCount: Number(totals.pendingCount || 0),
+      publishedCount: Number(totals.publishedCount || 0),
+      hiddenCount: Number(totals.hiddenCount || 0),
+      rejectedCount: Number(totals.rejectedCount || 0),
+      reportedCount: Number(totals.reportedCount || 0),
+      negativeCount: Number(publishedStats.negativeCount || 0),
+      verifiedRate: visibleCount ? Number(publishedStats.verifiedCount || 0) / visibleCount : 0,
+      replyRate: visibleCount ? official.length / visibleCount : 0,
+      avgFirstReplyMinutes: replyMinutes.length ? Math.round(replyMinutes.reduce((a, b) => a + b, 0) / replyMinutes.length) : 0,
+      ratingTrend: summary?.ratingTrend || [],
       ratingBreakdown,
-      topTags: Array.from(tagCounts.entries()).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count).slice(0, 10),
-      topStaffMentioned: Array.from(staffCounts.values()).sort((a,b) => b.count - a.count).slice(0, 10),
-      lowRatedTargets: Array.from(targetCounts.values()).sort((a,b) => b.count - a.count).slice(0, 10),
-      reportBreakdown: Array.from(reportCounts.entries()).map(([name, count]) => ({ name, count })),
-      actionQueueCounts: { needsModeration: count("pending") + count("reported"), needsReply: negativeUnreplied, highRisk: rows.filter((r) => Number(r.reportsCount || 0) >= 3 || Number(r.rating) <= 1).length },
+      topTags: summary?.topTags || [],
+      topStaffMentioned: summary?.topStaffMentioned || [],
+      lowRatedTargets: summary?.lowRatedTargets || [],
+      reportBreakdown: summary?.reportBreakdown || [],
+      actionQueueCounts: {
+        needsModeration: Number(totals.pendingCount || 0) + Number(totals.reportedCount || 0),
+        needsReply: Number(summary?.negativeUnrepliedReviews?.[0]?.count || 0),
+        highRisk: Number(totals.highRisk || 0),
+      },
     };
+    const insight = await generateReviewInsight(reviewIds, analytics);
+    return { ...analytics, reviewInsightSummary: insight, recommendedActions: insight.recommendedActions, insightSource: insight.source };
   },
-};
+
+  reviewTimeline: async (_, { reviewId, limit = 50 }, ctx) => {
+    const review = await Review.findById(reviewId).lean();
+    if (!review) return [];
+    await requireReviewModerationAccess(ctx, review);
+    const rows = await EventLog.find({
+      "object.kind": "Review",
+      "object.id": review._id,
+      verb: /^review\./,
+    }).sort({ at: -1, createdAt: -1 }).limit(Math.min(Number(limit) || 50, 100)).lean({ virtuals: true });
+    return rows.map((row) => ({ id: String(row._id), ...row }));
+  },};
