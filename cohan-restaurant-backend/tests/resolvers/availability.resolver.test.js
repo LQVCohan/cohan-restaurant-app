@@ -395,6 +395,7 @@ describe("availability resolver", () => {
   it("writes pending slots for closed late-change submit without overwriting official slots", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", status: "closed", openAt: new Date(Date.now()-1000), closeAt: new Date(Date.now()-1000), lateChangeRequiresApproval: true, periodStart: new Date(), periodEnd: new Date() });
+    modelMocks.StaffAvailabilitySubmission.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
     modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "late_change_requested" });
     await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [{ date: new Date(), shiftType: "morning", status: "available" }] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
     const update = modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls.at(-1)[1];

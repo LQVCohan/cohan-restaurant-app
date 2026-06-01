@@ -30,6 +30,8 @@ const modelMocks = vi.hoisted(() => ({
   PaymentTransaction: { find: vi.fn() },
   Cashflow: { find: vi.fn() },
   PaymentSession: { findById: vi.fn() },
+  PaymentReconciliation: { find: vi.fn(), aggregate: vi.fn() },
+  BankTransaction: { aggregate: vi.fn() },
   Restaurant: { findByIdAndUpdate: vi.fn() },
   EventLog: { log: vi.fn() },
 }));
@@ -89,6 +91,9 @@ describe("payment resolvers restaurant access guards", () => {
       lean: vi.fn().mockResolvedValue([]),
     }));
     modelMocks.PaymentTransaction.find.mockReturnValue(sortedLeanResult([]));
+    modelMocks.PaymentReconciliation.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
+    modelMocks.PaymentReconciliation.aggregate.mockResolvedValue([]);
+    modelMocks.BankTransaction.aggregate.mockResolvedValue([]);
     modelMocks.Order.findById.mockReturnValue(leanResult(null));
   });
 

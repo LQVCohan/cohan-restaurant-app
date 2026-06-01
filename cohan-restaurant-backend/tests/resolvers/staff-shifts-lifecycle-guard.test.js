@@ -28,7 +28,7 @@ const scheduleLifecycleMocks = vi.hoisted(() => ({
 
 const validationMocks = vi.hoisted(() => ({
   assertShiftAssignmentValid: vi.fn(async () => ({})),
-  validateShiftAssignment: vi.fn(async () => ({ ok: true, blockingErrors: [], warnings: [] })),
+  validateShiftAssignment: vi.fn(async () => ({ ok: true, blockingErrors: [], warnings: [] })), hasNonInfoWarnings: vi.fn(() => false),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);

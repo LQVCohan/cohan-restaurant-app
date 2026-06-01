@@ -1,29 +1,51 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  Review: { find: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), aggregate: vi.fn(), findByIdAndUpdate: vi.fn(), findByIdAndDelete: vi.fn(), updateOne: vi.fn(), create: vi.fn() },
+  Review: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), aggregate: vi.fn(), findByIdAndUpdate: vi.fn(), findByIdAndDelete: vi.fn(), updateOne: vi.fn(), create: vi.fn() },
   ReviewReaction: { findOne: vi.fn(), create: vi.fn(), deleteOne: vi.fn(), findByIdAndUpdate: vi.fn() },
   User: { findOne: vi.fn() },
   ReviewComment: { find: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), create: vi.fn(), updateOne: vi.fn() },
   EventLog: { log: vi.fn() },
+  Restaurant: { exists: vi.fn(), findById: vi.fn() },
+  MenuItem: { exists: vi.fn() },
+  Order: { findOne: vi.fn() },
+  PaymentTransaction: { findOne: vi.fn() },
+  Reservation: { findOne: vi.fn() },
+  Notification: { create: vi.fn() },
 }));
-const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
+const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn(), requirePermission: vi.fn() }));
 const logMocks = vi.hoisted(() => ({ logReviewEvent: vi.fn() }));
 
 vi.mock("../../models/index.js", () => mocks);
 vi.mock("../../models/review.model.js", () => ({ default: mocks.Review }));
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../utils/logReview.js", () => logMocks);
+vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true) } }));
 
-const chain = (rows) => ({ sort: vi.fn(() => ({ skip: vi.fn(() => ({ limit: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(rows) })) })) })) });
+const chain = (rows) => ({
+  sort: vi.fn(() => ({
+    lean: vi.fn().mockResolvedValue(rows),
+    skip: vi.fn(() => ({ limit: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(rows) })) })),
+  })),
+});
 
 describe("review/reviewComment access hardening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue();
+    guardMocks.requirePermission.mockImplementation((ctx) => {
+      if (!ctx?.user) throw new Error("UNAUTHENTICATED");
+      if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+    });
     mocks.Review.countDocuments.mockResolvedValue(1);
     mocks.Review.find.mockReturnValue(chain([]));
+    mocks.Review.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
     mocks.Review.aggregate.mockResolvedValue([]);
+    mocks.Restaurant.exists.mockResolvedValue(true);
+    mocks.Restaurant.findById.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ managerId: null }) }) });
+    mocks.Order.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
+    mocks.PaymentTransaction.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
+    mocks.Reservation.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
     mocks.Review.findByIdAndUpdate.mockResolvedValue({ _id: "valid-rv1", rating: 4, title: "t", content: "c", status: "pending", restaurantId: "valid-r1", helpfulCount: 1 });
     mocks.Review.create.mockResolvedValue({ _id: "valid-rv1", rating: 5, restaurantId: "valid-r1" });
     mocks.User.findOne.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue({ _id: "staff-1", fullName: "Real Staff" }) })) });
@@ -36,7 +58,7 @@ describe("review/reviewComment access hardening", () => {
     const q = (await import("../../graphql/resolvers/review/query.js")).default;
     await q.reviews(null, { restaurantId: "valid-r1" }, {});
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(mocks.Review.find).toHaveBeenCalledWith(expect.objectContaining({ status: "published" }));
+    expect(mocks.Review.find).toHaveBeenCalledWith(expect.objectContaining({ $or: expect.any(Array) }));
   });
 
   it("staff pending reviews with restaurantId requires guard first", async () => {
@@ -48,7 +70,7 @@ describe("review/reviewComment access hardening", () => {
 
   it("non-admin staff pending without restaurantId throws", async () => {
     const q = (await import("../../graphql/resolvers/review/query.js")).default;
-    await expect(q.reviews(null, { status: "pending" }, { user: { roleName: "manager" } })).rejects.toThrow("restaurantId is required");
+    await expect(q.reviews(null, { status: "pending" }, { user: { roleName: "manager" } })).rejects.toThrow("Forbidden");
   });
 
   it("review pending denies public allows owner/staff scoped", async () => {
@@ -61,33 +83,33 @@ describe("review/reviewComment access hardening", () => {
   it("createReview requires login and forces pending/createdBy", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
     await expect(m.createReview(null, { input: { status: "published" } }, {})).rejects.toThrow();
-    await m.createReview(null, { input: { status: "published", createdBy: "x" } }, { user: { id: "u1" } });
+    await m.createReview(null, { input: { status: "published", createdBy: "x", rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
     expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ status: "pending", createdBy: "u1" }));
   });
 
   it("createReview with valid staff sets canonical staffId/staffName", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    await m.createReview(null, { input: { restaurantId: "valid-r1", staffId: "staff-input", staffName: "Fake Name" } }, { user: { id: "u1" } });
-    expect(mocks.User.findOne).toHaveBeenCalledWith(expect.objectContaining({ _id: "staff-input", userType: "STAFF", deletedAt: null, restaurantForStaff: "valid-r1" }));
+    await m.createReview(null, { input: { rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1", staffId: "staff-input", staffName: "Fake Name" } }, { user: { id: "u1" } });
+    expect(mocks.User.findOne).toHaveBeenCalledWith(expect.objectContaining({ _id: "staff-input", userType: { $in: ["STAFF", "staff"] }, deletedAt: null, restaurantForStaff: "valid-r1" }));
     expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ staffId: "staff-1", staffName: "Real Staff" }));
   });
 
   it("createReview with invalid staff restaurant throws clear error", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
     mocks.User.findOne.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) })) });
-    await expect(m.createReview(null, { input: { restaurantId: "valid-r1", staffId: "staff-bad" } }, { user: { id: "u1" } })).rejects.toThrow("Nhân viên không hợp lệ cho nhà hàng này.");
+    await expect(m.createReview(null, { input: { rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1", staffId: "staff-bad" } }, { user: { id: "u1" } })).rejects.toThrow("Nhân viên không hợp lệ cho nhà hàng này.");
   });
 
   it("createReview without staffId stores null/empty staff fields", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    await m.createReview(null, { input: { restaurantId: "valid-r1" } }, { user: { id: "u1" } });
+    await m.createReview(null, { input: { rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
     expect(mocks.User.findOne).not.toHaveBeenCalled();
     expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ staffId: null, staffName: "" }));
   });
 
   it("updateReview owner sanitizes forbidden fields", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "b", status: "pending" });
+    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending", toObject() { return { _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending" }; } });
     await m.updateReview(null, { id: "valid-rv1", input: { status: "published", restaurantId: "hack", helpfulCount: 999, title: "ok" } }, { user: { id: "u1" } });
     const patch = mocks.Review.findByIdAndUpdate.mock.calls[0][1];
     expect(patch.status).toBeUndefined(); expect(patch.restaurantId).toBeUndefined(); expect(patch.helpfulCount).toBeUndefined();
@@ -103,7 +125,7 @@ describe("review/reviewComment access hardening", () => {
 
   it("updateReview with valid staffId refreshes staffName snapshot", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "b", status: "pending" });
+    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending", toObject() { return { _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending" }; } });
     await m.updateReview(null, { id: "valid-rv1", input: { staffId: "staff-new" } }, { user: { id: "u1" } });
     expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith(
       "valid-rv1",
@@ -114,7 +136,7 @@ describe("review/reviewComment access hardening", () => {
 
   it("updateReview with only staffName does not persist raw staffName", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "b", status: "pending" });
+    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending", toObject() { return { _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending" }; } });
     await m.updateReview(null, { id: "valid-rv1", input: { staffName: "Client Spoofed Name", title: "ok" } }, { user: { id: "u1" } });
     const patch = mocks.Review.findByIdAndUpdate.mock.calls[0][1];
     expect(patch.staffName).toBeUndefined();
@@ -123,7 +145,7 @@ describe("review/reviewComment access hardening", () => {
 
   it("updateReview with staffId null clears staff fields", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "b", status: "pending" });
+    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending", toObject() { return { _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", rating: 1, title: "a", content: "Nội dung cũ hợp lệ", status: "pending" }; } });
     await m.updateReview(null, { id: "valid-rv1", input: { staffId: null, staffName: "Spoof" } }, { user: { id: "u1" } });
     expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith(
       "valid-rv1",

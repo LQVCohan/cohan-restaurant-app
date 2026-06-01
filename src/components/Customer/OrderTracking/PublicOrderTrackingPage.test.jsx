@@ -14,7 +14,7 @@ describe("PublicOrderTrackingPage", () => {
   it("renders tracking status and items", async () => {
     const mocks = [{ request: { query: CUSTOMER_TRACK_ORDER, variables: { trackingToken: "token-1" } }, result: { data: { customerTrackOrder: baseTracking } } }];
     renderPage(mocks);
-    expect(await screen.findByText(/Mã theo dõi: ORD-1/)).toBeInTheDocument();
+    expect(await screen.findByText("ORD-1")).toBeInTheDocument();
     expect(screen.getByText("Tiến trình đơn hàng")).toBeInTheDocument();
     expect(screen.getByText("Món đã gọi")).toBeInTheDocument();
     expect(screen.getByText("Phở")).toBeInTheDocument();

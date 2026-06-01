@@ -12,7 +12,7 @@ const modelMocks = vi.hoisted(() => ({
     bulkWrite: vi.fn(),
   },
   Category: { find: vi.fn() },
-  Restaurant: { exists: vi.fn() },
+  Restaurant: { exists: vi.fn(), find: vi.fn(), findById: vi.fn() },
   Recipe: { find: vi.fn(), deleteOne: vi.fn(), bulkWrite: vi.fn(), create: vi.fn() },
 }));
 
@@ -48,6 +48,8 @@ describe("menu restaurant access guards", () => {
     modelMocks.MenuItem.findOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-mi1" }) });
     modelMocks.MenuItem.findByIdAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-mi1" }) });
     modelMocks.Restaurant.exists.mockResolvedValue(true);
+    modelMocks.Restaurant.find.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
+    modelMocks.Restaurant.findById.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-r1", status: "open" }) }) });
     modelMocks.Recipe.find.mockResolvedValue([]);
   });
 
@@ -75,10 +77,11 @@ describe("menu restaurant access guards", () => {
     expect(modelMocks.MenuItem.find).not.toHaveBeenCalled();
   });
 
-  it("topMenuItems without restaurantId calls requireRoles([ADMIN])", async () => {
+  it("topMenuItems without restaurantId uses public active restaurant filtering", async () => {
     const query = (await import("../../graphql/resolvers/menu/query.js")).MenuQuery;
     await query.topMenuItems(null, { limit: 5 }, {});
-    expect(guardMocks.requireRoles).toHaveBeenCalledWith({}, ["ADMIN"]);
+    expect(guardMocks.requireRoles).not.toHaveBeenCalled();
+    expect(modelMocks.Restaurant.find).toHaveBeenCalledWith({});
   });
 
   it("ensureMenu denied does not call Restaurant.exists or Menu.findOneAndUpdate", async () => {

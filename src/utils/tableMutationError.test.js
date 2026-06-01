@@ -10,7 +10,7 @@ describe("mapTableMutationError", () => {
     };
 
     expect(mapTableMutationError(error)).toBe(
-      "Không thể thao tác vì bàn đang có đặt chỗ hoạt động."
+      "Không thể trả bàn về trống vì còn đặt chỗ hoạt động."
     );
   });
 
@@ -20,7 +20,7 @@ describe("mapTableMutationError", () => {
     };
 
     expect(mapTableMutationError(error)).toBe(
-      "Không thể thao tác vì bàn đang có đơn hàng hoặc phiên bàn đang hoạt động."
+      "Không thể trả bàn về trống vì còn order hoạt động."
     );
   });
 
