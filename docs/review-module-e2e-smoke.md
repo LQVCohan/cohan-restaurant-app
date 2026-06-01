@@ -1,8 +1,8 @@
 # Review module E2E/API smoke
 
-Repo chưa có Playwright/Cypress dependency ở `package.json`, nên PR này thêm smoke test API nhẹ bằng Node `fetch` tại `scripts/review-flow-smoke.mjs` thay vì cài framework E2E lớn.
+Repo chưa có Playwright/Cypress dependency ở `package.json`, nên smoke test API dùng Node native `fetch` tại `scripts/review-flow-smoke.mjs`.
 
-## Chuẩn bị
+## Chuẩn bị live mode
 
 1. Seed demo data:
    ```bash
@@ -11,7 +11,8 @@ Repo chưa có Playwright/Cypress dependency ở `package.json`, nên PR này th
 2. Chạy backend/frontend local và lấy JWT customer/manager từ luồng login demo.
 3. Export biến môi trường:
    ```bash
-   export GRAPHQL_URL=http://localhost:4000/graphql
+   export GRAPHQL_ENDPOINT=http://localhost:4000/graphql
+   # hoặc API_URL / GRAPHQL_URL nếu môi trường cũ đang dùng tên đó
    export CUSTOMER_TOKEN=<customer jwt>
    export MANAGER_TOKEN=<manager jwt>
    export DEMO_RESTAURANT_ID=<restaurant id>
@@ -19,20 +20,36 @@ Repo chưa có Playwright/Cypress dependency ở `package.json`, nên PR này th
 
 ## Chạy smoke
 
+Dry-run không cần token, chỉ kiểm tra env và in flow:
+
 ```bash
-node scripts/review-flow-smoke.mjs
+node scripts/review-flow-smoke.mjs --dry-run
+```
+
+Strict mode fail rõ nếu thiếu env:
+
+```bash
+node scripts/review-flow-smoke.mjs --strict
+```
+
+Live mode đầy đủ:
+
+```bash
+GRAPHQL_ENDPOINT=http://localhost:4000/graphql CUSTOMER_TOKEN=... MANAGER_TOKEN=... DEMO_RESTAURANT_ID=... node scripts/review-flow-smoke.mjs --strict
 ```
 
 ## Flow được kiểm tra
 
-- Customer tạo review 2 sao ở trạng thái pending.
+- Customer tạo review 2 sao với prefix `[SMOKE]` ở trạng thái pending.
 - Manager thấy pending review.
 - Manager approve review.
 - Customer/public query thấy review published.
 - Manager gửi official reply.
-- Customer thấy `firstOfficialReply` (badge “Phản hồi từ nhà hàng” ở UI).
+- Customer thấy `firstOfficialReply`.
 - Customer report review.
 - Manager resolve report.
 - Manager query analytics/action queue/insight summary.
 
-Nếu muốn nâng lên Playwright sau này, giữ cùng data-testid/GraphQL checkpoints để tránh brittle theo text UI.
+## Lưu ý dữ liệu
+
+Script dùng prefix `[SMOKE]` cho title/content/reply/report note để dễ lọc. Hiện chưa có cleanup mutation an toàn cho toàn bộ review/comment/report nên dữ liệu smoke có thể tồn tại trong môi trường demo; dùng nhà hàng demo riêng hoặc xoá thủ công sau khi quay video nếu cần.

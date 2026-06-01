@@ -495,6 +495,37 @@
   h3 { margin: 0; color: #111827; font-size: 1rem; line-height: 1.45; }
 }
 
+.reviews-insight-card--empty {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.reviews-insight-card__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(79, 70, 229, 0.1);
+    color: #4338ca;
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+}
+
+.reviews-insight-card__fallback-note {
+  display: block;
+  margin-top: 8px;
+  color: #92400e;
+  font-weight: 700;
+}
+
+
 .reviews-insight-card__columns {
   margin-top: 14px;
   display: grid;

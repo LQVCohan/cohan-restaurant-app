@@ -220,6 +220,17 @@ const normalizeReview = (review) => ({
   first_official_reply: review.firstOfficialReply || null,
 });
 
+
+function getInsightSourceLabel(source) {
+  if (source === "gemini") return "Gemini AI";
+  if (source === "ai") return "AI";
+  if (source === "heuristic_fallback") return "Heuristic fallback";
+  return "Heuristic summary";
+}
+
+function asList(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
 function getRoleText(user) {
   return String(user?.roleName || user?.role?.slug || user?.role?.name || "")
     .trim()
@@ -748,18 +759,29 @@ const ReviewManagement = () => {
                 ) : (
                   <>
 
-                    {analytics?.reviewInsightSummary && (
+                    {analytics?.reviewInsightSummary ? (
                       <div className="reviews-insight-card">
                         <div>
-                          <p>Tóm tắt insight ({analytics.reviewInsightSummary.source === "ai" ? "AI" : "Heuristic summary"})</p>
+                          <p>Tóm tắt insight</p>
+                          <div className="reviews-insight-card__meta">
+                            <span>{getInsightSourceLabel(analytics.reviewInsightSummary.source)}</span>
+                            {Number.isFinite(Number(analytics.reviewInsightSummary.confidence)) && (
+                              <span>Độ tin cậy {Math.round(Number(analytics.reviewInsightSummary.confidence) * 100)}%</span>
+                            )}
+                          </div>
                           <h3>{analytics.reviewInsightSummary.summary}</h3>
+                          {analytics.reviewInsightSummary.source === "heuristic_fallback" && (
+                            <small className="reviews-insight-card__fallback-note">AI không khả dụng, hệ thống dùng phân tích heuristic.</small>
+                          )}
                         </div>
                         <div className="reviews-insight-card__columns">
-                          <section><strong>Khách khen</strong>{analytics.reviewInsightSummary.positives.map((item) => <span key={item}>{item}</span>)}</section>
-                          <section><strong>Khách chê</strong>{analytics.reviewInsightSummary.negatives.map((item) => <span key={item}>{item}</span>)}</section>
-                          <section><strong>Hành động đề xuất</strong>{analytics.reviewInsightSummary.recommendedActions.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</section>
+                          <section><strong>Khách khen</strong>{asList(analytics.reviewInsightSummary.positives).map((item) => <span key={item}>{item}</span>)}</section>
+                          <section><strong>Khách chê</strong>{asList(analytics.reviewInsightSummary.negatives).map((item) => <span key={item}>{item}</span>)}</section>
+                          <section><strong>Hành động đề xuất</strong>{asList(analytics.reviewInsightSummary.recommendedActions).slice(0, 3).map((item) => <span key={item}>{item}</span>)}</section>
                         </div>
                       </div>
+                    ) : (
+                      <div className="reviews-insight-card reviews-insight-card--empty">Chưa đủ dữ liệu để tạo insight.</div>
                     )}
 
                     <div className="reviews-analytics-cards">

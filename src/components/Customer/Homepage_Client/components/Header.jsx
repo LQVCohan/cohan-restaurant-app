@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
-import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
+import CustomerNotificationBell from "@/components/Customer/common/CustomerNotificationBell";
 
 
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
@@ -11,22 +11,11 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const location = useLocation();
   const { user, logout, restaurants = [], refRestaurant = [] } =
     useContext(AuthContext) || {};
-  const { notifications, unreadCount, markAsRead, markAllAsRead } =
-    useCustomerNotifications();
-
-  const counts = {
-    coupons: 3,
-    orders: 2,
-    favorites: 0,
-    notifications: unreadCount,
-  };
-
+  const counts = { coupons: 3, orders: 2 };
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotify, setShowNotify] = useState(false);
   const [lang, setLang] = useState("vi");
 
   const userMenuRef = useRef(null);
-  const notifyRef = useRef(null);
   const couponRestaurantId = useMemo(() => {
     const restaurant = [...restaurants, ...refRestaurant].find(Boolean);
     if (!restaurant) return "";
@@ -42,7 +31,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
   const goto = (path) => {
     setShowUserMenu(false);
-    setShowNotify(false);
     if (location.pathname !== path) navigate(path);
   };
 
@@ -50,9 +38,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
     function handleClickOutside(event) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
-      }
-      if (notifyRef.current && !notifyRef.current.contains(event.target)) {
-        setShowNotify(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -80,14 +65,8 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
       : "Khách hàng";
   }, [user]);
 
-  const toggleNotify = () => {
-    setShowNotify(!showNotify);
-    if (showUserMenu) setShowUserMenu(false);
-  };
-
   const toggleUser = () => {
     setShowUserMenu(!showUserMenu);
-    if (showNotify) setShowNotify(false);
   };
 
   return (
@@ -127,69 +106,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
           <HeaderSearch />
 
-          <div className="header__notify" ref={notifyRef}>
-            <button
-              className={`header__notify-btn ${showNotify ? "is-active" : ""}`}
-              onClick={toggleNotify}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              {counts.notifications > 0 && (
-                <span className="badge">{counts.notifications}</span>
-              )}
-            </button>
-
-            {showNotify && (
-              <div className="header__notify-dropdown">
-                <div className="header__notify-header">
-                  <h3>Thông báo</h3>
-                  <button className="mark-read" onClick={markAllAsRead}>
-                    Đánh dấu đã đọc
-                  </button>
-                </div>
-                <div className="header__notify-list">
-                  {notifications.length === 0 ? (
-                    <p className="notify-item__empty">Không có thông báo</p>
-                  ) : (
-                    notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`notify-item ${!notif.isRead ? "unread" : ""}`}
-                      onClick={() => markAsRead(notif.id)}
-                    >
-                      <div className="notify-item__img">
-                        <img src={notif.image} alt="icon" />
-                      </div>
-                      <div className="notify-item__content">
-                        <p className="notify-item__text">{notif.text}</p>
-                        <span className="notify-item__time">{notif.time}</span>
-                      </div>
-                      {!notif.isRead && (
-                        <div className="notify-item__dot"></div>
-                      )}
-                    </div>
-                  ))
-                  )}
-                </div>
-                <div className="header__notify-footer">
-                  <button onClick={() => goto("/notifications")}>
-                    Xem tất cả
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <CustomerNotificationBell />
 
           {user ? (
             <div className="header__user-menu" ref={userMenuRef}>

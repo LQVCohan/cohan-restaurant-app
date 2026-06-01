@@ -89,6 +89,15 @@ const RestaurantDetail = () => {
   const [previewRestaurantOverride, setPreviewRestaurantOverride] = useState(null);
 
   useEffect(() => {
+    if (location.hash === "#reviews" || location.state?.openTab === "reviews") {
+      setActiveTab("reviews");
+      window.setTimeout(() => {
+        document.querySelector(".reviews-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }, [location.hash, location.state]);
+
+  useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);

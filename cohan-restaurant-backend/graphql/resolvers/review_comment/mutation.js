@@ -15,11 +15,24 @@ async function notifyOfficialReply({ review, comment, ctx }) {
       restaurantId: review.restaurantId,
       type: "review.official_reply.created",
       payload: {
+        title: "Nhà hàng đã phản hồi review",
+        message: "Nhà hàng đã phản hồi đánh giá của bạn",
         reviewId: review.id || String(review._id),
         commentId: comment.id || String(comment._id),
-        message: "Nhà hàng đã phản hồi đánh giá của bạn",
+        restaurantId: String(review.restaurantId || ""),
+        restaurantName: review.restaurantName || "",
+        reviewTitle: review.title || "",
+        rating: review.rating,
       },
     });
+    if (ctx?.io) {
+      ctx.io.to(`user_${review.customerId}`).emit("notificationCreated", {
+        type: "review.official_reply.created",
+        restaurantId: String(review.restaurantId || ""),
+        reviewId: review.id || String(review._id),
+        message: "Nhà hàng đã phản hồi đánh giá của bạn",
+      });
+    }
     await logComment({ restaurantId: review.restaurantId, verb: "review.notification.officialReply", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: review.id || review._id }, actorUserId: ctx?.user?.id, meta: { channel: "in-app" } });
   } catch (err) {
     await logComment({ restaurantId: review.restaurantId, verb: "review.notification.failed", object: { kind: "ReviewComment", id: comment.id }, target: { kind: "Review", id: review.id || review._id }, actorUserId: ctx?.user?.id, meta: { error: err.message } });

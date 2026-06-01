@@ -163,9 +163,9 @@ async function main() {
   ]);
   await Notification.insertMany([
     { toUserId: manager._id, restaurantId: restaurant._id, type: "review.reported", payload: { demoTag: DEMO_TAG, reviewId: reportedReview.id, message: "Có báo cáo đánh giá mới cần xử lý" } },
-    { toRole: "manager", restaurantId: restaurant._id, type: "review.negative.created", payload: { demoTag: DEMO_TAG, reviewId: reviews[3].id, message: "Review 1 sao cần phản hồi" } },
-    { toUserId: customers[0]._id, restaurantId: restaurant._id, type: "review.official_reply.created", payload: { demoTag: DEMO_TAG, reviewId: reviews[0].id, message: "Nhà hàng đã phản hồi đánh giá của bạn" } },
-    { toUserId: customers[7]._id, restaurantId: restaurant._id, type: "review.published", payload: { demoTag: DEMO_TAG, reviewId: reviews[7].id, message: "Đánh giá demo của bạn đã được duyệt" }, readAt: daysAgo(1) },
+    { toRole: "manager", restaurantId: restaurant._id, type: "review.negative.created", payload: { demoTag: DEMO_TAG, title: "Review tiêu cực mới", reviewId: reviews[3].id, restaurantId: String(restaurant._id), restaurantName: restaurant.name, reviewTitle: reviews[3].title, rating: reviews[3].rating, message: "Review 1 sao cần phản hồi" } },
+    { toUserId: customers[0]._id, restaurantId: restaurant._id, type: "review.official_reply.created", payload: { demoTag: DEMO_TAG, title: "Nhà hàng đã phản hồi review", reviewId: reviews[0].id, restaurantId: String(restaurant._id), restaurantName: restaurant.name, reviewTitle: reviews[0].title, rating: reviews[0].rating, message: "Nhà hàng đã phản hồi đánh giá của bạn" } },
+    { toUserId: customers[7]._id, restaurantId: restaurant._id, type: "review.published", payload: { demoTag: DEMO_TAG, title: "Review đã được duyệt", reviewId: reviews[7].id, restaurantId: String(restaurant._id), restaurantName: restaurant.name, reviewTitle: reviews[7].title, rating: reviews[7].rating, message: "Đánh giá demo của bạn đã được duyệt" }, readAt: daysAgo(1) },
   ]);
 
   await EventLog.insertMany(reviews.slice(0, 6).flatMap((review) => ([

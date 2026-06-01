@@ -10,13 +10,8 @@ vi.mock("./HeaderSearch.jsx", () => ({
   default: () => <div data-testid="header-search" />,
 }));
 
-vi.mock("@/context/CustomerNotificationContext", () => ({
-  useCustomerNotifications: () => ({
-    notifications: [],
-    unreadCount: 0,
-    markAsRead: vi.fn(),
-    markAllAsRead: vi.fn(),
-  }),
+vi.mock("@/components/Customer/common/CustomerNotificationBell", () => ({
+  default: () => <div data-testid="customer-notification-bell" />,
 }));
 
 const LocationProbe = () => {
