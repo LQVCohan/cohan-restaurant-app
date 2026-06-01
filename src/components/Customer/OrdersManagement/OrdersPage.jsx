@@ -14,7 +14,6 @@ import { AuthContext } from "../../../context/AuthContext";
 import CancelOrderModal from "./modals/CancelOrderModal";
 import ChangeTimeModal from "./modals/ChangeTimeModal";
 import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
-import TrackingModal from "./modals/TrackingModal";
 import ChangeTableModal from "./modals/ChangeTableModal";
 import {
   getOrderActionErrorMessage,
@@ -264,10 +263,12 @@ function OrderDetailModal({ detailTarget, onClose }) {
           ? "Chi tiết đơn tại quán"
           : kind === "takeaway"
             ? "Chi tiết đơn mang đi"
-            : "Chi tiết đặt bàn"}
+            : kind === "delivery"
+              ? "Chi tiết đơn giao hàng"
+              : "Chi tiết đặt bàn"}
       </Modal.Header>
       <Modal.Body className="order-detail-modal">
-        {["dinein", "takeaway"].includes(kind) ? (
+        {["dinein", "takeaway", "delivery"].includes(kind) ? (
           <>
             {renderField("Mã đơn", orderCode)}
             {renderField("Trạng thái", data.currentStatus || "--")}
@@ -508,7 +509,6 @@ export default function OrdersPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [changeTimeTarget, setChangeTimeTarget] = useState(null);
   const [qrBooking, setQrBooking] = useState(null);
-  const [trackingOrder, setTrackingOrder] = useState(null);
   const [changeTableOpen, setChangeTableOpen] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [receiptTarget, setReceiptTarget] = useState(null);
@@ -575,32 +575,10 @@ export default function OrdersPage() {
   const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
 
-  const buildTrackingUrl = (order) => {
-    const orderId = order?.id;
-    if (!orderId) return null;
-
-    const params = new URLSearchParams();
-    if (order.restaurantId) params.set("restaurantId", order.restaurantId);
-    if (order.orderCode) params.set("orderCode", order.orderCode);
-
-    const query = params.toString();
-    return `/track-delivery/${orderId}${query ? `?${query}` : ""}`;
-  };
-
   const handleItemClick = (item) => {
     const raw = item?.raw;
 
-    if (item?.kind === "delivery") {
-      const url = buildTrackingUrl(raw);
-      if (url) {
-        navigate(url);
-        return;
-      }
-      pushToast("Không đủ thông tin để mở chi tiết đơn.");
-      return;
-    }
-
-    if (item?.kind === "dinein" || item?.kind === "takeaway") {
+    if (["dinein", "takeaway", "delivery"].includes(item?.kind)) {
       if (!raw) {
         pushToast("Không đủ thông tin để mở chi tiết đơn.");
         return;
@@ -819,17 +797,6 @@ export default function OrdersPage() {
           onClick: () => setCancelTarget({ id: o.id, restaurantId: o.restaurantId, kind: "order" }),
         });
       }
-      if (
-        type === "delivery" &&
-        ["shipping", "delivering"].includes(o.currentStatus)
-      ) {
-        actions.unshift({
-          label: "Theo dõi",
-          variant: "primary",
-          onClick: () => setTrackingOrder(o),
-        });
-      }
-
       return {
         key: o.id,
         kind: type,
@@ -993,7 +960,7 @@ export default function OrdersPage() {
         <div className="hero-copy">
           <span className="eyebrow">Trung tâm giao dịch cá nhân</span>
           <h1 id="orders-page-title" className="title">Quản lý đơn hàng & đặt bàn</h1>
-          <p className="subtitle">Theo dõi đơn món, lịch đặt bàn, hóa đơn và trạng thái thanh toán cọc tại một nơi duy nhất.</p>
+          <p className="subtitle">Quản lý đơn món, lịch đặt bàn, hóa đơn và trạng thái thanh toán cọc tại một nơi duy nhất.</p>
           <div className="summary-strip" aria-label="Tổng quan đơn hàng">
             {summaryStats.map((stat) => (
               <div key={stat.label} className="summary-chip">
@@ -1158,11 +1125,6 @@ export default function OrdersPage() {
           setDeleteTarget(null);
         }}
         onClose={() => setDeleteTarget(null)}
-      />
-      <TrackingModal
-        isOpen={!!trackingOrder}
-        onClose={() => setTrackingOrder(null)}
-        order={trackingOrder}
       />
       <OrderDetailModal
         detailTarget={detailTarget}
