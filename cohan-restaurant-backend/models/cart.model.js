@@ -1,6 +1,7 @@
 // src/models/cart.model.js
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
+import { computeCartTotalAmount } from "./cartDerivedFields.js";
 
 const { Schema, Types } = mongoose;
 
@@ -50,6 +51,19 @@ const CartSchema = BaseSchemaModel({
     index: true,
   },
 
+  // Denormalized convenience field for single-restaurant carts. When a cart
+  // contains items from multiple restaurants, item.restaurantId remains the
+  // source of truth and this field is intentionally null.
+  restaurantId: {
+    type: Types.ObjectId,
+    ref: "Restaurant",
+    default: null,
+    index: true,
+  },
+
+  totalAmount: { type: Number, default: 0, min: 0 },
+  lastActivityAt: { type: Date, default: null, index: true },
+
   items: {
     type: [CartItemSchema],
     default: [],
@@ -76,10 +90,7 @@ CartSchema.virtual("totalQuantity").get(function () {
 // Tổng tiền
 CartSchema.virtual("totalPrice").get(function () {
   if (!Array.isArray(this.items)) return 0;
-  return this.items.reduce(
-    (sum, i) => sum + (Number(i?.price) || 0) * (Number(i?.quantity) || 0),
-    0
-  );
+  return computeCartTotalAmount(this.items);
 });
 
 CartSchema.index({ status: 1, "items.holdExpiresAt": 1 });

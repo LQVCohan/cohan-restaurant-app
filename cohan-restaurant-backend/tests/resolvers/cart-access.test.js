@@ -64,6 +64,7 @@ const makeCart = ({
     _id: cartId,
     userId,
     status,
+    restaurantId: null,
     items: cartItems,
     abuse: { ...abuse },
     totalQuantity: cartItems.reduce((sum, it) => sum + Number(it.quantity || 0), 0),
@@ -79,6 +80,7 @@ const makeCart = ({
         _id: this._id,
         userId: this.userId,
         status: this.status,
+        restaurantId: this.restaurantId,
         totalQuantity: this.totalQuantity,
         totalAmount: this.totalAmount,
         lastActivityAt: this.lastActivityAt,
@@ -127,6 +129,9 @@ describe("cart access hardening", () => {
         restaurantId: "valid-r1",
         status: "available",
         inventoryStatus: "IN_STOCK",
+        name: "A",
+        basePrice: 10,
+        thumbImage: "thumb.jpg",
         menuId: "valid-menu-1",
       }),
     );
@@ -435,6 +440,11 @@ describe("cart access hardening", () => {
       })
     );
     expect(result.items[0]._id).toBe("valid-generated-item");
+    expect(result.totalAmount).toBe(20);
+    expect(result.restaurantId).toBe("valid-r1");
+    expect(cart.totalAmount).toBe(20);
+    expect(cart.restaurantId).toBe("valid-r1");
+    expect(cart.lastActivityAt).toBeInstanceOf(Date);
     expect(inv.reserveForOrderTx.mock.calls[0][0].orderCode).not.toContain("[object Object]");
   });
 
@@ -467,6 +477,11 @@ describe("cart access hardening", () => {
       })
     );
     expect(result.items[0]._id).toBe("valid-generated-item");
+    expect(result.totalAmount).toBe(20);
+    expect(result.restaurantId).toBe("valid-r1");
+    expect(cart.totalAmount).toBe(20);
+    expect(cart.restaurantId).toBe("valid-r1");
+    expect(cart.lastActivityAt).toBeInstanceOf(Date);
     expect(inv.reserveForOrderTx.mock.calls[0][0].orderCode).not.toContain("[object Object]");
   });
 

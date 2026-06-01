@@ -162,6 +162,18 @@ const safeRedirectPath = (candidate, fallback) => {
   return candidate;
 };
 
+const getRedirectPathFromLocationState = (state, fallback) => {
+  const from = state?.from;
+  if (typeof from === "string") return safeRedirectPath(from, fallback);
+  if (from?.pathname) {
+    return safeRedirectPath(
+      `${from.pathname}${from.search || ""}${from.hash || ""}`,
+      fallback,
+    );
+  }
+  return fallback;
+};
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -179,14 +191,14 @@ const LoginPage = () => {
   useEffect(() => {
     if (loading || !isAuthenticated || !user) return;
 
-    const redirectTo = safeRedirectPath(
-      location?.state?.from?.pathname,
+    const redirectTo = getRedirectPathFromLocationState(
+      location?.state,
       getRoleHomeRoute(resolveRoleName(user)),
     );
 
     if (location.pathname === redirectTo) return;
     navigate(redirectTo, { replace: true });
-  }, [isAuthenticated, loading, location.pathname, location?.state?.from?.pathname, navigate, user]);
+  }, [isAuthenticated, loading, location.pathname, location?.state, navigate, user]);
 
   useEffect(() => {
     if (!rememberedLoginIdentifier) return;

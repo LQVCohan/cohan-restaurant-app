@@ -1,10 +1,17 @@
 // src/graphql/resolvers/cart/types.js
 import { User, Restaurant, MenuItem } from "../../../models/index.js";
+import { computeCartTotalAmount, resolveCartRestaurantId } from "../../../models/cartDerivedFields.js";
 
 export const CartFieldResolvers = {
   user: async (parent) => {
     if (!parent.userId) return null;
     return User.findById(parent.userId).lean({ virtuals: true });
+  },
+
+  restaurantId: (parent) => {
+    if (parent?.restaurantId) return parent.restaurantId;
+    const items = Array.isArray(parent.items) ? parent.items : [];
+    return resolveCartRestaurantId(items);
   },
 
   totalQuantity: (parent) => {
@@ -13,13 +20,16 @@ export const CartFieldResolvers = {
     return items.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0);
   },
 
+  totalAmount: (parent) => {
+    if (typeof parent.totalAmount === "number") return parent.totalAmount;
+    const items = Array.isArray(parent.items) ? parent.items : [];
+    return computeCartTotalAmount(items);
+  },
+
   totalPrice: (parent) => {
     if (typeof parent.totalPrice === "number") return parent.totalPrice;
     const items = Array.isArray(parent.items) ? parent.items : [];
-    return items.reduce(
-      (sum, i) => sum + (Number(i?.price) || 0) * (Number(i?.quantity) || 0),
-      0
-    );
+    return computeCartTotalAmount(items);
   },
 };
 
