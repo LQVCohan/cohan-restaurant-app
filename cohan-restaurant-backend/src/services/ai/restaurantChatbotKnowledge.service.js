@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import mongoose from "mongoose";
 import { AiChatbotKnowledgeItem } from "../../../models/index.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { requireRestaurantPermission } from "../auth/authorization.service.js";
+import { deleteAiChatbotCacheByPrefix, getOrSetAiChatbotCache } from "./restaurantChatbotCache.service.js";
 
 const MAX_TAGS = 10;
 const MAX_TITLE = 160;
@@ -11,6 +13,16 @@ const MAX_TAG = 40;
 const PRIORITY_MIN = 0;
 const PRIORITY_MAX = 100;
 const SOURCE_TYPES = new Set(["manual", "faq", "policy"]);
+const KNOWLEDGE_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const KNOWLEDGE_SEARCH_CACHE_PREFIX = "ai:knowledge:relevant:";
+
+const knowledgeCachePrefix = (restaurantId) => `${KNOWLEDGE_SEARCH_CACHE_PREFIX}${restaurantId}:`;
+const normalizeMessageForCache = (message) => String(message || "").trim().toLowerCase().slice(0, 500);
+const hashNormalizedMessage = (message) => createHash("sha256").update(message).digest("hex").slice(0, 16);
+const knowledgeCacheKey = ({ restaurantId, limit, message }) => `${knowledgeCachePrefix(restaurantId)}${limit}:${hashNormalizedMessage(normalizeMessageForCache(message))}`;
+const invalidateRelevantKnowledgeCache = (restaurantId) => {
+  if (restaurantId) deleteAiChatbotCacheByPrefix(knowledgeCachePrefix(String(restaurantId)));
+};
 
 const toObjectId = (id) => (id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const clean = (v, max) => String(v || "").trim().slice(0, max);
@@ -105,6 +117,7 @@ export async function createRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
     createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
     updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
   });
+  invalidateRelevantKnowledgeCache(restaurantId);
   return toKnowledgeDto(doc.toObject());
 }
 
@@ -115,6 +128,7 @@ export async function updateRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
   await ensureRestaurantPermission(ctx, found.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
   Object.assign(found, sanitizeInput(input, { partial: true }), { updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
   await found.save();
+  invalidateRelevantKnowledgeCache(found.restaurantId);
   return toKnowledgeDto(found.toObject());
 }
 
@@ -124,6 +138,7 @@ export async function deleteRestaurantAiChatbotKnowledgeItem({ id, ctx }) {
   if (!found) return false;
   await ensureRestaurantPermission(ctx, found.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
   await AiChatbotKnowledgeItem.deleteOne({ _id: found._id });
+  invalidateRelevantKnowledgeCache(found.restaurantId);
   return true;
 }
 
@@ -139,10 +154,7 @@ const scoreByTokens = (item, tokens) => {
   return score;
 };
 
-export async function findRelevantKnowledgeForChatbot({ restaurantId, message, limit = 4 }) {
-  const rid = toObjectId(restaurantId);
-  if (!rid) return [];
-  const safeLimit = Math.min(5, Math.max(1, Number(limit) || 4));
+const loadRelevantKnowledgeForChatbot = async ({ rid, message, safeLimit }) => {
   const query = { restaurantId: rid, enabled: true };
   const search = clean(message, 120);
   if (search) {
@@ -160,6 +172,16 @@ export async function findRelevantKnowledgeForChatbot({ restaurantId, message, l
     .sort((a, b) => b.score - a.score)
     .slice(0, safeLimit)
     .map((row) => row.item);
+};
+
+export async function findRelevantKnowledgeForChatbot({ restaurantId, message, limit = 4 }) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) return [];
+  const safeLimit = Math.min(5, Math.max(1, Number(limit) || 4));
+  const stableRestaurantId = String(rid);
+  return getOrSetAiChatbotCache(knowledgeCacheKey({ restaurantId: stableRestaurantId, limit: safeLimit, message }), async () => (
+    loadRelevantKnowledgeForChatbot({ rid, message, safeLimit })
+  ), KNOWLEDGE_SEARCH_CACHE_TTL_MS);
 }
 
 
@@ -195,6 +217,7 @@ export async function bulkUpdateRestaurantAiChatbotKnowledgeEnabled({ ids = [], 
   }
   for (const rid of byRestaurant.keys()) await ensureRestaurantPermission(ctx, rid, PERMISSIONS.RESTAURANT_WRITE);
   await AiChatbotKnowledgeItem.updateMany({ _id: { $in: oid } }, { $set: { enabled: Boolean(enabled), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) } });
+  for (const rid of byRestaurant.keys()) invalidateRelevantKnowledgeCache(rid);
   return true;
 }
 
@@ -204,6 +227,7 @@ export async function bulkDeleteRestaurantAiChatbotKnowledge({ ids = [], ctx }) 
   const rows = await AiChatbotKnowledgeItem.find({ _id: { $in: oid } }).lean();
   for (const rid of [...new Set(rows.map((r) => String(r.restaurantId || "")) )]) await ensureRestaurantPermission(ctx, rid, PERMISSIONS.RESTAURANT_WRITE);
   await AiChatbotKnowledgeItem.deleteMany({ _id: { $in: oid } });
+  for (const rid of [...new Set(rows.map((r) => String(r.restaurantId || "")) )]) invalidateRelevantKnowledgeCache(rid);
   return true;
 }
 
@@ -261,5 +285,6 @@ export async function importRestaurantAiChatbotKnowledge({ input, ctx }) {
     await AiChatbotKnowledgeItem.create({ restaurantId: rid, title, content, category, tags, enabled, priority, sourceType, createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
     imported += 1;
   }
+  invalidateRelevantKnowledgeCache(input?.restaurantId);
   return { imported, skipped, errors };
 }

@@ -345,6 +345,8 @@ const serializeReservation = (reservation, currency = "VND") => ({
 
 const publicRole = (user) => user ? (roleSlug(user) || user?.roleName || user?.userType || "customer") : "guest";
 
+// User profile context is built in real time and never cached because it contains
+// user-specific identity/role fields that must stay privacy-safe and fresh.
 const buildUserSafeProfile = (user) => {
   if (!user) return { authenticated: false, displayName: "Khách", role: "guest", summary: "Người dùng hiện là khách chưa đăng nhập." };
   const displayName = String(user.fullName || user.name || user.displayName || user.email || "Người dùng").slice(0, 120);
@@ -474,6 +476,8 @@ const isConversationOwned = (conversation, { userId, guestId }) => {
   return false;
 };
 
+// Persisted conversation history is intentionally fetched in real time and never
+// cached because AiChatConversation/AiChatMessage data includes guest/user identifiers.
 const fetchPersistedHistoryForPrompt = async (conversationId) => {
   if (!conversationId) return [];
   const records = await AiChatMessage.find({ conversationId })
@@ -564,6 +568,8 @@ const fetchCoupons = async ({ restaurantId }) => {
     .lean();
 };
 
+// Phase 26 deliberately does not cache order/cart/reservation/profile context:
+// these records are user-specific, privacy-sensitive, and must remain fresh per request.
 const fetchOrders = async ({ restaurantId, message, user }) => {
   const code = extractLookupCode(message);
   const rid = toObjectId(restaurantId);

@@ -685,3 +685,42 @@ Manual customer workflow checks:
 4. Ask “đơn hàng của tôi”, “hồ sơ của tôi”, or “tôi là ai” while logged in and verify quick action cards point to `/orders`, `/profile`, and/or the cart drawer.
 5. Ask for manager-only features as a customer and verify manager links are hidden; repeat as manager/admin and verify dashboard links appear.
 6. Ask “gặp nhân viên” and verify the handoff card starts the existing handoff flow rather than opening arbitrary code.
+
+## Phase 26 - Cache-Augmented Generation layer
+
+Phase 26 adds a small in-memory TTL cache for restaurant-level chatbot configuration and enabled knowledge retrieval. This is a cache-augmented generation layer, not vector RAG: provider behavior, prompt shape, safety/refusal rules, and deterministic action cards remain unchanged.
+
+### What is cached
+
+- **AI Knowledge Base retrieval:** `findRelevantKnowledgeForChatbot({ restaurantId, message, limit })` caches enabled restaurant knowledge matches by restaurant, safe limit, and a SHA-256 hash of the normalized message.
+- **AI Chatbot Settings:** authenticated/private settings lookups cache the merged restaurant settings after permission checks run.
+- **Public AI Chatbot Settings:** public settings cache only the public subset needed by the widget.
+
+### What is not cached
+
+Phase 26 intentionally does **not** cache user-specific or sensitive context:
+
+- cart contents
+- orders
+- reservations
+- user profile context
+- conversation messages/history
+- guest/user identifiers
+- secrets, API keys, passwords, tokens, or provider credentials
+
+### TTL policy
+
+- Private settings cache: **60 seconds**.
+- Public settings cache: **60 seconds**.
+- Enabled knowledge search cache: **5 minutes**.
+
+Expired entries are removed lazily on read. Cache stats are internal/test helpers only and cache contents are not exposed through public GraphQL or frontend APIs.
+
+### Invalidation policy
+
+- Settings updates delete `ai:settings:private:{restaurantId}` and `ai:settings:public:{restaurantId}` after a successful save.
+- Knowledge create/update/delete/import/bulk-enable/bulk-delete operations delete entries with prefix `ai:knowledge:relevant:{restaurantId}:` after successful mutation.
+
+### Safety/privacy rule
+
+Only restaurant-level public chatbot data can enter the cache. User-owned data must be fetched fresh per request so order/cart/reservation/profile answers remain current and cannot leak across users.
