@@ -573,7 +573,13 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   );
 
   return (
-    <Modal isOpen={open} onClose={onClose} size="lg">
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      size="xl"
+      className="custom-table-builder-modal"
+      autoWrapBody={false}
+    >
       <div className="custom-table-builder">
         <div className="custom-table-builder__header">
           <div className="custom-table-builder__icon" aria-hidden="true">✦</div>
