@@ -151,6 +151,14 @@ const formatDistanceMeta = ({ distanceSource, distanceKm, estimatedTravelMinutes
   return `Cách bạn khoảng ${distanceText}`;
 };
 
+const formatRating = (rating) => {
+  if (typeof rating !== "number" || !Number.isFinite(rating) || rating <= 0) {
+    return { label: "Chưa có đánh giá", ariaLabel: "Nhà hàng chưa có đánh giá" };
+  }
+
+  return { label: `★ ${rating.toFixed(1)}`, ariaLabel: `Điểm đánh giá ${rating.toFixed(1)}` };
+};
+
 const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1200&q=80",
@@ -184,7 +192,7 @@ const normalizeRestaurant = (node, index) => {
     priceRange: node.priceRange ?? "",
     hours: formatHours(node.openingHours, node.closingHours),
     addressText: formatAddress(node.address),
-    avgRating: typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
+    avgRating: nullableNumber(node.avgRating),
     lat,
     lng,
     distanceKm,
@@ -314,6 +322,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
             ? Array.from({ length: DEFAULT_RESTAURANT_LIMIT }).map((_, idx) => <SkeletonCard key={idx} />)
             : displayRestaurants.map((r) => {
                 const distanceMetaText = formatDistanceMeta({ distanceSource: r.distanceSource, distanceKm: r.distanceKm, estimatedTravelMinutes: r.estimatedTravelMinutes });
+                const rating = formatRating(r.avgRating);
                 return (
                   <article
                     key={r.id}
@@ -328,7 +337,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
                       <img src={r.image} alt={`Không gian của ${r.name}`} className="res-card__img" loading="lazy" />
                       <div className="res-card__scrim" aria-hidden="true" />
                       <div className="res-card__overlay">
-                        <div className="res-card__rating" aria-label={`Điểm đánh giá ${r.avgRating.toFixed(1)}`}>★ {r.avgRating.toFixed(1)}</div>
+                        <div className="res-card__rating" aria-label={rating.ariaLabel}>{rating.label}</div>
                         {r.hours && <div className="res-card__status">{r.hours}</div>}
                       </div>
                     </div>
