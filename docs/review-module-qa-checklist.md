@@ -57,3 +57,13 @@
 - [ ] Manager UI hiển thị tên dịch vụ dễ hiểu thay vì ID.
 - [ ] Review có `staffId` xuất hiện trong staff performance evidence sau khi tính lại.
 - [ ] CSV export mở được trong Excel/Sheets và tiếng Việt không lỗi encoding.
+
+## Advanced production upgrade checklist
+
+- [ ] Run API smoke: `node scripts/review-flow-smoke.mjs` with `CUSTOMER_TOKEN`, `MANAGER_TOKEN`, `DEMO_RESTAURANT_ID`.
+- [ ] Verify manager/customer NotificationBell shows review notifications and mark-read updates badge.
+- [ ] Verify Review Action Center tiles change filters for moderation, needs reply, report queue and high risk.
+- [ ] Verify ReviewModal audit timeline shows status/reply/report events only for manager/staff with review permissions.
+- [ ] Verify AI insight card renders heuristic summary when `REVIEW_AI_INSIGHTS_ENABLED` is absent/false.
+- [ ] Verify customer review list Load more uses `skip/limit` and report button disables after successful report.
+- [ ] Verify advanced CSV export includes verified source, sentiment, topic tags, official reply, reports, staff and target columns with UTF-8 BOM.

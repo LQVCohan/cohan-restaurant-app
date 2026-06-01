@@ -126,14 +126,12 @@ export default function useCommunication({ restaurantId = null, status = "open" 
 
   const notificationsQuery = useQuery(Q_NOTIFICATIONS, {
     variables: { restaurantId, limit: 50 },
-    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });
 
   const unreadCountQuery = useQuery(Q_UNREAD_NOTIFICATION_COUNT, {
     variables: { restaurantId },
-    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 8000,
   });

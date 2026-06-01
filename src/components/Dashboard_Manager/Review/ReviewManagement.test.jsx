@@ -15,6 +15,7 @@ vi.mock("../shared/ManagerCommandBar", () => ({ default: ({ tabs = [] }) => <nav
 vi.mock("./components/ReviewsSidebarFilters", () => ({ default: () => <aside>Bộ lọc</aside> }));
 vi.mock("./components/ReviewsList", () => ({ default: ({ reviews = [] }) => <section data-testid="reviews-list">{reviews.map((review) => <article key={review.id}>{review.title}</article>)}</section> }));
 vi.mock("./components/ReviewModal", () => ({ default: () => null }));
+vi.mock("@/components/common/NotificationBell", () => ({ default: () => <button>Thông báo review</button> }));
 
 const managerRole = { slug: "manager", name: "Manager", permissions: [{ code: "review.analytics.read" }], directPermissions: [], parentRole: null };
 
@@ -60,6 +61,7 @@ const analyticsPayload = {
   lowRatedTargets: [{ id: "65f100000000000000000102", name: "Tốc độ phục vụ", targetType: "service", count: 1, avgRating: 2 }],
   reportBreakdown: [],
   actionQueueCounts: { needsModeration: 0, needsReply: 1, highRisk: 1 },
+  reviewInsightSummary: { summary: "Heuristic summary", positives: ["ngon"], negatives: ["chậm"], recommendedActions: ["Phản hồi review 1–2 sao"], topPriorities: ["Ưu tiên high risk"], confidence: 0.7, source: "heuristic" },
 };
 
 function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }] } = {}) {
@@ -70,6 +72,7 @@ function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }] } 
     if (source.includes("AllRestaurants")) return { data: { restaurants: { edges: restaurants.map((node) => ({ node })) } } };
     if (source.includes("GetReviews")) return { data: { reviews: { total: 1, items: [review] } }, loading: false, error: null, refetch: vi.fn() };
     if (source.includes("GetReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 2, pending: 0, ratingBreakdown: { 2: 1 } } } };
+    if (source.includes("GetReviewReports")) return { data: { reviewReports: { total: 0, items: [] }, reviewReportStats: { total: 0, pending: 0, resolved: 0, rejected: 0, byReason: {} } }, refetch: vi.fn() };
     if (source.includes("GetReviewAnalytics")) {
       if (options.skip) return { data: undefined, loading: false, error: null, refetch: vi.fn() };
       return { data: { reviewAnalytics: analyticsPayload }, loading: false, error: null, refetch: vi.fn() };
