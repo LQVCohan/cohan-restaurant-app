@@ -29,7 +29,9 @@ const CheckoutPage = () => {
     navigate("/login", { replace: true, state: { from: location } });
   }, [isAuthenticated, loading, location, navigate, showNotification]);
 
-  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const isCustomer =
+    String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase() ===
+    "customer";
 
   const expiredHoldItems = React.useMemo(
     () => (checkoutItems || []).filter((item) => isHoldExpired(item)),

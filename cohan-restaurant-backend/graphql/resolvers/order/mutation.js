@@ -375,6 +375,57 @@ function getRemainingReturnableQuantity(item) {
 const CART_HOLD_CHECKOUT_ERROR =
   "Món trong giỏ đã hết hạn hoặc không còn khớp với đơn hàng. Vui lòng kiểm tra lại giỏ.";
 
+function normalizeCheckoutRoleName(user) {
+  return String(
+    user?.roleName ||
+      user?.roleSlug ||
+      user?.userType ||
+      user?.role?.slug ||
+      user?.role?.name ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function assertCustomerRemoteCheckoutAuth(ctx, inputUserId) {
+  const authUserId =
+    ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
+      ? String(ctx.user.id)
+      : null;
+  if (!authUserId) {
+    throw new GraphQLError("Vui lòng đăng nhập để đặt món.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+
+  if (normalizeCheckoutRoleName(ctx?.user) !== "customer") {
+    throw new GraphQLError(
+      "Chỉ tài khoản khách hàng mới có thể đặt món từ xa.",
+      { extensions: { code: "FORBIDDEN" } },
+    );
+  }
+
+  if (inputUserId && String(inputUserId) !== String(authUserId)) {
+    throw new GraphQLError(
+      "Không thể checkout bằng tài khoản khách hàng khác.",
+      {
+        extensions: { code: "FORBIDDEN" },
+      },
+    );
+  }
+
+  return authUserId;
+}
+
+function computeCartTotalAmount(items = []) {
+  return (items || []).reduce(
+    (sum, item) =>
+      sum + Number(item?.quantity || 0) * Number(item?.price || 0),
+    0,
+  );
+}
+
 function getCheckoutCartRef(item = {}) {
   const cartId = item.cartId ? String(item.cartId) : "";
   const cartItemId = item.cartItemId ? String(item.cartItemId) : "";
@@ -437,7 +488,13 @@ async function removeCheckedOutCartItemsTx({ releasedCartItems, session }) {
 
     if (!(cart.items || []).length) {
       cart.status = "checked_out";
+      cart.totalAmount = 0;
+      cart.restaurantId = undefined;
+    } else {
+      cart.status = "active";
+      cart.totalAmount = computeCartTotalAmount(cart.items);
     }
+    cart.lastActivityAt = new Date();
 
     await cart.save({ session });
   }
@@ -2349,23 +2406,7 @@ export const OrderMutation = {
       pricing,
       promotionIds,
     } = input || {};
-    const authUserId =
-      ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
-        ? String(ctx.user.id)
-        : null;
-    if (!authUserId) {
-      throw new GraphQLError("Vui lòng đăng nhập để đặt món.", {
-        extensions: { code: "UNAUTHENTICATED" },
-      });
-    }
-    if (userId && String(userId) !== String(authUserId)) {
-      throw new GraphQLError(
-        "Không thể checkout bằng tài khoản khách hàng khác.",
-        {
-          extensions: { code: "FORBIDDEN" },
-        },
-      );
-    }
+    const authUserId = assertCustomerRemoteCheckoutAuth(ctx, userId);
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
       throw new Error("orderType must be 'takeaway' or 'delivery'");
     }
@@ -3686,3 +3727,11 @@ export const OrderMutation = {
 };
 
 export default { OrderMutation };
+
+
+export const __customerRemoteCheckoutTestables = {
+  assertCustomerRemoteCheckoutAuth,
+  assertCartHoldCheckoutAllowed,
+  removeCheckedOutCartItemsTx,
+  computeCartTotalAmount,
+};

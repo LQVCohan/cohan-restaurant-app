@@ -158,7 +158,8 @@ const OrderSummaryModal = ({
   const normalizedRole = String(
     user?.roleName || user?.role?.slug || user?.role?.name || "",
   ).toLowerCase();
-  const canUseRemoteCheckout = ["customer", "manager", "admin"].includes(normalizedRole);
+  const isCustomer = normalizedRole === "customer";
+  const canUseRemoteCheckout = Boolean(isAuthenticated && isCustomer && user?.id);
   const apolloClient = useApolloClient();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -192,7 +193,7 @@ const OrderSummaryModal = ({
     preferences: customerFoodPreferences,
     loading: isLoadingFoodPreferences,
   } = useFoodPreferences({
-    skip: !isAuthenticated || !canUseRemoteCheckout,
+    skip: !isAuthenticated || !isCustomer,
   });
   const hasMeaningfulFoodPreferenceNote =
     !!foodPreferenceNote &&
@@ -534,7 +535,7 @@ const OrderSummaryModal = ({
   useEffect(() => {
     let cancelled = false;
     const fetchMenuMetadata = async () => {
-      if (!isAuthenticated || !canUseRemoteCheckout || isLoadingFoodPreferences) {
+      if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) {
         return;
       }
       if (!missingMetadataItems.length) return;
@@ -577,14 +578,14 @@ const OrderSummaryModal = ({
   }, [
     apolloClient,
     isAuthenticated,
-    canUseRemoteCheckout,
+    isCustomer,
     isLoadingFoodPreferences,
     missingMetadataItems,
     menuItemMetadataByKey,
   ]);
 
   const foodPreferenceReviewItems = useMemo(() => {
-    if (!isAuthenticated || !canUseRemoteCheckout || isLoadingFoodPreferences) {
+    if (!isAuthenticated || !isCustomer || isLoadingFoodPreferences) {
       return [];
     }
     return (orderData || [])
@@ -613,7 +614,7 @@ const OrderSummaryModal = ({
   }, [
     customerFoodPreferences,
     isAuthenticated,
-    canUseRemoteCheckout,
+    isCustomer,
     isLoadingFoodPreferences,
     menuItemMetadataByKey,
     orderData,
@@ -641,9 +642,11 @@ const OrderSummaryModal = ({
   }, [orderData]);
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
-      if (!isAuthenticated || !canUseRemoteCheckout || !user?.id) {
-        navigate("/login", { state: { from: "/checkout" } });
-        throw new Error("Vui lòng đăng nhập để giữ món và đặt món.");
+      if (!canUseRemoteCheckout) {
+        if (!isAuthenticated || !user?.id) {
+          navigate("/login", { state: { from: "/checkout" } });
+        }
+        throw new Error("Vui lòng đăng nhập bằng tài khoản khách hàng để đặt món.");
       }
       if (canPreviewDiscount && couponCode.trim() && !discountBreakdown) {
         throw new Error("Vui lòng áp dụng coupon hợp lệ trước khi đặt hàng.");

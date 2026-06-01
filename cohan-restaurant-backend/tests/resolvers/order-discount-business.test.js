@@ -255,8 +255,7 @@ describe("order discount business safety", () => {
       expect(checkoutStart).toBeGreaterThanOrEqual(0);
       const checkoutSrc = src.slice(checkoutStart, checkoutStart + 9000);
 
-      expect(checkoutSrc).toMatch(/Vui lòng đăng nhập để đặt món/);
-      expect(checkoutSrc).toMatch(/userId && String\(userId\) !== String\(authUserId\)/);
+      expect(checkoutSrc).toMatch(/assertCustomerRemoteCheckoutAuth\(ctx, userId\)/);
       expect(checkoutSrc).toMatch(/assertCartHoldCheckoutAllowed\(\{/);
       expect(checkoutSrc).toMatch(/validateAndReleaseCartHoldTx\(\{/);
       expect(checkoutSrc).toMatch(/removeCheckedOutCartItemsTx\(\{ releasedCartItems, session \}\)/);

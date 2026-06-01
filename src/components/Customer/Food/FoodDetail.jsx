@@ -307,7 +307,10 @@ const FoodDetail = () => {
     null;
   const selectedVariantKeyFromState = location.state?.selectedVariantKey || null;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
-  const isCustomer = String(user?.roleName || "").toLowerCase() === "customer";
+  const normalizedRole = String(
+    user?.roleName || user?.role?.slug || user?.role?.name || "",
+  ).toLowerCase();
+  const isCustomer = normalizedRole === "customer";
   const { showNotification } = useNotification();
 
   const {
@@ -682,8 +685,16 @@ const FoodDetail = () => {
       return null;
     }
 
-    if (!user?.id) {
+    if (!isAuthenticated || !user?.id) {
       redirectToLoginForOrdering();
+      return null;
+    }
+
+    if (!isCustomer) {
+      showNotification(
+        "Chỉ tài khoản khách hàng mới có thể giữ món và đặt món.",
+        "warning",
+      );
       return null;
     }
 
