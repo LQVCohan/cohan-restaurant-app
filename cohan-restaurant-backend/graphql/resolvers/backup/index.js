@@ -3,6 +3,13 @@ import { GraphQLError } from "graphql";
 import { AuditLog, BackupRun, Restaurant } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { requireRole } from "../../../utils/authz.js";
+import {
+  buildRestaurantConfigSnapshot,
+  buildSectionCounts,
+  decodeSnapshotBase64,
+  importRestaurantConfigSnapshot,
+  previewRestaurantConfigImport,
+} from "../../../src/services/restaurantConfigBackup.service.js";
 
 const VALID_STATUS = new Set(["planned", "checklist_completed", "cancelled"]);
 const MAX_LIMIT = 100;
@@ -80,6 +87,7 @@ async function assertAccess(ctx, restaurantId) {
   await requireRestaurantAccess(ctx, restaurantId);
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
+  return restaurant;
 }
 
 function toView(doc) {
@@ -106,6 +114,45 @@ function buildRisks(checklist) {
     resolved: Boolean(checklist[field]),
     description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi chốt checklist backup.",
   }));
+}
+
+
+function configFileName(snapshot) {
+  const name = String(snapshot?.source?.restaurantName || "restaurant")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "restaurant";
+  const stamp = String(snapshot?.createdAt || new Date().toISOString()).slice(0, 10);
+  return `${name}-config-snapshot-${stamp}.json`;
+}
+
+function toConfigBackupPreview(restaurantId, snapshot, sections) {
+  return {
+    restaurantId: String(restaurantId),
+    fileName: configFileName(snapshot),
+    schemaVersion: snapshot.schemaVersion,
+    createdAt: snapshot.createdAt,
+    counts: buildSectionCounts(snapshot, sections),
+    warnings: [
+      "Đây là Restaurant Configuration Snapshot, không thay thế database backup vận hành.",
+      "Máy in dùng device id/local IP có thể cần chỉnh lại sau restore.",
+    ],
+  };
+}
+
+function backupScopeFromSections(sections = {}) {
+  return normalizeScope({
+    ordersAndPayments: false,
+    tablesAndFloorPlan: Boolean(sections.floorTableLayout),
+    menuAndPricing: Boolean(sections.menuCatalog),
+    inventory: Boolean(sections.inventoryMaster),
+    staffAndPermissions: false,
+    schedules: Boolean(sections.schedulingPolicy),
+    customersAndPromotions: Boolean(sections.customerRankSettings || sections.promotionConfig),
+    reportsAndReconciliation: false,
+  });
 }
 
 async function safeAuditLog(payload) {
@@ -144,6 +191,21 @@ export default {
         .lean();
       return rows.map(toView);
     },
+    restaurantConfigBackupPreview: async (_, { input }, ctx) => {
+      const restaurantId = input?.restaurantId;
+      await assertAccess(ctx, restaurantId);
+      try {
+        const snapshot = await buildRestaurantConfigSnapshot({
+          restaurantId,
+          sections: input?.sections,
+          actorId: ctx?.user?.id || ctx?.user?._id,
+        });
+        return toConfigBackupPreview(restaurantId, snapshot, input?.sections);
+      } catch (error) {
+        throw badInput(error.message || "Cannot build restaurant config backup preview");
+      }
+    },
+
   },
   Mutation: {
     createBackupRun: async (_, { input }, ctx) => {
@@ -183,6 +245,127 @@ export default {
       });
 
       return toView(created);
+    },
+
+
+
+    exportRestaurantConfigBackup: async (_, { input }, ctx) => {
+      const restaurantId = input?.restaurantId;
+      await assertAccess(ctx, restaurantId);
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+      try {
+        const snapshot = await buildRestaurantConfigSnapshot({ restaurantId, sections: input?.sections, actorId });
+        const json = JSON.stringify(snapshot, null, 2);
+        const contentBase64 = Buffer.from(json, "utf8").toString("base64");
+
+        await safeAuditLog({
+          action: "CONFIG_BACKUP_EXPORTED",
+          module: "backup",
+          targetType: "Restaurant",
+          targetId: restaurantId,
+          restaurantId,
+          actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          after: { checksum: snapshot.checksum, counts: snapshot.counts, sections: Object.keys(snapshot.sections || {}) },
+        });
+
+        return {
+          fileName: configFileName(snapshot),
+          mimeType: "application/json",
+          encoding: "base64",
+          contentBase64,
+          checksum: snapshot.checksum,
+          sizeBytes: Buffer.byteLength(json, "utf8"),
+          createdAt: snapshot.createdAt,
+        };
+      } catch (error) {
+        throw badInput(error.message || "Cannot export restaurant config backup");
+      }
+    },
+
+    previewRestaurantConfigImport: async (_, { input }, ctx) => {
+      const targetRestaurantId = input?.targetRestaurantId;
+      await assertAccess(ctx, targetRestaurantId);
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+      try {
+        const snapshot = decodeSnapshotBase64(input?.fileContentBase64);
+        const result = await previewRestaurantConfigImport({
+          targetRestaurantId,
+          snapshot,
+          mode: input?.mode || "clone",
+          sections: input?.sections,
+        });
+        await safeAuditLog({
+          action: "CONFIG_BACKUP_IMPORT_PREVIEWED",
+          module: "backup",
+          targetType: "Restaurant",
+          targetId: targetRestaurantId,
+          restaurantId: targetRestaurantId,
+          actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          after: { mode: result.mode, valid: result.valid, sourceRestaurantName: result.sourceRestaurantName },
+        });
+        return result;
+      } catch (error) {
+        return {
+          valid: false,
+          schemaVersion: null,
+          sourceRestaurantName: null,
+          targetRestaurantId: String(targetRestaurantId),
+          mode: input?.mode || "clone",
+          changes: [],
+          warnings: [],
+          errors: [error.message || "Invalid restaurant config snapshot file"],
+        };
+      }
+    },
+
+    importRestaurantConfigBackup: async (_, { input }, ctx) => {
+      const targetRestaurantId = input?.targetRestaurantId;
+      await assertAccess(ctx, targetRestaurantId);
+      const actorId = ctx?.user?.id || ctx?.user?._id;
+      let snapshot;
+      try {
+        snapshot = decodeSnapshotBase64(input?.fileContentBase64);
+      } catch (error) {
+        throw badInput(error.message || "Invalid restaurant config snapshot file");
+      }
+      const result = await importRestaurantConfigSnapshot({
+        targetRestaurantId,
+        snapshot,
+        mode: input?.mode || "clone",
+        sections: input?.sections,
+        actorId,
+        dryRun: input?.dryRun ?? true,
+        replaceExisting: Boolean(input?.replaceExisting),
+      });
+      let backupRun = null;
+      if (!result.success && !result.dryRun) throw badInput((result.errors || []).join("; ") || "Import failed");
+      if (result.success && !result.dryRun) {
+        const enabled = Object.fromEntries((result.changes || []).map((entry) => [entry.section, true]));
+        const created = await BackupRun.create({
+          restaurantId: targetRestaurantId,
+          status: "checklist_completed",
+          checklist: { ...DEFAULT_CHECKLIST, exportPrepared: true, settingsReviewed: true, operatorRecorded: true },
+          scope: backupScopeFromSections(enabled),
+          note: `Imported restaurant configuration snapshot from ${snapshot.source?.restaurantName || snapshot.source?.restaurantId || "unknown source"}. Mode: ${result.mode}.`,
+          createdBy: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          completedBy: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          completedAt: new Date(),
+        });
+        backupRun = toView(created);
+        await safeAuditLog({
+          action: "CONFIG_BACKUP_IMPORTED",
+          module: "backup",
+          targetType: "Restaurant",
+          targetId: targetRestaurantId,
+          restaurantId: targetRestaurantId,
+          actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
+          after: { mode: result.mode, checksum: snapshot.checksum, changes: result.changes },
+        });
+      }
+      return { ...result, backupRun };
     },
 
     updateBackupRun: async (_, { input }, ctx) => {
