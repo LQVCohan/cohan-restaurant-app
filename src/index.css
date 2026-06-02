@@ -1,6 +1,7 @@
 @import "./components/Customer/Food/FoodDetail.cartfix.css";
 @import "./components/Customer/Food/FoodDetail.ux10.css";
 @import "./components/Customer/Food/FoodDetail.product.css";
+@import "./pages/CheckoutPage.polish.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
