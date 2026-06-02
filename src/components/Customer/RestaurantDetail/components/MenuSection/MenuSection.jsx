@@ -185,6 +185,21 @@ const MenuSection = ({
     removeRestaurantItems,
   });
 
+  const cartItemCount = getTotalItems();
+  const cartTotalPrice = getTotalPrice();
+  const hasCartItems = cartItemCount > 0;
+
+  useEffect(() => {
+    if (!hasCartItems && isCartOpen) {
+      setIsCartOpen(false);
+    }
+  }, [hasCartItems, isCartOpen]);
+
+  const openCartDrawer = () => {
+    if (!hasCartItems) return;
+    setIsCartOpen(true);
+  };
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedSearch(searchInput.trim());
@@ -551,36 +566,39 @@ const MenuSection = ({
         </main>
       </div>
 
-
-      <button type="button" className="cart-fab cart-fab--desktop" onClick={() => setIsCartOpen(true)}>
-        <ShoppingCart size={24} />
-        {getTotalItems() > 0 && <span className="count">{getTotalItems()}</span>}
-      </button>
-
-      {getTotalItems() > 0 && (
-        <button
-          type="button"
-          className="mobile-cart-bar"
-          onClick={() => setIsCartOpen(true)}
-        >
-          <span>Xem giỏ hàng • {getTotalItems()} món • {formatPrice(getTotalPrice())}</span>
+      {hasCartItems && (
+        <button type="button" className="cart-fab cart-fab--desktop" onClick={openCartDrawer}>
+          <ShoppingCart size={24} />
+          <span className="count">{cartItemCount}</span>
         </button>
       )}
 
-      <Cart
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cart={cart}
-        onUpdateQuantity={updateCartItemQuantity}
-        totalPrice={getTotalPrice()}
-        onClearCart={clearCustomerCart}
-        onRemoveRestaurantItems={removeRestaurantScopedItems}
-        onRemoveItem={removeCartLineItem}
-        isBusy={isBusy}
-        busyItemIds={busyItemIds}
-        busyRestaurantIds={busyRestaurantIds}
-        isClearing={isClearing}
-      />
+      {hasCartItems && (
+        <button
+          type="button"
+          className="mobile-cart-bar"
+          onClick={openCartDrawer}
+        >
+          <span>Xem giỏ hàng • {cartItemCount} món • {formatPrice(cartTotalPrice)}</span>
+        </button>
+      )}
+
+      {hasCartItems && (
+        <Cart
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cart={cart}
+          onUpdateQuantity={updateCartItemQuantity}
+          totalPrice={cartTotalPrice}
+          onClearCart={clearCustomerCart}
+          onRemoveRestaurantItems={removeRestaurantScopedItems}
+          onRemoveItem={removeCartLineItem}
+          isBusy={isBusy}
+          busyItemIds={busyItemIds}
+          busyRestaurantIds={busyRestaurantIds}
+          isClearing={isClearing}
+        />
+      )}
     </div>
   );
 };
