@@ -1,12 +1,22 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 
 const CONFIG_REQUIRED_MESSAGE = "AI 3D generation provider is not configured";
 const PENDING_PROVIDER_MESSAGE = "AI 3D generation provider adapter is pending implementation";
+const PROMPT_READY_MESSAGE =
+  "Ollama/Gemini prompt pipeline is ready, but no GLB model is generated until a real 3D generation engine/provider is connected.";
 const MOCK_PROVIDER = "mock";
+const OLLAMA_PROVIDER = "ollama";
+const GEMINI_PROVIDER = "gemini";
+const DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434";
+const DEFAULT_OLLAMA_MODEL = "llava";
+const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
+const HYBRID_PROVIDER_ALIASES = new Set(["ollama-gemini", "ollama_gemini", "hybrid", "local-gemini"]);
 const jobStore = new Map();
 
 const normalizeBoolean = (value) => ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 const trim = (value) => String(value || "").trim();
+const normalizeProviderName = (value) => trim(value).toLowerCase();
 const normalizeTags = (tags) => {
   if (Array.isArray(tags)) return tags.map(String).map((tag) => tag.trim()).filter(Boolean);
   return String(tags || "")
@@ -21,16 +31,69 @@ const normalizeDimensions = (dimensions = {}) => ["width", "depth", "height", "d
   return acc;
 }, {});
 
+const omitImagePayloads = (input = {}) => ({ ...input, images: [] });
+
+const safeJsonParse = (value, fallback = null) => {
+  if (!value) return fallback;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 30000) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 export const getTable3DAiProviderConfig = (env = process.env) => {
-  const provider = trim(env.TABLE_3D_AI_PROVIDER).toLowerCase();
+  const rawProvider = normalizeProviderName(env.TABLE_3D_AI_PROVIDER || env.TABLE_3D_AI_FINAL_PROVIDER);
+  const isHybridAlias = HYBRID_PROVIDER_ALIASES.has(rawProvider);
+  const provider = isHybridAlias ? GEMINI_PROVIDER : rawProvider;
   const enabled = normalizeBoolean(env.TABLE_3D_AI_ENABLED);
-  const apiKey = trim(env.TABLE_3D_AI_API_KEY);
+  const apiKey = trim(env.TABLE_3D_AI_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY);
   const endpoint = trim(env.TABLE_3D_AI_ENDPOINT);
   const nodeEnv = trim(env.NODE_ENV) || "development";
+  const preprocessingProvider = normalizeProviderName(
+    isHybridAlias ? OLLAMA_PROVIDER : env.TABLE_3D_AI_PREPROCESS_PROVIDER || env.TABLE_3D_AI_FIRST_PROVIDER,
+  );
+  const usesOllamaPreprocess = preprocessingProvider === OLLAMA_PROVIDER;
+  const ollamaEndpoint = trim(env.TABLE_3D_AI_OLLAMA_ENDPOINT || env.OLLAMA_ENDPOINT) || DEFAULT_OLLAMA_ENDPOINT;
+  const ollamaModel = trim(env.TABLE_3D_AI_OLLAMA_MODEL || env.OLLAMA_VISION_MODEL) || DEFAULT_OLLAMA_MODEL;
+  const geminiModel = trim(env.TABLE_3D_AI_GEMINI_MODEL || env.GEMINI_MODEL) || DEFAULT_GEMINI_MODEL;
+  const geminiEndpoint = trim(env.TABLE_3D_AI_GEMINI_ENDPOINT || env.GEMINI_ENDPOINT);
   const isMock = provider === MOCK_PROVIDER && nodeEnv !== "production";
-  const configured = enabled && (isMock || Boolean(provider && apiKey && endpoint));
+  const isGemini = provider === GEMINI_PROVIDER;
+  const configured = enabled && (
+    isMock ||
+    (isGemini ? Boolean(apiKey) : Boolean(provider && apiKey && endpoint))
+  );
 
-  return { provider, enabled, apiKey, endpoint, nodeEnv, isMock, configured };
+  return {
+    provider,
+    rawProvider,
+    pipelineProvider: isHybridAlias ? rawProvider : provider,
+    enabled,
+    apiKey,
+    endpoint,
+    nodeEnv,
+    isMock,
+    isGemini,
+    configured,
+    preprocessingProvider,
+    usesOllamaPreprocess,
+    ollamaEndpoint,
+    ollamaModel,
+    geminiModel,
+    geminiEndpoint,
+  };
 };
 
 export const getTable3DAiGenerationAvailability = (env = process.env) => {
@@ -41,6 +104,8 @@ export const getTable3DAiGenerationAvailability = (env = process.env) => {
       status: "not_configured",
       message: CONFIG_REQUIRED_MESSAGE,
       provider: config.provider,
+      pipelineProvider: config.pipelineProvider,
+      preprocessingProvider: config.preprocessingProvider,
       isMock: config.isMock,
     };
   }
@@ -51,7 +116,20 @@ export const getTable3DAiGenerationAvailability = (env = process.env) => {
       status: "demo_only",
       message: "Demo-only mock provider is enabled. No real AI model will be generated.",
       provider: MOCK_PROVIDER,
+      pipelineProvider: MOCK_PROVIDER,
       isMock: true,
+    };
+  }
+
+  if (config.isGemini) {
+    return {
+      configured: true,
+      status: "prompt_ready",
+      message: PROMPT_READY_MESSAGE,
+      provider: GEMINI_PROVIDER,
+      pipelineProvider: config.usesOllamaPreprocess ? "ollama-gemini" : GEMINI_PROVIDER,
+      preprocessingProvider: config.preprocessingProvider,
+      isMock: false,
     };
   }
 
@@ -60,13 +138,15 @@ export const getTable3DAiGenerationAvailability = (env = process.env) => {
     status: "pending_provider",
     message: PENDING_PROVIDER_MESSAGE,
     provider: config.provider,
+    pipelineProvider: config.pipelineProvider,
+    preprocessingProvider: config.preprocessingProvider,
     isMock: false,
   };
 };
 
 export const shouldKeepAiInputFilesForResult = (result = {}) => {
   if (!result?.ok) return false;
-  if (["not_configured", "pending_provider", "demo_only"].includes(result.status)) return false;
+  if (["not_configured", "pending_provider", "demo_only", "prompt_ready"].includes(result.status)) return false;
   if (result.isMock || result.provider === MOCK_PROVIDER || result.aiProvider === MOCK_PROVIDER) return false;
   return ["queued", "processing"].includes(result.status);
 };
@@ -93,6 +173,207 @@ const buildNotConfigured = () => ({
   message: CONFIG_REQUIRED_MESSAGE,
 });
 
+const buildTableAnalysisPrompt = (normalized = {}) => `
+You are preparing a restaurant table for a 3D model generation pipeline.
+Analyze the uploaded reference images and the metadata below.
+Return compact JSON only with these fields:
+{
+  "shape": "round|rectangular|square|booth|bar|outdoor|unknown",
+  "capacity": number,
+  "material": string,
+  "color": string,
+  "style": string,
+  "dimensionsCm": { "width": number, "depth": number, "height": number, "diameter": number },
+  "notableFeatures": string[],
+  "generationPrompt": string
+}
+
+Metadata:
+${JSON.stringify(omitImagePayloads(normalized), null, 2)}
+`.trim();
+
+const buildFinal3DPrompt = ({ normalized, preprocessing }) => {
+  const tableSpec = preprocessing?.spec || {};
+  return `
+Create a usable low-poly 3D restaurant table model for a web-based model-viewer catalog.
+The final asset should be exported as GLB by a real 3D generation engine/provider.
+
+Base table metadata:
+${JSON.stringify(omitImagePayloads(normalized), null, 2)}
+
+Vision/preprocess analysis:
+${JSON.stringify(tableSpec, null, 2)}
+
+Requirements:
+- Preserve the table type, approximate seat capacity, material, color, and proportions.
+- Keep geometry practical for restaurant floor planning.
+- Prefer clean low-poly mesh, centered origin, real-world scale, and web-friendly file size.
+- Generate or return a GLB model URL only if the provider can create a real GLB asset.
+`.trim();
+};
+
+const readImageBase64List = async (images = [], limit = 5) => {
+  const results = [];
+  for (const image of images.slice(0, limit)) {
+    if (!image?.path) continue;
+    try {
+      const buffer = await fs.readFile(image.path);
+      if (buffer.length) results.push(buffer.toString("base64"));
+    } catch {
+      // Skip missing local temp files; the caller will retain a warning.
+    }
+  }
+  return results;
+};
+
+const requestOllamaPreprocess = async ({ normalized, config }) => {
+  const images = await readImageBase64List(normalized.images);
+  const response = await fetchWithTimeout(`${config.ollamaEndpoint.replace(/\/$/, "")}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: config.ollamaModel,
+      prompt: buildTableAnalysisPrompt(normalized),
+      images,
+      stream: false,
+      format: "json",
+    }),
+  }, 45000);
+
+  if (!response.ok) {
+    throw new Error(`Ollama preprocess failed with HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const rawText = trim(payload?.response || payload?.message?.content || "");
+  const spec = safeJsonParse(rawText, { generationPrompt: rawText });
+  return {
+    ok: true,
+    provider: OLLAMA_PROVIDER,
+    model: config.ollamaModel,
+    spec,
+    rawText,
+  };
+};
+
+const runOllamaPreprocessIfEnabled = async ({ normalized, config, context }) => {
+  if (!config.usesOllamaPreprocess) return null;
+
+  try {
+    if (typeof context.preprocessWithOllama === "function") {
+      return await context.preprocessWithOllama({ normalized, config, context });
+    }
+    return await requestOllamaPreprocess({ normalized, config });
+  } catch (err) {
+    return {
+      ok: false,
+      provider: OLLAMA_PROVIDER,
+      model: config.ollamaModel,
+      error: err?.message || "Ollama preprocess failed",
+      warnings: ["ollama_preprocess_failed"],
+    };
+  }
+};
+
+const buildGeminiEndpoint = (config) => {
+  if (config.geminiEndpoint) return config.geminiEndpoint;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.geminiModel)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+};
+
+const requestGeminiPromptRefinement = async ({ normalized, preprocessing, config }) => {
+  const prompt = buildFinal3DPrompt({ normalized, preprocessing });
+  const response = await fetchWithTimeout(buildGeminiEndpoint(config), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${prompt}\n\nReturn JSON only with fields: finalPrompt, suggestedDimensionsCm, modelingNotes, risks. Do not invent a generatedModelUrl.`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
+      },
+    }),
+  }, 45000);
+
+  if (!response.ok) {
+    throw new Error(`Gemini prompt refinement failed with HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const rawText = trim(payload?.candidates?.[0]?.content?.parts?.[0]?.text || "");
+  const spec = safeJsonParse(rawText, { finalPrompt: rawText || prompt });
+  return {
+    ok: true,
+    provider: GEMINI_PROVIDER,
+    model: config.geminiModel,
+    prompt: spec?.finalPrompt || rawText || prompt,
+    spec,
+    rawText,
+  };
+};
+
+const runGeminiFinalPromptIfEnabled = async ({ normalized, preprocessing, config, context }) => {
+  if (!config.isGemini) return null;
+
+  try {
+    if (typeof context.finalizeWithGemini === "function") {
+      return await context.finalizeWithGemini({ normalized, preprocessing, config, context });
+    }
+    return await requestGeminiPromptRefinement({ normalized, preprocessing, config });
+  } catch (err) {
+    return {
+      ok: false,
+      provider: GEMINI_PROVIDER,
+      model: config.geminiModel,
+      prompt: buildFinal3DPrompt({ normalized, preprocessing }),
+      error: err?.message || "Gemini prompt refinement failed",
+      warnings: ["gemini_prompt_refinement_failed"],
+    };
+  }
+};
+
+const createPromptReadyJob = ({ normalized, config, preprocessing, finalization }) => {
+  const jobId = `prompt-table3d-${crypto.randomUUID()}`;
+  const warnings = [
+    "no_generated_model_url",
+    "prompt_ready_only",
+    ...(preprocessing?.warnings || []),
+    ...(preprocessing?.ok === false ? ["ollama_preprocess_unavailable"] : []),
+    ...(finalization?.warnings || []),
+    ...(finalization?.ok === false ? ["gemini_final_prompt_unavailable"] : []),
+  ];
+  const finalPrompt = finalization?.prompt || buildFinal3DPrompt({ normalized, preprocessing });
+  const job = {
+    ok: true,
+    jobId,
+    status: "prompt_ready",
+    provider: GEMINI_PROVIDER,
+    aiProvider: config.usesOllamaPreprocess ? "ollama-gemini" : GEMINI_PROVIDER,
+    preprocessingProvider: config.preprocessingProvider,
+    generationStatus: "prompt_ready",
+    message: PROMPT_READY_MESSAGE,
+    warnings,
+    input: omitImagePayloads(normalized),
+    preprocessing: preprocessing || null,
+    finalization: finalization || null,
+    finalPrompt,
+    generatedModelUrl: "",
+    generatedThumbnailUrl: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  jobStore.set(jobId, job);
+  return job;
+};
+
 export const requestTableModelGeneration = async (input = {}, context = {}) => {
   const config = getTable3DAiProviderConfig(context.env || process.env);
   if (!config.configured) return buildNotConfigured();
@@ -110,7 +391,7 @@ export const requestTableModelGeneration = async (input = {}, context = {}) => {
       generationStatus: "queued",
       message: "Demo-only mock job queued. No real AI model will be generated.",
       warnings: ["mock_demo_only", "no_generated_model_url", "input_images_not_retained"],
-      input: { ...normalized, images: [] },
+      input: omitImagePayloads(normalized),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -125,10 +406,33 @@ export const requestTableModelGeneration = async (input = {}, context = {}) => {
     };
   }
 
+  const preprocessing = await runOllamaPreprocessIfEnabled({ normalized, config, context });
+
+  if (config.isGemini) {
+    const finalization = await runGeminiFinalPromptIfEnabled({ normalized, preprocessing, config, context });
+    const job = createPromptReadyJob({ normalized, config, preprocessing, finalization });
+    return {
+      ok: true,
+      status: "prompt_ready",
+      jobId: job.jobId,
+      provider: GEMINI_PROVIDER,
+      aiProvider: job.aiProvider,
+      preprocessingProvider: job.preprocessingProvider,
+      message: job.message,
+      warnings: job.warnings,
+      generatedModelUrl: "",
+      generatedThumbnailUrl: "",
+      finalPrompt: job.finalPrompt,
+      preprocessing: job.preprocessing,
+      finalization: job.finalization,
+    };
+  }
+
   return {
     ok: false,
     status: "pending_provider",
     provider: config.provider,
+    preprocessing,
     message: PENDING_PROVIDER_MESSAGE,
   };
 };
@@ -163,6 +467,14 @@ export const getTableModelGenerationStatus = async (jobId, context = {}) => {
       warnings: job.warnings,
       message: "Demo-only mock status. Configure a real provider before generating a usable 3D model.",
       createdAt: job.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const job = jobStore.get(normalizedJobId);
+  if (job?.status === "prompt_ready") {
+    return {
+      ...job,
       updatedAt: new Date().toISOString(),
     };
   }
