@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { gql, useQuery } from "@apollo/client";
+import React, { useContext, useMemo, useState } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import {
   buildFoodDetailPath,
@@ -10,6 +10,9 @@ import {
   getMenuItemAvailability,
   shouldShowMenuItemToCustomer,
 } from "../../../../utils/menuItemAvailability";
+import { AuthContext } from "../../../../context/AuthContext";
+import { useCart } from "../../../../context/CartProvider";
+import { useNotification } from "../../../../hooks/useNotification";
 import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
@@ -48,12 +51,51 @@ const GET_TOP_MENU_ITEMS = gql`
   }
 `;
 
+const ADD_CART_ITEM = gql`
+  mutation AddCartItemFromHome($input: AddCartItemInput!) {
+    addCartItem(input: $input) {
+      id
+      totalQuantity
+      totalAmount
+      items {
+        id
+        restaurantId
+        menuItemId
+        name
+        price
+        quantity
+        thumbImage
+        note
+        servingVariantKey
+        holdExpiresAt
+        holdStatus
+      }
+    }
+  }
+`;
+
+const normalizeCartNote = (value) => String(value || "").trim();
+
+const getMutationErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.message ||
+  fallback;
+
 const DishGrid = ({
   selectedCategoryId = null,
   selectedCategoryName = "",
   timeSlot = null,
 }) => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const roleName = String(
+    user?.roleName || user?.role?.slug || user?.role?.name || "",
+  ).toLowerCase();
+  const isCustomer = roleName === "customer";
+  const { addToCart } = useCart();
+  const { showNotification } = useNotification();
+  const [addCartItemMutation] = useMutation(ADD_CART_ITEM);
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
     variables: {
       limit: selectedCategoryId || selectedCategoryName ? 12 : 8,
@@ -66,6 +108,7 @@ const DishGrid = ({
 
   // State lưu variant key đang chọn của từng món
   const [selectedVariantKeyByDish, setSelectedVariantKeyByDish] = useState({});
+  const [addingDishId, setAddingDishId] = useState(null);
 
   const dishes = useMemo(() => data?.topMenuItems ?? [], [data]);
   const safeDishes = Array.isArray(dishes) ? dishes : [];
@@ -93,6 +136,18 @@ const DishGrid = ({
     );
   };
 
+  const getSelectedVariantKey = (dish) => {
+    const variants = dish.servingVariants || [];
+    const selectedVariant = getSelectedMethod(dish);
+    const selectedIndex = variants.findIndex(
+      (variant) => variant === selectedVariant,
+    );
+    if (selectedVariant) {
+      return getVariantKey(selectedVariant, selectedIndex >= 0 ? selectedIndex : 0);
+    }
+    return variants[0] ? getVariantKey(variants[0], 0) : "portion";
+  };
+
   const getEffectivePrice = (basePrice, variant) => {
     const variantPrice = Number(variant?.price);
     if (Number.isFinite(variantPrice) && variantPrice > 0) return variantPrice;
@@ -105,14 +160,7 @@ const DishGrid = ({
 
   const handleOpenFoodDetail = (dish) => {
     if (!dish?.id) return;
-    const variants = dish.servingVariants || [];
-    const selectedVariant = getSelectedMethod(dish);
-    const selectedIndex = variants.findIndex((variant) => variant === selectedVariant);
-    const selectedVariantKey = selectedVariant
-      ? getVariantKey(selectedVariant, selectedIndex >= 0 ? selectedIndex : 0)
-      : variants[0]
-        ? getVariantKey(variants[0], 0)
-        : null;
+    const selectedVariantKey = getSelectedVariantKey(dish);
 
     const state = buildFoodDetailState(dish, {
       restaurantId: dish.restaurantId,
@@ -122,6 +170,119 @@ const DishGrid = ({
     });
 
     navigate(buildFoodDetailPath(dish.id, state), { state });
+  };
+
+  const redirectToLoginForOrdering = () => {
+    const returnPath =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search || ""}${window.location.hash || ""}`
+        : "/";
+    showNotification("Vui lòng đăng nhập để giữ món và đặt món.", "warning");
+    navigate("/login", { state: { from: returnPath } });
+  };
+
+  const handleAddDishToCart = async (dish) => {
+    if (!dish?.id || !dish?.restaurantId || addingDishId) return;
+
+    const availability = getMenuItemAvailability(dish);
+    if (!canCustomerOrderMenuItem(dish)) {
+      showNotification(
+        availability?.customerMessage || "Món này hiện chưa thể đặt.",
+        "warning",
+      );
+      return;
+    }
+
+    if (!isAuthenticated || !user?.id) {
+      redirectToLoginForOrdering();
+      return;
+    }
+
+    if (!isCustomer) {
+      showNotification(
+        "Chỉ tài khoản khách hàng mới có thể giữ món và đặt món.",
+        "warning",
+      );
+      return;
+    }
+
+    const method = getSelectedMethod(dish);
+    const servingVariantKey = getSelectedVariantKey(dish);
+    const price = getEffectivePrice(dish.basePrice, method);
+    const selectedVariantName = method?.name || "Phần tiêu chuẩn";
+    const image = dish.thumbImage || defaultImg;
+
+    setAddingDishId(dish.id);
+    try {
+      const { data: mutationData } = await addCartItemMutation({
+        variables: {
+          input: {
+            userId: user.id,
+            restaurantId: String(dish.restaurantId),
+            menuItemId: dish.id,
+            name: dish.name,
+            price,
+            quantity: 1,
+            thumbImage: image,
+            note: null,
+            servingVariantKey,
+          },
+        },
+      });
+
+      const targetNote = "";
+      const returnedItem = mutationData?.addCartItem?.items?.find((item) => {
+        const sameMenuItem = String(item?.menuItemId) === String(dish.id);
+        const sameServing =
+          String(item?.servingVariantKey || "portion") ===
+          String(servingVariantKey || "portion");
+        const sameNote = normalizeCartNote(item?.note) === targetNote;
+        return sameMenuItem && sameServing && sameNote;
+      });
+
+      const backendCartId = mutationData?.addCartItem?.id || null;
+      const backendCartItemId = returnedItem?.id || null;
+
+      if (!backendCartId || !backendCartItemId) {
+        showNotification(
+          "Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thêm lại món.",
+          "error",
+        );
+        return;
+      }
+
+      addToCart({
+        id: `${dish.id}_${servingVariantKey}`,
+        dishId: dish.id,
+        restaurantId: String(dish.restaurantId),
+        menuId: dish.menuId || null,
+        categoryId: dish.categoryId || null,
+        variantKey: servingVariantKey,
+        servingVariantKey: returnedItem?.servingVariantKey || servingVariantKey,
+        name: dish.name,
+        price,
+        image,
+        method: selectedVariantName,
+        quantity: 1,
+        backendCartId,
+        backendCartItemId,
+        holdExpiresAt: returnedItem?.holdExpiresAt || null,
+        holdStatus: returnedItem?.holdStatus || null,
+        note: returnedItem?.note ?? null,
+      });
+
+      showNotification("Đã thêm món vào giỏ hàng.", "success");
+    } catch (mutationError) {
+      showNotification(
+        getMutationErrorMessage(
+          mutationError,
+          "Không thể giữ món trong giỏ. Vui lòng thử lại.",
+        ),
+        "error",
+      );
+    } finally {
+      setAddingDishId(null);
+    }
   };
 
   return (
@@ -151,23 +312,39 @@ const DishGrid = ({
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
                   const hasVariants = dish.servingVariants?.length > 0;
+                  const isAdding = addingDishId === dish.id;
 
                   return (
                     <div
                       key={dish.id}
                       className="dish-card"
-                      onClick={() => handleOpenFoodDetail(dish)}
+                      onClick={() => handleAddDishToCart(dish)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleOpenFoodDetail(dish);
+                          handleAddDishToCart(dish);
                         }
                       }}
                     >
                       {/* Image Area */}
-                      <div className="dish-card__image-wrapper">
+                      <div
+                        className="dish-card__image-wrapper"
+                        role="link"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenFoodDetail(dish);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenFoodDetail(dish);
+                          }
+                        }}
+                      >
                         <img
                           src={img}
                           alt={dish.name}
@@ -244,14 +421,14 @@ const DishGrid = ({
 
                           <button
                             className="dish-card__btn-add"
+                            type="button"
+                            disabled={isAdding || !canCustomerOrderMenuItem(dish)}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenFoodDetail(dish);
+                              handleAddDishToCart(dish);
                             }}
                           >
-                            {canCustomerOrderMenuItem(dish)
-                              ? "Chọn món"
-                              : "Xem món"}
+                            {isAdding ? "Đang thêm..." : "Chọn món"}
                           </button>
                         </div>
                       </div>
