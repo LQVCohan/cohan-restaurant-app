@@ -15,8 +15,17 @@ import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 
 import "./RestaurantDetail.scss";
 import "./RestaurantDetail.refinements.scss";
+import "./RestaurantDetail.fallbacks.scss";
 
 const FAVORITES_STORAGE_KEY = "restaurant_favorites";
+
+const DETAIL_FALLBACK_COVERS = [
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=82",
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=82",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1600&q=82",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=82",
+  "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1600&q=82",
+];
 
 const readFavoriteIds = () => {
   try {
@@ -29,6 +38,39 @@ const readFavoriteIds = () => {
 
 const formatAddressText = (address = {}) => {
   return [address.line1, address.district, address.city].filter(Boolean).join(", ");
+};
+
+const isPlaceholderAsset = (url = "") => {
+  const normalizedUrl = String(url || "").trim().toLowerCase();
+  return (
+    !normalizedUrl ||
+    normalizedUrl.includes("default-") ||
+    normalizedUrl.includes("/default") ||
+    normalizedUrl.includes("picsum.photos") ||
+    normalizedUrl.includes("source.unsplash") ||
+    normalizedUrl.includes("/random")
+  );
+};
+
+const getStableIndex = (value = "") => {
+  const source = String(value || "restaurant");
+  return source.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+};
+
+const getFallbackCoverUrl = (restaurantId) => {
+  const index = getStableIndex(restaurantId) % DETAIL_FALLBACK_COVERS.length;
+  return DETAIL_FALLBACK_COVERS[index];
+};
+
+const getRestaurantInitials = (name = "") => {
+  const words = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (words.length === 0) return "FH";
+  return words.map((word) => word[0]).join("").toUpperCase();
 };
 
 const GET_PUBLIC_RESTAURANT = gql`
@@ -212,11 +254,12 @@ const RestaurantDetail = () => {
     { id: "photos", label: "Hình ảnh" },
   ];
 
-  const imgAvaUrl = resolvedRestaurant.avatar || resolvedRestaurant.imgAvaUrl || "/default-avatar.png";
-  const hasCoverImage = Boolean(resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl);
-  const imgThumbUrl = hasCoverImage
-    ? resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl
-    : null;
+  const rawAvatarUrl = resolvedRestaurant.avatar || resolvedRestaurant.imgAvaUrl || "";
+  const hasRealAvatar = !isPlaceholderAsset(rawAvatarUrl);
+  const avatarInitials = getRestaurantInitials(resolvedRestaurant.name);
+  const rawCoverUrl = resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl || "";
+  const hasCoverImage = !isPlaceholderAsset(rawCoverUrl);
+  const imgThumbUrl = hasCoverImage ? rawCoverUrl : getFallbackCoverUrl(resolvedRestaurant.id);
   const cuisineText = resolvedRestaurant.cuisine || "Ẩm thực đang cập nhật";
   const areaText =
     resolvedRestaurant.district ||
@@ -236,10 +279,16 @@ const RestaurantDetail = () => {
     <div className="restaurant-detail-page">
       <section className="rd-hero">
         <div
-          className={`hero-cover ${hasCoverImage ? "has-cover" : "no-cover"}`}
-          style={imgThumbUrl ? { backgroundImage: `url(${imgThumbUrl})` } : undefined}
+          className={`hero-cover ${hasCoverImage ? "has-cover" : "fallback-cover"}`}
+          style={{ backgroundImage: `url(${imgThumbUrl})` }}
         >
           <div className="overlay" />
+          {!hasCoverImage && (
+            <div className="fallback-cover-copy" aria-hidden="true">
+              <span>FoodHub Pick</span>
+              <strong>{cuisineText}</strong>
+            </div>
+          )}
           <button
             type="button"
             className="btn-back"
@@ -254,9 +303,16 @@ const RestaurantDetail = () => {
         </div>
 
         <div className="hero-content container">
-          <div className="res-info-card">
+          <div className={`res-info-card ${!hasCoverImage ? "res-info-card--compact" : ""}`}>
             <div className="avatar-wrapper">
-              <img src={imgAvaUrl} alt={resolvedRestaurant.name} />
+              {hasRealAvatar ? (
+                <img src={rawAvatarUrl} alt={resolvedRestaurant.name} />
+              ) : (
+                <div className="avatar-fallback" aria-label={`Logo ${resolvedRestaurant.name}`}>
+                  <span>{avatarInitials}</span>
+                  <small>FoodHub</small>
+                </div>
+              )}
             </div>
 
             <div className="info-text">
@@ -351,7 +407,7 @@ const RestaurantDetail = () => {
         </div>
 
         <aside className="sidebar-content">
-          <div className="booking-widget">
+          <div className="booking-widget booking-widget--ai">
             <h3>AI gợi ý món</h3>
             <p>Cho mình biết ngân sách, số người hoặc khẩu vị</p>
             <button
@@ -375,7 +431,7 @@ const RestaurantDetail = () => {
             </div>
           </div>
 
-          <div className="booking-widget">
+          <div className="booking-widget booking-widget--primary-cta">
             <h3>Đặt bàn giữ chỗ</h3>
             <p>Giữ chỗ miễn phí - Xác nhận tức thì</p>
             <div className="time-picker-mock">
