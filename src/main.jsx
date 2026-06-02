@@ -5,8 +5,10 @@ import "./index.css";
 import "./components/Customer/Food/FoodDetail.polish.css";
 import App from "./App.jsx";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
+import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 
 void initFrontendErrorTracking();
+installAuthenticatedTable3DTransport();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
