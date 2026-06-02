@@ -15,6 +15,21 @@ const MENU_ITEM_SORTS = new Set([
 ]);
 const DEFAULT_MENU_ITEM_SORT = "default";
 
+const RESTAURANT_ORDERABILITY_SELECT = {
+  _id: 1,
+  businessStatus: 1,
+  publicationStatus: 1,
+  status: 1,
+  operationalStatus: 1,
+  capabilities: 1,
+  orderPolicy: 1,
+  weeklyOpeningHours: 1,
+  specialHours: 1,
+  openingHours: 1,
+  closingHours: 1,
+  timezone: 1,
+};
+
 const toObjectIdOrNull = (id) => {
   try {
     return mongoose.isValidObjectId(id)
@@ -171,6 +186,12 @@ function isInternalMenuQuery(args = {}) {
 function applyPublicMenuItemFilter(query) {
   if (!query.status) query.status = "available";
   return query;
+}
+
+function canRestaurantAcceptHomeOrders(restaurant) {
+  if (!restaurant) return false;
+  const availability = computeRestaurantAvailability(restaurant || {});
+  return availability.canOrder === true;
 }
 
 export const MenuQuery = {
@@ -342,7 +363,7 @@ export const MenuQuery = {
       if (!menu) return null;
     }
     const restaurant = await Restaurant.findById(item.restaurantId)
-      .select({ _id: 1, businessStatus: 1, publicationStatus: 1, status: 1, operationalStatus: 1 })
+      .select(RESTAURANT_ORDERABILITY_SELECT)
       .lean();
     if (!restaurant) return null;
     const availability = computeRestaurantAvailability(restaurant || {});
@@ -362,26 +383,18 @@ export const MenuQuery = {
     const q = {};
     if (restaurantId) {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
+      const restaurant = await Restaurant.findById(restaurantId)
+        .select(RESTAURANT_ORDERABILITY_SELECT)
+        .lean();
+      if (!canRestaurantAcceptHomeOrders(restaurant)) return [];
       q.restaurantId = restaurantId;
     } else {
       const restaurants = await Restaurant.find({})
-        .select({
-          _id: 1,
-          businessStatus: 1,
-          publicationStatus: 1,
-          status: 1,
-          operationalStatus: 1,
-        })
+        .select(RESTAURANT_ORDERABILITY_SELECT)
         .lean();
 
       const publicRestaurantIds = restaurants
-        .filter((restaurant) => {
-          const availability = computeRestaurantAvailability(restaurant || {});
-          return (
-            availability.businessStatus === "active"
-            && availability.publicationStatus === "published"
-          );
-        })
+        .filter(canRestaurantAcceptHomeOrders)
         .map((restaurant) => restaurant._id);
 
       if (!publicRestaurantIds.length) return [];
