@@ -1,0 +1,437 @@
+$rd-primary: #ff6600;
+$rd-primary-hover: #e65c00;
+$rd-primary-soft: #fff1e5;
+$rd-text-main: #1e1915;
+$rd-text-sub: #766b61;
+$rd-border: rgba(92, 64, 51, 0.12);
+$rd-shadow: 0 22px 64px rgba(83, 46, 20, 0.1);
+
+.restaurant-detail-page {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 185, 115, 0.18), transparent 30rem),
+    radial-gradient(circle at 92% 2%, rgba(255, 235, 214, 0.66), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ee 48%, #ffffff 100%);
+  color: $rd-text-main;
+
+  .rd-hero {
+    background: transparent;
+    padding-bottom: 0;
+  }
+
+  .hero-cover {
+    height: clamp(250px, 28vw, 360px);
+    background-color: #fff7ed;
+    overflow: hidden;
+
+    &.has-cover {
+      filter: saturate(1.04) contrast(1.02);
+    }
+
+    .overlay {
+      background:
+        radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.18), transparent 28rem),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(30, 25, 21, 0.62) 100%);
+    }
+
+    .btn-back {
+      top: 22px;
+      left: max(24px, calc((100vw - 1280px) / 2 + 24px));
+      width: 46px;
+      height: 46px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(14px);
+
+      &:hover:not(:disabled) {
+        color: $rd-primary;
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 3;
+  }
+
+  .res-info-card {
+    margin-top: -76px;
+    max-width: 1180px;
+    padding: 28px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: $rd-shadow;
+    backdrop-filter: blur(18px);
+
+    .avatar-wrapper {
+      flex: 0 0 auto;
+
+      img {
+        width: 128px;
+        height: 128px;
+        border-radius: 24px;
+        border: 6px solid rgba(255, 255, 255, 0.92);
+        box-shadow: 0 18px 40px rgba(82, 47, 26, 0.18);
+      }
+    }
+
+    .info-text {
+      .bread-crumbs {
+        width: fit-content;
+        margin-bottom: 10px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: $rd-primary;
+        font-weight: 800;
+        font-size: 0.72rem;
+      }
+
+      .res-name {
+        font-size: clamp(2rem, 4vw, 3.35rem);
+        line-height: 0.98;
+        letter-spacing: -0.06em;
+        margin-bottom: 16px;
+        text-wrap: balance;
+      }
+
+      .res-meta {
+        gap: 10px;
+        margin-bottom: 13px;
+
+        .rating,
+        .cuisine,
+        .status {
+          display: inline-flex;
+          align-items: center;
+          min-height: 32px;
+          border-radius: 999px;
+          padding: 7px 11px;
+          border: 1px solid $rd-border;
+          background: rgba(255, 255, 255, 0.72);
+          color: $rd-text-main;
+          font-weight: 780;
+          box-shadow: 0 10px 24px rgba(82, 47, 26, 0.05);
+        }
+
+        .rating {
+          background: #fff7ed;
+          color: #8a3d05;
+          border-color: rgba(255, 102, 0, 0.16);
+        }
+
+        .status.open {
+          background: #dcfce7;
+          color: #166534;
+          border-color: rgba(22, 101, 52, 0.12);
+        }
+
+        .status.closed {
+          background: #fff1f2;
+          color: #be123c;
+          border-color: rgba(190, 18, 60, 0.12);
+        }
+
+        .dot {
+          display: none;
+        }
+      }
+
+      .res-address {
+        margin-top: 8px;
+        color: $rd-text-sub;
+        font-weight: 600;
+      }
+
+      .profile-summary {
+        margin-top: 18px;
+
+        .summary-chip {
+          padding: 7px 12px;
+          border-color: rgba(255, 102, 0, 0.16);
+          background: rgba(255, 247, 237, 0.82);
+          color: #8a3d05;
+          font-weight: 760;
+        }
+      }
+    }
+
+    .action-group {
+      gap: 14px;
+
+      .icon-actions {
+        background: rgba(255, 247, 237, 0.82);
+        border-color: rgba(255, 102, 0, 0.14);
+      }
+
+      .btn-icon {
+        width: 44px;
+        height: 44px;
+        border-color: rgba(92, 64, 51, 0.12);
+        box-shadow: 0 12px 26px rgba(82, 47, 26, 0.08);
+      }
+
+      .btn-book {
+        border-radius: 16px;
+        min-height: 48px;
+        padding: 13px 24px;
+        background: linear-gradient(135deg, $rd-primary, #ff8a3d);
+        box-shadow: 0 16px 32px rgba(255, 102, 0, 0.24);
+      }
+    }
+  }
+
+  .rd-tabs {
+    margin-top: 18px;
+    border-top: 1px solid rgba(92, 64, 51, 0.08);
+    border-bottom: 1px solid rgba(92, 64, 51, 0.1);
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: blur(16px);
+
+    &.stuck {
+      box-shadow: 0 14px 32px rgba(82, 47, 26, 0.08);
+    }
+
+    .tab-scroll {
+      gap: 10px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .tab-item {
+      padding: 11px 16px;
+      border-radius: 999px;
+      font-weight: 780;
+
+      &:hover:not(:disabled) {
+        background: #fff7ed;
+      }
+
+      &.active {
+        background: $rd-primary-soft;
+        color: $rd-primary;
+      }
+
+      &.active::after {
+        display: none;
+      }
+    }
+  }
+
+  .rd-container {
+    max-width: 1280px;
+    gap: 28px;
+    padding-top: 28px;
+  }
+
+  .tab-panel-shell,
+  .section-card,
+  .booking-widget,
+  .similar-widget {
+    border-color: $rd-border;
+    border-radius: 26px;
+    box-shadow: 0 18px 48px rgba(83, 46, 20, 0.07);
+  }
+
+  .sidebar-content {
+    top: 92px;
+    gap: 18px;
+
+    .booking-widget,
+    .similar-widget {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(14px);
+    }
+
+    .booking-widget h3,
+    .similar-widget h3 {
+      letter-spacing: -0.025em;
+      font-weight: 900;
+    }
+
+    .time-picker-mock {
+      border-radius: 14px;
+      background: #fff7ed;
+      border-color: rgba(255, 102, 0, 0.16);
+      color: #8a3d05;
+      font-weight: 760;
+    }
+
+    .btn-book-full {
+      border-radius: 15px;
+      background: linear-gradient(135deg, $rd-primary, #ff8a3d);
+      box-shadow: 0 14px 28px rgba(255, 102, 0, 0.22);
+    }
+
+    .prompt-chip {
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 102, 0, 0.34);
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .restaurant-detail-page {
+    .hero-cover {
+      animation: detailCoverReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .res-info-card {
+      animation: detailInfoCardIn 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+    }
+
+    .avatar-wrapper img {
+      animation: detailAvatarPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+    }
+
+    .rd-tabs {
+      animation: detailTabsIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+    }
+
+    .main-content,
+    .sidebar-content {
+      animation: detailContentIn 0.64s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+    }
+
+    .btn-book,
+    .btn-book-full,
+    .btn-book-mobile {
+      position: relative;
+      overflow: hidden;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+        transform: translateX(-120%);
+        transition: transform 0.56s ease;
+      }
+
+      &:hover:not(:disabled)::after {
+        transform: translateX(120%);
+      }
+    }
+
+    .btn-icon {
+      transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px) scale(1.04);
+      }
+
+      &:active:not(:disabled) {
+        transform: scale(0.94);
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .restaurant-detail-page *,
+  .restaurant-detail-page *::before,
+  .restaurant-detail-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .restaurant-detail-page {
+    .hero-cover {
+      height: 210px;
+    }
+
+    .res-info-card {
+      margin-top: -46px;
+      border-radius: 24px;
+      align-items: flex-start;
+
+      .info-text .res-name {
+        font-size: 2rem;
+      }
+    }
+
+    .rd-tabs .tab-scroll {
+      gap: 8px;
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .restaurant-detail-page {
+    .res-info-card {
+      .avatar-wrapper img {
+        width: 92px;
+        height: 92px;
+        border-radius: 20px;
+      }
+    }
+  }
+}
+
+@keyframes detailCoverReveal {
+  from {
+    opacity: 0;
+    transform: scale(1.025);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes detailInfoCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes detailAvatarPop {
+  from {
+    opacity: 0;
+    transform: scale(0.86) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes detailTabsIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes detailContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
