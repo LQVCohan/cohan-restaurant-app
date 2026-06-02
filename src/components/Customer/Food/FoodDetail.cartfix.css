@@ -1,0 +1,15 @@
+/* Food detail should not reserve/open an empty cart drawer before the user adds an item. */
+.food-detail-wrapper .cart-panel.open:has(.cart-empty),
+.food-detail-wrapper .cart-panel:has(.cart-empty) {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.food-detail-wrapper .cart-backdrop.open:has(+ .cart-panel.open .cart-empty),
+.food-detail-wrapper .cart-backdrop:has(+ .cart-panel .cart-empty) {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
