@@ -18,44 +18,12 @@ import {
 import { getCannotOrderReason } from "../../../../../utils/restaurantStatus";
 
 import "./MenuSection.scss";
-import "./MenuSection.polish.scss";
-
-const DISH_FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=700&q=82",
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=700&q=82",
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=700&q=82",
-  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=700&q=82",
-  "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=700&q=82",
-];
 
 const formatPrice = (value) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(value || 0);
-
-const isPlaceholderImage = (url = "") => {
-  const normalizedUrl = String(url || "").trim().toLowerCase();
-  return (
-    !normalizedUrl ||
-    normalizedUrl.includes("default-") ||
-    normalizedUrl.includes("/default") ||
-    normalizedUrl.includes("picsum.photos") ||
-    normalizedUrl.includes("source.unsplash") ||
-    normalizedUrl.includes("/random")
-  );
-};
-
-const getStableIndex = (value = "") => {
-  const source = String(value || "dish");
-  return source.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-};
-
-const getDishImage = (item = {}) => {
-  if (!isPlaceholderImage(item.thumbImage)) return item.thumbImage;
-  const index = getStableIndex(item.id || item.name) % DISH_FALLBACK_IMAGES.length;
-  return DISH_FALLBACK_IMAGES[index];
-};
 
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
@@ -484,7 +452,6 @@ const MenuSection = ({
                 const availability = getMenuItemAvailability(item);
                 const orderable = isDishOrderable(item);
                 const review = foodReviewMap.get(String(item.id));
-                const dishImage = getDishImage(item);
 
                 return (
                   <div
@@ -504,7 +471,7 @@ const MenuSection = ({
                   >
                     <div className="dish-img-wrapper">
                       <img
-                        src={dishImage}
+                        src={item.thumbImage || "/default-dishes.jpg"}
                         alt={item.name}
                         loading="lazy"
                       />
