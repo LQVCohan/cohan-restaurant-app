@@ -180,3 +180,198 @@ describe("restaurantConfigBackup.service", () => {
     expect((await previewRestaurantConfigImport({ targetRestaurantId: id("001"), snapshot: invalidVersion })).valid).toBe(false);
   });
 });
+
+describe("restaurantConfigBackup.service deep remapping", () => {
+  const snapshotBase = (sections) => ({
+    kind: "cohan.restaurant_config_snapshot",
+    schemaVersion: 1,
+    createdAt: "2026-06-02T00:00:00.000Z",
+    source: { restaurantId: id("001"), restaurantName: "Source", app: "cohan-restaurant-app" },
+    sections,
+    counts: {},
+  });
+
+  beforeEach(() => {
+    vi.resetModules();
+    setupSnapshotData();
+  });
+
+  it("clone remaps table floorId", async () => {
+    const oldFloor = id("101");
+    const newFloor = id("201");
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: newFloor, level: 1, name: "Tầng 1" });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: oldFloor, name: "Tầng 1", level: 1 }], tables: [{ legacyId: id("102"), floorId: oldFloor, code: "A1", status: "occupied" }] } }),
+    });
+    const tableUpdate = models.Table.findOneAndUpdate.mock.calls[0][1];
+    expect(tableUpdate.$set.floorId).toBe(newFloor);
+    expect(tableUpdate.$set.floorId).not.toBe(oldFloor);
+  });
+
+  it("clone remaps menuItem menuId/categoryId", async () => {
+    const oldMenu = id("111");
+    const oldCategory = id("112");
+    const newMenu = id("211");
+    const newCategory = id("212");
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: newMenu });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: newCategory });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({ menuCatalog: { menus: [{ legacyId: oldMenu, timeSlot: "lunch", name: "Trưa" }], categories: [{ legacyId: oldCategory, name: "Món chính" }], categoryMenus: [], menuItems: [{ legacyId: id("113"), menuId: oldMenu, categoryId: oldCategory, code: "PHO", name: "Phở" }], modifierGroups: [], combos: [], recipes: [] } }),
+    });
+    const itemUpdate = models.MenuItem.findOneAndUpdate.mock.calls[0][1];
+    expect(itemUpdate.$set.menuId).toBe(newMenu);
+    expect(itemUpdate.$set.categoryId).toBe(newCategory);
+  });
+
+  it("clone remaps recipe menuItemId and ingredient lines", async () => {
+    const oldMenu = id("121");
+    const oldCategory = id("122");
+    const oldItem = id("123");
+    const oldIngredient = id("124");
+    const newMenu = id("221");
+    const newCategory = id("222");
+    const newItem = id("223");
+    const newIngredient = id("224");
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: newMenu });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: newCategory });
+    models.MenuItem.findOneAndUpdate.mockResolvedValueOnce({ _id: newItem });
+    models.Ingredient.findOneAndUpdate.mockResolvedValueOnce({ _id: newIngredient });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({
+        menuCatalog: { menus: [{ legacyId: oldMenu, timeSlot: "lunch", name: "Trưa" }], categories: [{ legacyId: oldCategory, name: "Món" }], categoryMenus: [], menuItems: [{ legacyId: oldItem, menuId: oldMenu, categoryId: oldCategory, code: "PHO", name: "Phở" }], modifierGroups: [], combos: [], recipes: [{ legacyId: id("125"), menuItemId: oldItem, servingVariants: [{ key: "regular", ingredients: [{ ingredientId: oldIngredient, quantity: 1 }] }] }] },
+        inventoryMaster: { warehouses: [], ingredientCategories: [], ingredients: [{ legacyId: oldIngredient, sku: "BEEF", name: "Thịt bò" }], supplyCategories: [], supplies: [] },
+      }),
+    });
+    const recipePayload = models.Recipe.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(recipePayload.menuItemId).toBe(newItem);
+    expect(recipePayload.servingVariants[0].ingredients[0].ingredientId).toBe(newIngredient);
+  });
+
+  it("clone skips recipe ingredient lines when inventoryMaster not selected", async () => {
+    const oldMenu = id("131");
+    const oldCategory = id("132");
+    const oldItem = id("133");
+    const oldIngredient = id("134");
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: id("231") });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: id("232") });
+    models.MenuItem.findOneAndUpdate.mockResolvedValueOnce({ _id: id("233") });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      sections: { menuCatalog: true, inventoryMaster: false },
+      snapshot: snapshotBase({ menuCatalog: { menus: [{ legacyId: oldMenu, timeSlot: "lunch", name: "Trưa" }], categories: [{ legacyId: oldCategory, name: "Món" }], categoryMenus: [], menuItems: [{ legacyId: oldItem, menuId: oldMenu, categoryId: oldCategory, code: "PHO", name: "Phở" }], modifierGroups: [], combos: [], recipes: [{ legacyId: id("135"), menuItemId: oldItem, servingVariants: [{ ingredients: [{ ingredientId: oldIngredient, quantity: 1 }] }] }] } }),
+    });
+    const recipePayload = models.Recipe.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(JSON.stringify(recipePayload)).not.toContain(oldIngredient);
+    expect(recipePayload.servingVariants[0].ingredients).toEqual([]);
+    expect(result.warnings.join(" ")).toMatch(/Recipes may lose ingredient links/);
+    expect(result.warnings.join(" ")).toMatch(/Skipped recipe ingredient line/);
+  });
+
+  it("clone remaps promotion refs", async () => {
+    const oldMenu = id("141");
+    const oldCategory = id("142");
+    const oldItem = id("143");
+    const oldGift = id("144");
+    const newCategory = id("242");
+    const newItem = id("243");
+    const newGift = id("244");
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: id("241") });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: newCategory });
+    models.MenuItem.findOneAndUpdate
+      .mockResolvedValueOnce({ _id: newItem })
+      .mockResolvedValueOnce({ _id: newGift });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({
+        menuCatalog: { menus: [{ legacyId: oldMenu, timeSlot: "lunch", name: "Trưa" }], categories: [{ legacyId: oldCategory, name: "Món" }], categoryMenus: [], menuItems: [{ legacyId: oldItem, menuId: oldMenu, categoryId: oldCategory, code: "A", name: "A" }, { legacyId: oldGift, menuId: oldMenu, categoryId: oldCategory, code: "B", name: "B" }], modifierGroups: [], combos: [], recipes: [] },
+        promotionConfig: { promotions: [{ legacyId: id("145"), code: "SALE", categoryId: oldCategory, itemId: oldItem, giftItemId: oldGift, comboItems: [{ itemId: oldItem, quantity: 1 }], usageCount: 9 }], coupons: [], voucherPackages: [] },
+      }),
+    });
+    const promotionPayload = models.Promotion.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(promotionPayload.categoryId).toBe(newCategory);
+    expect(promotionPayload.itemId).toBe(newItem);
+    expect(promotionPayload.giftItemId).toBe(newGift);
+    expect(promotionPayload.comboItems[0].itemId).toBe(newItem);
+    expect(promotionPayload.usageCount).toBe(0);
+  });
+
+  it("clone remaps coupon constraints known refs", async () => {
+    const oldMenu = id("151");
+    const oldCategory = id("152");
+    const oldItem = "legacy-menu-item-for-coupon";
+    const missingItem = "legacy-missing-menu-item";
+    const newCategory = id("252");
+    const newItem = id("253");
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: id("251") });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: newCategory });
+    models.MenuItem.findOneAndUpdate.mockResolvedValueOnce({ _id: newItem });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({
+        menuCatalog: { menus: [{ legacyId: oldMenu, timeSlot: "lunch", name: "Trưa" }], categories: [{ legacyId: oldCategory, name: "Món" }], categoryMenus: [], menuItems: [{ legacyId: oldItem, menuId: oldMenu, categoryId: oldCategory, code: "A", name: "A" }], modifierGroups: [], combos: [], recipes: [] },
+        promotionConfig: { promotions: [], coupons: [{ legacyId: id("155"), code: "C", constraints: { categoryId: oldCategory, itemIds: [oldItem, missingItem], nested: { menuItemIds: [oldItem] } }, used: 4, usageCount: 6 }], voucherPackages: [] },
+      }),
+    });
+    const couponPayload = models.Coupon.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(couponPayload.constraints.categoryId).toBe(newCategory);
+    expect(couponPayload.constraints.itemIds).toEqual([newItem]);
+    expect(couponPayload.constraints.nested.menuItemIds).toEqual([newItem]);
+    expect(couponPayload.used).toBe(0);
+    expect(couponPayload.usageCount).toBe(0);
+    expect(result.warnings.join(" ")).toMatch(/Removed coupon itemIds reference/);
+  });
+
+  it("ai safety rules upsert by ruleType and pattern", async () => {
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({ aiChatbotConfig: { settings: {}, knowledgeItems: [], safetyRules: [{ legacyId: id("161"), ruleType: "blocked_topic", pattern: "medical", responseMessage: "handoff" }], evaluationCases: [] } }),
+    });
+    expect(models.AiChatbotSafetyRule.findOneAndUpdate.mock.calls[0][0]).toEqual(expect.objectContaining({ restaurantId: id("099"), ruleType: "blocked_topic", pattern: "medical" }));
+  });
+
+  it("clone clears table viewLock", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: id("271") });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      mode: "clone",
+      dryRun: false,
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: id("171"), name: "Tầng 1", level: 1 }], tables: [{ legacyId: id("172"), floorId: id("171"), code: "A1", viewLock: { by: "source" } }] } }),
+    });
+    expect(models.Table.findOneAndUpdate.mock.calls[0][1].$unset).toEqual({ viewLock: "" });
+  });
+
+  it("normalize ObjectId refs to string in snapshot", async () => {
+    const oldFloor = id("181");
+    const fakeObjectId = { toHexString: () => oldFloor };
+    models.Table.find.mockReturnValue(lean([{ _id: id("182"), restaurantId: id("001"), floorId: fakeObjectId, code: "A1" }]));
+    const { buildRestaurantConfigSnapshot } = await loadService();
+    const snapshot = await buildRestaurantConfigSnapshot({ restaurantId: id("001"), sections: { floorTableLayout: true } });
+    expect(snapshot.sections.floorTableLayout.tables[0].floorId).toBe(oldFloor);
+    expect(JSON.stringify(snapshot.sections.floorTableLayout.tables[0].floorId)).not.toBe("{}");
+  });
+});

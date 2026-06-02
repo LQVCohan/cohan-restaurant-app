@@ -332,7 +332,14 @@ const BackupManagement = () => {
           <button type="button" onClick={handleImport} disabled={!importCanRun || importBackupState.loading}>{importBackupState.loading ? "Đang import..." : "Import thật"}</button>
         </div>
         {importPreview ? <div className="backup-management__result"><h4>Preview: {importPreview.valid ? "Hợp lệ" : "Không hợp lệ"}</h4><p>Nguồn: {importPreview.sourceRestaurantName || "-"} • Mode: {importPreview.mode}</p><ul>{importPreview.changes.map((item) => <li key={`${item.section}-${item.action}`}>{item.label}: {item.action} {item.count}</li>)}</ul>{importPreview.warnings.map((item) => <p key={item}>{item}</p>)}{importPreview.errors.map((item) => <p key={item} className="backup-management__error">{item}</p>)}</div> : null}
-        {importResult ? <div className="backup-management__result"><h4>Import {importResult.success ? "thành công" : "không thành công"}</h4><p>BackupRun: {importResult.backupRun?.id || "-"}</p></div> : null}
+        {importResult ? (
+          <div className="backup-management__result">
+            <h4>Import {importResult.success ? "thành công" : "không thành công"}</h4>
+            <p>BackupRun: {importResult.backupRun?.id || "-"}</p>
+            {(importResult.warnings || []).map((item) => <p key={`import-warning-${item}`}>{item}</p>)}
+            {(importResult.errors || []).map((item) => <p key={`import-error-${item}`} className="backup-management__error">{item}</p>)}
+          </div>
+        ) : null}
       </section>
 
       <section className="backup-management__summary" aria-label="Tổng quan trước sao lưu">

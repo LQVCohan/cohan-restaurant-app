@@ -90,6 +90,10 @@ const RESTAURANT_PROFILE_FIELDS = [
   "manualUsdToVndRate",
 ];
 
+const RECIPE_INGREDIENT_WARNING = "Skipped recipe ingredient line because ingredient was not imported or could not be remapped.";
+const RECIPE_DEPENDENCY_WARNING = "Recipes may lose ingredient links because inventoryMaster is not selected.";
+const PROMOTION_DEPENDENCY_WARNING = "Promotion item/category references may be removed because menuCatalog is not selected.";
+
 function cloneJson(value) {
   if (value == null) return value;
   return JSON.parse(JSON.stringify(value));
@@ -119,16 +123,32 @@ function pick(source, fields) {
   return out;
 }
 
+function isObjectIdLike(value) {
+  return value && typeof value === "object" && typeof value.toHexString === "function";
+}
+
+export function refKey(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (isObjectIdLike(value)) return value.toHexString();
+  if (value.legacyId) return String(value.legacyId);
+  if (value._id) return refKey(value._id);
+  if (value.id) return String(value.id);
+  return String(value);
+}
+
 function sanitizeDocument(value) {
   if (Array.isArray(value)) return value.map(sanitizeDocument).filter((item) => item !== undefined);
+  if (isObjectIdLike(value)) return value.toHexString();
   if (!value || typeof value !== "object") return value;
   const source = typeof value.toObject === "function" ? value.toObject({ depopulate: true }) : value;
+  if (isObjectIdLike(source)) return source.toHexString();
   const out = {};
   for (const [key, raw] of Object.entries(source)) {
     if (key === "__v" || key === "createdAt" || key === "updatedAt") continue;
     if (SENSITIVE_KEY_RE.test(key)) continue;
     if (key === "_id") {
-      out.legacyId = String(raw);
+      out.legacyId = refKey(raw);
       continue;
     }
     out[key] = sanitizeDocument(raw);
@@ -198,6 +218,11 @@ export function normalizeSections(sections) {
   for (const key of SECTION_KEYS) enabled[key] = hasExplicit ? Boolean(sections?.[key]) : true;
   if (!Object.values(enabled).some(Boolean)) throw new Error("At least one restaurant config backup section must be enabled");
   return enabled;
+}
+
+function enabledSectionsForSnapshot(snapshot, requestedSections) {
+  const requested = requestedSections || Object.fromEntries(Object.keys(snapshot?.sections || {}).map((key) => [key, true]));
+  return normalizeSections(requested);
 }
 
 function countSection(key, value) {
@@ -301,7 +326,7 @@ export async function buildRestaurantConfigSnapshot({ restaurantId, sections, ac
 }
 
 function sectionEntries(snapshot, requestedSections) {
-  const enabled = normalizeSections(requestedSections || Object.fromEntries(Object.keys(snapshot.sections || {}).map((key) => [key, true])));
+  const enabled = enabledSectionsForSnapshot(snapshot, requestedSections);
   return SECTION_KEYS.filter((key) => enabled[key] && snapshot.sections?.[key] !== undefined).map((key) => [key, snapshot.sections[key]]);
 }
 
@@ -310,15 +335,54 @@ function change(section, action, count, warning = null) {
   return { section, action, label, count: Number(count) || 0, warning };
 }
 
+function hasIngredientLinesInValue(value) {
+  if (Array.isArray(value)) return value.some(hasIngredientLinesInValue);
+  if (!value || typeof value !== "object") return false;
+  if (Object.prototype.hasOwnProperty.call(value, "ingredientId") && value.ingredientId) return true;
+  return Object.values(value).some(hasIngredientLinesInValue);
+}
+
+function hasRecipeIngredientLines(recipes = []) {
+  return recipes.some((recipe) => hasIngredientLinesInValue(recipe?.servingVariants) || hasIngredientLinesInValue(recipe?.ingredients));
+}
+
+function hasPromotionKnownRefs(value) {
+  if (Array.isArray(value)) return value.some(hasPromotionKnownRefs);
+  if (!value || typeof value !== "object") return false;
+  return Object.entries(value).some(([key, item]) => {
+    if (["categoryId", "categoryIds", "itemId", "itemIds", "menuItemId", "menuItemIds", "giftItemId"].includes(key) && item) return true;
+    return hasPromotionKnownRefs(item);
+  });
+}
+
+function addDependencyWarnings(snapshot, enabled, warnings) {
+  if (enabled.menuCatalog && !enabled.inventoryMaster && hasRecipeIngredientLines(snapshot?.sections?.menuCatalog?.recipes || [])) {
+    warnings.push(RECIPE_DEPENDENCY_WARNING);
+  }
+  if (enabled.promotionConfig && !enabled.menuCatalog && hasPromotionKnownRefs(snapshot?.sections?.promotionConfig || {})) {
+    warnings.push(PROMOTION_DEPENDENCY_WARNING);
+  }
+  if (enabled.floorTableLayout) {
+    const layout = snapshot?.sections?.floorTableLayout;
+    if (layout && !(layout.floors || []).length && !(layout.tables || []).length) warnings.push("Floor/table layout section is selected but contains no floors or tables.");
+  }
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
 export async function previewRestaurantConfigImport({ targetRestaurantId, snapshot, mode = "clone", sections } = {}) {
   const warnings = ["Đây là Restaurant Configuration Snapshot, không thay thế database backup vận hành."];
   const errors = [];
   try {
     verifyRestaurantConfigSnapshot(snapshot);
+    const enabled = enabledSectionsForSnapshot(snapshot, sections);
     if (mode === "same_restaurant_restore" && String(snapshot.source?.restaurantId) !== String(targetRestaurantId)) {
       errors.push("same_restaurant_restore chỉ được dùng với đúng nhà hàng nguồn trong snapshot.");
     }
     if (mode === "replace") warnings.push("Replace sẽ xóa cấu hình thuộc section đã chọn của targetRestaurantId trước khi import.");
+    addDependencyWarnings(snapshot, enabled, warnings);
   } catch (error) {
     errors.push(error.message);
   }
@@ -332,8 +396,23 @@ export async function previewRestaurantConfigImport({ targetRestaurantId, snapsh
     targetRestaurantId: String(targetRestaurantId),
     mode,
     changes,
-    warnings,
+    warnings: uniqueStrings(warnings),
     errors,
+  };
+}
+
+function createImportContext() {
+  return {
+    floorMap: new Map(),
+    menuMap: new Map(),
+    categoryMap: new Map(),
+    categoryMenuMap: new Map(),
+    menuItemMap: new Map(),
+    ingredientMap: new Map(),
+    warehouseMap: new Map(),
+    supplyMap: new Map(),
+    comboMap: new Map(),
+    warnings: [],
   };
 }
 
@@ -352,11 +431,15 @@ async function upsertSingleton(Model, targetRestaurantId, data, actorId) {
   return Model.findOneAndUpdate({ restaurantId: targetRestaurantId }, { $set: payload }, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
 
-async function upsertByKey(Model, targetRestaurantId, doc, keys, extra = {}) {
-  const payload = { ...stripRestoreFields(doc), ...extra, restaurantId: targetRestaurantId };
+function cleanupPayload(payload) {
   for (const key of Object.keys(payload)) {
     if (payload[key] === undefined) delete payload[key];
   }
+  return payload;
+}
+
+async function upsertByKey(Model, targetRestaurantId, doc, keys, extra = {}, options = {}) {
+  const payload = cleanupPayload({ ...stripRestoreFields(doc), ...extra, restaurantId: targetRestaurantId });
   const filter = { restaurantId: targetRestaurantId };
   for (const key of keys) {
     if (payload[key] != null && payload[key] !== "") {
@@ -364,67 +447,260 @@ async function upsertByKey(Model, targetRestaurantId, doc, keys, extra = {}) {
       break;
     }
   }
+  const update = { $set: payload };
+  if (options.unset && Object.keys(options.unset).length) update.$unset = options.unset;
   if (Object.keys(filter).length === 1) return Model.create(payload);
+  return Model.findOneAndUpdate(filter, update, { upsert: true, new: true, setDefaultsOnInsert: true });
+}
+
+async function upsertByCompositeKeys(Model, targetRestaurantId, doc, keys, extra = {}) {
+  const payload = cleanupPayload({ ...stripRestoreFields(doc), ...extra, restaurantId: targetRestaurantId });
+  const filter = { restaurantId: targetRestaurantId };
+  for (const key of keys) {
+    if (payload[key] != null && payload[key] !== "") filter[key] = payload[key];
+  }
+  if (Object.keys(filter).length !== keys.length + 1) return upsertByKey(Model, targetRestaurantId, payload, keys, {});
   return Model.findOneAndUpdate(filter, { $set: payload }, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
 
 function modelId(doc) {
-  return doc?._id ? String(doc._id) : doc?.id ? String(doc.id) : null;
+  if (!doc) return null;
+  if (isObjectIdLike(doc)) return doc.toHexString();
+  if (doc._id) return refKey(doc._id);
+  if (doc.id) return String(doc.id);
+  return null;
 }
 
-async function importFloorTable(targetRestaurantId, data, mode) {
-  const floorMap = new Map();
+function rememberLegacy(contextMap, doc, saved) {
+  const legacy = refKey(doc?.legacyId || doc?._id || doc?.id);
+  const savedId = modelId(saved);
+  if (legacy && savedId) contextMap.set(legacy, savedId);
+  return savedId;
+}
+
+function remapId(value, map) {
+  if (!value) return value;
+  const key = refKey(value);
+  return map.get(key) || null;
+}
+
+async function importFloorTable(targetRestaurantId, data, mode, context) {
   for (const floor of data?.floors || []) {
     const saved = await upsertByKey(Floor, targetRestaurantId, floor, ["level", "name"]);
-    if (floor.legacyId && modelId(saved)) floorMap.set(String(floor.legacyId), modelId(saved));
+    rememberLegacy(context.floorMap, floor, saved);
   }
   for (const table of data?.tables || []) {
-    const nextFloorId = floorMap.get(String(table.floorId)) || floorMap.get(String(table.floorId?.legacyId)) || table.floorId;
+    let nextFloorId = remapId(table.floorId, context.floorMap);
+    if (!nextFloorId && table.floorName) {
+      const matchedFloor = await findOne(Floor, { restaurantId: targetRestaurantId, name: table.floorName });
+      nextFloorId = modelId(matchedFloor);
+    }
+    if (!nextFloorId) {
+      context.warnings.push(`Skipped table ${table.code || table.name || table.legacyId || "unknown"} because floorId could not be remapped.`);
+      continue;
+    }
     const extra = { floorId: nextFloorId };
+    const options = {};
     if (mode === "clone") {
       extra.status = "available";
-      extra.viewLock = undefined;
+      options.unset = { viewLock: "" };
     }
-    await upsertByKey(Table, targetRestaurantId, table, ["code", "name"], extra);
+    await upsertByKey(Table, targetRestaurantId, table, ["code", "name"], extra, options);
   }
 }
 
-async function importMenuCatalog(targetRestaurantId, data, mode) {
-  const map = { menu: new Map(), category: new Map(), categoryMenu: new Map(), menuItem: new Map() };
+async function importInventoryMaster(targetRestaurantId, data, mode, context) {
+  for (const warehouse of data?.warehouses || []) {
+    const saved = await upsertByKey(Warehouse, targetRestaurantId, warehouse, ["name"]);
+    rememberLegacy(context.warehouseMap, warehouse, saved);
+  }
+  for (const category of data?.ingredientCategories || []) await upsertByKey(IngredientCategory, targetRestaurantId, category, ["slug", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+  for (const ingredient of data?.ingredients || []) {
+    const saved = await upsertByKey(Ingredient, targetRestaurantId, ingredient, ["sku", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+    rememberLegacy(context.ingredientMap, ingredient, saved);
+  }
+  for (const category of data?.supplyCategories || []) await upsertByKey(SupplyCategory, targetRestaurantId, category, ["slug", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+  for (const supply of data?.supplies || []) {
+    const saved = await upsertByKey(Supply, targetRestaurantId, supply, ["sku", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+    rememberLegacy(context.supplyMap, supply, saved);
+  }
+}
+
+function remapRecipeIngredientRefs(value, context) {
+  if (Array.isArray(value)) return value.map((item) => remapRecipeIngredientRefs(item, context)).filter((item) => item !== null);
+  if (!value || typeof value !== "object") return value;
+  const payload = { ...value };
+  if (payload.ingredientId) {
+    const mapped = remapId(payload.ingredientId, context.ingredientMap);
+    if (!mapped) {
+      context.warnings.push(RECIPE_INGREDIENT_WARNING);
+      return null;
+    }
+    payload.ingredientId = mapped;
+  }
+  for (const [key, child] of Object.entries(payload)) {
+    if (key === "ingredientId") continue;
+    payload[key] = remapRecipeIngredientRefs(child, context);
+  }
+  return payload;
+}
+
+async function importMenuCatalogBase(targetRestaurantId, data, mode, context) {
   for (const categoryMenu of data?.categoryMenus || []) {
     const saved = await upsertByKey(CategoryMenu, targetRestaurantId, categoryMenu, ["name", "slug"]);
-    if (categoryMenu.legacyId && modelId(saved)) map.categoryMenu.set(String(categoryMenu.legacyId), modelId(saved));
+    rememberLegacy(context.categoryMenuMap, categoryMenu, saved);
   }
   for (const menu of data?.menus || []) {
-    const saved = await upsertByKey(Menu, targetRestaurantId, menu, ["timeSlot", "name"], { categoryMenuId: map.categoryMenu.get(String(menu.categoryMenuId)) || menu.categoryMenuId });
-    if (menu.legacyId && modelId(saved)) map.menu.set(String(menu.legacyId), modelId(saved));
+    const categoryMenuId = menu.categoryMenuId ? remapId(menu.categoryMenuId, context.categoryMenuMap) : undefined;
+    const extra = {};
+    if (menu.categoryMenuId && categoryMenuId) extra.categoryMenuId = categoryMenuId;
+    if (mode === "clone" && menu.categoryMenuId && !categoryMenuId) context.warnings.push(`Removed menu categoryMenuId for ${menu.name || menu.timeSlot || menu.legacyId || "unknown"} because it could not be remapped.`);
+    const saved = await upsertByKey(Menu, targetRestaurantId, menu, ["timeSlot", "name"], extra);
+    rememberLegacy(context.menuMap, menu, saved);
   }
   for (const category of data?.categories || []) {
     const saved = await upsertByKey(Category, targetRestaurantId, category, ["name"]);
-    if (category.legacyId && modelId(saved)) map.category.set(String(category.legacyId), modelId(saved));
+    rememberLegacy(context.categoryMap, category, saved);
   }
   for (const item of data?.menuItems || []) {
-    const extra = {
-      menuId: map.menu.get(String(item.menuId)) || item.menuId,
-      categoryId: map.category.get(String(item.categoryId)) || item.categoryId,
-    };
+    const menuId = remapId(item.menuId, context.menuMap);
+    const categoryId = remapId(item.categoryId, context.categoryMap);
+    if (!menuId || !categoryId) {
+      context.warnings.push(`Skipped menu item ${item.code || item.name || item.legacyId || "unknown"} because menuId/categoryId could not be remapped.`);
+      continue;
+    }
+    const extra = { menuId, categoryId };
     if (mode === "clone") {
       extra.orderCounter = 0;
       extra.rate = 0;
     }
     const saved = await upsertByKey(MenuItem, targetRestaurantId, item, ["code", "name"], extra);
-    if (item.legacyId && modelId(saved)) map.menuItem.set(String(item.legacyId), modelId(saved));
+    rememberLegacy(context.menuItemMap, item, saved);
   }
   for (const group of data?.modifierGroups || []) {
-    const menuItemIds = (group.menuItemIds || []).map((id) => map.menuItem.get(String(id)) || id).filter(Boolean);
+    const menuItemIds = (group.menuItemIds || []).map((idValue) => remapId(idValue, context.menuItemMap)).filter(Boolean);
     await upsertByKey(ModifierGroup, targetRestaurantId, group, ["name"], { menuItemIds });
   }
-  for (const combo of data?.combos || []) await upsertByKey(Combo, targetRestaurantId, combo, ["name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
-  for (const recipe of data?.recipes || []) await upsertByKey(Recipe, targetRestaurantId, recipe, ["menuItemId"], { menuItemId: map.menuItem.get(String(recipe.menuItemId)) || recipe.menuItemId });
+  for (const combo of data?.combos || []) {
+    const saved = await upsertByKey(Combo, targetRestaurantId, combo, ["name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+    rememberLegacy(context.comboMap, combo, saved);
+  }
+}
+
+async function importMenuCatalogRecipes(targetRestaurantId, data, context) {
+  for (const recipe of data?.recipes || []) {
+    const menuItemId = remapId(recipe.menuItemId, context.menuItemMap);
+    if (!menuItemId) {
+      context.warnings.push(`Skipped recipe ${recipe.legacyId || "unknown"} because menuItemId could not be remapped.`);
+      continue;
+    }
+    const payload = stripRestoreFields(recipe);
+    payload.menuItemId = menuItemId;
+    if (payload.servingVariants) payload.servingVariants = remapRecipeIngredientRefs(payload.servingVariants, context);
+    if (payload.ingredients) payload.ingredients = remapRecipeIngredientRefs(payload.ingredients, context);
+    await upsertByKey(Recipe, targetRestaurantId, payload, ["menuItemId"], { menuItemId });
+  }
+}
+
+function remapPromotionDoc(doc, context, mode) {
+  const payload = stripRestoreFields(doc);
+  for (const [field, map] of [["categoryId", context.categoryMap], ["itemId", context.menuItemMap], ["giftItemId", context.menuItemMap]]) {
+    if (!payload[field]) continue;
+    const mapped = remapId(payload[field], map);
+    if (mapped) payload[field] = mapped;
+    else {
+      delete payload[field];
+      context.warnings.push(`Removed promotion ${field} because it could not be remapped.`);
+    }
+  }
+  if (Array.isArray(payload.comboItems)) {
+    payload.comboItems = payload.comboItems
+      .map((line) => {
+        const mapped = remapId(line?.itemId, context.menuItemMap);
+        if (!mapped) {
+          context.warnings.push("Skipped promotion combo item because menu item could not be remapped.");
+          return null;
+        }
+        return { ...line, itemId: mapped };
+      })
+      .filter(Boolean);
+  }
+  if (mode === "clone") {
+    payload.usageCount = 0;
+    payload.used = 0;
+  }
+  return payload;
+}
+
+function remapKnownRefByKey(key, value, context) {
+  const isCategory = key === "categoryId" || key === "categoryIds";
+  const isItem = key === "itemId" || key === "itemIds" || key === "menuItemId" || key === "menuItemIds" || key === "giftItemId";
+  if (!isCategory && !isItem) return { handled: false, value };
+  const map = isCategory ? context.categoryMap : context.menuItemMap;
+  if (Array.isArray(value)) {
+    const next = value.map((item) => remapId(item, map)).filter(Boolean);
+    if (next.length !== value.length) context.warnings.push(`Removed coupon ${key} reference because it could not be remapped.`);
+    return { handled: true, value: next };
+  }
+  const mapped = remapId(value, map);
+  if (!mapped) {
+    context.warnings.push(`Removed coupon ${key} reference because it could not be remapped.`);
+    return { handled: true, value: undefined };
+  }
+  return { handled: true, value: mapped };
+}
+
+function deepRemapKnownRefs(value, context) {
+  if (Array.isArray(value)) return value.map((item) => deepRemapKnownRefs(item, context)).filter((item) => item !== undefined);
+  if (!value || typeof value !== "object") return value;
+  const payload = {};
+  for (const [key, child] of Object.entries(value)) {
+    const remapped = remapKnownRefByKey(key, child, context);
+    const nextValue = remapped.handled ? remapped.value : deepRemapKnownRefs(child, context);
+    if (nextValue !== undefined) payload[key] = nextValue;
+  }
+  return payload;
+}
+
+function remapCouponDoc(doc, context, mode) {
+  const payload = stripRestoreFields(doc);
+  if (payload.constraints) payload.constraints = deepRemapKnownRefs(payload.constraints, context);
+  for (const key of ["categoryId", "categoryIds", "itemId", "itemIds", "menuItemId", "menuItemIds", "giftItemId"]) {
+    if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
+    const remapped = remapKnownRefByKey(key, payload[key], context);
+    if (remapped.value === undefined) delete payload[key];
+    else payload[key] = remapped.value;
+  }
+  if (mode === "clone") {
+    payload.used = 0;
+    payload.usageCount = 0;
+  }
+  return payload;
+}
+
+async function importPromotionConfig(targetRestaurantId, data, mode, context) {
+  for (const promotion of data?.promotions || []) {
+    const payload = remapPromotionDoc(promotion, context, mode);
+    await upsertByKey(Promotion, targetRestaurantId, payload, ["code", "name"]);
+  }
+  for (const coupon of data?.coupons || []) {
+    const payload = remapCouponDoc(coupon, context, mode);
+    await upsertByKey(Coupon, targetRestaurantId, payload, ["code"]);
+  }
+  for (const voucherPackage of data?.voucherPackages || []) {
+    await upsertByKey(VoucherPackage, targetRestaurantId, voucherPackage, ["code", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+  }
 }
 
 async function importList(Model, targetRestaurantId, docs, keys, mode) {
   for (const doc of docs || []) await upsertByKey(Model, targetRestaurantId, doc, keys, mode === "clone" ? { usageCount: 0, used: 0 } : {});
+}
+
+async function importAiChatbotConfig(targetRestaurantId, data, mode) {
+  if (data.settings) await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: { aiChatbotSettings: data.settings } }, { new: true });
+  await importList(AiChatbotKnowledgeItem, targetRestaurantId, data.knowledgeItems, ["title", "question"], mode);
+  for (const rule of data.safetyRules || []) await upsertByCompositeKeys(AiChatbotSafetyRule, targetRestaurantId, rule, ["ruleType", "pattern"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+  await importList(AiChatbotEvaluationCase, targetRestaurantId, data.evaluationCases, ["name", "question"], mode);
 }
 
 export async function importRestaurantConfigSnapshot({ targetRestaurantId, snapshot, mode = "clone", sections, actorId, dryRun = true, replaceExisting = false } = {}) {
@@ -432,34 +708,26 @@ export async function importRestaurantConfigSnapshot({ targetRestaurantId, snaps
   const errors = [...preview.errors];
   const warnings = [...preview.warnings];
   if (mode === "replace" && !replaceExisting) errors.push("replace mode requires replaceExisting=true");
-  if (errors.length) return { ...preview, success: false, dryRun: Boolean(dryRun), errors };
-  if (dryRun) return { ...preview, success: true, dryRun: true };
+  if (errors.length) return { ...preview, success: false, dryRun: Boolean(dryRun), errors, warnings: uniqueStrings(warnings) };
+  if (dryRun) return { ...preview, success: true, dryRun: true, warnings: uniqueStrings(warnings) };
 
-  for (const [section, data] of sectionEntries(snapshot, sections)) {
+  const enabled = enabledSectionsForSnapshot(snapshot, sections);
+  const context = createImportContext();
+  for (const [section] of sectionEntries(snapshot, sections)) {
     if (mode === "replace") await deleteSectionData(targetRestaurantId, section);
-    if (section === "restaurantProfile") await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: stripRestoreFields(data) }, { new: true });
-    if (SINGLETON_MODELS[section]) await upsertSingleton(SINGLETON_MODELS[section], targetRestaurantId, data, actorId);
-    if (section === "floorTableLayout") await importFloorTable(targetRestaurantId, data, mode);
-    if (section === "menuCatalog") await importMenuCatalog(targetRestaurantId, data, mode);
-    if (section === "inventoryMaster") {
-      await importList(Warehouse, targetRestaurantId, data.warehouses, ["name"], mode);
-      await importList(IngredientCategory, targetRestaurantId, data.ingredientCategories, ["slug", "name"], mode);
-      await importList(Ingredient, targetRestaurantId, data.ingredients, ["sku", "name"], mode);
-      await importList(SupplyCategory, targetRestaurantId, data.supplyCategories, ["slug", "name"], mode);
-      await importList(Supply, targetRestaurantId, data.supplies, ["sku", "name"], mode);
-    }
-    if (section === "promotionConfig") {
-      await importList(Promotion, targetRestaurantId, data.promotions, ["code", "name"], mode);
-      await importList(Coupon, targetRestaurantId, data.coupons, ["code"], mode);
-      await importList(VoucherPackage, targetRestaurantId, data.voucherPackages, ["code", "name"], mode);
-    }
-    if (section === "aiChatbotConfig") {
-      if (data.settings) await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: { aiChatbotSettings: data.settings } }, { new: true });
-      await importList(AiChatbotKnowledgeItem, targetRestaurantId, data.knowledgeItems, ["title", "question"], mode);
-      await importList(AiChatbotSafetyRule, targetRestaurantId, data.safetyRules, ["key", "name", "title"], mode);
-      await importList(AiChatbotEvaluationCase, targetRestaurantId, data.evaluationCases, ["name", "question"], mode);
-    }
   }
 
-  return { ...preview, success: true, dryRun: false, warnings };
+  const data = snapshot.sections || {};
+  if (enabled.restaurantProfile && data.restaurantProfile) await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: stripRestoreFields(data.restaurantProfile) }, { new: true });
+  for (const [section, Model] of Object.entries(SINGLETON_MODELS)) {
+    if (enabled[section] && data[section]) await upsertSingleton(Model, targetRestaurantId, data[section], actorId);
+  }
+  if (enabled.floorTableLayout && data.floorTableLayout) await importFloorTable(targetRestaurantId, data.floorTableLayout, mode, context);
+  if (enabled.menuCatalog && data.menuCatalog) await importMenuCatalogBase(targetRestaurantId, data.menuCatalog, mode, context);
+  if (enabled.inventoryMaster && data.inventoryMaster) await importInventoryMaster(targetRestaurantId, data.inventoryMaster, mode, context);
+  if (enabled.menuCatalog && data.menuCatalog) await importMenuCatalogRecipes(targetRestaurantId, data.menuCatalog, context);
+  if (enabled.promotionConfig && data.promotionConfig) await importPromotionConfig(targetRestaurantId, data.promotionConfig, mode, context);
+  if (enabled.aiChatbotConfig && data.aiChatbotConfig) await importAiChatbotConfig(targetRestaurantId, data.aiChatbotConfig, mode);
+
+  return { ...preview, success: true, dryRun: false, warnings: uniqueStrings([...warnings, ...context.warnings]) };
 }

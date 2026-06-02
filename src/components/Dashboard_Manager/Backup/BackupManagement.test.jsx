@@ -49,7 +49,7 @@ beforeEach(() => {
   previewExport.mockResolvedValue({ data: { restaurantConfigBackupPreview: { restaurantId: "r1", fileName: "backup.json", schemaVersion: 1, createdAt: "2026-06-02T00:00:00.000Z", warnings: ["preview warning"], counts: [{ key: "systemSettings", label: "Cấu hình hệ thống", count: 1, enabled: true }] } } });
   exportBackup.mockResolvedValue({ data: { exportRestaurantConfigBackup: { fileName: "backup.json", mimeType: "application/json", encoding: "base64", contentBase64: window.btoa('{"kind":"cohan.restaurant_config_snapshot"}'), checksum: "sha256:abc", sizeBytes: 42, createdAt: "2026-06-02T00:00:00.000Z" } } });
   previewImport.mockResolvedValue({ data: { previewRestaurantConfigImport: { valid: true, schemaVersion: 1, sourceRestaurantName: "Nguồn", targetRestaurantId: "r2", mode: "clone", warnings: ["dry-run"], errors: [], changes: [{ section: "systemSettings", action: "create", label: "Cấu hình hệ thống", count: 1 }] } } });
-  importBackup.mockResolvedValue({ data: { importRestaurantConfigBackup: { success: true, dryRun: false, targetRestaurantId: "r2", mode: "clone", warnings: [], errors: [], changes: [], backupRun: { id: "br1", status: "checklist_completed", note: "Imported", createdAt: "2026-06-02T00:00:00.000Z", completedAt: "2026-06-02T00:00:00.000Z" } } } });
+  importBackup.mockResolvedValue({ data: { importRestaurantConfigBackup: { success: true, dryRun: false, targetRestaurantId: "r2", mode: "clone", warnings: ["Skipped recipe ingredient line because ingredient was not imported or could not be remapped."], errors: [], changes: [], backupRun: { id: "br1", status: "checklist_completed", note: "Imported", createdAt: "2026-06-02T00:00:00.000Z", completedAt: "2026-06-02T00:00:00.000Z" } } } });
   useLazyQueryMock.mockImplementation((query, options = {}) => [async (variables) => {
     try {
       return await previewExport(variables);
@@ -123,6 +123,7 @@ describe("BackupManagement config snapshot UI", () => {
     await waitFor(() => expect(importButton).not.toBeDisabled());
     fireEvent.click(importButton);
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
+    expect(await screen.findByText(/Skipped recipe ingredient line/)).toBeInTheDocument();
   });
 
   it("handles backend error", async () => {

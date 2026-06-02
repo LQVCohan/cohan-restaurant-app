@@ -71,6 +71,15 @@ Snapshot không export dữ liệu nhạy cảm hoặc dữ liệu phát sinh m�
 
 Trong clone mode, hệ thống không dùng lại `_id` cũ; các `_id` trong snapshot chỉ là `legacyId` để remap. Runtime counters/status được reset để tránh kéo dữ liệu vận hành sang nhà hàng mới.
 
+Các mapping quan trọng khi clone:
+
+- Floor được remap trước rồi Table dùng `floorId` mới; nếu không map được floor thì table bị bỏ qua kèm warning.
+- Menu và Category được remap trước rồi MenuItem dùng `menuId`/`categoryId` mới; nếu không map được menu/category bắt buộc thì menu item bị bỏ qua kèm warning.
+- Inventory Ingredient được remap trước Recipe; `servingVariants[].ingredients[].ingredientId` được đổi sang Ingredient mới.
+- Menu/Category/MenuItem được remap trước Promotion/Coupon; các field như `categoryId`, `itemId`, `giftItemId`, `comboItems[].itemId` và constraints coupon chứa `categoryIds`, `itemIds`, `menuItemIds` được đổi sang id mới.
+
+Nếu một source ObjectId không remap được, hệ thống không giữ ObjectId của nhà hàng nguồn trong nhà hàng đích. Reference đó sẽ bị bỏ/skip và trả warning để manager kiểm tra lại sau import.
+
 ## 7. Quy trình restore cùng nhà hàng
 
 1. Chọn file snapshot có `source.restaurantId` trùng nhà hàng đích.
@@ -98,6 +107,9 @@ Snapshot có checksum dạng `sha256:...` tính trên canonical JSON không gồ
 - Luôn preview trước khi import thật.
 - Không dùng Config snapshot thay cho database backup vận hành.
 - Sau clone cần kiểm tra máy in local IP/device id, print station, tích hợp thanh toán, giờ mở cửa đặc biệt và AI chatbot.
+- Recipe ingredient links cần chọn kèm `inventoryMaster`; nếu không, ingredient lines không remap được sẽ bị bỏ và có warning.
+- Promotion/Coupon item/category links cần chọn kèm `menuCatalog`; nếu không, refs menu/category/item không remap được sẽ bị bỏ và có warning.
+- Clone reset runtime fields như table `status`/`viewLock`, promotion/coupon/voucher `usageCount`/`used`, và menu item `orderCounter`/`rate`.
 - Không chia sẻ file snapshot nếu có cấu hình nội bộ như địa chỉ, email, số điện thoại hoặc thông tin thiết bị in.
 - Dùng replace mode cẩn thận vì mode này xóa cấu hình trong section đã chọn của target restaurant trước khi import.
 
