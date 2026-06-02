@@ -1,0 +1,476 @@
+/* Scoped visual polish for customer food detail page. Business logic remains in FoodDetail.jsx. */
+.food-detail-wrapper {
+  min-height: 100vh !important;
+  padding: 92px 24px 72px !important;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255, 185, 115, 0.2), transparent 30rem),
+    radial-gradient(circle at 92% 4%, rgba(255, 235, 214, 0.68), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ee 46%, #ffffff 100%) !important;
+  color: #1e1915 !important;
+}
+
+.food-detail-container {
+  max-width: 1280px !important;
+  padding: 30px !important;
+  border: 1px solid rgba(92, 64, 51, 0.1) !important;
+  border-radius: 32px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 28px 84px rgba(83, 46, 20, 0.1) !important;
+  backdrop-filter: blur(18px);
+}
+
+.fd-breadcrumb {
+  width: fit-content;
+  margin-bottom: 22px !important;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 102, 0, 0.15);
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #8a3d05 !important;
+  font-weight: 750;
+}
+
+.fd-breadcrumb span:first-child {
+  cursor: pointer;
+  color: #ff6600;
+  font-weight: 900;
+}
+
+.fd-breadcrumb .current {
+  max-width: min(44vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1e1915 !important;
+}
+
+.fd-note-box {
+  margin: 0 0 22px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(255, 102, 0, 0.16) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at top left, rgba(255, 138, 61, 0.08), transparent 18rem),
+    #fffaf4 !important;
+}
+
+.fd-note-box label {
+  display: block;
+  margin-bottom: 8px;
+  color: #1e1915;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fd-note-box textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 13px 14px;
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1e1915;
+  font-weight: 650;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fd-note-box textarea:focus {
+  border-color: rgba(255, 102, 0, 0.45);
+  box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.1);
+}
+
+.fd-main-grid {
+  grid-template-columns: minmax(360px, 0.92fr) minmax(0, 1.08fr) !important;
+  gap: 34px !important;
+  align-items: start;
+}
+
+.fd-gallery .main-image-box {
+  border-radius: 28px !important;
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  box-shadow: 0 24px 58px rgba(83, 46, 20, 0.12) !important;
+  background: #fff7ed;
+}
+
+.fd-gallery .main-image-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(30, 25, 21, 0.04), rgba(30, 25, 21, 0.18));
+}
+
+.fd-gallery .main-image-box img {
+  transform-origin: center;
+  transition: transform 0.62s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease !important;
+}
+
+.fd-gallery .main-image-box:hover img {
+  transform: scale(1.055) !important;
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.fd-gallery .main-image-box .badges {
+  z-index: 2;
+}
+
+.fd-gallery .main-image-box .badges span,
+.fd-gallery .main-image-box .badges .badge-hot {
+  border-radius: 999px !important;
+  background: rgba(255, 102, 0, 0.94) !important;
+  box-shadow: 0 14px 28px rgba(255, 102, 0, 0.28) !important;
+  backdrop-filter: blur(12px);
+}
+
+.thumbnail-list .thumb-item {
+  border-radius: 16px !important;
+  box-shadow: 0 10px 22px rgba(82, 47, 26, 0.08);
+}
+
+.thumbnail-list .thumb-item.active,
+.thumbnail-list .thumb-item:hover {
+  border-color: #ff6600 !important;
+  box-shadow: 0 12px 26px rgba(255, 102, 0, 0.2);
+}
+
+.fd-info-section {
+  padding: 4px 0;
+}
+
+.fd-info-section .info-header .album-tag {
+  padding: 7px 12px !important;
+  border: 1px solid rgba(255, 102, 0, 0.16);
+  border-radius: 999px !important;
+  background: #fff7ed !important;
+  color: #ff6600 !important;
+  font-weight: 900 !important;
+}
+
+.fd-info-section .actions .btn-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid rgba(92, 64, 51, 0.12) !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(82, 47, 26, 0.08);
+}
+
+.fd-info-section .actions .btn-icon:hover {
+  color: #ff6600 !important;
+  transform: translateY(-2px);
+}
+
+.fd-info-section .food-name {
+  font-size: clamp(2rem, 4vw, 3.4rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.06em;
+  color: #1e1915 !important;
+  text-wrap: balance;
+}
+
+.fd-info-section .meta-info {
+  gap: 10px !important;
+  margin-bottom: 18px !important;
+}
+
+.fd-info-section .meta-info .rating,
+.fd-info-section .meta-info .prep-time {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #1e1915 !important;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(82, 47, 26, 0.05);
+}
+
+.fd-info-section .meta-info .rating {
+  background: #fff7ed;
+  color: #8a3d05 !important;
+}
+
+.fd-info-section .meta-info .divider {
+  display: none;
+}
+
+.fd-info-section .price-box {
+  margin-bottom: 16px !important;
+  padding: 18px !important;
+  border: 1px solid rgba(255, 102, 0, 0.16) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at top left, rgba(255, 138, 61, 0.1), transparent 16rem),
+    #fff7ed !important;
+}
+
+.fd-info-section .price-box .current-price {
+  color: #ff6600 !important;
+  font-size: clamp(1.85rem, 3vw, 2.5rem) !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.04em;
+}
+
+.availability-box.info {
+  margin: 10px 0 !important;
+  padding: 13px 14px !important;
+  border: 1px solid rgba(255, 102, 0, 0.14) !important;
+  border-radius: 18px !important;
+  background: #fffaf4 !important;
+  color: #1e1915 !important;
+}
+
+.availability-box.info .promo-title {
+  color: #8a3d05 !important;
+  font-weight: 900 !important;
+}
+
+.availability-box.info .promo-list {
+  color: #766b61 !important;
+}
+
+.fd-for-you-panel {
+  border-radius: 18px !important;
+  box-shadow: 0 14px 32px rgba(82, 47, 26, 0.06);
+}
+
+.fd-info-section .options-divider {
+  margin: 20px 0 !important;
+  background: rgba(92, 64, 51, 0.1) !important;
+}
+
+.selection-area {
+  gap: 18px !important;
+}
+
+.selection-area .option-title {
+  font-weight: 900 !important;
+  letter-spacing: -0.015em;
+}
+
+.radio-grid .radio-btn {
+  border-radius: 15px !important;
+  padding: 12px 15px !important;
+  font-weight: 760;
+}
+
+.radio-grid .radio-btn:hover {
+  border-color: rgba(255, 102, 0, 0.38) !important;
+  color: #ff6600;
+}
+
+.radio-grid .radio-btn.selected {
+  border-color: rgba(255, 102, 0, 0.44) !important;
+  background: linear-gradient(135deg, #fff1e5, #fff7ed) !important;
+  color: #ff6600 !important;
+  box-shadow: 0 10px 24px rgba(255, 102, 0, 0.12);
+}
+
+.restaurant-list .restaurant-item {
+  border-radius: 16px !important;
+  border-color: rgba(92, 64, 51, 0.12) !important;
+}
+
+.restaurant-list .restaurant-item.selected {
+  border-color: rgba(255, 102, 0, 0.32) !important;
+  background: #fff7ed !important;
+}
+
+.action-area {
+  align-items: stretch !important;
+  padding-top: 6px;
+}
+
+.action-area .quantity-control {
+  height: 54px !important;
+  border-color: rgba(92, 64, 51, 0.12) !important;
+  border-radius: 17px !important;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.action-area .quantity-control button:hover:not(:disabled) {
+  background: #fff7ed !important;
+  color: #ff6600 !important;
+}
+
+.action-area .action-buttons {
+  height: 54px !important;
+}
+
+.action-area .action-buttons button {
+  border-radius: 17px !important;
+  font-weight: 900 !important;
+}
+
+.action-area .action-buttons .btn-add-cart {
+  border-color: rgba(255, 102, 0, 0.35) !important;
+  background: #fff7ed !important;
+  color: #ff6600 !important;
+}
+
+.action-area .action-buttons .btn-buy-now {
+  background: linear-gradient(135deg, #ff6600, #ff8a3d) !important;
+  box-shadow: 0 16px 30px rgba(255, 102, 0, 0.26) !important;
+}
+
+.action-area .action-buttons .btn-buy-now:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e65c00, #ff6600) !important;
+}
+
+.review-summary {
+  display: inline-flex;
+  margin-top: 16px !important;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #8a3d05;
+  font-weight: 900 !important;
+}
+
+.fd-bottom-section {
+  margin-top: 34px;
+  padding: 24px !important;
+  border: 1px solid rgba(92, 64, 51, 0.1) !important;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 48px rgba(83, 46, 20, 0.06);
+}
+
+.fd-bottom-section .tabs-header {
+  gap: 10px !important;
+  border-bottom: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+.fd-bottom-section .tabs-header .tab-btn {
+  padding: 11px 16px !important;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #766b61 !important;
+}
+
+.fd-bottom-section .tabs-header .tab-btn.active {
+  background: #fff1e5 !important;
+  color: #ff6600 !important;
+}
+
+.fd-bottom-section .tabs-header .tab-btn.active::after {
+  display: none !important;
+}
+
+.fd-bottom-section .detail-grid .specs-block {
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  border-radius: 20px !important;
+  background: #fffaf4 !important;
+}
+
+.fd-cart-floating-btn {
+  right: 28px !important;
+  bottom: 28px !important;
+  box-shadow: 0 18px 42px rgba(255, 102, 0, 0.38) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .food-detail-container {
+    animation: fdPageIn 0.68s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .fd-gallery .main-image-box {
+    animation: fdMediaIn 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+  }
+
+  .fd-info-section {
+    animation: fdInfoIn 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+  }
+
+  .fd-note-box,
+  .fd-bottom-section {
+    animation: fdPanelIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+  }
+
+  .action-area .action-buttons button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .action-area .action-buttons button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.26), transparent);
+    transition: transform 0.52s ease;
+  }
+
+  .action-area .action-buttons button:hover::after {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-detail-wrapper *,
+  .food-detail-wrapper *::before,
+  .food-detail-wrapper *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .fd-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .food-detail-wrapper {
+    padding: 80px 16px 96px !important;
+  }
+
+  .food-detail-container {
+    padding: 18px !important;
+    border-radius: 24px !important;
+  }
+
+  .fd-breadcrumb .current {
+    max-width: 58vw;
+  }
+}
+
+@media (max-width: 576px) {
+  .action-area {
+    border-top: 1px solid rgba(92, 64, 51, 0.12);
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(16px);
+  }
+
+  .action-area .action-buttons {
+    width: 100%;
+  }
+}
+
+@keyframes fdPageIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.988); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fdMediaIn {
+  from { opacity: 0; transform: translateY(24px) rotate(-1deg); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0) rotate(0); filter: blur(0); }
+}
+
+@keyframes fdInfoIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fdPanelIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
