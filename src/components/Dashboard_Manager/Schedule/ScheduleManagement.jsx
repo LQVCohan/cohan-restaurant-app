@@ -1197,12 +1197,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .filter(Boolean);
     }
 
-    const managedRestaurants = (managerRestaurantsData?.restaurantsByManager?.edges || [])
+    return (managerRestaurantsData?.restaurantsByManager?.edges || [])
       .map((edge) => edge.node)
       .filter(Boolean);
-    if (managedRestaurants.length) return managedRestaurants;
-    return (me?.refRestaurants || []).filter(Boolean);
-  }, [allRestaurantsData, managerRestaurantsData, me?.refRestaurants, me?.roleName]);
+  }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
   useEffect(
     () => () => {
       const resolver = assignmentOverrideResolverRef.current;
