@@ -81,12 +81,27 @@
   line-height: 1.25;
 }
 
+.food-detail-wrapper .action-area .action-buttons .btn-buy-now:disabled,
+.food-detail-wrapper .action-area .action-buttons .btn-add-cart:disabled {
+  gap: 7px !important;
+  pointer-events: none !important;
+}
+
 .food-detail-wrapper .action-area .action-buttons .btn-buy-now:disabled {
   font-size: 0 !important;
 }
 
 .food-detail-wrapper .action-area .action-buttons .btn-buy-now:disabled::after {
   content: "Chưa thể đặt lúc này";
+  position: static !important;
+  inset: auto !important;
+  display: inline !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+  background: none !important;
+  opacity: 1 !important;
+  transition: none !important;
   font-size: 0.92rem;
   font-weight: 900;
 }
@@ -98,13 +113,31 @@
 .food-detail-wrapper .action-area .action-buttons .btn-add-cart:disabled svg {
   width: 18px !important;
   height: 18px !important;
-  margin-right: 7px !important;
+  margin-right: 0 !important;
 }
 
 .food-detail-wrapper .action-area .action-buttons .btn-add-cart:disabled::after {
   content: "Tạm chưa nhận món";
+  position: static !important;
+  inset: auto !important;
+  display: inline !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+  background: none !important;
+  opacity: 1 !important;
+  transition: none !important;
   font-size: 0.88rem;
   font-weight: 900;
+}
+
+.food-detail-wrapper .action-area .action-buttons .btn-buy-now:disabled:hover::after,
+.food-detail-wrapper .action-area .action-buttons .btn-add-cart:disabled:hover::after {
+  transform: none !important;
+}
+
+.food-detail-wrapper .action-area .action-buttons button:disabled::before {
+  display: none !important;
 }
 
 .food-detail-wrapper .review-summary {
