@@ -14,6 +14,7 @@ import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestauran
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 
 import "./RestaurantDetail.scss";
+import "./RestaurantDetail.refinements.scss";
 
 const FAVORITES_STORAGE_KEY = "restaurant_favorites";
 
