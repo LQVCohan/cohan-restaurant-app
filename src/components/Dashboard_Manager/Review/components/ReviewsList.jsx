@@ -78,7 +78,7 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
     return (
       <EmptyState
         type={
-          currentTab === "service" ? "service" : currentTab === "pending" ? "pending" : "default"
+          currentTab === "service" ? "service" : currentTab === "reported" ? "reported" : "default"
         }
       />
     );

@@ -451,19 +451,21 @@ const ReviewManagement = () => {
       return {
         total: apiStats.total,
         avg: Number(apiStats.avgRating || 0).toFixed(1),
-        pending: apiStats.pending,
       };
     }
 
     const total = reviews.length;
     const avg = total ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : "0.0";
-    const reported = reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length;
-    return { total, avg, pending: reported };
+    return { total, avg };
   }, [reviews, statsData]);
 
 
   const analytics = analyticsData?.reviewAnalytics;
   const queueCounts = analytics?.actionQueueCounts || {};
+  const reportRows = reportsData?.reviewReports?.items || [];
+  const reportStats = reportsData?.reviewReportStats;
+  const localUnderReviewCount = reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length;
+  const underReviewCount = analytics?.reportedCount ?? queueCounts.needsModeration ?? reportStats?.pending ?? localUnderReviewCount;
   const needsReplyCount = queueCounts.needsReply ?? reviews.filter((r) => ["published", "reported"].includes(r.status) && Number(r.rating || 0) <= 2 && !r.first_official_reply).length;
   const highRiskCount = queueCounts.highRisk ?? reviews.filter((r) => Number(r.reports_count || 0) >= 3 || (Number(r.rating || 0) <= 2 && Number(r.reports_count || 0) > 0)).length;
   const doneCount = reviews.filter((r) => (r.status === "published" && r.first_official_reply) || (r.status === "reported" && Number(r.reports_count || 0) === 0)).length;
@@ -473,14 +475,14 @@ const ReviewManagement = () => {
     { label: "Điểm TB", value: Number(analytics?.avgRating || stats.avg || 0).toFixed(1), icon: "⭐" },
     { label: "Tỷ lệ verified", value: `${Math.round(Number(analytics?.verifiedRate || 0) * 100)}%`, icon: "✅" },
     { label: "Review tiêu cực", value: analytics?.negativeCount ?? reviews.filter((r) => Number(r.rating || 0) <= 2).length, icon: "⚠️" },
-    { label: "Đang xem xét", value: analytics?.reportedCount ?? stats.pending, icon: "🚩" },
+    { label: "Đang xem xét", value: underReviewCount, icon: "🚩" },
     { label: "Chưa phản hồi", value: needsReplyCount, icon: "💬" },
-    { label: "Report pending", value: analytics?.reportedCount ?? reviews.filter((r) => r.status === "reported").length, icon: "🚩" },
+    { label: "Report pending", value: reportStats?.pending ?? reportRows.filter((r) => r.status === "pending").length, icon: "🚩" },
     { label: "High risk", value: highRiskCount, icon: "🔥" },
   ];
 
   const queueTiles = [
-    { id: "needsModeration", label: "Báo cáo cần xử lý", value: queueCounts.needsModeration ?? reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length, hint: "hậu kiểm, không ẩn tự động", tone: "warning" },
+    { id: "needsModeration", label: "Báo cáo cần xử lý", value: underReviewCount, hint: "hậu kiểm, không ẩn tự động", tone: "warning" },
     { id: "needsReply", label: "Đánh giá cần phản hồi", value: needsReplyCount, hint: "1–2 sao chưa có reply", tone: "danger" },
     { id: "reports", label: "Report cần xử lý", value: reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length, hint: "report queue", tone: "danger" },
     { id: "highRisk", label: "Review rủi ro cao", value: highRiskCount, hint: "report >= 3 hoặc 1 sao", tone: "critical" },
@@ -502,9 +504,6 @@ const ReviewManagement = () => {
     needsReply: reviews.filter((r) => ["published", "reported"].includes(r.status) && Number(r.rating || 0) <= 2 && !r.first_official_reply).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
     highRisk: reviews.filter((r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1).sort((a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0)).slice(0, 5),
   }), [reviews]);
-
-  const reportRows = reportsData?.reviewReports?.items || [];
-  const reportStats = reportsData?.reviewReportStats;
 
   const handleResolveReport = useCallback(async (report, status = "resolved") => {
     const resolutionNote = window.prompt(status === "resolved" ? "Ghi chú resolve report:" : "Lý do reject report:", "") || "";
@@ -666,7 +665,6 @@ const ReviewManagement = () => {
     restaurant: "Đánh giá nhà hàng",
     food: "Đánh giá món ăn",
     service: "Đánh giá dịch vụ",
-    pending: "Đang xem xét",
     reported: "Bị báo cáo",
     hidden: "Đã ẩn",
     rejected: "Từ chối",
@@ -691,7 +689,7 @@ const ReviewManagement = () => {
           stats={[
             { id: "total", icon: "🧾", label: "Tổng đánh giá", value: stats.total },
             { id: "avg", icon: "⭐", label: "Điểm trung bình", value: stats.avg },
-            { id: "reported", icon: "🚩", label: "Đang xem xét", value: stats.pending },
+            { id: "reported", icon: "🚩", label: "Đang xem xét", value: underReviewCount },
             { id: "bad", icon: "⚠️", label: "Tiêu cực", value: filteredReviews.filter((r) => Number(r.rating || 0) <= 2).length },
           ]}
           secondaryActions={permissions.canExport ? [{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }] : []}

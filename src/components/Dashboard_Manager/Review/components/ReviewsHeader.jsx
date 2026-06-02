@@ -7,7 +7,7 @@ import "./ReviewsHeader.scss";
  * - Tiêu đề + mô tả ngắn
  * - 3 ô thống kê có icon
  */
-const ReviewsHeader = ({ total = 0, avg = "0.0", pending = 0 }) => {
+const ReviewsHeader = ({ total = 0, avg = "0.0", underReviewCount = 0, pending = 0 }) => {
   return (
     <section className="reviews-header-card">
       <div className="reviews-header-card__left">
@@ -49,7 +49,7 @@ const ReviewsHeader = ({ total = 0, avg = "0.0", pending = 0 }) => {
           <div className="reviews-header-card__stat-icon">⏳</div>
           <div className="reviews-header-card__stat-text">
             <span className="reviews-header-card__stat-label">Đang xem xét</span>
-            <span className="reviews-header-card__stat-value">{pending}</span>
+            <span className="reviews-header-card__stat-value">{underReviewCount || pending}</span>
           </div>
         </div>
       </div>

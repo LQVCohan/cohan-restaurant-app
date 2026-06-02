@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
     countDocuments: vi.fn(),
     find: vi.fn(),
   },
-  ReviewHelpful: {},
-  ReviewReaction: {},
+  ReviewHelpful: { findOne: vi.fn(), create: vi.fn() },
+  ReviewReaction: { findOne: vi.fn(), create: vi.fn() },
   ReviewReport: {
     countDocuments: vi.fn(),
     findOneAndUpdate: vi.fn(),
@@ -172,6 +172,76 @@ describe("transparent review flow", () => {
 
     expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith("review1", expect.objectContaining({ reportsCount: 1, status: "reported" }), { new: true });
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.report.create" }));
+  });
+
+
+  it("blocks updateReview bypasses for manager/admin and keeps owner public reviews immutable", async () => {
+    mocks.Review.findById.mockResolvedValue({
+      id: "review1",
+      restaurantId: "restaurant1",
+      status: "published",
+      rating: 2,
+      title: "Original",
+      content: "Original content",
+      customerId: "customer1",
+      createdBy: "customer1",
+    });
+
+    await expect(mutation.updateReview(null, { id: "review1", input: { status: "hidden", moderationNote: "hide it" } }, managerCtx))
+      .rejects.toThrow("không được sửa nội dung");
+    await expect(mutation.updateReview(null, { id: "review1", input: { rating: 5, title: "Better", content: "Edited by manager" } }, managerCtx))
+      .rejects.toThrow("không được sửa nội dung");
+    await expect(mutation.updateReview(null, { id: "review1", input: { status: "hidden" } }, adminCtx))
+      .rejects.toThrow("không được sửa nội dung");
+    await expect(mutation.updateReview(null, { id: "review1", input: { content: "Owner edit after public" } }, customerCtx))
+      .rejects.toThrow("Đánh giá đã công khai");
+
+    expect(mocks.Review.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("lets manager store only an internal moderation note through updateReview", async () => {
+    mocks.Review.findById.mockResolvedValue({ id: "review1", restaurantId: "restaurant1", status: "published", customerId: "customer1", createdBy: "customer1" });
+    mocks.Review.findByIdAndUpdate.mockResolvedValue({ id: "review1", restaurantId: "restaurant1", status: "published", moderationNote: "watch report" });
+
+    const updated = await mutation.updateReview(null, { id: "review1", input: { moderationNote: " watch report " } }, managerCtx);
+
+    expect(updated.moderationNote).toBe("watch report");
+    expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith("review1", expect.objectContaining({ moderationNote: "watch report" }), { new: true });
+    expect(mocks.Review.findByIdAndUpdate.mock.calls[0][1].status).toBeUndefined();
+  });
+
+  it("blocks deleteReview for manager/admin bypass and only lets owners delete non-public drafts", async () => {
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "published", customerId: "customer1", createdBy: "customer1" });
+    await expect(mutation.deleteReview(null, { id: "review1" }, managerCtx)).rejects.toThrow("Không được dùng deleteReview");
+
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "published", customerId: "customer1", createdBy: "customer1" });
+    await expect(mutation.deleteReview(null, { id: "review1" }, adminCtx)).rejects.toThrow("Không được dùng deleteReview");
+
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "published", customerId: "customer1", createdBy: "customer1" });
+    await expect(mutation.deleteReview(null, { id: "review1" }, customerCtx)).rejects.toThrow("Đánh giá đã công khai");
+
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review2", restaurantId: "restaurant1", status: "pending", customerId: "customer1", createdBy: "customer1" });
+    mocks.Review.findByIdAndUpdate.mockResolvedValue({ id: "review2", status: "hidden" });
+    await expect(mutation.deleteReview(null, { id: "review2" }, customerCtx)).resolves.toBe(true);
+    expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith("review2", expect.objectContaining({ status: "hidden", moderationReason: "owner_deleted" }));
+  });
+
+  it("allows helpful and reactions on reported reviews because they remain public-visible", async () => {
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "reported", helpfulCount: 0 });
+    mocks.ReviewHelpful.findOne.mockResolvedValue(null);
+    mocks.ReviewHelpful.create.mockResolvedValue({ id: "helpful1" });
+    mocks.Review.findByIdAndUpdate.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "reported", helpfulCount: 1 });
+
+    const helpful = await mutation.incrementReviewHelpful(null, { id: "review1" }, customerCtx);
+    expect(helpful.helpfulCount).toBe(1);
+
+    mocks.Review.findById.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "reported" });
+    mocks.ReviewReaction.findOne.mockResolvedValue(null);
+    mocks.ReviewReaction.create.mockResolvedValue({ id: "reaction1" });
+    mocks.Review.findByIdAndUpdate.mockResolvedValueOnce({ id: "review1", restaurantId: "restaurant1", status: "reported", reactions: { like: 1 } });
+
+    const reacted = await mutation.reactReview(null, { id: "review1", reaction: "like" }, customerCtx);
+    expect(reacted.reactions.like).toBe(1);
   });
 
   it("prevents manager from hiding or rejecting arbitrary negative reviews", async () => {

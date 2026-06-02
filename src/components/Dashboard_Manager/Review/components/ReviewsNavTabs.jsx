@@ -6,11 +6,10 @@ const tabs = [
   { key: "restaurant", label: "Nhà hàng" },
   { key: "food", label: "Món ăn" },
   { key: "service", label: "Dịch vụ" },
-  { key: "pending", label: "Đang xem xét", hasBadge: true },
-  { key: "reported", label: "Báo cáo" },
+  { key: "reported", label: "Đang xem xét", hasBadge: true },
 ];
 
-const ReviewsNavTabs = ({ currentTab, onChangeTab, pendingCount = 0 }) => {
+const ReviewsNavTabs = ({ currentTab, onChangeTab, underReviewCount = 0 }) => {
   return (
     <nav className="reviews-nav-tabs">
       <div className="reviews-nav-tabs__list">
@@ -27,7 +26,7 @@ const ReviewsNavTabs = ({ currentTab, onChangeTab, pendingCount = 0 }) => {
             {tab.label}
             {tab.hasBadge && (
               <span className="reviews-nav-tabs__tab-badge">
-                {pendingCount}
+                {underReviewCount}
               </span>
             )}
           </button>
