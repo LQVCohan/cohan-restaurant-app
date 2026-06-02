@@ -154,17 +154,17 @@ Conflict Resolver xuất hiện trong bước **Preview import** khi target rest
 
 ### Ý nghĩa các resolution
 
-- `use_source`: dùng dữ liệu trong file snapshot để ghi đè/upsert target.
-- `keep_target`: giữ cấu hình hiện tại ở target; source `legacyId` vẫn map sang target id nếu record là dependency cho record khác.
-- `merge`: merge an toàn dạng shallow/safe merge; primitive source có thể overwrite target nếu source có value.
-- `create_copy`: tạo bản sao mới nếu entity hỗ trợ, ví dụ `PHO` thành `PHO-copy` hoặc tên thành `(copy)`.
+- `use_source`: dùng dữ liệu trong file snapshot để ghi đè/upsert target, bao gồm singleton settings và RestaurantProfile nếu người dùng chọn rõ.
+- `keep_target`: giữ cấu hình hiện tại ở target; source `legacyId` vẫn map sang target id nếu record là dependency cho record khác. Với singleton settings/RestaurantProfile, lựa chọn này không ghi DB.
+- `merge`: shallow safe merge có đọc target hiện có, giữ field target nếu source không có, source ghi đè field trùng, và loại bỏ runtime/sensitive fields trước khi ghi.
+- `create_copy`: tạo bản sao mới nếu entity hỗ trợ, ví dụ `PHO` thành `PHO-copy`, bàn `A1` thành code mới, hoặc tên thành `(copy)`.
 - `rename_source`: tạo bản mới với tên/code mới do người dùng nhập.
 - `skip`: bỏ qua record trong file snapshot; dependent records có thể bị skip/warning nếu mất mapping.
 - `replace_section`: chỉ dùng với replace mode và `replaceExisting=true`.
 
 ### Field diff
 
-Preview chỉ hiển thị field diff ngắn, tối đa preview khoảng 120 ký tự. Hệ thống bỏ qua runtime/sensitive fields như `orderCounter`, `rate`, `usageCount`, `used`, `avgRating`, `reviewCount`, token, password hash và secret.
+Preview chỉ hiển thị field diff ngắn, tối đa preview khoảng 120 ký tự. Hệ thống bỏ qua runtime/sensitive fields như `orderCounter`, `rate`, `usageCount`, `used`, `avgRating`, `reviewCount`, `viewLock`, token, password hash và secret.
 
 ### Bulk actions trong UI
 
@@ -185,7 +185,9 @@ Nếu target đã có MenuItem `PHO` giá 55.000đ và snapshot có `PHO` giá 5
 
 ### Dependency mapping
 
-- `keep_target` vẫn map dependency sang id hiện có ở target, ví dụ Floor -> Table, MenuItem -> Recipe.
+- Conflict resolution được áp dụng cho RestaurantProfile, singleton settings, Floor/Table, Menu/Ingredient/Promotion/Coupon và AI safety rules.
+- `keep_target` vẫn map dependency sang id hiện có ở target, ví dụ Floor -> Table hoặc MenuItem -> Recipe.
+- Table conflict hỗ trợ `keep_target`, `use_source`, `merge`, `rename_source`, `create_copy` và `skip`; clone update vẫn reset status và unset `viewLock` khi có ghi table.
 - `merge`/`use_source` map sang record được update/upsert.
 - `create_copy`/`rename_source` map sang bản ghi mới.
 - `skip` không tạo mapping; dependent records sẽ skip hoặc remove ref để không giữ ObjectId của nhà hàng nguồn.
@@ -199,6 +201,6 @@ Nếu target đã có MenuItem `PHO` giá 55.000đ và snapshot có `PHO` giá 5
 
 ### Limitations
 
-- `merge` hiện là shallow/safe merge, chưa phải semantic merge cho mọi field lồng sâu.
+- `merge` là shallow/safe merge: giữ field target nếu source không có, source ghi đè field trùng, và không merge lại sensitive/runtime fields; chưa phải semantic merge cho mọi field lồng sâu.
 - `create_copy` dùng suffix an toàn cơ bản như `-copy` hoặc `(copy)`; nếu target có nhiều bản copy, manager nên rename rõ ràng bằng `rename_source`.
 - Conflict Resolver không thay thế quy trình kiểm thử thủ công sau import với máy in, payment provider, coupon constraints phức tạp và AI chatbot settings.

@@ -54,6 +54,13 @@ const SINGLETON_MODELS = {
   payrollSettings: PayrollSetting,
   schedulingPolicy: SchedulingPolicy,
 };
+const SINGLETON_ENTITY_TYPES = {
+  systemSettings: "SystemSetting",
+  printSettings: "PrintSetting",
+  customerRankSettings: "CustomerRankSetting",
+  payrollSettings: "PayrollSetting",
+  schedulingPolicy: "SchedulingPolicy",
+};
 const SENSITIVE_KEY_RE = /(password|passwordHash|refreshToken|verifyToken|emailVerifyToken|phoneVerifyToken|trackingToken|driverLocation|secret|apiKey|accessToken|privateKey|clientSecret|providerSecret|paymentSecret)/i;
 const RESTAURANT_PROFILE_FIELDS = [
   "name",
@@ -93,7 +100,7 @@ const RESTAURANT_PROFILE_FIELDS = [
 const RECIPE_INGREDIENT_WARNING = "Skipped recipe ingredient line because ingredient was not imported or could not be remapped.";
 const RECIPE_DEPENDENCY_WARNING = "Recipes may lose ingredient links because inventoryMaster is not selected.";
 const PROMOTION_DEPENDENCY_WARNING = "Promotion item/category references may be removed because menuCatalog is not selected.";
-const RUNTIME_DIFF_FIELDS = new Set(["legacyId", "restaurantId", "_id", "id", "createdAt", "updatedAt", "__v", "usageCount", "used", "orderCounter", "rate", "avgRating", "reviewCount"]);
+const RUNTIME_DIFF_FIELDS = new Set(["legacyId", "restaurantId", "_id", "id", "createdAt", "updatedAt", "__v", "usageCount", "used", "orderCounter", "rate", "avgRating", "reviewCount", "viewLock"]);
 const RESOLUTION_LABELS = new Set(["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip", "replace_section"]);
 
 function cloneJson(value) {
@@ -385,7 +392,8 @@ function defaultResolutionFor(mode, entityType) {
 function allowedResolutionsFor(entityType, mode) {
   if (mode === "replace") return ["use_source", "keep_target", "replace_section", "skip"];
   if (["SystemSetting", "PrintSetting", "PayrollSetting", "SchedulingPolicy", "CustomerRankSetting", "RestaurantProfile", "AiChatbotSettings"].includes(entityType)) return ["use_source", "keep_target", "merge"];
-  if (["Floor", "Table"].includes(entityType)) return ["use_source", "keep_target", "merge", "skip"];
+  if (entityType === "Table") return ["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip"];
+  if (entityType === "Floor") return ["use_source", "keep_target", "merge", "skip"];
   if (["MenuItem", "Ingredient", "Promotion", "Coupon"].includes(entityType)) return ["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip"];
   if (entityType === "Recipe") return ["use_source", "keep_target", "skip"];
   if (entityType === "AiChatbotSafetyRule") return ["use_source", "keep_target", "merge", "skip"];
@@ -681,11 +689,46 @@ async function deleteSectionData(targetRestaurantId, section) {
   if (["aiChatbotConfig"].includes(section)) await Promise.all([AiChatbotKnowledgeItem.deleteMany?.({ restaurantId: targetRestaurantId }), AiChatbotSafetyRule.deleteMany?.({ restaurantId: targetRestaurantId }), AiChatbotEvaluationCase.deleteMany?.({ restaurantId: targetRestaurantId })]);
 }
 
-async function upsertSingleton(Model, targetRestaurantId, data, actorId) {
+async function importRestaurantProfileWithConflict(targetRestaurantId, data, context) {
   if (!data) return null;
-  const payload = { ...stripRestoreFields(data), restaurantId: targetRestaurantId };
+  const conflict = conflictFor(context, "restaurantProfile", "RestaurantProfile", { ...data, legacyId: "restaurantProfile" }, "restaurantProfile");
+  const decision = conflict ? resolutionForConflict(conflict, context.resolutionMap) : null;
+  if (decision?.resolution === "skip" || decision?.resolution === "keep_target") {
+    recordApplied(context, decision);
+    return null;
+  }
+  let payload = pick(stripRestoreFields(data), RESTAURANT_PROFILE_FIELDS);
+  if (decision?.resolution === "merge") {
+    const existing = await resolveQuery(Restaurant.findById(targetRestaurantId));
+    payload = pick(shallowMergePayload(existing || {}, payload), RESTAURANT_PROFILE_FIELDS);
+  }
+  await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: cleanupPayload(payload) }, { new: true });
+  if (decision) recordApplied(context, decision);
+  return true;
+}
+
+async function importSingletonWithConflict({ Model, targetRestaurantId, section, entityType, data, actorId, context }) {
+  if (!data) return null;
+  const conflict = conflictFor(context, section, entityType, { ...data, legacyId: section }, section);
+  const decision = conflict ? resolutionForConflict(conflict, context.resolutionMap) : null;
+  if (decision?.resolution === "skip" || decision?.resolution === "keep_target") {
+    recordApplied(context, decision);
+    return null;
+  }
+  let payload = { ...stripRestoreFields(data), restaurantId: targetRestaurantId };
   if (actorId) payload.updatedBy = actorId;
-  return Model.findOneAndUpdate({ restaurantId: targetRestaurantId }, { $set: payload }, { upsert: true, new: true, setDefaultsOnInsert: true });
+  if (decision?.resolution === "merge") {
+    const existing = await findOne(Model, { restaurantId: targetRestaurantId });
+    payload = { ...shallowMergePayload(existing || {}, payload), restaurantId: targetRestaurantId };
+    if (actorId) payload.updatedBy = actorId;
+  }
+  const saved = await Model.findOneAndUpdate(
+    { restaurantId: targetRestaurantId },
+    { $set: cleanupPayload(payload) },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  if (decision) recordApplied(context, decision);
+  return saved;
 }
 
 function cleanupPayload(payload) {
@@ -762,14 +805,28 @@ function applyCopySuffix(payload) {
 }
 
 function shallowMergePayload(target, source) {
-  return cleanupPayload({ ...stripRestoreFields(target || {}), ...stripRestoreFields(source || {}) });
+  const merged = { ...stripRestoreFields(target || {}), ...stripRestoreFields(source || {}) };
+  for (const key of Object.keys(merged)) {
+    if (RUNTIME_DIFF_FIELDS.has(key) || SENSITIVE_KEY_RE.test(key)) delete merged[key];
+  }
+  return cleanupPayload(merged);
+}
+
+async function findTargetForConflict(Model, targetRestaurantId, doc, keys, conflict) {
+  if (conflict?.targetId && Model?.findById) {
+    const byId = await resolveQuery(Model.findById(conflict.targetId));
+    if (byId) return byId;
+  }
+  const filter = filterFromKeys(targetRestaurantId, doc, keys || []);
+  if (filter) return findOne(Model, filter);
+  return null;
 }
 
 function recordApplied(context, decision) {
   if (decision?.conflictId) context.appliedResolutions.push({ conflictId: decision.conflictId, resolution: decision.resolution, renameTo: decision.renameTo || null, fieldOverridesJson: decision.fieldOverridesJson || null });
 }
 
-async function upsertWithConflict(Model, targetRestaurantId, doc, keys, extra, context, conflict, entityType, map) {
+async function upsertWithConflict(Model, targetRestaurantId, doc, keys, extra, context, conflict, entityType, map, options = {}) {
   const decision = conflict ? resolutionForConflict(conflict, context.resolutionMap) : null;
   if (decision?.resolution === "skip") {
     recordApplied(context, decision);
@@ -781,10 +838,16 @@ async function upsertWithConflict(Model, targetRestaurantId, doc, keys, extra, c
     return { _id: conflict?.targetId };
   }
   let source = { ...stripRestoreFields(doc), ...(extra || {}) };
-  if (decision?.resolution === "merge" && conflict?.targetId) source = shallowMergePayload({}, source);
+  if (decision?.resolution === "merge") {
+    const existing = await findTargetForConflict(Model, targetRestaurantId, doc, keys, conflict);
+    source = cleanupPayload({ ...shallowMergePayload(existing || {}, source), ...(extra || {}), restaurantId: targetRestaurantId });
+  }
   if (decision?.resolution === "rename_source") source = applyRename(source, entityType, decision.renameTo);
   if (decision?.resolution === "create_copy") source = applyCopySuffix(source);
-  const saved = await upsertByKey(Model, targetRestaurantId, source, keys, {}, decision?.resolution === "create_copy" || decision?.resolution === "rename_source" ? { forceCreate: true } : {});
+  const saved = await upsertByKey(Model, targetRestaurantId, source, keys, {}, {
+    ...options,
+    ...(decision?.resolution === "create_copy" || decision?.resolution === "rename_source" ? { forceCreate: true } : {}),
+  });
   if (map) rememberLegacy(map, doc, saved);
   if (decision) recordApplied(context, decision);
   return saved;
@@ -812,7 +875,8 @@ async function importFloorTable(targetRestaurantId, data, mode, context) {
       extra.status = "available";
       options.unset = { viewLock: "" };
     }
-    await upsertByKey(Table, targetRestaurantId, table, ["code", "name"], extra, options);
+    const conflict = conflictFor(context, "floorTableLayout", "Table", table, table.code || table.name);
+    await upsertWithConflict(Table, targetRestaurantId, table, ["code", "name"], extra, context, conflict, "Table", null, options);
   }
 }
 
@@ -1042,9 +1106,10 @@ export async function importRestaurantConfigSnapshot({ targetRestaurantId, snaps
   }
 
   const data = snapshot.sections || {};
-  if (enabled.restaurantProfile && data.restaurantProfile) await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: stripRestoreFields(data.restaurantProfile) }, { new: true });
+  if (enabled.restaurantProfile && data.restaurantProfile) await importRestaurantProfileWithConflict(targetRestaurantId, data.restaurantProfile, context);
   for (const [section, Model] of Object.entries(SINGLETON_MODELS)) {
-    if (enabled[section] && data[section]) await upsertSingleton(Model, targetRestaurantId, data[section], actorId);
+    if (!enabled[section] || !data[section]) continue;
+    await importSingletonWithConflict({ Model, targetRestaurantId, section, entityType: SINGLETON_ENTITY_TYPES[section], data: data[section], actorId, context });
   }
   if (enabled.floorTableLayout && data.floorTableLayout) await importFloorTable(targetRestaurantId, data.floorTableLayout, mode, context);
   if (enabled.menuCatalog && data.menuCatalog) await importMenuCatalogBase(targetRestaurantId, data.menuCatalog, mode, context);

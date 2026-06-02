@@ -486,6 +486,140 @@ describe("restaurantConfigBackup.service conflict resolver", () => {
     expect(first.conflicts.map((item) => item.id)).toEqual(second.conflicts.map((item) => item.id));
   });
 
+
+  it("singleton SystemSetting keep_target does not overwrite target", async () => {
+    models.SystemSetting.findOne.mockReturnValue(lean({ _id: "target-system", restaurantId: id("099"), timezone: "Asia/Ho_Chi_Minh" }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ systemSettings: { timezone: "UTC" } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "systemSettings:SystemSetting:systemSettings", resolution: "keep_target" }],
+    });
+    expect(models.SystemSetting.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(result.appliedResolutions).toEqual(expect.arrayContaining([expect.objectContaining({ conflictId: "systemSettings:SystemSetting:systemSettings", resolution: "keep_target" })]));
+  });
+
+  it("singleton SystemSetting use_source overwrites target", async () => {
+    models.SystemSetting.findOne.mockReturnValue(lean({ _id: "target-system", restaurantId: id("099"), timezone: "Asia/Ho_Chi_Minh" }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ systemSettings: { timezone: "UTC" } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "systemSettings:SystemSetting:systemSettings", resolution: "use_source" }],
+    });
+    expect(models.SystemSetting.findOneAndUpdate).toHaveBeenCalled();
+    expect(models.SystemSetting.findOneAndUpdate.mock.calls[0][1].$set.timezone).toBe("UTC");
+  });
+
+  it("singleton SystemSetting merge preserves target-only fields", async () => {
+    models.SystemSetting.findOne.mockReturnValue(lean({ _id: "target-system", restaurantId: id("099"), currency: "VND", dateFormat: "DD/MM/YYYY" }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ systemSettings: { timezone: "UTC" } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "systemSettings:SystemSetting:systemSettings", resolution: "merge" }],
+    });
+    const payload = models.SystemSetting.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(payload.timezone).toBe("UTC");
+    expect(payload.dateFormat).toBe("DD/MM/YYYY");
+    expect(payload._id).toBeUndefined();
+    expect(payload.legacyId).toBeUndefined();
+  });
+
+  it("RestaurantProfile keep_target does not call Restaurant.findByIdAndUpdate", async () => {
+    models.Restaurant.findById.mockReturnValue(lean({ _id: id("099"), name: "Target" }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ restaurantProfile: { name: "Source" } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "restaurantProfile:RestaurantProfile:restaurantProfile", resolution: "keep_target" }],
+    });
+    expect(models.Restaurant.findByIdAndUpdate).not.toHaveBeenCalled();
+    expect(result.appliedResolutions).toEqual(expect.arrayContaining([expect.objectContaining({ conflictId: "restaurantProfile:RestaurantProfile:restaurantProfile", resolution: "keep_target" })]));
+  });
+
+  it("table conflict keep_target does not update table", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: "target-floor" });
+    models.Table.findOne.mockReturnValue(lean({ _id: "target-table", restaurantId: id("099"), code: "A1", capacity: 2 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: "old-floor", name: "Floor", level: 1 }], tables: [{ legacyId: "old-table", floorId: "old-floor", code: "A1", capacity: 4 }] } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "floorTableLayout:Table:old-table", resolution: "keep_target" }],
+    });
+    expect(models.Table.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(result.appliedResolutions).toEqual(expect.arrayContaining([expect.objectContaining({ conflictId: "floorTableLayout:Table:old-table", resolution: "keep_target" })]));
+  });
+
+  it("table conflict skip skips table", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: "target-floor" });
+    models.Table.findOne.mockReturnValue(lean({ _id: "target-table", restaurantId: id("099"), code: "A1", capacity: 2 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: "old-floor", name: "Floor", level: 1 }], tables: [{ legacyId: "old-table", floorId: "old-floor", code: "A1", capacity: 4 }] } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "floorTableLayout:Table:old-table", resolution: "skip" }],
+    });
+    expect(models.Table.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("table conflict rename_source creates copy", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: "target-floor" });
+    models.Table.findOne.mockReturnValue(lean({ _id: "target-table", restaurantId: id("099"), code: "A1", capacity: 2 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: "old-floor", name: "Floor", level: 1 }], tables: [{ legacyId: "old-table", floorId: "old-floor", code: "A1", capacity: 4 }] } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "floorTableLayout:Table:old-table", resolution: "rename_source", renameTo: "A1-COPY" }],
+    });
+    expect(models.Table.create.mock.calls[0][0].code).toBe("A1-COPY");
+  });
+
+  it("table clone still unsets viewLock on use_source update", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: "target-floor" });
+    models.Table.findOne.mockReturnValue(lean({ _id: "target-table", restaurantId: id("099"), code: "A1", capacity: 2, viewLock: { by: "target" } }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: "old-floor", name: "Floor", level: 1 }], tables: [{ legacyId: "old-table", floorId: "old-floor", code: "A1", capacity: 4 }] } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "floorTableLayout:Table:old-table", resolution: "use_source" }],
+    });
+    expect(models.Table.findOneAndUpdate.mock.calls[0][1].$unset).toEqual({ viewLock: "" });
+  });
+
+  it("merge uses target data, not source-only", async () => {
+    models.Floor.findOneAndUpdate.mockResolvedValueOnce({ _id: "target-floor" });
+    models.Table.findOne.mockReturnValue(lean({ _id: "target-table", restaurantId: id("099"), code: "A1", capacity: 2, visualConfig: { color: "blue" }, viewLock: { by: "target" } }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({
+      targetRestaurantId: id("099"),
+      snapshot: snapshotBase({ floorTableLayout: { floors: [{ legacyId: "old-floor", name: "Floor", level: 1 }], tables: [{ legacyId: "old-table", floorId: "old-floor", code: "A1", capacity: 4 }] } }),
+      mode: "clone",
+      dryRun: false,
+      conflictResolutions: [{ conflictId: "floorTableLayout:Table:old-table", resolution: "merge" }],
+    });
+    const payload = models.Table.findOneAndUpdate.mock.calls[0][1].$set;
+    expect(payload.capacity).toBe(4);
+    expect(payload.visualConfig).toEqual({ color: "blue" });
+    expect(payload.viewLock).toBeUndefined();
+  });
+
   it("field diff ignores runtime/sensitive fields", async () => {
     models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Phở nguồn", basePrice: 50000, orderCounter: 1, rate: 1, passwordHash: "target" }));
     const { previewRestaurantConfigImport } = await loadService();
