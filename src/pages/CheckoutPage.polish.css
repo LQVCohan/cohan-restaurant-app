@@ -1,0 +1,420 @@
+/* Checkout / order confirmation polish. Scoped to existing checkout and OrderSummaryModal classes. */
+.checkout-empty-state {
+  min-height: calc(100vh - 96px);
+  display: grid;
+  place-items: center;
+  padding: 96px 24px 72px;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(255, 185, 115, 0.18), transparent 30rem),
+    radial-gradient(circle at 90% 2%, rgba(255, 235, 214, 0.7), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ee 48%, #ffffff 100%);
+  color: #1e1915;
+  text-align: center;
+}
+
+.checkout-empty-state > * {
+  max-width: 520px;
+}
+
+.checkout-empty-state h2 {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+  font-weight: 950;
+}
+
+.checkout-empty-state p {
+  margin: 0 0 22px;
+  color: #766b61;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.checkout-empty-state .btn,
+.checkout-empty-state button {
+  min-height: 46px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #ff6600, #ff8a3d);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 16px 32px rgba(255, 102, 0, 0.24);
+}
+
+.order-summary-modal .modal-content {
+  border: 1px solid rgba(92, 64, 51, 0.1) !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 185, 115, 0.08), transparent 22rem),
+    #fffaf4 !important;
+  box-shadow: 0 30px 92px rgba(83, 46, 20, 0.18) !important;
+  overflow: hidden !important;
+}
+
+.order-summary-modal .modal-header {
+  border-bottom: 1px solid rgba(92, 64, 51, 0.08) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(14px);
+}
+
+.order-summary-modal .modal-title-with-icon {
+  gap: 10px;
+  color: #1e1915 !important;
+  font-size: 1.18rem;
+  font-weight: 950;
+  letter-spacing: -0.025em;
+}
+
+.order-summary-modal .modal-title-with-icon svg {
+  color: #ff6600 !important;
+}
+
+.order-summary-wrapper {
+  max-height: 82vh !important;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(255, 235, 214, 0.7), transparent 26rem),
+    linear-gradient(180deg, #fffaf4, #ffffff) !important;
+}
+
+.order-summary-content {
+  gap: 18px !important;
+  padding: 24px !important;
+}
+
+.order-summary-content::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.order-summary-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.order-summary-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 102, 0, 0.26) !important;
+  border-radius: 999px !important;
+}
+
+.order-summary-error {
+  border: 1px solid rgba(220, 38, 38, 0.18) !important;
+  border-radius: 16px !important;
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  font-weight: 800;
+}
+
+.order-summary-modal .section {
+  border: 1px solid rgba(92, 64, 51, 0.1) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 14px 38px rgba(83, 46, 20, 0.06) !important;
+}
+
+.order-summary-modal .section.section-highlight {
+  border-color: rgba(255, 102, 0, 0.18) !important;
+  background:
+    radial-gradient(circle at top left, rgba(255, 138, 61, 0.1), transparent 18rem),
+    #fff7ed !important;
+}
+
+.order-summary-modal .section-title {
+  color: #1e1915 !important;
+  font-size: 1rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.015em;
+}
+
+.order-summary-modal .section-title svg,
+.order-summary-modal .restaurant-name svg {
+  color: #ff6600 !important;
+}
+
+.order-summary-modal .restaurant-name {
+  color: #1e1915 !important;
+  font-weight: 950 !important;
+}
+
+.order-summary-modal .restaurant-address {
+  color: #766b61 !important;
+  font-weight: 650;
+}
+
+.order-summary-modal .order-info-boxes {
+  gap: 10px !important;
+  flex-wrap: wrap;
+}
+
+.order-summary-modal .info-box {
+  min-width: 150px;
+  border: 1px solid rgba(255, 102, 0, 0.14) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
+.order-summary-modal .info-box .label {
+  color: #8a3d05 !important;
+  font-weight: 800;
+}
+
+.order-summary-modal .info-box .value {
+  color: #1e1915 !important;
+  font-weight: 900 !important;
+}
+
+.order-summary-modal .form-grid {
+  gap: 22px !important;
+}
+
+.order-summary-modal .form-label {
+  color: #1e1915 !important;
+  font-weight: 850 !important;
+}
+
+.order-summary-modal .form-input,
+.order-summary-modal .form-textarea {
+  min-height: 44px;
+  border-color: rgba(92, 64, 51, 0.12) !important;
+  border-radius: 14px !important;
+  background: #f8fafc !important;
+  color: #1e1915 !important;
+  font-weight: 650;
+}
+
+.order-summary-modal .form-input:focus,
+.order-summary-modal .form-textarea:focus {
+  border-color: rgba(255, 102, 0, 0.45) !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.1) !important;
+}
+
+.order-summary-modal .form-input.is-invalid,
+.order-summary-modal .form-textarea.is-invalid {
+  border-color: rgba(220, 38, 38, 0.42) !important;
+  background: #fff1f2 !important;
+}
+
+.order-summary-modal .form-error {
+  color: #be123c !important;
+  font-weight: 750;
+}
+
+.order-summary-modal .segmented {
+  gap: 6px !important;
+  padding: 5px !important;
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  border-radius: 16px !important;
+  background: #f8fafc !important;
+}
+
+.order-summary-modal .segmented__option {
+  border-radius: 12px !important;
+  color: #766b61 !important;
+  font-weight: 850 !important;
+}
+
+.order-summary-modal .segmented__option:hover {
+  color: #ff6600 !important;
+  background: #fff7ed !important;
+}
+
+.order-summary-modal .segmented__option.is-active {
+  background: #fff1e5 !important;
+  color: #ff6600 !important;
+  box-shadow: 0 10px 24px rgba(255, 102, 0, 0.12) !important;
+}
+
+.order-summary-modal .food-preference-note-suggestion {
+  border-radius: 16px !important;
+  border-color: rgba(255, 102, 0, 0.22) !important;
+  background: #fff7ed !important;
+}
+
+.order-summary-modal .restaurant-group-card {
+  border-color: rgba(92, 64, 51, 0.1) !important;
+  border-radius: 20px !important;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(83, 46, 20, 0.05);
+}
+
+.order-summary-modal .restaurant-group-header {
+  background: #fff7ed !important;
+  border-bottom-color: rgba(255, 102, 0, 0.14) !important;
+  color: #1e1915 !important;
+}
+
+.order-summary-modal .restaurant-group-header h4 {
+  font-weight: 950 !important;
+}
+
+.order-summary-modal .order-item {
+  gap: 14px !important;
+  border-bottom-color: rgba(92, 64, 51, 0.1) !important;
+}
+
+.order-summary-modal .order-item .item-image {
+  width: 76px !important;
+  height: 76px !important;
+  border-radius: 16px !important;
+  background: #fff7ed !important;
+  box-shadow: 0 10px 24px rgba(82, 47, 26, 0.08);
+}
+
+.order-summary-modal .order-item .item-name {
+  color: #1e1915 !important;
+  font-weight: 900 !important;
+}
+
+.order-summary-modal .order-item .item-description,
+.order-summary-modal .order-item .item-unit-price {
+  color: #766b61 !important;
+}
+
+.order-summary-modal .order-item .item-quantity {
+  border-radius: 999px !important;
+  background: #fff1e5 !important;
+  color: #ff6600 !important;
+  font-weight: 900 !important;
+}
+
+.order-summary-modal .order-item .item-total-price {
+  color: #ff6600 !important;
+  font-weight: 950 !important;
+}
+
+.order-summary-modal .add-modifier-btn,
+.order-summary-modal .coupon-row button {
+  border-radius: 12px !important;
+  border-color: rgba(255, 102, 0, 0.24) !important;
+  color: #ff6600 !important;
+  font-weight: 850 !important;
+}
+
+.order-summary-modal .add-modifier-btn:hover,
+.order-summary-modal .coupon-row button:hover:not(:disabled) {
+  background: #fff7ed !important;
+}
+
+.order-summary-modal .discount-section .coupon-row {
+  gap: 10px !important;
+}
+
+.order-summary-modal .price-breakdown,
+.order-summary-modal .price-summary,
+.order-summary-modal .totals-list {
+  border-radius: 18px !important;
+}
+
+.order-summary-modal .payment-methods,
+.order-summary-modal .payment-options {
+  gap: 12px !important;
+}
+
+.order-summary-modal .payment-option,
+.order-summary-modal .payment-method-card {
+  border-radius: 18px !important;
+  border-color: rgba(92, 64, 51, 0.1) !important;
+  background: #ffffff !important;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.order-summary-modal .payment-option:hover,
+.order-summary-modal .payment-method-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 102, 0, 0.32) !important;
+  box-shadow: 0 14px 30px rgba(83, 46, 20, 0.08);
+}
+
+.order-summary-modal .payment-option.selected,
+.order-summary-modal .payment-method-card.selected,
+.order-summary-modal .payment-option.is-active,
+.order-summary-modal .payment-method-card.is-active {
+  border-color: rgba(255, 102, 0, 0.42) !important;
+  background: #fff7ed !important;
+  box-shadow: 0 14px 30px rgba(255, 102, 0, 0.13);
+}
+
+.order-summary-modal .modal-footer,
+.order-summary-modal .modal-content .modal-footer {
+  gap: 10px !important;
+  border-top: 1px solid rgba(92, 64, 51, 0.08) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(14px);
+}
+
+.order-summary-modal .modal-footer .btn {
+  min-height: 44px;
+  border-radius: 14px !important;
+  font-weight: 900 !important;
+}
+
+.order-summary-modal .modal-footer .btn--secondary {
+  border: 1px solid rgba(92, 64, 51, 0.12) !important;
+  background: #ffffff !important;
+  color: #1e1915 !important;
+}
+
+.order-summary-modal .modal-footer .btn--primary {
+  border: 1px solid rgba(255, 102, 0, 0.18) !important;
+  background: #fff7ed !important;
+  color: #ff6600 !important;
+}
+
+.order-summary-modal .modal-footer .btn--success {
+  border: 0 !important;
+  background: linear-gradient(135deg, #ff6600, #ff8a3d) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(255, 102, 0, 0.22) !important;
+}
+
+.order-summary-modal .modal-footer .btn:disabled {
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 0.62 !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .order-summary-modal .modal-content {
+    animation: checkoutModalIn 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .order-summary-modal .section {
+    animation: checkoutSectionIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (max-width: 768px) {
+  .order-summary-modal .modal-content {
+    border-radius: 24px !important;
+  }
+
+  .order-summary-content {
+    padding: 16px !important;
+  }
+
+  .order-summary-modal .section {
+    padding: 18px !important;
+  }
+
+  .order-summary-modal .order-info-boxes,
+  .order-summary-modal .form-row,
+  .order-summary-modal .coupon-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .order-summary-modal .segmented {
+    flex-wrap: wrap;
+  }
+}
+
+@keyframes checkoutModalIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes checkoutSectionIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
