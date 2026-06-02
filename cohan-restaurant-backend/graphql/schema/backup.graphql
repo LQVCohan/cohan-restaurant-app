@@ -69,6 +69,135 @@ input BackupScopeInput {
   reportsAndReconciliation: Boolean
 }
 
+
+
+type ConfigBackupSectionCount {
+  key: String!
+  label: String!
+  count: Int!
+  enabled: Boolean!
+}
+
+type RestaurantConfigBackupPreview {
+  restaurantId: ID!
+  fileName: String!
+  schemaVersion: Int!
+  createdAt: DateTime!
+  counts: [ConfigBackupSectionCount!]!
+  warnings: [String!]!
+}
+
+type RestaurantConfigBackupFile {
+  fileName: String!
+  mimeType: String!
+  encoding: String!
+  contentBase64: String!
+  checksum: String!
+  sizeBytes: Int!
+  createdAt: DateTime!
+}
+
+type RestaurantConfigImportChange {
+  section: String!
+  action: String!
+  label: String
+  count: Int!
+  warning: String
+}
+
+
+type RestaurantConfigConflictFieldDiff {
+  field: String!
+  sourceValuePreview: String
+  targetValuePreview: String
+  severity: String!
+}
+
+type RestaurantConfigImportConflict {
+  id: String!
+  section: String!
+  entityType: String!
+  entityKey: String!
+  label: String
+  severity: String!
+  reason: String!
+  sourceLegacyId: String
+  targetId: ID
+  defaultResolution: String!
+  allowedResolutions: [String!]!
+  fieldDiffs: [RestaurantConfigConflictFieldDiff!]!
+  warnings: [String!]!
+}
+
+type RestaurantConfigConflictResolution {
+  conflictId: String!
+  resolution: String!
+  renameTo: String
+  fieldOverridesJson: String
+}
+
+input RestaurantConfigConflictResolutionInput {
+  conflictId: String!
+  resolution: String!
+  renameTo: String
+  fieldOverridesJson: String
+}
+
+type RestaurantConfigImportPreview {
+  valid: Boolean!
+  schemaVersion: Int
+  sourceRestaurantName: String
+  targetRestaurantId: ID!
+  mode: String!
+  changes: [RestaurantConfigImportChange!]!
+  conflicts: [RestaurantConfigImportConflict!]!
+  conflictSummary: [ConfigBackupSectionCount!]!
+  warnings: [String!]!
+  errors: [String!]!
+}
+
+type RestaurantConfigImportResult {
+  success: Boolean!
+  dryRun: Boolean!
+  targetRestaurantId: ID!
+  mode: String!
+  changes: [RestaurantConfigImportChange!]!
+  conflicts: [RestaurantConfigImportConflict!]!
+  appliedResolutions: [RestaurantConfigConflictResolution!]!
+  warnings: [String!]!
+  errors: [String!]!
+  backupRun: BackupRun
+}
+
+input RestaurantConfigBackupSectionsInput {
+  restaurantProfile: Boolean
+  systemSettings: Boolean
+  printSettings: Boolean
+  customerRankSettings: Boolean
+  payrollSettings: Boolean
+  schedulingPolicy: Boolean
+  floorTableLayout: Boolean
+  menuCatalog: Boolean
+  inventoryMaster: Boolean
+  promotionConfig: Boolean
+  aiChatbotConfig: Boolean
+}
+
+input ExportRestaurantConfigBackupInput {
+  restaurantId: ID!
+  sections: RestaurantConfigBackupSectionsInput
+}
+
+input ImportRestaurantConfigBackupInput {
+  targetRestaurantId: ID!
+  fileContentBase64: String!
+  mode: String = "clone"
+  sections: RestaurantConfigBackupSectionsInput
+  dryRun: Boolean = true
+  replaceExisting: Boolean = false
+  conflictResolutions: [RestaurantConfigConflictResolutionInput!]
+}
+
 input CreateBackupRunInput {
   restaurantId: ID!
   checklist: BackupChecklistInput
@@ -88,9 +217,13 @@ input UpdateBackupRunInput {
 extend type Query {
   backupReadiness(restaurantId: ID!): BackupReadiness!
   backupRuns(restaurantId: ID!, limit: Int = 20, offset: Int = 0): [BackupRun!]!
+  restaurantConfigBackupPreview(input: ExportRestaurantConfigBackupInput!): RestaurantConfigBackupPreview!
 }
 
 extend type Mutation {
   createBackupRun(input: CreateBackupRunInput!): BackupRun!
   updateBackupRun(input: UpdateBackupRunInput!): BackupRun!
+  exportRestaurantConfigBackup(input: ExportRestaurantConfigBackupInput!): RestaurantConfigBackupFile!
+  previewRestaurantConfigImport(input: ImportRestaurantConfigBackupInput!): RestaurantConfigImportPreview!
+  importRestaurantConfigBackup(input: ImportRestaurantConfigBackupInput!): RestaurantConfigImportResult!
 }
