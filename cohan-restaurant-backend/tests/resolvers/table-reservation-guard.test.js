@@ -22,6 +22,7 @@ vi.mock("../../src/services/auth/authorization.service.js", () => ({
 const tableStateGuardMocks = vi.hoisted(() => ({
   hasActiveOrdersForTable: vi.fn(),
   hasActiveReservationsForTable: vi.fn(),
+  getTableAvailabilityBlockReason: vi.fn(),
 }));
 
 vi.mock("../../utils/tableStateGuards.js", () => tableStateGuardMocks);
@@ -53,6 +54,10 @@ describe("table mutation reservation guards", () => {
     });
     tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
     tableStateGuardMocks.hasActiveReservationsForTable.mockResolvedValue(true);
+    tableStateGuardMocks.getTableAvailabilityBlockReason.mockResolvedValue({
+      code: "TABLE_HAS_ACTIVE_RESERVATION",
+      message: "Table has active reservation",
+    });
 
     const mutation = (await import("../../graphql/resolvers/table/mutation.js")).default;
 
@@ -74,6 +79,10 @@ describe("table mutation reservation guards", () => {
     });
     tableStateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
     tableStateGuardMocks.hasActiveReservationsForTable.mockResolvedValue(true);
+    tableStateGuardMocks.getTableAvailabilityBlockReason.mockResolvedValue({
+      code: "TABLE_HAS_ACTIVE_RESERVATION",
+      message: "Table has active reservation",
+    });
 
     const mutation = (await import("../../graphql/resolvers/table/mutation.js")).default;
 

@@ -320,6 +320,65 @@ async function resolveStaffDoc(staffId, ctx) {
   return Staff.findById(oid).populate("role");
 }
 
+
+async function resolvePayrollPeriodRestaurantOrThrow(periodId, select = {}) {
+  const period = await PayrollPeriod.findById(periodId)
+    .select({ _id: 1, restaurantId: 1, status: 1, ...select })
+    .lean();
+  if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+  return period;
+}
+
+async function requirePayrollViewForRestaurant(ctx, restaurantId) {
+  requireAuth(ctx);
+  assertPayrollPermission(ctx, "payroll.view");
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+async function requirePayrollExportForRestaurant(ctx, restaurantId) {
+  requireAuth(ctx);
+  assertPayrollPermission(ctx, "payroll.export");
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+async function requirePayrollValidateForRestaurant(ctx, restaurantId) {
+  requireAuth(ctx);
+  assertPayrollPermission(ctx, "payroll.validate");
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+async function requireStaffReportAccessForRestaurant(ctx, restaurantId) {
+  requireAuth(ctx);
+  requireRoles(ctx, ATTENDANCE_READ_ROLES);
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+async function findPayrollItemInPeriodRestaurant(period, employeeId) {
+  return PayrollItem.findOne({
+    periodId: period._id,
+    restaurantId: period.restaurantId,
+    employeeId: payrollToObjectId(employeeId),
+  })
+    .select({ _id: 1 })
+    .lean();
+}
+
+async function requireLeaveBalanceAccess(ctx, employeeId) {
+  requireAuth(ctx);
+  const staff = await Staff.findById(employeeId)
+    .select({ _id: 1, restaurantForStaff: 1, userType: 1 })
+    .lean();
+  if (!staff) return null;
+
+  const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
+  const isSelf = actorId && actorId === String(staff._id);
+  if (isSelf) return staff;
+
+  requireRoles(ctx, ATTENDANCE_READ_ROLES);
+  await requireRestaurantAccess(ctx, staff.restaurantForStaff);
+  return staff;
+}
+
 export default {
   // =========================
   // GET ONE STAFF
@@ -827,7 +886,7 @@ export default {
     if (!isSelf) {
       const targetRestaurantId = staff?.restaurantForStaff || null;
       await requireRestaurantAccess(ctx, targetRestaurantId);
-      assertPayrollPermission(ctx, "payroll.read");
+      assertPayrollPermission(ctx, "payroll.view");
     }
 
     const shifts = await Shift.find({ employeeId: staff._id })
@@ -980,19 +1039,13 @@ export default {
     ctx,
   ) => {
     requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
     if (periodId && mongoose.isValidObjectId(periodId)) {
-      const period = await PayrollPeriod.findById(periodId)
-        .select({ restaurantId: 1 })
-        .lean();
-      if (!period) {
-        return {
-          stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
-          items: [],
-        };
-      }
+      const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
       await requireRestaurantAccess(ctx, period.restaurantId);
       const docs = await PayrollItem.find({
         periodId: payrollToObjectId(periodId),
+        restaurantId: period.restaurantId,
       }).lean();
       const items = docs.map(mapPayrollDocToGql);
       return { stats: summarize(items), items };
@@ -1034,13 +1087,9 @@ export default {
 
   payrollPeriods: async (_, { restaurantId, limit = 12 }, ctx) => {
     requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
     const authUser = ctx?.user || null;
-    const rid = toObjectId(
-      restaurantId ||
-        authUser?.restaurantForStaff ||
-        authUser?.restaurantForStaff ||
-        null,
-    );
+    const rid = toObjectId(restaurantId || authUser?.restaurantForStaff || null);
     if (!rid) return [];
     await requireRestaurantAccess(ctx, rid);
     const rows = await PayrollPeriod.find({ restaurantId: rid })
@@ -1068,12 +1117,8 @@ export default {
 
   payrollPeriodDetail: async (_, { periodId }, ctx) => {
     requireAuth(ctx);
-    const period = await PayrollPeriod.findById(periodId)
-      .select({ restaurantId: 1 })
-      .lean();
-    if (period?.restaurantId) {
-      await requireRestaurantAccess(ctx, period.restaurantId);
-    }
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
+    await requirePayrollViewForRestaurant(ctx, period.restaurantId);
     return getPeriodDetail(periodId);
   },
 
@@ -1081,14 +1126,21 @@ export default {
     requireAuth(ctx);
     const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
     const isSelf = actorId && String(employeeId) === actorId;
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
+
     if (isSelf) {
       assertPayrollPermission(ctx, "payroll.payslip.self");
+      if (!["finalized", "locked", "paid"].includes(period.status)) {
+        throw new Error("PAYROLL_PERIOD_NOT_AVAILABLE");
+      }
     } else {
       assertPayrollPermission(ctx, "payroll.view");
     }
-    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
-    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+
     await requireRestaurantAccess(ctx, period.restaurantId);
+    const item = await findPayrollItemInPeriodRestaurant(period, employeeId);
+    if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
+
     const payslip = await getPayrollPayslip({ periodId, employeeId });
     await logPayrollEvent({
       ctx,
@@ -1104,15 +1156,10 @@ export default {
   payrollPayments: async (_, { periodId, employeeId }, ctx) => {
     requireAuth(ctx);
     assertPayrollPermission(ctx, employeeId ? "payroll.view" : "payroll.export");
-    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
-    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
     await requireRestaurantAccess(ctx, period.restaurantId);
     if (employeeId) {
-      const item = await PayrollItem.findOne({
-        periodId: period._id,
-        restaurantId: period.restaurantId,
-        employeeId: payrollToObjectId(employeeId),
-      }).select({ _id: 1 }).lean();
+      const item = await findPayrollItemInPeriodRestaurant(period, employeeId);
       if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
     }
     return listPayrollPayments({ periodId, employeeId });
@@ -1120,15 +1167,14 @@ export default {
 
   payrollExportRows: async (_, { periodId }, ctx) => {
     requireAuth(ctx);
-    assertPayrollPermission(ctx, "payroll.export");
-    const period = await PayrollPeriod.findById(periodId).select({ restaurantId: 1 }).lean();
-    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
-    await requireRestaurantAccess(ctx, period.restaurantId);
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
+    await requirePayrollExportForRestaurant(ctx, period.restaurantId);
     return buildPayrollExportRows({ periodId });
   },
 
   payrollSettings: async (_, { restaurantId }, ctx) => {
     requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
     const authUser = ctx?.user || null;
     const rid = restaurantId || authUser?.restaurantForStaff || null;
     if (!rid) return null;
@@ -1154,7 +1200,9 @@ export default {
     });
   },
   validatePayrollPeriod: async (_, { periodId }, ctx) => {
-    assertPayrollPermission(ctx, "payroll.validate");
+    requireAuth(ctx);
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
+    await requirePayrollValidateForRestaurant(ctx, period.restaurantId);
     return validatePayrollPeriodService(periodId);
   },
 
@@ -1829,7 +1877,9 @@ export default {
     }));
   },
 
-  leaveBalance: async (_, { employeeId, year }) => {
+  leaveBalance: async (_, { employeeId, year }, ctx) => {
+    const staff = await requireLeaveBalanceAccess(ctx, employeeId);
+    if (!staff) return null;
     const y = Number(year || new Date().getFullYear());
     const row = await LeaveBalance.findOne({
       employeeId: toObjectId(employeeId),
@@ -1853,6 +1903,7 @@ export default {
   },
 
   staffReportsOverview: async (_, { input }, ctx) => {
+    requireAuth(ctx);
     const start = toStartOfDay(input.startDate);
     const end = toEndOfDay(input.endDate);
     if (
@@ -1868,6 +1919,7 @@ export default {
       input.restaurantId || authUser?.restaurantForStaff || null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) throw new Error("Missing restaurantId for staff report");
+    await requireStaffReportAccessForRestaurant(ctx, rid);
 
     const periodDays = Math.max(
       Math.round((end.getTime() - start.getTime()) / 86400000) + 1,
@@ -1880,22 +1932,23 @@ export default {
       ? toEndOfDay(input.compareEndDate)
       : toEndOfDay(new Date(start.getTime() - 1));
 
-    const [staffDocs, timesheets, leaveRequests, leaveBalances] =
+    const staffDocs = await Staff.find({
+      userType: "STAFF",
+      $or: [{ restaurantForStaff: rid }],
+    })
+      .select({
+        _id: 1,
+        fullName: 1,
+        employeeCode: 1,
+        employmentStatus: 1,
+        dateJoined: 1,
+        dateLeft: 1,
+        createdAt: 1,
+      })
+      .lean();
+
+    const [timesheets, leaveRequests, leaveBalances] =
       await Promise.all([
-        Staff.find({
-          userType: "STAFF",
-          $or: [{ restaurantForStaff: rid }],
-        })
-          .select({
-            _id: 1,
-            fullName: 1,
-            employeeCode: 1,
-            employmentStatus: 1,
-            dateJoined: 1,
-            dateLeft: 1,
-            createdAt: 1,
-          })
-          .lean(),
         Timesheet.find({
           restaurantId: rid,
           workDate: { $gte: start, $lte: end },

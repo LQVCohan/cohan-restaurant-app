@@ -63,11 +63,6 @@ export const GET_USERS = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
       isOnline
       loyaltyDurationScore
       lastLoginAt
@@ -135,11 +130,6 @@ export const GET_CUSTOMERS = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
       isOnline
       loyaltyDurationScore
       lastLoginAt
@@ -206,11 +196,6 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
         isOnline
         loyaltyDurationScore
         lastLoginAt
@@ -223,7 +208,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
 export const GET_CUSTOMER_EXPORT_ROWS = gql`
   query GetCustomerExportRows($restaurantId: ID!, $search: String, $includeGuests: Boolean, $customerKind: CustomerKindFilter, $customerRank: CustomerRankFilterInput, $sortBy: CustomerSortBy, $sortDirection: SortDirection, $limit: Int) {
     customerExportRows(restaurantId: $restaurantId, search: $search, includeGuests: $includeGuests, customerKind: $customerKind, customerRank: $customerRank, sortBy: $sortBy, sortDirection: $sortDirection, limit: $limit) {
-      id fullName username email phone loyaltyPoints customerType totalOrders totalSpending isOnline lastLoginAt isGuest createdAt emailVerified phoneVerified verifiedAt emailVerifiedAt phoneVerifiedAt verificationLastStatus verificationLastChannel verificationLastRequestedAt emailVerifyLastSentAt phoneVerifyLastSentAt
+      id fullName username email phone loyaltyPoints customerType totalOrders totalSpending isOnline lastLoginAt isGuest createdAt emailVerified phoneVerified verifiedAt emailVerifiedAt phoneVerifiedAt
       refRestaurants { id name }
     }
   }
@@ -281,11 +266,6 @@ export const CREATE_USER = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
         isGuest
         guestExpiresAt
         createdAt
@@ -378,11 +358,6 @@ export const UPDATE_MY_USER = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
       isGuest
       guestExpiresAt
       createdAt
@@ -439,11 +414,6 @@ export const ADMIN_UPDATE_USER = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastStatus
-      verificationLastChannel
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
       isGuest
       guestExpiresAt
       createdAt
@@ -761,11 +731,6 @@ const useUserManagement = () => {
       verifiedAt: u.verifiedAt || null,
       emailVerifiedAt: u.emailVerifiedAt || null,
       phoneVerifiedAt: u.phoneVerifiedAt || null,
-      verificationLastStatus: u.verificationLastStatus || null,
-      verificationLastChannel: u.verificationLastChannel || null,
-      verificationLastRequestedAt: u.verificationLastRequestedAt || null,
-      emailVerifyLastSentAt: u.emailVerifyLastSentAt || null,
-      phoneVerifyLastSentAt: u.phoneVerifyLastSentAt || null,
     };
   }, []);
   const getCustomersPage = useCallback(async ({

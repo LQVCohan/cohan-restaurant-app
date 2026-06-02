@@ -84,11 +84,6 @@ const ME_QUERY = gql`
       verifiedAt
       emailVerifiedAt
       phoneVerifiedAt
-      verificationLastChannel
-      verificationLastStatus
-      verificationLastRequestedAt
-      emailVerifyLastSentAt
-      phoneVerifyLastSentAt
       wallet {
         provider
         status

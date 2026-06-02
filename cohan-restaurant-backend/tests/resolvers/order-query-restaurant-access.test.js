@@ -199,7 +199,7 @@ describe("OrderQuery restaurant access guard", () => {
     modelMocks.Staff.countDocuments.mockResolvedValue(0);
     modelMocks.StockItem.find.mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
     modelMocks.Staff.find.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
-    modelMocks.Review.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
+    modelMocks.Review.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]), limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
 
     const res = await OrderQuery.managerDashboard(
       null,

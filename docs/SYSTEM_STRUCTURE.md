@@ -90,6 +90,7 @@
 - File chính: `cohan-restaurant-backend/src/services/payroll/*`, resolver payroll trong staff query/mutation.
 - Luồng dữ liệu: runtime build period items/summary/payment.
 - Lưu ý khi sửa: attendance basic không nên đụng logic payroll nếu không có yêu cầu.
+- Security note: payroll and staff report data is restaurant-scoped. `MANAGER` can view payroll/report data only for restaurants they can access; `STAFF` self-service payroll access is limited to `myPayslips`/`myPayslip` and own allowed self-service records. Sensitive GraphQL payroll/report access is covered by resolver regression tests.
 
 ### 4.6 Staff UI
 - Vai trò: staff thao tác availability, xem lịch, ack ca, check-in/check-out.
@@ -130,9 +131,9 @@
 
 ### 4.7 GraphQL user privacy DTOs
 - GraphQL user-facing resolvers must not return raw Mongoose `User`/`Customer` documents directly. Auth/session responses call `sanitizeAuthUser`, customer CRM lists call `sanitizeCustomerListUser`, and admin user lists call `sanitizeAdminUserListItem`.
-- The general GraphQL `User` type intentionally contains only non-HR/non-payroll fields needed by auth, CRM, and general user management clients. Bank, identity, insurance, internal notes, login IP, and payroll/private staff fields are not exposed on the general `User` type.
+- The general GraphQL `User` type intentionally contains only non-HR/non-payroll fields needed by auth, CRM, and general user management clients. Bank, identity, insurance, internal notes, login IP, payroll/private staff fields, and internal verification cooldown/status metadata are not exposed on general user list DTOs.
 - HR/payroll/identity fields are isolated in `StaffPrivateProfile` and may only be returned through staff management/private profile resolvers after role, restaurant-scope, and `staff.read` permission checks.
-- New GraphQL user resolvers should choose an explicit DTO sanitizer before returning data; raw `.lean()` documents from `User.find*`/`Customer.find*` must be mapped through the correct sanitizer or replaced by an explicit projection.
+- New GraphQL user resolvers should choose an explicit DTO sanitizer before returning data; raw `.lean()` documents from `User.find*`/`Customer.find*` must be mapped through the correct sanitizer or replaced by an explicit projection. `emailVerifyLastSentAt`, `phoneVerifyLastSentAt`, `verificationLastRequestedAt`, `verificationLastChannel`, and `verificationLastStatus` are internal account-verification workflow metadata and should not be added to list/private DTOs without a specific UI need and regression tests.
 
 **File đã xác minh cho section này**
 - `cohan-restaurant-backend/src/security/userDtos.js`

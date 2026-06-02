@@ -71,7 +71,7 @@ describe("user/customer restaurant access guards", () => {
     });
     modelMocks.Order.find.mockImplementation(() => {
       calls.push("order");
-      return { lean: async () => [] };
+      return { select: vi.fn().mockReturnValue({ lean: async () => [] }) };
     });
     modelMocks.Customer.find.mockImplementation(() => {
       calls.push("customer");

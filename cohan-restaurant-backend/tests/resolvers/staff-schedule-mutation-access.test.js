@@ -9,7 +9,7 @@ const modelMocks = vi.hoisted(() => ({
   ShiftAcknowledgement: { findOneAndUpdate: vi.fn() }, ScheduleAcknowledgement: {},
 }));
 const guards = vi.hoisted(() => ({ requireAuth: vi.fn(), requireRestaurantAccess: vi.fn(), requireRoles: vi.fn(), requireRestaurantScope: vi.fn() }));
-const validation = vi.hoisted(() => ({ assertShiftAssignmentValid: vi.fn(async () => ({})), validateShiftAssignment: vi.fn(async () => ({ ok: true, warnings: [], blockingErrors: [] })) }));
+const validation = vi.hoisted(() => ({ assertShiftAssignmentValid: vi.fn(async () => ({})), validateShiftAssignment: vi.fn(async () => ({ ok: true, warnings: [], blockingErrors: [] })), hasNonInfoWarnings: vi.fn(() => false) }));
 const lifecycle = vi.hoisted(() => ({ resolveScheduleLifecycleStatus: vi.fn(() => "draft"), mapSchedulePublicationOutput: vi.fn((v) => v) }));
 
 vi.mock("../../models/index.js", () => modelMocks);

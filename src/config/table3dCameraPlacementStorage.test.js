@@ -35,12 +35,14 @@ describe("table3dCameraPlacementStorage", () => {
       y: 95,
       scale: 2,
       rotation: 0,
+      opacity: DEFAULT_CAMERA_PLACEMENT.opacity,
     });
     expect(normalizeCameraPlacement({ x: 90, y: 20, scale: 0.1, rotation: -15 })).toEqual({
       x: 90,
       y: 20,
       scale: 0.5,
       rotation: -15,
+      opacity: DEFAULT_CAMERA_PLACEMENT.opacity,
     });
     expect(normalizeCameraPlacement(null)).toEqual(DEFAULT_CAMERA_PLACEMENT);
   });
@@ -54,12 +56,12 @@ describe("table3dCameraPlacementStorage", () => {
     saveCameraPlacement("m1", { x: 10, y: 20, scale: 1, rotation: 30 }, "r1");
     saveCameraPlacement("m1", { x: 40, y: 50, scale: 1.5, rotation: 10 }, "r2");
 
-    expect(loadCameraPlacement("m1", "r1")).toEqual({ x: 10, y: 20, scale: 1, rotation: 30 });
-    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10 });
+    expect(loadCameraPlacement("m1", "r1")).toEqual({ x: 10, y: 20, scale: 1, rotation: 30, opacity: DEFAULT_CAMERA_PLACEMENT.opacity });
+    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10, opacity: DEFAULT_CAMERA_PLACEMENT.opacity });
     expect(hasCameraPlacement("m1", "r1")).toBe(true);
 
     deleteCameraPlacement("m1", "r1");
     expect(loadCameraPlacement("m1", "r1")).toEqual(DEFAULT_CAMERA_PLACEMENT);
-    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10 });
+    expect(loadCameraPlacement("m1", "r2")).toEqual({ x: 40, y: 50, scale: 1.5, rotation: 10, opacity: DEFAULT_CAMERA_PLACEMENT.opacity });
   });
 });

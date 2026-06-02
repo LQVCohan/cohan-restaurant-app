@@ -73,6 +73,7 @@ const validationMocks = vi.hoisted(() => ({
     blockingErrors: [],
     warnings: [],
   })),
+  hasNonInfoWarnings: vi.fn(() => false),
 }));
 
 const scheduleLifecycleMocks = vi.hoisted(() => ({
