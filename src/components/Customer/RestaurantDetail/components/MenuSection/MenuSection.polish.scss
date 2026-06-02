@@ -31,8 +31,8 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
       }
 
       &.active {
-        background: linear-gradient(135deg, $menu-primary-soft, #fff7ed);
-        color: $menu-primary;
+        background: linear-gradient(135deg, $menu-primary-soft, #fff7ed) !important;
+        color: $menu-primary !important;
         box-shadow: 0 10px 22px rgba(255, 102, 0, 0.13);
       }
     }
@@ -84,11 +84,18 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
     backdrop-filter: blur(14px);
 
     .sidebar-header {
-      margin-bottom: 12px;
+      display: block;
+      margin: 0 0 12px;
+      padding: 12px 13px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 102, 0, 0.16);
+      background: linear-gradient(135deg, #fff7ed, #ffffff) !important;
+      color: $menu-primary !important;
+      box-shadow: 0 10px 22px rgba(255, 102, 0, 0.08);
       font-size: 0.86rem;
+      font-weight: 950;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: $menu-primary;
     }
 
     .category-list {
@@ -98,23 +105,26 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
         border: 1px solid transparent;
         border-radius: 15px;
         padding: 12px 13px;
-        color: $menu-text-sub;
+        background: #ffffff !important;
+        color: $menu-text-sub !important;
         font-weight: 800;
         line-height: 1.25;
         transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 
         &:hover {
-          background: #fff7ed;
+          background: #fff7ed !important;
           border-color: rgba(255, 102, 0, 0.16);
-          color: $menu-primary;
+          color: $menu-primary !important;
           transform: translateX(2px);
         }
 
-        &.active {
+        &.active,
+        &[aria-current="true"],
+        &[data-active="true"] {
           background: linear-gradient(135deg, $menu-primary, #ff8a3d) !important;
           border-color: rgba(255, 102, 0, 0.42) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 28px rgba(255, 102, 0, 0.22);
+          box-shadow: 0 14px 28px rgba(255, 102, 0, 0.22) !important;
         }
       }
     }
@@ -260,6 +270,10 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
       border: 0;
       background: transparent;
       backdrop-filter: none;
+
+      .sidebar-header {
+        display: none;
+      }
 
       .category-list .category-item.active {
         background: linear-gradient(135deg, $menu-primary, #ff8a3d) !important;
