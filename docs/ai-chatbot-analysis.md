@@ -724,3 +724,13 @@ Expired entries are removed lazily on read. Cache stats are internal/test helper
 ### Safety/privacy rule
 
 Only restaurant-level public chatbot data can enter the cache. User-owned data must be fetched fresh per request so order/cart/reservation/profile answers remain current and cannot leak across users.
+
+## Phase 27 - Local AI provider and local embeddings
+
+Phase 27 adds optional backend-only local AI support for the restaurant chatbot. When `LOCAL_AI_ENABLED=true`, the backend can call a local Ollama/OpenAI-compatible endpoint for Qwen3-8B chat (`LOCAL_AI_CHAT_MODEL=qwen3:8b`) and bge-m3 embeddings (`LOCAL_AI_EMBEDDING_MODEL=bge-m3`). Gemini and OpenAI remain supported as primary or fallback cloud providers, so restaurants can reduce dependency on Gemini free quota without losing cloud fallback paths.
+
+Local chat can be selected with `AI_PROVIDER=local` or used as fallback with `AI_FALLBACK_PROVIDER=local`. The provider endpoint, model names, and timeout are read only by backend services; no frontend API key, local provider URL, or local model metadata is exposed to clients. If the local endpoint is down or slow, the chatbot continues through configured fallback providers and then the deterministic fallback answer.
+
+Local embeddings are enabled with `AI_EMBEDDING_PROVIDER=local`. Knowledge items store embedding metadata for vector RAG preparation, while public chatbot responses expose only safe source metadata such as title, category, source type, and score. Semantic retrieval merges bge-m3 cosine similarity with existing MongoDB text/token retrieval and Phase 26 cache. If embedding generation fails, the chatbot keeps using the existing keyword/text search path and does not block user responses.
+
+Tradeoff: local AI can be slower than Gemini/OpenAI depending on CPU/GPU, memory, and Ollama host capacity. It avoids external embedding calls and gives teams an optional offline/local RAG path, but it does not create orders, payments, reservations, cart mutations, or profile updates; existing safety/refusal and deterministic action-card rules still apply.

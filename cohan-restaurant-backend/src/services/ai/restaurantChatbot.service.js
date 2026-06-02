@@ -15,6 +15,7 @@ import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.s
 import { findRelevantKnowledgeForChatbot } from "./restaurantChatbotKnowledge.service.js";
 import { recordKnowledgeGapSuggestion } from "./restaurantChatbotKnowledgeSuggestion.service.js";
 import { evaluateRestaurantAiChatbotSafety } from "./restaurantChatbotSafety.service.js";
+import { callLocalChatProvider } from "./localAiProvider.service.js";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -611,7 +612,9 @@ const buildKnowledgePrompt = (knowledgeItems = []) => {
   const lines = [];
   let used = 0;
   for (const item of knowledgeItems || []) {
-    const row = `- [${item.sourceType || "manual"}] ${item.title || ""} | category: ${item.category || "N/A"} | tags: ${Array.isArray(item.tags) ? item.tags.join(", ") : ""}\n${String(item.content || "").slice(0, 500)}`.trim();
+    const scoreText = Number.isFinite(Number(item?._score)) ? ` | score: ${Number(item._score).toFixed(3)}` : "";
+    const row = `- title: ${item.title || ""} | sourceType: ${item.sourceType || "manual"} | category: ${item.category || "N/A"}${scoreText} | tags: ${Array.isArray(item.tags) ? item.tags.join(", ") : ""}
+${String(item.content || "").slice(0, 500)}`.trim();
     if (!row) continue;
     if (used + row.length > MAX_KNOWLEDGE_CHARS) break;
     lines.push(row);
@@ -878,6 +881,9 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
     "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
     "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+    "Chỉ trả lời từ CONTEXT và RESTAURANT_KNOWLEDGE; nếu thiếu dữ liệu, nói chưa rõ và gợi ý liên hệ nhân viên.",
+    "Không bịa chính sách, menu, đơn hàng; không tiết lộ trường riêng tư hoặc internal id.",
+    "Không tạo đơn hàng, thanh toán, đặt bàn hoặc cập nhật hồ sơ; chỉ hướng dẫn người dùng tự thao tác trong app.",
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
@@ -932,16 +938,56 @@ const callGemini = async ({ message, context, history, knowledgeItems = [] }) =>
   }
 };
 
-const callAiProvider = async (args) => {
-  const provider = String(args?.provider || process.env.AI_PROVIDER || "openai").toLowerCase();
-  if (provider === "gemini") {
-    const geminiResult = await callGemini(args);
-    if (geminiResult) return geminiResult;
-    const openAiFallback = await callOpenAI(args);
-    return openAiFallback || fallbackAnswer(args.context || {});
+const callLocal = async ({ message, context, history, knowledgeItems = [] }) => {
+  const knowledgeLines = buildKnowledgePrompt(knowledgeItems);
+  const systemInstruction = [
+    "Bạn là AI App Assistant for Cohan Restaurant App, hỗ trợ nhà hàng, menu, đặt món, đặt bàn, hồ sơ, đơn hàng và điều hướng trong ứng dụng.",
+    "Trả lời tiếng Việt, thân thiện, ngắn gọn, đúng nghiệp vụ nhà hàng.",
+    "Chỉ trả lời từ CONTEXT và RESTAURANT_KNOWLEDGE; nếu thiếu dữ liệu, nói chưa rõ và gợi ý liên hệ nhân viên.",
+    "Không bịa món, giá, trạng thái món, coupon, chính sách, số điện thoại, thông tin cá nhân hoặc chính sách nhà hàng.",
+    "Chỉ sử dụng userSafeProfile đã được làm sạch; không yêu cầu hoặc tiết lộ mật khẩu, token, secret, API key, internal id.",
+    "Chỉ trả lời đơn hàng/đặt bàn trong CONTEXT.orders và CONTEXT.reservations vì đó là dữ liệu thuộc người dùng hiện tại.",
+    "Không tạo đơn hàng, thanh toán, đặt bàn hoặc cập nhật hồ sơ; không tạo action checkout/payment/add_to_cart_candidate.",
+    "Trả về JSON hợp lệ đúng schema: {\"answer\": string, \"intent\": string, \"confidence\": number, \"quickReplies\": string[], \"actions\": [{\"type\":\"link|handoff|search|openCart\",\"label\": string, \"href\": string, \"description\": string, \"icon\": string, \"priority\": number}], \"sources\": [{\"type\": string, \"id\": string, \"label\": string}] }.",
+    "Không dùng markdown code fence; chỉ trả JSON, không thêm giải thích ngoài JSON.",
+    `CONTEXT: ${JSON.stringify(buildProviderPromptContext(context))}`,
+    knowledgeLines.length ? `RESTAURANT_KNOWLEDGE:\n${knowledgeLines.join("\n\n")}` : "",
+  ].join("\n");
+  const result = await callLocalChatProvider({
+    systemInstruction,
+    messages: [...recentHistoryForPrompt(history), { role: "user", content: message }],
+    temperature: 0.25,
+    maxTokens: 800,
+  });
+  const parsed = safeJsonParse(result?.content);
+  return parsed ? normalizeAiResult(parsed, context) : null;
+};
+
+const normalizeProviderName = (value) => String(value || "").trim().toLowerCase();
+const uniqueProviders = (providers) => {
+  const out = [];
+  for (const provider of providers.map(normalizeProviderName).filter(Boolean)) {
+    if (["gemini", "openai", "local"].includes(provider) && !out.includes(provider)) out.push(provider);
   }
-  const openAiResult = await callOpenAI(args);
-  return openAiResult || fallbackAnswer(args.context || {});
+  return out;
+};
+
+const callAiProvider = async (args) => {
+  const primary = normalizeProviderName(args?.provider || process.env.AI_PROVIDER || "openai");
+  const configuredFallback = normalizeProviderName(process.env.AI_FALLBACK_PROVIDER || "");
+  const providers = uniqueProviders([
+    primary,
+    configuredFallback,
+    !configuredFallback && primary === "gemini" ? "openai" : "",
+  ]);
+  for (const provider of providers.length ? providers : ["openai"]) {
+    let result = null;
+    if (provider === "gemini") result = await callGemini(args);
+    else if (provider === "local") result = await callLocal(args);
+    else result = await callOpenAI(args);
+    if (result) return result;
+  }
+  return fallbackAnswer(args.context || {});
 };
 
 const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) => {
@@ -960,6 +1006,9 @@ const callOpenAI = async ({ message, context, history, knowledgeItems = [] }) =>
     "Chỉ dùng dữ liệu trong CONTEXT để nói về món ăn, đơn hàng, đặt bàn, coupon hoặc thông tin nhà hàng. Nếu thiếu dữ liệu, hãy nói rõ và gợi ý bước tiếp theo.",
     "Chỉ recommend món có trong CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems.",
     "Nếu có RESTAURANT_KNOWLEDGE thì ưu tiên thông tin đó hơn suy đoán chung.",
+    "Chỉ trả lời từ CONTEXT và RESTAURANT_KNOWLEDGE; nếu thiếu dữ liệu, nói chưa rõ và gợi ý liên hệ nhân viên.",
+    "Không bịa chính sách, menu, đơn hàng; không tiết lộ trường riêng tư hoặc internal id.",
+    "Không tạo đơn hàng, thanh toán, đặt bàn hoặc cập nhật hồ sơ; chỉ hướng dẫn người dùng tự thao tác trong app.",
     "Nếu khách hỏi món không có trong context, nói không thấy trong dữ liệu hiện tại.",
     "Không đưa lời khuyên y tế chắc chắn; nếu khách dị ứng hãy nhắc xác nhận với nhân viên.",
     "Không tự đặt món/thanh toán; không tạo action checkout/payment/add_to_cart_candidate.",
@@ -1520,6 +1569,7 @@ export const __testables = {
   enrichMenuItemSource,
   callAiProvider,
   callGemini,
+  callLocal,
   buildUserSafeProfile,
   normalizePageContext,
   sanitizeFeatureMatches,

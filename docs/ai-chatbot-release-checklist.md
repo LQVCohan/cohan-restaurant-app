@@ -179,3 +179,15 @@
 - [ ] Cache stats remain internal/test-only and cache contents are not exposed to GraphQL or the frontend.
 - [ ] Backend cache service tests pass.
 - [ ] Existing chatbot backend and frontend regression suites pass.
+
+## Phase 27 - Local AI provider and local embeddings
+
+- [ ] Confirm Gemini/OpenAI still work as primary providers.
+- [ ] Confirm `AI_PROVIDER=local` calls only the backend local provider service.
+- [ ] Confirm `AI_FALLBACK_PROVIDER=local` is used after a cloud provider failure and deterministic fallback still works if all providers fail.
+- [ ] Confirm `LOCAL_AI_BASE_URL`, provider keys, and model endpoint details are not exposed in frontend bundles, GraphQL public chatbot responses, or logs.
+- [ ] Confirm `AI_EMBEDDING_PROVIDER=local` with `LOCAL_AI_EMBEDDING_MODEL=bge-m3` stores knowledge embedding metadata for enabled knowledge items only.
+- [ ] Confirm semantic retrieval returns relevant paraphrased knowledge and keyword/text retrieval still works when local embeddings are unavailable.
+- [ ] Confirm Phase 26 cache invalidates knowledge retrieval after create/update/import/delete/bulk changes and never caches user-specific profile/cart/order/reservation/conversation data.
+- [ ] Confirm chatbot safety/refusal checks run before provider calls and local provider output cannot create order/payment/reservation/profile side effects.
+- [ ] Record local hardware limitations: Qwen3-8B and bge-m3 latency may be slower than Gemini/OpenAI depending on CPU/GPU and memory.

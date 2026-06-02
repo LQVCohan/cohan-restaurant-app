@@ -551,3 +551,11 @@ Privacy/safety boundary:
 - The Phase 26 cache must never store cart, orders, reservations, user profile context, conversation messages/history, guest/user identifiers, API keys, tokens, passwords, or secrets.
 - User-specific chatbot context remains real-time in `restaurantChatbot.service.js`, including `fetchCart`, `fetchOrders`, `fetchReservations`, `buildUserSafeProfile`, `AiChatConversation`, and `AiChatMessage` history.
 - Cache stats are for tests/internal debugging only; cache contents are not exposed to public GraphQL or frontend APIs.
+
+## Phase 27 - Local AI provider and local embeddings
+
+The AI chatbot backend now includes an optional local provider layer under `cohan-restaurant-backend/src/services/ai/`. `localAiProvider.service.js` wraps backend-only Ollama/OpenAI-compatible calls to Qwen3-8B chat and bge-m3 embeddings with timeout handling and safe error logging. Provider selection in `restaurantChatbot.service.js` supports `AI_PROVIDER=local` and `AI_FALLBACK_PROVIDER=local` while retaining Gemini/OpenAI support.
+
+Knowledge RAG now has an embedding preparation service (`restaurantChatbotEmbedding.service.js`) and embedding metadata on `AiChatbotKnowledgeItem`. Retrieval in `restaurantChatbotKnowledge.service.js` combines semantic matches with the existing Phase 26 cached MongoDB text/token path. Cache keys use restaurant id, normalized message hashes, model names, and limits; they must not include user profile, cart, order, reservation, conversation, guest/user identifiers, provider secrets, or local endpoint URLs.
+
+No local AI endpoint is routed to the frontend. Admin rebuild support is backend/GraphQL permission-gated by restaurant write access and returns only total/updated/skipped/failed/error summaries, not raw vectors.
