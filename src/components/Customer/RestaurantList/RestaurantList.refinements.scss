@@ -129,6 +129,146 @@
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .restaurant-list-page {
+    .discovery-hero {
+      .text-content {
+        animation: restaurantListHeroCopyIn 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .hero-title .highlight {
+        background-size: 0% 38%;
+        background-repeat: no-repeat;
+        background-position: 0 88%;
+        background-image: linear-gradient(90deg, rgba(255, 102, 0, 0.18), rgba(255, 138, 61, 0.32));
+        animation: restaurantListHighlightSweep 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+      }
+
+      .hero-tags {
+        animation: restaurantListHeroTagsIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
+      }
+
+      .tag-chip {
+        transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+
+        &:hover {
+          transform: translateY(-2px) scale(1.02);
+        }
+
+        &:active {
+          transform: translateY(0) scale(0.98);
+        }
+      }
+    }
+
+    .discovery-visual {
+      animation: restaurantListVisualIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+    }
+
+    .visual-orb {
+      animation: restaurantListOrbPulse 5.8s ease-in-out infinite;
+    }
+
+    .visual-main {
+      animation: restaurantListPlateFloat 6.4s ease-in-out infinite;
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .discovery-visual:hover .visual-main {
+      transform: rotate(-2deg) translateY(-5px) scale(1.025);
+      box-shadow: 0 38px 90px rgba(91, 48, 17, 0.22);
+    }
+
+    .visual-card--rating {
+      animation: restaurantListBadgeFloatA 5.4s ease-in-out infinite;
+    }
+
+    .visual-card--delivery {
+      animation: restaurantListBadgeFloatB 5.9s ease-in-out infinite;
+    }
+
+    .sidebar-wrapper {
+      animation: restaurantListPanelIn 0.64s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+    }
+
+    .results-header {
+      animation: restaurantListPanelIn 0.64s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+    }
+
+    .restaurants-display .card-wrapper {
+      animation-name: restaurantListCardIn;
+      animation-duration: 0.58s;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      animation-fill-mode: both;
+    }
+
+    .restaurant-card {
+      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+      will-change: transform;
+
+      &__img {
+        transition: transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), filter 0.28s ease;
+      }
+
+      &:hover .restaurant-card__img {
+        transform: scale(1.06);
+        filter: saturate(1.06) contrast(1.02);
+      }
+
+      .status-pill,
+      .meta-item.rating {
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+      }
+
+      &:hover .status-pill,
+      &:hover .meta-item.rating {
+        transform: translateY(-1px);
+      }
+    }
+
+    .btn-favorite {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+
+      &:hover {
+        transform: scale(1.08) rotate(6deg);
+      }
+
+      &:active {
+        transform: scale(0.92);
+      }
+    }
+
+    .buttons-group .btn {
+      position: relative;
+      overflow: hidden;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.26), transparent);
+        transform: translateX(-120%);
+        transition: transform 0.52s ease;
+      }
+
+      &:hover::after {
+        transform: translateX(120%);
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .restaurant-list-page *,
+  .restaurant-list-page *::before,
+  .restaurant-list-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
 @media (max-width: 720px) {
   .restaurant-list-page {
     .discovery-hero {
@@ -143,5 +283,111 @@
     .list-container {
       margin-top: -28px;
     }
+  }
+}
+
+@keyframes restaurantListHeroCopyIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes restaurantListHeroTagsIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes restaurantListHighlightSweep {
+  from {
+    background-size: 0% 38%;
+  }
+  to {
+    background-size: 100% 38%;
+  }
+}
+
+@keyframes restaurantListVisualIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96) rotate(2deg);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: blur(0);
+  }
+}
+
+@keyframes restaurantListOrbPulse {
+  0%, 100% {
+    transform: scale(0.98);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+
+@keyframes restaurantListPlateFloat {
+  0%, 100% {
+    transform: rotate(-4deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: rotate(-2deg) translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes restaurantListBadgeFloatA {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes restaurantListBadgeFloatB {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+@keyframes restaurantListPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes restaurantListCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
