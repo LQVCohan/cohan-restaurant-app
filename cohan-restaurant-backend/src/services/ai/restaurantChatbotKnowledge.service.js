@@ -4,6 +4,7 @@ import { AiChatbotKnowledgeItem } from "../../../models/index.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { requireRestaurantPermission } from "../auth/authorization.service.js";
 import { deleteAiChatbotCacheByPrefix, getOrSetAiChatbotCache } from "./restaurantChatbotCache.service.js";
+import { createEmbedding, hashEmbeddingContent, rebuildKnowledgeItemEmbedding, rebuildRestaurantKnowledgeEmbeddings } from "./restaurantChatbotEmbedding.service.js";
 
 const MAX_TAGS = 10;
 const MAX_TITLE = 160;
@@ -14,6 +15,7 @@ const PRIORITY_MIN = 0;
 const PRIORITY_MAX = 100;
 const SOURCE_TYPES = new Set(["manual", "faq", "policy"]);
 const KNOWLEDGE_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEMANTIC_RETRIEVAL_CACHE_TTL_MS = 5 * 60 * 1000;
 const KNOWLEDGE_SEARCH_CACHE_PREFIX = "ai:knowledge:relevant:";
 
 const knowledgeCachePrefix = (restaurantId) => `${KNOWLEDGE_SEARCH_CACHE_PREFIX}${restaurantId}:`;
@@ -51,8 +53,9 @@ const ensureRestaurantPermission = async (ctx, restaurantId, permissionCode) => 
 
 const toKnowledgeDto = (item) => {
   if (!item) return null;
+  const { embedding, ...safeItem } = item;
   return {
-    ...item,
+    ...safeItem,
     id: String(item._id || item.id || ""),
     restaurantId: item.restaurantId ? String(item.restaurantId) : "",
     tags: Array.isArray(item.tags) ? item.tags : [],
@@ -108,6 +111,15 @@ export async function getRestaurantAiChatbotKnowledgeItem({ id, ctx }) {
   return toKnowledgeDto(item);
 }
 
+const safelyRefreshKnowledgeEmbedding = async (doc) => {
+  if (!doc || doc.enabled === false) return;
+  try {
+    await rebuildKnowledgeItemEmbedding(doc);
+  } catch (error) {
+    console.warn("[ai-chatbot] knowledge embedding generation skipped", { code: error?.code || "EMBEDDING_ERROR" });
+  }
+};
+
 export async function createRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
   const restaurantId = input?.restaurantId;
   await ensureRestaurantPermission(ctx, restaurantId, PERMISSIONS.RESTAURANT_WRITE);
@@ -117,6 +129,7 @@ export async function createRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
     createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
     updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id),
   });
+  await safelyRefreshKnowledgeEmbedding(doc);
   invalidateRelevantKnowledgeCache(restaurantId);
   return toKnowledgeDto(doc.toObject());
 }
@@ -127,7 +140,9 @@ export async function updateRestaurantAiChatbotKnowledgeItem({ input, ctx }) {
   if (!found) throw Object.assign(new Error("Không tìm thấy dữ liệu"), { code: "NOT_FOUND" });
   await ensureRestaurantPermission(ctx, found.restaurantId, PERMISSIONS.RESTAURANT_WRITE);
   Object.assign(found, sanitizeInput(input, { partial: true }), { updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
+  if (found.enabled !== false) found.embeddingContentHash = "";
   await found.save();
+  await safelyRefreshKnowledgeEmbedding(found);
   invalidateRelevantKnowledgeCache(found.restaurantId);
   return toKnowledgeDto(found.toObject());
 }
@@ -154,24 +169,87 @@ const scoreByTokens = (item, tokens) => {
   return score;
 };
 
-const loadRelevantKnowledgeForChatbot = async ({ rid, message, safeLimit }) => {
-  const query = { restaurantId: rid, enabled: true };
+const cosineSimilarity = (a = [], b = []) => {
+  const len = Math.min(a.length, b.length);
+  if (!len) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < len; i += 1) {
+    const av = Number(a[i]);
+    const bv = Number(b[i]);
+    if (!Number.isFinite(av) || !Number.isFinite(bv)) continue;
+    dot += av * bv;
+    normA += av * av;
+    normB += bv * bv;
+  }
+  if (!normA || !normB) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+};
+
+const priorityBoost = (item) => Math.min(1, Math.max(0, Number(item?.priority || 0) / 100));
+const normalizeTextScore = (score) => Math.min(1, Math.max(0, Number(score || 0) / 10));
+
+const mergeAndRankKnowledgeRows = ({ semanticRows = [], textRows = [], tokens = [], safeLimit }) => {
+  const byId = new Map();
+  const upsert = (item, patch) => {
+    const id = String(item?._id || item?.id || "");
+    if (!id) return;
+    const previous = byId.get(id) || { item, semanticScore: 0, textScore: 0 };
+    byId.set(id, { ...previous, item: { ...previous.item, ...item }, ...patch });
+  };
+  for (const row of semanticRows) upsert(row.item, { semanticScore: Math.max(0, row.score) });
+  for (const item of textRows) upsert(item, { textScore: Math.max(scoreByTokens(item, tokens), Number(item?._textScore || 0)) });
+  return [...byId.values()]
+    .map((row) => {
+      const combinedScore = (row.semanticScore * 0.7) + (normalizeTextScore(row.textScore) * 0.2) + (priorityBoost(row.item) * 0.1);
+      return { ...row.item, _score: combinedScore, _semanticScore: row.semanticScore || 0, _textScore: row.textScore || 0 };
+    })
+    .sort((a, b) => (b._score - a._score) || (Number(b.priority || 0) - Number(a.priority || 0)) || (new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)))
+    .slice(0, safeLimit);
+};
+
+const loadTextKnowledgeRows = async ({ query, message, safeLimit }) => {
   const search = clean(message, 120);
   if (search) {
     const textRows = await AiChatbotKnowledgeItem.find({ ...query, $text: { $search: search } })
       .sort({ score: { $meta: "textScore" }, priority: -1, updatedAt: -1 })
       .limit(safeLimit)
       .lean();
-    if (textRows.length) return textRows;
+    if (textRows.length) return textRows.map((item) => ({ ...item, _textScore: scoreByTokens(item, tokenize(message)) || 5 }));
   }
   const rows = await AiChatbotKnowledgeItem.find(query).sort({ priority: -1, updatedAt: -1 }).limit(50).lean();
   const tokens = tokenize(message);
   return rows
-    .map((item) => ({ item, score: scoreByTokens(item, tokens) }))
-    .filter((row) => row.score > 0)
+    .map((item) => ({ ...item, _textScore: scoreByTokens(item, tokens) }))
+    .filter((row) => row._textScore > 0)
+    .sort((a, b) => b._textScore - a._textScore)
+    .slice(0, safeLimit);
+};
+
+const loadSemanticKnowledgeRows = async ({ query, message, safeLimit }) => {
+  const queryEmbedding = await createEmbedding(message);
+  if (!Array.isArray(queryEmbedding?.embedding) || !queryEmbedding.embedding.length) return [];
+  const rows = await AiChatbotKnowledgeItem.find({ ...query, embedding: { $exists: true, $ne: [] } })
+    .sort({ priority: -1, updatedAt: -1 })
+    .limit(100)
+    .lean();
+  return rows
+    .map((item) => ({ item, score: cosineSimilarity(queryEmbedding.embedding, item.embedding || []) }))
+    .filter((row) => row.score > 0.15)
     .sort((a, b) => b.score - a.score)
-    .slice(0, safeLimit)
-    .map((row) => row.item);
+    .slice(0, Math.max(safeLimit * 2, safeLimit));
+};
+
+const loadRelevantKnowledgeForChatbot = async ({ rid, message, safeLimit }) => {
+  const query = { restaurantId: rid, enabled: true };
+  const tokens = tokenize(message);
+  const [semanticRows, textRows] = await Promise.all([
+    getOrSetAiChatbotCache(`${knowledgeCacheKey({ restaurantId: String(rid), limit: safeLimit, message })}:semantic`, () => loadSemanticKnowledgeRows({ query, message, safeLimit }), SEMANTIC_RETRIEVAL_CACHE_TTL_MS),
+    loadTextKnowledgeRows({ query, message, safeLimit }),
+  ]);
+  const merged = mergeAndRankKnowledgeRows({ semanticRows, textRows, tokens, safeLimit });
+  return merged.length ? merged : textRows.slice(0, safeLimit);
 };
 
 export async function findRelevantKnowledgeForChatbot({ restaurantId, message, limit = 4 }) {
@@ -282,9 +360,18 @@ export async function importRestaurantAiChatbotKnowledge({ input, ctx }) {
     const sourceType = SOURCE_TYPES.has(sourceTypeRaw) ? sourceTypeRaw : "manual";
     const dup = await AiChatbotKnowledgeItem.findOne({ restaurantId: rid, title, content }).lean();
     if (dup) { skipped += 1; continue; }
-    await AiChatbotKnowledgeItem.create({ restaurantId: rid, title, content, category, tags, enabled, priority, sourceType, createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
+    const doc = await AiChatbotKnowledgeItem.create({ restaurantId: rid, title, content, category, tags, enabled, priority, sourceType, createdBy: toObjectId(ctx?.user?.id || ctx?.user?._id), updatedBy: toObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await safelyRefreshKnowledgeEmbedding(doc);
     imported += 1;
   }
   invalidateRelevantKnowledgeCache(input?.restaurantId);
   return { imported, skipped, errors };
 }
+
+export async function rebuildRestaurantAiKnowledgeEmbeddings({ restaurantId, ctx }) {
+  const result = await rebuildRestaurantKnowledgeEmbeddings({ restaurantId, ctx });
+  invalidateRelevantKnowledgeCache(restaurantId);
+  return result;
+}
+
+export const __testables = { tokenize, scoreByTokens, cosineSimilarity, mergeAndRankKnowledgeRows, hashEmbeddingContent };

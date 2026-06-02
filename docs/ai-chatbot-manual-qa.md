@@ -151,3 +151,15 @@ Notes/screenshots:
 - [ ] Disable a knowledge item and verify the chatbot no longer uses it in RESTAURANT_KNOWLEDGE.
 - [ ] Update coupon/menu/order/cart data and verify cart/order/user-specific answers are not stale because Phase 26 does not cache cart, orders, reservations, user profile, or conversation history.
 - [ ] Ask another user's private/order/profile data and verify the existing refusal/privacy behavior still applies.
+
+## Phase 27 - Local AI provider and local embeddings
+
+Manual QA for backend-only local AI:
+
+1. Start the app with `LOCAL_AI_ENABLED=false` and verify the chatbot still uses existing Gemini/OpenAI or deterministic fallback behavior.
+2. Start a local Ollama/OpenAI-compatible server with Qwen3-8B and bge-m3, then set `LOCAL_AI_ENABLED=true`, `AI_PROVIDER=local`, `LOCAL_AI_CHAT_MODEL=qwen3:8b`, and `LOCAL_AI_EMBEDDING_MODEL=bge-m3`. Ask menu, policy, reservation, order-status, and support questions; verify answers stay grounded in CONTEXT and RESTAURANT_KNOWLEDGE.
+3. Set `AI_PROVIDER=gemini` and `AI_FALLBACK_PROVIDER=local`, temporarily fail the Gemini key, and verify local fallback answers are returned without exposing the local endpoint to the browser.
+4. Enable `AI_EMBEDDING_PROVIDER=local`, create/update/import enabled knowledge items, and verify embedding rebuild summaries show total/updated/skipped/failed without raw vector arrays.
+5. Ask paraphrased knowledge questions (for example, “how much money to hold a table?” for a deposit policy) and verify semantic matches appear with safe metadata only: title, sourceType, category, score.
+6. Stop the local AI server and verify chatbot responses continue through keyword retrieval and deterministic fallback rather than failing startup or blocking users.
+7. Attempt unsafe side-effect requests (auto-place order, take payment, reserve a table, update profile) and verify the chatbot refuses or only offers safe navigation/action cards.
