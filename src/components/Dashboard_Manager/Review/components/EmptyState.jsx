@@ -13,9 +13,9 @@ const EmptyState = ({ type = "default" }) => {
       desc: "Chưa có khách hàng nào để lại đánh giá cho mục này.",
       icon: "💬",
     },
-    pending: {
-      title: "Không có đánh giá chờ duyệt",
-      desc: "Tất cả đánh giá đã được xử lý. Tuyệt vời!",
+    reported: {
+      title: "Không có đánh giá đang được xem xét",
+      desc: "Hiện không có report hoặc review rủi ro cao cần hậu kiểm.",
       icon: "✨",
     },
   };

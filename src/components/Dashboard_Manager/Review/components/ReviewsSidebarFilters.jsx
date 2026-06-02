@@ -62,7 +62,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         >
           <option value="">Tất cả trạng thái</option>
           <option value="published">Đã xuất bản</option>
-          <option value="pending">Chờ duyệt</option>
+                    <option value="reported">Đang được xem xét</option>
           <option value="hidden">Đã ẩn</option>
         </select>
       </div>

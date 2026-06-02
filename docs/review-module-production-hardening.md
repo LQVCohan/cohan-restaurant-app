@@ -21,7 +21,7 @@ Module review hiện hỗ trợ đánh giá nhà hàng/món ăn/dịch vụ, ph�
 | `review.read` | Xem review trong nhà hàng được phép |
 | `review.write` | Khách tạo/cập nhật review của mình |
 | `review.reply` | Tạo phản hồi chính thức |
-| `review.moderate` | Duyệt/ẩn/reject/mark reported |
+| `review.moderate` | Hậu kiểm report/mark reported; Admin-only hidden/rejected với policy reason |
 | `review.delete` | Soft delete/hide review/comment |
 | `review.report.read` | Xem report queue |
 | `review.report.resolve` | Resolve/reject report |

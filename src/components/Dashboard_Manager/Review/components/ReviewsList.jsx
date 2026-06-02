@@ -78,7 +78,7 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
     return (
       <EmptyState
         type={
-          currentTab === "service" ? "service" : currentTab === "pending" ? "pending" : "default"
+          currentTab === "service" ? "service" : currentTab === "reported" ? "reported" : "default"
         }
       />
     );
@@ -129,14 +129,11 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 <button type="button" className="reviews-review-card__action-btn" title="Xem chi tiết" onClick={() => onView(review)}>
                   👁️
                 </button>
-                {permissions.canModerate && review.status !== "published" && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Duyệt" onClick={() => onEdit(review, "published")}>✅</button>
+                {permissions.canModerate && review.status !== "reported" && Number(review.reports_count || 0) > 0 && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Đánh dấu đang được xem xét" onClick={() => onEdit(review, "reported")}>🚩</button>
                 )}
-                {permissions.canModerate && review.status !== "hidden" && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Ẩn" onClick={() => onEdit(review, "hidden")}>🙈</button>
-                )}
-                {permissions.canModerate && review.status !== "reported" && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Đánh dấu bị báo cáo" onClick={() => onEdit(review, "reported")}>🚩</button>
+                {permissions.canAdminModerate && review.status !== "hidden" && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Admin ẩn do vi phạm chính sách" onClick={() => onEdit(review, "hidden")}>🙈</button>
                 )}
                 {permissions.canDelete && (
                   <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
@@ -165,7 +162,7 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 {review.staff_name || "Không gắn nhân viên"}
               </p>
               <p className="reviews-review-card__text" style={{ fontStyle: "italic" }}>
-                Review đã duyệt sẽ được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
               </p>
 
               {images.length > 0 && (
@@ -211,11 +208,11 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 {review.status === "published"
                   ? "✅ Đã xuất bản"
                   : review.status === "pending"
-                  ? "⏳ Chờ duyệt"
+                  ? "⏳ Không công khai (legacy)"
                   : review.status === "hidden"
                   ? "🚫 Đã ẩn"
                   : review.status === "reported"
-                  ? "🚩 Bị báo cáo"
+                  ? "🚩 Đang được xem xét"
                   : review.status === "rejected"
                   ? "⛔ Từ chối"
                   : review.status}

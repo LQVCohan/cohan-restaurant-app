@@ -11,7 +11,7 @@ vi.mock("@apollo/client", async () => {
 
 vi.mock("@/utils/frontendPermissionAccess", () => ({ hasPermission: vi.fn(() => true) }));
 vi.mock("../shared/ManagementPageHeader", () => ({ default: ({ title, stats = [] }) => <header><h1>{title}</h1>{stats.map((item) => <span key={item.id}>{item.label}: {item.value}</span>)}</header> }));
-vi.mock("../shared/ManagerCommandBar", () => ({ default: ({ tabs = [] }) => <nav>{tabs.map((tab) => <button key={tab.id}>{tab.label}</button>)}</nav> }));
+vi.mock("../shared/ManagerCommandBar", () => ({ default: ({ tabs = [], onTabChange = () => {} }) => <nav>{tabs.map((tab) => <button key={tab.id} onClick={() => onTabChange(tab.id)}>{tab.label}</button>)}</nav> }));
 vi.mock("./components/ReviewsSidebarFilters", () => ({ default: () => <aside>Bộ lọc</aside> }));
 vi.mock("./components/ReviewsList", () => ({ default: ({ reviews = [] }) => <section data-testid="reviews-list">{reviews.map((review) => <article key={review.id}>{review.title}</article>)}</section> }));
 vi.mock("./components/ReviewModal", () => ({ default: () => null }));
@@ -54,12 +54,12 @@ const reviews = [
   },
   {
     ...baseReview,
-    id: "rv-pending",
+    id: "rv-published-reported-once",
     rating: 4,
-    title: "Pending review",
-    content: "Review đang chờ duyệt",
-    status: "pending",
-    reportsCount: 0,
+    title: "Published review with report",
+    content: "Review đã công khai nhưng có report cần hậu kiểm",
+    status: "published",
+    reportsCount: 1,
     createdAt: "2026-05-28T00:00:00.000Z",
   },
   {
@@ -78,7 +78,7 @@ const analyticsPayload = {
   totalReviews: 3,
   avgRating: 2.33,
   verifiedRate: 1,
-  pendingCount: 1,
+  pendingCount: 0,
   negativeCount: 2,
   reportedCount: 1,
   ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
@@ -90,14 +90,15 @@ const analyticsPayload = {
   reviewInsightSummary: { summary: "Heuristic summary", positives: ["ngon"], negatives: ["chậm"], recommendedActions: ["Phản hồi review 1–2 sao"], topPriorities: ["Ưu tiên high risk"], confidence: 0.7, source: "heuristic" },
 };
 
-function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }] } = {}) {
+function mockQueries(me, { restaurants = [{ id: "res1", name: "Cohan Demo" }], queryCalls = [] } = {}) {
   useQuery.mockImplementation((query, options = {}) => {
     const source = String(query?.loc?.source?.body || query || "");
+    queryCalls.push({ source, options });
     if (source.includes("query Me")) return { data: { me } };
     if (source.includes("ManagerRestaurants")) return { data: { restaurantsByManager: { edges: restaurants.map((node) => ({ node })) } } };
     if (source.includes("AllRestaurants")) return { data: { restaurants: { edges: restaurants.map((node) => ({ node })) } } };
     if (source.includes("GetReviews")) return { data: { reviews: { total: reviews.length, items: reviews } }, loading: false, error: null, refetch: vi.fn() };
-    if (source.includes("GetReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 2, pending: 0, ratingBreakdown: { 2: 1 } } } };
+    if (source.includes("GetReviewStats")) return { data: { reviewStats: { total: 1, avgRating: 2, pending: 99, ratingBreakdown: { 2: 1 } } } };
     if (source.includes("GetReviewReports")) return { data: { reviewReports: { total: 1, items: [{ id: "rp1", reviewId: "rv-reported", restaurantId: "res1", reporterUserId: "cus2", reason: "spam", detail: "Report cần xử lý", status: "pending", createdAt: "2026-05-30T00:00:00.000Z" }] }, reviewReportStats: { total: 1, pending: 1, resolved: 0, rejected: 0, byReason: { spam: 1 } } }, refetch: vi.fn() };
     if (source.includes("GetReviewAnalytics")) {
       if (options.skip) return { data: undefined, loading: false, error: null, refetch: vi.fn() };
@@ -119,21 +120,23 @@ describe("ReviewManagement analytics", () => {
 
     expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
     expect(screen.getByText("Tỷ lệ verified")).toBeInTheDocument();
+    expect(screen.getByText("Đang xem xét: 1")).toBeInTheDocument();
+    expect(screen.queryByText("Đang xem xét: 99")).not.toBeInTheDocument();
     expect(screen.getAllByText("Cần phản hồi").length).toBeGreaterThan(1);
     expect(screen.getByText("service_speed")).toBeInTheDocument();
     expect(screen.getByText("Cần phản hồi", { selector: "article" })).toBeInTheDocument();
   });
 
-  it("keeps pending and reported reviews visible when clicking needs moderation queue", () => {
+  it("keeps reported and report-backed public reviews visible when clicking moderation queue", () => {
     mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole });
     render(<ReviewManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Cần kiểm duyệt/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Báo cáo cần xử lý/i }));
 
     const list = screen.getByTestId("reviews-list");
-    expect(within(list).getByText("Pending review")).toBeInTheDocument();
+    expect(within(list).getByText("Cần phản hồi")).toBeInTheDocument();
+    expect(within(list).getByText("Published review with report")).toBeInTheDocument();
     expect(within(list).getByText("Reported review")).toBeInTheDocument();
-    expect(within(list).queryByText("Cần phản hồi")).not.toBeInTheDocument();
   });
 
   it("supports report queue click without hiding the reported review", () => {
@@ -144,6 +147,21 @@ describe("ReviewManagement analytics", () => {
 
     const list = screen.getByTestId("reviews-list");
     expect(within(list).getByText("Reported review")).toBeInTheDocument();
+  });
+
+
+  it("maps the Đang xem xét tab to reported status without targetType pending", () => {
+    const queryCalls = [];
+    mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole }, { queryCalls });
+    render(<ReviewManagement />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Bị báo cáo" }));
+
+    const reviewQueries = queryCalls.filter((call) => call.source.includes("GetReviews"));
+    const latestReviewQuery = reviewQueries[reviewQueries.length - 1];
+    expect(latestReviewQuery.options.variables.status).toBe("reported");
+    expect(latestReviewQuery.options.variables.targetType).toBeUndefined();
+    expect(latestReviewQuery.options.variables.targetType).not.toBe("pending");
   });
 
   it("skips analytics for non-admin manager until restaurantId is available", () => {

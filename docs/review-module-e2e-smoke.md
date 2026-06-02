@@ -40,15 +40,15 @@ GRAPHQL_ENDPOINT=http://localhost:4000/graphql CUSTOMER_TOKEN=... MANAGER_TOKEN=
 
 ## Flow được kiểm tra
 
-- Customer tạo review 2 sao với prefix `[SMOKE]` ở trạng thái pending.
-- Manager thấy pending review.
-- Manager approve review.
-- Customer/public query thấy review published.
+- Customer tạo review 2 sao với prefix `[SMOKE]` và nhận `status = published` ngay.
+- Manager thấy review mới trong danh sách công khai/phạm vi nhà hàng.
+- Manager không cần approve; manager phản hồi chính thức hoặc xử lý report hậu kiểm.
+- Customer/public query thấy review mới ngay, kể cả khi chuyển `reported` vẫn còn public với badge/cảnh báo.
 - Manager gửi official reply.
 - Customer thấy `firstOfficialReply`.
-- Customer report review.
+- Customer report review; report trùng user/reason không làm tăng counter.
 - Manager resolve report.
-- Manager query analytics/action queue/insight summary.
+- Manager query analytics/action queue/insight summary tập trung vào đánh giá cần phản hồi, report cần xử lý và high-risk.
 
 ## Lưu ý dữ liệu
 

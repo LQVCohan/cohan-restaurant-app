@@ -27,12 +27,12 @@ const missing = requiredKeys.filter((key) => !env[key]);
 const ids = {};
 const steps = [
   "customer create review",
-  "manager list pending",
-  "manager approve",
-  "customer/public list sees review",
+  "customer/public list sees review immediately",
+  "duplicate review blocked",
   "manager official reply",
   "customer sees firstOfficialReply",
-  "customer report",
+  "customer report idempotent",
+  "severe report marks review reported but public",
   "manager resolves report",
   "analytics query returns counts",
 ];
@@ -92,25 +92,26 @@ await runStep("customer create review", async () => {
     input: { targetType: "restaurant", targetId: env.DEMO_RESTAURANT_ID, restaurantId: env.DEMO_RESTAURANT_ID, rating: 2, title: reviewTitle, content: smokeContent },
   }, env.CUSTOMER_TOKEN);
   ids.reviewId = created.createReview.id;
+  if (created.createReview.status !== "published") throw new Error(`Expected published, got ${created.createReview.status}`);
   return `reviewId=${ids.reviewId}, status=${created.createReview.status}`;
 });
 
-await runStep("manager list pending", async () => {
-  const pending = await gql(`query Pending($restaurantId: ID!) { reviews(restaurantId: $restaurantId, status: "pending", limit: 20) { items { id title status } } }`, { restaurantId: env.DEMO_RESTAURANT_ID }, env.MANAGER_TOKEN);
-  if (!pending.reviews.items.some((r) => r.id === ids.reviewId)) throw new Error("Manager cannot see pending review");
-  return `pending contains reviewId=${ids.reviewId}`;
+await runStep("customer/public list sees review immediately", async () => {
+  const published = await gql(`query PublicVisible($restaurantId: ID!) { reviews(restaurantId: $restaurantId, status: "published", limit: 20) { items { id status } } }`, { restaurantId: env.DEMO_RESTAURANT_ID }, env.CUSTOMER_TOKEN);
+  if (!published.reviews.items.some((r) => r.id === ids.reviewId)) throw new Error("Published review is not visible without manager approval");
+  return `visible without approval reviewId=${ids.reviewId}`;
 });
 
-await runStep("manager approve", async () => {
-  const approved = await gql(`mutation Approve($id: ID!) { setReviewStatus(id: $id, status: "published") { id status } }`, { id: ids.reviewId }, env.MANAGER_TOKEN);
-  if (approved.setReviewStatus.status !== "published") throw new Error("Review was not published");
-  return "status=published";
-});
-
-await runStep("customer/public list sees review", async () => {
-  const published = await gql(`query Published($restaurantId: ID!) { reviews(restaurantId: $restaurantId, status: "published", limit: 20) { items { id status } } }`, { restaurantId: env.DEMO_RESTAURANT_ID }, env.CUSTOMER_TOKEN);
-  if (!published.reviews.items.some((r) => r.id === ids.reviewId)) throw new Error("Published review is not visible");
-  return `visible reviewId=${ids.reviewId}`;
+await runStep("duplicate review blocked", async () => {
+  try {
+    await gql(`mutation CreateReview($input: ReviewInput!) { createReview(input: $input) { id status } }`, {
+      input: { targetType: "restaurant", targetId: env.DEMO_RESTAURANT_ID, restaurantId: env.DEMO_RESTAURANT_ID, rating: 3, title: `${reviewTitle} duplicate`, content: `${smokeContent} duplicate attempt` },
+    }, env.CUSTOMER_TOKEN);
+  } catch (error) {
+    if (String(error?.message || "").includes("gần đây")) return "duplicate guard rejected same customer/restaurant/target within 24h";
+    throw error;
+  }
+  throw new Error("Duplicate review was accepted");
 });
 
 await runStep("manager official reply", async () => {
@@ -125,10 +126,22 @@ await runStep("customer sees firstOfficialReply", async () => {
   return `firstOfficialReply=${withReply.review.firstOfficialReply.id}`;
 });
 
-await runStep("customer report", async () => {
-  const report = await gql(`mutation Report($id: ID!) { reportReview(id: $id, input: { reason: "other", detail: "[SMOKE] Smoke report" }) { id status } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
-  ids.reportId = report.reportReview.id;
-  return `reportId=${ids.reportId}`;
+await runStep("customer report idempotent", async () => {
+  const first = await gql(`mutation Report($id: ID!) { reportReview(id: $id, input: { reason: "other", detail: "[SMOKE] Smoke report" }) { id status reason } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
+  ids.reportId = first.reportReview.id;
+  const before = await gql(`query Review($id: ID!) { review(id: $id) { id status reportsCount } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
+  await gql(`mutation Report($id: ID!) { reportReview(id: $id, input: { reason: "other", detail: "[SMOKE] Smoke report duplicate" }) { id status reason } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
+  const after = await gql(`query Review($id: ID!) { review(id: $id) { id status reportsCount } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
+  if (after.review.reportsCount !== before.review.reportsCount) throw new Error(`Idempotent report changed reportsCount ${before.review.reportsCount} -> ${after.review.reportsCount}`);
+  return `reportId=${ids.reportId}, reportsCount=${after.review.reportsCount}`;
+});
+
+await runStep("severe report marks review reported but public", async () => {
+  await gql(`mutation Report($id: ID!) { reportReview(id: $id, input: { reason: "privacy", detail: "[SMOKE] Privacy report" }) { id status reason } }`, { id: ids.reviewId }, env.CUSTOMER_TOKEN);
+  const review = await gql(`query Review($id: ID!, $restaurantId: ID!) { review(id: $id) { id status reportsCount } reviews(restaurantId: $restaurantId, status: "published", limit: 20) { items { id status } } }`, { id: ids.reviewId, restaurantId: env.DEMO_RESTAURANT_ID }, env.CUSTOMER_TOKEN);
+  if (review.review.status !== "reported") throw new Error(`Expected reported, got ${review.review.status}`);
+  if (!review.reviews.items.some((r) => r.id === ids.reviewId)) throw new Error("Reported review disappeared from public visible reviews");
+  return `status=${review.review.status}, still public with review badge`;
 });
 
 await runStep("manager resolves report", async () => {
