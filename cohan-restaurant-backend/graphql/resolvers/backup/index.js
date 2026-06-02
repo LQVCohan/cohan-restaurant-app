@@ -294,6 +294,7 @@ export default {
           snapshot,
           mode: input?.mode || "clone",
           sections: input?.sections,
+          conflictResolutions: input?.conflictResolutions || [],
         });
         await safeAuditLog({
           action: "CONFIG_BACKUP_IMPORT_PREVIEWED",
@@ -303,7 +304,7 @@ export default {
           restaurantId: targetRestaurantId,
           actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
           byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
-          after: { mode: result.mode, valid: result.valid, sourceRestaurantName: result.sourceRestaurantName },
+          after: { mode: result.mode, valid: result.valid, sourceRestaurantName: result.sourceRestaurantName, conflictCount: result.conflicts?.length || 0 },
         });
         return result;
       } catch (error) {
@@ -314,6 +315,8 @@ export default {
           targetRestaurantId: String(targetRestaurantId),
           mode: input?.mode || "clone",
           changes: [],
+          conflicts: [],
+          conflictSummary: [],
           warnings: [],
           errors: [error.message || "Invalid restaurant config snapshot file"],
         };
@@ -338,6 +341,7 @@ export default {
         actorId,
         dryRun: input?.dryRun ?? true,
         replaceExisting: Boolean(input?.replaceExisting),
+        conflictResolutions: input?.conflictResolutions || [],
       });
       let backupRun = null;
       if (!result.success && !result.dryRun) throw badInput((result.errors || []).join("; ") || "Import failed");
@@ -348,7 +352,7 @@ export default {
           status: "checklist_completed",
           checklist: { ...DEFAULT_CHECKLIST, exportPrepared: true, settingsReviewed: true, operatorRecorded: true },
           scope: backupScopeFromSections(enabled),
-          note: `Imported restaurant configuration snapshot from ${snapshot.source?.restaurantName || snapshot.source?.restaurantId || "unknown source"}. Mode: ${result.mode}.`,
+          note: `Imported restaurant configuration snapshot from ${snapshot.source?.restaurantName || snapshot.source?.restaurantId || "unknown source"}. Mode: ${result.mode}. Resolved conflicts: ${result.appliedResolutions?.length || 0}.`,
           createdBy: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
           completedBy: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
           completedAt: new Date(),
@@ -362,7 +366,7 @@ export default {
           restaurantId: targetRestaurantId,
           actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
           byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
-          after: { mode: result.mode, checksum: snapshot.checksum, changes: result.changes },
+          after: { mode: result.mode, checksum: snapshot.checksum, changes: result.changes, conflictCount: result.conflicts?.length || 0, appliedResolutionCount: result.appliedResolutions?.length || 0 },
         });
       }
       return { ...result, backupRun };

@@ -93,6 +93,8 @@ const RESTAURANT_PROFILE_FIELDS = [
 const RECIPE_INGREDIENT_WARNING = "Skipped recipe ingredient line because ingredient was not imported or could not be remapped.";
 const RECIPE_DEPENDENCY_WARNING = "Recipes may lose ingredient links because inventoryMaster is not selected.";
 const PROMOTION_DEPENDENCY_WARNING = "Promotion item/category references may be removed because menuCatalog is not selected.";
+const RUNTIME_DIFF_FIELDS = new Set(["legacyId", "restaurantId", "_id", "id", "createdAt", "updatedAt", "__v", "usageCount", "used", "orderCounter", "rate", "avgRating", "reviewCount"]);
+const RESOLUTION_LABELS = new Set(["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip", "replace_section"]);
 
 function cloneJson(value) {
   if (value == null) return value;
@@ -335,6 +337,207 @@ function change(section, action, count, warning = null) {
   return { section, action, label, count: Number(count) || 0, warning };
 }
 
+function previewString(value) {
+  if (value === undefined || value === null) return value == null ? null : "";
+  const raw = typeof value === "string" ? value : JSON.stringify(value);
+  return raw.length > 120 ? `${raw.slice(0, 117)}...` : raw;
+}
+
+function comparableDoc(doc, mode = "clone") {
+  const payload = stripRestoreFields(doc || {});
+  for (const key of Object.keys(payload)) {
+    if (RUNTIME_DIFF_FIELDS.has(key) || SENSITIVE_KEY_RE.test(key)) delete payload[key];
+  }
+  if (mode === "clone") delete payload.status;
+  return payload;
+}
+
+function collectFieldDiffs(source, target, mode = "clone", prefix = "") {
+  const sourceDoc = comparableDoc(source, mode);
+  const targetDoc = comparableDoc(target, mode);
+  const keys = new Set([...Object.keys(sourceDoc), ...Object.keys(targetDoc)]);
+  const diffs = [];
+  for (const key of keys) {
+    if (RUNTIME_DIFF_FIELDS.has(key) || SENSITIVE_KEY_RE.test(key)) continue;
+    const field = prefix ? `${prefix}.${key}` : key;
+    const sourceValue = sourceDoc[key];
+    const targetValue = targetDoc[key];
+    if (JSON.stringify(sourceValue) === JSON.stringify(targetValue)) continue;
+    diffs.push({ field, sourceValuePreview: previewString(sourceValue), targetValuePreview: previewString(targetValue), severity: "warning" });
+    if (diffs.length >= 12) break;
+  }
+  return diffs;
+}
+
+function makeConflictId(section, entityType, source, entityKey) {
+  return `${section}:${entityType}:${refKey(source?.legacyId || source?._id || source?.id) || entityKey}`;
+}
+
+function defaultResolutionFor(mode, entityType) {
+  if (mode === "same_restaurant_restore") return "use_source";
+  if (mode === "merge") return "merge";
+  if (mode === "replace") return "use_source";
+  if (["SystemSetting", "PrintSetting", "PayrollSetting", "SchedulingPolicy", "CustomerRankSetting", "RestaurantProfile", "AiChatbotSettings"].includes(entityType)) return "merge";
+  if (entityType === "Floor" || entityType === "Table") return "merge";
+  return "keep_target";
+}
+
+function allowedResolutionsFor(entityType, mode) {
+  if (mode === "replace") return ["use_source", "keep_target", "replace_section", "skip"];
+  if (["SystemSetting", "PrintSetting", "PayrollSetting", "SchedulingPolicy", "CustomerRankSetting", "RestaurantProfile", "AiChatbotSettings"].includes(entityType)) return ["use_source", "keep_target", "merge"];
+  if (["Floor", "Table"].includes(entityType)) return ["use_source", "keep_target", "merge", "skip"];
+  if (["MenuItem", "Ingredient", "Promotion", "Coupon"].includes(entityType)) return ["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip"];
+  if (entityType === "Recipe") return ["use_source", "keep_target", "skip"];
+  if (entityType === "AiChatbotSafetyRule") return ["use_source", "keep_target", "merge", "skip"];
+  return ["use_source", "keep_target", "merge", "skip"];
+}
+
+function buildConflict({ section, entityType, entityKey, label, reason, source, target, mode, severity = "warning", warnings = [] }) {
+  return {
+    id: makeConflictId(section, entityType, source, entityKey),
+    section,
+    entityType,
+    entityKey: String(entityKey || ""),
+    label: label || String(entityKey || ""),
+    severity,
+    reason,
+    sourceLegacyId: refKey(source?.legacyId || source?._id || source?.id) || null,
+    targetId: modelId(target),
+    defaultResolution: defaultResolutionFor(mode, entityType),
+    allowedResolutions: allowedResolutionsFor(entityType, mode),
+    fieldDiffs: collectFieldDiffs(source, target, mode),
+    warnings,
+  };
+}
+
+function conflictSummary(conflicts = []) {
+  const buckets = new Map();
+  for (const conflict of conflicts) {
+    for (const key of [`section:${conflict.section}`, `severity:${conflict.severity}`, `resolution:${conflict.defaultResolution}`]) {
+      const [kind, value] = key.split(":");
+      const bucketKey = `${kind}:${value}`;
+      buckets.set(bucketKey, { key: bucketKey, label: `${kind} ${value}`, count: (buckets.get(bucketKey)?.count || 0) + 1, enabled: true });
+    }
+  }
+  return [...buckets.values()];
+}
+
+function filterFromKeys(targetRestaurantId, doc, keys) {
+  const payload = stripRestoreFields(doc || {});
+  const filter = { restaurantId: targetRestaurantId };
+  for (const key of keys) {
+    if (payload[key] != null && payload[key] !== "") {
+      filter[key] = payload[key];
+      break;
+    }
+  }
+  return Object.keys(filter).length > 1 ? filter : null;
+}
+
+function filterFromCompositeKeys(targetRestaurantId, doc, keys) {
+  const payload = stripRestoreFields(doc || {});
+  const filter = { restaurantId: targetRestaurantId };
+  for (const key of keys) {
+    if (payload[key] != null && payload[key] !== "") filter[key] = payload[key];
+  }
+  return Object.keys(filter).length === keys.length + 1 ? filter : null;
+}
+
+async function detectOneConflict({ Model, targetRestaurantId, section, entityType, entityKey, label, source, keys, compositeKeys, mode, reason }) {
+  const filter = compositeKeys ? filterFromCompositeKeys(targetRestaurantId, source, compositeKeys) : filterFromKeys(targetRestaurantId, source, keys || []);
+  if (!filter) return null;
+  const target = await findOne(Model, filter);
+  if (!target) return null;
+  const fieldDiffs = collectFieldDiffs(source, target, mode);
+  if (!fieldDiffs.length) return null;
+  return buildConflict({ section, entityType, entityKey, label, reason: reason || `${entityType} with the same key already exists in target restaurant.`, source, target, mode });
+}
+
+export async function detectRestaurantConfigConflicts({ targetRestaurantId, snapshot, sections, mode = "clone" } = {}) {
+  verifyRestaurantConfigSnapshot(snapshot);
+  const enabled = enabledSectionsForSnapshot(snapshot, sections);
+  const data = snapshot.sections || {};
+  const conflicts = [];
+
+  const singletonDefs = [
+    ["restaurantProfile", Restaurant, "RestaurantProfile", { _id: targetRestaurantId }, data.restaurantProfile, "restaurantProfile"],
+    ["systemSettings", SystemSetting, "SystemSetting", { restaurantId: targetRestaurantId }, data.systemSettings, "systemSettings"],
+    ["printSettings", PrintSetting, "PrintSetting", { restaurantId: targetRestaurantId }, data.printSettings, "printSettings"],
+    ["customerRankSettings", CustomerRankSetting, "CustomerRankSetting", { restaurantId: targetRestaurantId }, data.customerRankSettings, "customerRankSettings"],
+    ["payrollSettings", PayrollSetting, "PayrollSetting", { restaurantId: targetRestaurantId }, data.payrollSettings, "payrollSettings"],
+    ["schedulingPolicy", SchedulingPolicy, "SchedulingPolicy", { restaurantId: targetRestaurantId }, data.schedulingPolicy, "schedulingPolicy"],
+  ];
+  for (const [section, Model, entityType, filter, source, key] of singletonDefs) {
+    if (!enabled[section] || !source) continue;
+    const target = entityType === "RestaurantProfile" ? await resolveQuery(Restaurant.findById(targetRestaurantId)) : await findOne(Model, filter);
+    if (!target) continue;
+    const fieldDiffs = collectFieldDiffs(source, target, mode);
+    if (fieldDiffs.length) conflicts.push(buildConflict({ section, entityType, entityKey: key, label: key, reason: "Singleton configuration differs from target.", source: { ...source, legacyId: key }, target, mode, warnings: [] }));
+  }
+
+  if (enabled.floorTableLayout && data.floorTableLayout) {
+    for (const floor of data.floorTableLayout.floors || []) {
+      const conflict = await detectOneConflict({ Model: Floor, targetRestaurantId, section: "floorTableLayout", entityType: "Floor", entityKey: floor.level ?? floor.name, label: floor.name, source: floor, keys: ["level", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+    for (const table of data.floorTableLayout.tables || []) {
+      const conflict = await detectOneConflict({ Model: Table, targetRestaurantId, section: "floorTableLayout", entityType: "Table", entityKey: table.code || table.name, label: table.name || table.code, source: table, keys: ["code", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+  }
+
+  if (enabled.menuCatalog && data.menuCatalog) {
+    for (const menu of data.menuCatalog.menus || []) {
+      const conflict = await detectOneConflict({ Model: Menu, targetRestaurantId, section: "menuCatalog", entityType: "Menu", entityKey: menu.timeSlot || menu.name, label: menu.name, source: menu, keys: ["timeSlot", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+    for (const category of data.menuCatalog.categories || []) {
+      const conflict = await detectOneConflict({ Model: Category, targetRestaurantId, section: "menuCatalog", entityType: "Category", entityKey: category.name, label: category.name, source: category, keys: ["name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+    for (const item of data.menuCatalog.menuItems || []) {
+      const conflict = await detectOneConflict({ Model: MenuItem, targetRestaurantId, section: "menuCatalog", entityType: "MenuItem", entityKey: item.code || item.name, label: item.name || item.code, source: item, keys: ["code", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+  }
+
+  if (enabled.inventoryMaster && data.inventoryMaster) {
+    for (const ingredient of data.inventoryMaster.ingredients || []) {
+      const conflict = await detectOneConflict({ Model: Ingredient, targetRestaurantId, section: "inventoryMaster", entityType: "Ingredient", entityKey: ingredient.sku || ingredient.name, label: ingredient.name || ingredient.sku, source: ingredient, keys: ["sku", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+  }
+
+  if (enabled.promotionConfig && data.promotionConfig) {
+    for (const promotion of data.promotionConfig.promotions || []) {
+      const conflict = await detectOneConflict({ Model: Promotion, targetRestaurantId, section: "promotionConfig", entityType: "Promotion", entityKey: promotion.code || promotion.name, label: promotion.name || promotion.code, source: promotion, keys: ["code", "name"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+    for (const coupon of data.promotionConfig.coupons || []) {
+      const conflict = await detectOneConflict({ Model: Coupon, targetRestaurantId, section: "promotionConfig", entityType: "Coupon", entityKey: coupon.code, label: coupon.name || coupon.code, source: coupon, keys: ["code"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+  }
+
+  if (enabled.aiChatbotConfig && data.aiChatbotConfig) {
+    const settingsTarget = await resolveQuery(Restaurant.findById(targetRestaurantId));
+    if (data.aiChatbotConfig.settings && settingsTarget?.aiChatbotSettings) {
+      const fieldDiffs = collectFieldDiffs(data.aiChatbotConfig.settings, settingsTarget.aiChatbotSettings, mode);
+      if (fieldDiffs.length) conflicts.push(buildConflict({ section: "aiChatbotConfig", entityType: "AiChatbotSettings", entityKey: "settings", label: "AI chatbot settings", reason: "AI chatbot settings differ from target.", source: { ...data.aiChatbotConfig.settings, legacyId: "settings" }, target: settingsTarget.aiChatbotSettings, mode }));
+    }
+    for (const item of data.aiChatbotConfig.knowledgeItems || []) {
+      const conflict = await detectOneConflict({ Model: AiChatbotKnowledgeItem, targetRestaurantId, section: "aiChatbotConfig", entityType: "AiChatbotKnowledgeItem", entityKey: item.title || item.question, label: item.title || item.question, source: item, keys: ["title", "question"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+    for (const rule of data.aiChatbotConfig.safetyRules || []) {
+      const conflict = await detectOneConflict({ Model: AiChatbotSafetyRule, targetRestaurantId, section: "aiChatbotConfig", entityType: "AiChatbotSafetyRule", entityKey: `${rule.ruleType || "rule"}:${rule.pattern || "pattern"}`, label: rule.pattern, source: rule, compositeKeys: ["ruleType", "pattern"], mode });
+      if (conflict) conflicts.push(conflict);
+    }
+  }
+
+  return conflicts;
+}
+
 function hasIngredientLinesInValue(value) {
   if (Array.isArray(value)) return value.some(hasIngredientLinesInValue);
   if (!value || typeof value !== "object") return false;
@@ -372,7 +575,7 @@ function uniqueStrings(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
-export async function previewRestaurantConfigImport({ targetRestaurantId, snapshot, mode = "clone", sections } = {}) {
+export async function previewRestaurantConfigImport({ targetRestaurantId, snapshot, mode = "clone", sections, conflictResolutions = [] } = {}) {
   const warnings = ["Đây là Restaurant Configuration Snapshot, không thay thế database backup vận hành."];
   const errors = [];
   try {
@@ -386,22 +589,73 @@ export async function previewRestaurantConfigImport({ targetRestaurantId, snapsh
   } catch (error) {
     errors.push(error.message);
   }
+  let conflicts = [];
+  if (!errors.length) {
+    conflicts = await detectRestaurantConfigConflicts({ targetRestaurantId, snapshot, sections, mode });
+    const resolutionErrors = validateResolutionInputs(conflicts, conflictResolutions);
+    errors.push(...resolutionErrors);
+    if (conflicts.some((conflict) => conflict.severity === "blocking")) warnings.push("Import preview contains blocking conflicts that must be resolved before real import.");
+  }
   const changes = errors.length
     ? []
     : sectionEntries(snapshot, sections).map(([section, value]) => change(section, mode === "clone" ? "create" : "upsert", countSection(section, value)));
   return {
-    valid: errors.length === 0,
+    valid: errors.length === 0 && !conflicts.some((conflict) => conflict.severity === "blocking"),
     schemaVersion: snapshot?.schemaVersion || null,
     sourceRestaurantName: snapshot?.source?.restaurantName || null,
     targetRestaurantId: String(targetRestaurantId),
     mode,
     changes,
+    conflicts,
+    conflictSummary: conflictSummary(conflicts),
     warnings: uniqueStrings(warnings),
     errors,
   };
 }
 
-function createImportContext() {
+
+function normalizeResolutionMap(conflictResolutions = []) {
+  const map = new Map();
+  for (const item of conflictResolutions || []) {
+    if (!item?.conflictId) continue;
+    map.set(item.conflictId, {
+      conflictId: item.conflictId,
+      resolution: item.resolution || "",
+      renameTo: item.renameTo || "",
+      fieldOverridesJson: item.fieldOverridesJson || "",
+    });
+  }
+  return map;
+}
+
+function validateResolutionInputs(conflicts = [], conflictResolutions = []) {
+  const conflictMap = new Map(conflicts.map((conflict) => [conflict.id, conflict]));
+  const errors = [];
+  for (const resolution of conflictResolutions || []) {
+    const conflict = conflictMap.get(resolution.conflictId);
+    if (!conflict) continue;
+    if (!RESOLUTION_LABELS.has(resolution.resolution) || !conflict.allowedResolutions.includes(resolution.resolution)) {
+      errors.push(`Resolution ${resolution.resolution} is not allowed for conflict ${resolution.conflictId}.`);
+    }
+    if (resolution.resolution === "rename_source" && !String(resolution.renameTo || "").trim()) {
+      errors.push(`rename_source requires renameTo for conflict ${resolution.conflictId}.`);
+    }
+  }
+  return errors;
+}
+
+function resolutionForConflict(conflict, resolutionMap) {
+  const requested = resolutionMap.get(conflict?.id);
+  const resolution = requested?.resolution || conflict?.defaultResolution || "use_source";
+  return {
+    conflictId: conflict?.id,
+    resolution,
+    renameTo: requested?.renameTo || "",
+    fieldOverridesJson: requested?.fieldOverridesJson || "",
+  };
+}
+
+function createImportContext({ conflicts = [], conflictResolutions = [] } = {}) {
   return {
     floorMap: new Map(),
     menuMap: new Map(),
@@ -413,6 +667,9 @@ function createImportContext() {
     supplyMap: new Map(),
     comboMap: new Map(),
     warnings: [],
+    conflictMap: new Map(conflicts.map((conflict) => [conflict.id, conflict])),
+    resolutionMap: normalizeResolutionMap(conflictResolutions),
+    appliedResolutions: [],
   };
 }
 
@@ -449,7 +706,7 @@ async function upsertByKey(Model, targetRestaurantId, doc, keys, extra = {}, opt
   }
   const update = { $set: payload };
   if (options.unset && Object.keys(options.unset).length) update.$unset = options.unset;
-  if (Object.keys(filter).length === 1) return Model.create(payload);
+  if (options.forceCreate || Object.keys(filter).length === 1) return Model.create(payload);
   return Model.findOneAndUpdate(filter, update, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
 
@@ -484,10 +741,60 @@ function remapId(value, map) {
   return map.get(key) || null;
 }
 
+function conflictFor(context, section, entityType, doc, entityKey) {
+  return context.conflictMap.get(makeConflictId(section, entityType, doc, entityKey));
+}
+
+function applyRename(payload, entityType, renameTo) {
+  if (!renameTo) return payload;
+  if (payload.code) payload.code = renameTo;
+  else if (payload.name) payload.name = entityType === "MenuItem" && !payload.code ? renameTo : renameTo;
+  else if (payload.title) payload.title = renameTo;
+  else payload.name = renameTo;
+  return payload;
+}
+
+function applyCopySuffix(payload) {
+  if (payload.code) payload.code = `${payload.code}-copy`;
+  else if (payload.name) payload.name = `${payload.name} (copy)`;
+  else if (payload.title) payload.title = `${payload.title} (copy)`;
+  return payload;
+}
+
+function shallowMergePayload(target, source) {
+  return cleanupPayload({ ...stripRestoreFields(target || {}), ...stripRestoreFields(source || {}) });
+}
+
+function recordApplied(context, decision) {
+  if (decision?.conflictId) context.appliedResolutions.push({ conflictId: decision.conflictId, resolution: decision.resolution, renameTo: decision.renameTo || null, fieldOverridesJson: decision.fieldOverridesJson || null });
+}
+
+async function upsertWithConflict(Model, targetRestaurantId, doc, keys, extra, context, conflict, entityType, map) {
+  const decision = conflict ? resolutionForConflict(conflict, context.resolutionMap) : null;
+  if (decision?.resolution === "skip") {
+    recordApplied(context, decision);
+    return null;
+  }
+  if (decision?.resolution === "keep_target") {
+    if (map && doc?.legacyId && conflict?.targetId) map.set(refKey(doc.legacyId), String(conflict.targetId));
+    recordApplied(context, decision);
+    return { _id: conflict?.targetId };
+  }
+  let source = { ...stripRestoreFields(doc), ...(extra || {}) };
+  if (decision?.resolution === "merge" && conflict?.targetId) source = shallowMergePayload({}, source);
+  if (decision?.resolution === "rename_source") source = applyRename(source, entityType, decision.renameTo);
+  if (decision?.resolution === "create_copy") source = applyCopySuffix(source);
+  const saved = await upsertByKey(Model, targetRestaurantId, source, keys, {}, decision?.resolution === "create_copy" || decision?.resolution === "rename_source" ? { forceCreate: true } : {});
+  if (map) rememberLegacy(map, doc, saved);
+  if (decision) recordApplied(context, decision);
+  return saved;
+}
+
 async function importFloorTable(targetRestaurantId, data, mode, context) {
   for (const floor of data?.floors || []) {
-    const saved = await upsertByKey(Floor, targetRestaurantId, floor, ["level", "name"]);
-    rememberLegacy(context.floorMap, floor, saved);
+    const conflict = conflictFor(context, "floorTableLayout", "Floor", floor, floor.level ?? floor.name);
+    const saved = await upsertWithConflict(Floor, targetRestaurantId, floor, ["level", "name"], {}, context, conflict, "Floor", context.floorMap);
+    if (saved) rememberLegacy(context.floorMap, floor, saved);
   }
   for (const table of data?.tables || []) {
     let nextFloorId = remapId(table.floorId, context.floorMap);
@@ -516,8 +823,9 @@ async function importInventoryMaster(targetRestaurantId, data, mode, context) {
   }
   for (const category of data?.ingredientCategories || []) await upsertByKey(IngredientCategory, targetRestaurantId, category, ["slug", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
   for (const ingredient of data?.ingredients || []) {
-    const saved = await upsertByKey(Ingredient, targetRestaurantId, ingredient, ["sku", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
-    rememberLegacy(context.ingredientMap, ingredient, saved);
+    const conflict = conflictFor(context, "inventoryMaster", "Ingredient", ingredient, ingredient.sku || ingredient.name);
+    const saved = await upsertWithConflict(Ingredient, targetRestaurantId, ingredient, ["sku", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {}, context, conflict, "Ingredient", context.ingredientMap);
+    if (saved) rememberLegacy(context.ingredientMap, ingredient, saved);
   }
   for (const category of data?.supplyCategories || []) await upsertByKey(SupplyCategory, targetRestaurantId, category, ["slug", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
   for (const supply of data?.supplies || []) {
@@ -555,12 +863,14 @@ async function importMenuCatalogBase(targetRestaurantId, data, mode, context) {
     const extra = {};
     if (menu.categoryMenuId && categoryMenuId) extra.categoryMenuId = categoryMenuId;
     if (mode === "clone" && menu.categoryMenuId && !categoryMenuId) context.warnings.push(`Removed menu categoryMenuId for ${menu.name || menu.timeSlot || menu.legacyId || "unknown"} because it could not be remapped.`);
-    const saved = await upsertByKey(Menu, targetRestaurantId, menu, ["timeSlot", "name"], extra);
-    rememberLegacy(context.menuMap, menu, saved);
+    const conflict = conflictFor(context, "menuCatalog", "Menu", menu, menu.timeSlot || menu.name);
+    const saved = await upsertWithConflict(Menu, targetRestaurantId, menu, ["timeSlot", "name"], extra, context, conflict, "Menu", context.menuMap);
+    if (saved) rememberLegacy(context.menuMap, menu, saved);
   }
   for (const category of data?.categories || []) {
-    const saved = await upsertByKey(Category, targetRestaurantId, category, ["name"]);
-    rememberLegacy(context.categoryMap, category, saved);
+    const conflict = conflictFor(context, "menuCatalog", "Category", category, category.name);
+    const saved = await upsertWithConflict(Category, targetRestaurantId, category, ["name"], {}, context, conflict, "Category", context.categoryMap);
+    if (saved) rememberLegacy(context.categoryMap, category, saved);
   }
   for (const item of data?.menuItems || []) {
     const menuId = remapId(item.menuId, context.menuMap);
@@ -574,8 +884,9 @@ async function importMenuCatalogBase(targetRestaurantId, data, mode, context) {
       extra.orderCounter = 0;
       extra.rate = 0;
     }
-    const saved = await upsertByKey(MenuItem, targetRestaurantId, item, ["code", "name"], extra);
-    rememberLegacy(context.menuItemMap, item, saved);
+    const conflict = conflictFor(context, "menuCatalog", "MenuItem", item, item.code || item.name);
+    const saved = await upsertWithConflict(MenuItem, targetRestaurantId, item, ["code", "name"], extra, context, conflict, "MenuItem", context.menuItemMap);
+    if (saved) rememberLegacy(context.menuItemMap, item, saved);
   }
   for (const group of data?.modifierGroups || []) {
     const menuItemIds = (group.menuItemIds || []).map((idValue) => remapId(idValue, context.menuItemMap)).filter(Boolean);
@@ -681,11 +992,13 @@ function remapCouponDoc(doc, context, mode) {
 async function importPromotionConfig(targetRestaurantId, data, mode, context) {
   for (const promotion of data?.promotions || []) {
     const payload = remapPromotionDoc(promotion, context, mode);
-    await upsertByKey(Promotion, targetRestaurantId, payload, ["code", "name"]);
+    const conflict = conflictFor(context, "promotionConfig", "Promotion", promotion, promotion.code || promotion.name);
+    await upsertWithConflict(Promotion, targetRestaurantId, payload, ["code", "name"], {}, context, conflict, "Promotion");
   }
   for (const coupon of data?.coupons || []) {
     const payload = remapCouponDoc(coupon, context, mode);
-    await upsertByKey(Coupon, targetRestaurantId, payload, ["code"]);
+    const conflict = conflictFor(context, "promotionConfig", "Coupon", coupon, coupon.code);
+    await upsertWithConflict(Coupon, targetRestaurantId, payload, ["code"], {}, context, conflict, "Coupon");
   }
   for (const voucherPackage of data?.voucherPackages || []) {
     await upsertByKey(VoucherPackage, targetRestaurantId, voucherPackage, ["code", "name"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
@@ -696,23 +1009,34 @@ async function importList(Model, targetRestaurantId, docs, keys, mode) {
   for (const doc of docs || []) await upsertByKey(Model, targetRestaurantId, doc, keys, mode === "clone" ? { usageCount: 0, used: 0 } : {});
 }
 
-async function importAiChatbotConfig(targetRestaurantId, data, mode) {
+async function importAiChatbotConfig(targetRestaurantId, data, mode, context) {
   if (data.settings) await Restaurant.findByIdAndUpdate(targetRestaurantId, { $set: { aiChatbotSettings: data.settings } }, { new: true });
   await importList(AiChatbotKnowledgeItem, targetRestaurantId, data.knowledgeItems, ["title", "question"], mode);
-  for (const rule of data.safetyRules || []) await upsertByCompositeKeys(AiChatbotSafetyRule, targetRestaurantId, rule, ["ruleType", "pattern"], mode === "clone" ? { usageCount: 0, used: 0 } : {});
+  for (const rule of data.safetyRules || []) {
+    const conflict = conflictFor(context, "aiChatbotConfig", "AiChatbotSafetyRule", rule, `${rule.ruleType || "rule"}:${rule.pattern || "pattern"}`);
+    const decision = conflict ? resolutionForConflict(conflict, context.resolutionMap) : null;
+    if (decision?.resolution === "skip" || decision?.resolution === "keep_target") {
+      recordApplied(context, decision);
+      continue;
+    }
+    let payload = { ...stripRestoreFields(rule), ...(mode === "clone" ? { usageCount: 0, used: 0 } : {}) };
+    if (decision?.resolution === "merge") payload = shallowMergePayload({}, payload);
+    await upsertByCompositeKeys(AiChatbotSafetyRule, targetRestaurantId, payload, ["ruleType", "pattern"]);
+    if (decision) recordApplied(context, decision);
+  }
   await importList(AiChatbotEvaluationCase, targetRestaurantId, data.evaluationCases, ["name", "question"], mode);
 }
 
-export async function importRestaurantConfigSnapshot({ targetRestaurantId, snapshot, mode = "clone", sections, actorId, dryRun = true, replaceExisting = false } = {}) {
-  const preview = await previewRestaurantConfigImport({ targetRestaurantId, snapshot, mode, sections });
+export async function importRestaurantConfigSnapshot({ targetRestaurantId, snapshot, mode = "clone", sections, actorId, dryRun = true, replaceExisting = false, conflictResolutions = [] } = {}) {
+  const preview = await previewRestaurantConfigImport({ targetRestaurantId, snapshot, mode, sections, conflictResolutions });
   const errors = [...preview.errors];
   const warnings = [...preview.warnings];
   if (mode === "replace" && !replaceExisting) errors.push("replace mode requires replaceExisting=true");
-  if (errors.length) return { ...preview, success: false, dryRun: Boolean(dryRun), errors, warnings: uniqueStrings(warnings) };
-  if (dryRun) return { ...preview, success: true, dryRun: true, warnings: uniqueStrings(warnings) };
+  if (errors.length) return { ...preview, success: false, dryRun: Boolean(dryRun), errors, warnings: uniqueStrings(warnings), appliedResolutions: [] };
+  if (dryRun) return { ...preview, success: true, dryRun: true, warnings: uniqueStrings(warnings), appliedResolutions: (preview.conflicts || []).map((conflict) => resolutionForConflict(conflict, normalizeResolutionMap(conflictResolutions))) };
 
   const enabled = enabledSectionsForSnapshot(snapshot, sections);
-  const context = createImportContext();
+  const context = createImportContext({ conflicts: preview.conflicts || [], conflictResolutions });
   for (const [section] of sectionEntries(snapshot, sections)) {
     if (mode === "replace") await deleteSectionData(targetRestaurantId, section);
   }
@@ -727,7 +1051,7 @@ export async function importRestaurantConfigSnapshot({ targetRestaurantId, snaps
   if (enabled.inventoryMaster && data.inventoryMaster) await importInventoryMaster(targetRestaurantId, data.inventoryMaster, mode, context);
   if (enabled.menuCatalog && data.menuCatalog) await importMenuCatalogRecipes(targetRestaurantId, data.menuCatalog, context);
   if (enabled.promotionConfig && data.promotionConfig) await importPromotionConfig(targetRestaurantId, data.promotionConfig, mode, context);
-  if (enabled.aiChatbotConfig && data.aiChatbotConfig) await importAiChatbotConfig(targetRestaurantId, data.aiChatbotConfig, mode);
+  if (enabled.aiChatbotConfig && data.aiChatbotConfig) await importAiChatbotConfig(targetRestaurantId, data.aiChatbotConfig, mode, context);
 
-  return { ...preview, success: true, dryRun: false, warnings: uniqueStrings([...warnings, ...context.warnings]) };
+  return { ...preview, success: true, dryRun: false, warnings: uniqueStrings([...warnings, ...context.warnings]), appliedResolutions: context.appliedResolutions };
 }

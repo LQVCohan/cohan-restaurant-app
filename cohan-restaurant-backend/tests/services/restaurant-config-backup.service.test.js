@@ -375,3 +375,124 @@ describe("restaurantConfigBackup.service deep remapping", () => {
     expect(JSON.stringify(snapshot.sections.floorTableLayout.tables[0].floorId)).not.toBe("{}");
   });
 });
+
+describe("restaurantConfigBackup.service conflict resolver", () => {
+  const snapshotBase = (sections) => ({
+    kind: "cohan.restaurant_config_snapshot",
+    schemaVersion: 1,
+    createdAt: "2026-06-02T00:00:00.000Z",
+    source: { restaurantId: id("001"), restaurantName: "Source", app: "cohan-restaurant-app" },
+    sections,
+    counts: {},
+  });
+  const menuSnapshot = (item = {}) => snapshotBase({
+    menuCatalog: {
+      menus: [{ legacyId: "old-menu", timeSlot: "lunch", name: "Lunch" }],
+      categories: [{ legacyId: "old-cat", name: "Main" }],
+      categoryMenus: [],
+      menuItems: [{ legacyId: "old-item", menuId: "old-menu", categoryId: "old-cat", code: "PHO", name: "Phở nguồn", basePrice: 50000, orderCounter: 99, rate: 5, passwordHash: "bad", ...item }],
+      modifierGroups: [],
+      combos: [],
+      recipes: [{ legacyId: "old-recipe", menuItemId: "old-item", servingVariants: [] }],
+    },
+  });
+
+  beforeEach(() => {
+    vi.resetModules();
+    setupSnapshotData();
+  });
+
+  it("preview detects menu item conflict", async () => {
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Phở target", basePrice: 55000, orderCounter: 2, rate: 4 }));
+    const { previewRestaurantConfigImport } = await loadService();
+    const preview = await previewRestaurantConfigImport({ targetRestaurantId: id("099"), snapshot: menuSnapshot({ legacyId: undefined }), mode: "clone" });
+    const conflict = preview.conflicts.find((item) => item.entityType === "MenuItem");
+    expect(conflict).toEqual(expect.objectContaining({ section: "menuCatalog", entityKey: "PHO", defaultResolution: "keep_target" }));
+    expect(conflict.fieldDiffs.map((diff) => diff.field)).toEqual(expect.arrayContaining(["name", "basePrice"]));
+  });
+
+  it("preview detects singleton settings conflict", async () => {
+    models.SystemSetting.findOne.mockReturnValue(lean({ _id: "target-system", restaurantId: id("099"), timezone: "Asia/Ho_Chi_Minh", currency: "VND" }));
+    const { previewRestaurantConfigImport } = await loadService();
+    const preview = await previewRestaurantConfigImport({ targetRestaurantId: id("099"), snapshot: snapshotBase({ systemSettings: { timezone: "UTC", currency: "USD" } }), mode: "clone" });
+    const conflict = preview.conflicts.find((item) => item.entityType === "SystemSetting");
+    expect(conflict.defaultResolution).toBe("merge");
+    expect(conflict.fieldDiffs.map((diff) => diff.field)).toEqual(expect.arrayContaining(["timezone", "currency"]));
+  });
+
+  it("keep_target maps legacy id to existing target id", async () => {
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-menu" });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-cat" });
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "keep_target" }] });
+    expect(models.MenuItem.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(models.Recipe.findOneAndUpdate.mock.calls[0][1].$set.menuItemId).toBe("target-item");
+  });
+
+  it("use_source overwrites existing target", async () => {
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-menu" });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-cat" });
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "use_source" }] });
+    expect(models.MenuItem.findOneAndUpdate.mock.calls[0][0]).toEqual(expect.objectContaining({ code: "PHO" }));
+    expect(models.MenuItem.findOneAndUpdate.mock.calls[0][1].$set.name).toBe("Phở nguồn");
+  });
+
+  it("skip dependency warns/skips recipe", async () => {
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-menu" });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-cat" });
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "skip" }] });
+    expect(models.Recipe.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(result.warnings.join(" ")).toMatch(/menuItemId could not be remapped/);
+  });
+
+  it("rename_source creates renamed copy", async () => {
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-menu" });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-cat" });
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    models.MenuItem.create.mockResolvedValueOnce({ _id: "renamed-item", code: "PHO-NEW" });
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "rename_source", renameTo: "PHO-NEW" }] });
+    expect(models.MenuItem.create.mock.calls[0][0].code).toBe("PHO-NEW");
+    expect(models.Recipe.findOneAndUpdate.mock.calls[0][1].$set.menuItemId).toBe("renamed-item");
+  });
+
+  it("create_copy appends suffix", async () => {
+    models.Menu.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-menu" });
+    models.Category.findOneAndUpdate.mockResolvedValueOnce({ _id: "new-cat" });
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "create_copy" }] });
+    expect(models.MenuItem.create.mock.calls[0][0].code).toBe("PHO-copy");
+  });
+
+  it("blocking rename_source without renameTo fails", async () => {
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { importRestaurantConfigSnapshot } = await loadService();
+    const result = await importRestaurantConfigSnapshot({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone", dryRun: false, conflictResolutions: [{ conflictId: "menuCatalog:MenuItem:old-item", resolution: "rename_source" }] });
+    expect(result.success).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/renameTo/);
+  });
+
+  it("conflict IDs deterministic", async () => {
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Target", basePrice: 55000 }));
+    const { previewRestaurantConfigImport } = await loadService();
+    const first = await previewRestaurantConfigImport({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone" });
+    const second = await previewRestaurantConfigImport({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone" });
+    expect(first.conflicts.map((item) => item.id)).toEqual(second.conflicts.map((item) => item.id));
+  });
+
+  it("field diff ignores runtime/sensitive fields", async () => {
+    models.MenuItem.findOne.mockReturnValue(lean({ _id: "target-item", restaurantId: id("099"), code: "PHO", name: "Phở nguồn", basePrice: 50000, orderCounter: 1, rate: 1, passwordHash: "target" }));
+    const { previewRestaurantConfigImport } = await loadService();
+    const preview = await previewRestaurantConfigImport({ targetRestaurantId: id("099"), snapshot: menuSnapshot(), mode: "clone" });
+    const fields = preview.conflicts.flatMap((conflict) => conflict.fieldDiffs.map((diff) => diff.field));
+    expect(fields).not.toContain("orderCounter");
+    expect(fields).not.toContain("rate");
+    expect(fields).not.toContain("passwordHash");
+  });
+});

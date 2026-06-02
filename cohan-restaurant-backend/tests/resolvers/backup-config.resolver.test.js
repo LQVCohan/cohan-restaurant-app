@@ -53,8 +53,8 @@ describe("backup config resolver", () => {
     service.buildSectionCounts.mockReturnValue([{ key: "systemSettings", label: "Cấu hình hệ thống", count: 1, enabled: true }]);
     service.buildRestaurantConfigSnapshot.mockResolvedValue(snapshot);
     service.decodeSnapshotBase64.mockReturnValue(snapshot);
-    service.previewRestaurantConfigImport.mockResolvedValue({ valid: true, schemaVersion: 1, sourceRestaurantName: "Source", targetRestaurantId, mode: "clone", changes: [], warnings: [], errors: [] });
-    service.importRestaurantConfigSnapshot.mockResolvedValue({ success: true, dryRun: false, targetRestaurantId, mode: "clone", changes: [{ section: "systemSettings", action: "upsert", label: "Cấu hình hệ thống", count: 1 }], warnings: [], errors: [] });
+    service.previewRestaurantConfigImport.mockResolvedValue({ valid: true, schemaVersion: 1, sourceRestaurantName: "Source", targetRestaurantId, mode: "clone", changes: [], conflicts: [], conflictSummary: [], warnings: [], errors: [] });
+    service.importRestaurantConfigSnapshot.mockResolvedValue({ success: true, dryRun: false, targetRestaurantId, mode: "clone", changes: [{ section: "systemSettings", action: "upsert", label: "Cấu hình hệ thống", count: 1 }], conflicts: [], appliedResolutions: [], warnings: [], errors: [] });
   });
 
   it("export requires manager/admin + restaurant access", async () => {
@@ -87,5 +87,30 @@ describe("backup config resolver", () => {
     service.importRestaurantConfigSnapshot.mockResolvedValueOnce({ success: false, dryRun: false, targetRestaurantId, mode: "replace", changes: [], warnings: [], errors: ["replace mode requires replaceExisting=true"] });
     const r = await resolver();
     await expect(r.Mutation.importRestaurantConfigBackup(null, { input: { targetRestaurantId, fileContentBase64: base64, mode: "replace", dryRun: false, replaceExisting: false } }, { user: { id: actorId, roleName: "manager" } })).rejects.toThrow(/replaceExisting/);
+  });
+
+  it("preview passes conflictResolutions to service", async () => {
+    const conflictResolutions = [{ conflictId: "menuCatalog:MenuItem:PHO", resolution: "keep_target" }];
+    const r = await resolver();
+    await r.Mutation.previewRestaurantConfigImport(null, { input: { targetRestaurantId, fileContentBase64: base64, mode: "clone", conflictResolutions } }, { user: { id: actorId, roleName: "manager" } });
+    expect(service.previewRestaurantConfigImport).toHaveBeenCalledWith(expect.objectContaining({ conflictResolutions }));
+  });
+
+  it("import passes conflictResolutions to service", async () => {
+    const conflictResolutions = [{ conflictId: "menuCatalog:MenuItem:PHO", resolution: "use_source" }];
+    const r = await resolver();
+    await r.Mutation.importRestaurantConfigBackup(null, { input: { targetRestaurantId, fileContentBase64: base64, mode: "clone", dryRun: false, conflictResolutions } }, { user: { id: actorId, roleName: "manager" } });
+    expect(service.importRestaurantConfigSnapshot).toHaveBeenCalledWith(expect.objectContaining({ conflictResolutions }));
+  });
+
+  it("AuditLog includes conflictCount/appliedResolutionCount", async () => {
+    service.importRestaurantConfigSnapshot.mockResolvedValueOnce({ success: true, dryRun: false, targetRestaurantId, mode: "clone", changes: [], conflicts: [{ id: "c1" }], appliedResolutions: [{ conflictId: "c1", resolution: "keep_target" }], warnings: [], errors: [] });
+    const r = await resolver();
+    await r.Mutation.importRestaurantConfigBackup(null, { input: { targetRestaurantId, fileContentBase64: base64, mode: "clone", dryRun: false } }, { user: { id: actorId, roleName: "manager" } });
+    expect(models.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      action: "CONFIG_BACKUP_IMPORTED",
+      after: expect.objectContaining({ conflictCount: 1, appliedResolutionCount: 1 }),
+    }));
+    expect(models.BackupRun.create.mock.calls[0][0].note).toMatch(/Resolved conflicts: 1/);
   });
 });

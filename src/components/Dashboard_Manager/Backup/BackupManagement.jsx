@@ -49,6 +49,11 @@ const M_PREVIEW_CONFIG_IMPORT = gql`
     previewRestaurantConfigImport(input: $input) {
       valid schemaVersion sourceRestaurantName targetRestaurantId mode warnings errors
       changes { section action label count warning }
+      conflictSummary { key label count enabled }
+      conflicts {
+        id section entityType entityKey label severity reason sourceLegacyId targetId defaultResolution allowedResolutions warnings
+        fieldDiffs { field sourceValuePreview targetValuePreview severity }
+      }
     }
   }
 `;
@@ -58,6 +63,8 @@ const M_IMPORT_CONFIG_BACKUP = gql`
     importRestaurantConfigBackup(input: $input) {
       success dryRun targetRestaurantId mode warnings errors
       changes { section action label count warning }
+      conflicts { id section entityType entityKey label severity reason defaultResolution allowedResolutions warnings fieldDiffs { field sourceValuePreview targetValuePreview severity } }
+      appliedResolutions { conflictId resolution renameTo fieldOverridesJson }
       backupRun { id status note createdAt completedAt }
     }
   }
@@ -133,6 +140,16 @@ const IMPORT_MODES = [
   ["replace", "Replace"],
 ];
 
+const RESOLUTION_LABELS = {
+  use_source: "Dùng dữ liệu file",
+  keep_target: "Giữ cấu hình hiện tại",
+  merge: "Gộp an toàn",
+  create_copy: "Tạo bản sao",
+  rename_source: "Đổi tên/code rồi tạo",
+  skip: "Bỏ qua",
+  replace_section: "Replace section",
+};
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const allSections = () => Object.fromEntries(CONFIG_SECTIONS.map(([key]) => [key, true]));
 const toChecklistItems = (checklist = FALLBACK_CHECKLIST) => Object.entries(CHECKLIST_LABELS).map(([key, label]) => ({ key, label, done: Boolean(checklist?.[key]) }));
@@ -172,6 +189,8 @@ const BackupManagement = () => {
   const [fileContentBase64, setFileContentBase64] = useState("");
   const [confirmedImport, setConfirmedImport] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [conflictResolutions, setConflictResolutions] = useState({});
+  const [conflictFilter, setConflictFilter] = useState({ section: "all", severity: "all", resolution: "all", search: "" });
 
   useEffect(() => {
     const firstId = restaurantOptionId(restaurants[0]);
@@ -202,8 +221,6 @@ const BackupManagement = () => {
   const lastRunDate = readiness.lastRun?.completedAt || readiness.lastRun?.updatedAt || readiness.lastRun?.createdAt;
   const loading = readinessQuery.loading || runsQuery.loading;
   const warning = !restaurantId ? "Chưa xác định nhà hàng để đọc cấu hình" : readinessQuery.error || runsQuery.error ? "Không đọc được trạng thái backup, đang hiển thị checklist khuyến nghị." : "";
-  const importCanRun = Boolean(importPreview?.valid && !(importPreview?.errors || []).length && confirmedImport && fileContentBase64);
-
   const toggleSection = (setter, key) => setter((prev) => ({ ...prev, [key]: !prev[key] }));
   const handlePreviewExport = async () => {
     setStatusMessage("");
@@ -231,6 +248,7 @@ const BackupManagement = () => {
     setImportPreview(null);
     setImportResult(null);
     setConfirmedImport(false);
+    setConflictResolutions({});
     setSelectedFile(file || null);
     setFileContentBase64("");
     if (!file) return;
@@ -240,6 +258,39 @@ const BackupManagement = () => {
     }
     setFileContentBase64(await readFileAsBase64(file));
   };
+  const importConflicts = importPreview?.conflicts || [];
+  const conflictStats = useMemo(() => ({
+    total: importConflicts.length,
+    blocking: importConflicts.filter((conflict) => conflict.severity === "blocking").length,
+    warning: importConflicts.filter((conflict) => conflict.severity === "warning").length,
+    info: importConflicts.filter((conflict) => conflict.severity === "info").length,
+    keepTarget: Object.values(conflictResolutions).filter((item) => item.resolution === "keep_target").length,
+    useSource: Object.values(conflictResolutions).filter((item) => item.resolution === "use_source").length,
+    merge: Object.values(conflictResolutions).filter((item) => item.resolution === "merge").length,
+  }), [importConflicts, conflictResolutions]);
+  const filteredConflicts = useMemo(() => importConflicts.filter((conflict) => {
+    const current = conflictResolutions[conflict.id]?.resolution || conflict.defaultResolution;
+    const searchText = `${conflict.entityKey} ${conflict.label || ""} ${conflict.reason}`.toLowerCase();
+    return (conflictFilter.section === "all" || conflict.section === conflictFilter.section)
+      && (conflictFilter.severity === "all" || conflict.severity === conflictFilter.severity)
+      && (conflictFilter.resolution === "all" || current === conflictFilter.resolution)
+      && (!conflictFilter.search || searchText.includes(conflictFilter.search.toLowerCase()));
+  }), [importConflicts, conflictFilter, conflictResolutions]);
+  const updateConflictResolution = (conflictId, patch) => setConflictResolutions((prev) => ({ ...prev, [conflictId]: { ...(prev[conflictId] || { conflictId }), ...patch } }));
+  const applyBulkResolution = (resolution, predicate = () => true) => setConflictResolutions((prev) => {
+    const next = { ...prev };
+    for (const conflict of importConflicts) {
+      if (!predicate(conflict) || !conflict.allowedResolutions.includes(resolution)) continue;
+      next[conflict.id] = { ...(next[conflict.id] || { conflictId: conflict.id, renameTo: "", fieldOverridesJson: "" }), resolution };
+    }
+    return next;
+  });
+  const invalidConflictResolution = importConflicts.some((conflict) => {
+    const current = conflictResolutions[conflict.id] || { resolution: conflict.defaultResolution, renameTo: "" };
+    return !conflict.allowedResolutions.includes(current.resolution) || (current.resolution === "rename_source" && !current.renameTo?.trim()) || (conflict.severity === "blocking" && current.resolution === "skip");
+  });
+  const importCanRun = Boolean(importPreview?.valid && !(importPreview?.errors || []).length && confirmedImport && fileContentBase64 && !invalidConflictResolution);
+
   const importInput = (dryRun = true) => ({
     targetRestaurantId,
     fileContentBase64,
@@ -247,11 +298,14 @@ const BackupManagement = () => {
     sections: selectedSectionsPayload(importSections),
     dryRun,
     replaceExisting: importMode === "replace" ? confirmedImport : false,
+    conflictResolutions: Object.values(conflictResolutions),
   });
   const handlePreviewImport = async () => {
     setStatusMessage("");
     const { data } = await previewImport({ variables: { input: importInput(true) } });
-    setImportPreview(data?.previewRestaurantConfigImport || null);
+    const preview = data?.previewRestaurantConfigImport || null;
+    setImportPreview(preview);
+    setConflictResolutions(Object.fromEntries((preview?.conflicts || []).map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }])));
   };
   const handleImport = async () => {
     setStatusMessage("");
@@ -319,7 +373,7 @@ const BackupManagement = () => {
           </select>
         </label>
         <label>Mode
-          <select value={importMode} onChange={(event) => { setImportMode(event.target.value); setConfirmedImport(false); }}>
+          <select value={importMode} onChange={(event) => { setImportMode(event.target.value); setConfirmedImport(false); setConflictResolutions({}); }}>
             {IMPORT_MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
@@ -332,10 +386,73 @@ const BackupManagement = () => {
           <button type="button" onClick={handleImport} disabled={!importCanRun || importBackupState.loading}>{importBackupState.loading ? "Đang import..." : "Import thật"}</button>
         </div>
         {importPreview ? <div className="backup-management__result"><h4>Preview: {importPreview.valid ? "Hợp lệ" : "Không hợp lệ"}</h4><p>Nguồn: {importPreview.sourceRestaurantName || "-"} • Mode: {importPreview.mode}</p><ul>{importPreview.changes.map((item) => <li key={`${item.section}-${item.action}`}>{item.label}: {item.action} {item.count}</li>)}</ul>{importPreview.warnings.map((item) => <p key={item}>{item}</p>)}{importPreview.errors.map((item) => <p key={item} className="backup-management__error">{item}</p>)}</div> : null}
+        {importConflicts.length ? (
+          <section className="backup-management__conflicts" aria-label="Xử lý xung đột import">
+            <h3>Xử lý xung đột import</h3>
+            <div className="backup-management__conflict-summary">
+              <article><strong>{conflictStats.total}</strong><span>Tổng conflicts</span></article>
+              <article><strong>{conflictStats.blocking}</strong><span>Blocking</span></article>
+              <article><strong>{conflictStats.warning}</strong><span>Warning</span></article>
+              <article><strong>{conflictStats.info}</strong><span>Info</span></article>
+              <article><strong>{conflictStats.keepTarget}</strong><span>keep_target</span></article>
+              <article><strong>{conflictStats.useSource}</strong><span>use_source</span></article>
+              <article><strong>{conflictStats.merge}</strong><span>merge</span></article>
+            </div>
+            <div className="backup-management__conflict-filters">
+              <select aria-label="Lọc section conflict" value={conflictFilter.section} onChange={(event) => setConflictFilter((prev) => ({ ...prev, section: event.target.value }))}>
+                <option value="all">Tất cả section</option>
+                {[...new Set(importConflicts.map((conflict) => conflict.section))].map((section) => <option key={section} value={section}>{section}</option>)}
+              </select>
+              <select aria-label="Lọc severity conflict" value={conflictFilter.severity} onChange={(event) => setConflictFilter((prev) => ({ ...prev, severity: event.target.value }))}>
+                <option value="all">Tất cả severity</option>
+                <option value="blocking">blocking</option>
+                <option value="warning">warning</option>
+                <option value="info">info</option>
+              </select>
+              <select aria-label="Lọc resolution conflict" value={conflictFilter.resolution} onChange={(event) => setConflictFilter((prev) => ({ ...prev, resolution: event.target.value }))}>
+                <option value="all">Tất cả resolution</option>
+                {Object.keys(RESOLUTION_LABELS).map((key) => <option key={key} value={key}>{key}</option>)}
+              </select>
+              <input aria-label="Tìm conflict" value={conflictFilter.search} onChange={(event) => setConflictFilter((prev) => ({ ...prev, search: event.target.value }))} placeholder="Tìm key/label" />
+            </div>
+            <div className="backup-management__actions">
+              <button type="button" onClick={() => setConflictResolutions(Object.fromEntries(importConflicts.map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }]))) }>Apply default</button>
+              <button type="button" onClick={() => applyBulkResolution("keep_target")}>Keep all target</button>
+              <button type="button" onClick={() => applyBulkResolution("use_source")}>Use all source</button>
+              <button type="button" onClick={() => applyBulkResolution("merge", (conflict) => conflict.severity !== "blocking")}>Merge all safe conflicts</button>
+              <button type="button" onClick={() => applyBulkResolution("skip", (conflict) => conflict.severity === "warning")}>Skip all warning conflicts</button>
+            </div>
+            {invalidConflictResolution ? <p className="backup-management__error">Cần xử lý blocking conflict hoặc nhập renameTo trước khi import thật.</p> : null}
+            <div className="backup-management__conflict-list">
+              {filteredConflicts.map((conflict) => {
+                const current = conflictResolutions[conflict.id] || { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "" };
+                return (
+                  <article key={conflict.id}>
+                    <header><strong>{conflict.section} • {conflict.entityType}</strong><span>{conflict.severity}</span></header>
+                    <p>{conflict.entityKey} {conflict.label ? `• ${conflict.label}` : ""}</p>
+                    <p>{conflict.reason}</p>
+                    <p>Default: {conflict.defaultResolution}</p>
+                    <label>Resolution
+                      <select aria-label={`Resolution ${conflict.entityKey}`} value={current.resolution} onChange={(event) => updateConflictResolution(conflict.id, { resolution: event.target.value })}>
+                        {conflict.allowedResolutions.map((resolution) => <option key={resolution} value={resolution}>{RESOLUTION_LABELS[resolution] || resolution}</option>)}
+                      </select>
+                    </label>
+                    {current.resolution === "rename_source" ? <label>Rename to<input aria-label={`Rename ${conflict.entityKey}`} value={current.renameTo || ""} onChange={(event) => updateConflictResolution(conflict.id, { renameTo: event.target.value })} /></label> : null}
+                    <details>
+                      <summary>Field diffs</summary>
+                      <ul>{conflict.fieldDiffs.map((diff) => <li key={`${conflict.id}-${diff.field}`}>{diff.field}: file={diff.sourceValuePreview || "-"} / hiện tại={diff.targetValuePreview || "-"}</li>)}</ul>
+                    </details>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
         {importResult ? (
           <div className="backup-management__result">
             <h4>Import {importResult.success ? "thành công" : "không thành công"}</h4>
             <p>BackupRun: {importResult.backupRun?.id || "-"}</p>
+            {(importResult.appliedResolutions || []).length ? <p>Applied resolutions: {(importResult.appliedResolutions || []).map((item) => `${item.conflictId}:${item.resolution}${item.renameTo ? `→${item.renameTo}` : ""}`).join(", ")}</p> : null}
             {(importResult.warnings || []).map((item) => <p key={`import-warning-${item}`}>{item}</p>)}
             {(importResult.errors || []).map((item) => <p key={`import-error-${item}`} className="backup-management__error">{item}</p>)}
           </div>

@@ -139,3 +139,66 @@ flowchart TD
 - Thử sửa file JSON sau export rồi import để xác nhận checksum mismatch.
 - Thử same-restaurant restore với target khác source để xác nhận bị reject.
 - Thử replace mode không tick xác nhận để xác nhận bị reject.
+
+## 13. Import Conflict Resolver
+
+Conflict Resolver xuất hiện trong bước **Preview import** khi target restaurant đã có cấu hình trùng key hoặc khác dữ liệu so với file snapshot.
+
+### Khi nào có conflict
+
+- Target đã có Floor cùng `level`/`name`, Table cùng `code`, Menu cùng `timeSlot`/`name`, Category cùng `name`.
+- Target đã có MenuItem cùng `code`/`name`, Ingredient cùng `sku`/`name`, Promotion/Coupon cùng `code`.
+- Target đã có AI knowledge cùng `title`/`question` hoặc safety rule cùng `ruleType + pattern`.
+- Singleton settings như SystemSetting, PrintSetting, PayrollSetting, SchedulingPolicy, CustomerRankSetting, Restaurant profile hoặc AI chatbot settings khác dữ liệu trong file.
+- Reference phụ thuộc không map được, ví dụ recipe ingredient, promotion item/category hoặc table floor.
+
+### Ý nghĩa các resolution
+
+- `use_source`: dùng dữ liệu trong file snapshot để ghi đè/upsert target.
+- `keep_target`: giữ cấu hình hiện tại ở target; source `legacyId` vẫn map sang target id nếu record là dependency cho record khác.
+- `merge`: merge an toàn dạng shallow/safe merge; primitive source có thể overwrite target nếu source có value.
+- `create_copy`: tạo bản sao mới nếu entity hỗ trợ, ví dụ `PHO` thành `PHO-copy` hoặc tên thành `(copy)`.
+- `rename_source`: tạo bản mới với tên/code mới do người dùng nhập.
+- `skip`: bỏ qua record trong file snapshot; dependent records có thể bị skip/warning nếu mất mapping.
+- `replace_section`: chỉ dùng với replace mode và `replaceExisting=true`.
+
+### Field diff
+
+Preview chỉ hiển thị field diff ngắn, tối đa preview khoảng 120 ký tự. Hệ thống bỏ qua runtime/sensitive fields như `orderCounter`, `rate`, `usageCount`, `used`, `avgRating`, `reviewCount`, token, password hash và secret.
+
+### Bulk actions trong UI
+
+- **Apply default**: trả mọi conflict về default resolution an toàn.
+- **Keep all target**: giữ target cho conflict hỗ trợ `keep_target`.
+- **Use all source**: dùng source cho conflict hỗ trợ `use_source`.
+- **Merge all safe conflicts**: merge các conflict không blocking.
+- **Skip all warning conflicts**: skip conflict severity warning nếu entity cho phép.
+
+### Ví dụ clone menu đã có món PHO
+
+Nếu target đã có MenuItem `PHO` giá 55.000đ và snapshot có `PHO` giá 50.000đ, preview sẽ hiển thị conflict `menuCatalog:MenuItem:PHO` với field diff `basePrice`.
+
+- Chọn `keep_target`: giữ món target; Recipe trong snapshot vẫn map sang MenuItem target hiện có.
+- Chọn `use_source`: cập nhật target bằng dữ liệu từ snapshot.
+- Chọn `rename_source`: nhập `PHO-NEW` để tạo món mới và map Recipe sang món mới.
+- Chọn `skip`: bỏ món source; Recipe phụ thuộc vào món đó sẽ bị skip và có warning.
+
+### Dependency mapping
+
+- `keep_target` vẫn map dependency sang id hiện có ở target, ví dụ Floor -> Table, MenuItem -> Recipe.
+- `merge`/`use_source` map sang record được update/upsert.
+- `create_copy`/`rename_source` map sang bản ghi mới.
+- `skip` không tạo mapping; dependent records sẽ skip hoặc remove ref để không giữ ObjectId của nhà hàng nguồn.
+
+### Best practices
+
+- Clone lần đầu sang target đã có dữ liệu nên ưu tiên `keep_target` cho record target đang vận hành.
+- Restore cùng nhà hàng có thể dùng `use_source` sau khi đã review diff.
+- Luôn đọc warnings/errors trước khi import thật.
+- Với coupon constraints dạng Mixed, hệ thống remap best-effort các key phổ biến như `categoryId(s)`, `itemId(s)`, `menuItemId(s)`, `giftItemId`.
+
+### Limitations
+
+- `merge` hiện là shallow/safe merge, chưa phải semantic merge cho mọi field lồng sâu.
+- `create_copy` dùng suffix an toàn cơ bản như `-copy` hoặc `(copy)`; nếu target có nhiều bản copy, manager nên rename rõ ràng bằng `rename_source`.
+- Conflict Resolver không thay thế quy trình kiểm thử thủ công sau import với máy in, payment provider, coupon constraints phức tạp và AI chatbot settings.
