@@ -48,7 +48,7 @@ const ReviewsHeader = ({ total = 0, avg = "0.0", pending = 0 }) => {
         <div className="reviews-header-card__stat">
           <div className="reviews-header-card__stat-icon">⏳</div>
           <div className="reviews-header-card__stat-text">
-            <span className="reviews-header-card__stat-label">Chờ duyệt</span>
+            <span className="reviews-header-card__stat-label">Đang xem xét</span>
             <span className="reviews-header-card__stat-value">{pending}</span>
           </div>
         </div>

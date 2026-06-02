@@ -51,8 +51,9 @@ export default {
 
     const canModerate = restaurantId ? await canManageRestaurant(ctx, restaurantId, "review.read") : isAdmin(ctx?.user);
     if (status) {
-      if (status !== "published" && !canModerate) throw forbidden();
-      filter.status = status;
+      if (!["published", "reported"].includes(status) && !canModerate) throw forbidden();
+      if (!canModerate && status === "published") filter.status = { $in: ["published", "reported"] };
+      else filter.status = status;
     } else if (!canModerate) {
       const uid = ctx?.user?.id || ctx?.user?._id;
       filter.$or = [{ status: { $in: ["published", "reported"] } }, ...(uid ? [{ customerId: uid }] : [])];
@@ -235,7 +236,7 @@ export default {
       lowRatedTargets: summary?.lowRatedTargets || [],
       reportBreakdown: summary?.reportBreakdown || [],
       actionQueueCounts: {
-        needsModeration: Number(totals.pendingCount || 0) + Number(totals.reportedCount || 0),
+        needsModeration: Number(totals.reportedCount || 0),
         needsReply: Number(summary?.negativeUnrepliedReviews?.[0]?.count || 0),
         highRisk: Number(totals.highRisk || 0),
       },

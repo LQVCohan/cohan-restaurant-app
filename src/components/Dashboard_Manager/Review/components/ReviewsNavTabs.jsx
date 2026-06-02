@@ -6,7 +6,7 @@ const tabs = [
   { key: "restaurant", label: "Nhà hàng" },
   { key: "food", label: "Món ăn" },
   { key: "service", label: "Dịch vụ" },
-  { key: "pending", label: "Chờ duyệt", hasBadge: true },
+  { key: "pending", label: "Đang xem xét", hasBadge: true },
   { key: "reported", label: "Báo cáo" },
 ];
 

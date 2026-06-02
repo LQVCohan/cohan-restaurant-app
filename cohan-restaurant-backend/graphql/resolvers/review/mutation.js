@@ -19,6 +19,14 @@ import {
   validateReviewTarget,
 } from "../../../src/services/reviewHardening.service.js";
 
+function roleSlug(user) {
+  return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
+}
+
+function isAdmin(ctx) {
+  return roleSlug(ctx?.user).includes("admin");
+}
+
 function isOwner(ctx, doc) {
   const uid = ctx?.user?.id || ctx?.user?._id;
   return uid && String(doc?.customerId || doc?.createdBy || doc?.userId) === String(uid);
@@ -27,6 +35,11 @@ function isOwner(ctx, doc) {
 async function recalcReviewReportCount(reviewId) {
   const reportsCount = await ReviewReport.countDocuments({ reviewId, status: "pending" });
   return reportsCount;
+}
+
+async function hasOpenReviewReport(reviewId) {
+  const reportsCount = await recalcReviewReportCount(reviewId);
+  return reportsCount > 0;
 }
 
 async function createReviewNotification({ review, type, message, toUserId = null, toRole = null, ctx, payload = {} }) {
@@ -114,7 +127,7 @@ export default {
       ...normalized,
       ...verified,
       ...insight,
-      status: "pending",
+      status: "published",
       likesCount: 0,
       commentsCount: 0,
       sharesCount: 0,
@@ -172,6 +185,7 @@ export default {
     if (!isOwner(ctx, review)) {
       requirePermission(ctx, "review.delete");
       await requireRestaurantAccess(ctx, review.restaurantId);
+      if (!isAdmin(ctx)) throw forbidden("Chỉ Admin được ẩn/xóa review không phải của mình khi có vi phạm chính sách rõ ràng.");
     }
     await Review.findByIdAndUpdate(id, { status: "hidden", moderationReason: "deleted", moderatedBy: ctx?.user?.id || ctx?.user?._id || null, moderatedAt: new Date(), updatedBy: ctx?.user?.id || ctx?.user?._id || null });
     await logReviewEvent({ review, verb: "review.softDelete", ctx, diff: { from: review.status, to: "hidden" } });
@@ -184,12 +198,45 @@ export default {
     if (!before) throw new Error("Review not found");
     requirePermission(ctx, "review.moderate");
     await requireRestaurantAccess(ctx, before.restaurantId);
-    const updated = await Review.findByIdAndUpdate(id, { status, moderationReason: reason, moderationNote, moderatedBy: ctx?.user?.id || ctx?.user?._id || null, moderatedAt: new Date(), updatedBy: ctx?.user?.id || ctx?.user?._id || null }, { new: true });
-    await logReviewEvent({ review: updated, verb: "review.status", ctx, diff: { from: before.status, to: status }, meta: { reason, moderationNote, notifyCustomer } });
-    if (["published", "rejected"].includes(status) && updated.customerId) {
-      const message = status === "published" ? "Đánh giá của bạn đã được duyệt" : "Đánh giá của bạn đã bị từ chối";
-      await createReviewNotification({ review: updated, type: `review.${status}`, message, toUserId: updated.customerId, ctx, payload: { reason, moderationReason: reason, moderationNote, reviewTitle: updated.title, restaurantName: updated.restaurantName } });
-      await logReviewEvent({ review: updated, verb: "review.notification.customer", ctx, meta: { channel: "in-app", status } });
+
+    const adminAction = isAdmin(ctx);
+    const trimmedReason = String(reason || "").trim();
+    const trimmedNote = String(moderationNote || "").trim();
+    const sameStatusNoteOnly = status === before.status;
+    const reportBackedManagerStatus = status === "reported" && await hasOpenReviewReport(id);
+
+    if (status === "published" && before.status !== "reported") {
+      throw badUserInput("Review mới được đăng công khai ngay, không còn luồng manager duyệt published.");
+    }
+
+    if (!adminAction && !sameStatusNoteOnly && !reportBackedManagerStatus) {
+      throw forbidden("Manager không được ẩn/từ chối/duyệt review tùy ý. Hãy phản hồi công khai hoặc xử lý qua report hợp lệ.");
+    }
+
+    if (adminAction && ["hidden", "rejected"].includes(status) && trimmedReason.length < 10) {
+      throw badUserInput("Admin phải nhập lý do vi phạm chính sách rõ ràng khi ẩn/từ chối review.");
+    }
+
+    const patch = {
+      moderationNote: trimmedNote,
+      moderatedBy: ctx?.user?.id || ctx?.user?._id || null,
+      moderatedAt: new Date(),
+      updatedBy: ctx?.user?.id || ctx?.user?._id || null,
+    };
+
+    if (!sameStatusNoteOnly) {
+      patch.status = status;
+      patch.moderationReason = trimmedReason;
+    }
+
+    const updated = await Review.findByIdAndUpdate(id, patch, { new: true });
+    await logReviewEvent({ review: updated, verb: "review.status", ctx, diff: { from: before.status, to: updated.status }, meta: { reason: trimmedReason, moderationNote: trimmedNote, notifyCustomer, adminAction, reportBackedManagerStatus } });
+    if (["hidden", "rejected", "reported"].includes(updated.status) && updated.customerId && notifyCustomer) {
+      const message = updated.status === "reported"
+        ? "Đánh giá của bạn đang được xem xét sau báo cáo"
+        : "Đánh giá của bạn đã được Admin xử lý do vi phạm chính sách";
+      await createReviewNotification({ review: updated, type: `review.${updated.status}`, message, toUserId: updated.customerId, ctx, payload: { reason: trimmedReason, moderationReason: trimmedReason, moderationNote: trimmedNote, reviewTitle: updated.title, restaurantName: updated.restaurantName } });
+      await logReviewEvent({ review: updated, verb: "review.notification.customer", ctx, meta: { channel: "in-app", status: updated.status } });
     }
     return updated;
   },

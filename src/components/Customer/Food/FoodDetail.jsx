@@ -201,7 +201,6 @@ const GET_FOOD_REVIEWS = gql`
       restaurantId: $restaurantId
       targetType: "food"
       targetId: $targetId
-      status: "published"
       limit: $limit
       skip: 0
     ) {

@@ -180,7 +180,7 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                 {detail?.staffName || review?.staff_name || "Không gắn nhân viên"}
               </p>
               <p style={{ marginBottom: 12, fontStyle: "italic", color: "#4b5563" }}>
-                Review đã duyệt sẽ được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
               </p>
 
               {!!images?.length && (

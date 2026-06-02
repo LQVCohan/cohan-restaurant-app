@@ -16,7 +16,6 @@ const GET_RESTAURANT_REVIEWS = gql`
     reviews(
       restaurantId: $restaurantId
       targetType: "restaurant"
-      status: "published"
       minRating: $minRating
       maxRating: $maxRating
       limit: $limit
@@ -33,6 +32,8 @@ const GET_RESTAURANT_REVIEWS = gql`
         images
         tags
         createdAt
+        status
+        reportsCount
         likesCount
         helpfulCount
         commentsCount
@@ -183,6 +184,8 @@ const ReviewsSection = ({ restaurantId }) => {
       replies: review.commentsCount || 0,
       verifiedPurchase: Boolean(review.verifiedPurchase),
       firstOfficialReply: review.firstOfficialReply || null,
+      status: review.status,
+      reportsCount: review.reportsCount || 0,
       photos: parseJsonArray(review.images),
       tags: parseJsonArray(review.tags),
       user: {
@@ -364,7 +367,7 @@ const ReviewsSection = ({ restaurantId }) => {
       }
 
       setNewReview({ rating: 5, title: "", content: "", staffId: "" });
-      setSubmitSuccess("Đánh giá đã gửi và đang chờ duyệt.");
+      setSubmitSuccess("Đánh giá của bạn đã được đăng. Cảm ơn bạn đã chia sẻ trải nghiệm.");
     } catch (error) {
       setSubmitError(error.message || "Không thể gửi đánh giá.");
     }
@@ -491,6 +494,9 @@ const ReviewsSection = ({ restaurantId }) => {
                       <span className="review-date">{formatDate(review.date)}</span>
                       {review.verifiedPurchase && (
                         <span className="review-verified">✓ Đã xác thực</span>
+                      )}
+                      {review.status === "reported" && (
+                        <span className="review-verified">🚩 Đang được xem xét</span>
                       )}
                     </div>
                   </div>

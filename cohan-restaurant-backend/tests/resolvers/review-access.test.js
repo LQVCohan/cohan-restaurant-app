@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   Review: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), aggregate: vi.fn(), findByIdAndUpdate: vi.fn(), findByIdAndDelete: vi.fn(), updateOne: vi.fn(), create: vi.fn() },
   ReviewReaction: { findOne: vi.fn(), create: vi.fn(), deleteOne: vi.fn(), findByIdAndUpdate: vi.fn() },
+  ReviewReport: { countDocuments: vi.fn() },
   User: { findOne: vi.fn() },
   ReviewComment: { find: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), create: vi.fn(), updateOne: vi.fn() },
   EventLog: { log: vi.fn() },
@@ -46,7 +47,8 @@ describe("review/reviewComment access hardening", () => {
     mocks.Order.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
     mocks.PaymentTransaction.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
     mocks.Reservation.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
-    mocks.Review.findByIdAndUpdate.mockResolvedValue({ _id: "valid-rv1", rating: 4, title: "t", content: "c", status: "pending", restaurantId: "valid-r1", helpfulCount: 1 });
+    mocks.Review.findByIdAndUpdate.mockResolvedValue({ _id: "valid-rv1", rating: 4, title: "t", content: "c", status: "reported", restaurantId: "valid-r1", helpfulCount: 1 });
+    mocks.ReviewReport.countDocuments.mockResolvedValue(1);
     mocks.Review.create.mockResolvedValue({ _id: "valid-rv1", rating: 5, restaurantId: "valid-r1" });
     mocks.User.findOne.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue({ _id: "staff-1", fullName: "Real Staff" }) })) });
     mocks.ReviewComment.countDocuments.mockResolvedValue(0);
@@ -80,11 +82,11 @@ describe("review/reviewComment access hardening", () => {
     await expect(q.review(null, { id: "valid-rv1" }, { user: { id: "u1" } })).resolves.toMatchObject({ _id: "valid-rv1" });
   });
 
-  it("createReview requires login and forces pending/createdBy", async () => {
+  it("createReview requires login and publishes with backend-derived createdBy", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
     await expect(m.createReview(null, { input: { status: "published" } }, {})).rejects.toThrow();
     await m.createReview(null, { input: { status: "published", createdBy: "x", rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
-    expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ status: "pending", createdBy: "u1" }));
+    expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ status: "published", createdBy: "u1" }));
   });
 
   it("createReview with valid staff sets canonical staffId/staffName", async () => {
@@ -115,11 +117,11 @@ describe("review/reviewComment access hardening", () => {
     expect(patch.status).toBeUndefined(); expect(patch.restaurantId).toBeUndefined(); expect(patch.helpfulCount).toBeUndefined();
   });
 
-  it("setReviewStatus only staff scoped", async () => {
+  it("setReviewStatus only allows staff scoped report-backed moderation", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", status: "pending" });
-    await expect(m.setReviewStatus(null, { id: "valid-rv1", status: "published" }, { user: { id: "u1", roleName: "customer" } })).rejects.toThrow();
-    await m.setReviewStatus(null, { id: "valid-rv1", status: "published" }, { user: { id: "m1", roleName: "manager" } });
+    mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", status: "published" });
+    await expect(m.setReviewStatus(null, { id: "valid-rv1", status: "reported" }, { user: { id: "u1", roleName: "customer" } })).rejects.toThrow();
+    await m.setReviewStatus(null, { id: "valid-rv1", status: "reported" }, { user: { id: "m1", roleName: "manager" } });
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
   });
 

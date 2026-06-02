@@ -6,10 +6,10 @@ Module Review gồm GraphQL schema `review.graphql`, resolver review/review_comm
 
 ## Data flow
 
-1. Customer gửi review → backend validate target/restaurant/rating/content → lưu `pending`.
-2. Manager dùng ReviewManagement/Action Center lọc pending/reported/high-risk.
-3. Manager approve/reject/hide → ghi `EventLog`, gửi notification customer nếu cần.
-4. Public list chỉ thấy `published` và có `firstOfficialReply` để tránh N+1.
+1. Customer gửi review → backend validate target/restaurant/rating/content → lưu `published` công khai ngay.
+2. Manager dùng ReviewManagement/Action Center theo dõi đánh giá cần phản hồi, reported/high-risk và report queue.
+3. Manager phản hồi chính thức/xử lý report theo quyền; Admin mới hidden/rejected khi có policy reason rõ ràng → ghi `EventLog`.
+4. Public list thấy `published` và `reported` (reported hiển thị cảnh báo đang xem xét) và có `firstOfficialReply` để tránh N+1.
 5. Manager tạo official reply → customer thấy badge “Phản hồi từ nhà hàng” và notification.
 6. Customer report review → tạo/ghép `ReviewReport`, tăng `reportsCount`, notification manager.
 7. Manager resolve/reject report → ghi audit timeline, không tự public review hidden/rejected.

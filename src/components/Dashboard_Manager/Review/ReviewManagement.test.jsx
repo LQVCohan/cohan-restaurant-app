@@ -54,12 +54,12 @@ const reviews = [
   },
   {
     ...baseReview,
-    id: "rv-pending",
+    id: "rv-published-reported-once",
     rating: 4,
-    title: "Pending review",
-    content: "Review đang chờ duyệt",
-    status: "pending",
-    reportsCount: 0,
+    title: "Published review with report",
+    content: "Review đã công khai nhưng có report cần hậu kiểm",
+    status: "published",
+    reportsCount: 1,
     createdAt: "2026-05-28T00:00:00.000Z",
   },
   {
@@ -78,7 +78,7 @@ const analyticsPayload = {
   totalReviews: 3,
   avgRating: 2.33,
   verifiedRate: 1,
-  pendingCount: 1,
+  pendingCount: 0,
   negativeCount: 2,
   reportedCount: 1,
   ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
@@ -124,16 +124,16 @@ describe("ReviewManagement analytics", () => {
     expect(screen.getByText("Cần phản hồi", { selector: "article" })).toBeInTheDocument();
   });
 
-  it("keeps pending and reported reviews visible when clicking needs moderation queue", () => {
+  it("keeps reported and report-backed public reviews visible when clicking moderation queue", () => {
     mockQueries({ id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole });
     render(<ReviewManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Cần kiểm duyệt/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Báo cáo cần xử lý/i }));
 
     const list = screen.getByTestId("reviews-list");
-    expect(within(list).getByText("Pending review")).toBeInTheDocument();
+    expect(within(list).getByText("Cần phản hồi")).toBeInTheDocument();
+    expect(within(list).getByText("Published review with report")).toBeInTheDocument();
     expect(within(list).getByText("Reported review")).toBeInTheDocument();
-    expect(within(list).queryByText("Cần phản hồi")).not.toBeInTheDocument();
   });
 
   it("supports report queue click without hiding the reported review", () => {
