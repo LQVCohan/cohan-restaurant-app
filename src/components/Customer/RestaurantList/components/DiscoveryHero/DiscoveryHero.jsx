@@ -36,10 +36,22 @@ const DiscoveryHero = ({ onQuickFilter }) => {
           </div>
         </div>
 
-        <div className="decoration-icons">
-          <div className="float-icon icon-1">🍔</div>
-          <div className="float-icon icon-2">🍕</div>
-          <div className="float-icon icon-3">🍣</div>
+        <div className="discovery-visual" aria-hidden="true">
+          <div className="visual-orb" />
+          <img
+            className="visual-main"
+            src="https://images.unsplash.com/photo-1543353071-873f17a7a088?auto=format&fit=crop&w=900&q=80"
+            alt=""
+            loading="eager"
+          />
+          <div className="visual-card visual-card--rating">
+            <span>★ 4.9</span>
+            <small>Được yêu thích</small>
+          </div>
+          <div className="visual-card visual-card--delivery">
+            <span>30 phút</span>
+            <small>Đặt nhanh</small>
+          </div>
         </div>
       </div>
 

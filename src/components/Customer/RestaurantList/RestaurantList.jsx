@@ -14,6 +14,7 @@ import { AuthContext } from "../../../context/AuthContext";
 
 // Styles
 import "./RestaurantList.scss";
+import "./RestaurantList.refinements.scss";
 
 /* =========================
    GraphQL Query
