@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
 import { ArrowLeft, Clock, Heart, MapPin, Share2, Star } from "lucide-react";
@@ -256,7 +256,7 @@ const RestaurantDetail = () => {
 
   const rawAvatarUrl = resolvedRestaurant.avatar || resolvedRestaurant.imgAvaUrl || "";
   const hasRealAvatar = !isPlaceholderAsset(rawAvatarUrl);
-  const avatarInitials = useMemo(() => getRestaurantInitials(resolvedRestaurant.name), [resolvedRestaurant.name]);
+  const avatarInitials = getRestaurantInitials(resolvedRestaurant.name);
   const rawCoverUrl = resolvedRestaurant.coverImage || resolvedRestaurant.imgThumbUrl || "";
   const hasCoverImage = !isPlaceholderAsset(rawCoverUrl);
   const imgThumbUrl = hasCoverImage ? rawCoverUrl : getFallbackCoverUrl(resolvedRestaurant.id);
