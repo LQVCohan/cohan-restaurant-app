@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { AiChatbotKnowledgeItem } from "../../../models/index.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { requireRestaurantPermission } from "../auth/authorization.service.js";
-import { getOrSetAiChatbotCache } from "./restaurantChatbotCache.service.js";
+import { getAiChatbotCache, setAiChatbotCache } from "./restaurantChatbotCache.service.js";
 import { createLocalEmbedding, getLocalAiConfig, isLocalAiEnabled } from "./localAiProvider.service.js";
 
 const EMBEDDING_CACHE_PREFIX = "ai:embedding:query:";
@@ -41,12 +41,17 @@ export async function createEmbedding(text) {
   if (!isLocalAiEnabled()) return null;
   const config = getLocalAiConfig();
   const cacheKey = `${EMBEDDING_CACHE_PREFIX}${config.embeddingModel}:${hashText(normalized)}`;
-  return getOrSetAiChatbotCache(cacheKey, async () => {
+  const cached = getAiChatbotCache(cacheKey);
+  if (cached !== undefined) return cached;
+  try {
     const result = await createLocalEmbedding(normalized);
-    return Array.isArray(result?.embedding) && result.embedding.length
-      ? { embedding: result.embedding, model: result.model || config.embeddingModel, provider: "local" }
-      : null;
-  }, embeddingCacheTtlMs());
+    if (!Array.isArray(result?.embedding) || !result.embedding.length) return null;
+    const value = { embedding: result.embedding, model: result.model || config.embeddingModel, provider: "local" };
+    setAiChatbotCache(cacheKey, value, embeddingCacheTtlMs());
+    return value;
+  } catch {
+    return null;
+  }
 }
 
 export async function createEmbeddingForKnowledgeItem(item) {

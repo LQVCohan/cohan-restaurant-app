@@ -31,6 +31,7 @@ vi.mock("../../models/index.js", () => {
 
 import {
   __testables,
+  createEmbedding,
   createEmbeddingForKnowledgeItem,
   hashEmbeddingContent,
   rebuildKnowledgeItemEmbedding,
@@ -38,12 +39,14 @@ import {
   shouldRefreshEmbedding,
 } from "../../src/services/ai/restaurantChatbotEmbedding.service.js";
 import { createRestaurantAiChatbotKnowledgeItem } from "../../src/services/ai/restaurantChatbotKnowledge.service.js";
+import { clearAiChatbotCache } from "../../src/services/ai/restaurantChatbotCache.service.js";
 
 const originalEnv = { ...process.env };
 const rid = new mongoose.Types.ObjectId().toString();
 
 beforeEach(() => {
   store.length = 0;
+  clearAiChatbotCache();
   process.env = { ...originalEnv, LOCAL_AI_ENABLED: "true", AI_EMBEDDING_PROVIDER: "local", LOCAL_AI_EMBEDDING_MODEL: "bge-m3" };
   permissionSpy.mockReset().mockResolvedValue(true);
   embeddingSpy.mockReset().mockResolvedValue({ embedding: [0.1, 0.2], model: "bge-m3" });
@@ -101,6 +104,48 @@ describe("restaurantChatbotEmbedding Phase 27", () => {
     store.push(item);
     const out = await rebuildRestaurantKnowledgeEmbeddings({ restaurantId: rid, ctx: { user: { _id: new mongoose.Types.ObjectId().toString() } } });
     expect(out).toMatchObject({ total: 1, updated: 1, skipped: 0, failed: 0 });
+  });
+
+  it("createEmbedding caches successful embedding result", async () => {
+    const first = await createEmbedding("deposit policy");
+    const second = await createEmbedding("deposit policy");
+    expect(first).toEqual({ embedding: [0.1, 0.2], model: "bge-m3", provider: "local" });
+    expect(second).toEqual(first);
+    expect(embeddingSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("createEmbedding does not cache null result and retries successfully", async () => {
+    embeddingSpy
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ embedding: [0.3, 0.4], model: "bge-m3" });
+    await expect(createEmbedding("temporary outage")).resolves.toBeNull();
+    await expect(createEmbedding("temporary outage")).resolves.toEqual({ embedding: [0.3, 0.4], model: "bge-m3", provider: "local" });
+    expect(embeddingSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("createEmbedding does not cache provider failure", async () => {
+    embeddingSpy
+      .mockRejectedValueOnce(Object.assign(new Error("ollama down"), { code: "LOCAL_AI_PROVIDER_ERROR" }))
+      .mockResolvedValueOnce({ embedding: [0.5, 0.6], model: "bge-m3" });
+    await expect(createEmbedding("provider failure")).resolves.toBeNull();
+    await expect(createEmbedding("provider failure")).resolves.toEqual({ embedding: [0.5, 0.6], model: "bge-m3", provider: "local" });
+    expect(embeddingSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("createEmbedding does not cache empty embedding result", async () => {
+    embeddingSpy
+      .mockResolvedValueOnce({ embedding: [], model: "bge-m3" })
+      .mockResolvedValueOnce({ embedding: [0.7, 0.8], model: "bge-m3" });
+    await expect(createEmbedding("empty vector")).resolves.toBeNull();
+    await expect(createEmbedding("empty vector")).resolves.toEqual({ embedding: [0.7, 0.8], model: "bge-m3", provider: "local" });
+    expect(embeddingSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("successful cached embedding should avoid second provider call", async () => {
+    await expect(createEmbedding("cached success")).resolves.toEqual({ embedding: [0.1, 0.2], model: "bge-m3", provider: "local" });
+    embeddingSpy.mockResolvedValueOnce({ embedding: [9, 9], model: "bge-m3" });
+    await expect(createEmbedding("cached success")).resolves.toEqual({ embedding: [0.1, 0.2], model: "bge-m3", provider: "local" });
+    expect(embeddingSpy).toHaveBeenCalledTimes(1);
   });
 
   it("createEmbeddingForKnowledgeItem returns null when provider unavailable", async () => {
