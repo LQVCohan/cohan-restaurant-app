@@ -31,12 +31,14 @@ $rd-border: rgba(92, 64, 51, 0.12);
   .fallback-cover-copy {
     position: absolute;
     left: max(24px, calc((100vw - 1280px) / 2 + 24px));
-    bottom: 42px;
+    bottom: clamp(98px, 8vw, 122px);
     z-index: 2;
     display: grid;
-    gap: 6px;
+    gap: 7px;
+    max-width: min(34vw, 420px);
     color: #fff;
-    text-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+    text-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+    pointer-events: none;
 
     span {
       width: fit-content;
@@ -44,7 +46,7 @@ $rd-border: rgba(92, 64, 51, 0.12);
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.18);
       border: 1px solid rgba(255, 255, 255, 0.28);
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -52,9 +54,12 @@ $rd-border: rgba(92, 64, 51, 0.12);
     }
 
     strong {
-      font-size: clamp(1.7rem, 3vw, 2.6rem);
-      letter-spacing: -0.05em;
-      line-height: 1;
+      display: block;
+      max-width: 100%;
+      font-size: clamp(1.35rem, 2.2vw, 2.05rem);
+      letter-spacing: -0.045em;
+      line-height: 1.04;
+      text-wrap: balance;
     }
   }
 
@@ -174,9 +179,14 @@ $rd-border: rgba(92, 64, 51, 0.12);
     }
 
     .fallback-cover-copy {
-      bottom: 34px;
+      bottom: 80px;
       left: 20px;
       right: 20px;
+      max-width: calc(100% - 40px);
+
+      strong {
+        font-size: clamp(1.18rem, 6vw, 1.72rem);
+      }
     }
 
     .res-info-card.res-info-card--compact {
