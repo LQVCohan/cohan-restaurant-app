@@ -9,7 +9,7 @@ const startServer = async () => {
     const loadedEnvFiles = loadEnv();
     if (!loadedEnvFiles.length) {
       console.warn(
-        "⚠️ No .env file found. Searched: <repo>/.env, <cwd>/.env, <repo>/cohan-restaurant-backend/.env. Run `npm run env:local` from repo root to generate local .env files. Note: .env.example is a template and is not auto-loaded."
+        "⚠️ No .env file found. Searched: <repo>/.env, <cwd>/.env, <repo>/cohan-restaurant-backend/.env. Run `npm run env:local` from repo root to generate local .env files. Note: .env.example is a template and is not auto-loaded.",
       );
     }
 
@@ -18,9 +18,9 @@ const startServer = async () => {
     await connectDB();
     const app = await createServer();
 
-    app.listen({ port: env.PORT, host: env.HOST });
+    const address = await app.listen({ port: env.PORT, host: env.HOST });
 
-    console.log(`🚀 Server running at http://localhost:${env.PORT}`);
+    console.log(`🚀 Server running at ${address}`);
   } catch (err) {
     console.error("❌ Failed to start server:", err);
     process.exit(1);
