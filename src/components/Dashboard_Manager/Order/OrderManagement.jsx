@@ -10,12 +10,9 @@ import {
   ChefHat,
   CheckCircle,
   AlertTriangle,
-  History,
-  Loader,
   ChevronDown,
   Maximize2,
   Minimize2,
-  Settings,
   Plus,
   Filter,
   Download,
@@ -259,6 +256,14 @@ const resolveKitchenActionOrderId = (order, fallbackId = null) => {
     normalizeId(fallbackId);
 };
 
+const ORDER_STATUS_KPI_DEFS = [
+  { id: "total", icon: "🧾", label: "Tổng đơn", tone: "neutral" },
+  { id: "pending", icon: "⏳", label: "Chờ xử lý", tone: "warning" },
+  { id: "preparing", icon: "👨‍🍳", label: "Đang chuẩn bị", tone: "accent" },
+  { id: "completed", icon: "✅", label: "Hoàn thành", tone: "success" },
+  { id: "cancelled", icon: "✕", label: "Đã hủy", tone: "danger" },
+];
+
 const getBatchSessionKey = (order) => {
   const tableCode = normalizeTableCode(order?.tableCode);
   if (order?.orderType !== "dine_in" || !tableCode) return null;
@@ -296,6 +301,7 @@ const DishSummaryPanel = ({
     <div className={`om-summary ${collapsed ? "om-summary--collapsed" : ""}`}>
       <div className="om-summary__header">
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
           className="om-summary__toggle"
         >
@@ -305,7 +311,7 @@ const DishSummaryPanel = ({
         </button>
 
         {!collapsed && hasHighlight && (
-          <button onClick={onClearHighlight} className="om-summary__clear-btn">
+          <button type="button" onClick={onClearHighlight} className="om-summary__clear-btn">
             Bỏ chọn
           </button>
         )}
@@ -335,6 +341,7 @@ const DishSummaryPanel = ({
             return (
               <button
                 key={dish.key}
+                type="button"
                 onClick={() => onDishClick(dish)}
                 className={`om-chip om-chip--${size} ${
                   isActive ? "om-chip--active" : ""
@@ -351,12 +358,95 @@ const DishSummaryPanel = ({
   );
 };
 
+export const RejectOrderDialog = ({
+  open,
+  orderLabel,
+  reason,
+  error,
+  loading = false,
+  onReasonChange,
+  onCancel,
+  onConfirm,
+}) => {
+  if (!open) return null;
+
+  return (
+    <div
+      className="om-reject-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="om-reject-dialog-title"
+    >
+      <button
+        type="button"
+        className="om-reject-dialog__backdrop"
+        onClick={onCancel}
+        aria-label="Đóng hộp thoại từ chối đơn"
+      />
+      <form
+        className="om-reject-dialog__panel"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onConfirm?.();
+        }}
+      >
+        <div className="om-reject-dialog__header">
+          <span className="om-reject-dialog__eyebrow">Từ chối đơn</span>
+          <h2 id="om-reject-dialog-title">Nhập lý do từ chối đơn</h2>
+          {orderLabel && (
+            <p>Đơn <strong>{orderLabel}</strong> sẽ được gửi trạng thái từ chối.</p>
+          )}
+        </div>
+
+        <label className="om-reject-dialog__field">
+          <span>Lý do từ chối</span>
+          <textarea
+            value={reason}
+            onChange={(event) => onReasonChange?.(event.target.value)}
+            placeholder="Ví dụ: Món đã hết, khách đặt sai chi nhánh..."
+            rows={4}
+            autoFocus
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "om-reject-dialog-error" : undefined}
+          />
+        </label>
+
+        {error && (
+          <p id="om-reject-dialog-error" className="om-reject-dialog__error">
+            {error}
+          </p>
+        )}
+
+        <div className="om-reject-dialog__actions">
+          <button type="button" className="om-reject-dialog__cancel" onClick={onCancel}>
+            Hủy
+          </button>
+          <button
+            type="submit"
+            className="om-reject-dialog__confirm"
+            disabled={loading}
+          >
+            {loading ? "Đang từ chối..." : "Xác nhận từ chối"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 /* ---------------- Main Component ---------------- */
 const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [rejectDialog, setRejectDialog] = useState({
+    open: false,
+    orderId: null,
+    reason: "",
+    error: "",
+    loading: false,
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -773,19 +863,19 @@ const OrderManagement = () => {
       });
   }, [activeOrders]);
 
-  const stats = useMemo(
-    () => ({
-      total: activeOrders.length,
-      pending: activeOrders.filter(
-        (order) => !ACTIVE_ORDER_HIDDEN_STATUSES.has(normalizeStatus(order.currentStatus)),
-      ).length,
-      preparing: activeOrders.filter(
-        (order) => normalizeStatus(order.currentStatus) === "preparing",
-      ).length,
-      completed: 0,
-    }),
-    [activeOrders],
-  );
+  const stats = useMemo(() => {
+    const countByStatus = (statuses) =>
+      orders.filter((order) => statuses.includes(normalizeStatus(order.currentStatus)))
+        .length;
+
+    return {
+      total: orders.length,
+      pending: countByStatus(["pending"]),
+      preparing: countByStatus(["preparing"]),
+      completed: countByStatus(["completed"]),
+      cancelled: countByStatus(["cancelled"]),
+    };
+  }, [orders]);
 
   const mergeSelectedOrderMetadata = useCallback(
     (updatedOrder, fallbackOrder = null) => {
@@ -898,14 +988,56 @@ const OrderManagement = () => {
     setHighlightedOrderIds([]);
   }, []);
 
-  const handleRejectOrder = useCallback(
-    async (orderId) => {
-      const reason = window.prompt("Nhập lý do từ chối đơn:", "");
-      if (reason == null) return;
-      const order = displayOrders.find(
-        (item) => item.id === orderId || item.actionOrderId === orderId,
-      );
-      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
+  const rejectDialogOrder = useMemo(
+    () =>
+      displayOrders.find(
+        (item) =>
+          item.id === rejectDialog.orderId ||
+          item.actionOrderId === rejectDialog.orderId,
+      ) || null,
+    [displayOrders, rejectDialog.orderId],
+  );
+
+  const handleRejectOrder = useCallback((orderId) => {
+    setRejectDialog({
+      open: true,
+      orderId,
+      reason: "",
+      error: "",
+      loading: false,
+    });
+  }, []);
+
+  const handleCloseRejectDialog = useCallback(() => {
+    setRejectDialog({
+      open: false,
+      orderId: null,
+      reason: "",
+      error: "",
+      loading: false,
+    });
+  }, []);
+
+  const handleRejectReasonChange = useCallback((reason) => {
+    setRejectDialog((prev) => ({ ...prev, reason, error: "" }));
+  }, []);
+
+  const handleConfirmRejectOrder = useCallback(async () => {
+    const reason = rejectDialog.reason.trim();
+    if (!reason) {
+      setRejectDialog((prev) => ({
+        ...prev,
+        error: "Vui lòng nhập lý do từ chối đơn.",
+      }));
+      return;
+    }
+
+    const order = rejectDialogOrder;
+    const targetOrderId = resolveKitchenActionOrderId(order, rejectDialog.orderId);
+    if (!targetOrderId) return;
+
+    setRejectDialog((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
       await mutRejectIncomingOrder({
         variables: {
           input: { id: targetOrderId, restaurantId: selectedRestaurantId, reason },
@@ -913,9 +1045,24 @@ const OrderManagement = () => {
       });
       await refetchOrders();
       showNotification("Đã từ chối đơn từ xa", "warning");
-    },
-    [displayOrders, mutRejectIncomingOrder, refetchOrders, selectedRestaurantId, showNotification],
-  );
+      handleCloseRejectDialog();
+    } catch (err) {
+      setRejectDialog((prev) => ({
+        ...prev,
+        loading: false,
+        error: err?.message || "Không thể từ chối đơn. Vui lòng thử lại.",
+      }));
+    }
+  }, [
+    handleCloseRejectDialog,
+    mutRejectIncomingOrder,
+    refetchOrders,
+    rejectDialog.orderId,
+    rejectDialog.reason,
+    rejectDialogOrder,
+    selectedRestaurantId,
+    showNotification,
+  ]);
 
   const handleConfirmRemoteOrder = useCallback(
     async (orderId) => {
@@ -989,18 +1136,13 @@ const OrderManagement = () => {
         {!focusMode ? (
           <ManagementPageHeader
             eyebrow="ORDER MANAGER"
-            title="Quản Lý Đơn Hàng"
-            subtitle="Theo dõi và xử lý đơn hàng thời gian thực"
+            title="Quản lý đơn hàng"
+            subtitle="Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán trong ca làm."
             icon="🍽️"
-            stats={[
-              { id: "total", icon: "🧾", label: "Đợt gọi món", value: stats.total },
-              { id: "pending", icon: "⏳", label: "Chưa hoàn thành", value: stats.pending },
-              { id: "preparing", icon: "👨‍🍳", label: "Đang chuẩn bị", value: stats.preparing },
-              { id: "completed", icon: "✅", label: "Đã xong (phiên)", value: stats.completed },
-            ]}
+            statsPlacement="none"
             searchValue={searchTerm}
             onSearchChange={setSearchTerm}
-            searchPlaceholder="Tìm ID, Tên KH, Món..."
+            searchPlaceholder="Tìm mã đơn, khách, bàn, món..."
             selectedRestaurant={selectedRestaurantId}
             onRestaurantChange={setSelectedRestaurantId}
             restaurantList={restaurantList}
@@ -1018,6 +1160,7 @@ const OrderManagement = () => {
             </div>
             <div className="om-header__actions">
               <button
+                type="button"
                 onClick={() => setFocusMode(!focusMode)}
                 className={`om-btn-focus ${focusMode ? "om-btn-focus--active" : ""}`}
               >
@@ -1028,18 +1171,44 @@ const OrderManagement = () => {
           </header>
         )}
 
+        {!focusMode && (
+          <section className="om-kpi-panel" aria-label="Tổng quan đơn hàng">
+            {ORDER_STATUS_KPI_DEFS.map((item) => (
+              <article
+                key={item.id}
+                className={`om-kpi-card om-kpi-card--${item.tone}`}
+              >
+                <span className="om-kpi-card__icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <div className="om-kpi-card__body">
+                  <span className="om-kpi-card__label">{item.label}</span>
+                  <strong className="om-kpi-card__value">
+                    {stats[item.id].toLocaleString("vi-VN")}
+                  </strong>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
 
-        <div className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}>
+        <section
+          className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}
+          aria-label="Bộ lọc đơn hàng"
+        >
 
           <div className="om-toolbar__inner">
             <div className="om-toolbar__filters">
               <div className="om-filter-group">
-                <div className="om-select-wrapper">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="om-select-input"
-                  >
+                <label className="om-field">
+                  <span className="om-field__label">Trạng thái đơn</span>
+                  <span className="om-select-wrapper">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="om-select-input"
+                      aria-label="Trạng thái đơn"
+                    >
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending">Chờ xác nhận</option>
                     <option value="remote_staff_pending">
@@ -1048,56 +1217,72 @@ const OrderManagement = () => {
                     <option value="confirmed">Đã xác nhận</option>
                     <option value="preparing">Đang chuẩn bị</option>
                     <option value="ready">Sẵn sàng</option>
-                  </select>
-                  <Filter size={16} className="om-select-icon-left" />
-                  <ChevronDown size={14} className="om-select-icon-right" />
-                </div>
+                    </select>
+                    <Filter size={16} className="om-select-icon-left" />
+                    <ChevronDown size={14} className="om-select-icon-right" />
+                  </span>
+                </label>
 
                 {!focusMode && (
-                  <div className="om-select-wrapper">
-                    <select
-                      value={tableFilter}
-                      onChange={(e) => setTableFilter(e.target.value)}
-                      className="om-select-input"
-                    >
+                  <label className="om-field">
+                    <span className="om-field__label">Loại đơn</span>
+                    <span className="om-select-wrapper">
+                      <select
+                        value={tableFilter}
+                        onChange={(e) => setTableFilter(e.target.value)}
+                        className="om-select-input"
+                        aria-label="Loại đơn"
+                      >
                       <option value="">Tất cả loại</option>
                       <option value="dine_in">Tại bàn</option>
                       <option value="takeaway">Mang về</option>
                       <option value="delivery">Giao hàng</option>
-                    </select>
-                    <ChevronDown size={14} className="om-select-icon-right" />
-                  </div>
+                      </select>
+                      <ChevronDown size={14} className="om-select-icon-right" />
+                    </span>
+                  </label>
                 )}
                 {!focusMode && (
                   <>
-                    <div className="om-select-wrapper">
-                      <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        className="om-select-input"
-                        title="Từ ngày"
-                      />
-                    </div>
-                    <div className="om-select-wrapper">
-                      <input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        className="om-select-input"
-                        title="Đến ngày"
-                      />
-                    </div>
-                    <div className="om-select-wrapper">
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="om-select-input"
-                      >
+                    <label className="om-field">
+                      <span className="om-field__label">Từ ngày</span>
+                      <span className="om-select-wrapper">
+                        <input
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                          className="om-select-input"
+                          aria-label="Từ ngày"
+                        />
+                      </span>
+                    </label>
+                    <label className="om-field">
+                      <span className="om-field__label">Đến ngày</span>
+                      <span className="om-select-wrapper">
+                        <input
+                          type="date"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                          className="om-select-input"
+                          aria-label="Đến ngày"
+                        />
+                      </span>
+                    </label>
+                    <label className="om-field">
+                      <span className="om-field__label">Sắp xếp</span>
+                      <span className="om-select-wrapper">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="om-select-input"
+                          aria-label="Sắp xếp đơn hàng"
+                        >
                         <option value="oldest">Cũ nhất trước</option>
                         <option value="newest">Mới nhất trước</option>
-                      </select>
-                    </div>
+                        </select>
+                        <ChevronDown size={14} className="om-select-icon-right" />
+                      </span>
+                    </label>
                   </>
                 )}
               </div>
@@ -1110,6 +1295,7 @@ const OrderManagement = () => {
                   <select
                     value={chipSize}
                     onChange={(e) => setChipSize(e.target.value)}
+                    aria-label="Cỡ thẻ món"
                   >
                     <option value="s">Nhỏ</option>
                     <option value="m">Vừa</option>
@@ -1117,13 +1303,14 @@ const OrderManagement = () => {
                   </select>
                 </div>
               ) : (
-                <button className="om-btn-outline" onClick={handleExportCsv}>
+                <button type="button" className="om-btn-outline" onClick={handleExportCsv}>
                   <Download size={18} />
                   <span>Xuất BC</span>
                 </button>
               )}
 
               <button
+                type="button"
                 onClick={() => setShowNewOrderModal(true)}
                 disabled={!selectedRestaurantId}
                 className="om-btn-primary"
@@ -1133,7 +1320,7 @@ const OrderManagement = () => {
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {focusMode && dishSummaries.length > 0 && (
           <DishSummaryPanel
@@ -1145,29 +1332,44 @@ const OrderManagement = () => {
           />
         )}
 
-        <div className="om-content">
+        <section className="om-content" aria-label="Danh sách đơn hàng">
           {ordersLoading ? (
-            <div className="om-state">
-              <Loader size={40} className="om-spinner" />
-              <p>Đang tải dữ liệu đơn hàng...</p>
+            <div className="om-skeleton-grid" aria-label="Đang tải dữ liệu đơn hàng">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <article className="om-skeleton-card" key={index}>
+                  <div className="om-skeleton-card__top" />
+                  <div className="om-skeleton-card__line om-skeleton-card__line--wide" />
+                  <div className="om-skeleton-card__line" />
+                  <div className="om-skeleton-card__items">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </article>
+              ))}
             </div>
           ) : ordersError ? (
-            <div className="om-state om-state--error">
+            <div className="om-state om-state--error" role="alert">
               <AlertTriangle size={48} />
-              <h3>Đã xảy ra lỗi</h3>
+              <h3>Không tải được đơn hàng</h3>
               <p>{ordersError.message}</p>
+              {selectedRestaurantId && (
+                <button
+                  type="button"
+                  className="om-state__retry"
+                  onClick={() => void refetchOrders()}
+                >
+                  Thử tải lại
+                </button>
+              )}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="om-state om-state--empty">
               <div className="om-state__icon-bg">
                 <CheckCircle size={40} />
               </div>
-              <h3>Không có đơn hàng nào</h3>
-              <p>
-                {activeOrders.length > 0
-                  ? "Không tìm thấy kết quả phù hợp"
-                  : "Đợi đơn hàng mới xuất hiện..."}
-              </p>
+              <h3>Chưa có đơn hàng trong bộ lọc hiện tại.</h3>
+              <p>Điều chỉnh bộ lọc hoặc chờ đơn mới được đồng bộ realtime.</p>
             </div>
           ) : (
             <div className="om-grid">
@@ -1215,7 +1417,7 @@ const OrderManagement = () => {
               ))}
             </div>
           )}
-        </div>
+        </section>
 
         {showNewOrderModal && (
           <NewOrderModal
@@ -1228,6 +1430,21 @@ const OrderManagement = () => {
             }}
           />
         )}
+
+        <RejectOrderDialog
+          open={rejectDialog.open}
+          orderLabel={
+            rejectDialogOrder?.orderCode ||
+            rejectDialogOrder?.tableCode ||
+            rejectDialog.orderId
+          }
+          reason={rejectDialog.reason}
+          error={rejectDialog.error}
+          loading={rejectDialog.loading}
+          onReasonChange={handleRejectReasonChange}
+          onCancel={handleCloseRejectDialog}
+          onConfirm={handleConfirmRejectOrder}
+        />
 
         <OrderSettingsModal
           open={isSettingsOpen}
