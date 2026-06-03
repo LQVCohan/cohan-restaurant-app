@@ -12,6 +12,7 @@ import {
   Staff,
   Review,
   KitchenOrderWorkItem,
+  Reservation,
 } from "../../../models/index.js";
 import { buildPricedOrderItems } from "../../../src/services/orderItemPricing.service.js";
 import { toId } from "../order/helper/orderUtils.js";
@@ -146,6 +147,38 @@ function isValidSoldItem(item) {
   return !INVALID_SOLD_ITEM_STATUSES.has(st) && Number.isFinite(qty) && qty > 0;
 }
 
+function mapOrderToDashboardAction(order, userMap = new Map()) {
+  return {
+    id: String(order._id),
+    orderCode: order.orderCode || null,
+    customerName:
+      order?.customerInfo?.name ||
+      (order.userId && userMap.get(String(order.userId))) ||
+      null,
+    orderType: order.orderType || null,
+    tableCode: order.tableCode || order?.table?.code || null,
+    status: order.currentStatus || null,
+    total: Number(order?.totals?.grandTotal || 0),
+    createdAt: order.createdAt || null,
+    itemNames: (order.items || []).map((x) => x?.name).filter(Boolean),
+  };
+}
+
+function mapSupportRequestForDashboard(order, req) {
+  return {
+    orderId: String(order._id),
+    orderCode: order.orderCode || String(order._id),
+    trackingCode: order.trackingCode || null,
+    tableCode: order.tableCode || order?.table?.code || null,
+    requestId: req.requestId,
+    type: req.type,
+    status: req.status,
+    message: req.message || null,
+    createdAt: req.createdAt,
+    acknowledgedAt: req.acknowledgedAt || null,
+    resolvedAt: req.resolvedAt || null,
+  };
+}
 
 /** Group orders by orderCode (no parentOrderCode usage) */
 function groupOrdersByRootCode(orders = []) {
@@ -855,6 +888,11 @@ export const OrderQuery = {
       promoCount,
       staffCount,
       stockItems,
+      pendingOrderDocs,
+      pendingOrderTotal,
+      pendingReservationDocs,
+      pendingReservationTotal,
+      pendingSupportOrderDocs,
     ] = await Promise.all([
       Order.find(
         withOrderBatchOrLegacyFilter({
@@ -885,6 +923,40 @@ export const OrderQuery = {
         employmentStatus: { $in: ["working", "on_leave"] },
       }),
       StockItem.find({ restaurantId: rid }).limit(200).lean(),
+      Order.find({
+        restaurantId: rid,
+        currentStatus: "pending",
+        orderKind: { $ne: "table_session" },
+        orderPaymentStatus: { $ne: "paid" },
+        "payment.status": { $ne: "paid" },
+      })
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean(),
+      Order.countDocuments({
+        restaurantId: rid,
+        currentStatus: "pending",
+        orderKind: { $ne: "table_session" },
+        orderPaymentStatus: { $ne: "paid" },
+        "payment.status": { $ne: "paid" },
+      }),
+      Reservation.find({
+        restaurantId: rid,
+        status: "pending_payment",
+      })
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean(),
+      Reservation.countDocuments({
+        restaurantId: rid,
+        status: "pending_payment",
+      }),
+      Order.find({
+        restaurantId: rid,
+        customerRequests: { $elemMatch: { status: "PENDING" } },
+      })
+        .select({ orderCode: 1, trackingCode: 1, tableCode: 1, customerRequests: 1 })
+        .lean(),
     ]);
 
     const operationalOrdersInRange = ordersInRange.filter(isOperationalOrder);
@@ -985,17 +1057,64 @@ export const OrderQuery = {
     );
 
     const recentOrders = allOrders.slice(0, 8).map((o) => ({
-      id: String(o._id),
-      orderCode: o.orderCode || null,
-      customerName:
-        (o.userId && userMap.get(String(o.userId))) || "Khách vãng lai",
-      orderType: o.orderType || null,
-      tableCode: o.tableCode || null,
-      status: o.currentStatus || null,
-      total: Number(o?.totals?.grandTotal || 0),
-      createdAt: o.createdAt || null,
-      itemNames: (o.items || []).map((x) => x.name).filter(Boolean),
+      ...mapOrderToDashboardAction(o, userMap),
+      customerName: (o.userId && userMap.get(String(o.userId))) || "Khách vãng lai",
     }));
+
+    const pendingOrderUserIds = [
+      ...new Set(
+        pendingOrderDocs
+          .map((o) => (o.userId ? String(o.userId) : null))
+          .filter(Boolean),
+      ),
+    ].filter((id) => !userMap.has(id));
+    if (pendingOrderUserIds.length) {
+      const pendingUsers = await User.find({ _id: { $in: pendingOrderUserIds } })
+        .select({ _id: 1, fullName: 1 })
+        .lean();
+      pendingUsers.forEach((u) => userMap.set(String(u._id), u.fullName || null));
+    }
+
+    const pendingOrders = pendingOrderDocs.map((o) => mapOrderToDashboardAction(o, userMap));
+
+    const pendingReservationTableIds = [
+      ...new Set(
+        pendingReservationDocs
+          .map((reservation) => (reservation.tableId ? String(reservation.tableId) : null))
+          .filter(Boolean),
+      ),
+    ];
+    const reservationTables = pendingReservationTableIds.length
+      ? await Table.find({ _id: { $in: pendingReservationTableIds }, restaurantId: rid })
+          .select({ _id: 1, code: 1 })
+          .lean()
+      : [];
+    const reservationTableMap = new Map(
+      reservationTables.map((table) => [String(table._id), table.code || null]),
+    );
+    const pendingReservations = pendingReservationDocs.map((reservation) => ({
+      id: String(reservation._id),
+      orderCode: reservation.orderCode || null,
+      customerName: reservation.customerName || null,
+      customerPhone: reservation.customerPhone || null,
+      tableCode: reservationTableMap.get(String(reservation.tableId)) || null,
+      partySize: Number(reservation.partySize || 0),
+      timeTo: reservation.timeTo || null,
+      status: reservation.status || "pending_payment",
+      depositStatus: reservation.depositStatus || "pending",
+      depositAmount: Number(reservation.depositAmount || 0),
+      note: reservation.note || null,
+      createdAt: reservation.createdAt || null,
+    }));
+
+    const pendingSupportRequests = [];
+    for (const order of pendingSupportOrderDocs) {
+      for (const req of order.customerRequests || []) {
+        if (String(req?.status || "").toUpperCase() !== "PENDING") continue;
+        pendingSupportRequests.push(mapSupportRequestForDashboard(order, req));
+      }
+    }
+    pendingSupportRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const supplyIds = [
       ...new Set(
@@ -1159,6 +1278,12 @@ export const OrderQuery = {
       feedbackItems,
       occupancyHeatmap,
       staffPerformance,
+      pendingOrders,
+      pendingReservations,
+      pendingSupportRequests: pendingSupportRequests.slice(0, 5),
+      pendingOrderCount: Number(pendingOrderTotal || pendingOrders.length),
+      pendingReservationCount: Number(pendingReservationTotal || pendingReservations.length),
+      pendingSupportRequestCount: pendingSupportRequests.length,
     };
   },
 

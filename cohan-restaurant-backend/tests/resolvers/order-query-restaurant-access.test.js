@@ -8,7 +8,7 @@ const modelMocks = vi.hoisted(() => ({
     countDocuments: vi.fn(),
   },
   User: { find: vi.fn() },
-  Table: { countDocuments: vi.fn(), findOne: vi.fn() },
+  Table: { countDocuments: vi.fn(), findOne: vi.fn(), find: vi.fn() },
   Customer: { countDocuments: vi.fn() },
   MenuItem: { countDocuments: vi.fn() },
   StockItem: { find: vi.fn() },
@@ -17,6 +17,7 @@ const modelMocks = vi.hoisted(() => ({
   Staff: { countDocuments: vi.fn(), find: vi.fn() },
   Review: { find: vi.fn() },
   KitchenOrderWorkItem: { find: vi.fn() },
+  Reservation: { find: vi.fn(), countDocuments: vi.fn() },
 }));
 
 const guardMocks = vi.hoisted(() => ({
@@ -277,7 +278,13 @@ describe("OrderQuery restaurant access guard", () => {
     modelMocks.Order.find
       .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
       .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
+      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) })
+      .mockReturnValueOnce(buildFindChain([]))
+      .mockReturnValueOnce(buildFindChain([]));
+    modelMocks.Reservation.find.mockReturnValue(buildFindChain([]));
+    modelMocks.Reservation.countDocuments.mockResolvedValue(0);
+    modelMocks.Order.countDocuments.mockResolvedValue(0);
+    modelMocks.Table.find.mockReturnValue(buildFindChain([]));
     modelMocks.Table.countDocuments.mockResolvedValue(0);
     modelMocks.MenuItem.countDocuments.mockResolvedValue(0);
     modelMocks.Customer.countDocuments.mockResolvedValue(0);

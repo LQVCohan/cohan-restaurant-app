@@ -778,6 +778,35 @@ type DashboardTopDish {
   revenue: Float!
 }
 
+
+
+type DashboardPendingOrder {
+  id: ID!
+  orderCode: String
+  customerName: String
+  orderType: String
+  tableCode: String
+  status: String
+  total: Float!
+  createdAt: DateTime
+  itemNames: [String!]!
+}
+
+type DashboardPendingReservation {
+  id: ID!
+  orderCode: String
+  customerName: String
+  customerPhone: String
+  tableCode: String
+  partySize: Int!
+  timeTo: DateTime
+  status: String!
+  depositStatus: String!
+  depositAmount: Int!
+  note: String
+  createdAt: DateTime
+}
+
 type DashboardRecentOrder {
   id: ID!
   orderCode: String
@@ -848,6 +877,12 @@ type ManagerDashboard {
   feedbackItems: [DashboardFeedbackItem!]!
   occupancyHeatmap: [DashboardOccupancyPoint!]!
   staffPerformance: [DashboardStaffPerformance!]!
+  pendingOrders: [DashboardPendingOrder!]!
+  pendingReservations: [DashboardPendingReservation!]!
+  pendingSupportRequests: [CustomerServiceRequest!]!
+  pendingOrderCount: Int!
+  pendingReservationCount: Int!
+  pendingSupportRequestCount: Int!
 }
 
 type ReportCountBucket {

@@ -11,10 +11,13 @@ import {
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "../../../hooks/useDashboard";
+import { useDashboardActionQueue } from "../../../hooks/useDashboardActionQueue";
 import StatsGrid from "./components/StatsGrid";
 import RevenueChart from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders";
 import TopDishes from "./components/TopDishes";
+import DashboardActionQueue from "./components/DashboardActionQueue";
+import DashboardSupportQueue from "./components/DashboardSupportQueue";
 import ManagerPerformancePanel from "../Performance/ManagerPerformancePanel";
 import "./Dashboard.scss";
 
@@ -44,12 +47,29 @@ const Dashboard = () => {
     recentOrders,
     topDishes,
     lowStockItems,
+    pendingOrders,
+    pendingReservations,
+    pendingSupportRequests,
+    pendingOrderCount,
+    pendingReservationCount,
+    pendingSupportRequestCount,
+    refetchDashboard,
   } = useDashboard();
+
+  const dashboardQueue = useDashboardActionQueue({
+    restaurantId: selectedRestaurantId,
+    refetchDashboard,
+  });
 
   const safeRevenueTrend = Array.isArray(revenueTrend) ? revenueTrend : [];
   const safeRecentOrders = Array.isArray(recentOrders) ? recentOrders : [];
   const safeTopDishes = Array.isArray(topDishes) ? topDishes : [];
   const safeLowStockItems = Array.isArray(lowStockItems) ? lowStockItems : [];
+  const safePendingOrders = Array.isArray(pendingOrders) ? pendingOrders : [];
+  const safePendingReservations = Array.isArray(pendingReservations) ? pendingReservations : [];
+  const safePendingSupportRequests = Array.isArray(pendingSupportRequests)
+    ? pendingSupportRequests
+    : [];
   const hasRevenue = safeRevenueTrend.some(
     (item) => Number(item?.current || 0) > 0,
   );
@@ -89,20 +109,27 @@ const Dashboard = () => {
       ? "warning"
       : "healthy";
 
-  const navigateManagerPage = (page) => {
+  const navigateManagerPage = (page, query = {}) => {
+    if (!page || typeof window === "undefined") return;
     window.dispatchEvent(
       new CustomEvent("manager:navigate", {
         detail: {
           page,
-          source: "dashboard-empty-state",
+          query,
+          source: "dashboard",
         },
       }),
     );
+    if (window.location.hash !== `#${page}`) {
+      window.location.hash = page;
+    }
   };
 
   const handleGoToMenu = () => navigateManagerPage("menu");
   const handleGoToTables = () => navigateManagerPage("tables");
   const handleGoToStaff = () => navigateManagerPage("staff");
+  const handleGoToOrders = () => navigateManagerPage("orders");
+  const handleGoToHandoff = () => navigateManagerPage("ai-handoff");
 
   return (
     <div className="manager-dashboard">
@@ -205,6 +232,21 @@ const Dashboard = () => {
         alertsCount={alertsCount}
       />
 
+      <DashboardActionQueue
+        orders={safePendingOrders}
+        reservations={safePendingReservations}
+        counts={{ orders: pendingOrderCount, reservations: pendingReservationCount }}
+        loading={loading}
+        error={error}
+        busyKey={dashboardQueue.busyKey}
+        onConfirmOrder={dashboardQueue.confirmOrder}
+        onRejectOrder={dashboardQueue.rejectOrder}
+        onConfirmReservation={dashboardQueue.confirmReservation}
+        onCancelReservation={dashboardQueue.cancelReservation}
+        onOpenOrders={handleGoToOrders}
+        onOpenTables={handleGoToTables}
+      />
+
       <section className="dashboard-operations-grid" aria-label="Khu vực vận hành chính">
         <article className="dashboard-card dashboard-card--primary-orders">
           <div className="dashboard-card__head">
@@ -229,6 +271,17 @@ const Dashboard = () => {
         </article>
 
         <aside className="dashboard-side-stack" aria-label="Trạng thái vận hành và cảnh báo">
+          <DashboardSupportQueue
+            requests={safePendingSupportRequests}
+            count={pendingSupportRequestCount}
+            loading={loading}
+            error={error}
+            busyKey={dashboardQueue.busyKey}
+            onAcknowledge={dashboardQueue.acknowledgeSupport}
+            onResolve={dashboardQueue.resolveSupport}
+            onOpenHandoff={handleGoToHandoff}
+          />
+
           <article className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}>
             <div className="dashboard-card__head">
               <div>
