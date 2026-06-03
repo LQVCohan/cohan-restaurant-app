@@ -8,6 +8,7 @@
 @import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @import "./components/Customer/TableBooking/TableBooking.product.css";
 @import "./components/Customer/AddressPage/AddressPage.product.css";
+@import "./components/Customer/FavoritePage/FavoritePage.product.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
