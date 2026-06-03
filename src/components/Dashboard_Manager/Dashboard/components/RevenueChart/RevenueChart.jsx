@@ -8,10 +8,16 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
 import "./RevenueChart.scss";
 
-const formatCurrency = (val) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(Number(val || 0));
+const formatCurrency = (val) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(val || 0));
+
 const formatCompactVND = (value) => {
   const num = Number(value || 0);
   if (num === 0) return "0đ";
@@ -20,30 +26,65 @@ const formatCompactVND = (value) => {
   return `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")}tr`;
 };
 
+const RevenueChartSkeleton = () => (
+  <div className="revenue-chart-skeleton" role="status" aria-live="polite">
+    <span className="revenue-chart-skeleton__amount" />
+    <span className="revenue-chart-skeleton__plot" />
+    <span className="sr-only">Đang tải dữ liệu doanh thu</span>
+  </div>
+);
+
 const RevenueChart = ({ data = [], loading, compact = false }) => {
+  const safeData = Array.isArray(data) ? data : [];
+  const hasRevenue = safeData.some((item) => Number(item?.current || 0) > 0);
+
   const summary = useMemo(() => {
-    const current = data.reduce((sum, x) => sum + Number(x.current || 0), 0);
-    const previous = data.reduce((sum, x) => sum + Number(x.previous || 0), 0);
-    const growth = previous > 0 ? ((current - previous) / previous) * 100 : 0;
-    return { current, growth, isPositive: growth >= 0 };
-  }, [data]);
+    const current = safeData.reduce((sum, x) => sum + Number(x.current || 0), 0);
+    const previous = safeData.reduce((sum, x) => sum + Number(x.previous || 0), 0);
+    const hasComparison = previous > 0;
+    const growth = hasComparison ? ((current - previous) / previous) * 100 : null;
+    return { current, growth, isPositive: Number(growth || 0) >= 0, hasComparison };
+  }, [safeData]);
+
+  if (loading) return <RevenueChartSkeleton />;
+
+  if (!hasRevenue) {
+    return (
+      <div className="revenue-chart-empty" role="status" aria-live="polite">
+        <span className="revenue-chart-empty__icon" aria-hidden="true">
+          <BarChart3 size={18} />
+        </span>
+        <strong>{formatCurrency(0)}</strong>
+        <p>Chưa có doanh thu trong khoảng thời gian này.</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`revenue-chart-widget ${compact ? "revenue-chart-widget--compact" : ""}`}>
       <div className="widget-header">
-        <h3 className="widget-title">Tổng doanh thu</h3>
-        <div className={`growth-badge ${summary.isPositive ? "positive" : "negative"}`}><span>{summary.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}</span><span>{Math.abs(summary.growth).toFixed(1)}%</span></div>
+        <div>
+          <h3 className="widget-title">Tổng doanh thu</h3>
+          <p className="total-amount">{formatCurrency(summary.current)}</p>
+        </div>
+        {summary.hasComparison ? (
+          <div className={`growth-badge ${summary.isPositive ? "positive" : "negative"}`}>
+            <span aria-hidden="true">{summary.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}</span>
+            <span>{Math.abs(summary.growth).toFixed(1)}%</span>
+          </div>
+        ) : (
+          <span className="comparison-note">Chưa có kỳ đối chiếu</span>
+        )}
       </div>
-      <p className="total-amount">{loading ? "..." : formatCurrency(summary.current)}</p>
 
-      <ResponsiveContainer width="100%" height={compact ? 240 : 260}>
-        <AreaChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-          <XAxis dataKey="key" axisLine={false} tickLine={false} />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} />
-          <Tooltip formatter={(v) => formatCurrency(v)} />
-          <Area type="monotone" dataKey="previous" stroke="#94a3b8" fillOpacity={0} />
-          <Area type="monotone" dataKey="current" stroke="#2563eb" fillOpacity={0.2} fill="#2563eb" />
+      <ResponsiveContainer width="100%" height={compact ? 220 : 260}>
+        <AreaChart data={safeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee7dc" />
+          <XAxis dataKey="key" axisLine={false} tickLine={false} tick={{ fill: "#78716c", fontSize: 12 }} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} tick={{ fill: "#78716c", fontSize: 12 }} />
+          <Tooltip formatter={(v) => formatCurrency(v)} labelStyle={{ color: "#1f2933" }} />
+          {summary.hasComparison ? <Area type="monotone" dataKey="previous" stroke="#a8a29e" fillOpacity={0} strokeWidth={2} /> : null}
+          <Area type="monotone" dataKey="current" stroke="#b45309" strokeWidth={2.5} fillOpacity={0.16} fill="#b45309" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

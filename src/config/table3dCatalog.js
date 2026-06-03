@@ -263,8 +263,12 @@ export const getModelAssetSummary = (model) => {
       license: "—",
       dimensions: "",
       modelKey: "—",
+      badges: [],
+      dimensionsLabel: "",
     };
   }
+
+  const dimensionsLabel = formatDimensionsCm(model.dimensionsCm);
 
   return {
     has3DModel: Boolean(model.modelUrl && String(model.modelUrl).trim()),
@@ -272,8 +276,10 @@ export const getModelAssetSummary = (model) => {
     source: model.sourceLabel || model.source || "Không rõ nguồn",
     sourceUrl: model.source || "",
     license: model.licenseLabel || "Chưa rõ license",
-    dimensions: formatDimensionsCm(model.dimensionsCm),
+    dimensions: dimensionsLabel,
+    dimensionsLabel,
     modelKey: model.key || "—",
+    badges: getModelAssetBadges(model),
   };
 };
 
@@ -301,16 +307,4 @@ export const getModelAssetBadges = (model) => {
 
   if (model.licenseLabel) badges.push(model.licenseLabel);
   return [...new Set(badges)];
-};
-
-export const getModelAssetSummary = (model) => {
-  const has3DModel = canOpenModelViewerAr(model);
-  return {
-    has3DModel,
-    arReady: has3DModel,
-    source: model?.source || model?.sourceLabel || "",
-    modelKey: model?.key || "",
-    badges: getModelAssetBadges(model),
-    dimensionsLabel: formatDimensionsCm(model?.dimensionsCm),
-  };
 };

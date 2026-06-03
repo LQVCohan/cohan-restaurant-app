@@ -7,6 +7,7 @@ import {
   Store,
   ShieldAlert,
   CircleCheck,
+  ClipboardList,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "../../../hooks/useDashboard";
@@ -104,7 +105,7 @@ const Dashboard = () => {
   const handleGoToStaff = () => navigateManagerPage("staff");
 
   return (
-    <main className="manager-dashboard">
+    <div className="manager-dashboard">
       <section
         className="dashboard-compact-header"
         aria-labelledby="dashboard-title"
@@ -113,7 +114,7 @@ const Dashboard = () => {
           <p className="dashboard-compact-header__greeting">{greetingText}</p>
           <h1 id="dashboard-title">Dashboard quản lý</h1>
           <p className="dashboard-compact-header__subtitle">
-            Theo dõi vận hành, đơn hàng và hiệu suất nhà hàng.
+            Trung tâm điều hành ca làm: doanh thu, đơn đang xử lý, tồn kho và hiệu suất.
           </p>
         </div>
 
@@ -174,8 +175,9 @@ const Dashboard = () => {
           </div>
         </label>
 
-        <div className="dashboard-filterbar__context">
-          <span>Đang xem: <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong></span>
+        <div className="dashboard-filterbar__context" aria-live="polite">
+          <span>Đang xem</span>
+          <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong>
         </div>
       </section>
 
@@ -203,7 +205,7 @@ const Dashboard = () => {
         alertsCount={alertsCount}
       />
 
-      <section className="dashboard-operations-grid">
+      <section className="dashboard-operations-grid" aria-label="Khu vực vận hành chính">
         <article className="dashboard-card dashboard-card--primary-orders">
           <div className="dashboard-card__head">
             <div>
@@ -226,10 +228,16 @@ const Dashboard = () => {
           />
         </article>
 
-        <aside className="dashboard-side-stack">
+        <aside className="dashboard-side-stack" aria-label="Trạng thái vận hành và cảnh báo">
           <article className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}>
             <div className="dashboard-card__head">
-              <h3>Cảnh báo vận hành</h3>
+              <div>
+                <h3>Cảnh báo vận hành</h3>
+                <p>Tồn kho và tín hiệu cần chú ý trong ca.</p>
+              </div>
+              <span className={`alert-count alert-count--${alertsCardState}`}>
+                {loading ? "Đang kiểm" : `${alertsCount} cảnh báo`}
+              </span>
             </div>
             {loading ? (
               <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
@@ -252,6 +260,11 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ))}
+                {safeLowStockItems.length > 3 ? (
+                  <p className="operational-alerts__more">
+                    Còn {safeLowStockItems.length - 3} cảnh báo khác trong kho.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
@@ -271,7 +284,12 @@ const Dashboard = () => {
             {loading ? (
               <div className="revenue-compact-empty" role="status" aria-live="polite">
                 <div className="revenue-compact-empty__icon">
-                  <CircleCheck size={16} />
+                  <ClipboardList size={16} />
+                </div>
+                <div className="revenue-compact-skeleton" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
                 </div>
                 <p className="revenue-compact-empty__text">Đang tải dữ liệu doanh thu...</p>
               </div>
@@ -356,7 +374,7 @@ const Dashboard = () => {
       ) : null}
 
       <StatsGrid stats={stats} isLoading={loading} variant="compact" />
-    </main>
+    </div>
   );
 };
 

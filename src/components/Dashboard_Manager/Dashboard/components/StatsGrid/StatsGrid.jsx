@@ -13,30 +13,39 @@ import {
 } from "lucide-react";
 import "./StatsGrid.scss";
 
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+    notation: Number(value || 0) >= 100000000 ? "compact" : "standard",
+  }).format(Number(value || 0));
+
 const CARD_CONFIG = {
   revenue: {
     label: "Doanh thu",
     icon: DollarSign,
     tone: "primary",
-    help: "Trong khoảng thời gian đã chọn",
+    help: "Theo bộ lọc thời gian",
+    format: formatCurrency,
   },
   orders: {
-    label: "Tổng đơn",
+    label: "Đơn hàng",
     icon: ShoppingBag,
     tone: "success",
-    help: "Trong khoảng thời gian đã chọn",
+    help: "Tổng đơn trong kỳ",
   },
   processing: {
-    label: "Đơn cần xử lý",
+    label: "Đang xử lý",
     icon: ChefHat,
     tone: "warning",
-    help: "Cần xử lý",
+    help: "Chờ bếp hoặc phục vụ",
   },
   alerts: {
-    label: "Cảnh báo vận hành",
+    label: "Cảnh báo",
     icon: AlertTriangle,
     tone: "neutral",
-    help: "Ổn định",
+    help: "Tồn kho và vận hành",
   },
   customers: { label: "Khách hàng", icon: Users, tone: "neutral" },
   tables: { label: "Số bàn", icon: TableProperties, tone: "neutral" },
@@ -60,15 +69,24 @@ const ORDER_BY_VARIANT = {
   ],
 };
 
+const StatSkeleton = ({ variant }) => (
+  <article className={`stat-card stat-card--skeleton stat-card--${variant}`} aria-hidden="true">
+    <span className="icon-badge" />
+    <span className="stat-skeleton stat-skeleton--label" />
+    <span className="stat-skeleton stat-skeleton--value" />
+    {variant === "summary" ? <span className="stat-skeleton stat-skeleton--help" /> : null}
+  </article>
+);
+
 const StatCard = ({ label, value, icon: Icon, tone, variant, help }) => (
-  <div className={`stat-card stat-card--${tone} stat-card--${variant}`}>
-    <span className="icon-badge">
+  <article className={`stat-card stat-card--${tone} stat-card--${variant}`}>
+    <span className="icon-badge" aria-hidden="true">
       {Icon ? <Icon size={variant === "summary" ? 18 : 16} /> : null}
     </span>
     <p className="stat-label">{label}</p>
-    <h3 className="stat-value">{value}</h3>
+    <p className="stat-value">{value}</p>
     {help ? <p className="stat-help">{help}</p> : null}
-  </div>
+  </article>
 );
 
 const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) => {
@@ -89,34 +107,33 @@ const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) =
 
     if (key !== "alerts") return baseConfig;
 
-    if (isLoading) {
-      return {
-        ...baseConfig,
-        icon: AlertTriangle,
-        tone: "neutral",
-        help: "Đang tải",
-      };
-    }
-
     const count = Number(alertsCount || 0);
 
     return {
       ...baseConfig,
       icon: count > 0 ? AlertTriangle : CircleCheck,
       tone: count > 0 ? "danger" : "success",
-      help: count > 0 ? "Cần theo dõi" : "Ổn định",
+      help: count > 0 ? "Cần theo dõi" : "Vận hành ổn định",
     };
   };
 
   return (
-    <div className={`stats-grid-container stats-grid-container--${variant}`}>
+    <section
+      className={`stats-grid-container stats-grid-container--${variant}`}
+      aria-label={variant === "summary" ? "Chỉ số vận hành chính" : "Thông tin thiết lập vận hành"}
+    >
       {keys.map((key) => {
+        if (isLoading) return <StatSkeleton key={key} variant={variant} />;
+
         const config = getCardConfig(key);
+        const rawValue = getValue(key);
+        const formattedValue = config.format ? config.format(rawValue) : rawValue;
+
         return (
           <StatCard
             key={key}
             label={config.label}
-            value={isLoading ? "..." : getValue(key)}
+            value={formattedValue}
             icon={config.icon}
             tone={config.tone}
             variant={variant}
@@ -124,7 +141,7 @@ const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) =
           />
         );
       })}
-    </div>
+    </section>
   );
 };
 
