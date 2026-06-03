@@ -7,6 +7,7 @@
 @import "./components/common/AiChatbotWidget.product.css";
 @import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @import "./components/Customer/TableBooking/TableBooking.product.css";
+@import "./components/Customer/AddressPage/AddressPage.product.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
