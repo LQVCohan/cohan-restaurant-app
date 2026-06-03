@@ -253,6 +253,30 @@ export const getArUnavailableReason = (model) => {
   return "";
 };
 
+export const getModelAssetSummary = (model) => {
+  if (!model) {
+    return {
+      has3DModel: false,
+      arReady: false,
+      source: "Chưa chọn mẫu",
+      sourceUrl: "",
+      license: "—",
+      dimensions: "",
+      modelKey: "—",
+    };
+  }
+
+  return {
+    has3DModel: Boolean(model.modelUrl && String(model.modelUrl).trim()),
+    arReady: canOpenModelViewerAr(model),
+    source: model.sourceLabel || model.source || "Không rõ nguồn",
+    sourceUrl: model.source || "",
+    license: model.licenseLabel || "Chưa rõ license",
+    dimensions: formatDimensionsCm(model.dimensionsCm),
+    modelKey: model.key || "—",
+  };
+};
+
 export const getModelAssetBadges = (model) => {
   if (!model) return [];
   const badges = [];
