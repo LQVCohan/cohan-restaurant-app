@@ -24,7 +24,7 @@ const baseDashboard = {
   restaurants: [{ id: "res-1", name: "Cơm Nhà Cohan" }],
   selectedRestaurantId: "res-1",
   stats: {
-    revenue: 12500000,
+    revenue: "12.500.000 ₫",
     orders: 18,
     customers: 4,
     tables: 12,
@@ -80,6 +80,8 @@ describe("Dashboard manager command center", () => {
     expect(screen.getByLabelText("Chọn nhà hàng")).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn khoảng thời gian")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Đơn hàng gần đây" })).toBeInTheDocument();
+    expect(screen.getByText("12.500.000 ₫")).toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("#ORD-1001")).toBeInTheDocument();
     expect(screen.queryByText("#raw-order-id")).not.toBeInTheDocument();
   });

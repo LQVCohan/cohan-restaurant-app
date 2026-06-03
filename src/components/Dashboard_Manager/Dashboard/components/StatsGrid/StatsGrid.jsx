@@ -13,13 +13,21 @@ import {
 } from "lucide-react";
 import "./StatsGrid.scss";
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat("vi-VN", {
+const formatCurrency = (value) => {
+  if (typeof value === "string" && value.trim()) {
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue)) return value;
+  }
+
+  const numericValue = Number(value || 0);
+
+  return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
-    notation: Number(value || 0) >= 100000000 ? "compact" : "standard",
-  }).format(Number(value || 0));
+    notation: numericValue >= 100000000 ? "compact" : "standard",
+  }).format(numericValue);
+};
 
 const CARD_CONFIG = {
   revenue: {
