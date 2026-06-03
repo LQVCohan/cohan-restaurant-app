@@ -1,4 +1,5 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
+import { Buffer } from "buffer";
 import process from "process";
 import { GraphQLError } from "graphql";
 import { User } from "../../../models/index.js";
@@ -8,6 +9,7 @@ import { logEvent } from "../eventLog.service.js";
 
 const TARGET_EMAIL = "email";
 const TARGET_PHONE = "phone";
+const CONTACT_CHANGE_OTP_LENGTH = 6;
 const DELIVERY_STATUS = {
   SENT: "SENT",
   FAILED: "FAILED",
@@ -20,7 +22,7 @@ function graphQLError(message, code) {
 }
 
 function otpLength() {
-  return Math.max(4, Number(process.env.CONTACT_CHANGE_OTP_LENGTH || 6));
+  return CONTACT_CHANGE_OTP_LENGTH;
 }
 
 function ttlMs() {
@@ -172,6 +174,27 @@ function ensureAuthenticatedUser(user) {
   if (!user?._id && !user?.id) throw graphQLError("Authentication required.", "AUTH_REQUIRED");
 }
 
+function setContactChangeOtp(user, value) {
+  if (typeof user?.set === "function") {
+    user.set("contactChangeOtp", value);
+  } else {
+    user.contactChangeOtp = value;
+  }
+}
+
+function deliveryMessage(delivery, target, value) {
+  if (delivery.status === DELIVERY_STATUS.SENT) {
+    return `Mã OTP đã được gửi đến ${maskDestination(target, value)}.`;
+  }
+  if (delivery.status === DELIVERY_STATUS.COOLDOWN) {
+    return "Vui lòng chờ trước khi gửi lại mã.";
+  }
+  if (delivery.status === DELIVERY_STATUS.NOT_CONFIGURED) {
+    return "Chưa cấu hình kênh gửi OTP. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+  }
+  return "Không thể gửi mã OTP. Vui lòng thử lại sau.";
+}
+
 export async function requestContactChangeOtp({ user, target, value, ctx } = {}) {
   ensureAuthenticatedUser(user);
   const normalizedTarget = normalizeTarget(target);
@@ -202,7 +225,7 @@ export async function requestContactChangeOtp({ user, target, value, ctx } = {})
   const otp = createOtp();
   const sentAt = new Date();
   const expiresAt = new Date(sentAt.getTime() + ttlMs());
-  fresh.contactChangeOtp = {
+  const pendingOtp = {
     target: normalizedTarget,
     value: normalizedValue,
     otpHash: hashOtp({ userId: fresh._id, target: normalizedTarget, value: normalizedValue, otp }),
@@ -211,7 +234,6 @@ export async function requestContactChangeOtp({ user, target, value, ctx } = {})
     lastSentAt: sentAt,
     requestedAt: sentAt,
   };
-  await fresh.save();
 
   const delivery = { status: DELIVERY_STATUS.FAILED, sent: false, skipped: false, provider: null, error: null };
   try {
@@ -241,6 +263,13 @@ export async function requestContactChangeOtp({ user, target, value, ctx } = {})
     delivery.error = err?.extensions?.code || err?.code || err?.message || "CONTACT_CHANGE_DELIVERY_FAILED";
   }
 
+  if (delivery.status === DELIVERY_STATUS.SENT) {
+    setContactChangeOtp(fresh, pendingOtp);
+  } else {
+    setContactChangeOtp(fresh, undefined);
+  }
+  await fresh.save();
+
   await writeAudit({ ctx, user: fresh, verb: "account.contact_change_otp.request", target: normalizedTarget, value: normalizedValue, status: delivery.status === DELIVERY_STATUS.SENT ? "success" : "warning", delivery });
 
   return resultPayload({
@@ -248,9 +277,7 @@ export async function requestContactChangeOtp({ user, target, value, ctx } = {})
     target: normalizedTarget,
     value: normalizedValue,
     status: delivery.status,
-    message: delivery.status === DELIVERY_STATUS.SENT
-      ? `Mã OTP đã được gửi đến ${maskDestination(normalizedTarget, normalizedValue)}.`
-      : "Không thể gửi mã OTP. Vui lòng kiểm tra cấu hình email/SMS.",
+    message: deliveryMessage(delivery, normalizedTarget, normalizedValue),
   });
 }
 
@@ -271,7 +298,7 @@ export async function confirmContactChangeOtp({ user, target, otp, ctx } = {}) {
 
   const pendingValue = normalizeValue(normalizedTarget, pending.value);
   if (!pending.expiresAt || new Date(pending.expiresAt).getTime() <= Date.now()) {
-    fresh.contactChangeOtp = undefined;
+    setContactChangeOtp(fresh, undefined);
     await fresh.save();
     await writeAudit({ ctx, user: fresh, verb: "account.contact_change_otp.expired", target: normalizedTarget, value: pendingValue, status: "warning", delivery: { status: "EXPIRED" } });
     throw graphQLError("OTP expired.", "CONTACT_CHANGE_OTP_EXPIRED");
@@ -279,7 +306,7 @@ export async function confirmContactChangeOtp({ user, target, otp, ctx } = {}) {
 
   const attempts = Number(pending.attempts || 0);
   if (attempts >= maxAttempts()) {
-    fresh.contactChangeOtp = undefined;
+    setContactChangeOtp(fresh, undefined);
     await fresh.save();
     await writeAudit({ ctx, user: fresh, verb: "account.contact_change_otp.max_attempts", target: normalizedTarget, value: pendingValue, status: "warning", delivery: { status: "MAX_ATTEMPTS" }, attempts });
     throw graphQLError("OTP max attempts exceeded.", "CONTACT_CHANGE_OTP_MAX_ATTEMPTS");
@@ -289,7 +316,7 @@ export async function confirmContactChangeOtp({ user, target, otp, ctx } = {}) {
   if (!hashesMatch(incomingHash, pending.otpHash)) {
     const nextAttempts = attempts + 1;
     if (nextAttempts >= maxAttempts()) {
-      fresh.contactChangeOtp = undefined;
+      setContactChangeOtp(fresh, undefined);
     } else {
       fresh.contactChangeOtp.attempts = nextAttempts;
     }
@@ -316,7 +343,7 @@ export async function confirmContactChangeOtp({ user, target, otp, ctx } = {}) {
     fresh.phoneVerifyTokenHash = null;
     fresh.phoneVerifyTokenExp = null;
   }
-  fresh.contactChangeOtp = undefined;
+  setContactChangeOtp(fresh, undefined);
   await fresh.save();
 
   await writeAudit({
@@ -339,7 +366,7 @@ export async function cancelContactChangeOtp({ user, target, ctx } = {}) {
   if (!fresh) throw graphQLError("User not found.", "USER_NOT_FOUND");
   const pendingValue = fresh.contactChangeOtp?.target === normalizedTarget ? fresh.contactChangeOtp?.value : null;
   if (pendingValue) {
-    fresh.contactChangeOtp = undefined;
+    setContactChangeOtp(fresh, undefined);
     await fresh.save();
   }
   await writeAudit({ ctx, user: fresh, verb: "account.contact_change_otp.cancel", target: normalizedTarget, value: pendingValue || fresh[normalizedTarget] || "", status: "success", delivery: { status: "CANCELLED" } });

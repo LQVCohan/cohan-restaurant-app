@@ -18,6 +18,10 @@ class MockUserDoc {
     return this;
   }
 
+  set(path, value) {
+    this[path] = value;
+  }
+
   populate() {
     return this;
   }
@@ -183,6 +187,24 @@ describe("contact change OTP", () => {
     await expect(requestContactChangeOtp({ user, target: "EMAIL", value: "used@example.com", ctx: { user } })).rejects.toMatchObject({ extensions: { code: "EMAIL_ALREADY_IN_USE" } });
   });
 
+  it("does not keep pending OTP when email provider is not configured", async () => {
+    const user = addUser({ _id: "u1", email: "old@example.com" });
+    const { mailer } = await import("../../lib/mailer.js");
+    const { requestContactChangeOtp } = await import("../../src/services/auth/contactChangeOtp.service.js");
+    mailer.sendMail.mockImplementationOnce(async (message) => {
+      stores.lastMail = message;
+      return { accepted: [], rejected: [message.to], messageId: null, skipped: true };
+    });
+
+    const result = await requestContactChangeOtp({ user, target: "EMAIL", value: "new@example.com", ctx: { user } });
+
+    expect(result).toMatchObject({ ok: false, target: "EMAIL", status: "NOT_CONFIGURED" });
+    expect(user.contactChangeOtp).toBeUndefined();
+
+    const retry = await requestContactChangeOtp({ user, target: "EMAIL", value: "new@example.com", ctx: { user } });
+    expect(retry.status).toBe("SENT");
+  });
+
   it("requests and confirms phone OTP", async () => {
     const user = addUser({ _id: "u1", phone: "0900000000" });
     const { requestContactChangeOtp, confirmContactChangeOtp } = await import("../../src/services/auth/contactChangeOtp.service.js");
@@ -203,6 +225,21 @@ describe("contact change OTP", () => {
     const { requestContactChangeOtp } = await import("../../src/services/auth/contactChangeOtp.service.js");
 
     await expect(requestContactChangeOtp({ user, target: "PHONE", value: "0912345678", ctx: { user } })).rejects.toMatchObject({ extensions: { code: "PHONE_ALREADY_IN_USE" } });
+  });
+
+  it("does not keep pending OTP when SMS provider is not configured", async () => {
+    const user = addUser({ _id: "u1", phone: "0900000000" });
+    const smsService = await import("../../src/services/notifications/sms.service.js");
+    const { requestContactChangeOtp } = await import("../../src/services/auth/contactChangeOtp.service.js");
+    smsService.sendSms.mockImplementationOnce(async (message) => {
+      stores.lastSms = message;
+      return { provider: "twilio", sent: false, skipped: true, error: "SMS_PROVIDER_NOT_CONFIGURED" };
+    });
+
+    const result = await requestContactChangeOtp({ user, target: "PHONE", value: "0912345678", ctx: { user } });
+
+    expect(result).toMatchObject({ ok: false, target: "PHONE", status: "NOT_CONFIGURED" });
+    expect(user.contactChangeOtp).toBeUndefined();
   });
 
   it("returns COOLDOWN for repeated requests inside cooldown window", async () => {
@@ -231,6 +268,13 @@ describe("contact change OTP", () => {
   it("requires authentication in resolver", async () => {
     const resolver = (await import("../../graphql/resolvers/auth/emailVerification.mutation.js")).default;
     await expect(resolver.requestContactChangeOtp(null, { input: { target: "EMAIL", value: "new@example.com" } }, { user: null })).rejects.toThrow("UNAUTHENTICATED");
+  });
+
+  it("blocks direct self-service email updates through updateUser", async () => {
+    const user = addUser({ _id: "u1", email: "old@example.com" });
+    const { UserMutation } = await import("../../graphql/resolvers/user/mutation.js");
+
+    await expect(UserMutation.updateUser(null, { input: { email: "new@example.com" } }, { user: { id: user._id } })).rejects.toMatchObject({ extensions: { code: "EMAIL_CHANGE_REQUIRES_OTP" } });
   });
 
   it("blocks direct self-service phone updates through updateUser", async () => {

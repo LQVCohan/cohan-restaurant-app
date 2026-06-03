@@ -247,15 +247,32 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     });
   };
 
+  const resetContactModal = () => ({
+    open: false,
+    target: "EMAIL",
+    step: "enter_value",
+    value: "",
+    otp: "",
+    message: "",
+    maskedDestination: "",
+    cooldownUntil: null,
+  });
+
   const closeContactModal = async () => {
-    if (contactModal.open) {
+    const shouldCancel =
+      contactModal.open &&
+      contactModal.step === "enter_otp" &&
+      Boolean(contactModal.maskedDestination);
+
+    if (shouldCancel) {
       try {
         await cancelContactChangeOtp({ variables: { target: contactModal.target } });
       } catch (err) {
         console.warn("Không thể hủy OTP đang chờ:", err?.message);
       }
     }
-    setContactModal((prev) => ({ ...prev, open: false }));
+
+    setContactModal(resetContactModal());
   };
 
   const handleRequestContactOtp = async () => {
@@ -269,12 +286,16 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
       });
       const result = data?.requestContactChangeOtp;
       const sent = result?.status === "SENT" && result?.ok;
+      let nextStep = "enter_value";
+      if (sent) nextStep = "enter_otp";
+      else if (result?.status === "COOLDOWN" && contactModal.step === "enter_otp") nextStep = "enter_otp";
+
       setContactModal((prev) => ({
         ...prev,
-        step: sent ? "enter_otp" : "enter_value",
-        otp: "",
-        message: result?.message || (sent ? "Mã OTP đã được gửi." : "Không thể gửi mã OTP."),
-        maskedDestination: result?.maskedDestination || "",
+        step: nextStep,
+        otp: sent ? "" : prev.otp,
+        message: result?.message || (sent ? "Mã OTP đã được gửi." : "Không thể gửi mã OTP. Vui lòng thử lại sau."),
+        maskedDestination: result?.maskedDestination || (nextStep === "enter_otp" ? prev.maskedDestination : ""),
         cooldownUntil: result?.cooldownUntil || null,
       }));
     } catch (err) {
@@ -289,7 +310,7 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
         variables: { input: { target: contactModal.target, otp: contactModal.otp } },
       });
       alert(contactModal.target === "EMAIL" ? "Cập nhật email thành công!" : "Cập nhật số điện thoại thành công!");
-      setContactModal({ open: false, target: "EMAIL", step: "enter_value", value: "", otp: "", message: "", maskedDestination: "", cooldownUntil: null });
+      setContactModal(resetContactModal());
       refetchUser();
     } catch (err) {
       console.error(err);
