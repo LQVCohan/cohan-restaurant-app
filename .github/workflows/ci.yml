@@ -40,14 +40,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm run test:frontend --if-present
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Test Menu RBAC
         run: npm run test:menu-rbac --if-present
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm run test:smoke
 
   backend:
     name: backend
