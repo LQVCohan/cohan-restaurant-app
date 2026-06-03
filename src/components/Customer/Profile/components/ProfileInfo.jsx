@@ -11,7 +11,10 @@ const UPDATE_USER = gql`
     updateUser(input: $input) {
       id
       fullName
+      email
       phone
+      emailVerified
+      phoneVerified
       avatarUrl
       address {
         line1
@@ -22,6 +25,40 @@ const UPDATE_USER = gql`
         country
       }
     }
+  }
+`;
+
+
+const REQUEST_CONTACT_CHANGE_OTP = gql`
+  mutation RequestContactChangeOtp($input: RequestContactChangeOtpInput!) {
+    requestContactChangeOtp(input: $input) {
+      ok
+      target
+      maskedDestination
+      status
+      message
+      cooldownUntil
+    }
+  }
+`;
+
+const CONFIRM_CONTACT_CHANGE_OTP = gql`
+  mutation ConfirmContactChangeOtp($input: ConfirmContactChangeOtpInput!) {
+    confirmContactChangeOtp(input: $input) {
+      id
+      email
+      phone
+      emailVerified
+      phoneVerified
+      emailVerifiedAt
+      phoneVerifiedAt
+    }
+  }
+`;
+
+const CANCEL_CONTACT_CHANGE_OTP = gql`
+  mutation CancelContactChangeOtp($target: ContactChangeTarget!) {
+    cancelContactChangeOtp(target: $target)
   }
 `;
 
@@ -70,6 +107,11 @@ const ProfileInfo = ({
   const [savingProfile, setSavingProfile] = useState(false);
   const [createWallet, { loading: creatingWallet }] =
     useMutation(CREATE_WALLET);
+  const [requestContactChangeOtp, { loading: requestingContactOtp }] =
+    useMutation(REQUEST_CONTACT_CHANGE_OTP);
+  const [confirmContactChangeOtp, { loading: confirmingContactOtp }] =
+    useMutation(CONFIRM_CONTACT_CHANGE_OTP);
+  const [cancelContactChangeOtp] = useMutation(CANCEL_CONTACT_CHANGE_OTP);
   const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
     variables: { limit: 10, offset: 0 },
     skip: !user?.wallet,
@@ -79,13 +121,22 @@ const ProfileInfo = ({
   // Form State
   const [formData, setFormData] = useState({
     fullName: "",
-    phone: "",
     line1: "",
     city: "",
     district: "",
     ward: "",
   });
   const [topupAmount, setTopupAmount] = useState("100000");
+  const [contactModal, setContactModal] = useState({
+    open: false,
+    target: "EMAIL",
+    step: "enter_value",
+    value: "",
+    otp: "",
+    message: "",
+    maskedDestination: "",
+    cooldownUntil: null,
+  });
   const toppingUp = false;
 
   // Address Hook
@@ -107,7 +158,6 @@ const ProfileInfo = ({
     if (user) {
       setFormData({
         fullName: user.fullName || "",
-        phone: user.phone || "",
         line1: user.address?.line1 || "",
         city: user.address?.city || "",
         district: user.address?.district || "",
@@ -214,6 +264,91 @@ const ProfileInfo = ({
     }
   };
 
+  const openContactModal = (target) => {
+    setContactModal({
+      open: true,
+      target,
+      step: "enter_value",
+      value: "",
+      otp: "",
+      message: "",
+      maskedDestination: "",
+      cooldownUntil: null,
+    });
+  };
+
+  const resetContactModal = () => ({
+    open: false,
+    target: "EMAIL",
+    step: "enter_value",
+    value: "",
+    otp: "",
+    message: "",
+    maskedDestination: "",
+    cooldownUntil: null,
+  });
+
+  const closeContactModal = async () => {
+    const shouldCancel =
+      contactModal.open &&
+      contactModal.step === "enter_otp" &&
+      Boolean(contactModal.maskedDestination);
+
+    if (shouldCancel) {
+      try {
+        await cancelContactChangeOtp({ variables: { target: contactModal.target } });
+      } catch (err) {
+        console.warn("Không thể hủy OTP đang chờ:", err?.message);
+      }
+    }
+
+    setContactModal(resetContactModal());
+  };
+
+  const handleRequestContactOtp = async () => {
+    if (!contactModal.value.trim()) {
+      alert(contactModal.target === "EMAIL" ? "Vui lòng nhập email mới." : "Vui lòng nhập số điện thoại mới.");
+      return;
+    }
+    try {
+      const { data } = await requestContactChangeOtp({
+        variables: { input: { target: contactModal.target, value: contactModal.value } },
+      });
+      const result = data?.requestContactChangeOtp;
+      const sent = result?.status === "SENT" && result?.ok;
+      let nextStep = "enter_value";
+      if (sent) nextStep = "enter_otp";
+      else if (result?.status === "COOLDOWN" && contactModal.step === "enter_otp") nextStep = "enter_otp";
+
+      setContactModal((prev) => ({
+        ...prev,
+        step: nextStep,
+        otp: sent ? "" : prev.otp,
+        message: result?.message || (sent ? "Mã OTP đã được gửi." : "Không thể gửi mã OTP. Vui lòng thử lại sau."),
+        maskedDestination: result?.maskedDestination || (nextStep === "enter_otp" ? prev.maskedDestination : ""),
+        cooldownUntil: result?.cooldownUntil || null,
+      }));
+    } catch (err) {
+      console.error(err);
+      alert("Không thể gửi OTP: " + err.message);
+    }
+  };
+
+  const handleConfirmContactOtp = async () => {
+    try {
+      await confirmContactChangeOtp({
+        variables: { input: { target: contactModal.target, otp: contactModal.otp } },
+      });
+      alert(contactModal.target === "EMAIL" ? "Cập nhật email thành công!" : "Cập nhật số điện thoại thành công!");
+      setContactModal(resetContactModal());
+      refetchUser();
+    } catch (err) {
+      console.error(err);
+      setContactModal((prev) => ({ ...prev, message: "Mã OTP không đúng hoặc đã hết hạn." }));
+      alert("Xác minh OTP thất bại: " + err.message);
+    }
+  };
+
   const handleTopupWallet = async () => {
     alert("Nạp ví tự động đang tạm tắt cho đến khi hoàn tất xác minh thanh toán.");
   };
@@ -273,36 +408,6 @@ const ProfileInfo = ({
               setFormData({ ...formData, fullName: e.target.value })
             }
           />
-        </div>
-
-        <div className="form-group">
-          <label>Số điện thoại</label>
-          <input
-            type="text"
-            className="form-input"
-            disabled={!isEditMode}
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Email</label>
-          <div className="input-with-icon">
-            <input
-              type="text"
-              disabled
-              value={user.email}
-              className="form-input disabled"
-            />
-            {user.emailVerified && (
-              <span className="verified-badge" title="Đã xác thực">
-                ✅
-              </span>
-            )}
-          </div>
         </div>
 
         {/* --- ĐỊA CHỈ --- */}
@@ -375,6 +480,115 @@ const ProfileInfo = ({
           </select>
         </div>
       </div>
+
+      <div className="contact-security-panel">
+        <div className="contact-security-header">
+          <div>
+            <h3>Bảo mật tài khoản</h3>
+            <p>Quản lý email đăng nhập và số điện thoại bằng mã OTP gửi đến thông tin mới.</p>
+          </div>
+        </div>
+
+        <div className="contact-summary-grid">
+          <div className="contact-summary-card">
+            <div>
+              <span className="contact-label">Email đăng nhập</span>
+              <strong>{user.email || "Chưa cập nhật"}</strong>
+              {user.emailVerified && <span className="contact-verified">Đã xác minh</span>}
+            </div>
+            <button type="button" className="btn-edit" onClick={() => openContactModal("EMAIL")}>
+              Đổi email
+            </button>
+          </div>
+
+          <div className="contact-summary-card">
+            <div>
+              <span className="contact-label">Số điện thoại</span>
+              <strong>{user.phone || "Chưa cập nhật"}</strong>
+              {user.phoneVerified && <span className="contact-verified">Đã xác minh</span>}
+            </div>
+            <button type="button" className="btn-edit" onClick={() => openContactModal("PHONE")}>
+              Đổi số điện thoại
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {contactModal.open && (
+        <div className="contact-modal-backdrop" role="presentation">
+          <div className="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+            <div className="contact-modal-header">
+              <div>
+                <h3 id="contact-modal-title">
+                  {contactModal.target === "EMAIL" ? "Đổi email đăng nhập" : "Đổi số điện thoại"}
+                </h3>
+                <p>
+                  {contactModal.step === "enter_value"
+                    ? contactModal.target === "EMAIL"
+                      ? "Nhập email mới để nhận mã OTP."
+                      : "Nhập số điện thoại mới để nhận mã OTP."
+                    : `Mã OTP đã được gửi đến ${contactModal.maskedDestination}.`}
+                </p>
+              </div>
+              <button type="button" className="contact-modal-close" onClick={closeContactModal} aria-label="Đóng">×</button>
+            </div>
+
+            {contactModal.message && <div className="contact-modal-message">{contactModal.message}</div>}
+            {contactModal.cooldownUntil && (
+              <div className="contact-modal-warning">
+                Vui lòng chờ trước khi gửi lại mã. Có thể gửi lại sau {new Date(contactModal.cooldownUntil).toLocaleTimeString("vi-VN")}.
+              </div>
+            )}
+
+            {contactModal.step === "enter_value" ? (
+              <div className="form-group">
+                <label>{contactModal.target === "EMAIL" ? "Nhập email mới" : "Nhập số điện thoại mới"}</label>
+                <input
+                  type={contactModal.target === "EMAIL" ? "email" : "tel"}
+                  className="form-input"
+                  value={contactModal.value}
+                  onChange={(e) => setContactModal((prev) => ({ ...prev, value: e.target.value, message: "", cooldownUntil: null }))}
+                  placeholder={contactModal.target === "EMAIL" ? "email-moi@example.com" : "0901234567"}
+                />
+                <button
+                  type="button"
+                  className="btn-save contact-modal-primary"
+                  onClick={handleRequestContactOtp}
+                  disabled={requestingContactOtp}
+                >
+                  {requestingContactOtp ? "Đang gửi mã..." : "Gửi mã OTP"}
+                </button>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>Nhập mã OTP</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="form-input otp-input"
+                  value={contactModal.otp}
+                  onChange={(e) => setContactModal((prev) => ({ ...prev, otp: e.target.value.replace(/\D/g, "").slice(0, 6), message: "" }))}
+                  placeholder="••••••"
+                />
+                <div className="contact-modal-actions">
+                  <button type="button" className="btn-cancel" onClick={handleRequestContactOtp} disabled={requestingContactOtp}>
+                    {requestingContactOtp ? "Đang gửi lại..." : "Gửi lại mã"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-save"
+                    onClick={handleConfirmContactOtp}
+                    disabled={confirmingContactOtp || contactModal.otp.length !== 6}
+                  >
+                    {confirmingContactOtp ? "Đang xác nhận..." : "Xác nhận thay đổi"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="wallet-panel">
         <div className="wallet-info">

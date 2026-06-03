@@ -192,6 +192,16 @@ const userSchema = BaseSchemaModel(
     },
     verificationLastRequestedAt: { type: Date, default: null },
 
+    contactChangeOtp: {
+      target: { type: String, enum: ["email", "phone"], default: null },
+      value: { type: String, trim: true, default: null },
+      otpHash: { type: String, default: null },
+      expiresAt: { type: Date, default: null },
+      attempts: { type: Number, default: 0, min: 0 },
+      lastSentAt: { type: Date, default: null },
+      requestedAt: { type: Date, default: null },
+    },
+
     lastLoginAt: { type: Date },
     lastLoginIp: { type: String },
 
