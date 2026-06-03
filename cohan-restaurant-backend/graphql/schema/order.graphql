@@ -241,6 +241,17 @@ type OrderItem {
   note: String
   priority: OrderPriority
   status: ItemStatus
+
+  station: String
+  kitchenEnteredAt: DateTime
+  preparingAt: DateTime
+  readyAt: DateTime
+  actualPrepMinutes: Float
+  targetPrepMinutes: Float
+  timeLevel: String
+  unaccepted: Boolean
+  unacceptedAfterMinutes: Float
+  unacceptedReason: String
 }
 type OrderItemReturnRequest {
   requestId: ID!

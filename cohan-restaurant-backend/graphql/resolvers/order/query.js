@@ -11,6 +11,7 @@ import {
   Promotion,
   Staff,
   Review,
+  KitchenOrderWorkItem,
 } from "../../../models/index.js";
 import { buildPricedOrderItems } from "../../../src/services/orderItemPricing.service.js";
 import { toId } from "../order/helper/orderUtils.js";
@@ -176,6 +177,72 @@ function groupOrdersByRootCode(orders = []) {
   });
 }
 
+function buildWorkItemKey(orderId, orderItemId) {
+  if (!orderId || !orderItemId) return null;
+  return `${String(orderId)}:${String(orderItemId)}`;
+}
+
+function sameId(left, right) {
+  return Boolean(left && right && String(left) === String(right));
+}
+
+async function attachKitchenWorkItemInfoToOrders({ rid, orders }) {
+  const slice = orders || [];
+  if (!rid || !slice.length) return slice;
+
+  const orderIds = slice.map((order) => order?._id).filter(Boolean);
+  if (!orderIds.length) return slice;
+
+  const workItems = await KitchenOrderWorkItem.find({
+    restaurantId: rid,
+    orderId: { $in: orderIds },
+  })
+    .select({
+      restaurantId: 1,
+      orderId: 1,
+      orderItemId: 1,
+      station: 1,
+      kitchenEnteredAt: 1,
+      preparingAt: 1,
+      readyAt: 1,
+      actualPrepMinutes: 1,
+      targetPrepMinutes: 1,
+      timeLevel: 1,
+      unaccepted: 1,
+      unacceptedAfterMinutes: 1,
+      unacceptedReason: 1,
+    })
+    .lean();
+
+  const byOrderItem = new Map(
+    workItems
+      .filter((workItem) => sameId(workItem?.restaurantId, rid))
+      .map((workItem) => [buildWorkItemKey(workItem.orderId, workItem.orderItemId), workItem])
+      .filter(([key]) => Boolean(key)),
+  );
+
+  return slice.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item) => {
+      const workItem = byOrderItem.get(buildWorkItemKey(order._id, item?._id));
+      if (!workItem) return item;
+      return {
+        ...item,
+        station: workItem.station || item?.station || null,
+        kitchenEnteredAt: workItem.kitchenEnteredAt || null,
+        preparingAt: workItem.preparingAt || null,
+        readyAt: workItem.readyAt || null,
+        actualPrepMinutes: workItem.actualPrepMinutes ?? null,
+        targetPrepMinutes: workItem.targetPrepMinutes ?? null,
+        timeLevel: workItem.timeLevel || null,
+        unaccepted: workItem.unaccepted === true,
+        unacceptedAfterMinutes: workItem.unacceptedAfterMinutes ?? null,
+        unacceptedReason: workItem.unacceptedReason || null,
+      };
+    }),
+  }));
+}
+
 async function attachCustomerInfoToOrders({ rid, orders }) {
   const slice = orders || [];
   if (!slice.length) return [];
@@ -249,9 +316,14 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
 
   const lastCursor = slice.length ? String(slice[slice.length - 1]._id) : null;
 
-  const withCustomer = await attachCustomerInfoToOrders({
+  const withKitchenWorkItems = await attachKitchenWorkItemInfoToOrders({
     rid,
     orders: slice,
+  });
+
+  const withCustomer = await attachCustomerInfoToOrders({
+    rid,
+    orders: withKitchenWorkItems,
   });
 
   const edges = withCustomer.map((o) => ({
