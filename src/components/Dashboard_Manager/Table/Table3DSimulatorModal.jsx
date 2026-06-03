@@ -29,6 +29,7 @@ const MODEL_VIEWER_SRC =
   "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
 
 const DEFAULT_ORBIT = { theta: 0, phi: 75, radius: 2.6 };
+const ALL_TABLE_TYPES = "all";
 
 const Table3DSimulatorModal = ({
   open,
@@ -38,8 +39,8 @@ const Table3DSimulatorModal = ({
   restaurantName,
   restaurantId,
 }) => {
-  const { modelsByType, loading, error, reload } = useTable3DModels();
-  const [tableType, setTableType] = useState(TABLE_3D_TYPE_OPTIONS[0].value);
+  const { models: catalogModels, modelsByType, loading, error, reload } = useTable3DModels();
+  const [tableType, setTableType] = useState(ALL_TABLE_TYPES);
   const [selectedModelKey, setSelectedModelKey] = useState("");
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, z: 0 });
@@ -49,8 +50,6 @@ const Table3DSimulatorModal = ({
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
   const [customModels, setCustomModels] = useState([]);
-  const [confirmedCameraPlacement, setConfirmedCameraPlacement] =
-    useState(null);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState("all");
@@ -67,21 +66,19 @@ const Table3DSimulatorModal = ({
     };
   }, []);
 
-  const models = useMemo(
-    () =>
-      (modelsByType[tableType] || []).filter(
-        (model) => model.tableType === tableType,
-      ),
-    [modelsByType, tableType],
-  );
+  const models = useMemo(() => {
+    if (tableType === ALL_TABLE_TYPES) return catalogModels || [];
+    return (modelsByType[tableType] || []).filter(
+      (model) => model.tableType === tableType,
+    );
+  }, [catalogModels, modelsByType, tableType]);
 
-  const typedCustomModels = useMemo(
-    () =>
-      customModels.filter((model) =>
-        doesCustomModelMatchTableType(model, tableType),
-      ),
-    [customModels, tableType],
-  );
+  const typedCustomModels = useMemo(() => {
+    if (tableType === ALL_TABLE_TYPES) return customModels;
+    return customModels.filter((model) =>
+      doesCustomModelMatchTableType(model, tableType),
+    );
+  }, [customModels, tableType]);
 
   const allModels = useMemo(
     () => mergeCatalogWithCustomModels(models, typedCustomModels),
@@ -201,7 +198,9 @@ const Table3DSimulatorModal = ({
     if (selectedModel?.key === model.key) {
       const nextVisible = mergeCatalogWithCustomModels(
         models,
-        saved.filter((item) => doesCustomModelMatchTableType(item, tableType)),
+        tableType === ALL_TABLE_TYPES
+          ? saved
+          : saved.filter((item) => doesCustomModelMatchTableType(item, tableType)),
       );
       setSelectedModelKey(nextVisible[0]?.key || "");
     }
@@ -251,10 +250,10 @@ const Table3DSimulatorModal = ({
     >
       <div className="table-3d-modal__header">
         <div>
-          <h3>🪑 Mô phỏng 3D đặt thử bàn</h3>
+          <h3>🪑 Mô phỏng 3D và xem thử bàn</h3>
           <p>
             {restaurantName || "Nhà hàng hiện tại"}
-            {currentFloorName ? ` • Đang mô phỏng cho ${currentFloorName}` : ""}
+            {currentFloorName ? ` • Đang xem cho ${currentFloorName}` : ""}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={onClose}>
@@ -264,11 +263,12 @@ const Table3DSimulatorModal = ({
 
       <div className="table-3d-modal__layout">
         <aside className="table-3d-modal__sidebar">
-          <label>Loại bàn</label>
+          <label>Phạm vi mẫu bàn</label>
           <select
             value={tableType}
             onChange={(e) => setTableType(e.target.value)}
           >
+            <option value={ALL_TABLE_TYPES}>Tất cả mẫu bàn có trong hệ thống</option>
             {TABLE_3D_TYPE_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -363,8 +363,8 @@ const Table3DSimulatorModal = ({
             })}
             {!filteredModels.length && (
               <div className="model-empty">
-                Không có mẫu phù hợp với loại bàn/bộ lọc hiện tại. Hãy đổi từ
-                khóa, chọn bộ lọc khác hoặc tạo mẫu tùy chỉnh mới.
+                Không có mẫu phù hợp với bộ lọc hiện tại. Hãy đổi từ khóa, chọn
+                bộ lọc khác hoặc tạo mẫu tùy chỉnh mới.
               </div>
             )}
           </div>
@@ -428,17 +428,9 @@ const Table3DSimulatorModal = ({
           <div className="viewer-overlay">
             <span>{selectedModel?.label || "Mẫu 3D"}</span>
             {loading && <span>Đang tải catalog...</span>}
-            {confirmedCameraPlacement && (
-              <span>Đã xác nhận vị trí xem thử cho mẫu này</span>
-            )}
-            {confirmedCameraPlacement &&
-              selectedModel &&
-              confirmedCameraPlacement.modelKey !== selectedModel.key && (
-                <span>
-                  Vị trí xem thử đã xác nhận thuộc mẫu khác. Hãy xem thử bằng
-                  camera lại nếu muốn lưu cho mẫu này.
-                </span>
-              )}
+            <span>
+              Xem thử chỉ dùng để đánh giá mẫu bàn có hợp không gian, không lưu tọa độ vào sơ đồ bàn.
+            </span>
           </div>
 
           {selectedModel?.modelUrl && !modelError ? (
@@ -471,32 +463,16 @@ const Table3DSimulatorModal = ({
           )}
 
           <div className="table-3d-modal__controls">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => rotateModel(-15)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => rotateModel(-15)}>
               ↺ Rotate
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => rotateModel(15)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => rotateModel(15)}>
               ↻ Rotate
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => zoomModel(-0.2)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => zoomModel(-0.2)}>
               ＋ Zoom
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => zoomModel(0.2)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => zoomModel(0.2)}>
               － Zoom
             </Button>
             <Button size="sm" variant="secondary" onClick={resetView}>
@@ -505,32 +481,16 @@ const Table3DSimulatorModal = ({
           </div>
 
           <div className="table-3d-modal__controls">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => shiftModel(-0.1, 0)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => shiftModel(-0.1, 0)}>
               ← Di chuyển
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => shiftModel(0.1, 0)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => shiftModel(0.1, 0)}>
               → Di chuyển
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => shiftModel(0, -0.1)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => shiftModel(0, -0.1)}>
               ↑ Di chuyển
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => shiftModel(0, 0.1)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => shiftModel(0, 0.1)}>
               ↓ Di chuyển
             </Button>
             <label className="scale-range">
@@ -548,11 +508,9 @@ const Table3DSimulatorModal = ({
 
           <div className="table-3d-modal__guide">
             <p>• Xem 3D: xoay/zoom mẫu bàn trong màn hình.</p>
-            <p>
-              • Xem thử bằng camera: overlay thủ công để ước lượng vị trí thực
-              tế.
-            </p>
+            <p>• Xem thử bằng camera: overlay thủ công để ước lượng mẫu bàn có hợp không gian thực tế hay không.</p>
             <p>• Mở AR: dùng AR native trên thiết bị/trình duyệt hỗ trợ.</p>
+            <p>• Chức năng camera hiện không lấy tọa độ không gian thật và không liên kết với sơ đồ bàn.</p>
           </div>
 
           <div className="table-3d-modal__footer">
@@ -562,7 +520,7 @@ const Table3DSimulatorModal = ({
               disabled={!selectedModel}
               title={selectedModel ? "" : "Vui lòng chọn mẫu bàn trước"}
             >
-              📷 Xem thử bằng camera
+              📷 Xem thử trong không gian
             </Button>
             {canOpenAr ? (
               <div className="table-3d-modal__ar-hint">
@@ -579,7 +537,7 @@ const Table3DSimulatorModal = ({
                 </Button>
                 <span>
                   AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng
-                  Xem thử bằng camera.
+                  Xem thử trong không gian.
                 </span>
               </div>
             ) : (
@@ -594,15 +552,12 @@ const Table3DSimulatorModal = ({
               onClick={() =>
                 selectedModel &&
                 onApply(selectedModel, {
-                  visualConfig: buildVisualConfigFromModel(
-                    selectedModel,
-                    confirmedCameraPlacement,
-                  ),
+                  visualConfig: buildVisualConfigFromModel(selectedModel, null),
                 })
               }
               disabled={!selectedModel}
             >
-              Áp dụng vào form thêm bàn
+              Áp dụng mẫu vào form thêm bàn
             </Button>
           </div>
         </section>
@@ -622,11 +577,6 @@ const Table3DSimulatorModal = ({
         open={!!cameraModel}
         modelItem={cameraModel}
         onClose={() => setCameraModel(null)}
-        onConfirmPlacement={(payload) => {
-          setConfirmedCameraPlacement(payload);
-          setCameraModel(null);
-        }}
-        placementScope={customModelScope}
       />
     </Modal>
   );
