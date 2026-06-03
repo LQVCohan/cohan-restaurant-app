@@ -1980,3 +1980,238 @@
 .staff-availability-progress__bar { height: 100%; background: #3b82f6; }
 .staff-availability-requirement--warning { border-color: #f59e0b; background: #fffbeb; }
 .staff-availability-requirement--ok { border-color: #22c55e; background: #f0fdf4; }
+
+/* Staff operations redesign overrides: practical restaurant palette and stronger states. */
+.staff-schedule-page {
+  --staff-bg: #f1f4ec;
+  --staff-surface: rgba(255, 255, 255, 0.94);
+  --staff-surface-strong: #ffffff;
+  --staff-border: rgba(103, 119, 92, 0.22);
+  --staff-border-strong: rgba(31, 111, 74, 0.34);
+  --staff-text: #172019;
+  --staff-muted: #66705f;
+  --staff-soft: #f8faf5;
+  --staff-primary: #1f6f4a;
+  --staff-primary-strong: #16583b;
+  --staff-primary-soft: #e6f3ea;
+  --staff-success: #168044;
+  --staff-success-soft: #e7f6ec;
+  --staff-warning: #b7791f;
+  --staff-warning-soft: #fff3d8;
+  --staff-danger: #b42318;
+  --staff-danger-soft: #fde8e5;
+  --staff-shadow: 0 24px 60px rgba(38, 54, 39, 0.12);
+  --staff-shadow-soft: 0 14px 34px rgba(38, 54, 39, 0.08);
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-schedule-hero {
+  border-color: rgba(103, 119, 92, 0.18);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(31, 111, 74, 0.18), transparent 25rem),
+    radial-gradient(circle at 95% 18%, rgba(183, 121, 31, 0.14), transparent 22rem),
+    linear-gradient(135deg, #fbfcf8 0%, #eef3e8 100%);
+  box-shadow: 0 22px 55px rgba(38, 54, 39, 0.12);
+}
+
+.staff-schedule-hero::before,
+.staff-schedule-hero::after,
+.staff-schedule-hero__glow { display: none; }
+
+.staff-schedule-hero__content h1 {
+  color: #172019;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.staff-schedule-hero__content p { color: #566150; }
+
+.staff-schedule-eyebrow,
+.staff-schedule-hero__meta span,
+.staff-week-switcher {
+  color: #16583b;
+  border-color: rgba(31, 111, 74, 0.22);
+  background: rgba(230, 243, 234, 0.78);
+  backdrop-filter: none;
+}
+
+.staff-week-switcher { box-shadow: 0 16px 36px rgba(38, 54, 39, 0.1); }
+.staff-week-switcher__current span { color: #66705f; }
+.staff-week-switcher__current strong { color: #172019; }
+
+.staff-week-switcher__button {
+  color: #16583b;
+  border-color: rgba(31, 111, 74, 0.22);
+  background: #fff;
+}
+.staff-week-switcher__button:hover { background: #e6f3ea; border-color: rgba(31, 111, 74, 0.38); }
+.staff-week-switcher__button:focus-visible,
+.staff-primary-button:focus-visible,
+.staff-primary-btn:focus-visible,
+.staff-matrix-slot:has(input:focus-visible),
+.staff-shift-decline-panel select:focus-visible,
+.staff-shift-decline-panel textarea:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.3);
+  outline-offset: 3px;
+}
+
+.staff-flow-steps {
+  max-width: min(var(--staff-page-max), calc(100vw - 40px));
+  margin: 0 auto 16px;
+}
+
+.staff-card,
+.staff-flow-step,
+.staff-window-summary,
+.staff-my-shift-card,
+.staff-published-shifts,
+.staff-action-bar,
+.staff-empty-state,
+.staff-loading-state {
+  border-color: var(--staff-border);
+  box-shadow: var(--staff-shadow-soft);
+}
+
+.staff-card__kicker,
+.staff-overview-item strong,
+.staff-my-shift-card__time,
+.staff-availability-requirement__value,
+.staff-window-summary strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-card__header h2,
+.staff-card--overview h3,
+.staff-card--guide h3,
+.staff-published-shifts h3 {
+  color: var(--staff-text);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.staff-pill {
+  border-radius: 10px;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.staff-pill--good { color: #126d3a; background: var(--staff-success-soft); border-color: rgba(22, 128, 68, 0.24); }
+.staff-pill--warning { color: #8a5a14; background: var(--staff-warning-soft); border-color: rgba(183, 121, 31, 0.28); }
+.staff-pill--danger { color: #9f1f16; background: var(--staff-danger-soft); border-color: rgba(180, 35, 24, 0.22); }
+.staff-pill--locked,
+.staff-pill--muted { color: #566150; background: #eef1ea; border-color: rgba(103, 119, 92, 0.2); }
+
+.staff-loading-state {
+  align-items: flex-start;
+  min-height: 150px;
+  padding: 22px;
+  background: #fbfcf8;
+}
+
+.staff-skeleton-line {
+  display: block;
+  width: min(100%, 360px);
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e7ece1 0%, #f8faf5 44%, #e7ece1 88%);
+  background-size: 220% 100%;
+  animation: staff-skeleton-pulse 1.25s ease-in-out infinite;
+}
+.staff-skeleton-line--wide { width: min(100%, 520px); height: 18px; }
+@keyframes staff-skeleton-pulse { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+.staff-empty-state {
+  background: #fbfcf8;
+  border-style: dashed;
+}
+.staff-empty-state svg { color: #66705f; }
+.staff-empty-state--error { background: #fff7f5; border-color: rgba(180, 35, 24, 0.28); }
+.staff-empty-state--error svg { color: var(--staff-danger); }
+
+.staff-primary-button,
+.staff-primary-btn {
+  min-height: 46px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--staff-primary);
+  box-shadow: 0 14px 28px rgba(31, 111, 74, 0.22);
+  transition: transform 220ms ease, background 220ms ease, box-shadow 220ms ease, opacity 220ms ease;
+}
+.staff-primary-button:hover:not(:disabled),
+.staff-primary-btn:hover:not(:disabled) {
+  background: var(--staff-primary-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(31, 111, 74, 0.26);
+}
+.staff-primary-button:active:not(:disabled),
+.staff-primary-btn:active:not(:disabled) { transform: translateY(0); }
+.staff-primary-button:disabled,
+.staff-primary-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.staff-matrix-slot {
+  min-height: 58px;
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+}
+.staff-matrix-slot:hover:not(.is-disabled) { transform: translateY(-1px); border-color: rgba(31, 111, 74, 0.38); }
+.staff-matrix-slot.is-selected { background: var(--staff-primary-soft); border-color: rgba(31, 111, 74, 0.42); color: var(--staff-primary-strong); }
+.staff-matrix-slot.is-disabled { cursor: not-allowed; opacity: 0.55; }
+
+.staff-my-shift-card {
+  border-radius: 18px;
+  background: #fff;
+}
+.staff-my-shift-card--today { border-color: rgba(31, 111, 74, 0.36); background: linear-gradient(90deg, rgba(230, 243, 234, 0.72), #fff 58%); }
+.staff-my-shift-card--live { border-color: rgba(22, 128, 68, 0.42); box-shadow: 0 18px 38px rgba(22, 128, 68, 0.13); }
+.staff-my-shift-card--soon { border-color: rgba(183, 121, 31, 0.38); background: linear-gradient(90deg, rgba(255, 243, 216, 0.76), #fff 58%); }
+.staff-my-shift-card--ended { opacity: 0.82; }
+.staff-my-shift-card__note { color: #566150; line-height: 1.5; }
+
+.staff-shift-ack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.staff-shift-ack-actions .staff-primary-btn + .staff-primary-btn {
+  color: #8a5a14;
+  border: 1px solid rgba(183, 121, 31, 0.28);
+  background: #fff3d8;
+  box-shadow: none;
+}
+.staff-shift-ack-actions .staff-primary-btn + .staff-primary-btn:hover:not(:disabled) { background: #ffe8b0; }
+
+.staff-shift-decline-panel {
+  border: 1px solid rgba(183, 121, 31, 0.26);
+  border-radius: 16px;
+  background: #fffaf0;
+}
+.staff-shift-decline-panel select,
+.staff-shift-decline-panel textarea {
+  border: 1px solid rgba(103, 119, 92, 0.24);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.staff-feedback { border-radius: 14px; font-weight: 750; }
+.staff-feedback--success { color: #126d3a; background: var(--staff-success-soft); border-color: rgba(22, 128, 68, 0.24); }
+.staff-feedback--error { color: #9f1f16; background: var(--staff-danger-soft); border-color: rgba(180, 35, 24, 0.22); }
+
+@media (max-width: 760px) {
+  .staff-schedule-page { padding: 0; }
+  .staff-schedule-hero,
+  .staff-flow-steps,
+  .staff-schedule-layout { max-width: 100%; }
+  .staff-action-bar { align-items: stretch; }
+  .staff-primary-button,
+  .staff-primary-btn { width: 100%; min-height: 52px; }
+  .staff-shift-ack-actions { flex-direction: column; }
+}
+.staff-feedback--schedule-ack { margin-bottom: 12px; }
+.staff-my-shift-card--declined { border-color: rgba(180, 35, 24, 0.24); }
+.staff-my-shift-card--muted { background: #fbfcf8; }

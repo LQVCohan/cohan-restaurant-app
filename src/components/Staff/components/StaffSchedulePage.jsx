@@ -13,7 +13,6 @@ import {
   LockKeyhole,
   Moon,
   Send,
-  Sparkles,
   Sun,
   Sunrise,
 } from "lucide-react";
@@ -990,9 +989,9 @@ export default function StaffSchedulePage() {
       if (action === "check_in") await checkInShiftMutation({ variables: { shiftId } });
       else await checkOutShiftMutation({ variables: { shiftId } });
       await refetchMyShiftAttendances?.();
-      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "success", message: action === "check_in" ? "Check-in thành công." : "Check-out thành công." } }));
+      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "success", message: action === "check_in" ? "Đã check-in. Bạn đang trong ca." : "Đã check-out. Ca đã hoàn thành." } }));
     } catch (e) {
-      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "error", message: getGraphQLErrorMessage(e, "Không thể chấm công ca.") } }));
+      setAttendanceFeedbackByShiftId((prev) => ({ ...prev, [shiftId]: { type: "error", message: getGraphQLErrorMessage(e, "Không thể chấm công ca. Vui lòng thử lại.") } }));
     } finally { setAttendanceActionLoadingShiftId(""); }
   };
   const nextShift = useMemo(
@@ -1102,15 +1101,14 @@ export default function StaffSchedulePage() {
 
         <div className="staff-schedule-hero__content">
           <div className="staff-schedule-eyebrow">
-            <Sparkles size={16} />
+            <Clock3 size={16} />
             <span>Lịch làm việc cá nhân</span>
           </div>
 
           <h1>Lịch làm việc của tôi</h1>
 
           <p>
-            Theo dõi lịch đã công bố, gửi availability và báo ca không khả dụng
-            trong cùng một nơi.
+            Xem ca hôm nay, xác nhận ca, chấm công và gửi đăng ký lịch trong cùng một nơi.
           </p>
 
           <div className="staff-schedule-hero__meta">
@@ -1231,8 +1229,9 @@ export default function StaffSchedulePage() {
             </div>
 
             {loadingWindows || loadingSubmission ? (
-              <div className="staff-loading-state">
-                <Loader2 size={22} className="staff-spin" />
+              <div className="staff-loading-state" aria-live="polite">
+                <span className="staff-skeleton-line staff-skeleton-line--wide" />
+                <span className="staff-skeleton-line" />
                 <span>Đang tải thông tin đăng ký...</span>
               </div>
             ) : windowsError ? (
@@ -1684,7 +1683,7 @@ export default function StaffSchedulePage() {
         <aside className="staff-schedule-side">
           <section className="staff-card staff-card--overview">
             <div className="staff-card__kicker">
-              <Sparkles size={16} />
+              <CalendarDays size={16} />
               <span>Tổng quan tuần</span>
             </div>
 
@@ -1732,7 +1731,7 @@ export default function StaffSchedulePage() {
             </div>
 
             {shifts.length > 0 ? (
-              <div className="staff-feedback" style={{ marginBottom: 12 }}>
+              <div className="staff-feedback staff-feedback--schedule-ack">
                 {hasChangedAfterAcknowledgement ? (
                   <>
                     <p>
@@ -1814,7 +1813,8 @@ export default function StaffSchedulePage() {
             {shiftAckFeedback?.type === "error" ? <div className="staff-feedback staff-feedback--error">{shiftAckFeedback.message}</div> : null}
             {loadingShifts ? (
               <div className="staff-loading-state staff-loading-state--small">
-                <Loader2 size={20} className="staff-spin" />
+                <span className="staff-skeleton-line staff-skeleton-line--wide" />
+                <span className="staff-skeleton-line" />
                 <span>Đang tải lịch...</span>
               </div>
             ) : shiftsError ? (
@@ -1838,7 +1838,7 @@ export default function StaffSchedulePage() {
               </div>
             ) : (
               <div className="staff-shift-list">
-                <article className="staff-my-shift-card">
+                <article className={`staff-my-shift-card ${nextShift ? getShiftTimingState(nextShift).isLive ? "staff-my-shift-card--live" : getShiftTimingState(nextShift).startsSoon ? "staff-my-shift-card--soon" : "" : "staff-my-shift-card--muted"}`}>
                   <div className="staff-my-shift-card__icon">
                     <CalendarDays size={20} />
                   </div>
@@ -1911,8 +1911,17 @@ export default function StaffSchedulePage() {
                   const canCheckIn = canShowCheckInAction(shift, ack, attendance);
                   const canCheckOut = canShowCheckOutAction(attendance);
 
+                  const shiftCardClass = [
+                    "staff-my-shift-card",
+                    shiftDayKey === todayKey ? "staff-my-shift-card--today" : "",
+                    timing.isLive ? "staff-my-shift-card--live" : "",
+                    timing.startsSoon && !timing.isLive ? "staff-my-shift-card--soon" : "",
+                    timing.isEnded ? "staff-my-shift-card--ended" : "",
+                    ack?.status === "declined" ? "staff-my-shift-card--declined" : "",
+                  ].filter(Boolean).join(" ");
+
                   return (
-                    <article key={shift.id} className="staff-my-shift-card">
+                    <article key={shift.id} className={shiftCardClass}>
                       <div className="staff-my-shift-card__icon">
                         <Icon size={20} />
                       </div>
@@ -1979,7 +1988,7 @@ export default function StaffSchedulePage() {
                         !timing.isEnded &&
                         !timing.startsSoon &&
                         !timing.isLive ? (
-                          <p className="staff-my-shift-card__note">Chưa đến thời gian check-in.</p>
+                          <p className="staff-my-shift-card__note">Chưa đến thời gian check-in theo điều kiện hiện có.</p>
                         ) : null}
                         {canCheckIn ? (
                           <button className="staff-primary-btn" type="button" disabled={attendanceActionLoadingShiftId===shift.id} onClick={() => handleAttendanceAction(shift.id, "check_in")}>{attendanceActionLoadingShiftId===shift.id?"Đang xử lý...":"Check-in"}</button>
