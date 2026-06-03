@@ -5,6 +5,8 @@ import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAc
 
 const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
+  const sidebarUserName = user?.fullName || user?.name || "Quản lý";
+  const sidebarUserRole = user?.role?.name || user?.roleName || "Đang hoạt động";
   // Navigation items data
   const navigationSections = [
     {
@@ -167,27 +169,24 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
 
   return (
     <>
-      {/* Overlay for mobile */}
-      {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
-
       {/* Sidebar */}
-      <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
+      <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`} aria-label="Thanh điều hướng quản lý">
         {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <span className="logo-icon">🍽️</span>
-            <span className="logo-text">Restaurant</span>
+            <span className="logo-text">Cohan Manager</span>
           </div>
-          <button className="sidebar-close" onClick={onClose}>
+          <button className="sidebar-close" onClick={onClose} type="button" aria-label="Đóng thanh điều hướng">
             ✕
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Điều hướng quản lý nhà hàng">
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="nav-section">
-              <div className="nav-section-title">{section.title}</div>
+              <div className="nav-section-title" id={`manager-nav-section-${sectionIndex}`}>{section.title}</div>
               {section.items.map((item) => (
                 <button
                   key={item.id}
@@ -196,6 +195,9 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
                   }`}
                   onClick={() => handleItemClick(item)}
                   title={item.label}
+                  type="button"
+                  aria-current={activeItem === item.id ? "page" : undefined}
+                  aria-label={item.label}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
@@ -211,10 +213,10 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
           <div className="sidebar-user">
             <div className="user-avatar-small">👨‍💼</div>
             <div className="user-info-small">
-              <div className="user-name-small">Nguyễn Quản Lý</div>
+              <div className="user-name-small">{sidebarUserName}</div>
               <div className="user-status-small">
                 <span className="status-dot-small"></span>
-                Online
+                {sidebarUserRole}
               </div>
             </div>
           </div>
