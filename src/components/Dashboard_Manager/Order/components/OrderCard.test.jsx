@@ -39,4 +39,23 @@ describe("OrderCard operations UI", () => {
       expect(onUpdateStatus).toHaveBeenCalledWith(baseOrder.id, "preparing"),
     );
   });
+  it("calls the reject callback from a remote pending order", () => {
+    const onRejectOrder = vi.fn();
+    render(
+      <OrderCard
+        order={{
+          ...baseOrder,
+          actionOrderId: "action-order-7",
+          orderType: "delivery",
+          clientMeta: { chatThreadId: "thread-1" },
+        }}
+        isRemoteStaffPending
+        onRejectOrder={onRejectOrder}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /từ chối đơn/i }));
+
+    expect(onRejectOrder).toHaveBeenCalledWith("action-order-7");
+  });
 });

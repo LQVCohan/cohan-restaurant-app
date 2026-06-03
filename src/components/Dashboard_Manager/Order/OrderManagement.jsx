@@ -358,12 +358,95 @@ const DishSummaryPanel = ({
   );
 };
 
+export const RejectOrderDialog = ({
+  open,
+  orderLabel,
+  reason,
+  error,
+  loading = false,
+  onReasonChange,
+  onCancel,
+  onConfirm,
+}) => {
+  if (!open) return null;
+
+  return (
+    <div
+      className="om-reject-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="om-reject-dialog-title"
+    >
+      <button
+        type="button"
+        className="om-reject-dialog__backdrop"
+        onClick={onCancel}
+        aria-label="Đóng hộp thoại từ chối đơn"
+      />
+      <form
+        className="om-reject-dialog__panel"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onConfirm?.();
+        }}
+      >
+        <div className="om-reject-dialog__header">
+          <span className="om-reject-dialog__eyebrow">Từ chối đơn</span>
+          <h2 id="om-reject-dialog-title">Nhập lý do từ chối đơn</h2>
+          {orderLabel && (
+            <p>Đơn <strong>{orderLabel}</strong> sẽ được gửi trạng thái từ chối.</p>
+          )}
+        </div>
+
+        <label className="om-reject-dialog__field">
+          <span>Lý do từ chối</span>
+          <textarea
+            value={reason}
+            onChange={(event) => onReasonChange?.(event.target.value)}
+            placeholder="Ví dụ: Món đã hết, khách đặt sai chi nhánh..."
+            rows={4}
+            autoFocus
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "om-reject-dialog-error" : undefined}
+          />
+        </label>
+
+        {error && (
+          <p id="om-reject-dialog-error" className="om-reject-dialog__error">
+            {error}
+          </p>
+        )}
+
+        <div className="om-reject-dialog__actions">
+          <button type="button" className="om-reject-dialog__cancel" onClick={onCancel}>
+            Hủy
+          </button>
+          <button
+            type="submit"
+            className="om-reject-dialog__confirm"
+            disabled={loading}
+          >
+            {loading ? "Đang từ chối..." : "Xác nhận từ chối"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 /* ---------------- Main Component ---------------- */
 const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [rejectDialog, setRejectDialog] = useState({
+    open: false,
+    orderId: null,
+    reason: "",
+    error: "",
+    loading: false,
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -905,14 +988,56 @@ const OrderManagement = () => {
     setHighlightedOrderIds([]);
   }, []);
 
-  const handleRejectOrder = useCallback(
-    async (orderId) => {
-      const reason = window.prompt("Nhập lý do từ chối đơn:", "");
-      if (reason == null) return;
-      const order = displayOrders.find(
-        (item) => item.id === orderId || item.actionOrderId === orderId,
-      );
-      const targetOrderId = resolveKitchenActionOrderId(order, orderId);
+  const rejectDialogOrder = useMemo(
+    () =>
+      displayOrders.find(
+        (item) =>
+          item.id === rejectDialog.orderId ||
+          item.actionOrderId === rejectDialog.orderId,
+      ) || null,
+    [displayOrders, rejectDialog.orderId],
+  );
+
+  const handleRejectOrder = useCallback((orderId) => {
+    setRejectDialog({
+      open: true,
+      orderId,
+      reason: "",
+      error: "",
+      loading: false,
+    });
+  }, []);
+
+  const handleCloseRejectDialog = useCallback(() => {
+    setRejectDialog({
+      open: false,
+      orderId: null,
+      reason: "",
+      error: "",
+      loading: false,
+    });
+  }, []);
+
+  const handleRejectReasonChange = useCallback((reason) => {
+    setRejectDialog((prev) => ({ ...prev, reason, error: "" }));
+  }, []);
+
+  const handleConfirmRejectOrder = useCallback(async () => {
+    const reason = rejectDialog.reason.trim();
+    if (!reason) {
+      setRejectDialog((prev) => ({
+        ...prev,
+        error: "Vui lòng nhập lý do từ chối đơn.",
+      }));
+      return;
+    }
+
+    const order = rejectDialogOrder;
+    const targetOrderId = resolveKitchenActionOrderId(order, rejectDialog.orderId);
+    if (!targetOrderId) return;
+
+    setRejectDialog((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
       await mutRejectIncomingOrder({
         variables: {
           input: { id: targetOrderId, restaurantId: selectedRestaurantId, reason },
@@ -920,9 +1045,24 @@ const OrderManagement = () => {
       });
       await refetchOrders();
       showNotification("Đã từ chối đơn từ xa", "warning");
-    },
-    [displayOrders, mutRejectIncomingOrder, refetchOrders, selectedRestaurantId, showNotification],
-  );
+      handleCloseRejectDialog();
+    } catch (err) {
+      setRejectDialog((prev) => ({
+        ...prev,
+        loading: false,
+        error: err?.message || "Không thể từ chối đơn. Vui lòng thử lại.",
+      }));
+    }
+  }, [
+    handleCloseRejectDialog,
+    mutRejectIncomingOrder,
+    refetchOrders,
+    rejectDialog.orderId,
+    rejectDialog.reason,
+    rejectDialogOrder,
+    selectedRestaurantId,
+    showNotification,
+  ]);
 
   const handleConfirmRemoteOrder = useCallback(
     async (orderId) => {
@@ -1290,6 +1430,21 @@ const OrderManagement = () => {
             }}
           />
         )}
+
+        <RejectOrderDialog
+          open={rejectDialog.open}
+          orderLabel={
+            rejectDialogOrder?.orderCode ||
+            rejectDialogOrder?.tableCode ||
+            rejectDialog.orderId
+          }
+          reason={rejectDialog.reason}
+          error={rejectDialog.error}
+          loading={rejectDialog.loading}
+          onReasonChange={handleRejectReasonChange}
+          onCancel={handleCloseRejectDialog}
+          onConfirm={handleConfirmRejectOrder}
+        />
 
         <OrderSettingsModal
           open={isSettingsOpen}

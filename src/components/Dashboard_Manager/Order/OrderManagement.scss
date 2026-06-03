@@ -967,3 +967,168 @@ $danger: #ef4444;
     grid-template-columns: 1fr;
   }
 }
+
+.om-reject-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.om-reject-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(43, 34, 27, 0.42);
+  cursor: default;
+}
+
+.om-reject-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 480px);
+  border: 1px solid rgba(128, 97, 61, 0.2);
+  border-radius: 22px;
+  background: #fffaf3;
+  box-shadow: 0 26px 60px rgba(43, 34, 27, 0.22);
+  padding: 22px;
+}
+
+.om-reject-dialog__header {
+  margin-bottom: 18px;
+
+  h2 {
+    margin: 6px 0 8px;
+    color: #2b221b;
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  p {
+    margin: 0;
+    color: #6f5a46;
+    font-size: 0.92rem;
+  }
+}
+
+.om-reject-dialog__eyebrow {
+  color: #af3f30;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.om-reject-dialog__field {
+  display: grid;
+  gap: 8px;
+  color: #4d3725;
+  font-size: 0.86rem;
+  font-weight: 800;
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 112px;
+    border: 1px solid rgba(128, 97, 61, 0.24);
+    border-radius: 14px;
+    background: #fffdf8;
+    color: #2b221b;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 12px 14px;
+
+    &::placeholder {
+      color: #9b8772;
+      font-weight: 500;
+    }
+
+    &:focus-visible {
+      border-color: #b89365;
+      box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.18);
+      outline: none;
+    }
+
+    &[aria-invalid="true"] {
+      border-color: #af3f30;
+    }
+  }
+}
+
+.om-reject-dialog__error {
+  margin: 10px 0 0;
+  color: #af3f30;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.om-reject-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.om-reject-dialog__cancel,
+.om-reject-dialog__confirm {
+  min-height: 42px;
+  border-radius: 12px;
+  font-weight: 850;
+  padding: 0 16px;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid rgba(184, 147, 101, 0.35);
+    outline-offset: 3px;
+  }
+}
+
+.om-reject-dialog__cancel {
+  border: 1px solid rgba(128, 97, 61, 0.22);
+  background: #fffdf8;
+  color: #4d3725;
+
+  &:hover {
+    background: #f7eddf;
+  }
+}
+
+.om-reject-dialog__confirm {
+  border: 1px solid #af3f30;
+  background: #af3f30;
+  color: #fffaf3;
+
+  &:hover:not(:disabled) {
+    background: #943426;
+    border-color: #943426;
+  }
+
+  &:disabled {
+    opacity: 0.66;
+    cursor: wait;
+  }
+}
+
+@media (max-width: 520px) {
+  .om-reject-dialog {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .om-reject-dialog__panel {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .om-reject-dialog__actions {
+    flex-direction: column-reverse;
+  }
+
+  .om-reject-dialog__cancel,
+  .om-reject-dialog__confirm {
+    width: 100%;
+  }
+}
