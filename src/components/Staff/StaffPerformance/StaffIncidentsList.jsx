@@ -1,7 +1,7 @@
 import React from "react";
 
 const RESPONSIBILITY_LABELS = {
-  pending_review: "Chờ review",
+  pending_review: "Chờ xem lại",
   no_fault: "Không lỗi",
   staff_responsible: "Nhân viên chịu trách nhiệm",
   manager_responsible: "Quản lý chịu trách nhiệm",
@@ -21,31 +21,60 @@ const SEVERITY_LABELS = {
   violation: "Vi phạm",
   critical: "Nghiêm trọng",
 };
+const APPEAL_STATUS_LABELS = {
+  submitted: "Đã gửi",
+  under_review: "Đang xem xét",
+  needs_more_info: "Cần bổ sung",
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+  cancelled: "Đã hủy",
+};
 
 const OPEN_STATUSES = ["submitted", "under_review", "needs_more_info"];
 
+const getSeverityTone = (severity) => {
+  if (["critical", "violation"].includes(severity)) return "danger";
+  if (severity === "warning") return "warning";
+  return "muted";
+};
+
 const StaffIncidentsList = ({ incidents = [], appeals = [], onAppeal }) => {
-  if (!incidents.length) return <p>Chưa có dữ liệu hiệu suất trong kỳ này.</p>;
+  if (!incidents.length) {
+    return (
+      <div className="staff-performance-empty">
+        <h3>Chưa có dữ liệu hiệu suất trong kỳ này.</h3>
+        <p>Bạn không có sự kiện cần xem lại ở kỳ hiện tại.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="staff-performance-section">
       {incidents.map((item) => {
-        const incidentAppeals = appeals.filter((a) => a.incidentId === item.id);
-        const hasOpenAppeal = incidentAppeals.some((a) => OPEN_STATUSES.includes(a.status));
+        const incidentAppeals = appeals.filter((appeal) => appeal.incidentId === item.id);
+        const hasOpenAppeal = incidentAppeals.some((appeal) => OPEN_STATUSES.includes(appeal.status));
+        const latestAppeal = incidentAppeals[0];
         return (
-        <article key={item.id} className="staff-incident-item">
-          <h4>{item.eventType || "Sự kiện"}</h4>
-          <p>Mức độ: {SEVERITY_LABELS[item.severity] || item.severity || "-"}</p>
-          <p>Trách nhiệm: {RESPONSIBILITY_LABELS[item.responsibilityStatus] || item.responsibilityStatus || "-"}</p>
-          <p>Trạng thái áp điểm: {SCORE_IMPACT_LABELS[item.scoreImpactStatus] || item.scoreImpactStatus || "-"}</p>
-          <p>Điểm đề xuất: {item.proposedScoreDelta ?? "-"} | Điểm áp dụng: {item.scoreDelta ?? "-"}</p>
-          <p>Thời điểm: {item.occurredAt ? new Date(item.occurredAt).toLocaleString("vi-VN") : "-"}</p>
-          <p>Ghi chú: {item.reviewNote || item.waiveReason || item.applyNote || item.note || "-"}</p>
-        {incidentAppeals[0] ? <p>Trạng thái phản hồi: {incidentAppeals[0].status}</p> : null}
-        {incidentAppeals[0]?.scoreReversalStatus === "reversed" ? <p><strong>Đã hoàn điểm</strong>: +{incidentAppeals[0]?.scoreReversalDelta || 0}</p> : null}
-          {!hasOpenAppeal && item.scoreImpactStatus !== "not_applicable" ? <button type="button" onClick={() => onAppeal?.(item.id)}>Khiếu nại</button> : null}
-        </article>
-      );})}
+          <article key={item.id} className={`staff-incident-item staff-incident-item--${getSeverityTone(item.severity)}`}>
+            <div className="staff-incident-item__header">
+              <h3>{item.eventType || "Sự kiện"}</h3>
+              <span>Mức độ: {SEVERITY_LABELS[item.severity] || item.severity || "Thông tin"}</span>
+            </div>
+            <p className="staff-incident-item__context">Trách nhiệm: {RESPONSIBILITY_LABELS[item.responsibilityStatus] || item.responsibilityStatus || "-"}</p>
+            <dl>
+              <div><dt>Trách nhiệm</dt><dd>{RESPONSIBILITY_LABELS[item.responsibilityStatus] || item.responsibilityStatus || "-"}</dd></div>
+              <div><dt>Trạng thái điểm</dt><dd>{SCORE_IMPACT_LABELS[item.scoreImpactStatus] || item.scoreImpactStatus || "-"}</dd></div>
+              <div><dt>Điểm đề xuất</dt><dd>{item.proposedScoreDelta ?? "-"}</dd></div>
+              <div><dt>Điểm áp dụng</dt><dd>{item.scoreDelta ?? "-"}</dd></div>
+              <div><dt>Thời điểm</dt><dd>{item.occurredAt ? new Date(item.occurredAt).toLocaleString("vi-VN") : "-"}</dd></div>
+            </dl>
+            <p>{item.reviewNote || item.waiveReason || item.applyNote || item.note || "Chưa có ghi chú."}</p>
+            {latestAppeal ? <p className="staff-incident-item__appeal">Trạng thái phản hồi: {APPEAL_STATUS_LABELS[latestAppeal.status] || latestAppeal.status}</p> : null}
+            {latestAppeal?.scoreReversalStatus === "reversed" ? <p className="staff-incident-item__appeal"><strong>Đã hoàn điểm</strong>: +{latestAppeal?.scoreReversalDelta || 0}</p> : null}
+            {!hasOpenAppeal && item.scoreImpactStatus !== "not_applicable" ? <button type="button" onClick={() => onAppeal?.(item.id)}>Phản hồi sự kiện này</button> : null}
+          </article>
+        );
+      })}
     </div>
   );
 };

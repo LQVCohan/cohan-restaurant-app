@@ -6,6 +6,7 @@ import {
   STAFF_ORDER_ROLES,
   STAFF_KITCHEN_ROLES,
 } from "@/utils/frontendRoleAccess";
+import "./StaffDashboardPage.scss";
 
 const STAFF_ORDER_ROLE_SET = new Set(STAFF_ORDER_ROLES);
 const STAFF_KITCHEN_ROLE_SET = new Set(STAFF_KITCHEN_ROLES);
@@ -36,6 +37,39 @@ const getRestaurantLabel = (restaurantForStaff) => {
   return "—";
 };
 
+const StaffStatusBadge = ({ tone = "muted", children }) => (
+  <span className={`staff-dashboard-badge staff-dashboard-badge--${tone}`}>{children}</span>
+);
+
+const StaffActionCard = ({ to, title, description, cta, tone = "neutral", primary = false }) => (
+  <Link className={`staff-action-card staff-action-card--${tone} ${primary ? "staff-action-card--primary" : ""}`} to={to}>
+    <span className="staff-action-card__content">
+      <strong>{title}</strong>
+      <span>{description}</span>
+    </span>
+    <span className="staff-action-card__cta">{cta}</span>
+  </Link>
+);
+
+const StaffEmptyState = ({ title, description, action }) => (
+  <div className="staff-dashboard-empty" role="status">
+    <div className="staff-dashboard-empty__mark">•</div>
+    <div>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      {action ? action : null}
+    </div>
+  </div>
+);
+
+const StaffMetricTile = ({ label, value, hint, tone = "neutral" }) => (
+  <div className={`staff-metric-tile staff-metric-tile--${tone}`}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+    {hint ? <small>{hint}</small> : null}
+  </div>
+);
+
 const StaffDashboardPage = () => {
   const { user } = useContext(AuthContext);
 
@@ -50,16 +84,22 @@ const StaffDashboardPage = () => {
     if (STAFF_ORDER_ROLE_SET.has(normalizedRole)) {
       actions.push({
         to: "/staff/orders",
+        title: "Order nội bộ",
         label: "Đi tới khu vực xử lý order nội bộ",
         description: "Xử lý bàn, order nội bộ và thanh toán theo quyền vai trò.",
+        cta: "Mở order",
+        tone: "success",
       });
     }
 
     if (STAFF_KITCHEN_ROLE_SET.has(normalizedRole)) {
       actions.push({
         to: "/staff/kitchen",
+        title: "Khu vực bếp",
         label: "Xem món cần chuẩn bị",
         description: "Theo dõi món chờ nhận, đang làm và sẵn sàng.",
+        cta: "Mở bếp",
+        tone: "warning",
       });
     }
 
@@ -67,64 +107,157 @@ const StaffDashboardPage = () => {
   }, [normalizedRole]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-semibold text-gray-900">Trang nhân viên</h1>
-
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900">Thông tin cơ bản</h2>
-        <div className="mt-3 space-y-1 text-sm text-gray-700">
-          <p><span className="font-medium">Tên nhân viên:</span> {staffName || "—"}</p>
-          <p><span className="font-medium">Vai trò:</span> {roleLabel || "—"}</p>
+    <div className="staff-dashboard-page" aria-labelledby="staff-dashboard-title">
+      <section className="staff-dashboard-hero">
+        <div className="staff-dashboard-hero__copy">
+          <StaffStatusBadge tone="accent">Khu vực nhân viên</StaffStatusBadge>
+          <h1 id="staff-dashboard-title">Hôm nay cần làm gì?</h1>
           <p>
-            <span className="font-medium">Nhà hàng phụ trách:</span>{" "}
-            {staffRestaurantLabel}
+            Xem ca làm, chấm công, xác nhận ca và các yêu cầu cá nhân từ một màn hình dễ thao tác trong ca.
           </p>
         </div>
-      </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-gray-900">Lịch làm việc cá nhân</h3>
-          <p className="mt-1 text-sm text-gray-600">Xem lịch làm việc của bạn theo ca và theo tuần.</p>
-          <Link to="/staff/schedule" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700">Mở lịch cá nhân</Link>
+        <div className="staff-identity-card" aria-label="Thông tin nhân viên">
+          <span>Đang đăng nhập</span>
+          <strong>{staffName || "Nhân viên"}</strong>
+          <small>{roleLabel || "Chưa xác định vai trò"}</small>
+          <small>{staffRestaurantLabel}</small>
         </div>
+      </section>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-gray-900">Hồ sơ cá nhân</h3>
-          <p className="mt-1 text-sm text-gray-600">Cập nhật thông tin và theo dõi trạng thái tài khoản.</p>
-          <Link to="/profile" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700">Mở hồ sơ</Link>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-gray-900">Thông báo</h3>
-          <p className="mt-1 text-sm text-gray-600">Theo dõi cập nhật mới từ hệ thống và nhà hàng.</p>
-          <Link to="/notifications" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700">Mở thông báo</Link>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-gray-900">Khu vực làm việc của bạn</h3>
-          <div className="mt-3">
-            {workAreaActions.length > 0 ? (
-              <div className="grid gap-3">
-                {workAreaActions.map((action) => (
-                  <Link
-                    key={action.to}
-                    to={action.to}
-                    className="block rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-100"
-                  >
-                    <div className="text-sm font-medium text-blue-700">{action.label}</div>
-                    <div className="mt-1 text-sm text-gray-600">{action.description}</div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-600">
-                Hiện chưa có khu vực chuyên môn riêng. Bạn vẫn có thể xem lịch, hồ sơ và thông báo.
-              </p>
-            )}
+      <section className="staff-dashboard-grid" aria-label="Tổng quan thao tác nhân viên">
+        <article className="staff-shift-command-card">
+          <div className="staff-shift-command-card__header">
+            <StaffStatusBadge tone="muted">Ca hôm nay</StaffStatusBadge>
+            <span className="staff-shift-command-card__time">Lịch</span>
           </div>
+          <h2>Kiểm tra ca hôm nay</h2>
+          <p>
+            Mở lịch cá nhân để xem ca hiện tại, check-in/check-out và cảnh báo chấm công theo dữ liệu đã công bố.
+          </p>
+          <div className="staff-shift-command-card__actions">
+            <Link className="staff-primary-dashboard-button" to="/staff/schedule">
+              Xem lịch tuần
+            </Link>
+            <Link className="staff-secondary-dashboard-button" to="/staff/schedule">
+              Đăng ký lịch
+            </Link>
+          </div>
+        </article>
+
+        <aside className="staff-task-panel" aria-label="Việc cần xử lý">
+          <div className="staff-task-panel__header">
+            <h2>Việc cần xử lý</h2>
+            <StaffStatusBadge tone="warning">Theo ca</StaffStatusBadge>
+          </div>
+          <div className="staff-task-list">
+            <Link to="/staff/schedule" className="staff-task-item">
+              <span>Ca cần xác nhận</span>
+              <strong>Kiểm tra lịch</strong>
+            </Link>
+            <Link to="/staff/schedule" className="staff-task-item">
+              <span>Chấm công thiếu</span>
+              <strong>Gửi chỉnh công nếu cần</strong>
+            </Link>
+            <Link to="/notifications" className="staff-task-item">
+              <span>Thông báo mới</span>
+              <strong>Xem nhắc việc</strong>
+            </Link>
+          </div>
+        </aside>
+      </section>
+
+      <section className="staff-metric-row" aria-label="Trạng thái vận hành cá nhân">
+        <StaffMetricTile label="Trạng thái" value="Xem lịch" hint="Theo ca đã công bố" tone="muted" />
+        <StaffMetricTile label="Chấm công" value="Trong lịch" hint="Check-in / check-out" tone="success" />
+        <StaffMetricTile label="Yêu cầu" value="Theo dõi" hint="Nghỉ phép / tăng ca / chỉnh công" tone="warning" />
+      </section>
+
+      <section className="staff-dashboard-section" aria-labelledby="staff-fast-actions-title">
+        <div className="staff-dashboard-section__header">
+          <div>
+            <StaffStatusBadge tone="accent">Thao tác nhanh</StaffStatusBadge>
+            <h2 id="staff-fast-actions-title">Đi thẳng tới việc cần làm</h2>
+          </div>
+          <p>Ưu tiên các thao tác nhân viên dùng nhiều nhất trên điện thoại hoặc tablet.</p>
         </div>
-      </div>
+
+        <div className="staff-action-grid">
+          <StaffActionCard
+            to="/staff/schedule"
+            title="Lịch cá nhân"
+            description="Xem ca hôm nay, ca tuần này, xác nhận ca và chấm công."
+            cta="Mở lịch"
+            tone="accent"
+            primary
+          />
+          <StaffActionCard
+            to="/staff/schedule"
+            title="Đăng ký lịch rảnh/bận"
+            description="Chọn ca có thể làm hoặc báo ca không khả dụng."
+            cta="Đăng ký"
+            tone="neutral"
+          />
+          <StaffActionCard
+            to="/staff/schedule"
+            title="Nghỉ phép / tăng ca / chỉnh công"
+            description="Theo dõi trạng thái chờ duyệt, đã duyệt hoặc từ chối."
+            cta="Xem yêu cầu"
+            tone="warning"
+          />
+          <StaffActionCard
+            to="/profile"
+            title="Hồ sơ cá nhân"
+            description="Kiểm tra thông tin liên hệ và trạng thái tài khoản."
+            cta="Mở hồ sơ"
+            tone="neutral"
+          />
+          <StaffActionCard
+            to="/notifications"
+            title="Thông báo / nhắc việc"
+            description="Xem cập nhật lịch, nhắc check-out và phản hồi từ quản lý."
+            cta="Xem thông báo"
+            tone="neutral"
+          />
+          <StaffActionCard
+            to="/staff/performance"
+            title="Phản hồi hiệu suất"
+            description="Xem điểm hiện tại theo hướng cải thiện và gửi phản hồi khi cần."
+            cta="Xem phản hồi"
+            tone="success"
+          />
+        </div>
+      </section>
+
+      <section className="staff-dashboard-section staff-dashboard-section--work-area" aria-labelledby="staff-work-area-title">
+        <div className="staff-dashboard-section__header">
+          <div>
+            <StaffStatusBadge tone="success">Khu vực chuyên môn</StaffStatusBadge>
+            <h2 id="staff-work-area-title">Khu vực làm việc của bạn</h2>
+          </div>
+          <p>Chỉ hiển thị khu vực phù hợp với quyền hiện tại.</p>
+        </div>
+
+        {workAreaActions.length > 0 ? (
+          <div className="staff-work-area-list">
+            {workAreaActions.map((action) => (
+              <StaffActionCard
+                key={action.to}
+                to={action.to}
+                title={action.title}
+                description={action.description}
+                cta={action.cta}
+                tone={action.tone}
+              />
+            ))}
+          </div>
+        ) : (
+          <StaffEmptyState
+            title="Chưa có khu vực chuyên môn riêng"
+            description="Bạn vẫn có thể xem lịch, xác nhận ca, cập nhật hồ sơ và theo dõi thông báo."
+            action={<Link className="staff-text-dashboard-link" to="/staff/schedule">Mở lịch cá nhân</Link>}
+          />
+        )}
+      </section>
     </div>
   );
 };

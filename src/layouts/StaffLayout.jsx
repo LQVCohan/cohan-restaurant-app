@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
+import "./StaffLayout.scss";
 import {
   resolveUserRoleName,
   STAFF_KITCHEN_ROLES,
@@ -50,30 +51,30 @@ const StaffLayout = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="staff-shell">
+      <header className="staff-shell__header">
+        <div className="staff-shell__inner">
+          <div className="staff-shell__topbar">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Khu vực nhân viên</p>
-              <h1 className="text-xl font-semibold text-slate-950">Vận hành nội bộ</h1>
+              <p className="staff-shell__eyebrow">Khu vực nhân viên</p>
+              <h1>Vận hành ca làm</h1>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              <div className="font-medium text-slate-900">{displayName || "Nhân viên"}</div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">{roleLabel || "Chưa xác định vai trò"}</div>
+            <div className="staff-shell__identity">
+              <div>{displayName || "Nhân viên"}</div>
+              <span>{roleLabel || "Chưa xác định vai trò"}</span>
             </div>
           </div>
 
-          <nav aria-label="Điều hướng nhân viên" className="flex flex-wrap gap-2">
+          <nav aria-label="Điều hướng nhân viên" className="staff-shell__nav">
             {visibleNavItems.map((item) => {
               const active = isActivePath(location.pathname, item.to);
-              const activeClass = "border-blue-600 bg-blue-600 text-white shadow-sm";
-              const inactiveClass = "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700";
+              const activeClass = "staff-shell__nav-link--active";
+              const inactiveClass = "staff-shell__nav-link--idle";
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={"rounded-full border px-3 py-2 text-sm font-medium transition " + (active ? activeClass : inactiveClass)}
+                  className={"staff-shell__nav-link " + (active ? activeClass : inactiveClass)}
                   aria-current={active ? "page" : undefined}
                 >
                   {item.label}
@@ -84,7 +85,7 @@ const StaffLayout = ({ children }) => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main id="staff-main-content" className="staff-shell__main">{children}</main>
     </div>
   );
 };
