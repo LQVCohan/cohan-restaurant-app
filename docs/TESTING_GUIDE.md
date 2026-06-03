@@ -13,7 +13,7 @@
 - `test:component`: chạy component tests trong `src/components`.
 - `test:e2e`: chạy toàn bộ Playwright tests trong `tests/e2e`.
 - `test:smoke`: chạy Playwright smoke tests trong `tests/e2e/smoke`.
-- `test:ci`: chạy conflict check, lint, build, unit, API, và smoke tests.
+- `test:ci`: chạy conflict check, lint, build, unit, component, API, và smoke tests.
 - `seed:test`: validate fixture seed test mà không ghi DB.
 - `reset:test-db`: dry-run reset plan, không ghi DB thật.
 - Các script chuyên biệt giữ nguyên: `test:menu-rbac`, `test:frontend`, `test:backend`, `check:demo`, `test:performance`, `check:conflicts`, `env:local`.
@@ -41,7 +41,7 @@
 
 ### GitHub Actions workflow
 - `.github/workflows/ci.yml` có job `frontend` và `backend` trên push/PR vào `main` và `develop`.
-- Job frontend chạy `npm ci`, conflict check, lint, frontend tests, menu RBAC tests, build.
+- Job frontend chạy `npm ci`, conflict check, lint, unit tests, menu RBAC tests, component tests, build, cài Playwright browsers, và smoke tests.
 - Job backend chạy `npm ci`, lint, backend tests, backend menu RBAC tests, build.
 - `.github/workflows/branch-protection.yml` chỉ chạy thủ công bằng `workflow_dispatch`.
 
@@ -124,7 +124,7 @@ Hiện tại full E2E trùng smoke folder. Khi mở rộng thêm spec ngoài smo
 npm run test:ci
 ```
 
-Chạy conflict check, lint, build, unit, API, và smoke.
+Chạy conflict check, lint, build, unit, component, API, và smoke.
 
 ## 4. Seed data test
 
@@ -209,6 +209,7 @@ Phase 4:
 
 ```bash
 npm run test:unit
+npm run test:component
 npm run test:api
 npm run test:smoke
 ```

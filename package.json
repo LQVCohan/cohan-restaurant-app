@@ -21,7 +21,7 @@
     "test:component": "vitest run src/components",
     "test:e2e": "playwright test tests/e2e",
     "test:smoke": "playwright test tests/e2e/smoke",
-    "test:ci": "npm run check:conflicts && npm run lint && npm run build && npm run test:unit && npm run test:api && npm run test:smoke",
+    "test:ci": "npm run check:conflicts && npm run lint && npm run build && npm run test:unit && npm run test:component && npm run test:api && npm run test:smoke",
     "seed:test": "node scripts/seed-test-data.mjs",
     "reset:test-db": "node scripts/seed-test-data.mjs --reset-plan"
   },

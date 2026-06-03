@@ -46,6 +46,9 @@ jobs:
       - name: Test Menu RBAC
         run: npm run test:menu-rbac --if-present
 
+      - name: Component tests
+        run: npm run test:component
+
       - name: Build
         run: npm run build
 
