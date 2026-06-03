@@ -875,61 +875,21 @@ export const UserMutation = {
 
     if (typeof input.email === "string") {
       const nextEmail = input.email.trim().toLowerCase();
-      if (nextEmail) {
-        const existEmail = await User.findOne({
-          _id: { $ne: u._id },
-          email: nextEmail,
-        }).lean();
-        if (existEmail) {
-          throw new GraphQLError("Email already in use", {
-            extensions: { code: "BAD_USER_INPUT" },
-          });
-        }
-        if (u.email && u.email !== nextEmail) {
-          updates.emailVerified = false;
-          updates.emailVerifiedAt = null;
-          updates.emailVerifyToken = null;
-          updates.emailVerifyTokenHash = null;
-          updates.emailVerifyTokenExp = null;
-        }
-        updates.email = nextEmail;
-      } else {
-        updates.email = null;
-        updates.emailVerified = false;
-        updates.emailVerifiedAt = null;
-        updates.emailVerifyToken = null;
-        updates.emailVerifyTokenHash = null;
-        updates.emailVerifyTokenExp = null;
+      const currentEmail = String(u.email || "");
+      if (nextEmail !== currentEmail) {
+        throw new GraphQLError("Email changes require OTP verification", {
+          extensions: { code: "EMAIL_CHANGE_REQUIRES_OTP" },
+        });
       }
     }
 
     if (typeof input.phone === "string") {
       const nextPhone = normalizePhone(input.phone.trim());
-      if (nextPhone) {
-        const existPhone = await User.findOne({
-          _id: { $ne: u._id },
-          phone: nextPhone,
-        }).lean();
-        if (existPhone) {
-          throw new GraphQLError("Phone already in use", {
-            extensions: { code: "BAD_USER_INPUT" },
-          });
-        }
-        if (u.phone && u.phone !== nextPhone) {
-          updates.phoneVerified = false;
-          updates.phoneVerifiedAt = null;
-          updates.phoneVerifyToken = null;
-          updates.phoneVerifyTokenHash = null;
-          updates.phoneVerifyTokenExp = null;
-        }
-        updates.phone = nextPhone;
-      } else {
-        updates.phone = null;
-        updates.phoneVerified = false;
-        updates.phoneVerifiedAt = null;
-        updates.phoneVerifyToken = null;
-        updates.phoneVerifyTokenHash = null;
-        updates.phoneVerifyTokenExp = null;
+      const currentPhone = normalizePhone(String(u.phone || ""));
+      if (nextPhone !== currentPhone) {
+        throw new GraphQLError("Phone changes require OTP verification", {
+          extensions: { code: "PHONE_CHANGE_REQUIRES_OTP" },
+        });
       }
     }
 

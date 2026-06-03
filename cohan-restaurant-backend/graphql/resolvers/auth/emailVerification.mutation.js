@@ -11,6 +11,11 @@ import {
   verifyPhoneToken,
   verifyAnyToken,
 } from "../../../src/services/auth/accountVerification.service.js";
+import {
+  requestContactChangeOtp as requestContactChangeOtpService,
+  confirmContactChangeOtp as confirmContactChangeOtpService,
+  cancelContactChangeOtp as cancelContactChangeOtpService,
+} from "../../../src/services/auth/contactChangeOtp.service.js";
 
 function enabled(name, fallback = true) {
   return String(process.env[name] ?? String(fallback)).toLowerCase() === "true";
@@ -129,4 +134,19 @@ export default {
   verifyPhone: async (_root, { token }) => verifyPhoneToken(token),
 
   verifyAccountToken: async (_root, { token, channel }) => verifyAnyToken({ token, channel }),
+
+  requestContactChangeOtp: async (_root, { input }, ctx) => {
+    requireAuth(ctx);
+    return requestContactChangeOtpService({ user: ctx.user, target: input?.target, value: input?.value, ctx });
+  },
+
+  confirmContactChangeOtp: async (_root, { input }, ctx) => {
+    requireAuth(ctx);
+    return confirmContactChangeOtpService({ user: ctx.user, target: input?.target, otp: input?.otp, ctx });
+  },
+
+  cancelContactChangeOtp: async (_root, { target }, ctx) => {
+    requireAuth(ctx);
+    return cancelContactChangeOtpService({ user: ctx.user, target, ctx });
+  },
 };

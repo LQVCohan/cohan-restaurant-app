@@ -28,6 +28,7 @@ const ME_QUERY = gql`
       }
       roleName
       emailVerified
+      phoneVerified
       loyaltyPoints
       totalOrders
       totalSpending
