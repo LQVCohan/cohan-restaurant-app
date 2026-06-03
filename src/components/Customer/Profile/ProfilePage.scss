@@ -1,11 +1,40 @@
-// --- GLOBAL VARIABLES FOR PROFILE ---
-$bg-body: #f8fafc;
+$bg-body: #fffaf4;
 $primary: #ff6600;
-$primary-light: #fff5eb;
-$text-sub: #64748b;
-/* --- src/components/Customer/Profile/ProfilePage.scss --- */
+$primary-light: #fff1e5;
+$text-main: #1e1915;
+$text-sub: #766b61;
+$border: rgba(92, 64, 51, 0.1);
 
-// Thêm đoạn này vào đầu file hoặc chỗ style chung
+.profile-page {
+  min-height: 100dvh;
+  padding: clamp(96px, 8vw, 120px) 20px 68px;
+  color: $text-main;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 185, 115, 0.2), transparent 30rem),
+    radial-gradient(circle at 92% 2%, rgba(255, 235, 214, 0.72), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ee 48%, #ffffff 100%);
+
+  .profile-container {
+    width: 100%;
+    max-width: 1360px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(290px, 340px) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+
+    @media (max-width: 1040px) {
+      grid-template-columns: 1fr;
+      max-width: 860px;
+    }
+  }
+
+  .profile-content {
+    min-width: 0;
+  }
+}
+
 svg,
 .icon,
 .nav-icon,
@@ -13,76 +42,60 @@ svg,
 .social-icon,
 .avatar-edit-btn,
 .stat-box {
-  // 1. Ngăn không cho chọn/bôi đen
   user-select: none;
-  -webkit-user-select: none; /* Safari/Chrome */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE/Edge */
-
-  // 2. Ẩn con trỏ nhấp nháy (dấu |)
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   caret-color: transparent;
-
-  // 3. Ngăn chặn sự kiện chuột lên icon (nếu icon nằm trong button)
-  // Để click vào icon thì button cha vẫn nhận sự kiện
-  pointer-events: none;
 }
 
-// RIÊNG CHO CÁC NÚT BẤM (BUTTONS) & INPUT CONTROL
 button,
 .btn-edit,
 .btn-save,
 .nav-item,
 .toggle-switch {
   user-select: none;
-  &:focus {
-    outline: none; // Bỏ viền xanh mặc định khi click
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 102, 0, 0.22);
+    outline-offset: 3px;
   }
 }
 
-// RIÊNG NÚT CHỈNH SỬA AVATAR (Cần click được nên bật pointer-events lại)
 .avatar-edit-btn {
   pointer-events: auto !important;
   cursor: pointer;
 }
-.profile-page {
-  padding-top: 100px;
-  padding-bottom: 60px;
-  background-color: $bg-body;
-  min-height: 100vh;
-  font-family: "Inter", sans-serif;
 
-  .profile-container {
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 0 24px;
-    display: grid;
-    grid-template-columns: 340px 1fr; // Sidebar 320px
-    gap: 40px;
-
-    @media (max-width: 1024px) {
-      grid-template-columns: 1fr;
-      max-width: 800px;
-    }
-  }
-}
-
-// Utils
 .profile-loading,
 .profile-error {
-  padding-top: 100px;
+  min-height: 100dvh;
+  padding-top: 120px;
+  display: grid;
+  place-items: center;
   text-align: center;
   color: $text-sub;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 185, 115, 0.18), transparent 30rem),
+    linear-gradient(180deg, #fffaf4, #ffffff);
 }
+
 .profile-loading .loading-spinner {
   margin: 0 auto;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .profile-page .profile-container {
+    animation: profilePageIn 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes profilePageIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
