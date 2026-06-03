@@ -40,7 +40,13 @@ const TopDishes = ({
               <div className="dish-content">
                 <div className="info-top"><h4 className="dish-name">{dish?.dishName || "—"}</h4><span className="dish-meta">{Number(dish?.quantity || 0)} suất</span></div>
                 <p className="revenue-meta">{formatCurrency(dish?.revenue || 0)}</p>
-                <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
+                <meter
+                  className="progress-meter"
+                  min="0"
+                  max="100"
+                  value={progress}
+                  aria-label={`Tỷ lệ bán của ${dish?.dishName || "món"}`}
+                />
               </div>
             </div>
           );

@@ -43,7 +43,7 @@ const ManagerPerformancePanel = ({
     (appealOverview.pendingCount !== undefined || appealOverview.acceptedCount !== undefined);
 
   if (!restaurantId && restaurantLoading) {
-    return <div className="performance-loading">Đang tải dữ liệu...</div>;
+    return <div className="performance-loading" role="status">Đang tải dữ liệu hiệu suất...</div>;
   }
   if (!restaurantId) {
     return (
@@ -52,7 +52,7 @@ const ManagerPerformancePanel = ({
       </div>
     );
   }
-  if (loading) return <div className="performance-loading">Đang tải dữ liệu...</div>;
+  if (loading) return <div className="performance-loading" role="status">Đang tải dữ liệu hiệu suất...</div>;
   if (error) return <div className="performance-error">Không thể tải dữ liệu. Vui lòng thử lại.</div>;
   if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu để hiển thị.</div>;
 
@@ -72,10 +72,10 @@ const ManagerPerformancePanel = ({
           <div className="performance-kpi-grid">
             <div className="kpi-card"><span>Điểm trung bình</span><strong>{scoringOverview?.averageScore !== undefined ? formatScore(scoringOverview.averageScore) : "--"}</strong></div>
             <div className="kpi-card"><span>Số nhân viên cần chú ý</span><strong>{scoringOverview?.lowScoreEmployeeCount ?? "--"}</strong></div>
-            <div className="kpi-card"><span>Incident chờ duyệt / đủ điều kiện / đã áp dụng</span><strong>{incidentOverview ? `${incidentOverview.pendingReviewCount || 0} / ${incidentOverview.eligibleCount || 0} / ${incidentOverview.appliedCount || 0}` : "Chưa có dữ liệu"}</strong></div>
+            <div className="kpi-card"><span>Incident cần xử lý</span><strong>{incidentOverview ? `${incidentOverview.pendingReviewCount || 0} / ${incidentOverview.eligibleCount || 0}` : "--"}</strong></div>
             <div className="kpi-card"><span>Tổng incident</span><strong>{incidentOverview?.totalIncidents ?? 0}</strong></div>
             {hasAppealOverview ? (
-              <div className="kpi-card"><span>Appeal chờ duyệt / được chấp nhận</span><strong>{`${appealOverview.pendingCount ?? 0} / ${appealOverview.acceptedCount ?? 0}`}</strong></div>
+              <div className="kpi-card"><span>Appeal chờ duyệt</span><strong>{appealOverview.pendingCount ?? 0}</strong></div>
             ) : null}
           </div>
 

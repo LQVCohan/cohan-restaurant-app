@@ -263,8 +263,12 @@ export const getModelAssetSummary = (model) => {
       license: "—",
       dimensions: "",
       modelKey: "—",
+      badges: [],
+      dimensionsLabel: "",
     };
   }
+
+  const dimensionsLabel = formatDimensionsCm(model.dimensionsCm);
 
   return {
     has3DModel: Boolean(model.modelUrl && String(model.modelUrl).trim()),
@@ -272,8 +276,10 @@ export const getModelAssetSummary = (model) => {
     source: model.sourceLabel || model.source || "Không rõ nguồn",
     sourceUrl: model.source || "",
     license: model.licenseLabel || "Chưa rõ license",
-    dimensions: formatDimensionsCm(model.dimensionsCm),
+    dimensions: dimensionsLabel,
+    dimensionsLabel,
     modelKey: model.key || "—",
+    badges: getModelAssetBadges(model),
   };
 };
 
