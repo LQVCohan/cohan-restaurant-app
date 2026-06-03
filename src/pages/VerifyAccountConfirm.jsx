@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import "./AccountVerification.product.css";
 
 const VERIFY_ACCOUNT = gql`
   mutation VerifyAccountToken($token: String!, $channel: VerificationChannel!) {
@@ -48,34 +49,47 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   }, [channel, token, verifyAccount]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-[100vh] bg-gray-100 text-center px-4">
-      {status === "loading" && (
-        <>
-          <div className="text-3xl mb-4 animate-pulse">{isSms ? "📱" : "📧"}</div>
-          <p className="text-gray-600">Đang xác minh tài khoản...</p>
-        </>
-      )}
-      {status === "success" && (
-        <>
-          <div className="text-4xl mb-4">✅</div>
-          <h2 className="text-xl font-semibold">Xác minh thành công!</h2>
-          <p>Bạn sẽ được chuyển đến trang đăng nhập...</p>
-        </>
-      )}
-      {status === "error" && (
-        <>
-          <div className="text-4xl mb-4">❌</div>
-          <h2 className="text-xl font-semibold text-red-600">
-            Liên kết không hợp lệ hoặc đã hết hạn
-          </h2>
-          <button
-            onClick={() => navigate("/login")}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
-          >
-            Quay lại đăng nhập
-          </button>
-        </>
-      )}
-    </div>
+    <main className="account-verification-page">
+      <section className="account-verification-card">
+        {status === "loading" && (
+          <>
+            <div className="account-verification-spinner" aria-hidden="true" />
+            <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
+            <h1 className="account-verification-title">Đang xác minh tài khoản</h1>
+            <p className="account-verification-text">
+              FoodHub đang kiểm tra liên kết xác minh của bạn. Quá trình này chỉ mất vài giây.
+            </p>
+          </>
+        )}
+        {status === "success" && (
+          <>
+            <div className="account-verification-icon is-success" aria-hidden="true">✓</div>
+            <h1 className="account-verification-title">Xác minh thành công</h1>
+            <p className="account-verification-text">
+              Tài khoản đã được kích hoạt. Bạn sẽ được chuyển đến trang đăng nhập trong giây lát.
+            </p>
+            <div className="account-verification-actions">
+              <button className="account-verification-button is-primary" onClick={() => navigate("/login", { replace: true })}>
+                Đến đăng nhập
+              </button>
+            </div>
+          </>
+        )}
+        {status === "error" && (
+          <>
+            <div className="account-verification-icon is-error" aria-hidden="true">!</div>
+            <h1 className="account-verification-title">Liên kết không hợp lệ</h1>
+            <p className="account-verification-text">
+              Liên kết xác minh có thể đã hết hạn hoặc không đúng. Vui lòng quay lại đăng nhập để yêu cầu gửi lại xác minh.
+            </p>
+            <div className="account-verification-actions">
+              <button className="account-verification-button is-primary" onClick={() => navigate("/login")}>
+                Quay lại đăng nhập
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    </main>
   );
 }

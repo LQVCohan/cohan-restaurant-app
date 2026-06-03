@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { AuthContext } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import "./AccountVerification.product.css";
 
 const REQUEST_MY_VERIFICATION = gql`
   mutation RequestMyVerification($channel: VerificationChannel = AUTO) {
@@ -67,36 +68,43 @@ export default function VerifyEmailPending() {
   };
 
   const loading = loadingMy || loadingLegacy;
+  const isErrorFeedback = feedback.includes("Không") || feedback.includes("chưa") || feedback.includes("Thiếu");
 
   return (
-    <div style={centerStyle()}>
-      <div style={cardStyle()}>
-        <h2 style={titleStyle()}>Xác minh tài khoản của bạn</h2>
-        <p style={textStyle()}>
-          Vui lòng xác minh email hoặc số điện thoại để hoàn tất kích hoạt tài khoản.
+    <main className="account-verification-page">
+      <section className="account-verification-card">
+        <div className="account-verification-icon" aria-hidden="true">✉️</div>
+        <h1 className="account-verification-title">Xác minh tài khoản của bạn</h1>
+        <p className="account-verification-text">
+          Vui lòng xác minh email hoặc số điện thoại để hoàn tất kích hoạt tài khoản FoodHub.
         </p>
-        {email && <p style={textStyle()}><strong>Email:</strong> {email}</p>}
-        {phone && <p style={textStyle()}><strong>SĐT:</strong> {phone}</p>}
 
-        <div>
+        {(email || phone) && (
+          <div className="account-verification-contact">
+            {email && <p><strong>Email:</strong> {email}</p>}
+            {phone && <p><strong>SĐT:</strong> {phone}</p>}
+          </div>
+        )}
+
+        <div className="account-verification-actions">
           <button
-            style={btnStyle("#0ea5e9")}
+            className="account-verification-button is-primary"
             onClick={() => sendChannel("EMAIL")}
             disabled={loading || !email || user?.emailVerified}
           >
-            {loading ? "Đang gửi..." : "Gửi lại email xác minh"}
+            {loading ? "Đang gửi..." : "Gửi lại email"}
           </button>
 
           <button
-            style={btnStyle("#16a34a")}
+            className="account-verification-button"
             onClick={() => sendChannel("SMS")}
             disabled={loading || !phone || user?.phoneVerified}
           >
-            {loading ? "Đang gửi..." : "Gửi lại SMS xác minh"}
+            {loading ? "Đang gửi..." : "Gửi lại SMS"}
           </button>
 
           <button
-            style={btnStyle("#6b7280")}
+            className="account-verification-button is-muted"
             onClick={() => {
               logout?.();
               navigate("/login", { replace: true });
@@ -107,26 +115,14 @@ export default function VerifyEmailPending() {
         </div>
 
         {!email && !phone && (
-          <p style={{ color: "#b45309", marginTop: 18 }}>Thiếu email/SĐT để gửi xác nhận.</p>
+          <p className="account-verification-feedback is-error">Thiếu email/SĐT để gửi xác nhận.</p>
         )}
-        {!!feedback && <p style={{ color: feedback.includes("Không") || feedback.includes("chưa") ? "#dc2626" : "#059669", marginTop: 12 }}>{feedback}</p>}
-      </div>
-    </div>
+        {!!feedback && (
+          <p className={`account-verification-feedback ${isErrorFeedback ? "is-error" : "is-success"}`}>
+            {feedback}
+          </p>
+        )}
+      </section>
+    </main>
   );
-}
-
-function centerStyle() {
-  return { display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", padding: 16 };
-}
-function cardStyle() {
-  return { background: "white", padding: "40px 50px", borderRadius: 16, boxShadow: "0 8px 24px rgba(0, 0, 0, 0.24)", maxWidth: 520, textAlign: "center" };
-}
-function titleStyle() {
-  return { fontSize: "1.5rem", fontWeight: 700, color: "#111827", marginBottom: 12 };
-}
-function textStyle() {
-  return { fontSize: "1rem", color: "#4b5563", marginBottom: 14, lineHeight: 1.5 };
-}
-function btnStyle(bg = "#0ea5e9") {
-  return { background: bg, color: "white", border: "none", padding: "10px 14px", borderRadius: 10, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 18px rgba(0,0,0,.08)", margin: "6px" };
 }
