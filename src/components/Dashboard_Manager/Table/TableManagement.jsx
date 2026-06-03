@@ -445,13 +445,6 @@ const TableManagement = () => {
     setShowLiteModal(true);
   };
 
-  const handleTableCardKeyDown = (event, tableRow) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    handleOpenTableDetail(tableRow);
-  };
-
   const handleOpenAddTableModal = () => {
     setTableForm((prev) => ({
       ...prev,
@@ -809,11 +802,6 @@ const TableManagement = () => {
                   <article
                     key={t.id}
                     className={`tm-table-card ${t.status}`}
-                    onClick={() => handleOpenTableDetail(t)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
-                    onKeyDown={(event) => handleTableCardKeyDown(event, t)}
                   >
                     <div className="card-top">
                       <span className="table-no">{t.number || "Bàn chưa mã"}</span>
@@ -855,6 +843,7 @@ const TableManagement = () => {
                       <button
                         type="button"
                         className="btn-mini secondary"
+                        aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           handleOpenTableDetail(t);

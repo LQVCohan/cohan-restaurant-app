@@ -179,10 +179,14 @@ describe("TableManagement operations UI", () => {
     expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
   });
 
-  it("opens the detail modal when a table card is clicked", async () => {
+  it("opens the detail modal when the detail button is clicked", async () => {
     await renderTableManagement();
 
-    fireEvent.click(screen.getByRole("button", { name: /Mở cấu hình bàn A1/i }));
+    const tableCard = screen.getByText("A1").closest("article");
+    const detailButton = within(tableCard).getByRole("button", {
+      name: /Mở cấu hình bàn A1/i,
+    });
+    fireEvent.click(detailButton);
 
     expect(screen.getByTestId("table-actions-lite-modal")).toBeInTheDocument();
     expect(tableActionsModalState.lastTable?.code).toBe("A1");
@@ -191,7 +195,7 @@ describe("TableManagement operations UI", () => {
   it("disables POS-managed quick actions with the guard reason", async () => {
     await renderTableManagement();
 
-    const occupiedCard = screen.getByRole("button", { name: /Mở cấu hình bàn VIP-02/i });
+    const occupiedCard = screen.getByText("VIP-02").closest("article");
     const paymentAction = within(occupiedCard).getByRole("button", { name: "T.Toán" });
 
     expect(paymentAction).toBeDisabled();
