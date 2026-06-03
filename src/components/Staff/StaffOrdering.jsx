@@ -1537,7 +1537,7 @@ export default function StaffOrdering() {
         ></div>
       )}
 
-      <main className="staff-pos-main">
+      <div className="staff-pos-main">
         {(tablesLoading || menuLoading) && (
           <div className="staff-inline-state">Đang tải dữ liệu nhà hàng...</div>
         )}
@@ -1716,7 +1716,7 @@ export default function StaffOrdering() {
           />
         )}
         {activeTab === "profile" && <StaffProfile />}
-      </main>
+      </div>
 
       {(activeTab === "menu" || activeTab === "tables") && cartContextTable && (
         <div className="floating-cart-wrapper">
