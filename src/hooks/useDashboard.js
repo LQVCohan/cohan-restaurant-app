@@ -1,4 +1,4 @@
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -52,6 +52,47 @@ const GET_MANAGER_DASHBOARD = gql`
         onHand
         reserved
       }
+      pendingOrderCount
+      pendingReservationCount
+      pendingSupportRequestCount
+      pendingOrders {
+        id
+        orderCode
+        customerName
+        orderType
+        tableCode
+        status
+        total
+        createdAt
+        itemNames
+      }
+      pendingReservations {
+        id
+        orderCode
+        customerName
+        customerPhone
+        tableCode
+        partySize
+        timeTo
+        status
+        depositStatus
+        depositAmount
+        note
+        createdAt
+      }
+      pendingSupportRequests {
+        orderId
+        orderCode
+        trackingCode
+        tableCode
+        requestId
+        type
+        status
+        message
+        createdAt
+        acknowledgedAt
+        resolvedAt
+      }
     }
   }
 `;
@@ -75,6 +116,8 @@ export const useDashboard = () => {
     skip: !selectedRestaurantId,
     variables: { restaurantId: selectedRestaurantId, range },
     fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+    pollInterval: selectedRestaurantId && process.env.NODE_ENV !== "test" ? 30000 : 0,
   });
 
   const dashboard = data?.managerDashboard;
@@ -101,6 +144,13 @@ export const useDashboard = () => {
     () => restaurants.find((x) => x.id === selectedRestaurantId) || null,
     [restaurants, selectedRestaurantId]
   );
+
+  useEffect(() => {
+    if (!selectedRestaurantId || typeof window === "undefined") return undefined;
+    const handleFocus = () => refetch({ restaurantId: selectedRestaurantId, range });
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refetch, selectedRestaurantId, range]);
 
   const handleRestaurantChange = useCallback((restaurantId) => {
     setSelectedRestaurantId(restaurantId);
@@ -130,6 +180,13 @@ export const useDashboard = () => {
     topDishes: dashboard?.topDishes || [],
     recentOrders: dashboard?.recentOrders || [],
     lowStockItems: dashboard?.lowStockItems || [],
+    pendingOrders: dashboard?.pendingOrders || [],
+    pendingReservations: dashboard?.pendingReservations || [],
+    pendingSupportRequests: dashboard?.pendingSupportRequests || [],
+    pendingOrderCount: dashboard?.pendingOrderCount || 0,
+    pendingReservationCount: dashboard?.pendingReservationCount || 0,
+    pendingSupportRequestCount: dashboard?.pendingSupportRequestCount || 0,
+    refetchDashboard: () => refetch({ restaurantId: selectedRestaurantId, range }),
     handleRestaurantChange,
     handleSwitchToPOS,
     handleGenerateReport,

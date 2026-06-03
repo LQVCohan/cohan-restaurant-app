@@ -4,10 +4,15 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useDashboardActionQueue } from "@/hooks/useDashboardActionQueue";
 import Dashboard from "./Dashboard";
 
 vi.mock("@/hooks/useDashboard", () => ({
   useDashboard: vi.fn(),
+}));
+
+vi.mock("@/hooks/useDashboardActionQueue", () => ({
+  useDashboardActionQueue: vi.fn(),
 }));
 
 vi.mock("@/hooks/useManagerPerformanceDashboard", () => ({
@@ -54,10 +59,26 @@ const baseDashboard = {
   ],
   topDishes: [],
   lowStockItems: [],
+  pendingOrders: [],
+  pendingReservations: [],
+  pendingSupportRequests: [],
+  pendingOrderCount: 0,
+  pendingReservationCount: 0,
+  pendingSupportRequestCount: 0,
+  refetchDashboard: vi.fn(),
 };
 
 const renderDashboard = (overrides = {}) => {
   useDashboard.mockReturnValue({ ...baseDashboard, ...overrides });
+  useDashboardActionQueue.mockReturnValue({
+    busyKey: "",
+    confirmOrder: vi.fn(),
+    rejectOrder: vi.fn(),
+    confirmReservation: vi.fn(),
+    cancelReservation: vi.fn(),
+    acknowledgeSupport: vi.fn(),
+    resolveSupport: vi.fn(),
+  });
 
   return render(
     <MemoryRouter>
@@ -79,6 +100,8 @@ describe("Dashboard manager command center", () => {
     expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn nhà hàng")).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn khoảng thời gian")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cần tiếp nhận" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hỗ trợ khách hàng" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Đơn hàng gần đây" })).toBeInTheDocument();
     expect(screen.getByText("12.500.000 ₫")).toBeInTheDocument();
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
