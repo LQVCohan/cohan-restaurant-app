@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import StaffLayout from "@/layouts/StaffLayout";
 import StaffSchedulePage from "./StaffSchedulePage";
 import { AuthContext } from "@/context/AuthContext";
 const GET_AVAILABILITY_WINDOWS = gql`
@@ -342,7 +344,7 @@ const shiftAcksMock = (myShiftAcknowledgements) => ({
   result: { data: { myShiftAcknowledgements } },
 });
 
-function renderWithAuth(user, mocks = []) {
+function buildScheduleMocks(mocks = []) {
   const defaultMocks = [
     schedulingPolicyMock(),
     emptyAvailabilityWindowsMock(),
@@ -361,12 +363,30 @@ function renderWithAuth(user, mocks = []) {
     emptyMyShiftAttendancesMock(),
   ];
 
+  return [...mocks, ...defaultMocks];
+}
+
+function renderWithAuth(user, mocks = []) {
   return render(
     <AuthContext.Provider value={{ user, restaurants: [{ id: "r1" }] }}>
-      <MockedProvider mocks={[...mocks, ...defaultMocks]}>
+      <MockedProvider mocks={buildScheduleMocks(mocks)}>
         <StaffSchedulePage />
       </MockedProvider>
     </AuthContext.Provider>,
+  );
+}
+
+function renderWithStaffLayout(user, mocks = []) {
+  return render(
+    <MemoryRouter initialEntries={["/staff/schedule"]}>
+      <AuthContext.Provider value={{ user, restaurants: [{ id: "r1" }] }}>
+        <MockedProvider mocks={buildScheduleMocks(mocks)}>
+          <StaffLayout>
+            <StaffSchedulePage />
+          </StaffLayout>
+        </MockedProvider>
+      </AuthContext.Provider>
+    </MemoryRouter>,
   );
 }
 
@@ -381,6 +401,22 @@ describe("StaffSchedulePage", () => {
     expect(
       await screen.findByText("Lịch làm việc của tôi"),
     ).toBeInTheDocument();
+  });
+
+  it("smoke-renders empty schedule state controls without an extra main landmark", async () => {
+    const { container } = renderWithStaffLayout({
+      id: "e1",
+      employmentType: "part_time",
+      restaurantForStaff: "r1",
+      roleSlug: "server",
+    });
+
+    expect(await screen.findByText("Lịch làm việc của tôi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xem tuần trước" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xem tuần sau" })).toBeInTheDocument();
+    expect(screen.getByText("Đăng ký lịch")).toBeInTheDocument();
+    expect(container.querySelectorAll("main")).toHaveLength(1);
+    expect(container.querySelector("main#staff-main-content")).toBeInTheDocument();
   });
 
   it("shows full-time unavailable copy", async () => {
