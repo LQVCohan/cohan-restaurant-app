@@ -178,8 +178,10 @@ const Header = ({
           <button
             className={`sidebar-toggle ${sidebarOpen ? "active" : ""}`}
             onClick={handleToggleSidebar}
-            title="Toggle Sidebar"
+            title="Mở/đóng thanh điều hướng"
             type="button"
+            aria-label={sidebarOpen ? "Đóng thanh điều hướng" : "Mở thanh điều hướng"}
+            aria-expanded={sidebarOpen}
           >
             <div className="hamburger">
               <span className="hamburger-line"></span>
@@ -231,6 +233,9 @@ const Header = ({
                 showNotifications ? "notification-btn--active" : ""
               }`}
               onClick={handleNotificationClick}
+              type="button"
+              aria-label={unreadCount > 0 ? `Mở thông báo, ${unreadCount} chưa đọc` : "Mở thông báo"}
+              aria-expanded={showNotifications}
             >
               <FiBell />
               {unreadCount > 0 && (
@@ -242,7 +247,7 @@ const Header = ({
               <div className="notification-dropdown">
                 <div className="notification-header">
                   <h3>Thông báo</h3>
-                  <button className="mark-all-read" onClick={markAllAsRead}>
+                  <button className="mark-all-read" onClick={markAllAsRead} type="button">
                     Đánh dấu đã đọc
                   </button>
                 </div>
@@ -289,6 +294,9 @@ const Header = ({
                 showUserMenu ? "user-menu-btn--active" : ""
               }`}
               onClick={handleUserMenuClick}
+              type="button"
+              aria-label="Mở menu tài khoản"
+              aria-expanded={showUserMenu}
             >
               <div className="user-avatar">
                 {normalizeUser.avatar}
@@ -325,6 +333,7 @@ const Header = ({
                 <div className="user-menu-items">
                   <button
                     className="user-menu-item"
+                    type="button"
                     onClick={() => goToManagerPage("restaurant-info-management")}
                   >
                     <span className="menu-icon">
@@ -334,6 +343,7 @@ const Header = ({
                   </button>
                   <button
                     className="user-menu-item"
+                    type="button"
                     onClick={() => goToManagerPage("restaurant-info-management")}
                   >
                     <span className="menu-icon">
@@ -341,26 +351,26 @@ const Header = ({
                     </span>
                     <span>Cài đặt tài khoản</span>
                   </button>
-                  <button className="user-menu-item" onClick={toggleDarkMode}>
+                  <button className="user-menu-item" onClick={toggleDarkMode} type="button">
                     <span className="menu-icon">
                       <FiMoon />
                     </span>
                     <span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span>
                   </button>
-                  <button className="user-menu-item" onClick={handleNotificationClick}>
+                  <button className="user-menu-item" onClick={handleNotificationClick} type="button">
                     <span className="menu-icon">
                       <FiBell />
                     </span>
                     <span>Cài đặt thông báo</span>
                   </button>
                   <div className="menu-divider"></div>
-                  <button className="user-menu-item" onClick={goToSupport}>
+                  <button className="user-menu-item" onClick={goToSupport} type="button">
                     <span className="menu-icon">
                       <FiHelpCircle />
                     </span>
                     <span>Trợ giúp & Hỗ trợ</span>
                   </button>
-                  <button className="user-menu-item" onClick={() => goToManagerPage("dashboard")}>
+                  <button className="user-menu-item" onClick={() => goToManagerPage("dashboard")} type="button">
                     <span className="menu-icon">
                       <FiCommand />
                     </span>
@@ -369,6 +379,7 @@ const Header = ({
                   <div className="menu-divider"></div>
                   <button
                     className="user-menu-item user-menu-item--danger"
+                    type="button"
                     onClick={handleLogout}
                   >
                     <span className="menu-icon">
