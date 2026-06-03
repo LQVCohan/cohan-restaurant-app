@@ -11,7 +11,7 @@ export const TABLE_3D_TYPES = {
 };
 
 export const TABLE_3D_PUBLIC_CATALOG_URL =
-  "https://raw.githubusercontent.com/Cohan-restaurant/public-assets/main/table-3d-catalog.v1.json";
+  import.meta.env.VITE_TABLE_3D_PUBLIC_CATALOG_URL || "";
 
 const KAYKIT_RESTAURANT_GLTF_BASE =
   "https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0/main/addons/kaykit_restaurant_bits/Assets/gltf";
@@ -257,41 +257,20 @@ export const getModelAssetBadges = (model) => {
   if (!model) return [];
   const badges = [];
 
-  if (
-    model?.customModelSpec ||
-    model?.customModelKind ||
-    model?.source === "user-generated-url" ||
-    model?.source === "user-upload"
-  ) {
+  if (model.customModelKind === "parametric") {
     badges.push("Custom");
-    if (model?.customModelKind === "upload" || model?.source === "user-upload") {
-      badges.push("Upload");
-    }
-    if (model?.customModelKind === "ai-generated" || model?.source === "ai-generated") {
-      badges.push("AI");
-    }
-  }
-  if (canOpenModelViewerAr(model)) {
-    badges.push("3D", "AR");
+  } else if (model.customModelKind === "url") {
+    badges.push("URL model");
+  } else if (model.customModelKind === "upload") {
+    badges.push("Uploaded");
+  } else if (model.customModelKind === "ai") {
+    badges.push("AI");
+  } else if (model.fallbackKind === "placeholder") {
+    badges.push("Preview only");
   } else {
-    badges.push("Placeholder");
-  }
-  if (
-    String(model?.source || "").startsWith("http") ||
-    String(model?.modelUrl || "").startsWith("http")
-  ) {
-    badges.push("Online");
+    badges.push("3D/AR");
   }
 
+  if (model.licenseLabel) badges.push(model.licenseLabel);
   return badges;
 };
-
-export const getModelAssetSummary = (model) => ({
-  has3DModel: canOpenModelViewerAr(model),
-  arReady: canOpenModelViewerAr(model),
-  source: model?.sourceLabel || model?.source || "-",
-  sourceUrl: model?.source || "",
-  license: model?.licenseLabel || "-",
-  dimensions: formatDimensionsCm(model?.dimensionsCm),
-  modelKey: model?.key || "-",
-});
